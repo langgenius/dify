@@ -7,7 +7,7 @@ import PipelineSettings from '../index'
 // Mock Next.js router
 const mockPush = vi.fn()
 const mockBack = vi.fn()
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
     back: mockBack,

@@ -3,12 +3,12 @@ import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { useRouter } from 'next/navigation'
 import { Plan } from '@/app/components/billing/type'
 import { useAppContext } from '@/context/app-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
+import { useRouter } from '@/next/navigation'
 import { useLogout } from '@/service/use-common'
 import AppSelector from '../index'
 
@@ -53,8 +53,8 @@ vi.mock('@/service/use-common', () => ({
   useLogout: vi.fn(),
 }))
 
-vi.mock('next/navigation', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('next/navigation')>()
+vi.mock('@/next/navigation', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/next/navigation')>()
   return {
     ...actual,
     useRouter: vi.fn(),

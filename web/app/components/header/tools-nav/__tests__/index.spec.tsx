@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ToolsNav from '../index'
 
 const mockUseSelectedLayoutSegment = vi.fn()
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useSelectedLayoutSegment: () => mockUseSelectedLayoutSegment(),
 }))
 

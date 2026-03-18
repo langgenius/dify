@@ -5,6 +5,7 @@ This module provides integration with Weaviate vector database for storing and r
 document embeddings used in retrieval-augmented generation workflows.
 """
 
+import atexit
 import datetime
 import json
 import logging
@@ -35,6 +36,32 @@ logger = logging.getLogger(__name__)
 
 _weaviate_client: weaviate.WeaviateClient | None = None
 _weaviate_client_lock = threading.Lock()
+
+
+def _shutdown_weaviate_client() -> None:
+    """
+    Best-effort shutdown hook to close the module-level Weaviate client.
+
+    This is registered with atexit so that HTTP/gRPC resources are released
+    when the Python interpreter exits.
+    """
+    global _weaviate_client
+
+    # Ensure thread-safety when accessing the shared client instance
+    with _weaviate_client_lock:
+        client = _weaviate_client
+        _weaviate_client = None
+
+    if client is not None:
+        try:
+            client.close()
+        except Exception:
+            # Best-effort cleanup; log at debug level and ignore errors.
+            logger.debug("Failed to close Weaviate client during shutdown", exc_info=True)
+
+
+# Register the shutdown hook once per process.
+atexit.register(_shutdown_weaviate_client)
 
 
 class WeaviateConfig(BaseModel):
@@ -84,18 +111,6 @@ class WeaviateVector(BaseVector):
         super().__init__(collection_name)
         self._client = self._init_client(config)
         self._attributes = attributes
-
-    def __del__(self):
-        """
-        Destructor to properly close the Weaviate client connection.
-        Prevents connection leaks and resource warnings.
-        """
-        if hasattr(self, "_client") and self._client is not None:
-            try:
-                self._client.close()
-            except Exception as e:
-                # Ignore errors during cleanup as object is being destroyed
-                logger.warning("Error closing Weaviate client %s", e, exc_info=True)
 
     def _init_client(self, config: WeaviateConfig) -> weaviate.WeaviateClient:
         """

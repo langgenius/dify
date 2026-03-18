@@ -9,6 +9,7 @@ from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Literal
 
 from core.app.app_config.entities import DatasetRetrieveConfigEntity
+from core.rag.data_post_processor.data_post_processor import RerankingModelDict, WeightsDict
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from dify_graph.entities import GraphInitParams
 from dify_graph.entities.graph_config import NodeConfigDict
@@ -201,8 +202,8 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
         elif str(node_data.retrieval_mode) == DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE:
             if node_data.multiple_retrieval_config is None:
                 raise ValueError("multiple_retrieval_config is required")
-            reranking_model = None
-            weights = None
+            reranking_model: RerankingModelDict | None = None
+            weights: WeightsDict | None = None
             match node_data.multiple_retrieval_config.reranking_mode:
                 case "reranking_model":
                     if node_data.multiple_retrieval_config.reranking_model:

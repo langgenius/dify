@@ -1,5 +1,4 @@
 'use client'
-import { useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -9,6 +8,7 @@ import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
 import { ToastContext } from '@/app/components/base/toast/context'
+import { useRouter } from '@/next/navigation'
 
 import { createEmptyDataset } from '@/service/datasets'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'

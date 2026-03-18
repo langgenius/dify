@@ -1,5 +1,10 @@
-import type { TypeWithI18N } from '../header/account-setting/model-provider-page/declarations'
 import type { VarType } from '../workflow/types'
+
+type LocalizedText<T = string> = {
+  en_US: T
+  zh_Hans: T
+  [key: string]: T
+}
 
 export enum LOC {
   tools = 'tools',
@@ -47,10 +52,10 @@ export type Collection = {
   id: string
   name: string
   author: string
-  description: TypeWithI18N
+  description: LocalizedText
   icon: string | Emoji
   icon_dark?: string | Emoji
-  label: TypeWithI18N
+  label: LocalizedText
   type: CollectionType | string
   team_credentials: Record<string, any>
   is_team_authorization: boolean
@@ -84,8 +89,8 @@ export type Collection = {
 
 export type ToolParameter = {
   name: string
-  label: TypeWithI18N
-  human_description: TypeWithI18N
+  label: LocalizedText
+  human_description: LocalizedText
   type: string
   form: string
   llm_description: string
@@ -93,7 +98,7 @@ export type ToolParameter = {
   multiple: boolean
   default: string
   options?: {
-    label: TypeWithI18N
+    label: LocalizedText
     value: string
   }[]
   min?: number
@@ -102,8 +107,8 @@ export type ToolParameter = {
 
 export type TriggerParameter = {
   name: string
-  label: TypeWithI18N
-  human_description: TypeWithI18N
+  label: LocalizedText
+  human_description: LocalizedText
   type: string
   form: string
   llm_description: string
@@ -111,7 +116,7 @@ export type TriggerParameter = {
   multiple: boolean
   default: string
   options?: {
-    label: TypeWithI18N
+    label: LocalizedText
     value: string
   }[]
 }
@@ -120,8 +125,8 @@ export type TriggerParameter = {
 export type Event = {
   name: string
   author: string
-  label: TypeWithI18N
-  description: TypeWithI18N
+  label: LocalizedText
+  description: LocalizedText
   parameters: TriggerParameter[]
   labels: string[]
   output_schema: Record<string, any>
@@ -130,7 +135,7 @@ export type Event = {
 export type Tool = {
   name: string
   author: string
-  label: TypeWithI18N
+  label: LocalizedText
   description: any
   parameters: ToolParameter[]
   labels: string[]
@@ -139,14 +144,14 @@ export type Tool = {
 
 export type ToolCredential = {
   name: string
-  label: TypeWithI18N
-  help: TypeWithI18N | null
-  placeholder: TypeWithI18N
+  label: LocalizedText
+  help: LocalizedText | null
+  placeholder: LocalizedText
   type: string
   required: boolean
   default: string
   options?: {
-    label: TypeWithI18N
+    label: LocalizedText
     value: string
   }[]
 }
@@ -167,8 +172,8 @@ export type CustomCollectionBackend = {
 
 export type ParamItem = {
   name: string
-  label: TypeWithI18N
-  human_description: TypeWithI18N
+  label: LocalizedText
+  human_description: LocalizedText
   llm_description: string
   type: string
   form: string
@@ -177,7 +182,7 @@ export type ParamItem = {
   min?: number
   max?: number
   options?: {
-    label: TypeWithI18N
+    label: LocalizedText
     value: string
   }[]
 }
@@ -233,8 +238,8 @@ export type WorkflowToolProviderResponse = {
   tool: {
     author: string
     name: string
-    label: TypeWithI18N
-    description: TypeWithI18N
+    label: LocalizedText
+    description: LocalizedText
     labels: string[]
     parameters: ParamItem[]
     output_schema: WorkflowToolProviderOutputSchema

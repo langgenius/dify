@@ -3,8 +3,7 @@ import {
   memo,
   useState,
 } from 'react'
-import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
-import Tooltip from '@/app/components/base/tooltip'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { cn } from '@/utils/classnames'
 
 export type FieldTitleProps = {
@@ -12,6 +11,7 @@ export type FieldTitleProps = {
   operation?: ReactNode
   subTitle?: string | ReactNode
   tooltip?: string
+  warningDot?: boolean
   showArrow?: boolean
   disabled?: boolean
   collapsed?: boolean
@@ -22,6 +22,7 @@ export const FieldTitle = memo(({
   operation,
   subTitle,
   tooltip,
+  warningDot,
   showArrow,
   disabled,
   collapsed,
@@ -41,13 +42,19 @@ export const FieldTitle = memo(({
           }
         }}
       >
-        <div className="system-sm-semibold-uppercase flex items-center text-text-secondary">
-          {title}
+        <div className="flex items-center text-text-secondary system-sm-semibold-uppercase">
+          <span className="relative">
+            {warningDot && (
+              <span className="absolute -left-[9px] top-1/2 size-[5px] -translate-y-1/2 rounded-full bg-text-warning-secondary" />
+            )}
+            {title}
+          </span>
           {
             showArrow && (
-              <ArrowDownRoundFill
+              <span
+                aria-hidden
                 className={cn(
-                  'h-4 w-4 cursor-pointer text-text-quaternary group-hover/collapse:text-text-secondary',
+                  'i-custom-vender-solid-general-arrow-down-round-fill h-4 w-4 cursor-pointer text-text-quaternary group-hover/collapse:text-text-secondary',
                   collapsedMerged && 'rotate-[270deg]',
                 )}
               />
@@ -55,10 +62,19 @@ export const FieldTitle = memo(({
           }
           {
             tooltip && (
-              <Tooltip
-                popupContent={tooltip}
-                triggerClassName="w-4 h-4 ml-1"
-              />
+              <Tooltip>
+                <TooltipTrigger
+                  delay={0}
+                  render={(
+                    <span className="ml-1 flex h-4 w-4 shrink-0 items-center justify-center">
+                      <span aria-hidden className="i-ri-question-line h-3.5 w-3.5 text-text-quaternary hover:text-text-tertiary" />
+                    </span>
+                  )}
+                />
+                <TooltipContent>
+                  {tooltip}
+                </TooltipContent>
+              </Tooltip>
             )
           }
         </div>

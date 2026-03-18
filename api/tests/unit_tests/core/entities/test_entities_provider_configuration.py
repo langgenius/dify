@@ -35,6 +35,7 @@ from dify_graph.model_runtime.entities.provider_entities import (
     ProviderCredentialSchema,
     ProviderEntity,
 )
+from models.enums import CredentialSourceType
 from models.provider import ProviderType
 from models.provider_ids import ModelProviderID
 
@@ -409,7 +410,7 @@ def test_switch_preferred_provider_type_updates_existing_record_with_session() -
 
     configuration.switch_preferred_provider_type(ProviderType.SYSTEM, session=session)
 
-    assert existing_record.preferred_provider_type == ProviderType.SYSTEM.value
+    assert existing_record.preferred_provider_type == ProviderType.SYSTEM
     session.commit.assert_called_once()
 
 
@@ -514,7 +515,7 @@ def test_get_custom_provider_models_sets_status_for_removed_credentials_and_inva
                         id="lb-base",
                         name="LB Base",
                         credentials={},
-                        credential_source_type="provider",
+                        credential_source_type=CredentialSourceType.PROVIDER,
                     )
                 ],
             ),
@@ -528,7 +529,7 @@ def test_get_custom_provider_models_sets_status_for_removed_credentials_and_inva
                         id="lb-custom",
                         name="LB Custom",
                         credentials={},
-                        credential_source_type="custom_model",
+                        credential_source_type=CredentialSourceType.CUSTOM_MODEL,
                     )
                 ],
             ),
@@ -826,7 +827,7 @@ def test_update_load_balancing_configs_updates_all_matching_configs() -> None:
         configuration._update_load_balancing_configs_with_credential(
             credential_id="cred-1",
             credential_record=credential_record,
-            credential_source="provider",
+            credential_source=CredentialSourceType.PROVIDER,
             session=session,
         )
 
@@ -844,7 +845,7 @@ def test_update_load_balancing_configs_returns_when_no_matching_configs() -> Non
     configuration._update_load_balancing_configs_with_credential(
         credential_id="cred-1",
         credential_record=SimpleNamespace(encrypted_config="{}", credential_name="Main"),
-        credential_source="provider",
+        credential_source=CredentialSourceType.PROVIDER,
         session=session,
     )
 
