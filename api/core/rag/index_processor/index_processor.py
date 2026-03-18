@@ -10,6 +10,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.orm import attributes
 
 from core.db.session_factory import session_factory
+from core.rag.index_processor.index_processor_base import SummaryIndexSettingDict
 from core.workflow.nodes.knowledge_index.exc import KnowledgeIndexNodeError
 from core.workflow.nodes.knowledge_index.protocols import Preview, PreviewItem, QaPreview
 from models.dataset import Dataset, DatasetMetadataBinding, Document, DocumentSegment
@@ -52,7 +53,7 @@ class IndexProcessor:
         original_document_id: str,
         chunks: Mapping[str, Any],
         batch: Any,
-        summary_index_setting: dict | None = None,
+        summary_index_setting: SummaryIndexSettingDict | None = None,
         doc_metadata: Mapping[str, Any] | None = None,
         metadata_binding_ids: list[str] | None = None,
         user_id: str | None = None,
@@ -234,7 +235,12 @@ class IndexProcessor:
             session.add(binding)
 
     def get_preview_output(
-        self, chunks: Any, dataset_id: str, document_id: str, chunk_structure: str, summary_index_setting: dict | None
+        self,
+        chunks: Any,
+        dataset_id: str,
+        document_id: str,
+        chunk_structure: str,
+        summary_index_setting: SummaryIndexSettingDict | None,
     ) -> Preview:
         doc_language = None
         with session_factory.create_session() as session:

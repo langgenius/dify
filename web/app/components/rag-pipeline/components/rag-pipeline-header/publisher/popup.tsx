@@ -10,7 +10,6 @@ import {
   useBoolean,
   useKeyPress,
 } from 'ahooks'
-import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import {
   memo,
@@ -40,6 +39,7 @@ import { useModalContextSelector } from '@/context/modal-context'
 import { useProviderContextSelector } from '@/context/provider-context'
 import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
+import Link from '@/next/link'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import { useInvalid } from '@/service/use-base'
 import {

@@ -12,6 +12,7 @@ from core.db.session_factory import session_factory
 from core.model_manager import ModelManager
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.index_processor.constant.doc_type import DocType
+from core.rag.index_processor.index_processor_base import SummaryIndexSettingDict
 from core.rag.models.document import Document
 from dify_graph.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.model_runtime.entities.model_entities import ModelType
@@ -30,7 +31,7 @@ class SummaryIndexService:
     def generate_summary_for_segment(
         segment: DocumentSegment,
         dataset: Dataset,
-        summary_index_setting: dict,
+        summary_index_setting: SummaryIndexSettingDict,
     ) -> tuple[str, LLMUsage]:
         """
         Generate summary for a single segment.
@@ -600,7 +601,7 @@ class SummaryIndexService:
     def generate_and_vectorize_summary(
         segment: DocumentSegment,
         dataset: Dataset,
-        summary_index_setting: dict,
+        summary_index_setting: SummaryIndexSettingDict,
     ) -> DocumentSegmentSummary:
         """
         Generate summary for a segment and vectorize it.
@@ -705,7 +706,7 @@ class SummaryIndexService:
     def generate_summaries_for_document(
         dataset: Dataset,
         document: DatasetDocument,
-        summary_index_setting: dict,
+        summary_index_setting: SummaryIndexSettingDict,
         segment_ids: list[str] | None = None,
         only_parent_chunks: bool = False,
     ) -> list[DocumentSegmentSummary]:
