@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Confirm from '@/app/components/base/confirm'
 import Input from '@/app/components/base/input'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { useDeleteTriggerSubscription } from '@/service/use-triggers'
 import { useSubscriptionList } from './use-subscription-list'
 
@@ -25,29 +25,25 @@ export const DeleteConfirm = (props: Props) => {
 
   const onConfirm = () => {
     if (workflowsInUse > 0 && inputName !== currentName) {
-      Toast.notify({
+      toast.add({
         type: 'error',
-        message: t(`${tPrefix}.confirmInputWarning`, { ns: 'pluginTrigger' }),
-        // temporarily
-        className: 'z-[10000001]',
+        title: t(`${tPrefix}.confirmInputWarning`, { ns: 'pluginTrigger' }),
       })
       return
     }
     deleteSubscription(currentId, {
       onSuccess: () => {
-        Toast.notify({
+        toast.add({
           type: 'success',
-          message: t(`${tPrefix}.success`, { ns: 'pluginTrigger', name: currentName }),
-          className: 'z-[10000001]',
+          title: t(`${tPrefix}.success`, { ns: 'pluginTrigger', name: currentName }),
         })
         refetch?.()
         onClose(true)
       },
       onError: (error: any) => {
-        Toast.notify({
+        toast.add({
           type: 'error',
-          message: error?.message || t(`${tPrefix}.error`, { ns: 'pluginTrigger', name: currentName }),
-          className: 'z-[10000001]',
+          title: error?.message || t(`${tPrefix}.error`, { ns: 'pluginTrigger', name: currentName }),
         })
       },
     })
@@ -60,7 +56,7 @@ export const DeleteConfirm = (props: Props) => {
         ? (
             <>
               {t(`${tPrefix}.contentWithApps`, { ns: 'pluginTrigger', count: workflowsInUse })}
-              <div className="system-sm-medium mb-2 mt-6 text-text-secondary">{t(`${tPrefix}.confirmInputTip`, { ns: 'pluginTrigger', name: currentName })}</div>
+              <div className="mb-2 mt-6 text-text-secondary system-sm-medium">{t(`${tPrefix}.confirmInputTip`, { ns: 'pluginTrigger', name: currentName })}</div>
               <Input
                 value={inputName}
                 onChange={e => setInputName(e.target.value)}
