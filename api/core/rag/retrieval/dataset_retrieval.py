@@ -1060,9 +1060,7 @@ class DatasetRetrieval:
                     all_documents.append(document)
             else:
                 # get retrieval model , if the model is not setting , using default
-                retrieval_model = cast(
-                    DefaultRetrievalModelDict, dataset.retrieval_model or default_retrieval_model
-                )
+                retrieval_model = cast(DefaultRetrievalModelDict, dataset.retrieval_model or default_retrieval_model)
 
                 if dataset.indexing_technique == "economy":
                     # use keyword table query
