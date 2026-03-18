@@ -84,7 +84,7 @@ class LoopVariableData(BaseModel):
         value_type = validation_info.data.get("value_type")
         if value_type == "variable":
             if value is None:
-                return None
+                raise ValueError("Variable loop inputs require a selector")
             return _VARIABLE_SELECTOR_ADAPTER.validate_python(value)
         if value_type == "constant":
             return _validate_loop_value(value)

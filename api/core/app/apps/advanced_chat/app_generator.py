@@ -520,9 +520,9 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         worker_thread.start()
 
         # release database connection, because the following new thread operations may take a long time
-        with Session(bind=db.engine, expire_on_commit=False) as session:
-            workflow = _refresh_model(session, workflow)
-            message = _refresh_model(session, message)
+        with Session(bind=db.engine, expire_on_commit=False):
+            workflow = _refresh_model(workflow)
+            message = _refresh_model(message)
         assert message is not None
         #     workflow_ = session.get(Workflow, workflow.id)
         #     assert workflow_ is not None
@@ -691,16 +691,20 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
 
 
 @overload
-def _refresh_model(session: Session, model: Workflow) -> Workflow: ...
+def _refresh_model(model: Workflow, session: Session | None = None) -> Workflow: ...
 
 
 @overload
-def _refresh_model(session: Session, model: Message) -> Message: ...
+def _refresh_model(model: Message, session: Session | None = None) -> Message: ...
 
 
-def _refresh_model(session: Session, model: Any) -> Any:
-    del session
-    with Session(bind=db.engine, expire_on_commit=False) as refresh_session:
+def _refresh_model(model: Any, session: Session | None = None) -> Any:
+    if session is not None and hasattr(session, "get"):
+        refresh_session = session
+    else:
+        refresh_session = Session(bind=db.engine, expire_on_commit=False)
+
+    with refresh_session:
         if isinstance(model, Workflow):
             detached_workflow = refresh_session.get(Workflow, model.id)
             assert detached_workflow is not None
