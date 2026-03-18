@@ -725,6 +725,39 @@ describe('AppPicker', () => {
       triggerIntersection([{ isIntersecting: true } as IntersectionObserverEntry])
       expect(onLoadMore).toHaveBeenCalledTimes(2)
     })
+
+    it('should reset loadingRef when the picker closes before the debounce timeout finishes', () => {
+      const onLoadMore = vi.fn()
+      const { rerender } = render(
+        <AppPicker {...defaultProps} isShow={true} hasMore={true} isLoading={false} onLoadMore={onLoadMore} />,
+      )
+
+      triggerIntersection([{ isIntersecting: true } as IntersectionObserverEntry])
+      expect(onLoadMore).toHaveBeenCalledTimes(1)
+
+      rerender(<AppPicker {...defaultProps} isShow={false} hasMore={true} isLoading={false} onLoadMore={onLoadMore} />)
+      rerender(<AppPicker {...defaultProps} isShow={true} hasMore={true} isLoading={false} onLoadMore={onLoadMore} />)
+
+      triggerIntersection([{ isIntersecting: true } as IntersectionObserverEntry])
+      expect(onLoadMore).toHaveBeenCalledTimes(2)
+    })
+
+    it('should reset loadingRef when the picker unmounts before the debounce timeout finishes', () => {
+      const onLoadMore = vi.fn()
+      const { unmount } = render(
+        <AppPicker {...defaultProps} isShow={true} hasMore={true} isLoading={false} onLoadMore={onLoadMore} />,
+      )
+
+      triggerIntersection([{ isIntersecting: true } as IntersectionObserverEntry])
+      expect(onLoadMore).toHaveBeenCalledTimes(1)
+
+      unmount()
+
+      render(<AppPicker {...defaultProps} isShow={true} hasMore={true} isLoading={false} onLoadMore={onLoadMore} />)
+
+      triggerIntersection([{ isIntersecting: true } as IntersectionObserverEntry])
+      expect(onLoadMore).toHaveBeenCalledTimes(2)
+    })
   })
 
   describe('Memoization', () => {

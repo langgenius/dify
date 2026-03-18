@@ -63,6 +63,11 @@ const AppPicker: FC<Props> = ({
     loadingResetTimerIdRef.current = timerId
   }, [])
 
+  const resetLoadingState = useCallback(() => {
+    retimeLoadingReset()
+    loadingRef.current = false
+  }, [retimeLoadingReset])
+
   const disconnectObserver = useCallback(() => {
     if (!observerRef.current)
       return
@@ -86,7 +91,7 @@ const AppPicker: FC<Props> = ({
 
   useEffect(() => {
     if (!isShow) {
-      retimeLoadingReset()
+      resetLoadingState()
       disconnectObserver()
       return
     }
@@ -128,11 +133,11 @@ const AppPicker: FC<Props> = ({
       setupIntersectionObserver()
 
     return () => {
-      retimeLoadingReset()
+      resetLoadingState()
       disconnectObserver()
       mutationObserver?.disconnect()
     }
-  }, [disconnectObserver, handleIntersection, isShow, retimeLoadingReset])
+  }, [disconnectObserver, handleIntersection, isShow, resetLoadingState])
 
   const getAppType = (app: App) => {
     switch (app.mode) {
