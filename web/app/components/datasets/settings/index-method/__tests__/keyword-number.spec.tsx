@@ -24,9 +24,8 @@ describe('KeyWordNumber', () => {
 
     it('should render tooltip with question icon', () => {
       render(<KeyWordNumber {...defaultProps} />)
-      // RiQuestionLine renders as an svg
       const container = screen.getByText(/form\.numberOfKeywords/).closest('div')?.parentElement
-      const questionIcon = container?.querySelector('svg')
+      const questionIcon = container?.querySelector('.i-ri-question-line')
       expect(questionIcon).toBeInTheDocument()
     })
 
@@ -88,15 +87,22 @@ describe('KeyWordNumber', () => {
       expect(handleChange).toHaveBeenCalled()
     })
 
-    it('should not call onKeywordNumberChange with undefined value', () => {
+    it('should reset to 0 when users clear the input', () => {
       const handleChange = vi.fn()
       render(<KeyWordNumber {...defaultProps} onKeywordNumberChange={handleChange} />)
 
       const input = screen.getByRole('textbox')
       fireEvent.change(input, { target: { value: '' } })
 
-      // When value is empty/undefined, handleInputChange should not call onKeywordNumberChange
-      expect(handleChange).not.toHaveBeenCalled()
+      expect(handleChange).toHaveBeenCalledWith(0)
+    })
+
+    it('should clamp out-of-range edits before updating state', () => {
+      const handleChange = vi.fn()
+      render(<KeyWordNumber {...defaultProps} onKeywordNumberChange={handleChange} />)
+
+      fireEvent.change(screen.getByRole('textbox'), { target: { value: '60' } })
+      expect(handleChange).toHaveBeenLastCalledWith(50)
     })
   })
 

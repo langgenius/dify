@@ -734,7 +734,7 @@ def test_create_provider_credential_creates_provider_record_when_missing() -> No
 def test_create_provider_credential_marks_existing_provider_as_valid() -> None:
     configuration = _build_provider_configuration()
     session = Mock()
-    provider_record = SimpleNamespace(is_valid=False)
+    provider_record = SimpleNamespace(id="provider-1", is_valid=False, credential_id="existing-cred")
 
     with _patched_session(session):
         with patch.object(ProviderConfiguration, "_check_provider_credential_name_exists", return_value=False):
@@ -743,6 +743,25 @@ def test_create_provider_credential_marks_existing_provider_as_valid() -> None:
                     configuration.create_provider_credential({"api_key": "raw"}, "Main")
 
     assert provider_record.is_valid is True
+    assert provider_record.credential_id == "existing-cred"
+    session.commit.assert_called_once()
+
+
+def test_create_provider_credential_auto_activates_when_no_active_credential() -> None:
+    configuration = _build_provider_configuration()
+    session = Mock()
+    provider_record = SimpleNamespace(id="provider-1", is_valid=False, credential_id=None, updated_at=None)
+
+    with _patched_session(session):
+        with patch.object(ProviderConfiguration, "_check_provider_credential_name_exists", return_value=False):
+            with patch.object(ProviderConfiguration, "validate_provider_credentials", return_value={"api_key": "enc"}):
+                with patch.object(ProviderConfiguration, "_get_provider_record", return_value=provider_record):
+                    with patch("core.entities.provider_configuration.ProviderCredentialsCache"):
+                        with patch.object(ProviderConfiguration, "switch_preferred_provider_type"):
+                            configuration.create_provider_credential({"api_key": "raw"}, "Main")
+
+    assert provider_record.is_valid is True
+    assert provider_record.credential_id is not None
     session.commit.assert_called_once()
 
 
