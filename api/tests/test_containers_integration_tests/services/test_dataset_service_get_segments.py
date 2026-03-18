@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, DatasetPermissionEnum, Document, DocumentSegment
+from models.enums import DataSourceType, DocumentCreatedFrom
 from services.dataset_service import SegmentService
 
 
@@ -62,7 +63,7 @@ class SegmentServiceTestDataFactory:
             tenant_id=tenant_id,
             name=f"Test Dataset {uuid4()}",
             description="Test description",
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             indexing_technique="high_quality",
             created_by=created_by,
             permission=DatasetPermissionEnum.ONLY_ME,
@@ -82,10 +83,10 @@ class SegmentServiceTestDataFactory:
             tenant_id=tenant_id,
             dataset_id=dataset_id,
             position=1,
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             batch=f"batch-{uuid4()}",
             name=f"test-doc-{uuid4()}.txt",
-            created_from="api",
+            created_from=DocumentCreatedFrom.API,
             created_by=created_by,
         )
         db_session_with_containers.add(document)

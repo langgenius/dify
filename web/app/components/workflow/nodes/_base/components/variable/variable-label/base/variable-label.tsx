@@ -36,6 +36,7 @@ const VariableLabel = ({
       )}
       onClick={onClick}
       ref={ref}
+      {...(isExceptionVariable ? { 'data-testid': 'exception-variable' } : {})}
     >
       {isShowNodeLabel && (
         <VariableNodeLabel
@@ -47,7 +48,7 @@ const VariableLabel = ({
         notShowFullPath && (
           <>
             <RiMoreLine className="h-3 w-3 shrink-0 text-text-secondary" />
-            <div className="system-xs-regular shrink-0 text-divider-deep">/</div>
+            <div className="shrink-0 text-divider-deep system-xs-regular">/</div>
           </>
         )
       }
@@ -62,7 +63,7 @@ const VariableLabel = ({
       />
       {
         !!variableType && (
-          <div className="system-xs-regular shrink-0 text-text-tertiary">
+          <div className="shrink-0 text-text-tertiary system-xs-regular">
             {capitalize(variableType)}
           </div>
         )

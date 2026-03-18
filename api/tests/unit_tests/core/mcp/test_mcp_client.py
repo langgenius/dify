@@ -2,13 +2,16 @@
 
 from contextlib import ExitStack
 from types import TracebackType
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
+from sqlalchemy.orm import Session
 
-from core.mcp.error import MCPConnectionError
+from core.entities.mcp_provider import MCPProviderEntity
+from core.mcp.auth_client import MCPClientWithAuthRetry
+from core.mcp.error import MCPAuthError, MCPConnectionError
 from core.mcp.mcp_client import MCPClient
-from core.mcp.types import CallToolResult, ListToolsResult, TextContent, Tool, ToolAnnotations
+from core.mcp.types import CallToolResult, ListToolsResult, OAuthTokens, TextContent, Tool, ToolAnnotations
 
 
 class TestMCPClient:
@@ -380,3 +383,256 @@ class TestMCPClient:
                     timeout=30.0,
                     sse_read_timeout=60.0,
                 )
+
+
+class TestMCPClientWithAuthRetry:
+    """Test suite for MCPClientWithAuthRetry."""
+
+    @pytest.fixture
+    def mock_provider(self):
+        provider = MagicMock(spec=MCPProviderEntity)
+        provider.id = "test-provider-id"
+        provider.tenant_id = "test-tenant-id"
+        provider.retrieve_tokens.return_value = OAuthTokens(
+            access_token="new-token",
+            token_type="Bearer",
+            expires_in=3600,
+            refresh_token="refresh-token",
+        )
+        return provider
+
+    @pytest.fixture
+    def auth_client(self, mock_provider):
+        client = MCPClientWithAuthRetry(
+            server_url="http://test.example.com",
+            headers={"Authorization": "Bearer old-token"},
+            provider_entity=mock_provider,
+            authorization_code="test-code",
+            by_server_id=True,
+        )
+        return client
+
+    def test_init(self, mock_provider):
+        """Test initialization."""
+        client = MCPClientWithAuthRetry(
+            server_url="http://test.example.com",
+            headers={"Authorization": "Bearer test"},
+            timeout=30.0,
+            provider_entity=mock_provider,
+            authorization_code="initial-code",
+            by_server_id=True,
+        )
+
+        assert client.server_url == "http://test.example.com"
+        assert client.headers == {"Authorization": "Bearer test"}
+        assert client.timeout == 30.0
+        assert client.provider_entity == mock_provider
+        assert client.authorization_code == "initial-code"
+        assert client.by_server_id is True
+        assert client._has_retried is False
+
+    @patch("core.mcp.auth_client.db")
+    @patch("core.mcp.auth_client.Session")
+    @patch("services.tools.mcp_tools_manage_service.MCPToolManageService")
+    def test_handle_auth_error_success(
+        self, mock_service_class, mock_session_class, mock_db, auth_client, mock_provider
+    ):
+        mock_session = MagicMock(spec=Session)
+        mock_session_class.return_value.__enter__.return_value = mock_session
+
+        mock_service = mock_service_class.return_value
+        new_provider = MagicMock(spec=MCPProviderEntity)
+        new_provider.retrieve_tokens.return_value = OAuthTokens(
+            access_token="new-access-token",
+            token_type="Bearer",
+            expires_in=3600,
+            refresh_token="new-refresh-token",
+        )
+        mock_service.get_provider_entity.return_value = new_provider
+
+        # MCPAuthError parses resource_metadata and scope from www_authenticate_header
+        www_auth = 'Bearer resource_metadata="http://meta", scope="read"'
+        error = MCPAuthError("Auth failed", www_authenticate_header=www_auth)
+
+        auth_client._handle_auth_error(error)
+
+        # Verify service calls - error.resource_metadata_url and error.scope_hint are parsed from header
+        mock_service.auth_with_actions.assert_called_once_with(
+            mock_provider,
+            "test-code",
+            resource_metadata_url="http://meta",
+            scope_hint="read",
+        )
+        mock_service.get_provider_entity.assert_called_once_with(
+            mock_provider.id, mock_provider.tenant_id, by_server_id=True
+        )
+
+        # Verify client updates
+        assert auth_client.headers["Authorization"] == "Bearer new-access-token"
+        assert auth_client.authorization_code is None
+        assert auth_client._has_retried is True
+        assert auth_client.provider_entity == new_provider
+
+    def test_handle_auth_error_no_provider(self, auth_client):
+        """Test auth error handling when no provider entity is set."""
+        auth_client.provider_entity = None
+        error = MCPAuthError("Auth failed")
+
+        with pytest.raises(MCPAuthError) as exc_info:
+            auth_client._handle_auth_error(error)
+
+        assert exc_info.value == error
+
+    def test_handle_auth_error_already_retried(self, auth_client):
+        """Test auth error handling when already retried."""
+        auth_client._has_retried = True
+        error = MCPAuthError("Auth failed")
+
+        with pytest.raises(MCPAuthError) as exc_info:
+            auth_client._handle_auth_error(error)
+
+        assert exc_info.value == error
+
+    @patch("core.mcp.auth_client.db")
+    @patch("core.mcp.auth_client.Session")
+    @patch("services.tools.mcp_tools_manage_service.MCPToolManageService")
+    def test_handle_auth_error_no_token(
+        self, mock_service_class, mock_session_class, mock_db, auth_client, mock_provider
+    ):
+        """Test auth error handling when no token is received."""
+        mock_session_class.return_value.__enter__.return_value = MagicMock()
+        mock_service = mock_service_class.return_value
+
+        new_provider = MagicMock(spec=MCPProviderEntity)
+        new_provider.retrieve_tokens.return_value = None
+        mock_service.get_provider_entity.return_value = new_provider
+
+        error = MCPAuthError("Auth failed")
+
+        with pytest.raises(MCPAuthError) as exc_info:
+            auth_client._handle_auth_error(error)
+
+        assert "Authentication failed - no token received" in str(exc_info.value)
+
+    @patch("core.mcp.auth_client.db")
+    @patch("core.mcp.auth_client.Session")
+    @patch("services.tools.mcp_tools_manage_service.MCPToolManageService")
+    def test_handle_auth_error_generic_exception(self, mock_service_class, mock_session_class, mock_db, auth_client):
+        """Test auth error handling when a generic exception occurs."""
+        mock_session_class.side_effect = Exception("DB error")
+
+        error = MCPAuthError("Auth failed")
+
+        with pytest.raises(MCPAuthError) as exc_info:
+            auth_client._handle_auth_error(error)
+
+        assert "Authentication retry failed: DB error" in str(exc_info.value)
+
+    @patch("core.mcp.auth_client.db")
+    @patch("core.mcp.auth_client.Session")
+    @patch("services.tools.mcp_tools_manage_service.MCPToolManageService")
+    def test_handle_auth_error_mcp_auth_error_propagation(
+        self, mock_service_class, mock_session_class, mock_db, auth_client
+    ):
+        """Test that MCPAuthError during refresh is propagated as is."""
+        mock_session_class.return_value.__enter__.return_value = MagicMock()
+        mock_service = mock_service_class.return_value
+        mock_service.auth_with_actions.side_effect = MCPAuthError("Refresh failed")
+
+        error = MCPAuthError("Initial auth failed")
+
+        with pytest.raises(MCPAuthError) as exc_info:
+            auth_client._handle_auth_error(error)
+
+        assert "Refresh failed" in str(exc_info.value)
+
+    def test_execute_with_retry_success_first_try(self, auth_client):
+        """Test execution success on first try."""
+        mock_func = MagicMock(return_value="success")
+
+        result = auth_client._execute_with_retry(mock_func, "arg1", kwarg1="val1")
+
+        assert result == "success"
+        mock_func.assert_called_once_with("arg1", kwarg1="val1")
+        assert auth_client._has_retried is False
+
+    @patch.object(MCPClientWithAuthRetry, "_handle_auth_error")
+    @patch.object(MCPClientWithAuthRetry, "_initialize")
+    def test_execute_with_retry_success_on_retry_initialized(self, mock_initialize, mock_handle_auth, auth_client):
+        """Test execution success on retry after auth error when client was already initialized."""
+        mock_func = MagicMock()
+        mock_func.side_effect = [MCPAuthError("Auth failed"), "success"]
+
+        auth_client._initialized = True
+        auth_client._exit_stack = MagicMock()
+
+        result = auth_client._execute_with_retry(mock_func, "arg")
+
+        assert result == "success"
+        assert mock_func.call_count == 2
+        mock_handle_auth.assert_called_once()
+        mock_initialize.assert_called_once()
+        auth_client._exit_stack.close.assert_called_once()
+        assert auth_client._has_retried is False
+
+    @patch.object(MCPClientWithAuthRetry, "_handle_auth_error")
+    @patch.object(MCPClientWithAuthRetry, "_initialize")
+    def test_execute_with_retry_success_on_retry_not_initialized(self, mock_initialize, mock_handle_auth, auth_client):
+        """Test retry when client was NOT initialized (skips cleanup/re-init)."""
+        mock_func = MagicMock()
+        mock_func.side_effect = [MCPAuthError("Auth failed"), "result"]
+
+        auth_client._initialized = False
+
+        result = auth_client._execute_with_retry(mock_func, "arg")
+
+        assert result == "result"
+        assert mock_func.call_count == 2
+        mock_handle_auth.assert_called_once()
+        mock_initialize.assert_not_called()
+        assert auth_client._has_retried is False
+
+    @patch.object(MCPClientWithAuthRetry, "_handle_auth_error")
+    def test_execute_with_retry_failure_on_retry(self, mock_handle_auth, auth_client):
+        """Test execution failure even after retry."""
+        mock_func = MagicMock()
+        mock_func.side_effect = [MCPAuthError("First fail"), MCPAuthError("Second fail")]
+
+        with pytest.raises(MCPAuthError) as exc_info:
+            auth_client._execute_with_retry(mock_func, "arg")
+
+        assert "Second fail" in str(exc_info.value)
+        assert mock_func.call_count == 2
+        mock_handle_auth.assert_called_once()
+        assert auth_client._has_retried is False
+
+    @patch.object(MCPClientWithAuthRetry, "_execute_with_retry")
+    def test_auth_client_context_manager_enter(self, mock_execute_retry, auth_client):
+        """Test context manager __enter__."""
+        auth_client.__enter__()
+
+        mock_execute_retry.assert_called_once()
+        func = mock_execute_retry.call_args[0][0]
+
+        with patch("core.mcp.mcp_client.MCPClient.__enter__") as mock_base_enter:
+            result = func()
+            assert result == auth_client
+            mock_base_enter.assert_called_once()
+
+    @patch.object(MCPClientWithAuthRetry, "_execute_with_retry")
+    def test_auth_client_list_tools(self, mock_execute_retry, auth_client):
+        """Test list_tools with retry."""
+        auth_client.list_tools()
+
+        mock_execute_retry.assert_called_once()
+        assert mock_execute_retry.call_args[0][0].__name__ == "list_tools"
+
+    @patch.object(MCPClientWithAuthRetry, "_execute_with_retry")
+    def test_auth_client_invoke_tool(self, mock_execute_retry, auth_client):
+        """Test invoke_tool with retry."""
+        auth_client.invoke_tool("test-tool", {"arg": "val"})
+
+        mock_execute_retry.assert_called_once()
+        assert mock_execute_retry.call_args[0][0].__name__ == "invoke_tool"
+        assert mock_execute_retry.call_args[0][1] == "test-tool"
+        assert mock_execute_retry.call_args[0][2] == {"arg": "val"}

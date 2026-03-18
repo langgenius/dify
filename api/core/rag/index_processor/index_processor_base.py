@@ -294,7 +294,7 @@ class BaseIndexProcessor(ABC):
             logging.warning("Error downloading image from %s: %s", image_url, str(e))
             return None
         except Exception:
-            logging.exception("Unexpected error downloading image from %s", image_url)
+            logging.warning("Unexpected error downloading image from %s", image_url, exc_info=True)
             return None
 
     def _download_tool_file(self, tool_file_id: str, current_user: Account) -> str | None:

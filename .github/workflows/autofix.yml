@@ -39,7 +39,7 @@ jobs:
         with:
           python-version: "3.11"
 
-      - uses: astral-sh/setup-uv@5a095e7a2014a4212f075830d4f7277575a9d098 # v7.3.1
+      - uses: astral-sh/setup-uv@e06108dd0aef18192324c70427afc47652e63a82 # v7.5.0
 
       - name: Generate Docker Compose
         if: steps.docker-compose-changes.outputs.any_changed == 'true'
@@ -102,13 +102,11 @@ jobs:
       - name: Setup web environment
         if: steps.web-changes.outputs.any_changed == 'true'
         uses: ./.github/actions/setup-web
-        with:
-          node-version: "24"
 
       - name: ESLint autofix
         if: steps.web-changes.outputs.any_changed == 'true'
         run: |
           cd web
-          pnpm eslint --concurrency=2 --prune-suppressions --quiet || true
+          vp exec eslint --concurrency=2 --prune-suppressions --quiet || true
 
       - uses: autofix-ci/action@7a166d7532b277f34e16238930461bf77f9d7ed8 # v1.3.3

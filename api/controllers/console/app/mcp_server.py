@@ -1,5 +1,4 @@
 import json
-from enum import StrEnum
 
 from flask_restx import Resource
 from pydantic import BaseModel, Field
@@ -11,6 +10,7 @@ from controllers.console.wraps import account_initialization_required, edit_perm
 from extensions.ext_database import db
 from fields.app_fields import AppServer
 from libs.login import current_account_with_tenant, login_required
+from models.enums import AppMCPServerStatus
 from models.model import AppMCPServer
 
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
@@ -22,11 +22,6 @@ def _dump_server(server: AppMCPServer | None):
     if server is None:
         return None
     return AppServer.model_validate(server, from_attributes=True).model_dump(mode="json")
-
-
-class AppMCPServerStatus(StrEnum):
-    ACTIVE = "active"
-    INACTIVE = "inactive"
 
 
 class MCPServerCreatePayload(BaseModel):
@@ -119,9 +114,10 @@ class AppMCPServerController(Resource):
 
         server.parameters = json.dumps(payload.parameters, ensure_ascii=False)
         if payload.status:
-            if payload.status not in [status.value for status in AppMCPServerStatus]:
+            try:
+                server.status = AppMCPServerStatus(payload.status)
+            except ValueError:
                 raise ValueError("Invalid status")
-            server.status = payload.status
         db.session.commit()
         return _dump_server(server)
 

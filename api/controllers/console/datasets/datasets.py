@@ -56,6 +56,7 @@ from libs.helper import AppIconUrlField
 from libs.login import current_account_with_tenant, login_required
 from models import ApiToken, Dataset, Document, DocumentSegment, UploadFile
 from models.dataset import DatasetPermission, DatasetPermissionEnum
+from models.enums import SegmentStatus
 from models.provider_ids import ModelProviderID
 from services.api_token_service import ApiTokenCache
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
@@ -283,6 +284,7 @@ def _get_retrieval_methods_by_vector_type(vector_type: str | None, is_mock: bool
         VectorType.BAIDU,
         VectorType.ALIBABACLOUD_MYSQL,
         VectorType.IRIS,
+        VectorType.HOLOGRES,
     }
 
     semantic_methods = {"retrieval_method": [RetrievalMethod.SEMANTIC_SEARCH.value]}
@@ -763,13 +765,15 @@ class DatasetIndexingStatusApi(Resource):
                 .where(
                     DocumentSegment.completed_at.isnot(None),
                     DocumentSegment.document_id == str(document.id),
-                    DocumentSegment.status != "re_segment",
+                    DocumentSegment.status != SegmentStatus.RE_SEGMENT,
                 )
                 .count()
             )
             total_segments = (
                 db.session.query(DocumentSegment)
-                .where(DocumentSegment.document_id == str(document.id), DocumentSegment.status != "re_segment")
+                .where(
+                    DocumentSegment.document_id == str(document.id), DocumentSegment.status != SegmentStatus.RE_SEGMENT
+                )
                 .count()
             )
             # Create a dictionary with document attributes and additional fields
