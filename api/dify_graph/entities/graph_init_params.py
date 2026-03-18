@@ -5,9 +5,11 @@ from typing import Any, Final, Literal
 from pydantic import BaseModel, Field, field_validator, with_config
 
 if sys.version_info >= (3, 12):
-    from typing import TypedDict, Required
+    from typing import Required, TypedDict
 else:
-    from typing_extensions import TypedDict, Required
+    from typing import Required
+
+    from typing_extensions import TypedDict
 
 DIFY_RUN_CONTEXT_KEY: Final[Literal["_dify"]] = "_dify"
 
