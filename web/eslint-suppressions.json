@@ -9499,9 +9499,6 @@
     }
   },
   "context/provider-context-provider.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
