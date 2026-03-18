@@ -76,16 +76,16 @@ afterAll(() => {
 
 // Mock portal components for controlled positioning in tests
 // Use React context to properly scope open state per portal instance (for nested portals)
-const _PortalOpenContext = React.createContext(false)
-
 vi.mock('@/app/components/base/portal-to-follow-elem', () => {
   // Context reference shared across mock components
   let sharedContext: React.Context<boolean> | null = null
 
   // Lazily get or create the context
   const getContext = (): React.Context<boolean> => {
-    if (!sharedContext)
-      sharedContext = React.createContext(false)
+    if (!sharedContext) {
+      const PortalOpenContext = React.createContext(false)
+      sharedContext = PortalOpenContext
+    }
     return sharedContext
   }
 
@@ -1803,7 +1803,6 @@ describe('AppSelector', () => {
       expect(mockFetchNextPage).not.toHaveBeenCalled()
     })
   })
-
   describe('Form Change Handling', () => {
     it('should handle form change with image file', () => {
       const onSelect = vi.fn()
