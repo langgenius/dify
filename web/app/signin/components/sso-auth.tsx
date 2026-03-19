@@ -51,7 +51,7 @@ const SSOAuth: FC<SSOAuthProps> = ({
     else {
       toast.add({
         type: 'error',
-        title: 'invalid SSO protocol',
+        title: t('error.invalidSSOProtocol', { ns: 'login' }),
       })
       setIsLoading(false)
     }

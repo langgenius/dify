@@ -39,7 +39,7 @@ const SSOAuth: FC<SSOAuthProps> = ({
     if (!redirectUrl || !appCode) {
       toast.add({
         type: 'error',
-        title: 'invalid redirect URL or app code',
+        title: t('error.invalidRedirectUrlOrAppCode', { ns: 'login' }),
       })
       return
     }
@@ -68,7 +68,7 @@ const SSOAuth: FC<SSOAuthProps> = ({
     else {
       toast.add({
         type: 'error',
-        title: 'invalid SSO protocol',
+        title: t('error.invalidSSOProtocol', { ns: 'login' }),
       })
       setIsLoading(false)
     }
