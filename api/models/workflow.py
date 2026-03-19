@@ -306,22 +306,7 @@ class Workflow(Base):  # bug
         if not self._features:
             return self._features
 
-        features = json.loads(self._features)
-        if features.get("file_upload", {}).get("image", {}).get("enabled", False):
-            image_enabled = True
-            image_number_limits = int(features["file_upload"]["image"].get("number_limits", DEFAULT_FILE_NUMBER_LIMITS))
-            image_transfer_methods = features["file_upload"]["image"].get(
-                "transfer_methods", ["remote_url", "local_file"]
-            )
-            features["file_upload"]["enabled"] = image_enabled
-            features["file_upload"]["number_limits"] = image_number_limits
-            features["file_upload"]["allowed_file_upload_methods"] = image_transfer_methods
-            features["file_upload"]["allowed_file_types"] = features["file_upload"].get("allowed_file_types", ["image"])
-            features["file_upload"]["allowed_file_extensions"] = features["file_upload"].get(
-                "allowed_file_extensions", []
-            )
-            del features["file_upload"]["image"]
-            self._features = json.dumps(features)
+        self._features = json.dumps(self._normalize_features_payload(json.loads(self._features)))
         return self._features
 
     @features.setter
@@ -331,6 +316,34 @@ class Workflow(Base):  # bug
     @property
     def features_dict(self) -> dict[str, Any]:
         return json.loads(self.features) if self.features else {}
+
+    @property
+    def serialized_features(self) -> str:
+        """Return the stored features JSON without triggering compatibility rewrites."""
+        return self._features
+
+    @property
+    def normalized_features_dict(self) -> dict[str, Any]:
+        """Decode features with legacy normalization without mutating the model state."""
+        return self._normalize_features_payload(json.loads(self._features)) if self._features else {}
+
+    @staticmethod
+    def _normalize_features_payload(features: dict[str, Any]) -> dict[str, Any]:
+        if features.get("file_upload", {}).get("image", {}).get("enabled", False):
+            image_number_limits = int(features["file_upload"]["image"].get("number_limits", DEFAULT_FILE_NUMBER_LIMITS))
+            image_transfer_methods = features["file_upload"]["image"].get(
+                "transfer_methods", ["remote_url", "local_file"]
+            )
+            features["file_upload"]["enabled"] = True
+            features["file_upload"]["number_limits"] = image_number_limits
+            features["file_upload"]["allowed_file_upload_methods"] = image_transfer_methods
+            features["file_upload"]["allowed_file_types"] = features["file_upload"].get("allowed_file_types", ["image"])
+            features["file_upload"]["allowed_file_extensions"] = features["file_upload"].get(
+                "allowed_file_extensions", []
+            )
+            del features["file_upload"]["image"]
+
+        return features
 
     def walk_nodes(
         self, specific_node_type: NodeType | None = None

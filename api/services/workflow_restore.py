@@ -29,7 +29,9 @@ def apply_published_workflow_snapshot_to_draft(
 
     The caller remains responsible for source lookup, validation, flushing, and
     post-commit side effects. This helper only centralizes the shared draft
-    creation/update semantics used by both restore entry points.
+    creation/update semantics used by both restore entry points. Features are
+    copied from the stored JSON payload so restore does not normalize and dirty
+    the published source row before the caller commits.
     """
     if not draft_workflow:
         workflow_type = (
@@ -41,14 +43,14 @@ def apply_published_workflow_snapshot_to_draft(
             type=workflow_type,
             version=Workflow.VERSION_DRAFT,
             graph=source_workflow.graph,
-            features=source_workflow.features,
+            features=source_workflow.serialized_features,
             created_by=account.id,
         )
         draft_workflow.copy_serialized_variable_storage_from(source_workflow)
         return draft_workflow, True
 
     draft_workflow.graph = source_workflow.graph
-    draft_workflow.features = source_workflow.features
+    draft_workflow.features = source_workflow.serialized_features
     draft_workflow.updated_by = account.id
     draft_workflow.updated_at = updated_at_factory()
     draft_workflow.copy_serialized_variable_storage_from(source_workflow)

@@ -301,7 +301,7 @@ class WorkflowService:
         if not source_workflow:
             raise WorkflowNotFoundError("Workflow not found.")
 
-        self.validate_features_structure(app_model=app_model, features=source_workflow.features_dict)
+        self.validate_features_structure(app_model=app_model, features=source_workflow.normalized_features_dict)
         self.validate_graph_structure(graph=source_workflow.graph_dict)
 
         draft_workflow = self.get_draft_workflow(app_model=app_model)

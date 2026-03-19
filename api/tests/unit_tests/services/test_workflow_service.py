@@ -544,6 +544,89 @@ class TestWorkflowService:
                 conversation_variables=[],
             )
 
+    def test_restore_published_workflow_to_draft_keeps_source_features_unmodified(
+        self, workflow_service, mock_db_session
+    ):
+        app = TestWorkflowAssociatedDataFactory.create_app_mock()
+        account = TestWorkflowAssociatedDataFactory.create_account_mock()
+        legacy_features = {
+            "file_upload": {
+                "image": {
+                    "enabled": True,
+                    "number_limits": 6,
+                    "transfer_methods": ["remote_url", "local_file"],
+                }
+            },
+            "opening_statement": "",
+            "retriever_resource": {"enabled": True},
+            "sensitive_word_avoidance": {"enabled": False},
+            "speech_to_text": {"enabled": False},
+            "suggested_questions": [],
+            "suggested_questions_after_answer": {"enabled": False},
+            "text_to_speech": {"enabled": False, "language": "", "voice": ""},
+        }
+        normalized_features = {
+            "file_upload": {
+                "enabled": True,
+                "allowed_file_types": ["image"],
+                "allowed_file_extensions": [],
+                "allowed_file_upload_methods": ["remote_url", "local_file"],
+                "number_limits": 6,
+            },
+            "opening_statement": "",
+            "retriever_resource": {"enabled": True},
+            "sensitive_word_avoidance": {"enabled": False},
+            "speech_to_text": {"enabled": False},
+            "suggested_questions": [],
+            "suggested_questions_after_answer": {"enabled": False},
+            "text_to_speech": {"enabled": False, "language": "", "voice": ""},
+        }
+        source_workflow = Workflow(
+            id="published-workflow-id",
+            tenant_id=app.tenant_id,
+            app_id=app.id,
+            type=WorkflowType.WORKFLOW.value,
+            version="2026-03-19T00:00:00",
+            graph=json.dumps(TestWorkflowAssociatedDataFactory.create_valid_workflow_graph()),
+            features=json.dumps(legacy_features),
+            created_by=account.id,
+            environment_variables=[],
+            conversation_variables=[],
+            rag_pipeline_variables=[],
+        )
+        draft_workflow = Workflow(
+            id="draft-workflow-id",
+            tenant_id=app.tenant_id,
+            app_id=app.id,
+            type=WorkflowType.WORKFLOW.value,
+            version=Workflow.VERSION_DRAFT,
+            graph=json.dumps({"nodes": [], "edges": []}),
+            features=json.dumps({}),
+            created_by=account.id,
+            environment_variables=[],
+            conversation_variables=[],
+            rag_pipeline_variables=[],
+        )
+
+        with (
+            patch.object(workflow_service, "get_published_workflow_by_id", return_value=source_workflow),
+            patch.object(workflow_service, "get_draft_workflow", return_value=draft_workflow),
+            patch.object(workflow_service, "validate_graph_structure"),
+            patch.object(workflow_service, "validate_features_structure") as mock_validate_features,
+            patch("services.workflow_service.app_draft_workflow_was_synced"),
+        ):
+            result = workflow_service.restore_published_workflow_to_draft(
+                app_model=app,
+                workflow_id=source_workflow.id,
+                account=account,
+            )
+
+        mock_validate_features.assert_called_once_with(app_model=app, features=normalized_features)
+        assert result is draft_workflow
+        assert source_workflow.serialized_features == json.dumps(legacy_features)
+        assert draft_workflow.serialized_features == json.dumps(legacy_features)
+        mock_db_session.session.commit.assert_called_once()
+
     # ==================== Workflow Validation Tests ====================
     # These tests verify graph structure and feature configuration validation
 
