@@ -77,6 +77,7 @@ export default defineConfig(({ mode }) => {
     test: {
       environment: 'jsdom',
       globals: true,
+      detectAsyncLeaks: true,
       setupFiles: ['./vitest.setup.ts'],
       coverage: {
         provider: 'v8',

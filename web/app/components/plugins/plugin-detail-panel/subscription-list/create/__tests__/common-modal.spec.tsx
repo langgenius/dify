@@ -1333,12 +1333,9 @@ describe('CommonCreateModal', () => {
       mockVerifyCredentials.mockImplementation((params, { onSuccess }) => {
         onSuccess()
       })
+      const builder = createMockSubscriptionBuilder()
 
-      render(<CommonCreateModal {...defaultProps} />)
-
-      await waitFor(() => {
-        expect(mockCreateBuilder).toHaveBeenCalled()
-      })
+      render(<CommonCreateModal {...defaultProps} builder={builder} />)
 
       fireEvent.click(screen.getByTestId('modal-confirm'))
 
@@ -1975,8 +1972,8 @@ describe('CommonCreateModal', () => {
       })
       mockUsePluginStore.mockReturnValue(detailWithCredentials)
 
-      // Make createBuilder slow
-      mockCreateBuilder.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 1000)))
+      const createBuilderPromise = Promise.withResolvers<{ subscription_builder: TriggerSubscriptionBuilder }>()
+      mockCreateBuilder.mockImplementation(() => createBuilderPromise.promise)
 
       render(<CommonCreateModal {...defaultProps} />)
 
@@ -1985,6 +1982,14 @@ describe('CommonCreateModal', () => {
 
       // Should still attempt to verify
       expect(screen.getByTestId('modal')).toBeInTheDocument()
+
+      createBuilderPromise.resolve({
+        subscription_builder: createMockSubscriptionBuilder(),
+      })
+
+      await waitFor(() => {
+        expect(mockCreateBuilder).toHaveBeenCalled()
+      })
     })
   })
 
