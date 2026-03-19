@@ -7,11 +7,23 @@ from unittest.mock import Mock, sentinel
 import pytest
 
 from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
+from core.plugin.impl import model_runtime as model_runtime_module
 from core.plugin.impl.model import PluginModelClient
 from core.plugin.impl.model_runtime import PluginModelRuntime
 from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
 from dify_graph.model_runtime.entities.common_entities import I18nObject
+from dify_graph.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
 from dify_graph.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
+
+
+def _build_model_schema() -> AIModelEntity:
+    return AIModelEntity(
+        model="gpt-4o-mini",
+        label=I18nObject(en_US="GPT-4o mini"),
+        model_type=ModelType.LLM,
+        fetch_from=FetchFrom.PREDEFINED_MODEL,
+        model_properties={},
+    )
 
 
 class TestPluginModelRuntime:
@@ -227,3 +239,190 @@ def test_create_plugin_model_runtime_without_user_context() -> None:
 def test_plugin_model_runtime_requires_client() -> None:
     with pytest.raises(ValueError, match="client is required"):
         PluginModelRuntime(tenant_id="tenant", user_id="user", client=None)  # type: ignore[arg-type]
+
+
+def test_get_model_schema_uses_cached_schema_without_hitting_client(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = Mock(spec=PluginModelClient)
+    schema = _build_model_schema()
+    monkeypatch.setattr(model_runtime_module.redis_client, "get", Mock(return_value=schema.model_dump_json()))
+
+    runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client)
+    result = runtime.get_model_schema(
+        provider="langgenius/openai/openai",
+        model_type=ModelType.LLM,
+        model="gpt-4o-mini",
+        credentials={"api_key": "secret"},
+    )
+
+    assert result == schema
+    client.get_model_schema.assert_not_called()
+
+
+def test_get_model_schema_deletes_invalid_cache_and_refetches(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = Mock(spec=PluginModelClient)
+    schema = _build_model_schema()
+    delete = Mock()
+    setex = Mock()
+    monkeypatch.setattr(model_runtime_module.redis_client, "get", Mock(return_value="not-json"))
+    monkeypatch.setattr(model_runtime_module.redis_client, "delete", delete)
+    monkeypatch.setattr(model_runtime_module.redis_client, "setex", setex)
+    monkeypatch.setattr(model_runtime_module.dify_config, "PLUGIN_MODEL_SCHEMA_CACHE_TTL", 300)
+    client.get_model_schema.return_value = schema
+    runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client)
+
+    result = runtime.get_model_schema(
+        provider="langgenius/openai/openai",
+        model_type=ModelType.LLM,
+        model="gpt-4o-mini",
+        credentials={"api_key": "secret"},
+    )
+
+    assert result == schema
+    delete.assert_called_once()
+    client.get_model_schema.assert_called_once_with(
+        tenant_id="tenant",
+        user_id="user",
+        plugin_id="langgenius/openai",
+        provider="openai",
+        model_type=ModelType.LLM.value,
+        model="gpt-4o-mini",
+        credentials={"api_key": "secret"},
+    )
+    setex.assert_called_once()
+
+
+def test_get_llm_num_tokens_returns_zero_when_plugin_counting_is_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = Mock(spec=PluginModelClient)
+    monkeypatch.setattr(model_runtime_module.dify_config, "PLUGIN_BASED_TOKEN_COUNTING_ENABLED", False)
+    runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client)
+
+    assert (
+        runtime.get_llm_num_tokens(
+            provider="langgenius/openai/openai",
+            model_type=ModelType.LLM,
+            model="gpt-4o-mini",
+            credentials={"api_key": "secret"},
+            prompt_messages=[],
+            tools=None,
+        )
+        == 0
+    )
+    client.get_llm_num_tokens.assert_not_called()
+
+
+def test_get_provider_icon_reads_requested_variant_and_detects_svg_mime(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = Mock(spec=PluginModelClient)
+    client.fetch_model_providers.return_value = [
+        PluginModelProviderEntity(
+            id=uuid.uuid4().hex,
+            created_at=datetime.datetime.now(),
+            updated_at=datetime.datetime.now(),
+            provider="openai",
+            tenant_id="tenant",
+            plugin_unique_identifier="langgenius/openai/openai",
+            plugin_id="langgenius/openai",
+            declaration=ProviderEntity(
+                provider="openai",
+                label=I18nObject(en_US="OpenAI"),
+                icon_small=I18nObject(en_US="logo.svg"),
+                icon_small_dark=I18nObject(en_US="logo-dark.png"),
+                supported_model_types=[],
+                configurate_methods=[ConfigurateMethod.PREDEFINED_MODEL],
+            ),
+        )
+    ]
+    fetch_asset = Mock(return_value=b"<svg></svg>")
+    monkeypatch.setattr(model_runtime_module.PluginAssetManager, "fetch_asset", fetch_asset)
+    runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client)
+
+    icon_bytes, mime_type = runtime.get_provider_icon(
+        provider="langgenius/openai/openai",
+        icon_type="icon_small",
+        lang="en_US",
+    )
+
+    assert icon_bytes == b"<svg></svg>"
+    assert mime_type == "image/svg+xml"
+    fetch_asset.assert_called_once_with(tenant_id="tenant", id="logo.svg")
+
+
+def test_get_provider_icon_rejects_unsupported_types_and_missing_variants() -> None:
+    client = Mock(spec=PluginModelClient)
+    client.fetch_model_providers.return_value = [
+        PluginModelProviderEntity(
+            id=uuid.uuid4().hex,
+            created_at=datetime.datetime.now(),
+            updated_at=datetime.datetime.now(),
+            provider="openai",
+            tenant_id="tenant",
+            plugin_unique_identifier="langgenius/openai/openai",
+            plugin_id="langgenius/openai",
+            declaration=ProviderEntity(
+                provider="openai",
+                label=I18nObject(en_US="OpenAI"),
+                supported_model_types=[],
+                configurate_methods=[ConfigurateMethod.PREDEFINED_MODEL],
+            ),
+        )
+    ]
+    runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client)
+
+    with pytest.raises(ValueError, match="does not have small dark icon"):
+        runtime.get_provider_icon(
+            provider="langgenius/openai/openai",
+            icon_type="icon_small_dark",
+            lang="en_US",
+        )
+
+    with pytest.raises(ValueError, match="Unsupported icon type"):
+        runtime.get_provider_icon(
+            provider="langgenius/openai/openai",
+            icon_type="icon_large",
+            lang="en_US",
+        )
+
+
+def test_get_schema_cache_key_is_stable_across_credential_order() -> None:
+    runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=Mock(spec=PluginModelClient))
+
+    first = runtime._get_schema_cache_key(
+        provider="langgenius/openai/openai",
+        model_type=ModelType.LLM,
+        model="gpt-4o-mini",
+        credentials={"b": "2", "a": "1"},
+    )
+    second = runtime._get_schema_cache_key(
+        provider="langgenius/openai/openai",
+        model_type=ModelType.LLM,
+        model="gpt-4o-mini",
+        credentials={"a": "1", "b": "2"},
+    )
+
+    assert first == second
+
+
+def test_get_provider_schema_supports_short_alias_and_rejects_invalid_provider() -> None:
+    client = Mock(spec=PluginModelClient)
+    client.fetch_model_providers.return_value = [
+        PluginModelProviderEntity(
+            id=uuid.uuid4().hex,
+            created_at=datetime.datetime.now(),
+            updated_at=datetime.datetime.now(),
+            provider="openai",
+            tenant_id="tenant",
+            plugin_unique_identifier="langgenius/openai/openai",
+            plugin_id="langgenius/openai",
+            declaration=ProviderEntity(
+                provider="openai",
+                label=I18nObject(en_US="OpenAI"),
+                supported_model_types=[],
+                configurate_methods=[ConfigurateMethod.PREDEFINED_MODEL],
+            ),
+        )
+    ]
+    runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client)
+
+    assert runtime._get_provider_schema("openai").provider == "langgenius/openai/openai"
+
+    with pytest.raises(ValueError, match="Invalid provider"):
+        runtime._get_provider_schema("missing")
