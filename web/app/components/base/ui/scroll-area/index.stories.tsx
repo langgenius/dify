@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import type { ReactNode } from 'react'
+import AppIcon from '@/app/components/base/app-icon'
 import { cn } from '@/utils/classnames'
 import {
   ScrollArea,
@@ -36,6 +37,8 @@ const insetScrollAreaClassName = 'h-full p-1'
 const insetViewportClassName = 'rounded-[20px] bg-components-panel-bg'
 const insetScrollbarClassName = 'data-[orientation=vertical]:top-1 data-[orientation=vertical]:bottom-1 data-[orientation=vertical]:right-1 data-[orientation=horizontal]:bottom-1 data-[orientation=horizontal]:left-1 data-[orientation=horizontal]:right-1'
 const storyButtonClassName = 'flex w-full items-center justify-between gap-3 rounded-xl border border-divider-subtle bg-components-panel-bg-alt px-3 py-2.5 text-left text-text-secondary transition-colors hover:bg-state-base-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-components-input-border-hover motion-reduce:transition-none'
+const appNavButtonClassName = 'group flex h-8 w-full items-center justify-between gap-3 rounded-lg px-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-components-input-border-hover motion-reduce:transition-none'
+const appNavMetaClassName = 'shrink-0 rounded-md border border-divider-subtle bg-components-panel-bg-alt px-1.5 py-0.5 text-text-quaternary system-2xs-medium-uppercase tracking-[0.08em]'
 
 const releaseRows = [
   { title: 'Agent refactor', meta: 'Updated 2 hours ago', status: 'Ready' },
@@ -70,6 +73,27 @@ const activityRows = Array.from({ length: 14 }, (_, index) => ({
   title: `Workspace activity ${index + 1}`,
   body: 'A short line of copy to mimic dense operational feeds in settings and debug panels.',
 }))
+
+const webAppsRows = [
+  { id: 'invoice-copilot', name: 'Invoice Copilot', meta: 'Pinned', icon: '🧾', iconBackground: '#FFEAD5', selected: true, pinned: true },
+  { id: 'rag-ops', name: 'RAG Ops Console', meta: 'Ops', icon: '🛰️', iconBackground: '#E0F2FE', selected: false, pinned: true },
+  { id: 'knowledge-studio', name: 'Knowledge Studio', meta: 'Docs', icon: '📚', iconBackground: '#FEF3C7', selected: false, pinned: true },
+  { id: 'workflow-studio', name: 'Workflow Studio', meta: 'Build', icon: '🧩', iconBackground: '#E0E7FF', selected: false, pinned: true },
+  { id: 'growth-briefs', name: 'Growth Briefs', meta: 'Brief', icon: '📣', iconBackground: '#FCE7F3', selected: false, pinned: true },
+  { id: 'agent-playground', name: 'Agent Playground', meta: 'Lab', icon: '🧪', iconBackground: '#DCFCE7', selected: false, pinned: false },
+  { id: 'sales-briefing', name: 'Sales Briefing', meta: 'Team', icon: '📈', iconBackground: '#FCE7F3', selected: false, pinned: false },
+  { id: 'support-triage', name: 'Support Triage', meta: 'Queue', icon: '🎧', iconBackground: '#EDE9FE', selected: false, pinned: false },
+  { id: 'legal-review', name: 'Legal Review', meta: 'Beta', icon: '⚖️', iconBackground: '#FDE68A', selected: false, pinned: false },
+  { id: 'release-watcher', name: 'Release Watcher', meta: 'Feed', icon: '🚀', iconBackground: '#DBEAFE', selected: false, pinned: false },
+  { id: 'research-hub', name: 'Research Hub', meta: 'Notes', icon: '🔎', iconBackground: '#E0F2FE', selected: false, pinned: false },
+  { id: 'field-enablement', name: 'Field Enablement', meta: 'Team', icon: '🧭', iconBackground: '#DCFCE7', selected: false, pinned: false },
+  { id: 'brand-monitor', name: 'Brand Monitor', meta: 'Watch', icon: '🪄', iconBackground: '#F3E8FF', selected: false, pinned: false },
+  { id: 'finance-ops', name: 'Finance Ops Desk', meta: 'Ops', icon: '💳', iconBackground: '#FEF3C7', selected: false, pinned: false },
+  { id: 'security-radar', name: 'Security Radar', meta: 'Risk', icon: '🛡️', iconBackground: '#FEE2E2', selected: false, pinned: false },
+  { id: 'partner-portal', name: 'Partner Portal', meta: 'Ext', icon: '🤝', iconBackground: '#DBEAFE', selected: false, pinned: false },
+  { id: 'qa-replays', name: 'QA Replays', meta: 'Debug', icon: '🎞️', iconBackground: '#EDE9FE', selected: false, pinned: false },
+  { id: 'roadmap-notes', name: 'Roadmap Notes', meta: 'Plan', icon: '🗺️', iconBackground: '#FFEAD5', selected: false, pinned: false },
+] as const
 
 const StoryCard = ({
   eyebrow,
@@ -302,6 +326,86 @@ const CornerPane = () => (
   </div>
 )
 
+const ExploreSidebarWebAppsPane = () => {
+  const pinnedAppsCount = webAppsRows.filter(item => item.pinned).length
+
+  return (
+    <div className="w-full max-w-[272px] rounded-[26px] border border-divider-subtle bg-background-body p-3 shadow-lg shadow-shadow-shadow-5">
+      <div className="space-y-5 rounded-[20px] bg-background-default-subtle p-3">
+        <div className="text-text-accent">
+          <div className="flex h-8 items-center gap-2 rounded-lg bg-state-base-active px-2">
+            <div className="flex size-6 shrink-0 items-center justify-center rounded-md bg-components-icon-bg-blue-solid">
+              <span className="i-ri-apps-fill size-3.5 text-components-avatar-shape-fill-stop-100" />
+            </div>
+            <div className="min-w-0 truncate text-components-menu-item-text-active system-sm-semibold">
+              Explore
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between gap-3 px-2">
+            <p className="min-w-0 uppercase text-text-tertiary system-xs-medium-uppercase">
+              Web Apps
+            </p>
+            <span className="shrink-0 text-text-quaternary system-xs-medium">
+              {webAppsRows.length}
+            </span>
+          </div>
+
+          <div className="h-[304px]">
+            <ScrollArea className="h-full">
+              <ScrollAreaViewport className="overscroll-contain">
+                <ScrollAreaContent className="space-y-0.5 pr-3">
+                  {webAppsRows.map((item, index) => (
+                    <div key={item.id} className="space-y-0.5">
+                      <button
+                        type="button"
+                        className={cn(
+                          appNavButtonClassName,
+                          item.selected
+                            ? 'bg-state-base-active text-components-menu-item-text-active'
+                            : 'text-components-menu-item-text hover:bg-state-base-hover hover:text-components-menu-item-text-hover',
+                        )}
+                      >
+                        <div className="flex min-w-0 grow items-center gap-2">
+                          <AppIcon
+                            size="tiny"
+                            iconType="emoji"
+                            icon={item.icon}
+                            background={item.iconBackground}
+                          />
+                          <span className="min-w-0 truncate system-sm-regular">
+                            {item.name}
+                          </span>
+                        </div>
+                        <span
+                          className={cn(
+                            appNavMetaClassName,
+                            item.selected && 'border-transparent bg-state-accent-hover text-text-accent',
+                          )}
+                        >
+                          {item.meta}
+                        </span>
+                      </button>
+                      {index === pinnedAppsCount - 1 && index !== webAppsRows.length - 1 && (
+                        <div className="my-1 h-px bg-divider-subtle" />
+                      )}
+                    </div>
+                  ))}
+                </ScrollAreaContent>
+              </ScrollAreaViewport>
+              <ScrollAreaScrollbar className="data-[orientation=vertical]:right-[-2px]">
+                <ScrollAreaThumb className="rounded-full" />
+              </ScrollAreaScrollbar>
+            </ScrollArea>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export const VerticalPanels: Story = {
   render: () => (
     <StoryCard
@@ -402,6 +506,20 @@ export const CornerSurface: Story = {
     >
       <div className="flex justify-center">
         <CornerPane />
+      </div>
+    </StoryCard>
+  ),
+}
+
+export const ExploreSidebarWebApps: Story = {
+  render: () => (
+    <StoryCard
+      eyebrow="Explore"
+      title="Web apps sidebar list"
+      description="A sidebar-style pane modeled after /explore/apps. The story keeps the shared ScrollArea primitive and composes the surrounding shell, section label, selected state, and pinned divider at the story layer."
+    >
+      <div className="flex justify-center">
+        <ExploreSidebarWebAppsPane />
       </div>
     </StoryCard>
   ),
