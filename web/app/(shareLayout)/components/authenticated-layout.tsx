@@ -18,9 +18,9 @@ const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => {
   const updateWebAppMeta = useWebAppStore(s => s.updateWebAppMeta)
   const updateUserCanAccessApp = useWebAppStore(s => s.updateUserCanAccessApp)
   const { data: appParams, error: appParamsError } = useGetWebAppParams()
-  const { data: appInfo, error: appInfoError } = useGetWebAppInfo()
+  const { data: appInfo, error: appInfoError, isPending: isPendingAppInfo } = useGetWebAppInfo()
   const { data: appMeta, error: appMetaError } = useGetWebAppMeta()
-  const { data: userCanAccessApp, error: useCanAccessAppError } = useGetUserCanAccessApp({ appId: appInfo?.app_id, isInstalledApp: false })
+  const { data: userCanAccessApp, error: useCanAccessAppError, isPending: isPendingUserCanAccessApp } = useGetUserCanAccessApp({ appId: appInfo?.app_id, isInstalledApp: false })
 
   useEffect(() => {
     if (appInfo)
@@ -29,7 +29,8 @@ const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => {
       updateAppParams(appParams)
     if (appMeta)
       updateWebAppMeta(appMeta)
-    updateUserCanAccessApp(Boolean(userCanAccessApp && userCanAccessApp?.result))
+    if (userCanAccessApp)
+      updateUserCanAccessApp(Boolean(userCanAccessApp.result))
   }, [appInfo, appMeta, appParams, updateAppInfo, updateAppParams, updateUserCanAccessApp, updateWebAppMeta, userCanAccessApp])
 
   const router = useRouter()
@@ -84,6 +85,10 @@ const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => {
       </div>
     )
   }
+
+  if (isPendingAppInfo || !appInfo?.app_id || isPendingUserCanAccessApp)
+    return null
+
   return <>{children}</>
 }
 
