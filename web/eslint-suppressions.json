@@ -8780,11 +8780,6 @@
       "count": 1
     }
   },
-  "app/components/workflow/panel/version-history-panel/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
   "app/components/workflow/panel/version-history-panel/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
@@ -8949,11 +8944,6 @@
       "count": 2
     }
   },
-  "app/components/workflow/run/utils/format-log/agent/index.spec.ts": {
-    "ts/no-explicit-any": {
-      "count": 3
-    }
-  },
   "app/components/workflow/run/utils/format-log/agent/index.ts": {
     "ts/no-explicit-any": {
       "count": 11
@@ -8969,17 +8959,7 @@
       "count": 2
     }
   },
-  "app/components/workflow/run/utils/format-log/iteration/index.spec.ts": {
-    "ts/no-explicit-any": {
-      "count": 3
-    }
-  },
   "app/components/workflow/run/utils/format-log/iteration/index.ts": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/run/utils/format-log/loop/index.spec.ts": {
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -8995,11 +8975,6 @@
     },
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "app/components/workflow/run/utils/format-log/retry/index.spec.ts": {
-    "ts/no-explicit-any": {
-      "count": 1
     }
   },
   "app/components/workflow/selection-contextmenu.tsx": {
