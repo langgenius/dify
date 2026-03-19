@@ -381,7 +381,7 @@ class Node(Generic[NodeDataT]):
                 error=str(e),
                 error_type="WorkflowNodeError",
             )
-            finished_at = naive_utc_now()
+            finished_at = datetime.now(UTC).replace(tzinfo=None)
             yield NodeRunFailedEvent(
                 id=self.execution_id,
                 node_id=self._node_id,
@@ -545,7 +545,7 @@ class Node(Generic[NodeDataT]):
         return self._node_data
 
     def _convert_node_run_result_to_graph_node_event(self, result: NodeRunResult) -> GraphNodeEventBase:
-        finished_at = naive_utc_now()
+        finished_at = datetime.now(UTC).replace(tzinfo=None)
         match result.status:
             case WorkflowNodeExecutionStatus.FAILED:
                 return NodeRunFailedEvent(
@@ -586,7 +586,7 @@ class Node(Generic[NodeDataT]):
 
     @_dispatch.register
     def _(self, event: StreamCompletedEvent) -> NodeRunSucceededEvent | NodeRunFailedEvent:
-        finished_at = naive_utc_now()
+        finished_at = datetime.now(UTC).replace(tzinfo=None)
         match event.node_run_result.status:
             case WorkflowNodeExecutionStatus.SUCCEEDED:
                 return NodeRunSucceededEvent(
