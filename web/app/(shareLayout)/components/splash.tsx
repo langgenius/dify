@@ -26,12 +26,13 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
   }, [searchParams])
 
   const backToHome = useCallback(async () => {
-    await webAppLogout(shareCode!)
+    if (shareCode)
+      await webAppLogout(shareCode)
     const url = getSigninUrl()
     router.replace(url)
   }, [getSigninUrl, router, shareCode])
   useEffect(() => {
-    if (message)
+    if (message || !shareCode)
       return
 
     if (tokenFromUrl)
@@ -44,7 +45,7 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
 
     (async () => {
       // if access mode is public, user login is always true, but the app login(passport) may be expired
-      const { userLoggedIn, appLoggedIn } = await webAppLoginStatus(shareCode!, embeddedUserId || undefined)
+      const { userLoggedIn, appLoggedIn } = await webAppLoginStatus(shareCode, embeddedUserId || undefined)
       if (userLoggedIn && appLoggedIn) {
         redirectOrFinish()
       }
@@ -54,14 +55,14 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
       else if (userLoggedIn && !appLoggedIn) {
         try {
           const { access_token } = await fetchAccessToken({
-            appCode: shareCode!,
+            appCode: shareCode,
             userId: embeddedUserId || undefined,
           })
-          setWebAppPassport(shareCode!, access_token)
+          setWebAppPassport(shareCode, access_token)
           redirectOrFinish()
         }
         catch {
-          await webAppLogout(shareCode!)
+          await webAppLogout(shareCode)
         }
       }
     })()
