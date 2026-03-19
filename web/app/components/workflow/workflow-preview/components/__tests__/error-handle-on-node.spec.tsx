@@ -1,7 +1,8 @@
 import type { NodeProps } from 'reactflow'
 import type { CommonNodeType } from '@/app/components/workflow/types'
-import { render, screen, waitFor } from '@testing-library/react'
-import ReactFlow, { ReactFlowProvider } from 'reactflow'
+import { screen, waitFor } from '@testing-library/react'
+import { createNode } from '@/app/components/workflow/__tests__/fixtures'
+import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 import ErrorHandleOnNode from '../error-handle-on-node'
@@ -19,27 +20,18 @@ const ErrorNode = ({ id, data }: NodeProps<CommonNodeType>) => (
   </div>
 )
 
-const renderErrorNode = (data: CommonNodeType) => {
-  return render(
-    <div style={{ width: 800, height: 600 }}>
-      <ReactFlowProvider>
-        <ReactFlow
-          fitView
-          edges={[]}
-          nodes={[
-            {
-              id: 'node-1',
-              type: 'errorNode',
-              position: { x: 0, y: 0 },
-              data,
-            },
-          ]}
-          nodeTypes={{ errorNode: ErrorNode }}
-        />
-      </ReactFlowProvider>
-    </div>,
-  )
-}
+const renderErrorNode = (data: CommonNodeType) =>
+  renderWorkflowFlowComponent(<div />, {
+    nodes: [createNode({
+      id: 'node-1',
+      type: 'errorNode',
+      data,
+    })],
+    edges: [],
+    reactFlowProps: {
+      nodeTypes: { errorNode: ErrorNode },
+    },
+  })
 
 describe('ErrorHandleOnNode', () => {
   // Empty and default-value states.

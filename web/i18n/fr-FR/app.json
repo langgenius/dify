@@ -36,6 +36,8 @@
   "createApp": "CRÉER UNE APPLICATION",
   "createFromConfigFile": "Créer à partir du fichier DSL",
   "deleteAppConfirmContent": "La suppression de l'application est irréversible. Les utilisateurs ne pourront plus accéder à votre application et toutes les configurations de prompt et les journaux seront définitivement supprimés.",
+  "deleteAppConfirmInputLabel": "Pour confirmer, tapez \"{{appName}}\" dans la case ci-dessous :",
+  "deleteAppConfirmInputPlaceholder": "Entrez le nom de l'application",
   "deleteAppConfirmTitle": "Supprimer cette application ?",
   "dslUploader.browse": "Parcourir",
   "dslUploader.button": "Glisser-déposer un fichier, ou",

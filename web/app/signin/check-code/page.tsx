@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import Countdown from '@/app/components/signin/countdown'
 import { useLocale } from '@/context/i18n'
 
@@ -31,16 +31,16 @@ export default function CheckCode() {
   const verify = async () => {
     try {
       if (!code.trim()) {
-        Toast.notify({
+        toast.add({
           type: 'error',
-          message: t('checkCode.emptyCode', { ns: 'login' }),
+          title: t('checkCode.emptyCode', { ns: 'login' }),
         })
         return
       }
       if (!/\d{6}/.test(code)) {
-        Toast.notify({
+        toast.add({
           type: 'error',
-          message: t('checkCode.invalidCode', { ns: 'login' }),
+          title: t('checkCode.invalidCode', { ns: 'login' }),
         })
         return
       }
