@@ -104,50 +104,6 @@ vi.mock('../../install-plugin/install-from-github', () => ({
   ),
 }))
 
-// Mock Portal components for PluginVersionPicker
-let mockPortalOpen = false
-vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({ children, open, onOpenChange: _onOpenChange }: {
-    children: React.ReactNode
-    open: boolean
-    onOpenChange: (open: boolean) => void
-  }) => {
-    mockPortalOpen = open
-    return <div data-testid="portal-elem" data-open={open}>{children}</div>
-  },
-  PortalToFollowElemTrigger: ({ children, onClick, className }: {
-    children: React.ReactNode
-    onClick: () => void
-    className?: string
-  }) => (
-    <div data-testid="portal-trigger" onClick={onClick} className={className}>
-      {children}
-    </div>
-  ),
-  PortalToFollowElemContent: ({ children, className }: {
-    children: React.ReactNode
-    className?: string
-  }) => {
-    if (!mockPortalOpen)
-      return null
-    return <div data-testid="portal-content" className={className}>{children}</div>
-  },
-}))
-
-// Mock semver
-vi.mock('semver', () => ({
-  lt: (v1: string, v2: string) => {
-    const parseVersion = (v: string) => v.split('.').map(Number)
-    const [major1, minor1, patch1] = parseVersion(v1)
-    const [major2, minor2, patch2] = parseVersion(v2)
-    if (major1 !== major2)
-      return major1 < major2
-    if (minor1 !== minor2)
-      return minor1 < minor2
-    return patch1 < patch2
-  },
-}))
-
 // ================================
 // Test Data Factories
 // ================================
@@ -247,7 +203,6 @@ const renderWithQueryClient = (ui: React.ReactElement) => {
 describe('update-plugin', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockPortalOpen = false
     mockCheck.mockResolvedValue({ status: TaskStatus.success })
   })
 
@@ -732,8 +687,8 @@ describe('update-plugin', () => {
         })
       })
 
-      it('should show error toast when task status is failed', async () => {
-        // Arrange - covers lines 99-100
+      it('should reset loading state when task status check fails', async () => {
+        // Arrange
         const mockToastNotify = vi.fn()
         vi.mocked(await import('../../../base/toast')).default.notify = mockToastNotify
 
@@ -770,6 +725,53 @@ describe('update-plugin', () => {
         })
         // onSave should NOT be called when task fails
         expect(onSave).not.toHaveBeenCalled()
+        await waitFor(() => {
+          expect(screen.getByRole('button', { name: 'plugin.upgrade.upgrade' })).toBeInTheDocument()
+        })
+        expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeInTheDocument()
+      })
+
+      it('should stop loading when upgrade API returns failed task directly', async () => {
+        // Arrange
+        const mockToastNotify = vi.fn()
+        vi.mocked(await import('../../../base/toast')).default.notify = mockToastNotify
+
+        mockUpdateFromMarketPlace.mockResolvedValue({
+          task: {
+            status: TaskStatus.failed,
+            plugins: [{
+              plugin_unique_identifier: 'test-target-id',
+              status: TaskStatus.failed,
+              message: 'failed to init environment',
+            }],
+          },
+        })
+        const onSave = vi.fn()
+        const payload = createMockMarketPlacePayload()
+
+        // Act
+        renderWithQueryClient(
+          <UpdateFromMarketplace
+            payload={payload}
+            onSave={onSave}
+            onCancel={vi.fn()}
+          />,
+        )
+        fireEvent.click(screen.getByRole('button', { name: 'plugin.upgrade.upgrade' }))
+
+        // Assert
+        await waitFor(() => {
+          expect(mockToastNotify).toHaveBeenCalledWith({
+            type: 'error',
+            message: 'failed to init environment',
+          })
+        })
+        expect(mockCheck).not.toHaveBeenCalled()
+        expect(onSave).not.toHaveBeenCalled()
+        await waitFor(() => {
+          expect(screen.getByRole('button', { name: 'plugin.upgrade.upgrade' })).toBeInTheDocument()
+        })
+        expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeInTheDocument()
       })
     })
 
@@ -946,7 +948,7 @@ describe('update-plugin', () => {
       onShowChange: vi.fn(),
       pluginID: 'test-plugin-id',
       currentVersion: '1.0.0',
-      trigger: <button>Select Version</button>,
+      trigger: <span>Select Version</span>,
       onSelect: vi.fn(),
     }
 
@@ -964,7 +966,7 @@ describe('update-plugin', () => {
         render(<PluginVersionPicker {...defaultProps} isShow={false} />)
 
         // Assert
-        expect(screen.queryByTestId('portal-content')).not.toBeInTheDocument()
+        expect(screen.queryByText('plugin.detailPanel.switchVersion')).not.toBeInTheDocument()
       })
 
       it('should render version list when isShow is true', () => {
@@ -972,7 +974,6 @@ describe('update-plugin', () => {
         render(<PluginVersionPicker {...defaultProps} isShow={true} />)
 
         // Assert
-        expect(screen.getByTestId('portal-content')).toBeInTheDocument()
         expect(screen.getByText('plugin.detailPanel.switchVersion')).toBeInTheDocument()
       })
 
@@ -1002,7 +1003,7 @@ describe('update-plugin', () => {
 
         // Act
         render(<PluginVersionPicker {...defaultProps} onShowChange={onShowChange} />)
-        fireEvent.click(screen.getByTestId('portal-trigger'))
+        fireEvent.click(screen.getByText('Select Version'))
 
         // Assert
         expect(onShowChange).toHaveBeenCalledWith(true)
@@ -1014,7 +1015,7 @@ describe('update-plugin', () => {
 
         // Act
         render(<PluginVersionPicker {...defaultProps} disabled={true} onShowChange={onShowChange} />)
-        fireEvent.click(screen.getByTestId('portal-trigger'))
+        fireEvent.click(screen.getByText('Select Version'))
 
         // Assert
         expect(onShowChange).not.toHaveBeenCalled()
@@ -1116,7 +1117,7 @@ describe('update-plugin', () => {
         )
 
         // Assert
-        expect(screen.getByTestId('portal-elem')).toBeInTheDocument()
+        expect(screen.getByText('plugin.detailPanel.switchVersion')).toBeInTheDocument()
       })
 
       it('should support custom offset', () => {
@@ -1125,12 +1126,13 @@ describe('update-plugin', () => {
           <PluginVersionPicker
             {...defaultProps}
             isShow={true}
-            offset={{ mainAxis: 10, crossAxis: 20 }}
+            sideOffset={10}
+            alignOffset={20}
           />,
         )
 
         // Assert
-        expect(screen.getByTestId('portal-elem')).toBeInTheDocument()
+        expect(screen.getByText('plugin.detailPanel.switchVersion')).toBeInTheDocument()
       })
     })
 
@@ -1190,7 +1192,7 @@ describe('update-plugin', () => {
           onShowChange: vi.fn(),
           pluginID: 'test',
           currentVersion: '1.0.0',
-          trigger: <button>Select</button>,
+          trigger: <span>Select</span>,
           onSelect: vi.fn(),
         }}
         />,

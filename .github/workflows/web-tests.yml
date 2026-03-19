@@ -29,8 +29,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shardIndex: [1, 2, 3, 4]
-        shardTotal: [4]
+        shardIndex: [1, 2, 3, 4, 5, 6]
+        shardTotal: [6]
     defaults:
       run:
         shell: bash
@@ -87,7 +87,7 @@ jobs:
           merge-multiple: true
 
       - name: Merge reports
-        run: vp test --merge-reports --reporter=json --reporter=agent --coverage
+        run: vp test --merge-reports --coverage --silent=passed-only
 
       - name: Report app/components baseline coverage
         run: node ./scripts/report-components-coverage-baseline.mjs

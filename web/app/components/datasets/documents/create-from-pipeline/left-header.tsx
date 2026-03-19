@@ -1,10 +1,10 @@
 import type { Step } from './step-indicator'
 import { RiArrowLeftLine } from '@remixicon/react'
-import Link from 'next/link'
-import { useParams } from 'next/navigation'
 import * as React from 'react'
 import Button from '@/app/components/base/button'
 import Effect from '@/app/components/base/effect'
+import Link from '@/next/link'
+import { useParams } from '@/next/navigation'
 import StepIndicator from './step-indicator'
 
 type LeftHeaderProps = {

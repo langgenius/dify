@@ -1,16 +1,38 @@
 import json
 from collections.abc import Generator
-from typing import Union
+from typing import Any, Union
 from urllib.parse import urljoin
 
 import httpx
 from httpx import Response
+from typing_extensions import TypedDict
 
 from core.rag.extractor.watercrawl.exceptions import (
     WaterCrawlAuthenticationError,
     WaterCrawlBadRequestError,
     WaterCrawlPermissionError,
 )
+
+
+class SpiderOptions(TypedDict):
+    max_depth: int
+    page_limit: int
+    allowed_domains: list[str]
+    exclude_paths: list[str]
+    include_paths: list[str]
+
+
+class PageOptions(TypedDict):
+    exclude_tags: list[str]
+    include_tags: list[str]
+    wait_time: int
+    include_html: bool
+    only_main_content: bool
+    include_links: bool
+    timeout: int
+    accept_cookies_selector: str
+    locale: str
+    actions: list[Any]
 
 
 class BaseAPIClient:
@@ -121,9 +143,9 @@ class WaterCrawlAPIClient(BaseAPIClient):
     def create_crawl_request(
         self,
         url: Union[list, str] | None = None,
-        spider_options: dict | None = None,
-        page_options: dict | None = None,
-        plugin_options: dict | None = None,
+        spider_options: SpiderOptions | None = None,
+        page_options: PageOptions | None = None,
+        plugin_options: dict[str, Any] | None = None,
     ):
         data = {
             # 'urls': url if isinstance(url, list) else [url],
@@ -176,8 +198,8 @@ class WaterCrawlAPIClient(BaseAPIClient):
     def scrape_url(
         self,
         url: str,
-        page_options: dict | None = None,
-        plugin_options: dict | None = None,
+        page_options: PageOptions | None = None,
+        plugin_options: dict[str, Any] | None = None,
         sync: bool = True,
         prefetched: bool = True,
     ):

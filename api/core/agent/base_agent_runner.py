@@ -441,7 +441,7 @@ class BaseAgentRunner(AppRunner):
                 continue
 
             result.append(self.organize_agent_user_prompt(message))
-            agent_thoughts: list[MessageAgentThought] = message.agent_thoughts
+            agent_thoughts = message.agent_thoughts
             if agent_thoughts:
                 for agent_thought in agent_thoughts:
                     tool_names_raw = agent_thought.tool

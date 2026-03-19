@@ -7,7 +7,7 @@ let currentPath = '/billing'
 
 const push = vi.fn()
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push }),
   usePathname: () => currentPath,
 }))

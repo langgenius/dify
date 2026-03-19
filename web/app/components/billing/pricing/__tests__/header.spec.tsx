@@ -1,6 +1,15 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
+import { Dialog } from '@/app/components/base/ui/dialog'
 import Header from '../header'
+
+function renderHeader(onClose: () => void) {
+  return render(
+    <Dialog open>
+      <Header onClose={onClose} />
+    </Dialog>,
+  )
+}
 
 describe('Header', () => {
   beforeEach(() => {
@@ -11,7 +20,7 @@ describe('Header', () => {
     it('should render title and description translations', () => {
       const handleClose = vi.fn()
 
-      render(<Header onClose={handleClose} />)
+      renderHeader(handleClose)
 
       expect(screen.getByText('billing.plansCommon.title.plans')).toBeInTheDocument()
       expect(screen.getByText('billing.plansCommon.title.description')).toBeInTheDocument()
@@ -22,7 +31,7 @@ describe('Header', () => {
   describe('Props', () => {
     it('should invoke onClose when close button is clicked', () => {
       const handleClose = vi.fn()
-      render(<Header onClose={handleClose} />)
+      renderHeader(handleClose)
 
       fireEvent.click(screen.getByRole('button'))
 
@@ -32,7 +41,7 @@ describe('Header', () => {
 
   describe('Edge Cases', () => {
     it('should render structural elements with translation keys', () => {
-      const { container } = render(<Header onClose={vi.fn()} />)
+      const { container } = renderHeader(vi.fn())
 
       expect(container.querySelector('span')).toBeInTheDocument()
       expect(container.querySelector('p')).toBeInTheDocument()
