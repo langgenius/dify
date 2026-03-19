@@ -566,20 +566,36 @@ class TestWebhookServiceUnit:
             assert result == (mock_trigger, mock_workflow, mock_config, mock_data, None)
 
     def test_extract_workflow_call_depth_defaults_to_zero_for_invalid_values(self):
-        assert WebhookService.extract_workflow_call_depth({}) == 0
-        assert WebhookService.extract_workflow_call_depth({WORKFLOW_CALL_DEPTH_HEADER: "abc"}) == 0
-        assert WebhookService.extract_workflow_call_depth({WORKFLOW_CALL_DEPTH_HEADER.lower(): "-1"}) == 0
+        assert WebhookService.extract_workflow_call_depth({}, request_method="POST", request_path="/webhook") == 0
+        assert (
+            WebhookService.extract_workflow_call_depth(
+                {WORKFLOW_CALL_DEPTH_HEADER: "abc"},
+                request_method="POST",
+                request_path="/webhook",
+            )
+            == 0
+        )
+        assert (
+            WebhookService.extract_workflow_call_depth(
+                {WORKFLOW_CALL_DEPTH_HEADER.lower(): "-1"},
+                request_method="POST",
+                request_path="/webhook",
+            )
+            == 0
+        )
 
     def test_extract_workflow_call_depth_ignores_unsigned_external_header(self):
-        assert WebhookService.extract_workflow_call_depth({WORKFLOW_CALL_DEPTH_HEADER: "5"}) == 0
+        assert (
+            WebhookService.extract_workflow_call_depth(
+                {WORKFLOW_CALL_DEPTH_HEADER: "5"},
+                request_method="POST",
+                request_path="/webhook",
+            )
+            == 0
+        )
 
     def test_extract_workflow_call_depth_honors_signed_internal_header(self):
-        app = Flask(__name__)
-
-        with (
-            patch("services.trigger.webhook_service.dify_config.SECRET_KEY", TEST_SECRET_KEY),
-            app.test_request_context("/triggers/webhook/test-webhook", method="POST"),
-        ):
+        with patch("services.trigger.webhook_service.dify_config.SECRET_KEY", TEST_SECRET_KEY):
             signature = build_workflow_call_depth_signature(
                 secret_key=TEST_SECRET_KEY,
                 method="POST",
@@ -592,18 +608,36 @@ class TestWebhookServiceUnit:
                     {
                         WORKFLOW_CALL_DEPTH_HEADER: "4",
                         WORKFLOW_CALL_DEPTH_SIGNATURE_HEADER: signature,
-                    }
+                    },
+                    request_method="POST",
+                    request_path="/triggers/webhook/test-webhook",
+                )
+                == 4
+            )
+
+    def test_extract_workflow_call_depth_accepts_mixed_case_reserved_headers(self):
+        with patch("services.trigger.webhook_service.dify_config.SECRET_KEY", TEST_SECRET_KEY):
+            signature = build_workflow_call_depth_signature(
+                secret_key=TEST_SECRET_KEY,
+                method="POST",
+                path="/triggers/webhook/test-webhook",
+                depth="4",
+            )
+
+            assert (
+                WebhookService.extract_workflow_call_depth(
+                    {
+                        "X-Dify-Workflow-Call-Depth": "4",
+                        "X-Dify-Workflow-Call-Depth-Signature": signature,
+                    },
+                    request_method="POST",
+                    request_path="/triggers/webhook/test-webhook",
                 )
                 == 4
             )
 
     def test_extract_workflow_call_depth_rejects_signature_for_other_path(self):
-        app = Flask(__name__)
-
-        with (
-            patch("services.trigger.webhook_service.dify_config.SECRET_KEY", TEST_SECRET_KEY),
-            app.test_request_context("/triggers/webhook/right-webhook", method="POST"),
-        ):
+        with patch("services.trigger.webhook_service.dify_config.SECRET_KEY", TEST_SECRET_KEY):
             wrong_signature = build_workflow_call_depth_signature(
                 secret_key=TEST_SECRET_KEY,
                 method="POST",
@@ -616,33 +650,35 @@ class TestWebhookServiceUnit:
                     {
                         WORKFLOW_CALL_DEPTH_HEADER: "4",
                         WORKFLOW_CALL_DEPTH_SIGNATURE_HEADER: wrong_signature,
-                    }
+                    },
+                    request_method="POST",
+                    request_path="/triggers/webhook/right-webhook",
                 )
                 == 0
             )
 
     @patch("services.trigger.webhook_service.dify_config")
     def test_extract_workflow_call_depth_honors_signature_with_empty_secret(self, mock_config):
-        app = Flask(__name__)
         mock_config.SECRET_KEY = ""
 
-        with app.test_request_context("/triggers/webhook/test-webhook", method="POST"):
-            signature = build_workflow_call_depth_signature(
-                secret_key="",
-                method="POST",
-                path="/triggers/webhook/test-webhook",
-                depth="4",
-            )
+        signature = build_workflow_call_depth_signature(
+            secret_key="",
+            method="POST",
+            path="/triggers/webhook/test-webhook",
+            depth="4",
+        )
 
-            assert (
-                WebhookService.extract_workflow_call_depth(
-                    {
-                        WORKFLOW_CALL_DEPTH_HEADER: "4",
-                        WORKFLOW_CALL_DEPTH_SIGNATURE_HEADER: signature,
-                    }
-                )
-                == 4
+        assert (
+            WebhookService.extract_workflow_call_depth(
+                {
+                    WORKFLOW_CALL_DEPTH_HEADER: "4",
+                    WORKFLOW_CALL_DEPTH_SIGNATURE_HEADER: signature,
+                },
+                request_method="POST",
+                request_path="/triggers/webhook/test-webhook",
             )
+            == 4
+        )
 
     @patch("services.trigger.webhook_service.QuotaType")
     @patch("services.trigger.webhook_service.EndUserService")
@@ -657,7 +693,6 @@ class TestWebhookServiceUnit:
         mock_end_user_service,
         mock_quota_type,
     ):
-        app = Flask(__name__)
         webhook_trigger = MagicMock(app_id="app", tenant_id="tenant", node_id="root", webhook_id="webhook")
         workflow = MagicMock(id="workflow")
         mock_end_user = MagicMock()
@@ -671,21 +706,19 @@ class TestWebhookServiceUnit:
             depth="4",
         )
 
-        with (
-            patch("services.trigger.webhook_service.dify_config.SECRET_KEY", TEST_SECRET_KEY),
-            app.test_request_context(
-                "/triggers/webhook/test-webhook",
-                method="POST",
-                headers={
-                    WORKFLOW_CALL_DEPTH_HEADER: "4",
-                    WORKFLOW_CALL_DEPTH_SIGNATURE_HEADER: signature,
-                },
-            ),
-        ):
+        with patch("services.trigger.webhook_service.dify_config.SECRET_KEY", TEST_SECRET_KEY):
             WebhookService.trigger_workflow_execution(
                 webhook_trigger,
                 {"method": "POST", "headers": {}, "query_params": {}, "body": {}, "files": {}},
                 workflow,
+                call_depth=WebhookService.extract_workflow_call_depth(
+                    {
+                        WORKFLOW_CALL_DEPTH_HEADER: "4",
+                        WORKFLOW_CALL_DEPTH_SIGNATURE_HEADER: signature,
+                    },
+                    request_method="POST",
+                    request_path="/triggers/webhook/test-webhook",
+                ),
             )
 
         trigger_data = mock_async_workflow_service.trigger_workflow_async.call_args.args[2]
@@ -704,23 +737,22 @@ class TestWebhookServiceUnit:
         mock_end_user_service,
         mock_quota_type,
     ):
-        app = Flask(__name__)
         webhook_trigger = MagicMock(app_id="app", tenant_id="tenant", node_id="root", webhook_id="webhook")
         workflow = MagicMock(id="workflow")
         mock_end_user_service.get_or_create_end_user_by_type.return_value = MagicMock()
         mock_db.engine = MagicMock()
         mock_session.return_value.__enter__.return_value = MagicMock()
 
-        with app.test_request_context(
-            "/triggers/webhook/test-webhook",
-            method="POST",
-            headers={WORKFLOW_CALL_DEPTH_HEADER: "5"},
-        ):
-            WebhookService.trigger_workflow_execution(
-                webhook_trigger,
-                {"method": "POST", "headers": {}, "query_params": {}, "body": {}, "files": {}},
-                workflow,
-            )
+        WebhookService.trigger_workflow_execution(
+            webhook_trigger,
+            {"method": "POST", "headers": {}, "query_params": {}, "body": {}, "files": {}},
+            workflow,
+            call_depth=WebhookService.extract_workflow_call_depth(
+                {WORKFLOW_CALL_DEPTH_HEADER: "5"},
+                request_method="POST",
+                request_path="/triggers/webhook/test-webhook",
+            ),
+        )
 
         trigger_data = mock_async_workflow_service.trigger_workflow_async.call_args.args[2]
         assert trigger_data.call_depth == 0
@@ -738,7 +770,6 @@ class TestWebhookServiceUnit:
         mock_end_user_service,
         mock_quota_type,
     ):
-        app = Flask(__name__)
         webhook_trigger = MagicMock(app_id="app", tenant_id="tenant", node_id="root", webhook_id="webhook")
         workflow = MagicMock(id="workflow")
         mock_end_user_service.get_or_create_end_user_by_type.return_value = MagicMock()
@@ -751,19 +782,48 @@ class TestWebhookServiceUnit:
             depth="5",
         )
 
-        with app.test_request_context(
-            "/triggers/webhook/test-webhook",
-            method="POST",
-            headers={
-                WORKFLOW_CALL_DEPTH_HEADER: "5",
-                WORKFLOW_CALL_DEPTH_SIGNATURE_HEADER: captured_signature,
-            },
-        ):
-            WebhookService.trigger_workflow_execution(
-                webhook_trigger,
-                {"method": "POST", "headers": {}, "query_params": {}, "body": {}, "files": {}},
-                workflow,
-            )
+        WebhookService.trigger_workflow_execution(
+            webhook_trigger,
+            {"method": "POST", "headers": {}, "query_params": {}, "body": {}, "files": {}},
+            workflow,
+            call_depth=WebhookService.extract_workflow_call_depth(
+                {
+                    WORKFLOW_CALL_DEPTH_HEADER: "5",
+                    WORKFLOW_CALL_DEPTH_SIGNATURE_HEADER: captured_signature,
+                },
+                request_method="POST",
+                request_path="/triggers/webhook/test-webhook",
+            ),
+        )
 
         trigger_data = mock_async_workflow_service.trigger_workflow_async.call_args.args[2]
         assert trigger_data.call_depth == 0
+
+    @patch("services.trigger.webhook_service.QuotaType")
+    @patch("services.trigger.webhook_service.EndUserService")
+    @patch("services.trigger.webhook_service.AsyncWorkflowService")
+    @patch("services.trigger.webhook_service.Session")
+    @patch("services.trigger.webhook_service.db")
+    def test_trigger_workflow_execution_does_not_require_request_context_when_call_depth_is_passed(
+        self,
+        mock_db,
+        mock_session,
+        mock_async_workflow_service,
+        mock_end_user_service,
+        mock_quota_type,
+    ):
+        webhook_trigger = MagicMock(app_id="app", tenant_id="tenant", node_id="root", webhook_id="webhook")
+        workflow = MagicMock(id="workflow")
+        mock_end_user_service.get_or_create_end_user_by_type.return_value = MagicMock()
+        mock_db.engine = MagicMock()
+        mock_session.return_value.__enter__.return_value = MagicMock()
+
+        WebhookService.trigger_workflow_execution(
+            webhook_trigger,
+            {"method": "POST", "headers": {}, "query_params": {}, "body": {}, "files": {}},
+            workflow,
+            call_depth=4,
+        )
+
+        trigger_data = mock_async_workflow_service.trigger_workflow_async.call_args.args[2]
+        assert trigger_data.call_depth == 4

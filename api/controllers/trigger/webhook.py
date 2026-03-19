@@ -52,8 +52,19 @@ def handle_webhook(webhook_id: str):
         if error:
             return jsonify({"error": "Bad Request", "message": error}), 400
 
+        trigger_call_depth = WebhookService.extract_workflow_call_depth(
+            dict(request.headers),
+            request_method=request.method,
+            request_path=request.path,
+        )
+
         # Process webhook call (send to Celery)
-        WebhookService.trigger_workflow_execution(webhook_trigger, webhook_data, workflow)
+        WebhookService.trigger_workflow_execution(
+            webhook_trigger,
+            webhook_data,
+            workflow,
+            call_depth=trigger_call_depth,
+        )
 
         # Return configured response
         response_data, status_code = WebhookService.generate_webhook_response(node_config)

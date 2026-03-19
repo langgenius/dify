@@ -63,24 +63,30 @@ class WebhookService:
         return key.replace("-", "_")
 
     @classmethod
-    def extract_workflow_call_depth(cls, headers: Mapping[str, Any]) -> int:
+    def extract_workflow_call_depth(
+        cls,
+        headers: Mapping[str, Any],
+        *,
+        request_method: str,
+        request_path: str,
+    ) -> int:
         """Extract the reserved workflow recursion depth header.
 
         The depth header is only trusted when accompanied by a valid HMAC
-        signature for the current request method/path/depth tuple. Header lookup
-        accepts either canonical or lower-case names because upstream proxies may
-        normalize casing. Invalid, missing, unsigned, or negative values are
-        treated as external requests and therefore fall back to depth 0.
+        signature for the current request method/path/depth tuple supplied by the
+        caller while a request context is available. Header lookup is normalized
+        case-insensitively so mixed-case spellings still round-trip after headers
+        are materialized into a plain mapping. Invalid, missing, unsigned, or
+        negative values are treated as external requests and therefore fall back
+        to depth 0.
         """
-        raw_value = headers.get(WORKFLOW_CALL_DEPTH_HEADER)
-        if raw_value is None:
-            raw_value = headers.get(WORKFLOW_CALL_DEPTH_HEADER.lower())
+        normalized_headers = {str(key).lower(): value for key, value in headers.items()}
+
+        raw_value = normalized_headers.get(WORKFLOW_CALL_DEPTH_HEADER.lower())
         if raw_value is None:
             return 0
 
-        raw_signature = headers.get(WORKFLOW_CALL_DEPTH_SIGNATURE_HEADER)
-        if raw_signature is None:
-            raw_signature = headers.get(WORKFLOW_CALL_DEPTH_SIGNATURE_HEADER.lower())
+        raw_signature = normalized_headers.get(WORKFLOW_CALL_DEPTH_SIGNATURE_HEADER.lower())
         if raw_signature is None:
             return 0
 
@@ -89,8 +95,8 @@ class WebhookService:
         # instead of trusting the sender's path or method directly.
         expected_signature = build_workflow_call_depth_signature(
             secret_key=dify_config.SECRET_KEY,
-            method=request.method,
-            path=request.path,
+            method=request_method,
+            path=request_path,
             depth=normalized_value,
         )
         if not hmac.compare_digest(str(raw_signature).strip(), expected_signature):
@@ -786,7 +792,12 @@ class WebhookService:
 
     @classmethod
     def trigger_workflow_execution(
-        cls, webhook_trigger: WorkflowWebhookTrigger, webhook_data: dict[str, Any], workflow: Workflow
+        cls,
+        webhook_trigger: WorkflowWebhookTrigger,
+        webhook_data: dict[str, Any],
+        workflow: Workflow,
+        *,
+        call_depth: int = 0,
     ) -> None:
         """Trigger workflow execution via AsyncWorkflowService.
 
@@ -794,6 +805,8 @@ class WebhookService:
             webhook_trigger: The webhook trigger object
             webhook_data: Processed webhook data for workflow inputs
             workflow: The workflow to execute
+            call_depth: Validated recursion depth derived earlier from the
+                incoming request metadata
 
         Raises:
             ValueError: If tenant owner is not found
@@ -806,14 +819,13 @@ class WebhookService:
                 workflow_inputs = cls.build_workflow_inputs(webhook_data)
 
                 # Create trigger data
-                trigger_call_depth = cls.extract_workflow_call_depth(dict(request.headers))
                 trigger_data = WebhookTriggerData(
                     app_id=webhook_trigger.app_id,
                     workflow_id=workflow.id,
                     root_node_id=webhook_trigger.node_id,  # Start from the webhook node
                     inputs=workflow_inputs,
                     tenant_id=webhook_trigger.tenant_id,
-                    call_depth=trigger_call_depth,
+                    call_depth=call_depth,
                 )
 
                 end_user = EndUserService.get_or_create_end_user_by_type(

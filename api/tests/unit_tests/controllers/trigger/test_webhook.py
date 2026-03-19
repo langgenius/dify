@@ -11,6 +11,7 @@ import controllers.trigger.webhook as module
 def mock_request():
     module.request = types.SimpleNamespace(
         method="POST",
+        path="/triggers/webhook/wh-1",
         headers={"x-test": "1"},
         args={"a": "b"},
     )
@@ -56,14 +57,17 @@ class TestHandleWebhook:
     @patch.object(module.WebhookService, "extract_and_validate_webhook_data")
     @patch.object(module.WebhookService, "trigger_workflow_execution")
     @patch.object(module.WebhookService, "generate_webhook_response")
+    @patch.object(module.WebhookService, "extract_workflow_call_depth", return_value=4)
     def test_success(
         self,
+        mock_extract_depth,
         mock_generate,
         mock_trigger,
         mock_extract,
         mock_get,
     ):
-        mock_get.return_value = (DummyWebhookTrigger(), "workflow", "node_config")
+        webhook_trigger = DummyWebhookTrigger()
+        mock_get.return_value = (webhook_trigger, "workflow", "node_config")
         mock_extract.return_value = {"input": "x"}
         mock_generate.return_value = ({"ok": True}, 200)
 
@@ -71,7 +75,12 @@ class TestHandleWebhook:
 
         assert status == 200
         assert response["ok"] is True
-        mock_trigger.assert_called_once()
+        mock_extract_depth.assert_called_once_with(
+            {"x-test": "1"},
+            request_method="POST",
+            request_path=module.request.path,
+        )
+        mock_trigger.assert_called_once_with(webhook_trigger, {"input": "x"}, "workflow", call_depth=4)
 
     @patch.object(module.WebhookService, "get_webhook_trigger_and_workflow")
     @patch.object(module.WebhookService, "extract_and_validate_webhook_data", side_effect=ValueError("bad"))
