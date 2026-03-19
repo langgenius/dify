@@ -2,6 +2,7 @@
 
 import datetime
 import uuid
+from types import SimpleNamespace
 from unittest.mock import Mock, sentinel
 
 import pytest
@@ -244,7 +245,15 @@ def test_plugin_model_runtime_requires_client() -> None:
 def test_get_model_schema_uses_cached_schema_without_hitting_client(monkeypatch: pytest.MonkeyPatch) -> None:
     client = Mock(spec=PluginModelClient)
     schema = _build_model_schema()
-    monkeypatch.setattr(model_runtime_module.redis_client, "get", Mock(return_value=schema.model_dump_json()))
+    monkeypatch.setattr(
+        model_runtime_module,
+        "redis_client",
+        SimpleNamespace(
+            get=Mock(return_value=schema.model_dump_json()),
+            delete=Mock(),
+            setex=Mock(),
+        ),
+    )
 
     runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client)
     result = runtime.get_model_schema(
@@ -263,9 +272,15 @@ def test_get_model_schema_deletes_invalid_cache_and_refetches(monkeypatch: pytes
     schema = _build_model_schema()
     delete = Mock()
     setex = Mock()
-    monkeypatch.setattr(model_runtime_module.redis_client, "get", Mock(return_value="not-json"))
-    monkeypatch.setattr(model_runtime_module.redis_client, "delete", delete)
-    monkeypatch.setattr(model_runtime_module.redis_client, "setex", setex)
+    monkeypatch.setattr(
+        model_runtime_module,
+        "redis_client",
+        SimpleNamespace(
+            get=Mock(return_value="not-json"),
+            delete=delete,
+            setex=setex,
+        ),
+    )
     monkeypatch.setattr(model_runtime_module.dify_config, "PLUGIN_MODEL_SCHEMA_CACHE_TTL", 300)
     client.get_model_schema.return_value = schema
     runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client)
