@@ -5,6 +5,8 @@ import pytest
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from dify_graph.enums import BuiltinNodeTypes, ErrorStrategy, WorkflowNodeExecutionStatus
 from dify_graph.graph import Graph
+from dify_graph.nodes.base.entities import VariableSelector
+from dify_graph.nodes.template_transform.entities import TemplateTransformNodeData
 from dify_graph.nodes.template_transform.template_transform_node import TemplateTransformNode
 from dify_graph.runtime import GraphRuntimeState
 from dify_graph.template_rendering import TemplateRenderError
@@ -290,6 +292,38 @@ class TestTemplateTransformNode:
         assert "node_123.var2" in mapping
         assert mapping["node_123.var1"] == ["sys", "input1"]
         assert mapping["node_123.var2"] == ["sys", "input2"]
+
+    def test_extract_variable_selector_to_variable_mapping_accepts_validated_node_data(self):
+        node_data = TemplateTransformNodeData(
+            title="Test",
+            variables=[VariableSelector(variable="var1", value_selector=["sys", "input1"])],
+            template="{{ var1 }}",
+        )
+
+        mapping = TemplateTransformNode._extract_variable_selector_to_variable_mapping(
+            graph_config={}, node_id="node_123", node_data=node_data
+        )
+
+        assert mapping == {"node_123.var1": ["sys", "input1"]}
+
+    def test_extract_variable_selector_to_variable_mapping_ignores_invalid_entries(self):
+        node_data = {
+            "title": "Test",
+            "variables": [
+                {"variable": "var1", "value_selector": ["sys", "input1"]},
+                {"variable": "missing_selector"},
+                ["not", "a", "mapping"],
+                {"variable": 1, "value_selector": ["sys", "input2"]},
+                {"variable": "invalid_selector", "value_selector": ["sys", 2]},
+            ],
+            "template": "{{ var1 }}",
+        }
+
+        mapping = TemplateTransformNode._extract_variable_selector_to_variable_mapping(
+            graph_config={}, node_id="node_123", node_data=node_data
+        )
+
+        assert mapping == {"node_123.var1": ["sys", "input1"]}
 
     def test_run_with_empty_variables(self, mock_graph_runtime_state, graph_init_params):
         """Test _run with no variables (static template)."""
