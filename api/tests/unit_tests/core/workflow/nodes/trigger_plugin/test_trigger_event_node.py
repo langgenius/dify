@@ -1,14 +1,13 @@
 from collections.abc import Mapping
 
-from dify_graph.system_variable import SystemVariable
-
 from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
 from core.workflow.nodes.trigger_plugin.trigger_event_node import TriggerEventNode
+from core.workflow.system_variables import build_system_variables
 from dify_graph.entities import GraphInitParams
 from dify_graph.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
 from dify_graph.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
-from dify_graph.runtime import GraphRuntimeState, VariablePool
-from tests.workflow_test_utils import build_test_graph_init_params
+from dify_graph.runtime import GraphRuntimeState
+from tests.workflow_test_utils import build_test_graph_init_params, build_test_variable_pool
 
 
 def _build_context(graph_config: Mapping[str, object]) -> tuple[GraphInitParams, GraphRuntimeState]:
@@ -18,9 +17,10 @@ def _build_context(graph_config: Mapping[str, object]) -> tuple[GraphInitParams,
         invoke_from="debugger",
     )
     runtime_state = GraphRuntimeState(
-        variable_pool=VariablePool(
-            system_variables=SystemVariable(user_id="user", files=[]),
-            user_inputs={"payload": "value"},
+        variable_pool=build_test_variable_pool(
+            variables=build_system_variables(user_id="user", files=[]),
+            node_id="node-1",
+            inputs={"payload": "value"},
         ),
         start_at=0.0,
     )

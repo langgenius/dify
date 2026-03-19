@@ -12,7 +12,8 @@ from dify_graph.graph_events import NodeRunFailedEvent, NodeRunStartedEvent
 
 def test_build_fallback_failure_event_uses_naive_utc_and_failed_node_run_result(mocker) -> None:
     fixed_time = datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC).replace(tzinfo=None)
-    mocker.patch("dify_graph.graph_engine.worker.naive_utc_now", return_value=fixed_time)
+    mock_datetime = mocker.patch("dify_graph.graph_engine.worker.datetime")
+    mock_datetime.now.return_value = fixed_time.replace(tzinfo=UTC)
 
     worker = Worker(
         ready_queue=InMemoryReadyQueue(),
@@ -75,7 +76,8 @@ def test_worker_fallback_failure_event_reuses_observed_start_time() -> None:
 
     worker._event_queue.put.side_effect = put_side_effect
 
-    with patch("dify_graph.graph_engine.worker.naive_utc_now", return_value=failure_time):
+    with patch("dify_graph.graph_engine.worker.datetime") as mock_datetime:
+        mock_datetime.now.return_value = failure_time.replace(tzinfo=UTC)
         worker.run()
 
     fallback_event = captured_events[-1]
@@ -135,7 +137,8 @@ def test_worker_fallback_failure_event_ignores_nested_iteration_child_start_time
 
     worker._event_queue.put.side_effect = put_side_effect
 
-    with patch("dify_graph.graph_engine.worker.naive_utc_now", return_value=failure_time):
+    with patch("dify_graph.graph_engine.worker.datetime") as mock_datetime:
+        mock_datetime.now.return_value = failure_time.replace(tzinfo=UTC)
         worker.run()
 
     fallback_event = captured_events[-1]
