@@ -5,6 +5,7 @@ from typing import ParamSpec, TypeVar
 from flask import current_app, request
 from flask_login import user_logged_in
 from pydantic import BaseModel
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from extensions.ext_database import db
@@ -36,22 +37,18 @@ def get_user(tenant_id: str, user_id: str | None) -> EndUser:
             user_model = None
 
             if is_anonymous:
-                user_model = (
-                    session.query(EndUser)
-                    .where(
+                user_model = session.scalar(
+                    select(EndUser).where(
                         EndUser.session_id == user_id,
                         EndUser.tenant_id == tenant_id,
                     )
-                    .first()
                 )
             else:
-                user_model = (
-                    session.query(EndUser)
-                    .where(
+                user_model = session.scalar(
+                    select(EndUser).where(
                         EndUser.id == user_id,
                         EndUser.tenant_id == tenant_id,
                     )
-                    .first()
                 )
 
             if not user_model:
@@ -86,13 +83,7 @@ def get_user_tenant(view_func: Callable[P, R]):
             user_id = DefaultEndUserSessionID.DEFAULT_SESSION_ID
 
         try:
-            tenant_model = (
-                db.session.query(Tenant)
-                .where(
-                    Tenant.id == tenant_id,
-                )
-                .first()
-            )
+            tenant_model = db.session.scalar(select(Tenant).where(Tenant.id == tenant_id))
         except Exception:
             raise ValueError("tenant not found")
 

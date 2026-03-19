@@ -8,6 +8,7 @@ from typing import ParamSpec, TypeVar
 P = ParamSpec("P")
 R = TypeVar("R")
 from flask import abort, request
+from sqlalchemy import select
 
 from configs import dify_config
 from extensions.ext_database import db
@@ -75,7 +76,7 @@ def enterprise_inner_api_user_auth(view: Callable[P, R]):
         if signature_base64 != token:
             return view(*args, **kwargs)
 
-        kwargs["user"] = db.session.query(EndUser).where(EndUser.id == user_id).first()
+        kwargs["user"] = db.session.scalar(select(EndUser).where(EndUser.id == user_id))
 
         return view(*args, **kwargs)
 
