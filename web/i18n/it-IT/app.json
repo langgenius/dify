@@ -36,6 +36,8 @@
   "createApp": "CREA APP",
   "createFromConfigFile": "Crea da file DSL",
   "deleteAppConfirmContent": "Eliminare l'app è irreversibile. Gli utenti non potranno più accedere alla tua app e tutte le configurazioni e i log dei prompt verranno eliminati permanentemente.",
+  "deleteAppConfirmInputLabel": "Per confermare, digita \"{{appName}}\" nel campo sottostante:",
+  "deleteAppConfirmInputPlaceholder": "Inserisci il nome dell'app",
   "deleteAppConfirmTitle": "Eliminare questa app?",
   "dslUploader.browse": "Sfoglia",
   "dslUploader.button": "Trascina e rilascia il file, o",
