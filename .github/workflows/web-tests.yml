@@ -78,6 +78,7 @@ jobs:
         run: vp test --merge-reports --coverage --silent=passed-only
 
       - name: Report coverage
+        if: ${{ secrets.CODECOV_TOKEN != '' }}
         uses: codecov/codecov-action@1af58845a975a7985b0beb0cbe6fbbb71a41dbad # v5.5.3
         with:
           directory: web/coverage
