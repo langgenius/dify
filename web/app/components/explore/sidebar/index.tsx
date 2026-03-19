@@ -44,7 +44,7 @@ const SideBar = () => {
   const isDiscoverySelected = lastSegment === 'apps'
   const { data, isPending } = useGetInstalledApps()
   const installedApps = data?.installed_apps ?? []
-  const { mutateAsync: uninstallApp } = useUninstallApp()
+  const { mutateAsync: uninstallApp, isPending: isUninstalling } = useUninstallApp()
   const { mutateAsync: updatePinStatus } = useUpdateAppPinStatus()
 
   const media = useBreakpoints()
@@ -175,10 +175,10 @@ const SideBar = () => {
             </AlertDialogDescription>
           </div>
           <AlertDialogActions>
-            <AlertDialogCancelButton>
+            <AlertDialogCancelButton disabled={isUninstalling}>
               {t('operation.cancel', { ns: 'common' })}
             </AlertDialogCancelButton>
-            <AlertDialogConfirmButton onClick={handleDelete}>
+            <AlertDialogConfirmButton loading={isUninstalling} disabled={isUninstalling} onClick={handleDelete}>
               {t('operation.confirm', { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
