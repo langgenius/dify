@@ -15,8 +15,8 @@ export const scrollAreaScrollbarClassName = cn(
   'pointer-events-none data-[hovering]:pointer-events-auto data-[hovering]:opacity-100',
   'data-[scrolling]:pointer-events-auto data-[scrolling]:opacity-100',
   'hover:pointer-events-auto hover:opacity-100',
-  'data-[orientation=vertical]:absolute data-[orientation=vertical]:inset-y-0 data-[orientation=vertical]:right-0 data-[orientation=vertical]:w-3 data-[orientation=vertical]:justify-center',
-  'data-[orientation=horizontal]:absolute data-[orientation=horizontal]:inset-x-0 data-[orientation=horizontal]:bottom-0 data-[orientation=horizontal]:h-3 data-[orientation=horizontal]:items-center',
+  'data-[orientation=vertical]:absolute data-[orientation=vertical]:inset-y-0 data-[orientation=vertical]:w-3 data-[orientation=vertical]:justify-center',
+  'data-[orientation=horizontal]:absolute data-[orientation=horizontal]:inset-x-0 data-[orientation=horizontal]:h-3 data-[orientation=horizontal]:items-center',
 )
 
 export const scrollAreaThumbClassName = cn(
