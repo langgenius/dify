@@ -8,10 +8,12 @@ from collections.abc import Mapping, Sequence
 from datetime import datetime, timedelta
 from typing import Annotated, Any, ClassVar, Literal, Self
 
+import bleach
+import markdown
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from dify_graph.entities.base_node_data import BaseNodeData
-from dify_graph.enums import NodeType
+from dify_graph.enums import BuiltinNodeTypes, NodeType
 from dify_graph.nodes.base.variable_template_parser import VariableTemplateParser
 from dify_graph.runtime import VariablePool
 from dify_graph.variables.consts import SELECTORS_LENGTH
@@ -58,6 +60,39 @@ class EmailDeliveryConfig(BaseModel):
     """Configuration for email delivery method."""
 
     URL_PLACEHOLDER: ClassVar[str] = "{{#url#}}"
+    _SUBJECT_NEWLINE_PATTERN: ClassVar[re.Pattern[str]] = re.compile(r"[\r\n]+")
+    _ALLOWED_HTML_TAGS: ClassVar[list[str]] = [
+        "a",
+        "blockquote",
+        "br",
+        "code",
+        "em",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+        "hr",
+        "li",
+        "ol",
+        "p",
+        "pre",
+        "strong",
+        "table",
+        "tbody",
+        "td",
+        "th",
+        "thead",
+        "tr",
+        "ul",
+    ]
+    _ALLOWED_HTML_ATTRIBUTES: ClassVar[dict[str, list[str]]] = {
+        "a": ["href", "title"],
+        "td": ["align"],
+        "th": ["align"],
+    }
+    _ALLOWED_PROTOCOLS: ClassVar[list[str]] = ["http", "https", "mailto"]
 
     recipients: EmailRecipients
 
@@ -72,8 +107,8 @@ class EmailDeliveryConfig(BaseModel):
     body: str
     debug_mode: bool = False
 
-    def with_debug_recipient(self, user_id: str) -> "EmailDeliveryConfig":
-        if not user_id:
+    def with_debug_recipient(self, user_id: str | None) -> "EmailDeliveryConfig":
+        if user_id is None:
             debug_recipients = EmailRecipients(whole_workspace=False, items=[])
             return self.model_copy(update={"recipients": debug_recipients})
         debug_recipients = EmailRecipients(whole_workspace=False, items=[MemberRecipient(user_id=user_id)])
@@ -97,6 +132,43 @@ class EmailDeliveryConfig(BaseModel):
         if variable_pool is None:
             return templated_body
         return variable_pool.convert_template(templated_body).text
+
+    @classmethod
+    def render_markdown_body(cls, body: str) -> str:
+        """Render markdown to safe HTML for email delivery."""
+        sanitized_markdown = bleach.clean(
+            body,
+            tags=[],
+            attributes={},
+            strip=True,
+            strip_comments=True,
+        )
+        rendered_html = markdown.markdown(
+            sanitized_markdown,
+            extensions=["nl2br", "tables"],
+            extension_configs={"tables": {"use_align_attribute": True}},
+        )
+        return bleach.clean(
+            rendered_html,
+            tags=cls._ALLOWED_HTML_TAGS,
+            attributes=cls._ALLOWED_HTML_ATTRIBUTES,
+            protocols=cls._ALLOWED_PROTOCOLS,
+            strip=True,
+            strip_comments=True,
+        )
+
+    @classmethod
+    def sanitize_subject(cls, subject: str) -> str:
+        """Sanitize email subject to plain text and prevent CRLF injection."""
+        sanitized_subject = bleach.clean(
+            subject,
+            tags=[],
+            attributes={},
+            strip=True,
+            strip_comments=True,
+        )
+        sanitized_subject = cls._SUBJECT_NEWLINE_PATTERN.sub(" ", sanitized_subject)
+        return " ".join(sanitized_subject.split())
 
 
 class _DeliveryMethodBase(BaseModel):
@@ -141,7 +213,7 @@ def apply_debug_email_recipient(
     method: DeliveryChannelConfig,
     *,
     enabled: bool,
-    user_id: str,
+    user_id: str | None,
 ) -> DeliveryChannelConfig:
     if not enabled:
         return method
@@ -149,7 +221,7 @@ def apply_debug_email_recipient(
         return method
     if not method.config.debug_mode:
         return method
-    debug_config = method.config.with_debug_recipient(user_id or "")
+    debug_config = method.config.with_debug_recipient(user_id)
     return method.model_copy(update={"config": debug_config})
 
 
@@ -215,7 +287,7 @@ class UserAction(BaseModel):
 class HumanInputNodeData(BaseNodeData):
     """Human Input node data."""
 
-    type: NodeType = NodeType.HUMAN_INPUT
+    type: NodeType = BuiltinNodeTypes.HUMAN_INPUT
     delivery_methods: list[DeliveryChannelConfig] = Field(default_factory=list)
     form_content: str = ""
     inputs: list[FormInput] = Field(default_factory=list)

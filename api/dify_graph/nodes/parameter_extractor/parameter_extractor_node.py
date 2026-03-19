@@ -12,7 +12,7 @@ from core.prompt.simple_prompt_transform import ModelMode
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from dify_graph.entities.graph_config import NodeConfigDict
 from dify_graph.enums import (
-    NodeType,
+    BuiltinNodeTypes,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
@@ -97,7 +97,7 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
     Parameter Extractor Node.
     """
 
-    node_type = NodeType.PARAMETER_EXTRACTOR
+    node_type = BuiltinNodeTypes.PARAMETER_EXTRACTOR
 
     _model_instance: ModelInstance
     _credentials_provider: "CredentialsProvider"

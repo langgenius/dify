@@ -1,4 +1,3 @@
-configs/middleware/cache/redis_pubsub_config.py
 controllers/console/app/annotation.py
 controllers/console/app/app.py
 controllers/console/app/app_import.py
@@ -123,7 +122,7 @@ dify_graph/nodes/human_input/human_input_node.py
 dify_graph/nodes/if_else/if_else_node.py
 dify_graph/nodes/iteration/iteration_node.py
 dify_graph/nodes/knowledge_index/knowledge_index_node.py
-dify_graph/nodes/knowledge_retrieval/knowledge_retrieval_node.py
+core/workflow/nodes/knowledge_retrieval/knowledge_retrieval_node.py
 dify_graph/nodes/list_operator/node.py
 dify_graph/nodes/llm/node.py
 dify_graph/nodes/loop/loop_node.py
@@ -138,8 +137,6 @@ dify_graph/nodes/trigger_webhook/node.py
 dify_graph/nodes/variable_aggregator/variable_aggregator_node.py
 dify_graph/nodes/variable_assigner/v1/node.py
 dify_graph/nodes/variable_assigner/v2/node.py
-dify_graph/variables/types.py
-extensions/ext_fastopenapi.py
 extensions/logstore/repositories/logstore_api_workflow_run_repository.py
 extensions/otel/instrumentation.py
 extensions/otel/runtime.py
@@ -156,19 +153,7 @@ extensions/storage/oracle_oci_storage.py
 extensions/storage/supabase_storage.py
 extensions/storage/tencent_cos_storage.py
 extensions/storage/volcengine_tos_storage.py
-factories/variable_factory.py
-libs/external_api.py
 libs/gmpy2_pkcs10aep_cipher.py
-libs/helper.py
-libs/login.py
-libs/module_loading.py
-libs/oauth.py
-libs/oauth_data_source.py
-models/trigger.py
-models/workflow.py
-repositories/sqlalchemy_api_workflow_node_execution_repository.py
-repositories/sqlalchemy_api_workflow_run_repository.py
-repositories/sqlalchemy_execution_extra_content_repository.py
 schedule/queue_monitor_task.py
 services/account_service.py
 services/audio_service.py

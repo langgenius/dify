@@ -155,8 +155,8 @@ def wrap_span_metadata(metadata, **kwargs):
     return metadata
 
 
-# Mapping from NodeType string values to OpenInference span kinds.
-# NodeType values not listed here default to CHAIN.
+# Mapping from built-in node type strings to OpenInference span kinds.
+# Node types not listed here default to CHAIN.
 _NODE_TYPE_TO_SPAN_KIND: dict[str, OpenInferenceSpanKindValues] = {
     "llm": OpenInferenceSpanKindValues.LLM,
     "knowledge-retrieval": OpenInferenceSpanKindValues.RETRIEVER,
@@ -168,7 +168,7 @@ _NODE_TYPE_TO_SPAN_KIND: dict[str, OpenInferenceSpanKindValues] = {
 def _get_node_span_kind(node_type: str) -> OpenInferenceSpanKindValues:
     """Return the OpenInference span kind for a given workflow node type.
 
-    Covers every ``NodeType`` enum value.  Nodes that do not have a
+    Covers every built-in node type string. Nodes that do not have a
     specialised span kind (e.g. ``start``, ``end``, ``if-else``,
     ``code``, ``loop``, ``iteration``, etc.) are mapped to ``CHAIN``.
     """

@@ -1,11 +1,22 @@
 from enum import StrEnum
 
-from dify_graph.enums import NodeType
+from core.trigger.constants import (
+    TRIGGER_PLUGIN_NODE_TYPE,
+    TRIGGER_SCHEDULE_NODE_TYPE,
+    TRIGGER_WEBHOOK_NODE_TYPE,
+)
 
 
 class CreatorUserRole(StrEnum):
     ACCOUNT = "account"
     END_USER = "end_user"
+
+    @classmethod
+    def _missing_(cls, value):
+        if value == "end-user":
+            return cls.END_USER
+        else:
+            return super()._missing_(value)
 
 
 class WorkflowRunTriggeredFrom(StrEnum):
@@ -66,9 +77,29 @@ class AppTriggerStatus(StrEnum):
 class AppTriggerType(StrEnum):
     """App Trigger Type Enum"""
 
-    TRIGGER_WEBHOOK = NodeType.TRIGGER_WEBHOOK.value
-    TRIGGER_SCHEDULE = NodeType.TRIGGER_SCHEDULE.value
-    TRIGGER_PLUGIN = NodeType.TRIGGER_PLUGIN.value
+    TRIGGER_WEBHOOK = TRIGGER_WEBHOOK_NODE_TYPE
+    TRIGGER_SCHEDULE = TRIGGER_SCHEDULE_NODE_TYPE
+    TRIGGER_PLUGIN = TRIGGER_PLUGIN_NODE_TYPE
 
     # for backward compatibility
     UNKNOWN = "unknown"
+
+
+class AppStatus(StrEnum):
+    """App Status Enum"""
+
+    NORMAL = "normal"
+
+
+class AppMCPServerStatus(StrEnum):
+    """AppMCPServer Status Enum"""
+
+    NORMAL = "normal"
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+
+
+class ConversationStatus(StrEnum):
+    """Conversation Status Enum"""
+
+    NORMAL = "normal"

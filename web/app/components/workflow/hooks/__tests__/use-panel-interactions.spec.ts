@@ -26,7 +26,13 @@ describe('usePanelInteractions', () => {
   })
 
   it('handlePaneContextMenu should set panelMenu with computed coordinates when container exists', () => {
-    const { result, store } = renderWorkflowHook(() => usePanelInteractions())
+    const { result, store } = renderWorkflowHook(() => usePanelInteractions(), {
+      initialStoreState: {
+        nodeMenu: { top: 20, left: 40, nodeId: 'n1' },
+        selectionMenu: { top: 30, left: 50 },
+        edgeMenu: { clientX: 320, clientY: 180, edgeId: 'e1' },
+      },
+    })
     const preventDefault = vi.fn()
 
     result.current.handlePaneContextMenu({
@@ -40,6 +46,9 @@ describe('usePanelInteractions', () => {
       top: 200,
       left: 250,
     })
+    expect(store.getState().nodeMenu).toBeUndefined()
+    expect(store.getState().selectionMenu).toBeUndefined()
+    expect(store.getState().edgeMenu).toBeUndefined()
   })
 
   it('handlePaneContextMenu should throw when container does not exist', () => {
@@ -74,5 +83,15 @@ describe('usePanelInteractions', () => {
     result.current.handleNodeContextmenuCancel()
 
     expect(store.getState().nodeMenu).toBeUndefined()
+  })
+
+  it('handleEdgeContextmenuCancel should clear edgeMenu', () => {
+    const { result, store } = renderWorkflowHook(() => usePanelInteractions(), {
+      initialStoreState: { edgeMenu: { clientX: 300, clientY: 200, edgeId: 'e1' } },
+    })
+
+    result.current.handleEdgeContextmenuCancel()
+
+    expect(store.getState().edgeMenu).toBeUndefined()
   })
 })

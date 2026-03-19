@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from dify_graph.enums import ErrorStrategy, NodeType, WorkflowNodeExecutionStatus
+from dify_graph.enums import BuiltinNodeTypes, ErrorStrategy, WorkflowNodeExecutionStatus
 from dify_graph.graph import Graph
 from dify_graph.nodes.template_transform.template_renderer import TemplateRenderError
 from dify_graph.nodes.template_transform.template_transform_node import TemplateTransformNode
@@ -65,7 +65,7 @@ class TestTemplateTransformNode:
             template_renderer=mock_renderer,
         )
 
-        assert node.node_type == NodeType.TEMPLATE_TRANSFORM
+        assert node.node_type == BuiltinNodeTypes.TEMPLATE_TRANSFORM
         assert node._node_data.title == "Template Transform"
         assert len(node._node_data.variables) == 2
         assert node._node_data.template == "Hello {{ name }}, you are {{ age }} years old!"

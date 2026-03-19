@@ -24,6 +24,28 @@ describe('zodSubmitValidator', () => {
     })
   })
 
+  it('should only keep the first error when multiple errors occur for the same field', () => {
+    // Both string() empty check and email() validation will fail here conceptually,
+    // but Zod aborts early on type errors sometimes. Let's use custom refinements that both trigger
+    const schema = z.object({
+      email: z.string().superRefine((val, ctx) => {
+        if (!val.includes('@')) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Invalid email format' })
+        }
+        if (val.length < 10) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Email too short' })
+        }
+      }),
+    })
+    const validator = zodSubmitValidator(schema)
+    // "bad" triggers both missing '@' and length < 10
+    expect(validator({ value: { email: 'bad' } })).toEqual({
+      fields: {
+        email: 'Invalid email format',
+      },
+    })
+  })
+
   it('should ignore root-level issues without a field path', () => {
     const schema = z.object({ value: z.number() }).superRefine((_value, ctx) => {
       ctx.addIssue({
