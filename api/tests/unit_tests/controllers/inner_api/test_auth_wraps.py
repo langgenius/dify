@@ -249,8 +249,8 @@ class TestEnterpriseInnerApiUserAuth:
             headers={"Authorization": f"Bearer {user_id}:{valid_signature}", "X-Inner-Api-Key": inner_api_key}
         ):
             with patch.object(dify_config, "INNER_API", True):
-                with patch("controllers.inner_api.wraps.db.session.query") as mock_query:
-                    mock_query.return_value.where.return_value.first.return_value = mock_user
+                with patch("controllers.inner_api.wraps.db.session.get") as mock_get:
+                    mock_get.return_value = mock_user
                     result = protected_view()
 
         # Assert
