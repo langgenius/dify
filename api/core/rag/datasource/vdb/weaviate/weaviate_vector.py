@@ -37,6 +37,12 @@ logger = logging.getLogger(__name__)
 _weaviate_client: weaviate.WeaviateClient | None = None
 _weaviate_client_lock = threading.Lock()
 
+# Process-level cache: tracks collections whose required properties have been
+# verified in this process lifetime.  Guarded by _ensured_collections_lock so
+# concurrent Celery/thread workers can share the set safely.
+_ensured_collections: set[str] = set()
+_ensured_collections_lock = threading.Lock()
+
 
 def _shutdown_weaviate_client() -> None:
     """
@@ -230,26 +236,35 @@ class WeaviateVector(BaseVector):
                         vector_config=wc.Configure.Vectors.self_provided(),
                     )
 
-                self._ensure_properties()
+                if self._ensure_properties():
+                    # Mark collection as ensured so _maybe_ensure_properties() is
+                    # a no-op for subsequent operations in this process.
+                    _ensured_collections.add(self._collection_name)
                 redis_client.set(cache_key, 1, ex=3600)
             except Exception as e:
                 logger.exception("Error creating collection %s", self._collection_name)
                 raise
 
-    def _ensure_properties(self) -> None:
-        """
-        Ensures all required properties exist in the collection schema.
+    def _ensure_properties(self) -> bool:
+        """Ensures all required properties exist in the collection schema.
 
-        Adds missing properties if the collection exists but lacks them.
+        Adds missing properties (document_id, doc_id, doc_type, chunk_index) if the
+        collection exists but lacks them.  This handles backward compatibility for
+        collections created before these properties were introduced.
+
+        Returns ``True`` if all properties are confirmed present (either they
+        already existed or were successfully added).  Returns ``False`` if
+        any property addition failed, signalling that the caller should NOT
+        cache this collection as "ensured".
         """
         if not self._client.collections.exists(self._collection_name):
-            return
+            return True
 
         col = self._client.collections.use(self._collection_name)
         cfg = col.config.get()
         existing = {p.name for p in (cfg.properties or [])}
 
-        to_add = []
+        to_add: list[wc.Property] = []
         if "document_id" not in existing:
             to_add.append(wc.Property(name="document_id", data_type=wc.DataType.TEXT))
         if "doc_id" not in existing:
@@ -259,13 +274,42 @@ class WeaviateVector(BaseVector):
         if "chunk_index" not in existing:
             to_add.append(wc.Property(name="chunk_index", data_type=wc.DataType.INT))
 
+        all_succeeded = True
         for prop in to_add:
             try:
                 col.config.add_property(prop)
             except Exception as e:
                 logger.warning("Could not add property %s: %s", prop.name, e)
+                all_succeeded = False
 
-    def _get_uuids(self, documents: list[Document]) -> list[str]:
+        return all_succeeded
+
+    def _maybe_ensure_properties(self) -> None:
+        """One-time proactive schema check per collection per process lifetime.
+
+        On first access to a collection, verifies that all required properties
+        (document_id, doc_id, doc_type, chunk_index) exist in the schema.  If any
+        are missing they are added transparently.
+
+        Subsequent calls for the same collection in this process are no-ops
+        (just a fast ``set`` membership test).
+
+        Uses double-checked locking so concurrent threads in the same process
+        don't duplicate work.
+
+        If property migration fails (e.g. Weaviate is temporarily unavailable),
+        the collection is *not* marked as ensured so that the next request will
+        retry the migration automatically.
+        """
+        if self._collection_name in _ensured_collections:
+            return
+        with _ensured_collections_lock:
+            if self._collection_name in _ensured_collections:
+                return
+            if self._ensure_properties():
+                _ensured_collections.add(self._collection_name)
+
+    def _get_uuids(self, texts: list[Document]) -> list[str]:
         """
         Generates deterministic UUIDs for documents based on their content.
 
@@ -274,7 +318,7 @@ class WeaviateVector(BaseVector):
         URL_NAMESPACE = _uuid.UUID("6ba7b811-9dad-11d1-80b4-00c04fd430c8")
 
         uuids = []
-        for doc in documents:
+        for doc in texts:
             uuid_val = _uuid.uuid5(URL_NAMESPACE, doc.page_content)
             uuids.append(str(uuid_val))
 
@@ -335,6 +379,7 @@ class WeaviateVector(BaseVector):
         if not self._client.collections.exists(self._collection_name):
             return
 
+        self._maybe_ensure_properties()
         col = self._client.collections.use(self._collection_name)
         col.data.delete_many(where=Filter.by_property(key).equal(value))
 
@@ -348,6 +393,7 @@ class WeaviateVector(BaseVector):
         if not self._client.collections.exists(self._collection_name):
             return False
 
+        self._maybe_ensure_properties()
         col = self._client.collections.use(self._collection_name)
         res = col.query.fetch_objects(
             filters=Filter.by_property("doc_id").equal(id),
@@ -385,6 +431,7 @@ class WeaviateVector(BaseVector):
         if not self._client.collections.exists(self._collection_name):
             return []
 
+        self._maybe_ensure_properties()
         col = self._client.collections.use(self._collection_name)
         props = list({*self._attributes, self._DOCUMENT_ID_PROPERTY, Field.TEXT_KEY.value})
 
@@ -432,6 +479,7 @@ class WeaviateVector(BaseVector):
         if not self._client.collections.exists(self._collection_name):
             return []
 
+        self._maybe_ensure_properties()
         col = self._client.collections.use(self._collection_name)
         props = list({*self._attributes, Field.TEXT_KEY.value})
 
