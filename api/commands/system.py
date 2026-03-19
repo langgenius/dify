@@ -2,6 +2,7 @@ import logging
 
 import click
 import sqlalchemy as sa
+from sqlalchemy import delete, select, update
 from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
@@ -41,7 +42,7 @@ def reset_encrypt_key_pair():
         click.echo(click.style("This command is only for SELF_HOSTED installations.", fg="red"))
         return
     with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
-        tenants = session.query(Tenant).all()
+        tenants = session.scalars(select(Tenant)).all()
         for tenant in tenants:
             if not tenant:
                 click.echo(click.style("No workspaces found. Run /install first.", fg="red"))
@@ -49,8 +50,8 @@ def reset_encrypt_key_pair():
 
             tenant.encrypt_public_key = generate_key_pair(tenant.id)
 
-            session.query(Provider).where(Provider.provider_type == "custom", Provider.tenant_id == tenant.id).delete()
-            session.query(ProviderModel).where(ProviderModel.tenant_id == tenant.id).delete()
+            session.execute(delete(Provider).where(Provider.provider_type == "custom", Provider.tenant_id == tenant.id))
+            session.execute(delete(ProviderModel).where(ProviderModel.tenant_id == tenant.id))
 
             click.echo(
                 click.style(
@@ -93,7 +94,7 @@ def convert_to_agent_apps():
                 app_id = str(i.id)
                 if app_id not in proceeded_app_ids:
                     proceeded_app_ids.append(app_id)
-                    app = db.session.query(App).where(App.id == app_id).first()
+                    app = db.session.scalar(select(App).where(App.id == app_id))
                     if app is not None:
                         apps.append(app)
 
@@ -108,8 +109,8 @@ def convert_to_agent_apps():
                 db.session.commit()
 
                 # update conversation mode to agent
-                db.session.query(Conversation).where(Conversation.app_id == app.id).update(
-                    {Conversation.mode: AppMode.AGENT_CHAT}
+                db.session.execute(
+                    update(Conversation).where(Conversation.app_id == app.id).values(mode=AppMode.AGENT_CHAT)
                 )
 
                 db.session.commit()
@@ -177,7 +178,7 @@ where sites.id is null limit 1000"""
                     continue
 
                 try:
-                    app = db.session.query(App).where(App.id == app_id).first()
+                    app = db.session.scalar(select(App).where(App.id == app_id))
                     if not app:
                         logger.info("App %s not found", app_id)
                         continue

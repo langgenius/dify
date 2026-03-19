@@ -180,12 +180,12 @@ describe('dataset-config/params-config', () => {
       const dialog = await screen.findByRole('dialog', {}, { timeout: 3000 })
       const dialogScope = within(dialog)
 
-      const incrementButtons = dialogScope.getAllByRole('button', { name: 'increment' })
+      const incrementButtons = dialogScope.getAllByRole('button', { name: /increment/i })
       await user.click(incrementButtons[0])
 
       await waitFor(() => {
-        const [topKInput] = dialogScope.getAllByRole('spinbutton')
-        expect(topKInput).toHaveValue(5)
+        const [topKInput] = dialogScope.getAllByRole('textbox')
+        expect(topKInput).toHaveValue('5')
       })
 
       await user.click(dialogScope.getByRole('button', { name: 'common.operation.save' }))
@@ -197,10 +197,10 @@ describe('dataset-config/params-config', () => {
       await user.click(screen.getByRole('button', { name: 'dataset.retrievalSettings' }))
       const reopenedDialog = await screen.findByRole('dialog', {}, { timeout: 3000 })
       const reopenedScope = within(reopenedDialog)
-      const [reopenedTopKInput] = reopenedScope.getAllByRole('spinbutton')
+      const [reopenedTopKInput] = reopenedScope.getAllByRole('textbox')
 
       // Assert
-      expect(reopenedTopKInput).toHaveValue(5)
+      expect(reopenedTopKInput).toHaveValue('5')
     })
 
     it('should discard changes when cancel is clicked', async () => {
@@ -213,12 +213,12 @@ describe('dataset-config/params-config', () => {
       const dialog = await screen.findByRole('dialog', {}, { timeout: 3000 })
       const dialogScope = within(dialog)
 
-      const incrementButtons = dialogScope.getAllByRole('button', { name: 'increment' })
+      const incrementButtons = dialogScope.getAllByRole('button', { name: /increment/i })
       await user.click(incrementButtons[0])
 
       await waitFor(() => {
-        const [topKInput] = dialogScope.getAllByRole('spinbutton')
-        expect(topKInput).toHaveValue(5)
+        const [topKInput] = dialogScope.getAllByRole('textbox')
+        expect(topKInput).toHaveValue('5')
       })
 
       const cancelButton = await dialogScope.findByRole('button', { name: 'common.operation.cancel' })
@@ -231,10 +231,10 @@ describe('dataset-config/params-config', () => {
       await user.click(screen.getByRole('button', { name: 'dataset.retrievalSettings' }))
       const reopenedDialog = await screen.findByRole('dialog', {}, { timeout: 3000 })
       const reopenedScope = within(reopenedDialog)
-      const [reopenedTopKInput] = reopenedScope.getAllByRole('spinbutton')
+      const [reopenedTopKInput] = reopenedScope.getAllByRole('textbox')
 
       // Assert
-      expect(reopenedTopKInput).toHaveValue(4)
+      expect(reopenedTopKInput).toHaveValue('4')
     })
 
     it('should prevent saving when rerank model is required but invalid', async () => {

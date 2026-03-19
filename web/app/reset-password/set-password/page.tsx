@@ -1,13 +1,13 @@
 'use client'
 import { RiCheckboxCircleFill } from '@remixicon/react'
 import { useCountDown } from 'ahooks'
-import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { validPassword } from '@/config'
+import { useRouter, useSearchParams } from '@/next/navigation'
 import { changePasswordWithToken } from '@/service/common'
 import { cn } from '@/utils/classnames'
 
@@ -24,9 +24,9 @@ const ChangePasswordForm = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   const showErrorMessage = useCallback((message: string) => {
-    Toast.notify({
+    toast.add({
       type: 'error',
-      message,
+      title: message,
     })
   }, [])
 

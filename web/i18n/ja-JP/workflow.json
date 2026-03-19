@@ -861,6 +861,7 @@
   "nodes.templateTransform.codeSupportTip": "Jinja2 のみをサポートしています",
   "nodes.templateTransform.inputVars": "入力変数",
   "nodes.templateTransform.outputVars.output": "変換されたコンテンツ",
+  "nodes.tool.authorizationRequired": "認証が必要です",
   "nodes.tool.authorize": "認証する",
   "nodes.tool.inputVars": "入力変数",
   "nodes.tool.insertPlaceholder1": "タイプするか押してください",

@@ -2,10 +2,39 @@ import type { ValidationError } from 'jsonschema'
 import type { ArrayItems, Field, LLMNodeType } from './types'
 import * as z from 'zod'
 import { draft07Validator, forbidBooleanProperties } from '@/utils/validators'
+import { extractPluginId } from '../../utils/plugin'
 import { ArrayType, Type } from './types'
 
 export const checkNodeValid = (_payload: LLMNodeType) => {
   return true
+}
+
+export enum LLMModelIssueCode {
+  providerRequired = 'provider-required',
+  providerPluginUnavailable = 'provider-plugin-unavailable',
+}
+
+export const getLLMModelIssue = ({
+  modelProvider,
+  isModelProviderInstalled = true,
+}: {
+  modelProvider?: string
+  isModelProviderInstalled?: boolean
+}) => {
+  if (!modelProvider)
+    return LLMModelIssueCode.providerRequired
+
+  if (!isModelProviderInstalled)
+    return LLMModelIssueCode.providerPluginUnavailable
+
+  return null
+}
+
+export const isLLMModelProviderInstalled = (modelProvider: string | undefined, installedPluginIds: ReadonlySet<string>) => {
+  if (!modelProvider)
+    return true
+
+  return installedPluginIds.has(extractPluginId(modelProvider))
 }
 
 export const getFieldType = (field: Field) => {

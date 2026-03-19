@@ -2,7 +2,6 @@
 
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
 import type { InjectWorkflowStoreSliceFn } from '@/app/components/workflow/store'
-import { useSearchParams } from 'next/navigation'
 import {
   useEffect,
   useMemo,
@@ -25,6 +24,7 @@ import {
   initialNodes,
 } from '@/app/components/workflow/utils'
 import { useAppContext } from '@/context/app-context'
+import { useSearchParams } from '@/next/navigation'
 import { fetchRunDetail } from '@/service/log'
 import { useAppTriggers } from '@/service/use-tools'
 import { AppModeEnum } from '@/types/app'

@@ -9,7 +9,7 @@ import DocumentTableRow from '../document-table-row'
 const mockPush = vi.fn()
 let mockSearchParams = ''
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
   }),
@@ -126,20 +126,16 @@ describe('DocumentTableRow', () => {
   describe('Selection', () => {
     it('should show check icon when isSelected is true', () => {
       const { container } = render(<DocumentTableRow {...defaultProps} isSelected />, { wrapper: createWrapper() })
-      // When selected, the checkbox should have a check icon (RiCheckLine svg)
       const checkbox = findCheckbox(container)
       expect(checkbox).toBeInTheDocument()
-      const checkIcon = checkbox?.querySelector('svg')
-      expect(checkIcon).toBeInTheDocument()
+      expect(screen.getByTestId('check-icon-doc-row-doc-1')).toBeInTheDocument()
     })
 
     it('should not show check icon when isSelected is false', () => {
       const { container } = render(<DocumentTableRow {...defaultProps} isSelected={false} />, { wrapper: createWrapper() })
       const checkbox = findCheckbox(container)
       expect(checkbox).toBeInTheDocument()
-      // When not selected, there should be no check icon inside the checkbox
-      const checkIcon = checkbox?.querySelector('svg')
-      expect(checkIcon).not.toBeInTheDocument()
+      expect(screen.queryByTestId('check-icon-doc-row-doc-1')).not.toBeInTheDocument()
     })
 
     it('should call onSelectOne when checkbox is clicked', () => {

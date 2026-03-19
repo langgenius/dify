@@ -25,6 +25,7 @@ from core.app.app_config.entities import ModelConfig as WorkflowModelConfig
 from core.app.entities.app_invoke_entities import InvokeFrom, ModelConfigWithCredentialsEntity
 from core.entities.agent_entities import PlanningStrategy
 from core.entities.model_entities import ModelStatus
+from core.rag.data_post_processor.data_post_processor import WeightsDict
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexStructureType
@@ -32,10 +33,10 @@ from core.rag.models.document import Document
 from core.rag.rerank.rerank_type import RerankMode
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
+from core.workflow.nodes.knowledge_retrieval import exc
+from core.workflow.nodes.knowledge_retrieval.retrieval import KnowledgeRetrievalRequest
 from dify_graph.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.model_runtime.entities.model_entities import ModelFeature
-from dify_graph.nodes.knowledge_retrieval import exc
-from dify_graph.repositories.rag_retrieval_protocol import KnowledgeRetrievalRequest
 from models.dataset import Dataset
 
 # ==================== Helper Functions ====================
@@ -3730,7 +3731,7 @@ class TestDatasetRetrievalAdditionalHelpers:
                 attachment_ids=None,
                 dataset_ids=["d1"],
                 app_id="a1",
-                user_from="web",
+                user_from="account",
                 user_id="u1",
             )
             mock_session.add_all.assert_not_called()
@@ -3740,7 +3741,7 @@ class TestDatasetRetrievalAdditionalHelpers:
                 attachment_ids=["f1"],
                 dataset_ids=["d1", "d2"],
                 app_id="a1",
-                user_from="web",
+                user_from="account",
                 user_id="u1",
             )
             mock_session.add_all.assert_called()
@@ -4686,7 +4687,10 @@ class TestSingleAndMultipleRetrieveCoverage:
             extra={"dataset_name": "Ext", "title": "Ext"},
         )
         app = Flask(__name__)
-        weights = {"vector_setting": {}}
+        weights: WeightsDict = {
+            "vector_setting": {"vector_weight": 0.5, "embedding_provider_name": "", "embedding_model_name": ""},
+            "keyword_setting": {"keyword_weight": 0.5},
+        }
 
         def fake_multiple_thread(**kwargs):
             if kwargs["query"]:

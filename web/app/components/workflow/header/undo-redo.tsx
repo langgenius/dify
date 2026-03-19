@@ -1,8 +1,4 @@
 import type { FC } from 'react'
-import {
-  RiArrowGoBackLine,
-  RiArrowGoForwardFill,
-} from '@remixicon/react'
 import { memo, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ViewWorkflowHistory from '@/app/components/workflow/header/view-workflow-history'
@@ -33,28 +29,34 @@ const UndoRedo: FC<UndoRedoProps> = ({ handleUndo, handleRedo }) => {
   return (
     <div className="flex items-center space-x-0.5 rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-lg backdrop-blur-[5px]">
       <TipPopup title={t('common.undo', { ns: 'workflow' })!} shortcuts={['ctrl', 'z']}>
-        <div
+        <button
+          type="button"
+          aria-label={t('common.undo', { ns: 'workflow' })!}
           data-tooltip-id="workflow.undo"
+          disabled={nodesReadOnly || buttonsDisabled.undo}
           className={
             cn('system-sm-medium flex h-8 w-8 cursor-pointer select-none items-center rounded-md px-1.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary', (nodesReadOnly || buttonsDisabled.undo)
             && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled')
           }
-          onClick={() => !nodesReadOnly && !buttonsDisabled.undo && handleUndo()}
+          onClick={handleUndo}
         >
-          <RiArrowGoBackLine className="h-4 w-4" />
-        </div>
+          <span className="i-ri-arrow-go-back-line h-4 w-4" />
+        </button>
       </TipPopup>
       <TipPopup title={t('common.redo', { ns: 'workflow' })!} shortcuts={['ctrl', 'y']}>
-        <div
+        <button
+          type="button"
+          aria-label={t('common.redo', { ns: 'workflow' })!}
           data-tooltip-id="workflow.redo"
+          disabled={nodesReadOnly || buttonsDisabled.redo}
           className={
             cn('system-sm-medium flex h-8 w-8 cursor-pointer select-none items-center rounded-md px-1.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary', (nodesReadOnly || buttonsDisabled.redo)
             && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled')
           }
-          onClick={() => !nodesReadOnly && !buttonsDisabled.redo && handleRedo()}
+          onClick={handleRedo}
         >
-          <RiArrowGoForwardFill className="h-4 w-4" />
-        </div>
+          <span className="i-ri-arrow-go-forward-fill h-4 w-4" />
+        </button>
       </TipPopup>
       <Divider type="vertical" className="mx-0.5 h-3.5" />
       <ViewWorkflowHistory />

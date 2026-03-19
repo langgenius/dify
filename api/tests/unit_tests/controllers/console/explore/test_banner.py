@@ -2,6 +2,7 @@ from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import controllers.console.explore.banner as banner_module
+from models.enums import BannerStatus
 
 
 def unwrap(func):
@@ -20,7 +21,7 @@ class TestBannerApi:
         banner.content = {"text": "hello"}
         banner.link = "https://example.com"
         banner.sort = 1
-        banner.status = "enabled"
+        banner.status = BannerStatus.ENABLED
         banner.created_at = datetime(2024, 1, 1)
 
         query = MagicMock()
@@ -54,7 +55,7 @@ class TestBannerApi:
         banner.content = {"text": "fallback"}
         banner.link = None
         banner.sort = 1
-        banner.status = "enabled"
+        banner.status = BannerStatus.ENABLED
         banner.created_at = None
 
         query = MagicMock()

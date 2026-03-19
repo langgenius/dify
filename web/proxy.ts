@@ -1,7 +1,7 @@
-import type { NextRequest } from 'next/server'
+import type { NextRequest } from '@/next/server'
 import { Buffer } from 'node:buffer'
-import { NextResponse } from 'next/server'
 import { env } from '@/env'
+import { NextResponse } from '@/next/server'
 
 const NECESSARY_DOMAIN = '*.sentry.io http://localhost:* http://127.0.0.1:* https://analytics.google.com googletagmanager.com *.googletagmanager.com https://www.google-analytics.com https://api.github.com https://api2.amplitude.com *.amplitude.com'
 
@@ -72,12 +72,10 @@ export const config = {
      * Match all request paths except for the ones starting with:
      * - api (API routes)
      * - _next/static (static files)
-     * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      */
     {
-      // source: '/((?!api|_next/static|_next/image|favicon.ico).*)',
-      source: '/((?!_next/static|_next/image|favicon.ico).*)',
+      source: '/((?!_next/static|favicon.ico).*)',
       // source: '/(.*)',
       // missing: [
       //   { type: 'header', key: 'next-router-prefetch' },

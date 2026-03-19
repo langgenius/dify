@@ -166,6 +166,7 @@ class TestDatasourceFileManager:
         # Setup
         mock_guess_ext.return_value = None  # Cannot guess
         mock_uuid.return_value = MagicMock(hex="unique_hex")
+        mock_config.STORAGE_TYPE = "local"
 
         # Execute
         upload_file = DatasourceFileManager.create_file_by_raw(

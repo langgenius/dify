@@ -3,7 +3,6 @@ import type {
   DSLImportResponse,
 } from '@/models/app'
 import type { AppIconType } from '@/types/app'
-import { useRouter } from 'next/navigation'
 import {
   useCallback,
   useRef,
@@ -15,6 +14,7 @@ import { usePluginDependencies } from '@/app/components/workflow/plugin-dependen
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useSelector } from '@/context/app-context'
 import { DSLImportStatus } from '@/models/app'
+import { useRouter } from '@/next/navigation'
 import {
   importDSL,
   importDSLConfirm,
