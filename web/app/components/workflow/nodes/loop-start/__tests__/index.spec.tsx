@@ -1,8 +1,8 @@
 import type { NodeProps } from 'reactflow'
 import type { CommonNodeType } from '@/app/components/workflow/types'
 import { render, waitFor } from '@testing-library/react'
-import ReactFlow, { ReactFlowProvider } from 'reactflow'
-import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { createNode } from '@/app/components/workflow/__tests__/fixtures'
+import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import {
   useAvailableBlocks,
   useIsChatMode,
@@ -41,29 +41,26 @@ const FlowNode = (props: NodeProps<CommonNodeType>) => (
   <LoopStartNode {...props} />
 )
 
-const renderFlowNode = () => {
-  return renderWorkflowComponent(
-    <div style={{ width: 400, height: 300 }}>
-      <ReactFlowProvider>
-        <ReactFlow
-          fitView
-          edges={[]}
-          nodes={[{
-            id: 'loop-start-node',
-            type: 'loopStartNode',
-            position: { x: 0, y: 0 },
-            data: {
-              title: 'Loop Start',
-              desc: '',
-              type: BlockEnum.LoopStart,
-            },
-          }]}
-          nodeTypes={{ loopStartNode: FlowNode }}
-        />
-      </ReactFlowProvider>
-    </div>,
-  )
-}
+const renderFlowNode = () =>
+  renderWorkflowFlowComponent(<div />, {
+    nodes: [createNode({
+      id: 'loop-start-node',
+      type: 'loopStartNode',
+      data: {
+        title: 'Loop Start',
+        desc: '',
+        type: BlockEnum.LoopStart,
+      },
+    })],
+    edges: [],
+    reactFlowProps: {
+      nodeTypes: { loopStartNode: FlowNode },
+    },
+    canvasStyle: {
+      width: 400,
+      height: 300,
+    },
+  })
 
 describe('LoopStartNode', () => {
   beforeEach(() => {

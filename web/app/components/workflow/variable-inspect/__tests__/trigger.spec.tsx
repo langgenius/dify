@@ -1,10 +1,8 @@
-import type { Node as ReactFlowNode } from 'reactflow'
-import type { CommonNodeType } from '../../types'
 import type { NodeWithVar, VarInInspect } from '@/types/workflow'
 import { fireEvent, screen } from '@testing-library/react'
-import ReactFlow, { ReactFlowProvider } from 'reactflow'
 import { VarInInspectType } from '@/types/workflow'
-import { baseRunningData, renderWorkflowComponent } from '../../__tests__/workflow-test-env'
+import { createNode } from '../../__tests__/fixtures'
+import { baseRunningData, renderWorkflowFlowComponent } from '../../__tests__/workflow-test-env'
 import { BlockEnum, NodeRunningStatus, VarType, WorkflowRunningStatus } from '../../types'
 import VariableInspectTrigger from '../trigger'
 
@@ -57,36 +55,14 @@ const createVariable = (overrides: Partial<VarInInspect> = {}): VarInInspect => 
   ...overrides,
 })
 
-const createNode = (overrides: Partial<CommonNodeType> = {}): ReactFlowNode<CommonNodeType> => ({
-  id: 'node-1',
-  type: 'custom',
-  position: { x: 0, y: 0 },
-  data: {
-    type: BlockEnum.Code,
-    title: 'Code',
-    desc: '',
-    ...overrides,
-  },
-})
-
 const renderTrigger = ({
   nodes = [createNode()],
   initialStoreState = {},
 }: {
-  nodes?: Array<ReactFlowNode<CommonNodeType>>
+  nodes?: Array<ReturnType<typeof createNode>>
   initialStoreState?: Record<string, unknown>
 } = {}) => {
-  return renderWorkflowComponent(
-    <div style={{ width: 800, height: 600 }}>
-      <ReactFlowProvider>
-        <ReactFlow fitView nodes={nodes} edges={[]} />
-        <VariableInspectTrigger />
-      </ReactFlowProvider>
-    </div>,
-    {
-      initialStoreState,
-    },
-  )
+  return renderWorkflowFlowComponent(<VariableInspectTrigger />, { nodes, edges: [], initialStoreState })
 }
 
 describe('VariableInspectTrigger', () => {
@@ -154,7 +130,14 @@ describe('VariableInspectTrigger', () => {
 
   it('should show the running state and open the panel while running', () => {
     const { store } = renderTrigger({
-      nodes: [createNode({ _singleRunningStatus: NodeRunningStatus.Running })],
+      nodes: [createNode({
+        data: {
+          type: BlockEnum.Code,
+          title: 'Code',
+          desc: '',
+          _singleRunningStatus: NodeRunningStatus.Running,
+        },
+      })],
       initialStoreState: {
         workflowRunningData: baseRunningData({
           result: { status: WorkflowRunningStatus.Running },

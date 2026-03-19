@@ -1,8 +1,8 @@
 import type { UseQueryResult } from '@tanstack/react-query'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import ReactFlow, { ReactFlowProvider } from 'reactflow'
+import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import {
   useNodeDataUpdate,
   useNodeMetaData,
@@ -70,24 +70,24 @@ const createQueryResult = <T,>(data: T): UseQueryResult<T, Error> => ({
   promise: Promise.resolve(data),
 } as UseQueryResult<T, Error>)
 
-const renderComponent = (showHelpLink: boolean = true, onOpenChange?: (open: boolean) => void) => {
-  return render(
-    <ReactFlowProvider>
-      <ReactFlow nodes={[]} edges={[]} />
-      <PanelOperator
-        id="node-1"
-        data={{
-          title: 'Code Node',
-          desc: '',
-          type: BlockEnum.Code,
-        }}
-        triggerClassName="panel-operator-trigger"
-        onOpenChange={onOpenChange}
-        showHelpLink={showHelpLink}
-      />
-    </ReactFlowProvider>,
+const renderComponent = (showHelpLink: boolean = true, onOpenChange?: (open: boolean) => void) =>
+  renderWorkflowFlowComponent(
+    <PanelOperator
+      id="node-1"
+      data={{
+        title: 'Code Node',
+        desc: '',
+        type: BlockEnum.Code,
+      }}
+      triggerClassName="panel-operator-trigger"
+      onOpenChange={onOpenChange}
+      showHelpLink={showHelpLink}
+    />,
+    {
+      nodes: [],
+      edges: [],
+    },
   )
-}
 
 describe('PanelOperator', () => {
   const handleNodeSelect = vi.fn()

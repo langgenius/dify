@@ -1,14 +1,13 @@
 import type {
   DefaultModel,
   Model,
-  ModelItem,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
-  ConfigurationMethodEnum,
-  ModelStatusEnum,
-  ModelTypeEnum,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
+  createModel,
+  createModelItem,
+} from '@/app/components/workflow/__tests__/model-provider-fixtures'
 import RerankingModelSelector from './reranking-model-selector'
 
 type MockModelSelectorProps = {
@@ -37,38 +36,19 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-selec
   ),
 }))
 
-const createModelItem = (overrides: Partial<ModelItem> = {}): ModelItem => ({
-  model: 'rerank-v3',
-  label: { en_US: 'Rerank V3', zh_Hans: 'Rerank V3' },
-  model_type: ModelTypeEnum.rerank,
-  fetch_from: ConfigurationMethodEnum.predefinedModel,
-  status: ModelStatusEnum.active,
-  model_properties: {},
-  load_balancing_enabled: false,
-  ...overrides,
-})
-
-const createModel = (overrides: Partial<Model> = {}): Model => ({
-  provider: 'cohere',
-  icon_small: {
-    en_US: 'https://example.com/cohere.png',
-    zh_Hans: 'https://example.com/cohere.png',
-  },
-  icon_small_dark: {
-    en_US: 'https://example.com/cohere-dark.png',
-    zh_Hans: 'https://example.com/cohere-dark.png',
-  },
-  label: { en_US: 'Cohere', zh_Hans: 'Cohere' },
-  models: [createModelItem()],
-  status: ModelStatusEnum.active,
-  ...overrides,
-})
-
 describe('RerankingModelSelector', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseModelListAndDefaultModel.mockReturnValue({
-      modelList: [createModel()],
+      modelList: [createModel({
+        provider: 'cohere',
+        label: { en_US: 'Cohere', zh_Hans: 'Cohere' },
+        models: [createModelItem({
+          model: 'rerank-v3',
+          model_type: ModelTypeEnum.rerank,
+          label: { en_US: 'Rerank V3', zh_Hans: 'Rerank V3' },
+        })],
+      })],
       defaultModel: undefined,
     })
   })

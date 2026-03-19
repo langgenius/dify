@@ -1,8 +1,9 @@
 import { render, screen } from '@testing-library/react'
+import { createDocLinkMock, resolveDocLink } from '@/app/components/workflow/__tests__/i18n'
 import { IndexMethodEnum } from '../../../types'
 import RetrievalSetting from '../index'
 
-const mockUseDocLink = vi.hoisted(() => vi.fn((path: string) => `https://docs.example.com${path}`))
+const mockUseDocLink = createDocLinkMock()
 
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => mockUseDocLink,
@@ -37,7 +38,7 @@ describe('RetrievalSetting', () => {
 
     expect(screen.getByRole('link', { name: 'datasetSettings.form.retrievalSetting.learnMore' })).toHaveAttribute(
       'href',
-      'https://docs.example.com/use-dify/knowledge/create-knowledge/setting-indexing-methods',
+      resolveDocLink('/use-dify/knowledge/create-knowledge/setting-indexing-methods'),
     )
     expect(screen.getByText('dataset.retrieval.semantic_search.title')).toBeInTheDocument()
     expect(screen.getByText('dataset.retrieval.full_text_search.title')).toBeInTheDocument()

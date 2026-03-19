@@ -1,8 +1,6 @@
-import type { Node as ReactFlowNode } from 'reactflow'
-import type { CommonNodeType } from '../../types'
 import { act, screen } from '@testing-library/react'
-import ReactFlow, { ReactFlowProvider } from 'reactflow'
-import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
+import { createNode } from '../../__tests__/fixtures'
+import { renderWorkflowFlowComponent } from '../../__tests__/workflow-test-env'
 import { BlockEnum } from '../../types'
 import Operator from '../index'
 
@@ -40,17 +38,6 @@ vi.mock('@/context/event-emitter', () => ({
   }),
 }))
 
-const createNode = (): ReactFlowNode<CommonNodeType> => ({
-  id: 'node-1',
-  type: 'custom',
-  position: { x: 0, y: 0 },
-  data: {
-    type: BlockEnum.Code,
-    title: 'Code',
-    desc: '',
-  },
-})
-
 const originalResizeObserver = globalThis.ResizeObserver
 let resizeObserverCallback: ResizeObserverCallback | undefined
 const observeSpy = vi.fn()
@@ -75,14 +62,18 @@ class MockResizeObserver {
 }
 
 const renderOperator = (initialStoreState: Record<string, unknown> = {}) => {
-  return renderWorkflowComponent(
-    <div style={{ width: 800, height: 600 }}>
-      <ReactFlowProvider>
-        <ReactFlow fitView nodes={[createNode()]} edges={[]} />
-        <Operator handleUndo={vi.fn()} handleRedo={vi.fn()} />
-      </ReactFlowProvider>
-    </div>,
+  return renderWorkflowFlowComponent(
+    <Operator handleUndo={vi.fn()} handleRedo={vi.fn()} />,
     {
+      nodes: [createNode({
+        id: 'node-1',
+        data: {
+          type: BlockEnum.Code,
+          title: 'Code',
+          desc: '',
+        },
+      })],
+      edges: [],
       initialStoreState,
       historyStore: {
         nodes: [],

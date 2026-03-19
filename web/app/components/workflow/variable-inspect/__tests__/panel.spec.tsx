@@ -1,8 +1,7 @@
 import type { EnvironmentVariable } from '../../types'
 import type { NodeWithVar, VarInInspect } from '@/types/workflow'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import ReactFlow, { ReactFlowProvider } from 'reactflow'
-import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
+import { renderWorkflowFlowComponent } from '../../__tests__/workflow-test-env'
 import { BlockEnum } from '../../types'
 import Panel from '../panel'
 import { EVENT_WORKFLOW_STOP } from '../types'
@@ -108,14 +107,11 @@ const createEnvironmentVariable = (overrides: Partial<EnvironmentVariable> = {})
 })
 
 const renderPanel = (initialStoreState: Record<string, unknown> = {}) => {
-  return renderWorkflowComponent(
-    <div style={{ width: 800, height: 600 }}>
-      <ReactFlowProvider>
-        <ReactFlow fitView nodes={[]} edges={[]} />
-        <Panel />
-      </ReactFlowProvider>
-    </div>,
+  return renderWorkflowFlowComponent(
+    <Panel />,
     {
+      nodes: [],
+      edges: [],
       initialStoreState,
       historyStore: {
         nodes: [],

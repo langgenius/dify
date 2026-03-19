@@ -1,11 +1,11 @@
 import type { ReactNode } from 'react'
 import type { Edge, Node } from '@/app/components/workflow/types'
-import { render, screen } from '@testing-library/react'
-import ReactFlow, { ReactFlowProvider } from 'reactflow'
+import { screen } from '@testing-library/react'
 import {
   createEdge,
   createNode,
 } from '@/app/components/workflow/__tests__/fixtures'
+import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import {
   useAvailableBlocks,
   useNodesInteractions,
@@ -51,16 +51,18 @@ const createAvailableBlocksResult = (): ReturnType<typeof useAvailableBlocks> =>
   availableNextBlocks: [],
 })
 
-const renderComponent = (selectedNode: Node, nodes: Node[], edges: Edge[] = []) => {
-  return render(
-    <ReactFlowProvider>
-      <div style={{ width: 600, height: 400 }}>
-        <ReactFlow nodes={nodes} edges={edges} />
-        <NextStep selectedNode={selectedNode} />
-      </div>
-    </ReactFlowProvider>,
+const renderComponent = (selectedNode: Node, nodes: Node[], edges: Edge[] = []) =>
+  renderWorkflowFlowComponent(
+    <NextStep selectedNode={selectedNode} />,
+    {
+      nodes,
+      edges,
+      canvasStyle: {
+        width: 600,
+        height: 400,
+      },
+    },
   )
-}
 
 describe('NextStep', () => {
   beforeEach(() => {

@@ -1,8 +1,7 @@
-import type { Node as ReactFlowNode } from 'reactflow'
 import type { NoteNodeType } from '../types'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import ReactFlow, { ReactFlowProvider } from 'reactflow'
-import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
+import { createNode } from '../../__tests__/fixtures'
+import { renderWorkflowFlowComponent } from '../../__tests__/workflow-test-env'
 import { CUSTOM_NOTE_NODE } from '../constants'
 import NoteNode from '../index'
 import { NoteTheme } from '../types'
@@ -72,30 +71,25 @@ const createNoteData = (overrides: Partial<NoteNodeType> = {}): NoteNodeType => 
 
 const renderNoteNode = (dataOverrides: Partial<NoteNodeType> = {}) => {
   const nodeData = createNoteData(dataOverrides)
-  const nodes: Array<ReactFlowNode<NoteNodeType>> = [
-    {
+  const nodes = [
+    createNode({
       id: 'note-1',
       type: CUSTOM_NOTE_NODE,
-      position: { x: 0, y: 0 },
       data: nodeData,
       selected: !!nodeData.selected,
-    },
+    }),
   ]
 
-  return renderWorkflowComponent(
-    <div style={{ width: 800, height: 600 }}>
-      <ReactFlowProvider>
-        <ReactFlow
-          fitView
-          nodes={nodes}
-          edges={[]}
-          nodeTypes={{
-            [CUSTOM_NOTE_NODE]: NoteNode,
-          }}
-        />
-      </ReactFlowProvider>
-    </div>,
+  return renderWorkflowFlowComponent(
+    <div />,
     {
+      nodes,
+      edges: [],
+      reactFlowProps: {
+        nodeTypes: {
+          [CUSTOM_NOTE_NODE]: NoteNode,
+        },
+      },
       initialStoreState: {
         controlPromptEditorRerenderKey: 0,
       },

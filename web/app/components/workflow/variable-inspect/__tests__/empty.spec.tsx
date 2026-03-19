@@ -1,7 +1,8 @@
 import { render, screen } from '@testing-library/react'
+import { createDocLinkMock, resolveDocLink } from '../../__tests__/i18n'
 import Empty from '../empty'
 
-const mockDocLink = vi.fn((path: string) => `https://docs.example.com${path}`)
+const mockDocLink = createDocLinkMock()
 
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => mockDocLink,
@@ -19,7 +20,7 @@ describe('VariableInspect Empty', () => {
 
     expect(screen.getByText('workflow.debug.variableInspect.title')).toBeInTheDocument()
     expect(screen.getByText('workflow.debug.variableInspect.emptyTip')).toBeInTheDocument()
-    expect(link).toHaveAttribute('href', 'https://docs.example.com/use-dify/debug/variable-inspect')
+    expect(link).toHaveAttribute('href', resolveDocLink('/use-dify/debug/variable-inspect'))
     expect(link).toHaveAttribute('target', '_blank')
     expect(mockDocLink).toHaveBeenCalledWith('/use-dify/debug/variable-inspect')
   })
