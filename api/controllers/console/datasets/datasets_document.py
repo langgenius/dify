@@ -6,7 +6,6 @@ from contextlib import ExitStack
 from typing import Any, Literal, cast
 from uuid import UUID
 
-import sqlalchemy as sa
 from flask import request, send_file
 from flask_restx import Resource, fields, marshal, marshal_with
 from pydantic import BaseModel, Field
@@ -295,14 +294,23 @@ class DatasetDocumentListApi(Resource):
             sort_logic = asc
 
         if sort == "hit_count":
-            sub_query = (
-                sa.select(DocumentSegment.document_id, sa.func.sum(DocumentSegment.hit_count).label("total_hit_count"))
-                .group_by(DocumentSegment.document_id)
-                .subquery()
-            )
+            # sub_query = (
+            #     sa.select(DocumentSegment.document_id, 
+            # sa.func.sum(DocumentSegment.hit_count).label("total_hit_count"))
+            #     .group_by(DocumentSegment.document_id)
+            #     .subquery()
+            # )
 
-            query = query.outerjoin(sub_query, sub_query.c.document_id == Document.id).order_by(
-                sort_logic(sa.func.coalesce(sub_query.c.total_hit_count, 0)),
+            # query = query.outerjoin(sub_query, sub_query.c.document_id == Document.id).order_by(
+            #     sort_logic(sa.func.coalesce(sub_query.c.total_hit_count, 0)),
+            #     sort_logic(Document.position),
+            # )
+
+            # TODO: uncomment this when we have a way to get the hit count, 
+            # currently we don't have a way to get the hit count, 
+            # so we use the created_at to sort the documents.
+            query = query.order_by(
+                sort_logic(Document.created_at),
                 sort_logic(Document.position),
             )
         elif sort == "created_at":
