@@ -1,8 +1,3 @@
-.scrollbar {
-  --scroll-area-thumb-bg-active: var(--color-state-base-handle-hover);
-  --scroll-area-edge-hint-bg: var(--color-components-panel-bg);
-}
-
 .scrollbar::before,
 .scrollbar::after {
   content: '';
@@ -20,7 +15,7 @@
   width: 4px;
   height: 12px;
   transform: translateX(-50%);
-  background: linear-gradient(to bottom, var(--scroll-area-edge-hint-bg), transparent);
+  background: linear-gradient(to bottom, var(--scroll-area-edge-hint-bg, var(--color-components-panel-bg)), transparent);
 }
 
 .scrollbar[data-orientation='vertical']::after {
@@ -29,7 +24,7 @@
   width: 4px;
   height: 12px;
   transform: translateX(-50%);
-  background: linear-gradient(to top, var(--scroll-area-edge-hint-bg), transparent);
+  background: linear-gradient(to top, var(--scroll-area-edge-hint-bg, var(--color-components-panel-bg)), transparent);
 }
 
 .scrollbar[data-orientation='horizontal']::before {
@@ -38,7 +33,7 @@
   width: 12px;
   height: 4px;
   transform: translateY(-50%);
-  background: linear-gradient(to right, var(--scroll-area-edge-hint-bg), transparent);
+  background: linear-gradient(to right, var(--scroll-area-edge-hint-bg, var(--color-components-panel-bg)), transparent);
 }
 
 .scrollbar[data-orientation='horizontal']::after {
@@ -47,7 +42,7 @@
   width: 12px;
   height: 4px;
   transform: translateY(-50%);
-  background: linear-gradient(to left, var(--scroll-area-edge-hint-bg), transparent);
+  background: linear-gradient(to left, var(--scroll-area-edge-hint-bg, var(--color-components-panel-bg)), transparent);
 }
 
 .scrollbar[data-orientation='vertical']:not([data-overflow-y-start])::before {
@@ -69,7 +64,7 @@
 .scrollbar[data-hovering] > [data-orientation],
 .scrollbar[data-scrolling] > [data-orientation],
 .scrollbar > [data-orientation]:active {
-  background-color: var(--scroll-area-thumb-bg-active);
+  background-color: var(--scroll-area-thumb-bg-active, var(--color-state-base-handle-hover));
 }
 
 @media (prefers-reduced-motion: reduce) {
