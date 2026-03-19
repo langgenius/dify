@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from libs.datetime_utils import naive_utc_now
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
+from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
 from models.model import UploadFile
 from tasks.batch_clean_document_task import batch_clean_document_task
 
@@ -113,7 +114,7 @@ class TestBatchCleanDocumentTask:
             tenant_id=account.current_tenant.id,
             name=fake.word(),
             description=fake.sentence(),
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             created_by=account.id,
             embedding_model="text-embedding-ada-002",
             embedding_model_provider="openai",
@@ -144,12 +145,12 @@ class TestBatchCleanDocumentTask:
             dataset_id=dataset.id,
             position=0,
             name=fake.word(),
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             data_source_info=json.dumps({"upload_file_id": str(uuid.uuid4())}),
             batch="test_batch",
-            created_from="test",
+            created_from=DocumentCreatedFrom.WEB,
             created_by=account.id,
-            indexing_status="completed",
+            indexing_status=IndexingStatus.COMPLETED,
             doc_form="text_model",
         )
 
@@ -183,7 +184,7 @@ class TestBatchCleanDocumentTask:
             tokens=50,
             index_node_id=str(uuid.uuid4()),
             created_by=account.id,
-            status="completed",
+            status=SegmentStatus.COMPLETED,
         )
 
         db_session_with_containers.add(segment)
@@ -297,7 +298,7 @@ class TestBatchCleanDocumentTask:
             tokens=50,
             index_node_id=str(uuid.uuid4()),
             created_by=account.id,
-            status="completed",
+            status=SegmentStatus.COMPLETED,
         )
 
         db_session_with_containers.add(segment)
@@ -671,7 +672,7 @@ class TestBatchCleanDocumentTask:
                 tokens=25 + i * 5,
                 index_node_id=str(uuid.uuid4()),
                 created_by=account.id,
-                status="completed",
+                status=SegmentStatus.COMPLETED,
             )
             segments.append(segment)
 

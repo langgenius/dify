@@ -1,5 +1,7 @@
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from core.rag.data_post_processor.data_post_processor import DataPostProcessor
 from core.rag.data_post_processor.reorder import ReorderRunner
 from core.rag.index_processor.constant.query_type import QueryType
@@ -174,17 +176,17 @@ class TestDataPostProcessor:
         processor = DataPostProcessor.__new__(DataPostProcessor)
         assert processor._get_rerank_model_instance("tenant-1", None) is None
 
-    def test_get_rerank_model_instance_returns_none_for_incomplete_config(self):
+    def test_get_rerank_model_instance_raises_key_error_for_incomplete_config(self):
         processor = DataPostProcessor.__new__(DataPostProcessor)
 
         with patch("core.rag.data_post_processor.data_post_processor.ModelManager") as manager_cls:
             manager_instance = manager_cls.return_value
-            result = processor._get_rerank_model_instance(
-                tenant_id="tenant-1",
-                reranking_model={"reranking_provider_name": "provider-x"},
-            )
+            with pytest.raises(KeyError, match="reranking_model_name"):
+                processor._get_rerank_model_instance(
+                    tenant_id="tenant-1",
+                    reranking_model={"reranking_provider_name": "provider-x"},
+                )
 
-        assert result is None
         manager_instance.get_model_instance.assert_not_called()
 
     def test_get_rerank_model_instance_success(self):

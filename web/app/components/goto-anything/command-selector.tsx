@@ -1,9 +1,9 @@
 import type { FC } from 'react'
 import type { ActionItem } from './actions/types'
 import { Command } from 'cmdk'
-import { usePathname } from 'next/navigation'
 import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { usePathname } from '@/next/navigation'
 import { slashCommandRegistry } from './actions/commands/registry'
 
 type Props = {

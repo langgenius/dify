@@ -54,16 +54,17 @@ class TestWeaviateVector(unittest.TestCase):
         )
         return wv, mock_client
 
-    def test_del_logs_warning_when_close_fails(self):
-        wv = WeaviateVector.__new__(WeaviateVector)
-        wv._client = MagicMock()
-        wv._client.close.side_effect = RuntimeError("close failed")
+    def test_shutdown_client_logs_debug_when_close_fails(self):
+        mock_client = MagicMock()
+        mock_client.close.side_effect = RuntimeError("close failed")
+        weaviate_vector_module._weaviate_client = mock_client
 
-        with patch.object(weaviate_vector_module.logger, "warning") as mock_warning:
-            wv.__del__()
+        with patch.object(weaviate_vector_module.logger, "debug") as mock_debug:
+            weaviate_vector_module._shutdown_weaviate_client()
 
-        wv._client = None
-        mock_warning.assert_called_once()
+        assert weaviate_vector_module._weaviate_client is None
+        mock_client.close.assert_called_once()
+        mock_debug.assert_called_once()
 
     @patch("core.rag.datasource.vdb.weaviate.weaviate_vector.weaviate.connect_to_custom")
     def test_init_client_reuses_cached_client_without_reconnect(self, mock_connect):

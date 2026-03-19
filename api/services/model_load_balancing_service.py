@@ -19,6 +19,7 @@ from dify_graph.model_runtime.entities.provider_entities import (
 from dify_graph.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
+from models.enums import CredentialSourceType
 from models.provider import LoadBalancingModelConfig, ProviderCredential, ProviderModelCredential
 
 logger = logging.getLogger(__name__)
@@ -103,9 +104,9 @@ class ModelLoadBalancingService:
             is_load_balancing_enabled = True
 
         if config_from == "predefined-model":
-            credential_source_type = "provider"
+            credential_source_type = CredentialSourceType.PROVIDER
         else:
-            credential_source_type = "custom_model"
+            credential_source_type = CredentialSourceType.CUSTOM_MODEL
 
         # Get load balancing configurations
         load_balancing_configs = (
@@ -421,7 +422,11 @@ class ModelLoadBalancingService:
                     raise ValueError("Invalid load balancing config name")
 
                 if credential_id:
-                    credential_source = "provider" if config_from == "predefined-model" else "custom_model"
+                    credential_source = (
+                        CredentialSourceType.PROVIDER
+                        if config_from == "predefined-model"
+                        else CredentialSourceType.CUSTOM_MODEL
+                    )
                     assert credential_record is not None
                     load_balancing_model_config = LoadBalancingModelConfig(
                         tenant_id=tenant_id,

@@ -54,6 +54,7 @@ from fields.document_fields import document_status_fields
 from libs.login import current_account_with_tenant, login_required
 from models import ApiToken, Dataset, Document, DocumentSegment, UploadFile
 from models.dataset import DatasetPermission, DatasetPermissionEnum
+from models.enums import SegmentStatus
 from models.provider_ids import ModelProviderID
 from services.api_token_service import ApiTokenCache
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
@@ -741,13 +742,15 @@ class DatasetIndexingStatusApi(Resource):
                 .where(
                     DocumentSegment.completed_at.isnot(None),
                     DocumentSegment.document_id == str(document.id),
-                    DocumentSegment.status != "re_segment",
+                    DocumentSegment.status != SegmentStatus.RE_SEGMENT,
                 )
                 .count()
             )
             total_segments = (
                 db.session.query(DocumentSegment)
-                .where(DocumentSegment.document_id == str(document.id), DocumentSegment.status != "re_segment")
+                .where(
+                    DocumentSegment.document_id == str(document.id), DocumentSegment.status != SegmentStatus.RE_SEGMENT
+                )
                 .count()
             )
             # Create a dictionary with document attributes and additional fields
