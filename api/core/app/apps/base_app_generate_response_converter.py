@@ -74,11 +74,22 @@ class AppGenerateResponseConverter(ABC):
             for resource in metadata["retriever_resources"]:
                 updated_resources.append(
                     {
+                        "dataset_id": resource.get("dataset_id"),
+                        "dataset_name": resource.get("dataset_name"),
+                        "document_id": resource.get("document_id"),
                         "segment_id": resource.get("segment_id", ""),
                         "position": resource["position"],
+                        "data_source_type": resource.get("data_source_type"),
                         "document_name": resource["document_name"],
                         "score": resource["score"],
+                        "hit_count": resource.get("hit_count"),
+                        "word_count": resource.get("word_count"),
+                        "segment_position": resource.get("segment_position"),
+                        "index_node_hash": resource.get("index_node_hash"),
                         "content": resource["content"],
+                        "page": resource.get("page"),
+                        "title": resource.get("title"),
+                        "files": resource.get("files"),
                         "summary": resource.get("summary"),
                     }
                 )
