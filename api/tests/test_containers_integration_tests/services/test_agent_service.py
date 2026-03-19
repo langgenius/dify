@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from models import Account
+from models.enums import MessageFileBelongsTo
 from models.model import AppModelConfig, Conversation, EndUser, Message, MessageAgentThought
 from services.account_service import AccountService, TenantService
 from services.agent_service import AgentService
@@ -852,7 +853,7 @@ class TestAgentService:
             type=FileType.IMAGE,
             transfer_method=FileTransferMethod.REMOTE_URL,
             url="http://example.com/file1.jpg",
-            belongs_to="user",
+            belongs_to=MessageFileBelongsTo.USER,
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=message.from_account_id,
         )
@@ -861,7 +862,7 @@ class TestAgentService:
             type=FileType.IMAGE,
             transfer_method=FileTransferMethod.REMOTE_URL,
             url="http://example.com/file2.png",
-            belongs_to="user",
+            belongs_to=MessageFileBelongsTo.USER,
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=message.from_account_id,
         )
