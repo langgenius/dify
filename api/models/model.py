@@ -23,6 +23,7 @@ from core.tools.signature import sign_tool_file
 from dify_graph.enums import WorkflowExecutionStatus
 from dify_graph.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
 from dify_graph.file import helpers as file_helpers
+from extensions.storage.storage_type import StorageType
 from libs.helper import generate_string  # type: ignore[import-not-found]
 from libs.uuid_utils import uuidv7
 
@@ -2108,7 +2109,7 @@ class UploadFile(Base):
     # The `server_default` serves as a fallback mechanism.
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    storage_type: Mapped[str] = mapped_column(String(255), nullable=False)
+    storage_type: Mapped[StorageType] = mapped_column(EnumText(StorageType, length=255), nullable=False)
     key: Mapped[str] = mapped_column(String(255), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     size: Mapped[int] = mapped_column(sa.Integer, nullable=False)
@@ -2152,7 +2153,7 @@ class UploadFile(Base):
         self,
         *,
         tenant_id: str,
-        storage_type: str,
+        storage_type: StorageType,
         key: str,
         name: str,
         size: int,
