@@ -189,9 +189,6 @@
     }
   },
   "app/(shareLayout)/webapp-reset-password/check-code/page.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 4
     }
@@ -205,56 +202,31 @@
     }
   },
   "app/(shareLayout)/webapp-reset-password/page.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 4
     }
   },
   "app/(shareLayout)/webapp-reset-password/set-password/page.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 6
     }
   },
   "app/(shareLayout)/webapp-signin/check-code/page.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 4
     }
   },
-  "app/(shareLayout)/webapp-signin/components/external-member-sso-auth.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "app/(shareLayout)/webapp-signin/components/mail-and-code-auth.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
   },
   "app/(shareLayout)/webapp-signin/components/mail-and-password-auth.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
     },
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "app/(shareLayout)/webapp-signin/components/sso-auth.tsx": {
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "app/(shareLayout)/webapp-signin/layout.tsx": {
@@ -9277,11 +9249,6 @@
       "count": 5
     }
   },
-  "app/forgot-password/ChangePasswordForm.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "app/forgot-password/ForgotPasswordForm.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 5
@@ -9306,9 +9273,6 @@
     }
   },
   "app/reset-password/check-code/page.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 4
     }
@@ -9322,17 +9286,11 @@
     }
   },
   "app/reset-password/page.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 4
     }
   },
   "app/reset-password/set-password/page.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 6
     }
@@ -9342,26 +9300,13 @@
       "count": 1
     }
   },
-  "app/signin/check-code/page.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "app/signin/components/mail-and-code-auth.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
   },
   "app/signin/components/mail-and-password-auth.tsx": {
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/signin/components/sso-auth.tsx": {
-    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -9378,11 +9323,6 @@
       "count": 1
     }
   },
-  "app/signin/normal-form.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "app/signin/one-more-step.tsx": {
     "no-restricted-imports": {
       "count": 3
@@ -9395,17 +9335,11 @@
     }
   },
   "app/signup/check-code/page.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 4
     }
   },
   "app/signup/components/input-mail.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 4
     }
@@ -9424,9 +9358,6 @@
     }
   },
   "app/signup/set-password/page.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 5
     }
