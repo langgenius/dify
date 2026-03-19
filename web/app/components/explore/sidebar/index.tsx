@@ -5,6 +5,13 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Confirm from '@/app/components/base/confirm'
 import Divider from '@/app/components/base/divider'
+import {
+  ScrollArea,
+  ScrollAreaContent,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '@/app/components/base/ui/scroll-area'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import Link from '@/next/link'
 import { useSelectedLayoutSegments } from '@/next/navigation'
@@ -13,6 +20,14 @@ import { cn } from '@/utils/classnames'
 import Toast from '../../base/toast'
 import Item from './app-nav-item'
 import NoApps from './no-apps'
+
+const expandedSidebarScrollAreaClassNames = {
+  root: 'h-full',
+  viewport: 'overscroll-contain',
+  content: 'space-y-0.5',
+  scrollbar: 'data-[orientation=vertical]:right-0',
+  thumb: 'rounded-full',
+} as const
 
 const SideBar = () => {
   const { t } = useTranslation()
@@ -51,8 +66,33 @@ const SideBar = () => {
   }
 
   const pinnedAppsCount = installedApps.filter(({ is_pinned }) => is_pinned).length
+  const shouldUseExpandedScrollArea = !isMobile && !isFold
+  const webAppsLabelId = React.useId()
+  const installedAppItems = installedApps.map(({ id, is_pinned, uninstallable, app: { name, icon_type, icon, icon_url, icon_background } }, index) => (
+    <React.Fragment key={id}>
+      <Item
+        isMobile={isMobile || isFold}
+        name={name}
+        icon_type={icon_type}
+        icon={icon}
+        icon_background={icon_background}
+        icon_url={icon_url}
+        id={id}
+        isSelected={lastSegment?.toLowerCase() === id}
+        isPinned={is_pinned}
+        togglePin={() => handleUpdatePinStatus(id, !is_pinned)}
+        uninstallable={uninstallable}
+        onDelete={(id) => {
+          setCurrId(id)
+          setShowConfirm(true)
+        }}
+      />
+      {index === pinnedAppsCount - 1 && index !== installedApps.length - 1 && <Divider />}
+    </React.Fragment>
+  ))
+
   return (
-    <div className={cn('relative w-fit shrink-0 cursor-pointer px-3 pt-6 sm:w-[240px]', isFold && 'sm:w-[56px]')}>
+    <div className={cn('flex h-full w-fit shrink-0 cursor-pointer flex-col px-3 pt-6 sm:w-[240px]', isFold && 'sm:w-[56px]')}>
       <div className={cn(isDiscoverySelected ? 'text-text-accent' : 'text-text-tertiary')}>
         <Link
           href="/explore/apps"
@@ -73,47 +113,46 @@ const SideBar = () => {
         )}
 
       {installedApps.length > 0 && (
-        <div className="mt-5">
-          {!isMobile && !isFold && <p className="mb-1.5 break-all pl-2 uppercase text-text-tertiary system-xs-medium-uppercase mobile:px-0">{t('sidebar.webApps', { ns: 'explore' })}</p>}
-          <div
-            className="space-y-0.5 overflow-y-auto overflow-x-hidden"
-            style={{
-              height: 'calc(100vh - 250px)',
-            }}
-          >
-            {installedApps.map(({ id, is_pinned, uninstallable, app: { name, icon_type, icon, icon_url, icon_background } }, index) => (
-              <React.Fragment key={id}>
-                <Item
-                  isMobile={isMobile || isFold}
-                  name={name}
-                  icon_type={icon_type}
-                  icon={icon}
-                  icon_background={icon_background}
-                  icon_url={icon_url}
-                  id={id}
-                  isSelected={lastSegment?.toLowerCase() === id}
-                  isPinned={is_pinned}
-                  togglePin={() => handleUpdatePinStatus(id, !is_pinned)}
-                  uninstallable={uninstallable}
-                  onDelete={(id) => {
-                    setCurrId(id)
-                    setShowConfirm(true)
-                  }}
-                />
-                {index === pinnedAppsCount - 1 && index !== installedApps.length - 1 && <Divider />}
-              </React.Fragment>
-            ))}
-          </div>
+        <div className="mt-5 flex min-h-0 flex-1 flex-col">
+          {!isMobile && !isFold && <p id={webAppsLabelId} className="mb-1.5 break-all pl-2 uppercase text-text-tertiary system-xs-medium-uppercase mobile:px-0">{t('sidebar.webApps', { ns: 'explore' })}</p>}
+          {shouldUseExpandedScrollArea
+            ? (
+                <div className="min-h-0 flex-1">
+                  <ScrollArea className={expandedSidebarScrollAreaClassNames.root}>
+                    <ScrollAreaViewport
+                      aria-labelledby={webAppsLabelId}
+                      className={expandedSidebarScrollAreaClassNames.viewport}
+                      role="region"
+                    >
+                      <ScrollAreaContent className={expandedSidebarScrollAreaClassNames.content}>
+                        {installedAppItems}
+                      </ScrollAreaContent>
+                    </ScrollAreaViewport>
+                    <ScrollAreaScrollbar className={expandedSidebarScrollAreaClassNames.scrollbar}>
+                      <ScrollAreaThumb className={expandedSidebarScrollAreaClassNames.thumb} />
+                    </ScrollAreaScrollbar>
+                  </ScrollArea>
+                </div>
+              )
+            : (
+                <div
+                  className="h-full min-h-0 flex-1 space-y-0.5 overflow-y-auto overflow-x-hidden"
+                >
+                  {installedAppItems}
+                </div>
+              )}
         </div>
       )}
 
       {!isMobile && (
-        <div className="absolute bottom-3 left-3 flex size-8 cursor-pointer items-center justify-center text-text-tertiary" onClick={toggleIsFold}>
-          {isFold
-            ? <span className="i-ri-expand-right-line" />
-            : (
-                <span className="i-ri-layout-left-2-line" />
-              )}
+        <div className="mt-auto flex pb-3 pt-3">
+          <div className="flex size-8 cursor-pointer items-center justify-center text-text-tertiary" onClick={toggleIsFold}>
+            {isFold
+              ? <span className="i-ri-expand-right-line" />
+              : (
+                  <span className="i-ri-layout-left-2-line" />
+                )}
+          </div>
         </div>
       )}
 

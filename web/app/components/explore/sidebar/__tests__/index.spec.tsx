@@ -84,6 +84,7 @@ describe('SideBar', () => {
       renderSideBar()
 
       expect(screen.getByText('explore.sidebar.webApps')).toBeInTheDocument()
+      expect(screen.getByRole('region', { name: 'explore.sidebar.webApps' })).toBeInTheDocument()
       expect(screen.getByText('My App')).toBeInTheDocument()
     })
 
