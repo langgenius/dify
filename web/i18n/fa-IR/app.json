@@ -36,6 +36,8 @@
   "createApp": "ایجاد برنامه",
   "createFromConfigFile": "ایجاد از فایل DSL",
   "deleteAppConfirmContent": "حذف برنامه غیرقابل برگشت است. کاربران دیگر قادر به دسترسی به برنامه شما نخواهند بود و تمام تنظیمات و گزارشات درخواست‌ها به صورت دائم حذف خواهند شد.",
+  "deleteAppConfirmInputLabel": "برای تأیید، \"{{appName}}\" را در کادر زیر تایپ کنید:",
+  "deleteAppConfirmInputPlaceholder": "نام برنامه را وارد کنید",
   "deleteAppConfirmTitle": "آیا این برنامه حذف شود؟",
   "dslUploader.browse": "مرور",
   "dslUploader.button": "فایل را بکشید و رها کنید، یا",

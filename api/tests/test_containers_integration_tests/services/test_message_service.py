@@ -4,6 +4,7 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
+from models.enums import FeedbackRating
 from models.model import MessageFeedback
 from services.app_service import AppService
 from services.errors.message import (
@@ -13,6 +14,7 @@ from services.errors.message import (
     SuggestedQuestionsAfterAnswerDisabledError,
 )
 from services.message_service import MessageService
+from tests.test_containers_integration_tests.helpers import generate_valid_password
 
 
 class TestMessageService:
@@ -95,7 +97,7 @@ class TestMessageService:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            password=fake.password(length=12),
+            password=generate_valid_password(fake),
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
@@ -404,7 +406,7 @@ class TestMessageService:
         message = self._create_test_message(db_session_with_containers, app, conversation, account, fake)
 
         # Create feedback
-        rating = "like"
+        rating = FeedbackRating.LIKE
         content = fake.text(max_nb_chars=100)
         feedback = MessageService.create_feedback(
             app_model=app, message_id=message.id, user=account, rating=rating, content=content
@@ -434,7 +436,11 @@ class TestMessageService:
         # Test creating feedback with no user
         with pytest.raises(ValueError, match="user cannot be None"):
             MessageService.create_feedback(
-                app_model=app, message_id=message.id, user=None, rating="like", content=fake.text(max_nb_chars=100)
+                app_model=app,
+                message_id=message.id,
+                user=None,
+                rating=FeedbackRating.LIKE,
+                content=fake.text(max_nb_chars=100),
             )
 
     def test_create_feedback_update_existing(
@@ -451,14 +457,14 @@ class TestMessageService:
         message = self._create_test_message(db_session_with_containers, app, conversation, account, fake)
 
         # Create initial feedback
-        initial_rating = "like"
+        initial_rating = FeedbackRating.LIKE
         initial_content = fake.text(max_nb_chars=100)
         feedback = MessageService.create_feedback(
             app_model=app, message_id=message.id, user=account, rating=initial_rating, content=initial_content
         )
 
         # Update feedback
-        updated_rating = "dislike"
+        updated_rating = FeedbackRating.DISLIKE
         updated_content = fake.text(max_nb_chars=100)
         updated_feedback = MessageService.create_feedback(
             app_model=app, message_id=message.id, user=account, rating=updated_rating, content=updated_content
@@ -486,7 +492,11 @@ class TestMessageService:
 
         # Create initial feedback
         feedback = MessageService.create_feedback(
-            app_model=app, message_id=message.id, user=account, rating="like", content=fake.text(max_nb_chars=100)
+            app_model=app,
+            message_id=message.id,
+            user=account,
+            rating=FeedbackRating.LIKE,
+            content=fake.text(max_nb_chars=100),
         )
 
         # Delete feedback by setting rating to None
@@ -537,7 +547,7 @@ class TestMessageService:
                 app_model=app,
                 message_id=message.id,
                 user=account,
-                rating="like" if i % 2 == 0 else "dislike",
+                rating=FeedbackRating.LIKE if i % 2 == 0 else FeedbackRating.DISLIKE,
                 content=f"Feedback {i}: {fake.text(max_nb_chars=50)}",
             )
             feedbacks.append(feedback)
@@ -567,7 +577,11 @@ class TestMessageService:
             message = self._create_test_message(db_session_with_containers, app, conversation, account, fake)
 
             MessageService.create_feedback(
-                app_model=app, message_id=message.id, user=account, rating="like", content=f"Feedback {i}"
+                app_model=app,
+                message_id=message.id,
+                user=account,
+                rating=FeedbackRating.LIKE,
+                content=f"Feedback {i}",
             )
 
         # Get feedbacks with pagination
@@ -633,7 +647,7 @@ class TestMessageService:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            password=fake.password(length=12),
+            password=generate_valid_password(fake),
         )
         TenantService.create_owner_tenant_if_not_exist(other_account, name=fake.company())
 

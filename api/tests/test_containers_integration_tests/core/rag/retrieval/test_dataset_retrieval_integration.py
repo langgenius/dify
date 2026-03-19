@@ -5,9 +5,11 @@ import pytest
 from faker import Faker
 
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
-from dify_graph.repositories.rag_retrieval_protocol import KnowledgeRetrievalRequest
+from core.workflow.nodes.knowledge_retrieval.retrieval import KnowledgeRetrievalRequest
 from models.dataset import Dataset, Document
+from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from services.account_service import AccountService, TenantService
+from tests.test_containers_integration_tests.helpers import generate_valid_password
 
 
 class TestGetAvailableDatasetsIntegration:
@@ -22,7 +24,7 @@ class TestGetAvailableDatasetsIntegration:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            password=fake.password(length=12),
+            password=generate_valid_password(fake),
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
@@ -34,7 +36,7 @@ class TestGetAvailableDatasetsIntegration:
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
             provider="dify",
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             created_by=account.id,
             indexing_technique="high_quality",
         )
@@ -48,14 +50,14 @@ class TestGetAvailableDatasetsIntegration:
                 tenant_id=tenant.id,
                 dataset_id=dataset.id,
                 position=i,
-                data_source_type="upload_file",
+                data_source_type=DataSourceType.UPLOAD_FILE,
                 batch=str(uuid.uuid4()),  # Required field
                 name=f"Document {i}",
-                created_from="web",
+                created_from=DocumentCreatedFrom.WEB,
                 created_by=account.id,
                 doc_form="text_model",
                 doc_language="en",
-                indexing_status="completed",
+                indexing_status=IndexingStatus.COMPLETED,
                 enabled=True,
                 archived=False,
             )
@@ -83,7 +85,7 @@ class TestGetAvailableDatasetsIntegration:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            password=fake.password(length=12),
+            password=generate_valid_password(fake),
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
@@ -93,7 +95,7 @@ class TestGetAvailableDatasetsIntegration:
             tenant_id=tenant.id,
             name=fake.company(),
             provider="dify",
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             created_by=account.id,
         )
         db_session_with_containers.add(dataset)
@@ -105,13 +107,13 @@ class TestGetAvailableDatasetsIntegration:
                 tenant_id=tenant.id,
                 dataset_id=dataset.id,
                 position=i,
-                data_source_type="upload_file",
+                data_source_type=DataSourceType.UPLOAD_FILE,
                 batch=str(uuid.uuid4()),  # Required field
-                created_from="web",
+                created_from=DocumentCreatedFrom.WEB,
                 name=f"Archived Document {i}",
                 created_by=account.id,
                 doc_form="text_model",
-                indexing_status="completed",
+                indexing_status=IndexingStatus.COMPLETED,
                 enabled=True,
                 archived=True,  # Archived
             )
@@ -136,7 +138,7 @@ class TestGetAvailableDatasetsIntegration:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            password=fake.password(length=12),
+            password=generate_valid_password(fake),
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
@@ -146,7 +148,7 @@ class TestGetAvailableDatasetsIntegration:
             tenant_id=tenant.id,
             name=fake.company(),
             provider="dify",
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             created_by=account.id,
         )
         db_session_with_containers.add(dataset)
@@ -158,13 +160,13 @@ class TestGetAvailableDatasetsIntegration:
                 tenant_id=tenant.id,
                 dataset_id=dataset.id,
                 position=i,
-                data_source_type="upload_file",
+                data_source_type=DataSourceType.UPLOAD_FILE,
                 batch=str(uuid.uuid4()),  # Required field
-                created_from="web",
+                created_from=DocumentCreatedFrom.WEB,
                 name=f"Disabled Document {i}",
                 created_by=account.id,
                 doc_form="text_model",
-                indexing_status="completed",
+                indexing_status=IndexingStatus.COMPLETED,
                 enabled=False,  # Disabled
                 archived=False,
             )
@@ -189,7 +191,7 @@ class TestGetAvailableDatasetsIntegration:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            password=fake.password(length=12),
+            password=generate_valid_password(fake),
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
@@ -199,21 +201,21 @@ class TestGetAvailableDatasetsIntegration:
             tenant_id=tenant.id,
             name=fake.company(),
             provider="dify",
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             created_by=account.id,
         )
         db_session_with_containers.add(dataset)
 
         # Create documents with non-completed status
-        for i, status in enumerate(["indexing", "parsing", "splitting"]):
+        for i, status in enumerate([IndexingStatus.INDEXING, IndexingStatus.PARSING, IndexingStatus.SPLITTING]):
             document = Document(
                 id=str(uuid.uuid4()),
                 tenant_id=tenant.id,
                 dataset_id=dataset.id,
                 position=i,
-                data_source_type="upload_file",
+                data_source_type=DataSourceType.UPLOAD_FILE,
                 batch=str(uuid.uuid4()),  # Required field
-                created_from="web",
+                created_from=DocumentCreatedFrom.WEB,
                 name=f"Document {status}",
                 created_by=account.id,
                 doc_form="text_model",
@@ -252,7 +254,7 @@ class TestGetAvailableDatasetsIntegration:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            password=fake.password(length=12),
+            password=generate_valid_password(fake),
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
@@ -262,7 +264,7 @@ class TestGetAvailableDatasetsIntegration:
             tenant_id=tenant.id,
             name=fake.company(),
             provider="external",  # External provider
-            data_source_type="external",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             created_by=account.id,
         )
         db_session_with_containers.add(dataset)
@@ -286,7 +288,7 @@ class TestGetAvailableDatasetsIntegration:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            password=fake.password(length=12),
+            password=generate_valid_password(fake),
         )
         TenantService.create_owner_tenant_if_not_exist(account1, name=fake.company())
         tenant1 = account1.current_tenant
@@ -295,7 +297,7 @@ class TestGetAvailableDatasetsIntegration:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            password=fake.password(length=12),
+            password=generate_valid_password(fake),
         )
         TenantService.create_owner_tenant_if_not_exist(account2, name=fake.company())
         tenant2 = account2.current_tenant
@@ -306,7 +308,7 @@ class TestGetAvailableDatasetsIntegration:
             tenant_id=tenant1.id,
             name="Tenant 1 Dataset",
             provider="dify",
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             created_by=account1.id,
         )
         db_session_with_containers.add(dataset1)
@@ -317,7 +319,7 @@ class TestGetAvailableDatasetsIntegration:
             tenant_id=tenant2.id,
             name="Tenant 2 Dataset",
             provider="dify",
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             created_by=account2.id,
         )
         db_session_with_containers.add(dataset2)
@@ -329,13 +331,13 @@ class TestGetAvailableDatasetsIntegration:
                 tenant_id=dataset.tenant_id,
                 dataset_id=dataset.id,
                 position=0,
-                data_source_type="upload_file",
+                data_source_type=DataSourceType.UPLOAD_FILE,
                 batch=str(uuid.uuid4()),  # Required field
-                created_from="web",
+                created_from=DocumentCreatedFrom.WEB,
                 name=f"Document for {dataset.name}",
                 created_by=account.id,
                 doc_form="text_model",
-                indexing_status="completed",
+                indexing_status=IndexingStatus.COMPLETED,
                 enabled=True,
                 archived=False,
             )
@@ -362,7 +364,7 @@ class TestGetAvailableDatasetsIntegration:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            password=fake.password(length=12),
+            password=generate_valid_password(fake),
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
@@ -384,7 +386,7 @@ class TestGetAvailableDatasetsIntegration:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            password=fake.password(length=12),
+            password=generate_valid_password(fake),
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
@@ -397,7 +399,7 @@ class TestGetAvailableDatasetsIntegration:
                 tenant_id=tenant.id,
                 name=f"Dataset {i}",
                 provider="dify",
-                data_source_type="upload_file",
+                data_source_type=DataSourceType.UPLOAD_FILE,
                 created_by=account.id,
             )
             db_session_with_containers.add(dataset)
@@ -409,13 +411,13 @@ class TestGetAvailableDatasetsIntegration:
                 tenant_id=tenant.id,
                 dataset_id=dataset.id,
                 position=0,
-                data_source_type="upload_file",
+                data_source_type=DataSourceType.UPLOAD_FILE,
                 batch=str(uuid.uuid4()),  # Required field
-                created_from="web",
+                created_from=DocumentCreatedFrom.WEB,
                 name=f"Document {i}",
                 created_by=account.id,
                 doc_form="text_model",
-                indexing_status="completed",
+                indexing_status=IndexingStatus.COMPLETED,
                 enabled=True,
                 archived=False,
             )
@@ -445,7 +447,7 @@ class TestKnowledgeRetrievalIntegration:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            password=fake.password(length=12),
+            password=generate_valid_password(fake),
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
@@ -455,7 +457,7 @@ class TestKnowledgeRetrievalIntegration:
             tenant_id=tenant.id,
             name=fake.company(),
             provider="dify",
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             created_by=account.id,
             indexing_technique="high_quality",
         )
@@ -466,12 +468,12 @@ class TestKnowledgeRetrievalIntegration:
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             position=0,
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             batch=str(uuid.uuid4()),  # Required field
-            created_from="web",
+            created_from=DocumentCreatedFrom.WEB,
             name=fake.sentence(),
             created_by=account.id,
-            indexing_status="completed",
+            indexing_status=IndexingStatus.COMPLETED,
             enabled=True,
             archived=False,
             doc_form="text_model",
@@ -513,7 +515,7 @@ class TestKnowledgeRetrievalIntegration:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            password=fake.password(length=12),
+            password=generate_valid_password(fake),
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
@@ -524,7 +526,7 @@ class TestKnowledgeRetrievalIntegration:
             tenant_id=tenant.id,
             name=fake.company(),
             provider="dify",
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             created_by=account.id,
         )
         db_session_with_containers.add(dataset)
@@ -561,7 +563,7 @@ class TestKnowledgeRetrievalIntegration:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            password=fake.password(length=12),
+            password=generate_valid_password(fake),
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
@@ -571,7 +573,7 @@ class TestKnowledgeRetrievalIntegration:
             tenant_id=tenant.id,
             name=fake.company(),
             provider="dify",
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             created_by=account.id,
         )
         db_session_with_containers.add(dataset)

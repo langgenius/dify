@@ -8,12 +8,14 @@ from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import (
     InvokeFrom,
     RagPipelineGenerateEntity,
+    UserFrom,
+    build_dify_run_context,
 )
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
-from core.workflow.node_factory import DifyNodeFactory
+from core.workflow.node_factory import DifyNodeFactory, get_default_root_node_id
 from core.workflow.workflow_entry import WorkflowEntry
 from dify_graph.entities.graph_init_params import GraphInitParams
-from dify_graph.enums import UserFrom, WorkflowType
+from dify_graph.enums import WorkflowType
 from dify_graph.graph import Graph
 from dify_graph.graph_events import GraphEngineEvent, GraphRunFailedEvent
 from dify_graph.repositories.workflow_execution_repository import WorkflowExecutionRepository
@@ -256,13 +258,15 @@ class PipelineRunner(WorkflowBasedAppRunner):
         # init graph
         # Create required parameters for Graph.init
         graph_init_params = GraphInitParams(
-            tenant_id=workflow.tenant_id,
-            app_id=self._app_id,
             workflow_id=workflow.id,
             graph_config=graph_config,
-            user_id=self.application_generate_entity.user_id,
-            user_from=user_from,
-            invoke_from=invoke_from,
+            run_context=build_dify_run_context(
+                tenant_id=workflow.tenant_id,
+                app_id=self._app_id,
+                user_id=self.application_generate_entity.user_id,
+                user_from=user_from,
+                invoke_from=invoke_from,
+            ),
             call_depth=0,
         )
 
@@ -270,6 +274,8 @@ class PipelineRunner(WorkflowBasedAppRunner):
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
         )
+        if start_node_id is None:
+            start_node_id = get_default_root_node_id(graph_config)
         graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id=start_node_id)
 
         if not graph:

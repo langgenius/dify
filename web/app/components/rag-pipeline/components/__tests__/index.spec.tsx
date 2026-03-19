@@ -1,5 +1,5 @@
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { createMockProviderContextValue } from '@/__mocks__/provider-context'
 
 import Conversion from '../conversion'
@@ -10,7 +10,7 @@ import RagPipelineChildren from '../rag-pipeline-children'
 import PipelineScreenShot from '../screenshot'
 
 const mockPush = vi.fn()
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useParams: () => ({ datasetId: 'test-dataset-id' }),
   useRouter: () => ({ push: mockPush }),
 }))
@@ -868,9 +868,11 @@ describe('RagPipelineChildren', () => {
       ]
 
       if (mockEventSubscriptionCallback) {
-        mockEventSubscriptionCallback({
-          type: 'DSL_EXPORT_CHECK',
-          payload: { data: mockEnvVariables },
+        await act(async () => {
+          mockEventSubscriptionCallback?.({
+            type: 'DSL_EXPORT_CHECK',
+            payload: { data: mockEnvVariables },
+          })
         })
       }
 
@@ -883,8 +885,10 @@ describe('RagPipelineChildren', () => {
       render(<RagPipelineChildren />)
 
       if (mockEventSubscriptionCallback) {
-        mockEventSubscriptionCallback({
-          type: 'OTHER_EVENT',
+        act(() => {
+          mockEventSubscriptionCallback?.({
+            type: 'OTHER_EVENT',
+          })
         })
       }
 
@@ -930,9 +934,11 @@ describe('RagPipelineChildren', () => {
       ]
 
       if (mockEventSubscriptionCallback) {
-        mockEventSubscriptionCallback({
-          type: 'DSL_EXPORT_CHECK',
-          payload: { data: mockEnvVariables },
+        await act(async () => {
+          mockEventSubscriptionCallback?.({
+            type: 'DSL_EXPORT_CHECK',
+            payload: { data: mockEnvVariables },
+          })
         })
       }
 
@@ -949,9 +955,11 @@ describe('RagPipelineChildren', () => {
       ]
 
       if (mockEventSubscriptionCallback) {
-        mockEventSubscriptionCallback({
-          type: 'DSL_EXPORT_CHECK',
-          payload: { data: mockEnvVariables },
+        await act(async () => {
+          mockEventSubscriptionCallback?.({
+            type: 'DSL_EXPORT_CHECK',
+            payload: { data: mockEnvVariables },
+          })
         })
       }
 
@@ -974,9 +982,11 @@ describe('RagPipelineChildren', () => {
       ]
 
       if (mockEventSubscriptionCallback) {
-        mockEventSubscriptionCallback({
-          type: 'DSL_EXPORT_CHECK',
-          payload: { data: mockEnvVariables },
+        await act(async () => {
+          mockEventSubscriptionCallback?.({
+            type: 'DSL_EXPORT_CHECK',
+            payload: { data: mockEnvVariables },
+          })
         })
       }
 

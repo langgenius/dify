@@ -30,8 +30,12 @@ from core.plugin.impl.debugging import PluginDebuggingClient
 from core.plugin.impl.plugin import PluginInstaller
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from models.provider import Provider, ProviderCredential
+from models.provider import Provider, ProviderCredential, TenantPreferredModelProvider
 from models.provider_ids import GenericProviderID
+from services.enterprise.plugin_manager_service import (
+    PluginManagerService,
+    PreUninstallPluginRequest,
+)
 from services.errors.plugin import PluginInstallationForbiddenError
 from services.feature_service import FeatureService, PluginInstallationScope
 
@@ -519,9 +523,23 @@ class PluginService:
         if not plugin:
             return manager.uninstall(tenant_id, plugin_installation_id)
 
+        if dify_config.ENTERPRISE_ENABLED:
+            PluginManagerService.try_pre_uninstall_plugin(
+                PreUninstallPluginRequest(
+                    tenant_id=tenant_id,
+                    plugin_unique_identifier=plugin.plugin_unique_identifier,
+                )
+            )
         with Session(db.engine) as session, session.begin():
             plugin_id = plugin.plugin_id
             logger.info("Deleting credentials for plugin: %s", plugin_id)
+
+            session.execute(
+                delete(TenantPreferredModelProvider).where(
+                    TenantPreferredModelProvider.tenant_id == tenant_id,
+                    TenantPreferredModelProvider.provider_name.like(f"{plugin_id}/%"),
+                )
+            )
 
             # Delete provider credentials that match this plugin
             credential_ids = session.scalars(

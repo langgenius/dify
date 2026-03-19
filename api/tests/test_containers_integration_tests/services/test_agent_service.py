@@ -7,10 +7,12 @@ from sqlalchemy.orm import Session
 
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from models import Account
+from models.enums import MessageFileBelongsTo
 from models.model import AppModelConfig, Conversation, EndUser, Message, MessageAgentThought
 from services.account_service import AccountService, TenantService
 from services.agent_service import AgentService
 from services.app_service import AppService
+from tests.test_containers_integration_tests.helpers import generate_valid_password
 
 
 class TestAgentService:
@@ -111,7 +113,7 @@ class TestAgentService:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            password=fake.password(length=12),
+            password=generate_valid_password(fake),
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
@@ -851,7 +853,7 @@ class TestAgentService:
             type=FileType.IMAGE,
             transfer_method=FileTransferMethod.REMOTE_URL,
             url="http://example.com/file1.jpg",
-            belongs_to="user",
+            belongs_to=MessageFileBelongsTo.USER,
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=message.from_account_id,
         )
@@ -860,7 +862,7 @@ class TestAgentService:
             type=FileType.IMAGE,
             transfer_method=FileTransferMethod.REMOTE_URL,
             url="http://example.com/file2.png",
-            belongs_to="user",
+            belongs_to=MessageFileBelongsTo.USER,
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=message.from_account_id,
         )

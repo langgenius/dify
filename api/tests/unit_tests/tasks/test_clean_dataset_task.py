@@ -16,6 +16,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from models.enums import DataSourceType
 from tasks.clean_dataset_task import clean_dataset_task
 
 # ============================================================================
@@ -116,7 +117,7 @@ def mock_document():
     doc.id = str(uuid.uuid4())
     doc.tenant_id = str(uuid.uuid4())
     doc.dataset_id = str(uuid.uuid4())
-    doc.data_source_type = "upload_file"
+    doc.data_source_type = DataSourceType.UPLOAD_FILE
     doc.data_source_info = '{"upload_file_id": "test-file-id"}'
     doc.data_source_info_dict = {"upload_file_id": "test-file-id"}
     return doc

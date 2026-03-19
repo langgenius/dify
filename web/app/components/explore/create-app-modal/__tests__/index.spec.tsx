@@ -19,7 +19,7 @@ vi.mock('@emoji-mart/data', () => ({
   },
 }))
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useParams: () => ({}),
 }))
 

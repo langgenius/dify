@@ -45,18 +45,12 @@ class FetchUserArg(BaseModel):
 
 
 @overload
-def validate_app_token(
-    view: Callable[P, R],
-    *,
-    fetch_user_arg: FetchUserArg | None = None,
-) -> Callable[P, R]: ...
+def validate_app_token(view: Callable[P, R]) -> Callable[P, R]: ...
 
 
 @overload
 def validate_app_token(
-    view: None = None,
-    *,
-    fetch_user_arg: FetchUserArg | None = None,
+    view: None = None, *, fetch_user_arg: FetchUserArg | None = None
 ) -> Callable[[Callable[P, R]], Callable[P, R]]: ...
 
 
@@ -238,10 +232,20 @@ def cloud_edition_billing_rate_limit_check(
     return interceptor
 
 
-def validate_dataset_token(view: Callable[Concatenate[T, P], R] | None = None):
-    def decorator(view: Callable[Concatenate[T, P], R]):
-        @wraps(view)
-        def decorated(*args: P.args, **kwargs: P.kwargs):
+@overload
+def validate_dataset_token(view: Callable[Concatenate[T, P], R]) -> Callable[P, R]: ...
+
+
+@overload
+def validate_dataset_token(view: None = None) -> Callable[[Callable[Concatenate[T, P], R]], Callable[P, R]]: ...
+
+
+def validate_dataset_token(
+    view: Callable[Concatenate[T, P], R] | None = None,
+) -> Callable[P, R] | Callable[[Callable[Concatenate[T, P], R]], Callable[P, R]]:
+    def decorator(view_func: Callable[Concatenate[T, P], R]) -> Callable[P, R]:
+        @wraps(view_func)
+        def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
             api_token = validate_and_get_api_token("dataset")
 
             # get url path dataset_id from positional args or kwargs
@@ -312,7 +316,7 @@ def validate_dataset_token(view: Callable[Concatenate[T, P], R] | None = None):
                     raise Unauthorized("Tenant owner account does not exist.")
             else:
                 raise Unauthorized("Tenant does not exist.")
-            return view_func(api_token.tenant_id, *args, **kwargs)
+            return view_func(api_token.tenant_id, *args, **kwargs)  # type: ignore[arg-type]
 
         return decorated
 

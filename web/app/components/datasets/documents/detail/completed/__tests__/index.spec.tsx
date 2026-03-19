@@ -49,7 +49,7 @@ const {
   mockOnDelete: vi.fn(),
 }))
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   usePathname: () => '/datasets/test-dataset-id/documents/test-document-id',
 }))
 
@@ -65,7 +65,7 @@ vi.mock('../../context', () => ({
   },
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
+vi.mock('@/app/components/base/toast/context', () => ({
   ToastContext: { Provider: ({ children }: { children: React.ReactNode }) => children, Consumer: () => null },
   useToastContext: () => ({ notify: mockNotify }),
 }))
