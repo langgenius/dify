@@ -36,7 +36,10 @@ from .enums import (
     BannerStatus,
     ConversationStatus,
     CreatorUserRole,
+    FeedbackFromSource,
+    FeedbackRating,
     MessageChainType,
+    MessageFileBelongsTo,
     MessageStatus,
 )
 from .provider_ids import GenericProviderID
@@ -1165,7 +1168,7 @@ class Conversation(Base):
                 select(func.count(MessageFeedback.id)).where(
                     MessageFeedback.conversation_id == self.id,
                     MessageFeedback.from_source == "user",
-                    MessageFeedback.rating == "like",
+                    MessageFeedback.rating == FeedbackRating.LIKE,
                 )
             )
             or 0
@@ -1176,7 +1179,7 @@ class Conversation(Base):
                 select(func.count(MessageFeedback.id)).where(
                     MessageFeedback.conversation_id == self.id,
                     MessageFeedback.from_source == "user",
-                    MessageFeedback.rating == "dislike",
+                    MessageFeedback.rating == FeedbackRating.DISLIKE,
                 )
             )
             or 0
@@ -1191,7 +1194,7 @@ class Conversation(Base):
                 select(func.count(MessageFeedback.id)).where(
                     MessageFeedback.conversation_id == self.id,
                     MessageFeedback.from_source == "admin",
-                    MessageFeedback.rating == "like",
+                    MessageFeedback.rating == FeedbackRating.LIKE,
                 )
             )
             or 0
@@ -1202,7 +1205,7 @@ class Conversation(Base):
                 select(func.count(MessageFeedback.id)).where(
                     MessageFeedback.conversation_id == self.id,
                     MessageFeedback.from_source == "admin",
-                    MessageFeedback.rating == "dislike",
+                    MessageFeedback.rating == FeedbackRating.DISLIKE,
                 )
             )
             or 0
@@ -1725,8 +1728,8 @@ class MessageFeedback(TypeBase):
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     conversation_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     message_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    rating: Mapped[str] = mapped_column(String(255), nullable=False)
-    from_source: Mapped[str] = mapped_column(String(255), nullable=False)
+    rating: Mapped[FeedbackRating] = mapped_column(EnumText(FeedbackRating, length=255), nullable=False)
+    from_source: Mapped[FeedbackFromSource] = mapped_column(EnumText(FeedbackFromSource, length=255), nullable=False)
     content: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
     from_end_user_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     from_account_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
@@ -1779,7 +1782,9 @@ class MessageFile(TypeBase):
     )
     created_by_role: Mapped[CreatorUserRole] = mapped_column(EnumText(CreatorUserRole, length=255), nullable=False)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    belongs_to: Mapped[Literal["user", "assistant"] | None] = mapped_column(String(255), nullable=True, default=None)
+    belongs_to: Mapped[MessageFileBelongsTo | None] = mapped_column(
+        EnumText(MessageFileBelongsTo, length=255), nullable=True, default=None
+    )
     url: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
     upload_file_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(
