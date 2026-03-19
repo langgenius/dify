@@ -309,7 +309,7 @@ class WeaviateVector(BaseVector):
             if self._ensure_properties():
                 _ensured_collections.add(self._collection_name)
 
-    def _get_uuids(self, texts: list[Document]) -> list[str]:
+    def _get_uuids(self, documents: list[Document]) -> list[str]:
         """
         Generates deterministic UUIDs for documents based on their content.
 
@@ -318,7 +318,7 @@ class WeaviateVector(BaseVector):
         URL_NAMESPACE = _uuid.UUID("6ba7b811-9dad-11d1-80b4-00c04fd430c8")
 
         uuids = []
-        for doc in texts:
+        for doc in documents:
             uuid_val = _uuid.uuid5(URL_NAMESPACE, doc.page_content)
             uuids.append(str(uuid_val))
 
