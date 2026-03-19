@@ -1,12 +1,12 @@
 'use client'
 import type { FC } from 'react'
 import { RiCloseLine, RiPlayLargeLine } from '@remixicon/react'
-import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '@/app/components/app/store'
 import TooltipPlus from '@/app/components/base/tooltip'
 import { WorkflowContextProvider } from '@/app/components/workflow/context'
 import Run from '@/app/components/workflow/run'
+import { useRouter } from '@/next/navigation'
 
 type ILogDetail = {
   runID: string

@@ -7,7 +7,7 @@ import ExternalKnowledgeBaseConnector from '../index'
 
 const mockRouterBack = vi.fn()
 const mockReplace = vi.fn()
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     back: mockRouterBack,
     replace: mockReplace,
@@ -21,11 +21,11 @@ vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path?: string) => `https://docs.dify.ai/en${path || ''}`,
 }))
 
-const mockNotify = vi.fn()
-vi.mock('@/app/components/base/toast/context', () => ({
-  useToastContext: () => ({
-    notify: mockNotify,
-  }),
+const mockNotify = vi.hoisted(() => vi.fn())
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    add: mockNotify,
+  },
 }))
 
 // Mock modal context
@@ -164,7 +164,7 @@ describe('ExternalKnowledgeBaseConnector', () => {
       // Verify success notification
       expect(mockNotify).toHaveBeenCalledWith({
         type: 'success',
-        message: 'External Knowledge Base Connected Successfully',
+        title: 'External Knowledge Base Connected Successfully',
       })
 
       // Verify navigation back
@@ -206,7 +206,7 @@ describe('ExternalKnowledgeBaseConnector', () => {
       await waitFor(() => {
         expect(mockNotify).toHaveBeenCalledWith({
           type: 'error',
-          message: 'Failed to connect External Knowledge Base',
+          title: 'Failed to connect External Knowledge Base',
         })
       })
 
@@ -228,7 +228,7 @@ describe('ExternalKnowledgeBaseConnector', () => {
       await waitFor(() => {
         expect(mockNotify).toHaveBeenCalledWith({
           type: 'error',
-          message: 'Failed to connect External Knowledge Base',
+          title: 'Failed to connect External Knowledge Base',
         })
       })
 
@@ -274,7 +274,7 @@ describe('ExternalKnowledgeBaseConnector', () => {
       await waitFor(() => {
         expect(mockNotify).toHaveBeenCalledWith({
           type: 'success',
-          message: 'External Knowledge Base Connected Successfully',
+          title: 'External Knowledge Base Connected Successfully',
         })
       })
     })

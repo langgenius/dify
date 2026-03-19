@@ -24,7 +24,7 @@ const IndexingTypeValues = {
 }
 
 // Mock next/link
-vi.mock('next/link', () => {
+vi.mock('@/next/link', () => {
   return function MockLink({ children, href }: { children: React.ReactNode, href: string }) {
     return <a href={href}>{children}</a>
   }

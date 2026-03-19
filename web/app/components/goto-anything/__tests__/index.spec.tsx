@@ -11,7 +11,7 @@ type TestSearchResult = Omit<SearchResult, 'icon' | 'data'> & {
 }
 
 const routerPush = vi.fn()
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: routerPush,
   }),

@@ -7,7 +7,6 @@ import {
   RiArrowRightSLine,
 } from '@remixicon/react'
 import { debounce } from 'es-toolkit/compat'
-import { useRouter } from 'next/navigation'
 import { Fragment, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -16,6 +15,7 @@ import AppIcon from '@/app/components/base/app-icon'
 import { FileArrow01, FilePlus01, FilePlus02 } from '@/app/components/base/icons/src/vender/line/files'
 import Loading from '@/app/components/base/loading'
 import { useAppContext } from '@/context/app-context'
+import { useRouter } from '@/next/navigation'
 import { cn } from '@/utils/classnames'
 
 export type NavItem = {

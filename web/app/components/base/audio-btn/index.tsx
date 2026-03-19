@@ -1,10 +1,10 @@
 'use client'
 import { t } from 'i18next'
-import { useParams, usePathname } from 'next/navigation'
 import { useState } from 'react'
 import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
 import Loading from '@/app/components/base/loading'
 import Tooltip from '@/app/components/base/tooltip'
+import { useParams, usePathname } from '@/next/navigation'
 import s from './style.module.css'
 
 type AudioBtnProps = {

@@ -65,6 +65,7 @@ import type { Shape as HooksStoreShape } from '../hooks-store/store'
 import type { Shape } from '../store/workflow'
 import type { Edge, Node, WorkflowRunningData } from '../types'
 import type { WorkflowHistoryStoreApi } from '../workflow-history-store'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, renderHook } from '@testing-library/react'
 import isDeepEqual from 'fast-deep-equal'
 import * as React from 'react'
@@ -154,6 +155,13 @@ function createWorkflowWrapper(
   const historyCtxValue = historyConfig
     ? createTestHistoryStoreContext(historyConfig)
     : undefined
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  })
 
   return ({ children }: { children: React.ReactNode }) => {
     let inner: React.ReactNode = children
@@ -175,9 +183,13 @@ function createWorkflowWrapper(
     }
 
     return React.createElement(
-      WorkflowContext.Provider,
-      { value: stores.store },
-      inner,
+      QueryClientProvider,
+      { client: queryClient },
+      React.createElement(
+        WorkflowContext.Provider,
+        { value: stores.store },
+        inner,
+      ),
     )
   }
 }
