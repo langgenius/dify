@@ -5,6 +5,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any, Optional, TypedDict, Union, cast
 from uuid import uuid4
+import copy
 
 import sqlalchemy as sa
 from sqlalchemy import (
@@ -302,11 +303,23 @@ class Workflow(Base):  # bug
     def features(self) -> str:
         """
         Convert old features structure to new features structure.
+
+        This property avoids rewriting the underlying JSON when normalization
+        produces no effective change, to prevent marking the row dirty on read.
         """
         if not self._features:
             return self._features
 
-        self._features = json.dumps(self._normalize_features_payload(json.loads(self._features)))
+        # Parse once and deep-copy before normalization to detect in-place changes.
+        original_dict = json.loads(self._features)
+        normalized_dict = self._normalize_features_payload(copy.deepcopy(original_dict))
+
+        if normalized_dict == original_dict:
+            # No effective change; return stored JSON unchanged.
+            return self._features
+
+        # Normalization changed the payload: persist the normalized JSON.
+        self._features = json.dumps(normalized_dict)
         return self._features
 
     @features.setter
