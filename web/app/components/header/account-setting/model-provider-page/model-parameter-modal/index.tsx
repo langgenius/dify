@@ -32,7 +32,6 @@ import Trigger from './trigger'
 
 export type ModelParameterModalProps = {
   popupClassName?: string
-  portalToFollowElemContentClassName?: string
   isAdvancedMode: boolean
   modelId: string
   provider: string
@@ -50,7 +49,6 @@ export type ModelParameterModalProps = {
 
 const ModelParameterModal: FC<ModelParameterModalProps> = ({
   popupClassName,
-  portalToFollowElemContentClassName,
   isAdvancedMode,
   modelId,
   provider,
@@ -161,7 +159,6 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
       <PopoverContent
         placement={isInWorkflow ? 'left' : (renderTrigger ? 'bottom-end' : 'left-start')}
         sideOffset={4}
-        className={portalToFollowElemContentClassName}
         popupClassName={cn(popupClassName, 'w-[400px] rounded-2xl')}
         positionerProps={!renderTrigger ? { anchor: settingsIconRef } : undefined}
       >
