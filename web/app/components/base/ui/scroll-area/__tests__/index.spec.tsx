@@ -88,7 +88,6 @@ describe('scroll-area wrapper', () => {
           'hover:opacity-100',
           'data-[orientation=vertical]:absolute',
           'data-[orientation=vertical]:inset-y-0',
-          'data-[orientation=vertical]:right-0',
           'data-[orientation=vertical]:w-3',
           'data-[orientation=vertical]:justify-center',
         )
@@ -129,7 +128,6 @@ describe('scroll-area wrapper', () => {
           'hover:opacity-100',
           'data-[orientation=horizontal]:absolute',
           'data-[orientation=horizontal]:inset-x-0',
-          'data-[orientation=horizontal]:bottom-0',
           'data-[orientation=horizontal]:h-3',
           'data-[orientation=horizontal]:items-center',
         )
@@ -163,6 +161,24 @@ describe('scroll-area wrapper', () => {
           'focus-visible:ring-inset',
           'focus-visible:ring-components-input-border-hover',
           'custom-viewport-class',
+        )
+      })
+    })
+
+    it('should let callers control scrollbar inset spacing via className', async () => {
+      renderScrollArea({
+        verticalScrollbarClassName: 'data-[orientation=vertical]:my-2 data-[orientation=vertical]:mr-2',
+        horizontalScrollbarClassName: 'data-[orientation=horizontal]:mx-2 data-[orientation=horizontal]:mb-2',
+      })
+
+      await waitFor(() => {
+        expect(screen.getByTestId('scroll-area-vertical-scrollbar')).toHaveClass(
+          'data-[orientation=vertical]:my-2',
+          'data-[orientation=vertical]:mr-2',
+        )
+        expect(screen.getByTestId('scroll-area-horizontal-scrollbar')).toHaveClass(
+          'data-[orientation=horizontal]:mx-2',
+          'data-[orientation=horizontal]:mb-2',
         )
       })
     })

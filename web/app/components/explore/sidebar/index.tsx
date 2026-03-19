@@ -25,7 +25,7 @@ const expandedSidebarScrollAreaClassNames = {
   root: 'h-full',
   viewport: 'overscroll-contain',
   content: 'space-y-0.5',
-  scrollbar: 'data-[orientation=vertical]:right-0',
+  scrollbar: 'data-[orientation=vertical]:my-2 data-[orientation=vertical]:[margin-inline-end:-0.75rem]',
   thumb: 'rounded-full',
 } as const
 
