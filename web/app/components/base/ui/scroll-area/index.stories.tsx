@@ -18,7 +18,7 @@ const meta = {
     layout: 'padded',
     docs: {
       description: {
-        component: 'Compound scroll container built on Base UI ScrollArea. These stories focus on panel-style compositions that already exist throughout Dify: dense sidebars, sticky list headers, multi-pane workbenches, horizontal rails, and overlay surfaces.',
+        component: 'Compound scroll container built on Base UI ScrollArea. These stories focus on panel-style compositions that already exist throughout Dify: dense sidebars, sticky list headers, multi-pane workbenches, horizontal rails, and overlay surfaces. Scrollbar placement should be adjusted by consumer spacing classes such as margin-based overrides instead of right/bottom positioning utilities.',
       },
     },
   },

@@ -165,16 +165,16 @@ describe('scroll-area wrapper', () => {
       })
     })
 
-    it('should let callers control scrollbar inset spacing via className', async () => {
+    it('should let callers control scrollbar inset spacing via margin-based className overrides', async () => {
       renderScrollArea({
-        verticalScrollbarClassName: 'data-[orientation=vertical]:my-2 data-[orientation=vertical]:mr-2',
+        verticalScrollbarClassName: 'data-[orientation=vertical]:my-2 data-[orientation=vertical]:[margin-inline-end:-0.75rem]',
         horizontalScrollbarClassName: 'data-[orientation=horizontal]:mx-2 data-[orientation=horizontal]:mb-2',
       })
 
       await waitFor(() => {
         expect(screen.getByTestId('scroll-area-vertical-scrollbar')).toHaveClass(
           'data-[orientation=vertical]:my-2',
-          'data-[orientation=vertical]:mr-2',
+          'data-[orientation=vertical]:[margin-inline-end:-0.75rem]',
         )
         expect(screen.getByTestId('scroll-area-horizontal-scrollbar')).toHaveClass(
           'data-[orientation=horizontal]:mx-2',
