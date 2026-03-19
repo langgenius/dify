@@ -2,16 +2,39 @@ from collections.abc import Generator
 from datetime import datetime
 from typing import Any
 
-from core.rag.extractor.watercrawl.client import WaterCrawlAPIClient
+from typing_extensions import TypedDict
+
+from core.rag.extractor.watercrawl.client import PageOptions, SpiderOptions, WaterCrawlAPIClient
+
+
+class WatercrawlDocumentData(TypedDict):
+    title: str | None
+    description: str | None
+    source_url: str | None
+    markdown: str | None
+
+
+class CrawlJobResponse(TypedDict):
+    status: str
+    job_id: str | None
+
+
+class WatercrawlCrawlStatusResponse(TypedDict):
+    status: str
+    job_id: str | None
+    total: int
+    current: int
+    data: list[WatercrawlDocumentData]
+    time_consuming: float
 
 
 class WaterCrawlProvider:
     def __init__(self, api_key, base_url: str | None = None):
         self.client = WaterCrawlAPIClient(api_key, base_url)
 
-    def crawl_url(self, url, options: dict | Any | None = None):
+    def crawl_url(self, url: str, options: dict[str, Any] | None = None) -> CrawlJobResponse:
         options = options or {}
-        spider_options = {
+        spider_options: SpiderOptions = {
             "max_depth": 1,
             "page_limit": 1,
             "allowed_domains": [],
@@ -25,7 +48,7 @@ class WaterCrawlProvider:
             spider_options["exclude_paths"] = options.get("excludes", "").split(",") if options.get("excludes") else []
 
         wait_time = options.get("wait_time", 1000)
-        page_options = {
+        page_options: PageOptions = {
             "exclude_tags": options.get("exclude_tags", "").split(",") if options.get("exclude_tags") else [],
             "include_tags": options.get("include_tags", "").split(",") if options.get("include_tags") else [],
             "wait_time": max(1000, wait_time),  # minimum wait time is 1 second
@@ -41,9 +64,9 @@ class WaterCrawlProvider:
 
         return {"status": "active", "job_id": result.get("uuid")}
 
-    def get_crawl_status(self, crawl_request_id):
+    def get_crawl_status(self, crawl_request_id: str) -> WatercrawlCrawlStatusResponse:
         response = self.client.get_crawl_request(crawl_request_id)
-        data = []
+        data: list[WatercrawlDocumentData] = []
         if response["status"] in ["new", "running"]:
             status = "active"
         else:
@@ -67,7 +90,7 @@ class WaterCrawlProvider:
             "time_consuming": time_consuming,
         }
 
-    def get_crawl_url_data(self, job_id, url) -> dict | None:
+    def get_crawl_url_data(self, job_id: str, url: str) -> WatercrawlDocumentData | None:
         if not job_id:
             return self.scrape_url(url)
 
@@ -82,11 +105,11 @@ class WaterCrawlProvider:
 
         return None
 
-    def scrape_url(self, url: str):
+    def scrape_url(self, url: str) -> WatercrawlDocumentData:
         response = self.client.scrape_url(url=url, sync=True, prefetched=True)
         return self._structure_data(response)
 
-    def _structure_data(self, result_object: dict):
+    def _structure_data(self, result_object: dict[str, Any]) -> WatercrawlDocumentData:
         if isinstance(result_object.get("result", {}), str):
             raise ValueError("Invalid result object. Expected a dictionary.")
 
@@ -98,7 +121,9 @@ class WaterCrawlProvider:
             "markdown": result_object.get("result", {}).get("markdown"),
         }
 
-    def _get_results(self, crawl_request_id: str, query_params: dict | None = None) -> Generator[dict, None, None]:
+    def _get_results(
+        self, crawl_request_id: str, query_params: dict | None = None
+    ) -> Generator[WatercrawlDocumentData, None, None]:
         page = 0
         page_size = 100
 

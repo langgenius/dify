@@ -15,7 +15,9 @@ import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/compo
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import VarList from '@/app/components/workflow/nodes/_base/components/variable/var-list'
+import { useProviderContextSelector } from '@/context/provider-context'
 import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
+import { extractPluginId } from '../../utils/plugin'
 import ConfigVision from '../_base/components/config-vision'
 import MemoryConfig from '../_base/components/memory-config'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
@@ -23,6 +25,7 @@ import ConfigPrompt from './components/config-prompt'
 import ReasoningFormatConfig from './components/reasoning-format-config'
 import StructureOutput from './components/structure-output'
 import useConfig from './use-config'
+import { getLLMModelIssue, LLMModelIssueCode } from './utils'
 
 const i18nPrefix = 'nodes.llm'
 
@@ -67,6 +70,18 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
   } = useConfig(id, data)
 
   const model = inputs.model
+  const isModelProviderInstalled = useProviderContextSelector((state) => {
+    const modelIssue = getLLMModelIssue({ modelProvider: model?.provider })
+    if (modelIssue === LLMModelIssueCode.providerRequired)
+      return true
+
+    const modelProviderPluginId = extractPluginId(model.provider)
+    return state.modelProviders.some(provider => extractPluginId(provider.provider) === modelProviderPluginId)
+  })
+  const hasModelWarning = getLLMModelIssue({
+    modelProvider: model?.provider,
+    isModelProviderInstalled,
+  }) !== null
 
   const handleModelChange = useCallback((model: {
     provider: string
@@ -102,6 +117,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
         <Field
           title={t(`${i18nPrefix}.model`, { ns: 'workflow' })}
           required
+          warningDot={hasModelWarning}
         >
           <ModelParameterModal
             popupClassName="!w-[387px]"
@@ -264,8 +280,8 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
                 noDecoration
                 popupContent={(
                   <div className="w-[232px] rounded-xl border-[0.5px] border-components-panel-border bg-components-tooltip-bg px-4 py-3.5 shadow-lg backdrop-blur-[5px]">
-                    <div className="title-xs-semi-bold text-text-primary">{t('structOutput.modelNotSupported', { ns: 'app' })}</div>
-                    <div className="body-xs-regular mt-1 text-text-secondary">{t('structOutput.modelNotSupportedTip', { ns: 'app' })}</div>
+                    <div className="text-text-primary title-xs-semi-bold">{t('structOutput.modelNotSupported', { ns: 'app' })}</div>
+                    <div className="mt-1 text-text-secondary body-xs-regular">{t('structOutput.modelNotSupportedTip', { ns: 'app' })}</div>
                   </div>
                 )}
               >
@@ -274,7 +290,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
                 </div>
               </Tooltip>
             )}
-            <div className="system-xs-medium-uppercase mr-0.5 text-text-tertiary">{t('structOutput.structured', { ns: 'app' })}</div>
+            <div className="mr-0.5 text-text-tertiary system-xs-medium-uppercase">{t('structOutput.structured', { ns: 'app' })}</div>
             <Tooltip popupContent={
               <div className="max-w-[150px]">{t('structOutput.structuredTip', { ns: 'app' })}</div>
             }
@@ -285,7 +301,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
             </Tooltip>
             <Switch
               className="ml-2"
-              defaultValue={!!inputs.structured_output_enabled}
+              value={!!inputs.structured_output_enabled}
               onChange={handleStructureOutputEnableChange}
               size="md"
               disabled={readOnly}

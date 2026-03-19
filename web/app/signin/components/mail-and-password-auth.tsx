@@ -1,15 +1,15 @@
 import type { ResponseError } from '@/service/fetch'
 import { noop } from 'es-toolkit/function'
-import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { emailRegex } from '@/config'
 import { useLocale } from '@/context/i18n'
+import Link from '@/next/link'
+import { useRouter, useSearchParams } from '@/next/navigation'
 import { login } from '@/service/common'
 import { setWebAppAccessToken } from '@/service/webapp-auth'
 import { encryptPassword } from '@/utils/encryption'
@@ -35,18 +35,18 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
 
   const handleEmailPasswordLogin = async () => {
     if (!email) {
-      Toast.notify({ type: 'error', message: t('error.emailEmpty', { ns: 'login' }) })
+      toast.add({ type: 'error', title: t('error.emailEmpty', { ns: 'login' }) })
       return
     }
     if (!emailRegex.test(email)) {
-      Toast.notify({
+      toast.add({
         type: 'error',
-        message: t('error.emailInValid', { ns: 'login' }),
+        title: t('error.emailInValid', { ns: 'login' }),
       })
       return
     }
     if (!password?.trim()) {
-      Toast.notify({ type: 'error', message: t('error.passwordEmpty', { ns: 'login' }) })
+      toast.add({ type: 'error', title: t('error.passwordEmpty', { ns: 'login' }) })
       return
     }
 
@@ -78,22 +78,22 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
           router.replace(`/signin/invite-settings?${searchParams.toString()}`)
         }
         else {
-          const redirectUrl = resolvePostLoginRedirect(searchParams)
+          const redirectUrl = resolvePostLoginRedirect()
           router.replace(redirectUrl || '/apps')
         }
       }
       else {
-        Toast.notify({
+        toast.add({
           type: 'error',
-          message: res.data,
+          title: res.data,
         })
       }
     }
     catch (error) {
       if ((error as ResponseError).code === 'authentication_failed') {
-        Toast.notify({
+        toast.add({
           type: 'error',
-          message: t('error.invalidEmailOrPassword', { ns: 'login' }),
+          title: t('error.invalidEmailOrPassword', { ns: 'login' }),
         })
       }
     }
@@ -105,7 +105,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
   return (
     <form onSubmit={noop}>
       <div className="mb-3">
-        <label htmlFor="email" className="system-md-semibold my-2 text-text-secondary">
+        <label htmlFor="email" className="my-2 text-text-secondary system-md-semibold">
           {t('email', { ns: 'login' })}
         </label>
         <div className="mt-1">
@@ -124,7 +124,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
 
       <div className="mb-3">
         <label htmlFor="password" className="my-2 flex items-center justify-between">
-          <span className="system-md-semibold text-text-secondary">{t('password', { ns: 'login' })}</span>
+          <span className="text-text-secondary system-md-semibold">{t('password', { ns: 'login' })}</span>
           <Link
             href={`/reset-password?${searchParams.toString()}`}
             className={`system-xs-regular ${isEmailSetup ? 'text-components-button-secondary-accent-text' : 'pointer-events-none text-components-button-secondary-accent-text-disabled'}`}

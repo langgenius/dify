@@ -9,7 +9,8 @@ When I ask you to write/refactor/fix tests, follow these rules by default.
 - **Framework**: Next.js 15 + React 19 + TypeScript
 - **Testing Tools**: Vitest 4.0.16 + React Testing Library 16.0
 - **Test Environment**: jsdom
-- **File Naming**: `ComponentName.spec.tsx` (same directory as component)
+- **File Naming**: `ComponentName.spec.tsx` inside a same-level `__tests__/` directory
+- **Placement Rule**: Component, hook, and utility tests must live in a sibling `__tests__/` folder at the same level as the source under test. For example, `foo/index.tsx` maps to `foo/__tests__/index.spec.tsx`, and `foo/bar.ts` maps to `foo/__tests__/bar.spec.ts`.
 
 ## Running Tests
 
@@ -30,7 +31,7 @@ pnpm test path/to/file.spec.tsx
 ## Project Test Setup
 
 - **Configuration**: `vitest.config.ts` sets the `jsdom` environment, loads the Testing Library presets, and respects our path aliases (`@/...`). Check this file before adding new transformers or module name mappers.
-- **Global setup**: `vitest.setup.ts` already imports `@testing-library/jest-dom`, runs `cleanup()` after every test, and defines shared mocks (for example `react-i18next`, `next/image`). Add any environment-level mocks (for example `ResizeObserver`, `matchMedia`, `IntersectionObserver`, `TextEncoder`, `crypto`) here so they are shared consistently.
+- **Global setup**: `vitest.setup.ts` already imports `@testing-library/jest-dom`, runs `cleanup()` after every test, and defines shared mocks (for example `react-i18next`). Add any environment-level mocks (for example `ResizeObserver`, `matchMedia`, `IntersectionObserver`, `TextEncoder`, `crypto`) here so they are shared consistently.
 - **Reusable mocks**: Place shared mock factories inside `web/__mocks__/` and use `vi.mock('module-name')` to point to them rather than redefining mocks in every spec.
 - **Mocking behavior**: Modules are not mocked automatically. Use `vi.mock(...)` in tests, or place global mocks in `vitest.setup.ts`.
 - **Script utilities**: `web/scripts/analyze-component.js` analyzes component complexity and generates test prompts for AI assistants. Commands:
@@ -224,6 +225,38 @@ Simulate the interactions that matter to users—primary clicks, change events, 
 ### 7. Next.js Routing
 
 Mock the specific Next.js navigation hooks your component consumes (`useRouter`, `usePathname`, `useSearchParams`) and drive realistic routing flows—query parameters, redirects, guarded routes, URL updates—while asserting the rendered outcome or navigation side effects.
+
+#### 7.1 `nuqs` Query State Testing
+
+When testing code that uses `useQueryState` or `useQueryStates`, treat `nuqs` as the source of truth for URL synchronization.
+
+- ✅ In runtime, keep `NuqsAdapter` in app layout (already wired in `app/layout.tsx`).
+- ✅ In tests, wrap with `NuqsTestingAdapter` (prefer helper utilities from `@/test/nuqs-testing`).
+- ✅ Assert URL behavior via `onUrlUpdate` events (`searchParams`, `options.history`) instead of only asserting router mocks.
+- ✅ For custom parsers created with `createParser`, keep `parse` and `serialize` bijective (round-trip safe). Add edge-case coverage for values like `%2F`, `%25`, spaces, and legacy encoded URLs.
+- ✅ Assert default-clearing behavior explicitly (`clearOnDefault` semantics remove params when value equals default).
+- ⚠️ Only mock `nuqs` directly when URL behavior is intentionally out of scope for the test. For ESM-safe partial mocks, use async `vi.mock` with `importOriginal`.
+
+Example:
+
+```tsx
+import { renderHookWithNuqs } from '@/test/nuqs-testing'
+
+it('should update query with push history', async () => {
+  const { result, onUrlUpdate } = renderHookWithNuqs(() => useMyQueryState(), {
+    searchParams: '?page=1',
+  })
+
+  act(() => {
+    result.current.setQuery({ page: 2 })
+  })
+
+  await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
+  const update = onUrlUpdate.mock.calls.at(-1)![0]
+  expect(update.options.history).toBe('push')
+  expect(update.searchParams.get('page')).toBe('2')
+})
+```
 
 ### 8. Edge Cases (REQUIRED - All Components)
 

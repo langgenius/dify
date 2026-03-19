@@ -1,16 +1,18 @@
 from collections.abc import Mapping
+from typing import Any
 
-from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
-from core.workflow.enums import NodeExecutionType, NodeType
-from core.workflow.node_events import NodeRunResult
-from core.workflow.nodes.base.node import Node
+from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
+from dify_graph.constants import SYSTEM_VARIABLE_NODE_ID
+from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionStatus
+from dify_graph.enums import NodeExecutionType, WorkflowNodeExecutionMetadataKey
+from dify_graph.node_events import NodeRunResult
+from dify_graph.nodes.base.node import Node
 
 from .entities import TriggerEventNodeData
 
 
 class TriggerEventNode(Node[TriggerEventNodeData]):
-    node_type = NodeType.TRIGGER_PLUGIN
+    node_type = TRIGGER_PLUGIN_NODE_TYPE
     execution_type = NodeExecutionType.ROOT
 
     @classmethod
@@ -32,6 +34,9 @@ class TriggerEventNode(Node[TriggerEventNodeData]):
     def version(cls) -> str:
         return "1"
 
+    def populate_start_event(self, event) -> None:
+        event.provider_id = self.node_data.provider_id
+
     def _run(self) -> NodeRunResult:
         """
         Run the plugin trigger node.
@@ -41,7 +46,7 @@ class TriggerEventNode(Node[TriggerEventNodeData]):
         """
 
         # Get trigger data passed when workflow was triggered
-        metadata = {
+        metadata: dict[WorkflowNodeExecutionMetadataKey, Any] = {
             WorkflowNodeExecutionMetadataKey.TRIGGER_INFO: {
                 "provider_id": self.node_data.provider_id,
                 "event_name": self.node_data.event_name,

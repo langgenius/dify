@@ -300,10 +300,8 @@ class TestAppModelConfig:
             created_by=str(uuid4()),
         )
 
-        # Mock database query to return None
-        with patch("models.model.db.session.query") as mock_query:
-            mock_query.return_value.where.return_value.first.return_value = None
-
+        # Mock database scalar to return None (no annotation setting found)
+        with patch("models.model.db.session.scalar", return_value=None):
             # Act
             result = config.annotation_reply_dict
 
@@ -951,10 +949,8 @@ class TestSiteModel:
 
     def test_site_generate_code(self):
         """Test Site.generate_code static method."""
-        # Mock database query to return 0 (no existing codes)
-        with patch("models.model.db.session.query") as mock_query:
-            mock_query.return_value.where.return_value.count.return_value = 0
-
+        # Mock database scalar to return 0 (no existing codes)
+        with patch("models.model.db.session.scalar", return_value=0):
             # Act
             code = Site.generate_code(8)
 
@@ -1167,7 +1163,7 @@ class TestConversationStatusCount:
         conversation.id = str(uuid4())
 
         # Mock the database query to return no messages
-        with patch("models.model.db.session.scalars") as mock_scalars:
+        with patch("models.model.db.session.scalars", autospec=True) as mock_scalars:
             mock_scalars.return_value.all.return_value = []
 
             # Act
@@ -1192,7 +1188,7 @@ class TestConversationStatusCount:
         conversation.id = conversation_id
 
         # Mock the database query to return no messages with workflow_run_id
-        with patch("models.model.db.session.scalars") as mock_scalars:
+        with patch("models.model.db.session.scalars", autospec=True) as mock_scalars:
             mock_scalars.return_value.all.return_value = []
 
             # Act
@@ -1204,7 +1200,7 @@ class TestConversationStatusCount:
     def test_status_count_batch_loading_implementation(self):
         """Test that status_count uses batch loading instead of N+1 queries."""
         # Arrange
-        from core.workflow.enums import WorkflowExecutionStatus
+        from dify_graph.enums import WorkflowExecutionStatus
 
         app_id = str(uuid4())
         conversation_id = str(uuid4())
@@ -1277,7 +1273,7 @@ class TestConversationStatusCount:
             return mock_result
 
         # Act & Assert
-        with patch("models.model.db.session.scalars", side_effect=mock_scalars):
+        with patch("models.model.db.session.scalars", side_effect=mock_scalars, autospec=True):
             result = conversation.status_count
 
             # Verify only 2 database queries were made (not N+1)
@@ -1340,7 +1336,7 @@ class TestConversationStatusCount:
             return mock_result
 
         # Act
-        with patch("models.model.db.session.scalars", side_effect=mock_scalars):
+        with patch("models.model.db.session.scalars", side_effect=mock_scalars, autospec=True):
             result = conversation.status_count
 
             # Assert - query should include app_id filter
@@ -1385,7 +1381,7 @@ class TestConversationStatusCount:
             ),
         ]
 
-        with patch("models.model.db.session.scalars") as mock_scalars:
+        with patch("models.model.db.session.scalars", autospec=True) as mock_scalars:
             # Mock the messages query
             def mock_scalars_side_effect(query):
                 mock_result = MagicMock()
@@ -1411,7 +1407,7 @@ class TestConversationStatusCount:
     def test_status_count_paused(self):
         """Test status_count includes paused workflow runs."""
         # Arrange
-        from core.workflow.enums import WorkflowExecutionStatus
+        from dify_graph.enums import WorkflowExecutionStatus
 
         app_id = str(uuid4())
         conversation_id = str(uuid4())
@@ -1441,7 +1437,7 @@ class TestConversationStatusCount:
             ),
         ]
 
-        with patch("models.model.db.session.scalars") as mock_scalars:
+        with patch("models.model.db.session.scalars", autospec=True) as mock_scalars:
 
             def mock_scalars_side_effect(query):
                 mock_result = MagicMock()

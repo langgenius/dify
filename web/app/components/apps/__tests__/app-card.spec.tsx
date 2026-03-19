@@ -11,7 +11,7 @@ import AppCard from '../app-card'
 
 // Mock next/navigation
 const mockPush = vi.fn()
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
   }),
@@ -63,6 +63,15 @@ vi.mock('@/service/apps', () => ({
   exportAppConfig: vi.fn(() => Promise.resolve({ data: 'yaml: content' })),
 }))
 
+const mockDeleteAppMutation = vi.fn(() => Promise.resolve())
+let mockDeleteMutationPending = false
+vi.mock('@/service/use-apps', () => ({
+  useDeleteAppMutation: () => ({
+    mutateAsync: mockDeleteAppMutation,
+    isPending: mockDeleteMutationPending,
+  }),
+}))
+
 vi.mock('@/service/workflow', () => ({
   fetchWorkflowDraft: vi.fn(() => Promise.resolve({ environment_variables: [] })),
 }))
@@ -102,7 +111,7 @@ vi.mock('@/utils/time', () => ({
 }))
 
 // Mock dynamic imports
-vi.mock('next/dynamic', () => ({
+vi.mock('@/next/dynamic', () => ({
   default: (importFn: () => Promise<unknown>) => {
     const fnString = importFn.toString()
 
@@ -144,13 +153,6 @@ vi.mock('next/dynamic', () => ({
         if (!show)
           return null
         return React.createElement('div', { 'data-testid': 'switch-modal' }, React.createElement('button', { 'onClick': onClose, 'data-testid': 'close-switch-modal' }, 'Close'), React.createElement('button', { 'onClick': onSuccess, 'data-testid': 'confirm-switch-modal' }, 'Switch'))
-      }
-    }
-    if (fnString.includes('base/confirm')) {
-      return function MockConfirm({ isShow, onCancel, onConfirm }: { isShow: boolean, onCancel: () => void, onConfirm: () => void }) {
-        if (!isShow)
-          return null
-        return React.createElement('div', { 'data-testid': 'confirm-dialog' }, React.createElement('button', { 'onClick': onCancel, 'data-testid': 'cancel-confirm' }, 'Cancel'), React.createElement('button', { 'onClick': onConfirm, 'data-testid': 'confirm-confirm' }, 'Confirm'))
       }
     }
     if (fnString.includes('dsl-export-confirm-modal')) {
@@ -235,6 +237,7 @@ describe('AppCard', () => {
     vi.clearAllMocks()
     mockOpenAsyncWindow.mockReset()
     mockWebappAuthEnabled = false
+    mockDeleteMutationPending = false
   })
 
   describe('Rendering', () => {
@@ -461,35 +464,19 @@ describe('AppCard', () => {
       render(<AppCard app={mockApp} />)
 
       fireEvent.click(screen.getByTestId('popover-trigger'))
-
-      await waitFor(() => {
-        const deleteButton = screen.getByText('common.operation.delete')
-        fireEvent.click(deleteButton)
-      })
-
-      await waitFor(() => {
-        expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
-      })
+      fireEvent.click(await screen.findByRole('button', { name: 'common.operation.delete' }))
+      expect(await screen.findByRole('alertdialog')).toBeInTheDocument()
     })
 
     it('should close confirm dialog when cancel is clicked', async () => {
       render(<AppCard app={mockApp} />)
 
       fireEvent.click(screen.getByTestId('popover-trigger'))
-
+      fireEvent.click(await screen.findByRole('button', { name: 'common.operation.delete' }))
+      expect(await screen.findByRole('alertdialog')).toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
       await waitFor(() => {
-        const deleteButton = screen.getByText('common.operation.delete')
-        fireEvent.click(deleteButton)
-      })
-
-      await waitFor(() => {
-        expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
-      })
-
-      fireEvent.click(screen.getByTestId('cancel-confirm'))
-
-      await waitFor(() => {
-        expect(screen.queryByTestId('confirm-dialog')).not.toBeInTheDocument()
+        expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
       })
     })
 
@@ -554,59 +541,56 @@ describe('AppCard', () => {
 
       // Open popover and click delete
       fireEvent.click(screen.getByTestId('popover-trigger'))
-      await waitFor(() => {
-        fireEvent.click(screen.getByText('common.operation.delete'))
-      })
+      fireEvent.click(await screen.findByRole('button', { name: 'common.operation.delete' }))
+      expect(await screen.findByRole('alertdialog')).toBeInTheDocument()
 
-      // Confirm delete
-      await waitFor(() => {
-        expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
-      })
+      // Fill in the confirmation input with app name
+      const deleteInput = screen.getByRole('textbox')
+      fireEvent.change(deleteInput, { target: { value: mockApp.name } })
 
-      fireEvent.click(screen.getByTestId('confirm-confirm'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
       await waitFor(() => {
-        expect(appsService.deleteApp).toHaveBeenCalled()
+        expect(mockDeleteAppMutation).toHaveBeenCalled()
       })
     })
 
-    it('should call onRefresh after successful delete', async () => {
+    it('should not call onRefresh after successful delete', async () => {
       render(<AppCard app={mockApp} onRefresh={mockOnRefresh} />)
 
       fireEvent.click(screen.getByTestId('popover-trigger'))
-      await waitFor(() => {
-        fireEvent.click(screen.getByText('common.operation.delete'))
-      })
+      fireEvent.click(await screen.findByRole('button', { name: 'common.operation.delete' }))
+      expect(await screen.findByRole('alertdialog')).toBeInTheDocument()
+
+      // Fill in the confirmation input with app name
+      const deleteInput = screen.getByRole('textbox')
+      fireEvent.change(deleteInput, { target: { value: mockApp.name } })
+
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
       await waitFor(() => {
-        expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
+        expect(mockDeleteAppMutation).toHaveBeenCalled()
       })
-
-      fireEvent.click(screen.getByTestId('confirm-confirm'))
-
-      await waitFor(() => {
-        expect(mockOnRefresh).toHaveBeenCalled()
-      })
+      expect(mockOnRefresh).not.toHaveBeenCalled()
     })
 
     it('should handle delete failure', async () => {
-      (appsService.deleteApp as Mock).mockRejectedValueOnce(new Error('Delete failed'))
+      ;(mockDeleteAppMutation as Mock).mockRejectedValueOnce(new Error('Delete failed'))
 
       render(<AppCard app={mockApp} onRefresh={mockOnRefresh} />)
 
       fireEvent.click(screen.getByTestId('popover-trigger'))
-      await waitFor(() => {
-        fireEvent.click(screen.getByText('common.operation.delete'))
-      })
+      fireEvent.click(await screen.findByRole('button', { name: 'common.operation.delete' }))
+      expect(await screen.findByRole('alertdialog')).toBeInTheDocument()
+
+      // Fill in the confirmation input with app name
+      const deleteInput = screen.getByRole('textbox')
+      fireEvent.change(deleteInput, { target: { value: mockApp.name } })
+
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
       await waitFor(() => {
-        expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
-      })
-
-      fireEvent.click(screen.getByTestId('confirm-confirm'))
-
-      await waitFor(() => {
-        expect(appsService.deleteApp).toHaveBeenCalled()
+        expect(mockDeleteAppMutation).toHaveBeenCalled()
         expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: expect.stringContaining('Delete failed') })
       })
     })

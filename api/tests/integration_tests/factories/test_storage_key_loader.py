@@ -6,8 +6,9 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.orm import Session
 
-from core.workflow.file import File, FileTransferMethod, FileType
+from dify_graph.file import File, FileTransferMethod, FileType
 from extensions.ext_database import db
+from extensions.storage.storage_type import StorageType
 from factories.file_factory import StorageKeyLoader
 from models import ToolFile, UploadFile
 from models.enums import CreatorUserRole
@@ -53,7 +54,7 @@ class TestStorageKeyLoader(unittest.TestCase):
 
         upload_file = UploadFile(
             tenant_id=tenant_id,
-            storage_type="local",
+            storage_type=StorageType.LOCAL,
             key=storage_key,
             name="test_file.txt",
             size=1024,
@@ -288,7 +289,7 @@ class TestStorageKeyLoader(unittest.TestCase):
         # Create upload file for other tenant (but don't add to cleanup list)
         upload_file_other = UploadFile(
             tenant_id=other_tenant_id,
-            storage_type="local",
+            storage_type=StorageType.LOCAL,
             key="other_tenant_key",
             name="other_file.txt",
             size=1024,

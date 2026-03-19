@@ -8,7 +8,7 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import Switch from '@/app/components/base/switch'
-import { ToastContext } from '@/app/components/base/toast'
+import { ToastContext } from '@/app/components/base/toast/context'
 import Tooltip from '@/app/components/base/tooltip'
 import Indicator from '@/app/components/header/indicator'
 import { useDocumentDelete, useDocumentDisable, useDocumentEnable } from '@/service/knowledge/use-document'
@@ -119,7 +119,7 @@ const StatusItem = ({
               disabled={!archived}
             >
               <Switch
-                defaultValue={archived ? false : enabled}
+                value={archived ? false : enabled}
                 onChange={v => !archived && handleSwitch(v ? 'enable' : 'disable')}
                 disabled={embedding || archived}
                 size="md"

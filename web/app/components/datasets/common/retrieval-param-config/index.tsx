@@ -1,7 +1,6 @@
 'use client'
 import type { FC } from 'react'
 import type { RetrievalConfig } from '@/types/app'
-import Image from 'next/image'
 
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
@@ -122,12 +121,12 @@ const RetrievalParamConfig: FC<Props> = ({
             {canToggleRerankModalEnable && (
               <Switch
                 size="md"
-                defaultValue={value.reranking_enable}
+                value={value.reranking_enable}
                 onChange={handleToggleRerankEnable}
               />
             )}
             <div className="flex items-center">
-              <span className="system-sm-semibold mr-0.5 text-text-secondary">{t('modelProvider.rerankModel.key', { ns: 'common' })}</span>
+              <span className="mr-0.5 text-text-secondary system-sm-semibold">{t('modelProvider.rerankModel.key', { ns: 'common' })}</span>
               <Tooltip
                 popupContent={
                   <div className="w-[200px]">{t('modelProvider.rerankModel.tip', { ns: 'common' })}</div>
@@ -157,7 +156,7 @@ const RetrievalParamConfig: FC<Props> = ({
                     <div className="p-1">
                       <AlertTriangle className="size-4 text-text-warning-secondary" />
                     </div>
-                    <span className="system-xs-medium text-text-primary">
+                    <span className="text-text-primary system-xs-medium">
                       {t('form.retrievalSetting.multiModalTip', { ns: 'datasetSettings' })}
                     </span>
                   </div>
@@ -215,11 +214,11 @@ const RetrievalParamConfig: FC<Props> = ({
                     isChosen={value.reranking_mode === option.value}
                     onChosen={() => handleChangeRerankMode(option.value)}
                     icon={(
-                      <Image
+                      <img
                         src={
                           option.value === RerankingModeEnum.WeightedScore
-                            ? ProgressIndicator
-                            : Reranking
+                            ? ProgressIndicator.src
+                            : Reranking.src
                         }
                         alt=""
                       />
@@ -281,7 +280,7 @@ const RetrievalParamConfig: FC<Props> = ({
                       <div className="p-1">
                         <AlertTriangle className="size-4 text-text-warning-secondary" />
                       </div>
-                      <span className="system-xs-medium text-text-primary">
+                      <span className="text-text-primary system-xs-medium">
                         {t('form.retrievalSetting.multiModalTip', { ns: 'datasetSettings' })}
                       </span>
                     </div>

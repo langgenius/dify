@@ -1,7 +1,7 @@
 import type { PluginStatus } from '@/app/components/plugins/types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { TaskStatus } from '@/app/components/plugins/types'
+import { PluginSource, TaskStatus } from '@/app/components/plugins/types'
 // Import mocked modules
 import { useMutationClearTaskPlugin, usePluginTaskList } from '@/service/use-plugins'
 import PluginTaskList from '../components/plugin-task-list'
@@ -30,6 +30,7 @@ vi.mock('@/context/i18n', () => ({
 const createMockPlugin = (overrides: Partial<PluginStatus> = {}): PluginStatus => ({
   plugin_unique_identifier: `plugin-${Math.random().toString(36).substr(2, 9)}`,
   plugin_id: 'test-plugin',
+  source: PluginSource.marketplace,
   status: TaskStatus.running,
   message: '',
   icon: 'test-icon.png',
@@ -438,7 +439,7 @@ describe('PluginTaskList Component', () => {
       // Translation key is returned as text in tests, multiple matches expected (title + status)
       expect(screen.getAllByText(/task\.installing/i).length).toBeGreaterThan(0)
       // Verify section container is rendered
-      expect(document.querySelector('.max-h-\\[200px\\]')).toBeInTheDocument()
+      expect(document.querySelector('.max-h-\\[300px\\]')).toBeInTheDocument()
     })
 
     it('should render success plugins section when plugins exist', () => {
@@ -467,7 +468,7 @@ describe('PluginTaskList Component', () => {
       )
 
       // All sections should be present
-      expect(document.querySelectorAll('.max-h-\\[200px\\]').length).toBe(3)
+      expect(document.querySelectorAll('.max-h-\\[300px\\]').length).toBe(3)
     })
   })
 
@@ -523,8 +524,9 @@ describe('PluginTaskList Component', () => {
         />,
       )
 
-      // The individual clear button has the text 'operation.clear'
-      fireEvent.click(screen.getByRole('button', { name: /operation\.clear/i }))
+      const closeButton = screen.getAllByRole('button')
+        .find(btn => btn.querySelector('.i-ri-close-line'))!
+      fireEvent.click(closeButton)
 
       expect(handleClearSingle).toHaveBeenCalledWith('task-123', 'error-plugin-1')
     })
@@ -844,7 +846,7 @@ describe('PluginTasks Integration', () => {
     fireEvent.click(document.getElementById('plugin-task-trigger')!)
 
     // All sections should be visible
-    const sections = document.querySelectorAll('.max-h-\\[200px\\]')
+    const sections = document.querySelectorAll('.max-h-\\[300px\\]')
     expect(sections.length).toBe(3)
   })
 })

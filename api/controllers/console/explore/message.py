@@ -21,12 +21,13 @@ from controllers.console.explore.error import (
 from controllers.console.explore.wraps import InstalledAppResource
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
-from core.model_runtime.errors.invoke import InvokeError
+from dify_graph.model_runtime.errors.invoke import InvokeError
 from fields.conversation_fields import ResultResponse
 from fields.message_fields import MessageInfiniteScrollPagination, MessageListItem, SuggestedQuestionsResponse
 from libs import helper
 from libs.helper import UUIDStrOrEmpty
 from libs.login import current_account_with_tenant
+from models.enums import FeedbackRating
 from models.model import AppMode
 from services.app_generate_service import AppGenerateService
 from services.errors.app import MoreLikeThisDisabledError
@@ -116,7 +117,7 @@ class MessageFeedbackApi(InstalledAppResource):
                 app_model=app_model,
                 message_id=message_id,
                 user=current_user,
-                rating=payload.rating,
+                rating=FeedbackRating(payload.rating) if payload.rating else None,
                 content=payload.content,
             )
         except MessageNotExistsError:

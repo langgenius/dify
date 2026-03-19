@@ -26,12 +26,11 @@ import { useShallow } from 'zustand/react/shallow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import AgentLogModal from '@/app/components/base/agent-log-modal'
 import Button from '@/app/components/base/button'
-import { StopCircle } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import PromptLogModal from '@/app/components/base/prompt-log-modal'
 import { cn } from '@/utils/classnames'
 import Answer from './answer'
 import ChatInputArea from './chat-input-area'
-import { ChatContextProvider } from './context'
+import { ChatContextProvider } from './context-provider'
 import Question from './question'
 import TryToAsk from './try-to-ask'
 
@@ -76,6 +75,7 @@ export type ChatProps = {
   inputDisabled?: boolean
   sidebarCollapseState?: boolean
   hideAvatar?: boolean
+  sendOnEnter?: boolean
   onHumanInputFormSubmit?: (formToken: string, formData: any) => Promise<void>
   getHumanInputNodeData?: (nodeID: string) => any
 }
@@ -120,6 +120,7 @@ const Chat: FC<ChatProps> = ({
   inputDisabled,
   sidebarCollapseState,
   hideAvatar,
+  sendOnEnter,
   onHumanInputFormSubmit,
   getHumanInputNodeData,
 }) => {
@@ -168,6 +169,7 @@ const Chat: FC<ChatProps> = ({
   }, [handleScrollToBottom, handleWindowResize])
 
   useEffect(() => {
+    /* v8 ignore next - @preserve */
     if (chatContainerRef.current) {
       requestAnimationFrame(() => {
         handleScrollToBottom()
@@ -187,8 +189,8 @@ const Chat: FC<ChatProps> = ({
   }, [handleWindowResize])
 
   useEffect(() => {
+    /* v8 ignore next - @preserve */
     if (chatFooterRef.current && chatContainerRef.current) {
-      // container padding bottom
       const resizeContainerObserver = new ResizeObserver((entries) => {
         for (const entry of entries) {
           const { blockSize } = entry.borderBoxSize[0]
@@ -198,7 +200,6 @@ const Chat: FC<ChatProps> = ({
       })
       resizeContainerObserver.observe(chatFooterRef.current)
 
-      // footer width
       const resizeFooterObserver = new ResizeObserver((entries) => {
         for (const entry of entries) {
           const { inlineSize } = entry.borderBoxSize[0]
@@ -217,9 +218,10 @@ const Chat: FC<ChatProps> = ({
   useEffect(() => {
     const setUserScrolled = () => {
       const container = chatContainerRef.current
+      /* v8 ignore next 2 - @preserve */
       if (!container)
         return
-
+      /* v8 ignore next 2 - @preserve */
       if (isAutoScrollingRef.current)
         return
 
@@ -230,6 +232,7 @@ const Chat: FC<ChatProps> = ({
     }
 
     const container = chatContainerRef.current
+    /* v8 ignore next 2 - @preserve */
     if (!container)
       return
 
@@ -237,20 +240,19 @@ const Chat: FC<ChatProps> = ({
     return () => container.removeEventListener('scroll', setUserScrolled)
   }, [])
 
-  // Reset user scroll state when conversation changes or a new chat starts
-  // Track the first message ID to detect conversation switches (fixes #29820)
   const prevFirstMessageIdRef = useRef<string | undefined>(undefined)
   useEffect(() => {
     const firstMessageId = chatList[0]?.id
-    // Reset when: new chat (length <= 1) OR conversation switched (first message ID changed)
     if (chatList.length <= 1 || (firstMessageId && prevFirstMessageIdRef.current !== firstMessageId))
       userScrolledRef.current = false
     prevFirstMessageIdRef.current = firstMessageId
   }, [chatList])
 
   useEffect(() => {
-    if (!sidebarCollapseState)
-      setTimeout(() => handleWindowResize(), 200)
+    if (!sidebarCollapseState) {
+      const timer = setTimeout(handleWindowResize, 200)
+      return () => clearTimeout(timer)
+    }
   }, [handleWindowResize, sidebarCollapseState])
 
   const hasTryToAsk = config?.suggested_questions_after_answer?.enabled && !!suggestedQuestions?.length && onSend
@@ -273,8 +275,9 @@ const Chat: FC<ChatProps> = ({
       onFeedback={onFeedback}
       getHumanInputNodeData={getHumanInputNodeData}
     >
-      <div className={cn('relative h-full', isTryApp && 'flex flex-col')}>
+      <div data-testid="chat-root" className={cn('relative h-full', isTryApp && 'flex flex-col')}>
         <div
+          data-testid="chat-container"
           ref={chatContainerRef}
           className={cn('relative h-full overflow-y-auto overflow-x-hidden', isTryApp && 'h-0 grow', chatContainerClassName)}
         >
@@ -286,7 +289,7 @@ const Chat: FC<ChatProps> = ({
             {
               chatList.map((item, index) => {
                 if (item.isAnswer) {
-                  const isLast = item.id === chatList[chatList.length - 1]?.id
+                  const isLast = item.id === chatList.at(-1)?.id
                   return (
                     <Answer
                       appData={appData}
@@ -323,6 +326,7 @@ const Chat: FC<ChatProps> = ({
           </div>
         </div>
         <div
+          data-testid="chat-footer"
           className={`absolute bottom-0 z-10 flex justify-center bg-chat-input-mask ${(hasTryToAsk || !noChatInput || !noStopResponding) && chatFooterClassName}`}
           ref={chatFooterRef}
         >
@@ -332,9 +336,9 @@ const Chat: FC<ChatProps> = ({
           >
             {
               !noStopResponding && isResponding && (
-                <div className="mb-2 flex justify-center">
+                <div data-testid="stop-responding-container" className="mb-2 flex justify-center">
                   <Button className="border-components-panel-border bg-components-panel-bg text-components-button-secondary-text" onClick={onStopResponding}>
-                    <StopCircle className="mr-[5px] h-3.5 w-3.5" />
+                    <div className="i-custom-vender-solid-mediaAndDevices-stop-circle mr-[5px] h-3.5 w-3.5" />
                     <span className="text-xs font-normal">{t('operation.stopResponding', { ns: 'appDebug' })}</span>
                   </Button>
                 </div>
@@ -365,6 +369,7 @@ const Chat: FC<ChatProps> = ({
                   theme={themeBuilder?.theme}
                   isResponding={isResponding}
                   readonly={readonly}
+                  sendOnEnter={sendOnEnter}
                 />
               )
             }

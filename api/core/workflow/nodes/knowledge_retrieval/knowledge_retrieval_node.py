@@ -1,59 +1,66 @@
+"""Knowledge retrieval workflow node implementation.
+
+This node now lives under ``core.workflow.nodes`` and is discovered directly by
+the workflow node registry.
+"""
+
 import logging
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Literal
 
 from core.app.app_config.entities import DatasetRetrieveConfigEntity
-from core.model_runtime.entities.llm_entities import LLMUsage
-from core.model_runtime.utils.encoders import jsonable_encoder
-from core.variables import (
+from core.rag.data_post_processor.data_post_processor import RerankingModelDict, WeightsDict
+from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
+from dify_graph.entities import GraphInitParams
+from dify_graph.entities.graph_config import NodeConfigDict
+from dify_graph.enums import (
+    BuiltinNodeTypes,
+    WorkflowNodeExecutionMetadataKey,
+    WorkflowNodeExecutionStatus,
+)
+from dify_graph.model_runtime.entities.llm_entities import LLMUsage
+from dify_graph.model_runtime.utils.encoders import jsonable_encoder
+from dify_graph.node_events import NodeRunResult
+from dify_graph.nodes.base import LLMUsageTrackingMixin
+from dify_graph.nodes.base.node import Node
+from dify_graph.variables import (
     ArrayFileSegment,
     FileSegment,
     StringSegment,
 )
-from core.variables.segments import ArrayObjectSegment
-from core.workflow.entities import GraphInitParams
-from core.workflow.enums import (
-    NodeType,
-    WorkflowNodeExecutionMetadataKey,
-    WorkflowNodeExecutionStatus,
-)
-from core.workflow.node_events import NodeRunResult
-from core.workflow.nodes.base import LLMUsageTrackingMixin
-from core.workflow.nodes.base.node import Node
-from core.workflow.nodes.llm.file_saver import FileSaverImpl, LLMFileSaver
-from core.workflow.repositories.rag_retrieval_protocol import KnowledgeRetrievalRequest, RAGRetrievalProtocol, Source
+from dify_graph.variables.segments import ArrayObjectSegment
 
-from .entities import KnowledgeRetrievalNodeData
+from .entities import (
+    Condition,
+    KnowledgeRetrievalNodeData,
+    MetadataFilteringCondition,
+)
 from .exc import (
     KnowledgeRetrievalNodeError,
     RateLimitExceededError,
 )
+from .retrieval import KnowledgeRetrievalRequest, Source
 
 if TYPE_CHECKING:
-    from core.workflow.file.models import File
-    from core.workflow.runtime import GraphRuntimeState
+    from dify_graph.file.models import File
+    from dify_graph.runtime import GraphRuntimeState
 
 logger = logging.getLogger(__name__)
 
 
 class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeData]):
-    node_type = NodeType.KNOWLEDGE_RETRIEVAL
+    node_type = BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL
 
     # Instance attributes specific to LLMNode.
     # Output variable for file
     _file_outputs: list["File"]
 
-    _llm_file_saver: LLMFileSaver
-
     def __init__(
         self,
         id: str,
-        config: Mapping[str, Any],
+        config: NodeConfigDict,
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
-        rag_retrieval: RAGRetrievalProtocol,
-        *,
-        llm_file_saver: LLMFileSaver | None = None,
     ):
         super().__init__(
             id=id,
@@ -63,14 +70,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
         )
         # LLM file outputs, used for MultiModal outputs.
         self._file_outputs = []
-        self._rag_retrieval = rag_retrieval
-
-        if llm_file_saver is None:
-            llm_file_saver = FileSaverImpl(
-                user_id=graph_init_params.user_id,
-                tenant_id=graph_init_params.tenant_id,
-            )
-        self._llm_file_saver = llm_file_saver
+        self._rag_retrieval = DatasetRetrieval()
 
     @classmethod
     def version(cls):
@@ -115,7 +115,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
 
         try:
             results, usage = self._fetch_dataset_retriever(node_data=self._node_data, variables=variables)
-            outputs = {"result": ArrayObjectSegment(value=[item.model_dump() for item in results])}
+            outputs = {"result": ArrayObjectSegment(value=[item.model_dump(by_alias=True) for item in results])}
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
                 inputs=variables,
@@ -160,6 +160,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
     def _fetch_dataset_retriever(
         self, node_data: KnowledgeRetrievalNodeData, variables: dict[str, Any]
     ) -> tuple[list[Source], LLMUsage]:
+        dify_ctx = self.require_dify_context()
         dataset_ids = node_data.dataset_ids
         query = variables.get("query")
         attachments = variables.get("attachments")
@@ -169,6 +170,12 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
         if node_data.metadata_filtering_mode is not None:
             metadata_filtering_mode = node_data.metadata_filtering_mode
 
+        resolved_metadata_conditions = (
+            self._resolve_metadata_filtering_conditions(node_data.metadata_filtering_conditions)
+            if node_data.metadata_filtering_conditions
+            else None
+        )
+
         if str(node_data.retrieval_mode) == DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE and query:
             # fetch model config
             if node_data.single_retrieval_config is None:
@@ -176,10 +183,10 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
             model = node_data.single_retrieval_config.model
             retrieval_resource_list = self._rag_retrieval.knowledge_retrieval(
                 request=KnowledgeRetrievalRequest(
-                    tenant_id=self.tenant_id,
-                    user_id=self.user_id,
-                    app_id=self.app_id,
-                    user_from=self.user_from.value,
+                    tenant_id=dify_ctx.tenant_id,
+                    user_id=dify_ctx.user_id,
+                    app_id=dify_ctx.app_id,
+                    user_from=dify_ctx.user_from.value,
                     dataset_ids=dataset_ids,
                     retrieval_mode=DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE.value,
                     completion_params=model.completion_params,
@@ -187,7 +194,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
                     model_mode=model.mode,
                     model_name=model.name,
                     metadata_model_config=node_data.metadata_model_config,
-                    metadata_filtering_conditions=node_data.metadata_filtering_conditions,
+                    metadata_filtering_conditions=resolved_metadata_conditions,
                     metadata_filtering_mode=metadata_filtering_mode,
                     query=query,
                 )
@@ -195,8 +202,8 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
         elif str(node_data.retrieval_mode) == DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE:
             if node_data.multiple_retrieval_config is None:
                 raise ValueError("multiple_retrieval_config is required")
-            reranking_model = None
-            weights = None
+            reranking_model: RerankingModelDict | None = None
+            weights: WeightsDict | None = None
             match node_data.multiple_retrieval_config.reranking_mode:
                 case "reranking_model":
                     if node_data.multiple_retrieval_config.reranking_model:
@@ -229,10 +236,10 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
 
             retrieval_resource_list = self._rag_retrieval.knowledge_retrieval(
                 request=KnowledgeRetrievalRequest(
-                    app_id=self.app_id,
-                    tenant_id=self.tenant_id,
-                    user_id=self.user_id,
-                    user_from=self.user_from.value,
+                    app_id=dify_ctx.app_id,
+                    tenant_id=dify_ctx.tenant_id,
+                    user_id=dify_ctx.user_id,
+                    user_from=dify_ctx.user_from.value,
                     dataset_ids=dataset_ids,
                     query=query,
                     retrieval_mode=DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE.value,
@@ -245,7 +252,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
                     weights=weights,
                     reranking_enable=node_data.multiple_retrieval_config.reranking_enable,
                     metadata_model_config=node_data.metadata_model_config,
-                    metadata_filtering_conditions=node_data.metadata_filtering_conditions,
+                    metadata_filtering_conditions=resolved_metadata_conditions,
                     metadata_filtering_mode=metadata_filtering_mode,
                     attachment_ids=[attachment.related_id for attachment in attachments] if attachments else None,
                 )
@@ -254,21 +261,60 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
         usage = self._rag_retrieval.llm_usage
         return retrieval_resource_list, usage
 
+    def _resolve_metadata_filtering_conditions(
+        self, conditions: MetadataFilteringCondition
+    ) -> MetadataFilteringCondition:
+        if conditions.conditions is None:
+            return MetadataFilteringCondition(
+                logical_operator=conditions.logical_operator,
+                conditions=None,
+            )
+
+        variable_pool = self.graph_runtime_state.variable_pool
+        resolved_conditions: list[Condition] = []
+        for cond in conditions.conditions or []:
+            value = cond.value
+            if isinstance(value, str):
+                segment_group = variable_pool.convert_template(value)
+                if len(segment_group.value) == 1:
+                    resolved_value = segment_group.value[0].to_object()
+                else:
+                    resolved_value = segment_group.text
+            elif isinstance(value, Sequence) and all(isinstance(v, str) for v in value):
+                resolved_values = []
+                for v in value:  # type: ignore
+                    segment_group = variable_pool.convert_template(v)
+                    if len(segment_group.value) == 1:
+                        resolved_values.append(segment_group.value[0].to_object())
+                    else:
+                        resolved_values.append(segment_group.text)
+                resolved_value = resolved_values
+            else:
+                resolved_value = value
+            resolved_conditions.append(
+                Condition(
+                    name=cond.name,
+                    comparison_operator=cond.comparison_operator,
+                    value=resolved_value,
+                )
+            )
+        return MetadataFilteringCondition(
+            logical_operator=conditions.logical_operator or "and",
+            conditions=resolved_conditions,
+        )
+
     @classmethod
     def _extract_variable_selector_to_variable_mapping(
         cls,
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: Mapping[str, Any],
+        node_data: KnowledgeRetrievalNodeData,
     ) -> Mapping[str, Sequence[str]]:
         # graph_config is not used in this node type
-        # Create typed NodeData from dict
-        typed_node_data = KnowledgeRetrievalNodeData.model_validate(node_data)
-
         variable_mapping = {}
-        if typed_node_data.query_variable_selector:
-            variable_mapping[node_id + ".query"] = typed_node_data.query_variable_selector
-        if typed_node_data.query_attachment_selector:
-            variable_mapping[node_id + ".queryAttachment"] = typed_node_data.query_attachment_selector
+        if node_data.query_variable_selector:
+            variable_mapping[node_id + ".query"] = node_data.query_variable_selector
+        if node_data.query_attachment_selector:
+            variable_mapping[node_id + ".queryAttachment"] = node_data.query_attachment_selector
         return variable_mapping

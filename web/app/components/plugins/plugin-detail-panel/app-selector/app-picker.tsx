@@ -51,9 +51,30 @@ const AppPicker: FC<Props> = ({
   onSearchChange,
 }) => {
   const { t } = useTranslation()
-  const observerTarget = useRef<HTMLDivElement>(null)
+  const observerTargetRef = useRef<HTMLDivElement>(null)
   const observerRef = useRef<IntersectionObserver | null>(null)
   const loadingRef = useRef(false)
+  const loadingResetTimerIdRef = useRef<number | undefined>(undefined)
+
+  const retimeLoadingReset = useCallback((timerId?: number) => {
+    if (loadingResetTimerIdRef.current !== undefined)
+      globalThis.clearTimeout(loadingResetTimerIdRef.current)
+
+    loadingResetTimerIdRef.current = timerId
+  }, [])
+
+  const resetLoadingState = useCallback(() => {
+    retimeLoadingReset()
+    loadingRef.current = false
+  }, [retimeLoadingReset])
+
+  const disconnectObserver = useCallback(() => {
+    if (!observerRef.current)
+      return
+
+    observerRef.current.disconnect()
+    observerRef.current = null
+  }, [])
 
   const handleIntersection = useCallback((entries: IntersectionObserverEntry[]) => {
     const target = entries[0]
@@ -62,26 +83,26 @@ const AppPicker: FC<Props> = ({
 
     loadingRef.current = true
     onLoadMore()
-    // Reset loading state
-    setTimeout(() => {
+    retimeLoadingReset(window.setTimeout(() => {
       loadingRef.current = false
-    }, 500)
-  }, [hasMore, isLoading, onLoadMore])
+      retimeLoadingReset()
+    }, 500))
+  }, [hasMore, isLoading, onLoadMore, retimeLoadingReset])
 
   useEffect(() => {
     if (!isShow) {
-      if (observerRef.current) {
-        observerRef.current.disconnect()
-        observerRef.current = null
-      }
+      resetLoadingState()
+      disconnectObserver()
       return
     }
 
     let mutationObserver: MutationObserver | null = null
 
     const setupIntersectionObserver = () => {
-      if (!observerTarget.current)
+      if (!observerTargetRef.current)
         return
+
+      disconnectObserver()
 
       // Create new observer
       observerRef.current = new IntersectionObserver(handleIntersection, {
@@ -90,12 +111,12 @@ const AppPicker: FC<Props> = ({
         threshold: 0.1,
       })
 
-      observerRef.current.observe(observerTarget.current)
+      observerRef.current.observe(observerTargetRef.current)
     }
 
     // Set up MutationObserver to watch DOM changes
     mutationObserver = new MutationObserver((_mutations) => {
-      if (observerTarget.current) {
+      if (observerTargetRef.current) {
         setupIntersectionObserver()
         mutationObserver?.disconnect()
       }
@@ -108,17 +129,15 @@ const AppPicker: FC<Props> = ({
     })
 
     // If element exists, set up IntersectionObserver directly
-    if (observerTarget.current)
+    if (observerTargetRef.current)
       setupIntersectionObserver()
 
     return () => {
-      if (observerRef.current) {
-        observerRef.current.disconnect()
-        observerRef.current = null
-      }
+      resetLoadingState()
+      disconnectObserver()
       mutationObserver?.disconnect()
     }
-  }, [isShow, handleIntersection])
+  }, [disconnectObserver, handleIntersection, isShow, resetLoadingState])
 
   const getAppType = (app: App) => {
     switch (app.mode) {
@@ -180,7 +199,7 @@ const AppPicker: FC<Props> = ({
                   background={app.icon_background}
                   imageUrl={app.icon_url}
                 />
-                <div title={`${app.name} (${app.id})`} className="system-sm-medium grow text-components-input-text-filled">
+                <div title={`${app.name} (${app.id})`} className="grow text-components-input-text-filled system-sm-medium">
                   <span className="mr-1">{app.name}</span>
                   <span className="text-text-tertiary">
                     (
@@ -188,10 +207,10 @@ const AppPicker: FC<Props> = ({
                     )
                   </span>
                 </div>
-                <div className="system-2xs-medium-uppercase shrink-0 text-text-tertiary">{getAppType(app)}</div>
+                <div className="shrink-0 text-text-tertiary system-2xs-medium-uppercase">{getAppType(app)}</div>
               </div>
             ))}
-            <div ref={observerTarget} className="h-4 w-full">
+            <div ref={observerTargetRef} className="h-4 w-full">
               {isLoading && (
                 <div className="flex justify-center py-2">
                   <div className="text-sm text-gray-500">{t('loading', { ns: 'common' })}</div>

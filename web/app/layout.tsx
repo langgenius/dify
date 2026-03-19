@@ -1,18 +1,19 @@
-import type { Viewport } from 'next'
-import { Provider as JotaiProvider } from 'jotai'
+import type { Viewport } from '@/next'
+import { Agentation } from 'agentation'
+import { Provider as JotaiProvider } from 'jotai/react'
 import { ThemeProvider } from 'next-themes'
-import { Instrument_Serif } from 'next/font/google'
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
+import { IS_DEV } from '@/config'
 import GlobalPublicStoreProvider from '@/context/global-public-context'
 import { TanstackQueryInitializer } from '@/context/query-client'
 import { getDatasetMap } from '@/env'
 import { getLocaleOnServer } from '@/i18n-config/server'
-import { cn } from '@/utils/classnames'
 import { ToastProvider } from './components/base/toast'
+import { ToastHost } from './components/base/ui/toast'
+import { TooltipProvider } from './components/base/ui/tooltip'
 import BrowserInitializer from './components/browser-initializer'
 import { ReactScanLoader } from './components/devtools/react-scan/loader'
 import { I18nServerProvider } from './components/provider/i18n-server'
-import { PWAProvider } from './components/provider/serwist'
 import SentryInitializer from './components/sentry-initializer'
 import RoutePrefixHandle from './routePrefixHandle'
 import './styles/globals.css'
@@ -26,13 +27,6 @@ export const viewport: Viewport = {
   userScalable: false,
 }
 
-const instrumentSerif = Instrument_Serif({
-  weight: ['400'],
-  style: ['normal', 'italic'],
-  subsets: ['latin'],
-  variable: '--font-instrument-serif',
-})
-
 const LocaleLayout = async ({
   children,
 }: {
@@ -42,7 +36,7 @@ const LocaleLayout = async ({
   const datasetMap = getDatasetMap()
 
   return (
-    <html lang={locale ?? 'en'} className={cn('h-full', instrumentSerif.variable)} suppressHydrationWarning>
+    <html lang={locale ?? 'en'} className="h-full" suppressHydrationWarning>
       <head>
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#1C64F2" />
@@ -55,13 +49,15 @@ const LocaleLayout = async ({
         <link rel="icon" type="image/png" sizes="16x16" href="/icon-192x192.png" />
         <meta name="msapplication-TileColor" content="#1C64F2" />
         <meta name="msapplication-config" content="/browserconfig.xml" />
+
+        {/* <ReactGrabLoader /> */}
+        <ReactScanLoader />
       </head>
       <body
-        className="color-scheme h-full select-auto"
+        className="h-full select-auto"
         {...datasetMap}
       >
-        <PWAProvider>
-          <ReactScanLoader />
+        <div className="isolate h-full">
           <JotaiProvider>
             <ThemeProvider
               attribute="data-theme"
@@ -75,9 +71,12 @@ const LocaleLayout = async ({
                   <SentryInitializer>
                     <TanstackQueryInitializer>
                       <I18nServerProvider>
+                        <ToastHost timeout={5000} limit={3} />
                         <ToastProvider>
                           <GlobalPublicStoreProvider>
-                            {children}
+                            <TooltipProvider delay={300} closeDelay={200}>
+                              {children}
+                            </TooltipProvider>
                           </GlobalPublicStoreProvider>
                         </ToastProvider>
                       </I18nServerProvider>
@@ -88,7 +87,8 @@ const LocaleLayout = async ({
             </ThemeProvider>
           </JotaiProvider>
           <RoutePrefixHandle />
-        </PWAProvider>
+          {IS_DEV && <Agentation />}
+        </div>
       </body>
     </html>
   )

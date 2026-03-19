@@ -15,6 +15,7 @@ from configs import dify_config
 from core.helper import ssrf_proxy
 from extensions.ext_database import db
 from extensions.ext_storage import storage
+from extensions.storage.storage_type import StorageType
 from models.enums import CreatorUserRole
 from models.model import MessageFile, UploadFile
 from models.tools import ToolFile
@@ -81,7 +82,7 @@ class DatasourceFileManager:
 
         upload_file = UploadFile(
             tenant_id=tenant_id,
-            storage_type=dify_config.STORAGE_TYPE,
+            storage_type=StorageType(dify_config.STORAGE_TYPE),
             key=filepath,
             name=present_filename,
             size=len(file_binary),
@@ -213,6 +214,6 @@ class DatasourceFileManager:
 
 
 # init tool_file_parser
-# from core.workflow.file.datasource_file_parser import datasource_file_manager
+# from dify_graph.file.datasource_file_parser import datasource_file_manager
 #
 # datasource_file_manager["manager"] = DatasourceFileManager

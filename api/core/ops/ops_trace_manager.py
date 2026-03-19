@@ -35,14 +35,14 @@ from models.workflow import WorkflowAppLog
 from tasks.ops_trace_task import process_trace_tasks
 
 if TYPE_CHECKING:
-    from core.workflow.entities import WorkflowExecution
+    from dify_graph.entities import WorkflowExecution
 
 logger = logging.getLogger(__name__)
 
 
 class OpsTraceProviderConfigMap(collections.UserDict[str, dict[str, Any]]):
-    def __getitem__(self, provider: str) -> dict[str, Any]:
-        match provider:
+    def __getitem__(self, key: str) -> dict[str, Any]:
+        match key:
             case TracingProviderEnum.LANGFUSE:
                 from core.ops.entities.config_entity import LangfuseConfig
                 from core.ops.langfuse_trace.langfuse_trace import LangFuseDataTrace
@@ -149,7 +149,7 @@ class OpsTraceProviderConfigMap(collections.UserDict[str, dict[str, Any]]):
                 }
 
             case _:
-                raise KeyError(f"Unsupported tracing provider: {provider}")
+                raise KeyError(f"Unsupported tracing provider: {key}")
 
 
 provider_config_map = OpsTraceProviderConfigMap()
@@ -628,10 +628,10 @@ class TraceTask:
         if not message_data:
             return {}
         conversation_mode_stmt = select(Conversation.mode).where(Conversation.id == message_data.conversation_id)
-        conversation_mode = db.session.scalars(conversation_mode_stmt).all()
-        if not conversation_mode or len(conversation_mode) == 0:
+        conversation_modes = db.session.scalars(conversation_mode_stmt).all()
+        if not conversation_modes or len(conversation_modes) == 0:
             return {}
-        conversation_mode = conversation_mode[0]
+        conversation_mode = conversation_modes[0]
         created_at = message_data.created_at
         inputs = message_data.message
 

@@ -1,15 +1,24 @@
 // @ts-check
-import antfu, { GLOB_TESTS, GLOB_TS, GLOB_TSX } from '@antfu/eslint-config'
+import antfu, { GLOB_TESTS, GLOB_TS, GLOB_TSX, isInEditorEnv, isInGitHooksOrLintStaged } from '@antfu/eslint-config'
 import pluginQuery from '@tanstack/eslint-plugin-query'
 import tailwindcss from 'eslint-plugin-better-tailwindcss'
 import hyoban from 'eslint-plugin-hyoban'
 import sonar from 'eslint-plugin-sonarjs'
 import storybook from 'eslint-plugin-storybook'
-import dify from './eslint-rules/index.js'
+import {
+  HYOBAN_PREFER_TAILWIND_ICONS_OPTIONS,
+  NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS,
+  NEXT_PLATFORM_RESTRICTED_IMPORT_PATTERNS,
+  OVERLAY_MIGRATION_LEGACY_BASE_FILES,
+  OVERLAY_RESTRICTED_IMPORT_PATTERNS,
+} from './eslint.constants.mjs'
+import dify from './plugins/eslint/index.js'
 
 // Enable Tailwind CSS IntelliSense mode for ESLint runs
 // See: tailwind-css-plugin.ts
 process.env.TAILWIND_MODE ??= 'ESLINT'
+
+const disableRuleAutoFix = !(isInEditorEnv() || isInGitHooksOrLintStaged())
 
 export default antfu(
   {
@@ -45,10 +54,12 @@ export default antfu(
         'antfu/top-level-function': 'off',
       },
     },
+    e18e: false,
   },
   {
     rules: {
       'node/prefer-global/process': 'off',
+      'next/no-img-element': 'off',
     },
   },
   {
@@ -94,37 +105,7 @@ export default antfu(
   {
     files: ['**/*.tsx'],
     rules: {
-      'hyoban/prefer-tailwind-icons': ['warn', {
-        prefix: 'i-',
-        propMappings: {
-          size: 'size',
-          width: 'w',
-          height: 'h',
-        },
-        libraries: [
-          {
-            prefix: 'i-custom-',
-            source: '^@/app/components/base/icons/src/(?<set>(?:public|vender)(?:/.*)?)$',
-            name: '^(?<name>.*)$',
-          },
-          {
-            source: '^@remixicon/react$',
-            name: '^(?<set>Ri)(?<name>.+)$',
-          },
-          {
-            source: '^@(?<set>heroicons)/react/24/outline$',
-            name: '^(?<name>.*)Icon$',
-          },
-          {
-            source: '^@(?<set>heroicons)/react/24/(?<variant>solid)$',
-            name: '^(?<name>.*)Icon$',
-          },
-          {
-            source: '^@(?<set>heroicons)/react/(?<variant>\\d+/(?:solid|outline))$',
-            name: '^(?<name>.*)Icon$',
-          },
-        ],
-      }],
+      'hyoban/prefer-tailwind-icons': ['warn', HYOBAN_PREFER_TAILWIND_ICONS_OPTIONS],
     },
   },
   {
@@ -145,4 +126,47 @@ export default antfu(
       'hyoban/no-dependency-version-prefix': 'error',
     },
   },
+  {
+    name: 'dify/base-ui-primitives',
+    files: ['app/components/base/ui/**/*.tsx', 'app/components/base/avatar/**/*.tsx'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
+  {
+    name: 'dify/no-direct-next-imports',
+    files: [GLOB_TS, GLOB_TSX],
+    ignores: ['next/**'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        paths: NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS,
+        patterns: NEXT_PLATFORM_RESTRICTED_IMPORT_PATTERNS,
+      }],
+    },
+  },
+  {
+    name: 'dify/overlay-migration',
+    files: [GLOB_TS, GLOB_TSX],
+    ignores: [
+      'next/**',
+      ...GLOB_TESTS,
+      ...OVERLAY_MIGRATION_LEGACY_BASE_FILES,
+    ],
+    rules: {
+      'no-restricted-imports': ['error', {
+        paths: NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS,
+        patterns: [
+          ...NEXT_PLATFORM_RESTRICTED_IMPORT_PATTERNS,
+          ...OVERLAY_RESTRICTED_IMPORT_PATTERNS,
+        ],
+      }],
+    },
+  },
 )
+  .disableRulesFix(disableRuleAutoFix
+    ? [
+        'tailwindcss/enforce-consistent-class-order',
+        'tailwindcss/no-duplicate-classes',
+        'tailwindcss/no-unnecessary-whitespace',
+      ]
+    : [])

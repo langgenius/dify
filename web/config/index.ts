@@ -42,8 +42,8 @@ export const AMPLITUDE_API_KEY = getStringConfig(
   '',
 )
 
-export const IS_DEV = env.NODE_ENV === 'development'
-export const IS_PROD = env.NODE_ENV === 'production'
+export const IS_DEV = process.env.NODE_ENV === 'development'
+export const IS_PROD = process.env.NODE_ENV === 'production'
 
 export const SUPPORT_MAIL_LOGIN = env.NEXT_PUBLIC_SUPPORT_MAIL_LOGIN
 
@@ -281,8 +281,7 @@ Thought: {{agent_scratchpad}}
   `,
 }
 
-export const VAR_REGEX
-  = /\{\{(#[\w-]{1,50}(\.\d+)?(\.[a-z_]\w{0,29}){1,10}#)\}\}/gi
+export const VAR_REGEX = /\{\{(#[\w-]{1,50}(\.\d+)?(\.[a-z_]\w{0,29}){1,10}#)\}\}/gi
 
 export const resetReg = () => (VAR_REGEX.lastIndex = 0)
 
@@ -342,6 +341,12 @@ export const ZENDESK_FIELD_IDS = {
     '',
   ),
 }
+
+export const SUPPORT_EMAIL_ADDRESS = getStringConfig(
+  env.NEXT_PUBLIC_SUPPORT_EMAIL_ADDRESS,
+  '',
+)
+
 export const APP_VERSION = pkg.version
 
 export const IS_MARKETPLACE = env.NEXT_PUBLIC_IS_MARKETPLACE

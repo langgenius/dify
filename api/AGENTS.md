@@ -62,7 +62,23 @@ This is the default standard for backend code in this repo. Follow it for new co
 
 - Code should usually include type annotations that match the repo’s current Python version (avoid untyped public APIs and “mystery” values).
 - Prefer modern typing forms (e.g. `list[str]`, `dict[str, int]`) and avoid `Any` unless there’s a strong reason.
-- For classes, declare member variables at the top of the class body (before `__init__`) so the class shape is obvious at a glance:
+- For dictionary-like data with known keys and value types, prefer `TypedDict` over `dict[...]` or `Mapping[...]`.
+- For optional keys in typed payloads, use `NotRequired[...]` (or `total=False` when most fields are optional).
+- Keep `dict[...]` / `Mapping[...]` for truly dynamic key spaces where the key set is unknown.
+
+```python
+from datetime import datetime
+from typing import NotRequired, TypedDict
+
+
+class UserProfile(TypedDict):
+    user_id: str
+    email: str
+    created_at: datetime
+    nickname: NotRequired[str]
+```
+
+- For classes, declare all member variables explicitly with types at the top of the class body (before `__init__`), even when the class is not a dataclass or Pydantic model, so the class shape is obvious at a glance:
 
 ```python
 from datetime import datetime

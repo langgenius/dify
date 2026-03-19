@@ -1,4 +1,5 @@
 import type { InferContractRouterInputs } from '@orpc/contract'
+import { appDeleteContract } from './console/apps'
 import { bindPartnerStackContract, invoicesContract } from './console/billing'
 import {
   exploreAppDetailContract,
@@ -11,6 +12,9 @@ import {
   exploreInstalledAppsContract,
   exploreInstalledAppUninstallContract,
 } from './console/explore'
+import { changePreferredProviderTypeContract, modelProvidersModelsContract } from './console/model-providers'
+import { notificationContract, notificationDismissContract } from './console/notification'
+import { pluginCheckInstalledContract, pluginLatestVersionsContract } from './console/plugins'
 import { systemFeaturesContract } from './console/system'
 import {
   triggerOAuthConfigContract,
@@ -42,6 +46,9 @@ export type MarketPlaceInputs = InferContractRouterInputs<typeof marketplaceRout
 
 export const consoleRouterContract = {
   systemFeatures: systemFeaturesContract,
+  apps: {
+    deleteApp: appDeleteContract,
+  },
   explore: {
     apps: exploreAppsContract,
     appDetail: exploreAppDetailContract,
@@ -59,10 +66,20 @@ export const consoleRouterContract = {
     parameters: trialAppParametersContract,
     workflows: trialAppWorkflowsContract,
   },
+  modelProviders: {
+    models: modelProvidersModelsContract,
+    changePreferredProviderType: changePreferredProviderTypeContract,
+  },
+  plugins: {
+    checkInstalled: pluginCheckInstalledContract,
+    latestVersions: pluginLatestVersionsContract,
+  },
   billing: {
     invoices: invoicesContract,
     bindPartnerStack: bindPartnerStackContract,
   },
+  notification: notificationContract,
+  notificationDismiss: notificationDismissContract,
   triggers: {
     list: triggersContract,
     providerInfo: triggerProviderInfoContract,

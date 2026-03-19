@@ -6,8 +6,8 @@ from unittest.mock import Mock, patch
 import pytest
 from sqlalchemy import Engine
 
-from core.variables.segments import ObjectSegment, StringSegment
-from core.variables.types import SegmentType
+from dify_graph.variables.segments import ObjectSegment, StringSegment
+from dify_graph.variables.types import SegmentType
 from models.model import UploadFile
 from models.workflow import WorkflowDraftVariable, WorkflowDraftVariableFile
 from services.workflow_draft_variable_service import DraftVarLoader
@@ -24,7 +24,11 @@ class TestDraftVarLoaderSimple:
     def draft_var_loader(self, mock_engine):
         """Create DraftVarLoader instance for testing."""
         return DraftVarLoader(
-            engine=mock_engine, app_id="test-app-id", tenant_id="test-tenant-id", fallback_variables=[]
+            engine=mock_engine,
+            app_id="test-app-id",
+            tenant_id="test-tenant-id",
+            user_id="test-user-id",
+            fallback_variables=[],
         )
 
     def test_load_offloaded_variable_string_type_unit(self, draft_var_loader):
@@ -174,7 +178,7 @@ class TestDraftVarLoaderSimple:
             mock_storage.load.return_value = test_json_content.encode()
 
             with patch.object(WorkflowDraftVariable, "build_segment_with_type") as mock_build_segment:
-                from core.variables.segments import FloatSegment
+                from dify_graph.variables.segments import FloatSegment
 
                 mock_segment = FloatSegment(value=test_number)
                 mock_build_segment.return_value = mock_segment
@@ -224,7 +228,7 @@ class TestDraftVarLoaderSimple:
             mock_storage.load.return_value = test_json_content.encode()
 
             with patch.object(WorkflowDraftVariable, "build_segment_with_type") as mock_build_segment:
-                from core.variables.segments import ArrayAnySegment
+                from dify_graph.variables.segments import ArrayAnySegment
 
                 mock_segment = ArrayAnySegment(value=test_array)
                 mock_build_segment.return_value = mock_segment
@@ -323,7 +327,9 @@ class TestDraftVarLoaderSimple:
 
                                     # Verify service method was called
                                     mock_service.get_draft_variables_by_selectors.assert_called_once_with(
-                                        draft_var_loader._app_id, selectors
+                                        draft_var_loader._app_id,
+                                        selectors,
+                                        user_id=draft_var_loader._user_id,
                                     )
 
                                     # Verify offloaded variable loading was called

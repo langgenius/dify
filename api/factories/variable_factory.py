@@ -3,8 +3,13 @@ from typing import Any, cast
 from uuid import uuid4
 
 from configs import dify_config
-from core.variables.exc import VariableError
-from core.variables.segments import (
+from dify_graph.constants import (
+    CONVERSATION_VARIABLE_NODE_ID,
+    ENVIRONMENT_VARIABLE_NODE_ID,
+)
+from dify_graph.file import File
+from dify_graph.variables.exc import VariableError
+from dify_graph.variables.segments import (
     ArrayAnySegment,
     ArrayBooleanSegment,
     ArrayFileSegment,
@@ -21,8 +26,8 @@ from core.variables.segments import (
     Segment,
     StringSegment,
 )
-from core.variables.types import SegmentType
-from core.variables.variables import (
+from dify_graph.variables.types import SegmentType
+from dify_graph.variables.variables import (
     ArrayAnyVariable,
     ArrayBooleanVariable,
     ArrayFileVariable,
@@ -39,11 +44,6 @@ from core.variables.variables import (
     StringVariable,
     VariableBase,
 )
-from core.workflow.constants import (
-    CONVERSATION_VARIABLE_NODE_ID,
-    ENVIRONMENT_VARIABLE_NODE_ID,
-)
-from core.workflow.file import File
 
 
 class UnsupportedSegmentTypeError(Exception):
@@ -55,7 +55,7 @@ class TypeMismatchError(Exception):
 
 
 # Define the constant
-SEGMENT_TO_VARIABLE_MAP = {
+SEGMENT_TO_VARIABLE_MAP: Mapping[type[Segment], type[VariableBase]] = {
     ArrayAnySegment: ArrayAnyVariable,
     ArrayBooleanSegment: ArrayBooleanVariable,
     ArrayFileSegment: ArrayFileVariable,
@@ -296,13 +296,11 @@ def segment_to_variable(
         raise UnsupportedSegmentTypeError(f"not supported segment type {segment_type}")
 
     variable_class = SEGMENT_TO_VARIABLE_MAP[segment_type]
-    return cast(
-        VariableBase,
-        variable_class(
-            id=id,
-            name=name,
-            description=description,
-            value=segment.value,
-            selector=list(selector),
-        ),
+    return variable_class(
+        id=id,
+        name=name,
+        description=description,
+        value_type=segment.value_type,
+        value=segment.value,
+        selector=list(selector),
     )

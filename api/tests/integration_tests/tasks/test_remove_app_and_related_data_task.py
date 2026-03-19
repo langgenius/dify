@@ -5,7 +5,8 @@ import pytest
 from sqlalchemy import delete
 
 from core.db.session_factory import session_factory
-from core.variables.segments import StringSegment
+from dify_graph.variables.segments import StringSegment
+from extensions.storage.storage_type import StorageType
 from models import Tenant
 from models.enums import CreatorUserRole
 from models.model import App, UploadFile
@@ -191,13 +192,13 @@ class TestDeleteDraftVariablesWithOffloadIntegration:
     @pytest.fixture
     def setup_offload_test_data(self, app_and_tenant):
         tenant, app = app_and_tenant
-        from core.variables.types import SegmentType
+        from dify_graph.variables.types import SegmentType
         from libs.datetime_utils import naive_utc_now
 
         with session_factory.create_session() as session:
             upload_file1 = UploadFile(
                 tenant_id=tenant.id,
-                storage_type="local",
+                storage_type=StorageType.LOCAL,
                 key="test/file1.json",
                 name="file1.json",
                 size=1024,
@@ -210,7 +211,7 @@ class TestDeleteDraftVariablesWithOffloadIntegration:
             )
             upload_file2 = UploadFile(
                 tenant_id=tenant.id,
-                storage_type="local",
+                storage_type=StorageType.LOCAL,
                 key="test/file2.json",
                 name="file2.json",
                 size=2048,
@@ -422,7 +423,7 @@ class TestDeleteDraftVariablesSessionCommit:
     @pytest.fixture
     def setup_offload_test_data(self, app_and_tenant):
         """Create test data with offload files for session commit tests."""
-        from core.variables.types import SegmentType
+        from dify_graph.variables.types import SegmentType
         from libs.datetime_utils import naive_utc_now
 
         tenant, app = app_and_tenant
@@ -430,7 +431,7 @@ class TestDeleteDraftVariablesSessionCommit:
         with session_factory.create_session() as session:
             upload_file1 = UploadFile(
                 tenant_id=tenant.id,
-                storage_type="local",
+                storage_type=StorageType.LOCAL,
                 key="test/file1.json",
                 name="file1.json",
                 size=1024,
@@ -443,7 +444,7 @@ class TestDeleteDraftVariablesSessionCommit:
             )
             upload_file2 = UploadFile(
                 tenant_id=tenant.id,
-                storage_type="local",
+                storage_type=StorageType.LOCAL,
                 key="test/file2.json",
                 name="file2.json",
                 size=2048,

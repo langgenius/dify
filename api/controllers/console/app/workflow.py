@@ -21,18 +21,20 @@ from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.workflow.app_generator import SKIP_PREPARE_USER_INPUTS_KEY
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.helper.trace_id_helper import get_external_trace_id
-from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.impl.exc import PluginInvokeError
+from core.trigger.constants import TRIGGER_SCHEDULE_NODE_TYPE
 from core.trigger.debug.event_selectors import (
     TriggerDebugEvent,
     TriggerDebugEventPoller,
     create_event_poller,
     select_trigger_debug_events,
 )
-from core.workflow.enums import NodeType
-from core.workflow.file.models import File
-from core.workflow.graph_engine.manager import GraphEngineManager
+from dify_graph.enums import NodeType
+from dify_graph.file.models import File
+from dify_graph.graph_engine.manager import GraphEngineManager
+from dify_graph.model_runtime.utils.encoders import jsonable_encoder
 from extensions.ext_database import db
+from extensions.ext_redis import redis_client
 from factories import file_factory, variable_factory
 from fields.member_fields import simple_account_fields
 from fields.workflow_fields import workflow_fields, workflow_pagination_fields
@@ -740,7 +742,7 @@ class WorkflowTaskStopApi(Resource):
         AppQueueManager.set_stop_flag_no_user_check(task_id)
 
         # New graph engine command channel mechanism
-        GraphEngineManager.send_stop_command(task_id)
+        GraphEngineManager(redis_client).send_stop_command(task_id)
 
         return {"result": "success"}
 
@@ -1208,7 +1210,7 @@ class DraftWorkflowTriggerNodeApi(Resource):
         node_type: NodeType = draft_workflow.get_node_type_from_node_config(node_config)
         event: TriggerDebugEvent | None = None
         # for schedule trigger, when run single node, just execute directly
-        if node_type == NodeType.TRIGGER_SCHEDULE:
+        if node_type == TRIGGER_SCHEDULE_NODE_TYPE:
             event = TriggerDebugEvent(
                 workflow_args={},
                 node_id=node_id,

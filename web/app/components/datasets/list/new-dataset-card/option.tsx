@@ -1,5 +1,5 @@
-import Link from 'next/link'
 import * as React from 'react'
+import Link from '@/next/link'
 
 type OptionProps = {
   Icon: React.ComponentType<{ className?: string }>

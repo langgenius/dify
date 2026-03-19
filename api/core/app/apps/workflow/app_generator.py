@@ -28,15 +28,15 @@ from core.app.entities.task_entities import WorkflowAppBlockingResponse, Workflo
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, PauseStatePersistenceLayer
 from core.db.session_factory import session_factory
 from core.helper.trace_id_helper import extract_external_trace_id_from_args
-from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.repositories import DifyCoreRepositoryFactory
-from core.workflow.graph_engine.layers.base import GraphEngineLayer
-from core.workflow.repositories.draft_variable_repository import DraftVariableSaverFactory
-from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
-from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
-from core.workflow.runtime import GraphRuntimeState
-from core.workflow.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
+from dify_graph.graph_engine.layers.base import GraphEngineLayer
+from dify_graph.model_runtime.errors.invoke import InvokeAuthorizationError
+from dify_graph.repositories.draft_variable_repository import DraftVariableSaverFactory
+from dify_graph.repositories.workflow_execution_repository import WorkflowExecutionRepository
+from dify_graph.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
+from dify_graph.runtime import GraphRuntimeState
+from dify_graph.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
 from extensions.ext_database import db
 from factories import file_factory
 from libs.flask_utils import preserve_flask_contexts
@@ -414,11 +414,12 @@ class WorkflowAppGenerator(BaseAppGenerator):
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
         )
         draft_var_srv = WorkflowDraftVariableService(db.session())
-        draft_var_srv.prefill_conversation_variable_default_values(workflow)
+        draft_var_srv.prefill_conversation_variable_default_values(workflow, user_id=user.id)
         var_loader = DraftVarLoader(
             engine=db.engine,
             app_id=application_generate_entity.app_config.app_id,
             tenant_id=application_generate_entity.app_config.tenant_id,
+            user_id=user.id,
         )
 
         return self._generate(
@@ -497,11 +498,12 @@ class WorkflowAppGenerator(BaseAppGenerator):
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
         )
         draft_var_srv = WorkflowDraftVariableService(db.session())
-        draft_var_srv.prefill_conversation_variable_default_values(workflow)
+        draft_var_srv.prefill_conversation_variable_default_values(workflow, user_id=user.id)
         var_loader = DraftVarLoader(
             engine=db.engine,
             app_id=application_generate_entity.app_config.app_id,
             tenant_id=application_generate_entity.app_config.tenant_id,
+            user_id=user.id,
         )
         return self._generate(
             app_model=app_model,

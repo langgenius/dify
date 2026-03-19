@@ -1,6 +1,7 @@
 'use client'
 
 import type { Dependency, PluginDeclaration, PluginManifestInMarket } from '../types'
+import type { PluginPageTab } from './context'
 import {
   RiBookOpenLine,
   RiDragDropLine,
@@ -8,7 +9,6 @@ import {
 } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { noop } from 'es-toolkit/function'
-import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -20,6 +20,7 @@ import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useDocLink } from '@/context/i18n'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { usePluginInstallation } from '@/hooks/use-query-params'
+import Link from '@/next/link'
 import { fetchBundleInfoFromMarketPlace, fetchManifestFromMarketPlace } from '@/service/plugins'
 import { sleep } from '@/utils'
 import { cn } from '@/utils/classnames'
@@ -27,15 +28,23 @@ import { PLUGIN_PAGE_TABS_MAP } from '../hooks'
 import InstallFromLocalPackage from '../install-plugin/install-from-local-package'
 import InstallFromMarketplace from '../install-plugin/install-from-marketplace'
 import { PLUGIN_TYPE_SEARCH_MAP } from '../marketplace/constants'
-import {
-  PluginPageContextProvider,
-  usePluginPageContext,
-} from './context'
+import { usePluginPageContext } from './context'
+import { PluginPageContextProvider } from './context-provider'
 import DebugInfo from './debug-info'
 import InstallPluginDropdown from './install-plugin-dropdown'
 import PluginTasks from './plugin-tasks'
 import useReferenceSetting from './use-reference-setting'
 import { useUploader } from './use-uploader'
+
+const pluginPageTabSet = new Set<string>([
+  PLUGIN_PAGE_TABS_MAP.plugins,
+  PLUGIN_PAGE_TABS_MAP.marketplace,
+  ...Object.values(PLUGIN_TYPE_SEARCH_MAP),
+])
+
+const isPluginPageTab = (value: string): value is PluginPageTab => {
+  return pluginPageTabSet.has(value)
+}
 
 export type PluginPageProps = {
   plugins: React.ReactNode
@@ -154,7 +163,10 @@ const PluginPage = ({
           <div className="flex-1">
             <TabSlider
               value={isPluginsTab ? PLUGIN_PAGE_TABS_MAP.plugins : PLUGIN_PAGE_TABS_MAP.marketplace}
-              onChange={setActiveTab}
+              onChange={(nextTab) => {
+                if (isPluginPageTab(nextTab))
+                  setActiveTab(nextTab)
+              }}
               options={options}
             />
           </div>

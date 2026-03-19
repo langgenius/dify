@@ -12,7 +12,7 @@ import {
   CopyCheck,
 } from '@/app/components/base/icons/src/vender/line/files'
 import PromptEditor from '@/app/components/base/prompt-editor'
-import { useToastContext } from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import ConfigContext from '@/context/debug-configuration'
 import { useModalContext } from '@/context/modal-context'
 import { cn } from '@/utils/classnames'
@@ -96,7 +96,7 @@ const Editor: FC<Props> = ({
                 )}
           </div>
         </div>
-        <div className={cn(editorHeight, ' min-h-[102px] overflow-y-auto px-4 text-sm text-gray-700')}>
+        <div className={cn(editorHeight, 'min-h-[102px] overflow-y-auto px-4 text-sm text-gray-700')}>
           <PromptEditor
             className={editorHeight}
             value={value}

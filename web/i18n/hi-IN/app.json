@@ -36,6 +36,8 @@
   "createApp": "ऐप बनाएँ",
   "createFromConfigFile": "डीएसएल फ़ाइल से बनाएँ",
   "deleteAppConfirmContent": "ऐप को हटाना अपरिवर्तनीय है। उपयोगकर्ता अब आपके ऐप तक पहुँचने में सक्षम नहीं होंगे, और सभी प्रॉम्प्ट कॉन्फ़िगरेशन और लॉग स्थायी रूप से हटा दिए जाएंगे।",
+  "deleteAppConfirmInputLabel": "पुष्टि करने के लिए, नीचे दिए गए बॉक्स में \"{{appName}}\" टाइप करें:",
+  "deleteAppConfirmInputPlaceholder": "ऐप का नाम दर्ज करें",
   "deleteAppConfirmTitle": "इस ऐप को हटाएँ?",
   "dslUploader.browse": "ब्राउज़ करें",
   "dslUploader.button": "फ़ाइल खींचकर छोड़ें, या",

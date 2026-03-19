@@ -28,14 +28,14 @@ from core.entities.provider_entities import (
 from core.helper import encrypter
 from core.helper.model_provider_cache import ProviderCredentialsCache, ProviderCredentialsCacheType
 from core.helper.position_helper import is_filtered
-from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.entities.provider_entities import (
+from dify_graph.model_runtime.entities.model_entities import ModelType
+from dify_graph.model_runtime.entities.provider_entities import (
     ConfigurateMethod,
     CredentialFormSchema,
     FormType,
     ProviderEntity,
 )
-from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
+from dify_graph.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from extensions import ext_hosting_provider
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -195,7 +195,9 @@ class ProviderManager:
             preferred_provider_type_record = provider_name_to_preferred_model_provider_records_dict.get(provider_name)
 
             if preferred_provider_type_record:
-                preferred_provider_type = ProviderType.value_of(preferred_provider_type_record.preferred_provider_type)
+                preferred_provider_type = preferred_provider_type_record.preferred_provider_type
+            elif dify_config.EDITION == "CLOUD" and system_configuration.enabled:
+                preferred_provider_type = ProviderType.SYSTEM
             elif custom_configuration.provider or custom_configuration.models:
                 preferred_provider_type = ProviderType.CUSTOM
             elif system_configuration.enabled:
@@ -305,9 +307,7 @@ class ProviderManager:
             available_models = provider_configurations.get_models(model_type=model_type, only_active=True)
 
             if available_models:
-                available_model = next(
-                    (model for model in available_models if model.model == "gpt-4"), available_models[0]
-                )
+                available_model = available_models[0]
 
                 default_model = TenantDefaultModel(
                     tenant_id=tenant_id,
@@ -627,7 +627,7 @@ class ProviderManager:
                                 tenant_id=tenant_id,
                                 # TODO: Use provider name with prefix after the data migration.
                                 provider_name=ModelProviderID(provider_name).provider_name,
-                                provider_type=ProviderType.SYSTEM.value,
+                                provider_type=ProviderType.SYSTEM,
                                 quota_type=quota.quota_type,
                                 quota_limit=0,  # type: ignore
                                 quota_used=0,

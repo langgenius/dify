@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { AccessMode } from '@/models/access-control'
 import { useAppWhiteListSubjects } from '@/service/access-control'
 import useAccessControlStore from '../../../../context/access-control-store'
-import Avatar from '../../base/avatar'
+import { Avatar } from '../../base/avatar'
 import Loading from '../../base/loading'
 import Tooltip from '../../base/tooltip'
 import AddMemberOrGroupDialog from './add-member-or-group-pop'
@@ -106,7 +106,7 @@ function MemberItem({ member }: MemberItemProps) {
   }, [member, setSpecificMembers, specificMembers])
   return (
     <BaseItem
-      icon={<Avatar className="h-[14px] w-[14px]" textClassName="text-[12px]" avatar={null} name={member.name} />}
+      icon={<Avatar size="xxs" avatar={null} name={member.name} />}
       onRemove={handleRemoveMember}
     >
       <p className="system-xs-regular text-text-primary">{member.name}</p>

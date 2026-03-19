@@ -20,12 +20,12 @@ from core.db.session_factory import session_factory
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.helper.name_generator import generate_incremental_name
 from core.model_manager import ModelManager
-from core.model_runtime.entities.model_entities import ModelFeature, ModelType
-from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from core.workflow.file import helpers as file_helpers
+from dify_graph.file import helpers as file_helpers
+from dify_graph.model_runtime.entities.model_entities import ModelFeature, ModelType
+from dify_graph.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from enums.cloud_plan import CloudPlan
 from events.dataset_event import dataset_was_deleted
 from events.document_event import document_was_deleted
@@ -50,6 +50,14 @@ from models.dataset import (
     ExternalKnowledgeBindings,
     Pipeline,
     SegmentAttachmentBinding,
+)
+from models.enums import (
+    DatasetRuntimeMode,
+    DataSourceType,
+    DocumentCreatedFrom,
+    IndexingStatus,
+    ProcessRuleMode,
+    SegmentStatus,
 )
 from models.model import UploadFile
 from models.provider_ids import ModelProviderID
@@ -252,9 +260,9 @@ class DatasetService:
         dataset.updated_by = account.id
         dataset.tenant_id = tenant_id
         dataset.embedding_model_provider = embedding_model.provider if embedding_model else None
-        dataset.embedding_model = embedding_model.model if embedding_model else None
+        dataset.embedding_model = embedding_model.model_name if embedding_model else None
         dataset.retrieval_model = retrieval_model.model_dump() if retrieval_model else None
-        dataset.permission = permission or DatasetPermissionEnum.ONLY_ME
+        dataset.permission = DatasetPermissionEnum(permission) if permission else DatasetPermissionEnum.ONLY_ME
         dataset.provider = provider
         if summary_index_setting is not None:
             dataset.summary_index_setting = summary_index_setting
@@ -319,7 +327,7 @@ class DatasetService:
             description=rag_pipeline_dataset_create_entity.description,
             permission=rag_pipeline_dataset_create_entity.permission,
             provider="vendor",
-            runtime_mode="rag_pipeline",
+            runtime_mode=DatasetRuntimeMode.RAG_PIPELINE,
             icon_info=rag_pipeline_dataset_create_entity.icon_info.model_dump(),
             created_by=current_user.id,
             pipeline_id=pipeline.id,
@@ -384,7 +392,7 @@ class DatasetService:
                 model=model,
             )
             text_embedding_model = cast(TextEmbeddingModel, model_instance.model_type_instance)
-            model_schema = text_embedding_model.get_model_schema(model_instance.model, model_instance.credentials)
+            model_schema = text_embedding_model.get_model_schema(model_instance.model_name, model_instance.credentials)
             if not model_schema:
                 raise ValueError("Model schema not found")
             if model_schema.features and ModelFeature.VISION in model_schema.features:
@@ -614,7 +622,7 @@ class DatasetService:
         """
         Update pipeline knowledge base node data.
         """
-        if dataset.runtime_mode != "rag_pipeline":
+        if dataset.runtime_mode != DatasetRuntimeMode.RAG_PIPELINE:
             return
 
         pipeline = db.session.query(Pipeline).filter_by(id=dataset.pipeline_id).first()
@@ -743,10 +751,12 @@ class DatasetService:
                 model_type=ModelType.TEXT_EMBEDDING,
                 model=data["embedding_model"],
             )
-            filtered_data["embedding_model"] = embedding_model.model
+            embedding_model_name = embedding_model.model_name
+            filtered_data["embedding_model"] = embedding_model_name
             filtered_data["embedding_model_provider"] = embedding_model.provider
             dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
-                embedding_model.provider, embedding_model.model
+                embedding_model.provider,
+                embedding_model_name,
             )
             filtered_data["collection_binding_id"] = dataset_collection_binding.id
         except LLMBadRequestError:
@@ -876,10 +886,12 @@ class DatasetService:
             return
 
         # Apply new embedding model settings
-        filtered_data["embedding_model"] = embedding_model.model
+        embedding_model_name = embedding_model.model_name
+        filtered_data["embedding_model"] = embedding_model_name
         filtered_data["embedding_model_provider"] = embedding_model.provider
         dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
-            embedding_model.provider, embedding_model.model
+            embedding_model.provider,
+            embedding_model_name,
         )
         filtered_data["collection_binding_id"] = dataset_collection_binding.id
 
@@ -955,10 +967,12 @@ class DatasetService:
                     knowledge_configuration.embedding_model,
                 )
                 dataset.is_multimodal = is_multimodal
-                dataset.embedding_model = embedding_model.model
+                embedding_model_name = embedding_model.model_name
+                dataset.embedding_model = embedding_model_name
                 dataset.embedding_model_provider = embedding_model.provider
                 dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
-                    embedding_model.provider, embedding_model.model
+                    embedding_model.provider,
+                    embedding_model_name,
                 )
                 dataset.collection_binding_id = dataset_collection_binding.id
             elif knowledge_configuration.indexing_technique == "economy":
@@ -989,10 +1003,12 @@ class DatasetService:
                             model_type=ModelType.TEXT_EMBEDDING,
                             model=knowledge_configuration.embedding_model,
                         )
-                        dataset.embedding_model = embedding_model.model
+                        embedding_model_name = embedding_model.model_name
+                        dataset.embedding_model = embedding_model_name
                         dataset.embedding_model_provider = embedding_model.provider
                         dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
-                            embedding_model.provider, embedding_model.model
+                            embedding_model.provider,
+                            embedding_model_name,
                         )
                         is_multimodal = DatasetService.check_is_multimodal_model(
                             current_user.current_tenant_id,
@@ -1049,11 +1065,13 @@ class DatasetService:
                                 skip_embedding_update = True
                             if not skip_embedding_update:
                                 if embedding_model:
-                                    dataset.embedding_model = embedding_model.model
+                                    embedding_model_name = embedding_model.model_name
+                                    dataset.embedding_model = embedding_model_name
                                     dataset.embedding_model_provider = embedding_model.provider
                                     dataset_collection_binding = (
                                         DatasetCollectionBindingService.get_dataset_collection_binding(
-                                            embedding_model.provider, embedding_model.model
+                                            embedding_model.provider,
+                                            embedding_model_name,
                                         )
                                     )
                                     dataset.collection_binding_id = dataset_collection_binding.id
@@ -1219,10 +1237,15 @@ class DocumentService:
         "enabled": "available",
     }
 
-    _INDEXING_STATUSES: tuple[str, ...] = ("parsing", "cleaning", "splitting", "indexing")
+    _INDEXING_STATUSES: tuple[IndexingStatus, ...] = (
+        IndexingStatus.PARSING,
+        IndexingStatus.CLEANING,
+        IndexingStatus.SPLITTING,
+        IndexingStatus.INDEXING,
+    )
 
     DISPLAY_STATUS_FILTERS: dict[str, tuple[Any, ...]] = {
-        "queuing": (Document.indexing_status == "waiting",),
+        "queuing": (Document.indexing_status == IndexingStatus.WAITING,),
         "indexing": (
             Document.indexing_status.in_(_INDEXING_STATUSES),
             Document.is_paused.is_not(True),
@@ -1231,19 +1254,19 @@ class DocumentService:
             Document.indexing_status.in_(_INDEXING_STATUSES),
             Document.is_paused.is_(True),
         ),
-        "error": (Document.indexing_status == "error",),
+        "error": (Document.indexing_status == IndexingStatus.ERROR,),
         "available": (
-            Document.indexing_status == "completed",
+            Document.indexing_status == IndexingStatus.COMPLETED,
             Document.archived.is_(False),
             Document.enabled.is_(True),
         ),
         "disabled": (
-            Document.indexing_status == "completed",
+            Document.indexing_status == IndexingStatus.COMPLETED,
             Document.archived.is_(False),
             Document.enabled.is_(False),
         ),
         "archived": (
-            Document.indexing_status == "completed",
+            Document.indexing_status == IndexingStatus.COMPLETED,
             Document.archived.is_(True),
         ),
     }
@@ -1526,7 +1549,7 @@ class DocumentService:
         """
         Normalize and validate `Document -> UploadFile` linkage for download flows.
         """
-        if document.data_source_type != "upload_file":
+        if document.data_source_type != DataSourceType.UPLOAD_FILE:
             raise NotFound(invalid_source_message)
 
         data_source_info: dict[str, Any] = document.data_source_info_dict or {}
@@ -1607,7 +1630,7 @@ class DocumentService:
             select(Document).where(
                 Document.id.in_(document_ids),
                 Document.enabled == True,
-                Document.indexing_status == "completed",
+                Document.indexing_status == IndexingStatus.COMPLETED,
                 Document.archived == False,
             )
         ).all()
@@ -1630,7 +1653,7 @@ class DocumentService:
             select(Document).where(
                 Document.dataset_id == dataset_id,
                 Document.enabled == True,
-                Document.indexing_status == "completed",
+                Document.indexing_status == IndexingStatus.COMPLETED,
                 Document.archived == False,
             )
         ).all()
@@ -1640,7 +1663,10 @@ class DocumentService:
     @staticmethod
     def get_error_documents_by_dataset_id(dataset_id: str) -> Sequence[Document]:
         documents = db.session.scalars(
-            select(Document).where(Document.dataset_id == dataset_id, Document.indexing_status.in_(["error", "paused"]))
+            select(Document).where(
+                Document.dataset_id == dataset_id,
+                Document.indexing_status.in_([IndexingStatus.ERROR, IndexingStatus.PAUSED]),
+            )
         ).all()
         return documents
 
@@ -1673,7 +1699,7 @@ class DocumentService:
     def delete_document(document):
         # trigger document_was_deleted signal
         file_id = None
-        if document.data_source_type == "upload_file":
+        if document.data_source_type == DataSourceType.UPLOAD_FILE:
             if document.data_source_info:
                 data_source_info = document.data_source_info_dict
                 if data_source_info and "upload_file_id" in data_source_info:
@@ -1694,7 +1720,7 @@ class DocumentService:
         file_ids = [
             document.data_source_info_dict.get("upload_file_id", "")
             for document in documents
-            if document.data_source_type == "upload_file" and document.data_source_info_dict
+            if document.data_source_type == DataSourceType.UPLOAD_FILE and document.data_source_info_dict
         ]
 
         # Delete documents first, then dispatch cleanup task after commit
@@ -1743,7 +1769,13 @@ class DocumentService:
 
     @staticmethod
     def pause_document(document):
-        if document.indexing_status not in {"waiting", "parsing", "cleaning", "splitting", "indexing"}:
+        if document.indexing_status not in {
+            IndexingStatus.WAITING,
+            IndexingStatus.PARSING,
+            IndexingStatus.CLEANING,
+            IndexingStatus.SPLITTING,
+            IndexingStatus.INDEXING,
+        }:
             raise DocumentIndexingError()
         # update document to be paused
         assert current_user is not None
@@ -1783,7 +1815,7 @@ class DocumentService:
             if cache_result is not None:
                 raise ValueError("Document is being retried, please try again later")
             # retry document indexing
-            document.indexing_status = "waiting"
+            document.indexing_status = IndexingStatus.WAITING
             db.session.add(document)
             db.session.commit()
 
@@ -1802,7 +1834,7 @@ class DocumentService:
         if cache_result is not None:
             raise ValueError("Document is being synced, please try again later")
         # sync document indexing
-        document.indexing_status = "waiting"
+        document.indexing_status = IndexingStatus.WAITING
         data_source_info = document.data_source_info_dict
         if data_source_info:
             data_source_info["mode"] = "scrape"
@@ -1830,7 +1862,7 @@ class DocumentService:
         knowledge_config: KnowledgeConfig,
         account: Account | Any,
         dataset_process_rule: DatasetProcessRule | None = None,
-        created_from: str = "web",
+        created_from: str = DocumentCreatedFrom.WEB,
     ) -> tuple[list[Document], str]:
         # check doc_form
         DatasetService.check_doc_form(dataset, knowledge_config.doc_form)
@@ -1884,7 +1916,7 @@ class DocumentService:
                     embedding_model = model_manager.get_default_model_instance(
                         tenant_id=current_user.current_tenant_id, model_type=ModelType.TEXT_EMBEDDING
                     )
-                    dataset_embedding_model = embedding_model.model
+                    dataset_embedding_model = embedding_model.model_name
                     dataset_embedding_model_provider = embedding_model.provider
                 dataset.embedding_model = dataset_embedding_model
                 dataset.embedding_model_provider = dataset_embedding_model_provider
@@ -1922,7 +1954,7 @@ class DocumentService:
             if not dataset_process_rule:
                 process_rule = knowledge_config.process_rule
                 if process_rule:
-                    if process_rule.mode in ("custom", "hierarchical"):
+                    if process_rule.mode in (ProcessRuleMode.CUSTOM, ProcessRuleMode.HIERARCHICAL):
                         if process_rule.rules:
                             dataset_process_rule = DatasetProcessRule(
                                 dataset_id=dataset.id,
@@ -1934,7 +1966,7 @@ class DocumentService:
                             dataset_process_rule = dataset.latest_process_rule
                             if not dataset_process_rule:
                                 raise ValueError("No process rule found.")
-                    elif process_rule.mode == "automatic":
+                    elif process_rule.mode == ProcessRuleMode.AUTOMATIC:
                         dataset_process_rule = DatasetProcessRule(
                             dataset_id=dataset.id,
                             mode=process_rule.mode,
@@ -1957,7 +1989,7 @@ class DocumentService:
                     if not dataset_process_rule:
                         dataset_process_rule = DatasetProcessRule(
                             dataset_id=dataset.id,
-                            mode="automatic",
+                            mode=ProcessRuleMode.AUTOMATIC,
                             rules=json.dumps(DatasetProcessRule.AUTOMATIC_RULES),
                             created_by=account.id,
                         )
@@ -1991,7 +2023,7 @@ class DocumentService:
                             .where(
                                 Document.dataset_id == dataset.id,
                                 Document.tenant_id == current_user.current_tenant_id,
-                                Document.data_source_type == "upload_file",
+                                Document.data_source_type == DataSourceType.UPLOAD_FILE,
                                 Document.enabled == True,
                                 Document.name.in_(file_names),
                             )
@@ -2011,7 +2043,7 @@ class DocumentService:
                                 document.doc_language = knowledge_config.doc_language
                                 document.data_source_info = json.dumps(data_source_info)
                                 document.batch = batch
-                                document.indexing_status = "waiting"
+                                document.indexing_status = IndexingStatus.WAITING
                                 db.session.add(document)
                                 documents.append(document)
                                 duplicate_document_ids.append(document.id)
@@ -2046,7 +2078,7 @@ class DocumentService:
                             .filter_by(
                                 dataset_id=dataset.id,
                                 tenant_id=current_user.current_tenant_id,
-                                data_source_type="notion_import",
+                                data_source_type=DataSourceType.NOTION_IMPORT,
                                 enabled=True,
                             )
                             .all()
@@ -2497,7 +2529,7 @@ class DocumentService:
         document_data: KnowledgeConfig,
         account: Account,
         dataset_process_rule: DatasetProcessRule | None = None,
-        created_from: str = "web",
+        created_from: str = DocumentCreatedFrom.WEB,
     ):
         assert isinstance(current_user, Account)
 
@@ -2510,14 +2542,14 @@ class DocumentService:
         # save process rule
         if document_data.process_rule:
             process_rule = document_data.process_rule
-            if process_rule.mode in {"custom", "hierarchical"}:
+            if process_rule.mode in {ProcessRuleMode.CUSTOM, ProcessRuleMode.HIERARCHICAL}:
                 dataset_process_rule = DatasetProcessRule(
                     dataset_id=dataset.id,
                     mode=process_rule.mode,
                     rules=process_rule.rules.model_dump_json() if process_rule.rules else None,
                     created_by=account.id,
                 )
-            elif process_rule.mode == "automatic":
+            elif process_rule.mode == ProcessRuleMode.AUTOMATIC:
                 dataset_process_rule = DatasetProcessRule(
                     dataset_id=dataset.id,
                     mode=process_rule.mode,
@@ -2599,7 +2631,7 @@ class DocumentService:
         if document_data.name:
             document.name = document_data.name
         # update document to be waiting
-        document.indexing_status = "waiting"
+        document.indexing_status = IndexingStatus.WAITING
         document.completed_at = None
         document.processing_started_at = None
         document.parsing_completed_at = None
@@ -2613,7 +2645,7 @@ class DocumentService:
         # update document segment
 
         db.session.query(DocumentSegment).filter_by(document_id=document.id).update(
-            {DocumentSegment.status: "re_segment"}
+            {DocumentSegment.status: SegmentStatus.RE_SEGMENT}
         )
         db.session.commit()
         # trigger async task
@@ -2744,7 +2776,7 @@ class DocumentService:
         if knowledge_config.process_rule.mode not in DatasetProcessRule.MODES:
             raise ValueError("Process rule mode is invalid")
 
-        if knowledge_config.process_rule.mode == "automatic":
+        if knowledge_config.process_rule.mode == ProcessRuleMode.AUTOMATIC:
             knowledge_config.process_rule.rules = None
         else:
             if not knowledge_config.process_rule.rules:
@@ -2775,7 +2807,7 @@ class DocumentService:
                 raise ValueError("Process rule segmentation separator is invalid")
 
             if not (
-                knowledge_config.process_rule.mode == "hierarchical"
+                knowledge_config.process_rule.mode == ProcessRuleMode.HIERARCHICAL
                 and knowledge_config.process_rule.rules.parent_mode == "full-doc"
             ):
                 if not knowledge_config.process_rule.rules.segmentation.max_tokens:
@@ -2804,7 +2836,7 @@ class DocumentService:
         if args["process_rule"]["mode"] not in DatasetProcessRule.MODES:
             raise ValueError("Process rule mode is invalid")
 
-        if args["process_rule"]["mode"] == "automatic":
+        if args["process_rule"]["mode"] == ProcessRuleMode.AUTOMATIC:
             args["process_rule"]["rules"] = {}
         else:
             if "rules" not in args["process_rule"] or not args["process_rule"]["rules"]:
@@ -3011,7 +3043,7 @@ class DocumentService:
     @staticmethod
     def _prepare_disable_update(document, user, now):
         """Prepare updates for disabling a document."""
-        if not document.completed_at or document.indexing_status != "completed":
+        if not document.completed_at or document.indexing_status != IndexingStatus.COMPLETED:
             raise DocumentIndexingError(f"Document: {document.name} is not completed.")
 
         if not document.enabled:
@@ -3120,7 +3152,7 @@ class SegmentService:
                     content=content,
                     word_count=len(content),
                     tokens=tokens,
-                    status="completed",
+                    status=SegmentStatus.COMPLETED,
                     indexing_at=naive_utc_now(),
                     completed_at=naive_utc_now(),
                     created_by=current_user.id,
@@ -3157,7 +3189,7 @@ class SegmentService:
                 logger.exception("create segment index failed")
                 segment_document.enabled = False
                 segment_document.disabled_at = naive_utc_now()
-                segment_document.status = "error"
+                segment_document.status = SegmentStatus.ERROR
                 segment_document.error = str(e)
                 db.session.commit()
             segment = db.session.query(DocumentSegment).where(DocumentSegment.id == segment_document.id).first()
@@ -3217,7 +3249,7 @@ class SegmentService:
                         word_count=len(content),
                         tokens=tokens,
                         keywords=segment_item.get("keywords", []),
-                        status="completed",
+                        status=SegmentStatus.COMPLETED,
                         indexing_at=naive_utc_now(),
                         completed_at=naive_utc_now(),
                         created_by=current_user.id,
@@ -3249,7 +3281,7 @@ class SegmentService:
                     for segment_document in segment_data_list:
                         segment_document.enabled = False
                         segment_document.disabled_at = naive_utc_now()
-                        segment_document.status = "error"
+                        segment_document.status = SegmentStatus.ERROR
                         segment_document.error = str(e)
                 db.session.commit()
                 return segment_data_list
@@ -3395,7 +3427,7 @@ class SegmentService:
                 segment.index_node_hash = segment_hash
                 segment.word_count = len(content)
                 segment.tokens = tokens
-                segment.status = "completed"
+                segment.status = SegmentStatus.COMPLETED
                 segment.indexing_at = naive_utc_now()
                 segment.completed_at = naive_utc_now()
                 segment.updated_by = current_user.id
@@ -3520,7 +3552,7 @@ class SegmentService:
             logger.exception("update segment index failed")
             segment.enabled = False
             segment.disabled_at = naive_utc_now()
-            segment.status = "error"
+            segment.status = SegmentStatus.ERROR
             segment.error = str(e)
             db.session.commit()
         new_segment = db.session.query(DocumentSegment).where(DocumentSegment.id == segment.id).first()
