@@ -4,10 +4,10 @@ runs:
   using: composite
   steps:
     - name: Setup Vite+
-      uses: voidzero-dev/setup-vp@b5d848f5a62488f3d3d920f8aa6ac318a60c5f07 # v1
+      uses: voidzero-dev/setup-vp@4a524139920f87f9f7080d3b8545acac019e1852 # v1.0.0
       with:
-        node-version-file: "./web/.nvmrc"
+        node-version-file: web/.nvmrc
         cache: true
+        cache-dependency-path: web/pnpm-lock.yaml
         run-install: |
-          - cwd: ./web
-            args: ['--frozen-lockfile']
+          cwd: ./web

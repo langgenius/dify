@@ -1,58 +1,52 @@
 import type * as React from 'react'
-import type { Node, OnSelectionChangeParams } from 'reactflow'
-import type { MockEdge, MockNode } from '../../__tests__/reactflow-mock-state'
-import { resetReactFlowMockState, rfState } from '../../__tests__/reactflow-mock-state'
-import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
+import type { OnSelectionChangeParams } from 'reactflow'
+import { act, waitFor } from '@testing-library/react'
+import { useEdges, useNodes, useStoreApi } from 'reactflow'
+import { createEdge, createNode } from '../../__tests__/fixtures'
+import { renderWorkflowFlowHook } from '../../__tests__/workflow-test-env'
 import { useSelectionInteractions } from '../use-selection-interactions'
 
-const rfStoreExtra = vi.hoisted(() => ({
-  userSelectionRect: null as { x: number, y: number, width: number, height: number } | null,
-  userSelectionActive: false,
-  resetSelectedElements: vi.fn(),
-  setState: vi.fn(),
-}))
+type BundledState = {
+  _isBundled?: boolean
+}
 
-vi.mock('reactflow', async () => {
-  const mod = await import('../../__tests__/reactflow-mock-state')
-  const base = mod.createReactFlowModuleMock()
-  return {
-    ...base,
-    useStoreApi: vi.fn(() => ({
-      getState: () => ({
-        getNodes: () => mod.rfState.nodes,
-        setNodes: mod.rfState.setNodes,
-        edges: mod.rfState.edges,
-        setEdges: mod.rfState.setEdges,
-        transform: mod.rfState.transform,
-        userSelectionRect: rfStoreExtra.userSelectionRect,
-        userSelectionActive: rfStoreExtra.userSelectionActive,
-        resetSelectedElements: rfStoreExtra.resetSelectedElements,
-      }),
-      setState: rfStoreExtra.setState,
-      subscribe: vi.fn().mockReturnValue(vi.fn()),
-    })),
-  }
-})
+const getBundledState = (item?: { data?: unknown }): BundledState =>
+  (item?.data ?? {}) as BundledState
+
+function createFlowNodes() {
+  return [
+    createNode({ id: 'n1', data: { _isBundled: true } }),
+    createNode({ id: 'n2', position: { x: 100, y: 100 }, data: { _isBundled: true } }),
+    createNode({ id: 'n3', position: { x: 200, y: 200 }, data: {} }),
+  ]
+}
+
+function createFlowEdges() {
+  return [
+    createEdge({ id: 'e1', source: 'n1', target: 'n2', data: { _isBundled: true } }),
+    createEdge({ id: 'e2', source: 'n2', target: 'n3', data: {} }),
+  ]
+}
+
+function renderSelectionInteractions(initialStoreState?: Record<string, unknown>) {
+  return renderWorkflowFlowHook(() => ({
+    ...useSelectionInteractions(),
+    nodes: useNodes(),
+    edges: useEdges(),
+    reactFlowStore: useStoreApi(),
+  }), {
+    nodes: createFlowNodes(),
+    edges: createFlowEdges(),
+    reactFlowProps: { fitView: false },
+    initialStoreState,
+  })
+}
 
 describe('useSelectionInteractions', () => {
   let container: HTMLDivElement
 
   beforeEach(() => {
-    resetReactFlowMockState()
-    rfStoreExtra.userSelectionRect = null
-    rfStoreExtra.userSelectionActive = false
-    rfStoreExtra.resetSelectedElements = vi.fn()
-    rfStoreExtra.setState.mockReset()
-
-    rfState.nodes = [
-      { id: 'n1', position: { x: 0, y: 0 }, data: { _isBundled: true } },
-      { id: 'n2', position: { x: 100, y: 100 }, data: { _isBundled: true } },
-      { id: 'n3', position: { x: 200, y: 200 }, data: {} },
-    ]
-    rfState.edges = [
-      { id: 'e1', source: 'n1', target: 'n2', data: { _isBundled: true } },
-      { id: 'e2', source: 'n2', target: 'n3', data: {} },
-    ]
+    vi.clearAllMocks()
 
     container = document.createElement('div')
     container.id = 'workflow-container'
@@ -73,110 +67,137 @@ describe('useSelectionInteractions', () => {
     container.remove()
   })
 
-  it('handleSelectionStart should clear _isBundled from all nodes and edges', () => {
-    const { result } = renderWorkflowHook(() => useSelectionInteractions())
+  it('handleSelectionStart should clear _isBundled from all nodes and edges', async () => {
+    const { result } = renderSelectionInteractions()
 
-    result.current.handleSelectionStart()
+    act(() => {
+      result.current.handleSelectionStart()
+    })
 
-    const updatedNodes = rfState.setNodes.mock.calls[0][0] as MockNode[]
-    expect(updatedNodes.every(n => !n.data._isBundled)).toBe(true)
-
-    const updatedEdges = rfState.setEdges.mock.calls[0][0] as MockEdge[]
-    expect(updatedEdges.every(e => !e.data._isBundled)).toBe(true)
+    await waitFor(() => {
+      expect(result.current.nodes.every(node => !getBundledState(node)._isBundled)).toBe(true)
+      expect(result.current.edges.every(edge => !getBundledState(edge)._isBundled)).toBe(true)
+    })
   })
 
-  it('handleSelectionChange should mark selected nodes as bundled', () => {
-    rfStoreExtra.userSelectionRect = { x: 0, y: 0, width: 100, height: 100 }
+  it('handleSelectionChange should mark selected nodes as bundled', async () => {
+    const { result } = renderSelectionInteractions()
 
-    const { result } = renderWorkflowHook(() => useSelectionInteractions())
+    act(() => {
+      result.current.reactFlowStore.setState({
+        userSelectionRect: { x: 0, y: 0, width: 100, height: 100 },
+      } as never)
+    })
 
-    result.current.handleSelectionChange({
-      nodes: [{ id: 'n1' }, { id: 'n3' }],
-      edges: [],
-    } as unknown as OnSelectionChangeParams)
+    act(() => {
+      result.current.handleSelectionChange({
+        nodes: [{ id: 'n1' }, { id: 'n3' }],
+        edges: [],
+      } as unknown as OnSelectionChangeParams)
+    })
 
-    const updatedNodes = rfState.setNodes.mock.calls[0][0] as MockNode[]
-    expect(updatedNodes.find(n => n.id === 'n1')!.data._isBundled).toBe(true)
-    expect(updatedNodes.find(n => n.id === 'n2')!.data._isBundled).toBe(false)
-    expect(updatedNodes.find(n => n.id === 'n3')!.data._isBundled).toBe(true)
+    await waitFor(() => {
+      expect(getBundledState(result.current.nodes.find(node => node.id === 'n1'))._isBundled).toBe(true)
+      expect(getBundledState(result.current.nodes.find(node => node.id === 'n2'))._isBundled).toBe(false)
+      expect(getBundledState(result.current.nodes.find(node => node.id === 'n3'))._isBundled).toBe(true)
+    })
   })
 
-  it('handleSelectionChange should mark selected edges', () => {
-    rfStoreExtra.userSelectionRect = { x: 0, y: 0, width: 100, height: 100 }
+  it('handleSelectionChange should mark selected edges', async () => {
+    const { result } = renderSelectionInteractions()
 
-    const { result } = renderWorkflowHook(() => useSelectionInteractions())
+    act(() => {
+      result.current.reactFlowStore.setState({
+        userSelectionRect: { x: 0, y: 0, width: 100, height: 100 },
+      } as never)
+    })
 
-    result.current.handleSelectionChange({
-      nodes: [],
-      edges: [{ id: 'e1' }],
-    } as unknown as OnSelectionChangeParams)
+    act(() => {
+      result.current.handleSelectionChange({
+        nodes: [],
+        edges: [{ id: 'e1' }],
+      } as unknown as OnSelectionChangeParams)
+    })
 
-    const updatedEdges = rfState.setEdges.mock.calls[0][0] as MockEdge[]
-    expect(updatedEdges.find(e => e.id === 'e1')!.data._isBundled).toBe(true)
-    expect(updatedEdges.find(e => e.id === 'e2')!.data._isBundled).toBe(false)
+    await waitFor(() => {
+      expect(getBundledState(result.current.edges.find(edge => edge.id === 'e1'))._isBundled).toBe(true)
+      expect(getBundledState(result.current.edges.find(edge => edge.id === 'e2'))._isBundled).toBe(false)
+    })
   })
 
-  it('handleSelectionDrag should sync node positions', () => {
-    const { result, store } = renderWorkflowHook(() => useSelectionInteractions())
-
+  it('handleSelectionDrag should sync node positions', async () => {
+    const { result, store } = renderSelectionInteractions()
     const draggedNodes = [
       { id: 'n1', position: { x: 50, y: 60 }, data: {} },
-    ] as unknown as Node[]
+    ] as never
 
-    result.current.handleSelectionDrag({} as unknown as React.MouseEvent, draggedNodes)
+    act(() => {
+      result.current.handleSelectionDrag({} as unknown as React.MouseEvent, draggedNodes)
+    })
 
     expect(store.getState().nodeAnimation).toBe(false)
 
-    const updatedNodes = rfState.setNodes.mock.calls[0][0] as MockNode[]
-    expect(updatedNodes.find(n => n.id === 'n1')!.position).toEqual({ x: 50, y: 60 })
-    expect(updatedNodes.find(n => n.id === 'n2')!.position).toEqual({ x: 100, y: 100 })
+    await waitFor(() => {
+      expect(result.current.nodes.find(node => node.id === 'n1')?.position).toEqual({ x: 50, y: 60 })
+      expect(result.current.nodes.find(node => node.id === 'n2')?.position).toEqual({ x: 100, y: 100 })
+    })
   })
 
-  it('handleSelectionCancel should clear all selection state', () => {
-    const { result } = renderWorkflowHook(() => useSelectionInteractions())
+  it('handleSelectionCancel should clear all selection state', async () => {
+    const { result } = renderSelectionInteractions()
 
-    result.current.handleSelectionCancel()
-
-    expect(rfStoreExtra.setState).toHaveBeenCalledWith({
-      userSelectionRect: null,
-      userSelectionActive: true,
+    act(() => {
+      result.current.reactFlowStore.setState({
+        userSelectionRect: { x: 0, y: 0, width: 100, height: 100 },
+        userSelectionActive: false,
+      } as never)
     })
 
-    const updatedNodes = rfState.setNodes.mock.calls[0][0] as MockNode[]
-    expect(updatedNodes.every(n => !n.data._isBundled)).toBe(true)
+    act(() => {
+      result.current.handleSelectionCancel()
+    })
 
-    const updatedEdges = rfState.setEdges.mock.calls[0][0] as MockEdge[]
-    expect(updatedEdges.every(e => !e.data._isBundled)).toBe(true)
+    expect(result.current.reactFlowStore.getState().userSelectionRect).toBeNull()
+    expect(result.current.reactFlowStore.getState().userSelectionActive).toBe(true)
+
+    await waitFor(() => {
+      expect(result.current.nodes.every(node => !getBundledState(node)._isBundled)).toBe(true)
+      expect(result.current.edges.every(edge => !getBundledState(edge)._isBundled)).toBe(true)
+    })
   })
 
   it('handleSelectionContextMenu should set menu only when clicking on selection rect', () => {
-    const { result, store } = renderWorkflowHook(() => useSelectionInteractions(), {
-      initialStoreState: {
-        nodeMenu: { top: 10, left: 20, nodeId: 'n1' },
-        panelMenu: { top: 30, left: 40 },
-        edgeMenu: { clientX: 320, clientY: 180, edgeId: 'e1' },
-      },
+    const { result, store } = renderSelectionInteractions({
+      nodeMenu: { top: 10, left: 20, nodeId: 'n1' },
+      panelMenu: { top: 30, left: 40 },
+      edgeMenu: { clientX: 320, clientY: 180, edgeId: 'e1' },
     })
 
     const wrongTarget = document.createElement('div')
     wrongTarget.classList.add('some-other-class')
-    result.current.handleSelectionContextMenu({
-      target: wrongTarget,
-      preventDefault: vi.fn(),
-      clientX: 300,
-      clientY: 200,
-    } as unknown as React.MouseEvent)
+
+    act(() => {
+      result.current.handleSelectionContextMenu({
+        target: wrongTarget,
+        preventDefault: vi.fn(),
+        clientX: 300,
+        clientY: 200,
+      } as unknown as React.MouseEvent)
+    })
 
     expect(store.getState().selectionMenu).toBeUndefined()
 
     const correctTarget = document.createElement('div')
     correctTarget.classList.add('react-flow__nodesselection-rect')
-    result.current.handleSelectionContextMenu({
-      target: correctTarget,
-      preventDefault: vi.fn(),
-      clientX: 300,
-      clientY: 200,
-    } as unknown as React.MouseEvent)
+
+    act(() => {
+      result.current.handleSelectionContextMenu({
+        target: correctTarget,
+        preventDefault: vi.fn(),
+        clientX: 300,
+        clientY: 200,
+      } as unknown as React.MouseEvent)
+    })
 
     expect(store.getState().selectionMenu).toEqual({
       top: 150,
@@ -188,11 +209,13 @@ describe('useSelectionInteractions', () => {
   })
 
   it('handleSelectionContextmenuCancel should clear selectionMenu', () => {
-    const { result, store } = renderWorkflowHook(() => useSelectionInteractions(), {
-      initialStoreState: { selectionMenu: { top: 50, left: 60 } },
+    const { result, store } = renderSelectionInteractions({
+      selectionMenu: { top: 50, left: 60 },
     })
 
-    result.current.handleSelectionContextmenuCancel()
+    act(() => {
+      result.current.handleSelectionContextmenuCancel()
+    })
 
     expect(store.getState().selectionMenu).toBeUndefined()
   })

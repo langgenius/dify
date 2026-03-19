@@ -36,6 +36,8 @@
   "createApp": "TẠO ỨNG DỤNG",
   "createFromConfigFile": "Tạo từ tệp DSL",
   "deleteAppConfirmContent": "Việc xóa ứng dụng là không thể hoàn tác. Người dùng sẽ không thể truy cập vào ứng dụng của bạn nữa và tất cả cấu hình cũng như nhật ký nhắc sẽ bị xóa vĩnh viễn.",
+  "deleteAppConfirmInputLabel": "Để xác nhận, hãy nhập \"{{appName}}\" vào ô bên dưới:",
+  "deleteAppConfirmInputPlaceholder": "Nhập tên ứng dụng",
   "deleteAppConfirmTitle": "Xóa ứng dụng này?",
   "dslUploader.browse": "Duyệt",
   "dslUploader.button": "Kéo và thả tệp, hoặc",

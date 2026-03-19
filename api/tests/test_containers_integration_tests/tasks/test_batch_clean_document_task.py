@@ -13,6 +13,7 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
+from extensions.storage.storage_type import StorageType
 from libs.datetime_utils import naive_utc_now
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
@@ -209,7 +210,7 @@ class TestBatchCleanDocumentTask:
 
         upload_file = UploadFile(
             tenant_id=account.current_tenant.id,
-            storage_type="local",
+            storage_type=StorageType.LOCAL,
             key=f"test_files/{fake.file_name()}",
             name=fake.file_name(),
             size=1024,

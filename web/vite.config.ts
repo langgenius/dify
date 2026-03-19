@@ -7,24 +7,15 @@ import { defineConfig } from 'vite-plus'
 import { createCodeInspectorPlugin, createForceInspectorClientInjectionPlugin } from './plugins/vite/code-inspector'
 import { customI18nHmrPlugin } from './plugins/vite/custom-i18n-hmr'
 import { nextStaticImageTestPlugin } from './plugins/vite/next-static-image-test'
-import { collectComponentCoverageExcludedFiles } from './scripts/component-coverage-filters.mjs'
-import { EXCLUDED_COMPONENT_MODULES } from './scripts/components-coverage-thresholds.mjs'
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url))
 const isCI = !!process.env.CI
-const coverageScope = process.env.VITEST_COVERAGE_SCOPE
 const browserInitializerInjectTarget = path.resolve(projectRoot, 'app/components/browser-initializer.tsx')
-const excludedAppComponentsCoveragePaths = [...EXCLUDED_COMPONENT_MODULES]
-  .map(moduleName => `app/components/${moduleName}/**`)
 
 export default defineConfig(({ mode }) => {
   const isTest = mode === 'test'
   const isStorybook = process.env.STORYBOOK === 'true'
     || process.argv.some(arg => arg.toLowerCase().includes('storybook'))
-  const isAppComponentsCoverage = coverageScope === 'app-components'
-  const excludedComponentCoverageFiles = isAppComponentsCoverage
-    ? collectComponentCoverageExcludedFiles(path.join(projectRoot, 'app/components'), { pathPrefix: 'app/components' })
-    : []
 
   return {
     plugins: isTest
@@ -87,25 +78,9 @@ export default defineConfig(({ mode }) => {
       environment: 'jsdom',
       globals: true,
       setupFiles: ['./vitest.setup.ts'],
-      reporters: ['agent'],
       coverage: {
         provider: 'v8',
         reporter: isCI ? ['json', 'json-summary'] : ['text', 'json', 'json-summary'],
-        ...(isAppComponentsCoverage
-          ? {
-              include: ['app/components/**/*.{ts,tsx}'],
-              exclude: [
-                'app/components/**/*.d.ts',
-                'app/components/**/*.spec.{ts,tsx}',
-                'app/components/**/*.test.{ts,tsx}',
-                'app/components/**/__tests__/**',
-                'app/components/**/__mocks__/**',
-                'app/components/**/*.stories.{ts,tsx}',
-                ...excludedComponentCoverageFiles,
-                ...excludedAppComponentsCoveragePaths,
-              ],
-            }
-          : {}),
       },
     },
   }

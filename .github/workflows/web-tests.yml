@@ -2,16 +2,9 @@ name: Web Tests
 
 on:
   workflow_call:
-    inputs:
-      base_sha:
+    secrets:
+      CODECOV_TOKEN:
         required: false
-        type: string
-      diff_range_mode:
-        required: false
-        type: string
-      head_sha:
-        required: false
-        type: string
 
 permissions:
   contents: read
@@ -63,7 +56,7 @@ jobs:
     needs: [test]
     runs-on: ubuntu-latest
     env:
-      VITEST_COVERAGE_SCOPE: app-components
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     defaults:
       run:
         shell: bash
@@ -87,52 +80,16 @@ jobs:
           merge-multiple: true
 
       - name: Merge reports
-        run: vp test --merge-reports --reporter=json --reporter=agent --coverage
+        run: vp test --merge-reports --coverage --silent=passed-only
 
-      - name: Report app/components baseline coverage
-        run: node ./scripts/report-components-coverage-baseline.mjs
-
-      - name: Report app/components test touch
-        env:
-          BASE_SHA: ${{ inputs.base_sha }}
-          DIFF_RANGE_MODE: ${{ inputs.diff_range_mode }}
-          HEAD_SHA: ${{ inputs.head_sha }}
-        run: node ./scripts/report-components-test-touch.mjs
-
-      - name: Check app/components pure diff coverage
-        env:
-          BASE_SHA: ${{ inputs.base_sha }}
-          DIFF_RANGE_MODE: ${{ inputs.diff_range_mode }}
-          HEAD_SHA: ${{ inputs.head_sha }}
-        run: node ./scripts/check-components-diff-coverage.mjs
-
-      - name: Check Coverage Summary
-        if: always()
-        id: coverage-summary
-        run: |
-          set -eo pipefail
-
-          COVERAGE_FILE="coverage/coverage-final.json"
-          COVERAGE_SUMMARY_FILE="coverage/coverage-summary.json"
-
-          if [ -f "$COVERAGE_FILE" ] || [ -f "$COVERAGE_SUMMARY_FILE" ]; then
-            echo "has_coverage=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          echo "has_coverage=false" >> "$GITHUB_OUTPUT"
-          echo "### 🚨 app/components Diff Coverage" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "Coverage artifacts not found. Ensure Vitest merge reports ran with coverage enabled." >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Upload Coverage Artifact
-        if: steps.coverage-summary.outputs.has_coverage == 'true'
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+      - name: Report coverage
+        if: ${{ env.CODECOV_TOKEN != '' }}
+        uses: codecov/codecov-action@1af58845a975a7985b0beb0cbe6fbbb71a41dbad # v5.5.3
         with:
-          name: web-coverage-report
-          path: web/coverage
-          retention-days: 30
-          if-no-files-found: error
+          directory: web/coverage
+          flags: web
+        env:
+          CODECOV_TOKEN: ${{ env.CODECOV_TOKEN }}
 
   web-build:
     name: Web Build
