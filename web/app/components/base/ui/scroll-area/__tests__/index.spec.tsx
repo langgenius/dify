@@ -7,6 +7,7 @@ import {
   ScrollAreaScrollbar,
   ScrollAreaThumb,
   ScrollAreaViewport,
+  VerticalScrollArea,
 } from '../index'
 import styles from '../index.module.css'
 
@@ -60,6 +61,38 @@ describe('scroll-area wrapper', () => {
         expect(screen.getByTestId('scroll-area-vertical-thumb')).toBeInTheDocument()
         expect(screen.getByTestId('scroll-area-horizontal-scrollbar')).toBeInTheDocument()
         expect(screen.getByTestId('scroll-area-horizontal-thumb')).toBeInTheDocument()
+      })
+    })
+
+    it('should render the vertical convenience wrapper and apply slot props', async () => {
+      render(
+        <>
+          <p id="installed-apps-label">Installed apps</p>
+          <VerticalScrollArea
+            className="h-40 w-40"
+            classNames={{
+              content: 'custom-content-class',
+              scrollbar: 'custom-scrollbar-class',
+              viewport: 'custom-viewport-class',
+            }}
+            viewportLabelledBy="installed-apps-label"
+            data-testid="vertical-scroll-area-root"
+          >
+            <div className="h-48 w-20">Scrollable content</div>
+          </VerticalScrollArea>
+        </>,
+      )
+
+      await waitFor(() => {
+        const root = screen.getByTestId('vertical-scroll-area-root')
+        const viewport = screen.getByRole('region', { name: 'Installed apps' })
+        const content = screen.getByText('Scrollable content').parentElement
+
+        expect(root).toBeInTheDocument()
+        expect(viewport).toHaveClass('custom-viewport-class')
+        expect(viewport).toHaveAccessibleName('Installed apps')
+        expect(content).toHaveClass('custom-content-class')
+        expect(screen.getByText('Scrollable content')).toBeInTheDocument()
       })
     })
   })

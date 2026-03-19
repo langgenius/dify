@@ -11,6 +11,19 @@ export type ScrollAreaRootProps = React.ComponentPropsWithRef<typeof BaseScrollA
 export const ScrollAreaContent = BaseScrollArea.Content
 export type ScrollAreaContentProps = React.ComponentPropsWithRef<typeof BaseScrollArea.Content>
 
+export type VerticalScrollAreaClassNames = {
+  viewport?: string
+  content?: string
+  scrollbar?: string
+}
+
+export type VerticalScrollAreaProps = Omit<ScrollAreaRootProps, 'children'> & {
+  children: React.ReactNode
+  classNames?: VerticalScrollAreaClassNames
+  viewportLabel?: string
+  viewportLabelledBy?: string
+}
+
 export const scrollAreaScrollbarClassName = cn(
   styles.scrollbar,
   'flex touch-none select-none overflow-clip p-1 opacity-100 transition-opacity motion-reduce:transition-none',
@@ -86,5 +99,32 @@ export function ScrollAreaCorner({
       className={cn(scrollAreaCornerClassName, className)}
       {...props}
     />
+  )
+}
+
+export function VerticalScrollArea({
+  children,
+  className,
+  classNames,
+  viewportLabel,
+  viewportLabelledBy,
+  ...props
+}: VerticalScrollAreaProps) {
+  return (
+    <ScrollArea className={className} {...props}>
+      <ScrollAreaViewport
+        aria-label={viewportLabel}
+        aria-labelledby={viewportLabelledBy}
+        className={classNames?.viewport}
+        role={viewportLabel || viewportLabelledBy ? 'region' : undefined}
+      >
+        <ScrollAreaContent className={classNames?.content}>
+          {children}
+        </ScrollAreaContent>
+      </ScrollAreaViewport>
+      <ScrollAreaScrollbar className={classNames?.scrollbar}>
+        <ScrollAreaThumb />
+      </ScrollAreaScrollbar>
+    </ScrollArea>
   )
 }

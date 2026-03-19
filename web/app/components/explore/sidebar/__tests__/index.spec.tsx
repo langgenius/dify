@@ -93,6 +93,13 @@ describe('SideBar', () => {
       expect(screen.getByText('explore.sidebar.title')).toBeInTheDocument()
     })
 
+    it('should expose an accessible name for the discovery link when the text is hidden', () => {
+      mockMediaType = MediaType.mobile
+      renderSideBar()
+
+      expect(screen.getByRole('link', { name: 'explore.sidebar.title' })).toBeInTheDocument()
+    })
+
     it('should render workspace items when installed apps exist', () => {
       mockInstalledApps = [createInstalledApp()]
       renderSideBar()
@@ -135,6 +142,15 @@ describe('SideBar', () => {
 
       const dividers = container.querySelectorAll('[class*="divider"], hr')
       expect(dividers.length).toBeGreaterThan(0)
+    })
+
+    it('should render a button for toggling the sidebar and update its accessible name', () => {
+      renderSideBar()
+
+      const toggleButton = screen.getByRole('button', { name: 'layout.sidebar.collapseSidebar' })
+      fireEvent.click(toggleButton)
+
+      expect(screen.getByRole('button', { name: 'layout.sidebar.expandSidebar' })).toBeInTheDocument()
     })
   })
 
