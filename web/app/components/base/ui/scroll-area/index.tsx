@@ -19,7 +19,7 @@ export type VerticalScrollAreaClassNames = {
 
 export type VerticalScrollAreaProps = Omit<ScrollAreaRootProps, 'children'> & {
   children: React.ReactNode
-  classNames?: VerticalScrollAreaClassNames
+  slotClassNames?: VerticalScrollAreaClassNames
   viewportLabel?: string
   viewportLabelledBy?: string
 }
@@ -105,7 +105,7 @@ export function ScrollAreaCorner({
 export function VerticalScrollArea({
   children,
   className,
-  classNames,
+  slotClassNames,
   viewportLabel,
   viewportLabelledBy,
   ...props
@@ -115,14 +115,14 @@ export function VerticalScrollArea({
       <ScrollAreaViewport
         aria-label={viewportLabel}
         aria-labelledby={viewportLabelledBy}
-        className={classNames?.viewport}
+        className={slotClassNames?.viewport}
         role={viewportLabel || viewportLabelledBy ? 'region' : undefined}
       >
-        <ScrollAreaContent className={classNames?.content}>
+        <ScrollAreaContent className={slotClassNames?.content}>
           {children}
         </ScrollAreaContent>
       </ScrollAreaViewport>
-      <ScrollAreaScrollbar className={classNames?.scrollbar}>
+      <ScrollAreaScrollbar className={slotClassNames?.scrollbar}>
         <ScrollAreaThumb />
       </ScrollAreaScrollbar>
     </ScrollArea>

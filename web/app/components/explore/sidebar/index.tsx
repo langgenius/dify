@@ -121,7 +121,7 @@ const SideBar = () => {
                 <div className="min-h-0 flex-1">
                   <VerticalScrollArea
                     className="h-full"
-                    classNames={expandedSidebarScrollAreaClassNames}
+                    slotClassNames={expandedSidebarScrollAreaClassNames}
                     viewportLabelledBy={webAppsLabelId}
                   >
                     {installedAppItems}

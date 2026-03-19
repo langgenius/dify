@@ -70,7 +70,7 @@ describe('scroll-area wrapper', () => {
           <p id="installed-apps-label">Installed apps</p>
           <VerticalScrollArea
             className="h-40 w-40"
-            classNames={{
+            slotClassNames={{
               content: 'custom-content-class',
               scrollbar: 'custom-scrollbar-class',
               viewport: 'custom-viewport-class',
