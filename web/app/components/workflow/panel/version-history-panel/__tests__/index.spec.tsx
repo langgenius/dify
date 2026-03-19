@@ -12,6 +12,30 @@ const mockSetCurrentVersion = vi.fn()
 const mockSetShowWorkflowVersionHistoryPanel = vi.fn()
 const mockWorkflowStoreSetState = vi.fn()
 
+const createVersionHistory = (overrides: Partial<VersionHistory> = {}): VersionHistory => ({
+  id: 'version-id',
+  version: WorkflowVersion.Draft,
+  graph: { nodes: [], edges: [], viewport: null },
+  features: {
+    opening_statement: '',
+    suggested_questions: [],
+    suggested_questions_after_answer: { enabled: false },
+    text_to_speech: { enabled: false },
+    speech_to_text: { enabled: false },
+    retriever_resource: { enabled: false },
+    sensitive_word_avoidance: { enabled: false },
+    file_upload: { image: { enabled: false } },
+  },
+  created_at: Date.now() / 1000,
+  created_by: { id: 'user-1', name: 'User 1' },
+  environment_variables: [],
+  marked_name: '',
+  marked_comment: '',
+  ...overrides,
+})
+
+let mockCurrentVersion: VersionHistory | null = null
+
 type MockVersionStoreState = Pick<Shape, 'currentVersion' | 'setCurrentVersion' | 'setShowWorkflowVersionHistoryPanel'>
 type MockRestoreConfirmModalProps = {
   isOpen: boolean
@@ -39,46 +63,16 @@ vi.mock('@/service/use-workflow', () => ({
       pages: [
         {
           items: [
-            {
+            createVersionHistory({
               id: 'draft-version-id',
               version: WorkflowVersion.Draft,
-              graph: { nodes: [], edges: [], viewport: null },
-              features: {
-                opening_statement: '',
-                suggested_questions: [],
-                suggested_questions_after_answer: { enabled: false },
-                text_to_speech: { enabled: false },
-                speech_to_text: { enabled: false },
-                retriever_resource: { enabled: false },
-                sensitive_word_avoidance: { enabled: false },
-                file_upload: { image: { enabled: false } },
-              },
-              created_at: Date.now() / 1000,
-              created_by: { id: 'user-1', name: 'User 1' },
-              environment_variables: [],
-              marked_name: '',
-              marked_comment: '',
-            },
-            {
+            }),
+            createVersionHistory({
               id: 'published-version-id',
               version: '2024-01-01T00:00:00Z',
-              graph: { nodes: [], edges: [], viewport: null },
-              features: {
-                opening_statement: '',
-                suggested_questions: [],
-                suggested_questions_after_answer: { enabled: false },
-                text_to_speech: { enabled: false },
-                speech_to_text: { enabled: false },
-                retriever_resource: { enabled: false },
-                sensitive_word_avoidance: { enabled: false },
-                file_upload: { image: { enabled: false } },
-              },
-              created_at: Date.now() / 1000,
-              created_by: { id: 'user-1', name: 'User 1' },
-              environment_variables: [],
               marked_name: 'v1.0',
               marked_comment: 'First release',
-            },
+            }),
           ],
         },
       ],
@@ -109,7 +103,7 @@ vi.mock('../../../store', () => ({
   useStore: <T,>(selector: (state: MockVersionStoreState) => T) => {
     const state: MockVersionStoreState = {
       setShowWorkflowVersionHistoryPanel: mockSetShowWorkflowVersionHistoryPanel,
-      currentVersion: null,
+      currentVersion: mockCurrentVersion,
       setCurrentVersion: mockSetCurrentVersion,
     }
     return selector(state)
@@ -176,6 +170,7 @@ vi.mock('../version-history-item', () => ({
 describe('VersionHistoryPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockCurrentVersion = null
   })
 
   describe('Version Click Behavior', () => {
@@ -241,6 +236,10 @@ describe('VersionHistoryPanel', () => {
   it('should keep restore mode backup state when restore request fails', async () => {
     const { VersionHistoryPanel } = await import('../index')
     mockRestoreWorkflow.mockRejectedValueOnce(new Error('restore failed'))
+    mockCurrentVersion = createVersionHistory({
+      id: 'draft-version-id',
+      version: WorkflowVersion.Draft,
+    })
 
     render(
       <VersionHistoryPanel
@@ -260,6 +259,7 @@ describe('VersionHistoryPanel', () => {
 
     expect(mockWorkflowStoreSetState).not.toHaveBeenCalledWith({ isRestoring: false })
     expect(mockWorkflowStoreSetState).not.toHaveBeenCalledWith({ backupDraft: undefined })
+    expect(mockSetCurrentVersion).not.toHaveBeenCalled()
     expect(mockHandleRefreshWorkflowDraft).not.toHaveBeenCalled()
   })
 })

@@ -150,9 +150,9 @@ export const VersionHistoryPanel = ({
 
   const handleRestore = useCallback(async (item: VersionHistory) => {
     setShowWorkflowVersionHistoryPanel(false)
-    setCurrentVersion(item)
     try {
       await restoreWorkflow(restoreVersionUrl(item.id))
+      setCurrentVersion(item)
       workflowStore.setState({ isRestoring: false })
       workflowStore.setState({ backupDraft: undefined })
       handleRefreshWorkflowDraft()
