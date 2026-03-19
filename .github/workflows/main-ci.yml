@@ -62,10 +62,6 @@ jobs:
     needs: check-changes
     if: needs.check-changes.outputs.web-changed == 'true'
     uses: ./.github/workflows/web-tests.yml
-    with:
-      base_sha: ${{ github.event.before || github.event.pull_request.base.sha }}
-      diff_range_mode: ${{ github.event.before && 'exact' || 'merge-base' }}
-      head_sha: ${{ github.event.after || github.event.pull_request.head.sha || github.sha }}
 
   style-check:
     name: Style Check
