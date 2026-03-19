@@ -36,9 +36,12 @@ export default function InviteSettingsPage() {
     },
   }
   const { data: checkRes, refetch: recheck } = useInvitationCheck(checkParams.params, !!token)
+  const canActivate = checkRes?.is_valid === true
 
   const handleActivate = useCallback(async () => {
     try {
+      if (!canActivate)
+        return
       if (!name) {
         Toast.notify({ type: 'error', message: t('enterYourName', { ns: 'login' }) })
         return
@@ -62,7 +65,7 @@ export default function InviteSettingsPage() {
     catch {
       recheck()
     }
-  }, [language, name, recheck, timezone, token, router, t])
+  }, [canActivate, language, name, recheck, timezone, token, router, t])
 
   if (checkRes?.is_valid === false) {
     return (
@@ -104,7 +107,8 @@ export default function InviteSettingsPage() {
                 if (e.key === 'Enter') {
                   e.preventDefault()
                   e.stopPropagation()
-                  handleActivate()
+                  if (canActivate)
+                    handleActivate()
                 }
               }}
             />
@@ -144,7 +148,7 @@ export default function InviteSettingsPage() {
             variant="primary"
             className="w-full"
             onClick={handleActivate}
-            disabled={!checkRes?.is_valid}
+            disabled={!canActivate}
           >
             {`${t('join', { ns: 'login' })} ${checkRes?.data?.workspace_name ?? ''}`}
           </Button>
