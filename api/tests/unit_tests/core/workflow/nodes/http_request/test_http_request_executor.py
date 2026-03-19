@@ -937,3 +937,48 @@ def test_executor_propagates_workflow_call_depth_to_arbitrary_target_with_secret
         path="/data",
         depth="3",
     )
+
+
+def test_executor_normalizes_empty_url_path_when_signing_workflow_call_depth():
+    variable_pool = VariablePool(
+        system_variables=SystemVariable.default(),
+        user_inputs={},
+    )
+    node_data = HttpRequestNodeData(
+        title="External target without explicit path",
+        method="get",
+        url="https://api.example.com",
+        authorization=HttpRequestNodeAuthorization(type="no-auth"),
+        headers="X-Test: value",
+        params="",
+    )
+
+    executor = Executor(
+        node_data=node_data,
+        timeout=HttpRequestNodeTimeout(connect=10, read=30, write=30),
+        http_request_config=HttpRequestNodeConfig(
+            max_connect_timeout=HTTP_REQUEST_CONFIG.max_connect_timeout,
+            max_read_timeout=HTTP_REQUEST_CONFIG.max_read_timeout,
+            max_write_timeout=HTTP_REQUEST_CONFIG.max_write_timeout,
+            max_binary_size=HTTP_REQUEST_CONFIG.max_binary_size,
+            max_text_size=HTTP_REQUEST_CONFIG.max_text_size,
+            ssl_verify=HTTP_REQUEST_CONFIG.ssl_verify,
+            ssrf_default_max_retries=HTTP_REQUEST_CONFIG.ssrf_default_max_retries,
+            secret_key=TEST_SECRET_KEY,
+        ),
+        variable_pool=variable_pool,
+        workflow_call_depth=2,
+        http_client=ssrf_proxy,
+        file_manager=file_manager,
+    )
+
+    headers = executor._assembling_headers()
+
+    assert headers["X-Test"] == "value"
+    assert headers[WORKFLOW_CALL_DEPTH_HEADER] == "3"
+    assert headers[WORKFLOW_CALL_DEPTH_SIGNATURE_HEADER] == build_workflow_call_depth_signature(
+        secret_key=TEST_SECRET_KEY,
+        method="get",
+        path="/",
+        depth="3",
+    )

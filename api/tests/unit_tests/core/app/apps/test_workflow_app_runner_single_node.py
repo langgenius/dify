@@ -100,6 +100,7 @@ def test_run_uses_single_node_execution_branch(
         workflow=workflow,
         single_iteration_run=single_iteration_run,
         single_loop_run=single_loop_run,
+        call_depth=0,
     )
     init_graph.assert_not_called()
 
@@ -156,6 +157,7 @@ def test_single_node_run_validates_target_node_config(monkeypatch) -> None:
             node_id="loop-node",
             user_inputs={},
             graph_runtime_state=graph_runtime_state,
+            call_depth=0,
             node_type_filter_key="loop_id",
             node_type_label="loop",
         )

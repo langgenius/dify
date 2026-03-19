@@ -290,8 +290,10 @@ class Executor:
 
         Reserved workflow call-depth headers are removed case-insensitively
         before the canonical pair is re-added from ``workflow_call_depth``.
-        This keeps propagation deterministic even if a workflow author manually
-        configured colliding headers on the node.
+        The signature path mirrors Flask request matching, so URLs without an
+        explicit path are normalized to ``/`` before signing. This keeps
+        propagation deterministic even if a workflow author manually configured
+        colliding headers on the node.
         """
         authorization = deepcopy(self.auth)
         headers = deepcopy(self.headers) or {}
@@ -301,12 +303,13 @@ class Executor:
         }
         headers = {k: v for k, v in headers.items() if k.lower() not in reserved_header_names}
         parsed_url = urlparse(self.url)
+        signed_path = parsed_url.path or "/"
         next_call_depth = str(self.workflow_call_depth + 1)
         headers[WORKFLOW_CALL_DEPTH_HEADER] = next_call_depth
         headers[WORKFLOW_CALL_DEPTH_SIGNATURE_HEADER] = build_workflow_call_depth_signature(
             secret_key=self._http_request_config.secret_key,
             method=self.method,
-            path=parsed_url.path,
+            path=signed_path,
             depth=next_call_depth,
         )
 
