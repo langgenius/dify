@@ -1,6 +1,7 @@
 import time
 
 import click
+from sqlalchemy import func, select
 
 import app
 from configs import dify_config
@@ -20,7 +21,7 @@ def create_tidb_serverless_task():
         try:
             # check the number of idle tidb serverless
             idle_tidb_serverless_number = (
-                db.session.query(TidbAuthBinding).where(TidbAuthBinding.active == False).count()
+                db.session.scalar(select(func.count(TidbAuthBinding.id)).where(TidbAuthBinding.active == False)) or 0
             )
             if idle_tidb_serverless_number >= tidb_serverless_number:
                 break
