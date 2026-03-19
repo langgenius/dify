@@ -2,16 +2,6 @@ name: Web Tests
 
 on:
   workflow_call:
-    inputs:
-      base_sha:
-        required: false
-        type: string
-      diff_range_mode:
-        required: false
-        type: string
-      head_sha:
-        required: false
-        type: string
 
 permissions:
   contents: read
@@ -62,8 +52,6 @@ jobs:
     if: ${{ !cancelled() }}
     needs: [test]
     runs-on: ubuntu-latest
-    env:
-      VITEST_COVERAGE_SCOPE: app-components
     defaults:
       run:
         shell: bash
@@ -91,6 +79,9 @@ jobs:
 
       - name: Report coverage
         uses: codecov/codecov-action@v5
+        with:
+          directory: web/coverage
+          flags: web
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
