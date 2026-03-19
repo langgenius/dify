@@ -33,7 +33,7 @@ const DialogWrapper = ({
         </TransitionChild>
 
         <div className="fixed inset-0">
-          <div className={cn('flex min-h-full flex-col items-end justify-center pb-2', inWorkflow ? 'pt-[112px]' : 'pr-2 pt-[64px]')}>
+          <div className={cn('flex min-h-full flex-col items-end justify-center pb-2', inWorkflow ? 'pt-[112px]' : 'pr-2 pt-[64px]')} data-testid="dialog-layout-container">
             <TransitionChild>
               <DialogPanel className={cn(
                 'relative flex h-0 w-[420px] grow flex-col overflow-hidden border-components-panel-border bg-components-panel-bg-alt p-0 text-left align-middle shadow-xl transition-all',

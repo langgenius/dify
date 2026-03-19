@@ -17,7 +17,7 @@ const ContentItem = ({
 
   const extractFieldName = (str: string): string => {
     const outputVarRegex = /\{\{#\$output\.([^#]+)#\}\}/
-    const match = str.match(outputVarRegex)
+    const match = outputVarRegex.exec(str)
     return match ? match[1] : ''
   }
 

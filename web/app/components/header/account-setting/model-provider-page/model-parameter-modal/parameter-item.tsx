@@ -109,7 +109,7 @@ const ParameterItem: FC<ParameterItemProps> = ({
 
   const handleSwitch = (checked: boolean) => {
     if (onSwitch) {
-      const assignValue: ParameterValue = localValue || getDefaultValue()
+      const assignValue: ParameterValue = localValue ?? getDefaultValue()
 
       onSwitch(checked, assignValue)
     }
@@ -118,7 +118,7 @@ const ParameterItem: FC<ParameterItemProps> = ({
   useEffect(() => {
     if ((parameterRule.type === 'int' || parameterRule.type === 'float') && numberInputRef.current)
       numberInputRef.current.value = `${renderValue}`
-  }, [value])
+  }, [value, parameterRule.type, renderValue])
 
   const renderInput = () => {
     const numberInputWithSlide = (parameterRule.type === 'int' || parameterRule.type === 'float')
@@ -257,7 +257,7 @@ const ParameterItem: FC<ParameterItemProps> = ({
             !parameterRule.required && parameterRule.name !== 'stop' && (
               <div className="mr-2 w-7">
                 <Switch
-                  defaultValue={!isNullOrUndefined(value)}
+                  value={!isNullOrUndefined(value)}
                   onChange={handleSwitch}
                   size="md"
                 />

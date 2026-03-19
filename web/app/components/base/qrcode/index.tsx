@@ -1,7 +1,4 @@
 'use client'
-import {
-  RiQrCodeLine,
-} from '@remixicon/react'
 import { QRCodeCanvas as QRCode } from 'qrcode.react'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
@@ -55,9 +52,9 @@ const ShareQRCode = ({ content }: Props) => {
     <Tooltip
       popupContent={t(`${prefixEmbedded}`, { ns: 'appOverview' }) || ''}
     >
-      <div className="relative h-6 w-6" onClick={toggleQRCode}>
+      <div className="relative h-6 w-6" onClick={toggleQRCode} data-testid="qrcode-container">
         <ActionButton>
-          <RiQrCodeLine className="h-4 w-4" />
+          <span className="i-ri-qr-code-line h-4 w-4" />
         </ActionButton>
         {isShow && (
           <div

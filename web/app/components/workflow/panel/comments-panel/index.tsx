@@ -116,7 +116,7 @@ const CommentsPanel = () => {
                 <span className="text-sm text-text-secondary">Show resolved</span>
                 <Switch
                   size="md"
-                  defaultValue={showResolvedComments}
+                  value={showResolvedComments}
                   onChange={(checked) => {
                     setShowResolvedComments(checked)
                   }}

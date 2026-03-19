@@ -848,7 +848,7 @@ const ToolGroupBlockComponent = ({
                   <div className="pl-1">
                     <Switch
                       size="md"
-                      defaultValue={resolvedEnabledByConfigId[item.configId] !== false}
+                      value={resolvedEnabledByConfigId[item.configId] !== false}
                       onChange={(value) => {
                         handleToggleTool(item.configId, value)
                       }}

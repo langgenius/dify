@@ -5,8 +5,8 @@ from typing import Annotated, Any, TypeAlias
 
 from pydantic import BaseModel, ConfigDict, Discriminator, Tag, field_validator
 
-from core.file import File
 from core.model_runtime.entities import PromptMessage
+from core.workflow.file import File
 
 from .types import SegmentType
 

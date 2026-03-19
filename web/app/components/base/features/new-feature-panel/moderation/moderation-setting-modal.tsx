@@ -1,14 +1,11 @@
 import type { ChangeEvent, FC } from 'react'
 import type { CodeBasedExtensionItem } from '@/models/common'
 import type { ModerationConfig, ModerationContentConfig } from '@/models/debug'
-import { RiCloseLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
-import { BookOpen01 } from '@/app/components/base/icons/src/vender/line/education'
-import { InfoCircle } from '@/app/components/base/icons/src/vender/line/general'
 import Modal from '@/app/components/base/modal'
 import { useToastContext } from '@/app/components/base/toast'
 import ApiBasedExtensionSelector from '@/app/components/header/account-setting/api-based-extension-page/selector'
@@ -239,7 +236,20 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
     >
       <div className="flex items-center justify-between">
         <div className="text-text-primary title-2xl-semi-bold">{t('feature.moderation.modal.title', { ns: 'appDebug' })}</div>
-        <div className="cursor-pointer p-1" onClick={onCancel}><RiCloseLine className="h-4 w-4 text-text-tertiary" /></div>
+        <div
+          role="button"
+          tabIndex={0}
+          className="cursor-pointer p-1"
+          onClick={onCancel}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              onCancel()
+            }
+          }}
+        >
+          <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
+        </div>
       </div>
       <div className="py-2">
         <div className="text-sm font-medium leading-9 text-text-primary">
@@ -272,7 +282,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
         {
           !isLoading && !isOpenAIProviderConfigured && localeData.type === 'openai_moderation' && (
             <div className="mt-2 flex items-center rounded-lg border border-[#FEF0C7] bg-[#FFFAEB] px-3 py-2">
-              <InfoCircle className="mr-1 h-4 w-4 text-[#F79009]" />
+              <span className="i-custom-vender-line-general-info-circle mr-1 h-4 w-4 text-[#F79009]" />
               <div className="flex items-center text-xs font-medium text-gray-700">
                 {t('feature.moderation.modal.openaiNotConfig.before', { ns: 'appDebug' })}
                 <span
@@ -324,7 +334,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
                 rel="noopener noreferrer"
                 className="group flex items-center text-xs text-text-tertiary hover:text-primary-600"
               >
-                <BookOpen01 className="mr-1 h-3 w-3 text-text-tertiary group-hover:text-primary-600" />
+                <span className="i-custom-vender-line-education-book-open-01 mr-1 h-3 w-3 text-text-tertiary group-hover:text-primary-600" />
                 {t('apiBasedExtension.link', { ns: 'common' })}
               </a>
             </div>

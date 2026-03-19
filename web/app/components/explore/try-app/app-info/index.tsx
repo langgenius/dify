@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { TryAppInfo } from '@/service/try-app'
-import { RiAddLine } from '@remixicon/react'
+import Image from 'next/image'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
@@ -19,6 +19,37 @@ type Props = {
 }
 
 const headerClassName = 'system-sm-semibold-uppercase text-text-secondary mb-3'
+const requirementIconSize = 20
+
+type RequirementIconProps = {
+  iconUrl: string
+}
+
+const RequirementIcon: FC<RequirementIconProps> = ({ iconUrl }) => {
+  const [failedSource, setFailedSource] = React.useState<string | null>(null)
+  const hasLoadError = !iconUrl || failedSource === iconUrl
+
+  if (hasLoadError) {
+    return (
+      <div className="flex size-5 items-center justify-center overflow-hidden rounded-[6px] border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge">
+        <div className="i-custom-public-other-default-tool-icon size-3 text-text-tertiary" />
+      </div>
+    )
+  }
+
+  return (
+    <Image
+      className="size-5 rounded-md object-cover shadow-xs"
+      src={iconUrl}
+      alt=""
+      aria-hidden="true"
+      width={requirementIconSize}
+      height={requirementIconSize}
+      unoptimized
+      onError={() => setFailedSource(iconUrl)}
+    />
+  )
+}
 
 const AppInfo: FC<Props> = ({
   appId,
@@ -65,7 +96,7 @@ const AppInfo: FC<Props> = ({
         <div className="mt-[14px] shrink-0 text-text-secondary system-sm-regular">{appDetail.description}</div>
       )}
       <Button variant="primary" className="mt-3 flex w-full max-w-full" onClick={onCreate}>
-        <RiAddLine className="mr-1 size-4 shrink-0" />
+        <span className="i-ri-add-line mr-1 size-4 shrink-0" />
         <span className="truncate">{t('tryApp.createFromSampleApp', { ns: 'explore' })}</span>
       </Button>
 
@@ -81,7 +112,7 @@ const AppInfo: FC<Props> = ({
           <div className="space-y-0.5">
             {requirements.map(item => (
               <div className="flex items-center space-x-2 py-1" key={item.name}>
-                <div className="size-5 rounded-md bg-cover shadow-xs" style={{ backgroundImage: `url(${item.iconUrl})` }} />
+                <RequirementIcon iconUrl={item.iconUrl} />
                 <div className="w-0 grow truncate text-text-secondary system-md-regular">{item.name}</div>
               </div>
             ))}

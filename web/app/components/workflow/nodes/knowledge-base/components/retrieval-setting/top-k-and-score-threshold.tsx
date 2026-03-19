@@ -78,7 +78,7 @@ const TopKAndScoreThreshold = ({
             <div className="mb-0.5 flex h-6 items-center">
               <Switch
                 className="mr-2"
-                defaultValue={isScoreThresholdEnabled}
+                value={isScoreThresholdEnabled ?? false}
                 onChange={onScoreThresholdEnabledChange}
                 disabled={readonly}
               />

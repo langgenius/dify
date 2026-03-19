@@ -387,11 +387,6 @@
       "count": 6
     }
   },
-  "app/components/app/configuration/dataset-config/card-item/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "app/components/app/configuration/dataset-config/index.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 37
@@ -529,7 +524,7 @@
   },
   "app/components/app/create-app-modal/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 2
+      "count": 1
     },
     "ts/no-explicit-any": {
       "count": 1
@@ -651,14 +646,6 @@
       "count": 1
     },
     "react/no-nested-component-definitions": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 4
-    }
-  },
-  "app/components/apps/list.tsx": {
-    "unused-imports/no-unused-vars": {
       "count": 1
     }
   },
@@ -1598,11 +1585,6 @@
       "count": 1
     }
   },
-  "app/components/base/switch/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 1
-    }
-  },
   "app/components/base/tab-slider/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 2
@@ -1968,14 +1950,6 @@
       "count": 9
     }
   },
-  "app/components/develop/doc.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 2
-    },
-    "ts/no-explicit-any": {
-      "count": 3
-    }
-  },
   "app/components/develop/md.tsx": {
     "ts/no-empty-object-type": {
       "count": 1
@@ -1992,18 +1966,8 @@
       "count": 1
     }
   },
-  "app/components/explore/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 1
-    }
-  },
   "app/components/explore/item-operation/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 1
-    }
-  },
-  "app/components/explore/sidebar/index.tsx": {
-    "ts/no-explicit-any": {
       "count": 1
     }
   },
@@ -2242,14 +2206,6 @@
       "count": 1
     }
   },
-  "app/components/plugins/install-plugin/install-bundle/steps/install-multi.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 5
-    },
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
   "app/components/plugins/install-plugin/install-from-github/index.tsx": {
     "ts/no-explicit-any": {
       "count": 3
@@ -2383,11 +2339,6 @@
   "app/components/plugins/plugin-detail-panel/subscription-list/log-viewer.tsx": {
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "app/components/plugins/plugin-detail-panel/tool-selector/sections/tool-authorization-section.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
     }
   },
   "app/components/plugins/plugin-detail-panel/trigger/event-detail-drawer.tsx": {
@@ -2777,11 +2728,6 @@
       "count": 1
     }
   },
-  "app/components/workflow/custom-group-node/custom-group-node.tsx": {
-    "unused-imports/no-unused-vars": {
-      "count": 1
-    }
-  },
   "app/components/workflow/datasets-detail-store/provider.tsx": {
     "react-refresh/only-export-components": {
       "count": 1
@@ -2874,9 +2820,6 @@
     }
   },
   "app/components/workflow/index.tsx": {
-    "react-refresh/only-export-components": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -2947,7 +2890,7 @@
   },
   "app/components/workflow/nodes/_base/components/form-input-item.tsx": {
     "ts/no-explicit-any": {
-      "count": 34
+      "count": 33
     }
   },
   "app/components/workflow/nodes/_base/components/input-support-select-var.tsx": {
@@ -3172,11 +3115,6 @@
   "app/components/workflow/nodes/code/use-single-run-form-params.ts": {
     "ts/no-explicit-any": {
       "count": 5
-    }
-  },
-  "app/components/workflow/nodes/command/default.ts": {
-    "ts/no-explicit-any": {
-      "count": 1
     }
   },
   "app/components/workflow/nodes/components.ts": {
@@ -3434,11 +3372,6 @@
   "app/components/workflow/nodes/llm/default.ts": {
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/components/workflow/nodes/llm/types.ts": {
-    "ts/no-explicit-any": {
-      "count": 3
     }
   },
   "app/components/workflow/nodes/llm/use-config.ts": {
@@ -3911,11 +3844,6 @@
       "count": 4
     }
   },
-  "app/components/workflow/skill/editor/skill-editor/plugins/tool-block/index.tsx": {
-    "react-refresh/only-export-components": {
-      "count": 2
-    }
-  },
   "app/components/workflow/store/workflow/debug/inspect-vars-slice.ts": {
     "ts/no-explicit-any": {
       "count": 2
@@ -3959,9 +3887,6 @@
   "app/components/workflow/utils/node.ts": {
     "regexp/no-super-linear-backtracking": {
       "count": 1
-    },
-    "ts/no-empty-object-type": {
-      "count": 1
     }
   },
   "app/components/workflow/utils/tool.ts": {
@@ -3971,7 +3896,7 @@
   },
   "app/components/workflow/utils/workflow-init.ts": {
     "ts/no-explicit-any": {
-      "count": 13
+      "count": 12
     }
   },
   "app/components/workflow/utils/workflow.ts": {
@@ -4409,7 +4334,7 @@
   },
   "types/workflow.ts": {
     "ts/no-explicit-any": {
-      "count": 20
+      "count": 17
     }
   },
   "utils/clipboard.ts": {

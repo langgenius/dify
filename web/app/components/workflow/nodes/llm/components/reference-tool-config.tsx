@@ -278,7 +278,7 @@ const ReferenceToolConfig: FC<ReferenceToolConfigProps> = ({
                     <Switch
                       size="md"
                       disabled={isReferenceToolsDisabled}
-                      defaultValue={resolveToolEnabled(action)}
+                      value={resolveToolEnabled(action)}
                       onChange={value => handleToolEnabledChange(action, value)}
                     />
                   </div>

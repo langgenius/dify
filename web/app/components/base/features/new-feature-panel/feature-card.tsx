@@ -48,7 +48,7 @@ const FeatureCard = ({
             </Tooltip>
           )}
         </div>
-        <Switch disabled={disabled} className="shrink-0" onChange={state => onChange?.(state)} defaultValue={value} />
+        <Switch disabled={disabled} className="shrink-0" onChange={state => onChange?.(state)} value={value} />
       </div>
       {description && (
         <div className="line-clamp-2 min-h-8 text-text-tertiary system-xs-regular">{description}</div>

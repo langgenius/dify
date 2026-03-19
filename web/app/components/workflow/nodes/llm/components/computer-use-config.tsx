@@ -58,7 +58,7 @@ const ComputerUseConfig: FC<Props> = ({
               <Switch
                 size="md"
                 disabled={isDisabled}
-                defaultValue={enabled}
+                value={enabled}
                 onChange={onChange}
               />
             </Tooltip>

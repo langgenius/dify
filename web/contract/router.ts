@@ -17,6 +17,17 @@ import {
 import { workflowOnlineUsersContract } from './console/apps'
 import { bindPartnerStackContract, invoicesContract } from './console/billing'
 import {
+  exploreAppDetailContract,
+  exploreAppsContract,
+  exploreBannersContract,
+  exploreInstalledAppAccessModeContract,
+  exploreInstalledAppMetaContract,
+  exploreInstalledAppParametersContract,
+  exploreInstalledAppPinContract,
+  exploreInstalledAppsContract,
+  exploreInstalledAppUninstallContract,
+} from './console/explore'
+import {
   downloadFileContract,
   listFilesContract,
 } from './console/sandbox-file'
@@ -69,6 +80,17 @@ export const consoleRouterContract = {
     avatar: accountAvatarContract,
   },
   systemFeatures: systemFeaturesContract,
+  explore: {
+    apps: exploreAppsContract,
+    appDetail: exploreAppDetailContract,
+    installedApps: exploreInstalledAppsContract,
+    uninstallInstalledApp: exploreInstalledAppUninstallContract,
+    updateInstalledApp: exploreInstalledAppPinContract,
+    appAccessMode: exploreInstalledAppAccessModeContract,
+    installedAppParameters: exploreInstalledAppParametersContract,
+    installedAppMeta: exploreInstalledAppMetaContract,
+    banners: exploreBannersContract,
+  },
   trialApps: {
     info: trialAppInfoContract,
     datasets: trialAppDatasetsContract,

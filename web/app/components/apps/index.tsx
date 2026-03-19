@@ -1,7 +1,7 @@
 'use client'
 import type { CreateAppModalProps } from '../explore/create-app-modal'
-import type { CurrentTryAppParams } from '@/context/explore-context'
 import type { MarketplaceTemplate } from '@/service/marketplace-templates'
+import type { TryAppSelection } from '@/types/try-app'
 import dynamic from 'next/dynamic'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useRef, useState } from 'react'
@@ -30,13 +30,13 @@ const Apps = () => {
   useDocumentTitle(t('menus.apps', { ns: 'common' }))
   useEducationInit()
 
-  const [currentTryAppParams, setCurrentTryAppParams] = useState<CurrentTryAppParams | undefined>(undefined)
+  const [currentTryAppParams, setCurrentTryAppParams] = useState<TryAppSelection | undefined>(undefined)
   const currApp = currentTryAppParams?.app
   const [isShowTryAppPanel, setIsShowTryAppPanel] = useState(false)
   const hideTryAppPanel = useCallback(() => {
     setIsShowTryAppPanel(false)
   }, [])
-  const setShowTryAppPanel = (showTryAppPanel: boolean, params?: CurrentTryAppParams) => {
+  const setShowTryAppPanel = (showTryAppPanel: boolean, params?: TryAppSelection) => {
     if (showTryAppPanel)
       setCurrentTryAppParams(params)
     else

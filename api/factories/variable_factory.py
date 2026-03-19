@@ -3,7 +3,6 @@ from typing import Any, cast
 from uuid import uuid4
 
 from configs import dify_config
-from core.file import File
 from core.model_runtime.entities import PromptMessage
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
@@ -54,6 +53,7 @@ from core.workflow.constants import (
     CONVERSATION_VARIABLE_NODE_ID,
     ENVIRONMENT_VARIABLE_NODE_ID,
 )
+from core.workflow.file import File
 
 
 class UnsupportedSegmentTypeError(Exception):

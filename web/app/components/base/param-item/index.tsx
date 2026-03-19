@@ -30,7 +30,7 @@ const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1,
             <Switch
               size="md"
               className="mr-2"
-              defaultValue={enable}
+              value={enable}
               onChange={async (val) => {
                 onSwitchChange?.(id, val)
               }}

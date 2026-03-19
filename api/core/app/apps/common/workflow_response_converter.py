@@ -45,7 +45,6 @@ from core.app.entities.task_entities import (
     WorkflowPauseStreamResponse,
     WorkflowStartStreamResponse,
 )
-from core.file import FILE_MODEL_IDENTITY, File
 from core.plugin.impl.datasource import PluginDatasourceManager
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.tool_manager import ToolManager
@@ -60,6 +59,7 @@ from core.workflow.enums import (
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
+from core.workflow.file import FILE_MODEL_IDENTITY, File
 from core.workflow.runtime import GraphRuntimeState
 from core.workflow.system_variable import SystemVariable
 from core.workflow.workflow_entry import WorkflowEntry

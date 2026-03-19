@@ -7,7 +7,6 @@ from sqlalchemy.orm import Session
 from configs import dify_config
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.entities.provider_entities import ProviderQuotaType, QuotaUnit
-from core.file.models import File
 from core.memory import NodeTokenBufferMemory, TokenBufferMemory
 from core.memory.base import BaseMemory
 from core.model_manager import ModelInstance, ModelManager
@@ -25,6 +24,7 @@ from core.model_runtime.model_providers.__base.large_language_model import Large
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig, MemoryMode
 from core.variables.segments import ArrayAnySegment, ArrayFileSegment, FileSegment, NoneSegment, StringSegment
 from core.workflow.enums import SystemVariableKey
+from core.workflow.file.models import File
 from core.workflow.nodes.llm.entities import LLMGenerationData, ModelConfig
 from core.workflow.runtime import VariablePool
 from extensions.ext_database import db

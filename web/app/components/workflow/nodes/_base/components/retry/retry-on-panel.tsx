@@ -58,7 +58,7 @@ const RetryOnPanel = ({
             <div className="mr-0.5 text-text-secondary system-sm-semibold-uppercase">{t('nodes.common.retry.retryOnFailure', { ns: 'workflow' })}</div>
           </div>
           <Switch
-            defaultValue={retry_config?.retry_enabled}
+            value={retry_config?.retry_enabled ?? false}
             onChange={v => handleRetryEnabledChange(v)}
           />
         </div>

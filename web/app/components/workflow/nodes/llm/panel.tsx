@@ -405,7 +405,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
             >
               <div className="ml-2">
                 <Switch
-                  defaultValue={!!inputs.structured_output_enabled}
+                  value={!!inputs.structured_output_enabled}
                   onChange={handleStructureOutputEnableChange}
                   size="md"
                   disabled={isStructuredOutputBlocked}

@@ -267,7 +267,7 @@ const ConfigContent: FC<Props> = ({
                     canManuallyToggleRerank && (
                       <Switch
                         size="md"
-                        defaultValue={showRerankModel}
+                        value={showRerankModel ?? false}
                         onChange={handleManuallyToggleRerank}
                       />
                     )

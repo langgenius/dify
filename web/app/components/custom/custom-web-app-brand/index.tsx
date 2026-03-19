@@ -120,7 +120,7 @@ const CustomWebAppBrand = () => {
         {t('webapp.removeBrand', { ns: 'custom' })}
         <Switch
           size="l"
-          defaultValue={webappBrandRemoved}
+          value={webappBrandRemoved ?? false}
           disabled={isSandbox || !isCurrentWorkspaceManager}
           onChange={handleSwitch}
         />

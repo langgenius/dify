@@ -310,6 +310,6 @@
     "string-width": "~4.2.3"
   },
   "lint-staged": {
-    "*": "eslint --fix"
+    "*": "eslint --fix --no-warn-ignored --pass-on-unpruned-suppressions"
   }
 }

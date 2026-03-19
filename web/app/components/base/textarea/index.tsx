@@ -48,6 +48,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
         value={value ?? ''}
         onChange={onChange}
         disabled={disabled}
+        data-testid="text-area"
         {...props}
       >
       </textarea>
