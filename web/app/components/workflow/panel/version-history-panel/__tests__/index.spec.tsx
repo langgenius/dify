@@ -15,7 +15,7 @@ const mockWorkflowStoreSetState = vi.fn()
 const createVersionHistory = (overrides: Partial<VersionHistory> = {}): VersionHistory => ({
   id: 'version-id',
   version: WorkflowVersion.Draft,
-  graph: { nodes: [], edges: [], viewport: null },
+  graph: { nodes: [], edges: [] },
   features: {
     opening_statement: '',
     suggested_questions: [],
@@ -27,7 +27,11 @@ const createVersionHistory = (overrides: Partial<VersionHistory> = {}): VersionH
     file_upload: { image: { enabled: false } },
   },
   created_at: Date.now() / 1000,
-  created_by: { id: 'user-1', name: 'User 1' },
+  created_by: { id: 'user-1', name: 'User 1', email: 'user-1@example.com' },
+  hash: 'test-hash',
+  updated_at: Date.now() / 1000,
+  updated_by: { id: 'user-1', name: 'User 1', email: 'user-1@example.com' },
+  tool_published: false,
   environment_variables: [],
   marked_name: '',
   marked_comment: '',
