@@ -1,4 +1,11 @@
 'use client'
+
+/**
+ * @deprecated Use `@/app/components/base/ui/toast` instead.
+ * This component will be removed after migration is complete.
+ * See: https://github.com/langgenius/dify/issues/32811
+ */
+
 import type { ReactNode } from 'react'
 import type { IToastProps } from './context'
 import { noop } from 'es-toolkit/function'
@@ -12,6 +19,7 @@ import { ToastContext, useToastContext } from './context'
 export type ToastHandle = {
   clear?: VoidFunction
 }
+
 const Toast = ({
   type = 'info',
   size = 'md',
@@ -74,6 +82,7 @@ const Toast = ({
   )
 }
 
+/** @deprecated Use `@/app/components/base/ui/toast` instead. See issue #32811. */
 export const ToastProvider = ({
   children,
 }: {

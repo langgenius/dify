@@ -26,6 +26,11 @@ export type IConfirm = {
   showConfirm?: boolean
   showCancel?: boolean
   maskClosable?: boolean
+  confirmInputLabel?: string
+  confirmInputPlaceholder?: string
+  confirmInputValue?: string
+  onConfirmInputChange?: (value: string) => void
+  confirmInputMatchValue?: string
 }
 
 function Confirm({
@@ -42,6 +47,11 @@ function Confirm({
   isLoading = false,
   isDisabled = false,
   maskClosable = true,
+  confirmInputLabel,
+  confirmInputPlaceholder,
+  confirmInputValue = '',
+  onConfirmInputChange,
+  confirmInputMatchValue,
 }: IConfirm) {
   const { t } = useTranslation()
   const dialogRef = useRef<HTMLDivElement>(null)
@@ -51,12 +61,13 @@ function Confirm({
 
   const confirmTxt = confirmText || `${t('operation.confirm', { ns: 'common' })}`
   const cancelTxt = cancelText || `${t('operation.cancel', { ns: 'common' })}`
+  const isConfirmDisabled = isDisabled || (confirmInputMatchValue ? confirmInputValue !== confirmInputMatchValue : false)
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape')
         onCancel()
-      if (event.key === 'Enter' && isShow) {
+      if (event.key === 'Enter' && isShow && !isConfirmDisabled) {
         event.preventDefault()
         onConfirm()
       }
@@ -66,7 +77,7 @@ function Confirm({
     return () => {
       document.removeEventListener('keydown', handleKeyDown)
     }
-  }, [onCancel, onConfirm, isShow])
+  }, [onCancel, onConfirm, isShow, isConfirmDisabled])
 
   const handleClickOutside = (event: MouseEvent) => {
     if (maskClosable && dialogRef.current && !dialogRef.current.contains(event.target as Node))
@@ -123,11 +134,25 @@ function Confirm({
                 {title}
               </div>
             </Tooltip>
-            <div className="system-md-regular w-full whitespace-pre-wrap break-words text-text-tertiary">{content}</div>
+            <div className="w-full whitespace-pre-wrap break-words text-text-tertiary system-md-regular">{content}</div>
+            {confirmInputLabel && (
+              <div className="mt-2">
+                <label className="mb-1 block text-text-secondary system-sm-regular">
+                  {confirmInputLabel}
+                </label>
+                <input
+                  type="text"
+                  className="border-components-input-border bg-components-input-bg focus:border-components-input-border-focus focus:ring-components-input-border-focus h-9 w-full rounded-lg border px-3 text-sm text-text-primary placeholder:text-text-quaternary focus:outline-none focus:ring-1"
+                  placeholder={confirmInputPlaceholder}
+                  value={confirmInputValue}
+                  onChange={e => onConfirmInputChange?.(e.target.value)}
+                />
+              </div>
+            )}
           </div>
           <div className="flex items-start justify-end gap-2 self-stretch p-6">
             {showCancel && <Button onClick={onCancel}>{cancelTxt}</Button>}
-            {showConfirm && <Button variant="primary" destructive={type !== 'info'} loading={isLoading} disabled={isDisabled} onClick={onConfirm}>{confirmTxt}</Button>}
+            {showConfirm && <Button variant="primary" destructive={type !== 'info'} loading={isLoading} disabled={isConfirmDisabled} onClick={onConfirm}>{confirmTxt}</Button>}
           </div>
         </div>
       </div>

@@ -159,6 +159,7 @@ class ErrorHandler:
             node_id=event.node_id,
             node_type=event.node_type,
             start_at=event.start_at,
+            finished_at=event.finished_at,
             node_run_result=NodeRunResult(
                 status=WorkflowNodeExecutionStatus.EXCEPTION,
                 inputs=event.node_run_result.inputs,
@@ -198,6 +199,7 @@ class ErrorHandler:
             node_id=event.node_id,
             node_type=event.node_type,
             start_at=event.start_at,
+            finished_at=event.finished_at,
             node_run_result=NodeRunResult(
                 status=WorkflowNodeExecutionStatus.EXCEPTION,
                 inputs=event.node_run_result.inputs,

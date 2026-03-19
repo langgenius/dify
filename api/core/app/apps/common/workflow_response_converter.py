@@ -517,7 +517,7 @@ class WorkflowResponseConverter:
         snapshot = self._pop_snapshot(event.node_execution_id)
 
         start_at = snapshot.start_at if snapshot else event.start_at
-        finished_at = naive_utc_now()
+        finished_at = event.finished_at or naive_utc_now()
         elapsed_time = (finished_at - start_at).total_seconds()
 
         inputs, inputs_truncated = self._truncate_mapping(event.inputs)

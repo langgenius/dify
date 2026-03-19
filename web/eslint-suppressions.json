@@ -189,9 +189,6 @@
     }
   },
   "app/(shareLayout)/webapp-reset-password/check-code/page.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 4
     }
@@ -205,56 +202,31 @@
     }
   },
   "app/(shareLayout)/webapp-reset-password/page.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 4
     }
   },
   "app/(shareLayout)/webapp-reset-password/set-password/page.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 6
     }
   },
   "app/(shareLayout)/webapp-signin/check-code/page.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 4
     }
   },
-  "app/(shareLayout)/webapp-signin/components/external-member-sso-auth.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "app/(shareLayout)/webapp-signin/components/mail-and-code-auth.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
   },
   "app/(shareLayout)/webapp-signin/components/mail-and-password-auth.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
     },
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "app/(shareLayout)/webapp-signin/components/sso-auth.tsx": {
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "app/(shareLayout)/webapp-signin/layout.tsx": {
@@ -335,9 +307,6 @@
     }
   },
   "app/account/oauth/authorize/page.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -1127,9 +1096,6 @@
     }
   },
   "app/components/app/create-app-dialog/app-list/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 5
     }
@@ -1845,7 +1811,7 @@
       "count": 2
     },
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/base/content-dialog/index.stories.tsx": {
@@ -2924,14 +2890,6 @@
       "count": 1
     }
   },
-  "app/components/billing/pricing/plans/cloud-plan-item/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 6
-    }
-  },
   "app/components/billing/pricing/plans/cloud-plan-item/list/item/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
@@ -2944,17 +2902,6 @@
   },
   "app/components/billing/pricing/plans/self-hosted-plan-item/button.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/billing/pricing/plans/self-hosted-plan-item/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 4
-    },
-    "tailwindcss/no-unnecessary-whitespace": {
       "count": 1
     }
   },
@@ -3786,14 +3733,6 @@
       "count": 1
     }
   },
-  "app/components/datasets/documents/detail/completed/new-child-segment.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "app/components/datasets/documents/detail/completed/segment-card/chunk-content.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
@@ -3862,14 +3801,6 @@
       "count": 1
     }
   },
-  "app/components/datasets/documents/detail/new-segment.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "app/components/datasets/documents/detail/segment-add/index.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -3927,11 +3858,6 @@
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/external-knowledge-base/connector/index.tsx": {
-    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -4379,11 +4305,6 @@
   },
   "app/components/explore/sidebar/app-nav-item/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    }
-  },
-  "app/components/explore/sidebar/index.tsx": {
-    "no-restricted-imports": {
       "count": 2
     }
   },
@@ -4859,11 +4780,6 @@
       "count": 1
     }
   },
-  "app/components/header/account-setting/model-provider-page/system-model-selector/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "app/components/header/account-setting/plugin-page/SerpapiPlugin.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -5027,11 +4943,6 @@
       "count": 1
     }
   },
-  "app/components/plugins/install-plugin/install-from-local-package/steps/install.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    }
-  },
   "app/components/plugins/install-plugin/install-from-local-package/steps/uploading.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
@@ -5048,11 +4959,6 @@
       "count": 1
     }
   },
-  "app/components/plugins/install-plugin/install-from-marketplace/steps/install.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    }
-  },
   "app/components/plugins/marketplace/description/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 9
@@ -5060,6 +4966,11 @@
   },
   "app/components/plugins/marketplace/empty/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
+      "count": 1
+    }
+  },
+  "app/components/plugins/marketplace/hooks.ts": {
+    "@tanstack/query/exhaustive-deps": {
       "count": 1
     }
   },
@@ -5233,9 +5144,6 @@
   "app/components/plugins/plugin-detail-panel/app-selector/app-picker.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
     }
   },
   "app/components/plugins/plugin-detail-panel/app-selector/app-trigger.tsx": {
@@ -5245,9 +5153,6 @@
   },
   "app/components/plugins/plugin-detail-panel/app-selector/index.tsx": {
     "no-restricted-imports": {
-      "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
   },
@@ -5394,17 +5299,6 @@
       "count": 3
     }
   },
-  "app/components/plugins/plugin-detail-panel/subscription-list/delete-confirm.tsx": {
-    "no-restricted-imports": {
-      "count": 2
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "app/components/plugins/plugin-detail-panel/subscription-list/edit/apikey-edit-modal.tsx": {
     "no-restricted-imports": {
       "count": 2
@@ -5541,9 +5435,6 @@
   "app/components/plugins/plugin-item/index.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 7
     },
     "ts/no-explicit-any": {
       "count": 1
@@ -6602,11 +6493,6 @@
       "count": 1
     }
   },
-  "app/components/workflow/header/scroll-to-selected-node-button.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
   "app/components/workflow/header/test-run-menu.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -7110,11 +6996,6 @@
       "count": 5
     }
   },
-  "app/components/workflow/nodes/_base/components/variable/output-var-list.tsx": {
-    "no-restricted-imports": {
-      "count": 2
-    }
-  },
   "app/components/workflow/nodes/_base/components/variable/utils.ts": {
     "ts/no-explicit-any": {
       "count": 32
@@ -7126,11 +7007,6 @@
     },
     "tailwindcss/no-unnecessary-whitespace": {
       "count": 1
-    }
-  },
-  "app/components/workflow/nodes/_base/components/variable/var-list.tsx": {
-    "no-restricted-imports": {
-      "count": 2
     }
   },
   "app/components/workflow/nodes/_base/components/variable/var-reference-picker.tsx": {
@@ -8876,15 +8752,7 @@
       "count": 1
     }
   },
-  "app/components/workflow/panel/version-history-panel/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
   "app/components/workflow/panel/version-history-panel/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
     }
@@ -9048,11 +8916,6 @@
       "count": 2
     }
   },
-  "app/components/workflow/run/utils/format-log/agent/index.spec.ts": {
-    "ts/no-explicit-any": {
-      "count": 3
-    }
-  },
   "app/components/workflow/run/utils/format-log/agent/index.ts": {
     "ts/no-explicit-any": {
       "count": 11
@@ -9068,17 +8931,7 @@
       "count": 2
     }
   },
-  "app/components/workflow/run/utils/format-log/iteration/index.spec.ts": {
-    "ts/no-explicit-any": {
-      "count": 3
-    }
-  },
   "app/components/workflow/run/utils/format-log/iteration/index.ts": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/run/utils/format-log/loop/index.spec.ts": {
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -9094,11 +8947,6 @@
     },
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "app/components/workflow/run/utils/format-log/retry/index.spec.ts": {
-    "ts/no-explicit-any": {
-      "count": 1
     }
   },
   "app/components/workflow/selection-contextmenu.tsx": {
@@ -9376,11 +9224,6 @@
       "count": 5
     }
   },
-  "app/forgot-password/ChangePasswordForm.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "app/forgot-password/ForgotPasswordForm.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 5
@@ -9405,9 +9248,6 @@
     }
   },
   "app/reset-password/check-code/page.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 4
     }
@@ -9421,17 +9261,11 @@
     }
   },
   "app/reset-password/page.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 4
     }
   },
   "app/reset-password/set-password/page.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 6
     }
@@ -9441,29 +9275,13 @@
       "count": 1
     }
   },
-  "app/signin/check-code/page.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "app/signin/components/mail-and-code-auth.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
   },
   "app/signin/components/mail-and-password-auth.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/signin/components/sso-auth.tsx": {
-    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -9480,11 +9298,6 @@
       "count": 1
     }
   },
-  "app/signin/normal-form.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "app/signin/one-more-step.tsx": {
     "no-restricted-imports": {
       "count": 3
@@ -9497,17 +9310,11 @@
     }
   },
   "app/signup/check-code/page.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 4
     }
   },
   "app/signup/components/input-mail.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 4
     }
@@ -9526,9 +9333,6 @@
     }
   },
   "app/signup/set-password/page.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 5
     }
@@ -9569,9 +9373,6 @@
     }
   },
   "context/provider-context-provider.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -9723,6 +9524,11 @@
       "count": 6
     }
   },
+  "service/access-control.ts": {
+    "@tanstack/query/exhaustive-deps": {
+      "count": 1
+    }
+  },
   "service/annotation.ts": {
     "ts/no-explicit-any": {
       "count": 4
@@ -9757,14 +9563,16 @@
     }
   },
   "service/fetch.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "regexp/no-unused-capturing-group": {
       "count": 1
     },
     "ts/no-explicit-any": {
       "count": 2
+    }
+  },
+  "service/knowledge/use-dataset.ts": {
+    "@tanstack/query/exhaustive-deps": {
+      "count": 1
     }
   },
   "service/share.ts": {
@@ -9791,6 +9599,9 @@
     }
   },
   "service/use-pipeline.ts": {
+    "@tanstack/query/exhaustive-deps": {
+      "count": 2
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -9817,6 +9628,9 @@
     }
   },
   "service/use-workflow.ts": {
+    "@tanstack/query/exhaustive-deps": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 3
     }

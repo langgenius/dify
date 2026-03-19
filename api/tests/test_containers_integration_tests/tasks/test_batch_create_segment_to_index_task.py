@@ -19,6 +19,7 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
+from extensions.storage.storage_type import StorageType
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
@@ -203,7 +204,7 @@ class TestBatchCreateSegmentToIndexTask:
 
         upload_file = UploadFile(
             tenant_id=tenant.id,
-            storage_type="local",
+            storage_type=StorageType.LOCAL,
             key=f"test_files/{fake.file_name()}",
             name=fake.file_name(),
             size=1024,
