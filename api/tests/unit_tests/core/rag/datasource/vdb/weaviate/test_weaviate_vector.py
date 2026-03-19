@@ -316,9 +316,7 @@ class TestWeaviateVector(unittest.TestCase):
         mock_col = MagicMock()
         mock_client.collections.use.return_value = mock_col
 
-        mock_col.query.near_vector.side_effect = WeaviateQueryError(
-            "some other gRPC error", "GRPC"
-        )
+        mock_col.query.near_vector.side_effect = WeaviateQueryError("some other gRPC error", "GRPC")
 
         wv = WeaviateVector(
             collection_name=self.collection_name,
@@ -458,9 +456,7 @@ class TestWeaviateVector(unittest.TestCase):
         mock_col = MagicMock()
         mock_client.collections.use.return_value = mock_col
 
-        mock_col.query.bm25.side_effect = WeaviateQueryError(
-            "some other gRPC error", "GRPC"
-        )
+        mock_col.query.bm25.side_effect = WeaviateQueryError("some other gRPC error", "GRPC")
 
         wv = WeaviateVector(
             collection_name=self.collection_name,
