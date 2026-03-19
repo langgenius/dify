@@ -254,11 +254,6 @@
       "count": 18
     }
   },
-  "app/(shareLayout)/webapp-signin/page.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    }
-  },
   "app/account/(commonLayout)/account-page/AvatarWithEdit.tsx": {
     "no-restricted-imports": {
       "count": 2
@@ -5908,9 +5903,6 @@
     },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 4
     }
   },
   "app/components/share/text-generation/no-data/index.tsx": {
