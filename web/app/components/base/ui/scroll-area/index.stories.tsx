@@ -37,6 +37,10 @@ const insetScrollAreaClassName = 'h-full p-1'
 const insetViewportClassName = 'rounded-[20px] bg-components-panel-bg'
 const insetScrollbarClassName = 'data-[orientation=vertical]:top-1 data-[orientation=vertical]:bottom-1 data-[orientation=vertical]:right-1 data-[orientation=horizontal]:bottom-1 data-[orientation=horizontal]:left-1 data-[orientation=horizontal]:right-1'
 const storyButtonClassName = 'flex w-full items-center justify-between gap-3 rounded-xl border border-divider-subtle bg-components-panel-bg-alt px-3 py-2.5 text-left text-text-secondary transition-colors hover:bg-state-base-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-components-input-border-hover motion-reduce:transition-none'
+const sidebarScrollAreaClassName = 'h-full pr-2'
+const sidebarViewportClassName = 'overscroll-contain pr-2'
+const sidebarContentClassName = 'space-y-0.5 pr-2'
+const sidebarScrollbarClassName = 'data-[orientation=vertical]:right-0.5'
 const appNavButtonClassName = 'group flex h-8 w-full items-center justify-between gap-3 rounded-lg px-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-components-input-border-hover motion-reduce:transition-none'
 const appNavMetaClassName = 'shrink-0 rounded-md border border-divider-subtle bg-components-panel-bg-alt px-1.5 py-0.5 text-text-quaternary system-2xs-medium-uppercase tracking-[0.08em]'
 
@@ -354,9 +358,9 @@ const ExploreSidebarWebAppsPane = () => {
           </div>
 
           <div className="h-[304px]">
-            <ScrollArea className="h-full">
-              <ScrollAreaViewport className="overscroll-contain">
-                <ScrollAreaContent className="space-y-0.5 pr-3">
+            <ScrollArea className={sidebarScrollAreaClassName}>
+              <ScrollAreaViewport className={sidebarViewportClassName}>
+                <ScrollAreaContent className={sidebarContentClassName}>
                   {webAppsRows.map((item, index) => (
                     <div key={item.id} className="space-y-0.5">
                       <button
@@ -395,7 +399,7 @@ const ExploreSidebarWebAppsPane = () => {
                   ))}
                 </ScrollAreaContent>
               </ScrollAreaViewport>
-              <ScrollAreaScrollbar className="data-[orientation=vertical]:right-[-2px]">
+              <ScrollAreaScrollbar className={sidebarScrollbarClassName}>
                 <ScrollAreaThumb className="rounded-full" />
               </ScrollAreaScrollbar>
             </ScrollArea>
