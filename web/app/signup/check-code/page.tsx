@@ -16,7 +16,7 @@ export default function CheckCode() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const email = decodeURIComponent(searchParams.get('email') as string)
-  const [token, setToken] = useState(decodeURIComponent(searchParams.get('token') as string))
+  const [token, setToken] = useState(() => decodeURIComponent(searchParams.get('token') as string))
   const [code, setVerifyCode] = useState('')
   const [loading, setIsLoading] = useState(false)
   const locale = useLocale()

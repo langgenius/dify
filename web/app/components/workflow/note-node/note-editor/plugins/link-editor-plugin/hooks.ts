@@ -24,9 +24,12 @@ export const useOpenLink = () => {
   const noteEditorStore = useNoteEditorStore()
 
   useEffect(() => {
-    return mergeRegister(
+    let updateTimer: ReturnType<typeof setTimeout>
+    let clickTimer: ReturnType<typeof setTimeout>
+
+    const unregister = mergeRegister(
       editor.registerUpdateListener(() => {
-        setTimeout(() => {
+        updateTimer = setTimeout(() => {
           const {
             selectedLinkUrl,
             selectedIsLink,
@@ -51,7 +54,7 @@ export const useOpenLink = () => {
       editor.registerCommand(
         CLICK_COMMAND,
         (payload) => {
-          setTimeout(() => {
+          clickTimer = setTimeout(() => {
             const {
               selectedLinkUrl,
               selectedIsLink,
@@ -81,6 +84,12 @@ export const useOpenLink = () => {
         COMMAND_PRIORITY_LOW,
       ),
     )
+
+    return () => {
+      clearTimeout(updateTimer)
+      clearTimeout(clickTimer)
+      unregister()
+    }
   }, [editor, noteEditorStore])
 }
 

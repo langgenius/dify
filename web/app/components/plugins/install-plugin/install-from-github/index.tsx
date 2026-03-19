@@ -41,7 +41,7 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
     handleStartToInstall,
   } = useHideLogic(onClose)
 
-  const [state, setState] = useState<InstallState>({
+  const [state, setState] = useState<InstallState>(() => ({
     step: updatePayload ? InstallStepFromGitHub.selectPackage : InstallStepFromGitHub.setUrl,
     repoUrl: updatePayload?.originalPackageInfo?.repo
       ? convertRepoToUrl(updatePayload.originalPackageInfo.repo)
@@ -49,7 +49,7 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
     selectedVersion: '',
     selectedPackage: '',
     releases: updatePayload ? updatePayload.originalPackageInfo.releases : [],
-  })
+  }))
   const [uniqueIdentifier, setUniqueIdentifier] = useState<string | null>(null)
   const [manifest, setManifest] = useState<PluginDeclaration | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)

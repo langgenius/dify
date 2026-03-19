@@ -180,7 +180,7 @@ const Configuration: FC = () => {
     doSetCompletionParams(params)
   }
 
-  const [modelConfig, doSetModelConfig] = useState<ModelConfig>({
+  const [modelConfig, doSetModelConfig] = useState<ModelConfig>(() => ({
     provider: 'langgenius/openai/openai',
     model_id: 'gpt-3.5-turbo',
     mode: ModelModeType.unset,
@@ -210,7 +210,7 @@ const Configuration: FC = () => {
     },
     dataSets: [],
     agentConfig: DEFAULT_AGENT_SETTING,
-  })
+  }))
   const isAgent = mode === AppModeEnum.AGENT_CHAT
 
   const isOpenAI = modelConfig.provider === 'langgenius/openai/openai'

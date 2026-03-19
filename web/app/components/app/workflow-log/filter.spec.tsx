@@ -295,7 +295,7 @@ describe('Filter', () => {
       const setQueryParams = vi.fn()
 
       const Wrapper = () => {
-        const [queryParams, updateQueryParams] = useState<QueryParam>(createDefaultQueryParams())
+        const [queryParams, updateQueryParams] = useState<QueryParam>(() => createDefaultQueryParams())
         const handleSetQueryParams = (next: QueryParam) => {
           updateQueryParams(next)
           setQueryParams(next)

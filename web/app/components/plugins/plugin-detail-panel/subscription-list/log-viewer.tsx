@@ -28,7 +28,7 @@ enum LogTypeEnum {
 
 const LogViewer = ({ logs, className }: Props) => {
   const { t } = useTranslation()
-  const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set())
+  const [expandedLogs, setExpandedLogs] = useState<Set<string>>(() => new Set())
 
   const toggleLogExpansion = (logId: string) => {
     const newExpanded = new Set(expandedLogs)
