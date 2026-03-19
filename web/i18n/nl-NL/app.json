@@ -36,6 +36,8 @@
   "createApp": "CREATE APP",
   "createFromConfigFile": "Create from DSL file",
   "deleteAppConfirmContent": "Deleting the app is irreversible. Users will no longer be able to access your app, and all prompt configurations and logs will be permanently deleted.",
+  "deleteAppConfirmInputLabel": "To confirm, type \"{{appName}}\" in the box below:",
+  "deleteAppConfirmInputPlaceholder": "Enter app name",
   "deleteAppConfirmTitle": "Delete this app?",
   "dslUploader.browse": "Browse",
   "dslUploader.button": "Drag and drop file, or",

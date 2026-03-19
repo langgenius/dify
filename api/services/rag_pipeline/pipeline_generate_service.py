@@ -6,6 +6,7 @@ from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
 from models.dataset import Document, Pipeline
+from models.enums import IndexingStatus
 from models.model import Account, App, EndUser
 from models.workflow import Workflow
 from services.rag_pipeline.rag_pipeline import RagPipelineService
@@ -111,6 +112,6 @@ class PipelineGenerateService:
         """
         document = db.session.query(Document).where(Document.id == document_id).first()
         if document:
-            document.indexing_status = "waiting"
+            document.indexing_status = IndexingStatus.WAITING
             db.session.add(document)
             db.session.commit()

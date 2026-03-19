@@ -1,130 +1,209 @@
-import { renderHook } from '@testing-library/react'
-import { resetReactFlowMockState, rfState } from '../../__tests__/reactflow-mock-state'
+import { act, waitFor } from '@testing-library/react'
+import { useEdges, useNodes } from 'reactflow'
+import { createEdge, createNode } from '../../__tests__/fixtures'
+import { renderWorkflowFlowHook } from '../../__tests__/workflow-test-env'
 import { NodeRunningStatus } from '../../types'
 import { useEdgesInteractionsWithoutSync } from '../use-edges-interactions-without-sync'
 import { useNodesInteractionsWithoutSync } from '../use-nodes-interactions-without-sync'
 
-vi.mock('reactflow', async () =>
-  (await import('../../__tests__/reactflow-mock-state')).createReactFlowModuleMock())
+type EdgeRuntimeState = {
+  _sourceRunningStatus?: NodeRunningStatus
+  _targetRunningStatus?: NodeRunningStatus
+  _waitingRun?: boolean
+}
+
+type NodeRuntimeState = {
+  _runningStatus?: NodeRunningStatus
+  _waitingRun?: boolean
+}
+
+const getEdgeRuntimeState = (edge?: { data?: unknown }): EdgeRuntimeState =>
+  (edge?.data ?? {}) as EdgeRuntimeState
+
+const getNodeRuntimeState = (node?: { data?: unknown }): NodeRuntimeState =>
+  (node?.data ?? {}) as NodeRuntimeState
 
 describe('useEdgesInteractionsWithoutSync', () => {
-  beforeEach(() => {
-    resetReactFlowMockState()
-    rfState.edges = [
-      { id: 'e1', source: 'a', target: 'b', data: { _sourceRunningStatus: 'running', _targetRunningStatus: 'running', _waitingRun: true } },
-      { id: 'e2', source: 'b', target: 'c', data: { _sourceRunningStatus: 'succeeded', _targetRunningStatus: undefined, _waitingRun: false } },
-    ]
-  })
+  const createFlowNodes = () => [
+    createNode({ id: 'a' }),
+    createNode({ id: 'b' }),
+    createNode({ id: 'c' }),
+  ]
+  const createFlowEdges = () => [
+    createEdge({
+      id: 'e1',
+      source: 'a',
+      target: 'b',
+      data: {
+        _sourceRunningStatus: NodeRunningStatus.Running,
+        _targetRunningStatus: NodeRunningStatus.Running,
+        _waitingRun: true,
+      },
+    }),
+    createEdge({
+      id: 'e2',
+      source: 'b',
+      target: 'c',
+      data: {
+        _sourceRunningStatus: NodeRunningStatus.Succeeded,
+        _targetRunningStatus: undefined,
+        _waitingRun: false,
+      },
+    }),
+  ]
+
+  const renderEdgesInteractionsHook = () =>
+    renderWorkflowFlowHook(() => ({
+      ...useEdgesInteractionsWithoutSync(),
+      edges: useEdges(),
+    }), {
+      nodes: createFlowNodes(),
+      edges: createFlowEdges(),
+    })
 
   it('should clear running status and waitingRun on all edges', () => {
-    const { result } = renderHook(() => useEdgesInteractionsWithoutSync())
+    const { result } = renderEdgesInteractionsHook()
 
-    result.current.handleEdgeCancelRunningStatus()
+    act(() => {
+      result.current.handleEdgeCancelRunningStatus()
+    })
 
-    expect(rfState.setEdges).toHaveBeenCalledOnce()
-    const updated = rfState.setEdges.mock.calls[0][0]
-    for (const edge of updated) {
-      expect(edge.data._sourceRunningStatus).toBeUndefined()
-      expect(edge.data._targetRunningStatus).toBeUndefined()
-      expect(edge.data._waitingRun).toBe(false)
-    }
+    return waitFor(() => {
+      result.current.edges.forEach((edge) => {
+        const edgeState = getEdgeRuntimeState(edge)
+        expect(edgeState._sourceRunningStatus).toBeUndefined()
+        expect(edgeState._targetRunningStatus).toBeUndefined()
+        expect(edgeState._waitingRun).toBe(false)
+      })
+    })
   })
 
   it('should not mutate original edges', () => {
-    const originalData = { ...rfState.edges[0].data }
-    const { result } = renderHook(() => useEdgesInteractionsWithoutSync())
+    const edges = createFlowEdges()
+    const originalData = { ...getEdgeRuntimeState(edges[0]) }
+    const { result } = renderWorkflowFlowHook(() => ({
+      ...useEdgesInteractionsWithoutSync(),
+      edges: useEdges(),
+    }), {
+      nodes: createFlowNodes(),
+      edges,
+    })
 
-    result.current.handleEdgeCancelRunningStatus()
+    act(() => {
+      result.current.handleEdgeCancelRunningStatus()
+    })
 
-    expect(rfState.edges[0].data._sourceRunningStatus).toBe(originalData._sourceRunningStatus)
+    expect(getEdgeRuntimeState(edges[0])._sourceRunningStatus).toBe(originalData._sourceRunningStatus)
   })
 })
 
 describe('useNodesInteractionsWithoutSync', () => {
-  beforeEach(() => {
-    resetReactFlowMockState()
-    rfState.nodes = [
-      { id: 'n1', position: { x: 0, y: 0 }, data: { _runningStatus: NodeRunningStatus.Running, _waitingRun: true } },
-      { id: 'n2', position: { x: 100, y: 0 }, data: { _runningStatus: NodeRunningStatus.Succeeded, _waitingRun: false } },
-      { id: 'n3', position: { x: 200, y: 0 }, data: { _runningStatus: NodeRunningStatus.Failed, _waitingRun: true } },
-    ]
-  })
+  const createFlowNodes = () => [
+    createNode({ id: 'n1', data: { _runningStatus: NodeRunningStatus.Running, _waitingRun: true } }),
+    createNode({ id: 'n2', position: { x: 100, y: 0 }, data: { _runningStatus: NodeRunningStatus.Succeeded, _waitingRun: false } }),
+    createNode({ id: 'n3', position: { x: 200, y: 0 }, data: { _runningStatus: NodeRunningStatus.Failed, _waitingRun: true } }),
+  ]
+
+  const renderNodesInteractionsHook = () =>
+    renderWorkflowFlowHook(() => ({
+      ...useNodesInteractionsWithoutSync(),
+      nodes: useNodes(),
+    }), {
+      nodes: createFlowNodes(),
+      edges: [],
+    })
 
   describe('handleNodeCancelRunningStatus', () => {
-    it('should clear _runningStatus and _waitingRun on all nodes', () => {
-      const { result } = renderHook(() => useNodesInteractionsWithoutSync())
+    it('should clear _runningStatus and _waitingRun on all nodes', async () => {
+      const { result } = renderNodesInteractionsHook()
 
-      result.current.handleNodeCancelRunningStatus()
+      act(() => {
+        result.current.handleNodeCancelRunningStatus()
+      })
 
-      expect(rfState.setNodes).toHaveBeenCalledOnce()
-      const updated = rfState.setNodes.mock.calls[0][0]
-      for (const node of updated) {
-        expect(node.data._runningStatus).toBeUndefined()
-        expect(node.data._waitingRun).toBe(false)
-      }
+      await waitFor(() => {
+        result.current.nodes.forEach((node) => {
+          const nodeState = getNodeRuntimeState(node)
+          expect(nodeState._runningStatus).toBeUndefined()
+          expect(nodeState._waitingRun).toBe(false)
+        })
+      })
     })
   })
 
   describe('handleCancelAllNodeSuccessStatus', () => {
-    it('should clear _runningStatus only for Succeeded nodes', () => {
-      const { result } = renderHook(() => useNodesInteractionsWithoutSync())
+    it('should clear _runningStatus only for Succeeded nodes', async () => {
+      const { result } = renderNodesInteractionsHook()
 
-      result.current.handleCancelAllNodeSuccessStatus()
+      act(() => {
+        result.current.handleCancelAllNodeSuccessStatus()
+      })
 
-      expect(rfState.setNodes).toHaveBeenCalledOnce()
-      const updated = rfState.setNodes.mock.calls[0][0]
-      const n1 = updated.find((n: { id: string }) => n.id === 'n1')
-      const n2 = updated.find((n: { id: string }) => n.id === 'n2')
-      const n3 = updated.find((n: { id: string }) => n.id === 'n3')
+      await waitFor(() => {
+        const n1 = result.current.nodes.find(node => node.id === 'n1')
+        const n2 = result.current.nodes.find(node => node.id === 'n2')
+        const n3 = result.current.nodes.find(node => node.id === 'n3')
 
-      expect(n1.data._runningStatus).toBe(NodeRunningStatus.Running)
-      expect(n2.data._runningStatus).toBeUndefined()
-      expect(n3.data._runningStatus).toBe(NodeRunningStatus.Failed)
+        expect(getNodeRuntimeState(n1)._runningStatus).toBe(NodeRunningStatus.Running)
+        expect(getNodeRuntimeState(n2)._runningStatus).toBeUndefined()
+        expect(getNodeRuntimeState(n3)._runningStatus).toBe(NodeRunningStatus.Failed)
+      })
     })
 
-    it('should not modify _waitingRun', () => {
-      const { result } = renderHook(() => useNodesInteractionsWithoutSync())
+    it('should not modify _waitingRun', async () => {
+      const { result } = renderNodesInteractionsHook()
 
-      result.current.handleCancelAllNodeSuccessStatus()
+      act(() => {
+        result.current.handleCancelAllNodeSuccessStatus()
+      })
 
-      const updated = rfState.setNodes.mock.calls[0][0]
-      expect(updated.find((n: { id: string }) => n.id === 'n1').data._waitingRun).toBe(true)
-      expect(updated.find((n: { id: string }) => n.id === 'n3').data._waitingRun).toBe(true)
+      await waitFor(() => {
+        expect(getNodeRuntimeState(result.current.nodes.find(node => node.id === 'n1'))._waitingRun).toBe(true)
+        expect(getNodeRuntimeState(result.current.nodes.find(node => node.id === 'n3'))._waitingRun).toBe(true)
+      })
     })
   })
 
   describe('handleCancelNodeSuccessStatus', () => {
-    it('should clear _runningStatus and _waitingRun for the specified Succeeded node', () => {
-      const { result } = renderHook(() => useNodesInteractionsWithoutSync())
+    it('should clear _runningStatus and _waitingRun for the specified Succeeded node', async () => {
+      const { result } = renderNodesInteractionsHook()
 
-      result.current.handleCancelNodeSuccessStatus('n2')
+      act(() => {
+        result.current.handleCancelNodeSuccessStatus('n2')
+      })
 
-      expect(rfState.setNodes).toHaveBeenCalledOnce()
-      const updated = rfState.setNodes.mock.calls[0][0]
-      const n2 = updated.find((n: { id: string }) => n.id === 'n2')
-      expect(n2.data._runningStatus).toBeUndefined()
-      expect(n2.data._waitingRun).toBe(false)
+      await waitFor(() => {
+        const n2 = result.current.nodes.find(node => node.id === 'n2')
+        expect(getNodeRuntimeState(n2)._runningStatus).toBeUndefined()
+        expect(getNodeRuntimeState(n2)._waitingRun).toBe(false)
+      })
     })
 
-    it('should not modify nodes that are not Succeeded', () => {
-      const { result } = renderHook(() => useNodesInteractionsWithoutSync())
+    it('should not modify nodes that are not Succeeded', async () => {
+      const { result } = renderNodesInteractionsHook()
 
-      result.current.handleCancelNodeSuccessStatus('n1')
+      act(() => {
+        result.current.handleCancelNodeSuccessStatus('n1')
+      })
 
-      const updated = rfState.setNodes.mock.calls[0][0]
-      const n1 = updated.find((n: { id: string }) => n.id === 'n1')
-      expect(n1.data._runningStatus).toBe(NodeRunningStatus.Running)
-      expect(n1.data._waitingRun).toBe(true)
+      await waitFor(() => {
+        const n1 = result.current.nodes.find(node => node.id === 'n1')
+        expect(getNodeRuntimeState(n1)._runningStatus).toBe(NodeRunningStatus.Running)
+        expect(getNodeRuntimeState(n1)._waitingRun).toBe(true)
+      })
     })
 
-    it('should not modify other nodes', () => {
-      const { result } = renderHook(() => useNodesInteractionsWithoutSync())
+    it('should not modify other nodes', async () => {
+      const { result } = renderNodesInteractionsHook()
 
-      result.current.handleCancelNodeSuccessStatus('n2')
+      act(() => {
+        result.current.handleCancelNodeSuccessStatus('n2')
+      })
 
-      const updated = rfState.setNodes.mock.calls[0][0]
-      const n1 = updated.find((n: { id: string }) => n.id === 'n1')
-      expect(n1.data._runningStatus).toBe(NodeRunningStatus.Running)
+      await waitFor(() => {
+        const n1 = result.current.nodes.find(node => node.id === 'n1')
+        expect(getNodeRuntimeState(n1)._runningStatus).toBe(NodeRunningStatus.Running)
+      })
     })
   })
 })

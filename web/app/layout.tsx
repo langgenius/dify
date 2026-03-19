@@ -1,4 +1,4 @@
-import type { Viewport } from 'next'
+import type { Viewport } from '@/next'
 import { Agentation } from 'agentation'
 import { Provider as JotaiProvider } from 'jotai/react'
 import { ThemeProvider } from 'next-themes'
@@ -9,6 +9,7 @@ import { TanstackQueryInitializer } from '@/context/query-client'
 import { getDatasetMap } from '@/env'
 import { getLocaleOnServer } from '@/i18n-config/server'
 import { ToastProvider } from './components/base/toast'
+import { ToastHost } from './components/base/ui/toast'
 import { TooltipProvider } from './components/base/ui/tooltip'
 import BrowserInitializer from './components/browser-initializer'
 import { ReactScanLoader } from './components/devtools/react-scan/loader'
@@ -70,6 +71,7 @@ const LocaleLayout = async ({
                   <SentryInitializer>
                     <TanstackQueryInitializer>
                       <I18nServerProvider>
+                        <ToastHost timeout={5000} limit={3} />
                         <ToastProvider>
                           <GlobalPublicStoreProvider>
                             <TooltipProvider delay={300} closeDelay={200}>

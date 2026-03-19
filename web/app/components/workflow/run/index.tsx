@@ -124,7 +124,7 @@ const RunPanel: FC<RunProps> = ({
         {!hideResult && (
           <div
             className={cn(
-              'system-sm-semibold-uppercase mr-6 cursor-pointer border-b-2 border-transparent py-3 text-text-tertiary',
+              'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-text-tertiary system-sm-semibold-uppercase',
               currentTab === 'RESULT' && '!border-util-colors-blue-brand-blue-brand-600 text-text-primary',
             )}
             onClick={() => switchTab('RESULT')}
@@ -134,7 +134,7 @@ const RunPanel: FC<RunProps> = ({
         )}
         <div
           className={cn(
-            'system-sm-semibold-uppercase mr-6 cursor-pointer border-b-2 border-transparent py-3 text-text-tertiary',
+            'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-text-tertiary system-sm-semibold-uppercase',
             currentTab === 'DETAIL' && '!border-util-colors-blue-brand-blue-brand-600 text-text-primary',
           )}
           onClick={() => switchTab('DETAIL')}
@@ -143,7 +143,7 @@ const RunPanel: FC<RunProps> = ({
         </div>
         <div
           className={cn(
-            'system-sm-semibold-uppercase mr-6 cursor-pointer border-b-2 border-transparent py-3 text-text-tertiary',
+            'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-text-tertiary system-sm-semibold-uppercase',
             currentTab === 'TRACING' && '!border-util-colors-blue-brand-blue-brand-600 text-text-primary',
           )}
           onClick={() => switchTab('TRACING')}

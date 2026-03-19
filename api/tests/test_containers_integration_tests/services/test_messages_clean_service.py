@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from enums.cloud_plan import CloudPlan
 from extensions.ext_redis import redis_client
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models.enums import DataSourceType, MessageChainType
 from models.model import (
     App,
     AppAnnotationHitHistory,
@@ -235,7 +236,7 @@ class TestMessagesCleanServiceIntegration:
         # MessageChain
         chain = MessageChain(
             message_id=message.id,
-            type="system",
+            type=MessageChainType.SYSTEM,
             input=json.dumps({"test": "input"}),
             output=json.dumps({"test": "output"}),
         )
@@ -287,7 +288,7 @@ class TestMessagesCleanServiceIntegration:
             dataset_name="Test dataset",
             document_id=str(uuid.uuid4()),
             document_name="Test document",
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             segment_id=str(uuid.uuid4()),
             score=0.9,
             content="Test content",

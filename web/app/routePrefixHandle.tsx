@@ -1,7 +1,7 @@
 'use client'
 
-import { usePathname } from 'next/navigation'
 import { useEffect } from 'react'
+import { usePathname } from '@/next/navigation'
 import { basePath } from '@/utils/var'
 
 export default function RoutePrefixHandle() {

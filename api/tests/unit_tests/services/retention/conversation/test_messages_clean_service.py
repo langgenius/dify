@@ -1,5 +1,4 @@
 import datetime
-import os
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -282,7 +281,6 @@ class TestMessagesCleanService:
         MessagesCleanService._batch_delete_message_relations(mock_db_session, ["msg1", "msg2"])
         assert mock_db_session.execute.call_count == 8  # 8 tables to clean up
 
-    @patch.dict(os.environ, {"SANDBOX_EXPIRED_RECORDS_CLEAN_BATCH_MAX_INTERVAL": "500"})
     def test_clean_messages_interval_from_env(self, mock_db_session, mock_policy):
         service = MessagesCleanService(
             policy=mock_policy,
@@ -301,9 +299,13 @@ class TestMessagesCleanService:
         mock_db_session.execute.side_effect = mock_returns
         mock_policy.filter_message_ids.return_value = ["msg1"]
 
-        with patch("services.retention.conversation.messages_clean_service.time.sleep") as mock_sleep:
-            with patch("services.retention.conversation.messages_clean_service.random.uniform") as mock_uniform:
-                mock_uniform.return_value = 300.0
-                service.run()
-                mock_uniform.assert_called_with(0, 500)
-                mock_sleep.assert_called_with(0.3)
+        with patch(
+            "services.retention.conversation.messages_clean_service.dify_config.SANDBOX_EXPIRED_RECORDS_CLEAN_BATCH_MAX_INTERVAL",
+            500,
+        ):
+            with patch("services.retention.conversation.messages_clean_service.time.sleep") as mock_sleep:
+                with patch("services.retention.conversation.messages_clean_service.random.uniform") as mock_uniform:
+                    mock_uniform.return_value = 300.0
+                    service.run()
+                    mock_uniform.assert_called_with(0, 500)
+                    mock_sleep.assert_called_with(0.3)

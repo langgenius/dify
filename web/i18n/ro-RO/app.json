@@ -36,6 +36,8 @@
   "createApp": "CREEAZĂ APLICAȚIE",
   "createFromConfigFile": "Creează din fișier DSL",
   "deleteAppConfirmContent": "Ștergerea aplicației este ireversibilă. Utilizatorii nu vor mai putea accesa aplicația ta, iar toate configurațiile promptului și jurnalele vor fi șterse permanent.",
+  "deleteAppConfirmInputLabel": "Pentru confirmare, tastați \"{{appName}}\" în caseta de mai jos:",
+  "deleteAppConfirmInputPlaceholder": "Introduceți numele aplicației",
   "deleteAppConfirmTitle": "Ștergi această aplicație?",
   "dslUploader.browse": "Răsfoiți",
   "dslUploader.button": "Trageți și plasați fișierul, sau",

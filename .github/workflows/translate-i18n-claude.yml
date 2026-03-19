@@ -120,7 +120,7 @@ jobs:
 
       - name: Run Claude Code for Translation Sync
         if: steps.detect_changes.outputs.CHANGED_FILES != ''
-        uses: anthropics/claude-code-action@cd77b50d2b0808657f8e6774085c8bf54484351c # v1.0.72
+        uses: anthropics/claude-code-action@df37d2f0760a4b5683a6e617c9325bc1a36443f6 # v1.0.75
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
