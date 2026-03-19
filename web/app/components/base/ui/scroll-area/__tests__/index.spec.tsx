@@ -92,7 +92,6 @@ describe('scroll-area wrapper', () => {
           'data-[orientation=vertical]:justify-center',
         )
         expect(thumb).toHaveAttribute('data-orientation', 'vertical')
-        expect(thumb).toHaveClass(styles.thumb)
         expect(thumb).toHaveClass(
           'shrink-0',
           'rounded-[4px]',
@@ -131,7 +130,6 @@ describe('scroll-area wrapper', () => {
           'data-[orientation=horizontal]:items-center',
         )
         expect(thumb).toHaveAttribute('data-orientation', 'horizontal')
-        expect(thumb).toHaveClass(styles.thumb)
         expect(thumb).toHaveClass(
           'shrink-0',
           'rounded-[4px]',

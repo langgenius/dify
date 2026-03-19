@@ -21,7 +21,6 @@ export const scrollAreaScrollbarClassName = cn(
 )
 
 export const scrollAreaThumbClassName = cn(
-  styles.thumb,
   'shrink-0 rounded-[4px] bg-state-base-handle transition-[background-color] motion-reduce:transition-none',
   'data-[orientation=vertical]:w-1',
   'data-[orientation=horizontal]:h-1',
