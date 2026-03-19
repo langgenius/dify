@@ -1,10 +1,10 @@
 from collections.abc import Mapping
 
-from core.trigger.constants import TRIGGER_INFO_METADATA_KEY, TRIGGER_PLUGIN_NODE_TYPE
+from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
 from core.workflow.nodes.trigger_plugin.trigger_event_node import TriggerEventNode
 from dify_graph.entities import GraphInitParams
 from dify_graph.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
-from dify_graph.enums import WorkflowNodeExecutionStatus
+from dify_graph.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from dify_graph.runtime import GraphRuntimeState, VariablePool
 from dify_graph.system_variable import SystemVariable
 from tests.workflow_test_utils import build_test_graph_init_params
@@ -56,7 +56,7 @@ def test_trigger_event_node_run_populates_trigger_info_metadata() -> None:
     result = node._run()
 
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
-    assert result.metadata[TRIGGER_INFO_METADATA_KEY] == {
+    assert result.metadata[WorkflowNodeExecutionMetadataKey.TRIGGER_INFO] == {
         "provider_id": "provider-id",
         "event_name": "event-name",
         "plugin_unique_identifier": "plugin-unique-identifier",
