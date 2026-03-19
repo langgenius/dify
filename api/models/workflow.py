@@ -311,19 +311,23 @@ class Workflow(Base):  # bug
             return self._features
 
         # Parse once and deep-copy before normalization to detect in-place changes.
-        original_dict = json.loads(self._features)
+        original_dict = self._decode_features_payload(self._features)
+        if original_dict is None:
+            return self._features
 
         # Fast-path: if the legacy file_upload.image.enabled shape is absent, skip
         # deep-copy and normalization entirely and return the stored JSON.
-        if isinstance(original_dict, Mapping):
-            file_upload = original_dict.get("file_upload")
-            if not isinstance(file_upload, Mapping):
-                return self._features
-            image = file_upload.get("image")
-            if not isinstance(image, Mapping):
-                return self._features
-            if "enabled" not in image:
-                return self._features
+        file_upload_payload = original_dict.get("file_upload")
+        if not isinstance(file_upload_payload, dict):
+            return self._features
+        file_upload = cast(dict[str, Any], file_upload_payload)
+
+        image_payload = file_upload.get("image")
+        if not isinstance(image_payload, dict):
+            return self._features
+        image = cast(dict[str, Any], image_payload)
+        if "enabled" not in image:
+            return self._features
 
         normalized_dict = self._normalize_features_payload(copy.deepcopy(original_dict))
 
@@ -351,7 +355,17 @@ class Workflow(Base):  # bug
     @property
     def normalized_features_dict(self) -> dict[str, Any]:
         """Decode features with legacy normalization without mutating the model state."""
-        return self._normalize_features_payload(json.loads(self._features)) if self._features else {}
+        if not self._features:
+            return {}
+
+        features = self._decode_features_payload(self._features)
+        return self._normalize_features_payload(features) if features is not None else {}
+
+    @staticmethod
+    def _decode_features_payload(features: str) -> dict[str, Any] | None:
+        """Decode workflow features JSON when it contains an object payload."""
+        payload = json.loads(features)
+        return cast(dict[str, Any], payload) if isinstance(payload, dict) else None
 
     @staticmethod
     def _normalize_features_payload(features: dict[str, Any]) -> dict[str, Any]:
