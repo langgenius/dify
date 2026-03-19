@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from typing import Any, Union
+from typing import Any, Union, cast
 
 from pydantic import TypeAdapter
 from sqlalchemy.orm import sessionmaker
@@ -19,7 +19,7 @@ from graphon.model_runtime.entities.model_entities import ModelType
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account
 from models.enums import FeedbackFromSource, FeedbackRating
-from models.model import App, AppMode, AppModelConfig, EndUser, Message, MessageFeedback
+from models.model import App, AppMode, AppModelConfig, AppModelConfigDict, EndUser, Message, MessageFeedback
 from repositories.execution_extra_content_repository import ExecutionExtraContentRepository
 from repositories.sqlalchemy_execution_extra_content_repository import (
     SQLAlchemyExecutionExtraContentRepository,
@@ -288,8 +288,9 @@ class MessageService:
                     .first()
                 )
             else:
-                conversation_override_model_configs = _dict_str_any_adapter.validate_json(
-                    conversation.override_model_configs
+                conversation_override_model_configs = cast(
+                    AppModelConfigDict,
+                    _dict_str_any_adapter.validate_json(conversation.override_model_configs),
                 )
                 app_model_config = AppModelConfig(
                     app_id=app_model.id,

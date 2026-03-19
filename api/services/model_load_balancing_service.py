@@ -1,5 +1,6 @@
+import json
 import logging
-from typing import Union
+from typing import Any, Union
 
 from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import or_, select
@@ -24,7 +25,7 @@ from models.provider import LoadBalancingModelConfig, ProviderCredential, Provid
 
 logger = logging.getLogger(__name__)
 
-_encrypted_config_adapter: TypeAdapter[dict[str, object]] = TypeAdapter(dict[str, object])
+_encrypted_config_adapter: TypeAdapter[dict[str, Any]] = TypeAdapter(dict[str, Any])
 
 
 class ModelLoadBalancingService:
@@ -169,7 +170,7 @@ class ModelLoadBalancingService:
 
             try:
                 if load_balancing_config.encrypted_config:
-                    credentials: dict[str, object] = _encrypted_config_adapter.validate_json(
+                    credentials: dict[str, Any] = _encrypted_config_adapter.validate_json(
                         load_balancing_config.encrypted_config
                     )
                 else:
