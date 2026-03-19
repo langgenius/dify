@@ -41,7 +41,7 @@ describe('RoleRouteGuard', () => {
     setAppContext()
   })
 
-  it('should keep rendering children while workspace is loading', () => {
+  it('should hide guarded content while workspace is loading', () => {
     setAppContext({
       isLoadingCurrentWorkspace: true,
     })
@@ -52,7 +52,7 @@ describe('RoleRouteGuard', () => {
       </RoleRouteGuard>
     ))
 
-    expect(screen.getByTestId('guarded-content')).toBeInTheDocument()
+    expect(screen.queryByTestId('guarded-content')).not.toBeInTheDocument()
     expect(mockReplace).not.toHaveBeenCalled()
   })
 

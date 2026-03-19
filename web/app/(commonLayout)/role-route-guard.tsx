@@ -21,6 +21,9 @@ export default function RoleRouteGuard({ children }: { children: ReactNode }) {
       router.replace('/datasets')
   }, [shouldRedirect, router])
 
+  if (shouldGuardRoute && isLoadingCurrentWorkspace)
+    return null
+
   if (shouldRedirect)
     return null
 
