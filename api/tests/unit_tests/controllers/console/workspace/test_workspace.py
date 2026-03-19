@@ -36,7 +36,7 @@ def unwrap(func):
 
 
 class TestTenantListApi:
-    def test_get_success(self, app):
+    def test_get_success_saas_path(self, app):
         api = TenantListApi()
         method = unwrap(api.get)
 
@@ -66,15 +66,21 @@ class TestTenantListApi:
                 "controllers.console.workspace.workspace.TenantService.get_join_tenants",
                 return_value=[tenant1, tenant2],
             ),
-            patch("controllers.console.workspace.workspace.FeatureService.get_features", return_value=features),
+            patch("controllers.console.workspace.workspace.dify_config.ENTERPRISE_ENABLED", False),
+            patch("controllers.console.workspace.workspace.dify_config.BILLING_ENABLED", True),
+            patch("controllers.console.workspace.workspace.FeatureService.get_features", return_value=features) as get_features_mock,
         ):
             result, status = method(api)
 
         assert status == 200
         assert len(result["workspaces"]) == 2
         assert result["workspaces"][0]["current"] is True
+        assert result["workspaces"][0]["plan"] == CloudPlan.SANDBOX
+        assert get_features_mock.call_count == 2
+        get_features_mock.assert_any_call("t1")
+        get_features_mock.assert_any_call("t2")
 
-    def test_get_billing_disabled(self, app):
+    def test_get_billing_disabled_community_path(self, app):
         api = TenantListApi()
         method = unwrap(api.get)
 
@@ -98,15 +104,80 @@ class TestTenantListApi:
                 "controllers.console.workspace.workspace.TenantService.get_join_tenants",
                 return_value=[tenant],
             ),
+            patch("controllers.console.workspace.workspace.dify_config.ENTERPRISE_ENABLED", False),
+            patch("controllers.console.workspace.workspace.dify_config.BILLING_ENABLED", False),
             patch(
                 "controllers.console.workspace.workspace.FeatureService.get_features",
                 return_value=features,
-            ),
+            ) as get_features_mock,
         ):
             result, status = method(api)
 
         assert status == 200
         assert result["workspaces"][0]["plan"] == CloudPlan.SANDBOX
+        get_features_mock.assert_called_once_with("t1")
+
+    def test_get_enterprise_only_skips_feature_service(self, app):
+        api = TenantListApi()
+        method = unwrap(api.get)
+
+        tenant1 = MagicMock(
+            id="t1",
+            name="Tenant 1",
+            status="active",
+            created_at=datetime.utcnow(),
+        )
+        tenant2 = MagicMock(
+            id="t2",
+            name="Tenant 2",
+            status="active",
+            created_at=datetime.utcnow(),
+        )
+
+        with (
+            app.test_request_context("/workspaces"),
+            patch(
+                "controllers.console.workspace.workspace.current_account_with_tenant", return_value=(MagicMock(), "t2")
+            ),
+            patch(
+                "controllers.console.workspace.workspace.TenantService.get_join_tenants",
+                return_value=[tenant1, tenant2],
+            ),
+            patch("controllers.console.workspace.workspace.dify_config.ENTERPRISE_ENABLED", True),
+            patch("controllers.console.workspace.workspace.dify_config.BILLING_ENABLED", False),
+            patch("controllers.console.workspace.workspace.FeatureService.get_features") as get_features_mock,
+        ):
+            result, status = method(api)
+
+        assert status == 200
+        assert result["workspaces"][0]["plan"] == CloudPlan.SANDBOX
+        assert result["workspaces"][1]["plan"] == CloudPlan.SANDBOX
+        assert result["workspaces"][0]["current"] is False
+        assert result["workspaces"][1]["current"] is True
+        get_features_mock.assert_not_called()
+
+    def test_get_enterprise_only_with_empty_tenants(self, app):
+        api = TenantListApi()
+        method = unwrap(api.get)
+
+        with (
+            app.test_request_context("/workspaces"),
+            patch(
+                "controllers.console.workspace.workspace.current_account_with_tenant", return_value=(MagicMock(), None)
+            ),
+            patch(
+                "controllers.console.workspace.workspace.TenantService.get_join_tenants",
+                return_value=[],
+            ),
+            patch("controllers.console.workspace.workspace.dify_config.ENTERPRISE_ENABLED", True),
+            patch("controllers.console.workspace.workspace.dify_config.BILLING_ENABLED", False),
+            patch("controllers.console.workspace.workspace.FeatureService.get_features") as get_features_mock,
+        ):
+            result, status = method(api)
+
+        assert status == 200
+        assert result["workspaces"] == []
+        get_features_mock.assert_not_called()
 
 
 class TestWorkspaceListApi:

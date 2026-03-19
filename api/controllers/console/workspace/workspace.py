@@ -7,6 +7,7 @@ from sqlalchemy import select
 from werkzeug.exceptions import Unauthorized
 
 import services
+from configs import dify_config
 from controllers.common.errors import (
     FilenameNotExistsError,
     FileTooLargeError,
@@ -108,9 +109,13 @@ class TenantListApi(Resource):
         current_user, current_tenant_id = current_account_with_tenant()
         tenants = TenantService.get_join_tenants(current_user)
         tenant_dicts = []
+        is_enterprise_only = dify_config.ENTERPRISE_ENABLED and not dify_config.BILLING_ENABLED
 
         for tenant in tenants:
-            features = FeatureService.get_features(tenant.id)
+            plan = CloudPlan.SANDBOX
+            if not is_enterprise_only:
+                features = FeatureService.get_features(tenant.id)
+                plan = features.billing.subscription.plan if features.billing.enabled else CloudPlan.SANDBOX
 
             # Create a dictionary with tenant attributes
             tenant_dict = {
@@ -118,7 +123,7 @@ class TenantListApi(Resource):
                 "name": tenant.name,
                 "status": tenant.status,
                 "created_at": tenant.created_at,
-                "plan": features.billing.subscription.plan if features.billing.enabled else CloudPlan.SANDBOX,
+                "plan": plan,
                 "current": tenant.id == current_tenant_id if current_tenant_id else False,
             }
 
