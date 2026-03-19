@@ -16,7 +16,11 @@ from controllers.console.app.error import (
     DraftWorkflowNotExist,
     DraftWorkflowNotSync,
 )
-from controllers.console.app.workflow import workflow_model, workflow_pagination_model
+from controllers.console.app.workflow import (
+    RESTORE_SOURCE_WORKFLOW_MUST_BE_PUBLISHED_MESSAGE,
+    workflow_model,
+    workflow_pagination_model,
+)
 from controllers.console.app.workflow_run import (
     workflow_run_detail_model,
     workflow_run_node_execution_list_model,
@@ -727,7 +731,7 @@ class RagPipelineDraftWorkflowRestoreApi(Resource):
             )
         except IsDraftWorkflowError as exc:
             # Use a stable, predefined message to keep the 400 response consistent
-            raise BadRequest("workflow is already a draft") from exc
+            raise BadRequest(RESTORE_SOURCE_WORKFLOW_MUST_BE_PUBLISHED_MESSAGE) from exc
         except WorkflowNotFoundError as exc:
             raise NotFound(str(exc)) from exc
 

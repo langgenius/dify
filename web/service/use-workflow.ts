@@ -116,7 +116,7 @@ export const useDeleteWorkflow = () => {
 export const useRestoreWorkflow = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'restore'],
-    mutationFn: (url: string) => post<CommonResponse & { updated_at: number, hash: string }>(url),
+    mutationFn: (url: string) => post<CommonResponse & { updated_at: number, hash: string }>(url, {}, { silent: true }),
   })
 }
 

@@ -74,5 +74,4 @@ def test_apply_published_workflow_snapshot_to_draft_copies_serialized_features_w
     assert is_new_draft is True
     assert source_workflow.serialized_features == json.dumps(LEGACY_FEATURES)
     assert source_workflow.normalized_features_dict == NORMALIZED_FEATURES
-    assert source_workflow.serialized_features == json.dumps(LEGACY_FEATURES)
     assert draft_workflow.serialized_features == json.dumps(LEGACY_FEATURES)
