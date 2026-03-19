@@ -30,6 +30,7 @@ from libs.helper import TimestampField
 from libs.login import current_account_with_tenant, login_required
 from models.account import Tenant, TenantStatus
 from services.account_service import TenantService
+from services.billing_service import BillingService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
 from services.file_service import FileService
@@ -110,10 +111,24 @@ class TenantListApi(Resource):
         tenants = TenantService.get_join_tenants(current_user)
         tenant_dicts = []
         is_enterprise_only = dify_config.ENTERPRISE_ENABLED and not dify_config.BILLING_ENABLED
+        is_saas = dify_config.EDITION == "CLOUD" and dify_config.BILLING_ENABLED
+        tenant_plans: dict[str, dict] = {}
+        use_legacy_feature_path = not is_enterprise_only and not is_saas
+
+        if is_saas:
+            tenant_ids = [tenant.id for tenant in tenants]
+            if tenant_ids:
+                try:
+                    tenant_plans = BillingService.get_plan_bulk(tenant_ids)
+                except Exception:
+                    logger.exception("failed to fetch workspace plans in bulk, falling back to legacy feature path")
+                    use_legacy_feature_path = True
 
         for tenant in tenants:
             plan = CloudPlan.SANDBOX
-            if not is_enterprise_only:
+            if is_saas and not use_legacy_feature_path:
+                plan = tenant_plans.get(tenant.id, {}).get("plan", CloudPlan.SANDBOX)
+            elif not is_enterprise_only:
                 features = FeatureService.get_features(tenant.id)
                 plan = features.billing.subscription.plan if features.billing.enabled else CloudPlan.SANDBOX
 
