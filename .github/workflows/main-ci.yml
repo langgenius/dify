@@ -56,6 +56,7 @@ jobs:
     needs: check-changes
     if: needs.check-changes.outputs.api-changed == 'true'
     uses: ./.github/workflows/api-tests.yml
+    secrets: inherit
 
   web-tests:
     name: Web Tests

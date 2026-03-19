@@ -1,0 +1,16 @@
+coverage:
+  status:
+    project:
+      default:
+        target: auto
+
+flags:
+  web:
+    paths:
+      - "web/"
+    carryforward: true
+
+  api:
+    paths:
+      - "api/"
+    carryforward: true
