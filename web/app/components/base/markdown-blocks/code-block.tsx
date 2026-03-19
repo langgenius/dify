@@ -7,6 +7,8 @@ import {
 } from 'react-syntax-highlighter/dist/esm/styles/hljs'
 import ActionButton from '@/app/components/base/action-button'
 import CopyIcon from '@/app/components/base/copy-icon'
+import ExcelViewer from '@/app/components/base/markdown-blocks/excel-viewer'
+import MarkdownEditor from '@/app/components/base/markdown-blocks/markdown-editor'
 import MarkdownMusic from '@/app/components/base/markdown-blocks/music'
 import ErrorBoundary from '@/app/components/base/markdown/error-boundary'
 import SVGBtn from '@/app/components/base/svg'
@@ -40,6 +42,9 @@ const capitalizationLanguageNameMap: Record<string, string> = {
   latex: 'Latex',
   svg: 'SVG',
   abc: 'ABC',
+  editableExcel: 'Editable Excel',
+  editableCsv: 'Editable CSV',
+  editableMarkdown: 'Editable Markdown',
 }
 const getCorrectCapitalizationLanguageName = (language: string) => {
   if (!language)
@@ -75,7 +80,7 @@ type EChartsEventParams = {
   [key: string]: any
 }
 
-const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any) => {
+const CodeBlock: any = memo(({ inline, className, children = '', messageId, ...props }: any) => {
   const { theme } = useTheme()
   const [isSVG, setIsSVG] = useState(true)
   const [chartState, setChartState] = useState<'loading' | 'success' | 'error'>('loading')
@@ -386,6 +391,19 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
             <MarkdownMusic children={content} />
           </ErrorBoundary>
         )
+      case 'editableExcel':
+      case 'editableCsv':
+        return (
+          <ErrorBoundary>
+            <ExcelViewer content={content} isDarkMode={isDarkMode} messageId={messageId} />
+          </ErrorBoundary>
+        )
+      case 'editableMarkdown':
+        return (
+          <ErrorBoundary>
+            <MarkdownEditor content={content} isDarkMode={isDarkMode} messageId={messageId} />
+          </ErrorBoundary>
+        )
       default:
         return (
           <SyntaxHighlighter
@@ -409,15 +427,20 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
   if (inline || !match)
     return <code {...props} className={className}>{children}</code>
 
+  // Excel/CSV/Markdown editor blocks have their own copy button inside their components
+  const showCopyButton = language !== 'editableExcel' && language !== 'editableCsv' && language !== 'editableMarkdown'
+
   return (
     <div className="relative">
       <div className="flex h-8 items-center justify-between rounded-t-[10px] border-b border-divider-subtle bg-components-input-bg-normal p-1 pl-3">
         <div className="text-text-secondary system-xs-semibold-uppercase">{languageShowName}</div>
         <div className="flex items-center gap-1">
           {language === 'svg' && <SVGBtn isSVG={isSVG} setIsSVG={setIsSVG} />}
-          <ActionButton>
-            <CopyIcon content={String(children).replace(/\n$/, '')} />
-          </ActionButton>
+          {showCopyButton && (
+            <ActionButton>
+              <CopyIcon content={String(children).replace(/\n$/, '')} />
+            </ActionButton>
+          )}
         </div>
       </div>
       {renderCodeContent}

@@ -13,12 +13,14 @@ const BasicContent: FC<BasicContentProps> = ({
   const {
     annotation,
     content,
+    id,
   } = item
 
   if (annotation?.logAnnotation) {
     return (
       <Markdown
         content={annotation?.logAnnotation.content || ''}
+        messageId={id}
         data-testid="basic-content-markdown"
       />
     )
@@ -37,6 +39,7 @@ const BasicContent: FC<BasicContentProps> = ({
         item.isError && '!text-[#F04438]',
       )}
       content={displayContent}
+      messageId={id}
       data-testid="basic-content-markdown"
     />
   )

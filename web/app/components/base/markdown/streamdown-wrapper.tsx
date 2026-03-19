@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react'
-import type { Components, StreamdownProps } from 'streamdown'
+import type { Components, ExtraProps, StreamdownProps } from 'streamdown'
 import { createMathPlugin } from '@streamdown/math'
 import { memo, useMemo } from 'react'
 import RemarkBreaks from 'remark-breaks'
@@ -149,6 +149,7 @@ export type StreamdownWrapperProps = {
   isAnimating?: boolean
   className?: string
   mode?: StreamdownProps['mode']
+  messageId?: string // Optional message ID for data persistence
 }
 
 const StreamdownWrapper = (props: StreamdownWrapperProps) => {
@@ -159,6 +160,7 @@ const StreamdownWrapper = (props: StreamdownWrapperProps) => {
     isAnimating,
     className,
     mode = 'streaming',
+    messageId,
   } = props
 
   const remarkPlugins = useMemo(
@@ -189,7 +191,11 @@ const StreamdownWrapper = (props: StreamdownWrapperProps) => {
 
   const components: Components = useMemo(
     () => ({
-      code: CodeBlock,
+      code: (codeProps: React.ComponentProps<'code'> & ExtraProps) => {
+        // eslint-disable-next-line ts/no-explicit-any
+        const CB = CodeBlock as any
+        return <CB {...codeProps} messageId={messageId} />
+      },
       img: imgProps => pluginInfo ? <PluginImg src={String(imgProps.src ?? '')} pluginInfo={pluginInfo} /> : <Img src={String(imgProps.src ?? '')} />,
       video: VideoBlock,
       audio: AudioBlock,
@@ -200,7 +206,7 @@ const StreamdownWrapper = (props: StreamdownWrapperProps) => {
       details: ThinkBlock as ComponentType,
       ...customComponents,
     }),
-    [pluginInfo, customComponents],
+    [pluginInfo, customComponents, messageId],
   )
 
   return (
