@@ -38,6 +38,7 @@ class TestSegmentTypeIsArrayType:
             SegmentType.NONE,
             SegmentType.GROUP,
             SegmentType.BOOLEAN,
+            SegmentType.ARRAY_PROMPT_MESSAGE,
         ]
 
         for seg_type in expected_array_types:

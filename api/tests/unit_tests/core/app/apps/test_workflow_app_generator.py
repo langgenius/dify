@@ -105,9 +105,12 @@ def test_generate_appends_pause_layer_and_forwards_state(mocker):
 
     graph_runtime_state = MagicMock()
 
+    workflow_mock = MagicMock()
+    workflow_mock.get_feature.return_value.enabled = False
+
     result = generator._generate(
         app_model=app_model,
-        workflow=MagicMock(),
+        workflow=workflow_mock,
         user=MagicMock(),
         application_generate_entity=application_generate_entity,
         invoke_from="service-api",
@@ -143,8 +146,15 @@ def test_resume_path_runs_worker_with_runtime_state(mocker):
     fake_db = SimpleNamespace(session=MagicMock(), engine=MagicMock())
     mocker.patch("core.app.apps.workflow.app_generator.db", fake_db)
 
+    sandbox_feature = SimpleNamespace(enabled=False)
     workflow = SimpleNamespace(
-        id="workflow", tenant_id="tenant", app_id="app", graph_dict={}, type="workflow", version="1"
+        id="workflow",
+        tenant_id="tenant",
+        app_id="app",
+        graph_dict={},
+        type="workflow",
+        version="1",
+        get_feature=lambda _feature: sandbox_feature,
     )
     end_user = SimpleNamespace(session_id="end-user-session")
     app_record = SimpleNamespace(id="app")

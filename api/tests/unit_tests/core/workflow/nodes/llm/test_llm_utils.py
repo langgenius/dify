@@ -180,7 +180,8 @@ class TestBuildContext:
             ],
         )
 
-        context = build_context(messages, "The weather in Beijing is sunny, 25°C.", generation_data)
+        accumulated_response = "Let me check the weather.The weather in Beijing is sunny, 25°C."
+        context = build_context(messages, accumulated_response, generation_data)
 
         # Should have: user message + assistant with tool_call + tool result + final assistant
         assert len(context) == 4
@@ -263,7 +264,8 @@ class TestBuildContext:
             ],
         )
 
-        context = build_context(messages, "Beijing is sunny at 25°C, Shanghai is cloudy at 22°C.", generation_data)
+        accumulated_response = "I'll check both cities.Beijing is sunny at 25°C, Shanghai is cloudy at 22°C."
+        context = build_context(messages, accumulated_response, generation_data)
 
         # Should have: user + assistant with 2 tool_calls + 2 tool results + final assistant
         assert len(context) == 5

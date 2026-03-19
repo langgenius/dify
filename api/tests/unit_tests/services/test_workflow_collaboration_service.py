@@ -10,6 +10,13 @@ class TestWorkflowCollaborationService:
     @pytest.fixture
     def service(self) -> tuple[WorkflowCollaborationService, Mock, Mock]:
         repository = Mock(spec=WorkflowCollaborationRepository)
+        repository.get_current_leader.return_value = None
+        repository.get_session_sids.return_value = []
+        repository.get_active_skill_file_id.return_value = None
+        repository.get_active_skill_session_sids.return_value = []
+        repository.is_graph_active.return_value = False
+        repository.get_skill_leader.return_value = None
+        repository.list_sessions.return_value = []
         socketio = Mock()
         return WorkflowCollaborationService(repository, socketio), repository, socketio
 
@@ -124,6 +131,7 @@ class TestWorkflowCollaborationService:
         # Arrange
         collaboration_service, repository, _socketio = service
         repository.get_current_leader.return_value = "sid-1"
+        repository.is_graph_active.return_value = True
 
         with patch.object(collaboration_service, "is_session_active", return_value=True):
             # Act
@@ -265,6 +273,7 @@ class TestWorkflowCollaborationService:
         # Arrange
         collaboration_service, repository, _socketio = service
         repository.get_current_leader.return_value = "sid-1"
+        repository.is_graph_active.return_value = True
 
         with patch.object(collaboration_service, "is_session_active", return_value=True):
             # Act
