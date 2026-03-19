@@ -37,7 +37,7 @@ from controllers.console.wraps import (
     only_edition_cloud,
     setup_required,
 )
-from core.file import helpers as file_helpers
+from core.workflow.file import helpers as file_helpers
 from extensions.ext_database import db
 from fields.member_fields import Account as AccountResponse
 from libs.datetime_utils import naive_utc_now

@@ -2,8 +2,8 @@
 
 from unittest.mock import patch
 
-from core.file import File, FileTransferMethod, FileType
-from core.file.file_manager import (
+from core.workflow.file import File, FileTransferMethod, FileType
+from core.workflow.file.file_manager import (
     _encode_file_ref,
     restore_multimodal_content,
     to_prompt_message_content,
@@ -51,8 +51,8 @@ class TestEncodeFileRef:
 class TestToPromptMessageContent:
     """Tests for to_prompt_message_content function with file_ref field."""
 
-    @patch("core.file.file_manager.dify_config")
-    @patch("core.file.file_manager._get_encoded_string")
+    @patch("core.workflow.file.file_manager.dify_config")
+    @patch("core.workflow.file.file_manager._get_encoded_string")
     def test_includes_file_ref(self, mock_get_encoded, mock_config):
         """Generated content should include file_ref field."""
         mock_config.MULTIMODAL_SEND_FORMAT = "base64"
@@ -120,9 +120,9 @@ class TestRestoreMultimodalContent:
 
         assert result.url == "https://example.com/image.png"
 
-    @patch("core.file.file_manager.dify_config")
-    @patch("core.file.file_manager._build_file_from_ref")
-    @patch("core.file.file_manager._to_url")
+    @patch("core.workflow.file.file_manager.dify_config")
+    @patch("core.workflow.file.file_manager._build_file_from_ref")
+    @patch("core.workflow.file.file_manager._to_url")
     def test_restores_url_from_file_ref(self, mock_to_url, mock_build_file, mock_config):
         """Content should be restored from file_ref when url is empty (url mode)."""
         mock_config.MULTIMODAL_SEND_FORMAT = "url"
@@ -143,9 +143,9 @@ class TestRestoreMultimodalContent:
         assert result.url == "https://restored-url.com/image.png"
         mock_build_file.assert_called_once()
 
-    @patch("core.file.file_manager.dify_config")
-    @patch("core.file.file_manager._build_file_from_ref")
-    @patch("core.file.file_manager._get_encoded_string")
+    @patch("core.workflow.file.file_manager.dify_config")
+    @patch("core.workflow.file.file_manager._build_file_from_ref")
+    @patch("core.workflow.file.file_manager._get_encoded_string")
     def test_restores_base64_from_file_ref(self, mock_get_encoded, mock_build_file, mock_config):
         """Content should be restored as base64 when in base64 mode."""
         mock_config.MULTIMODAL_SEND_FORMAT = "base64"

@@ -365,7 +365,7 @@ class TestOrganizeUserQuery:
 
     def test_query_with_files(self, mock_runner):
         """Test organizing a query with files."""
-        from core.file.models import File
+        from core.workflow.file.models import File
 
         mock_file = MagicMock(spec=File)
         mock_runner.files = [mock_file]

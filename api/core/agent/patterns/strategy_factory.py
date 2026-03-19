@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from core.agent.entities import AgentEntity, ExecutionContext
-from core.file.models import File
+from core.workflow.file.models import File
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.model_entities import ModelFeature
 

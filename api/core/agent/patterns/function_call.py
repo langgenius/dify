@@ -12,7 +12,7 @@ from collections.abc import Generator
 from typing import Any, Union
 
 from core.agent.entities import AgentLog, AgentResult
-from core.file import File
+from core.workflow.file import File
 from core.model_runtime.entities import (
     AssistantPromptMessage,
     LLMResult,

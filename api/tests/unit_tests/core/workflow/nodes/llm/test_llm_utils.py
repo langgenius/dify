@@ -318,7 +318,7 @@ class TestBuildContext:
 class TestRestoreMultimodalContentInMessages:
     """Tests for restore_multimodal_content_in_messages function."""
 
-    @patch("core.file.file_manager.restore_multimodal_content")
+    @patch("core.workflow.file.file_manager.restore_multimodal_content")
     def test_restores_multimodal_content(self, mock_restore):
         """Should restore multimodal content in messages."""
         # Setup mock

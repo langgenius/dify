@@ -5,7 +5,7 @@ from collections.abc import Mapping, Sequence
 from pathlib import PurePosixPath
 from typing import Any, cast
 
-from core.file import File, FileTransferMethod
+from core.workflow.file import File, FileTransferMethod
 from core.sandbox.bash.session import SANDBOX_READY_TIMEOUT
 from core.variables import ArrayFileSegment
 from core.variables.segments import ArrayStringSegment, FileSegment

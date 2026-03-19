@@ -10,7 +10,7 @@ This module provides utilities to:
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any, cast
 
-from core.file import File
+from core.workflow.file import File
 from core.variables.segments import ArrayFileSegment, FileSegment
 
 FILE_PATH_FORMAT = "file-path"

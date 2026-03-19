@@ -7,7 +7,7 @@ import os
 import shlex
 from types import TracebackType
 
-from core.file import File, FileTransferMethod, FileType
+from core.workflow.file import File, FileTransferMethod, FileType
 from core.sandbox.sandbox import Sandbox
 from core.session.cli_api import CliApiSession, CliApiSessionManager, CliContext
 from core.skill.entities import ToolAccessPolicy

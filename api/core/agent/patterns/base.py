@@ -10,7 +10,7 @@ from collections.abc import Callable, Generator
 from typing import TYPE_CHECKING, Any
 
 from core.agent.entities import AgentLog, AgentResult, ExecutionContext
-from core.file import File
+from core.workflow.file import File
 from core.model_manager import ModelInstance
 from core.model_runtime.entities import (
     AssistantPromptMessage,

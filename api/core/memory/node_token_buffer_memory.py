@@ -20,7 +20,7 @@ from typing import cast
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from core.file import file_manager
+from core.workflow.file import file_manager
 from core.memory.base import BaseMemory
 from core.model_manager import ModelInstance
 from core.model_runtime.entities import (

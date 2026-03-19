@@ -109,9 +109,9 @@ def test_stream_llm_events_no_reasoning_results_in_empty_sequence():
 
 
 def test_serialize_tool_call_strips_files_to_ids():
-    file_cls = pytest.importorskip("core.file").File
-    file_type = pytest.importorskip("core.file.enums").FileType
-    transfer_method = pytest.importorskip("core.file.enums").FileTransferMethod
+    file_cls = pytest.importorskip("core.workflow.file").File
+    file_type = pytest.importorskip("core.workflow.file.enums").FileType
+    transfer_method = pytest.importorskip("core.workflow.file.enums").FileTransferMethod
 
     file_with_id = file_cls(
         id="f1",

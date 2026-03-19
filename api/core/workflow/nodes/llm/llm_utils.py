@@ -388,7 +388,7 @@ def restore_multimodal_content_in_messages(messages: Sequence[PromptMessage]) ->
     Returns:
         List of PromptMessages with restored multimodal content
     """
-    from core.file import file_manager
+    from core.workflow.file import file_manager
 
     return [_restore_message_content(msg, file_manager) for msg in messages]
 

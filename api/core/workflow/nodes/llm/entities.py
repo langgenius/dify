@@ -5,7 +5,7 @@ from typing import Annotated, Any, Literal, TypeAlias
 from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
 
 from core.agent.entities import AgentLog, AgentResult
-from core.file import File
+from core.workflow.file import File
 from core.model_runtime.entities import ImagePromptMessageContent, LLMMode
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
