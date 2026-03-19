@@ -3,8 +3,16 @@ import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Confirm from '@/app/components/base/confirm'
 import Divider from '@/app/components/base/divider'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@/app/components/base/ui/alert-dialog'
 import {
   ScrollArea,
   ScrollAreaContent,
@@ -12,12 +20,12 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@/app/components/base/ui/scroll-area'
+import { toast } from '@/app/components/base/ui/toast'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import Link from '@/next/link'
 import { useSelectedLayoutSegments } from '@/next/navigation'
 import { useGetInstalledApps, useUninstallApp, useUpdateAppPinStatus } from '@/service/use-explore'
 import { cn } from '@/utils/classnames'
-import Toast from '../../base/toast'
 import Item from './app-nav-item'
 import NoApps from './no-apps'
 
@@ -51,17 +59,17 @@ const SideBar = () => {
     const id = currId
     await uninstallApp(id)
     setShowConfirm(false)
-    Toast.notify({
+    toast.add({
       type: 'success',
-      message: t('api.remove', { ns: 'common' }),
+      title: t('api.remove', { ns: 'common' }),
     })
   }
 
   const handleUpdatePinStatus = async (id: string, isPinned: boolean) => {
     await updatePinStatus({ appId: id, isPinned })
-    Toast.notify({
+    toast.add({
       type: 'success',
-      message: t('api.success', { ns: 'common' }),
+      title: t('api.success', { ns: 'common' }),
     })
   }
 
@@ -156,15 +164,26 @@ const SideBar = () => {
         </div>
       )}
 
-      {showConfirm && (
-        <Confirm
-          title={t('sidebar.delete.title', { ns: 'explore' })}
-          content={t('sidebar.delete.content', { ns: 'explore' })}
-          isShow={showConfirm}
-          onConfirm={handleDelete}
-          onCancel={() => setShowConfirm(false)}
-        />
-      )}
+      <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
+        <AlertDialogContent>
+          <div className="flex flex-col items-start gap-2 self-stretch pb-4 pl-6 pr-6 pt-6">
+            <AlertDialogTitle className="w-full text-text-primary title-2xl-semi-bold">
+              {t('sidebar.delete.title', { ns: 'explore' })}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="w-full whitespace-pre-wrap break-words text-text-tertiary system-md-regular">
+              {t('sidebar.delete.content', { ns: 'explore' })}
+            </AlertDialogDescription>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton>
+              {t('operation.cancel', { ns: 'common' })}
+            </AlertDialogCancelButton>
+            <AlertDialogConfirmButton onClick={handleDelete}>
+              {t('operation.confirm', { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
