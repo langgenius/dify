@@ -2090,9 +2090,7 @@ class DocumentService:
                         )
                         if documents:
                             for document in documents:
-                                data_source_info = TypeAdapter(dict[str, Any]).validate_json(
-                                    document.data_source_info
-                                )
+                                data_source_info = TypeAdapter(dict[str, Any]).validate_json(document.data_source_info)
                                 exist_page_ids.append(data_source_info["notion_page_id"])
                                 exist_document[data_source_info["notion_page_id"]] = document.id
                         for notion_info in notion_info_list:
