@@ -132,6 +132,26 @@ class TestTemplateTransformNode:
         """Test version class method."""
         assert TemplateTransformNode.version() == "1"
 
+    @pytest.mark.parametrize("max_output_length", [0, -1])
+    def test_node_initialization_rejects_non_positive_max_output_length(
+        self,
+        basic_node_data,
+        mock_graph_runtime_state,
+        graph_init_params,
+        max_output_length,
+    ):
+        mock_renderer = MagicMock()
+
+        with pytest.raises(ValueError, match="max_output_length must be a positive integer"):
+            TemplateTransformNode(
+                id="test_node",
+                config={"id": "test_node", "data": basic_node_data},
+                graph_init_params=graph_init_params,
+                graph_runtime_state=mock_graph_runtime_state,
+                jinja2_template_renderer=mock_renderer,
+                max_output_length=max_output_length,
+            )
+
     def test_run_simple_template(self, basic_node_data, mock_graph_runtime_state, graph_init_params):
         """Test _run with simple template transformation using injected renderer."""
         # Setup mock variable pool
@@ -231,6 +251,28 @@ class TestTemplateTransformNode:
 
         assert result.status == WorkflowNodeExecutionStatus.FAILED
         assert "Output length exceeds" in result.error
+
+    def test_run_output_length_equal_to_limit_succeeds(
+        self, basic_node_data, mock_graph_runtime_state, graph_init_params
+    ):
+        mock_graph_runtime_state.variable_pool.get.return_value = MagicMock()
+
+        mock_renderer = MagicMock()
+        mock_renderer.render_template.return_value = "1234567890"
+
+        node = TemplateTransformNode(
+            id="test_node",
+            config={"id": "test_node", "data": basic_node_data},
+            graph_init_params=graph_init_params,
+            graph_runtime_state=mock_graph_runtime_state,
+            jinja2_template_renderer=mock_renderer,
+            max_output_length=10,
+        )
+
+        result = node._run()
+
+        assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+        assert result.outputs["output"] == "1234567890"
 
     def test_run_with_complex_jinja2_template(self, mock_graph_runtime_state, graph_init_params):
         """Test _run with complex Jinja2 template including loops and conditions."""
