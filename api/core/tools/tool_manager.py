@@ -984,31 +984,26 @@ class ToolManager:
         :param provider_id: the id of the provider
         :return:
         """
-        provider_type = provider_type
-        provider_id = provider_id
-        if provider_type == ToolProviderType.BUILT_IN:
-            provider = ToolManager.get_builtin_provider(provider_id, tenant_id)
-            if isinstance(provider, PluginToolProviderController):
-                try:
+        try:
+            if provider_type == ToolProviderType.BUILT_IN:
+                provider = ToolManager.get_builtin_provider(provider_id, tenant_id)
+                if isinstance(provider, PluginToolProviderController):
                     return cls.generate_plugin_tool_icon_url(tenant_id, provider.entity.identity.icon)
-                except Exception:
-                    return {"background": "#252525", "content": "\ud83d\ude01"}
-            return cls.generate_builtin_tool_icon_url(provider_id)
-        elif provider_type == ToolProviderType.API:
-            return cls.generate_api_tool_icon_url(tenant_id, provider_id)
-        elif provider_type == ToolProviderType.WORKFLOW:
-            return cls.generate_workflow_tool_icon_url(tenant_id, provider_id)
-        elif provider_type == ToolProviderType.PLUGIN:
-            provider = ToolManager.get_plugin_provider(provider_id, tenant_id)
-            try:
+                return cls.generate_builtin_tool_icon_url(provider_id)
+            elif provider_type == ToolProviderType.API:
+                return cls.generate_api_tool_icon_url(tenant_id, provider_id)
+            elif provider_type == ToolProviderType.WORKFLOW:
+                return cls.generate_workflow_tool_icon_url(tenant_id, provider_id)
+            elif provider_type == ToolProviderType.PLUGIN:
+                provider = ToolManager.get_plugin_provider(provider_id, tenant_id)
                 return cls.generate_plugin_tool_icon_url(tenant_id, provider.entity.identity.icon)
-            except Exception:
-                return {"background": "#252525", "content": "\ud83d\ude01"}
-            raise ValueError(f"plugin provider {provider_id} not found")
-        elif provider_type == ToolProviderType.MCP:
-            return cls.generate_mcp_tool_icon_url(tenant_id, provider_id)
-        else:
-            raise ValueError(f"provider type {provider_type} not found")
+            elif provider_type == ToolProviderType.MCP:
+                return cls.generate_mcp_tool_icon_url(tenant_id, provider_id)
+            else:
+                raise ValueError(f"provider type {provider_type} not found")
+        except Exception:
+            logger.warning("failed to get tool icon for %s, type: %s", provider_id, provider_type)
+            return ""
 
     @classmethod
     def _convert_tool_parameters_type(

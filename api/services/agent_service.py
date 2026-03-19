@@ -112,28 +112,20 @@ class AgentService:
                 tool_meta_data = tool_meta.get(tool_name, {})
                 tool_config = tool_meta_data.get("tool_config", {})
                 if tool_config.get("tool_provider_type", "") != "dataset-retrieval":
-                    try:
-                        tool_icon = ToolManager.get_tool_icon(
-                            tenant_id=app_model.tenant_id,
-                            provider_type=tool_config.get("tool_provider_type", ""),
-                            provider_id=tool_config.get("tool_provider", ""),
-                        )
-                    except Exception:
-                        logger.warning("failed to fetch icon for %s", tool_config.get("tool_provider", ""))
-                        tool_icon = ""
+                    tool_icon = ToolManager.get_tool_icon(
+                        tenant_id=app_model.tenant_id,
+                        provider_type=tool_config.get("tool_provider_type", ""),
+                        provider_id=tool_config.get("tool_provider", ""),
+                    )
 
                     if not tool_icon:
                         tool_entity = find_agent_tool(tool_name)
                         if tool_entity:
-                            try:
-                                tool_icon = ToolManager.get_tool_icon(
-                                    tenant_id=app_model.tenant_id,
-                                    provider_type=tool_entity.provider_type,
-                                    provider_id=tool_entity.provider_id,
-                                )
-                            except Exception:
-                                logger.warning("failed to fetch icon for %s", tool_entity.provider_id)
-                                tool_icon = ""
+                            tool_icon = ToolManager.get_tool_icon(
+                                tenant_id=app_model.tenant_id,
+                                provider_type=tool_entity.provider_type,
+                                provider_id=tool_entity.provider_id,
+                            )
                 else:
                     tool_icon = ""
 
