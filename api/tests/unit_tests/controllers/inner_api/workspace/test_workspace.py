@@ -91,7 +91,7 @@ class TestEnterpriseWorkspace:
         # Arrange
         mock_account = MagicMock()
         mock_account.email = "owner@example.com"
-        mock_db.session.query.return_value.filter_by.return_value.first.return_value = mock_account
+        mock_db.session.scalar.return_value = mock_account
 
         now = datetime(2025, 1, 1, 12, 0, 0)
         mock_tenant = MagicMock()
@@ -122,7 +122,7 @@ class TestEnterpriseWorkspace:
     def test_post_returns_404_when_owner_not_found(self, mock_db, api_instance, app: Flask):
         """Test that post() returns 404 when the owner account does not exist"""
         # Arrange
-        mock_db.session.query.return_value.filter_by.return_value.first.return_value = None
+        mock_db.session.scalar.return_value = None
 
         # Act
         unwrapped_post = inspect.unwrap(api_instance.post)

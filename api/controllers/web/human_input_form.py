@@ -148,11 +148,11 @@ class HumanInputFormApi(Resource):
 
 def _get_app_site_from_form(form: Form) -> tuple[App, Site]:
     """Resolve App/Site for the form's app and validate tenant status."""
-    app_model = db.session.scalar(select(App).where(App.id == form.app_id))
+    app_model = db.session.get(App, form.app_id)
     if app_model is None or app_model.tenant_id != form.tenant_id:
         raise NotFoundError("Form not found")
 
-    site = db.session.scalar(select(Site).where(Site.app_id == app_model.id))
+    site = db.session.scalar(select(Site).where(Site.app_id == app_model.id).limit(1))
     if site is None:
         raise Forbidden()
 

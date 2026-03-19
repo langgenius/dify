@@ -43,9 +43,7 @@ class EnterpriseWorkspace(Resource):
     def post(self):
         args = WorkspaceCreatePayload.model_validate(inner_api_ns.payload or {})
 
-        account = db.session.scalar(
-            select(Account).where(Account.email == args.owner_email).limit(1)
-        )
+        account = db.session.scalar(select(Account).where(Account.email == args.owner_email).limit(1))
         if account is None:
             return {"message": "owner account not found."}, 404
 

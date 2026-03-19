@@ -38,18 +38,15 @@ def get_user(tenant_id: str, user_id: str | None) -> EndUser:
 
             if is_anonymous:
                 user_model = session.scalar(
-                    select(EndUser).where(
+                    select(EndUser)
+                    .where(
                         EndUser.session_id == user_id,
                         EndUser.tenant_id == tenant_id,
                     )
+                    .limit(1)
                 )
             else:
-                user_model = session.scalar(
-                    select(EndUser).where(
-                        EndUser.id == user_id,
-                        EndUser.tenant_id == tenant_id,
-                    )
-                )
+                user_model = session.get(EndUser, user_id)
 
             if not user_model:
                 user_model = EndUser(
@@ -82,10 +79,7 @@ def get_user_tenant(view_func: Callable[P, R]):
         if not user_id:
             user_id = DefaultEndUserSessionID.DEFAULT_SESSION_ID
 
-        try:
-            tenant_model = db.session.scalar(select(Tenant).where(Tenant.id == tenant_id))
-        except Exception:
-            raise ValueError("tenant not found")
+        tenant_model = db.session.get(Tenant, tenant_id)
 
         if not tenant_model:
             raise ValueError("tenant not found")
