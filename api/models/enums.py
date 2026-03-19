@@ -158,6 +158,13 @@ class FeedbackFromSource(StrEnum):
     ADMIN = "admin"
 
 
+class FeedbackRating(StrEnum):
+    """MessageFeedback rating"""
+
+    LIKE = "like"
+    DISLIKE = "dislike"
+
+
 class InvokeFrom(StrEnum):
     """How a conversation/message was invoked"""
 

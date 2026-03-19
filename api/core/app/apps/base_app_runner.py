@@ -40,7 +40,7 @@ from dify_graph.model_runtime.entities.message_entities import (
 from dify_graph.model_runtime.entities.model_entities import ModelPropertyKey
 from dify_graph.model_runtime.errors.invoke import InvokeBadRequestError
 from extensions.ext_database import db
-from models.enums import CreatorUserRole
+from models.enums import CreatorUserRole, MessageFileBelongsTo
 from models.model import App, AppMode, Message, MessageAnnotation, MessageFile
 
 if TYPE_CHECKING:
@@ -419,7 +419,7 @@ class AppRunner:
             message_id=message_id,
             type=FileType.IMAGE,
             transfer_method=FileTransferMethod.TOOL_FILE,
-            belongs_to="assistant",
+            belongs_to=MessageFileBelongsTo.ASSISTANT,
             url=f"/files/tools/{tool_file.id}",
             upload_file_id=tool_file.id,
             created_by_role=(

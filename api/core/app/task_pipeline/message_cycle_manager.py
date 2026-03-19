@@ -34,6 +34,7 @@ from core.llm_generator.llm_generator import LLMGenerator
 from core.tools.signature import sign_tool_file
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from models.enums import MessageFileBelongsTo
 from models.model import AppMode, Conversation, MessageAnnotation, MessageFile
 from services.annotation_service import AppAnnotationService
 
@@ -233,7 +234,7 @@ class MessageCycleManager:
                 task_id=self._application_generate_entity.task_id,
                 id=message_file.id,
                 type=message_file.type,
-                belongs_to=message_file.belongs_to or "user",
+                belongs_to=message_file.belongs_to or MessageFileBelongsTo.USER,
                 url=url,
             )
 

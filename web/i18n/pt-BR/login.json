@@ -35,6 +35,8 @@
   "error.emailEmpty": "O endereço de e-mail é obrigatório",
   "error.emailInValid": "Digite um endereço de e-mail válido",
   "error.invalidEmailOrPassword": "E-mail ou senha inválidos.",
+  "error.invalidRedirectUrlOrAppCode": "URL de redirecionamento ou código de aplicativo inválido",
+  "error.invalidSSOProtocol": "Protocolo SSO inválido",
   "error.nameEmpty": "O nome é obrigatório",
   "error.passwordEmpty": "A senha é obrigatória",
   "error.passwordInvalid": "A senha deve conter letras e números e ter um comprimento maior que 8",
