@@ -13,7 +13,7 @@ export type ScrollAreaContentProps = React.ComponentPropsWithRef<typeof BaseScro
 
 export const scrollAreaScrollbarClassName = cn(
   styles.scrollbar,
-  'flex touch-none select-none overflow-clip p-1 opacity-100 transition-opacity [--scroll-area-edge-hint-bg:var(--color-components-panel-bg)] motion-reduce:transition-none',
+  'flex touch-none select-none overflow-clip p-1 opacity-100 transition-opacity motion-reduce:transition-none',
   'pointer-events-none data-[hovering]:pointer-events-auto',
   'data-[scrolling]:pointer-events-auto',
   'data-[orientation=vertical]:absolute data-[orientation=vertical]:inset-y-0 data-[orientation=vertical]:w-3 data-[orientation=vertical]:justify-center',

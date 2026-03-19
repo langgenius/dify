@@ -8,6 +8,7 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '../index'
+import styles from '../index.module.css'
 
 const renderScrollArea = (options: {
   rootClassName?: string
@@ -72,6 +73,7 @@ describe('scroll-area wrapper', () => {
         const thumb = screen.getByTestId('scroll-area-vertical-thumb')
 
         expect(scrollbar).toHaveAttribute('data-orientation', 'vertical')
+        expect(scrollbar).toHaveClass(styles.scrollbar)
         expect(scrollbar).toHaveClass(
           'flex',
           'overflow-clip',
@@ -81,7 +83,6 @@ describe('scroll-area wrapper', () => {
           'opacity-100',
           'transition-opacity',
           'motion-reduce:transition-none',
-          '[--scroll-area-edge-hint-bg:var(--color-components-panel-bg)]',
           'pointer-events-none',
           'data-[hovering]:pointer-events-auto',
           'data-[scrolling]:pointer-events-auto',
@@ -91,6 +92,7 @@ describe('scroll-area wrapper', () => {
           'data-[orientation=vertical]:justify-center',
         )
         expect(thumb).toHaveAttribute('data-orientation', 'vertical')
+        expect(thumb).toHaveClass(styles.thumb)
         expect(thumb).toHaveClass(
           'shrink-0',
           'rounded-[4px]',
@@ -110,6 +112,7 @@ describe('scroll-area wrapper', () => {
         const thumb = screen.getByTestId('scroll-area-horizontal-thumb')
 
         expect(scrollbar).toHaveAttribute('data-orientation', 'horizontal')
+        expect(scrollbar).toHaveClass(styles.scrollbar)
         expect(scrollbar).toHaveClass(
           'flex',
           'overflow-clip',
@@ -119,7 +122,6 @@ describe('scroll-area wrapper', () => {
           'opacity-100',
           'transition-opacity',
           'motion-reduce:transition-none',
-          '[--scroll-area-edge-hint-bg:var(--color-components-panel-bg)]',
           'pointer-events-none',
           'data-[hovering]:pointer-events-auto',
           'data-[scrolling]:pointer-events-auto',
@@ -129,6 +131,7 @@ describe('scroll-area wrapper', () => {
           'data-[orientation=horizontal]:items-center',
         )
         expect(thumb).toHaveAttribute('data-orientation', 'horizontal')
+        expect(thumb).toHaveClass(styles.thumb)
         expect(thumb).toHaveClass(
           'shrink-0',
           'rounded-[4px]',

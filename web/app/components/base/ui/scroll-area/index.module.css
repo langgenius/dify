@@ -3,6 +3,8 @@
   --scroll-area-edge-hint-bg: var(--color-components-panel-bg);
 }
 
+.thumb {}
+
 .scrollbar::before,
 .scrollbar::after {
   content: '';
@@ -43,7 +45,7 @@
 
 .scrollbar[data-hovering] .thumb,
 .scrollbar[data-scrolling] .thumb,
-.thumb:active {
+.scrollbar .thumb:active {
   background-color: var(--scroll-area-thumb-bg-active);
 }
 
