@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import type { DataSourceInfo, FileItem, FullDocumentDetail, LegacyDataSourceInfo } from '@/models/datasets'
 import * as React from 'react'
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import FloatRightContainer from '@/app/components/base/float-right-container'
@@ -30,6 +30,12 @@ import style from './style.module.css'
 type DocumentDetailProps = {
   datasetId: string
   documentId: string
+}
+
+const NON_TERMINAL_DISPLAY_STATUSES = new Set(['queuing', 'indexing', 'paused'])
+
+const isLegacyDataSourceInfo = (info?: DataSourceInfo): info is LegacyDataSourceInfo => {
+  return !!info && 'upload_file' in info
 }
 
 const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
@@ -89,6 +95,12 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
     datasetId,
     documentId,
     params: { metadata: 'without' },
+    refetchInterval: (query) => {
+      const status = query.state.data?.display_status
+      if (!status || NON_TERMINAL_DISPLAY_STATUSES.has(status))
+        return 2500
+      return false
+    },
   })
 
   const { data: documentMetadata } = useDocumentMetadata({
@@ -97,19 +109,15 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
     params: { metadata: 'only' },
   })
 
-  const backToPrev = () => {
+  const backToPrev = useCallback(() => {
     const queryString = searchParams.toString()
     const backPath = `/datasets/${datasetId}/documents${queryString ? `?${queryString}` : ''}`
     router.push(backPath)
-  }
+  }, [searchParams, datasetId, router])
 
   const isDetailLoading = !documentDetail && !error
 
-  const embedding = ['queuing', 'indexing', 'paused'].includes((documentDetail?.display_status || '').toLowerCase())
-
-  const isLegacyDataSourceInfo = (info?: DataSourceInfo): info is LegacyDataSourceInfo => {
-    return !!info && 'upload_file' in info
-  }
+  const embedding = NON_TERMINAL_DISPLAY_STATUSES.has(documentDetail?.display_status || '')
 
   const documentUploadFile = useMemo(() => {
     if (!documentDetail?.data_source_info)
@@ -123,7 +131,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
   const invalidChildChunkList = useInvalid(useChildSegmentListKey)
   const invalidDocumentList = useInvalidDocumentList(datasetId)
 
-  const handleOperate = (operateName?: string) => {
+  const handleOperate = useCallback((operateName?: string) => {
     invalidDocumentList()
     if (operateName === 'delete') {
       backToPrev()
@@ -138,7 +146,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
         }, 5000)
       }
     }
-  }
+  }, [invalidDocumentList, backToPrev, detailMutate, invalidChunkList, invalidChildChunkList])
 
   const parentMode = useMemo(() => {
     return documentDetail?.document_process_rule?.rules?.parent_mode || documentDetail?.dataset_process_rule?.rules?.parent_mode || 'paragraph'
@@ -149,19 +157,41 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
     return chunkMode === ChunkingMode.parentChild && parentMode === 'full-doc'
   }, [documentDetail?.doc_form, parentMode])
 
+  const contextValue = useMemo(() => ({
+    datasetId,
+    documentId,
+    docForm: documentDetail?.doc_form as ChunkingMode,
+    parentMode,
+  }), [datasetId, documentId, documentDetail?.doc_form, parentMode])
+
+  const statusDetail = useMemo(() => ({
+    enabled: documentDetail?.enabled || false,
+    archived: documentDetail?.archived || false,
+    id: documentId,
+  }), [documentDetail?.enabled, documentDetail?.archived, documentId])
+
+  const operationsDetail = useMemo(() => ({
+    name: documentDetail?.name || '',
+    enabled: documentDetail?.enabled || false,
+    archived: documentDetail?.archived || false,
+    id: documentId,
+    data_source_type: documentDetail?.data_source_type || '',
+    doc_form: documentDetail?.doc_form || '',
+  }), [documentDetail?.name, documentDetail?.enabled, documentDetail?.archived, documentId, documentDetail?.data_source_type, documentDetail?.doc_form])
+
+  const docDetail = useMemo(() => ({
+    ...documentDetail,
+    ...documentMetadata,
+    doc_type: documentMetadata?.doc_type === 'others' ? '' : documentMetadata?.doc_type,
+  } as FullDocumentDetail), [documentDetail, documentMetadata])
+
   const backButtonLabel = t('operation.back', { ns: 'common' })
   const metadataToggleLabel = `${showMetadata
     ? t('operation.close', { ns: 'common' })
     : t('operation.view', { ns: 'common' })} ${t('metadata.title', { ns: 'datasetDocuments' })}`
 
   return (
-    <DocumentContext.Provider value={{
-      datasetId,
-      documentId,
-      docForm: documentDetail?.doc_form as ChunkingMode,
-      parentMode,
-    }}
-    >
+    <DocumentContext.Provider value={contextValue}>
       <div className="flex h-full flex-col bg-background-default">
         <div className="flex min-h-16 flex-wrap items-center justify-between border-b border-b-divider-subtle py-2.5 pl-3 pr-4">
           <button
@@ -198,30 +228,21 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
                 <Divider type="vertical" className="!mx-3 !h-[14px] !bg-divider-regular" />
               </>
             )}
-            <StatusItem
-              status={documentDetail?.display_status || 'available'}
-              scene="detail"
-              errorMessage={documentDetail?.error || ''}
-              textCls="font-semibold text-xs uppercase"
-              detail={{
-                enabled: documentDetail?.enabled || false,
-                archived: documentDetail?.archived || false,
-                id: documentId,
-              }}
-              datasetId={datasetId}
-              onUpdate={handleOperate}
-            />
+            {documentDetail && (
+              <StatusItem
+                status={documentDetail.display_status || 'available'}
+                scene="detail"
+                errorMessage={documentDetail.error || ''}
+                textCls="font-semibold text-xs uppercase"
+                detail={statusDetail}
+                datasetId={datasetId}
+                onUpdate={handleOperate}
+              />
+            )}
             <Operations
               scene="detail"
               embeddingAvailable={embeddingAvailable}
-              detail={{
-                name: documentDetail?.name || '',
-                enabled: documentDetail?.enabled || false,
-                archived: documentDetail?.archived || false,
-                id: documentId,
-                data_source_type: documentDetail?.data_source_type || '',
-                doc_form: documentDetail?.doc_form || '',
-              }}
+              detail={operationsDetail}
               datasetId={datasetId}
               onUpdate={handleOperate}
               className="!w-[200px]"
@@ -272,7 +293,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
               className="mr-2 mt-3"
               datasetId={datasetId}
               documentId={documentId}
-              docDetail={{ ...documentDetail, ...documentMetadata, doc_type: documentMetadata?.doc_type === 'others' ? '' : documentMetadata?.doc_type } as FullDocumentDetail}
+              docDetail={docDetail}
             />
           </FloatRightContainer>
         </div>
