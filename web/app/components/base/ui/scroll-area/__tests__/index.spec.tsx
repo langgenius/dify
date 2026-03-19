@@ -4,10 +4,10 @@ import {
   ScrollArea,
   ScrollAreaContent,
   ScrollAreaCorner,
+  ScrollAreaRoot,
   ScrollAreaScrollbar,
   ScrollAreaThumb,
   ScrollAreaViewport,
-  VerticalScrollArea,
 } from '../index'
 import styles from '../index.module.css'
 
@@ -20,7 +20,7 @@ const renderScrollArea = (options: {
   horizontalThumbClassName?: string
 } = {}) => {
   return render(
-    <ScrollArea className={options.rootClassName ?? 'h-40 w-40'} data-testid="scroll-area-root">
+    <ScrollAreaRoot className={options.rootClassName ?? 'h-40 w-40'} data-testid="scroll-area-root">
       <ScrollAreaViewport data-testid="scroll-area-viewport" className={options.viewportClassName}>
         <ScrollAreaContent data-testid="scroll-area-content">
           <div className="h-48 w-48">Scrollable content</div>
@@ -44,7 +44,7 @@ const renderScrollArea = (options: {
           className={options.horizontalThumbClassName}
         />
       </ScrollAreaScrollbar>
-    </ScrollArea>,
+    </ScrollAreaRoot>,
   )
 }
 
@@ -64,27 +64,27 @@ describe('scroll-area wrapper', () => {
       })
     })
 
-    it('should render the vertical convenience wrapper and apply slot props', async () => {
+    it('should render the convenience wrapper and apply slot props', async () => {
       render(
         <>
           <p id="installed-apps-label">Installed apps</p>
-          <VerticalScrollArea
+          <ScrollArea
             className="h-40 w-40"
             slotClassNames={{
               content: 'custom-content-class',
               scrollbar: 'custom-scrollbar-class',
               viewport: 'custom-viewport-class',
             }}
-            viewportLabelledBy="installed-apps-label"
-            data-testid="vertical-scroll-area-root"
+            labelledBy="installed-apps-label"
+            data-testid="scroll-area-wrapper-root"
           >
             <div className="h-48 w-20">Scrollable content</div>
-          </VerticalScrollArea>
+          </ScrollArea>
         </>,
       )
 
       await waitFor(() => {
-        const root = screen.getByTestId('vertical-scroll-area-root')
+        const root = screen.getByTestId('scroll-area-wrapper-root')
         const viewport = screen.getByRole('region', { name: 'Installed apps' })
         const content = screen.getByText('Scrollable content').parentElement
 
@@ -252,7 +252,7 @@ describe('scroll-area wrapper', () => {
 
       try {
         render(
-          <ScrollArea className="h-40 w-40" data-testid="scroll-area-root">
+          <ScrollAreaRoot className="h-40 w-40" data-testid="scroll-area-root">
             <ScrollAreaViewport data-testid="scroll-area-viewport">
               <ScrollAreaContent data-testid="scroll-area-content">
                 <div className="h-48 w-48">Scrollable content</div>
@@ -269,7 +269,7 @@ describe('scroll-area wrapper', () => {
               <ScrollAreaThumb data-testid="scroll-area-horizontal-thumb" />
             </ScrollAreaScrollbar>
             <ScrollAreaCorner data-testid="scroll-area-corner" />
-          </ScrollArea>,
+          </ScrollAreaRoot>,
         )
 
         await waitFor(() => {

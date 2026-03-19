@@ -5,23 +5,24 @@ import * as React from 'react'
 import { cn } from '@/utils/classnames'
 import styles from './index.module.css'
 
-export const ScrollArea = BaseScrollArea.Root
+export const ScrollAreaRoot = BaseScrollArea.Root
 export type ScrollAreaRootProps = React.ComponentPropsWithRef<typeof BaseScrollArea.Root>
 
 export const ScrollAreaContent = BaseScrollArea.Content
 export type ScrollAreaContentProps = React.ComponentPropsWithRef<typeof BaseScrollArea.Content>
 
-export type VerticalScrollAreaClassNames = {
+export type ScrollAreaSlotClassNames = {
   viewport?: string
   content?: string
   scrollbar?: string
 }
 
-export type VerticalScrollAreaProps = Omit<ScrollAreaRootProps, 'children'> & {
+export type ScrollAreaProps = Omit<ScrollAreaRootProps, 'children'> & {
   children: React.ReactNode
-  slotClassNames?: VerticalScrollAreaClassNames
-  viewportLabel?: string
-  viewportLabelledBy?: string
+  orientation?: 'vertical' | 'horizontal'
+  slotClassNames?: ScrollAreaSlotClassNames
+  label?: string
+  labelledBy?: string
 }
 
 export const scrollAreaScrollbarClassName = cn(
@@ -102,29 +103,30 @@ export function ScrollAreaCorner({
   )
 }
 
-export function VerticalScrollArea({
+export function ScrollArea({
   children,
   className,
+  orientation = 'vertical',
   slotClassNames,
-  viewportLabel,
-  viewportLabelledBy,
+  label,
+  labelledBy,
   ...props
-}: VerticalScrollAreaProps) {
+}: ScrollAreaProps) {
   return (
-    <ScrollArea className={className} {...props}>
+    <ScrollAreaRoot className={className} {...props}>
       <ScrollAreaViewport
-        aria-label={viewportLabel}
-        aria-labelledby={viewportLabelledBy}
+        aria-label={label}
+        aria-labelledby={labelledBy}
         className={slotClassNames?.viewport}
-        role={viewportLabel || viewportLabelledBy ? 'region' : undefined}
+        role={label || labelledBy ? 'region' : undefined}
       >
         <ScrollAreaContent className={slotClassNames?.content}>
           {children}
         </ScrollAreaContent>
       </ScrollAreaViewport>
-      <ScrollAreaScrollbar className={slotClassNames?.scrollbar}>
+      <ScrollAreaScrollbar orientation={orientation} className={slotClassNames?.scrollbar}>
         <ScrollAreaThumb />
       </ScrollAreaScrollbar>
-    </ScrollArea>
+    </ScrollAreaRoot>
   )
 }

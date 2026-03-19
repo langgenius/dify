@@ -13,7 +13,7 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@/app/components/base/ui/alert-dialog'
-import { VerticalScrollArea } from '@/app/components/base/ui/scroll-area'
+import { ScrollArea } from '@/app/components/base/ui/scroll-area'
 import { toast } from '@/app/components/base/ui/toast'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import Link from '@/next/link'
@@ -119,13 +119,13 @@ const SideBar = () => {
           {shouldUseExpandedScrollArea
             ? (
                 <div className="min-h-0 flex-1">
-                  <VerticalScrollArea
+                  <ScrollArea
                     className="h-full"
                     slotClassNames={expandedSidebarScrollAreaClassNames}
-                    viewportLabelledBy={webAppsLabelId}
+                    labelledBy={webAppsLabelId}
                   >
                     {installedAppItems}
-                  </VerticalScrollArea>
+                  </ScrollArea>
                 </div>
               )
             : (
