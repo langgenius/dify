@@ -1,9 +1,8 @@
 from collections.abc import Mapping
 from typing import Any
 
-from dify_graph.constants import SYSTEM_VARIABLE_NODE_ID
-
 from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
+from core.workflow.variable_prefixes import SYSTEM_VARIABLE_NODE_ID
 from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from dify_graph.enums import NodeExecutionType, WorkflowNodeExecutionMetadataKey
 from dify_graph.node_events import NodeRunResult
