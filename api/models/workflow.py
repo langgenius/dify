@@ -312,6 +312,19 @@ class Workflow(Base):  # bug
 
         # Parse once and deep-copy before normalization to detect in-place changes.
         original_dict = json.loads(self._features)
+
+        # Fast-path: if the legacy file_upload.image.enabled shape is absent, skip
+        # deep-copy and normalization entirely and return the stored JSON.
+        if isinstance(original_dict, Mapping):
+            file_upload = original_dict.get("file_upload")
+            if not isinstance(file_upload, Mapping):
+                return self._features
+            image = file_upload.get("image")
+            if not isinstance(image, Mapping):
+                return self._features
+            if "enabled" not in image:
+                return self._features
+
         normalized_dict = self._normalize_features_payload(copy.deepcopy(original_dict))
 
         if normalized_dict == original_dict:
