@@ -2,6 +2,8 @@
 
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.workflow.workflow_entry import WorkflowEntry
 from dify_graph.graph_engine.command_channels.redis_channel import RedisChannel
@@ -134,3 +136,27 @@ class TestWorkflowEntryRedisChannel:
             assert len(events) == 2
             assert events[0] == mock_event1
             assert events[1] == mock_event2
+
+    def test_workflow_entry_rejects_depth_over_limit(self):
+        mock_graph = MagicMock()
+        mock_variable_pool = MagicMock(spec=VariablePool)
+        mock_graph_runtime_state = MagicMock(spec=GraphRuntimeState)
+        mock_graph_runtime_state.variable_pool = mock_variable_pool
+
+        with (
+            patch("core.workflow.workflow_entry.dify_config.WORKFLOW_CALL_MAX_DEPTH", 1),
+            pytest.raises(ValueError, match="Max workflow call depth 1 reached."),
+        ):
+            WorkflowEntry(
+                tenant_id="test-tenant",
+                app_id="test-app",
+                workflow_id="test-workflow",
+                graph_config={"nodes": [], "edges": []},
+                graph=mock_graph,
+                user_id="test-user",
+                user_from=UserFrom.ACCOUNT,
+                invoke_from=InvokeFrom.DEBUGGER,
+                call_depth=2,
+                variable_pool=mock_variable_pool,
+                graph_runtime_state=mock_graph_runtime_state,
+            )

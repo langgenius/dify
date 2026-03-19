@@ -76,6 +76,7 @@ class HttpRequestNodeConfig:
     max_text_size: int
     ssl_verify: bool
     ssrf_default_max_retries: int
+    secret_key: str = ""
 
     def default_timeout(self) -> "HttpRequestNodeTimeout":
         return HttpRequestNodeTimeout(

@@ -1,3 +1,4 @@
+import hmac
 import json
 import logging
 import mimetypes
@@ -23,6 +24,8 @@ from core.workflow.nodes.trigger_webhook.entities import (
     WebhookData,
     WebhookParameter,
 )
+from dify_graph.call_depth import build_workflow_call_depth_signature
+from dify_graph.constants import WORKFLOW_CALL_DEPTH_HEADER, WORKFLOW_CALL_DEPTH_SIGNATURE_HEADER
 from dify_graph.entities.graph_config import NodeConfigDict
 from dify_graph.file.models import FileTransferMethod
 from dify_graph.variables.types import ArrayValidation, SegmentType
@@ -57,9 +60,48 @@ class WebhookService:
     @staticmethod
     def _sanitize_key(key: str) -> str:
         """Normalize external keys (headers/params) to workflow-safe variables."""
-        if not isinstance(key, str):
-            return key
         return key.replace("-", "_")
+
+    @classmethod
+    def extract_workflow_call_depth(cls, headers: Mapping[str, Any]) -> int:
+        """Extract the reserved workflow recursion depth header.
+
+        The depth header is only trusted when accompanied by a valid HMAC
+        signature for the current request method/path/depth tuple. Header lookup
+        accepts either canonical or lower-case names because upstream proxies may
+        normalize casing. Invalid, missing, unsigned, or negative values are
+        treated as external requests and therefore fall back to depth 0.
+        """
+        raw_value = headers.get(WORKFLOW_CALL_DEPTH_HEADER)
+        if raw_value is None:
+            raw_value = headers.get(WORKFLOW_CALL_DEPTH_HEADER.lower())
+        if raw_value is None:
+            return 0
+
+        raw_signature = headers.get(WORKFLOW_CALL_DEPTH_SIGNATURE_HEADER)
+        if raw_signature is None:
+            raw_signature = headers.get(WORKFLOW_CALL_DEPTH_SIGNATURE_HEADER.lower())
+        if raw_signature is None:
+            return 0
+
+        normalized_value = str(raw_value).strip()
+        # The receiver recomputes the signature from the current request context
+        # instead of trusting the sender's path or method directly.
+        expected_signature = build_workflow_call_depth_signature(
+            secret_key=dify_config.SECRET_KEY,
+            method=request.method,
+            path=request.path,
+            depth=normalized_value,
+        )
+        if not hmac.compare_digest(str(raw_signature).strip(), expected_signature):
+            return 0
+
+        try:
+            call_depth = int(normalized_value)
+        except (TypeError, ValueError):
+            return 0
+
+        return max(call_depth, 0)
 
     @classmethod
     def get_webhook_trigger_and_workflow(
@@ -764,12 +806,14 @@ class WebhookService:
                 workflow_inputs = cls.build_workflow_inputs(webhook_data)
 
                 # Create trigger data
+                trigger_call_depth = cls.extract_workflow_call_depth(dict(request.headers))
                 trigger_data = WebhookTriggerData(
                     app_id=webhook_trigger.app_id,
                     workflow_id=workflow.id,
                     root_node_id=webhook_trigger.node_id,  # Start from the webhook node
                     inputs=workflow_inputs,
                     tenant_id=webhook_trigger.tenant_id,
+                    call_depth=trigger_call_depth,
                 )
 
                 end_user = EndUserService.get_or_create_end_user_by_type(

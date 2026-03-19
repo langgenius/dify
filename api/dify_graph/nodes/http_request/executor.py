@@ -1,3 +1,11 @@
+"""HTTP request execution helpers for workflow nodes.
+
+Besides normal request assembly, this executor is responsible for propagating
+workflow recursion depth across outbound HTTP calls. The reserved call-depth
+headers are always regenerated from the current node context so user-supplied
+values cannot override or poison the propagation contract.
+"""
+
 import base64
 import json
 import secrets
@@ -10,6 +18,8 @@ from urllib.parse import urlencode, urlparse
 import httpx
 from json_repair import repair_json
 
+from dify_graph.call_depth import build_workflow_call_depth_signature
+from dify_graph.constants import WORKFLOW_CALL_DEPTH_HEADER, WORKFLOW_CALL_DEPTH_SIGNATURE_HEADER
 from dify_graph.file.enums import FileTransferMethod
 from dify_graph.runtime import VariablePool
 from dify_graph.variables.segments import ArrayFileSegment, FileSegment
@@ -41,6 +51,8 @@ BODY_TYPE_TO_CONTENT_TYPE = {
 
 
 class Executor:
+    """Prepare, execute, and log a workflow HTTP request node invocation."""
+
     method: Literal[
         "get",
         "head",
@@ -77,6 +89,7 @@ class Executor:
         timeout: HttpRequestNodeTimeout,
         variable_pool: VariablePool,
         http_request_config: HttpRequestNodeConfig,
+        workflow_call_depth: int = 0,
         max_retries: int | None = None,
         ssl_verify: bool | None = None,
         http_client: HttpClientProtocol,
@@ -120,6 +133,7 @@ class Executor:
         # init template
         self.variable_pool = variable_pool
         self.node_data = node_data
+        self.workflow_call_depth = workflow_call_depth
         self._initialize()
 
     def _initialize(self):
@@ -272,8 +286,30 @@ class Executor:
                     self.data = form_data
 
     def _assembling_headers(self) -> dict[str, Any]:
+        """Assemble outbound headers for the request.
+
+        Reserved workflow call-depth headers are removed case-insensitively
+        before the canonical pair is re-added from ``workflow_call_depth``.
+        This keeps propagation deterministic even if a workflow author manually
+        configured colliding headers on the node.
+        """
         authorization = deepcopy(self.auth)
         headers = deepcopy(self.headers) or {}
+        reserved_header_names = {
+            WORKFLOW_CALL_DEPTH_HEADER.lower(),
+            WORKFLOW_CALL_DEPTH_SIGNATURE_HEADER.lower(),
+        }
+        headers = {k: v for k, v in headers.items() if k.lower() not in reserved_header_names}
+        parsed_url = urlparse(self.url)
+        next_call_depth = str(self.workflow_call_depth + 1)
+        headers[WORKFLOW_CALL_DEPTH_HEADER] = next_call_depth
+        headers[WORKFLOW_CALL_DEPTH_SIGNATURE_HEADER] = build_workflow_call_depth_signature(
+            secret_key=self._http_request_config.secret_key,
+            method=self.method,
+            path=parsed_url.path,
+            depth=next_call_depth,
+        )
+
         if self.auth.type == "api-key":
             if self.auth.config is None:
                 raise AuthorizationConfigError("self.authorization config is required")
@@ -388,6 +424,12 @@ class Executor:
         return self._validate_and_parse_response(response)
 
     def to_log(self):
+        """Render the request in raw HTTP form for node logs.
+
+        Internal workflow call-depth headers and authentication headers are
+        masked so operational logs remain useful without exposing replayable or
+        credential-bearing values.
+        """
         url_parts = urlparse(self.url)
         path = url_parts.path or "/"
 
@@ -410,6 +452,12 @@ class Executor:
             if body.type == "form-data":
                 headers["Content-Type"] = f"multipart/form-data; boundary={boundary}"
         for k, v in headers.items():
+            if k.lower() in {
+                WORKFLOW_CALL_DEPTH_HEADER.lower(),
+                WORKFLOW_CALL_DEPTH_SIGNATURE_HEADER.lower(),
+            }:
+                raw += f"{k}: [internal]\r\n"
+                continue
             if self.auth.type == "api-key":
                 authorization_header = "Authorization"
                 if self.auth.config and self.auth.config.header:

@@ -2,6 +2,8 @@ import pytest
 
 from configs import dify_config
 from core.helper.ssrf_proxy import ssrf_proxy
+from dify_graph.call_depth import build_workflow_call_depth_signature
+from dify_graph.constants import WORKFLOW_CALL_DEPTH_HEADER, WORKFLOW_CALL_DEPTH_SIGNATURE_HEADER
 from dify_graph.file.file_manager import file_manager
 from dify_graph.nodes.http_request import (
     BodyData,
@@ -24,7 +26,9 @@ HTTP_REQUEST_CONFIG = HttpRequestNodeConfig(
     max_text_size=dify_config.HTTP_REQUEST_NODE_MAX_TEXT_SIZE,
     ssl_verify=dify_config.HTTP_REQUEST_NODE_SSL_VERIFY,
     ssrf_default_max_retries=dify_config.SSRF_DEFAULT_MAX_RETRIES,
+    secret_key=dify_config.SECRET_KEY,
 )
+TEST_SECRET_KEY = "test-secret-key"
 
 
 def test_executor_with_json_body_and_number_variable():
@@ -661,3 +665,275 @@ def test_executor_with_json_body_preserves_numbers_and_strings():
 
     assert executor.json["count"] == 42
     assert executor.json["id"] == "abc-123"
+
+
+def test_executor_propagates_workflow_call_depth_header():
+    variable_pool = VariablePool(
+        system_variables=SystemVariable.default(),
+        user_inputs={},
+    )
+    node_data = HttpRequestNodeData(
+        title="Depth propagation",
+        method="get",
+        url="http://localhost:5001/triggers/webhook/test-webhook",
+        authorization=HttpRequestNodeAuthorization(type="no-auth"),
+        headers="X-Test: value",
+        params="",
+    )
+
+    executor = Executor(
+        node_data=node_data,
+        timeout=HttpRequestNodeTimeout(connect=10, read=30, write=30),
+        http_request_config=HttpRequestNodeConfig(
+            max_connect_timeout=HTTP_REQUEST_CONFIG.max_connect_timeout,
+            max_read_timeout=HTTP_REQUEST_CONFIG.max_read_timeout,
+            max_write_timeout=HTTP_REQUEST_CONFIG.max_write_timeout,
+            max_binary_size=HTTP_REQUEST_CONFIG.max_binary_size,
+            max_text_size=HTTP_REQUEST_CONFIG.max_text_size,
+            ssl_verify=HTTP_REQUEST_CONFIG.ssl_verify,
+            ssrf_default_max_retries=HTTP_REQUEST_CONFIG.ssrf_default_max_retries,
+            secret_key=TEST_SECRET_KEY,
+        ),
+        variable_pool=variable_pool,
+        workflow_call_depth=2,
+        http_client=ssrf_proxy,
+        file_manager=file_manager,
+    )
+
+    headers = executor._assembling_headers()
+
+    assert headers["X-Test"] == "value"
+    assert headers[WORKFLOW_CALL_DEPTH_HEADER] == "3"
+    assert headers[WORKFLOW_CALL_DEPTH_SIGNATURE_HEADER] == build_workflow_call_depth_signature(
+        secret_key=TEST_SECRET_KEY,
+        method="get",
+        path="/triggers/webhook/test-webhook",
+        depth="3",
+    )
+
+
+def test_executor_replaces_lowercase_reserved_headers_for_internal_webhook_target():
+    variable_pool = VariablePool(
+        system_variables=SystemVariable.default(),
+        user_inputs={},
+    )
+    node_data = HttpRequestNodeData(
+        title="Reserved header replacement",
+        method="get",
+        url="http://localhost:5001/triggers/webhook/test-webhook",
+        authorization=HttpRequestNodeAuthorization(type="no-auth"),
+        headers=(
+            "x-dify-workflow-call-depth: user-value\n"
+            "x-dify-workflow-call-depth-signature: user-signature\n"
+            "X-Test: value"
+        ),
+        params="",
+    )
+
+    executor = Executor(
+        node_data=node_data,
+        timeout=HttpRequestNodeTimeout(connect=10, read=30, write=30),
+        http_request_config=HttpRequestNodeConfig(
+            max_connect_timeout=HTTP_REQUEST_CONFIG.max_connect_timeout,
+            max_read_timeout=HTTP_REQUEST_CONFIG.max_read_timeout,
+            max_write_timeout=HTTP_REQUEST_CONFIG.max_write_timeout,
+            max_binary_size=HTTP_REQUEST_CONFIG.max_binary_size,
+            max_text_size=HTTP_REQUEST_CONFIG.max_text_size,
+            ssl_verify=HTTP_REQUEST_CONFIG.ssl_verify,
+            ssrf_default_max_retries=HTTP_REQUEST_CONFIG.ssrf_default_max_retries,
+            secret_key=TEST_SECRET_KEY,
+        ),
+        variable_pool=variable_pool,
+        workflow_call_depth=2,
+        http_client=ssrf_proxy,
+        file_manager=file_manager,
+    )
+
+    headers = executor._assembling_headers()
+
+    assert headers["X-Test"] == "value"
+    assert headers[WORKFLOW_CALL_DEPTH_HEADER] == "3"
+    assert headers[WORKFLOW_CALL_DEPTH_SIGNATURE_HEADER] == build_workflow_call_depth_signature(
+        secret_key=TEST_SECRET_KEY,
+        method="get",
+        path="/triggers/webhook/test-webhook",
+        depth="3",
+    )
+    assert "x-dify-workflow-call-depth" not in headers
+    assert "x-dify-workflow-call-depth-signature" not in headers
+
+
+def test_executor_propagates_workflow_call_depth_with_empty_secret():
+    variable_pool = VariablePool(
+        system_variables=SystemVariable.default(),
+        user_inputs={},
+    )
+    node_data = HttpRequestNodeData(
+        title="Depth propagation with empty secret",
+        method="get",
+        url="http://localhost:5001/triggers/webhook/test-webhook",
+        authorization=HttpRequestNodeAuthorization(type="no-auth"),
+        headers="X-Test: value",
+        params="",
+    )
+
+    executor = Executor(
+        node_data=node_data,
+        timeout=HttpRequestNodeTimeout(connect=10, read=30, write=30),
+        http_request_config=HttpRequestNodeConfig(
+            max_connect_timeout=HTTP_REQUEST_CONFIG.max_connect_timeout,
+            max_read_timeout=HTTP_REQUEST_CONFIG.max_read_timeout,
+            max_write_timeout=HTTP_REQUEST_CONFIG.max_write_timeout,
+            max_binary_size=HTTP_REQUEST_CONFIG.max_binary_size,
+            max_text_size=HTTP_REQUEST_CONFIG.max_text_size,
+            ssl_verify=HTTP_REQUEST_CONFIG.ssl_verify,
+            ssrf_default_max_retries=HTTP_REQUEST_CONFIG.ssrf_default_max_retries,
+            secret_key="",
+        ),
+        variable_pool=variable_pool,
+        workflow_call_depth=2,
+        http_client=ssrf_proxy,
+        file_manager=file_manager,
+    )
+
+    headers = executor._assembling_headers()
+
+    assert headers[WORKFLOW_CALL_DEPTH_HEADER] == "3"
+    assert headers[WORKFLOW_CALL_DEPTH_SIGNATURE_HEADER] == build_workflow_call_depth_signature(
+        secret_key="",
+        method="get",
+        path="/triggers/webhook/test-webhook",
+        depth="3",
+    )
+
+
+def test_executor_log_masks_internal_depth_headers():
+    variable_pool = VariablePool(
+        system_variables=SystemVariable.default(),
+        user_inputs={},
+    )
+    node_data = HttpRequestNodeData(
+        title="Depth propagation",
+        method="get",
+        url="http://localhost:5001/triggers/webhook/test-webhook",
+        authorization=HttpRequestNodeAuthorization(type="no-auth"),
+        headers="X-Test: value",
+        params="",
+    )
+
+    executor = Executor(
+        node_data=node_data,
+        timeout=HttpRequestNodeTimeout(connect=10, read=30, write=30),
+        http_request_config=HttpRequestNodeConfig(
+            max_connect_timeout=HTTP_REQUEST_CONFIG.max_connect_timeout,
+            max_read_timeout=HTTP_REQUEST_CONFIG.max_read_timeout,
+            max_write_timeout=HTTP_REQUEST_CONFIG.max_write_timeout,
+            max_binary_size=HTTP_REQUEST_CONFIG.max_binary_size,
+            max_text_size=HTTP_REQUEST_CONFIG.max_text_size,
+            ssl_verify=HTTP_REQUEST_CONFIG.ssl_verify,
+            ssrf_default_max_retries=HTTP_REQUEST_CONFIG.ssrf_default_max_retries,
+            secret_key=TEST_SECRET_KEY,
+        ),
+        variable_pool=variable_pool,
+        workflow_call_depth=2,
+        http_client=ssrf_proxy,
+        file_manager=file_manager,
+    )
+
+    raw_log = executor.to_log()
+
+    assert f"{WORKFLOW_CALL_DEPTH_HEADER}: [internal]" in raw_log
+    assert f"{WORKFLOW_CALL_DEPTH_SIGNATURE_HEADER}: [internal]" in raw_log
+    assert "X-Dify-Workflow-Call-Depth: 3" not in raw_log
+
+
+def test_executor_log_masks_reserved_headers_regardless_of_case():
+    variable_pool = VariablePool(
+        system_variables=SystemVariable.default(),
+        user_inputs={},
+    )
+    node_data = HttpRequestNodeData(
+        title="Reserved header replacement",
+        method="get",
+        url="http://localhost:5001/triggers/webhook/test-webhook",
+        authorization=HttpRequestNodeAuthorization(type="no-auth"),
+        headers=(
+            "x-dify-workflow-call-depth: user-value\n"
+            "x-dify-workflow-call-depth-signature: user-signature\n"
+            "X-Test: value"
+        ),
+        params="",
+    )
+
+    executor = Executor(
+        node_data=node_data,
+        timeout=HttpRequestNodeTimeout(connect=10, read=30, write=30),
+        http_request_config=HttpRequestNodeConfig(
+            max_connect_timeout=HTTP_REQUEST_CONFIG.max_connect_timeout,
+            max_read_timeout=HTTP_REQUEST_CONFIG.max_read_timeout,
+            max_write_timeout=HTTP_REQUEST_CONFIG.max_write_timeout,
+            max_binary_size=HTTP_REQUEST_CONFIG.max_binary_size,
+            max_text_size=HTTP_REQUEST_CONFIG.max_text_size,
+            ssl_verify=HTTP_REQUEST_CONFIG.ssl_verify,
+            ssrf_default_max_retries=HTTP_REQUEST_CONFIG.ssrf_default_max_retries,
+            secret_key=TEST_SECRET_KEY,
+        ),
+        variable_pool=variable_pool,
+        workflow_call_depth=2,
+        http_client=ssrf_proxy,
+        file_manager=file_manager,
+    )
+
+    raw_log = executor.to_log()
+
+    assert "x-dify-workflow-call-depth: [internal]" not in raw_log
+    assert "x-dify-workflow-call-depth-signature: [internal]" not in raw_log
+    assert f"{WORKFLOW_CALL_DEPTH_HEADER}: [internal]" in raw_log
+    assert f"{WORKFLOW_CALL_DEPTH_SIGNATURE_HEADER}: [internal]" in raw_log
+    assert "user-signature" not in raw_log
+    assert "user-value" not in raw_log
+
+
+def test_executor_propagates_workflow_call_depth_to_arbitrary_target_with_secret():
+    variable_pool = VariablePool(
+        system_variables=SystemVariable.default(),
+        user_inputs={},
+    )
+    node_data = HttpRequestNodeData(
+        title="External target",
+        method="get",
+        url="https://api.example.com/data",
+        authorization=HttpRequestNodeAuthorization(type="no-auth"),
+        headers="X-Test: value",
+        params="",
+    )
+
+    executor = Executor(
+        node_data=node_data,
+        timeout=HttpRequestNodeTimeout(connect=10, read=30, write=30),
+        http_request_config=HttpRequestNodeConfig(
+            max_connect_timeout=HTTP_REQUEST_CONFIG.max_connect_timeout,
+            max_read_timeout=HTTP_REQUEST_CONFIG.max_read_timeout,
+            max_write_timeout=HTTP_REQUEST_CONFIG.max_write_timeout,
+            max_binary_size=HTTP_REQUEST_CONFIG.max_binary_size,
+            max_text_size=HTTP_REQUEST_CONFIG.max_text_size,
+            ssl_verify=HTTP_REQUEST_CONFIG.ssl_verify,
+            ssrf_default_max_retries=HTTP_REQUEST_CONFIG.ssrf_default_max_retries,
+            secret_key=TEST_SECRET_KEY,
+        ),
+        variable_pool=variable_pool,
+        workflow_call_depth=2,
+        http_client=ssrf_proxy,
+        file_manager=file_manager,
+    )
+
+    headers = executor._assembling_headers()
+
+    assert headers["X-Test"] == "value"
+    assert headers[WORKFLOW_CALL_DEPTH_HEADER] == "3"
+    assert headers[WORKFLOW_CALL_DEPTH_SIGNATURE_HEADER] == build_workflow_call_depth_signature(
+        secret_key=TEST_SECRET_KEY,
+        method="get",
+        path="/data",
+        depth="3",
+    )
