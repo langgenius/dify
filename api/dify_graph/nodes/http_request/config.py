@@ -12,6 +12,7 @@ def build_http_request_config(
     max_text_size: int = 1 * 1024 * 1024,
     ssl_verify: bool = True,
     ssrf_default_max_retries: int = 3,
+    secret_key: str = "",
 ) -> HttpRequestNodeConfig:
     return HttpRequestNodeConfig(
         max_connect_timeout=max_connect_timeout,
@@ -21,6 +22,7 @@ def build_http_request_config(
         max_text_size=max_text_size,
         ssl_verify=ssl_verify,
         ssrf_default_max_retries=ssrf_default_max_retries,
+        secret_key=secret_key,
     )
 
 

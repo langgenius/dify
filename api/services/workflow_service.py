@@ -638,6 +638,7 @@ class WorkflowService:
                         max_text_size=dify_config.HTTP_REQUEST_NODE_MAX_TEXT_SIZE,
                         ssl_verify=dify_config.HTTP_REQUEST_NODE_SSL_VERIFY,
                         ssrf_default_max_retries=dify_config.SSRF_DEFAULT_MAX_RETRIES,
+                        secret_key=dify_config.SECRET_KEY,
                     )
                 }
             default_config = node_class.get_default_config(filters=filters)
@@ -673,6 +674,7 @@ class WorkflowService:
                 max_text_size=dify_config.HTTP_REQUEST_NODE_MAX_TEXT_SIZE,
                 ssl_verify=dify_config.HTTP_REQUEST_NODE_SSL_VERIFY,
                 ssrf_default_max_retries=dify_config.SSRF_DEFAULT_MAX_RETRIES,
+                secret_key=dify_config.SECRET_KEY,
             )
         default_config = node_class.get_default_config(filters=resolved_filters or None)
         if not default_config:

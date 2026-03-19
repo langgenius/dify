@@ -84,6 +84,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                 user_id=self.application_generate_entity.user_id,
                 user_from=user_from,
                 invoke_from=invoke_from,
+                call_depth=self.application_generate_entity.call_depth,
                 root_node_id=self._root_node_id,
             )
         elif self.application_generate_entity.single_iteration_run or self.application_generate_entity.single_loop_run:
@@ -91,6 +92,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                 workflow=self._workflow,
                 single_iteration_run=self.application_generate_entity.single_iteration_run,
                 single_loop_run=self.application_generate_entity.single_loop_run,
+                call_depth=self.application_generate_entity.call_depth,
             )
         else:
             inputs = self.application_generate_entity.inputs
@@ -120,6 +122,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                 user_id=self.application_generate_entity.user_id,
                 user_from=user_from,
                 invoke_from=invoke_from,
+                call_depth=self.application_generate_entity.call_depth,
                 root_node_id=self._root_node_id,
             )
 

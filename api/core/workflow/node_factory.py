@@ -282,6 +282,7 @@ class DifyNodeFactory(NodeFactory):
             max_text_size=dify_config.HTTP_REQUEST_NODE_MAX_TEXT_SIZE,
             ssl_verify=dify_config.HTTP_REQUEST_NODE_SSL_VERIFY,
             ssrf_default_max_retries=dify_config.SSRF_DEFAULT_MAX_RETRIES,
+            secret_key=dify_config.SECRET_KEY,
         )
 
         self._llm_credentials_provider, self._llm_model_factory = build_dify_model_access(self._dify_context.tenant_id)

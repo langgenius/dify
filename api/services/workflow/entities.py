@@ -26,7 +26,14 @@ class TriggerMetadata(BaseModel):
 
 
 class TriggerData(BaseModel):
-    """Base trigger data model for async workflow execution"""
+    """Base trigger data model for async workflow execution.
+
+    `call_depth` tracks only the current workflow-to-workflow HTTP recursion
+    depth. It starts at 0 for external triggers and increments once per nested
+    webhook-triggered workflow call. For webhook triggers, the value is derived
+    from the reserved depth headers after `WebhookService.extract_workflow_call_depth`
+    validates the signature against the inbound request context.
+    """
 
     app_id: str
     tenant_id: str
@@ -34,6 +41,7 @@ class TriggerData(BaseModel):
     root_node_id: str
     inputs: Mapping[str, Any]
     files: Sequence[Mapping[str, Any]] = Field(default_factory=list)
+    call_depth: int = 0
     trigger_type: AppTriggerType
     trigger_from: WorkflowRunTriggeredFrom
     trigger_metadata: TriggerMetadata | None = None

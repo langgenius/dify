@@ -124,12 +124,42 @@ class TestWorkflowBasedAppRunner:
             node_id="node-1",
             user_inputs={},
             graph_runtime_state=graph_runtime_state,
+            call_depth=3,
             node_type_filter_key="iteration_id",
             node_type_label="iteration",
         )
 
         assert graph is not None
         assert variable_pool is graph_runtime_state.variable_pool
+
+    def test_init_graph_passes_call_depth_into_node_factory(self, monkeypatch):
+        runner = WorkflowBasedAppRunner(queue_manager=SimpleNamespace(), app_id="app")
+        runtime_state = GraphRuntimeState(
+            variable_pool=VariablePool(system_variables=SystemVariable.default()),
+            start_at=0.0,
+        )
+        captured: dict[str, int] = {}
+
+        class _FakeNodeFactory:
+            def __init__(self, *, graph_init_params, graph_runtime_state):
+                captured["call_depth"] = graph_init_params.call_depth
+
+        monkeypatch.setattr("core.app.apps.workflow_app_runner.DifyNodeFactory", _FakeNodeFactory)
+        monkeypatch.setattr(
+            "core.app.apps.workflow_app_runner.Graph.init",
+            lambda **kwargs: SimpleNamespace(),
+        )
+
+        graph = runner._init_graph(
+            graph_config={"nodes": [{"id": "start", "data": {"type": "start", "version": "1"}}], "edges": []},
+            graph_runtime_state=runtime_state,
+            user_from=UserFrom.ACCOUNT,
+            invoke_from=InvokeFrom.DEBUGGER,
+            call_depth=4,
+        )
+
+        assert graph is not None
+        assert captured["call_depth"] == 4
 
     def test_handle_graph_run_events_and_pause_notifications(self, monkeypatch):
         published: list[object] = []

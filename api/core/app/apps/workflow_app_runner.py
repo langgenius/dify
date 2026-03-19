@@ -102,6 +102,7 @@ class WorkflowBasedAppRunner:
         graph_runtime_state: GraphRuntimeState,
         user_from: UserFrom,
         invoke_from: InvokeFrom,
+        call_depth: int = 0,
         workflow_id: str = "",
         tenant_id: str = "",
         user_id: str = "",
@@ -130,7 +131,7 @@ class WorkflowBasedAppRunner:
                 user_from=user_from,
                 invoke_from=invoke_from,
             ),
-            call_depth=0,
+            call_depth=call_depth,
         )
 
         # Use the provided graph_runtime_state for consistent state management
@@ -156,6 +157,7 @@ class WorkflowBasedAppRunner:
         workflow: Workflow,
         single_iteration_run: Any | None = None,
         single_loop_run: Any | None = None,
+        call_depth: int = 0,
     ) -> tuple[Graph, VariablePool, GraphRuntimeState]:
         """
         Prepare graph, variable pool, and runtime state for single node execution
@@ -189,6 +191,7 @@ class WorkflowBasedAppRunner:
                 node_id=single_iteration_run.node_id,
                 user_inputs=dict(single_iteration_run.inputs),
                 graph_runtime_state=graph_runtime_state,
+                call_depth=call_depth,
                 node_type_filter_key="iteration_id",
                 node_type_label="iteration",
             )
@@ -198,6 +201,7 @@ class WorkflowBasedAppRunner:
                 node_id=single_loop_run.node_id,
                 user_inputs=dict(single_loop_run.inputs),
                 graph_runtime_state=graph_runtime_state,
+                call_depth=call_depth,
                 node_type_filter_key="loop_id",
                 node_type_label="loop",
             )
@@ -214,6 +218,7 @@ class WorkflowBasedAppRunner:
         node_id: str,
         user_inputs: dict[str, Any],
         graph_runtime_state: GraphRuntimeState,
+        call_depth: int,
         node_type_filter_key: str,  # 'iteration_id' or 'loop_id'
         node_type_label: str = "node",  # 'iteration' or 'loop' for error messages
     ) -> tuple[Graph, VariablePool]:
@@ -283,7 +288,7 @@ class WorkflowBasedAppRunner:
                 user_from=UserFrom.ACCOUNT,
                 invoke_from=InvokeFrom.DEBUGGER,
             ),
-            call_depth=0,
+            call_depth=call_depth,
         )
 
         node_factory = DifyNodeFactory(

@@ -164,7 +164,7 @@ def _execute_workflow_common(
                 args=args,
                 invoke_from=InvokeFrom.SERVICE_API,
                 streaming=False,
-                call_depth=0,
+                call_depth=trigger_data.call_depth,
                 triggered_from=trigger_data.trigger_from,
                 root_node_id=trigger_data.root_node_id,
                 graph_engine_layers=[
