@@ -20,7 +20,7 @@ from pydantic import BaseModel, model_validator
 from weaviate.classes.data import DataObject
 from weaviate.classes.init import Auth
 from weaviate.classes.query import Filter, MetadataQuery
-from weaviate.exceptions import UnexpectedStatusCodeError
+from weaviate.exceptions import UnexpectedStatusCodeError, WeaviateQueryError
 
 from configs import dify_config
 from core.rag.datasource.vdb.field import Field
@@ -237,10 +237,11 @@ class WeaviateVector(BaseVector):
                 raise
 
     def _ensure_properties(self) -> None:
-        """
-        Ensures all required properties exist in the collection schema.
+        """Ensures all required properties exist in the collection schema.
 
-        Adds missing properties if the collection exists but lacks them.
+        Adds missing properties (document_id, doc_id, doc_type, chunk_index) if the
+        collection exists but lacks them. This handles backward compatibility for
+        collections created before these properties were introduced.
         """
         if not self._client.collections.exists(self._collection_name):
             return
@@ -265,7 +266,7 @@ class WeaviateVector(BaseVector):
             except Exception as e:
                 logger.warning("Could not add property %s: %s", prop.name, e)
 
-    def _get_uuids(self, documents: list[Document]) -> list[str]:
+    def _get_uuids(self, texts: list[Document]) -> list[str]:
         """
         Generates deterministic UUIDs for documents based on their content.
 
@@ -274,7 +275,7 @@ class WeaviateVector(BaseVector):
         URL_NAMESPACE = _uuid.UUID("6ba7b811-9dad-11d1-80b4-00c04fd430c8")
 
         uuids = []
-        for doc in documents:
+        for doc in texts:
             uuid_val = _uuid.uuid5(URL_NAMESPACE, doc.page_content)
             uuids.append(str(uuid_val))
 
@@ -385,6 +386,22 @@ class WeaviateVector(BaseVector):
         if not self._client.collections.exists(self._collection_name):
             return []
 
+        try:
+            return self._do_search_by_vector(query_vector, **kwargs)
+        except WeaviateQueryError as exc:
+            # NOTE: This string match is coupled to the Weaviate error message format.
+            # If the weaviate-python client changes the wording, this check may need updating.
+            if "no such prop" not in str(exc):
+                raise
+            logger.info(
+                "Collection %s is missing a required property, migrating schema and retrying query.",
+                self._collection_name,
+            )
+            self._ensure_properties()
+            return self._do_search_by_vector(query_vector, **kwargs)
+
+    def _do_search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
+        """Internal helper that executes the actual near-vector query."""
         col = self._client.collections.use(self._collection_name)
         props = list({*self._attributes, self._DOCUMENT_ID_PROPERTY, Field.TEXT_KEY.value})
 
@@ -432,6 +449,22 @@ class WeaviateVector(BaseVector):
         if not self._client.collections.exists(self._collection_name):
             return []
 
+        try:
+            return self._do_search_by_full_text(query, **kwargs)
+        except WeaviateQueryError as exc:
+            # NOTE: This string match is coupled to the Weaviate error message format.
+            # If the weaviate-python client changes the wording, this check may need updating.
+            if "no such prop" not in str(exc):
+                raise
+            logger.info(
+                "Collection %s is missing a required property, migrating schema and retrying query.",
+                self._collection_name,
+            )
+            self._ensure_properties()
+            return self._do_search_by_full_text(query, **kwargs)
+
+    def _do_search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
+        """Internal helper that executes the actual BM25 query."""
         col = self._client.collections.use(self._collection_name)
         props = list({*self._attributes, Field.TEXT_KEY.value})
 

@@ -11,6 +11,9 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+import pytest
+from weaviate.exceptions import WeaviateQueryError
+
 from core.rag.datasource.vdb.weaviate import weaviate_vector as weaviate_vector_module
 from core.rag.datasource.vdb.weaviate.weaviate_vector import WeaviateConfig, WeaviateVector
 from core.rag.models.document import Document
@@ -227,6 +230,106 @@ class TestWeaviateVector(unittest.TestCase):
         assert docs[0].metadata.get("doc_type") == "image"
 
     @patch("core.rag.datasource.vdb.weaviate.weaviate_vector.weaviate")
+    def test_search_by_vector_does_not_call_ensure_properties_on_success(self, mock_weaviate_module):
+        """Verify that a successful query does NOT trigger schema migration."""
+        mock_client = MagicMock()
+        mock_client.is_ready.return_value = True
+        mock_weaviate_module.connect_to_custom.return_value = mock_client
+
+        mock_client.collections.exists.return_value = True
+        mock_col = MagicMock()
+        mock_client.collections.use.return_value = mock_col
+
+        mock_obj = MagicMock()
+        mock_obj.properties = {"text": "hello", "doc_id": "id_1"}
+        mock_obj.metadata.distance = 0.2
+        mock_result = MagicMock()
+        mock_result.objects = [mock_obj]
+        mock_col.query.near_vector.return_value = mock_result
+
+        wv = WeaviateVector(
+            collection_name=self.collection_name,
+            config=self.config,
+            attributes=self.attributes,
+        )
+        wv._ensure_properties = MagicMock()
+        wv.search_by_vector(query_vector=[0.1] * 128, top_k=1)
+
+        wv._ensure_properties.assert_not_called()
+
+    @patch("core.rag.datasource.vdb.weaviate.weaviate_vector.weaviate")
+    def test_search_by_vector_migrates_schema_on_missing_prop_error(self, mock_weaviate_module):
+        """search_by_vector on a pre-upgrade collection should catch, migrate, and retry."""
+        mock_client = MagicMock()
+        mock_client.is_ready.return_value = True
+        mock_weaviate_module.connect_to_custom.return_value = mock_client
+
+        mock_client.collections.exists.return_value = True
+        mock_col = MagicMock()
+        mock_client.collections.use.return_value = mock_col
+
+        mock_obj = MagicMock()
+        mock_obj.properties = {"text": "hello world", "doc_id": "id_1"}
+        mock_obj.metadata.distance = 0.2
+        mock_result = MagicMock()
+        mock_result.objects = [mock_obj]
+
+        mock_col.query.near_vector.side_effect = [
+            WeaviateQueryError(
+                "no such prop with name 'doc_type' found in class 'Test_Collection_Node' in the schema",
+                "GRPC",
+            ),
+            mock_result,
+        ]
+
+        existing_props = [
+            SimpleNamespace(name="text"),
+            SimpleNamespace(name="document_id"),
+            SimpleNamespace(name="doc_id"),
+            SimpleNamespace(name="chunk_index"),
+        ]
+        mock_cfg = MagicMock()
+        mock_cfg.properties = existing_props
+        mock_col.config.get.return_value = mock_cfg
+
+        wv = WeaviateVector(
+            collection_name=self.collection_name,
+            config=self.config,
+            attributes=self.attributes,
+        )
+        docs = wv.search_by_vector(query_vector=[0.1] * 128, top_k=1)
+
+        add_calls = mock_col.config.add_property.call_args_list
+        added_names = [call.args[0].name for call in add_calls]
+        assert "doc_type" in added_names
+        assert len(docs) == 1
+        assert mock_col.query.near_vector.call_count == 2
+
+    @patch("core.rag.datasource.vdb.weaviate.weaviate_vector.weaviate")
+    def test_search_by_vector_reraises_unrelated_query_error(self, mock_weaviate_module):
+        """Verify that WeaviateQueryError not related to missing props is re-raised."""
+        mock_client = MagicMock()
+        mock_client.is_ready.return_value = True
+        mock_weaviate_module.connect_to_custom.return_value = mock_client
+
+        mock_client.collections.exists.return_value = True
+        mock_col = MagicMock()
+        mock_client.collections.use.return_value = mock_col
+
+        mock_col.query.near_vector.side_effect = WeaviateQueryError(
+            "some other gRPC error", "GRPC"
+        )
+
+        wv = WeaviateVector(
+            collection_name=self.collection_name,
+            config=self.config,
+            attributes=self.attributes,
+        )
+
+        with pytest.raises(WeaviateQueryError):
+            wv.search_by_vector(query_vector=[0.1] * 128, top_k=1)
+
+    @patch("core.rag.datasource.vdb.weaviate.weaviate_vector.weaviate")
     def test_search_by_full_text_returns_doc_type_in_metadata(self, mock_weaviate_module):
         """Test that search_by_full_text also returns doc_type in document metadata."""
         mock_client = MagicMock()
@@ -267,6 +370,106 @@ class TestWeaviateVector(unittest.TestCase):
         # Verify doc_type is in result metadata
         assert len(docs) == 1
         assert docs[0].metadata.get("doc_type") == "image"
+
+    @patch("core.rag.datasource.vdb.weaviate.weaviate_vector.weaviate")
+    def test_search_by_full_text_does_not_call_ensure_properties_on_success(self, mock_weaviate_module):
+        """Verify that a successful BM25 query does NOT trigger schema migration."""
+        mock_client = MagicMock()
+        mock_client.is_ready.return_value = True
+        mock_weaviate_module.connect_to_custom.return_value = mock_client
+
+        mock_client.collections.exists.return_value = True
+        mock_col = MagicMock()
+        mock_client.collections.use.return_value = mock_col
+
+        mock_obj = MagicMock()
+        mock_obj.properties = {"text": "hello", "doc_id": "id_1"}
+        mock_obj.vector = {"default": [0.1] * 128}
+        mock_result = MagicMock()
+        mock_result.objects = [mock_obj]
+        mock_col.query.bm25.return_value = mock_result
+
+        wv = WeaviateVector(
+            collection_name=self.collection_name,
+            config=self.config,
+            attributes=self.attributes,
+        )
+        wv._ensure_properties = MagicMock()
+        wv.search_by_full_text(query="hello", top_k=1)
+
+        wv._ensure_properties.assert_not_called()
+
+    @patch("core.rag.datasource.vdb.weaviate.weaviate_vector.weaviate")
+    def test_search_by_full_text_migrates_schema_on_missing_prop_error(self, mock_weaviate_module):
+        """search_by_full_text on a pre-upgrade collection should catch, migrate, and retry."""
+        mock_client = MagicMock()
+        mock_client.is_ready.return_value = True
+        mock_weaviate_module.connect_to_custom.return_value = mock_client
+
+        mock_client.collections.exists.return_value = True
+        mock_col = MagicMock()
+        mock_client.collections.use.return_value = mock_col
+
+        mock_obj = MagicMock()
+        mock_obj.properties = {"text": "hello world", "doc_id": "id_1"}
+        mock_obj.vector = {"default": [0.1] * 128}
+        mock_result = MagicMock()
+        mock_result.objects = [mock_obj]
+
+        mock_col.query.bm25.side_effect = [
+            WeaviateQueryError(
+                "no such prop with name 'doc_type' found in class 'Test_Collection_Node' in the schema",
+                "GRPC",
+            ),
+            mock_result,
+        ]
+
+        existing_props = [
+            SimpleNamespace(name="text"),
+            SimpleNamespace(name="document_id"),
+            SimpleNamespace(name="doc_id"),
+            SimpleNamespace(name="chunk_index"),
+        ]
+        mock_cfg = MagicMock()
+        mock_cfg.properties = existing_props
+        mock_col.config.get.return_value = mock_cfg
+
+        wv = WeaviateVector(
+            collection_name=self.collection_name,
+            config=self.config,
+            attributes=self.attributes,
+        )
+        docs = wv.search_by_full_text(query="hello", top_k=1)
+
+        add_calls = mock_col.config.add_property.call_args_list
+        added_names = [call.args[0].name for call in add_calls]
+        assert "doc_type" in added_names
+        assert len(docs) == 1
+        assert mock_col.query.bm25.call_count == 2
+
+    @patch("core.rag.datasource.vdb.weaviate.weaviate_vector.weaviate")
+    def test_search_by_full_text_reraises_unrelated_query_error(self, mock_weaviate_module):
+        """Verify that WeaviateQueryError not related to missing props is re-raised."""
+        mock_client = MagicMock()
+        mock_client.is_ready.return_value = True
+        mock_weaviate_module.connect_to_custom.return_value = mock_client
+
+        mock_client.collections.exists.return_value = True
+        mock_col = MagicMock()
+        mock_client.collections.use.return_value = mock_col
+
+        mock_col.query.bm25.side_effect = WeaviateQueryError(
+            "some other gRPC error", "GRPC"
+        )
+
+        wv = WeaviateVector(
+            collection_name=self.collection_name,
+            config=self.config,
+            attributes=self.attributes,
+        )
+
+        with pytest.raises(WeaviateQueryError):
+            wv.search_by_full_text(query="hello", top_k=1)
 
     @patch("core.rag.datasource.vdb.weaviate.weaviate_vector.weaviate")
     def test_add_texts_stores_doc_type_in_properties(self, mock_weaviate_module):
