@@ -352,6 +352,10 @@ beforeEach(() => {
   vi.spyOn(console, 'error').mockImplementation(() => {})
 })
 
+afterEach(() => {
+  vi.restoreAllMocks()
+})
+
 // Helper to find the name input in PublishAsKnowledgePipelineModal
 function getNameInput() {
   return screen.getByPlaceholderText('pipeline.common.publishAsPipeline.namePlaceholder')
