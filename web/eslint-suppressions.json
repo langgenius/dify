@@ -5002,6 +5002,11 @@
       "count": 1
     }
   },
+  "app/components/plugins/marketplace/hooks.ts": {
+    "@tanstack/query/exhaustive-deps": {
+      "count": 1
+    }
+  },
   "app/components/plugins/marketplace/list/card-wrapper.tsx": {
     "tailwindcss/no-unnecessary-whitespace": {
       "count": 1
@@ -9618,6 +9623,11 @@
       "count": 6
     }
   },
+  "service/access-control.ts": {
+    "@tanstack/query/exhaustive-deps": {
+      "count": 1
+    }
+  },
   "service/annotation.ts": {
     "ts/no-explicit-any": {
       "count": 4
@@ -9659,6 +9669,11 @@
       "count": 2
     }
   },
+  "service/knowledge/use-dataset.ts": {
+    "@tanstack/query/exhaustive-deps": {
+      "count": 1
+    }
+  },
   "service/share.ts": {
     "ts/no-explicit-any": {
       "count": 3
@@ -9683,6 +9698,9 @@
     }
   },
   "service/use-pipeline.ts": {
+    "@tanstack/query/exhaustive-deps": {
+      "count": 2
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -9709,6 +9727,9 @@
     }
   },
   "service/use-workflow.ts": {
+    "@tanstack/query/exhaustive-deps": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 3
     }
