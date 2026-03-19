@@ -1,7 +1,6 @@
 'use client'
-import { useMemo } from 'react'
 import type { ReactNode } from 'react'
-import { createContext, useContext } from 'react'
+import { createContext, useContext, useMemo } from 'react'
 
 type MCPToolAvailabilityContextValue = {
   versionSupported?: boolean

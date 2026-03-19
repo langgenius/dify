@@ -1,14 +1,13 @@
 'use client'
 import type { FC } from 'react'
-import { useCallback, useMemo } from 'react'
 import type {
   EmbeddedChatbotContextValue,
 } from '@/app/components/base/chat/embedded-chatbot/context'
 import type { TryAppInfo } from '@/service/try-app'
 import { RiResetLeftLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
+import { useCallback, useEffect, useMemo } from 'react'
 import * as React from 'react'
-import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Alert from '@/app/components/base/alert'
@@ -67,8 +66,7 @@ const TryApp: FC<Props> = ({
   }), [chatData, handleNewConversation, isMobile, themeBuilder])
 
   return (
-    <EmbeddedChatbotContext.Provider value={contextValue as EmbeddedChatbotContextValue}
-    >
+    <EmbeddedChatbotContext.Provider value={contextValue as EmbeddedChatbotContextValue}>
       <div className={cn('flex h-full flex-col rounded-2xl bg-background-section-burn', className)}>
         <div className="flex shrink-0 justify-between p-3">
           <div className="flex grow items-center space-x-2">
@@ -79,7 +77,7 @@ const TryApp: FC<Props> = ({
               background={appDetail.site.icon_background}
               imageUrl={appDetail.site.icon_url}
             />
-            <div className="system-md-semibold grow truncate text-text-primary" title={appDetail.name}>{appDetail.name}</div>
+            <div className="grow truncate text-text-primary system-md-semibold" title={appDetail.name}>{appDetail.name}</div>
           </div>
           <div className="flex items-center gap-1">
             {currentConversationId && (

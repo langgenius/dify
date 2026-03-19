@@ -276,8 +276,7 @@ export const ModalContextProvider = ({
   ])
 
   return (
-    <ModalContext.Provider value={contextValue}
-    >
+    <ModalContext.Provider value={contextValue}>
       <>
         {children}
         {

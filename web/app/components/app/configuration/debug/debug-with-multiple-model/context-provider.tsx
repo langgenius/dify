@@ -1,8 +1,8 @@
 'use client'
 
-import { useMemo } from 'react'
 import type { ReactNode } from 'react'
 import type { DebugWithMultipleModelContextType } from './context'
+import { useMemo } from 'react'
 import { DebugWithMultipleModelContext } from './context'
 
 type DebugWithMultipleModelContextProviderProps = {
@@ -28,8 +28,7 @@ export const DebugWithMultipleModelContextProvider = ({
   ])
 
   return (
-    <DebugWithMultipleModelContext.Provider value={contextValue}
-    >
+    <DebugWithMultipleModelContext.Provider value={contextValue}>
       {children}
     </DebugWithMultipleModelContext.Provider>
   )

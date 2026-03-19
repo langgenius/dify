@@ -118,8 +118,7 @@ export const ToastProvider = ({
   }), [notify, close])
 
   return (
-    <ToastContext.Provider value={contextValue}
-    >
+    <ToastContext.Provider value={contextValue}>
       {mounted && <Toast {...params} />}
       {children}
     </ToastContext.Provider>

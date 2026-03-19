@@ -82,7 +82,7 @@ const Chatbot = () => {
               'flex shrink-0 items-center gap-1.5 px-2',
             )}
             >
-              <div className="system-2xs-medium-uppercase text-text-tertiary">{t('chat.poweredBy', { ns: 'share' })}</div>
+              <div className="text-text-tertiary system-2xs-medium-uppercase">{t('chat.poweredBy', { ns: 'share' })}</div>
               {
                 systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
                   ? <img src={systemFeatures.branding.workspace_logo} alt="logo" className="block h-5 w-auto" />
@@ -209,8 +209,7 @@ const EmbeddedChatbotWrapper = () => {
   ])
 
   return (
-    <EmbeddedChatbotContext.Provider value={contextValue}
-    >
+    <EmbeddedChatbotContext.Provider value={contextValue}>
       <Chatbot />
     </EmbeddedChatbotContext.Provider>
   )

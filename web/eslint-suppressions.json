@@ -1764,11 +1764,6 @@
       "count": 3
     }
   },
-  "app/components/base/chat/embedded-chatbot/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
   "app/components/base/chat/embedded-chatbot/inputs-form/content.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -4315,9 +4310,6 @@
   },
   "app/components/explore/try-app/app/chat.tsx": {
     "no-restricted-imports": {
-      "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
   },

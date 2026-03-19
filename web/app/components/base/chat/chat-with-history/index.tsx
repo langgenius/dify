@@ -233,8 +233,7 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
   ])
 
   return (
-    <ChatWithHistoryContext.Provider value={contextValue}
-    >
+    <ChatWithHistoryContext.Provider value={contextValue}>
       <ChatWithHistory className={className} />
     </ChatWithHistoryContext.Provider>
   )

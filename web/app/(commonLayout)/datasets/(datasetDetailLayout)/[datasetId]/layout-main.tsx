@@ -131,8 +131,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         hideHeader && isPipelineCanvas ? '' : 'rounded-t-2xl',
       )}
     >
-      <DatasetDetailContext.Provider value={datasetDetailContextValue}
-      >
+      <DatasetDetailContext.Provider value={datasetDetailContextValue}>
         {!hideSideBar && (
           <AppSideBar
             navigation={navigation}

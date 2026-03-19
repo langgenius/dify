@@ -1,8 +1,8 @@
 'use client'
 
-import { useMemo } from 'react'
 import type { ReactNode } from 'react'
 import type { ChatContextValue } from './context'
+import { useMemo } from 'react'
 import { ChatContext } from './context'
 
 type ChatContextProviderProps = {
@@ -62,8 +62,7 @@ export const ChatContextProvider = ({
   ])
 
   return (
-    <ChatContext.Provider value={contextValue}
-    >
+    <ChatContext.Provider value={contextValue}>
       {children}
     </ChatContext.Provider>
   )

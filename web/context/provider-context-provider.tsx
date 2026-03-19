@@ -197,8 +197,7 @@ export const ProviderContextProvider = ({
   ])
 
   return (
-    <ProviderContext.Provider value={contextValue}
-    >
+    <ProviderContext.Provider value={contextValue}>
       {children}
     </ProviderContext.Provider>
   )

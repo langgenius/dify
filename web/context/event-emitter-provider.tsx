@@ -1,9 +1,9 @@
 'use client'
 
-import { useMemo } from 'react'
 import type { ReactNode } from 'react'
 import type { EventEmitterValue } from './event-emitter'
 import { useEventEmitter } from 'ahooks'
+import { useMemo } from 'react'
 import { EventEmitterContext } from './event-emitter'
 
 type EventEmitterContextProviderProps = {

@@ -1,7 +1,7 @@
 'use client'
 
-import { useMemo } from 'react'
 import type { ReactNode } from 'react'
+import { useMemo } from 'react'
 import { useWorkspaces } from '@/service/use-common'
 import { WorkspacesContext } from './workspace-context'
 
@@ -19,8 +19,7 @@ export const WorkspaceProvider = ({
   }), [data?.workspaces])
 
   return (
-    <WorkspacesContext.Provider value={contextValue}
-    >
+    <WorkspacesContext.Provider value={contextValue}>
       {children}
     </WorkspacesContext.Provider>
   )
