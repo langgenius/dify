@@ -43,10 +43,10 @@ vi.mock('@/context/provider-context', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/toast/context', () => ({
-  useToastContext: () => ({
-    notify: mockNotify,
-  }),
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    add: mockNotify,
+  },
 }))
 
 vi.mock('../../hooks', () => ({
@@ -150,7 +150,7 @@ describe('SystemModel', () => {
       expect(mockUpdateDefaultModel).toHaveBeenCalledTimes(1)
       expect(mockNotify).toHaveBeenCalledWith({
         type: 'success',
-        message: 'Modified successfully',
+        title: 'Modified successfully',
       })
       expect(mockInvalidateDefaultModel).toHaveBeenCalledTimes(5)
       expect(mockUpdateModelList).toHaveBeenCalledTimes(5)

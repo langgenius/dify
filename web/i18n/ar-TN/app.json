@@ -36,6 +36,8 @@
   "createApp": "إنشاء تطبيق",
   "createFromConfigFile": "إنشاء من ملف DSL",
   "deleteAppConfirmContent": "حذف التطبيق لا رجعة فيه. لن يتمكن المستخدمون من الوصول إلى تطبيقك بعد الآن، وسيتم حذف جميع تكوينات المطالبة والسجلات بشكل دائم.",
+  "deleteAppConfirmInputLabel": "للتأكيد، اكتب \"{{appName}}\" في المربع أدناه:",
+  "deleteAppConfirmInputPlaceholder": "أدخل اسم التطبيق",
   "deleteAppConfirmTitle": "حذف هذا التطبيق؟",
   "dslUploader.browse": "تصفح",
   "dslUploader.button": "اسحب وأفلت الملف، أو",

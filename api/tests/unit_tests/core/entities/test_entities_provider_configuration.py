@@ -410,7 +410,7 @@ def test_switch_preferred_provider_type_updates_existing_record_with_session() -
 
     configuration.switch_preferred_provider_type(ProviderType.SYSTEM, session=session)
 
-    assert existing_record.preferred_provider_type == ProviderType.SYSTEM.value
+    assert existing_record.preferred_provider_type == ProviderType.SYSTEM
     session.commit.assert_called_once()
 
 

@@ -6,13 +6,13 @@ import type {
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
-import { useToastContext } from '@/app/components/base/toast/context'
 import {
   Dialog,
   DialogCloseButton,
   DialogContent,
   DialogTitle,
 } from '@/app/components/base/ui/dialog'
+import { toast } from '@/app/components/base/ui/toast'
 import {
   Tooltip,
   TooltipContent,
@@ -64,7 +64,6 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
   isLoading,
 }) => {
   const { t } = useTranslation()
-  const { notify } = useToastContext()
   const { isCurrentWorkspaceManager } = useAppContext()
   const { textGenerationModelList } = useProviderContext()
   const updateModelList = useUpdateModelList()
@@ -124,7 +123,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
       },
     })
     if (res.result === 'success') {
-      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      toast.add({ type: 'success', title: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
       setOpen(false)
 
       const allModelTypes = [ModelTypeEnum.textGeneration, ModelTypeEnum.textEmbedding, ModelTypeEnum.rerank, ModelTypeEnum.speech2text, ModelTypeEnum.tts]
