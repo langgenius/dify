@@ -366,7 +366,7 @@ class WordExtractor(BaseExtractor):
             paragraph_content = []
             # State for legacy HYPERLINK fields
             hyperlink_field_url = None
-            hyperlink_field_text_parts: list = []
+            hyperlink_field_text_parts: list[str] = []
             is_collecting_field_text = False
             # Iterate through paragraph elements in document order
             for child in paragraph._element:
