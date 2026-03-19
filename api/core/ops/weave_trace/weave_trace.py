@@ -4,8 +4,8 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any, cast
 
-import weave
 from sqlalchemy.orm import sessionmaker
+from weave.trace.weave_client import WeaveClient
 from weave.trace_server.trace_server_interface import (
     CallEndReq,
     CallStartReq,
@@ -14,6 +14,7 @@ from weave.trace_server.trace_server_interface import (
     SummaryInsertMap,
     TraceStatus,
 )
+from weave.trace_server_bindings.remote_http_trace_server import RemoteHTTPTraceServer
 
 from core.ops.base_trace_instance import BaseTraceInstance
 from core.ops.entities.config_entity import WeaveConfig
@@ -37,27 +38,38 @@ from models import EndUser, MessageFile, WorkflowNodeExecutionTriggeredFrom
 logger = logging.getLogger(__name__)
 
 
+def _init_weave_client(weave_config: WeaveConfig) -> WeaveClient:
+    """Initialize a Weave client with tenant-scoped credentials.
+
+    Constructs the trace server and client directly instead of using
+    weave.init(), which relies on process-wide env vars / .netrc and
+    is unsafe in multi-tenant environments.  Credentials are held
+    only in the returned client instance — nothing is written to disk
+    or leaked into the process environment.
+    """
+    server = RemoteHTTPTraceServer(
+        trace_server_url=weave_config.endpoint,
+        should_batch=True,
+    )
+    server.set_auth(("api", weave_config.api_key))
+
+    entity = weave_config.entity or ""
+    project = weave_config.project
+
+    return WeaveClient(entity=entity, project=project, server=server)
+
+
 class WeaveDataTrace(BaseTraceInstance):
     def __init__(
         self,
         weave_config: WeaveConfig,
     ):
         super().__init__(weave_config)
-        self.weave_api_key = weave_config.api_key
+        self.weave_config = weave_config
         self.project_name = weave_config.project
         self.entity = weave_config.entity
-        self.host = weave_config.host
 
-        # Authenticate via env var instead of wandb.login() to avoid
-        # writing credentials to .netrc (fails in read-only environments)
-        os.environ["WANDB_API_KEY"] = self.weave_api_key
-        if self.host:
-            os.environ["WANDB_BASE_URL"] = self.host
-
-        # Initialize weave client
-        self.weave_client = weave.init(
-            project_name=(f"{self.entity}/{self.project_name}" if self.entity else self.project_name)
-        )
+        self.weave_client = _init_weave_client(weave_config)
         self.file_base_url = os.getenv("FILES_URL", "http://127.0.0.1:5001")
         self.calls: dict[str, Any] = {}
         self.project_id = f"{self.weave_client.entity}/{self.weave_client.project}"
@@ -414,13 +426,7 @@ class WeaveDataTrace(BaseTraceInstance):
 
     def api_check(self):
         try:
-            os.environ["WANDB_API_KEY"] = self.weave_api_key
-            if self.host:
-                os.environ["WANDB_BASE_URL"] = self.host
-
-            weave_client = weave.init(
-                project_name=(f"{self.entity}/{self.project_name}" if self.entity else self.project_name)
-            )
+            weave_client = _init_weave_client(self.weave_config)
             if weave_client:
                 logger.info("Weave API check successful")
                 return True
