@@ -158,6 +158,10 @@ describe('scroll-area wrapper', () => {
           'size-full',
           'min-h-0',
           'min-w-0',
+          'outline-none',
+          'focus-visible:ring-1',
+          'focus-visible:ring-inset',
+          'focus-visible:ring-components-input-border-hover',
           'custom-viewport-class',
         )
       })

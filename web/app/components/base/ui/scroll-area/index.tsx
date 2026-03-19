@@ -25,6 +25,13 @@ export const scrollAreaThumbClassName = cn(
   'data-[orientation=horizontal]:h-1',
 )
 
+export const scrollAreaViewportClassName = cn(
+  'size-full min-h-0 min-w-0 outline-none',
+  'focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-components-input-border-hover',
+)
+
+export const scrollAreaCornerClassName = 'bg-transparent'
+
 export type ScrollAreaViewportProps = React.ComponentPropsWithRef<typeof BaseScrollArea.Viewport>
 
 export function ScrollAreaViewport({
@@ -33,7 +40,7 @@ export function ScrollAreaViewport({
 }: ScrollAreaViewportProps) {
   return (
     <BaseScrollArea.Viewport
-      className={cn('size-full min-h-0 min-w-0', className)}
+      className={cn(scrollAreaViewportClassName, className)}
       {...props}
     />
   )
@@ -75,7 +82,7 @@ export function ScrollAreaCorner({
 }: ScrollAreaCornerProps) {
   return (
     <BaseScrollArea.Corner
-      className={cn('bg-transparent', className)}
+      className={cn(scrollAreaCornerClassName, className)}
       {...props}
     />
   )
