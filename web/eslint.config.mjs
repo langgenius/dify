@@ -5,7 +5,13 @@ import tailwindcss from 'eslint-plugin-better-tailwindcss'
 import hyoban from 'eslint-plugin-hyoban'
 import sonar from 'eslint-plugin-sonarjs'
 import storybook from 'eslint-plugin-storybook'
-import { OVERLAY_MIGRATION_LEGACY_BASE_FILES } from './eslint.constants.mjs'
+import {
+  HYOBAN_PREFER_TAILWIND_ICONS_OPTIONS,
+  NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS,
+  NEXT_PLATFORM_RESTRICTED_IMPORT_PATTERNS,
+  OVERLAY_MIGRATION_LEGACY_BASE_FILES,
+  OVERLAY_RESTRICTED_IMPORT_PATTERNS,
+} from './eslint.constants.mjs'
 import dify from './plugins/eslint/index.js'
 
 // Enable Tailwind CSS IntelliSense mode for ESLint runs
@@ -13,111 +19,6 @@ import dify from './plugins/eslint/index.js'
 process.env.TAILWIND_MODE ??= 'ESLINT'
 
 const disableRuleAutoFix = !(isInEditorEnv() || isInGitHooksOrLintStaged())
-
-const NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS = [
-  {
-    name: 'next',
-    message: 'Import Next APIs from @/next instead of next.',
-  },
-]
-
-const NEXT_PLATFORM_RESTRICTED_IMPORT_PATTERNS = [
-  {
-    group: ['next/image'],
-    message: 'Do not import next/image. Use native img tags instead.',
-  },
-  {
-    group: ['next/font', 'next/font/*'],
-    message: 'Do not import next/font. Use the project font styles instead.',
-  },
-  {
-    group: ['next/dynamic'],
-    message: 'Import Next APIs from @/next/dynamic instead of next/dynamic.',
-  },
-  {
-    group: ['next/headers'],
-    message: 'Import Next APIs from @/next/headers instead of next/headers.',
-  },
-  {
-    group: ['next/script'],
-    message: 'Import Next APIs from @/next/script instead of next/script.',
-  },
-  {
-    group: ['next/server'],
-    message: 'Import Next APIs from @/next/server instead of next/server.',
-  },
-]
-
-const OVERLAY_RESTRICTED_IMPORT_PATTERNS = [
-  {
-    group: [
-      '**/portal-to-follow-elem',
-      '**/portal-to-follow-elem/index',
-    ],
-    message: 'Deprecated: use semantic overlay primitives from @/app/components/base/ui/ instead. See issue #32767.',
-  },
-  {
-    group: [
-      '**/base/tooltip',
-      '**/base/tooltip/index',
-    ],
-    message: 'Deprecated: use @/app/components/base/ui/tooltip instead. See issue #32767.',
-  },
-  {
-    group: [
-      '**/base/modal',
-      '**/base/modal/index',
-      '**/base/modal/modal',
-    ],
-    message: 'Deprecated: use @/app/components/base/ui/dialog instead. See issue #32767.',
-  },
-  {
-    group: [
-      '**/base/select',
-      '**/base/select/index',
-      '**/base/select/custom',
-      '**/base/select/pure',
-    ],
-    message: 'Deprecated: use @/app/components/base/ui/select instead. See issue #32767.',
-  },
-  {
-    group: [
-      '**/base/confirm',
-      '**/base/confirm/index',
-    ],
-    message: 'Deprecated: use @/app/components/base/ui/alert-dialog instead. See issue #32767.',
-  },
-  {
-    group: [
-      '**/base/popover',
-      '**/base/popover/index',
-    ],
-    message: 'Deprecated: use @/app/components/base/ui/popover instead. See issue #32767.',
-  },
-  {
-    group: [
-      '**/base/dropdown',
-      '**/base/dropdown/index',
-    ],
-    message: 'Deprecated: use @/app/components/base/ui/dropdown-menu instead. See issue #32767.',
-  },
-  {
-    group: [
-      '**/base/dialog',
-      '**/base/dialog/index',
-    ],
-    message: 'Deprecated: use @/app/components/base/ui/dialog instead. See issue #32767.',
-  },
-  {
-    group: [
-      '**/base/toast',
-      '**/base/toast/index',
-      '**/base/toast/context',
-      '**/base/toast/context/index',
-    ],
-    message: 'Deprecated: use @/app/components/base/ui/toast instead. See issue #32811.',
-  },
-]
 
 export default antfu(
   {
@@ -204,37 +105,7 @@ export default antfu(
   {
     files: ['**/*.tsx'],
     rules: {
-      'hyoban/prefer-tailwind-icons': ['warn', {
-        prefix: 'i-',
-        propMappings: {
-          size: 'size',
-          width: 'w',
-          height: 'h',
-        },
-        libraries: [
-          {
-            prefix: 'i-custom-',
-            source: '^@/app/components/base/icons/src/(?<set>(?:public|vender)(?:/.*)?)$',
-            name: '^(?<name>.*)$',
-          },
-          {
-            source: '^@remixicon/react$',
-            name: '^(?<set>Ri)(?<name>.+)$',
-          },
-          {
-            source: '^@(?<set>heroicons)/react/24/outline$',
-            name: '^(?<name>.*)Icon$',
-          },
-          {
-            source: '^@(?<set>heroicons)/react/24/(?<variant>solid)$',
-            name: '^(?<name>.*)Icon$',
-          },
-          {
-            source: '^@(?<set>heroicons)/react/(?<variant>\\d+/(?:solid|outline))$',
-            name: '^(?<name>.*)Icon$',
-          },
-        ],
-      }],
+      'hyoban/prefer-tailwind-icons': ['warn', HYOBAN_PREFER_TAILWIND_ICONS_OPTIONS],
     },
   },
   {

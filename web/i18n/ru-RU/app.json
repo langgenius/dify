@@ -36,6 +36,8 @@
   "createApp": "СОЗДАТЬ ПРИЛОЖЕНИЕ",
   "createFromConfigFile": "Создать из файла DSL",
   "deleteAppConfirmContent": "Удаление приложения необратимо. Пользователи больше не смогут получить доступ к вашему приложению, и все настройки подсказок и журналы будут безвозвратно удалены.",
+  "deleteAppConfirmInputLabel": "Для подтверждения введите \"{{appName}}\" в поле ниже:",
+  "deleteAppConfirmInputPlaceholder": "Введите название приложения",
   "deleteAppConfirmTitle": "Удалить это приложение?",
   "dslUploader.browse": "Обзор",
   "dslUploader.button": "Перетащите файл, или",

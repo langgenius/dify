@@ -2,6 +2,12 @@ name: Run Pytest
 
 on:
   workflow_call:
+    secrets:
+      CODECOV_TOKEN:
+        required: false
+
+permissions:
+  contents: read
 
 concurrency:
   group: api-tests-${{ github.head_ref || github.run_id }}
@@ -11,6 +17,8 @@ jobs:
   test:
     name: API Tests
     runs-on: ubuntu-latest
+    env:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     defaults:
       run:
         shell: bash
@@ -24,10 +32,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Setup UV and Python
-        uses: astral-sh/setup-uv@e06108dd0aef18192324c70427afc47652e63a82 # v7.5.0
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
         with:
           enable-cache: true
           python-version: ${{ matrix.python-version }}
@@ -79,21 +88,12 @@ jobs:
             api/tests/test_containers_integration_tests \
             api/tests/unit_tests
 
-      - name: Coverage Summary
-        run: |
-          set -x
-          # Extract coverage percentage and create a summary
-          TOTAL_COVERAGE=$(python -c 'import json; print(json.load(open("coverage.json"))["totals"]["percent_covered_display"])')
-
-          # Create a detailed coverage summary
-          echo "### Test Coverage Summary :test_tube:" >> $GITHUB_STEP_SUMMARY
-          echo "Total Coverage: ${TOTAL_COVERAGE}%" >> $GITHUB_STEP_SUMMARY
-          {
-            echo ""
-            echo "<details><summary>File-level coverage (click to expand)</summary>"
-            echo ""
-            echo '```'
-            uv run --project api coverage report -m
-            echo '```'
-            echo "</details>"
-          } >> $GITHUB_STEP_SUMMARY
+      - name: Report coverage
+        if: ${{ env.CODECOV_TOKEN != '' && matrix.python-version == '3.12' }}
+        uses: codecov/codecov-action@1af58845a975a7985b0beb0cbe6fbbb71a41dbad # v5.5.3
+        with:
+          files: ./coverage.xml
+          disable_search: true
+          flags: api
+        env:
+          CODECOV_TOKEN: ${{ env.CODECOV_TOKEN }}

@@ -1,7 +1,7 @@
 import type { Category } from './types'
-import Link from 'next/link'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import Link from '@/next/link'
 import { cn } from '@/utils/classnames'
 import { CategoryEnum } from './types'
 

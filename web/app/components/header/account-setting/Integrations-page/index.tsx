@@ -1,7 +1,7 @@
 'use client'
 
-import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
+import Link from '@/next/link'
 import { useAccountIntegrates } from '@/service/use-common'
 import { cn } from '@/utils/classnames'
 import s from './index.module.css'

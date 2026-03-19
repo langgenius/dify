@@ -11,6 +11,13 @@ class CreatorUserRole(StrEnum):
     ACCOUNT = "account"
     END_USER = "end_user"
 
+    @classmethod
+    def _missing_(cls, value):
+        if value == "end-user":
+            return cls.END_USER
+        else:
+            return super()._missing_(value)
+
 
 class WorkflowRunTriggeredFrom(StrEnum):
     DEBUGGING = "debugging"

@@ -18,6 +18,7 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
+from extensions.storage.storage_type import StorageType
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import (
     AppDatasetJoin,
@@ -254,7 +255,7 @@ class TestCleanDatasetTask:
 
         upload_file = UploadFile(
             tenant_id=tenant.id,
-            storage_type="local",
+            storage_type=StorageType.LOCAL,
             key=f"test_files/{fake.file_name()}",
             name=fake.file_name(),
             size=1024,
@@ -925,7 +926,7 @@ class TestCleanDatasetTask:
         special_filename = f"test_file_{special_content}.txt"
         upload_file = UploadFile(
             tenant_id=tenant.id,
-            storage_type="local",
+            storage_type=StorageType.LOCAL,
             key=f"test_files/{special_filename}",
             name=special_filename,
             size=1024,

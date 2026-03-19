@@ -104,20 +104,6 @@ vi.mock('../../install-plugin/install-from-github', () => ({
   ),
 }))
 
-// Mock semver
-vi.mock('semver', () => ({
-  lt: (v1: string, v2: string) => {
-    const parseVersion = (v: string) => v.split('.').map(Number)
-    const [major1, minor1, patch1] = parseVersion(v1)
-    const [major2, minor2, patch2] = parseVersion(v2)
-    if (major1 !== major2)
-      return major1 < major2
-    if (minor1 !== minor2)
-      return minor1 < minor2
-    return patch1 < patch2
-  },
-}))
-
 // ================================
 // Test Data Factories
 // ================================

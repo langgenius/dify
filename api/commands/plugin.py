@@ -1,9 +1,11 @@
 import json
 import logging
-from typing import Any
+from typing import Any, cast
 
 import click
 from pydantic import TypeAdapter
+from sqlalchemy import delete, select
+from sqlalchemy.engine import CursorResult
 
 from configs import dify_config
 from core.helper import encrypter
@@ -48,14 +50,15 @@ def setup_system_tool_oauth_client(provider, client_params):
         click.echo(click.style(f"Error parsing client params: {str(e)}", fg="red"))
         return
 
-    deleted_count = (
-        db.session.query(ToolOAuthSystemClient)
-        .filter_by(
-            provider=provider_name,
-            plugin_id=plugin_id,
-        )
-        .delete()
-    )
+    deleted_count = cast(
+        CursorResult,
+        db.session.execute(
+            delete(ToolOAuthSystemClient).where(
+                ToolOAuthSystemClient.provider == provider_name,
+                ToolOAuthSystemClient.plugin_id == plugin_id,
+            )
+        ),
+    ).rowcount
     if deleted_count > 0:
         click.echo(click.style(f"Deleted {deleted_count} existing oauth client params.", fg="yellow"))
 
@@ -97,14 +100,15 @@ def setup_system_trigger_oauth_client(provider, client_params):
         click.echo(click.style(f"Error parsing client params: {str(e)}", fg="red"))
         return
 
-    deleted_count = (
-        db.session.query(TriggerOAuthSystemClient)
-        .filter_by(
-            provider=provider_name,
-            plugin_id=plugin_id,
-        )
-        .delete()
-    )
+    deleted_count = cast(
+        CursorResult,
+        db.session.execute(
+            delete(TriggerOAuthSystemClient).where(
+                TriggerOAuthSystemClient.provider == provider_name,
+                TriggerOAuthSystemClient.plugin_id == plugin_id,
+            )
+        ),
+    ).rowcount
     if deleted_count > 0:
         click.echo(click.style(f"Deleted {deleted_count} existing oauth client params.", fg="yellow"))
 
@@ -139,14 +143,15 @@ def setup_datasource_oauth_client(provider, client_params):
         return
 
     click.echo(click.style(f"Ready to delete existing oauth client params: {provider_name}", fg="yellow"))
-    deleted_count = (
-        db.session.query(DatasourceOauthParamConfig)
-        .filter_by(
-            provider=provider_name,
-            plugin_id=plugin_id,
-        )
-        .delete()
-    )
+    deleted_count = cast(
+        CursorResult,
+        db.session.execute(
+            delete(DatasourceOauthParamConfig).where(
+                DatasourceOauthParamConfig.provider == provider_name,
+                DatasourceOauthParamConfig.plugin_id == plugin_id,
+            )
+        ),
+    ).rowcount
     if deleted_count > 0:
         click.echo(click.style(f"Deleted {deleted_count} existing oauth client params.", fg="yellow"))
 
@@ -192,7 +197,9 @@ def transform_datasource_credentials(environment: str):
 
         # deal notion credentials
         deal_notion_count = 0
-        notion_credentials = db.session.query(DataSourceOauthBinding).filter_by(provider="notion").all()
+        notion_credentials = db.session.scalars(
+            select(DataSourceOauthBinding).where(DataSourceOauthBinding.provider == "notion")
+        ).all()
         if notion_credentials:
             notion_credentials_tenant_mapping: dict[str, list[DataSourceOauthBinding]] = {}
             for notion_credential in notion_credentials:
@@ -201,7 +208,7 @@ def transform_datasource_credentials(environment: str):
                     notion_credentials_tenant_mapping[tenant_id] = []
                 notion_credentials_tenant_mapping[tenant_id].append(notion_credential)
             for tenant_id, notion_tenant_credentials in notion_credentials_tenant_mapping.items():
-                tenant = db.session.query(Tenant).filter_by(id=tenant_id).first()
+                tenant = db.session.scalar(select(Tenant).where(Tenant.id == tenant_id))
                 if not tenant:
                     continue
                 try:
@@ -250,7 +257,9 @@ def transform_datasource_credentials(environment: str):
                 db.session.commit()
         # deal firecrawl credentials
         deal_firecrawl_count = 0
-        firecrawl_credentials = db.session.query(DataSourceApiKeyAuthBinding).filter_by(provider="firecrawl").all()
+        firecrawl_credentials = db.session.scalars(
+            select(DataSourceApiKeyAuthBinding).where(DataSourceApiKeyAuthBinding.provider == "firecrawl")
+        ).all()
         if firecrawl_credentials:
             firecrawl_credentials_tenant_mapping: dict[str, list[DataSourceApiKeyAuthBinding]] = {}
             for firecrawl_credential in firecrawl_credentials:
@@ -259,7 +268,7 @@ def transform_datasource_credentials(environment: str):
                     firecrawl_credentials_tenant_mapping[tenant_id] = []
                 firecrawl_credentials_tenant_mapping[tenant_id].append(firecrawl_credential)
             for tenant_id, firecrawl_tenant_credentials in firecrawl_credentials_tenant_mapping.items():
-                tenant = db.session.query(Tenant).filter_by(id=tenant_id).first()
+                tenant = db.session.scalar(select(Tenant).where(Tenant.id == tenant_id))
                 if not tenant:
                     continue
                 try:
@@ -312,7 +321,9 @@ def transform_datasource_credentials(environment: str):
                 db.session.commit()
         # deal jina credentials
         deal_jina_count = 0
-        jina_credentials = db.session.query(DataSourceApiKeyAuthBinding).filter_by(provider="jinareader").all()
+        jina_credentials = db.session.scalars(
+            select(DataSourceApiKeyAuthBinding).where(DataSourceApiKeyAuthBinding.provider == "jinareader")
+        ).all()
         if jina_credentials:
             jina_credentials_tenant_mapping: dict[str, list[DataSourceApiKeyAuthBinding]] = {}
             for jina_credential in jina_credentials:
@@ -321,7 +332,7 @@ def transform_datasource_credentials(environment: str):
                     jina_credentials_tenant_mapping[tenant_id] = []
                 jina_credentials_tenant_mapping[tenant_id].append(jina_credential)
             for tenant_id, jina_tenant_credentials in jina_credentials_tenant_mapping.items():
-                tenant = db.session.query(Tenant).filter_by(id=tenant_id).first()
+                tenant = db.session.scalar(select(Tenant).where(Tenant.id == tenant_id))
                 if not tenant:
                     continue
                 try:

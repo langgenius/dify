@@ -36,6 +36,8 @@
   "createApp": "UTWÓRZ APLIKACJĘ",
   "createFromConfigFile": "Utwórz z pliku DSL",
   "deleteAppConfirmContent": "Usunięcie aplikacji jest nieodwracalne. Użytkownicy nie będą mieli już dostępu do twojej aplikacji, a wszystkie konfiguracje monitów i dzienniki zostaną trwale usunięte.",
+  "deleteAppConfirmInputLabel": "Aby potwierdzić, wpisz \"{{appName}}\" w polu poniżej:",
+  "deleteAppConfirmInputPlaceholder": "Wpisz nazwę aplikacji",
   "deleteAppConfirmTitle": "Usunąć tę aplikację?",
   "dslUploader.browse": "Przeglądaj",
   "dslUploader.button": "Przeciągnij i upuść plik, lub",

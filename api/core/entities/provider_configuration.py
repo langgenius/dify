@@ -30,6 +30,7 @@ from dify_graph.model_runtime.model_providers.__base.ai_model import AIModel
 from dify_graph.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from libs.datetime_utils import naive_utc_now
 from models.engine import db
+from models.enums import CredentialSourceType
 from models.provider import (
     LoadBalancingModelConfig,
     Provider,
@@ -546,7 +547,7 @@ class ProviderConfiguration(BaseModel):
                 self._update_load_balancing_configs_with_credential(
                     credential_id=credential_id,
                     credential_record=credential_record,
-                    credential_source="provider",
+                    credential_source=CredentialSourceType.PROVIDER,
                     session=session,
                 )
             except Exception:
@@ -623,7 +624,7 @@ class ProviderConfiguration(BaseModel):
                 LoadBalancingModelConfig.tenant_id == self.tenant_id,
                 LoadBalancingModelConfig.provider_name.in_(self._get_provider_names()),
                 LoadBalancingModelConfig.credential_id == credential_id,
-                LoadBalancingModelConfig.credential_source_type == "provider",
+                LoadBalancingModelConfig.credential_source_type == CredentialSourceType.PROVIDER,
             )
             lb_configs_using_credential = session.execute(lb_stmt).scalars().all()
             try:
@@ -1043,7 +1044,7 @@ class ProviderConfiguration(BaseModel):
                 self._update_load_balancing_configs_with_credential(
                     credential_id=credential_id,
                     credential_record=credential_record,
-                    credential_source="custom_model",
+                    credential_source=CredentialSourceType.CUSTOM_MODEL,
                     session=session,
                 )
             except Exception:
@@ -1073,7 +1074,7 @@ class ProviderConfiguration(BaseModel):
                 LoadBalancingModelConfig.tenant_id == self.tenant_id,
                 LoadBalancingModelConfig.provider_name.in_(self._get_provider_names()),
                 LoadBalancingModelConfig.credential_id == credential_id,
-                LoadBalancingModelConfig.credential_source_type == "custom_model",
+                LoadBalancingModelConfig.credential_source_type == CredentialSourceType.CUSTOM_MODEL,
             )
             lb_configs_using_credential = session.execute(lb_stmt).scalars().all()
 
@@ -1421,12 +1422,12 @@ class ProviderConfiguration(BaseModel):
             preferred_model_provider = s.execute(stmt).scalars().first()
 
             if preferred_model_provider:
-                preferred_model_provider.preferred_provider_type = provider_type.value
+                preferred_model_provider.preferred_provider_type = provider_type
             else:
                 preferred_model_provider = TenantPreferredModelProvider(
                     tenant_id=self.tenant_id,
                     provider_name=self.provider.provider,
-                    preferred_provider_type=provider_type.value,
+                    preferred_provider_type=provider_type,
                 )
                 s.add(preferred_model_provider)
             s.commit()
@@ -1711,7 +1712,7 @@ class ProviderConfiguration(BaseModel):
                     provider_model_lb_configs = [
                         config
                         for config in model_setting.load_balancing_configs
-                        if config.credential_source_type != "custom_model"
+                        if config.credential_source_type != CredentialSourceType.CUSTOM_MODEL
                     ]
 
                     load_balancing_enabled = model_setting.load_balancing_enabled
@@ -1769,7 +1770,7 @@ class ProviderConfiguration(BaseModel):
                 custom_model_lb_configs = [
                     config
                     for config in model_setting.load_balancing_configs
-                    if config.credential_source_type != "provider"
+                    if config.credential_source_type != CredentialSourceType.PROVIDER
                 ]
 
                 load_balancing_enabled = model_setting.load_balancing_enabled
