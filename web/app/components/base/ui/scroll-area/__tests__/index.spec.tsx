@@ -8,6 +8,7 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '../index'
+import styles from '../index.module.css'
 
 const renderScrollArea = (options: {
   rootClassName?: string
@@ -72,20 +73,19 @@ describe('scroll-area wrapper', () => {
         const thumb = screen.getByTestId('scroll-area-vertical-thumb')
 
         expect(scrollbar).toHaveAttribute('data-orientation', 'vertical')
+        expect(scrollbar).toHaveClass(styles.scrollbar)
         expect(scrollbar).toHaveClass(
           'flex',
+          'overflow-clip',
+          'p-1',
           'touch-none',
           'select-none',
-          'opacity-0',
+          'opacity-100',
           'transition-opacity',
           'motion-reduce:transition-none',
           'pointer-events-none',
           'data-[hovering]:pointer-events-auto',
-          'data-[hovering]:opacity-100',
           'data-[scrolling]:pointer-events-auto',
-          'data-[scrolling]:opacity-100',
-          'hover:pointer-events-auto',
-          'hover:opacity-100',
           'data-[orientation=vertical]:absolute',
           'data-[orientation=vertical]:inset-y-0',
           'data-[orientation=vertical]:w-3',
@@ -97,7 +97,6 @@ describe('scroll-area wrapper', () => {
           'rounded-[4px]',
           'bg-state-base-handle',
           'transition-[background-color]',
-          'hover:bg-state-base-handle-hover',
           'motion-reduce:transition-none',
           'data-[orientation=vertical]:w-1',
         )
@@ -112,20 +111,19 @@ describe('scroll-area wrapper', () => {
         const thumb = screen.getByTestId('scroll-area-horizontal-thumb')
 
         expect(scrollbar).toHaveAttribute('data-orientation', 'horizontal')
+        expect(scrollbar).toHaveClass(styles.scrollbar)
         expect(scrollbar).toHaveClass(
           'flex',
+          'overflow-clip',
+          'p-1',
           'touch-none',
           'select-none',
-          'opacity-0',
+          'opacity-100',
           'transition-opacity',
           'motion-reduce:transition-none',
           'pointer-events-none',
           'data-[hovering]:pointer-events-auto',
-          'data-[hovering]:opacity-100',
           'data-[scrolling]:pointer-events-auto',
-          'data-[scrolling]:opacity-100',
-          'hover:pointer-events-auto',
-          'hover:opacity-100',
           'data-[orientation=horizontal]:absolute',
           'data-[orientation=horizontal]:inset-x-0',
           'data-[orientation=horizontal]:h-3',
@@ -137,7 +135,6 @@ describe('scroll-area wrapper', () => {
           'rounded-[4px]',
           'bg-state-base-handle',
           'transition-[background-color]',
-          'hover:bg-state-base-handle-hover',
           'motion-reduce:transition-none',
           'data-[orientation=horizontal]:h-1',
         )

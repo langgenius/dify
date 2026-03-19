@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import type { ReactNode } from 'react'
+import * as React from 'react'
 import AppIcon from '@/app/components/base/app-icon'
 import { cn } from '@/utils/classnames'
 import {
@@ -76,6 +77,16 @@ const horizontalCards = [
 const activityRows = Array.from({ length: 14 }, (_, index) => ({
   title: `Workspace activity ${index + 1}`,
   body: 'A short line of copy to mimic dense operational feeds in settings and debug panels.',
+}))
+
+const scrollbarShowcaseRows = Array.from({ length: 18 }, (_, index) => ({
+  title: `Scroll checkpoint ${index + 1}`,
+  body: 'Dedicated story content so the scrollbar can be inspected without sticky headers, masks, or clipped shells.',
+}))
+
+const horizontalShowcaseCards = Array.from({ length: 8 }, (_, index) => ({
+  title: `Lane ${index + 1}`,
+  body: 'Horizontal scrollbar reference without edge hints.',
 }))
 
 const webAppsRows = [
@@ -252,6 +263,112 @@ const HorizontalRailPane = () => (
         <ScrollAreaThumb className="rounded-full" />
       </ScrollAreaScrollbar>
     </ScrollArea>
+  </div>
+)
+
+const ScrollbarStatePane = ({
+  eyebrow,
+  title,
+  description,
+  initialPosition,
+}: {
+  eyebrow: string
+  title: string
+  description: string
+  initialPosition: 'top' | 'middle' | 'bottom'
+}) => {
+  const viewportId = React.useId()
+
+  React.useEffect(() => {
+    let frameA = 0
+    let frameB = 0
+
+    const syncScrollPosition = () => {
+      const viewport = document.getElementById(viewportId)
+
+      if (!(viewport instanceof HTMLDivElement))
+        return
+
+      const maxScrollTop = Math.max(0, viewport.scrollHeight - viewport.clientHeight)
+
+      if (initialPosition === 'top')
+        viewport.scrollTop = 0
+
+      if (initialPosition === 'middle')
+        viewport.scrollTop = maxScrollTop / 2
+
+      if (initialPosition === 'bottom')
+        viewport.scrollTop = maxScrollTop
+    }
+
+    frameA = requestAnimationFrame(() => {
+      frameB = requestAnimationFrame(syncScrollPosition)
+    })
+
+    return () => {
+      cancelAnimationFrame(frameA)
+      cancelAnimationFrame(frameB)
+    }
+  }, [initialPosition, viewportId])
+
+  return (
+    <div className="min-w-0 rounded-[28px] border border-divider-subtle bg-background-body p-5">
+      <div className="space-y-1">
+        <div className={labelClassName}>{eyebrow}</div>
+        <div className="text-text-primary system-md-semibold">{title}</div>
+        <p className="text-text-secondary system-sm-regular">{description}</p>
+      </div>
+      <div className="mt-4 min-w-0 rounded-[24px] border border-divider-subtle bg-components-panel-bg p-3">
+        <ScrollArea className="h-[320px] p-1">
+          <ScrollAreaViewport id={viewportId} className="rounded-[20px] bg-components-panel-bg">
+            <ScrollAreaContent className="min-w-0 space-y-2 p-4 pr-6">
+              {scrollbarShowcaseRows.map(item => (
+                <article key={item.title} className="min-w-0 rounded-xl border border-divider-subtle bg-components-panel-bg-alt p-3">
+                  <div className="truncate text-text-primary system-sm-semibold">{item.title}</div>
+                  <div className="mt-1 break-words text-text-secondary system-sm-regular">{item.body}</div>
+                </article>
+              ))}
+            </ScrollAreaContent>
+          </ScrollAreaViewport>
+          <ScrollAreaScrollbar className={insetScrollbarClassName}>
+            <ScrollAreaThumb />
+          </ScrollAreaScrollbar>
+        </ScrollArea>
+      </div>
+    </div>
+  )
+}
+
+const HorizontalScrollbarShowcasePane = () => (
+  <div className="min-w-0 rounded-[28px] border border-divider-subtle bg-background-body p-5">
+    <div className="space-y-1">
+      <div className={labelClassName}>Horizontal</div>
+      <div className="text-text-primary system-md-semibold">Horizontal track reference</div>
+      <p className="text-text-secondary system-sm-regular">Current design delivery defines the horizontal scrollbar body, but not a horizontal edge hint.</p>
+    </div>
+    <div className="mt-4 min-w-0 rounded-[24px] border border-divider-subtle bg-components-panel-bg p-3">
+      <ScrollArea className="h-[240px] p-1">
+        <ScrollAreaViewport className="rounded-[20px] bg-components-panel-bg">
+          <ScrollAreaContent className="min-h-full min-w-max space-y-4 p-4 pb-6">
+            <div className="space-y-1">
+              <div className="text-text-primary system-sm-semibold">Horizontal scrollbar</div>
+              <div className="text-text-secondary system-sm-regular">A clean horizontal pane to inspect thickness, padding, and thumb behavior without extra masks.</div>
+            </div>
+            <div className="flex gap-3">
+              {horizontalShowcaseCards.map(card => (
+                <article key={card.title} className="flex h-[120px] w-[220px] shrink-0 flex-col justify-between rounded-2xl border border-divider-subtle bg-components-panel-bg-alt p-4">
+                  <div className="text-text-primary system-sm-semibold">{card.title}</div>
+                  <div className="text-text-secondary system-sm-regular">{card.body}</div>
+                </article>
+              ))}
+            </div>
+          </ScrollAreaContent>
+        </ScrollAreaViewport>
+        <ScrollAreaScrollbar orientation="horizontal" className={insetScrollbarClassName}>
+          <ScrollAreaThumb />
+        </ScrollAreaScrollbar>
+      </ScrollArea>
+    </div>
   </div>
 )
 
@@ -557,6 +674,38 @@ export const PrimitiveComposition: Story = {
           </ScrollAreaScrollbar>
           <ScrollAreaCorner />
         </ScrollArea>
+      </div>
+    </StoryCard>
+  ),
+}
+
+export const ScrollbarDelivery: Story = {
+  render: () => (
+    <StoryCard
+      eyebrow="Scrollbar"
+      title="Dedicated scrollbar delivery review"
+      description="Three vertical panes pin the viewport to top, middle, and bottom so the edge hint can be inspected without sticky headers, viewport masks, or clipped shells. A separate horizontal pane shows the current non-edge-hint track."
+    >
+      <div className="grid gap-5 xl:grid-cols-2">
+        <ScrollbarStatePane
+          eyebrow="Top"
+          title="At top edge"
+          description="Top edge hint should sit exactly on the handle area edge."
+          initialPosition="top"
+        />
+        <ScrollbarStatePane
+          eyebrow="Middle"
+          title="Away from edges"
+          description="No edge hint should be visible when the viewport is not pinned to either end."
+          initialPosition="middle"
+        />
+        <ScrollbarStatePane
+          eyebrow="Bottom"
+          title="At bottom edge"
+          description="Bottom edge hint should sit exactly on the handle area edge."
+          initialPosition="bottom"
+        />
+        <HorizontalScrollbarShowcasePane />
       </div>
     </StoryCard>
   ),
