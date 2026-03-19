@@ -68,9 +68,12 @@ class SegmentRecord(TypedDict):
 
 
 class DefaultRetrievalModelDict(TypedDict):
-    search_method: RetrievalMethod | str
+    search_method: RetrievalMethod
     reranking_enable: bool
     reranking_model: RerankingModelDict
+    reranking_mode: NotRequired[str]
+    weights: NotRequired[WeightsDict | None]
+    score_threshold: NotRequired[float]
     top_k: int
     score_threshold_enabled: bool
 

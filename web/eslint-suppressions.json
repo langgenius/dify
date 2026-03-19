@@ -1839,7 +1839,7 @@
       "count": 2
     },
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/base/content-dialog/index.stories.tsx": {
@@ -4336,11 +4336,6 @@
       "count": 2
     }
   },
-  "app/components/explore/sidebar/index.tsx": {
-    "no-restricted-imports": {
-      "count": 2
-    }
-  },
   "app/components/explore/sidebar/no-apps/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 3
@@ -4976,11 +4971,6 @@
       "count": 1
     }
   },
-  "app/components/plugins/install-plugin/install-from-local-package/steps/install.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    }
-  },
   "app/components/plugins/install-plugin/install-from-local-package/steps/uploading.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
@@ -4997,11 +4987,6 @@
       "count": 1
     }
   },
-  "app/components/plugins/install-plugin/install-from-marketplace/steps/install.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    }
-  },
   "app/components/plugins/marketplace/description/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 9
@@ -5009,6 +4994,11 @@
   },
   "app/components/plugins/marketplace/empty/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
+      "count": 1
+    }
+  },
+  "app/components/plugins/marketplace/hooks.ts": {
+    "@tanstack/query/exhaustive-deps": {
       "count": 1
     }
   },
@@ -5182,9 +5172,6 @@
   "app/components/plugins/plugin-detail-panel/app-selector/app-picker.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
     }
   },
   "app/components/plugins/plugin-detail-panel/app-selector/app-trigger.tsx": {
@@ -5194,9 +5181,6 @@
   },
   "app/components/plugins/plugin-detail-panel/app-selector/index.tsx": {
     "no-restricted-imports": {
-      "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
   },
@@ -5479,9 +5463,6 @@
   "app/components/plugins/plugin-item/index.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 7
     },
     "ts/no-explicit-any": {
       "count": 1
@@ -9637,6 +9618,11 @@
       "count": 6
     }
   },
+  "service/access-control.ts": {
+    "@tanstack/query/exhaustive-deps": {
+      "count": 1
+    }
+  },
   "service/annotation.ts": {
     "ts/no-explicit-any": {
       "count": 4
@@ -9678,6 +9664,11 @@
       "count": 2
     }
   },
+  "service/knowledge/use-dataset.ts": {
+    "@tanstack/query/exhaustive-deps": {
+      "count": 1
+    }
+  },
   "service/share.ts": {
     "ts/no-explicit-any": {
       "count": 3
@@ -9702,6 +9693,9 @@
     }
   },
   "service/use-pipeline.ts": {
+    "@tanstack/query/exhaustive-deps": {
+      "count": 2
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -9728,6 +9722,9 @@
     }
   },
   "service/use-workflow.ts": {
+    "@tanstack/query/exhaustive-deps": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 3
     }

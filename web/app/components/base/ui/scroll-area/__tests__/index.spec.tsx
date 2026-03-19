@@ -1,0 +1,266 @@
+import { render, screen, waitFor } from '@testing-library/react'
+import { describe, expect, it } from 'vitest'
+import {
+  ScrollArea,
+  ScrollAreaContent,
+  ScrollAreaCorner,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '../index'
+
+const renderScrollArea = (options: {
+  rootClassName?: string
+  viewportClassName?: string
+  verticalScrollbarClassName?: string
+  horizontalScrollbarClassName?: string
+  verticalThumbClassName?: string
+  horizontalThumbClassName?: string
+} = {}) => {
+  return render(
+    <ScrollArea className={options.rootClassName ?? 'h-40 w-40'} data-testid="scroll-area-root">
+      <ScrollAreaViewport data-testid="scroll-area-viewport" className={options.viewportClassName}>
+        <ScrollAreaContent data-testid="scroll-area-content">
+          <div className="h-48 w-48">Scrollable content</div>
+        </ScrollAreaContent>
+      </ScrollAreaViewport>
+      <ScrollAreaScrollbar
+        keepMounted
+        data-testid="scroll-area-vertical-scrollbar"
+        className={options.verticalScrollbarClassName}
+      >
+        <ScrollAreaThumb data-testid="scroll-area-vertical-thumb" className={options.verticalThumbClassName} />
+      </ScrollAreaScrollbar>
+      <ScrollAreaScrollbar
+        keepMounted
+        orientation="horizontal"
+        data-testid="scroll-area-horizontal-scrollbar"
+        className={options.horizontalScrollbarClassName}
+      >
+        <ScrollAreaThumb
+          data-testid="scroll-area-horizontal-thumb"
+          className={options.horizontalThumbClassName}
+        />
+      </ScrollAreaScrollbar>
+    </ScrollArea>,
+  )
+}
+
+describe('scroll-area wrapper', () => {
+  describe('Rendering', () => {
+    it('should render the compound exports together', async () => {
+      renderScrollArea()
+
+      await waitFor(() => {
+        expect(screen.getByTestId('scroll-area-root')).toBeInTheDocument()
+        expect(screen.getByTestId('scroll-area-viewport')).toBeInTheDocument()
+        expect(screen.getByTestId('scroll-area-content')).toHaveTextContent('Scrollable content')
+        expect(screen.getByTestId('scroll-area-vertical-scrollbar')).toBeInTheDocument()
+        expect(screen.getByTestId('scroll-area-vertical-thumb')).toBeInTheDocument()
+        expect(screen.getByTestId('scroll-area-horizontal-scrollbar')).toBeInTheDocument()
+        expect(screen.getByTestId('scroll-area-horizontal-thumb')).toBeInTheDocument()
+      })
+    })
+  })
+
+  describe('Scrollbar', () => {
+    it('should apply the default vertical scrollbar classes and orientation data attribute', async () => {
+      renderScrollArea()
+
+      await waitFor(() => {
+        const scrollbar = screen.getByTestId('scroll-area-vertical-scrollbar')
+        const thumb = screen.getByTestId('scroll-area-vertical-thumb')
+
+        expect(scrollbar).toHaveAttribute('data-orientation', 'vertical')
+        expect(scrollbar).toHaveClass(
+          'flex',
+          'touch-none',
+          'select-none',
+          'opacity-0',
+          'transition-opacity',
+          'motion-reduce:transition-none',
+          'pointer-events-none',
+          'data-[hovering]:pointer-events-auto',
+          'data-[hovering]:opacity-100',
+          'data-[scrolling]:pointer-events-auto',
+          'data-[scrolling]:opacity-100',
+          'hover:pointer-events-auto',
+          'hover:opacity-100',
+          'data-[orientation=vertical]:absolute',
+          'data-[orientation=vertical]:inset-y-0',
+          'data-[orientation=vertical]:w-3',
+          'data-[orientation=vertical]:justify-center',
+        )
+        expect(thumb).toHaveAttribute('data-orientation', 'vertical')
+        expect(thumb).toHaveClass(
+          'shrink-0',
+          'rounded-[4px]',
+          'bg-state-base-handle',
+          'transition-[background-color]',
+          'hover:bg-state-base-handle-hover',
+          'motion-reduce:transition-none',
+          'data-[orientation=vertical]:w-1',
+        )
+      })
+    })
+
+    it('should apply horizontal scrollbar and thumb classes when orientation is horizontal', async () => {
+      renderScrollArea()
+
+      await waitFor(() => {
+        const scrollbar = screen.getByTestId('scroll-area-horizontal-scrollbar')
+        const thumb = screen.getByTestId('scroll-area-horizontal-thumb')
+
+        expect(scrollbar).toHaveAttribute('data-orientation', 'horizontal')
+        expect(scrollbar).toHaveClass(
+          'flex',
+          'touch-none',
+          'select-none',
+          'opacity-0',
+          'transition-opacity',
+          'motion-reduce:transition-none',
+          'pointer-events-none',
+          'data-[hovering]:pointer-events-auto',
+          'data-[hovering]:opacity-100',
+          'data-[scrolling]:pointer-events-auto',
+          'data-[scrolling]:opacity-100',
+          'hover:pointer-events-auto',
+          'hover:opacity-100',
+          'data-[orientation=horizontal]:absolute',
+          'data-[orientation=horizontal]:inset-x-0',
+          'data-[orientation=horizontal]:h-3',
+          'data-[orientation=horizontal]:items-center',
+        )
+        expect(thumb).toHaveAttribute('data-orientation', 'horizontal')
+        expect(thumb).toHaveClass(
+          'shrink-0',
+          'rounded-[4px]',
+          'bg-state-base-handle',
+          'transition-[background-color]',
+          'hover:bg-state-base-handle-hover',
+          'motion-reduce:transition-none',
+          'data-[orientation=horizontal]:h-1',
+        )
+      })
+    })
+  })
+
+  describe('Props', () => {
+    it('should forward className to the viewport', async () => {
+      renderScrollArea({
+        viewportClassName: 'custom-viewport-class',
+      })
+
+      await waitFor(() => {
+        expect(screen.getByTestId('scroll-area-viewport')).toHaveClass(
+          'size-full',
+          'min-h-0',
+          'min-w-0',
+          'outline-none',
+          'focus-visible:ring-1',
+          'focus-visible:ring-inset',
+          'focus-visible:ring-components-input-border-hover',
+          'custom-viewport-class',
+        )
+      })
+    })
+
+    it('should let callers control scrollbar inset spacing via margin-based className overrides', async () => {
+      renderScrollArea({
+        verticalScrollbarClassName: 'data-[orientation=vertical]:my-2 data-[orientation=vertical]:[margin-inline-end:-0.75rem]',
+        horizontalScrollbarClassName: 'data-[orientation=horizontal]:mx-2 data-[orientation=horizontal]:mb-2',
+      })
+
+      await waitFor(() => {
+        expect(screen.getByTestId('scroll-area-vertical-scrollbar')).toHaveClass(
+          'data-[orientation=vertical]:my-2',
+          'data-[orientation=vertical]:[margin-inline-end:-0.75rem]',
+        )
+        expect(screen.getByTestId('scroll-area-horizontal-scrollbar')).toHaveClass(
+          'data-[orientation=horizontal]:mx-2',
+          'data-[orientation=horizontal]:mb-2',
+        )
+      })
+    })
+  })
+
+  describe('Corner', () => {
+    it('should render the corner export when both axes overflow', async () => {
+      const originalDescriptors = {
+        clientHeight: Object.getOwnPropertyDescriptor(HTMLDivElement.prototype, 'clientHeight'),
+        clientWidth: Object.getOwnPropertyDescriptor(HTMLDivElement.prototype, 'clientWidth'),
+        scrollHeight: Object.getOwnPropertyDescriptor(HTMLDivElement.prototype, 'scrollHeight'),
+        scrollWidth: Object.getOwnPropertyDescriptor(HTMLDivElement.prototype, 'scrollWidth'),
+      }
+
+      Object.defineProperties(HTMLDivElement.prototype, {
+        clientHeight: {
+          configurable: true,
+          get() {
+            return this.getAttribute('data-testid') === 'scroll-area-viewport' ? 80 : 0
+          },
+        },
+        clientWidth: {
+          configurable: true,
+          get() {
+            return this.getAttribute('data-testid') === 'scroll-area-viewport' ? 80 : 0
+          },
+        },
+        scrollHeight: {
+          configurable: true,
+          get() {
+            return this.getAttribute('data-testid') === 'scroll-area-viewport' ? 160 : 0
+          },
+        },
+        scrollWidth: {
+          configurable: true,
+          get() {
+            return this.getAttribute('data-testid') === 'scroll-area-viewport' ? 160 : 0
+          },
+        },
+      })
+
+      try {
+        render(
+          <ScrollArea className="h-40 w-40" data-testid="scroll-area-root">
+            <ScrollAreaViewport data-testid="scroll-area-viewport">
+              <ScrollAreaContent data-testid="scroll-area-content">
+                <div className="h-48 w-48">Scrollable content</div>
+              </ScrollAreaContent>
+            </ScrollAreaViewport>
+            <ScrollAreaScrollbar keepMounted data-testid="scroll-area-vertical-scrollbar">
+              <ScrollAreaThumb data-testid="scroll-area-vertical-thumb" />
+            </ScrollAreaScrollbar>
+            <ScrollAreaScrollbar
+              keepMounted
+              orientation="horizontal"
+              data-testid="scroll-area-horizontal-scrollbar"
+            >
+              <ScrollAreaThumb data-testid="scroll-area-horizontal-thumb" />
+            </ScrollAreaScrollbar>
+            <ScrollAreaCorner data-testid="scroll-area-corner" />
+          </ScrollArea>,
+        )
+
+        await waitFor(() => {
+          expect(screen.getByTestId('scroll-area-corner')).toBeInTheDocument()
+          expect(screen.getByTestId('scroll-area-corner')).toHaveClass('bg-transparent')
+        })
+      }
+      finally {
+        if (originalDescriptors.clientHeight) {
+          Object.defineProperty(HTMLDivElement.prototype, 'clientHeight', originalDescriptors.clientHeight)
+        }
+        if (originalDescriptors.clientWidth) {
+          Object.defineProperty(HTMLDivElement.prototype, 'clientWidth', originalDescriptors.clientWidth)
+        }
+        if (originalDescriptors.scrollHeight) {
+          Object.defineProperty(HTMLDivElement.prototype, 'scrollHeight', originalDescriptors.scrollHeight)
+        }
+        if (originalDescriptors.scrollWidth) {
+          Object.defineProperty(HTMLDivElement.prototype, 'scrollWidth', originalDescriptors.scrollWidth)
+        }
+      }
+    })
+  })
+})
