@@ -18,6 +18,8 @@ from typing import Any, cast
 import click
 from pydantic import TypeAdapter
 from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+_dict_str_any_adapter: TypeAdapter[dict[str, Any]] = TypeAdapter(dict[str, Any])
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
@@ -244,7 +246,7 @@ class WorkflowRunRestore:
             data = archive.read("manifest.json")
         except KeyError as e:
             raise ValueError("manifest.json missing from archive bundle") from e
-        return TypeAdapter(dict[str, Any]).validate_json(data)
+        return _dict_str_any_adapter.validate_json(data)
 
     def _restore_table_records(
         self,

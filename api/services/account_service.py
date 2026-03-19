@@ -9,6 +9,8 @@ from typing import Any, cast
 
 from pydantic import BaseModel, TypeAdapter
 from sqlalchemy import func, select
+
+_invitation_adapter: TypeAdapter[dict[str, str]] = TypeAdapter(dict[str, str])
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Unauthorized
 
@@ -1590,7 +1592,7 @@ class RegisterService:
             if not data:
                 return None
 
-            invitation: dict[str, str] = TypeAdapter(dict[str, str]).validate_json(data)
+            invitation: dict[str, str] = _invitation_adapter.validate_json(data)
             return invitation
 
     @classmethod

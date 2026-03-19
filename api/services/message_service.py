@@ -4,6 +4,8 @@ from typing import Any, Union
 from pydantic import TypeAdapter
 from sqlalchemy.orm import sessionmaker
 
+_dict_str_any_adapter: TypeAdapter[dict[str, Any]] = TypeAdapter(dict[str, Any])
+
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.llm_generator.llm_generator import LLMGenerator
@@ -286,7 +288,7 @@ class MessageService:
                     .first()
                 )
             else:
-                conversation_override_model_configs = TypeAdapter(dict[str, Any]).validate_json(
+                conversation_override_model_configs = _dict_str_any_adapter.validate_json(
                     conversation.override_model_configs
                 )
                 app_model_config = AppModelConfig(

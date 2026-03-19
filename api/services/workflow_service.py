@@ -7,6 +7,8 @@ from typing import Any, cast
 
 from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import exists, select
+
+_dict_str_any_adapter: TypeAdapter[dict[str, Any]] = TypeAdapter(dict[str, Any])
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
@@ -1118,7 +1120,7 @@ class WorkflowService:
             if not recipient.access_token:
                 continue
             try:
-                payload = TypeAdapter(dict[str, Any]).validate_json(recipient.recipient_payload)
+                payload = _dict_str_any_adapter.validate_json(recipient.recipient_payload)
             except (ValidationError, ValueError):
                 logger.exception("Failed to parse human input recipient payload for delivery test.")
                 continue
