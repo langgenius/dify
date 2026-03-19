@@ -29,7 +29,15 @@ from libs.uuid_utils import uuidv7
 from .account import Account, Tenant
 from .base import Base, TypeBase, gen_uuidv4_string
 from .engine import db
-from .enums import AppMCPServerStatus, AppStatus, ConversationStatus, CreatorUserRole, MessageStatus
+from .enums import (
+    AppMCPServerStatus,
+    AppStatus,
+    BannerStatus,
+    ConversationStatus,
+    CreatorUserRole,
+    MessageChainType,
+    MessageStatus,
+)
 from .provider_ids import GenericProviderID
 from .types import EnumText, LongText, StringUUID
 
@@ -925,8 +933,11 @@ class ExporleBanner(TypeBase):
     content: Mapped[dict[str, Any]] = mapped_column(sa.JSON, nullable=False)
     link: Mapped[str] = mapped_column(String(255), nullable=False)
     sort: Mapped[int] = mapped_column(sa.Integer, nullable=False)
-    status: Mapped[str] = mapped_column(
-        sa.String(255), nullable=False, server_default=sa.text("'enabled'::character varying"), default="enabled"
+    status: Mapped[BannerStatus] = mapped_column(
+        EnumText(BannerStatus, length=255),
+        nullable=False,
+        server_default=sa.text("'enabled'::character varying"),
+        default=BannerStatus.ENABLED,
     )
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
@@ -2206,7 +2217,7 @@ class MessageChain(TypeBase):
         StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
     )
     message_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    type: Mapped[str] = mapped_column(String(255), nullable=False)
+    type: Mapped[MessageChainType] = mapped_column(EnumText(MessageChainType, length=255), nullable=False)
     input: Mapped[str | None] = mapped_column(LongText, nullable=True)
     output: Mapped[str | None] = mapped_column(LongText, nullable=True)
     created_at: Mapped[datetime] = mapped_column(

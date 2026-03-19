@@ -8,7 +8,7 @@ const config = {
     './context/**/*.{js,ts,jsx,tsx}',
     './node_modules/streamdown/dist/*.js',
     './node_modules/@streamdown/math/dist/*.js',
-    '!./**/*.{test,spec}.{js,jsx,ts,tsx}',
+    '!./**/*.{spec,test}.{js,ts,jsx,tsx}',
   ],
   ...commonConfig,
 }
