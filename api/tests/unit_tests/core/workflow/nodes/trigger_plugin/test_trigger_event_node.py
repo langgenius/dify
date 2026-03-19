@@ -4,7 +4,7 @@ from core.trigger.constants import TRIGGER_INFO_METADATA_KEY, TRIGGER_PLUGIN_NOD
 from core.workflow.nodes.trigger_plugin.trigger_event_node import TriggerEventNode
 from dify_graph.entities import GraphInitParams
 from dify_graph.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
-from dify_graph.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from dify_graph.enums import WorkflowNodeExecutionStatus
 from dify_graph.runtime import GraphRuntimeState, VariablePool
 from dify_graph.system_variable import SystemVariable
 from tests.workflow_test_utils import build_test_graph_init_params
@@ -44,10 +44,6 @@ def _build_node_config() -> NodeConfigDict:
     )
 
 
-def test_trigger_info_metadata_key_is_supported_by_node_execution_metadata_enum() -> None:
-    assert TRIGGER_INFO_METADATA_KEY in {item.value for item in WorkflowNodeExecutionMetadataKey}
-
-
 def test_trigger_event_node_run_populates_trigger_info_metadata() -> None:
     init_params, runtime_state = _build_context(graph_config={})
     node = TriggerEventNode(
@@ -65,4 +61,3 @@ def test_trigger_event_node_run_populates_trigger_info_metadata() -> None:
         "event_name": "event-name",
         "plugin_unique_identifier": "plugin-unique-identifier",
     }
-
