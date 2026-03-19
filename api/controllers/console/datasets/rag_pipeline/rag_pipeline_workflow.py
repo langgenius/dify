@@ -726,7 +726,8 @@ class RagPipelineDraftWorkflowRestoreApi(Resource):
                 account=current_user,
             )
         except IsDraftWorkflowError as exc:
-            raise BadRequest(str(exc)) from exc
+            # Use a stable, predefined message to keep the 400 response consistent
+            raise BadRequest("workflow is already a draft") from exc
         except WorkflowNotFoundError as exc:
             raise NotFound(str(exc)) from exc
 
