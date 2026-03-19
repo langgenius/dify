@@ -19,16 +19,27 @@ class LogView:
     """Lightweight wrapper for WorkflowAppLog with computed details.
 
     - Exposes `details_` for marshalling to `details` in API response
+    - Exposes `evaluation_` for marshalling evaluation metrics in API response
     - Proxies all other attributes to the underlying `WorkflowAppLog`
     """
 
-    def __init__(self, log: WorkflowAppLog, details: dict | None):
+    def __init__(
+        self,
+        log: WorkflowAppLog,
+        details: dict | None,
+        evaluation: list[dict] | None = None,
+    ):
         self.log = log
         self.details_ = details
+        self.evaluation_ = evaluation
 
     @property
     def details(self) -> dict | None:
         return self.details_
+
+    @property
+    def evaluation(self) -> list[dict] | None:
+        return self.evaluation_
 
     def __getattr__(self, name):
         return getattr(self.log, name)
@@ -159,12 +170,20 @@ class WorkflowAppService:
         # Execute query and get items
         if detail:
             rows = session.execute(offset_stmt).all()
-            items = [
-                LogView(log, {"trigger_metadata": self.handle_trigger_metadata(app_model.tenant_id, meta_val)})
+            logs_with_details = [
+                (log, {"trigger_metadata": self.handle_trigger_metadata(app_model.tenant_id, meta_val)})
                 for log, meta_val in rows
             ]
         else:
-            items = [LogView(log, None) for log in session.scalars(offset_stmt).all()]
+            logs_with_details = [(log, None) for log in session.scalars(offset_stmt).all()]
+
+        workflow_run_ids = [log.workflow_run_id for log, _ in logs_with_details]
+        eval_map = self._batch_query_evaluation_metrics(session, workflow_run_ids)
+
+        items = [
+            LogView(log, details, evaluation=eval_map.get(log.workflow_run_id))
+            for log, details in logs_with_details
+        ]
         return {
             "page": page,
             "limit": limit,
@@ -245,6 +264,45 @@ class WorkflowAppService:
             "has_more": total > page * limit,
             "data": items,
         }
+
+    @staticmethod
+    def _batch_query_evaluation_metrics(
+        session: Session,
+        workflow_run_ids: list[str],
+    ) -> dict[str, list[dict[str, Any]]]:
+        """Return evaluation metrics keyed by workflow_run_id.
+
+        Only returns metrics from completed evaluation runs.  If a workflow
+        run was not part of any evaluation (or the evaluation has not
+        completed), it will be absent from the result dict.
+        """
+        from models.evaluation import EvaluationRun, EvaluationRunItem, EvaluationRunStatus
+
+        if not workflow_run_ids:
+            return {}
+
+        non_null_ids = [wid for wid in workflow_run_ids if wid]
+        if not non_null_ids:
+            return {}
+
+        stmt = (
+            select(EvaluationRunItem.workflow_run_id, EvaluationRunItem.metrics)
+            .join(EvaluationRun, EvaluationRun.id == EvaluationRunItem.evaluation_run_id)
+            .where(
+                EvaluationRunItem.workflow_run_id.in_(non_null_ids),
+                EvaluationRun.status == EvaluationRunStatus.COMPLETED,
+            )
+        )
+        rows = session.execute(stmt).all()
+
+        result: dict[str, list[dict[str, Any]]] = {}
+        for wf_run_id, metrics_json in rows:
+            if wf_run_id and metrics_json:
+                parsed: list[dict[str, Any]] = json.loads(metrics_json)
+                existing = result.get(wf_run_id, [])
+                existing.extend(parsed)
+                result[wf_run_id] = existing
+        return result
 
     def handle_trigger_metadata(self, tenant_id: str, meta_val: str | None) -> dict[str, Any]:
         metadata: dict[str, Any] | None = self._safe_json_loads(meta_val)

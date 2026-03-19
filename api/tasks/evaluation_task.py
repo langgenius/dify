@@ -89,7 +89,7 @@ def _execute_evaluation(session: Any, run_data: EvaluationRunData) -> None:
         )
     else:
         evaluation_service = EvaluationService()
-        node_run_result_mapping_list: list[dict[str, NodeRunResult]] = evaluation_service.execute_targets(
+        node_run_result_mapping_list, workflow_run_ids = evaluation_service.execute_targets(
             tenant_id=run_data.tenant_id,
             target_type=run_data.target_type,
             target_id=run_data.target_id,
@@ -100,6 +100,13 @@ def _execute_evaluation(session: Any, run_data: EvaluationRunData) -> None:
             run_data=run_data,
             evaluation_instance=evaluation_instance,
             node_run_result_mapping_list=node_run_result_mapping_list,
+        )
+
+        _backfill_workflow_run_ids(
+            session=session,
+            evaluation_run_id=run_data.evaluation_run_id,
+            input_list=run_data.input_list,
+            workflow_run_ids=workflow_run_ids,
         )
 
     # Compute summary metrics
@@ -233,6 +240,28 @@ def _execute_retrieval_test(
         )
     )
     return results
+
+
+def _backfill_workflow_run_ids(
+    session: Any,
+    evaluation_run_id: str,
+    input_list: list[EvaluationDatasetInput],
+    workflow_run_ids: list[str | None],
+) -> None:
+    """Set ``workflow_run_id`` on items that were created by the runner."""
+    from models.evaluation import EvaluationRunItem
+
+    for item, wf_run_id in zip(input_list, workflow_run_ids):
+        if not wf_run_id:
+            continue
+        run_item = (
+            session.query(EvaluationRunItem)
+            .filter_by(evaluation_run_id=evaluation_run_id, item_index=item.index)
+            .first()
+        )
+        if run_item:
+            run_item.workflow_run_id = wf_run_id
+    session.commit()
 
 
 def _mark_run_failed(session: Any, run_id: str, error: str) -> None:

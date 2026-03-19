@@ -28,6 +28,7 @@ class EvaluationTargetType(StrEnum):
     SNIPPETS = "snippets"
     KNOWLEDGE_BASE = "knowledge_base"
 
+
 class EvaluationConfiguration(Base):
     """Stores evaluation configuration for each target (App or Snippet)."""
 
@@ -132,10 +133,12 @@ class EvaluationRunItem(Base):
         sa.PrimaryKeyConstraint("id", name="evaluation_run_item_pkey"),
         sa.Index("evaluation_run_item_run_idx", "evaluation_run_id"),
         sa.Index("evaluation_run_item_index_idx", "evaluation_run_id", "item_index"),
+        sa.Index("evaluation_run_item_workflow_run_idx", "workflow_run_id"),
     )
 
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuidv7()))
     evaluation_run_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    workflow_run_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
 
     item_index: Mapped[int] = mapped_column(Integer, nullable=False)
     inputs: Mapped[str | None] = mapped_column(LongText, nullable=True)

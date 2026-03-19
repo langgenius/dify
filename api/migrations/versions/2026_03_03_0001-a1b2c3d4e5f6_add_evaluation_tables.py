@@ -78,6 +78,7 @@ def upgrade():
         "evaluation_run_items",
         sa.Column("id", models.types.StringUUID(), nullable=False),
         sa.Column("evaluation_run_id", models.types.StringUUID(), nullable=False),
+        sa.Column("workflow_run_id", models.types.StringUUID(), nullable=True),
         sa.Column("item_index", sa.Integer(), nullable=False),
         sa.Column("inputs", models.types.LongText(), nullable=True),
         sa.Column("expected_output", models.types.LongText(), nullable=True),
@@ -95,10 +96,12 @@ def upgrade():
         batch_op.create_index(
             "evaluation_run_item_index_idx", ["evaluation_run_id", "item_index"], unique=False
         )
+        batch_op.create_index("evaluation_run_item_workflow_run_idx", ["workflow_run_id"], unique=False)
 
 
 def downgrade():
     with op.batch_alter_table("evaluation_run_items", schema=None) as batch_op:
+        batch_op.drop_index("evaluation_run_item_workflow_run_idx")
         batch_op.drop_index("evaluation_run_item_index_idx")
         batch_op.drop_index("evaluation_run_item_run_idx")
     op.drop_table("evaluation_run_items")

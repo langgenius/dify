@@ -571,7 +571,7 @@ class EvaluationService:
         target_id: str,
         input_list: list[EvaluationDatasetInput],
         max_workers: int = 5,
-    ) -> list[dict[str, NodeRunResult]]:
+    ) -> tuple[list[dict[str, NodeRunResult]], list[str | None]]:
         """Execute the evaluation target for every test-data item in parallel.
 
         :param tenant_id: Workspace / tenant ID.
@@ -579,9 +579,11 @@ class EvaluationService:
         :param target_id: ID of the App or CustomizedSnippet.
         :param input_list: All test-data items parsed from the dataset.
         :param max_workers: Maximum number of parallel worker threads.
-        :return: Ordered list of ``{node_id: NodeRunResult}`` mappings.  The
-            *i*-th element corresponds to ``input_list[i]``.  If a target
-            execution fails, the corresponding element is an empty dict.
+        :return: Tuple of (node_results, workflow_run_ids).
+            node_results: ordered list of ``{node_id: NodeRunResult}`` mappings;
+            the *i*-th element corresponds to ``input_list[i]``.
+            workflow_run_ids: ordered list of workflow_run_id strings (or None)
+            for each input item.
         """
         from concurrent.futures import ThreadPoolExecutor
 
@@ -589,13 +591,12 @@ class EvaluationService:
 
         flask_app: Flask = current_app._get_current_object()  # type: ignore
 
-        def _worker(item: EvaluationDatasetInput) -> dict[str, NodeRunResult]:
+        def _worker(item: EvaluationDatasetInput) -> tuple[dict[str, NodeRunResult], str | None]:
             with flask_app.app_context():
                 from models.engine import db
 
                 with Session(db.engine, expire_on_commit=False) as thread_session:
                     try:
-                        # 1. Execute target (workflow app / snippet)
                         response = cls._run_single_target(
                             session=thread_session,
                             target_type=target_type,
@@ -603,7 +604,6 @@ class EvaluationService:
                             item=item,
                         )
 
-                        # 2. Extract workflow_run_id from the blocking response
                         workflow_run_id = cls._extract_workflow_run_id(response)
                         if not workflow_run_id:
                             logger.warning(
@@ -611,34 +611,38 @@ class EvaluationService:
                                 item.index,
                                 target_id,
                             )
-                            return {}
+                            return {}, None
 
-                        # 3. Query per-node execution results from DB
-                        return cls._query_node_run_results(
+                        node_results = cls._query_node_run_results(
                             session=thread_session,
                             tenant_id=tenant_id,
                             app_id=target_id,
                             workflow_run_id=workflow_run_id,
                         )
+                        return node_results, workflow_run_id
                     except Exception:
                         logger.exception(
                             "Target execution failed for item %d (target=%s)",
                             item.index,
                             target_id,
                         )
-                        return {}
+                        return {}, None
 
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = [executor.submit(_worker, item) for item in input_list]
             ordered_results: list[dict[str, NodeRunResult]] = []
+            ordered_workflow_run_ids: list[str | None] = []
             for future in futures:
                 try:
-                    ordered_results.append(future.result())
+                    node_result, wf_run_id = future.result()
+                    ordered_results.append(node_result)
+                    ordered_workflow_run_ids.append(wf_run_id)
                 except Exception:
                     logger.exception("Unexpected error collecting target execution result")
                     ordered_results.append({})
+                    ordered_workflow_run_ids.append(None)
 
-        return ordered_results
+        return ordered_results, ordered_workflow_run_ids
 
     @classmethod
     def _run_single_target(
