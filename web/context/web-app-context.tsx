@@ -2,11 +2,11 @@
 
 import type { FC, PropsWithChildren } from 'react'
 import type { ChatConfig } from '@/app/components/base/chat/types'
+import type { AccessMode } from '@/models/access-control'
 import type { AppData, AppMeta } from '@/models/share'
 import { useEffect } from 'react'
 import { create } from 'zustand'
 import { getProcessedSystemVariablesFromUrlParams } from '@/app/components/base/chat/utils'
-import { AccessMode } from '@/models/access-control'
 import { usePathname, useSearchParams } from '@/next/navigation'
 import { useGetWebAppAccessModeByCode } from '@/service/use-share'
 
@@ -17,8 +17,8 @@ type WebAppStore = {
   updateAppInfo: (appInfo: AppData | null) => void
   appParams: ChatConfig | null
   updateAppParams: (appParams: ChatConfig | null) => void
-  webAppAccessMode: AccessMode
-  updateWebAppAccessMode: (accessMode: AccessMode) => void
+  webAppAccessMode: AccessMode | null
+  updateWebAppAccessMode: (accessMode: AccessMode | null) => void
   appMeta: AppMeta | null
   updateWebAppMeta: (appMeta: AppMeta | null) => void
   userCanAccessApp: boolean
@@ -36,8 +36,8 @@ export const useWebAppStore = create<WebAppStore>(set => ({
   updateAppInfo: (appInfo: AppData | null) => set(() => ({ appInfo })),
   appParams: null,
   updateAppParams: (appParams: ChatConfig | null) => set(() => ({ appParams })),
-  webAppAccessMode: AccessMode.SPECIFIC_GROUPS_MEMBERS,
-  updateWebAppAccessMode: (accessMode: AccessMode) => set(() => ({ webAppAccessMode: accessMode })),
+  webAppAccessMode: null,
+  updateWebAppAccessMode: (accessMode: AccessMode | null) => set(() => ({ webAppAccessMode: accessMode })),
   appMeta: null,
   updateWebAppMeta: (appMeta: AppMeta | null) => set(() => ({ appMeta })),
   userCanAccessApp: false,
@@ -79,6 +79,10 @@ const WebAppStoreProvider: FC<PropsWithChildren> = ({ children }) => {
   }, [shareCode, updateShareCode])
 
   useEffect(() => {
+    updateWebAppAccessMode(null)
+  }, [shareCode, updateWebAppAccessMode])
+
+  useEffect(() => {
     let cancelled = false
     const syncEmbeddedUserId = async () => {
       try {
@@ -106,7 +110,7 @@ const WebAppStoreProvider: FC<PropsWithChildren> = ({ children }) => {
   useEffect(() => {
     if (accessModeResult?.accessMode)
       updateWebAppAccessMode(accessModeResult.accessMode)
-  }, [accessModeResult, updateWebAppAccessMode, shareCode])
+  }, [accessModeResult, updateWebAppAccessMode])
 
   return <>{children}</>
 }

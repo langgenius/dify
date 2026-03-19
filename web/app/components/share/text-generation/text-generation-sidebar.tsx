@@ -18,7 +18,7 @@ import RunBatch from './run-batch'
 import RunOnce from './run-once'
 
 type TextGenerationSidebarProps = {
-  accessMode: AccessMode
+  accessMode: AccessMode | null
   allTasksRun: boolean
   currentTab: string
   customConfig: TextGenerationCustomConfig | null

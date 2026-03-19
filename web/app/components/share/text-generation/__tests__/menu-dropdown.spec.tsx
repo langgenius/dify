@@ -1,10 +1,12 @@
 import type { SiteInfo } from '@/models/share'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { AccessMode } from '@/models/access-control'
 import MenuDropdown from '../menu-dropdown'
 
 const mockReplace = vi.fn()
 const mockPathname = '/test-path'
+let mockWebAppAccessMode: AccessMode | null = AccessMode.SPECIFIC_GROUPS_MEMBERS
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     replace: mockReplace,
@@ -16,7 +18,7 @@ const mockShareCode = 'test-share-code'
 vi.mock('@/context/web-app-context', () => ({
   useWebAppStore: (selector: (state: Record<string, unknown>) => unknown) => {
     const state = {
-      webAppAccessMode: 'code',
+      webAppAccessMode: mockWebAppAccessMode,
       shareCode: mockShareCode,
     }
     return selector(state)
@@ -41,6 +43,7 @@ describe('MenuDropdown', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockWebAppAccessMode = AccessMode.SPECIFIC_GROUPS_MEMBERS
   })
 
   describe('rendering', () => {
@@ -142,6 +145,19 @@ describe('MenuDropdown', () => {
 
     it('should hide logout option when hideLogout is true', async () => {
       render(<MenuDropdown data={baseSiteInfo} hideLogout={true} />)
+
+      const triggerButton = screen.getByRole('button')
+      fireEvent.click(triggerButton)
+
+      await waitFor(() => {
+        expect(screen.queryByText('common.userProfile.logout')).not.toBeInTheDocument()
+      })
+    })
+
+    it('should hide logout option when access mode is unknown', async () => {
+      mockWebAppAccessMode = null
+
+      render(<MenuDropdown data={baseSiteInfo} hideLogout={false} />)
 
       const triggerButton = screen.getByRole('button')
       fireEvent.click(triggerButton)

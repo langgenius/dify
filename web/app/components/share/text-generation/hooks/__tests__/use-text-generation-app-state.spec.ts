@@ -1,4 +1,5 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
+import { AccessMode } from '@/models/access-control'
 import { AppSourceType } from '@/service/share'
 import { useTextGenerationAppState } from '../use-text-generation-app-state'
 
@@ -118,13 +119,13 @@ const defaultAppParams = {
 type MockWebAppState = {
   appInfo: MockAppInfo | null
   appParams: typeof defaultAppParams | null
-  webAppAccessMode: string
+  webAppAccessMode: AccessMode | null
 }
 
 const mockWebAppState: MockWebAppState = {
   appInfo: defaultAppInfo,
   appParams: defaultAppParams,
-  webAppAccessMode: 'public',
+  webAppAccessMode: AccessMode.PUBLIC,
 }
 
 const resetMockWebAppState = () => {
@@ -154,7 +155,7 @@ const resetMockWebAppState = () => {
       image_file_size_limit: 10,
     },
   }
-  mockWebAppState.webAppAccessMode = 'public'
+  mockWebAppState.webAppAccessMode = AccessMode.PUBLIC
 }
 
 vi.mock('@/context/global-public-context', () => ({
