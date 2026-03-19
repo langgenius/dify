@@ -188,6 +188,19 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                 if stream_response.metadata:
                     extras["metadata"] = stream_response.metadata
 
+                answer = self._task_state.answer
+
+                # Fallback: if no text chunks were captured during streaming but the
+                # graph runtime state contains an "answer" output (set by the Answer
+                # node via _update_response_outputs), use that instead.  This covers
+                # scenarios where the response-coordinator does not emit streaming
+                # chunks for certain variable types (e.g. workflow-tool outputs fed
+                # directly into an Answer node).
+                if not answer and self._graph_runtime_state is not None:
+                    runtime_answer = self._graph_runtime_state.get_output("answer")
+                    if runtime_answer and isinstance(runtime_answer, str):
+                        answer = runtime_answer
+
                 return ChatbotAppBlockingResponse(
                     task_id=stream_response.task_id,
                     data=ChatbotAppBlockingResponse.Data(
@@ -195,7 +208,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                         mode=self._conversation_mode,
                         conversation_id=self._conversation_id,
                         message_id=self._message_id,
-                        answer=self._task_state.answer,
+                        answer=answer,
                         created_at=self._message_created_at,
                         **extras,
                     ),
