@@ -145,7 +145,7 @@ class TestTenantListApi:
         )
 
         features = MagicMock()
-        features.billing.enabled = True
+        features.billing.enabled = False
         features.billing.subscription.plan = CloudPlan.TEAM
 
         with (
