@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
+from extensions.storage.storage_type import StorageType
 from models import Account, Tenant
 from models.enums import CreatorUserRole
 from models.model import EndUser, UploadFile
@@ -140,7 +141,7 @@ class TestFileService:
 
         upload_file = UploadFile(
             tenant_id=account.current_tenant_id if hasattr(account, "current_tenant_id") else str(fake.uuid4()),
-            storage_type="local",
+            storage_type=StorageType.LOCAL,
             key=f"upload_files/test/{fake.uuid4()}.txt",
             name="test_file.txt",
             size=1024,
