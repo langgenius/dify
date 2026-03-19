@@ -62,6 +62,7 @@ jobs:
     needs: check-changes
     if: needs.check-changes.outputs.web-changed == 'true'
     uses: ./.github/workflows/web-tests.yml
+    secrets: inherit
 
   style-check:
     name: Style Check
