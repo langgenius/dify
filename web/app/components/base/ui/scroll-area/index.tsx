@@ -5,11 +5,25 @@ import * as React from 'react'
 import { cn } from '@/utils/classnames'
 import styles from './index.module.css'
 
-export const ScrollArea = BaseScrollArea.Root
+export const ScrollAreaRoot = BaseScrollArea.Root
 export type ScrollAreaRootProps = React.ComponentPropsWithRef<typeof BaseScrollArea.Root>
 
 export const ScrollAreaContent = BaseScrollArea.Content
 export type ScrollAreaContentProps = React.ComponentPropsWithRef<typeof BaseScrollArea.Content>
+
+export type ScrollAreaSlotClassNames = {
+  viewport?: string
+  content?: string
+  scrollbar?: string
+}
+
+export type ScrollAreaProps = Omit<ScrollAreaRootProps, 'children'> & {
+  children: React.ReactNode
+  orientation?: 'vertical' | 'horizontal'
+  slotClassNames?: ScrollAreaSlotClassNames
+  label?: string
+  labelledBy?: string
+}
 
 export const scrollAreaScrollbarClassName = cn(
   styles.scrollbar,
@@ -86,5 +100,33 @@ export function ScrollAreaCorner({
       className={cn(scrollAreaCornerClassName, className)}
       {...props}
     />
+  )
+}
+
+export function ScrollArea({
+  children,
+  className,
+  orientation = 'vertical',
+  slotClassNames,
+  label,
+  labelledBy,
+  ...props
+}: ScrollAreaProps) {
+  return (
+    <ScrollAreaRoot className={className} {...props}>
+      <ScrollAreaViewport
+        aria-label={label}
+        aria-labelledby={labelledBy}
+        className={slotClassNames?.viewport}
+        role={label || labelledBy ? 'region' : undefined}
+      >
+        <ScrollAreaContent className={slotClassNames?.content}>
+          {children}
+        </ScrollAreaContent>
+      </ScrollAreaViewport>
+      <ScrollAreaScrollbar orientation={orientation} className={slotClassNames?.scrollbar}>
+        <ScrollAreaThumb />
+      </ScrollAreaScrollbar>
+    </ScrollAreaRoot>
   )
 }

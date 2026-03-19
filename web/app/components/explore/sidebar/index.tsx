@@ -13,13 +13,7 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@/app/components/base/ui/alert-dialog'
-import {
-  ScrollArea,
-  ScrollAreaContent,
-  ScrollAreaScrollbar,
-  ScrollAreaThumb,
-  ScrollAreaViewport,
-} from '@/app/components/base/ui/scroll-area'
+import { ScrollArea } from '@/app/components/base/ui/scroll-area'
 import { toast } from '@/app/components/base/ui/toast'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import Link from '@/next/link'
@@ -30,11 +24,9 @@ import Item from './app-nav-item'
 import NoApps from './no-apps'
 
 const expandedSidebarScrollAreaClassNames = {
-  root: 'h-full',
-  viewport: 'overscroll-contain',
   content: 'space-y-0.5',
   scrollbar: 'data-[orientation=vertical]:my-2 data-[orientation=vertical]:[margin-inline-end:-0.75rem]',
-  thumb: 'rounded-full',
+  viewport: 'overscroll-contain',
 } as const
 
 const SideBar = () => {
@@ -104,10 +96,11 @@ const SideBar = () => {
       <div className={cn(isDiscoverySelected ? 'text-text-accent' : 'text-text-tertiary')}>
         <Link
           href="/explore/apps"
+          aria-label={isMobile || isFold ? t('sidebar.title', { ns: 'explore' }) : undefined}
           className={cn(isDiscoverySelected ? 'bg-state-base-active' : 'hover:bg-state-base-hover', 'flex h-8 items-center gap-2 rounded-lg px-1 mobile:w-fit mobile:justify-center pc:w-full pc:justify-start')}
         >
           <div className="flex size-6 shrink-0 items-center justify-center rounded-md bg-components-icon-bg-blue-solid">
-            <span className="i-ri-apps-fill size-3.5 text-components-avatar-shape-fill-stop-100" />
+            <span aria-hidden="true" className="i-ri-apps-fill size-3.5 text-components-avatar-shape-fill-stop-100" />
           </div>
           {!isMobile && !isFold && <div className={cn('truncate', isDiscoverySelected ? 'text-components-menu-item-text-active system-sm-semibold' : 'text-components-menu-item-text system-sm-regular')}>{t('sidebar.title', { ns: 'explore' })}</div>}
         </Link>
@@ -126,19 +119,12 @@ const SideBar = () => {
           {shouldUseExpandedScrollArea
             ? (
                 <div className="min-h-0 flex-1">
-                  <ScrollArea className={expandedSidebarScrollAreaClassNames.root}>
-                    <ScrollAreaViewport
-                      aria-labelledby={webAppsLabelId}
-                      className={expandedSidebarScrollAreaClassNames.viewport}
-                      role="region"
-                    >
-                      <ScrollAreaContent className={expandedSidebarScrollAreaClassNames.content}>
-                        {installedAppItems}
-                      </ScrollAreaContent>
-                    </ScrollAreaViewport>
-                    <ScrollAreaScrollbar className={expandedSidebarScrollAreaClassNames.scrollbar}>
-                      <ScrollAreaThumb className={expandedSidebarScrollAreaClassNames.thumb} />
-                    </ScrollAreaScrollbar>
+                  <ScrollArea
+                    className="h-full"
+                    slotClassNames={expandedSidebarScrollAreaClassNames}
+                    labelledBy={webAppsLabelId}
+                  >
+                    {installedAppItems}
                   </ScrollArea>
                 </div>
               )
@@ -154,13 +140,18 @@ const SideBar = () => {
 
       {!isMobile && (
         <div className="mt-auto flex pb-3 pt-3">
-          <div className="flex size-8 cursor-pointer items-center justify-center text-text-tertiary" onClick={toggleIsFold}>
+          <button
+            type="button"
+            aria-label={isFold ? t('sidebar.expandSidebar', { ns: 'layout' }) : t('sidebar.collapseSidebar', { ns: 'layout' })}
+            className="flex size-8 items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-state-base-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-components-input-border-hover"
+            onClick={toggleIsFold}
+          >
             {isFold
-              ? <span className="i-ri-expand-right-line" />
+              ? <span aria-hidden="true" className="i-ri-expand-right-line" />
               : (
-                  <span className="i-ri-layout-left-2-line" />
+                  <span aria-hidden="true" className="i-ri-layout-left-2-line" />
                 )}
-          </div>
+          </button>
         </div>
       )}
 
