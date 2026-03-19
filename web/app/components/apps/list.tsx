@@ -12,7 +12,6 @@ import { useStore as useTagStore } from '@/app/components/base/tag-management/st
 import CheckboxWithLabel from '@/app/components/datasets/create/website/base/checkbox-with-label'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { CheckModal } from '@/hooks/use-pay'
 import dynamic from '@/next/dynamic'
 import { useInfiniteAppList } from '@/service/use-apps'
@@ -21,7 +20,6 @@ import { cn } from '@/utils/classnames'
 import AppCard from './app-card'
 import { AppCardSkeleton } from './app-card-skeleton'
 import Empty from './empty'
-import Footer from './footer'
 import useAppsQueryState from './hooks/use-apps-query-state'
 import { useDSLDragDrop } from './hooks/use-dsl-drag-drop'
 import NewAppCard from './new-app-card'
@@ -52,7 +50,6 @@ const List: FC<Props> = ({
   controlRefreshList = 0,
 }) => {
   const { t } = useTranslation()
-  const { systemFeatures } = useGlobalPublicStore()
   const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator, isLoadingCurrentWorkspace } = useAppContext()
   const showTagManagementModal = useTagStore(s => s.showTagManagementModal)
   const [activeTab, setActiveTab] = useQueryState(
@@ -264,9 +261,10 @@ const List: FC<Props> = ({
             <span className="system-xs-regular">{t('newApp.dropDSLToCreateApp', { ns: 'app' })}</span>
           </div>
         )}
-        {!systemFeatures.branding.enabled && (
+        {/* 隐藏参与社区 Footer */}
+        {/* {!systemFeatures.branding.enabled && (
           <Footer />
-        )}
+        )} */}
         <CheckModal />
         <div ref={anchorRef} className="h-0"> </div>
         {showTagManagementModal && (
