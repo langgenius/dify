@@ -128,6 +128,11 @@ class TestTenantListApi:
         get_features_mock.assert_not_called()
 
     def test_get_saas_path_falls_back_to_legacy_feature_path_on_bulk_error(self, app):
+        """Test fallback to FeatureService when bulk billing returns empty result.
+
+        BillingService.get_plan_bulk catches exceptions internally and returns empty dict,
+        so we simulate the real failure mode by returning empty dict for non-empty input.
+        """
         api = TenantListApi()
         method = unwrap(api.get)
 
@@ -162,13 +167,13 @@ class TestTenantListApi:
             patch("controllers.console.workspace.workspace.dify_config.EDITION", "CLOUD"),
             patch(
                 "controllers.console.workspace.workspace.BillingService.get_plan_bulk",
-                side_effect=RuntimeError("billing down"),
+                return_value={},  # Simulates real failure: empty result for non-empty input
             ) as get_plan_bulk_mock,
             patch(
                 "controllers.console.workspace.workspace.FeatureService.get_features",
                 return_value=features,
             ) as get_features_mock,
-            patch("controllers.console.workspace.workspace.logger.exception") as logger_exception_mock,
+            patch("controllers.console.workspace.workspace.logger.warning") as logger_warning_mock,
         ):
             result, status = method(api)
 
@@ -177,7 +182,7 @@ class TestTenantListApi:
         assert result["workspaces"][1]["plan"] == CloudPlan.TEAM
         get_plan_bulk_mock.assert_called_once_with(["t1", "t2"])
         assert get_features_mock.call_count == 2
-        logger_exception_mock.assert_called_once()
+        logger_warning_mock.assert_called_once()
 
     def test_get_billing_disabled_community_path(self, app):
         api = TenantListApi()
@@ -192,6 +197,7 @@ class TestTenantListApi:
 
         features = MagicMock()
         features.billing.enabled = False
+        features.billing.subscription.plan = CloudPlan.SANDBOX
 
         with (
             app.test_request_context("/workspaces"),

@@ -118,10 +118,10 @@ class TenantListApi(Resource):
         if is_saas:
             tenant_ids = [tenant.id for tenant in tenants]
             if tenant_ids:
-                try:
-                    tenant_plans = BillingService.get_plan_bulk(tenant_ids)
-                except Exception:
-                    logger.exception("failed to fetch workspace plans in bulk, falling back to legacy feature path")
+                tenant_plans = BillingService.get_plan_bulk(tenant_ids)
+                # If bulk fetch returned empty for non-empty input, fall back to legacy path
+                if not tenant_plans:
+                    logger.warning("get_plan_bulk returned empty result, falling back to legacy feature path")
                     use_legacy_feature_path = True
 
         for tenant in tenants:
