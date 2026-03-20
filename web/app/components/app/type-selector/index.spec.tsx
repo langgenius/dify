@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
 import { AppModeEnum } from '@/types/app'
 import AppTypeSelector, { AppTypeIcon, AppTypeLabel } from './index'
@@ -14,7 +14,7 @@ describe('AppTypeSelector', () => {
       render(<AppTypeSelector value={[]} onChange={vi.fn()} />)
 
       expect(screen.getByText('app.typeSelector.all')).toBeInTheDocument()
-      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+      expect(screen.queryByText('app.typeSelector.workflow')).not.toBeInTheDocument()
     })
   })
 
@@ -39,16 +39,21 @@ describe('AppTypeSelector', () => {
 
   // Covers opening/closing the dropdown and selection updates.
   describe('User interactions', () => {
-    it('should toggle option list when clicking the trigger', () => {
+    it('should close option list when clicking outside', () => {
       render(<AppTypeSelector value={[]} onChange={vi.fn()} />)
 
-      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+      expect(screen.queryByText('app.typeSelector.workflow')).not.toBeInTheDocument()
 
       fireEvent.click(screen.getByText('app.typeSelector.all'))
-      expect(screen.getByRole('tooltip')).toBeInTheDocument()
+      expect(screen.getByText('app.typeSelector.workflow')).toBeInTheDocument()
 
-      fireEvent.click(screen.getByText('app.typeSelector.all'))
-      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+      fireEvent.pointerDown(document.body)
+      fireEvent.click(document.body)
+      const workflowOption = screen.queryByText('app.typeSelector.workflow') ?? screen.queryByText('app.typeSelector.workflow', { selector: 'span' })
+      if (workflowOption)
+        expect(workflowOption).not.toBeVisible()
+      else
+        expect(workflowOption).not.toBeInTheDocument()
     })
 
     it('should call onChange with added type when selecting an unselected item', () => {
@@ -56,7 +61,7 @@ describe('AppTypeSelector', () => {
       render(<AppTypeSelector value={[]} onChange={onChange} />)
 
       fireEvent.click(screen.getByText('app.typeSelector.all'))
-      fireEvent.click(within(screen.getByRole('tooltip')).getByText('app.typeSelector.workflow'))
+      fireEvent.click(screen.getByText('app.typeSelector.workflow'))
 
       expect(onChange).toHaveBeenCalledWith([AppModeEnum.WORKFLOW])
     })
@@ -66,7 +71,7 @@ describe('AppTypeSelector', () => {
       render(<AppTypeSelector value={[AppModeEnum.WORKFLOW]} onChange={onChange} />)
 
       fireEvent.click(screen.getByText('app.typeSelector.workflow'))
-      fireEvent.click(within(screen.getByRole('tooltip')).getByText('app.typeSelector.workflow'))
+      fireEvent.click(screen.getAllByText('app.typeSelector.workflow')[1])
 
       expect(onChange).toHaveBeenCalledWith([])
     })
@@ -76,7 +81,7 @@ describe('AppTypeSelector', () => {
       render(<AppTypeSelector value={[AppModeEnum.CHAT]} onChange={onChange} />)
 
       fireEvent.click(screen.getByText('app.typeSelector.chatbot'))
-      fireEvent.click(within(screen.getByRole('tooltip')).getByText('app.typeSelector.agent'))
+      fireEvent.click(screen.getByText('app.typeSelector.agent'))
 
       expect(onChange).toHaveBeenCalledWith([AppModeEnum.CHAT, AppModeEnum.AGENT_CHAT])
     })
@@ -88,7 +93,7 @@ describe('AppTypeSelector', () => {
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.clear' }))
 
       expect(onChange).toHaveBeenCalledWith([])
-      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+      expect(screen.queryByText('app.typeSelector.workflow')).not.toBeInTheDocument()
     })
   })
 })

@@ -4,10 +4,10 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { BubbleTextMod, ChatBot, ListSparkle, Logic } from '@/app/components/base/icons/src/vender/solid/communication'
 import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/app/components/base/ui/popover'
 import { AppModeEnum } from '@/types/app'
 import { cn } from '@/utils/classnames'
 import Checkbox from '../../base/checkbox'
@@ -24,41 +24,42 @@ const AppTypeSelector = ({ value, onChange }: AppSelectorProps) => {
   const { t } = useTranslation()
 
   return (
-    <PortalToFollowElem
+    <Popover
       open={open}
       onOpenChange={setOpen}
-      placement="bottom-start"
-      offset={4}
     >
       <div className="relative">
-        <PortalToFollowElemTrigger
-          onClick={() => setOpen(v => !v)}
-          className="block"
-        >
-          <div className={cn(
-            'flex cursor-pointer items-center justify-between space-x-1 rounded-md px-2 hover:bg-state-base-hover',
+        <PopoverTrigger
+          render={(
+            <button
+              type="button"
+              className={cn(
+                'flex cursor-pointer items-center justify-between rounded-md px-2 hover:bg-state-base-hover',
+                value.length > 0 && 'pr-6',
+              )}
+            >
+              <AppTypeSelectTrigger values={value} />
+            </button>
           )}
+        />
+        {value.length > 0 && (
+          <button
+            type="button"
+            aria-label={t('operation.clear', { ns: 'common' })}
+            className="group absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2"
+            onClick={() => onChange([])}
           >
-            <AppTypeSelectTrigger values={value} />
-            {value && value.length > 0 && (
-              <button
-                type="button"
-                aria-label={t('operation.clear', { ns: 'common' })}
-                className="group h-4 w-4"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onChange([])
-                }}
-              >
-                <RiCloseCircleFill
-                  className="h-3.5 w-3.5 text-text-quaternary group-hover:text-text-tertiary"
-                />
-              </button>
-            )}
-          </div>
-        </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className="z-[1002]">
-          <ul className="relative w-[240px] rounded-xl border border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]">
+            <RiCloseCircleFill
+              className="h-3.5 w-3.5 text-text-quaternary group-hover:text-text-tertiary"
+            />
+          </button>
+        )}
+        <PopoverContent
+          placement="bottom-start"
+          sideOffset={4}
+          popupClassName="w-[240px] rounded-xl border border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]"
+        >
+          <ul className="relative w-[240px] p-1">
             {allTypes.map(mode => (
               <AppTypeSelectorItem
                 key={mode}
@@ -73,9 +74,9 @@ const AppTypeSelector = ({ value, onChange }: AppSelectorProps) => {
               />
             ))}
           </ul>
-        </PortalToFollowElemContent>
+        </PopoverContent>
       </div>
-    </PortalToFollowElem>
+    </Popover>
   )
 }
 
