@@ -48,7 +48,7 @@ Finally, run the development server:
 pnpm run dev
 # or if you are using vinext which provides a better development experience
 pnpm run dev:vinext
-# start the dev proxy server so that you can use online API in development
+# (optional) start the dev proxy server so that you can use online API in development
 pnpm run dev:proxy
 ```
 
