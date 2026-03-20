@@ -84,8 +84,8 @@ class TestTenantListApi:
         get_plan_bulk_mock.assert_called_once_with(["t1", "t2"])
         get_features_mock.assert_not_called()
 
-    def test_get_saas_path_partial_fallback_for_missing_tenant_billing_disabled(self, app):
-        """Bulk omits a tenant: only that tenant uses FeatureService; billing off -> SANDBOX."""
+    def test_get_saas_path_partial_fallback_for_missing_tenant_ignores_billing_enabled_mock(self, app):
+        """Bulk omits a tenant: plan comes from subscription only (SaaS billing.enabled is always true)."""
         api = TenantListApi()
         method = unwrap(api.get)
 
@@ -104,57 +104,6 @@ class TestTenantListApi:
 
         features_t2 = MagicMock()
         features_t2.billing.enabled = False
-        features_t2.billing.subscription.plan = CloudPlan.PROFESSIONAL
-
-        with (
-            app.test_request_context("/workspaces"),
-            patch(
-                "controllers.console.workspace.workspace.current_account_with_tenant", return_value=(MagicMock(), "t1")
-            ),
-            patch(
-                "controllers.console.workspace.workspace.TenantService.get_join_tenants",
-                return_value=[tenant1, tenant2],
-            ),
-            patch("controllers.console.workspace.workspace.dify_config.ENTERPRISE_ENABLED", False),
-            patch("controllers.console.workspace.workspace.dify_config.BILLING_ENABLED", True),
-            patch("controllers.console.workspace.workspace.dify_config.EDITION", "CLOUD"),
-            patch(
-                "controllers.console.workspace.workspace.BillingService.get_plan_bulk",
-                return_value={"t1": {"plan": CloudPlan.TEAM, "expiration_date": 0}},
-            ) as get_plan_bulk_mock,
-            patch(
-                "controllers.console.workspace.workspace.FeatureService.get_features",
-                return_value=features_t2,
-            ) as get_features_mock,
-        ):
-            result, status = method(api)
-
-        assert status == 200
-        assert result["workspaces"][0]["plan"] == CloudPlan.TEAM
-        assert result["workspaces"][1]["plan"] == CloudPlan.SANDBOX
-        get_plan_bulk_mock.assert_called_once_with(["t1", "t2"])
-        get_features_mock.assert_called_once_with("t2")
-
-    def test_get_saas_path_partial_fallback_for_missing_tenant_billing_enabled(self, app):
-        """Bulk omits a tenant: FeatureService supplies plan when billing.enabled is true."""
-        api = TenantListApi()
-        method = unwrap(api.get)
-
-        tenant1 = MagicMock(
-            id="t1",
-            name="Tenant 1",
-            status="active",
-            created_at=datetime.utcnow(),
-        )
-        tenant2 = MagicMock(
-            id="t2",
-            name="Tenant 2",
-            status="active",
-            created_at=datetime.utcnow(),
-        )
-
-        features_t2 = MagicMock()
-        features_t2.billing.enabled = True
         features_t2.billing.subscription.plan = CloudPlan.PROFESSIONAL
 
         with (

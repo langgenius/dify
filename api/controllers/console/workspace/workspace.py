@@ -40,14 +40,6 @@ logger = logging.getLogger(__name__)
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
-def _plan_from_billing_features(tenant_id: str) -> str:
-    """Resolve plan from billing feature flags (SaaS partial-fallback path)."""
-    features = FeatureService.get_features(tenant_id)
-    if features.billing.enabled:
-        return features.billing.subscription.plan or CloudPlan.SANDBOX
-    return CloudPlan.SANDBOX
-
-
 class WorkspaceListQuery(BaseModel):
     page: int = Field(default=1, ge=1, le=99999)
     limit: int = Field(default=20, ge=1, le=100)
@@ -121,25 +113,23 @@ class TenantListApi(Resource):
         is_enterprise_only = dify_config.ENTERPRISE_ENABLED and not dify_config.BILLING_ENABLED
         is_saas = dify_config.EDITION == "CLOUD" and dify_config.BILLING_ENABLED
         tenant_plans: dict[str, SubscriptionPlan] = {}
-        use_legacy_feature_path = not is_enterprise_only and not is_saas
 
         if is_saas:
             tenant_ids = [tenant.id for tenant in tenants]
             if tenant_ids:
                 tenant_plans = BillingService.get_plan_bulk(tenant_ids)
-                # If bulk fetch returned empty for non-empty input, fall back to legacy path
                 if not tenant_plans:
                     logger.warning("get_plan_bulk returned empty result, falling back to legacy feature path")
-                    use_legacy_feature_path = True
 
         for tenant in tenants:
             plan: str = CloudPlan.SANDBOX
-            if is_saas and not use_legacy_feature_path:
+            if is_saas:
                 tenant_plan = tenant_plans.get(tenant.id)
                 if tenant_plan:
                     plan = tenant_plan["plan"] or CloudPlan.SANDBOX
                 else:
-                    plan = _plan_from_billing_features(tenant.id)
+                    features = FeatureService.get_features(tenant.id)
+                    plan = features.billing.subscription.plan or CloudPlan.SANDBOX
             elif not is_enterprise_only:
                 features = FeatureService.get_features(tenant.id)
                 plan = features.billing.subscription.plan or CloudPlan.SANDBOX
