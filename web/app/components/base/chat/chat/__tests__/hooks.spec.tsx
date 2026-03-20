@@ -1,8 +1,8 @@
 import type { ChatConfig, ChatItemInTree } from '../../types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { act, renderHook } from '@testing-library/react'
-import { useParams, usePathname } from 'next/navigation'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { useParams, usePathname } from '@/next/navigation'
 import { sseGet, ssePost } from '@/service/base'
 import { useChat } from '../hooks'
 
@@ -28,7 +28,7 @@ vi.mock('@/hooks/use-timestamp', () => ({
   default: () => ({ formatTime: vi.fn().mockReturnValue('10:00 AM') }),
 }))
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useParams: vi.fn(() => ({})),
   usePathname: vi.fn(() => ''),
   useRouter: vi.fn(() => ({})),

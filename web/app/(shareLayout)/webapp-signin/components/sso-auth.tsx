@@ -1,11 +1,11 @@
 'use client'
 import type { FC } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
+import { useRouter, useSearchParams } from '@/next/navigation'
 import { fetchMembersOAuth2SSOUrl, fetchMembersOIDCSSOUrl, fetchMembersSAMLSSOUrl } from '@/service/share'
 import { SSOProtocol } from '@/types/feature'
 
@@ -37,9 +37,9 @@ const SSOAuth: FC<SSOAuthProps> = ({
   const handleSSOLogin = () => {
     const appCode = getAppCodeFromRedirectUrl()
     if (!redirectUrl || !appCode) {
-      Toast.notify({
+      toast.add({
         type: 'error',
-        message: 'invalid redirect URL or app code',
+        title: t('error.invalidRedirectUrlOrAppCode', { ns: 'login' }),
       })
       return
     }
@@ -66,9 +66,9 @@ const SSOAuth: FC<SSOAuthProps> = ({
       })
     }
     else {
-      Toast.notify({
+      toast.add({
         type: 'error',
-        message: 'invalid SSO protocol',
+        title: t('error.invalidSSOProtocol', { ns: 'login' }),
       })
       setIsLoading(false)
     }

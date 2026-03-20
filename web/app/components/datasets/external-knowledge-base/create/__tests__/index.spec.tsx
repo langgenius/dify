@@ -7,7 +7,7 @@ import RetrievalSettings from '../RetrievalSettings'
 
 const mockReplace = vi.fn()
 const mockRefresh = vi.fn()
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     replace: mockReplace,
     push: vi.fn(),

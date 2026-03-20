@@ -50,7 +50,7 @@ class TestGetUser:
         mock_user.id = "user123"
         mock_session = MagicMock()
         mock_session_class.return_value.__enter__.return_value = mock_session
-        mock_session.query.return_value.where.return_value.first.return_value = mock_user
+        mock_session.get.return_value = mock_user
 
         # Act
         with app.app_context():
@@ -58,7 +58,7 @@ class TestGetUser:
 
         # Assert
         assert result == mock_user
-        mock_session.query.assert_called_once()
+        mock_session.get.assert_called_once()
 
     @patch("controllers.inner_api.plugin.wraps.EndUser")
     @patch("controllers.inner_api.plugin.wraps.Session")
@@ -72,7 +72,8 @@ class TestGetUser:
         mock_user.session_id = "anonymous_session"
         mock_session = MagicMock()
         mock_session_class.return_value.__enter__.return_value = mock_session
-        mock_session.query.return_value.where.return_value.first.return_value = mock_user
+        # non-anonymous path uses session.get(); anonymous uses session.scalar()
+        mock_session.get.return_value = mock_user
 
         # Act
         with app.app_context():
@@ -89,7 +90,7 @@ class TestGetUser:
         # Arrange
         mock_session = MagicMock()
         mock_session_class.return_value.__enter__.return_value = mock_session
-        mock_session.query.return_value.where.return_value.first.return_value = None
+        mock_session.get.return_value = None
         mock_new_user = MagicMock()
         mock_enduser_class.return_value = mock_new_user
 
@@ -103,18 +104,20 @@ class TestGetUser:
         mock_session.commit.assert_called_once()
         mock_session.refresh.assert_called_once()
 
+    @patch("controllers.inner_api.plugin.wraps.select")
     @patch("controllers.inner_api.plugin.wraps.EndUser")
     @patch("controllers.inner_api.plugin.wraps.Session")
     @patch("controllers.inner_api.plugin.wraps.db")
     def test_should_use_default_session_id_when_user_id_none(
-        self, mock_db, mock_session_class, mock_enduser_class, app: Flask
+        self, mock_db, mock_session_class, mock_enduser_class, mock_select, app: Flask
     ):
         """Test using default session ID when user_id is None"""
         # Arrange
         mock_user = MagicMock()
         mock_session = MagicMock()
         mock_session_class.return_value.__enter__.return_value = mock_session
-        mock_session.query.return_value.where.return_value.first.return_value = mock_user
+        # When user_id is None, is_anonymous=True, so session.scalar() is used
+        mock_session.scalar.return_value = mock_user
 
         # Act
         with app.app_context():
@@ -133,7 +136,7 @@ class TestGetUser:
         # Arrange
         mock_session = MagicMock()
         mock_session_class.return_value.__enter__.return_value = mock_session
-        mock_session.query.side_effect = Exception("Database error")
+        mock_session.get.side_effect = Exception("Database error")
 
         # Act & Assert
         with app.app_context():
@@ -161,9 +164,9 @@ class TestGetUserTenant:
         # Act
         with app.test_request_context(json={"tenant_id": "tenant123", "user_id": "user456"}):
             monkeypatch.setattr(app, "login_manager", MagicMock(), raising=False)
-            with patch("controllers.inner_api.plugin.wraps.db.session.query") as mock_query:
+            with patch("controllers.inner_api.plugin.wraps.db.session.get") as mock_get:
                 with patch("controllers.inner_api.plugin.wraps.get_user") as mock_get_user:
-                    mock_query.return_value.where.return_value.first.return_value = mock_tenant
+                    mock_get.return_value = mock_tenant
                     mock_get_user.return_value = mock_user
                     result = protected_view()
 
@@ -194,8 +197,8 @@ class TestGetUserTenant:
 
         # Act & Assert
         with app.test_request_context(json={"tenant_id": "nonexistent", "user_id": "user456"}):
-            with patch("controllers.inner_api.plugin.wraps.db.session.query") as mock_query:
-                mock_query.return_value.where.return_value.first.return_value = None
+            with patch("controllers.inner_api.plugin.wraps.db.session.get") as mock_get:
+                mock_get.return_value = None
                 with pytest.raises(ValueError, match="tenant not found"):
                     protected_view()
 
@@ -215,9 +218,9 @@ class TestGetUserTenant:
         # Act - use empty string for user_id to trigger default logic
         with app.test_request_context(json={"tenant_id": "tenant123", "user_id": ""}):
             monkeypatch.setattr(app, "login_manager", MagicMock(), raising=False)
-            with patch("controllers.inner_api.plugin.wraps.db.session.query") as mock_query:
+            with patch("controllers.inner_api.plugin.wraps.db.session.get") as mock_get:
                 with patch("controllers.inner_api.plugin.wraps.get_user") as mock_get_user:
-                    mock_query.return_value.where.return_value.first.return_value = mock_tenant
+                    mock_get.return_value = mock_tenant
                     mock_get_user.return_value = mock_user
                     result = protected_view()
 

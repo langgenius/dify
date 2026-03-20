@@ -1,5 +1,4 @@
 import type { PipelineTemplate } from '@/models/pipeline'
-import { useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -8,6 +7,7 @@ import Confirm from '@/app/components/base/confirm'
 import Modal from '@/app/components/base/modal'
 import Toast from '@/app/components/base/toast'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
+import { useRouter } from '@/next/navigation'
 import { useCreatePipelineDatasetFromCustomized } from '@/service/knowledge/use-create-dataset'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import {

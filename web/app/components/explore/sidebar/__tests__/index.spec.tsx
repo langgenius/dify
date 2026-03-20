@@ -1,19 +1,23 @@
 import type { InstalledApp } from '@/models/explore'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import Toast from '@/app/components/base/toast'
 import { MediaType } from '@/hooks/use-breakpoints'
 import { AppModeEnum } from '@/types/app'
 import SideBar from '../index'
+
+const { mockToastAdd } = vi.hoisted(() => ({
+  mockToastAdd: vi.fn(),
+}))
 
 const mockSegments = ['apps']
 const mockPush = vi.fn()
 const mockUninstall = vi.fn()
 const mockUpdatePinStatus = vi.fn()
 let mockIsPending = false
+let mockIsUninstallPending = false
 let mockInstalledApps: InstalledApp[] = []
 let mockMediaType: string = MediaType.pc
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useSelectedLayoutSegments: () => mockSegments,
   useRouter: () => ({
     push: mockPush,
@@ -36,10 +40,20 @@ vi.mock('@/service/use-explore', () => ({
   }),
   useUninstallApp: () => ({
     mutateAsync: mockUninstall,
+    isPending: mockIsUninstallPending,
   }),
   useUpdateAppPinStatus: () => ({
     mutateAsync: mockUpdatePinStatus,
   }),
+}))
+
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    add: mockToastAdd,
+    close: vi.fn(),
+    update: vi.fn(),
+    promise: vi.fn(),
+  },
 }))
 
 const createInstalledApp = (overrides: Partial<InstalledApp> = {}): InstalledApp => ({
@@ -67,9 +81,9 @@ describe('SideBar', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockIsPending = false
+    mockIsUninstallPending = false
     mockInstalledApps = []
     mockMediaType = MediaType.pc
-    vi.spyOn(Toast, 'notify').mockImplementation(() => ({ clear: vi.fn() }))
   })
 
   describe('Rendering', () => {
@@ -79,11 +93,19 @@ describe('SideBar', () => {
       expect(screen.getByText('explore.sidebar.title')).toBeInTheDocument()
     })
 
+    it('should expose an accessible name for the discovery link when the text is hidden', () => {
+      mockMediaType = MediaType.mobile
+      renderSideBar()
+
+      expect(screen.getByRole('link', { name: 'explore.sidebar.title' })).toBeInTheDocument()
+    })
+
     it('should render workspace items when installed apps exist', () => {
       mockInstalledApps = [createInstalledApp()]
       renderSideBar()
 
       expect(screen.getByText('explore.sidebar.webApps')).toBeInTheDocument()
+      expect(screen.getByRole('region', { name: 'explore.sidebar.webApps' })).toBeInTheDocument()
       expect(screen.getByText('My App')).toBeInTheDocument()
     })
 
@@ -121,6 +143,15 @@ describe('SideBar', () => {
       const dividers = container.querySelectorAll('[class*="divider"], hr')
       expect(dividers.length).toBeGreaterThan(0)
     })
+
+    it('should render a button for toggling the sidebar and update its accessible name', () => {
+      renderSideBar()
+
+      const toggleButton = screen.getByRole('button', { name: 'layout.sidebar.collapseSidebar' })
+      fireEvent.click(toggleButton)
+
+      expect(screen.getByRole('button', { name: 'layout.sidebar.expandSidebar' })).toBeInTheDocument()
+    })
   })
 
   describe('User Interactions', () => {
@@ -135,9 +166,9 @@ describe('SideBar', () => {
 
       await waitFor(() => {
         expect(mockUninstall).toHaveBeenCalledWith('app-123')
-        expect(Toast.notify).toHaveBeenCalledWith(expect.objectContaining({
+        expect(mockToastAdd).toHaveBeenCalledWith(expect.objectContaining({
           type: 'success',
-          message: 'common.api.remove',
+          title: 'common.api.remove',
         }))
       })
     })
@@ -152,9 +183,9 @@ describe('SideBar', () => {
 
       await waitFor(() => {
         expect(mockUpdatePinStatus).toHaveBeenCalledWith({ appId: 'app-123', isPinned: true })
-        expect(Toast.notify).toHaveBeenCalledWith(expect.objectContaining({
+        expect(mockToastAdd).toHaveBeenCalledWith(expect.objectContaining({
           type: 'success',
-          message: 'common.api.success',
+          title: 'common.api.success',
         }))
       })
     })
@@ -186,6 +217,18 @@ describe('SideBar', () => {
       await waitFor(() => {
         expect(mockUninstall).not.toHaveBeenCalled()
       })
+    })
+
+    it('should disable dialog actions while uninstall is pending', async () => {
+      mockInstalledApps = [createInstalledApp()]
+      mockIsUninstallPending = true
+      renderSideBar()
+
+      fireEvent.click(screen.getByTestId('item-operation-trigger'))
+      fireEvent.click(await screen.findByText('explore.sidebar.action.delete'))
+
+      expect(screen.getByText('common.operation.cancel')).toBeDisabled()
+      expect(screen.getByText('common.operation.confirm')).toBeDisabled()
     })
   })
 

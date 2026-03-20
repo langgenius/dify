@@ -35,6 +35,7 @@ from extensions.ext_redis import redis_client
 from factories import variable_factory
 from models import Account
 from models.dataset import Dataset, DatasetCollectionBinding, Pipeline
+from models.enums import CollectionBindingType, DatasetRuntimeMode
 from models.workflow import Workflow, WorkflowType
 from services.entities.knowledge_entities.rag_pipeline_entities import (
     IconInfo,
@@ -313,7 +314,7 @@ class RagPipelineDslService:
                             indexing_technique=knowledge_configuration.indexing_technique,
                             created_by=account.id,
                             retrieval_model=knowledge_configuration.retrieval_model.model_dump(),
-                            runtime_mode="rag_pipeline",
+                            runtime_mode=DatasetRuntimeMode.RAG_PIPELINE,
                             chunk_structure=knowledge_configuration.chunk_structure,
                         )
                     if knowledge_configuration.indexing_technique == "high_quality":
@@ -323,7 +324,7 @@ class RagPipelineDslService:
                                 DatasetCollectionBinding.provider_name
                                 == knowledge_configuration.embedding_model_provider,
                                 DatasetCollectionBinding.model_name == knowledge_configuration.embedding_model,
-                                DatasetCollectionBinding.type == "dataset",
+                                DatasetCollectionBinding.type == CollectionBindingType.DATASET,
                             )
                             .order_by(DatasetCollectionBinding.created_at)
                             .first()
@@ -334,7 +335,7 @@ class RagPipelineDslService:
                                 provider_name=knowledge_configuration.embedding_model_provider,
                                 model_name=knowledge_configuration.embedding_model,
                                 collection_name=Dataset.gen_collection_name_by_id(str(uuid.uuid4())),
-                                type="dataset",
+                                type=CollectionBindingType.DATASET,
                             )
                             self._session.add(dataset_collection_binding)
                             self._session.commit()
@@ -445,13 +446,13 @@ class RagPipelineDslService:
                             indexing_technique=knowledge_configuration.indexing_technique,
                             created_by=account.id,
                             retrieval_model=knowledge_configuration.retrieval_model.model_dump(),
-                            runtime_mode="rag_pipeline",
+                            runtime_mode=DatasetRuntimeMode.RAG_PIPELINE,
                             chunk_structure=knowledge_configuration.chunk_structure,
                         )
                     else:
                         dataset.indexing_technique = knowledge_configuration.indexing_technique
                         dataset.retrieval_model = knowledge_configuration.retrieval_model.model_dump()
-                        dataset.runtime_mode = "rag_pipeline"
+                        dataset.runtime_mode = DatasetRuntimeMode.RAG_PIPELINE
                         dataset.chunk_structure = knowledge_configuration.chunk_structure
                     if knowledge_configuration.indexing_technique == "high_quality":
                         dataset_collection_binding = (
@@ -460,7 +461,7 @@ class RagPipelineDslService:
                                 DatasetCollectionBinding.provider_name
                                 == knowledge_configuration.embedding_model_provider,
                                 DatasetCollectionBinding.model_name == knowledge_configuration.embedding_model,
-                                DatasetCollectionBinding.type == "dataset",
+                                DatasetCollectionBinding.type == CollectionBindingType.DATASET,
                             )
                             .order_by(DatasetCollectionBinding.created_at)
                             .first()
@@ -471,7 +472,7 @@ class RagPipelineDslService:
                                 provider_name=knowledge_configuration.embedding_model_provider,
                                 model_name=knowledge_configuration.embedding_model,
                                 collection_name=Dataset.gen_collection_name_by_id(str(uuid.uuid4())),
-                                type="dataset",
+                                type=CollectionBindingType.DATASET,
                             )
                             self._session.add(dataset_collection_binding)
                             self._session.commit()

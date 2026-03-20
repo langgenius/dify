@@ -2,7 +2,6 @@
 
 import type {
   ToastManagerAddOptions,
-  ToastManagerPromiseOptions,
   ToastManagerUpdateOptions,
   ToastObject,
 } from '@base-ui/react/toast'
@@ -11,20 +10,46 @@ import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
 
 type ToastData = Record<string, never>
-type ToastType = 'success' | 'error' | 'warning' | 'info'
+type ToastToneStyle = {
+  gradientClassName: string
+  iconClassName: string
+}
 
-type ToastAddOptions = Omit<ToastManagerAddOptions<ToastData>, 'data' | 'positionerProps' | 'type'> & {
+const TOAST_TONE_STYLES = {
+  success: {
+    iconClassName: 'i-ri-checkbox-circle-fill text-text-success',
+    gradientClassName: 'from-components-badge-status-light-success-halo to-background-gradient-mask-transparent',
+  },
+  error: {
+    iconClassName: 'i-ri-error-warning-fill text-text-destructive',
+    gradientClassName: 'from-components-badge-status-light-error-halo to-background-gradient-mask-transparent',
+  },
+  warning: {
+    iconClassName: 'i-ri-alert-fill text-text-warning-secondary',
+    gradientClassName: 'from-components-badge-status-light-warning-halo to-background-gradient-mask-transparent',
+  },
+  info: {
+    iconClassName: 'i-ri-information-2-fill text-text-accent',
+    gradientClassName: 'from-components-badge-status-light-normal-halo to-background-gradient-mask-transparent',
+  },
+} satisfies Record<string, ToastToneStyle>
+
+export type ToastType = keyof typeof TOAST_TONE_STYLES
+
+export type ToastAddOptions = Omit<ToastManagerAddOptions<ToastData>, 'data' | 'positionerProps' | 'type'> & {
   type?: ToastType
 }
 
-type ToastUpdateOptions = Omit<ToastManagerUpdateOptions<ToastData>, 'data' | 'positionerProps' | 'type'> & {
+export type ToastUpdateOptions = Omit<ToastManagerUpdateOptions<ToastData>, 'data' | 'positionerProps' | 'type'> & {
   type?: ToastType
 }
 
-type ToastPromiseOptions<Value> = {
+type ToastPromiseResultOption<Value> = string | ToastUpdateOptions | ((value: Value) => string | ToastUpdateOptions)
+
+export type ToastPromiseOptions<Value> = {
   loading: string | ToastUpdateOptions
-  success: string | ToastUpdateOptions | ((result: Value) => string | ToastUpdateOptions)
-  error: string | ToastUpdateOptions | ((error: unknown) => string | ToastUpdateOptions)
+  success: ToastPromiseResultOption<Value>
+  error: ToastPromiseResultOption<unknown>
 }
 
 export type ToastHostProps = {
@@ -33,6 +58,14 @@ export type ToastHostProps = {
 }
 
 const toastManager = BaseToast.createToastManager<ToastData>()
+
+function isToastType(type: string): type is ToastType {
+  return Object.prototype.hasOwnProperty.call(TOAST_TONE_STYLES, type)
+}
+
+function getToastType(type?: string): ToastType | undefined {
+  return type && isToastType(type) ? type : undefined
+}
 
 export const toast = {
   add(options: ToastAddOptions) {
@@ -45,76 +78,52 @@ export const toast = {
     toastManager.update(toastId, options)
   },
   promise<Value>(promiseValue: Promise<Value>, options: ToastPromiseOptions<Value>) {
-    return toastManager.promise(promiseValue, options as ToastManagerPromiseOptions<Value, ToastData>)
+    return toastManager.promise(promiseValue, options)
   },
 }
 
-function ToastIcon({ type }: { type?: string }) {
-  if (type === 'success') {
-    return <span aria-hidden="true" className="i-ri-checkbox-circle-fill h-5 w-5 text-text-success" />
-  }
-
-  if (type === 'error') {
-    return <span aria-hidden="true" className="i-ri-error-warning-fill h-5 w-5 text-text-destructive" />
-  }
-
-  if (type === 'warning') {
-    return <span aria-hidden="true" className="i-ri-alert-fill h-5 w-5 text-text-warning-secondary" />
-  }
-
-  if (type === 'info') {
-    return <span aria-hidden="true" className="i-ri-information-2-fill h-5 w-5 text-text-accent" />
-  }
-
-  return null
+function ToastIcon({ type }: { type?: ToastType }) {
+  return type
+    ? <span aria-hidden="true" className={cn('h-5 w-5', TOAST_TONE_STYLES[type].iconClassName)} />
+    : null
 }
 
-function getToneGradientClasses(type?: string) {
-  if (type === 'success')
-    return 'from-components-badge-status-light-success-halo to-background-gradient-mask-transparent'
-
-  if (type === 'error')
-    return 'from-components-badge-status-light-error-halo to-background-gradient-mask-transparent'
-
-  if (type === 'warning')
-    return 'from-components-badge-status-light-warning-halo to-background-gradient-mask-transparent'
-
-  if (type === 'info')
-    return 'from-components-badge-status-light-normal-halo to-background-gradient-mask-transparent'
-
+function getToneGradientClasses(type?: ToastType) {
+  if (type)
+    return TOAST_TONE_STYLES[type].gradientClassName
   return 'from-background-default-subtle to-background-gradient-mask-transparent'
 }
 
 function ToastCard({
   toast: toastItem,
-  showHoverBridge = false,
 }: {
   toast: ToastObject<ToastData>
-  showHoverBridge?: boolean
 }) {
   const { t } = useTranslation('common')
+  const toastType = getToastType(toastItem.type)
 
   return (
     <BaseToast.Root
       toast={toastItem}
       className={cn(
-        'pointer-events-auto absolute right-0 top-0 w-[360px] max-w-[calc(100vw-2rem)] origin-top-right cursor-default select-none outline-none',
+        'pointer-events-auto absolute right-0 top-0 w-[360px] max-w-[calc(100vw-2rem)] origin-top cursor-default select-none rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-components-input-border-hover',
         '[--toast-current-height:var(--toast-frontmost-height,var(--toast-height))] [--toast-gap:8px] [--toast-peek:5px] [--toast-scale:calc(1-(var(--toast-index)*0.0225))] [--toast-shrink:calc(1-var(--toast-scale))]',
         '[height:var(--toast-current-height)] [z-index:calc(100-var(--toast-index))]',
         '[transition:transform_500ms_cubic-bezier(0.22,1,0.36,1),opacity_500ms,height_150ms] motion-reduce:transition-none',
         'translate-x-[var(--toast-swipe-movement-x)] translate-y-[calc(var(--toast-swipe-movement-y)+(var(--toast-index)*var(--toast-peek))+(var(--toast-shrink)*var(--toast-current-height)))] scale-[var(--toast-scale)]',
         'data-[expanded]:translate-x-[var(--toast-swipe-movement-x)] data-[expanded]:translate-y-[calc(var(--toast-offset-y)+var(--toast-swipe-movement-y)+(var(--toast-index)*8px))] data-[expanded]:scale-100 data-[expanded]:[height:var(--toast-height)]',
         'data-[limited]:pointer-events-none data-[ending-style]:translate-y-[calc(var(--toast-swipe-movement-y)-150%)] data-[starting-style]:-translate-y-[150%] data-[ending-style]:opacity-0 data-[limited]:opacity-0 data-[starting-style]:opacity-0',
+        'after:pointer-events-auto after:absolute after:left-0 after:top-full after:h-[calc(var(--toast-gap)+1px)] after:w-full after:content-[\'\']',
       )}
     >
       <div className="relative overflow-hidden rounded-xl border border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]">
         <div
           aria-hidden="true"
-          className={cn('absolute inset-[-1px] bg-gradient-to-r opacity-40', getToneGradientClasses(toastItem.type))}
+          className={cn('absolute inset-[-1px] bg-gradient-to-r opacity-40', getToneGradientClasses(toastType))}
         />
         <BaseToast.Content className="relative flex items-start gap-1 overflow-hidden p-3 transition-opacity duration-200 data-[behind]:opacity-0 data-[expanded]:opacity-100">
           <div className="flex shrink-0 items-center justify-center p-0.5">
-            <ToastIcon type={toastItem.type} />
+            <ToastIcon type={toastType} />
           </div>
           <div className="min-w-0 flex-1 p-1">
             <div className="flex w-full items-center gap-1">
@@ -152,9 +161,6 @@ function ToastCard({
           </div>
         </BaseToast.Content>
       </div>
-      {showHoverBridge && (
-        <div aria-hidden="true" className="absolute inset-x-0 -bottom-2 h-2" />
-      )}
     </BaseToast.Root>
   )
 }
@@ -176,11 +182,10 @@ function ToastViewport() {
           'pointer-events-none absolute right-4 top-4 w-[360px] max-w-[calc(100vw-2rem)] sm:right-8',
         )}
       >
-        {toasts.map((toastItem, index) => (
+        {toasts.map(toastItem => (
           <ToastCard
             key={toastItem.id}
             toast={toastItem}
-            showHoverBridge={index < toasts.length - 1}
           />
         ))}
       </div>

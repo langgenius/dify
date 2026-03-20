@@ -23,7 +23,7 @@ import WorkflowAppLogList from './list'
 // ============================================================================
 
 const mockRouterPush = vi.fn()
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: mockRouterPush,
   }),

@@ -59,6 +59,44 @@ class TestPipelineTemplateDetailApi:
         assert status == 200
         assert response == template
 
+    def test_get_returns_404_when_template_not_found(self, app):
+        api = PipelineTemplateDetailApi()
+        method = unwrap(api.get)
+
+        service = MagicMock()
+        service.get_pipeline_template_detail.return_value = None
+
+        with (
+            app.test_request_context("/?type=built-in"),
+            patch(
+                "controllers.console.datasets.rag_pipeline.rag_pipeline.RagPipelineService",
+                return_value=service,
+            ),
+        ):
+            response, status = method(api, "non-existent-id")
+
+        assert status == 404
+        assert "error" in response
+
+    def test_get_returns_404_for_customized_type_not_found(self, app):
+        api = PipelineTemplateDetailApi()
+        method = unwrap(api.get)
+
+        service = MagicMock()
+        service.get_pipeline_template_detail.return_value = None
+
+        with (
+            app.test_request_context("/?type=customized"),
+            patch(
+                "controllers.console.datasets.rag_pipeline.rag_pipeline.RagPipelineService",
+                return_value=service,
+            ),
+        ):
+            response, status = method(api, "non-existent-id")
+
+        assert status == 404
+        assert "error" in response
+
 
 class TestCustomizedPipelineTemplateApi:
     def test_patch_success(self, app):

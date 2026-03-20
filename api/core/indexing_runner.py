@@ -40,6 +40,7 @@ from libs.datetime_utils import naive_utc_now
 from models import Account
 from models.dataset import AutomaticRulesConfig, ChildChunk, Dataset, DatasetProcessRule, DocumentSegment
 from models.dataset import Document as DatasetDocument
+from models.enums import DataSourceType, IndexingStatus, ProcessRuleMode, SegmentStatus
 from models.model import UploadFile
 from services.feature_service import FeatureService
 
@@ -56,7 +57,7 @@ class IndexingRunner:
         logger.exception("consume document failed")
         document = db.session.get(DatasetDocument, document_id)
         if document:
-            document.indexing_status = "error"
+            document.indexing_status = IndexingStatus.ERROR
             error_message = getattr(error, "description", str(error))
             document.error = str(error_message)
             document.stopped_at = naive_utc_now()
@@ -219,7 +220,7 @@ class IndexingRunner:
             if document_segments:
                 for document_segment in document_segments:
                     # transform segment to node
-                    if document_segment.status != "completed":
+                    if document_segment.status != SegmentStatus.COMPLETED:
                         document = Document(
                             page_content=document_segment.content,
                             metadata={
@@ -382,7 +383,7 @@ class IndexingRunner:
         data_source_info = dataset_document.data_source_info_dict
         text_docs = []
         match dataset_document.data_source_type:
-            case "upload_file":
+            case DataSourceType.UPLOAD_FILE:
                 if not data_source_info or "upload_file_id" not in data_source_info:
                     raise ValueError("no upload file found")
                 stmt = select(UploadFile).where(UploadFile.id == data_source_info["upload_file_id"])
@@ -395,7 +396,7 @@ class IndexingRunner:
                         document_model=dataset_document.doc_form,
                     )
                     text_docs = index_processor.extract(extract_setting, process_rule_mode=process_rule["mode"])
-            case "notion_import":
+            case DataSourceType.NOTION_IMPORT:
                 if (
                     not data_source_info
                     or "notion_workspace_id" not in data_source_info
@@ -417,7 +418,7 @@ class IndexingRunner:
                     document_model=dataset_document.doc_form,
                 )
                 text_docs = index_processor.extract(extract_setting, process_rule_mode=process_rule["mode"])
-            case "website_crawl":
+            case DataSourceType.WEBSITE_CRAWL:
                 if (
                     not data_source_info
                     or "provider" not in data_source_info
@@ -445,7 +446,7 @@ class IndexingRunner:
         # update document status to splitting
         self._update_document_index_status(
             document_id=dataset_document.id,
-            after_indexing_status="splitting",
+            after_indexing_status=IndexingStatus.SPLITTING,
             extra_update_params={
                 DatasetDocument.parsing_completed_at: naive_utc_now(),
             },
@@ -545,7 +546,7 @@ class IndexingRunner:
         Clean the document text according to the processing rules.
         """
         rules: AutomaticRulesConfig | dict[str, Any]
-        if processing_rule.mode == "automatic":
+        if processing_rule.mode == ProcessRuleMode.AUTOMATIC:
             rules = DatasetProcessRule.AUTOMATIC_RULES
         else:
             rules = json.loads(processing_rule.rules) if processing_rule.rules else {}
@@ -636,7 +637,7 @@ class IndexingRunner:
         # update document status to completed
         self._update_document_index_status(
             document_id=dataset_document.id,
-            after_indexing_status="completed",
+            after_indexing_status=IndexingStatus.COMPLETED,
             extra_update_params={
                 DatasetDocument.tokens: tokens,
                 DatasetDocument.completed_at: naive_utc_now(),
@@ -659,10 +660,10 @@ class IndexingRunner:
                     DocumentSegment.document_id == document_id,
                     DocumentSegment.dataset_id == dataset_id,
                     DocumentSegment.index_node_id.in_(document_ids),
-                    DocumentSegment.status == "indexing",
+                    DocumentSegment.status == SegmentStatus.INDEXING,
                 ).update(
                     {
-                        DocumentSegment.status: "completed",
+                        DocumentSegment.status: SegmentStatus.COMPLETED,
                         DocumentSegment.enabled: True,
                         DocumentSegment.completed_at: naive_utc_now(),
                     }
@@ -703,10 +704,10 @@ class IndexingRunner:
                 DocumentSegment.document_id == dataset_document.id,
                 DocumentSegment.dataset_id == dataset.id,
                 DocumentSegment.index_node_id.in_(document_ids),
-                DocumentSegment.status == "indexing",
+                DocumentSegment.status == SegmentStatus.INDEXING,
             ).update(
                 {
-                    DocumentSegment.status: "completed",
+                    DocumentSegment.status: SegmentStatus.COMPLETED,
                     DocumentSegment.enabled: True,
                     DocumentSegment.completed_at: naive_utc_now(),
                 }
@@ -725,7 +726,7 @@ class IndexingRunner:
 
     @staticmethod
     def _update_document_index_status(
-        document_id: str, after_indexing_status: str, extra_update_params: dict | None = None
+        document_id: str, after_indexing_status: IndexingStatus, extra_update_params: dict | None = None
     ):
         """
         Update the document indexing status.
@@ -803,7 +804,7 @@ class IndexingRunner:
         cur_time = naive_utc_now()
         self._update_document_index_status(
             document_id=dataset_document.id,
-            after_indexing_status="indexing",
+            after_indexing_status=IndexingStatus.INDEXING,
             extra_update_params={
                 DatasetDocument.cleaning_completed_at: cur_time,
                 DatasetDocument.splitting_completed_at: cur_time,
@@ -815,7 +816,7 @@ class IndexingRunner:
         self._update_segments_by_document(
             dataset_document_id=dataset_document.id,
             update_params={
-                DocumentSegment.status: "indexing",
+                DocumentSegment.status: SegmentStatus.INDEXING,
                 DocumentSegment.indexing_at: naive_utc_now(),
             },
         )

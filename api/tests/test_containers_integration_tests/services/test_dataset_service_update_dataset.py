@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from dify_graph.model_runtime.entities.model_entities import ModelType
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, ExternalKnowledgeBindings
+from models.enums import DataSourceType
 from services.dataset_service import DatasetService
 from services.errors.account import NoPermissionError
 
@@ -64,7 +65,7 @@ class DatasetUpdateTestDataFactory:
             tenant_id=tenant_id,
             name=name,
             description=description,
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             indexing_technique=indexing_technique,
             created_by=created_by,
             provider=provider,
