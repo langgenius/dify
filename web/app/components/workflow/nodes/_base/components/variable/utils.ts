@@ -150,6 +150,65 @@ const structTypeToVarType = (type: Type, isArray?: boolean): VarType => {
   )
 }
 
+const getDefaultFileChildren = (): Var[] => {
+  return OUTPUT_FILE_SUB_VARIABLES.map((key) => {
+    const def = FILE_STRUCT.find(c => c.variable === key)
+    return {
+      variable: key,
+      type: def?.type || VarType.string,
+    }
+  })
+}
+
+const structuredFieldToVar = (variable: string, field: StructField): Var => {
+  const isArray = field.type === Type.array
+  const arrayType = field.items?.type
+
+  return {
+    variable,
+    type: structTypeToVarType(isArray ? arrayType! : field.type, isArray),
+    des: field.description,
+    schemaType: field.schemaType,
+    children: field.type === Type.object && field.properties
+      ? {
+          schema: {
+            type: Type.object,
+            properties: field.properties,
+            additionalProperties: false,
+          },
+        }
+      : undefined,
+  }
+}
+
+const getFileChildren = (children?: Var[] | StructuredOutput): Var[] => {
+  const defaultChildren = getDefaultFileChildren()
+  const extraChildren = (() => {
+    if (Array.isArray(children))
+      return children.filter(child => !OUTPUT_FILE_SUB_VARIABLES.includes(child.variable))
+
+    if (children?.schema?.properties) {
+      return Object.entries(children.schema.properties)
+        .filter(([variable]) => !OUTPUT_FILE_SUB_VARIABLES.includes(variable))
+        .map(([variable, field]) => structuredFieldToVar(variable, field))
+    }
+
+    return []
+  })()
+
+  const existingVariables = new Set(defaultChildren.map(child => child.variable))
+  return [
+    ...defaultChildren,
+    ...extraChildren.filter((child) => {
+      if (existingVariables.has(child.variable))
+        return false
+
+      existingVariables.add(child.variable)
+      return true
+    }),
+  ]
+}
+
 export const varTypeToStructType = (type: VarType): Type => {
   return (
     (
@@ -721,15 +780,9 @@ const formatItem = (
 
       const isFile = v.type === VarType.file
       const children = (() => {
-        if (isFile) {
-          return OUTPUT_FILE_SUB_VARIABLES.map((key) => {
-            const def = FILE_STRUCT.find(c => c.variable === key)
-            return {
-              variable: key,
-              type: def?.type || VarType.string,
-            }
-          })
-        }
+        if (isFile)
+          return getFileChildren(v.children)
+
         return v.children
       })()
       if (!children)
@@ -748,13 +801,7 @@ const formatItem = (
       const { children } = (() => {
         if (isFile) {
           return {
-            children: OUTPUT_FILE_SUB_VARIABLES.map((key) => {
-              const def = FILE_STRUCT.find(c => c.variable === key)
-              return {
-                variable: key,
-                type: def?.type || VarType.string,
-              }
-            }),
+            children: getFileChildren(v.children),
           }
         }
         return v
