@@ -24,10 +24,7 @@ const ChangePasswordForm = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   const showErrorMessage = useCallback((message: string) => {
-    toast.add({
-      type: 'error',
-      title: message,
-    })
+    toast.error(message)
   }, [])
 
   const getSignInUrl = () => {

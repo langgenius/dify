@@ -6,8 +6,8 @@ import { CrawlStep } from '@/models/datasets'
 import { PipelineInputVarType } from '@/models/pipeline'
 import Options from '../index'
 
-const { mockToastAdd } = vi.hoisted(() => ({
-  mockToastAdd: vi.fn(),
+const { mockToastError } = vi.hoisted(() => ({
+  mockToastError: vi.fn(),
 }))
 
 vi.mock('@/app/components/base/ui/toast', async (importOriginal) => {
@@ -16,7 +16,7 @@ vi.mock('@/app/components/base/ui/toast', async (importOriginal) => {
     ...actual,
     toast: {
       ...actual.toast,
-      add: mockToastAdd,
+      error: mockToastError,
     },
   }
 })
@@ -131,7 +131,7 @@ const createDefaultProps = (overrides?: Partial<OptionsProps>): OptionsProps => 
 describe('Options', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockToastAdd.mockReset()
+    mockToastError.mockReset()
 
     // Reset mock form values
     Object.keys(mockFormValues).forEach(key => delete mockFormValues[key])
@@ -643,11 +643,7 @@ describe('Options', () => {
       fireEvent.click(screen.getByRole('button'))
 
       // Assert - Toast should be called with error message
-      expect(mockToastAdd).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: 'error',
-        }),
-      )
+      expect(mockToastError).toHaveBeenCalled()
     })
 
     it('should handle validation error and display field name in message', () => {
@@ -665,12 +661,7 @@ describe('Options', () => {
       fireEvent.click(screen.getByRole('button'))
 
       // Assert - Toast message should contain field path
-      expect(mockToastAdd).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: 'error',
-          title: expect.stringContaining('email_address'),
-        }),
-      )
+      expect(mockToastError).toHaveBeenCalledWith(expect.stringContaining('email_address'))
     })
 
     it('should handle empty variables gracefully', () => {
@@ -719,12 +710,8 @@ describe('Options', () => {
       fireEvent.click(screen.getByRole('button'))
 
       // Assert - Toast should be called once (only first error)
-      expect(mockToastAdd).toHaveBeenCalledTimes(1)
-      expect(mockToastAdd).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: 'error',
-        }),
-      )
+      expect(mockToastError).toHaveBeenCalledTimes(1)
+      expect(mockToastError).toHaveBeenCalled()
     })
 
     it('should handle validation pass when all required fields have values', () => {
@@ -743,7 +730,7 @@ describe('Options', () => {
       fireEvent.click(screen.getByRole('button'))
 
       // Assert - No toast error, onSubmit called
-      expect(mockToastAdd).not.toHaveBeenCalled()
+      expect(mockToastError).not.toHaveBeenCalled()
       expect(mockOnSubmit).toHaveBeenCalled()
     })
 
@@ -840,7 +827,7 @@ describe('Options', () => {
       fireEvent.click(screen.getByRole('button'))
 
       expect(mockOnSubmit).toHaveBeenCalled()
-      expect(mockToastAdd).not.toHaveBeenCalled()
+      expect(mockToastError).not.toHaveBeenCalled()
     })
 
     it('should fail validation with invalid data', () => {
@@ -859,7 +846,7 @@ describe('Options', () => {
       fireEvent.click(screen.getByRole('button'))
 
       expect(mockOnSubmit).not.toHaveBeenCalled()
-      expect(mockToastAdd).toHaveBeenCalled()
+      expect(mockToastError).toHaveBeenCalled()
     })
 
     it('should show error toast message when validation fails', () => {
@@ -876,12 +863,7 @@ describe('Options', () => {
 
       fireEvent.click(screen.getByRole('button'))
 
-      expect(mockToastAdd).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: 'error',
-          title: expect.any(String),
-        }),
-      )
+      expect(mockToastError).toHaveBeenCalledWith(expect.any(String))
     })
   })
 

@@ -1,8 +1,11 @@
 // @ts-check
-import antfu, { GLOB_TESTS, GLOB_TS, GLOB_TSX, isInEditorEnv, isInGitHooksOrLintStaged } from '@antfu/eslint-config'
+
+import antfu, { GLOB_MARKDOWN, GLOB_TESTS, GLOB_TS, GLOB_TSX, isInEditorEnv, isInGitHooksOrLintStaged } from '@antfu/eslint-config'
 import pluginQuery from '@tanstack/eslint-plugin-query'
+import md from 'eslint-markdown'
 import tailwindcss from 'eslint-plugin-better-tailwindcss'
 import hyoban from 'eslint-plugin-hyoban'
+import markdownPreferences from 'eslint-plugin-markdown-preferences'
 import sonar from 'eslint-plugin-sonarjs'
 import storybook from 'eslint-plugin-storybook'
 import {
@@ -55,6 +58,26 @@ export default antfu(
       },
     },
     e18e: false,
+  },
+  markdownPreferences.configs.standard,
+  {
+    files: [GLOB_MARKDOWN],
+    plugins: { md },
+    rules: {
+      'md/no-url-trailing-slash': 'error',
+      'markdown-preferences/prefer-link-reference-definitions': [
+        'error',
+        {
+          minLinks: 1,
+        },
+      ],
+      'markdown-preferences/ordered-list-marker-sequence': [
+        'error',
+        { increment: 'never' },
+      ],
+      'markdown-preferences/definitions-last': 'error',
+      'markdown-preferences/sort-definitions': 'error',
+    },
   },
   {
     rules: {

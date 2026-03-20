@@ -32,9 +32,9 @@ vi.mock('@/service/base', () => ({
   ssePost: mockSsePost,
 }))
 
-// Mock toast.add because the component reports errors through the UI toast manager.
-const { mockToastAdd } = vi.hoisted(() => ({
-  mockToastAdd: vi.fn(),
+// Mock toast.error because the component reports errors through the UI toast manager.
+const { mockToastError } = vi.hoisted(() => ({
+  mockToastError: vi.fn(),
 }))
 
 vi.mock('@/app/components/base/ui/toast', async (importOriginal) => {
@@ -43,7 +43,7 @@ vi.mock('@/app/components/base/ui/toast', async (importOriginal) => {
     ...actual,
     toast: {
       ...actual.toast,
-      add: mockToastAdd,
+      error: mockToastError,
     },
   }
 })
@@ -197,7 +197,7 @@ const createDefaultProps = (overrides?: Partial<OnlineDocumentsProps>): OnlineDo
 describe('OnlineDocuments', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockToastAdd.mockReset()
+    mockToastError.mockReset()
 
     // Reset store state
     mockStoreState.documentsData = []
@@ -515,10 +515,7 @@ describe('OnlineDocuments', () => {
       render(<OnlineDocuments {...props} />)
 
       await waitFor(() => {
-        expect(mockToastAdd).toHaveBeenCalledWith({
-          type: 'error',
-          title: 'Something went wrong',
-        })
+        expect(mockToastError).toHaveBeenCalledWith('Something went wrong')
       })
     })
 
@@ -780,10 +777,7 @@ describe('OnlineDocuments', () => {
       render(<OnlineDocuments {...props} />)
 
       await waitFor(() => {
-        expect(mockToastAdd).toHaveBeenCalledWith({
-          type: 'error',
-          title: 'API Error Message',
-        })
+        expect(mockToastError).toHaveBeenCalledWith('API Error Message')
       })
     })
 
@@ -1100,10 +1094,7 @@ describe('OnlineDocuments', () => {
       render(<OnlineDocuments {...props} />)
 
       await waitFor(() => {
-        expect(mockToastAdd).toHaveBeenCalledWith({
-          type: 'error',
-          title: 'Failed to fetch documents',
-        })
+        expect(mockToastError).toHaveBeenCalledWith('Failed to fetch documents')
       })
 
       // Should still show loading since documentsData is empty

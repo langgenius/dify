@@ -82,11 +82,11 @@ const MCPModalContent: FC<MCPModalContentProps> = ({
 
   const submit = async () => {
     if (!isValidUrl(state.url)) {
-      toast.add({ type: 'error', title: t('mcp.modal.invalidServerUrl', { ns: 'tools' }) })
+      toast.error(t('mcp.modal.invalidServerUrl', { ns: 'tools' }))
       return
     }
     if (!isValidServerID(state.serverIdentifier.trim())) {
-      toast.add({ type: 'error', title: t('mcp.modal.invalidServerIdentifier', { ns: 'tools' }) })
+      toast.error(t('mcp.modal.invalidServerIdentifier', { ns: 'tools' }))
       return
     }
     const formattedHeaders = state.headers.reduce((acc, item) => {
