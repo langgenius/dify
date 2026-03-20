@@ -1,21 +1,24 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { importSchemaFromURL } from '@/service/tools'
-import Toast from '../../../base/toast'
 import examples from '../examples'
 import GetSchema from '../get-schema'
 
 vi.mock('@/service/tools', () => ({
   importSchemaFromURL: vi.fn(),
 }))
+const mockToastAdd = vi.hoisted(() => vi.fn())
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    add: mockToastAdd,
+  },
+}))
 const importSchemaFromURLMock = vi.mocked(importSchemaFromURL)
 
 describe('GetSchema', () => {
-  const notifySpy = vi.spyOn(Toast, 'notify')
   const mockOnChange = vi.fn()
 
   beforeEach(() => {
     vi.clearAllMocks()
-    notifySpy.mockClear()
     importSchemaFromURLMock.mockReset()
     render(<GetSchema onChange={mockOnChange} />)
   })
@@ -27,9 +30,9 @@ describe('GetSchema', () => {
     fireEvent.change(input, { target: { value: 'ftp://invalid' } })
     fireEvent.click(screen.getByText('common.operation.ok'))
 
-    expect(notifySpy).toHaveBeenCalledWith({
+    expect(mockToastAdd).toHaveBeenCalledWith({
       type: 'error',
-      message: 'tools.createTool.urlError',
+      title: 'tools.createTool.urlError',
     })
   })
 

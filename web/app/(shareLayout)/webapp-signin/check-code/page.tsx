@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import Countdown from '@/app/components/signin/countdown'
 import { useLocale } from '@/context/i18n'
 import { useWebAppStore } from '@/context/web-app-context'
@@ -43,23 +43,23 @@ export default function CheckCode() {
     try {
       const appCode = getAppCodeFromRedirectUrl()
       if (!code.trim()) {
-        Toast.notify({
+        toast.add({
           type: 'error',
-          message: t('checkCode.emptyCode', { ns: 'login' }),
+          title: t('checkCode.emptyCode', { ns: 'login' }),
         })
         return
       }
       if (!/\d{6}/.test(code)) {
-        Toast.notify({
+        toast.add({
           type: 'error',
-          message: t('checkCode.invalidCode', { ns: 'login' }),
+          title: t('checkCode.invalidCode', { ns: 'login' }),
         })
         return
       }
       if (!redirectUrl || !appCode) {
-        Toast.notify({
+        toast.add({
           type: 'error',
-          message: t('error.redirectUrlMissing', { ns: 'login' }),
+          title: t('error.redirectUrlMissing', { ns: 'login' }),
         })
         return
       }

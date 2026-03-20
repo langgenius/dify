@@ -23,13 +23,25 @@ from core.tools.signature import sign_tool_file
 from dify_graph.enums import WorkflowExecutionStatus
 from dify_graph.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
 from dify_graph.file import helpers as file_helpers
+from extensions.storage.storage_type import StorageType
 from libs.helper import generate_string  # type: ignore[import-not-found]
 from libs.uuid_utils import uuidv7
 
 from .account import Account, Tenant
 from .base import Base, TypeBase, gen_uuidv4_string
 from .engine import db
-from .enums import AppMCPServerStatus, AppStatus, ConversationStatus, CreatorUserRole, MessageStatus
+from .enums import (
+    AppMCPServerStatus,
+    AppStatus,
+    BannerStatus,
+    ConversationStatus,
+    CreatorUserRole,
+    FeedbackFromSource,
+    FeedbackRating,
+    MessageChainType,
+    MessageFileBelongsTo,
+    MessageStatus,
+)
 from .provider_ids import GenericProviderID
 from .types import EnumText, LongText, StringUUID
 
@@ -925,8 +937,11 @@ class ExporleBanner(TypeBase):
     content: Mapped[dict[str, Any]] = mapped_column(sa.JSON, nullable=False)
     link: Mapped[str] = mapped_column(String(255), nullable=False)
     sort: Mapped[int] = mapped_column(sa.Integer, nullable=False)
-    status: Mapped[str] = mapped_column(
-        sa.String(255), nullable=False, server_default=sa.text("'enabled'::character varying"), default="enabled"
+    status: Mapped[BannerStatus] = mapped_column(
+        EnumText(BannerStatus, length=255),
+        nullable=False,
+        server_default=sa.text("'enabled'::character varying"),
+        default=BannerStatus.ENABLED,
     )
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
@@ -1153,7 +1168,7 @@ class Conversation(Base):
                 select(func.count(MessageFeedback.id)).where(
                     MessageFeedback.conversation_id == self.id,
                     MessageFeedback.from_source == "user",
-                    MessageFeedback.rating == "like",
+                    MessageFeedback.rating == FeedbackRating.LIKE,
                 )
             )
             or 0
@@ -1164,7 +1179,7 @@ class Conversation(Base):
                 select(func.count(MessageFeedback.id)).where(
                     MessageFeedback.conversation_id == self.id,
                     MessageFeedback.from_source == "user",
-                    MessageFeedback.rating == "dislike",
+                    MessageFeedback.rating == FeedbackRating.DISLIKE,
                 )
             )
             or 0
@@ -1179,7 +1194,7 @@ class Conversation(Base):
                 select(func.count(MessageFeedback.id)).where(
                     MessageFeedback.conversation_id == self.id,
                     MessageFeedback.from_source == "admin",
-                    MessageFeedback.rating == "like",
+                    MessageFeedback.rating == FeedbackRating.LIKE,
                 )
             )
             or 0
@@ -1190,7 +1205,7 @@ class Conversation(Base):
                 select(func.count(MessageFeedback.id)).where(
                     MessageFeedback.conversation_id == self.id,
                     MessageFeedback.from_source == "admin",
-                    MessageFeedback.rating == "dislike",
+                    MessageFeedback.rating == FeedbackRating.DISLIKE,
                 )
             )
             or 0
@@ -1713,8 +1728,8 @@ class MessageFeedback(TypeBase):
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     conversation_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     message_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    rating: Mapped[str] = mapped_column(String(255), nullable=False)
-    from_source: Mapped[str] = mapped_column(String(255), nullable=False)
+    rating: Mapped[FeedbackRating] = mapped_column(EnumText(FeedbackRating, length=255), nullable=False)
+    from_source: Mapped[FeedbackFromSource] = mapped_column(EnumText(FeedbackFromSource, length=255), nullable=False)
     content: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
     from_end_user_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     from_account_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
@@ -1767,7 +1782,9 @@ class MessageFile(TypeBase):
     )
     created_by_role: Mapped[CreatorUserRole] = mapped_column(EnumText(CreatorUserRole, length=255), nullable=False)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    belongs_to: Mapped[Literal["user", "assistant"] | None] = mapped_column(String(255), nullable=True, default=None)
+    belongs_to: Mapped[MessageFileBelongsTo | None] = mapped_column(
+        EnumText(MessageFileBelongsTo, length=255), nullable=True, default=None
+    )
     url: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
     upload_file_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(
@@ -2097,7 +2114,7 @@ class UploadFile(Base):
     # The `server_default` serves as a fallback mechanism.
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    storage_type: Mapped[str] = mapped_column(String(255), nullable=False)
+    storage_type: Mapped[StorageType] = mapped_column(EnumText(StorageType, length=255), nullable=False)
     key: Mapped[str] = mapped_column(String(255), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     size: Mapped[int] = mapped_column(sa.Integer, nullable=False)
@@ -2141,7 +2158,7 @@ class UploadFile(Base):
         self,
         *,
         tenant_id: str,
-        storage_type: str,
+        storage_type: StorageType,
         key: str,
         name: str,
         size: int,
@@ -2206,7 +2223,7 @@ class MessageChain(TypeBase):
         StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
     )
     message_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    type: Mapped[str] = mapped_column(String(255), nullable=False)
+    type: Mapped[MessageChainType] = mapped_column(EnumText(MessageChainType, length=255), nullable=False)
     input: Mapped[str | None] = mapped_column(LongText, nullable=True)
     output: Mapped[str | None] = mapped_column(LongText, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
