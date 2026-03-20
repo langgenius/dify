@@ -1,3 +1,4 @@
+import hmac
 import logging
 import re
 from datetime import UTC, datetime, timedelta
@@ -191,7 +192,7 @@ def check_csrf_token(request: Request, user_id: str):
     # since these APIs are post, they are already protected by SameSite: Lax, so csrf is not required.
     if dify_config.ADMIN_API_KEY_ENABLE:
         auth_token = extract_access_token(request)
-        if auth_token and auth_token == dify_config.ADMIN_API_KEY:
+        if auth_token and hmac.compare_digest(auth_token, dify_config.ADMIN_API_KEY):
             return
 
     def _unauthorized():
@@ -204,7 +205,7 @@ def check_csrf_token(request: Request, user_id: str):
     csrf_token = extract_csrf_token(request)
     csrf_token_from_cookie = extract_csrf_token_from_cookie(request)
 
-    if csrf_token != csrf_token_from_cookie:
+    if not hmac.compare_digest(csrf_token or "", csrf_token_from_cookie or ""):
         _unauthorized()
 
     if not csrf_token:
