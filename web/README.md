@@ -115,6 +115,11 @@ Run test:
 pnpm test
 ```
 
+> [!NOTE]
+> Our test is not fully stable yet, and we are actively working on improving it.
+> If you encounter test failures only in CI but not locally, please feel free to ignore them and report the issue to us.
+> You can try to re-run the test in CI, and it may pass successfully.
+
 ### Example Code
 
 If you are not familiar with writing tests, refer to:
