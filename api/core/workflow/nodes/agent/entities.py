@@ -77,8 +77,7 @@ class AgentClarificationPayload(BaseModel):
 
     def to_form_inputs(self) -> list[FormInput]:
         return [
-            FormInput(type=field.type, output_variable_name=field.name)
-            for field in self.normalized_required_fields()
+            FormInput(type=field.type, output_variable_name=field.name) for field in self.normalized_required_fields()
         ]
 
     def to_form_content(self) -> str:

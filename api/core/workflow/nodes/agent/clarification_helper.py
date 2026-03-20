@@ -118,8 +118,7 @@ class AgentClarificationHelper:
         tool_info: Mapping[str, Any],
     ) -> dict[str, Any]:
         required_fields = [
-            {"name": field.name, "type": field.type.value}
-            for field in payload.normalized_required_fields()
+            {"name": field.name, "type": field.type.value} for field in payload.normalized_required_fields()
         ]
         return {
             "type": "agent_clarification",
