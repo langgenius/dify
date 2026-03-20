@@ -84,8 +84,12 @@ class TestTenantListApi:
         get_plan_bulk_mock.assert_called_once_with(["t1", "t2"])
         get_features_mock.assert_not_called()
 
-    def test_get_saas_path_partial_fallback_for_missing_tenant_ignores_billing_enabled_mock(self, app):
-        """Bulk omits a tenant: plan comes from subscription only (SaaS billing.enabled is always true)."""
+    def test_get_saas_path_partial_fallback_does_not_gate_plan_on_billing_enabled(self, app):
+        """Bulk omits a tenant: resolve plan via subscription.plan only; billing.enabled is not used.
+
+        billing.enabled is mocked False to prove the endpoint does not gate on it for this path
+        (SaaS contract treats enabled as on; display follows subscription.plan).
+        """
         api = TenantListApi()
         method = unwrap(api.get)
 
