@@ -3,7 +3,7 @@ import type { BaseConfiguration } from '@/app/components/base/form/form-scenario
 import { useCallback, useImperativeHandle } from 'react'
 import { useAppForm } from '@/app/components/base/form'
 import BaseField from '@/app/components/base/form/form-scenarios/base/field'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import Header from './header'
 
 type OptionsProps = {
@@ -34,9 +34,9 @@ const Form = ({
           const issues = result.error.issues
           const firstIssue = issues[0]
           const errorMessage = `"${firstIssue.path.join('.')}" ${firstIssue.message}`
-          Toast.notify({
+          toast.add({
             type: 'error',
-            message: errorMessage,
+            title: errorMessage,
           })
           return errorMessage
         }
