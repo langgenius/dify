@@ -46,6 +46,10 @@ Finally, run the development server:
 
 ```bash
 pnpm run dev
+# or if you are using vinext which provides a better development experience
+pnpm run dev:vinext
+# start the dev proxy server so that you can use online API in development
+pnpm run dev:proxy
 ```
 
 Open <http://localhost:3000> with your browser to see the result.
