@@ -47,9 +47,59 @@ class BillingService:
     @classmethod
     def get_tenant_feature_plan_usage_info(cls, tenant_id: str):
         params = {"tenant_id": tenant_id}
-
-        usage_info = cls._send_request("GET", "/tenant-feature-usage/info", params=params)
+        usage_info = cls._send_request("GET", "/quota/info", params=params)
         return usage_info
+
+    @classmethod
+    def quota_reserve(
+        cls, tenant_id: str, feature_key: str, request_id: str, amount: int = 1, meta: dict | None = None
+    ) -> dict:
+        """Reserve quota before task execution.
+
+        Returns:
+            {"reservation_id": "uuid", "available": int, "reserved": int}
+        """
+        payload = {
+            "tenant_id": tenant_id,
+            "feature_key": feature_key,
+            "request_id": request_id,
+            "amount": amount,
+        }
+        if meta:
+            payload["meta"] = meta
+        return cls._send_request("POST", "/quota/reserve", json=payload)
+
+    @classmethod
+    def quota_commit(
+        cls, tenant_id: str, feature_key: str, reservation_id: str, actual_amount: int, meta: dict | None = None
+    ) -> dict:
+        """Commit a reservation with actual consumption.
+
+        Returns:
+            {"available": int, "reserved": int, "refunded": int}
+        """
+        payload = {
+            "tenant_id": tenant_id,
+            "feature_key": feature_key,
+            "reservation_id": reservation_id,
+            "actual_amount": actual_amount,
+        }
+        if meta:
+            payload["meta"] = meta
+        return cls._send_request("POST", "/quota/commit", json=payload)
+
+    @classmethod
+    def quota_release(cls, tenant_id: str, feature_key: str, reservation_id: str) -> dict:
+        """Release a reservation (cancel, return frozen quota).
+
+        Returns:
+            {"available": int, "reserved": int, "released": int}
+        """
+        return cls._send_request("POST", "/quota/release", json={
+            "tenant_id": tenant_id,
+            "feature_key": feature_key,
+            "reservation_id": reservation_id,
+        })
 
     @classmethod
     def get_knowledge_rate_limit(cls, tenant_id: str):

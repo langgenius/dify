@@ -298,10 +298,10 @@ def dispatch_triggered_workflow(
                 icon_dark_filename=trigger_entity.identity.icon_dark or "",
             )
 
-            # consume quota before invoking trigger
+            # reserve quota before invoking trigger
             quota_charge = unlimited()
             try:
-                quota_charge = QuotaType.TRIGGER.consume(subscription.tenant_id)
+                quota_charge = QuotaType.TRIGGER.reserve(subscription.tenant_id)
             except QuotaExceededError:
                 AppTriggerService.mark_tenant_triggers_rate_limited(subscription.tenant_id)
                 logger.info(
@@ -387,6 +387,7 @@ def dispatch_triggered_workflow(
                     raise ValueError(f"End user not found for app {plugin_trigger.app_id}")
 
                 AsyncWorkflowService.trigger_workflow_async(session=session, user=end_user, trigger_data=trigger_data)
+                quota_charge.commit()
                 dispatched_count += 1
                 logger.info(
                     "Triggered workflow for app %s with trigger event %s",

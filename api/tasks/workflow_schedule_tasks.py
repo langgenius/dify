@@ -43,7 +43,7 @@ def run_schedule_trigger(schedule_id: str) -> None:
 
         quota_charge = unlimited()
         try:
-            quota_charge = QuotaType.TRIGGER.consume(schedule.tenant_id)
+            quota_charge = QuotaType.TRIGGER.reserve(schedule.tenant_id)
         except QuotaExceededError:
             AppTriggerService.mark_tenant_triggers_rate_limited(schedule.tenant_id)
             logger.info("Tenant %s rate limited, skipping schedule trigger %s", schedule.tenant_id, schedule_id)
@@ -61,6 +61,7 @@ def run_schedule_trigger(schedule_id: str) -> None:
                     tenant_id=schedule.tenant_id,
                 ),
             )
+            quota_charge.commit()
             logger.info("Schedule %s triggered workflow: %s", schedule_id, response.workflow_trigger_log_id)
         except Exception as e:
             quota_charge.refund()

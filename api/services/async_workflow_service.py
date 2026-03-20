@@ -13,7 +13,7 @@ from celery.result import AsyncResult
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from enums.quota_type import QuotaType
+from enums.quota_type import QuotaType, unlimited
 from extensions.ext_database import db
 from models.account import Account
 from models.enums import CreatorUserRole, WorkflowTriggerStatus
@@ -131,9 +131,10 @@ class AsyncWorkflowService:
         trigger_log = trigger_log_repo.create(trigger_log)
         session.commit()
 
-        # 7. Check and consume quota
+        # 7. Reserve quota (commit after successful dispatch)
+        quota_charge = unlimited()
         try:
-            QuotaType.WORKFLOW.consume(trigger_data.tenant_id)
+            quota_charge = QuotaType.WORKFLOW.reserve(trigger_data.tenant_id)
         except QuotaExceededError as e:
             # Update trigger log status
             trigger_log.status = WorkflowTriggerStatus.RATE_LIMITED
@@ -153,13 +154,18 @@ class AsyncWorkflowService:
         # 9. Dispatch to appropriate queue
         task_data_dict = task_data.model_dump(mode="json")
 
-        task: AsyncResult[Any] | None = None
-        if queue_name == QueuePriority.PROFESSIONAL:
-            task = execute_workflow_professional.delay(task_data_dict)
-        elif queue_name == QueuePriority.TEAM:
-            task = execute_workflow_team.delay(task_data_dict)
-        else:  # SANDBOX
-            task = execute_workflow_sandbox.delay(task_data_dict)
+        try:
+            task: AsyncResult[Any] | None = None
+            if queue_name == QueuePriority.PROFESSIONAL:
+                task = execute_workflow_professional.delay(task_data_dict)
+            elif queue_name == QueuePriority.TEAM:
+                task = execute_workflow_team.delay(task_data_dict)
+            else:  # SANDBOX
+                task = execute_workflow_sandbox.delay(task_data_dict)
+            quota_charge.commit()
+        except Exception:
+            quota_charge.refund()
+            raise
 
         # 10. Update trigger log with task info
         trigger_log.status = WorkflowTriggerStatus.QUEUED

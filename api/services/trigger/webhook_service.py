@@ -779,9 +779,9 @@ class WebhookService:
                     user_id=None,
                 )
 
-                # consume quota before triggering workflow execution
+                # reserve quota before triggering workflow execution
                 try:
-                    QuotaType.TRIGGER.consume(webhook_trigger.tenant_id)
+                    quota_charge = QuotaType.TRIGGER.reserve(webhook_trigger.tenant_id)
                 except QuotaExceededError:
                     AppTriggerService.mark_tenant_triggers_rate_limited(webhook_trigger.tenant_id)
                     logger.info(
@@ -792,11 +792,16 @@ class WebhookService:
                     raise
 
                 # Trigger workflow execution asynchronously
-                AsyncWorkflowService.trigger_workflow_async(
-                    session,
-                    end_user,
-                    trigger_data,
-                )
+                try:
+                    AsyncWorkflowService.trigger_workflow_async(
+                        session,
+                        end_user,
+                        trigger_data,
+                    )
+                    quota_charge.commit()
+                except Exception:
+                    quota_charge.refund()
+                    raise
 
         except Exception:
             logger.exception("Failed to trigger workflow for webhook %s", webhook_trigger.webhook_id)

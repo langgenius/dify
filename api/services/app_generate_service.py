@@ -106,7 +106,7 @@ class AppGenerateService:
         quota_charge = unlimited()
         if dify_config.BILLING_ENABLED:
             try:
-                quota_charge = QuotaType.WORKFLOW.consume(app_model.tenant_id)
+                quota_charge = QuotaType.WORKFLOW.reserve(app_model.tenant_id)
             except QuotaExceededError:
                 raise InvokeRateLimitError(f"Workflow execution quota limit reached for tenant {app_model.tenant_id}")
 
@@ -116,6 +116,7 @@ class AppGenerateService:
         request_id = RateLimit.gen_request_key()
         try:
             request_id = rate_limit.enter(request_id)
+            quota_charge.commit()
             if app_model.mode == AppMode.COMPLETION:
                 return rate_limit.generate(
                     CompletionAppGenerator.convert_to_event_stream(
