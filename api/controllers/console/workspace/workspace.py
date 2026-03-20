@@ -125,14 +125,14 @@ class TenantListApi(Resource):
                     use_legacy_feature_path = True
 
         for tenant in tenants:
-            plan: str = CloudPlan.SANDBOX.value
+            plan: str = CloudPlan.SANDBOX
             if is_saas and not use_legacy_feature_path:
                 tenant_plan = tenant_plans.get(tenant.id)
                 if tenant_plan:
-                    plan = tenant_plan["plan"] if tenant_plan["plan"] else CloudPlan.SANDBOX.value
+                    plan = tenant_plan["plan"] or CloudPlan.SANDBOX
             elif not is_enterprise_only:
                 features = FeatureService.get_features(tenant.id)
-                plan = features.billing.subscription.plan or CloudPlan.SANDBOX.value
+                plan = features.billing.subscription.plan or CloudPlan.SANDBOX
 
             # Create a dictionary with tenant attributes
             tenant_dict = {
