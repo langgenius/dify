@@ -530,6 +530,9 @@ importers:
       eslint:
         specifier: 10.0.3
         version: 10.0.3(jiti@1.21.7)
+      eslint-markdown:
+        specifier: 0.6.0
+        version: 0.6.0(eslint@10.0.3(jiti@1.21.7))
       eslint-plugin-better-tailwindcss:
         specifier: 4.3.2
         version: 4.3.2(eslint@10.0.3(jiti@1.21.7))(oxlint@1.55.0(oxlint-tsgolint@0.17.0))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.2))(typescript@5.9.3)
@@ -4764,6 +4767,15 @@ packages:
       jsonc-eslint-parser: ^2.4.0 || ^3.0.0
     peerDependenciesMeta:
       '@eslint/json':
+        optional: true
+
+  eslint-markdown@0.6.0:
+    resolution: {integrity: sha512-NrgfiNto5IJrW1F/Akf2hJYoJTCbXoClOUvtUMDgoqmQNH0VRihNvFh+MFay4E0HV2eozfgxsLSGxnndtRJA8w==}
+    engines: {node: ^20.19.0 || ^22.13.0 || >=24.0.0}
+    peerDependencies:
+      eslint: ^9.31.0 || ^10.0.0-rc.0
+    peerDependenciesMeta:
+      eslint:
         optional: true
 
   eslint-merge-processors@2.0.0:
@@ -12151,6 +12163,16 @@ snapshots:
       eslint: 10.0.3(jiti@1.21.7)
       esquery: 1.7.0
       jsonc-eslint-parser: 3.1.0
+
+  eslint-markdown@0.6.0(eslint@10.0.3(jiti@1.21.7)):
+    dependencies:
+      '@eslint/markdown': 7.5.1
+      micromark-util-normalize-identifier: 2.0.1
+      parse5: 8.0.0
+    optionalDependencies:
+      eslint: 10.0.3(jiti@1.21.7)
+    transitivePeerDependencies:
+      - supports-color
 
   eslint-merge-processors@2.0.0(eslint@10.0.3(jiti@1.21.7)):
     dependencies:

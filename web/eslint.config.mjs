@@ -1,7 +1,8 @@
 // @ts-check
 
-import antfu, { GLOB_TESTS, GLOB_TS, GLOB_TSX, isInEditorEnv, isInGitHooksOrLintStaged } from '@antfu/eslint-config'
+import antfu, { GLOB_MARKDOWN, GLOB_TESTS, GLOB_TS, GLOB_TSX, isInEditorEnv, isInGitHooksOrLintStaged } from '@antfu/eslint-config'
 import pluginQuery from '@tanstack/eslint-plugin-query'
+import md from 'eslint-markdown'
 import tailwindcss from 'eslint-plugin-better-tailwindcss'
 import hyoban from 'eslint-plugin-hyoban'
 import markdownPreferences from 'eslint-plugin-markdown-preferences'
@@ -59,6 +60,13 @@ export default antfu(
     e18e: false,
   },
   markdownPreferences.configs.standard,
+  {
+    files: [GLOB_MARKDOWN],
+    plugins: { md },
+    rules: {
+      'md/no-url-trailing-slash': 'error',
+    },
+  },
   {
     rules: {
       'node/prefer-global/process': 'off',
