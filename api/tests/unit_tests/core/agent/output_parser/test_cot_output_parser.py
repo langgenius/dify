@@ -255,11 +255,13 @@ class TestCotAgentOutputParser:
             assert "thought:" not in joined.lower()
 
 
-def test_cot_output_parser_does_not_swallow_keyboard_interrupt_from_code_block_json():
-    parser = CotAgentOutputParser()
-    usage_dict = {}
-    llm_response = mock_llm_response('Action: ```json\n{"action": "Final Answer", "action_input": "ok"}```')
+def test_cot_output_parser_does_not_swallow_keyboard_interrupt_from_code_block_json(make_chunk, usage_dict):
+    chunks = [make_chunk('Action: ```json\n{"action": "Final Answer", "action_input": "ok"}```')]
 
-    with patch("core.agent.output_parser.cot_output_parser.json.loads", side_effect=KeyboardInterrupt):
-        with pytest.raises(KeyboardInterrupt):
-            list(parser.handle_react_stream_output(llm_response, usage_dict))
+    with pytest.raises(KeyboardInterrupt):
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(
+                "core.agent.output_parser.cot_output_parser.json.loads",
+                lambda *args, **kwargs: (_ for _ in ()).throw(KeyboardInterrupt()),
+            )
+            list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))
