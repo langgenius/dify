@@ -68,22 +68,20 @@ const TagFilter: FC<TagFilterProps> = ({
       open={open}
       onOpenChange={setOpen}
     >
-      <div
-        className={cn(
-          'flex h-8 items-center gap-1 rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-2',
-          !!value.length && 'shadow-xs',
-        )}
-      >
+      <div className="relative">
         <PopoverTrigger
           render={(
             <button
               type="button"
-              className="flex min-w-0 grow cursor-pointer select-none items-center gap-1 bg-transparent text-left"
+              className={cn(
+                'flex h-8 cursor-pointer select-none items-center gap-1 rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-2 text-left',
+                !!value.length && 'pr-6 shadow-xs',
+              )}
             >
               <div className="p-[1px]">
                 <Tag01 className="h-3.5 w-3.5 text-text-tertiary" data-testid="tag-filter-trigger-icon" />
               </div>
-              <div className="truncate text-[13px] leading-[18px] text-text-secondary">
+              <div className="min-w-0 truncate text-[13px] leading-[18px] text-text-secondary">
                 {!value.length && t('tag.placeholder', { ns: 'common' })}
                 {!!value.length && currentTag?.name}
               </div>
@@ -101,7 +99,7 @@ const TagFilter: FC<TagFilterProps> = ({
         {!!value.length && (
           <button
             type="button"
-            className="group/clear shrink-0 p-[1px]"
+            className="group/clear absolute right-2 top-1/2 -translate-y-1/2 p-[1px]"
             onClick={() => onChange([])}
             data-testid="tag-filter-clear-button"
           >
