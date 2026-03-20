@@ -77,6 +77,8 @@
   "externalKnowledgeDescriptionPlaceholder": "Mô tả nội dung trong Cơ sở Kiến thức này (tùy chọn)",
   "externalKnowledgeForm.cancel": "Hủy",
   "externalKnowledgeForm.connect": "Kết nối",
+  "externalKnowledgeForm.connectedFailed": "Kết nối Cơ sở Kiến thức Bên ngoài thất bại",
+  "externalKnowledgeForm.connectedSuccess": "Kết nối Cơ sở Kiến thức Bên ngoài thành công",
   "externalKnowledgeId": "ID kiến thức bên ngoài",
   "externalKnowledgeIdPlaceholder": "Vui lòng nhập ID kiến thức",
   "externalKnowledgeName": "Tên kiến thức bên ngoài",

@@ -77,6 +77,8 @@
   "externalKnowledgeDescriptionPlaceholder": "อธิบายสิ่งที่อยู่ในฐานความรู้นี้ (ไม่บังคับ)",
   "externalKnowledgeForm.cancel": "ยกเลิก",
   "externalKnowledgeForm.connect": "ติด",
+  "externalKnowledgeForm.connectedFailed": "ไม่สามารถเชื่อมต่อฐานความรู้ภายนอกได้",
+  "externalKnowledgeForm.connectedSuccess": "เชื่อมต่อฐานความรู้ภายนอกสำเร็จ",
   "externalKnowledgeId": "ID ความรู้ภายนอก",
   "externalKnowledgeIdPlaceholder": "โปรดป้อน Knowledge ID",
   "externalKnowledgeName": "ชื่อความรู้ภายนอก",
