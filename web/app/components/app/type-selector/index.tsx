@@ -36,7 +36,7 @@ const AppTypeSelector = ({ value, onChange }: AppSelectorProps) => {
           aria-label={triggerLabel}
           className={cn(
             'flex cursor-pointer items-center justify-between rounded-md px-2 hover:bg-state-base-hover',
-            value.length > 0 && 'pr-6',
+            value.length > 0 && 'pr-7',
           )}
         >
           <AppTypeSelectTrigger values={value} />
