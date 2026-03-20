@@ -129,7 +129,7 @@ describe('LabelFilter', () => {
     it('should clear all selections when clear button is clicked', async () => {
       render(<LabelFilter value={['agent', 'rag']} onChange={mockOnChange} />)
 
-      const clearButton = screen.getByTestId('label-filter-clear-button')
+      const clearButton = screen.getByRole('button', { name: 'common.operation.clear' })
       expect(clearButton).toBeInTheDocument()
 
       fireEvent.click(clearButton!)

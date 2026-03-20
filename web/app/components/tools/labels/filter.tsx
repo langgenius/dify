@@ -52,35 +52,31 @@ const LabelFilter: FC<LabelFilterProps> = ({
     >
       <div className="relative">
         <PopoverTrigger
-          render={(
-            <button
-              type="button"
-              className={cn(
-                'flex h-8 cursor-pointer select-none items-center gap-1 rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-2 text-left hover:bg-components-input-bg-hover',
-                !!value.length && 'pr-6 shadow-xs',
-              )}
-            >
-              <div className="p-[1px]">
-                <Tag01 className="h-3.5 w-3.5 text-text-tertiary" />
-              </div>
-              <div className="min-w-0 truncate text-[13px] leading-[18px] text-text-tertiary">
-                {!value.length && t('tag.placeholder', { ns: 'common' })}
-                {!!value.length && currentLabel?.label}
-              </div>
-              {value.length > 1 && (
-                <div className="shrink-0 text-xs font-medium leading-[18px] text-text-tertiary">{`+${value.length - 1}`}</div>
-              )}
-              {!value.length && (
-                <div className="shrink-0 p-[1px]">
-                  <RiArrowDownSLine className="h-3.5 w-3.5 text-text-tertiary" />
-                </div>
-              )}
-            </button>
+          className={cn(
+            'flex h-8 cursor-pointer select-none items-center gap-1 rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-2 text-left hover:bg-components-input-bg-hover',
+            !!value.length && 'pr-6 shadow-xs',
           )}
-        />
+        >
+          <div className="p-[1px]">
+            <Tag01 className="h-3.5 w-3.5 text-text-tertiary" />
+          </div>
+          <div className="min-w-0 truncate text-[13px] leading-[18px] text-text-tertiary">
+            {!value.length && t('tag.placeholder', { ns: 'common' })}
+            {!!value.length && currentLabel?.label}
+          </div>
+          {value.length > 1 && (
+            <div className="shrink-0 text-xs font-medium leading-[18px] text-text-tertiary">{`+${value.length - 1}`}</div>
+          )}
+          {!value.length && (
+            <div className="shrink-0 p-[1px]">
+              <RiArrowDownSLine className="h-3.5 w-3.5 text-text-tertiary" />
+            </div>
+          )}
+        </PopoverTrigger>
         {!!value.length && (
           <button
             type="button"
+            aria-label={t('operation.clear', { ns: 'common' })}
             className="group/clear absolute right-2 top-1/2 -translate-y-1/2 p-[1px]"
             data-testid="label-filter-clear-button"
             onClick={() => onChange([])}
@@ -105,14 +101,15 @@ const LabelFilter: FC<LabelFilterProps> = ({
             </div>
             <div className="p-1">
               {filteredLabelList.map(label => (
-                <div
+                <button
                   key={label.name}
-                  className="flex cursor-pointer select-none items-center gap-2 rounded-lg py-[6px] pl-3 pr-2 hover:bg-state-base-hover"
+                  type="button"
+                  className="flex w-full select-none items-center gap-2 rounded-lg py-[6px] pl-3 pr-2 text-left hover:bg-state-base-hover"
                   onClick={() => selectLabel(label)}
                 >
                   <div title={label.label} className="grow truncate text-sm leading-5 text-text-secondary">{label.label}</div>
                   {value.includes(label.name) && <Check className="h-4 w-4 shrink-0 text-text-accent" />}
-                </div>
+                </button>
               ))}
               {!filteredLabelList.length && (
                 <div className="flex flex-col items-center gap-1 p-3">

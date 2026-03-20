@@ -44,7 +44,11 @@ const TTSParamsPanel = ({
           value={language}
           onValueChange={value => setLanguage(value as string)}
         >
-          <SelectTrigger className="w-full" data-testid="tts-language-select-trigger">
+          <SelectTrigger
+            className="w-full"
+            data-testid="tts-language-select-trigger"
+            aria-label={t('voice.voiceSettings.language', { ns: 'appDebug' })}
+          >
             <SelectValue />
           </SelectTrigger>
           <SelectContent popupClassName="w-[354px]">
@@ -64,7 +68,11 @@ const TTSParamsPanel = ({
           value={voice}
           onValueChange={value => setVoice(value as string)}
         >
-          <SelectTrigger className="w-full" data-testid="tts-voice-select-trigger">
+          <SelectTrigger
+            className="w-full"
+            data-testid="tts-voice-select-trigger"
+            aria-label={t('voice.voiceSettings.voice', { ns: 'appDebug' })}
+          >
             <SelectValue />
           </SelectTrigger>
           <SelectContent popupClassName="w-[354px]">

@@ -22,6 +22,9 @@ const allTypes: AppModeEnum[] = [AppModeEnum.WORKFLOW, AppModeEnum.ADVANCED_CHAT
 const AppTypeSelector = ({ value, onChange }: AppSelectorProps) => {
   const [open, setOpen] = useState(false)
   const { t } = useTranslation()
+  const triggerLabel = value.length === 0
+    ? t('typeSelector.all', { ns: 'app' })
+    : value.map(type => getAppTypeLabel(type, t)).join(', ')
 
   return (
     <Popover
@@ -30,18 +33,14 @@ const AppTypeSelector = ({ value, onChange }: AppSelectorProps) => {
     >
       <div className="relative">
         <PopoverTrigger
-          render={(
-            <button
-              type="button"
-              className={cn(
-                'flex cursor-pointer items-center justify-between rounded-md px-2 hover:bg-state-base-hover',
-                value.length > 0 && 'pr-6',
-              )}
-            >
-              <AppTypeSelectTrigger values={value} />
-            </button>
+          aria-label={triggerLabel}
+          className={cn(
+            'flex cursor-pointer items-center justify-between rounded-md px-2 hover:bg-state-base-hover',
+            value.length > 0 && 'pr-6',
           )}
-        />
+        >
+          <AppTypeSelectTrigger values={value} />
+        </PopoverTrigger>
         {value.length > 0 && (
           <button
             type="button"
@@ -59,7 +58,7 @@ const AppTypeSelector = ({ value, onChange }: AppSelectorProps) => {
           sideOffset={4}
           popupClassName="w-[240px] rounded-xl border border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]"
         >
-          <ul className="relative w-[240px] p-1">
+          <ul className="relative w-full p-1">
             {allTypes.map(mode => (
               <AppTypeSelectorItem
                 key={mode}
@@ -174,14 +173,36 @@ type AppTypeSelectorItemProps = {
 }
 function AppTypeSelectorItem({ checked, type, onClick }: AppTypeSelectorItemProps) {
   return (
-    <li className="flex cursor-pointer items-center space-x-2 rounded-lg py-1 pl-2 pr-1 hover:bg-state-base-hover" onClick={onClick}>
-      <Checkbox checked={checked} />
-      <AppTypeIcon type={type} />
-      <div className="grow p-1 pl-0">
-        <AppTypeLabel type={type} className="system-sm-medium text-components-menu-item-text" />
-      </div>
+    <li>
+      <button
+        type="button"
+        className="flex w-full items-center space-x-2 rounded-lg py-1 pl-2 pr-1 text-left hover:bg-state-base-hover"
+        aria-pressed={checked}
+        onClick={onClick}
+      >
+        <Checkbox checked={checked} />
+        <AppTypeIcon type={type} />
+        <div className="grow p-1 pl-0">
+          <AppTypeLabel type={type} className="system-sm-medium text-components-menu-item-text" />
+        </div>
+      </button>
     </li>
   )
+}
+
+function getAppTypeLabel(type: AppModeEnum, t: ReturnType<typeof useTranslation>['t']) {
+  if (type === AppModeEnum.CHAT)
+    return t('typeSelector.chatbot', { ns: 'app' })
+  if (type === AppModeEnum.AGENT_CHAT)
+    return t('typeSelector.agent', { ns: 'app' })
+  if (type === AppModeEnum.COMPLETION)
+    return t('typeSelector.completion', { ns: 'app' })
+  if (type === AppModeEnum.ADVANCED_CHAT)
+    return t('typeSelector.advanced', { ns: 'app' })
+  if (type === AppModeEnum.WORKFLOW)
+    return t('typeSelector.workflow', { ns: 'app' })
+
+  return ''
 }
 
 type AppTypeLabelProps = {
@@ -190,17 +211,6 @@ type AppTypeLabelProps = {
 }
 export function AppTypeLabel({ type, className }: AppTypeLabelProps) {
   const { t } = useTranslation()
-  let label = ''
-  if (type === AppModeEnum.CHAT)
-    label = t('typeSelector.chatbot', { ns: 'app' })
-  if (type === AppModeEnum.AGENT_CHAT)
-    label = t('typeSelector.agent', { ns: 'app' })
-  if (type === AppModeEnum.COMPLETION)
-    label = t('typeSelector.completion', { ns: 'app' })
-  if (type === AppModeEnum.ADVANCED_CHAT)
-    label = t('typeSelector.advanced', { ns: 'app' })
-  if (type === AppModeEnum.WORKFLOW)
-    label = t('typeSelector.workflow', { ns: 'app' })
 
-  return <span className={className}>{label}</span>
+  return <span className={className}>{getAppTypeLabel(type, t)}</span>
 }
