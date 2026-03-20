@@ -8,6 +8,7 @@ from typing import Any, cast
 
 logger = logging.getLogger(__name__)
 
+from core.app.file_access import DatabaseFileAccessController
 from core.app.llm import deduct_llm_quota
 from core.entities.knowledge_entities import PreviewDetail
 from core.llm_generator.prompts import DEFAULT_GENERATOR_SUMMARY_PROMPT
@@ -48,6 +49,8 @@ from models.dataset import Document as DatasetDocument
 from services.account_service import AccountService
 from services.entities.knowledge_entities.knowledge_entities import Rule
 from services.summary_index_service import SummaryIndexService
+
+_file_access_controller = DatabaseFileAccessController()
 
 
 class ParagraphIndexProcessor(BaseIndexProcessor):
@@ -556,6 +559,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                 file_obj = build_from_mapping(
                     mapping=mapping,
                     tenant_id=tenant_id,
+                    access_controller=_file_access_controller,
                 )
                 file_objects.append(file_obj)
             except Exception as e:

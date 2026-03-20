@@ -9,10 +9,13 @@ from urllib.parse import parse_qs, urlparse
 
 import pytest
 
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.app.file_access import DatabaseFileAccessController, FileAccessScope
 from core.app.workflow import file_runtime
 from core.app.workflow.file_runtime import DifyWorkflowFileRuntime, bind_dify_workflow_file_runtime
 from core.workflow.file_reference import build_file_reference
 from dify_graph.file import File, FileTransferMethod, FileType
+from models import ToolFile, UploadFile
 
 
 def _build_file(
@@ -35,8 +38,12 @@ def _build_file(
     )
 
 
+def _build_runtime() -> DifyWorkflowFileRuntime:
+    return DifyWorkflowFileRuntime(file_access_controller=DatabaseFileAccessController())
+
+
 def test_resolve_file_url_returns_remote_url() -> None:
-    runtime = DifyWorkflowFileRuntime()
+    runtime = _build_runtime()
     file = _build_file(
         transfer_method=FileTransferMethod.REMOTE_URL,
         remote_url="https://example.com/diagram.png",
@@ -46,7 +53,7 @@ def test_resolve_file_url_returns_remote_url() -> None:
 
 
 def test_resolve_file_url_requires_file_reference() -> None:
-    runtime = DifyWorkflowFileRuntime()
+    runtime = _build_runtime()
     file = SimpleNamespace(transfer_method=FileTransferMethod.LOCAL_FILE, reference=None)
 
     with pytest.raises(ValueError, match="Missing file reference"):
@@ -54,7 +61,7 @@ def test_resolve_file_url_requires_file_reference() -> None:
 
 
 def test_resolve_file_url_requires_extension_for_tool_files() -> None:
-    runtime = DifyWorkflowFileRuntime()
+    runtime = _build_runtime()
     file = _build_file(
         transfer_method=FileTransferMethod.TOOL_FILE,
         reference=build_file_reference(record_id="tool-file-id"),
@@ -70,7 +77,7 @@ def test_resolve_file_url_uses_tool_signatures_for_tool_and_datasource_files(
 ) -> None:
     sign_tool_file = MagicMock(return_value="https://signed.example.com/file")
     monkeypatch.setattr(file_runtime, "sign_tool_file", sign_tool_file)
-    runtime = DifyWorkflowFileRuntime()
+    runtime = _build_runtime()
 
     tool_file = _build_file(
         transfer_method=FileTransferMethod.TOOL_FILE,
@@ -100,7 +107,7 @@ def test_resolve_upload_file_url_signs_internal_urls_and_supports_attachments(
         "https://internal.example.com",
     )
 
-    runtime = DifyWorkflowFileRuntime()
+    runtime = _build_runtime()
     url = runtime.resolve_upload_file_url(
         upload_file_id="upload-file-id",
         as_attachment=True,
@@ -119,7 +126,7 @@ def test_verify_preview_signature_validates_signature_and_expiration(monkeypatch
     monkeypatch.setattr("core.app.workflow.file_runtime.time.time", lambda: 1700000000)
     monkeypatch.setattr("core.app.workflow.file_runtime.dify_config.SECRET_KEY", "unit-secret")
     monkeypatch.setattr("core.app.workflow.file_runtime.dify_config.FILES_ACCESS_TIMEOUT", 60)
-    runtime = DifyWorkflowFileRuntime()
+    runtime = _build_runtime()
     payload = "file-preview|upload-file-id|1700000000|nonce"
     sign = base64.urlsafe_b64encode(hmac.new(b"unit-secret", payload.encode(), hashlib.sha256).digest()).decode()
 
@@ -158,7 +165,7 @@ def test_verify_preview_signature_validates_signature_and_expiration(monkeypatch
 
 
 def test_load_file_bytes_returns_bytes_and_rejects_non_bytes(monkeypatch: pytest.MonkeyPatch) -> None:
-    runtime = DifyWorkflowFileRuntime()
+    runtime = _build_runtime()
     file = _build_file(
         transfer_method=FileTransferMethod.LOCAL_FILE,
         reference=build_file_reference(record_id="upload-file-id", storage_key="storage-key"),
@@ -173,13 +180,67 @@ def test_load_file_bytes_returns_bytes_and_rejects_non_bytes(monkeypatch: pytest
 
 
 def test_resolve_storage_key_prefers_encoded_reference() -> None:
-    runtime = DifyWorkflowFileRuntime()
+    runtime = _build_runtime()
     file = _build_file(
         transfer_method=FileTransferMethod.LOCAL_FILE,
         reference=build_file_reference(record_id="upload-file-id", storage_key="storage-key"),
     )
 
     assert runtime._resolve_storage_key(file=file) == "storage-key"
+
+
+def test_resolve_storage_key_uses_canonical_record_when_scope_is_bound(monkeypatch: pytest.MonkeyPatch) -> None:
+    controller = MagicMock()
+    controller.current_scope.return_value = FileAccessScope(
+        tenant_id="tenant-id",
+        user_id="end-user-id",
+        user_from=UserFrom.END_USER,
+        invoke_from=InvokeFrom.WEB_APP,
+    )
+    controller.get_upload_file.return_value = SimpleNamespace(key="canonical-storage-key")
+    runtime = DifyWorkflowFileRuntime(file_access_controller=controller)
+    file = _build_file(
+        transfer_method=FileTransferMethod.LOCAL_FILE,
+        reference=build_file_reference(record_id="upload-file-id", storage_key="tampered-storage-key"),
+    )
+    session = MagicMock()
+
+    class _SessionContext:
+        def __enter__(self):
+            return session
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    monkeypatch.setattr(file_runtime.session_factory, "create_session", lambda: _SessionContext())
+
+    assert runtime._resolve_storage_key(file=file) == "canonical-storage-key"
+    controller.get_upload_file.assert_called_once_with(session=session, file_id="upload-file-id")
+
+
+def test_resolve_upload_file_url_rejects_unauthorized_scoped_access(monkeypatch: pytest.MonkeyPatch) -> None:
+    controller = MagicMock()
+    controller.current_scope.return_value = FileAccessScope(
+        tenant_id="tenant-id",
+        user_id="end-user-id",
+        user_from=UserFrom.END_USER,
+        invoke_from=InvokeFrom.WEB_APP,
+    )
+    controller.get_upload_file.return_value = None
+    runtime = DifyWorkflowFileRuntime(file_access_controller=controller)
+    session = MagicMock()
+
+    class _SessionContext:
+        def __enter__(self):
+            return session
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    monkeypatch.setattr(file_runtime.session_factory, "create_session", lambda: _SessionContext())
+
+    with pytest.raises(ValueError, match="Upload file upload-file-id not found"):
+        runtime.resolve_upload_file_url(upload_file_id="upload-file-id")
 
 
 @pytest.mark.parametrize(
@@ -196,7 +257,7 @@ def test_resolve_storage_key_loads_database_records(
     record_id: str,
     expected_storage_key: str,
 ) -> None:
-    runtime = DifyWorkflowFileRuntime()
+    runtime = _build_runtime()
     file = _build_file(
         transfer_method=transfer_method,
         reference=build_file_reference(record_id=record_id),
@@ -206,9 +267,9 @@ def test_resolve_storage_key_loads_database_records(
 
     def get(model_class, value):
         if transfer_method in {FileTransferMethod.LOCAL_FILE, FileTransferMethod.DATASOURCE_FILE}:
-            assert model_class is file_runtime.UploadFile
+            assert model_class is UploadFile
             return SimpleNamespace(key="upload-storage-key")
-        assert model_class is file_runtime.ToolFile
+        assert model_class is ToolFile
         return SimpleNamespace(file_key="tool-storage-key")
 
     session.get.side_effect = get
@@ -237,7 +298,7 @@ def test_resolve_storage_key_raises_when_records_are_missing(
     transfer_method: FileTransferMethod,
     expected_message: str,
 ) -> None:
-    runtime = DifyWorkflowFileRuntime()
+    runtime = _build_runtime()
     record_id = "upload-file-id" if transfer_method == FileTransferMethod.LOCAL_FILE else "tool-file-id"
     file = _build_file(
         transfer_method=transfer_method,

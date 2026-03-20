@@ -1,10 +1,18 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
+from functools import lru_cache
 from typing import Any
 
 from core.workflow.file_reference import parse_file_reference
 from dify_graph.file import File, FileTransferMethod
+
+
+@lru_cache(maxsize=1)
+def _get_file_access_controller():
+    from core.app.file_access import DatabaseFileAccessController
+
+    return DatabaseFileAccessController()
 
 
 def resolve_file_record_id(file_mapping: Mapping[str, Any]) -> str | None:
@@ -61,4 +69,8 @@ def build_file_from_input_mapping(
         mapping["upload_file_id"] = record_id
 
     tenant_id = resolve_file_mapping_tenant_id(file_mapping=mapping, tenant_resolver=tenant_resolver)
-    return file_factory.build_from_mapping(mapping=mapping, tenant_id=tenant_id)
+    return file_factory.build_from_mapping(
+        mapping=mapping,
+        tenant_id=tenant_id,
+        access_controller=_get_file_access_controller(),
+    )

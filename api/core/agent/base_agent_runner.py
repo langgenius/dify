@@ -15,6 +15,7 @@ from core.app.entities.app_invoke_entities import (
     AgentChatAppGenerateEntity,
     ModelConfigWithCredentialsEntity,
 )
+from core.app.file_access import DatabaseFileAccessController
 from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.memory.token_buffer_memory import TokenBufferMemory
@@ -46,6 +47,7 @@ from models.enums import CreatorUserRole
 from models.model import Conversation, Message, MessageAgentThought, MessageFile
 
 logger = logging.getLogger(__name__)
+_file_access_controller = DatabaseFileAccessController()
 
 
 class BaseAgentRunner(AppRunner):
@@ -524,7 +526,10 @@ class BaseAgentRunner(AppRunner):
         image_detail_config = image_detail_config or ImagePromptMessageContent.DETAIL.LOW
 
         file_objs = file_factory.build_from_message_files(
-            message_files=files, tenant_id=self.tenant_id, config=file_extra_config
+            message_files=files,
+            tenant_id=self.tenant_id,
+            config=file_extra_config,
+            access_controller=_file_access_controller,
         )
         if not file_objs:
             return UserPromptMessage(content=message.query)

@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
+from core.app.file_access import DatabaseFileAccessController
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
 from core.llm_generator.output_parser.errors import OutputParserError
 from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
@@ -82,6 +83,9 @@ if TYPE_CHECKING:
     from dify_graph.nodes.tool.entities import ToolNodeData
 
 
+_file_access_controller = DatabaseFileAccessController()
+
+
 def resolve_dify_run_context(run_context: Mapping[str, Any] | DifyRunContext) -> DifyRunContext:
     if isinstance(run_context, DifyRunContext):
         return run_context
@@ -127,6 +131,7 @@ class DifyFileReferenceFactory(FileReferenceFactoryProtocol):
         return file_factory.build_from_mapping(
             mapping=mapping,
             tenant_id=self._run_context.tenant_id,
+            access_controller=_file_access_controller,
         )
 
 

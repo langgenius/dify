@@ -6,6 +6,7 @@ from typing import Any, cast
 from sqlalchemy import select
 
 import contexts
+from core.app.file_access import DatabaseFileAccessController
 from core.datasource.__base.datasource_plugin import DatasourcePlugin
 from core.datasource.__base.datasource_provider import DatasourcePluginProviderController
 from core.datasource.entities.datasource_entities import (
@@ -37,6 +38,7 @@ from models.tools import ToolFile
 from services.datasource_provider_service import DatasourceProviderService
 
 logger = logging.getLogger(__name__)
+_file_access_controller = DatabaseFileAccessController()
 
 
 class DatasourceManager:
@@ -284,7 +286,11 @@ class DatasourceManager:
                             "transfer_method": FileTransferMethod.TOOL_FILE,
                             "url": url,
                         }
-                        file_out = file_factory.build_from_mapping(mapping=mapping, tenant_id=tenant_id)
+                        file_out = file_factory.build_from_mapping(
+                            mapping=mapping,
+                            tenant_id=tenant_id,
+                            access_controller=_file_access_controller,
+                        )
             elif mtype == DatasourceMessage.MessageType.TEXT:
                 assert isinstance(message.message, DatasourceMessage.TextMessage)
                 yield StreamChunkEvent(selector=[node_id, "text"], chunk=message.message.text, is_final=False)

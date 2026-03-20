@@ -401,11 +401,11 @@ class TestBaseAppGeneratorExtras:
 
         monkeypatch.setattr(
             "core.app.apps.base_app_generator.file_factory.build_from_mapping",
-            lambda mapping, tenant_id, config, strict_type_validation=False: "file-object",
+            lambda mapping, tenant_id, config, strict_type_validation=False, access_controller=None: "file-object",
         )
         monkeypatch.setattr(
             "core.app.apps.base_app_generator.file_factory.build_from_mappings",
-            lambda mappings, tenant_id, config: ["file-1", "file-2"],
+            lambda mappings, tenant_id, config, access_controller=None: ["file-1", "file-2"],
         )
 
         user_inputs = {

@@ -6,6 +6,7 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.orm import Session
 
+from core.app.file_access import DatabaseFileAccessController
 from dify_graph.file import File, FileTransferMethod, FileType
 from extensions.ext_database import db
 from extensions.storage.storage_type import StorageType
@@ -35,7 +36,11 @@ class TestStorageKeyLoader(unittest.TestCase):
         self.test_tool_files = []
 
         # Create StorageKeyLoader instance
-        self.loader = StorageKeyLoader(self.session, self.tenant_id)
+        self.loader = StorageKeyLoader(
+            self.session,
+            self.tenant_id,
+            access_controller=DatabaseFileAccessController(),
+        )
 
     def tearDown(self):
         """Clean up test data after each test method."""
@@ -361,6 +366,10 @@ class TestStorageKeyLoader(unittest.TestCase):
         # Create loader with different session (same underlying connection)
 
         with Session(bind=db.engine) as other_session:
-            other_loader = StorageKeyLoader(other_session, self.tenant_id)
+            other_loader = StorageKeyLoader(
+                other_session,
+                self.tenant_id,
+                access_controller=DatabaseFileAccessController(),
+            )
             with pytest.raises(ValueError):
                 other_loader.load_storage_keys([file])

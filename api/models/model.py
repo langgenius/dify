@@ -7,6 +7,7 @@ from collections.abc import Callable, Mapping, Sequence
 from datetime import datetime
 from decimal import Decimal
 from enum import StrEnum, auto
+from functools import lru_cache
 from typing import TYPE_CHECKING, Any, Literal, NotRequired, cast
 from uuid import uuid4
 
@@ -51,6 +52,13 @@ if TYPE_CHECKING:
 
 
 # --- TypedDict definitions for structured dict return types ---
+
+
+@lru_cache(maxsize=1)
+def _get_file_access_controller():
+    from core.app.file_access import DatabaseFileAccessController
+
+    return DatabaseFileAccessController()
 
 
 def _resolve_app_tenant_id(app_id: str) -> str:
@@ -1618,6 +1626,7 @@ class Message(Base):
                         "upload_file_id": message_file.upload_file_id,
                     },
                     tenant_id=current_app.tenant_id,
+                    access_controller=_get_file_access_controller(),
                 )
             elif message_file.transfer_method == FileTransferMethod.REMOTE_URL:
                 if message_file.url is None:
@@ -1631,6 +1640,7 @@ class Message(Base):
                         "url": message_file.url,
                     },
                     tenant_id=current_app.tenant_id,
+                    access_controller=_get_file_access_controller(),
                 )
             elif message_file.transfer_method == FileTransferMethod.TOOL_FILE:
                 if message_file.upload_file_id is None:
@@ -1645,6 +1655,7 @@ class Message(Base):
                 file = file_factory.build_from_mapping(
                     mapping=mapping,
                     tenant_id=current_app.tenant_id,
+                    access_controller=_get_file_access_controller(),
                 )
             else:
                 raise ValueError(

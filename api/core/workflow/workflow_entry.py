@@ -7,6 +7,7 @@ from configs import dify_config
 from context import capture_current_context
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
+from core.app.file_access import DatabaseFileAccessController
 from core.app.workflow.layers.llm_quota import LLMQuotaLayer
 from core.app.workflow.layers.observability import ObservabilityLayer
 from core.workflow.node_factory import DifyNodeFactory, is_start_node_type, resolve_workflow_node_class
@@ -35,6 +36,7 @@ from factories import file_factory
 from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
+_file_access_controller = DatabaseFileAccessController()
 
 
 class _WorkflowChildEngineBuilder:
@@ -508,13 +510,21 @@ class WorkflowEntry:
                 continue
 
             if isinstance(input_value, dict) and "type" in input_value and "transfer_method" in input_value:
-                input_value = file_factory.build_from_mapping(mapping=input_value, tenant_id=tenant_id)
+                input_value = file_factory.build_from_mapping(
+                    mapping=input_value,
+                    tenant_id=tenant_id,
+                    access_controller=_file_access_controller,
+                )
             if (
                 isinstance(input_value, list)
                 and all(isinstance(item, dict) for item in input_value)
                 and all("type" in item and "transfer_method" in item for item in input_value)
             ):
-                input_value = file_factory.build_from_mappings(mappings=input_value, tenant_id=tenant_id)
+                input_value = file_factory.build_from_mappings(
+                    mappings=input_value,
+                    tenant_id=tenant_id,
+                    access_controller=_file_access_controller,
+                )
 
             # append variable and value to variable pool
             if variable_node_id != ENVIRONMENT_VARIABLE_NODE_ID:

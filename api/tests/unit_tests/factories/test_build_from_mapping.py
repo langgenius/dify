@@ -4,13 +4,17 @@ from unittest.mock import MagicMock, patch
 import pytest
 from httpx import Response
 
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.app.file_access import DatabaseFileAccessController, FileAccessScope, bind_file_access_scope
 from core.workflow.file_reference import build_file_reference, resolve_file_record_id
 from factories.file_factory import (
     File,
     FileTransferMethod,
     FileType,
     FileUploadConfig,
-    build_from_mapping,
+)
+from factories.file_factory import (
+    build_from_mapping as _build_from_mapping,
 )
 from models import ToolFile, UploadFile
 
@@ -19,6 +23,7 @@ TEST_TENANT_ID = "test_tenant_id"
 TEST_UPLOAD_FILE_ID = str(uuid.uuid4())
 TEST_TOOL_FILE_ID = str(uuid.uuid4())
 TEST_REMOTE_URL = "http://example.com/test.jpg"
+TEST_ACCESS_CONTROLLER = DatabaseFileAccessController()
 
 # Test Config
 TEST_CONFIG = FileUploadConfig(
@@ -27,6 +32,16 @@ TEST_CONFIG = FileUploadConfig(
     allowed_file_upload_methods=[FileTransferMethod.LOCAL_FILE, FileTransferMethod.TOOL_FILE],
     number_limits=10,
 )
+
+
+def build_from_mapping(*, mapping, tenant_id, config=None, strict_type_validation=False):
+    return _build_from_mapping(
+        mapping=mapping,
+        tenant_id=tenant_id,
+        config=config,
+        strict_type_validation=strict_type_validation,
+        access_controller=TEST_ACCESS_CONTROLLER,
+    )
 
 
 # Fixtures
@@ -303,6 +318,48 @@ def test_tenant_mismatch():
         mapping = local_file_mapping()
         with pytest.raises(ValueError, match="Invalid upload file"):
             build_from_mapping(mapping=mapping, tenant_id=TEST_TENANT_ID)
+
+
+def test_build_from_mapping_scopes_upload_file_to_end_user(mock_upload_file):
+    scope = FileAccessScope(
+        tenant_id=TEST_TENANT_ID,
+        user_id="end-user-id",
+        user_from=UserFrom.END_USER,
+        invoke_from=InvokeFrom.WEB_APP,
+    )
+
+    with bind_file_access_scope(scope):
+        build_from_mapping(mapping=local_file_mapping(), tenant_id=TEST_TENANT_ID)
+
+    stmt = mock_upload_file.call_args.args[0]
+    whereclause = str(stmt.whereclause)
+    assert "upload_files.created_by_role" in whereclause
+    assert "upload_files.created_by" in whereclause
+
+
+def test_build_from_mapping_scopes_tool_file_to_end_user():
+    tool_file = MagicMock(spec=ToolFile)
+    tool_file.id = TEST_TOOL_FILE_ID
+    tool_file.tenant_id = TEST_TENANT_ID
+    tool_file.name = "tool_file.pdf"
+    tool_file.file_key = "tool_file.pdf"
+    tool_file.mimetype = "application/pdf"
+    tool_file.original_url = "http://example.com/tool.pdf"
+    tool_file.size = 2048
+    scope = FileAccessScope(
+        tenant_id=TEST_TENANT_ID,
+        user_id="end-user-id",
+        user_from=UserFrom.END_USER,
+        invoke_from=InvokeFrom.WEB_APP,
+    )
+
+    with patch("factories.file_factory.db.session.scalar", return_value=tool_file, autospec=True) as scalar:
+        with bind_file_access_scope(scope):
+            build_from_mapping(mapping=tool_file_mapping(), tenant_id=TEST_TENANT_ID)
+
+    stmt = scalar.call_args.args[0]
+    whereclause = str(stmt.whereclause)
+    assert "tool_files.user_id" in whereclause
 
 
 def test_disallowed_file_types(mock_upload_file):

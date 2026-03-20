@@ -12,6 +12,7 @@ from configs import dify_config
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
+from core.app.file_access import DatabaseFileAccessController
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.human_input_repository import FormCreateParams, HumanInputFormRepositoryImpl
@@ -83,6 +84,8 @@ from .human_input_delivery_test_service import (
 )
 from .workflow_draft_variable_service import DraftVariableSaver, DraftVarLoader, WorkflowDraftVariableService
 from .workflow_restore import apply_published_workflow_snapshot_to_draft
+
+_file_access_controller = DatabaseFileAccessController()
 
 
 class WorkflowService:
@@ -1583,7 +1586,7 @@ def _rebuild_single_file(tenant_id: str, value: Any, variable_entity_type: Varia
     if variable_entity_type == VariableEntityType.FILE:
         if not isinstance(value, dict):
             raise ValueError(f"expected dict for file object, got {type(value)}")
-        return build_from_mapping(mapping=value, tenant_id=tenant_id)
+        return build_from_mapping(mapping=value, tenant_id=tenant_id, access_controller=_file_access_controller)
     elif variable_entity_type == VariableEntityType.FILE_LIST:
         if not isinstance(value, list):
             raise ValueError(f"expected list for file list object, got {type(value)}")
@@ -1591,6 +1594,6 @@ def _rebuild_single_file(tenant_id: str, value: Any, variable_entity_type: Varia
             return []
         if not isinstance(value[0], dict):
             raise ValueError(f"expected dict for first element in the file list, got {type(value)}")
-        return build_from_mappings(mappings=value, tenant_id=tenant_id)
+        return build_from_mappings(mappings=value, tenant_id=tenant_id, access_controller=_file_access_controller)
     else:
         raise Exception("unreachable")

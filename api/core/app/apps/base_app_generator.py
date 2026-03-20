@@ -1,4 +1,5 @@
 from collections.abc import Generator, Mapping, Sequence
+from contextlib import AbstractContextManager, nullcontext
 from typing import TYPE_CHECKING, Any, Union, final
 
 from sqlalchemy.orm import Session
@@ -8,7 +9,8 @@ from core.app.apps.draft_variable_saver import (
     DraftVariableSaverFactory,
     NoopDraftVariableSaver,
 )
-from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.app.file_access import DatabaseFileAccessController, FileAccessScope, bind_file_access_scope
 from dify_graph.enums import NodeType
 from dify_graph.file import File, FileUploadConfig
 from dify_graph.variables.input_entities import VariableEntityType
@@ -57,6 +59,31 @@ class _DebuggerDraftVariableSaver:
 
 
 class BaseAppGenerator:
+    _file_access_controller: DatabaseFileAccessController = DatabaseFileAccessController()
+
+    @staticmethod
+    def _bind_file_access_scope(
+        *,
+        tenant_id: str,
+        user: Account | EndUser,
+        invoke_from: InvokeFrom,
+    ) -> AbstractContextManager[None]:
+        """Bind request-scoped file ownership markers for downstream file lookups."""
+
+        user_id = getattr(user, "id", None)
+        if not isinstance(user_id, str) or not user_id:
+            return nullcontext()
+
+        user_from = UserFrom.ACCOUNT if isinstance(user, Account) else UserFrom.END_USER
+        return bind_file_access_scope(
+            FileAccessScope(
+                tenant_id=tenant_id,
+                user_id=user_id,
+                user_from=user_from,
+                invoke_from=invoke_from,
+            )
+        )
+
     def _prepare_user_inputs(
         self,
         *,
@@ -85,6 +112,7 @@ class BaseAppGenerator:
                     allowed_file_upload_methods=entity_dictionary[k].allowed_file_upload_methods or [],
                 ),
                 strict_type_validation=strict_type_validation,
+                access_controller=self._file_access_controller,
             )
             for k, v in user_inputs.items()
             if isinstance(v, dict) and entity_dictionary[k].type == VariableEntityType.FILE
@@ -99,6 +127,7 @@ class BaseAppGenerator:
                     allowed_file_extensions=entity_dictionary[k].allowed_file_extensions or [],
                     allowed_file_upload_methods=entity_dictionary[k].allowed_file_upload_methods or [],
                 ),
+                access_controller=self._file_access_controller,
             )
             for k, v in user_inputs.items()
             if isinstance(v, list)

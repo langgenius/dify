@@ -14,6 +14,7 @@ from sqlalchemy.sql.expression import and_, or_
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.file_access import DatabaseFileAccessController
 from core.trigger.constants import is_trigger_node_type
 from core.workflow.system_variables import SystemVariableKey
 from core.workflow.variable_prefixes import (
@@ -126,7 +127,11 @@ class DraftVarLoader(VariableLoader):
             elif isinstance(value, ArrayFileSegment):
                 files.extend(value.value)
         with Session(bind=self._engine) as session:
-            storage_key_loader = StorageKeyLoader(session, tenant_id=self._tenant_id)
+            storage_key_loader = StorageKeyLoader(
+                session,
+                tenant_id=self._tenant_id,
+                access_controller=DatabaseFileAccessController(),
+            )
             storage_key_loader.load_storage_keys(files)
 
         offloaded_draft_vars = []

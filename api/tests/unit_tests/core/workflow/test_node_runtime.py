@@ -115,6 +115,7 @@ def test_dify_file_reference_factory_passes_tenant_id(monkeypatch: pytest.Monkey
     build_from_mapping.assert_called_once_with(
         mapping={"id": "upload-file"},
         tenant_id="tenant-id",
+        access_controller=node_runtime._file_access_controller,
     )
 
 

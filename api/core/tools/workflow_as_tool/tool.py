@@ -7,6 +7,7 @@ from typing import Any, cast
 
 from sqlalchemy import select
 
+from core.app.file_access import DatabaseFileAccessController
 from core.db.session_factory import session_factory
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
@@ -26,6 +27,7 @@ from models.model import App, EndUser
 from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
+_file_access_controller = DatabaseFileAccessController()
 
 
 class WorkflowTool(Tool):
@@ -331,6 +333,7 @@ class WorkflowTool(Tool):
                         file = build_from_mapping(
                             mapping=item,
                             tenant_id=str(self.runtime.tenant_id),
+                            access_controller=_file_access_controller,
                         )
                         files.append(file)
             elif isinstance(value, dict) and value.get("dify_model_identity") == FILE_MODEL_IDENTITY:
@@ -338,6 +341,7 @@ class WorkflowTool(Tool):
                 file = build_from_mapping(
                     mapping=value,
                     tenant_id=str(self.runtime.tenant_id),
+                    access_controller=_file_access_controller,
                 )
                 files.append(file)
 

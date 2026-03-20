@@ -6,6 +6,7 @@ from typing import Any, cast
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from core.app.file_access import DatabaseFileAccessController
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
 from dify_graph.enums import BuiltinNodeTypes, NodeType, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
@@ -26,6 +27,8 @@ from models import ToolFile
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 
 from .exceptions import AgentNodeError, AgentVariableTypeError, ToolFileNotFoundError
+
+_file_access_controller = DatabaseFileAccessController()
 
 
 class AgentMessageTransformer:
@@ -93,6 +96,7 @@ class AgentMessageTransformer:
                 file = file_factory.build_from_mapping(
                     mapping=mapping,
                     tenant_id=tenant_id,
+                    access_controller=_file_access_controller,
                 )
                 files.append(file)
             elif message.type == ToolInvokeMessage.MessageType.BLOB:
@@ -116,6 +120,7 @@ class AgentMessageTransformer:
                     file_factory.build_from_mapping(
                         mapping=mapping,
                         tenant_id=tenant_id,
+                        access_controller=_file_access_controller,
                     )
                 )
             elif message.type == ToolInvokeMessage.MessageType.TEXT:

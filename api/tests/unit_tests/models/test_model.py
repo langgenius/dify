@@ -111,8 +111,8 @@ def test_inputs_resolve_owner_tenant_for_single_file_mapping(
 
     monkeypatch.setattr(model_module.db.session, "scalar", lambda _: "tenant-from-app")
 
-    def fake_build_from_mapping(*, mapping, tenant_id, config=None, strict_type_validation=False):
-        _ = config, strict_type_validation
+    def fake_build_from_mapping(*, mapping, tenant_id, config=None, strict_type_validation=False, access_controller):
+        _ = config, strict_type_validation, access_controller
         build_calls.append((dict(mapping), tenant_id))
         return {"tenant_id": tenant_id, "upload_file_id": mapping.get("upload_file_id")}
 
@@ -145,8 +145,8 @@ def test_inputs_resolve_owner_tenant_for_file_list_mapping(
 
     monkeypatch.setattr(model_module.db.session, "scalar", lambda _: "tenant-from-app")
 
-    def fake_build_from_mapping(*, mapping, tenant_id, config=None, strict_type_validation=False):
-        _ = config, strict_type_validation
+    def fake_build_from_mapping(*, mapping, tenant_id, config=None, strict_type_validation=False, access_controller):
+        _ = config, strict_type_validation, access_controller
         build_calls.append((dict(mapping), tenant_id))
         return {"tenant_id": tenant_id, "upload_file_id": mapping.get("upload_file_id")}
 
@@ -196,8 +196,8 @@ def test_inputs_prefer_serialized_tenant_id_when_present(
 
     monkeypatch.setattr(model_module.db.session, "scalar", fail_if_called)
 
-    def fake_build_from_mapping(*, mapping, tenant_id, config=None, strict_type_validation=False):
-        _ = config, strict_type_validation
+    def fake_build_from_mapping(*, mapping, tenant_id, config=None, strict_type_validation=False, access_controller):
+        _ = config, strict_type_validation, access_controller
         return {"tenant_id": tenant_id, "upload_file_id": mapping.get("upload_file_id")}
 
     monkeypatch.setattr("factories.file_factory.build_from_mapping", fake_build_from_mapping)

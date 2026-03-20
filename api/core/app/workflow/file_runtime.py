@@ -10,6 +10,7 @@ from collections.abc import Generator
 from typing import TYPE_CHECKING, Literal
 
 from configs import dify_config
+from core.app.file_access import DatabaseFileAccessController, FileAccessControllerProtocol
 from core.db.session_factory import session_factory
 from core.helper.ssrf_proxy import ssrf_proxy
 from core.tools.signature import sign_tool_file
@@ -18,14 +19,22 @@ from dify_graph.file.enums import FileTransferMethod
 from dify_graph.file.protocols import HttpResponseProtocol, WorkflowFileRuntimeProtocol
 from dify_graph.file.runtime import set_workflow_file_runtime
 from extensions.ext_storage import storage
-from models import ToolFile, UploadFile
 
 if TYPE_CHECKING:
     from dify_graph.file.models import File
 
 
 class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
-    """Production runtime wiring for ``dify_graph.file``."""
+    """Production runtime wiring for ``dify_graph.file``.
+
+    When a request-scoped file access scope is present, opaque file references are
+    re-validated against the database before URLs are signed or storage keys are used.
+    """
+
+    _file_access_controller: FileAccessControllerProtocol
+
+    def __init__(self, *, file_access_controller: FileAccessControllerProtocol) -> None:
+        self._file_access_controller = file_access_controller
 
     @property
     def multimodal_send_format(self) -> str:
@@ -55,7 +64,16 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
                 upload_file_id=parsed_reference.record_id,
                 for_external=for_external,
             )
-        if file.transfer_method in {FileTransferMethod.TOOL_FILE, FileTransferMethod.DATASOURCE_FILE}:
+        if file.transfer_method == FileTransferMethod.DATASOURCE_FILE:
+            if file.extension is None:
+                raise ValueError("Missing file extension")
+            self._assert_upload_file_access(upload_file_id=parsed_reference.record_id)
+            return sign_tool_file(
+                tool_file_id=parsed_reference.record_id,
+                extension=file.extension,
+                for_external=for_external,
+            )
+        if file.transfer_method == FileTransferMethod.TOOL_FILE:
             if file.extension is None:
                 raise ValueError("Missing file extension")
             return self.resolve_tool_file_url(
@@ -72,6 +90,7 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
         as_attachment: bool = False,
         for_external: bool = True,
     ) -> str:
+        self._assert_upload_file_access(upload_file_id=upload_file_id)
         base_url = self._base_url(for_external=for_external)
         url = f"{base_url}/files/{upload_file_id}/file-preview"
         query = self._sign_query(payload=f"file-preview|{upload_file_id}")
@@ -80,6 +99,7 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
         return f"{url}?{urllib.parse.urlencode(query)}"
 
     def resolve_tool_file_url(self, *, tool_file_id: str, extension: str, for_external: bool = True) -> str:
+        self._assert_tool_file_access(tool_file_id=tool_file_id)
         return sign_tool_file(tool_file_id=tool_file_id, extension=extension, for_external=for_external)
 
     def verify_preview_signature(
@@ -121,7 +141,7 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
         parsed_reference = parse_file_reference(file.reference)
         if parsed_reference is None:
             raise ValueError("Missing file reference")
-        if parsed_reference.storage_key:
+        if parsed_reference.storage_key and self._file_access_controller.current_scope() is None:
             return parsed_reference.storage_key
 
         record_id = parsed_reference.record_id
@@ -131,16 +151,34 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
                 FileTransferMethod.REMOTE_URL,
                 FileTransferMethod.DATASOURCE_FILE,
             }:
-                upload_file = session.get(UploadFile, record_id)
+                upload_file = self._file_access_controller.get_upload_file(session=session, file_id=record_id)
                 if upload_file is None:
                     raise ValueError(f"Upload file {record_id} not found")
                 return upload_file.key
 
-            tool_file = session.get(ToolFile, record_id)
+            tool_file = self._file_access_controller.get_tool_file(session=session, file_id=record_id)
             if tool_file is None:
                 raise ValueError(f"Tool file {record_id} not found")
             return tool_file.file_key
 
+    def _assert_upload_file_access(self, *, upload_file_id: str) -> None:
+        if self._file_access_controller.current_scope() is None:
+            return
+
+        with session_factory.create_session() as session:
+            upload_file = self._file_access_controller.get_upload_file(session=session, file_id=upload_file_id)
+            if upload_file is None:
+                raise ValueError(f"Upload file {upload_file_id} not found")
+
+    def _assert_tool_file_access(self, *, tool_file_id: str) -> None:
+        if self._file_access_controller.current_scope() is None:
+            return
+
+        with session_factory.create_session() as session:
+            tool_file = self._file_access_controller.get_tool_file(session=session, file_id=tool_file_id)
+            if tool_file is None:
+                raise ValueError(f"Tool file {tool_file_id} not found")
+
 
 def bind_dify_workflow_file_runtime() -> None:
-    set_workflow_file_runtime(DifyWorkflowFileRuntime())
+    set_workflow_file_runtime(DifyWorkflowFileRuntime(file_access_controller=DatabaseFileAccessController()))
