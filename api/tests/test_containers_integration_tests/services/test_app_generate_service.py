@@ -39,9 +39,15 @@ class TestAppGenerateService:
             patch("configs.dify_config", autospec=True) as mock_global_dify_config,
         ):
             # Setup default mock returns for billing service
-            mock_billing_service.update_tenant_feature_plan_usage.return_value = {
-                "result": "success",
-                "history_id": "test_history_id",
+            mock_billing_service.quota_reserve.return_value = {
+                "reservation_id": "test-reservation-id",
+                "available": 100,
+                "reserved": 1,
+            }
+            mock_billing_service.quota_commit.return_value = {
+                "available": 99,
+                "reserved": 0,
+                "refunded": 0,
             }
 
             # Setup default mock returns for workflow service
@@ -478,8 +484,10 @@ class TestAppGenerateService:
         # Verify the result
         assert result == ["test_response"]
 
-        # Verify billing service was called to consume quota
-        mock_external_service_dependencies["billing_service"].update_tenant_feature_plan_usage.assert_called_once()
+        # Verify billing two-phase quota (reserve + commit)
+        billing = mock_external_service_dependencies["billing_service"]
+        billing.quota_reserve.assert_called_once()
+        billing.quota_commit.assert_called_once()
 
     def test_generate_with_invalid_app_mode(
         self, db_session_with_containers: Session, mock_external_service_dependencies

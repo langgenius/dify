@@ -39,7 +39,7 @@ class QuotaCharge:
             actual_amount: Actual amount consumed. Defaults to the reserved amount.
                            If less than reserved, the difference is refunded automatically.
         """
-        if self._committed or not self.charge_id:
+        if self._committed or not self.charge_id or not self._tenant_id or not self._feature_key:
             return
 
         try:

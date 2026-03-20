@@ -146,6 +146,9 @@ class TestAsyncWorkflowService:
         mocks["team_task"].delay.return_value = task_result
         mocks["sandbox_task"].delay.return_value = task_result
 
+        quota_charge_mock = MagicMock()
+        mocks["quota_workflow"].reserve.return_value = quota_charge_mock
+
         class DummyAccount:
             def __init__(self, user_id: str):
                 self.id = user_id
@@ -163,7 +166,8 @@ class TestAsyncWorkflowService:
         assert result.status == "queued"
         assert result.queue == queue_name
 
-        mocks["quota_workflow"].consume.assert_called_once_with("tenant-123")
+        mocks["quota_workflow"].reserve.assert_called_once_with("tenant-123")
+        quota_charge_mock.commit.assert_called_once()
         assert session.commit.call_count == 2
 
         created_log = mocks["repo"].create.call_args[0][0]
@@ -250,7 +254,7 @@ class TestAsyncWorkflowService:
         mocks = async_workflow_trigger_mocks
         mocks["dispatcher"].get_queue_name.return_value = QueuePriority.TEAM
         mocks["get_workflow"].return_value = workflow
-        mocks["quota_workflow"].consume.side_effect = QuotaExceededError(
+        mocks["quota_workflow"].reserve.side_effect = QuotaExceededError(
             feature="workflow",
             tenant_id="tenant-123",
             required=1,

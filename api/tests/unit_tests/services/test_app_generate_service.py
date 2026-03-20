@@ -447,8 +447,8 @@ class TestGenerateBilling:
     def test_billing_enabled_consumes_quota(self, mocker, monkeypatch):
         monkeypatch.setattr(ags_module.dify_config, "BILLING_ENABLED", True)
         quota_charge = MagicMock()
-        consume_mock = mocker.patch(
-            "services.app_generate_service.QuotaType.WORKFLOW.consume",
+        reserve_mock = mocker.patch(
+            "services.app_generate_service.QuotaType.WORKFLOW.reserve",
             return_value=quota_charge,
         )
         mocker.patch(
@@ -467,7 +467,8 @@ class TestGenerateBilling:
             invoke_from=InvokeFrom.SERVICE_API,
             streaming=False,
         )
-        consume_mock.assert_called_once_with("tenant-id")
+        reserve_mock.assert_called_once_with("tenant-id")
+        quota_charge.commit.assert_called_once()
 
     def test_billing_quota_exceeded_raises_rate_limit_error(self, mocker, monkeypatch):
         from services.errors.app import QuotaExceededError
@@ -475,7 +476,7 @@ class TestGenerateBilling:
 
         monkeypatch.setattr(ags_module.dify_config, "BILLING_ENABLED", True)
         mocker.patch(
-            "services.app_generate_service.QuotaType.WORKFLOW.consume",
+            "services.app_generate_service.QuotaType.WORKFLOW.reserve",
             side_effect=QuotaExceededError(feature="workflow", tenant_id="t", required=1),
         )
 
@@ -492,7 +493,7 @@ class TestGenerateBilling:
         monkeypatch.setattr(ags_module.dify_config, "BILLING_ENABLED", True)
         quota_charge = MagicMock()
         mocker.patch(
-            "services.app_generate_service.QuotaType.WORKFLOW.consume",
+            "services.app_generate_service.QuotaType.WORKFLOW.reserve",
             return_value=quota_charge,
         )
         mocker.patch(

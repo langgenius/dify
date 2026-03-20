@@ -426,7 +426,7 @@ class TestBillingServiceUsageCalculation:
 
         # Assert
         assert result == expected_response
-        mock_send_request.assert_called_once_with("GET", "/tenant-feature-usage/info", params={"tenant_id": tenant_id})
+        mock_send_request.assert_called_once_with("GET", "/quota/info", params={"tenant_id": tenant_id})
 
     def test_update_tenant_feature_plan_usage_positive_delta(self, mock_send_request):
         """Test updating tenant feature usage with positive delta (adding credits)."""

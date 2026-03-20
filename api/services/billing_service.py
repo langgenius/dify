@@ -59,7 +59,7 @@ class BillingService:
         Returns:
             {"reservation_id": "uuid", "available": int, "reserved": int}
         """
-        payload = {
+        payload: dict = {
             "tenant_id": tenant_id,
             "feature_key": feature_key,
             "request_id": request_id,
@@ -78,7 +78,7 @@ class BillingService:
         Returns:
             {"available": int, "reserved": int, "refunded": int}
         """
-        payload = {
+        payload: dict = {
             "tenant_id": tenant_id,
             "feature_key": feature_key,
             "reservation_id": reservation_id,
