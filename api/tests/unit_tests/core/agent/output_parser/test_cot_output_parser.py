@@ -258,10 +258,10 @@ class TestCotAgentOutputParser:
 def test_cot_output_parser_does_not_swallow_keyboard_interrupt_from_code_block_json(make_chunk, usage_dict):
     chunks = [make_chunk('Action: ```json\n{"action": "Final Answer", "action_input": "ok"}```')]
 
-    with pytest.raises(KeyboardInterrupt):
-        with pytest.MonkeyPatch.context() as mp:
-            mp.setattr(
-                "core.agent.output_parser.cot_output_parser.json.loads",
-                lambda *args, **kwargs: (_ for _ in ()).throw(KeyboardInterrupt()),
-            )
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(
+            "core.agent.output_parser.cot_output_parser.json.loads",
+            lambda *args, **kwargs: (_ for _ in ()).throw(KeyboardInterrupt()),
+        )
+        with pytest.raises(KeyboardInterrupt):
             list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))
