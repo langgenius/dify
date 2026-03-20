@@ -509,11 +509,6 @@
       "count": 1
     }
   },
-  "app/components/app/annotation/type.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 2
-    }
-  },
   "app/components/app/annotation/view-annotation-modal/hit-history-no-data.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
@@ -10095,16 +10090,6 @@
   "types/assets.d.ts": {
     "ts/no-explicit-any": {
       "count": 5
-    }
-  },
-  "types/common.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    }
-  },
-  "types/feature.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 3
     }
   },
   "types/lamejs.d.ts": {
