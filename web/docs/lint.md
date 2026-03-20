@@ -12,25 +12,33 @@ We use ESLint and Typescript to maintain code quality and consistency across the
 pnpm eslint [options] file.js [file.js] [dir]
 ```
 
-**`--cache`**: Caches lint results for faster subsequent runs. Keep this enabled by default; only disable when you encounter unexpected lint results.
+**`--cache`**: Caches lint results for faster subsequent runs.
+Keep this enabled by default; only disable when you encounter unexpected lint results.
 
-**`--concurrency`**: Enables multi-threaded linting. Use `--concurrency=auto` or experiment with specific numbers to find the optimal setting for your machine. Keep this enabled when linting multiple files.
+**`--concurrency`**: Enables multi-threaded linting.
+Use `--concurrency=auto` or experiment with specific numbers to find the optimal setting for your machine.
+Keep this enabled when linting multiple files.
 
-- [ESLint multi-thread linting blog post](https://eslint.org/blog/2025/08/multithread-linting/)
+- [ESLint multi-thread linting blog post]
 
-**`--fix`**: Automatically fixes auto-fixable rule violations. Always review the diff before committing to ensure no unintended changes.
+**`--fix`**: Automatically fixes auto-fixable rule violations.
+Always review the diff before committing to ensure no unintended changes.
 
-**`--quiet`**: Suppresses warnings and only shows errors. Useful when you want to reduce noise from existing issues.
+**`--quiet`**: Suppresses warnings and only shows errors.
+Useful when you want to reduce noise from existing warnings.
 
-**`--suppress-all`**: Temporarily suppresses error-level violations and records them, allowing CI to pass. Treat this as an escape hatch—fix these errors when time permits.
+**`--suppress-all`**: Temporarily suppresses error-level violations and records them, allowing CI to pass.
+Treat this as an escape hatch—fix these errors when time permits.
 
 **`--prune-suppressions`**: Removes outdated suppressions after you've fixed the underlying errors.
 
-- [ESLint bulk suppressions blog post](https://eslint.org/blog/2025/04/introducing-bulk-suppressions/)
+- [ESLint bulk suppressions blog post]
 
 ### Type-Aware Linting
 
-Some ESLint rules require type information, such as [no-leaked-conditional-rendering](https://www.eslint-react.xyz/docs/rules/no-leaked-conditional-rendering). However, [typed linting via typescript-eslint](https://typescript-eslint.io/getting-started/typed-linting) is too slow for practical use, so we use [TSSLint](https://github.com/johnsoncodehk/tsslint) instead.
+Some ESLint rules require type information, such as [no-leaked-conditional-rendering].
+However, [typed linting via typescript-eslint] is too slow for practical use.
+So we use [TSSLint] instead.
 
 ```sh
 pnpm lint:tss
@@ -55,4 +63,11 @@ However, it can be useful to run the TypeScript 7 command-line (tsgo) to type ch
 pnpm type-check:tsgo
 ```
 
-Prefer using `tsgo` for type checking as it is significantly faster than the standard TypeScript compiler. Only fall back to `pnpm type-check` (which uses `tsc`) if you encounter unexpected results.
+Prefer using `tsgo` for type checking as it is significantly faster than the standard TypeScript compiler.
+Only fall back to `pnpm type-check` (which uses `tsc`) if you encounter unexpected results.
+
+- [ESLint multi-thread linting blog post]: https://eslint.org/blog/2025/08/multithread-linting
+- [ESLint bulk suppressions blog post]: https://eslint.org/blog/2025/04/introducing-bulk-suppressions
+- [no-leaked-conditional-rendering]: https://www.eslint-react.xyz/docs/rules/no-leaked-conditional-rendering
+- [typed linting via typescript-eslint]: https://typescript-eslint.io/getting-started/typed-linting
+- [TSSLint]: https://github.com/johnsoncodehk/tsslint

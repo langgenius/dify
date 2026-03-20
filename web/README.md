@@ -55,7 +55,7 @@ NEXT_PUBLIC_SENTRY_DSN=
 > [!IMPORTANT]
 >
 > 1. When the frontend and backend run on different subdomains, set NEXT_PUBLIC_COOKIE_DOMAIN=1. The frontend and backend must be under the same top-level domain in order to share authentication cookies.
-> 1. It's necessary to set NEXT_PUBLIC_API_PREFIX and NEXT_PUBLIC_PUBLIC_API_PREFIX to the correct backend API URL.
+> 2. It's necessary to set NEXT_PUBLIC_API_PREFIX and NEXT_PUBLIC_PUBLIC_API_PREFIX to the correct backend API URL.
 
 Finally, run the development server:
 
@@ -63,7 +63,7 @@ Finally, run the development server:
 pnpm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open <http://localhost:3000> with your browser to see the result.
 
 You can start editing the file under folder `app`. The page auto-updates as you edit the file.
 
@@ -99,7 +99,7 @@ To start the storybook server, run:
 pnpm storybook
 ```
 
-Open [http://localhost:6006](http://localhost:6006) with your browser to see the result.
+Open <http://localhost:6006> with your browser to see the result.
 
 ## Lint Code
 
