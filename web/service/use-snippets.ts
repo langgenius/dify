@@ -1,215 +1,273 @@
-import type { Node } from '@/app/components/workflow/types'
-import type { SnippetDetailPayload, SnippetInputField, SnippetListItem } from '@/models/snippet'
-import { useQuery } from '@tanstack/react-query'
-import codeDefault from '@/app/components/workflow/nodes/code/default'
-import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
-import httpDefault from '@/app/components/workflow/nodes/http/default'
-import { Method } from '@/app/components/workflow/nodes/http/types'
-import llmDefault from '@/app/components/workflow/nodes/llm/default'
-import questionClassifierDefault from '@/app/components/workflow/nodes/question-classifier/default'
-import { BlockEnum, PromptRole } from '@/app/components/workflow/types'
-import { PipelineInputVarType } from '@/models/pipeline'
-import { AppModeEnum } from '@/types/app'
+import type {
+  SnippetCanvasData,
+  SnippetDetailPayload,
+  SnippetDetail as SnippetDetailUIModel,
+  SnippetInputField as SnippetInputFieldUIModel,
+  SnippetListItem as SnippetListItemUIModel,
+} from '@/models/snippet'
+import type {
+  CreateSnippetPayload,
+  Snippet as SnippetContract,
+  SnippetListResponse,
+  SnippetWorkflow,
+  UpdateSnippetPayload,
+} from '@/types/snippet'
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
+import dayjs from 'dayjs'
+import { consoleClient, consoleQuery } from '@/service/client'
 
-const NAME_SPACE = 'snippets'
+type SnippetListParams = {
+  page?: number
+  limit?: number
+  keyword?: string
+  is_published?: boolean
+}
 
-export const getSnippetListMock = (): SnippetListItem[] => ([
-  {
-    id: 'snippet-1',
-    name: 'Tone Rewriter',
-    description: 'Rewrites rough drafts into a concise, professional tone for internal stakeholder updates.',
-    author: 'Evan',
-    updatedAt: 'Updated 2h ago',
-    usage: 'Used 19 times',
-    icon: '🪄',
-    iconBackground: '#E0EAFF',
-    status: 'Draft',
-  },
-])
+type SnippetSummary = Pick<SnippetContract, 'id' | 'name' | 'description' | 'use_count' | 'icon_info' | 'updated_at'>
 
-const getSnippetInputFieldsMock = (): SnippetInputField[] => ([
-  {
-    type: PipelineInputVarType.textInput,
-    label: 'Blog URL',
-    variable: 'blog_url',
-    required: true,
-    placeholder: 'Paste a source article URL',
-    options: [],
-    max_length: 256,
-  },
-  {
-    type: PipelineInputVarType.textInput,
-    label: 'Target Platforms',
-    variable: 'platforms',
-    required: true,
-    placeholder: 'X, LinkedIn, Instagram',
-    options: [],
-    max_length: 128,
-  },
-  {
-    type: PipelineInputVarType.textInput,
-    label: 'Tone',
-    variable: 'tone',
-    required: false,
-    placeholder: 'Concise and executive-ready',
-    options: [],
-    max_length: 48,
-  },
-  {
-    type: PipelineInputVarType.textInput,
-    label: 'Max Length',
-    variable: 'max_length',
-    required: false,
-    placeholder: 'Set an ideal output length',
-    options: [],
-    max_length: 48,
-  },
-])
+const DEFAULT_SNIPPET_LIST_PARAMS = {
+  page: 1,
+  limit: 30,
+} satisfies Required<Pick<SnippetListParams, 'page' | 'limit'>>
 
-const getSnippetGraphMock = (): SnippetDetailPayload['graph'] => ({
-  viewport: { x: 120, y: 30, zoom: 0.9 },
-  nodes: [
-    {
-      id: 'question-classifier',
-      position: { x: 280, y: 208 },
-      data: {
-        ...questionClassifierDefault.defaultValue,
-        title: 'Question Classifier',
-        desc: 'After-sales related questions',
-        type: BlockEnum.QuestionClassifier,
-        query_variable_selector: ['sys', 'query'],
-        model: {
-          provider: 'openai',
-          name: 'gpt-4o',
-          mode: AppModeEnum.CHAT,
-          completion_params: {
-            temperature: 0.2,
-          },
-        },
-        classes: [
-          {
-            id: '1',
-            name: 'HTTP Request',
-          },
-          {
-            id: '2',
-            name: 'LLM',
-          },
-          {
-            id: '3',
-            name: 'Code',
-          },
-        ],
-      } as unknown as Node['data'],
-    },
-    {
-      id: 'http-request',
-      position: { x: 670, y: 72 },
-      data: {
-        ...httpDefault.defaultValue,
-        title: 'HTTP Request',
-        desc: 'POST https://api.example.com/content/rewrite',
-        type: BlockEnum.HttpRequest,
-        method: Method.post,
-        url: 'https://api.example.com/content/rewrite',
-        headers: 'Content-Type: application/json',
-      } as unknown as Node['data'],
-    },
-    {
-      id: 'llm',
-      position: { x: 670, y: 248 },
-      data: {
-        ...llmDefault.defaultValue,
-        title: 'LLM',
-        desc: 'GPT-4o',
-        type: BlockEnum.LLM,
-        model: {
-          provider: 'openai',
-          name: 'gpt-4o',
-          mode: AppModeEnum.CHAT,
-          completion_params: {
-            temperature: 0.7,
-          },
-        },
-        prompt_template: [{
-          role: PromptRole.system,
-          text: 'Rewrite the content with the requested tone.',
-        }],
-      } as unknown as Node['data'],
-    },
-    {
-      id: 'code',
-      position: { x: 670, y: 424 },
-      data: {
-        ...codeDefault.defaultValue,
-        title: 'Code',
-        desc: 'Python',
-        type: BlockEnum.Code,
-        code_language: CodeLanguage.python3,
-        code: 'def main(text: str) -> dict:\n    return {"content": text.strip()}',
-      } as unknown as Node['data'],
-    },
-  ],
-  edges: [
-    {
-      id: 'edge-question-http',
-      source: 'question-classifier',
-      sourceHandle: '1',
-      target: 'http-request',
-      targetHandle: 'target',
-    },
-    {
-      id: 'edge-question-llm',
-      source: 'question-classifier',
-      sourceHandle: '2',
-      target: 'llm',
-      targetHandle: 'target',
-    },
-    {
-      id: 'edge-question-code',
-      source: 'question-classifier',
-      sourceHandle: '3',
-      target: 'code',
-      targetHandle: 'target',
-    },
-  ],
-})
+const DEFAULT_GRAPH: SnippetCanvasData = {
+  nodes: [],
+  edges: [],
+  viewport: { x: 0, y: 0, zoom: 1 },
+}
 
-const getSnippetDetailMock = (snippetId: string): SnippetDetailPayload | null => {
-  const snippet = getSnippetListMock().find(item => item.id === snippetId)
-  if (!snippet)
-    return null
+const toMilliseconds = (timestamp?: number) => {
+  if (!timestamp)
+    return undefined
 
-  const inputFields = getSnippetInputFieldsMock()
+  return timestamp > 1_000_000_000_000 ? timestamp : timestamp * 1000
+}
+
+const formatTimestamp = (timestamp?: number) => {
+  const milliseconds = toMilliseconds(timestamp)
+  if (!milliseconds)
+    return ''
+
+  return dayjs(milliseconds).format('YYYY-MM-DD HH:mm')
+}
+
+const getSnippetIcon = (iconInfo: SnippetContract['icon_info']) => {
+  return typeof iconInfo?.icon === 'string' ? iconInfo.icon : ''
+}
+
+const getSnippetIconBackground = (iconInfo: SnippetContract['icon_info']) => {
+  return typeof iconInfo?.icon_background === 'string' ? iconInfo.icon_background : ''
+}
+
+const toSnippetListItem = (snippet: SnippetSummary): SnippetListItemUIModel => {
+  return {
+    id: snippet.id,
+    name: snippet.name,
+    description: snippet.description,
+    author: '',
+    updatedAt: formatTimestamp(snippet.updated_at),
+    usage: String(snippet.use_count ?? 0),
+    icon: getSnippetIcon(snippet.icon_info),
+    iconBackground: getSnippetIconBackground(snippet.icon_info),
+    status: undefined,
+  }
+}
+
+const toSnippetDetail = (snippet: SnippetContract): SnippetDetailUIModel => {
+  return {
+    ...toSnippetListItem(snippet),
+  }
+}
+
+const toSnippetCanvasData = (workflow?: SnippetWorkflow): SnippetCanvasData => {
+  const graph = workflow?.graph
+
+  if (!graph || typeof graph !== 'object')
+    return DEFAULT_GRAPH
+
+  const graphRecord = graph as Record<string, unknown>
 
   return {
-    snippet,
-    graph: getSnippetGraphMock(),
+    nodes: Array.isArray(graphRecord.nodes) ? graphRecord.nodes as SnippetCanvasData['nodes'] : DEFAULT_GRAPH.nodes,
+    edges: Array.isArray(graphRecord.edges) ? graphRecord.edges as SnippetCanvasData['edges'] : DEFAULT_GRAPH.edges,
+    viewport: graphRecord.viewport && typeof graphRecord.viewport === 'object'
+      ? graphRecord.viewport as SnippetCanvasData['viewport']
+      : DEFAULT_GRAPH.viewport,
+  }
+}
+
+const toSnippetDetailPayload = (snippet: SnippetContract, workflow?: SnippetWorkflow): SnippetDetailPayload => {
+  const inputFields = Array.isArray(snippet.input_fields)
+    ? snippet.input_fields as SnippetInputFieldUIModel[]
+    : []
+
+  return {
+    snippet: toSnippetDetail(snippet),
+    graph: toSnippetCanvasData(workflow),
     inputFields,
     uiMeta: {
       inputFieldCount: inputFields.length,
-      checklistCount: 2,
-      autoSavedAt: 'Auto-saved · a few seconds ago',
+      checklistCount: 0,
+      autoSavedAt: formatTimestamp(workflow?.updated_at ?? snippet.updated_at),
     },
   }
 }
 
-export const useSnippetDetail = (snippetId: string) => {
-  return useQuery({
-    queryKey: [NAME_SPACE, 'detail', snippetId],
-    queryFn: async () => getSnippetDetailMock(snippetId),
-    enabled: !!snippetId,
+const normalizeSnippetListParams = (params: SnippetListParams) => {
+  return {
+    page: params.page ?? DEFAULT_SNIPPET_LIST_PARAMS.page,
+    limit: params.limit ?? DEFAULT_SNIPPET_LIST_PARAMS.limit,
+    ...(params.keyword ? { keyword: params.keyword } : {}),
+    ...(typeof params.is_published === 'boolean' ? { is_published: params.is_published } : {}),
+  }
+}
+
+const isNotFoundError = (error: unknown) => {
+  return !!error && typeof error === 'object' && 'status' in error && error.status === 404
+}
+
+export const useSnippetList = (params: SnippetListParams = {}, options?: { enabled?: boolean }) => {
+  const query = normalizeSnippetListParams(params)
+
+  return useQuery(consoleQuery.snippets.list.queryOptions({
+    input: { query },
+    enabled: options?.enabled ?? true,
+  }))
+}
+
+export const useSnippetListItems = (params: SnippetListParams = {}, options?: { enabled?: boolean }) => {
+  return useQuery<SnippetListItemUIModel[]>({
+    queryKey: [...consoleQuery.snippets.list.queryKey({ input: { query: normalizeSnippetListParams(params) } }), 'items'],
+    queryFn: async () => {
+      const response = await consoleClient.snippets.list({
+        query: normalizeSnippetListParams(params),
+      })
+
+      return response.data.map(toSnippetListItem)
+    },
+    enabled: options?.enabled ?? true,
   })
 }
 
-export const publishSnippet = async (_snippetId: string) => {
-  return Promise.resolve()
+export const useSnippetApiDetail = (snippetId: string) => {
+  return useQuery(consoleQuery.snippets.detail.queryOptions({
+    input: {
+      params: { snippetId },
+    },
+    enabled: !!snippetId,
+  }))
 }
 
-export const runSnippet = async (_snippetId: string) => {
-  return Promise.resolve()
+export const useSnippetDetail = (snippetId: string) => {
+  return useQuery<SnippetDetailPayload | null>({
+    queryKey: [...consoleQuery.snippets.detail.queryKey({
+      input: {
+        params: { snippetId },
+      },
+    }), 'payload'],
+    enabled: !!snippetId,
+    queryFn: async () => {
+      try {
+        const [snippet, workflow] = await Promise.all([
+          consoleClient.snippets.detail({
+            params: { snippetId },
+          }),
+          consoleClient.snippets.draftWorkflow({
+            params: { snippetId },
+          }).catch((error) => {
+            if (isNotFoundError(error))
+              return undefined
+
+            throw error
+          }),
+        ])
+
+        return toSnippetDetailPayload(snippet, workflow)
+      }
+      catch (error) {
+        if (isNotFoundError(error))
+          return null
+
+        throw error
+      }
+    },
+  })
 }
 
-export const updateSnippetInputFields = async (_snippetId: string, _fields: SnippetInputField[]) => {
-  return Promise.resolve()
+export const useCreateSnippetMutation = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation(consoleQuery.snippets.create.mutationOptions({
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.snippets.key(),
+      })
+    },
+  }))
+}
+
+export const useUpdateSnippetMutation = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    ...consoleQuery.snippets.update.mutationOptions({
+      onSuccess: () => {
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.snippets.key(),
+        })
+      },
+    }),
+  })
+}
+
+export const useDeleteSnippetMutation = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    ...consoleQuery.snippets.delete.mutationOptions({
+      onSuccess: () => {
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.snippets.key(),
+        })
+      },
+    }),
+  })
+}
+
+export const usePublishSnippetMutation = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    ...consoleQuery.snippets.publishWorkflow.mutationOptions({
+      onSuccess: () => {
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.snippets.key(),
+        })
+      },
+    }),
+  })
+}
+
+export const useIncrementSnippetUseCountMutation = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    ...consoleQuery.snippets.incrementUseCount.mutationOptions({
+      onSuccess: () => {
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.snippets.key(),
+        })
+      },
+    }),
+  })
+}
+
+export type {
+  CreateSnippetPayload,
+  SnippetListResponse,
+  UpdateSnippetPayload,
 }
