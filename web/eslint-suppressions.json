@@ -9381,7 +9381,7 @@
   },
   "app/components/workflow/types.ts": {
     "erasable-syntax-only/enums": {
-      "count": 16
+      "count": 14
     },
     "ts/no-empty-object-type": {
       "count": 3
@@ -9912,7 +9912,7 @@
   },
   "models/datasets.ts": {
     "erasable-syntax-only/enums": {
-      "count": 8
+      "count": 4
     },
     "ts/no-explicit-any": {
       "count": 5
