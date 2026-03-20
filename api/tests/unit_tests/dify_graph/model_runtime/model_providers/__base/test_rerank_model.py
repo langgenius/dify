@@ -91,3 +91,20 @@ def test_invoke_multimodal_calls_runtime_and_passes_args(rerank_model: RerankMod
         score_threshold=None,
         top_n=None,
     )
+
+
+def test_invoke_multimodal_transforms_and_raises_on_runtime_error(
+    rerank_model: RerankModel, model_runtime: MagicMock
+) -> None:
+    model_runtime.invoke_multimodal_rerank.side_effect = Exception("multimodal runtime down")
+
+    query = {"content": "q", "content_type": "text"}
+    docs = [{"content": "d1", "content_type": "text"}]
+
+    with pytest.raises(InvokeError, match="multimodal runtime down"):
+        rerank_model.invoke_multimodal_rerank(
+            model="mm",
+            credentials={},
+            query=query,
+            docs=docs,
+        )
