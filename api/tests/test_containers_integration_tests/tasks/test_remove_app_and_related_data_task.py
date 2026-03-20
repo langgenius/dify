@@ -6,6 +6,7 @@ import pytest
 from core.db.session_factory import session_factory
 from dify_graph.variables.segments import StringSegment
 from dify_graph.variables.types import SegmentType
+from extensions.storage.storage_type import StorageType
 from libs.datetime_utils import naive_utc_now
 from models import Tenant
 from models.enums import CreatorUserRole
@@ -78,7 +79,7 @@ def _create_offload_data(db_session_with_containers, *, tenant_id: str, app_id: 
     for i in range(count):
         upload_file = UploadFile(
             tenant_id=tenant_id,
-            storage_type="local",
+            storage_type=StorageType.LOCAL,
             key=f"test/file-{uuid.uuid4()}-{i}.json",
             name=f"file-{i}.json",
             size=1024 + i,

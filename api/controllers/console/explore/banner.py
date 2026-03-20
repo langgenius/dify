@@ -4,6 +4,7 @@ from flask_restx import Resource
 from controllers.console import api
 from controllers.console.explore.wraps import explore_banner_enabled
 from extensions.ext_database import db
+from models.enums import BannerStatus
 from models.model import ExporleBanner
 
 
@@ -16,7 +17,7 @@ class BannerApi(Resource):
         language = request.args.get("language", "en-US")
 
         # Build base query for enabled banners
-        base_query = db.session.query(ExporleBanner).where(ExporleBanner.status == "enabled")
+        base_query = db.session.query(ExporleBanner).where(ExporleBanner.status == BannerStatus.ENABLED)
 
         # Try to get banners in the requested language
         banners = base_query.where(ExporleBanner.language == language).order_by(ExporleBanner.sort).all()

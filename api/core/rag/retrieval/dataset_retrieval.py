@@ -33,7 +33,7 @@ from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, Comp
 from core.prompt.simple_prompt_transform import ModelMode
 from core.rag.data_post_processor.data_post_processor import DataPostProcessor, RerankingModelDict, WeightsDict
 from core.rag.datasource.keyword.jieba.jieba_keyword_table_handler import JiebaKeywordTableHandler
-from core.rag.datasource.retrieval_service import RetrievalService
+from core.rag.datasource.retrieval_service import DefaultRetrievalModelDict, RetrievalService
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.rag.entities.context_entities import DocumentContext
 from core.rag.entities.metadata_entities import Condition, MetadataCondition
@@ -87,7 +87,7 @@ from models.enums import CreatorUserRole, DatasetQuerySource
 from services.external_knowledge_service import ExternalDatasetService
 from services.feature_service import FeatureService
 
-default_retrieval_model: dict[str, Any] = {
+default_retrieval_model: DefaultRetrievalModelDict = {
     "search_method": RetrievalMethod.SEMANTIC_SEARCH,
     "reranking_enable": False,
     "reranking_model": {"reranking_provider_name": "", "reranking_model_name": ""},
@@ -591,7 +591,7 @@ class DatasetRetrieval:
         user_id: str,
         user_from: str,
         query: str,
-        available_datasets: list,
+        available_datasets: list[Dataset],
         model_instance: ModelInstance,
         model_config: ModelConfigWithCredentialsEntity,
         planning_strategy: PlanningStrategy,
@@ -633,15 +633,15 @@ class DatasetRetrieval:
         if dataset_id:
             # get retrieval model config
             dataset_stmt = select(Dataset).where(Dataset.id == dataset_id)
-            dataset = db.session.scalar(dataset_stmt)
-            if dataset:
+            selected_dataset = db.session.scalar(dataset_stmt)
+            if selected_dataset:
                 results = []
-                if dataset.provider == "external":
+                if selected_dataset.provider == "external":
                     external_documents = ExternalDatasetService.fetch_external_knowledge_retrieval(
-                        tenant_id=dataset.tenant_id,
+                        tenant_id=selected_dataset.tenant_id,
                         dataset_id=dataset_id,
                         query=query,
-                        external_retrieval_parameters=dataset.retrieval_model,
+                        external_retrieval_parameters=selected_dataset.retrieval_model,
                         metadata_condition=metadata_condition,
                     )
                     for external_document in external_documents:
@@ -654,24 +654,28 @@ class DatasetRetrieval:
                             document.metadata["score"] = external_document.get("score")
                             document.metadata["title"] = external_document.get("title")
                             document.metadata["dataset_id"] = dataset_id
-                            document.metadata["dataset_name"] = dataset.name
+                            document.metadata["dataset_name"] = selected_dataset.name
                         results.append(document)
                 else:
                     if metadata_condition and not metadata_filter_document_ids:
                         return []
                     document_ids_filter = None
                     if metadata_filter_document_ids:
-                        document_ids = metadata_filter_document_ids.get(dataset.id, [])
+                        document_ids = metadata_filter_document_ids.get(selected_dataset.id, [])
                         if document_ids:
                             document_ids_filter = document_ids
                         else:
                             return []
-                    retrieval_model_config = dataset.retrieval_model or default_retrieval_model
+                    retrieval_model_config: DefaultRetrievalModelDict = (
+                        cast(DefaultRetrievalModelDict, selected_dataset.retrieval_model)
+                        if selected_dataset.retrieval_model
+                        else default_retrieval_model
+                    )
 
                     # get top k
                     top_k = retrieval_model_config["top_k"]
                     # get retrieval method
-                    if dataset.indexing_technique == "economy":
+                    if selected_dataset.indexing_technique == "economy":
                         retrieval_method = RetrievalMethod.KEYWORD_SEARCH
                     else:
                         retrieval_method = retrieval_model_config["search_method"]
@@ -690,7 +694,7 @@ class DatasetRetrieval:
                     with measure_time() as timer:
                         results = RetrievalService.retrieve(
                             retrieval_method=retrieval_method,
-                            dataset_id=dataset.id,
+                            dataset_id=selected_dataset.id,
                             query=query,
                             top_k=top_k,
                             score_threshold=score_threshold,
@@ -722,7 +726,7 @@ class DatasetRetrieval:
         tenant_id: str,
         user_id: str,
         user_from: str,
-        available_datasets: list,
+        available_datasets: list[Dataset],
         query: str | None,
         top_k: int,
         score_threshold: float,
@@ -1024,7 +1028,7 @@ class DatasetRetrieval:
         dataset_id: str,
         query: str,
         top_k: int,
-        all_documents: list,
+        all_documents: list[Document],
         document_ids_filter: list[str] | None = None,
         metadata_condition: MetadataCondition | None = None,
         attachment_ids: list[str] | None = None,
@@ -1058,7 +1062,11 @@ class DatasetRetrieval:
                     all_documents.append(document)
             else:
                 # get retrieval model , if the model is not setting , using default
-                retrieval_model = dataset.retrieval_model or default_retrieval_model
+                retrieval_model: DefaultRetrievalModelDict = (
+                    cast(DefaultRetrievalModelDict, dataset.retrieval_model)
+                    if dataset.retrieval_model
+                    else default_retrieval_model
+                )
 
                 if dataset.indexing_technique == "economy":
                     # use keyword table query
@@ -1132,7 +1140,7 @@ class DatasetRetrieval:
 
         if retrieve_config.retrieve_strategy == DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE:
             # get retrieval model config
-            default_retrieval_model = {
+            default_retrieval_model: DefaultRetrievalModelDict = {
                 "search_method": RetrievalMethod.SEMANTIC_SEARCH,
                 "reranking_enable": False,
                 "reranking_model": {"reranking_provider_name": "", "reranking_model_name": ""},
@@ -1141,7 +1149,11 @@ class DatasetRetrieval:
             }
 
             for dataset in available_datasets:
-                retrieval_model_config = dataset.retrieval_model or default_retrieval_model
+                retrieval_model_config: DefaultRetrievalModelDict = (
+                    cast(DefaultRetrievalModelDict, dataset.retrieval_model)
+                    if dataset.retrieval_model
+                    else default_retrieval_model
+                )
 
                 # get top k
                 top_k = retrieval_model_config["top_k"]
@@ -1286,7 +1298,7 @@ class DatasetRetrieval:
 
     def get_metadata_filter_condition(
         self,
-        dataset_ids: list,
+        dataset_ids: list[str],
         query: str,
         tenant_id: str,
         user_id: str,
@@ -1388,7 +1400,7 @@ class DatasetRetrieval:
         return output
 
     def _automatic_metadata_filter_func(
-        self, dataset_ids: list, query: str, tenant_id: str, user_id: str, metadata_model_config: ModelConfig
+        self, dataset_ids: list[str], query: str, tenant_id: str, user_id: str, metadata_model_config: ModelConfig
     ) -> list[dict[str, Any]] | None:
         # get all metadata field
         metadata_stmt = select(DatasetMetadata).where(DatasetMetadata.dataset_id.in_(dataset_ids))
@@ -1586,7 +1598,7 @@ class DatasetRetrieval:
         )
 
     def _get_prompt_template(
-        self, model_config: ModelConfigWithCredentialsEntity, mode: str, metadata_fields: list, query: str
+        self, model_config: ModelConfigWithCredentialsEntity, mode: str, metadata_fields: list[str], query: str
     ):
         model_mode = ModelMode(mode)
         input_text = query
@@ -1678,7 +1690,7 @@ class DatasetRetrieval:
     def _multiple_retrieve_thread(
         self,
         flask_app: Flask,
-        available_datasets: list,
+        available_datasets: list[Dataset],
         metadata_condition: MetadataCondition | None,
         metadata_filter_document_ids: dict[str, list[str]] | None,
         all_documents: list[Document],

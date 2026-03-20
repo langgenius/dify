@@ -104,10 +104,11 @@ class TestFirecrawlApp:
 
     def test_map_known_error(self, mocker: MockerFixture):
         app = FirecrawlApp(api_key="fc-key", base_url="https://custom.firecrawl.dev")
-        mock_handle = mocker.patch.object(app, "_handle_error")
+        mock_handle = mocker.patch.object(app, "_handle_error", side_effect=Exception("map error"))
         mocker.patch("httpx.post", return_value=_response(409, {"error": "conflict"}))
 
-        assert app.map("https://example.com") == {}
+        with pytest.raises(Exception, match="map error"):
+            app.map("https://example.com")
         mock_handle.assert_called_once()
 
     def test_map_unknown_error_raises(self, mocker: MockerFixture):
@@ -177,10 +178,11 @@ class TestFirecrawlApp:
 
     def test_check_crawl_status_non_200_uses_error_handler(self, mocker: MockerFixture):
         app = FirecrawlApp(api_key="fc-key", base_url="https://custom.firecrawl.dev")
-        mock_handle = mocker.patch.object(app, "_handle_error")
+        mock_handle = mocker.patch.object(app, "_handle_error", side_effect=Exception("crawl error"))
         mocker.patch("httpx.get", return_value=_response(500, {"error": "server"}))
 
-        assert app.check_crawl_status("job-1") == {}
+        with pytest.raises(Exception, match="crawl error"):
+            app.check_crawl_status("job-1")
         mock_handle.assert_called_once()
 
     def test_check_crawl_status_save_failure_raises(self, mocker: MockerFixture):
@@ -272,9 +274,10 @@ class TestFirecrawlApp:
 
     def test_search_known_http_error(self, mocker: MockerFixture):
         app = FirecrawlApp(api_key="fc-key", base_url="https://custom.firecrawl.dev")
-        mock_handle = mocker.patch.object(app, "_handle_error")
+        mock_handle = mocker.patch.object(app, "_handle_error", side_effect=Exception("search error"))
         mocker.patch("httpx.post", return_value=_response(408, {"error": "timeout"}))
-        assert app.search("python") == {}
+        with pytest.raises(Exception, match="search error"):
+            app.search("python")
         mock_handle.assert_called_once()
 
     def test_search_unknown_http_error(self, mocker: MockerFixture):
