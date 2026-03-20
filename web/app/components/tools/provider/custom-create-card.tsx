@@ -21,10 +21,7 @@ const Contribute = ({ onRefreshData }: Props) => {
   const [isShowEditCollectionToolModal, setIsShowEditCustomCollectionModal] = useState(false)
   const doCreateCustomToolCollection = async (data: CustomCollectionBackend) => {
     await createCustomCollection(data)
-    toast.add({
-      type: 'success',
-      title: t('api.actionSuccess', { ns: 'common' }),
-    })
+    toast.success(t('api.actionSuccess', { ns: 'common' }))
     setIsShowEditCustomCollectionModal(false)
     onRefreshData()
   }

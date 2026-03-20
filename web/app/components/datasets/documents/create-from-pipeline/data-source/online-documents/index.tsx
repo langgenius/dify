@@ -96,10 +96,7 @@ const OnlineDocuments = ({
           setDocumentsData(documentsData.data as DataSourceNotionWorkspace[])
         },
         onDataSourceNodeError: (error: DataSourceNodeErrorResponse) => {
-          toast.add({
-            type: 'error',
-            title: error.error,
-          })
+          toast.error(error.error)
         },
       },
     )

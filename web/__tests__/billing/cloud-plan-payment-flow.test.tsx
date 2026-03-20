@@ -95,7 +95,7 @@ describe('Cloud Plan Payment Flow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     cleanup()
-    toast.close()
+    toast.dismiss()
     setupAppContext()
     mockFetchSubscriptionUrls.mockResolvedValue({ url: 'https://pay.example.com/checkout' })
     mockInvoices.mockResolvedValue({ url: 'https://billing.example.com/invoices' })

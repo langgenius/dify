@@ -126,6 +126,8 @@
   "mcp.modal.headerValuePlaceholder": "उदाहरण के लिए, बियरर टोकन123",
   "mcp.modal.headers": "हेडर",
   "mcp.modal.headersTip": "MCP सर्वर अनुरोधों के साथ भेजने के लिए अतिरिक्त HTTP हेडर्स",
+  "mcp.modal.invalidServerIdentifier": "कृपया एक मान्य सर्वर पहचानकर्ता दर्ज करें",
+  "mcp.modal.invalidServerUrl": "कृपया एक मान्य सर्वर URL दर्ज करें",
   "mcp.modal.maskedHeadersTip": "सुरक्षा के लिए हेडर मानों को छिपाया गया है। परिवर्तन वास्तविक मानों को अपडेट करेगा।",
   "mcp.modal.name": "नाम और आइकन",
   "mcp.modal.namePlaceholder": "अपने MCP सर्वर को नाम दें",
