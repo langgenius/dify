@@ -1,7 +1,6 @@
 import type { PipelineTemplate } from '@/models/pipeline'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import Toast from '@/app/components/base/toast'
 import { ChunkingMode } from '@/models/datasets'
 import TemplateCard from '../index'
 
@@ -15,11 +14,20 @@ vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: vi.fn(),
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
-  default: {
-    notify: vi.fn(),
-  },
+const { mockToastAdd } = vi.hoisted(() => ({
+  mockToastAdd: vi.fn(),
 }))
+
+vi.mock('@/app/components/base/ui/toast', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/components/base/ui/toast')>()
+  return {
+    ...actual,
+    toast: {
+      ...actual.toast,
+      add: mockToastAdd,
+    },
+  }
+})
 
 // Mock download utilities
 vi.mock('@/utils/download', () => ({
@@ -174,6 +182,7 @@ describe('TemplateCard', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockToastAdd.mockReset()
     mockIsExporting = false
     _capturedOnConfirm = undefined
     _capturedOnCancel = undefined
@@ -228,9 +237,9 @@ describe('TemplateCard', () => {
       fireEvent.click(chooseButton)
 
       await waitFor(() => {
-        expect(Toast.notify).toHaveBeenCalledWith({
+        expect(mockToastAdd).toHaveBeenCalledWith({
           type: 'error',
-          message: expect.any(String),
+          title: expect.any(String),
         })
       })
     })
@@ -291,9 +300,9 @@ describe('TemplateCard', () => {
       fireEvent.click(chooseButton)
 
       await waitFor(() => {
-        expect(Toast.notify).toHaveBeenCalledWith({
+        expect(mockToastAdd).toHaveBeenCalledWith({
           type: 'success',
-          message: expect.any(String),
+          title: expect.any(String),
         })
       })
     })
@@ -309,9 +318,9 @@ describe('TemplateCard', () => {
       fireEvent.click(chooseButton)
 
       await waitFor(() => {
-        expect(Toast.notify).toHaveBeenCalledWith({
+        expect(mockToastAdd).toHaveBeenCalledWith({
           type: 'error',
-          message: expect.any(String),
+          title: expect.any(String),
         })
       })
     })
@@ -458,9 +467,9 @@ describe('TemplateCard', () => {
       fireEvent.click(exportButton)
 
       await waitFor(() => {
-        expect(Toast.notify).toHaveBeenCalledWith({
+        expect(mockToastAdd).toHaveBeenCalledWith({
           type: 'success',
-          message: expect.any(String),
+          title: expect.any(String),
         })
       })
     })
@@ -476,9 +485,9 @@ describe('TemplateCard', () => {
       fireEvent.click(exportButton)
 
       await waitFor(() => {
-        expect(Toast.notify).toHaveBeenCalledWith({
+        expect(mockToastAdd).toHaveBeenCalledWith({
           type: 'error',
-          message: expect.any(String),
+          title: expect.any(String),
         })
       })
     })
