@@ -37,10 +37,10 @@ This document tracks the migration away from legacy overlay APIs.
 1. Business/UI features outside `app/components/base/**`
    - Migrate old calls to semantic primitives from `@/app/components/base/ui/**`.
    - Keep deprecated imports out of newly touched files.
-2. Legacy base components in allowlist
+1. Legacy base components in allowlist
    - Migrate allowlisted base callers gradually.
    - Remove migrated files from `OVERLAY_MIGRATION_LEGACY_BASE_FILES` immediately.
-3. Cleanup
+1. Cleanup
    - Remove remaining allowlist entries.
    - Remove legacy overlay implementations when import count reaches zero.
 
@@ -105,8 +105,8 @@ falling back to `z-[9999]`.
 Once all legacy overlays are removed:
 
 1. Reduce `z-[1002]` back to `z-50` across all `base/ui/` primitives.
-2. Reduce Toast from `z-[1101]` to `z-[51]`.
-3. Remove this section from the migration guide.
+1. Reduce Toast from `z-[1101]` to `z-[51]`.
+1. Remove this section from the migration guide.
 
 ## React Refresh policy for base UI primitives
 

@@ -41,9 +41,9 @@ cd web/i18n
 cp -r en-US id-ID
 ```
 
-2. Modify the translation `.json` files in the new folder. Keep keys flat (for example, `dialog.title`).
+1. Modify the translation `.json` files in the new folder. Keep keys flat (for example, `dialog.title`).
 
-3. Add the new language to the `languages.ts` file.
+1. Add the new language to the `languages.ts` file.
 
 ```typescript
 export const languages = [
@@ -143,9 +143,9 @@ export const languages = [
 ]
 ```
 
-4. Don't forget to mark the supported field as `true` if the language is supported.
+1. Don't forget to mark the supported field as `true` if the language is supported.
 
-5. Sometimes you might need to do some changes in the server side. Please change this file as well. 👇
+1. Sometimes you might need to do some changes in the server side. Please change this file as well. 👇
    <https://github.com/langgenius/dify/blob/61e4bbabaf2758354db4073cbea09fdd21a5bec1/api/constants/languages.py#L5>
 
 > Note: `I18nText` type is automatically derived from `LanguagesSupported`, so you don't need to manually add types.
@@ -166,22 +166,22 @@ We have a list of languages that we support in the `languages.ts` file. But some
 Translation is handled automatically by Claude Code GitHub Actions. When changes are pushed to `web/i18n/en-US/*.json` on the main branch:
 
 1. Claude Code analyzes the git diff to detect changes
-2. Identifies three types of changes:
+1. Identifies three types of changes:
    - **ADD**: New keys that need translation
    - **UPDATE**: Modified keys that need re-translation (even if target language has existing translation)
    - **DELETE**: Removed keys that need to be deleted from other languages
-3. Runs `i18n:check` to verify the initial sync status.
-4. Translates missing/updated keys while preserving placeholders (`{{var}}`, `${var}`, `<tag>`) and removes deleted keys.
-5. Runs `lint:fix` to sort JSON keys and `i18n:check` again to ensure everything is synchronized.
-6. Creates a PR with the translations.
+1. Runs `i18n:check` to verify the initial sync status.
+1. Translates missing/updated keys while preserving placeholders (`{{var}}`, `${var}`, `<tag>`) and removes deleted keys.
+1. Runs `lint:fix` to sort JSON keys and `i18n:check` again to ensure everything is synchronized.
+1. Creates a PR with the translations.
 
 ### Manual Trigger
 
 To manually trigger translation:
 
 1. Go to Actions > "Translate i18n Files with Claude Code"
-2. Click "Run workflow"
-3. Optionally configure:
+1. Click "Run workflow"
+1. Optionally configure:
    - **files**: Specific files to translate (space-separated, e.g., "app common")
    - **languages**: Specific languages to translate (space-separated, e.g., "zh-Hans ja-JP")
    - **mode**: `incremental` (default, only changes) or `full` (check all keys)
