@@ -1,6 +1,6 @@
 import type { FC } from 'react'
 import type { Tag } from '@/app/components/base/tag-management/constant'
-import { useDebounceFn, useMount } from 'ahooks'
+import { useMount } from 'ahooks'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Tag01, Tag03 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
@@ -33,18 +33,10 @@ const TagFilter: FC<TagFilterProps> = ({
   const setShowTagManagementModal = useTagStore(s => s.setShowTagManagementModal)
 
   const [keywords, setKeywords] = useState('')
-  const [searchKeywords, setSearchKeywords] = useState('')
-  const { run: handleSearch } = useDebounceFn(() => {
-    setSearchKeywords(keywords)
-  }, { wait: 500 })
-  const handleKeywordsChange = (value: string) => {
-    setKeywords(value)
-    handleSearch()
-  }
 
   const filteredTagList = useMemo(() => {
-    return tagList.filter(tag => tag.type === type && tag.name.includes(searchKeywords))
-  }, [type, tagList, searchKeywords])
+    return tagList.filter(tag => tag.type === type && tag.name.includes(keywords))
+  }, [type, tagList, keywords])
 
   const currentTag = useMemo(() => {
     return tagList.find(tag => tag.id === value[0])
@@ -117,8 +109,8 @@ const TagFilter: FC<TagFilterProps> = ({
                 showLeftIcon
                 showClearIcon
                 value={keywords}
-                onChange={e => handleKeywordsChange(e.target.value)}
-                onClear={() => handleKeywordsChange('')}
+                onChange={e => setKeywords(e.target.value)}
+                onClear={() => setKeywords('')}
               />
             </div>
             <div className="max-h-72 overflow-auto p-1">
