@@ -12,6 +12,7 @@ Before starting the web frontend service, please make sure the following environ
 - [pnpm]
 
 You can also use [Vite+] with the corresponding `vp` commands.
+For example, use `vp install` instead of `pnpm install` and `vp test` instead of `pnpm run test`.
 
 > [!TIP]
 > It is recommended to install and enable Corepack to manage package manager versions automatically:
@@ -100,6 +101,11 @@ Then follow the [Lint Documentation] to lint the code.
 ## Test
 
 We use [Vitest] and [React Testing Library] for Unit Testing.
+
+> [!IMPORTANT]
+> As we are using Vite+, the `vitest` command is not available.
+> Please make sure to run tests with `vp` commands.
+> For example, use `npx vp test` instead of `npx vitest`.
 
 **📖 Complete Testing Guide**: See [web/docs/test.md] for detailed testing specifications, best practices, and examples.
 
