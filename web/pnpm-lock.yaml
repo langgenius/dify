@@ -530,12 +530,18 @@ importers:
       eslint:
         specifier: 10.0.3
         version: 10.0.3(jiti@1.21.7)
+      eslint-markdown:
+        specifier: 0.6.0
+        version: 0.6.0(eslint@10.0.3(jiti@1.21.7))
       eslint-plugin-better-tailwindcss:
         specifier: 4.3.2
         version: 4.3.2(eslint@10.0.3(jiti@1.21.7))(oxlint@1.55.0(oxlint-tsgolint@0.17.0))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.2))(typescript@5.9.3)
       eslint-plugin-hyoban:
         specifier: 0.14.1
         version: 0.14.1(eslint@10.0.3(jiti@1.21.7))
+      eslint-plugin-markdown-preferences:
+        specifier: 0.40.3
+        version: 0.40.3(@eslint/markdown@7.5.1)(eslint@10.0.3(jiti@1.21.7))
       eslint-plugin-react-hooks:
         specifier: 7.0.1
         version: 7.0.1(eslint@10.0.3(jiti@1.21.7))
@@ -4763,6 +4769,15 @@ packages:
       '@eslint/json':
         optional: true
 
+  eslint-markdown@0.6.0:
+    resolution: {integrity: sha512-NrgfiNto5IJrW1F/Akf2hJYoJTCbXoClOUvtUMDgoqmQNH0VRihNvFh+MFay4E0HV2eozfgxsLSGxnndtRJA8w==}
+    engines: {node: ^20.19.0 || ^22.13.0 || >=24.0.0}
+    peerDependencies:
+      eslint: ^9.31.0 || ^10.0.0-rc.0
+    peerDependenciesMeta:
+      eslint:
+        optional: true
+
   eslint-merge-processors@2.0.0:
     resolution: {integrity: sha512-sUuhSf3IrJdGooquEUB5TNpGNpBoQccbnaLHsb1XkBLUPPqCNivCpY05ZcpCOiV9uHwO2yxXEWVczVclzMxYlA==}
     peerDependencies:
@@ -4827,6 +4842,13 @@ packages:
     engines: {node: ^20.19.0 || ^22.13.0 || >=24}
     peerDependencies:
       eslint: '>=9.38.0'
+
+  eslint-plugin-markdown-preferences@0.40.3:
+    resolution: {integrity: sha512-R3CCAEFwnnYXukTdtvdsamGjbTgVs9UZKqMKhNeWNXzFtOP1Frc89bgbd56lJUN7ASaxgvzc5fUpKvDCOTtDpg==}
+    engines: {node: ^20.19.0 || ^22.12.0 || >=24.0.0}
+    peerDependencies:
+      '@eslint/markdown': ^7.4.0
+      eslint: '>=9.0.0'
 
   eslint-plugin-n@17.24.0:
     resolution: {integrity: sha512-/gC7/KAYmfNnPNOb3eu8vw+TdVnV0zhdQwexsw6FLXbhzroVj20vRn2qL8lDWDGnAQ2J8DhdfvXxX9EoxvERvw==}
@@ -12142,6 +12164,16 @@ snapshots:
       esquery: 1.7.0
       jsonc-eslint-parser: 3.1.0
 
+  eslint-markdown@0.6.0(eslint@10.0.3(jiti@1.21.7)):
+    dependencies:
+      '@eslint/markdown': 7.5.1
+      micromark-util-normalize-identifier: 2.0.1
+      parse5: 8.0.0
+    optionalDependencies:
+      eslint: 10.0.3(jiti@1.21.7)
+    transitivePeerDependencies:
+      - supports-color
+
   eslint-merge-processors@2.0.0(eslint@10.0.3(jiti@1.21.7)):
     dependencies:
       eslint: 10.0.3(jiti@1.21.7)
@@ -12232,6 +12264,26 @@ snapshots:
       synckit: 0.11.12
     transitivePeerDependencies:
       - '@eslint/json'
+
+  eslint-plugin-markdown-preferences@0.40.3(@eslint/markdown@7.5.1)(eslint@10.0.3(jiti@1.21.7)):
+    dependencies:
+      '@eslint/markdown': 7.5.1
+      diff-sequences: 29.6.3
+      emoji-regex-xs: 2.0.1
+      eslint: 10.0.3(jiti@1.21.7)
+      mdast-util-from-markdown: 2.0.3
+      mdast-util-frontmatter: 2.0.1
+      mdast-util-gfm: 3.1.0
+      mdast-util-math: 3.0.0
+      micromark-extension-frontmatter: 2.0.0
+      micromark-extension-gfm: 3.0.0
+      micromark-extension-math: 3.1.0
+      micromark-factory-space: 2.0.1
+      micromark-util-character: 2.1.1
+      micromark-util-symbol: 2.0.1
+      string-width: 8.2.0
+    transitivePeerDependencies:
+      - supports-color
 
   eslint-plugin-n@17.24.0(eslint@10.0.3(jiti@1.21.7))(typescript@5.9.3):
     dependencies:
