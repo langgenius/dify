@@ -7,7 +7,7 @@ from datetime import timedelta
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import Engine, delete
+from sqlalchemy import Engine, delete, exc as sa_exc
 from sqlalchemy.orm import Session, sessionmaker
 
 from dify_graph.entities import WorkflowExecution
@@ -175,15 +175,13 @@ class TestGetPaginatedWorkflowRuns:
         test_scope: _TestScope,
     ) -> None:
         """Cursor-based pagination returns the next page of results."""
-        runs = []
         for i in range(5):
-            run = _create_workflow_run(
+            _create_workflow_run(
                 db_session_with_containers,
                 test_scope,
                 status=WorkflowExecutionStatus.SUCCEEDED,
                 created_at_offset=timedelta(seconds=i),
             )
-            runs.append(run)
 
         # First page
         page1 = repository.get_paginated_workflow_runs(
@@ -316,10 +314,10 @@ class TestGetWorkflowRunsCount:
         db_session_with_containers: Session,
         test_scope: _TestScope,
     ) -> None:
-        """Invalid status raises ValueError because the column uses an enum type."""
+        """Invalid status raises StatementError because the column uses an enum type."""
         _create_workflow_run(db_session_with_containers, test_scope, status=WorkflowExecutionStatus.SUCCEEDED)
 
-        with pytest.raises(Exception):
+        with pytest.raises(sa_exc.StatementError, match="invalid_status"):
             repository.get_workflow_runs_count(
                 tenant_id=test_scope.tenant_id,
                 app_id=test_scope.app_id,
