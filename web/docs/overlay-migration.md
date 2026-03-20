@@ -37,10 +37,10 @@ This document tracks the migration away from legacy overlay APIs.
 1. Business/UI features outside `app/components/base/**`
    - Migrate old calls to semantic primitives from `@/app/components/base/ui/**`.
    - Keep deprecated imports out of newly touched files.
-1. Legacy base components in allowlist
+2. Legacy base components in allowlist
    - Migrate allowlisted base callers gradually.
    - Remove migrated files from `OVERLAY_MIGRATION_LEGACY_BASE_FILES` immediately.
-1. Cleanup
+3. Cleanup
    - Remove remaining allowlist entries.
    - Remove legacy overlay implementations when import count reaches zero.
 
@@ -72,14 +72,14 @@ All new overlay primitives in `base/ui/` share a single z-index value:
 During the migration period, legacy and new overlays coexist. Legacy overlays
 portal to `document.body` with explicit z-index values:
 
-| Layer | z-index | Components |
+| Layer                             | z-index          | Components                                   |
 | --------------------------------- | ---------------- | -------------------------------------------- |
-| Legacy Drawer | `z-[30]` | `base/drawer` |
-| Legacy Modal | `z-[60]` | `base/modal` (default) |
-| Legacy PortalToFollowElem callers | up to `z-[1001]` | various business components |
-| **New UI primitives** | **`z-[1002]`** | `base/ui/*` (Popover, Dialog, Tooltip, etc.) |
-| Legacy Modal (highPriority) | `z-[1100]` | `base/modal` (`highPriority={true}`) |
-| Toast (legacy + new) | `z-[1101]` | `base/toast`, `base/ui/toast` |
+| Legacy Drawer                     | `z-[30]`         | `base/drawer`                                |
+| Legacy Modal                      | `z-[60]`         | `base/modal` (default)                       |
+| Legacy PortalToFollowElem callers | up to `z-[1001]` | various business components                  |
+| **New UI primitives**             | **`z-[1002]`**   | `base/ui/*` (Popover, Dialog, Tooltip, etc.) |
+| Legacy Modal (highPriority)       | `z-[1100]`       | `base/modal` (`highPriority={true}`)         |
+| Toast (legacy + new)              | `z-[1101]`       | `base/toast`, `base/ui/toast`                |
 
 `z-[1002]` sits above all common legacy overlays, so new primitives always
 render on top without needing per-call-site z-index hacks. Among themselves,
@@ -105,8 +105,8 @@ falling back to `z-[9999]`.
 Once all legacy overlays are removed:
 
 1. Reduce `z-[1002]` back to `z-50` across all `base/ui/` primitives.
-1. Reduce Toast from `z-[1101]` to `z-[51]`.
-1. Remove this section from the migration guide.
+2. Reduce Toast from `z-[1101]` to `z-[51]`.
+3. Remove this section from the migration guide.
 
 ## React Refresh policy for base UI primitives
 
