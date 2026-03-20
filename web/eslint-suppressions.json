@@ -9381,7 +9381,7 @@
   },
   "app/components/workflow/types.ts": {
     "erasable-syntax-only/enums": {
-      "count": 16
+      "count": 15
     },
     "ts/no-empty-object-type": {
       "count": 3
@@ -9892,11 +9892,6 @@
       "count": 1
     }
   },
-  "models/access-control.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 2
-    }
-  },
   "models/app.ts": {
     "erasable-syntax-only/enums": {
       "count": 2
@@ -9919,9 +9914,6 @@
     }
   },
   "models/debug.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 4
     }
@@ -10012,9 +10004,6 @@
     }
   },
   "service/share.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 3
     }
