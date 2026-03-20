@@ -9,7 +9,13 @@ from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.tools.entities.tool_entities import ToolSelector
 from dify_graph.entities.base_node_data import BaseNodeData
 from dify_graph.enums import BuiltinNodeTypes, NodeType
-from dify_graph.nodes.human_input.entities import FormInput, HumanInputNodeData, UserAction, WebAppDeliveryMethod
+from dify_graph.nodes.human_input.entities import (
+    DeliveryChannelConfig,
+    FormInput,
+    HumanInputNodeData,
+    UserAction,
+    WebAppDeliveryMethod,
+)
 from dify_graph.nodes.human_input.enums import ButtonStyle, FormInputType
 
 _OUTPUT_IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
@@ -87,7 +93,7 @@ class AgentClarificationPayload(BaseModel):
         return "\n\n".join(lines)
 
     def to_human_input_node_data(self, *, node_title: str) -> HumanInputNodeData:
-        delivery_methods = [WebAppDeliveryMethod()] if self.display_in_ui else []
+        delivery_methods: list[DeliveryChannelConfig] = [WebAppDeliveryMethod()] if self.display_in_ui else []
         return HumanInputNodeData(
             title=node_title,
             form_content=self.to_form_content(),
