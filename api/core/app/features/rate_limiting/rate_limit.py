@@ -27,7 +27,7 @@ class RateLimit:
         return cls._instance_dict[client_id]
 
     def __init__(self, client_id: str, max_active_requests: int):
-        flush_cache = self.max_active_requests != max_active_requests
+        flush_cache = hasattr(self, 'max_active_requests') and self.max_active_requests != max_active_requests
         self.max_active_requests = max_active_requests
         if flush_cache:
             self.flush_cache(use_local_value=True)
