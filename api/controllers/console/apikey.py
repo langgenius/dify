@@ -1,7 +1,7 @@
 import flask_restx
 from flask_restx import Resource, fields, marshal_with
 from flask_restx._http import HTTPStatus
-from sqlalchemy import select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
@@ -81,9 +81,12 @@ class BaseApiKeyListResource(Resource):
         _, current_tenant_id = current_account_with_tenant()
         _get_resource(resource_id, current_tenant_id, self.resource_model)
         current_key_count = (
-            db.session.query(ApiToken)
-            .where(ApiToken.type == self.resource_type, getattr(ApiToken, self.resource_id_field) == resource_id)
-            .count()
+            db.session.scalar(
+                select(func.count(ApiToken.id)).where(
+                    ApiToken.type == self.resource_type, getattr(ApiToken, self.resource_id_field) == resource_id
+                )
+            )
+            or 0
         )
 
         if current_key_count >= self.max_keys:
@@ -119,14 +122,14 @@ class BaseApiKeyResource(Resource):
         if not current_user.is_admin_or_owner:
             raise Forbidden()
 
-        key = (
-            db.session.query(ApiToken)
+        key = db.session.scalar(
+            select(ApiToken)
             .where(
                 getattr(ApiToken, self.resource_id_field) == resource_id,
                 ApiToken.type == self.resource_type,
                 ApiToken.id == api_key_id,
             )
-            .first()
+            .limit(1)
         )
 
         if key is None:
@@ -137,7 +140,7 @@ class BaseApiKeyResource(Resource):
         assert key is not None  # nosec - for type checker only
         ApiTokenCache.delete(key.token, key.type)
 
-        db.session.query(ApiToken).where(ApiToken.id == api_key_id).delete()
+        db.session.execute(delete(ApiToken).where(ApiToken.id == api_key_id))
         db.session.commit()
 
         return {"result": "success"}, 204
