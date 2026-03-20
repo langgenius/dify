@@ -33,16 +33,10 @@ api_key_list_model = console_ns.model(
 
 
 def _get_resource(resource_id, tenant_id, resource_model):
-    if resource_model == App:
-        with Session(db.engine) as session:
-            resource = session.execute(
-                select(resource_model).filter_by(id=resource_id, tenant_id=tenant_id)
-            ).scalar_one_or_none()
-    else:
-        with Session(db.engine) as session:
-            resource = session.execute(
-                select(resource_model).filter_by(id=resource_id, tenant_id=tenant_id)
-            ).scalar_one_or_none()
+    with Session(db.engine) as session:
+        resource = session.execute(
+            select(resource_model).filter_by(id=resource_id, tenant_id=tenant_id)
+        ).scalar_one_or_none()
 
     if resource is None:
         flask_restx.abort(HTTPStatus.NOT_FOUND, message=f"{resource_model.__name__} not found.")
@@ -80,7 +74,7 @@ class BaseApiKeyListResource(Resource):
         resource_id = str(resource_id)
         _, current_tenant_id = current_account_with_tenant()
         _get_resource(resource_id, current_tenant_id, self.resource_model)
-        current_key_count = (
+        current_key_count: int = (
             db.session.scalar(
                 select(func.count(ApiToken.id)).where(
                     ApiToken.type == self.resource_type, getattr(ApiToken, self.resource_id_field) == resource_id

@@ -5,6 +5,7 @@ import type {
   ToastManagerUpdateOptions,
   ToastObject,
 } from '@base-ui/react/toast'
+import type { ReactNode } from 'react'
 import { Toast as BaseToast } from '@base-ui/react/toast'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
@@ -44,6 +45,9 @@ export type ToastUpdateOptions = Omit<ToastManagerUpdateOptions<ToastData>, 'dat
   type?: ToastType
 }
 
+export type ToastOptions = Omit<ToastAddOptions, 'title'>
+export type TypedToastOptions = Omit<ToastOptions, 'type'>
+
 type ToastPromiseResultOption<Value> = string | ToastUpdateOptions | ((value: Value) => string | ToastUpdateOptions)
 
 export type ToastPromiseOptions<Value> = {
@@ -57,6 +61,21 @@ export type ToastHostProps = {
   limit?: number
 }
 
+type ToastDismiss = (toastId?: string) => void
+type ToastCall = (title: ReactNode, options?: ToastOptions) => string
+type TypedToastCall = (title: ReactNode, options?: TypedToastOptions) => string
+
+export type ToastApi = {
+  (title: ReactNode, options?: ToastOptions): string
+  success: TypedToastCall
+  error: TypedToastCall
+  warning: TypedToastCall
+  info: TypedToastCall
+  dismiss: ToastDismiss
+  update: (toastId: string, options: ToastUpdateOptions) => void
+  promise: <Value>(promiseValue: Promise<Value>, options: ToastPromiseOptions<Value>) => Promise<Value>
+}
+
 const toastManager = BaseToast.createToastManager<ToastData>()
 
 function isToastType(type: string): type is ToastType {
@@ -67,20 +86,47 @@ function getToastType(type?: string): ToastType | undefined {
   return type && isToastType(type) ? type : undefined
 }
 
-export const toast = {
-  add(options: ToastAddOptions) {
-    return toastManager.add(options)
-  },
-  close(toastId?: string) {
-    toastManager.close(toastId)
-  },
-  update(toastId: string, options: ToastUpdateOptions) {
-    toastManager.update(toastId, options)
-  },
-  promise<Value>(promiseValue: Promise<Value>, options: ToastPromiseOptions<Value>) {
-    return toastManager.promise(promiseValue, options)
-  },
+function addToast(options: ToastAddOptions) {
+  return toastManager.add(options)
 }
+
+const showToast: ToastCall = (title, options) => addToast({
+  ...options,
+  title,
+})
+
+const dismissToast: ToastDismiss = (toastId) => {
+  toastManager.close(toastId)
+}
+
+function createTypedToast(type: ToastType): TypedToastCall {
+  return (title, options) => addToast({
+    ...options,
+    title,
+    type,
+  })
+}
+
+function updateToast(toastId: string, options: ToastUpdateOptions) {
+  toastManager.update(toastId, options)
+}
+
+function promiseToast<Value>(promiseValue: Promise<Value>, options: ToastPromiseOptions<Value>) {
+  return toastManager.promise(promiseValue, options)
+}
+
+export const toast: ToastApi = Object.assign(
+  showToast,
+  {
+    success: createTypedToast('success'),
+    error: createTypedToast('error'),
+    warning: createTypedToast('warning'),
+    info: createTypedToast('info'),
+    dismiss: dismissToast,
+    update: updateToast,
+    promise: promiseToast,
+  },
+)
 
 function ToastIcon({ type }: { type?: ToastType }) {
   return type
