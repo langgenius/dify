@@ -46,26 +46,20 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
   const appCode = getAppCodeFromRedirectUrl()
   const handleEmailPasswordLogin = async () => {
     if (!email) {
-      toast.add({ type: 'error', title: t('error.emailEmpty', { ns: 'login' }) })
+      toast.error(t('error.emailEmpty', { ns: 'login' }))
       return
     }
     if (!emailRegex.test(email)) {
-      toast.add({
-        type: 'error',
-        title: t('error.emailInValid', { ns: 'login' }),
-      })
+      toast.error(t('error.emailInValid', { ns: 'login' }))
       return
     }
     if (!password?.trim()) {
-      toast.add({ type: 'error', title: t('error.passwordEmpty', { ns: 'login' }) })
+      toast.error(t('error.passwordEmpty', { ns: 'login' }))
       return
     }
 
     if (!redirectUrl || !appCode) {
-      toast.add({
-        type: 'error',
-        title: t('error.redirectUrlMissing', { ns: 'login' }),
-      })
+      toast.error(t('error.redirectUrlMissing', { ns: 'login' }))
       return
     }
     try {
@@ -94,15 +88,12 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
         router.replace(decodeURIComponent(redirectUrl))
       }
       else {
-        toast.add({
-          type: 'error',
-          title: res.data,
-        })
+        toast.error(res.data)
       }
     }
     catch (e: any) {
       if (e.code === 'authentication_failed')
-        toast.add({ type: 'error', title: e.message })
+        toast.error(e.message)
     }
     finally {
       setIsLoading(false)

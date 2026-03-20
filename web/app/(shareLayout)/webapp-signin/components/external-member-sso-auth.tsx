@@ -17,10 +17,7 @@ const ExternalMemberSSOAuth = () => {
   const redirectUrl = searchParams.get('redirect_url')
 
   const showErrorToast = (message: string) => {
-    toast.add({
-      type: 'error',
-      title: message,
-    })
+    toast.error(message)
   }
 
   const getAppCodeFromRedirectUrl = useCallback(() => {

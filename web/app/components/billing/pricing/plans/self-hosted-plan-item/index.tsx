@@ -56,10 +56,7 @@ const SelfHostedPlanItem: FC<SelfHostedPlanItemProps> = ({
   const handleGetPayUrl = useCallback(() => {
     // Only workspace manager can buy plan
     if (!isCurrentWorkspaceManager) {
-      toast.add({
-        type: 'error',
-        title: t('buyPermissionDeniedTip', { ns: 'billing' }),
-      })
+      toast.error(t('buyPermissionDeniedTip', { ns: 'billing' }))
       return
     }
     if (isFreePlan) {
