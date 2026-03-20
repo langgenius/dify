@@ -1,6 +1,6 @@
 # Dify Frontend
 
-This is a [Next.js] project bootstrapped with [`create-next-app`].
+This is a [Next.js] project, but you can dev with [vinext].
 
 ## Getting Started
 
@@ -10,6 +10,8 @@ Before starting the web frontend service, please make sure the following environ
 
 - [Node.js]
 - [pnpm]
+
+You can also use [Vite+] with the corresponding `vp` commands.
 
 > [!TIP]
 > It is recommended to install and enable Corepack to manage package manager versions automatically:
@@ -27,29 +29,12 @@ First, install the dependencies:
 pnpm install
 ```
 
-Then, configure the environment variables. Create a file named `.env.local` in the current directory and copy the contents from `.env.example`. Modify the values of these environment variables according to your requirements:
+Then, configure the environment variables.
+Create a file named `.env.local` in the current directory and copy the contents from `.env.example`.
+Modify the values of these environment variables according to your requirements:
 
 ```bash
 cp .env.example .env.local
-```
-
-```txt
-# For production release, change this to PRODUCTION
-NEXT_PUBLIC_DEPLOY_ENV=DEVELOPMENT
-# The deployment edition, SELF_HOSTED
-NEXT_PUBLIC_EDITION=SELF_HOSTED
-# The base URL of console application, refers to the Console base URL of WEB service if console domain is
-# different from api or web app domain.
-# example: http://cloud.dify.ai/console/api
-NEXT_PUBLIC_API_PREFIX=http://localhost:5001/console/api
-NEXT_PUBLIC_COOKIE_DOMAIN=
-# The URL for Web APP, refers to the Web App base URL of WEB service if web app domain is different from
-# console or api domain.
-# example: http://udify.app/api
-NEXT_PUBLIC_PUBLIC_API_PREFIX=http://localhost:5001/api
-
-# SENTRY
-NEXT_PUBLIC_SENTRY_DSN=
 ```
 
 > [!IMPORTANT]
@@ -65,7 +50,8 @@ pnpm run dev
 
 Open <http://localhost:3000> with your browser to see the result.
 
-You can start editing the file under folder `app`. The page auto-updates as you edit the file.
+You can start editing the file under folder `app`.
+The page auto-updates as you edit the file.
 
 ## Deploy
 
@@ -151,9 +137,10 @@ The Dify community can be found on [Discord community], where you can ask questi
 [Node.js]: https://nodejs.org
 [React Testing Library]: https://testing-library.com/docs/react-testing-library/intro
 [Storybook]: https://storybook.js.org
+[Vite+]: https://viteplus.dev
 [Vitest]: https://vitest.dev
-[`create-next-app`]: https://github.com/vercel/next.js/tree/canary/packages/create-next-app
 [classnames.spec.ts]: ./utils/classnames.spec.ts
 [index.spec.tsx]: ./app/components/base/button/index.spec.tsx
 [pnpm]: https://pnpm.io
+[vinext]: https://github.com/cloudflare/vinext
 [web/testing/testing.md]: ./testing/testing.md
