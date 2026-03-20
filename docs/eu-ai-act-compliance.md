@@ -25,7 +25,7 @@ If you are unsure whether your use case qualifies as high-risk, consult a qualif
 
 | Deployment | Your role | Dify's role | Who handles compliance? |
 |-----------|----------|-------------|------------------------|
-| **Self-hosted** | Provider and deployer | Framework provider (no obligations unless marketed as complete system) | You |
+| **Self-hosted** | Provider and deployer | Framework provider — obligations under Article 25 apply only if Dify is placed on the market or put into service as part of a complete AI system bearing its name or trademark | You |
 | **Dify Cloud** | Deployer | Provider and processor | Shared — Dify handles SOC 2 and GDPR for the platform; you handle AI Act obligations for your specific use case |
 
 Dify Cloud already has SOC 2 Type II and GDPR compliance for the platform itself. But the EU AI Act adds obligations specific to AI systems that SOC 2 does not cover: risk classification, technical documentation, transparency, and human oversight.
