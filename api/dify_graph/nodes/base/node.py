@@ -639,11 +639,12 @@ class Node(Generic[NodeDataT]):
 
     @_dispatch.register
     def _(self, event: PauseRequestedEvent) -> NodeRunPauseRequestedEvent:
+        node_run_result = event.node_run_result.model_copy(update={"status": WorkflowNodeExecutionStatus.PAUSED})
         return NodeRunPauseRequestedEvent(
             id=self.execution_id,
             node_id=self._node_id,
             node_type=self.node_type,
-            node_run_result=NodeRunResult(status=WorkflowNodeExecutionStatus.PAUSED),
+            node_run_result=node_run_result,
             reason=event.reason,
         )
 
