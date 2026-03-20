@@ -256,9 +256,13 @@ def fetch_prompt_messages(
                 ):
                     continue
                 prompt_message_content.append(content_item)
-            if prompt_message_content:
+            if not prompt_message_content:
+                continue
+            if len(prompt_message_content) == 1 and prompt_message_content[0].type == PromptMessageContentType.TEXT:
+                prompt_message.content = prompt_message_content[0].data
+            else:
                 prompt_message.content = prompt_message_content
-                filtered_prompt_messages.append(prompt_message)
+            filtered_prompt_messages.append(prompt_message)
         elif not prompt_message.is_empty():
             filtered_prompt_messages.append(prompt_message)
 

@@ -12,7 +12,7 @@ import { trackEvent } from '@/app/components/base/amplitude'
 import Divider from '@/app/components/base/divider'
 import Input from '@/app/components/base/input'
 import Loading from '@/app/components/base/loading'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import CreateAppModal from '@/app/components/explore/create-app-modal'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
@@ -137,9 +137,9 @@ const Apps = ({
       })
 
       setIsShowCreateModal(false)
-      Toast.notify({
+      toast.add({
         type: 'success',
-        message: t('newApp.appCreated', { ns: 'app' }),
+        title: t('newApp.appCreated', { ns: 'app' }),
       })
       if (onSuccess)
         onSuccess()
@@ -149,7 +149,7 @@ const Apps = ({
       getRedirection(isCurrentWorkspaceEditor, { id: app.app_id!, mode }, push)
     }
     catch {
-      Toast.notify({ type: 'error', message: t('newApp.appCreateFailed', { ns: 'app' }) })
+      toast.add({ type: 'error', title: t('newApp.appCreateFailed', { ns: 'app' }) })
     }
   }
 

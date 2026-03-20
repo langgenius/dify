@@ -4,7 +4,7 @@ import { DeleteConfirm } from '../delete-confirm'
 
 const mockRefetch = vi.fn()
 const mockDelete = vi.fn()
-const mockToast = vi.fn()
+const mockToastAdd = vi.hoisted(() => vi.fn())
 
 vi.mock('../use-subscription-list', () => ({
   useSubscriptionList: () => ({ refetch: mockRefetch }),
@@ -14,9 +14,9 @@ vi.mock('@/service/use-triggers', () => ({
   useDeleteTriggerSubscription: () => ({ mutate: mockDelete, isPending: false }),
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
-  default: {
-    notify: (args: { type: string, message: string }) => mockToast(args),
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    add: mockToastAdd,
   },
 }))
 
@@ -42,7 +42,7 @@ describe('DeleteConfirm', () => {
     fireEvent.click(screen.getByRole('button', { name: /pluginTrigger\.subscription\.list\.item\.actions\.deleteConfirm\.confirm/ }))
 
     expect(mockDelete).not.toHaveBeenCalled()
-    expect(mockToast).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
+    expect(mockToastAdd).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
   })
 
   it('should allow deletion after matching input name', () => {
@@ -87,6 +87,6 @@ describe('DeleteConfirm', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /pluginTrigger\.subscription\.list\.item\.actions\.deleteConfirm\.confirm/ }))
 
-    expect(mockToast).toHaveBeenCalledWith(expect.objectContaining({ type: 'error', message: 'network error' }))
+    expect(mockToastAdd).toHaveBeenCalledWith(expect.objectContaining({ type: 'error', title: 'network error' }))
   })
 })
