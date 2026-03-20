@@ -42,7 +42,11 @@ const TTSParamsPanel = ({
         </div>
         <Select
           value={language}
-          onValueChange={value => setLanguage(value as string)}
+          onValueChange={(value) => {
+            if (value == null)
+              return
+            setLanguage(value)
+          }}
         >
           <SelectTrigger
             className="w-full"
@@ -66,7 +70,11 @@ const TTSParamsPanel = ({
         </div>
         <Select
           value={voice}
-          onValueChange={value => setVoice(value as string)}
+          onValueChange={(value) => {
+            if (value == null)
+              return
+            setVoice(value)
+          }}
         >
           <SelectTrigger
             className="w-full"

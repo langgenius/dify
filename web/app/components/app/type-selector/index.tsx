@@ -10,7 +10,6 @@ import {
 } from '@/app/components/base/ui/popover'
 import { AppModeEnum } from '@/types/app'
 import { cn } from '@/utils/classnames'
-import Checkbox from '../../base/checkbox'
 
 export type AppSelectorProps = {
   value: Array<AppModeEnum>
@@ -180,7 +179,17 @@ function AppTypeSelectorItem({ checked, type, onClick }: AppTypeSelectorItemProp
         aria-pressed={checked}
         onClick={onClick}
       >
-        <Checkbox checked={checked} />
+        <span
+          aria-hidden="true"
+          className={cn(
+            'flex h-4 w-4 shrink-0 items-center justify-center rounded-[4px] shadow-xs shadow-shadow-shadow-3',
+            checked
+              ? 'bg-components-checkbox-bg text-components-checkbox-icon'
+              : 'border border-components-checkbox-border bg-components-checkbox-bg-unchecked',
+          )}
+        >
+          {checked && <span className="i-ri-check-line h-3 w-3" />}
+        </span>
         <AppTypeIcon type={type} />
         <div className="grow p-1 pl-0">
           <AppTypeLabel type={type} className="system-sm-medium text-components-menu-item-text" />
