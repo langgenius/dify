@@ -77,6 +77,8 @@
   "externalKnowledgeDescriptionPlaceholder": "Опишіть, що міститься в цій базі знань (необов'язково)",
   "externalKnowledgeForm.cancel": "Скасувати",
   "externalKnowledgeForm.connect": "Підключатися",
+  "externalKnowledgeForm.connectedFailed": "Не вдалося підключитися до зовнішньої бази знань",
+  "externalKnowledgeForm.connectedSuccess": "Зовнішня база знань успішно підключена",
   "externalKnowledgeId": "Зовнішній ідентифікатор знань",
   "externalKnowledgeIdPlaceholder": "Будь ласка, введіть Knowledge ID",
   "externalKnowledgeName": "Зовнішнє найменування знань",
