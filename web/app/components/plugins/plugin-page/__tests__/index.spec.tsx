@@ -8,6 +8,8 @@ import { usePluginInstallation } from '@/hooks/use-query-params'
 import { fetchBundleInfoFromMarketPlace, fetchManifestFromMarketPlace } from '@/service/plugins'
 import PluginPageWithContext from '../index'
 
+let mockEnableMarketplace = true
+
 // Mock external dependencies
 vi.mock('@/service/plugins', () => ({
   fetchManifestFromMarketPlace: vi.fn(),
@@ -31,7 +33,7 @@ vi.mock('@/context/global-public-context', () => ({
   useGlobalPublicStore: vi.fn((selector) => {
     const state = {
       systemFeatures: {
-        enable_marketplace: true,
+        enable_marketplace: mockEnableMarketplace,
       },
     }
     return selector(state)
@@ -138,6 +140,7 @@ const createDefaultProps = (): PluginPageProps => ({
 describe('PluginPage Component', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockEnableMarketplace = true
     // Reset to default mock values
     vi.mocked(usePluginInstallation).mockReturnValue([
       { packageId: null, bundleInfo: null },
@@ -630,18 +633,7 @@ describe('PluginPage Component', () => {
     })
 
     it('should handle marketplace disabled', () => {
-      // Mock marketplace disabled
-      vi.mock('@/context/global-public-context', async () => ({
-        useGlobalPublicStore: vi.fn((selector) => {
-          const state = {
-            systemFeatures: {
-              enable_marketplace: false,
-            },
-          }
-          return selector(state)
-        }),
-      }))
-
+      mockEnableMarketplace = false
       vi.mocked(useQueryState).mockReturnValue(['discover', vi.fn()])
 
       render(<PluginPageWithContext {...createDefaultProps()} />)

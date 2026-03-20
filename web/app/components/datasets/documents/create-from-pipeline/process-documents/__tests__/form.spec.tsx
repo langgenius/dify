@@ -2,9 +2,22 @@ import type { BaseConfiguration } from '@/app/components/base/form/form-scenario
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
-import Toast from '@/app/components/base/toast'
-
 import Form from '../form'
+
+const { mockToastAdd } = vi.hoisted(() => ({
+  mockToastAdd: vi.fn(),
+}))
+
+vi.mock('@/app/components/base/ui/toast', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/components/base/ui/toast')>()
+  return {
+    ...actual,
+    toast: {
+      ...actual.toast,
+      add: mockToastAdd,
+    },
+  }
+})
 
 // Mock the Header component (sibling component, not a base component)
 vi.mock('../header', () => ({
@@ -44,7 +57,7 @@ const defaultProps = {
 describe('Form (process-documents)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.spyOn(Toast, 'notify').mockImplementation(() => ({ clear: vi.fn() }))
+    mockToastAdd.mockReset()
   })
 
   // Verify basic rendering of form structure
@@ -106,8 +119,11 @@ describe('Form (process-documents)', () => {
       fireEvent.submit(form)
 
       await waitFor(() => {
-        expect(Toast.notify).toHaveBeenCalledWith(
-          expect.objectContaining({ type: 'error' }),
+        expect(mockToastAdd).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: 'error',
+            title: '"name" Name is required',
+          }),
         )
       })
     })
@@ -121,7 +137,7 @@ describe('Form (process-documents)', () => {
       await waitFor(() => {
         expect(defaultProps.onSubmit).toHaveBeenCalled()
       })
-      expect(Toast.notify).not.toHaveBeenCalled()
+      expect(mockToastAdd).not.toHaveBeenCalled()
     })
   })
 

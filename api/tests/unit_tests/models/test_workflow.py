@@ -4,12 +4,18 @@ from unittest import mock
 from uuid import uuid4
 
 from constants import HIDDEN_VALUE
+from core.helper import encrypter
 from dify_graph.file.enums import FileTransferMethod, FileType
 from dify_graph.file.models import File
 from dify_graph.variables import FloatVariable, IntegerVariable, SecretVariable, StringVariable
 from dify_graph.variables.segments import IntegerSegment, Segment
 from factories.variable_factory import build_segment
-from models.workflow import Workflow, WorkflowDraftVariable, WorkflowNodeExecutionModel, is_system_variable_editable
+from models.workflow import (
+    Workflow,
+    WorkflowDraftVariable,
+    WorkflowNodeExecutionModel,
+    is_system_variable_editable,
+)
 
 
 def test_environment_variables():
@@ -142,6 +148,36 @@ def test_to_dict():
         workflow_dict = workflow.to_dict(include_secret=True)
         assert workflow_dict["environment_variables"][0]["value"] == "secret"
         assert workflow_dict["environment_variables"][1]["value"] == "text"
+
+
+def test_normalize_environment_variable_mappings_converts_full_mask_to_hidden_value():
+    normalized = Workflow.normalize_environment_variable_mappings(
+        [
+            {
+                "id": str(uuid4()),
+                "name": "secret",
+                "value": encrypter.full_mask_token(),
+                "value_type": "secret",
+            }
+        ]
+    )
+
+    assert normalized[0]["value"] == HIDDEN_VALUE
+
+
+def test_normalize_environment_variable_mappings_keeps_hidden_value():
+    normalized = Workflow.normalize_environment_variable_mappings(
+        [
+            {
+                "id": str(uuid4()),
+                "name": "secret",
+                "value": HIDDEN_VALUE,
+                "value_type": "secret",
+            }
+        ]
+    )
+
+    assert normalized[0]["value"] == HIDDEN_VALUE
 
 
 class TestWorkflowNodeExecution:

@@ -164,7 +164,7 @@ describe('ExternalKnowledgeBaseConnector', () => {
       // Verify success notification
       expect(mockNotify).toHaveBeenCalledWith({
         type: 'success',
-        title: 'External Knowledge Base Connected Successfully',
+        title: 'dataset.externalKnowledgeForm.connectedSuccess',
       })
 
       // Verify navigation back
@@ -206,7 +206,7 @@ describe('ExternalKnowledgeBaseConnector', () => {
       await waitFor(() => {
         expect(mockNotify).toHaveBeenCalledWith({
           type: 'error',
-          title: 'Failed to connect External Knowledge Base',
+          title: 'dataset.externalKnowledgeForm.connectedFailed',
         })
       })
 
@@ -228,7 +228,7 @@ describe('ExternalKnowledgeBaseConnector', () => {
       await waitFor(() => {
         expect(mockNotify).toHaveBeenCalledWith({
           type: 'error',
-          title: 'Failed to connect External Knowledge Base',
+          title: 'dataset.externalKnowledgeForm.connectedFailed',
         })
       })
 
@@ -274,7 +274,7 @@ describe('ExternalKnowledgeBaseConnector', () => {
       await waitFor(() => {
         expect(mockNotify).toHaveBeenCalledWith({
           type: 'success',
-          title: 'External Knowledge Base Connected Successfully',
+          title: 'dataset.externalKnowledgeForm.connectedSuccess',
         })
       })
     })
