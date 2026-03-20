@@ -91,41 +91,54 @@ export const useChat = (
     return processOpeningStatement(str, formSettings?.inputs || {}, formSettings?.inputsForm || [])
   }, [formSettings?.inputs, formSettings?.inputsForm])
 
-  const openingStatementRef = useRef<ChatItemInTree | null>(null)
+  const processedOpeningContent = config?.opening_statement
+    ? getIntroduction(config.opening_statement)
+    : undefined
+  const processedSuggestionsKey = config?.suggested_questions
+    ? JSON.stringify(config.suggested_questions.map((q: string) => getIntroduction(q)))
+    : undefined
+
+  const openingStatementItem = useMemo<ChatItemInTree | null>(() => {
+    if (!processedOpeningContent)
+      return null
+    return {
+      id: 'opening-statement',
+      content: processedOpeningContent,
+      isAnswer: true,
+      isOpeningStatement: true,
+      suggestedQuestions: processedSuggestionsKey
+        ? JSON.parse(processedSuggestionsKey) as string[]
+        : undefined,
+    }
+  }, [processedOpeningContent, processedSuggestionsKey])
+
+  const threadOpener = useMemo(
+    () => threadMessages.find(item => item.isOpeningStatement) ?? null,
+    [threadMessages],
+  )
+
+  const mergedOpeningItem = useMemo<ChatItemInTree | null>(() => {
+    if (!threadOpener || !openingStatementItem)
+      return null
+    return {
+      ...threadOpener,
+      content: openingStatementItem.content,
+      suggestedQuestions: openingStatementItem.suggestedQuestions,
+    }
+  }, [threadOpener, openingStatementItem])
 
   /** Final chat list that will be rendered */
   const chatList = useMemo(() => {
     const ret = [...threadMessages]
-    if (config?.opening_statement) {
-      const content = getIntroduction(config.opening_statement)
-      const suggestedQuestions = config.suggested_questions?.map((item: string) => getIntroduction(item))
+    if (openingStatementItem) {
       const index = threadMessages.findIndex(item => item.isOpeningStatement)
-
-      const prev = openingStatementRef.current
-      const contentUnchanged = prev
-        && prev.content === content
-        && prev.suggestedQuestions?.length === suggestedQuestions?.length
-        && (prev.suggestedQuestions ?? []).every((q: string, i: number) => q === suggestedQuestions?.[i])
-
-      if (contentUnchanged) {
-        if (index > -1)
-          ret[index] = prev
-        else
-          ret.unshift(prev)
-      }
-      else {
-        const newItem: ChatItemInTree = index > -1
-          ? { ...ret[index], content, suggestedQuestions }
-          : { id: 'opening-statement', content, isAnswer: true, isOpeningStatement: true, suggestedQuestions }
-        openingStatementRef.current = newItem
-        if (index > -1)
-          ret[index] = newItem
-        else
-          ret.unshift(newItem)
-      }
+      if (index > -1 && mergedOpeningItem)
+        ret[index] = mergedOpeningItem
+      else if (index === -1)
+        ret.unshift(openingStatementItem)
     }
     return ret
-  }, [threadMessages, config?.opening_statement, getIntroduction, config?.suggested_questions])
+  }, [threadMessages, openingStatementItem, mergedOpeningItem])
 
   useEffect(() => {
     setAutoFreeze(false)
