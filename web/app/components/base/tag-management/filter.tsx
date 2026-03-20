@@ -6,10 +6,10 @@ import { useTranslation } from 'react-i18next'
 import { Tag01, Tag03 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import Input from '@/app/components/base/input'
 import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/app/components/base/ui/popover'
 import { fetchTagList } from '@/service/tag'
 import { cn } from '@/utils/classnames'
 
@@ -64,54 +64,56 @@ const TagFilter: FC<TagFilterProps> = ({
   })
 
   return (
-    <PortalToFollowElem
+    <Popover
       open={open}
       onOpenChange={setOpen}
-      placement="bottom-start"
-      offset={4}
     >
-      <div className="relative">
-        <PortalToFollowElemTrigger
-          onClick={() => setOpen(v => !v)}
-          className="block"
-        >
-          <div className={cn(
-            'flex h-8 cursor-pointer select-none items-center gap-1 rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-2',
-            !open && !!value.length && 'shadow-xs',
-            open && !!value.length && 'shadow-xs',
-          )}
-          >
-            <div className="p-[1px]">
-              <Tag01 className="h-3.5 w-3.5 text-text-tertiary" data-testid="tag-filter-trigger-icon" />
-            </div>
-            <div className="text-[13px] leading-[18px] text-text-secondary">
-              {!value.length && t('tag.placeholder', { ns: 'common' })}
-              {!!value.length && currentTag?.name}
-            </div>
-            {value.length > 1 && (
-              <div className="text-xs font-medium leading-[18px] text-text-tertiary">{`+${value.length - 1}`}</div>
-            )}
-            {!value.length && (
+      <div
+        className={cn(
+          'flex h-8 items-center gap-1 rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-2',
+          !!value.length && 'shadow-xs',
+        )}
+      >
+        <PopoverTrigger
+          render={(
+            <button
+              type="button"
+              className="flex min-w-0 grow cursor-pointer select-none items-center gap-1 bg-transparent text-left"
+            >
               <div className="p-[1px]">
-                <span className="i-ri-arrow-down-s-line h-3.5 w-3.5 text-text-tertiary" data-testid="tag-filter-arrow-down-icon" />
+                <Tag01 className="h-3.5 w-3.5 text-text-tertiary" data-testid="tag-filter-trigger-icon" />
               </div>
-            )}
-            {!!value.length && (
-              <div
-                className="group/clear cursor-pointer p-[1px]"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onChange([])
-                }}
-                data-testid="tag-filter-clear-button"
-              >
-                <span className="i-custom-vender-solid-general-x-circle h-3.5 w-3.5 text-text-tertiary group-hover/clear:text-text-secondary" />
+              <div className="truncate text-[13px] leading-[18px] text-text-secondary">
+                {!value.length && t('tag.placeholder', { ns: 'common' })}
+                {!!value.length && currentTag?.name}
               </div>
-            )}
-          </div>
-        </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className="z-[1002]">
-          <div className="relative w-[240px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]">
+              {value.length > 1 && (
+                <div className="shrink-0 text-xs font-medium leading-[18px] text-text-tertiary">{`+${value.length - 1}`}</div>
+              )}
+              {!value.length && (
+                <div className="shrink-0 p-[1px]">
+                  <span className="i-ri-arrow-down-s-line h-3.5 w-3.5 text-text-tertiary" data-testid="tag-filter-arrow-down-icon" />
+                </div>
+              )}
+            </button>
+          )}
+        />
+        {!!value.length && (
+          <button
+            type="button"
+            className="group/clear shrink-0 p-[1px]"
+            onClick={() => onChange([])}
+            data-testid="tag-filter-clear-button"
+          >
+            <span className="i-custom-vender-solid-general-x-circle h-3.5 w-3.5 text-text-tertiary group-hover/clear:text-text-secondary" />
+          </button>
+        )}
+        <PopoverContent
+          placement="bottom-start"
+          sideOffset={4}
+          popupClassName="w-[240px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]"
+        >
+          <div className="relative">
             <div className="p-2">
               <Input
                 showLeftIcon
@@ -155,9 +157,9 @@ const TagFilter: FC<TagFilterProps> = ({
               </div>
             </div>
           </div>
-        </PortalToFollowElemContent>
+        </PopoverContent>
       </div>
-    </PortalToFollowElem>
+    </Popover>
 
   )
 }
