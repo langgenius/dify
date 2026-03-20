@@ -9,16 +9,15 @@ import { useRouter } from '@/next/navigation'
 export default function DatasetsLayout({ children }: { children: React.ReactNode }) {
   const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator, currentWorkspace, isLoadingCurrentWorkspace } = useAppContext()
   const router = useRouter()
-  const shouldRedirect = !isLoadingCurrentWorkspace
-    && currentWorkspace.id
-    && !(isCurrentWorkspaceEditor || isCurrentWorkspaceDatasetOperator)
+  const isWorkspaceReady = !isLoadingCurrentWorkspace && !!currentWorkspace.id
+  const shouldRedirect = isWorkspaceReady && !(isCurrentWorkspaceEditor || isCurrentWorkspaceDatasetOperator)
 
   useEffect(() => {
     if (shouldRedirect)
       router.replace('/apps')
   }, [shouldRedirect, router])
 
-  if (shouldRedirect) {
+  if (!isWorkspaceReady || shouldRedirect) {
     return null
   }
 
