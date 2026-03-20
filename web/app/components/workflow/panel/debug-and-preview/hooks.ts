@@ -91,27 +91,37 @@ export const useChat = (
     return processOpeningStatement(str, formSettings?.inputs || {}, formSettings?.inputsForm || [])
   }, [formSettings?.inputs, formSettings?.inputsForm])
 
+  const openingStatementRef = useRef<ChatItemInTree | null>(null)
+
   /** Final chat list that will be rendered */
   const chatList = useMemo(() => {
     const ret = [...threadMessages]
     if (config?.opening_statement) {
+      const content = getIntroduction(config.opening_statement)
+      const suggestedQuestions = config.suggested_questions?.map((item: string) => getIntroduction(item))
       const index = threadMessages.findIndex(item => item.isOpeningStatement)
 
-      if (index > -1) {
-        ret[index] = {
-          ...ret[index],
-          content: getIntroduction(config.opening_statement),
-          suggestedQuestions: config.suggested_questions?.map((item: string) => getIntroduction(item)),
-        }
+      const prev = openingStatementRef.current
+      const contentUnchanged = prev
+        && prev.content === content
+        && prev.suggestedQuestions?.length === suggestedQuestions?.length
+        && (prev.suggestedQuestions ?? []).every((q: string, i: number) => q === suggestedQuestions?.[i])
+
+      if (contentUnchanged) {
+        if (index > -1)
+          ret[index] = prev
+        else
+          ret.unshift(prev)
       }
       else {
-        ret.unshift({
-          id: `${Date.now()}`,
-          content: getIntroduction(config.opening_statement),
-          isAnswer: true,
-          isOpeningStatement: true,
-          suggestedQuestions: config.suggested_questions?.map((item: string) => getIntroduction(item)),
-        })
+        const newItem: ChatItemInTree = index > -1
+          ? { ...ret[index], content, suggestedQuestions }
+          : { id: 'opening-statement', content, isAnswer: true, isOpeningStatement: true, suggestedQuestions }
+        openingStatementRef.current = newItem
+        if (index > -1)
+          ret[index] = newItem
+        else
+          ret.unshift(newItem)
       }
     }
     return ret
