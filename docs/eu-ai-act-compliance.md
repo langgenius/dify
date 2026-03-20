@@ -11,16 +11,13 @@ Dify is an LLMOps platform for building RAG pipelines, agents, and AI workflows.
 
 Dify Cloud already has SOC 2 Type II and GDPR compliance for the platform itself. But the EU AI Act adds obligations specific to AI systems that SOC 2 does not cover: risk classification, technical documentation, transparency, and human oversight.
 
-## What the scanner found
+## Supported providers and services
 
-Running [AI Trace Auditor](https://github.com/BipinRimal314/ai-trace-auditor) against the Dify codebase:
+Dify integrates with a broad range of AI providers and data stores. The following are the key ones relevant to compliance:
 
-- **Files scanned:** 8,275
-- **AI providers detected:** HuggingFace (core), plus integrations with OpenAI, Anthropic, Google, and 100+ models via provider plugins
-- **Model identifiers:** 21 (gpt-4o, gpt-3.5-turbo, claude-3-opus, gemini-2.5-flash, whisper-1, etc.)
-- **Vector database connections:** 49 (extensive RAG infrastructure)
-- **External services:** 11
-- **Data flows:** 11
+- **AI providers:** HuggingFace (core), plus integrations with OpenAI, Anthropic, Google, and 100+ models via provider plugins
+- **Model identifiers include:** gpt-4o, gpt-3.5-turbo, claude-3-opus, gemini-2.5-flash, whisper-1, and others
+- **Vector database connections:** Extensive RAG infrastructure supporting numerous vector stores
 
 Dify's plugin architecture means actual provider usage depends on your configuration. Document which providers and models are active in your deployment.
 
@@ -53,11 +50,11 @@ graph LR
 ```
 
 **GDPR roles:**
-- **Cloud LLM providers (OpenAI, Anthropic, Google):** Processor — requires DPA
-- **Cloud embedding services:** Processor — requires DPA
-- **Self-hosted vector stores (Weaviate, Qdrant, pgvector):** Controller — no third-party transfer
-- **Cloud vector stores (Pinecone, Zilliz Cloud):** Processor — requires DPA
-- **Knowledge base documents:** Controller — stored in your infrastructure
+- **Organizations operating cloud LLM providers (OpenAI, Anthropic, Google)** act as processors — requires DPA.
+- **Organizations operating cloud embedding services** act as processors — requires DPA.
+- **Self-hosted vector stores (Weaviate, Qdrant, pgvector):** Your organization remains the controller — no third-party transfer.
+- **Organizations operating cloud vector stores (Pinecone, Zilliz Cloud)** act as processors — requires DPA.
+- **Knowledge base documents:** Your organization is the controller — stored in your infrastructure.
 
 ## Article 11: Technical documentation
 
@@ -71,12 +68,7 @@ High-risk systems need Annex IV documentation. For Dify deployments, key section
 | Performance metrics | Dify's evaluation features | Your accuracy benchmarks, quality thresholds, bias testing |
 | Risk management | — | Risk assessment for your specific use case |
 
-Generate a starting template:
-
-```bash
-pip install ai-trace-auditor
-aitrace docs ./your-dify-deployment -o annex-iv-docs.md
-```
+Some sections can be derived from Dify's architecture and your deployment configuration, as shown in the table above. The remaining sections require your input.
 
 ## Article 12: Record-keeping
 
@@ -136,20 +128,12 @@ Dify's knowledge base feature has specific compliance implications:
 4. **Right to erasure:** If a user requests deletion, ensure their conversations are removed from Dify's logs AND any vector store entries derived from their data
 5. **Cross-border transfers:** Cloud providers based outside the EEA require Standard Contractual Clauses
 
-## Full compliance scan
-
-```bash
-pip install ai-trace-auditor
-aitrace comply ./your-dify-deployment --split -o compliance/
-```
-
 ## Resources
 
 - [EU AI Act full text](https://artificialintelligenceact.eu/)
 - [Dify documentation](https://docs.dify.ai/)
 - [Dify SOC 2 compliance](https://dify.ai/trust)
-- [AI Trace Auditor](https://github.com/BipinRimal314/ai-trace-auditor) — open-source compliance scanning
 
 ---
 
-*This guide was generated with assistance from [AI Trace Auditor](https://github.com/BipinRimal314/ai-trace-auditor) and reviewed for accuracy. It is not legal advice. Consult a qualified professional for compliance decisions.*
+*This is not legal advice. Consult a qualified professional for compliance decisions.*
