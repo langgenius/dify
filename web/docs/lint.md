@@ -51,7 +51,7 @@ This command lints the entire project and is intended for final verification bef
 If a new rule causes many existing code errors or automatic fixes generate too many diffs, do not use the `--fix` option for automatic fixes.
 You can introduce the rule first, then use the `--suppress-all` option to temporarily suppress these errors, and gradually fix them in subsequent changes.
 
-For overlay migration policy and cleanup phases, see [Overlay Migration Guide](./overlay-migration.md).
+For overlay migration policy and cleanup phases, see [Overlay Migration Guide].
 
 ## Type Check
 
@@ -65,9 +65,9 @@ pnpm type-check:tsgo
 
 Prefer using `tsgo` for type checking as it is significantly faster than the standard TypeScript compiler.
 Only fall back to `pnpm type-check` (which uses `tsc`) if you encounter unexpected results.
-
-- [ESLint multi-thread linting blog post]: https://eslint.org/blog/2025/08/multithread-linting
-- [ESLint bulk suppressions blog post]: https://eslint.org/blog/2025/04/introducing-bulk-suppressions
-- [no-leaked-conditional-rendering]: https://www.eslint-react.xyz/docs/rules/no-leaked-conditional-rendering
-- [typed linting via typescript-eslint]: https://typescript-eslint.io/getting-started/typed-linting
-- [TSSLint]: https://github.com/johnsoncodehk/tsslint
+[no-leaked-conditional-rendering]: <https://www.eslint-react.xyz/docs/rules/no-leaked-conditional-rendering>
+[TSSLint]: <https://github.com/johnsoncodehk/tsslint>
+[ESLint bulk suppressions blog post]: <https://eslint.org/blog/2025/04/introducing-bulk-suppressions>
+[ESLint multi-thread linting blog post]: <https://eslint.org/blog/2025/08/multithread-linting>
+[Overlay Migration Guide]: ./overlay-migration.md
+[typed linting via typescript-eslint]: <https://typescript-eslint.io/getting-started/typed-linting>

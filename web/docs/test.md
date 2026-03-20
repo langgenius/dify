@@ -137,7 +137,7 @@ When using a single spec file:
 - ❌ **DO NOT mock** base components (`@/app/components/base/*`)
 - ❌ **DO NOT mock** sibling/child components in the same directory
 
-> See [Example Structure](#example-structure) for correct import/mock patterns.
+> See [Example Structure] for correct import/mock patterns.
 
 ## Testing Components with Dedicated Dependencies
 
@@ -183,7 +183,7 @@ Treat component state as part of the public behavior: confirm the initial render
 - ✅ When creating lightweight provider stubs, mirror the real default values and surface helper builders (for example `createMockWorkflowContext`).
 - ✅ Reset shared stores (React context, Zustand, TanStack Query cache) between tests to avoid leaking state. Prefer helper factory functions over module-level singletons in specs.
 - ✅ For hooks that read from context, use `renderHook` with a custom wrapper that supplies required providers.
-- ✅ **Use factory functions for mock data**: Import actual types and create factory functions with complete defaults (see [Test Data Builders](#9-test-data-builders-anti-hardcoding) section).
+- ✅ **Use factory functions for mock data**: Import actual types and create factory functions with complete defaults (see [Test Data Builders] section).
 - ✅ If it's need to mock some common context provider used across many components (for example, `ProviderContext`), put it in **mocks**/context(for example, `__mocks__/context/provider-context`). To dynamically control the mock behavior (for example, toggling plan type), use module-level variables to track state and change them(for example, `context/provider-context-mock.spec.tsx`).
 - ✅ Use factory functions to create mock data with TypeScript types. This ensures type safety and makes tests more maintainable.
 
@@ -530,16 +530,25 @@ const element = await screen.findByText('Async Content')
 
 Test examples in the project:
 
-- [classnames.spec.ts](../utils/classnames.spec.ts) - Utility function tests
-- [index.spec.tsx](../app/components/base/button/index.spec.tsx) - Component tests
+- [classnames.spec.ts] - Utility function tests
+- [index.spec.tsx] - Component tests
 
 ## Resources
 
-- [Vitest Documentation](https://vitest.dev/guide)
-- [React Testing Library Documentation](https://testing-library.com/docs/react-testing-library/intro)
-- [Testing Library Best Practices](https://kentcdodds.com/blog/common-mistakes-with-react-testing-library)
-- [Vitest Mocking Guide](https://vitest.dev/guide/mocking.html)
+- [Vitest Documentation]
+- [React Testing Library Documentation]
+- [Testing Library Best Practices]
+- [Vitest Mocking Guide]
 
 ---
 
 **Remember**: Writing tests is not just about coverage, but ensuring code quality and maintainability. Good tests should be clear, concise, and meaningful.
+
+[Example Structure]: #example-structure
+[React Testing Library Documentation]: https://testing-library.com/docs/react-testing-library/intro
+[Test Data Builders]: #9-test-data-builders-anti-hardcoding
+[Testing Library Best Practices]: https://kentcdodds.com/blog/common-mistakes-with-react-testing-library
+[Vitest Documentation]: https://vitest.dev/guide
+[Vitest Mocking Guide]: https://vitest.dev/guide/mocking.html
+[classnames.spec.ts]: ../utils/classnames.spec.ts
+[index.spec.tsx]: ../app/components/base/button/index.spec.tsx

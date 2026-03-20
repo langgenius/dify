@@ -1,6 +1,6 @@
 # Dify Frontend
 
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+This is a [Next.js] project bootstrapped with [`create-next-app`].
 
 ## Getting Started
 
@@ -8,8 +8,8 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 Before starting the web frontend service, please make sure the following environment is ready.
 
-- [Node.js](https://nodejs.org)
-- [pnpm](https://pnpm.io)
+- [Node.js]
+- [pnpm]
 
 > [!TIP]
 > It is recommended to install and enable Corepack to manage package manager versions automatically:
@@ -19,7 +19,7 @@ Before starting the web frontend service, please make sure the following environ
 > corepack enable
 > ```
 >
-> Learn more: [Corepack](https://github.com/nodejs/corepack#readme)
+> Learn more: [Corepack]
 
 First, install the dependencies:
 
@@ -91,7 +91,7 @@ pnpm run start --port=3001 --host=0.0.0.0
 
 ## Storybook
 
-This project uses [Storybook](https://storybook.js.org) for UI component development.
+This project uses [Storybook] for UI component development.
 
 To start the storybook server, run:
 
@@ -105,13 +105,13 @@ Open <http://localhost:6006> with your browser to see the result.
 
 If your IDE is VSCode, rename `web/.vscode/settings.example.json` to `web/.vscode/settings.json` for lint code setting.
 
-Then follow the [Lint Documentation](./docs/lint.md) to lint the code.
+Then follow the [Lint Documentation] to lint the code.
 
 ## Test
 
-We use [Vitest](https://vitest.dev) and [React Testing Library](https://testing-library.com/docs/react-testing-library/intro) for Unit Testing.
+We use [Vitest] and [React Testing Library] for Unit Testing.
 
-**📖 Complete Testing Guide**: See [web/testing/testing.md](./testing/testing.md) for detailed testing specifications, best practices, and examples.
+**📖 Complete Testing Guide**: See [web/testing/testing.md] for detailed testing specifications, best practices, and examples.
 
 Run test:
 
@@ -123,8 +123,8 @@ pnpm test
 
 If you are not familiar with writing tests, refer to:
 
-- [classnames.spec.ts](./utils/classnames.spec.ts) - Utility function test example
-- [index.spec.tsx](./app/components/base/button/index.spec.tsx) - Component test example
+- [classnames.spec.ts] - Utility function test example
+- [index.spec.tsx] - Component test example
 
 ### Analyze Component Complexity
 
@@ -134,7 +134,7 @@ Before writing tests, use the script to analyze component complexity:
 pnpm analyze-component app/components/your-component/index.tsx
 ```
 
-This will help you determine the testing strategy. See [web/testing/testing.md](./testing/testing.md) for details.
+This will help you determine the testing strategy. See [web/testing/testing.md] for details.
 
 ## Documentation
 
@@ -142,4 +142,18 @@ Visit <https://docs.dify.ai> to view the full documentation.
 
 ## Community
 
-The Dify community can be found on [Discord community](https://discord.gg/5AEfbxcd9k), where you can ask questions, voice ideas, and share your projects.
+The Dify community can be found on [Discord community], where you can ask questions, voice ideas, and share your projects.
+
+[Corepack]: https://github.com/nodejs/corepack#readme
+[Discord community]: https://discord.gg/5AEfbxcd9k
+[Lint Documentation]: ./docs/lint.md
+[Next.js]: https://nextjs.org
+[Node.js]: https://nodejs.org
+[React Testing Library]: https://testing-library.com/docs/react-testing-library/intro
+[Storybook]: https://storybook.js.org
+[Vitest]: https://vitest.dev
+[`create-next-app`]: https://github.com/vercel/next.js/tree/canary/packages/create-next-app
+[classnames.spec.ts]: ./utils/classnames.spec.ts
+[index.spec.tsx]: ./app/components/base/button/index.spec.tsx
+[pnpm]: https://pnpm.io
+[web/testing/testing.md]: ./testing/testing.md
