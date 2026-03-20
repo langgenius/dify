@@ -17,7 +17,7 @@ export default function DatasetsLayout({ children }: { children: React.ReactNode
       router.replace('/apps')
   }, [shouldRedirect, router])
 
-  if (!isWorkspaceReady || shouldRedirect) {
+  if (shouldRedirect) {
     return null
   }
 
