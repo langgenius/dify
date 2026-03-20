@@ -32,18 +32,19 @@ vi.mock('@/service/base', () => ({
   ssePost: mockSsePost,
 }))
 
-// Mock Toast.notify - static method that manipulates DOM, needs mocking to verify calls
-const { mockToastNotify } = vi.hoisted(() => ({
-  mockToastNotify: vi.fn(),
+// Mock toast.add because the component reports errors through the UI toast manager.
+const { mockToastAdd } = vi.hoisted(() => ({
+  mockToastAdd: vi.fn(),
 }))
 
-vi.mock('@/app/components/base/toast', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/app/components/base/toast')>()
+vi.mock('@/app/components/base/ui/toast', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/components/base/ui/toast')>()
   return {
     ...actual,
-    default: Object.assign(actual.default, {
-      notify: mockToastNotify,
-    }),
+    toast: {
+      ...actual.toast,
+      add: mockToastAdd,
+    },
   }
 })
 
@@ -196,8 +197,7 @@ const createDefaultProps = (overrides?: Partial<OnlineDocumentsProps>): OnlineDo
 describe('OnlineDocuments', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockToastNotify.mockReset()
-    mockToastNotify.mockImplementation(() => ({ clear: vi.fn() }))
+    mockToastAdd.mockReset()
 
     // Reset store state
     mockStoreState.documentsData = []
@@ -515,9 +515,9 @@ describe('OnlineDocuments', () => {
       render(<OnlineDocuments {...props} />)
 
       await waitFor(() => {
-        expect(mockToastNotify).toHaveBeenCalledWith({
+        expect(mockToastAdd).toHaveBeenCalledWith({
           type: 'error',
-          message: 'Something went wrong',
+          title: 'Something went wrong',
         })
       })
     })
@@ -780,9 +780,9 @@ describe('OnlineDocuments', () => {
       render(<OnlineDocuments {...props} />)
 
       await waitFor(() => {
-        expect(mockToastNotify).toHaveBeenCalledWith({
+        expect(mockToastAdd).toHaveBeenCalledWith({
           type: 'error',
-          message: 'API Error Message',
+          title: 'API Error Message',
         })
       })
     })
@@ -1100,9 +1100,9 @@ describe('OnlineDocuments', () => {
       render(<OnlineDocuments {...props} />)
 
       await waitFor(() => {
-        expect(mockToastNotify).toHaveBeenCalledWith({
+        expect(mockToastAdd).toHaveBeenCalledWith({
           type: 'error',
-          message: 'Failed to fetch documents',
+          title: 'Failed to fetch documents',
         })
       })
 

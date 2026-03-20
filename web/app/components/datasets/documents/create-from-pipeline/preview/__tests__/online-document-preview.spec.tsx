@@ -5,17 +5,18 @@ import OnlineDocumentPreview from '../online-document-preview'
 
 // Uses global react-i18next mock from web/vitest.setup.ts
 
-const { mockToastNotify } = vi.hoisted(() => ({
-  mockToastNotify: vi.fn(),
+const { mockToastAdd } = vi.hoisted(() => ({
+  mockToastAdd: vi.fn(),
 }))
 
-vi.mock('@/app/components/base/toast', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/app/components/base/toast')>()
+vi.mock('@/app/components/base/ui/toast', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/components/base/ui/toast')>()
   return {
     ...actual,
-    default: Object.assign(actual.default, {
-      notify: mockToastNotify,
-    }),
+    toast: {
+      ...actual.toast,
+      add: mockToastAdd,
+    },
   }
 })
 
@@ -66,8 +67,7 @@ const defaultProps = {
 describe('OnlineDocumentPreview', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockToastNotify.mockReset()
-    mockToastNotify.mockImplementation(() => ({ clear: vi.fn() }))
+    mockToastAdd.mockReset()
     mockPipelineId.mockReturnValue('pipeline-123')
     mockUsePreviewOnlineDocument.mockReturnValue({
       mutateAsync: mockMutateAsync,
@@ -270,9 +270,9 @@ describe('OnlineDocumentPreview', () => {
       render(<OnlineDocumentPreview {...defaultProps} />)
 
       await waitFor(() => {
-        expect(mockToastNotify).toHaveBeenCalledWith({
+        expect(mockToastAdd).toHaveBeenCalledWith({
           type: 'error',
-          message: errorMessage,
+          title: errorMessage,
         })
       })
     })
@@ -288,9 +288,9 @@ describe('OnlineDocumentPreview', () => {
       render(<OnlineDocumentPreview {...defaultProps} />)
 
       await waitFor(() => {
-        expect(mockToastNotify).toHaveBeenCalledWith({
+        expect(mockToastAdd).toHaveBeenCalledWith({
           type: 'error',
-          message: 'Network Error',
+          title: 'Network Error',
         })
       })
     })

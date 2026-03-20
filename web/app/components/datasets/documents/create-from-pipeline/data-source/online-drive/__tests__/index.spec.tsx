@@ -45,17 +45,18 @@ vi.mock('@/service/use-datasource', () => ({
   useGetDataSourceAuth: mockUseGetDataSourceAuth,
 }))
 
-const { mockToastNotify } = vi.hoisted(() => ({
-  mockToastNotify: vi.fn(),
+const { mockToastAdd } = vi.hoisted(() => ({
+  mockToastAdd: vi.fn(),
 }))
 
-vi.mock('@/app/components/base/toast', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/app/components/base/toast')>()
+vi.mock('@/app/components/base/ui/toast', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/components/base/ui/toast')>()
   return {
     ...actual,
-    default: Object.assign(actual.default, {
-      notify: mockToastNotify,
-    }),
+    toast: {
+      ...actual.toast,
+      add: mockToastAdd,
+    },
   }
 })
 
@@ -235,8 +236,7 @@ const resetMockStoreState = () => {
 describe('OnlineDrive', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockToastNotify.mockReset()
-    mockToastNotify.mockImplementation(() => ({ clear: vi.fn() }))
+    mockToastAdd.mockReset()
 
     // Reset store state
     resetMockStoreState()
@@ -547,9 +547,9 @@ describe('OnlineDrive', () => {
       render(<OnlineDrive {...props} />)
 
       await waitFor(() => {
-        expect(mockToastNotify).toHaveBeenCalledWith({
+        expect(mockToastAdd).toHaveBeenCalledWith({
           type: 'error',
-          message: errorMessage,
+          title: errorMessage,
         })
       })
     })
@@ -921,9 +921,9 @@ describe('OnlineDrive', () => {
       render(<OnlineDrive {...props} />)
 
       await waitFor(() => {
-        expect(mockToastNotify).toHaveBeenCalledWith({
+        expect(mockToastAdd).toHaveBeenCalledWith({
           type: 'error',
-          message: errorMessage,
+          title: errorMessage,
         })
       })
     })

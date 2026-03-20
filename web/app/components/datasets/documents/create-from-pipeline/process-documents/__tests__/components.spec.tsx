@@ -7,17 +7,18 @@ import Actions from '../actions'
 import Form from '../form'
 import Header from '../header'
 
-const { mockToastNotify } = vi.hoisted(() => ({
-  mockToastNotify: vi.fn(),
+const { mockToastAdd } = vi.hoisted(() => ({
+  mockToastAdd: vi.fn(),
 }))
 
-vi.mock('@/app/components/base/toast', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/app/components/base/toast')>()
+vi.mock('@/app/components/base/ui/toast', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/components/base/ui/toast')>()
   return {
     ...actual,
-    default: Object.assign(actual.default, {
-      notify: mockToastNotify,
-    }),
+    toast: {
+      ...actual.toast,
+      add: mockToastAdd,
+    },
   }
 })
 
@@ -345,8 +346,7 @@ describe('Form', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockToastNotify.mockReset()
-    mockToastNotify.mockImplementation(() => ({ clear: vi.fn() }))
+    mockToastAdd.mockReset()
   })
 
   describe('Rendering', () => {
@@ -455,9 +455,9 @@ describe('Form', () => {
 
       // Assert - validation error should be shown
       await waitFor(() => {
-        expect(mockToastNotify).toHaveBeenCalledWith({
+        expect(mockToastAdd).toHaveBeenCalledWith({
           type: 'error',
-          message: '"field1" is required',
+          title: '"field1" is required',
         })
       })
     })
@@ -577,9 +577,9 @@ describe('Form', () => {
       fireEvent.submit(form)
 
       await waitFor(() => {
-        expect(mockToastNotify).toHaveBeenCalledWith({
+        expect(mockToastAdd).toHaveBeenCalledWith({
           type: 'error',
-          message: '"field1" is required',
+          title: '"field1" is required',
         })
       })
     })
@@ -594,7 +594,7 @@ describe('Form', () => {
 
       // Assert - wait a bit and verify onSubmit was not called
       await waitFor(() => {
-        expect(mockToastNotify).toHaveBeenCalled()
+        expect(mockToastAdd).toHaveBeenCalled()
       })
       expect(onSubmit).not.toHaveBeenCalled()
     })
