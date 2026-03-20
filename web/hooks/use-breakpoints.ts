@@ -1,6 +1,10 @@
 'use client'
 import * as React from 'react'
 
+/**
+ * MediaType is defined as a const object to avoid non-erasable enum emit.
+ * This approach aligns with the erasable-syntax-only setup.
+ */
 export const MediaType = {
   mobile: 'mobile',
   tablet: 'tablet',
