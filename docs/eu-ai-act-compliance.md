@@ -87,16 +87,34 @@ Dify's built-in logging covers several Article 12 requirements:
 
 Set your data retention policy to at least 6 months for Article 12 compliance.
 
-## Article 13: Transparency
+## Article 13: Transparency to deployers
+
+Article 13 requires providers of high-risk AI systems to supply deployers with the information needed to understand and operate the system correctly. For Dify deployments, this means the upstream LLM and embedding providers must give you:
+
+- Instructions for use, including intended purpose and known limitations
+- Accuracy metrics and performance benchmarks
+- Known or foreseeable risks and residual risks after mitigation
+- Technical specifications: input/output formats, training data characteristics, model architecture details
+
+As a deployer, collect model cards, system documentation, and accuracy reports from each AI provider your Dify application uses. Maintain these as part of your Annex IV technical documentation.
+
+Dify-specific considerations:
+- **Source attribution** — Dify's RAG pipeline can show which documents informed the response. Enable the "citation" feature to support deployer-side transparency and auditing.
+- **Model identification** — document which LLM model generates responses in each workflow step
+
+## Article 50: End-user transparency
+
+Article 50 requires deployers to inform end users that they are interacting with an AI system. This is a separate obligation from Article 13 and applies even to limited-risk systems.
 
 For Dify applications serving end users:
 
 1. **Disclose AI involvement** — tell users they are interacting with an AI system
-2. **Source attribution** — Dify's RAG pipeline can show which documents informed the response. Enable this for transparency.
-3. **Model identification** — document which LLM model generates responses
-4. **Limitations** — disclose known limitations: hallucination risk, knowledge cutoff dates, confidence boundaries
+2. **Limitations** — disclose known limitations in user-facing terms: hallucination risk, knowledge cutoff dates, confidence boundaries
+3. **AI-generated content labeling** — identify AI-generated content as such
 
-Dify's "citation" feature in RAG applications directly supports transparency by showing users which knowledge base documents informed the answer.
+Dify's "citation" feature also supports end-user transparency by showing users which knowledge base documents informed the answer.
+
+> **Note:** Article 50 applies to chatbots and systems interacting directly with natural persons. It has a separate scope from the high-risk designation under Annex III — it applies even to limited-risk systems.
 
 ## Article 14: Human oversight
 
