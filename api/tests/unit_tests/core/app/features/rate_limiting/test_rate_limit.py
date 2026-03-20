@@ -88,6 +88,31 @@ class TestRateLimit:
             10,
         )
 
+    def test_should_reinitialize_after_being_disabled(self, redis_patch):
+        """Test disabled instance can be reinitialized and writes max_active_requests to Redis."""
+        redis_patch.configure_mock(
+            **{
+                "exists.return_value": False,
+                "setex.return_value": True,
+            }
+        )
+
+        # First construct with max_active_requests = 0 (disabled), which should skip initialization.
+        RateLimit("client1", 0)
+
+        # Redis should not have been written to during disabled initialization.
+        redis_patch.setex.assert_not_called()
+        redis_patch.reset_mock()
+
+        # Reinitialize with a positive max_active_requests value; this should not raise
+        # and must write the max_active_requests key to Redis.
+        RateLimit("client1", 10)
+
+        redis_patch.setex.assert_called_once_with(
+            "dify:rate_limit:client1:max_active_requests",
+            timedelta(days=1),
+            10,
+        )
     def test_should_be_disabled_when_max_requests_is_zero_or_negative(self):
         """Test disabled state for zero or negative limits."""
         rate_limit_zero = RateLimit("client1", 0)
