@@ -32,6 +32,7 @@ class RateLimit:
         if self.disabled():
             return
         if hasattr(self, "initialized"):
+            self.flush_cache(use_local_value=True)
             return
         self.initialized = True
         self.client_id = client_id
