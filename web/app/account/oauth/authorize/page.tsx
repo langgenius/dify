@@ -71,6 +71,8 @@ export default function OAuthAuthorize() {
   const isLoading = isOAuthLoading || isIsLoginLoading
   const isActionDisabled = !client_id || !redirect_uri || isError || isLoading || authorizing
   const onLoginSwitchClick = () => {
+    if (isLoading)
+      return
     try {
       const returnUrl = buildReturnUrl('/account/oauth/authorize', `?client_id=${encodeURIComponent(client_id)}&redirect_uri=${encodeURIComponent(redirect_uri)}`)
       setPostLoginRedirect(returnUrl)
