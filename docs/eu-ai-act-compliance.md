@@ -2,6 +2,25 @@
 
 Dify is an LLMOps platform for building RAG pipelines, agents, and AI workflows. If you deploy Dify in the EU — whether self-hosted or using a cloud provider — the EU AI Act applies to your deployment. This guide covers what the regulation requires and how Dify's architecture maps to those requirements.
 
+## Is your system in scope?
+
+The detailed obligations in Articles 12, 13, and 14 only apply to **high-risk AI systems** as defined in Annex III of the EU AI Act. A Dify application is high-risk if it is used for:
+
+- **Recruitment and HR** — screening candidates, evaluating employee performance, allocating tasks
+- **Credit scoring and insurance** — assessing creditworthiness or setting premiums
+- **Law enforcement** — profiling, criminal risk assessment, border control
+- **Critical infrastructure** — managing energy, water, transport, or telecommunications systems
+- **Education assessment** — grading students, determining admissions
+- **Essential public services** — evaluating eligibility for benefits, housing, or emergency services
+
+Most Dify deployments (customer-facing chatbots, internal knowledge bases, content generation workflows) are **not** high-risk. If your Dify application does not fall into one of the categories above:
+
+- **Article 50** (end-user transparency) still applies if users interact with your application directly. See the [Article 50 section](#article-50-end-user-transparency) below.
+- **GDPR** still applies if you process personal data. See the [GDPR section](#gdpr-considerations) below.
+- You can skip the Articles 11-14 requirements and focus on transparency and data protection instead.
+
+If you are unsure whether your use case qualifies as high-risk, consult a qualified legal professional before proceeding.
+
 ## Self-hosted vs cloud: different compliance profiles
 
 | Deployment | Your role | Dify's role | Who handles compliance? |
@@ -85,7 +104,7 @@ Dify's built-in logging covers several Article 12 requirements:
 | Error logging | Failed generation logs | **Covered** |
 | Data retention | Configurable | **Your responsibility** |
 
-Set your data retention policy to at least 6 months for Article 12 compliance.
+**Retention periods:** The required retention period depends on your role under the Act. Article 18 requires **providers** of high-risk systems to retain logs and technical documentation for **10 years** after market placement. Article 26(6) requires **deployers** to retain logs for at least **6 months**. If you self-host Dify and have substantially modified the system, you may be classified as a provider rather than a deployer. Confirm the applicable retention period with legal counsel.
 
 ## Article 13: Transparency to deployers
 
