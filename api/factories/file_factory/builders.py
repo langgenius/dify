@@ -17,7 +17,7 @@ from extensions.ext_database import db
 from models import ToolFile, UploadFile
 
 from .common import resolve_mapping_file_id
-from .remote import _get_remote_file_info
+from .remote import get_remote_file_info
 from .validation import is_file_valid_with_config
 
 
@@ -209,7 +209,7 @@ def _build_from_remote_url(
     if not url:
         raise ValueError("Invalid file url")
 
-    mime_type, filename, file_size = _get_remote_file_info(url)
+    mime_type, filename, file_size = get_remote_file_info(url)
     extension = mimetypes.guess_extension(mime_type) or ("." + filename.split(".")[-1] if "." in filename else ".bin")
     detected_file_type = standardize_file_type(extension=extension, mime_type=mime_type)
     file_type = _resolve_file_type(

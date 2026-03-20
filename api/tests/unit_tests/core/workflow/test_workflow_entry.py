@@ -23,7 +23,8 @@ from dify_graph.variables.variables import StringVariable
 def _mock_ssrf_head(monkeypatch):
     """Avoid any real network requests during tests.
 
-    file_factory._get_remote_file_info() uses ssrf_proxy.head to inspect
+    factories.file_factory.remote.get_remote_file_info() uses ssrf_proxy.head
+    to inspect
     remote files. We stub it to return a minimal response object with
     headers so filename/mime/size can be derived deterministically.
     """

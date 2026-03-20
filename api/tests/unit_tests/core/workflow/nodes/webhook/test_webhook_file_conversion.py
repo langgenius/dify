@@ -139,9 +139,9 @@ def test_webhook_node_file_conversion_to_file_variable():
 
     node = create_webhook_node(data, variable_pool)
 
-    # Mock the file factory and variable factory
+    # Mock the file reference boundary and variable factory
     with (
-        patch("factories.file_factory.build_from_mapping") as mock_file_factory,
+        patch.object(node._file_reference_factory, "build_from_mapping") as mock_file_factory,
         patch("core.workflow.nodes.trigger_webhook.node.build_segment_with_type") as mock_segment_factory,
         patch("core.workflow.nodes.trigger_webhook.node.FileVariable") as mock_file_variable,
     ):
@@ -166,7 +166,6 @@ def test_webhook_node_file_conversion_to_file_variable():
         # Verify file factory was called with correct parameters
         mock_file_factory.assert_called_once_with(
             mapping=expected_factory_mapping(file_dict),
-            tenant_id="test-tenant",
         )
 
         # Verify segment factory was called to create FileSegment
@@ -329,7 +328,7 @@ def test_webhook_node_file_conversion_mixed_parameters():
     node = create_webhook_node(data, variable_pool)
 
     with (
-        patch("factories.file_factory.build_from_mapping") as mock_file_factory,
+        patch.object(node._file_reference_factory, "build_from_mapping") as mock_file_factory,
         patch("core.workflow.nodes.trigger_webhook.node.build_segment_with_type") as mock_segment_factory,
         patch("core.workflow.nodes.trigger_webhook.node.FileVariable") as mock_file_variable,
     ):
@@ -359,7 +358,6 @@ def test_webhook_node_file_conversion_mixed_parameters():
         # Verify file conversion was called
         mock_file_factory.assert_called_once_with(
             mapping=expected_factory_mapping(file_dict),
-            tenant_id="test-tenant",
         )
 
 
@@ -396,7 +394,7 @@ def test_webhook_node_different_file_types():
     node = create_webhook_node(data, variable_pool)
 
     with (
-        patch("factories.file_factory.build_from_mapping") as mock_file_factory,
+        patch.object(node._file_reference_factory, "build_from_mapping") as mock_file_factory,
         patch("core.workflow.nodes.trigger_webhook.node.build_segment_with_type") as mock_segment_factory,
         patch("core.workflow.nodes.trigger_webhook.node.FileVariable") as mock_file_variable,
     ):

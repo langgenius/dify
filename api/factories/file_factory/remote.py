@@ -1,4 +1,9 @@
-"""Remote file metadata helpers used by workflow file normalization."""
+"""Remote file metadata helpers used by workflow file normalization.
+
+These helpers are part of the ``factories.file_factory`` package surface
+because both workflow builders and tests rely on the same RFC5987 filename
+parsing and HEAD-response normalization rules.
+"""
 
 from __future__ import annotations
 
@@ -14,7 +19,8 @@ from werkzeug.http import parse_options_header
 from core.helper import ssrf_proxy
 
 
-def _extract_filename(url_path: str, content_disposition: str | None) -> str | None:
+def extract_filename(url_path: str, content_disposition: str | None) -> str | None:
+    """Extract a safe filename from Content-Disposition or the request URL path."""
     filename: str | None = None
     if content_disposition:
         filename_star_match = re.search(r"filename\*=([^;]+)", content_disposition)
@@ -57,7 +63,8 @@ def _guess_mime_type(filename: str) -> str:
     return guessed_mime or ""
 
 
-def _get_remote_file_info(url: str) -> tuple[str, str, int]:
+def get_remote_file_info(url: str) -> tuple[str, str, int]:
+    """Resolve remote file metadata with SSRF-safe HEAD probing."""
     file_size = -1
     parsed_url = urllib.parse.urlparse(url)
     url_path = parsed_url.path
@@ -67,7 +74,7 @@ def _get_remote_file_info(url: str) -> tuple[str, str, int]:
     resp = ssrf_proxy.head(url, follow_redirects=True)
     if resp.status_code == httpx.codes.OK:
         content_disposition = resp.headers.get("Content-Disposition")
-        extracted_filename = _extract_filename(url_path, content_disposition)
+        extracted_filename = extract_filename(url_path, content_disposition)
         if extracted_filename:
             filename = extracted_filename
             mime_type = _guess_mime_type(filename)

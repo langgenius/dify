@@ -266,10 +266,10 @@ def test_webhook_node_run_with_file_params():
     )
 
     node = create_webhook_node(data, variable_pool)
-    # Mock the file factory to avoid DB-dependent validation on upload_file_id
-    with patch("factories.file_factory.build_from_mapping") as mock_file_factory:
+    # Mock the node's file reference boundary to avoid DB-dependent validation on upload_file_id
+    with patch.object(node._file_reference_factory, "build_from_mapping") as mock_file_factory:
 
-        def _to_file(mapping, tenant_id, config=None, strict_type_validation=False):
+        def _to_file(*, mapping):
             return File.model_validate(mapping)
 
         mock_file_factory.side_effect = _to_file
@@ -314,10 +314,10 @@ def test_webhook_node_run_mixed_parameters():
     )
 
     node = create_webhook_node(data, variable_pool)
-    # Mock the file factory to avoid DB-dependent validation on upload_file_id
-    with patch("factories.file_factory.build_from_mapping") as mock_file_factory:
+    # Mock the node's file reference boundary to avoid DB-dependent validation on upload_file_id
+    with patch.object(node._file_reference_factory, "build_from_mapping") as mock_file_factory:
 
-        def _to_file(mapping, tenant_id, config=None, strict_type_validation=False):
+        def _to_file(*, mapping):
             return File.model_validate(mapping)
 
         mock_file_factory.side_effect = _to_file

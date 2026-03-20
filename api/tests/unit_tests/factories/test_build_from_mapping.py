@@ -7,15 +7,8 @@ from httpx import Response
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.app.file_access import DatabaseFileAccessController, FileAccessScope, bind_file_access_scope
 from core.workflow.file_reference import build_file_reference, resolve_file_record_id
-from factories.file_factory import (
-    File,
-    FileTransferMethod,
-    FileType,
-    FileUploadConfig,
-)
-from factories.file_factory import (
-    build_from_mapping as _build_from_mapping,
-)
+from dify_graph.file import File, FileTransferMethod, FileType, FileUploadConfig
+from factories.file_factory.builders import build_from_mapping as _build_from_mapping
 from models import ToolFile, UploadFile
 
 # Test Data
@@ -56,7 +49,7 @@ def mock_upload_file():
     mock.source_url = TEST_REMOTE_URL
     mock.size = 1024
     mock.key = "test_key"
-    with patch("factories.file_factory.db.session.scalar", return_value=mock, autospec=True) as m:
+    with patch("factories.file_factory.builders.db.session.scalar", return_value=mock, autospec=True) as m:
         yield m
 
 
@@ -70,7 +63,7 @@ def mock_tool_file():
     mock.mimetype = "application/pdf"
     mock.original_url = "http://example.com/tool.pdf"
     mock.size = 2048
-    with patch("factories.file_factory.db.session.scalar", return_value=mock, autospec=True):
+    with patch("factories.file_factory.builders.db.session.scalar", return_value=mock, autospec=True):
         yield mock
 
 
@@ -86,7 +79,7 @@ def mock_http_head():
             },
         )
 
-    with patch("factories.file_factory.ssrf_proxy.head", autospec=True) as mock_head:
+    with patch("factories.file_factory.remote.ssrf_proxy.head", autospec=True) as mock_head:
         mock_head.return_value = _mock_response("remote_test.jpg", 2048, "image/jpeg")
         yield mock_head
 
@@ -234,7 +227,7 @@ def test_build_from_remote_url_without_strict_validation(mock_http_head):
 
 def test_tool_file_not_found():
     """Test ToolFile not found in database."""
-    with patch("factories.file_factory.db.session.scalar", return_value=None, autospec=True):
+    with patch("factories.file_factory.builders.db.session.scalar", return_value=None, autospec=True):
         mapping = tool_file_mapping()
         with pytest.raises(ValueError, match=f"ToolFile {TEST_TOOL_FILE_ID} not found"):
             build_from_mapping(mapping=mapping, tenant_id=TEST_TENANT_ID)
@@ -242,7 +235,7 @@ def test_tool_file_not_found():
 
 def test_local_file_not_found():
     """Test UploadFile not found in database."""
-    with patch("factories.file_factory.db.session.scalar", return_value=None, autospec=True):
+    with patch("factories.file_factory.builders.db.session.scalar", return_value=None, autospec=True):
         mapping = local_file_mapping()
         with pytest.raises(ValueError, match="Invalid upload file"):
             build_from_mapping(mapping=mapping, tenant_id=TEST_TENANT_ID)
@@ -314,7 +307,7 @@ def test_tenant_mismatch():
     mock_file.key = "test_key"
 
     # Mock the database query to return None (no file found for this tenant)
-    with patch("factories.file_factory.db.session.scalar", return_value=None, autospec=True):
+    with patch("factories.file_factory.builders.db.session.scalar", return_value=None, autospec=True):
         mapping = local_file_mapping()
         with pytest.raises(ValueError, match="Invalid upload file"):
             build_from_mapping(mapping=mapping, tenant_id=TEST_TENANT_ID)
@@ -353,7 +346,7 @@ def test_build_from_mapping_scopes_tool_file_to_end_user():
         invoke_from=InvokeFrom.WEB_APP,
     )
 
-    with patch("factories.file_factory.db.session.scalar", return_value=tool_file, autospec=True) as scalar:
+    with patch("factories.file_factory.builders.db.session.scalar", return_value=tool_file, autospec=True) as scalar:
         with bind_file_access_scope(scope):
             build_from_mapping(mapping=tool_file_mapping(), tenant_id=TEST_TENANT_ID)
 
