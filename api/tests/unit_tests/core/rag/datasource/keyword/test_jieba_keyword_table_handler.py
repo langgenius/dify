@@ -107,9 +107,7 @@ class TestExtractKeywordsHyphenatedFromRawText:
         result = handler.extract_keywords("The device model is st-771")
         assert "st-771" in result
 
-    def test_compound_term_present_even_when_jieba_splits_it(
-        self, handler: JiebaKeywordTableHandler
-    ):
+    def test_compound_term_present_even_when_jieba_splits_it(self, handler: JiebaKeywordTableHandler):
         """The compound term is indexed even when jieba's TF-IDF splits it.
 
         When jieba splits "st-771" into "st" and "771", those subtokens land in
@@ -132,9 +130,7 @@ class TestExtractKeywordsHyphenatedFromRawText:
         result = handler.extract_keywords("The model type is model_function_description")
         assert "model_function_description" in result
 
-    def test_underscore_compound_present_even_when_subtokens_returned(
-        self, handler: JiebaKeywordTableHandler
-    ):
+    def test_underscore_compound_present_even_when_subtokens_returned(self, handler: JiebaKeywordTableHandler):
         """The compound term is indexed even when jieba's TF-IDF returns its subtokens.
 
         Common English words like 'function' and 'description' may be returned by
