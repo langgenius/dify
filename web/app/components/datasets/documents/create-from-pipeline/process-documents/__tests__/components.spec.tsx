@@ -3,13 +3,19 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import * as z from 'zod'
 import { BaseFieldType } from '@/app/components/base/form/form-scenarios/base/types'
-import Toast from '@/app/components/base/toast'
 import Actions from '../actions'
 import Form from '../form'
 import Header from '../header'
 
-// Spy on Toast.notify for validation tests
-const toastNotifySpy = vi.spyOn(Toast, 'notify')
+const { mockToastNotify } = vi.hoisted(() => ({
+  mockToastNotify: vi.fn(),
+}))
+
+vi.mock('@/app/components/base/toast', () => ({
+  default: {
+    notify: mockToastNotify,
+  },
+}))
 
 // Test Data Factory Functions
 
@@ -335,7 +341,8 @@ describe('Form', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    toastNotifySpy.mockClear()
+    mockToastNotify.mockReset()
+    mockToastNotify.mockImplementation(() => ({ clear: vi.fn() }))
   })
 
   describe('Rendering', () => {
@@ -444,7 +451,7 @@ describe('Form', () => {
 
       // Assert - validation error should be shown
       await waitFor(() => {
-        expect(toastNotifySpy).toHaveBeenCalledWith({
+        expect(mockToastNotify).toHaveBeenCalledWith({
           type: 'error',
           message: '"field1" is required',
         })
@@ -566,7 +573,7 @@ describe('Form', () => {
       fireEvent.submit(form)
 
       await waitFor(() => {
-        expect(toastNotifySpy).toHaveBeenCalledWith({
+        expect(mockToastNotify).toHaveBeenCalledWith({
           type: 'error',
           message: '"field1" is required',
         })
@@ -583,7 +590,7 @@ describe('Form', () => {
 
       // Assert - wait a bit and verify onSubmit was not called
       await waitFor(() => {
-        expect(toastNotifySpy).toHaveBeenCalled()
+        expect(mockToastNotify).toHaveBeenCalled()
       })
       expect(onSubmit).not.toHaveBeenCalled()
     })

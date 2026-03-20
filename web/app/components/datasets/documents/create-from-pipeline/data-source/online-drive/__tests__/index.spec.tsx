@@ -231,6 +231,8 @@ const resetMockStoreState = () => {
 describe('OnlineDrive', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockToastNotify.mockReset()
+    mockToastNotify.mockImplementation(() => ({ clear: vi.fn() }))
 
     // Reset store state
     resetMockStoreState()

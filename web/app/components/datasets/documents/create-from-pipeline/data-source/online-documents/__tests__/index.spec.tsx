@@ -192,6 +192,8 @@ const createDefaultProps = (overrides?: Partial<OnlineDocumentsProps>): OnlineDo
 describe('OnlineDocuments', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockToastNotify.mockReset()
+    mockToastNotify.mockImplementation(() => ({ clear: vi.fn() }))
 
     // Reset store state
     mockStoreState.documentsData = []

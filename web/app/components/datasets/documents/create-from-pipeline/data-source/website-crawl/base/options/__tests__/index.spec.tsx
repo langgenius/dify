@@ -1,12 +1,20 @@
-import type { MockInstance } from 'vitest'
 import type { RAGPipelineVariables } from '@/models/pipeline'
 import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
 import { BaseFieldType } from '@/app/components/base/form/form-scenarios/base/types'
-import Toast from '@/app/components/base/toast'
 import { CrawlStep } from '@/models/datasets'
 import { PipelineInputVarType } from '@/models/pipeline'
 import Options from '../index'
+
+const { mockToastNotify } = vi.hoisted(() => ({
+  mockToastNotify: vi.fn(),
+}))
+
+vi.mock('@/app/components/base/toast', () => ({
+  default: {
+    notify: mockToastNotify,
+  },
+}))
 
 // Mock useInitialData and useConfigurations hooks
 const { mockUseInitialData, mockUseConfigurations } = vi.hoisted(() => ({
@@ -116,13 +124,10 @@ const createDefaultProps = (overrides?: Partial<OptionsProps>): OptionsProps => 
 })
 
 describe('Options', () => {
-  let toastNotifySpy: MockInstance
-
   beforeEach(() => {
     vi.clearAllMocks()
-
-    // Spy on Toast.notify instead of mocking the entire module
-    toastNotifySpy = vi.spyOn(Toast, 'notify').mockImplementation(() => ({ clear: vi.fn() }))
+    mockToastNotify.mockReset()
+    mockToastNotify.mockImplementation(() => ({ clear: vi.fn() }))
 
     // Reset mock form values
     Object.keys(mockFormValues).forEach(key => delete mockFormValues[key])
@@ -130,10 +135,6 @@ describe('Options', () => {
     // Default mock return values - using real generateZodSchema
     mockUseInitialData.mockReturnValue({})
     mockUseConfigurations.mockReturnValue([createMockConfiguration()])
-  })
-
-  afterEach(() => {
-    toastNotifySpy.mockRestore()
   })
 
   describe('Rendering', () => {
@@ -638,7 +639,7 @@ describe('Options', () => {
       fireEvent.click(screen.getByRole('button'))
 
       // Assert - Toast should be called with error message
-      expect(toastNotifySpy).toHaveBeenCalledWith(
+      expect(mockToastNotify).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'error',
         }),
@@ -660,7 +661,7 @@ describe('Options', () => {
       fireEvent.click(screen.getByRole('button'))
 
       // Assert - Toast message should contain field path
-      expect(toastNotifySpy).toHaveBeenCalledWith(
+      expect(mockToastNotify).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'error',
           message: expect.stringContaining('email_address'),
@@ -714,8 +715,8 @@ describe('Options', () => {
       fireEvent.click(screen.getByRole('button'))
 
       // Assert - Toast should be called once (only first error)
-      expect(toastNotifySpy).toHaveBeenCalledTimes(1)
-      expect(toastNotifySpy).toHaveBeenCalledWith(
+      expect(mockToastNotify).toHaveBeenCalledTimes(1)
+      expect(mockToastNotify).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'error',
         }),
@@ -738,7 +739,7 @@ describe('Options', () => {
       fireEvent.click(screen.getByRole('button'))
 
       // Assert - No toast error, onSubmit called
-      expect(toastNotifySpy).not.toHaveBeenCalled()
+      expect(mockToastNotify).not.toHaveBeenCalled()
       expect(mockOnSubmit).toHaveBeenCalled()
     })
 
@@ -835,7 +836,7 @@ describe('Options', () => {
       fireEvent.click(screen.getByRole('button'))
 
       expect(mockOnSubmit).toHaveBeenCalled()
-      expect(toastNotifySpy).not.toHaveBeenCalled()
+      expect(mockToastNotify).not.toHaveBeenCalled()
     })
 
     it('should fail validation with invalid data', () => {
@@ -854,7 +855,7 @@ describe('Options', () => {
       fireEvent.click(screen.getByRole('button'))
 
       expect(mockOnSubmit).not.toHaveBeenCalled()
-      expect(toastNotifySpy).toHaveBeenCalled()
+      expect(mockToastNotify).toHaveBeenCalled()
     })
 
     it('should show error toast message when validation fails', () => {
@@ -871,7 +872,7 @@ describe('Options', () => {
 
       fireEvent.click(screen.getByRole('button'))
 
-      expect(toastNotifySpy).toHaveBeenCalledWith(
+      expect(mockToastNotify).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'error',
           message: expect.any(String),
