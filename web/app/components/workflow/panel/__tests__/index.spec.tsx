@@ -44,7 +44,6 @@ vi.mock('../../nodes', () => ({
 
 const versionHistoryPanelProps = {
   latestVersionId: 'version-1',
-  restoreVersionUrl: (versionId: string) => `/workflows/${versionId}/restore`,
 } satisfies NonNullable<PanelProps['versionHistoryPanelProps']>
 
 describe('Panel', () => {
