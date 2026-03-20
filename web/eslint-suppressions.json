@@ -3073,9 +3073,6 @@
     }
   },
   "app/components/datasets/create-from-pipeline/list/create-card.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
     }
@@ -3109,16 +3106,13 @@
     }
   },
   "app/components/datasets/create-from-pipeline/list/template-card/edit-pipeline-info.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 3
     }
   },
   "app/components/datasets/create-from-pipeline/list/template-card/index.tsx": {
     "no-restricted-imports": {
-      "count": 3
+      "count": 2
     }
   },
   "app/components/datasets/create-from-pipeline/list/template-card/operations.tsx": {
@@ -3400,9 +3394,6 @@
     }
   },
   "app/components/datasets/documents/create-from-pipeline/data-source/online-documents/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -3479,9 +3470,6 @@
     }
   },
   "app/components/datasets/documents/create-from-pipeline/data-source/online-drive/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 5
     }
@@ -3530,9 +3518,6 @@
     }
   },
   "app/components/datasets/documents/create-from-pipeline/data-source/website-crawl/base/options/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     },
@@ -3559,9 +3544,6 @@
     }
   },
   "app/components/datasets/documents/create-from-pipeline/preview/online-document-preview.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 4
     }
@@ -3575,9 +3557,6 @@
     }
   },
   "app/components/datasets/documents/create-from-pipeline/process-documents/form.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 3
     }
