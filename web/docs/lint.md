@@ -22,6 +22,7 @@ Keep this enabled when linting multiple files.
 - [ESLint multi-thread linting blog post]
 
 **`--fix`**: Automatically fixes auto-fixable rule violations.
+Keep this enabled so that you do not have to care about auto-fixable errors (e.g., formatting issues) and can focus on more important errors.
 Always review the diff before committing to ensure no unintended changes.
 
 **`--quiet`**: Suppresses warnings and only shows errors.
@@ -33,6 +34,16 @@ Treat this as an escape hatch—fix these errors when time permits.
 **`--prune-suppressions`**: Removes outdated suppressions after you've fixed the underlying errors.
 
 - [ESLint bulk suppressions blog post]
+
+### The Auto-Fix Workflow and Suppression Strategy
+
+To streamline your development process, we recommend configuring your editor to automatically fix lint errors on save.
+As a fallback, any remaining autofixable errors will be corrected automatically when you commit.
+To prevent workflow disruptions, these commit hooks are intentionally bypassed when you are merging branches, rebasing, or cherry-picking.
+
+Additionally, we currently track many existing legacy errors in eslint-suppressions.json.
+You do not need to spend time manually pruning these suppressions (we already append `--pass-on-unpruned-suppressions` in the commit hook);
+once you open a Pull Request, the CI pipeline will automatically handle the cleanup for you.
 
 ### Type-Aware Linting
 
