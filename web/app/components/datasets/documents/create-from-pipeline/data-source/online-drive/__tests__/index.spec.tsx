@@ -45,15 +45,20 @@ vi.mock('@/service/use-datasource', () => ({
   useGetDataSourceAuth: mockUseGetDataSourceAuth,
 }))
 
-const { mockToastNotify } = vi.hoisted(() => ({
-  mockToastNotify: vi.fn(),
+const { mockToastAdd } = vi.hoisted(() => ({
+  mockToastAdd: vi.fn(),
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
-  default: {
-    notify: mockToastNotify,
-  },
-}))
+vi.mock('@/app/components/base/ui/toast', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/components/base/ui/toast')>()
+  return {
+    ...actual,
+    toast: {
+      ...actual.toast,
+      add: mockToastAdd,
+    },
+  }
+})
 
 // Note: zustand/react/shallow useShallow is imported directly (simple utility function)
 
@@ -231,6 +236,7 @@ const resetMockStoreState = () => {
 describe('OnlineDrive', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockToastAdd.mockReset()
 
     // Reset store state
     resetMockStoreState()
@@ -541,9 +547,9 @@ describe('OnlineDrive', () => {
       render(<OnlineDrive {...props} />)
 
       await waitFor(() => {
-        expect(mockToastNotify).toHaveBeenCalledWith({
+        expect(mockToastAdd).toHaveBeenCalledWith({
           type: 'error',
-          message: errorMessage,
+          title: errorMessage,
         })
       })
     })
@@ -915,9 +921,9 @@ describe('OnlineDrive', () => {
       render(<OnlineDrive {...props} />)
 
       await waitFor(() => {
-        expect(mockToastNotify).toHaveBeenCalledWith({
+        expect(mockToastAdd).toHaveBeenCalledWith({
           type: 'error',
-          message: errorMessage,
+          title: errorMessage,
         })
       })
     })

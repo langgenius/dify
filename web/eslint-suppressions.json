@@ -1325,9 +1325,6 @@
     }
   },
   "app/components/app/type-selector/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 3
     }
@@ -5211,14 +5208,11 @@
     }
   },
   "app/components/plugins/plugin-detail-panel/model-selector/tts-params-panel.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
     },
     "ts/no-explicit-any": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/plugins/plugin-detail-panel/multiple-tool-selector/index.tsx": {
@@ -5934,9 +5928,6 @@
     }
   },
   "app/components/tools/edit-custom-collection-modal/get-schema.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 3
     },
@@ -5972,14 +5963,6 @@
       "count": 1
     },
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/tools/labels/filter.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "tailwindcss/no-unnecessary-whitespace": {
       "count": 1
     }
   },
@@ -6070,7 +6053,7 @@
   },
   "app/components/tools/mcp/modal.tsx": {
     "no-restricted-imports": {
-      "count": 2
+      "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 7
@@ -6111,16 +6094,13 @@
     }
   },
   "app/components/tools/provider/custom-create-card.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
   },
   "app/components/tools/provider/detail.tsx": {
     "no-restricted-imports": {
-      "count": 2
+      "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 10
