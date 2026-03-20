@@ -94,7 +94,7 @@ const MenuDropdown: FC<Props> = ({
             <Divider type="horizontal" className="my-0" />
             <div className="p-1">
               {data?.privacy_policy && (
-                <a href={data.privacy_policy} target="_blank" className="flex cursor-pointer items-center rounded-lg px-3 py-1.5 text-text-secondary system-md-regular hover:bg-state-base-hover">
+                <a href={data.privacy_policy} target="_blank" rel="noopener noreferrer" className="flex cursor-pointer items-center rounded-lg px-3 py-1.5 text-text-secondary system-md-regular hover:bg-state-base-hover">
                   <span className="grow">{t('chat.privacyPolicyMiddle', { ns: 'share' })}</span>
                 </a>
               )}
