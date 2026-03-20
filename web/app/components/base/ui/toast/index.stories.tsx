@@ -57,9 +57,8 @@ const VariantExamples = () => {
       },
     } as const
 
-    toast.add({
-      type,
-      ...copy[type],
+    toast[type](copy[type].title, {
+      description: copy[type].description,
     })
   }
 
@@ -103,14 +102,16 @@ const StackExamples = () => {
         title: 'Ready to publish',
         description: 'The newest toast stays frontmost while older items tuck behind it.',
       },
-    ].forEach(item => toast.add(item))
+    ].forEach((item) => {
+      toast[item.type](item.title, {
+        description: item.description,
+      })
+    })
   }
 
   const createBurst = () => {
     Array.from({ length: 5 }).forEach((_, index) => {
-      toast.add({
-        type: index % 2 === 0 ? 'info' : 'success',
-        title: `Background task ${index + 1}`,
+      toast[index % 2 === 0 ? 'info' : 'success'](`Background task ${index + 1}`, {
         description: 'Use this to inspect how the stack behaves near the host limit.',
       })
     })
@@ -191,16 +192,12 @@ const PromiseExamples = () => {
 
 const ActionExamples = () => {
   const createActionToast = () => {
-    toast.add({
-      type: 'warning',
-      title: 'Project archived',
+    toast.warning('Project archived', {
       description: 'You can restore it from workspace settings for the next 30 days.',
       actionProps: {
         children: 'Undo',
         onClick: () => {
-          toast.add({
-            type: 'success',
-            title: 'Project restored',
+          toast.success('Project restored', {
             description: 'The workspace is active again.',
           })
         },
@@ -209,17 +206,12 @@ const ActionExamples = () => {
   }
 
   const createLongCopyToast = () => {
-    toast.add({
-      type: 'info',
-      title: 'Knowledge ingestion in progress',
+    toast.info('Knowledge ingestion in progress', {
       description: 'This longer example helps validate line wrapping, close button alignment, and action button placement when the content spans multiple rows.',
       actionProps: {
         children: 'View details',
         onClick: () => {
-          toast.add({
-            type: 'info',
-            title: 'Job details opened',
-          })
+          toast.info('Job details opened')
         },
       },
     })
@@ -243,9 +235,7 @@ const ActionExamples = () => {
 
 const UpdateExamples = () => {
   const createUpdatableToast = () => {
-    const toastId = toast.add({
-      type: 'info',
-      title: 'Import started',
+    const toastId = toast.info('Import started', {
       description: 'Preparing assets and metadata for processing.',
       timeout: 0,
     })
@@ -261,7 +251,7 @@ const UpdateExamples = () => {
   }
 
   const clearAll = () => {
-    toast.close()
+    toast.dismiss()
   }
 
   return (

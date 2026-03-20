@@ -34,10 +34,7 @@ const Form = ({
           const issues = result.error.issues
           const firstIssue = issues[0]
           const errorMessage = `"${firstIssue.path.join('.')}" ${firstIssue.message}`
-          toast.add({
-            type: 'error',
-            title: errorMessage,
-          })
+          toast.error(errorMessage)
           return errorMessage
         }
         return undefined

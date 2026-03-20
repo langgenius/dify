@@ -53,16 +53,14 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
     const params: SegmentUpdater = { content: '' }
 
     if (!content.trim())
-      return toast.add({ type: 'error', title: t('segment.contentEmpty', { ns: 'datasetDocuments' }) })
+      return toast.error(t('segment.contentEmpty', { ns: 'datasetDocuments' }))
 
     params.content = content
 
     setLoading(true)
     await addChildSegment({ datasetId, documentId, segmentId: chunkId, body: params }, {
       onSuccess(res) {
-        toast.add({
-          type: 'success',
-          title: t('segment.childChunkAdded', { ns: 'datasetDocuments' }),
+        toast.success(t('segment.childChunkAdded', { ns: 'datasetDocuments' }), {
           actionProps: isFullDocMode
             ? {
                 children: t('operation.view', { ns: 'common' }),

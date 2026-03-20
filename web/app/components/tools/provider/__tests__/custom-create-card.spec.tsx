@@ -71,10 +71,10 @@ vi.mock('@/app/components/tools/edit-custom-collection-modal', () => ({
 }))
 
 // Mock toast
-const mockToastNotify = vi.fn()
+const mockToastSuccess = vi.fn()
 vi.mock('@/app/components/base/ui/toast', () => ({
   toast: {
-    add: (options: { type: string, title: string }) => mockToastNotify(options),
+    success: (title: string) => mockToastSuccess(title),
   },
 }))
 
@@ -198,10 +198,7 @@ describe('CustomCreateCard', () => {
       fireEvent.click(screen.getByTestId('submit-modal'))
 
       await waitFor(() => {
-        expect(mockToastNotify).toHaveBeenCalledWith({
-          type: 'success',
-          title: expect.any(String),
-        })
+        expect(mockToastSuccess).toHaveBeenCalledWith(expect.any(String))
       })
     })
 

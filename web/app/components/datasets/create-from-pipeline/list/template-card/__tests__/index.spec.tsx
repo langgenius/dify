@@ -14,8 +14,9 @@ vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: vi.fn(),
 }))
 
-const { mockToastAdd } = vi.hoisted(() => ({
-  mockToastAdd: vi.fn(),
+const { mockToastSuccess, mockToastError } = vi.hoisted(() => ({
+  mockToastSuccess: vi.fn(),
+  mockToastError: vi.fn(),
 }))
 
 vi.mock('@/app/components/base/ui/toast', async (importOriginal) => {
@@ -24,7 +25,8 @@ vi.mock('@/app/components/base/ui/toast', async (importOriginal) => {
     ...actual,
     toast: {
       ...actual.toast,
-      add: mockToastAdd,
+      success: mockToastSuccess,
+      error: mockToastError,
     },
   }
 })
@@ -182,7 +184,8 @@ describe('TemplateCard', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockToastAdd.mockReset()
+    mockToastSuccess.mockReset()
+    mockToastError.mockReset()
     mockIsExporting = false
     _capturedOnConfirm = undefined
     _capturedOnCancel = undefined
@@ -237,10 +240,7 @@ describe('TemplateCard', () => {
       fireEvent.click(chooseButton)
 
       await waitFor(() => {
-        expect(mockToastAdd).toHaveBeenCalledWith({
-          type: 'error',
-          title: expect.any(String),
-        })
+        expect(mockToastError).toHaveBeenCalledWith(expect.any(String))
       })
     })
 
@@ -300,10 +300,7 @@ describe('TemplateCard', () => {
       fireEvent.click(chooseButton)
 
       await waitFor(() => {
-        expect(mockToastAdd).toHaveBeenCalledWith({
-          type: 'success',
-          title: expect.any(String),
-        })
+        expect(mockToastSuccess).toHaveBeenCalledWith(expect.any(String))
       })
     })
 
@@ -318,10 +315,7 @@ describe('TemplateCard', () => {
       fireEvent.click(chooseButton)
 
       await waitFor(() => {
-        expect(mockToastAdd).toHaveBeenCalledWith({
-          type: 'error',
-          title: expect.any(String),
-        })
+        expect(mockToastError).toHaveBeenCalledWith(expect.any(String))
       })
     })
   })
@@ -467,10 +461,7 @@ describe('TemplateCard', () => {
       fireEvent.click(exportButton)
 
       await waitFor(() => {
-        expect(mockToastAdd).toHaveBeenCalledWith({
-          type: 'success',
-          title: expect.any(String),
-        })
+        expect(mockToastSuccess).toHaveBeenCalledWith(expect.any(String))
       })
     })
 
@@ -485,10 +476,7 @@ describe('TemplateCard', () => {
       fireEvent.click(exportButton)
 
       await waitFor(() => {
-        expect(mockToastAdd).toHaveBeenCalledWith({
-          type: 'error',
-          title: expect.any(String),
-        })
+        expect(mockToastError).toHaveBeenCalledWith(expect.any(String))
       })
     })
 
