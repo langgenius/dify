@@ -50,10 +50,7 @@ const TemplateCard = ({
   const handleUseTemplate = useCallback(async () => {
     const { data: pipelineTemplateInfo } = await getPipelineTemplateInfo()
     if (!pipelineTemplateInfo) {
-      toast.add({
-        type: 'error',
-        title: t('creation.errorTip', { ns: 'datasetPipeline' }),
-      })
+      toast.error(t('creation.errorTip', { ns: 'datasetPipeline' }))
       return
     }
     const request = {
@@ -61,10 +58,7 @@ const TemplateCard = ({
     }
     await createDataset(request, {
       onSuccess: async (newDataset) => {
-        toast.add({
-          type: 'success',
-          title: t('creation.successTip', { ns: 'datasetPipeline' }),
-        })
+        toast.success(t('creation.successTip', { ns: 'datasetPipeline' }))
         invalidDatasetList()
         if (newDataset.pipeline_id)
           await handleCheckPluginDependencies(newDataset.pipeline_id, true)
@@ -76,10 +70,7 @@ const TemplateCard = ({
         push(`/datasets/${newDataset.dataset_id}/pipeline`)
       },
       onError: () => {
-        toast.add({
-          type: 'error',
-          title: t('creation.errorTip', { ns: 'datasetPipeline' }),
-        })
+        toast.error(t('creation.errorTip', { ns: 'datasetPipeline' }))
       },
     })
   }, [getPipelineTemplateInfo, createDataset, t, handleCheckPluginDependencies, push, invalidDatasetList, pipeline.name, pipeline.id, type])
@@ -109,16 +100,10 @@ const TemplateCard = ({
       onSuccess: (res) => {
         const blob = new Blob([res.data], { type: 'application/yaml' })
         downloadBlob({ data: blob, fileName: `${pipeline.name}.pipeline` })
-        toast.add({
-          type: 'success',
-          title: t('exportDSL.successTip', { ns: 'datasetPipeline' }),
-        })
+        toast.success(t('exportDSL.successTip', { ns: 'datasetPipeline' }))
       },
       onError: () => {
-        toast.add({
-          type: 'error',
-          title: t('exportDSL.errorTip', { ns: 'datasetPipeline' }),
-        })
+        toast.error(t('exportDSL.errorTip', { ns: 'datasetPipeline' }))
       },
     })
   }, [t, isExporting, pipeline.id, pipeline.name, exportPipelineDSL])

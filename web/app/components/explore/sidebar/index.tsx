@@ -51,18 +51,12 @@ const SideBar = () => {
     const id = currId
     await uninstallApp(id)
     setShowConfirm(false)
-    toast.add({
-      type: 'success',
-      title: t('api.remove', { ns: 'common' }),
-    })
+    toast.success(t('api.remove', { ns: 'common' }))
   }
 
   const handleUpdatePinStatus = async (id: string, isPinned: boolean) => {
     await updatePinStatus({ appId: id, isPinned })
-    toast.add({
-      type: 'success',
-      title: t('api.success', { ns: 'common' }),
-    })
+    toast.success(t('api.success', { ns: 'common' }))
   }
 
   const pinnedAppsCount = installedApps.filter(({ is_pinned }) => is_pinned).length

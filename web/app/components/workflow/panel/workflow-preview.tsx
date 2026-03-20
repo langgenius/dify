@@ -210,7 +210,7 @@ const WorkflowPreview = () => {
                       copy(content)
                     else
                       copy(JSON.stringify(content))
-                    toast.add({ type: 'success', title: t('actionMsg.copySuccessfully', { ns: 'common' }) })
+                    toast.success(t('actionMsg.copySuccessfully', { ns: 'common' }))
                   }}
                 >
                   <span className="i-ri-clipboard-line h-3.5 w-3.5" />

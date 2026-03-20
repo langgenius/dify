@@ -11,8 +11,8 @@ import SideBar from '@/app/components/explore/sidebar'
 import { MediaType } from '@/hooks/use-breakpoints'
 import { AppModeEnum } from '@/types/app'
 
-const { mockToastAdd } = vi.hoisted(() => ({
-  mockToastAdd: vi.fn(),
+const { mockToastSuccess } = vi.hoisted(() => ({
+  mockToastSuccess: vi.fn(),
 }))
 
 let mockMediaType: string = MediaType.pc
@@ -53,14 +53,16 @@ vi.mock('@/service/use-explore', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
-  toast: {
-    add: mockToastAdd,
-    close: vi.fn(),
-    update: vi.fn(),
-    promise: vi.fn(),
-  },
-}))
+vi.mock('@/app/components/base/ui/toast', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/components/base/ui/toast')>()
+  return {
+    ...actual,
+    toast: {
+      ...actual.toast,
+      success: mockToastSuccess,
+    },
+  }
+})
 
 const createInstalledApp = (overrides: Partial<InstalledApp> = {}): InstalledApp => ({
   id: overrides.id ?? 'app-1',
@@ -105,9 +107,7 @@ describe('Sidebar Lifecycle Flow', () => {
 
       await waitFor(() => {
         expect(mockUpdatePinStatus).toHaveBeenCalledWith({ appId: 'app-1', isPinned: true })
-        expect(mockToastAdd).toHaveBeenCalledWith(expect.objectContaining({
-          type: 'success',
-        }))
+        expect(mockToastSuccess).toHaveBeenCalled()
       })
 
       // Step 2: Simulate refetch returning pinned state, then unpin
@@ -124,9 +124,7 @@ describe('Sidebar Lifecycle Flow', () => {
 
       await waitFor(() => {
         expect(mockUpdatePinStatus).toHaveBeenCalledWith({ appId: 'app-1', isPinned: false })
-        expect(mockToastAdd).toHaveBeenCalledWith(expect.objectContaining({
-          type: 'success',
-        }))
+        expect(mockToastSuccess).toHaveBeenCalled()
       })
     })
 
@@ -150,10 +148,7 @@ describe('Sidebar Lifecycle Flow', () => {
       // Step 4: Uninstall API called and success toast shown
       await waitFor(() => {
         expect(mockUninstall).toHaveBeenCalledWith('app-1')
-        expect(mockToastAdd).toHaveBeenCalledWith(expect.objectContaining({
-          type: 'success',
-          title: 'common.api.remove',
-        }))
+        expect(mockToastSuccess).toHaveBeenCalledWith('common.api.remove')
       })
     })
 
