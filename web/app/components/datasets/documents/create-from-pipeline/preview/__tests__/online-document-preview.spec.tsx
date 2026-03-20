@@ -9,11 +9,15 @@ const { mockToastNotify } = vi.hoisted(() => ({
   mockToastNotify: vi.fn(),
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
-  default: {
-    notify: mockToastNotify,
-  },
-}))
+vi.mock('@/app/components/base/toast', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/components/base/toast')>()
+  return {
+    ...actual,
+    default: Object.assign(actual.default, {
+      notify: mockToastNotify,
+    }),
+  }
+})
 
 // Mock dataset-detail context - needs mock to control return values
 const mockPipelineId = vi.fn()
