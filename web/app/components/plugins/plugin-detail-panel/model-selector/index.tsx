@@ -31,7 +31,6 @@ import TTSParamsPanel from './tts-params-panel'
 
 export type ModelParameterModalProps = {
   popupClassName?: string
-  portalToFollowElemContentClassName?: string
   isAdvancedMode: boolean
   value: any
   setModel: (model: any) => void
@@ -44,7 +43,6 @@ export type ModelParameterModalProps = {
 
 const ModelParameterModal: FC<ModelParameterModalProps> = ({
   popupClassName,
-  portalToFollowElemContentClassName,
   isAdvancedMode,
   value,
   setModel,
@@ -230,7 +228,6 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
         <PopoverContent
           placement={isInWorkflow ? 'left' : 'bottom-end'}
           sideOffset={4}
-          className={portalToFollowElemContentClassName}
           popupClassName={cn(popupClassName, 'w-[389px] rounded-2xl')}
         >
           <div className="max-h-[420px] overflow-y-auto p-4 pt-3">
