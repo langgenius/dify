@@ -1024,9 +1024,7 @@ class Conversation(Base):
     #
     # Its value corresponds to the members of `InvokeFrom`.
     # (api/core/app/entities/app_invoke_entities.py)
-    invoke_from: Mapped[InvokeFrom | None] = mapped_column(
-        EnumText(InvokeFrom, length=255), nullable=True
-    )
+    invoke_from: Mapped[InvokeFrom | None] = mapped_column(EnumText(InvokeFrom, length=255), nullable=True)
 
     # ref: ConversationSource.
     from_source: Mapped[ConversationFromSource] = mapped_column(
