@@ -102,12 +102,12 @@ Then follow the [Lint Documentation] to lint the code.
 
 We use [Vitest] and [React Testing Library] for Unit Testing.
 
+**📖 Complete Testing Guide**: See [web/docs/test.md] for detailed testing specifications, best practices, and examples.
+
 > [!IMPORTANT]
 > As we are using Vite+, the `vitest` command is not available.
 > Please make sure to run tests with `vp` commands.
 > For example, use `npx vp test` instead of `npx vitest`.
-
-**📖 Complete Testing Guide**: See [web/docs/test.md] for detailed testing specifications, best practices, and examples.
 
 Run test:
 
