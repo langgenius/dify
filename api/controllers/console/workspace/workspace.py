@@ -40,6 +40,14 @@ logger = logging.getLogger(__name__)
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
+def _plan_from_billing_features(tenant_id: str) -> str:
+    """Resolve plan from billing feature flags (SaaS partial-fallback path)."""
+    features = FeatureService.get_features(tenant_id)
+    if features.billing.enabled:
+        return features.billing.subscription.plan or CloudPlan.SANDBOX
+    return CloudPlan.SANDBOX
+
+
 class WorkspaceListQuery(BaseModel):
     page: int = Field(default=1, ge=1, le=99999)
     limit: int = Field(default=20, ge=1, le=100)
@@ -130,6 +138,8 @@ class TenantListApi(Resource):
                 tenant_plan = tenant_plans.get(tenant.id)
                 if tenant_plan:
                     plan = tenant_plan["plan"] or CloudPlan.SANDBOX
+                else:
+                    plan = _plan_from_billing_features(tenant.id)
             elif not is_enterprise_only:
                 features = FeatureService.get_features(tenant.id)
                 plan = features.billing.subscription.plan or CloudPlan.SANDBOX
