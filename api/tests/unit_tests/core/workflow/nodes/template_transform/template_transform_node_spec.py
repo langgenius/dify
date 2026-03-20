@@ -348,6 +348,37 @@ class TestTemplateTransformNode:
 
         assert mapping == {"node_123.var1": ["sys", "input1"]}
 
+    def test_extract_variable_selector_to_variable_mapping_returns_empty_mapping_without_variables(self):
+        node_data = {
+            "title": "Test",
+            "template": "{{ missing }}",
+        }
+
+        mapping = TemplateTransformNode._extract_variable_selector_to_variable_mapping(
+            graph_config={}, node_id="node_123", node_data=node_data
+        )
+
+        assert mapping == {}
+
+    def test_extract_variable_selector_to_variable_mapping_accepts_sequence_value_selectors(self):
+        node_data = {
+            "title": "Test",
+            "variables": [
+                {"variable": "var1", "value_selector": ("sys", "input1")},
+                {"variable": "empty_selector", "value_selector": ()},
+            ],
+            "template": "{{ var1 }}",
+        }
+
+        mapping = TemplateTransformNode._extract_variable_selector_to_variable_mapping(
+            graph_config={}, node_id="node_123", node_data=node_data
+        )
+
+        assert mapping == {
+            "node_123.var1": ["sys", "input1"],
+            "node_123.empty_selector": [],
+        }
+
     def test_extract_variable_selector_to_variable_mapping_ignores_invalid_entries(self):
         node_data = {
             "title": "Test",
