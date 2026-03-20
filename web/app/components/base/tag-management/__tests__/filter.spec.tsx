@@ -14,23 +14,11 @@ vi.mock('@/service/tag', () => ({
   fetchTagList,
 }))
 
-// Mock ahooks to avoid timer-related issues in tests
 vi.mock('ahooks', () => {
   return {
-    useDebounceFn: (fn: (...args: unknown[]) => void) => {
-      const ref = React.useRef(fn)
-      ref.current = fn
-      const stableRun = React.useRef((...args: unknown[]) => {
-        // Schedule to run after current event handler finishes,
-        // allowing React to process pending state updates first
-        Promise.resolve().then(() => ref.current(...args))
-      })
-      return { run: stableRun.current }
-    },
     useMount: (fn: () => void) => {
       React.useEffect(() => {
         fn()
-      // eslint-disable-next-line react-hooks/exhaustive-deps
       }, [])
     },
   }
@@ -228,7 +216,6 @@ describe('TagFilter', () => {
       const searchInput = screen.getByRole('textbox')
       await user.type(searchInput, 'Front')
 
-      // With debounce mocked to be synchronous, results should be immediate
       expect(screen.getByText('Frontend')).toBeInTheDocument()
       expect(screen.queryByText('Backend')).not.toBeInTheDocument()
       expect(screen.queryByText('API Design')).not.toBeInTheDocument()
@@ -257,22 +244,14 @@ describe('TagFilter', () => {
       const searchInput = screen.getByRole('textbox')
       await user.type(searchInput, 'Front')
 
-      // Wait for the debounced search to filter
-      await waitFor(() => {
-        expect(screen.queryByText('Backend')).not.toBeInTheDocument()
-      })
+      expect(screen.queryByText('Backend')).not.toBeInTheDocument()
 
-      // Clear the search using the Input's clear button
       const clearButton = screen.getByTestId('input-clear')
       await user.click(clearButton)
 
-      // The input value should be cleared
       expect(searchInput).toHaveValue('')
 
-      // After the clear + microtask re-render, all app tags should be visible again
-      await waitFor(() => {
-        expect(screen.getByText('Backend')).toBeInTheDocument()
-      })
+      expect(screen.getByText('Backend')).toBeInTheDocument()
       expect(screen.getByText('Frontend')).toBeInTheDocument()
       expect(screen.getByText('API Design')).toBeInTheDocument()
     })

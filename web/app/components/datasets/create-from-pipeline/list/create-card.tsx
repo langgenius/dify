@@ -3,7 +3,7 @@ import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { useRouter } from '@/next/navigation'
 import { useCreatePipelineDataset } from '@/service/knowledge/use-create-dataset'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
@@ -20,9 +20,9 @@ const CreateCard = () => {
       onSuccess: (data) => {
         if (data) {
           const { id } = data
-          Toast.notify({
+          toast.add({
             type: 'success',
-            message: t('creation.successTip', { ns: 'datasetPipeline' }),
+            title: t('creation.successTip', { ns: 'datasetPipeline' }),
           })
           invalidDatasetList()
           trackEvent('create_datasets_from_scratch', {
@@ -32,9 +32,9 @@ const CreateCard = () => {
         }
       },
       onError: () => {
-        Toast.notify({
+        toast.add({
           type: 'error',
-          message: t('creation.errorTip', { ns: 'datasetPipeline' }),
+          title: t('creation.errorTip', { ns: 'datasetPipeline' }),
         })
       },
     })

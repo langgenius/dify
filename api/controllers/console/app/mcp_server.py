@@ -103,12 +103,12 @@ class AppMCPServerController(Resource):
             raise NotFound()
 
         description = payload.description
-        if description is None:
-            pass
-        elif not description:
+        if description is None or not description:
             server.description = app_model.description or ""
         else:
             server.description = description
+
+        server.name = app_model.name
 
         server.parameters = json.dumps(payload.parameters, ensure_ascii=False)
         if payload.status:

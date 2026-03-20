@@ -22,14 +22,14 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column
 from typing_extensions import deprecated
 
-from core.trigger.constants import TRIGGER_INFO_METADATA_KEY, TRIGGER_PLUGIN_NODE_TYPE
+from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
 from dify_graph.constants import (
     CONVERSATION_VARIABLE_NODE_ID,
     SYSTEM_VARIABLE_NODE_ID,
 )
 from dify_graph.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
 from dify_graph.entities.pause_reason import HumanInputRequired, PauseReason, PauseReasonType, SchedulingPause
-from dify_graph.enums import BuiltinNodeTypes, NodeType, WorkflowExecutionStatus
+from dify_graph.enums import BuiltinNodeTypes, NodeType, WorkflowExecutionStatus, WorkflowNodeExecutionMetadataKey
 from dify_graph.file.constants import maybe_file_object
 from dify_graph.file.models import File
 from dify_graph.variables import utils as variable_utils
@@ -936,8 +936,11 @@ class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offlo
             elif self.node_type == BuiltinNodeTypes.DATASOURCE and "datasource_info" in execution_metadata:
                 datasource_info = execution_metadata["datasource_info"]
                 extras["icon"] = datasource_info.get("icon")
-            elif self.node_type == TRIGGER_PLUGIN_NODE_TYPE and TRIGGER_INFO_METADATA_KEY in execution_metadata:
-                trigger_info = execution_metadata[TRIGGER_INFO_METADATA_KEY] or {}
+            elif (
+                self.node_type == TRIGGER_PLUGIN_NODE_TYPE
+                and WorkflowNodeExecutionMetadataKey.TRIGGER_INFO in execution_metadata
+            ):
+                trigger_info = execution_metadata[WorkflowNodeExecutionMetadataKey.TRIGGER_INFO] or {}
                 provider_id = trigger_info.get("provider_id")
                 if provider_id:
                     extras["icon"] = TriggerManager.get_trigger_plugin_icon(

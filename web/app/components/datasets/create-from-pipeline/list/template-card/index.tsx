@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import Confirm from '@/app/components/base/confirm'
 import Modal from '@/app/components/base/modal'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { useRouter } from '@/next/navigation'
 import { useCreatePipelineDatasetFromCustomized } from '@/service/knowledge/use-create-dataset'
@@ -50,9 +50,9 @@ const TemplateCard = ({
   const handleUseTemplate = useCallback(async () => {
     const { data: pipelineTemplateInfo } = await getPipelineTemplateInfo()
     if (!pipelineTemplateInfo) {
-      Toast.notify({
+      toast.add({
         type: 'error',
-        message: t('creation.errorTip', { ns: 'datasetPipeline' }),
+        title: t('creation.errorTip', { ns: 'datasetPipeline' }),
       })
       return
     }
@@ -61,9 +61,9 @@ const TemplateCard = ({
     }
     await createDataset(request, {
       onSuccess: async (newDataset) => {
-        Toast.notify({
+        toast.add({
           type: 'success',
-          message: t('creation.successTip', { ns: 'datasetPipeline' }),
+          title: t('creation.successTip', { ns: 'datasetPipeline' }),
         })
         invalidDatasetList()
         if (newDataset.pipeline_id)
@@ -76,9 +76,9 @@ const TemplateCard = ({
         push(`/datasets/${newDataset.dataset_id}/pipeline`)
       },
       onError: () => {
-        Toast.notify({
+        toast.add({
           type: 'error',
-          message: t('creation.errorTip', { ns: 'datasetPipeline' }),
+          title: t('creation.errorTip', { ns: 'datasetPipeline' }),
         })
       },
     })
@@ -109,15 +109,15 @@ const TemplateCard = ({
       onSuccess: (res) => {
         const blob = new Blob([res.data], { type: 'application/yaml' })
         downloadBlob({ data: blob, fileName: `${pipeline.name}.pipeline` })
-        Toast.notify({
+        toast.add({
           type: 'success',
-          message: t('exportDSL.successTip', { ns: 'datasetPipeline' }),
+          title: t('exportDSL.successTip', { ns: 'datasetPipeline' }),
         })
       },
       onError: () => {
-        Toast.notify({
+        toast.add({
           type: 'error',
-          message: t('exportDSL.errorTip', { ns: 'datasetPipeline' }),
+          title: t('exportDSL.errorTip', { ns: 'datasetPipeline' }),
         })
       },
     })
