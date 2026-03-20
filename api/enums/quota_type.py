@@ -55,7 +55,10 @@ class QuotaCharge:
             self._committed = True
             logger.debug(
                 "Committed %s quota for tenant %s, reservation_id: %s, amount: %d",
-                self._quota_type.value, self._tenant_id, self.charge_id, amount,
+                self._quota_type.value,
+                self._tenant_id,
+                self.charge_id,
+                amount,
             )
         except Exception:
             logger.exception("Failed to commit quota, reservation_id: %s", self.charge_id)
@@ -169,13 +172,18 @@ class QuotaType(StrEnum):
             if not reservation_id:
                 logger.warning(
                     "Reserve returned no reservation_id for %s, feature %s, response: %s",
-                    tenant_id, self.value, reserve_resp,
+                    tenant_id,
+                    self.value,
+                    reserve_resp,
                 )
                 raise QuotaExceededError(feature=self.value, tenant_id=tenant_id, required=amount)
 
             logger.debug(
                 "Reserved %d %s quota for tenant %s, reservation_id: %s",
-                amount, self.value, tenant_id, reservation_id,
+                amount,
+                self.value,
+                tenant_id,
+                reservation_id,
             )
             return QuotaCharge(
                 success=True,

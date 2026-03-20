@@ -95,11 +95,15 @@ class BillingService:
         Returns:
             {"available": int, "reserved": int, "released": int}
         """
-        return cls._send_request("POST", "/quota/release", json={
-            "tenant_id": tenant_id,
-            "feature_key": feature_key,
-            "reservation_id": reservation_id,
-        })
+        return cls._send_request(
+            "POST",
+            "/quota/release",
+            json={
+                "tenant_id": tenant_id,
+                "feature_key": feature_key,
+                "reservation_id": reservation_id,
+            },
+        )
 
     @classmethod
     def get_knowledge_rate_limit(cls, tenant_id: str):
