@@ -46,6 +46,7 @@ export default antfu(
         'ts/consistent-type-definitions': ['error', 'type'],
         'ts/no-explicit-any': 'error',
       },
+      erasableOnly: true,
     },
     test: {
       overrides: {
