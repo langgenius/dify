@@ -3,11 +3,10 @@ import type { RunFile } from '../../types'
 import type { FileUpload } from '@/app/components/base/features/types'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import ReactFlow, { ReactFlowProvider } from 'reactflow'
 import { TransferMethod } from '@/types/app'
 import { FlowType } from '@/types/common'
 import { createStartNode } from '../../__tests__/fixtures'
-import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
+import { renderWorkflowFlowComponent } from '../../__tests__/workflow-test-env'
 import { InputVarType, WorkflowRunningStatus } from '../../types'
 import InputsPanel from '../inputs-panel'
 
@@ -64,18 +63,17 @@ const createHooksStoreProps = (
 
 const renderInputsPanel = (
   startNode: ReturnType<typeof createStartNode>,
-  options?: Parameters<typeof renderWorkflowComponent>[1],
-) => {
-  return renderWorkflowComponent(
-    <div style={{ width: 800, height: 600 }}>
-      <ReactFlowProvider>
-        <ReactFlow nodes={[startNode]} edges={[]} fitView />
-        <InputsPanel onRun={vi.fn()} />
-      </ReactFlowProvider>
-    </div>,
-    options,
+  options?: Omit<Parameters<typeof renderWorkflowFlowComponent>[1], 'nodes' | 'edges'>,
+  onRun = vi.fn(),
+) =>
+  renderWorkflowFlowComponent(
+    <InputsPanel onRun={onRun} />,
+    {
+      nodes: [startNode],
+      edges: [],
+      ...options,
+    },
   )
-}
 
 describe('InputsPanel', () => {
   beforeEach(() => {
@@ -169,34 +167,24 @@ describe('InputsPanel', () => {
       const onRun = vi.fn()
       const handleRun = vi.fn()
 
-      renderWorkflowComponent(
-        <div style={{ width: 800, height: 600 }}>
-          <ReactFlowProvider>
-            <ReactFlow
-              nodes={[
-                createStartNode({
-                  data: {
-                    variables: [
-                      {
-                        type: InputVarType.textInput,
-                        variable: 'question',
-                        label: 'Question',
-                        required: true,
-                        default: 'default question',
-                      },
-                    ],
-                  },
-                }),
-              ]}
-              edges={[]}
-              fitView
-            />
-            <InputsPanel onRun={onRun} />
-          </ReactFlowProvider>
-        </div>,
+      renderInputsPanel(
+        createStartNode({
+          data: {
+            variables: [
+              {
+                type: InputVarType.textInput,
+                variable: 'question',
+                label: 'Question',
+                required: true,
+                default: 'default question',
+              },
+            ],
+          },
+        }),
         {
           hooksStoreProps: createHooksStoreProps({ handleRun }),
         },
+        onRun,
       )
 
       await user.click(screen.getByRole('button', { name: 'workflow.singleRun.startRun' }))
@@ -217,36 +205,25 @@ describe('InputsPanel', () => {
       const onRun = vi.fn()
       const handleRun = vi.fn()
 
-      renderWorkflowComponent(
-        <div style={{ width: 800, height: 600 }}>
-          <ReactFlowProvider>
-            <ReactFlow
-              nodes={[
-                createStartNode({
-                  data: {
-                    variables: [
-                      {
-                        type: InputVarType.textInput,
-                        variable: 'question',
-                        label: 'Question',
-                        required: true,
-                      },
-                      {
-                        type: InputVarType.checkbox,
-                        variable: 'confirmed',
-                        label: 'Confirmed',
-                        required: false,
-                      },
-                    ],
-                  },
-                }),
-              ]}
-              edges={[]}
-              fitView
-            />
-            <InputsPanel onRun={onRun} />
-          </ReactFlowProvider>
-        </div>,
+      renderInputsPanel(
+        createStartNode({
+          data: {
+            variables: [
+              {
+                type: InputVarType.textInput,
+                variable: 'question',
+                label: 'Question',
+                required: true,
+              },
+              {
+                type: InputVarType.checkbox,
+                variable: 'confirmed',
+                label: 'Confirmed',
+                required: false,
+              },
+            ],
+          },
+        }),
         {
           initialStoreState: {
             inputs: {
@@ -266,6 +243,7 @@ describe('InputsPanel', () => {
             },
           }),
         },
+        onRun,
       )
 
       await user.click(screen.getByRole('button', { name: 'workflow.singleRun.startRun' }))
