@@ -45,20 +45,14 @@ describe('base/ui/toast', () => {
     render(<ToastHost />)
 
     act(() => {
-      toast.add({
-        title: 'First toast',
-      })
+      toast('First toast')
     })
 
     expect(await screen.findByText('First toast')).toBeInTheDocument()
 
     act(() => {
-      toast.add({
-        title: 'Second toast',
-      })
-      toast.add({
-        title: 'Third toast',
-      })
+      toast('Second toast')
+      toast('Third toast')
     })
 
     expect(await screen.findByText('Third toast')).toBeInTheDocument()
@@ -119,28 +113,6 @@ describe('base/ui/toast', () => {
     })
   })
 
-  // The compatibility aliases should remain available until call sites migrate.
-  it('should keep add and close aliases working', async () => {
-    render(<ToastHost />)
-
-    let toastId = ''
-    act(() => {
-      toastId = toast.add({
-        title: 'Alias toast',
-      })
-    })
-
-    expect(await screen.findByText('Alias toast')).toBeInTheDocument()
-
-    act(() => {
-      toast.close(toastId)
-    })
-
-    await waitFor(() => {
-      expect(screen.queryByText('Alias toast')).not.toBeInTheDocument()
-    })
-  })
-
   // User dismissal needs to remain accessible.
   it('should close a toast when the dismiss button is clicked', async () => {
     const onClose = vi.fn()
@@ -148,8 +120,7 @@ describe('base/ui/toast', () => {
     render(<ToastHost />)
 
     act(() => {
-      toast.add({
-        title: 'Dismiss me',
+      toast('Dismiss me', {
         description: 'Manual dismissal path.',
         onClose,
       })
@@ -260,10 +231,8 @@ describe('base/ui/toast', () => {
 
     let toastId = ''
     act(() => {
-      toastId = toast.add({
-        title: 'Loading',
+      toastId = toast.info('Loading', {
         description: 'Preparing your data…',
-        type: 'info',
       })
     })
 

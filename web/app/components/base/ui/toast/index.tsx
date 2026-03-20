@@ -71,9 +71,7 @@ export type ToastApi = {
   error: TypedToastCall
   warning: TypedToastCall
   info: TypedToastCall
-  add: (options: ToastAddOptions) => string
   dismiss: ToastDismiss
-  close: ToastDismiss
   update: (toastId: string, options: ToastUpdateOptions) => void
   promise: <Value>(promiseValue: Promise<Value>, options: ToastPromiseOptions<Value>) => Promise<Value>
 }
@@ -124,9 +122,7 @@ export const toast: ToastApi = Object.assign(
     error: createTypedToast('error'),
     warning: createTypedToast('warning'),
     info: createTypedToast('info'),
-    add: addToast,
     dismiss: dismissToast,
-    close: dismissToast,
     update: updateToast,
     promise: promiseToast,
   },

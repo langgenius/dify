@@ -44,10 +44,7 @@ const OnlineDocumentPreview = ({
         setContent(data.content)
       },
       onError(error) {
-        toast.add({
-          type: 'error',
-          title: error.message,
-        })
+        toast.error(error.message)
       },
     })
   }, [currentPage.page_id])
