@@ -14,9 +14,6 @@ export default function RoleRouteGuard({ children }: { children: ReactNode }) {
   const shouldGuardRoute = datasetOperatorRedirectRoutes.some(route => isPathUnderRoute(pathname, route))
   const shouldRedirect = shouldGuardRoute && !isLoadingCurrentWorkspace && isCurrentWorkspaceDatasetOperator
 
-  if (shouldGuardRoute && isLoadingCurrentWorkspace)
-    return null
-
   if (shouldRedirect)
     return redirect('/datasets')
 
