@@ -6,10 +6,10 @@ import GetSchema from '../get-schema'
 vi.mock('@/service/tools', () => ({
   importSchemaFromURL: vi.fn(),
 }))
-const mockToastAdd = vi.hoisted(() => vi.fn())
+const mockToastError = vi.hoisted(() => vi.fn())
 vi.mock('@/app/components/base/ui/toast', () => ({
   toast: {
-    add: mockToastAdd,
+    error: mockToastError,
   },
 }))
 const importSchemaFromURLMock = vi.mocked(importSchemaFromURL)
@@ -30,10 +30,7 @@ describe('GetSchema', () => {
     fireEvent.change(input, { target: { value: 'ftp://invalid' } })
     fireEvent.click(screen.getByText('common.operation.ok'))
 
-    expect(mockToastAdd).toHaveBeenCalledWith({
-      type: 'error',
-      title: 'tools.createTool.urlError',
-    })
+    expect(mockToastError).toHaveBeenCalledWith('tools.createTool.urlError')
   })
 
   it('imports schema from url when valid', async () => {

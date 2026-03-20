@@ -4,8 +4,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 import Form from '../form'
 
-const { mockToastAdd } = vi.hoisted(() => ({
-  mockToastAdd: vi.fn(),
+const { mockToastError } = vi.hoisted(() => ({
+  mockToastError: vi.fn(),
 }))
 
 vi.mock('@/app/components/base/ui/toast', async (importOriginal) => {
@@ -14,7 +14,7 @@ vi.mock('@/app/components/base/ui/toast', async (importOriginal) => {
     ...actual,
     toast: {
       ...actual.toast,
-      add: mockToastAdd,
+      error: mockToastError,
     },
   }
 })
@@ -57,7 +57,7 @@ const defaultProps = {
 describe('Form (process-documents)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockToastAdd.mockReset()
+    mockToastError.mockReset()
   })
 
   // Verify basic rendering of form structure
@@ -119,12 +119,7 @@ describe('Form (process-documents)', () => {
       fireEvent.submit(form)
 
       await waitFor(() => {
-        expect(mockToastAdd).toHaveBeenCalledWith(
-          expect.objectContaining({
-            type: 'error',
-            title: '"name" Name is required',
-          }),
-        )
+        expect(mockToastError).toHaveBeenCalledWith('"name" Name is required')
       })
     })
 
@@ -137,7 +132,7 @@ describe('Form (process-documents)', () => {
       await waitFor(() => {
         expect(defaultProps.onSubmit).toHaveBeenCalled()
       })
-      expect(mockToastAdd).not.toHaveBeenCalled()
+      expect(mockToastError).not.toHaveBeenCalled()
     })
   })
 

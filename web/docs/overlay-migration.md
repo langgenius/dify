@@ -23,7 +23,7 @@ This document tracks the migration away from legacy overlay APIs.
   - `@/app/components/base/ui/alert-dialog`
   - `@/app/components/base/ui/select`
   - `@/app/components/base/ui/toast`
-- Tracking issue: https://github.com/langgenius/dify/issues/32767
+- Tracking issue: <https://github.com/langgenius/dify/issues/32767>
 
 ## ESLint policy
 
@@ -72,14 +72,14 @@ All new overlay primitives in `base/ui/` share a single z-index value:
 During the migration period, legacy and new overlays coexist. Legacy overlays
 portal to `document.body` with explicit z-index values:
 
-| Layer | z-index | Components |
-|-------|---------|------------|
-| Legacy Drawer | `z-[30]` | `base/drawer` |
-| Legacy Modal | `z-[60]` | `base/modal` (default) |
-| Legacy PortalToFollowElem callers | up to `z-[1001]` | various business components |
-| **New UI primitives** | **`z-[1002]`** | `base/ui/*` (Popover, Dialog, Tooltip, etc.) |
-| Legacy Modal (highPriority) | `z-[1100]` | `base/modal` (`highPriority={true}`) |
-| Toast (legacy + new) | `z-[1101]` | `base/toast`, `base/ui/toast` |
+| Layer                             | z-index          | Components                                   |
+| --------------------------------- | ---------------- | -------------------------------------------- |
+| Legacy Drawer                     | `z-[30]`         | `base/drawer`                                |
+| Legacy Modal                      | `z-[60]`         | `base/modal` (default)                       |
+| Legacy PortalToFollowElem callers | up to `z-[1001]` | various business components                  |
+| **New UI primitives**             | **`z-[1002]`**   | `base/ui/*` (Popover, Dialog, Tooltip, etc.) |
+| Legacy Modal (highPriority)       | `z-[1100]`       | `base/modal` (`highPriority={true}`)         |
+| Toast (legacy + new)              | `z-[1101]`       | `base/toast`, `base/ui/toast`                |
 
 `z-[1002]` sits above all common legacy overlays, so new primitives always
 render on top without needing per-call-site z-index hacks. Among themselves,

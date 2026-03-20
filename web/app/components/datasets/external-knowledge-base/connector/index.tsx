@@ -20,7 +20,7 @@ const ExternalKnowledgeBaseConnector = () => {
       setLoading(true)
       const result = await createExternalKnowledgeBase({ body: formValue })
       if (result && result.id) {
-        toast.add({ type: 'success', title: t('externalKnowledgeForm.connectedSuccess', { ns: 'dataset' }) })
+        toast.success(t('externalKnowledgeForm.connectedSuccess', { ns: 'dataset' }))
         trackEvent('create_external_knowledge_base', {
           provider: formValue.provider,
           name: formValue.name,
@@ -31,7 +31,7 @@ const ExternalKnowledgeBaseConnector = () => {
     }
     catch (error) {
       console.error('Error creating external knowledge base:', error)
-      toast.add({ type: 'error', title: t('externalKnowledgeForm.connectedFailed', { ns: 'dataset' }) })
+      toast.error(t('externalKnowledgeForm.connectedFailed', { ns: 'dataset' }))
     }
     setLoading(false)
   }
