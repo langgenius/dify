@@ -66,8 +66,14 @@ pnpm type-check:tsgo
 Prefer using `tsgo` for type checking as it is significantly faster than the standard TypeScript compiler.
 Only fall back to `pnpm type-check` (which uses `tsc`) if you encounter unexpected results.
 
-- [ESLint multi-thread linting blog post]: https://eslint.org/blog/2025/08/multithread-linting
-- [ESLint bulk suppressions blog post]: https://eslint.org/blog/2025/04/introducing-bulk-suppressions
-- [no-leaked-conditional-rendering]: https://www.eslint-react.xyz/docs/rules/no-leaked-conditional-rendering
-- [typed linting via typescript-eslint]: https://typescript-eslint.io/getting-started/typed-linting
-- [TSSLint]: https://github.com/johnsoncodehk/tsslint
+-
+-
+-
+-
+-
+
+[eslint bulk suppressions blog post]: https://eslint.org/blog/2025/04/introducing-bulk-suppressions
+[eslint multi-thread linting blog post]: https://eslint.org/blog/2025/08/multithread-linting
+[no-leaked-conditional-rendering]: https://www.eslint-react.xyz/docs/rules/no-leaked-conditional-rendering
+[tsslint]: https://github.com/johnsoncodehk/tsslint
+[typed linting via typescript-eslint]: https://typescript-eslint.io/getting-started/typed-linting
