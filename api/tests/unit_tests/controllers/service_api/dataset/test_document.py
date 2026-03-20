@@ -35,6 +35,7 @@ from controllers.service_api.dataset.document import (
     InvalidMetadataError,
 )
 from controllers.service_api.dataset.error import ArchivedDocumentImmutableError
+from models.enums import IndexingStatus
 from services.dataset_service import DocumentService
 from services.entities.knowledge_entities.knowledge_entities import ProcessRule, RetrievalModel
 
@@ -244,23 +245,26 @@ class TestDocumentService:
 class TestDocumentIndexingStatus:
     """Test document indexing status values."""
 
+    _VALID_STATUSES = {
+        IndexingStatus.WAITING,
+        IndexingStatus.PARSING,
+        IndexingStatus.INDEXING,
+        IndexingStatus.COMPLETED,
+        IndexingStatus.ERROR,
+        IndexingStatus.PAUSED,
+    }
+
     def test_completed_status(self):
         """Test completed status."""
-        status = "completed"
-        valid_statuses = ["waiting", "parsing", "indexing", "completed", "error", "paused"]
-        assert status in valid_statuses
+        assert IndexingStatus.COMPLETED in self._VALID_STATUSES
 
     def test_indexing_status(self):
         """Test indexing status."""
-        status = "indexing"
-        valid_statuses = ["waiting", "parsing", "indexing", "completed", "error", "paused"]
-        assert status in valid_statuses
+        assert IndexingStatus.INDEXING in self._VALID_STATUSES
 
     def test_error_status(self):
         """Test error status."""
-        status = "error"
-        valid_statuses = ["waiting", "parsing", "indexing", "completed", "error", "paused"]
-        assert status in valid_statuses
+        assert IndexingStatus.ERROR in self._VALID_STATUSES
 
 
 class TestDocumentDocForm:

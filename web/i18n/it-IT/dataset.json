@@ -77,6 +77,8 @@
   "externalKnowledgeDescriptionPlaceholder": "Descrivi cosa c'è in questa Knowledge Base (facoltativo)",
   "externalKnowledgeForm.cancel": "Annulla",
   "externalKnowledgeForm.connect": "Connettersi",
+  "externalKnowledgeForm.connectedFailed": "Connessione alla base di conoscenza esterna non riuscita",
+  "externalKnowledgeForm.connectedSuccess": "Base di conoscenza esterna connessa con successo",
   "externalKnowledgeId": "ID conoscenza esterna",
   "externalKnowledgeIdPlaceholder": "Inserisci l'ID conoscenza",
   "externalKnowledgeName": "Nome della conoscenza esterna",

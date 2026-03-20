@@ -351,6 +351,7 @@ describe('useResultSender', () => {
     await waitFor(() => {
       expect(createWorkflowStreamHandlersMock).toHaveBeenCalledWith(expect.objectContaining({
         getCompletionRes: harness.runState.getCompletionRes,
+        isPublicAPI: true,
         resetRunState: harness.runState.resetRunState,
         setWorkflowProcessData: harness.runState.setWorkflowProcessData,
       }))
@@ -371,6 +372,30 @@ describe('useResultSender', () => {
       })
     })
     expect(harness.runState.clearMoreLikeThis).not.toHaveBeenCalled()
+  })
+
+  it('should configure workflow handlers for installed apps as non-public', async () => {
+    const harness = createRunStateHarness()
+
+    const { result } = renderSender({
+      appSourceType: AppSourceTypeEnum.installedApp,
+      isWorkflow: true,
+      runState: harness.runState,
+    })
+
+    await act(async () => {
+      expect(await result.current.handleSend()).toBe(true)
+    })
+
+    expect(createWorkflowStreamHandlersMock).toHaveBeenCalledWith(expect.objectContaining({
+      isPublicAPI: false,
+    }))
+    expect(sendWorkflowMessageMock).toHaveBeenCalledWith(
+      { inputs: { name: 'Alice' } },
+      expect.any(Object),
+      AppSourceTypeEnum.installedApp,
+      'app-1',
+    )
   })
 
   it('should stringify non-Error workflow failures', async () => {

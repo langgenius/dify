@@ -15,6 +15,7 @@ type VersionPickerMock = {
 const {
   mockSetShowUpdatePluginModal,
   mockRefreshModelProviders,
+  mockInvalidateCheckInstalled,
   mockInvalidateAllToolProviders,
   mockUninstallPlugin,
   mockFetchReleases,
@@ -23,6 +24,7 @@ const {
   return {
     mockSetShowUpdatePluginModal: vi.fn(),
     mockRefreshModelProviders: vi.fn(),
+    mockInvalidateCheckInstalled: vi.fn(),
     mockInvalidateAllToolProviders: vi.fn(),
     mockUninstallPlugin: vi.fn(() => Promise.resolve({ success: true })),
     mockFetchReleases: vi.fn(() => Promise.resolve([{ tag_name: 'v2.0.0' }])),
@@ -44,6 +46,10 @@ vi.mock('@/context/provider-context', () => ({
 
 vi.mock('@/service/plugins', () => ({
   uninstallPlugin: mockUninstallPlugin,
+}))
+
+vi.mock('@/service/use-plugins', () => ({
+  useInvalidateCheckInstalled: () => mockInvalidateCheckInstalled,
 }))
 
 vi.mock('@/service/use-tools', () => ({
@@ -178,6 +184,7 @@ describe('usePluginOperations', () => {
         result.current.handleUpdatedFromMarketplace()
       })
 
+      expect(mockInvalidateCheckInstalled).toHaveBeenCalled()
       expect(mockOnUpdate).toHaveBeenCalled()
       expect(modalStates.hideUpdateModal).toHaveBeenCalled()
     })
@@ -249,6 +256,32 @@ describe('usePluginOperations', () => {
       })
 
       expect(mockSetShowUpdatePluginModal).toHaveBeenCalled()
+    })
+
+    it('should invalidate checkInstalled when GitHub update save callback fires', async () => {
+      const detail = createPluginDetail({
+        source: PluginSource.github,
+        meta: { repo: 'owner/repo', version: 'v1.0.0', package: 'pkg' },
+      })
+      const { result } = renderHook(() =>
+        usePluginOperations({
+          detail,
+          modalStates,
+          versionPicker,
+          isFromMarketplace: false,
+          onUpdate: mockOnUpdate,
+        }),
+      )
+
+      await act(async () => {
+        await result.current.handleUpdate()
+      })
+
+      const firstCall = mockSetShowUpdatePluginModal.mock.calls.at(0)?.[0]
+      firstCall?.onSaveCallback()
+
+      expect(mockInvalidateCheckInstalled).toHaveBeenCalled()
+      expect(mockOnUpdate).toHaveBeenCalled()
     })
 
     it('should not show modal when no releases found', async () => {
@@ -388,6 +421,7 @@ describe('usePluginOperations', () => {
         await result.current.handleDelete()
       })
 
+      expect(mockInvalidateCheckInstalled).toHaveBeenCalled()
       expect(mockOnUpdate).toHaveBeenCalledWith(true)
     })
 

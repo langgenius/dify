@@ -1,18 +1,18 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { useAppContext } from '@/context/app-context'
 import {
   useParams,
   useRouter,
   useSelectedLayoutSegment,
-} from 'next/navigation'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { useAppContext } from '@/context/app-context'
+} from '@/next/navigation'
 import {
   useDatasetDetail,
   useDatasetList,
 } from '@/service/knowledge/use-dataset'
 import DatasetNav from '../index'
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useParams: vi.fn(),
   useRouter: vi.fn(),
   useSelectedLayoutSegment: vi.fn(),

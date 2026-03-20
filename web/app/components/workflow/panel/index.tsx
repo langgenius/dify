@@ -1,9 +1,9 @@
 import type { FC } from 'react'
 import type { VersionHistoryPanelProps } from '@/app/components/workflow/panel/version-history-panel'
-import dynamic from 'next/dynamic'
 import { memo, useCallback, useEffect, useRef } from 'react'
 import { useStore as useReactflow } from 'reactflow'
 import { useShallow } from 'zustand/react/shallow'
+import dynamic from '@/next/dynamic'
 import { cn } from '@/utils/classnames'
 import { Panel as NodePanel } from '../nodes'
 import { useStore } from '../store'
@@ -140,7 +140,7 @@ const Panel: FC<PanelProps> = ({
           components?.right
         }
         {
-          showWorkflowVersionHistoryPanel && (
+          showWorkflowVersionHistoryPanel && versionHistoryPanelProps && (
             <VersionHistoryPanel {...versionHistoryPanelProps} />
           )
         }

@@ -6,6 +6,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.rag.datasource.vdb.vector_factory import Vector
 from extensions.ext_database import db
 from models.dataset import Dataset
+from models.enums import CollectionBindingType
 from models.model import App, AppAnnotationSetting, Message, MessageAnnotation
 from services.annotation_service import AppAnnotationService
 from services.dataset_service import DatasetCollectionBindingService
@@ -43,7 +44,7 @@ class AnnotationReplyFeature:
             embedding_model_name = collection_binding_detail.model_name
 
             dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
-                embedding_provider_name, embedding_model_name, "annotation"
+                embedding_provider_name, embedding_model_name, CollectionBindingType.ANNOTATION
             )
 
             dataset = Dataset(

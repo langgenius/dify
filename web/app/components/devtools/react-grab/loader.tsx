@@ -1,5 +1,5 @@
-import Script from 'next/script'
 import { IS_DEV } from '@/config'
+import Script from '@/next/script'
 
 export function ReactGrabLoader() {
   if (!IS_DEV)

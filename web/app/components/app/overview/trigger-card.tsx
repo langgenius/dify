@@ -3,7 +3,6 @@ import type { AppDetailResponse } from '@/models/app'
 import type { AppTrigger } from '@/service/use-tools'
 import type { AppSSO } from '@/types/app'
 import type { I18nKeysByPrefix } from '@/types/i18n'
-import Link from 'next/link'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { TriggerAll } from '@/app/components/base/icons/src/vender/workflow'
@@ -13,6 +12,7 @@ import { useTriggerStatusStore } from '@/app/components/workflow/store/trigger-s
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useAppContext } from '@/context/app-context'
 import { useDocLink } from '@/context/i18n'
+import Link from '@/next/link'
 import {
 
   useAppTriggers,

@@ -55,7 +55,7 @@ class TypeMismatchError(Exception):
 
 
 # Define the constant
-SEGMENT_TO_VARIABLE_MAP = {
+SEGMENT_TO_VARIABLE_MAP: Mapping[type[Segment], type[VariableBase]] = {
     ArrayAnySegment: ArrayAnyVariable,
     ArrayBooleanSegment: ArrayBooleanVariable,
     ArrayFileSegment: ArrayFileVariable,
@@ -296,13 +296,11 @@ def segment_to_variable(
         raise UnsupportedSegmentTypeError(f"not supported segment type {segment_type}")
 
     variable_class = SEGMENT_TO_VARIABLE_MAP[segment_type]
-    return cast(
-        VariableBase,
-        variable_class(
-            id=id,
-            name=name,
-            description=description,
-            value=segment.value,
-            selector=list(selector),
-        ),
+    return variable_class(
+        id=id,
+        name=name,
+        description=description,
+        value_type=segment.value_type,
+        value=segment.value,
+        selector=list(selector),
     )

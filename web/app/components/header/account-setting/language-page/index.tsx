@@ -2,7 +2,6 @@
 
 import type { Item } from '@/app/components/base/select'
 import type { Locale } from '@/i18n-config'
-import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
@@ -12,6 +11,7 @@ import { useAppContext } from '@/context/app-context'
 import { useLocale } from '@/context/i18n'
 import { setLocaleOnClient } from '@/i18n-config'
 import { languages } from '@/i18n-config/language'
+import { useRouter } from '@/next/navigation'
 import { updateUserProfile } from '@/service/common'
 import { timezones } from '@/utils/timezone'
 

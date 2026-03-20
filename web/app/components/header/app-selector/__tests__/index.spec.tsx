@@ -1,12 +1,12 @@
 import type { AppDetailResponse } from '@/models/app'
 import { act, fireEvent, render, screen } from '@testing-library/react'
-import { useRouter } from 'next/navigation'
 import { vi } from 'vitest'
 import { useAppContext } from '@/context/app-context'
+import { useRouter } from '@/next/navigation'
 import AppSelector from '../index'
 
 // Mock next/navigation
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: vi.fn(),
 }))
 

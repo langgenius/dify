@@ -10,6 +10,7 @@ export default defineConfig({
     // We can not upgrade these yet
     'tailwind-merge',
     'tailwindcss',
+    '@eslint-react/eslint-plugin',
   ],
 
   write: true,

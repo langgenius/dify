@@ -23,7 +23,7 @@ let mockAppDetail: Record<string, unknown> | undefined = {
   icon_background: '#FFEAD5',
 }
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ replace: mockReplace }),
 }))
 

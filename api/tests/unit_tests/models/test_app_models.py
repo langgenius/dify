@@ -300,10 +300,8 @@ class TestAppModelConfig:
             created_by=str(uuid4()),
         )
 
-        # Mock database query to return None
-        with patch("models.model.db.session.query", autospec=True) as mock_query:
-            mock_query.return_value.where.return_value.first.return_value = None
-
+        # Mock database scalar to return None (no annotation setting found)
+        with patch("models.model.db.session.scalar", return_value=None):
             # Act
             result = config.annotation_reply_dict
 
@@ -951,10 +949,8 @@ class TestSiteModel:
 
     def test_site_generate_code(self):
         """Test Site.generate_code static method."""
-        # Mock database query to return 0 (no existing codes)
-        with patch("models.model.db.session.query", autospec=True) as mock_query:
-            mock_query.return_value.where.return_value.count.return_value = 0
-
+        # Mock database scalar to return 0 (no existing codes)
+        with patch("models.model.db.session.scalar", return_value=0):
             # Act
             code = Site.generate_code(8)
 

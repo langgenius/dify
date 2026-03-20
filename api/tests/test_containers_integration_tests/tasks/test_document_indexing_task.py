@@ -8,6 +8,7 @@ from core.entities.document_task import DocumentTask
 from enums.cloud_plan import CloudPlan
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document
+from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from tasks.document_indexing_task import (
     _document_indexing,  # Core function
     _document_indexing_with_tenant_queue,  # Tenant queue wrapper function
@@ -97,7 +98,7 @@ class TestDocumentIndexingTasks:
             tenant_id=tenant.id,
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             indexing_technique="high_quality",
             created_by=account.id,
         )
@@ -112,12 +113,12 @@ class TestDocumentIndexingTasks:
                 tenant_id=tenant.id,
                 dataset_id=dataset.id,
                 position=i,
-                data_source_type="upload_file",
+                data_source_type=DataSourceType.UPLOAD_FILE,
                 batch="test_batch",
                 name=fake.file_name(),
-                created_from="upload_file",
+                created_from=DocumentCreatedFrom.WEB,
                 created_by=account.id,
-                indexing_status="waiting",
+                indexing_status=IndexingStatus.WAITING,
                 enabled=True,
             )
             db_session_with_containers.add(document)
@@ -179,7 +180,7 @@ class TestDocumentIndexingTasks:
             tenant_id=tenant.id,
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             indexing_technique="high_quality",
             created_by=account.id,
         )
@@ -194,12 +195,12 @@ class TestDocumentIndexingTasks:
                 tenant_id=tenant.id,
                 dataset_id=dataset.id,
                 position=i,
-                data_source_type="upload_file",
+                data_source_type=DataSourceType.UPLOAD_FILE,
                 batch="test_batch",
                 name=fake.file_name(),
-                created_from="upload_file",
+                created_from=DocumentCreatedFrom.WEB,
                 created_by=account.id,
-                indexing_status="waiting",
+                indexing_status=IndexingStatus.WAITING,
                 enabled=True,
             )
             db_session_with_containers.add(document)
@@ -250,7 +251,7 @@ class TestDocumentIndexingTasks:
         # Re-query documents from database since _document_indexing uses a different session
         for doc_id in document_ids:
             updated_document = db_session_with_containers.query(Document).where(Document.id == doc_id).first()
-            assert updated_document.indexing_status == "parsing"
+            assert updated_document.indexing_status == IndexingStatus.PARSING
             assert updated_document.processing_started_at is not None
 
         # Verify the run method was called with correct documents
@@ -320,7 +321,7 @@ class TestDocumentIndexingTasks:
         # Re-query documents from database since _document_indexing uses a different session
         for doc_id in existing_document_ids:
             updated_document = db_session_with_containers.query(Document).where(Document.id == doc_id).first()
-            assert updated_document.indexing_status == "parsing"
+            assert updated_document.indexing_status == IndexingStatus.PARSING
             assert updated_document.processing_started_at is not None
 
         # Verify the run method was called with only existing documents
@@ -367,7 +368,7 @@ class TestDocumentIndexingTasks:
         # Re-query documents from database since _document_indexing close the session
         for doc_id in document_ids:
             updated_document = db_session_with_containers.query(Document).where(Document.id == doc_id).first()
-            assert updated_document.indexing_status == "parsing"
+            assert updated_document.indexing_status == IndexingStatus.PARSING
             assert updated_document.processing_started_at is not None
 
     def test_document_indexing_task_mixed_document_states(
@@ -397,12 +398,12 @@ class TestDocumentIndexingTasks:
             tenant_id=dataset.tenant_id,
             dataset_id=dataset.id,
             position=2,
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             batch="test_batch",
             name=fake.file_name(),
-            created_from="upload_file",
+            created_from=DocumentCreatedFrom.WEB,
             created_by=dataset.created_by,
-            indexing_status="completed",  # Already completed
+            indexing_status=IndexingStatus.COMPLETED,  # Already completed
             enabled=True,
         )
         db_session_with_containers.add(doc1)
@@ -414,12 +415,12 @@ class TestDocumentIndexingTasks:
             tenant_id=dataset.tenant_id,
             dataset_id=dataset.id,
             position=3,
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             batch="test_batch",
             name=fake.file_name(),
-            created_from="upload_file",
+            created_from=DocumentCreatedFrom.WEB,
             created_by=dataset.created_by,
-            indexing_status="waiting",
+            indexing_status=IndexingStatus.WAITING,
             enabled=False,  # Disabled
         )
         db_session_with_containers.add(doc2)
@@ -444,7 +445,7 @@ class TestDocumentIndexingTasks:
         # Re-query documents from database since _document_indexing uses a different session
         for doc_id in document_ids:
             updated_document = db_session_with_containers.query(Document).where(Document.id == doc_id).first()
-            assert updated_document.indexing_status == "parsing"
+            assert updated_document.indexing_status == IndexingStatus.PARSING
             assert updated_document.processing_started_at is not None
 
         # Verify the run method was called with all documents
@@ -482,12 +483,12 @@ class TestDocumentIndexingTasks:
                 tenant_id=dataset.tenant_id,
                 dataset_id=dataset.id,
                 position=i + 3,
-                data_source_type="upload_file",
+                data_source_type=DataSourceType.UPLOAD_FILE,
                 batch="test_batch",
                 name=fake.file_name(),
-                created_from="upload_file",
+                created_from=DocumentCreatedFrom.WEB,
                 created_by=dataset.created_by,
-                indexing_status="waiting",
+                indexing_status=IndexingStatus.WAITING,
                 enabled=True,
             )
             db_session_with_containers.add(document)
@@ -507,7 +508,7 @@ class TestDocumentIndexingTasks:
         # Re-query documents from database since _document_indexing uses a different session
         for doc_id in document_ids:
             updated_document = db_session_with_containers.query(Document).where(Document.id == doc_id).first()
-            assert updated_document.indexing_status == "error"
+            assert updated_document.indexing_status == IndexingStatus.ERROR
             assert updated_document.error is not None
             assert "batch upload" in updated_document.error
             assert updated_document.stopped_at is not None
@@ -548,7 +549,7 @@ class TestDocumentIndexingTasks:
         # Re-query documents from database since _document_indexing uses a different session
         for doc_id in document_ids:
             updated_document = db_session_with_containers.query(Document).where(Document.id == doc_id).first()
-            assert updated_document.indexing_status == "parsing"
+            assert updated_document.indexing_status == IndexingStatus.PARSING
             assert updated_document.processing_started_at is not None
 
     def test_document_indexing_task_document_is_paused_error(
@@ -591,7 +592,7 @@ class TestDocumentIndexingTasks:
         # Re-query documents from database since _document_indexing uses a different session
         for doc_id in document_ids:
             updated_document = db_session_with_containers.query(Document).where(Document.id == doc_id).first()
-            assert updated_document.indexing_status == "parsing"
+            assert updated_document.indexing_status == IndexingStatus.PARSING
             assert updated_document.processing_started_at is not None
 
     # ==================== NEW TESTS FOR REFACTORED FUNCTIONS ====================
@@ -702,7 +703,7 @@ class TestDocumentIndexingTasks:
         # Re-query documents from database since _document_indexing uses a different session
         for doc_id in document_ids:
             updated_document = db_session_with_containers.query(Document).where(Document.id == doc_id).first()
-            assert updated_document.indexing_status == "parsing"
+            assert updated_document.indexing_status == IndexingStatus.PARSING
             assert updated_document.processing_started_at is not None
 
         # Verify the run method was called with correct documents
@@ -827,7 +828,7 @@ class TestDocumentIndexingTasks:
         # Re-query documents from database since _document_indexing uses a different session
         for doc_id in document_ids:
             updated_document = db_session_with_containers.query(Document).where(Document.id == doc_id).first()
-            assert updated_document.indexing_status == "parsing"
+            assert updated_document.indexing_status == IndexingStatus.PARSING
             assert updated_document.processing_started_at is not None
 
         # Verify waiting task was still processed despite core processing error

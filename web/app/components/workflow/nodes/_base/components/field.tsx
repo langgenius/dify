@@ -18,6 +18,7 @@ type Props = {
   operations?: React.JSX.Element
   inline?: boolean
   required?: boolean
+  warningDot?: boolean
 }
 
 const Field: FC<Props> = ({
@@ -30,6 +31,7 @@ const Field: FC<Props> = ({
   inline,
   supportFold,
   required,
+  warningDot,
 }) => {
   const [fold, {
     toggle: toggleFold,
@@ -41,7 +43,10 @@ const Field: FC<Props> = ({
         className={cn('flex items-center justify-between', supportFold && 'cursor-pointer')}
       >
         <div className="flex h-6 items-center">
-          <div className={cn(isSubTitle ? 'system-xs-medium-uppercase text-text-tertiary' : 'system-sm-semibold-uppercase text-text-secondary')}>
+          <div className={cn('relative', isSubTitle ? 'text-text-tertiary system-xs-medium-uppercase' : 'text-text-secondary system-sm-semibold-uppercase')}>
+            {warningDot && (
+              <span className="absolute -left-[9px] top-1/2 size-[5px] -translate-y-1/2 rounded-full bg-text-warning-secondary" />
+            )}
             {title}
             {' '}
             {required && <span className="text-text-destructive">*</span>}

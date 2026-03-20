@@ -180,7 +180,7 @@ describe('dataset-config/params-config', () => {
       const dialog = await screen.findByRole('dialog', {}, { timeout: 3000 })
       const dialogScope = within(dialog)
 
-      const incrementButtons = dialogScope.getAllByRole('button', { name: 'increment' })
+      const incrementButtons = dialogScope.getAllByRole('button', { name: /increment/i })
       await user.click(incrementButtons[0])
 
       await waitFor(() => {
@@ -213,7 +213,7 @@ describe('dataset-config/params-config', () => {
       const dialog = await screen.findByRole('dialog', {}, { timeout: 3000 })
       const dialogScope = within(dialog)
 
-      const incrementButtons = dialogScope.getAllByRole('button', { name: 'increment' })
+      const incrementButtons = dialogScope.getAllByRole('button', { name: /increment/i })
       await user.click(incrementButtons[0])
 
       await waitFor(() => {

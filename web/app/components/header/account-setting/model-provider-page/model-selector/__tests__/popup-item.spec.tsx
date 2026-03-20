@@ -2,21 +2,23 @@ import type { DefaultModel, Model, ModelItem } from '../../declarations'
 import { fireEvent, render, screen } from '@testing-library/react'
 import {
   ConfigurationMethodEnum,
+  CustomConfigurationStatusEnum,
   ModelFeatureEnum,
   ModelStatusEnum,
   ModelTypeEnum,
+  PreferredProviderTypeEnum,
 } from '../../declarations'
 import PopupItem from '../popup-item'
 
 const mockUpdateModelList = vi.hoisted(() => vi.fn())
 const mockUpdateModelProviders = vi.hoisted(() => vi.fn())
-const mockLanguageRef = vi.hoisted(() => ({ value: 'en_US' }))
+const mockUseLanguage = vi.hoisted(() => vi.fn(() => 'en_US'))
 
 vi.mock('../../hooks', async () => {
   const actual = await vi.importActual<typeof import('../../hooks')>('../../hooks')
   return {
     ...actual,
-    useLanguage: () => mockLanguageRef.value,
+    useLanguage: mockUseLanguage,
     useUpdateModelList: () => mockUpdateModelList,
     useUpdateModelProviders: () => mockUpdateModelProviders,
   }
@@ -34,6 +36,36 @@ vi.mock('../../model-name', () => ({
   default: ({ modelItem }: { modelItem: ModelItem }) => <span>{modelItem.label.en_US}</span>,
 }))
 
+vi.mock('../feature-icon', () => ({
+  default: ({ feature }: { feature: string }) => <span data-testid="feature-icon">{feature}</span>,
+}))
+
+vi.mock('@/app/components/base/tooltip', () => ({
+  default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+}))
+
+vi.mock('@/app/components/base/ui/popover', () => ({
+  Popover: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  PopoverTrigger: ({ render }: { render: React.ReactNode }) => <>{render}</>,
+  PopoverContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+}))
+
+const mockCredentialPanelState = vi.hoisted(() => vi.fn())
+vi.mock('../../provider-added-card/use-credential-panel-state', () => ({
+  useCredentialPanelState: mockCredentialPanelState,
+}))
+
+vi.mock('../../provider-added-card/use-change-provider-priority', () => ({
+  useChangeProviderPriority: () => ({
+    isChangingPriority: false,
+    handleChangePriority: vi.fn(),
+  }),
+}))
+
+vi.mock('../../provider-added-card/model-auth-dropdown/dropdown-content', () => ({
+  default: ({ onClose }: { onClose: () => void }) => <button type="button" onClick={onClose}>close dropdown</button>,
+}))
+
 const mockSetShowModelModal = vi.hoisted(() => vi.fn())
 vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
@@ -44,6 +76,11 @@ vi.mock('@/context/modal-context', () => ({
 const mockUseProviderContext = vi.hoisted(() => vi.fn())
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: mockUseProviderContext,
+}))
+
+const mockUseAppContext = vi.hoisted(() => vi.fn())
+vi.mock('@/context/app-context', () => ({
+  useAppContext: mockUseAppContext,
 }))
 
 const makeModelItem = (overrides: Partial<ModelItem> = {}): ModelItem => ({
@@ -67,18 +104,53 @@ const makeModel = (overrides: Partial<Model> = {}): Model => ({
   ...overrides,
 })
 
+const makeProvider = (overrides: Record<string, unknown> = {}) => ({
+  provider: 'openai',
+  preferred_provider_type: PreferredProviderTypeEnum.custom,
+  custom_configuration: {
+    status: CustomConfigurationStatusEnum.active,
+    current_credential_name: 'my-api-key',
+  },
+  ...overrides,
+})
+
 describe('PopupItem', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockLanguageRef.value = 'en_US'
+    mockUseLanguage.mockReturnValue('en_US')
     mockUseProviderContext.mockReturnValue({
-      modelProviders: [{ provider: 'openai' }],
+      modelProviders: [makeProvider()],
     })
+    mockUseAppContext.mockReturnValue({
+      currentWorkspace: { trial_credits: 200, trial_credits_used: 0 },
+    })
+    mockCredentialPanelState.mockReturnValue({
+      variant: 'api-active',
+      priority: 'apiKey',
+      supportsCredits: false,
+      showPrioritySwitcher: false,
+      hasCredentials: true,
+      isCreditsExhausted: false,
+      credentialName: 'my-api-key',
+      credits: 200,
+    })
+  })
+
+  it('should render nothing when provider is not found in modelProviders', () => {
+    mockUseProviderContext.mockReturnValue({
+      modelProviders: [],
+    })
+
+    const { container } = render(
+      <PopupItem model={makeModel()} onSelect={vi.fn()} onHide={vi.fn()} />,
+    )
+
+    expect(container.innerHTML).toBe('')
   })
 
   it('should call onSelect when clicking an active model', () => {
     const onSelect = vi.fn()
-    render(<PopupItem model={makeModel()} onSelect={onSelect} />)
+    render(<PopupItem model={makeModel()} onSelect={onSelect} onHide={vi.fn()} />)
 
     fireEvent.click(screen.getByText('GPT-4'))
 
@@ -91,6 +163,7 @@ describe('PopupItem', () => {
       <PopupItem
         model={makeModel({ models: [makeModelItem({ status: ModelStatusEnum.disabled })] })}
         onSelect={onSelect}
+        onHide={vi.fn()}
       />,
     )
 
@@ -104,6 +177,7 @@ describe('PopupItem', () => {
       <PopupItem
         model={makeModel({ models: [makeModelItem({ status: ModelStatusEnum.noConfigure })] })}
         onSelect={vi.fn()}
+        onHide={vi.fn()}
       />,
     )
 
@@ -123,6 +197,7 @@ describe('PopupItem', () => {
           models: [makeModelItem({ status: ModelStatusEnum.noConfigure, model_type: undefined as unknown as ModelTypeEnum })],
         })}
         onSelect={vi.fn()}
+        onHide={vi.fn()}
       />,
     )
 
@@ -141,92 +216,148 @@ describe('PopupItem', () => {
         defaultModel={defaultModel}
         model={makeModel()}
         onSelect={vi.fn()}
+        onHide={vi.fn()}
       />,
     )
 
     expect(screen.getByText('GPT-4')).toBeInTheDocument()
   })
 
-  it('should not show check icon when model matches but provider does not', () => {
-    const defaultModel: DefaultModel = { provider: 'anthropic', model: 'gpt-4' }
+  it('should fall back to english labels when the current language is unavailable', () => {
+    mockUseLanguage.mockReturnValue('zh_Hans')
+
     render(
       <PopupItem
-        defaultModel={defaultModel}
-        model={makeModel()}
+        model={makeModel({
+          label: { en_US: 'OpenAI only' } as Model['label'],
+          models: [makeModelItem({ label: { en_US: 'GPT-4 only' } as ModelItem['label'] })],
+        })}
         onSelect={vi.fn()}
+        onHide={vi.fn()}
       />,
     )
 
-    const checkIcons = document.querySelectorAll('.h-4.w-4.shrink-0.text-text-accent')
-    expect(checkIcons.length).toBe(0)
+    expect(screen.getByText('OpenAI only')).toBeInTheDocument()
+    expect(screen.getByText('GPT-4 only')).toBeInTheDocument()
   })
 
-  it('should not show mode badge when model_properties.mode is absent', () => {
-    const modelItem = makeModelItem({ model_properties: {} })
-    render(
-      <PopupItem
-        model={makeModel({ models: [modelItem] })}
-        onSelect={vi.fn()}
-      />,
-    )
+  it('should toggle collapsed state when clicking provider header', () => {
+    render(<PopupItem model={makeModel()} onSelect={vi.fn()} onHide={vi.fn()} />)
 
-    expect(screen.queryByText('CHAT')).not.toBeInTheDocument()
+    expect(screen.getByText('GPT-4')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('OpenAI'))
+
+    expect(screen.queryByText('GPT-4')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('OpenAI'))
+
+    expect(screen.getByText('GPT-4')).toBeInTheDocument()
   })
 
-  it('should fall back to en_US label when current locale translation is empty', () => {
-    mockLanguageRef.value = 'zh_Hans'
-    const model = makeModel({
-      label: { en_US: 'English Label', zh_Hans: '' },
+  it('should show credential name when using custom provider', () => {
+    render(<PopupItem model={makeModel()} onSelect={vi.fn()} onHide={vi.fn()} />)
+
+    expect(screen.getByText('my-api-key')).toBeInTheDocument()
+  })
+
+  it('should render the inactive credential badge when the api key is not active', () => {
+    mockCredentialPanelState.mockReturnValue({
+      variant: 'api-inactive',
+      priority: 'apiKey',
+      supportsCredits: false,
+      showPrioritySwitcher: false,
+      hasCredentials: true,
+      isCreditsExhausted: false,
+      credentialName: 'stale-key',
+      credits: 200,
     })
-    render(<PopupItem model={model} onSelect={vi.fn()} />)
 
-    expect(screen.getByText('English Label')).toBeInTheDocument()
+    render(<PopupItem model={makeModel()} onSelect={vi.fn()} onHide={vi.fn()} />)
+
+    expect(screen.getByText('stale-key')).toBeInTheDocument()
+    expect(document.querySelector('.bg-components-badge-status-light-error-bg')).not.toBeNull()
   })
 
-  it('should not show context_size badge when absent', () => {
-    const modelItem = makeModelItem({ model_properties: { mode: 'chat' } })
-    render(
-      <PopupItem
-        model={makeModel({ models: [modelItem] })}
-        onSelect={vi.fn()}
-      />,
-    )
-
-    expect(screen.queryByText(/K$/)).not.toBeInTheDocument()
-  })
-
-  it('should not show capabilities section when features are empty', () => {
-    const modelItem = makeModelItem({ features: [] })
-    render(
-      <PopupItem
-        model={makeModel({ models: [modelItem] })}
-        onSelect={vi.fn()}
-      />,
-    )
-
-    expect(screen.queryByText('common.model.capabilities')).not.toBeInTheDocument()
-  })
-
-  it('should not show capabilities for non-qualifying model types', () => {
-    const modelItem = makeModelItem({
-      model_type: ModelTypeEnum.tts,
-      features: [ModelFeatureEnum.vision],
+  it('should show configure required when no credential name', () => {
+    mockUseProviderContext.mockReturnValue({
+      modelProviders: [makeProvider({
+        custom_configuration: {
+          status: CustomConfigurationStatusEnum.noConfigure,
+          current_credential_name: '',
+        },
+      })],
     })
-    render(
-      <PopupItem
-        model={makeModel({ models: [modelItem] })}
-        onSelect={vi.fn()}
-      />,
-    )
+    mockCredentialPanelState.mockReturnValue({
+      variant: 'api-required-configure',
+      priority: 'apiKey',
+      supportsCredits: false,
+      showPrioritySwitcher: false,
+      hasCredentials: false,
+      isCreditsExhausted: false,
+      credentialName: undefined,
+      credits: 0,
+    })
 
-    expect(screen.queryByText('common.model.capabilities')).not.toBeInTheDocument()
+    render(<PopupItem model={makeModel()} onSelect={vi.fn()} onHide={vi.fn()} />)
+
+    expect(screen.getByText(/modelProvider\.selector\.configureRequired/)).toBeInTheDocument()
   })
 
-  it('should show en_US label when language is fr_FR and fr_FR key is absent', () => {
-    mockLanguageRef.value = 'fr_FR'
-    const model = makeModel({ label: { en_US: 'FallbackLabel', zh_Hans: 'FallbackLabel' } })
-    render(<PopupItem model={model} onSelect={vi.fn()} />)
+  it('should show credits info when using system provider with remaining credits', () => {
+    mockUseProviderContext.mockReturnValue({
+      modelProviders: [makeProvider({
+        preferred_provider_type: PreferredProviderTypeEnum.system,
+      })],
+    })
+    mockCredentialPanelState.mockReturnValue({
+      variant: 'credits-active',
+      priority: 'credits',
+      supportsCredits: true,
+      showPrioritySwitcher: true,
+      hasCredentials: false,
+      isCreditsExhausted: false,
+      credentialName: undefined,
+      credits: 200,
+    })
 
-    expect(screen.getByText('FallbackLabel')).toBeInTheDocument()
+    render(<PopupItem model={makeModel()} onSelect={vi.fn()} onHide={vi.fn()} />)
+
+    expect(screen.getByText(/modelProvider\.selector\.aiCredits/)).toBeInTheDocument()
+  })
+
+  it('should show credits exhausted when system provider has no credits', () => {
+    mockUseProviderContext.mockReturnValue({
+      modelProviders: [makeProvider({
+        preferred_provider_type: PreferredProviderTypeEnum.system,
+      })],
+    })
+    mockUseAppContext.mockReturnValue({
+      currentWorkspace: { trial_credits: 100, trial_credits_used: 100 },
+    })
+    mockCredentialPanelState.mockReturnValue({
+      variant: 'credits-exhausted',
+      priority: 'credits',
+      supportsCredits: true,
+      showPrioritySwitcher: true,
+      hasCredentials: false,
+      isCreditsExhausted: true,
+      credentialName: undefined,
+      credits: 0,
+    })
+
+    render(<PopupItem model={makeModel()} onSelect={vi.fn()} onHide={vi.fn()} />)
+
+    expect(screen.getByText(/modelProvider\.selector\.creditsExhausted/)).toBeInTheDocument()
+  })
+
+  it('should close the dropdown through dropdown content callbacks', () => {
+    const onHide = vi.fn()
+
+    render(<PopupItem model={makeModel()} onSelect={vi.fn()} onHide={onHide} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'close dropdown' }))
+
+    expect(onHide).toHaveBeenCalled()
   })
 })

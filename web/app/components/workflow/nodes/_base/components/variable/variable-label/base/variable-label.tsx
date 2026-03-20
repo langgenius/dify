@@ -1,11 +1,8 @@
 import type { VariablePayload } from '../types'
-import {
-  RiErrorWarningFill,
-  RiMoreLine,
-} from '@remixicon/react'
 import { capitalize } from 'es-toolkit/string'
 import { memo } from 'react'
-import Tooltip from '@/app/components/base/tooltip'
+import { Warning } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { cn } from '@/utils/classnames'
 import { isConversationVar, isENV, isGlobalVar, isRagVariableVar } from '../../utils'
 import { useVarColor } from '../hooks'
@@ -28,7 +25,8 @@ const VariableLabel = ({
 }: VariablePayload) => {
   const varColorClassName = useVarColor(variables, isExceptionVariable)
   const isShowNodeLabel = !(isENV(variables) || isConversationVar(variables) || isGlobalVar(variables) || isRagVariableVar(variables))
-  return (
+
+  const badge = (
     <div
       className={cn(
         'inline-flex h-6 max-w-full items-center space-x-0.5 rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark px-1.5 shadow-xs',
@@ -47,7 +45,7 @@ const VariableLabel = ({
       {
         notShowFullPath && (
           <>
-            <RiMoreLine className="h-3 w-3 shrink-0 text-text-secondary" />
+            <span className="i-ri-more-line h-3 w-3 shrink-0 text-text-secondary" />
             <div className="shrink-0 text-divider-deep system-xs-regular">/</div>
           </>
         )
@@ -70,18 +68,23 @@ const VariableLabel = ({
       }
       {
         !!errorMsg && (
-          <Tooltip
-            popupContent={errorMsg}
-            asChild
-          >
-            <RiErrorWarningFill className="h-3 w-3 shrink-0 text-text-destructive" />
-          </Tooltip>
+          <Warning className="h-3 w-3 shrink-0 text-text-warning" />
         )
       }
       {
         rightSlot
       }
     </div>
+  )
+
+  if (!errorMsg)
+    return badge
+
+  return (
+    <Tooltip>
+      <TooltipTrigger render={badge} />
+      <TooltipContent>{errorMsg}</TooltipContent>
+    </Tooltip>
   )
 }
 

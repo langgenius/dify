@@ -5,7 +5,7 @@ import TextGeneration from '@/app/components/share/text-generation'
 
 const useSearchParamsMock = vi.fn(() => new URLSearchParams())
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useSearchParams: () => useSearchParamsMock(),
 }))
 
