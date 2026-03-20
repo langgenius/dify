@@ -101,7 +101,7 @@ Then follow the [Lint Documentation] to lint the code.
 
 We use [Vitest] and [React Testing Library] for Unit Testing.
 
-**📖 Complete Testing Guide**: See [web/testing/testing.md] for detailed testing specifications, best practices, and examples.
+**📖 Complete Testing Guide**: See [web/docs/test.md] for detailed testing specifications, best practices, and examples.
 
 Run test:
 
@@ -147,4 +147,4 @@ The Dify community can be found on [Discord community], where you can ask questi
 [index.spec.tsx]: ./app/components/base/button/index.spec.tsx
 [pnpm]: https://pnpm.io
 [vinext]: https://github.com/cloudflare/vinext
-[web/testing/testing.md]: ./testing/testing.md
+[web/docs/test.md]: ./docs/test.md
