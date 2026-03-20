@@ -65,9 +65,10 @@ pnpm type-check:tsgo
 
 Prefer using `tsgo` for type checking as it is significantly faster than the standard TypeScript compiler.
 Only fall back to `pnpm type-check` (which uses `tsc`) if you encounter unexpected results.
-[no-leaked-conditional-rendering]: <https://www.eslint-react.xyz/docs/rules/no-leaked-conditional-rendering>
-[TSSLint]: <https://github.com/johnsoncodehk/tsslint>
-[ESLint bulk suppressions blog post]: <https://eslint.org/blog/2025/04/introducing-bulk-suppressions>
-[ESLint multi-thread linting blog post]: <https://eslint.org/blog/2025/08/multithread-linting>
+
+[ESLint bulk suppressions blog post]: https://eslint.org/blog/2025/04/introducing-bulk-suppressions
+[ESLint multi-thread linting blog post]: https://eslint.org/blog/2025/08/multithread-linting
 [Overlay Migration Guide]: ./overlay-migration.md
-[typed linting via typescript-eslint]: <https://typescript-eslint.io/getting-started/typed-linting>
+[TSSLint]: https://github.com/johnsoncodehk/tsslint
+[no-leaked-conditional-rendering]: https://www.eslint-react.xyz/docs/rules/no-leaked-conditional-rendering
+[typed linting via typescript-eslint]: https://typescript-eslint.io/getting-started/typed-linting
