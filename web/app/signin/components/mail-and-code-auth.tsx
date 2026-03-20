@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '@/app/components/signin/countdown'
 import { emailRegex } from '@/config'
 import { useLocale } from '@/context/i18n'
@@ -26,14 +26,14 @@ export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
   const handleGetEMailVerificationCode = async () => {
     try {
       if (!email) {
-        Toast.notify({ type: 'error', message: t('error.emailEmpty', { ns: 'login' }) })
+        toast.add({ type: 'error', title: t('error.emailEmpty', { ns: 'login' }) })
         return
       }
 
       if (!emailRegex.test(email)) {
-        Toast.notify({
+        toast.add({
           type: 'error',
-          message: t('error.emailInValid', { ns: 'login' }),
+          title: t('error.emailInValid', { ns: 'login' }),
         })
         return
       }

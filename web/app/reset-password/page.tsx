@@ -5,7 +5,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { emailRegex } from '@/config'
 import { useLocale } from '@/context/i18n'
 import useDocumentTitle from '@/hooks/use-document-title'
@@ -26,14 +26,14 @@ export default function CheckCode() {
   const handleGetEMailVerificationCode = async () => {
     try {
       if (!email) {
-        Toast.notify({ type: 'error', message: t('error.emailEmpty', { ns: 'login' }) })
+        toast.add({ type: 'error', title: t('error.emailEmpty', { ns: 'login' }) })
         return
       }
 
       if (!emailRegex.test(email)) {
-        Toast.notify({
+        toast.add({
           type: 'error',
-          message: t('error.emailInValid', { ns: 'login' }),
+          title: t('error.emailInValid', { ns: 'login' }),
         })
         return
       }
@@ -47,9 +47,9 @@ export default function CheckCode() {
         router.push(`/reset-password/check-code?${params.toString()}`)
       }
       else {
-        Toast.notify({
+        toast.add({
           type: 'error',
-          message: res.data,
+          title: res.data,
         })
       }
     }

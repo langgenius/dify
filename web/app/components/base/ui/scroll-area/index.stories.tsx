@@ -1,11 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import type { ReactNode } from 'react'
+import * as React from 'react'
 import AppIcon from '@/app/components/base/app-icon'
 import { cn } from '@/utils/classnames'
 import {
-  ScrollArea,
   ScrollAreaContent,
   ScrollAreaCorner,
+  ScrollAreaRoot,
   ScrollAreaScrollbar,
   ScrollAreaThumb,
   ScrollAreaViewport,
@@ -13,17 +14,17 @@ import {
 
 const meta = {
   title: 'Base/Layout/ScrollArea',
-  component: ScrollArea,
+  component: ScrollAreaRoot,
   parameters: {
     layout: 'padded',
     docs: {
       description: {
-        component: 'Compound scroll container built on Base UI ScrollArea. These stories focus on panel-style compositions that already exist throughout Dify: dense sidebars, sticky list headers, multi-pane workbenches, horizontal rails, and overlay surfaces.',
+        component: 'Compound scroll container built on Base UI ScrollArea. These stories focus on panel-style compositions that already exist throughout Dify: dense sidebars, sticky list headers, multi-pane workbenches, horizontal rails, and overlay surfaces. Scrollbar placement should be adjusted by consumer spacing classes such as margin-based overrides instead of right/bottom positioning utilities.',
       },
     },
   },
   tags: ['autodocs'],
-} satisfies Meta<typeof ScrollArea>
+} satisfies Meta<typeof ScrollAreaRoot>
 
 export default meta
 type Story = StoryObj<typeof meta>
@@ -35,12 +36,12 @@ const titleClassName = 'text-text-primary system-sm-semibold'
 const bodyClassName = 'text-text-secondary system-sm-regular'
 const insetScrollAreaClassName = 'h-full p-1'
 const insetViewportClassName = 'rounded-[20px] bg-components-panel-bg'
-const insetScrollbarClassName = 'data-[orientation=vertical]:top-1 data-[orientation=vertical]:bottom-1 data-[orientation=vertical]:right-1 data-[orientation=horizontal]:bottom-1 data-[orientation=horizontal]:left-1 data-[orientation=horizontal]:right-1'
+const insetScrollbarClassName = 'data-[orientation=vertical]:my-1 data-[orientation=vertical]:[margin-inline-end:0.25rem] data-[orientation=horizontal]:mx-1 data-[orientation=horizontal]:mb-1'
 const storyButtonClassName = 'flex w-full items-center justify-between gap-3 rounded-xl border border-divider-subtle bg-components-panel-bg-alt px-3 py-2.5 text-left text-text-secondary transition-colors hover:bg-state-base-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-components-input-border-hover motion-reduce:transition-none'
-const sidebarScrollAreaClassName = 'h-full pr-2'
-const sidebarViewportClassName = 'overscroll-contain pr-2'
-const sidebarContentClassName = 'space-y-0.5 pr-2'
-const sidebarScrollbarClassName = 'data-[orientation=vertical]:right-0.5'
+const sidebarScrollAreaClassName = 'h-full'
+const sidebarViewportClassName = 'overscroll-contain'
+const sidebarContentClassName = 'space-y-0.5'
+const sidebarScrollbarClassName = 'data-[orientation=vertical]:my-2 data-[orientation=vertical]:[margin-inline-end:-0.75rem]'
 const appNavButtonClassName = 'group flex h-8 w-full items-center justify-between gap-3 rounded-lg px-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-components-input-border-hover motion-reduce:transition-none'
 const appNavMetaClassName = 'shrink-0 rounded-md border border-divider-subtle bg-components-panel-bg-alt px-1.5 py-0.5 text-text-quaternary system-2xs-medium-uppercase tracking-[0.08em]'
 
@@ -76,6 +77,16 @@ const horizontalCards = [
 const activityRows = Array.from({ length: 14 }, (_, index) => ({
   title: `Workspace activity ${index + 1}`,
   body: 'A short line of copy to mimic dense operational feeds in settings and debug panels.',
+}))
+
+const scrollbarShowcaseRows = Array.from({ length: 18 }, (_, index) => ({
+  title: `Scroll checkpoint ${index + 1}`,
+  body: 'Dedicated story content so the scrollbar can be inspected without sticky headers, masks, or clipped shells.',
+}))
+
+const horizontalShowcaseCards = Array.from({ length: 8 }, (_, index) => ({
+  title: `Lane ${index + 1}`,
+  body: 'Horizontal scrollbar reference without edge hints.',
 }))
 
 const webAppsRows = [
@@ -124,7 +135,7 @@ const StoryCard = ({
 
 const VerticalPanelPane = () => (
   <div className={cn(panelClassName, 'h-[360px]')}>
-    <ScrollArea className={insetScrollAreaClassName}>
+    <ScrollAreaRoot className={insetScrollAreaClassName}>
       <ScrollAreaViewport className={insetViewportClassName}>
         <ScrollAreaContent className="space-y-3 p-4 pr-6">
           <div className="space-y-1">
@@ -150,13 +161,13 @@ const VerticalPanelPane = () => (
       <ScrollAreaScrollbar className={insetScrollbarClassName}>
         <ScrollAreaThumb />
       </ScrollAreaScrollbar>
-    </ScrollArea>
+    </ScrollAreaRoot>
   </div>
 )
 
 const StickyListPane = () => (
   <div className={cn(panelClassName, 'h-[360px]')}>
-    <ScrollArea className={insetScrollAreaClassName}>
+    <ScrollAreaRoot className={insetScrollAreaClassName}>
       <ScrollAreaViewport className={cn(insetViewportClassName, '[mask-image:linear-gradient(to_bottom,transparent_0px,black_10px,black_calc(100%-14px),transparent_100%)]')}>
         <ScrollAreaContent className="min-h-full">
           <div className="sticky top-0 z-10 border-b border-divider-subtle bg-components-panel-bg px-4 pb-3 pt-4">
@@ -189,7 +200,7 @@ const StickyListPane = () => (
       <ScrollAreaScrollbar className={insetScrollbarClassName}>
         <ScrollAreaThumb className="rounded-full" />
       </ScrollAreaScrollbar>
-    </ScrollArea>
+    </ScrollAreaRoot>
   </div>
 )
 
@@ -205,7 +216,7 @@ const WorkbenchPane = ({
   className?: string
 }) => (
   <div className={cn(panelClassName, 'min-h-0', className)}>
-    <ScrollArea className={insetScrollAreaClassName}>
+    <ScrollAreaRoot className={insetScrollAreaClassName}>
       <ScrollAreaViewport className={insetViewportClassName}>
         <ScrollAreaContent className="space-y-3 p-4 pr-6">
           <div className="space-y-1">
@@ -218,13 +229,13 @@ const WorkbenchPane = ({
       <ScrollAreaScrollbar className={insetScrollbarClassName}>
         <ScrollAreaThumb />
       </ScrollAreaScrollbar>
-    </ScrollArea>
+    </ScrollAreaRoot>
   </div>
 )
 
 const HorizontalRailPane = () => (
   <div className={cn(panelClassName, 'h-[272px] min-w-0 max-w-full')}>
-    <ScrollArea className={insetScrollAreaClassName}>
+    <ScrollAreaRoot className={insetScrollAreaClassName}>
       <ScrollAreaViewport className={insetViewportClassName}>
         <ScrollAreaContent className="min-h-full min-w-max space-y-4 p-4 pb-6">
           <div className="space-y-1">
@@ -251,14 +262,120 @@ const HorizontalRailPane = () => (
       <ScrollAreaScrollbar orientation="horizontal" className={insetScrollbarClassName}>
         <ScrollAreaThumb className="rounded-full" />
       </ScrollAreaScrollbar>
-    </ScrollArea>
+    </ScrollAreaRoot>
+  </div>
+)
+
+const ScrollbarStatePane = ({
+  eyebrow,
+  title,
+  description,
+  initialPosition,
+}: {
+  eyebrow: string
+  title: string
+  description: string
+  initialPosition: 'top' | 'middle' | 'bottom'
+}) => {
+  const viewportId = React.useId()
+
+  React.useEffect(() => {
+    let frameA = 0
+    let frameB = 0
+
+    const syncScrollPosition = () => {
+      const viewport = document.getElementById(viewportId)
+
+      if (!(viewport instanceof HTMLDivElement))
+        return
+
+      const maxScrollTop = Math.max(0, viewport.scrollHeight - viewport.clientHeight)
+
+      if (initialPosition === 'top')
+        viewport.scrollTop = 0
+
+      if (initialPosition === 'middle')
+        viewport.scrollTop = maxScrollTop / 2
+
+      if (initialPosition === 'bottom')
+        viewport.scrollTop = maxScrollTop
+    }
+
+    frameA = requestAnimationFrame(() => {
+      frameB = requestAnimationFrame(syncScrollPosition)
+    })
+
+    return () => {
+      cancelAnimationFrame(frameA)
+      cancelAnimationFrame(frameB)
+    }
+  }, [initialPosition, viewportId])
+
+  return (
+    <div className="min-w-0 rounded-[28px] border border-divider-subtle bg-background-body p-5">
+      <div className="space-y-1">
+        <div className={labelClassName}>{eyebrow}</div>
+        <div className="text-text-primary system-md-semibold">{title}</div>
+        <p className="text-text-secondary system-sm-regular">{description}</p>
+      </div>
+      <div className="mt-4 min-w-0 rounded-[24px] border border-divider-subtle bg-components-panel-bg p-3">
+        <ScrollAreaRoot className="h-[320px] p-1">
+          <ScrollAreaViewport id={viewportId} className="rounded-[20px] bg-components-panel-bg">
+            <ScrollAreaContent className="min-w-0 space-y-2 p-4 pr-6">
+              {scrollbarShowcaseRows.map(item => (
+                <article key={item.title} className="min-w-0 rounded-xl border border-divider-subtle bg-components-panel-bg-alt p-3">
+                  <div className="truncate text-text-primary system-sm-semibold">{item.title}</div>
+                  <div className="mt-1 break-words text-text-secondary system-sm-regular">{item.body}</div>
+                </article>
+              ))}
+            </ScrollAreaContent>
+          </ScrollAreaViewport>
+          <ScrollAreaScrollbar className={insetScrollbarClassName}>
+            <ScrollAreaThumb />
+          </ScrollAreaScrollbar>
+        </ScrollAreaRoot>
+      </div>
+    </div>
+  )
+}
+
+const HorizontalScrollbarShowcasePane = () => (
+  <div className="min-w-0 rounded-[28px] border border-divider-subtle bg-background-body p-5">
+    <div className="space-y-1">
+      <div className={labelClassName}>Horizontal</div>
+      <div className="text-text-primary system-md-semibold">Horizontal track reference</div>
+      <p className="text-text-secondary system-sm-regular">Current design delivery defines the horizontal scrollbar body, but not a horizontal edge hint.</p>
+    </div>
+    <div className="mt-4 min-w-0 rounded-[24px] border border-divider-subtle bg-components-panel-bg p-3">
+      <ScrollAreaRoot className="h-[240px] p-1">
+        <ScrollAreaViewport className="rounded-[20px] bg-components-panel-bg">
+          <ScrollAreaContent className="min-h-full min-w-max space-y-4 p-4 pb-6">
+            <div className="space-y-1">
+              <div className="text-text-primary system-sm-semibold">Horizontal scrollbar</div>
+              <div className="text-text-secondary system-sm-regular">A clean horizontal pane to inspect thickness, padding, and thumb behavior without extra masks.</div>
+            </div>
+            <div className="flex gap-3">
+              {horizontalShowcaseCards.map(card => (
+                <article key={card.title} className="flex h-[120px] w-[220px] shrink-0 flex-col justify-between rounded-2xl border border-divider-subtle bg-components-panel-bg-alt p-4">
+                  <div className="text-text-primary system-sm-semibold">{card.title}</div>
+                  <div className="text-text-secondary system-sm-regular">{card.body}</div>
+                </article>
+              ))}
+            </div>
+          </ScrollAreaContent>
+        </ScrollAreaViewport>
+        <ScrollAreaScrollbar orientation="horizontal" className={insetScrollbarClassName}>
+          <ScrollAreaThumb />
+        </ScrollAreaScrollbar>
+      </ScrollAreaRoot>
+    </div>
   </div>
 )
 
 const OverlayPane = () => (
   <div className="flex h-[420px] min-w-0 items-center justify-center rounded-[28px] bg-[radial-gradient(circle_at_top,_rgba(21,90,239,0.12),_transparent_45%),linear-gradient(180deg,rgba(16,24,40,0.03),transparent)] p-6">
     <div className={cn(blurPanelClassName, 'w-full max-w-[360px]')}>
-      <ScrollArea className="h-[320px] p-1">
+      <ScrollAreaRoot className="h-[320px] p-1">
         <ScrollAreaViewport className="overscroll-contain rounded-[20px] bg-components-panel-bg-blur">
           <ScrollAreaContent className="space-y-2 p-3 pr-6">
             <div className="sticky top-0 z-10 rounded-xl border border-divider-subtle bg-components-panel-bg-blur px-3 py-3 backdrop-blur-[6px]">
@@ -283,14 +400,14 @@ const OverlayPane = () => (
         <ScrollAreaScrollbar className={insetScrollbarClassName}>
           <ScrollAreaThumb className="rounded-full bg-state-base-handle hover:bg-state-base-handle-hover" />
         </ScrollAreaScrollbar>
-      </ScrollArea>
+      </ScrollAreaRoot>
     </div>
   </div>
 )
 
 const CornerPane = () => (
   <div className={cn(panelClassName, 'h-[320px] w-full max-w-[440px]')}>
-    <ScrollArea className={cn(insetScrollAreaClassName, 'overflow-hidden')}>
+    <ScrollAreaRoot className={cn(insetScrollAreaClassName, 'overflow-hidden')}>
       <ScrollAreaViewport className={cn(insetViewportClassName, 'bg-[linear-gradient(180deg,var(--color-components-panel-bg),var(--color-components-panel-bg-alt))]')}>
         <ScrollAreaContent className="min-h-[420px] min-w-[620px] space-y-4 p-4">
           <div className="flex items-start justify-between gap-6">
@@ -326,7 +443,7 @@ const CornerPane = () => (
         <ScrollAreaThumb className="rounded-full" />
       </ScrollAreaScrollbar>
       <ScrollAreaCorner className="bg-[linear-gradient(180deg,var(--color-components-panel-bg),var(--color-components-panel-bg-alt))]" />
-    </ScrollArea>
+    </ScrollAreaRoot>
   </div>
 )
 
@@ -358,7 +475,7 @@ const ExploreSidebarWebAppsPane = () => {
           </div>
 
           <div className="h-[304px]">
-            <ScrollArea className={sidebarScrollAreaClassName}>
+            <ScrollAreaRoot className={sidebarScrollAreaClassName}>
               <ScrollAreaViewport className={sidebarViewportClassName}>
                 <ScrollAreaContent className={sidebarContentClassName}>
                   {webAppsRows.map((item, index) => (
@@ -402,7 +519,7 @@ const ExploreSidebarWebAppsPane = () => {
               <ScrollAreaScrollbar className={sidebarScrollbarClassName}>
                 <ScrollAreaThumb className="rounded-full" />
               </ScrollAreaScrollbar>
-            </ScrollArea>
+            </ScrollAreaRoot>
           </div>
         </div>
       </div>
@@ -537,7 +654,7 @@ export const PrimitiveComposition: Story = {
       description="A stripped-down example for teams that want to start from the base API and add their own shell classes around it. The outer shell adds inset padding so the tracks sit inside the rounded surface instead of colliding with the panel corners."
     >
       <div className={cn(panelClassName, 'h-[260px] max-w-[420px]')}>
-        <ScrollArea className={insetScrollAreaClassName}>
+        <ScrollAreaRoot className={insetScrollAreaClassName}>
           <ScrollAreaViewport className={insetViewportClassName}>
             <ScrollAreaContent className="min-w-[560px] space-y-3 p-4 pr-6">
               {Array.from({ length: 8 }, (_, index) => (
@@ -556,7 +673,39 @@ export const PrimitiveComposition: Story = {
             <ScrollAreaThumb />
           </ScrollAreaScrollbar>
           <ScrollAreaCorner />
-        </ScrollArea>
+        </ScrollAreaRoot>
+      </div>
+    </StoryCard>
+  ),
+}
+
+export const ScrollbarDelivery: Story = {
+  render: () => (
+    <StoryCard
+      eyebrow="Scrollbar"
+      title="Dedicated scrollbar delivery review"
+      description="Three vertical panes pin the viewport to top, middle, and bottom so the edge hint can be inspected without sticky headers, viewport masks, or clipped shells. A separate horizontal pane shows the current non-edge-hint track."
+    >
+      <div className="grid gap-5 xl:grid-cols-2">
+        <ScrollbarStatePane
+          eyebrow="Top"
+          title="At top edge"
+          description="Top edge hint should sit exactly on the handle area edge."
+          initialPosition="top"
+        />
+        <ScrollbarStatePane
+          eyebrow="Middle"
+          title="Away from edges"
+          description="No edge hint should be visible when the viewport is not pinned to either end."
+          initialPosition="middle"
+        />
+        <ScrollbarStatePane
+          eyebrow="Bottom"
+          title="At bottom edge"
+          description="Bottom edge hint should sit exactly on the handle area edge."
+          initialPosition="bottom"
+        />
+        <HorizontalScrollbarShowcasePane />
       </div>
     </StoryCard>
   ),

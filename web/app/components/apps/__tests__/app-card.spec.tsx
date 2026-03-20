@@ -543,6 +543,11 @@ describe('AppCard', () => {
       fireEvent.click(screen.getByTestId('popover-trigger'))
       fireEvent.click(await screen.findByRole('button', { name: 'common.operation.delete' }))
       expect(await screen.findByRole('alertdialog')).toBeInTheDocument()
+
+      // Fill in the confirmation input with app name
+      const deleteInput = screen.getByRole('textbox')
+      fireEvent.change(deleteInput, { target: { value: mockApp.name } })
+
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
       await waitFor(() => {
@@ -556,6 +561,11 @@ describe('AppCard', () => {
       fireEvent.click(screen.getByTestId('popover-trigger'))
       fireEvent.click(await screen.findByRole('button', { name: 'common.operation.delete' }))
       expect(await screen.findByRole('alertdialog')).toBeInTheDocument()
+
+      // Fill in the confirmation input with app name
+      const deleteInput = screen.getByRole('textbox')
+      fireEvent.change(deleteInput, { target: { value: mockApp.name } })
+
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
       await waitFor(() => {
@@ -572,6 +582,11 @@ describe('AppCard', () => {
       fireEvent.click(screen.getByTestId('popover-trigger'))
       fireEvent.click(await screen.findByRole('button', { name: 'common.operation.delete' }))
       expect(await screen.findByRole('alertdialog')).toBeInTheDocument()
+
+      // Fill in the confirmation input with app name
+      const deleteInput = screen.getByRole('textbox')
+      fireEvent.change(deleteInput, { target: { value: mockApp.name } })
+
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
       await waitFor(() => {
