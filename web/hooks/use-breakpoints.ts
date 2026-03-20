@@ -1,11 +1,13 @@
 'use client'
 import * as React from 'react'
 
-export enum MediaType {
-  mobile = 'mobile',
-  tablet = 'tablet',
-  pc = 'pc',
-}
+export const MediaType = {
+  mobile: 'mobile',
+  tablet: 'tablet',
+  pc: 'pc',
+} as const
+
+export type MediaTypeValue = (typeof MediaType)[keyof typeof MediaType]
 
 const useBreakpoints = () => {
   const [width, setWidth] = React.useState(globalThis.innerWidth)
