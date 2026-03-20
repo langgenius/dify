@@ -13,17 +13,20 @@ vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: vi.fn(),
 }))
 
-const { mockToastNotify } = vi.hoisted(() => ({
-  mockToastNotify: vi.fn(),
+const { mockToastSuccess, mockToastError } = vi.hoisted(() => ({
+  mockToastSuccess: vi.fn(),
+  mockToastError: vi.fn(),
 }))
 
-vi.mock('@/app/components/base/toast', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/app/components/base/toast')>()
+vi.mock('@/app/components/base/ui/toast', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/components/base/ui/toast')>()
   return {
     ...actual,
-    default: Object.assign(actual.default, {
-      notify: mockToastNotify,
-    }),
+    toast: {
+      ...actual.toast,
+      success: mockToastSuccess,
+      error: mockToastError,
+    },
   }
 })
 
@@ -45,8 +48,8 @@ vi.mock('@/service/knowledge/use-dataset', () => ({
 describe('CreateCard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockToastNotify.mockReset()
-    mockToastNotify.mockImplementation(() => ({ clear: vi.fn() }))
+    mockToastSuccess.mockReset()
+    mockToastError.mockReset()
   })
 
   describe('Rendering', () => {

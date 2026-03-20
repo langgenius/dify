@@ -26,15 +26,12 @@ export default function CheckCode() {
   const handleGetEMailVerificationCode = async () => {
     try {
       if (!email) {
-        toast.add({ type: 'error', title: t('error.emailEmpty', { ns: 'login' }) })
+        toast.error(t('error.emailEmpty', { ns: 'login' }))
         return
       }
 
       if (!emailRegex.test(email)) {
-        toast.add({
-          type: 'error',
-          title: t('error.emailInValid', { ns: 'login' }),
-        })
+        toast.error(t('error.emailInValid', { ns: 'login' }))
         return
       }
       setIsLoading(true)
@@ -47,10 +44,7 @@ export default function CheckCode() {
         router.push(`/reset-password/check-code?${params.toString()}`)
       }
       else {
-        toast.add({
-          type: 'error',
-          title: res.data,
-        })
+        toast.error(res.data)
       }
     }
     catch (error) {

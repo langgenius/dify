@@ -14,8 +14,8 @@ vi.mock('@/service/use-pipeline', () => ({
   useInvalidCustomizedTemplateList: () => mockInvalidCustomizedTemplateList,
 }))
 
-const { mockToastAdd } = vi.hoisted(() => ({
-  mockToastAdd: vi.fn(),
+const { mockToastError } = vi.hoisted(() => ({
+  mockToastError: vi.fn(),
 }))
 
 vi.mock('@/app/components/base/ui/toast', async (importOriginal) => {
@@ -24,7 +24,7 @@ vi.mock('@/app/components/base/ui/toast', async (importOriginal) => {
     ...actual,
     toast: {
       ...actual.toast,
-      add: mockToastAdd,
+      error: mockToastError,
     },
   }
 })
@@ -95,7 +95,7 @@ describe('EditPipelineInfo', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockToastAdd.mockReset()
+    mockToastError.mockReset()
     _mockOnSelect = undefined
     _mockOnClose = undefined
   })
@@ -243,10 +243,7 @@ describe('EditPipelineInfo', () => {
       fireEvent.click(saveButton)
 
       await waitFor(() => {
-        expect(mockToastAdd).toHaveBeenCalledWith({
-          type: 'error',
-          title: 'datasetPipeline.editPipelineInfoNameRequired',
-        })
+        expect(mockToastError).toHaveBeenCalledWith('datasetPipeline.editPipelineInfoNameRequired')
       })
     })
 

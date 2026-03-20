@@ -105,10 +105,7 @@ const OnlineDrive = ({
           isLoadingRef.current = false
         },
         onDataSourceNodeError: (error: DataSourceNodeErrorResponse) => {
-          toast.add({
-            type: 'error',
-            title: error.error,
-          })
+          toast.error(error.error)
           setIsLoading(false)
           isLoadingRef.current = false
         },
