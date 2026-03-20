@@ -65,7 +65,7 @@ const ConfigVision: FC<Props> = ({
           popupContent={t('vision.onlySupportVisionModelTip', { ns: 'appDebug' })!}
           disabled={isVisionModel}
         >
-          <Switch disabled={readOnly || !isVisionModel} size="md" defaultValue={!isVisionModel ? false : enabled} onChange={onEnabledChange} />
+          <Switch disabled={readOnly || !isVisionModel} size="md" value={!isVisionModel ? false : enabled} onChange={onEnabledChange} />
         </Tooltip>
       )}
     >

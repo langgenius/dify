@@ -58,5 +58,15 @@
   "generation.tabs.create": "یک‌بار اجرا کن",
   "generation.tabs.saved": "ذخیره شده",
   "generation.title": "تکمیل هوش مصنوعی",
+  "humanInput.completed": "به نظر می‌رسد این درخواست در جای دیگری پردازش شده است.",
+  "humanInput.expirationTimeNowOrFuture": "این اقدام {{relativeTime}} منقضی خواهد شد.",
+  "humanInput.expired": "به نظر می‌رسد این درخواست منقضی شده است.",
+  "humanInput.expiredTip": "این اقدام منقضی شده است.",
+  "humanInput.formNotFound": "فرم یافت نشد.",
+  "humanInput.rateLimitExceeded": "درخواست‌های زیاد، لطفاً بعداً دوباره امتحان کنید.",
+  "humanInput.recorded": "ورودی شما ثبت شد.",
+  "humanInput.sorry": "متأسفیم!",
+  "humanInput.submissionID": "submission_id: {{id}}",
+  "humanInput.thanks": "متشکریم!",
   "login.backToHome": "بازگشت به خانه"
 }

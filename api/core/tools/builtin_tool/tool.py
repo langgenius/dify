@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from core.model_runtime.entities.llm_entities import LLMResult
-from core.model_runtime.entities.message_entities import PromptMessage, SystemPromptMessage, UserPromptMessage
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.utils.model_invocation_utils import ModelInvocationUtils
+from dify_graph.model_runtime.entities.llm_entities import LLMResult
+from dify_graph.model_runtime.entities.message_entities import PromptMessage, SystemPromptMessage, UserPromptMessage
 
 _SUMMARY_PROMPT = """You are a professional language researcher, you are interested in the language
 and you can quickly aimed at the main point of an webpage and reproduce it in your own words but

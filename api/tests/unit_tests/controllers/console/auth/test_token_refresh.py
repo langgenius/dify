@@ -47,8 +47,8 @@ class TestRefreshTokenApi:
         token_pair.csrf_token = "new_csrf_token"
         return token_pair
 
-    @patch("controllers.console.auth.login.extract_refresh_token")
-    @patch("controllers.console.auth.login.AccountService.refresh_token")
+    @patch("controllers.console.auth.login.extract_refresh_token", autospec=True)
+    @patch("controllers.console.auth.login.AccountService.refresh_token", autospec=True)
     def test_successful_token_refresh(self, mock_refresh_token, mock_extract_token, app, mock_token_pair):
         """
         Test successful token refresh flow.
@@ -73,7 +73,7 @@ class TestRefreshTokenApi:
         mock_refresh_token.assert_called_once_with("valid_refresh_token")
         assert response.json["result"] == "success"
 
-    @patch("controllers.console.auth.login.extract_refresh_token")
+    @patch("controllers.console.auth.login.extract_refresh_token", autospec=True)
     def test_refresh_fails_without_token(self, mock_extract_token, app):
         """
         Test token refresh failure when no refresh token provided.
@@ -96,8 +96,8 @@ class TestRefreshTokenApi:
         assert response["result"] == "fail"
         assert "No refresh token provided" in response["message"]
 
-    @patch("controllers.console.auth.login.extract_refresh_token")
-    @patch("controllers.console.auth.login.AccountService.refresh_token")
+    @patch("controllers.console.auth.login.extract_refresh_token", autospec=True)
+    @patch("controllers.console.auth.login.AccountService.refresh_token", autospec=True)
     def test_refresh_fails_with_invalid_token(self, mock_refresh_token, mock_extract_token, app):
         """
         Test token refresh failure with invalid refresh token.
@@ -121,8 +121,8 @@ class TestRefreshTokenApi:
         assert response["result"] == "fail"
         assert "Invalid refresh token" in response["message"]
 
-    @patch("controllers.console.auth.login.extract_refresh_token")
-    @patch("controllers.console.auth.login.AccountService.refresh_token")
+    @patch("controllers.console.auth.login.extract_refresh_token", autospec=True)
+    @patch("controllers.console.auth.login.AccountService.refresh_token", autospec=True)
     def test_refresh_fails_with_expired_token(self, mock_refresh_token, mock_extract_token, app):
         """
         Test token refresh failure with expired refresh token.
@@ -146,8 +146,8 @@ class TestRefreshTokenApi:
         assert response["result"] == "fail"
         assert "expired" in response["message"].lower()
 
-    @patch("controllers.console.auth.login.extract_refresh_token")
-    @patch("controllers.console.auth.login.AccountService.refresh_token")
+    @patch("controllers.console.auth.login.extract_refresh_token", autospec=True)
+    @patch("controllers.console.auth.login.AccountService.refresh_token", autospec=True)
     def test_refresh_with_empty_token(self, mock_refresh_token, mock_extract_token, app):
         """
         Test token refresh with empty string token.
@@ -168,8 +168,8 @@ class TestRefreshTokenApi:
         assert status_code == 401
         assert response["result"] == "fail"
 
-    @patch("controllers.console.auth.login.extract_refresh_token")
-    @patch("controllers.console.auth.login.AccountService.refresh_token")
+    @patch("controllers.console.auth.login.extract_refresh_token", autospec=True)
+    @patch("controllers.console.auth.login.AccountService.refresh_token", autospec=True)
     def test_refresh_updates_all_tokens(self, mock_refresh_token, mock_extract_token, app, mock_token_pair):
         """
         Test that token refresh updates all three tokens.

@@ -5,6 +5,7 @@ import re
 import threading
 import time
 import uuid
+from collections.abc import Mapping
 from typing import Any
 
 from flask import Flask, current_app
@@ -15,7 +16,6 @@ from configs import dify_config
 from core.entities.knowledge_entities import IndexingEstimate, PreviewDetail, QAPreviewDetail
 from core.errors.error import ProviderTokenNotInitError
 from core.model_manager import ModelInstance, ModelManager
-from core.model_runtime.entities.model_entities import ModelType
 from core.rag.cleaner.clean_processor import CleanProcessor
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.docstore.dataset_docstore import DatasetDocumentStore
@@ -31,14 +31,16 @@ from core.rag.splitter.fixed_text_splitter import (
 )
 from core.rag.splitter.text_splitter import TextSplitter
 from core.tools.utils.web_reader_tool import get_image_upload_file_ids
+from dify_graph.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
 from libs import helper
 from libs.datetime_utils import naive_utc_now
 from models import Account
-from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentSegment
+from models.dataset import AutomaticRulesConfig, ChildChunk, Dataset, DatasetProcessRule, DocumentSegment
 from models.dataset import Document as DatasetDocument
+from models.enums import DataSourceType, IndexingStatus, ProcessRuleMode, SegmentStatus
 from models.model import UploadFile
 from services.feature_service import FeatureService
 
@@ -55,7 +57,7 @@ class IndexingRunner:
         logger.exception("consume document failed")
         document = db.session.get(DatasetDocument, document_id)
         if document:
-            document.indexing_status = "error"
+            document.indexing_status = IndexingStatus.ERROR
             error_message = getattr(error, "description", str(error))
             document.error = str(error_message)
             document.stopped_at = naive_utc_now()
@@ -218,7 +220,7 @@ class IndexingRunner:
             if document_segments:
                 for document_segment in document_segments:
                     # transform segment to node
-                    if document_segment.status != "completed":
+                    if document_segment.status != SegmentStatus.COMPLETED:
                         document = Document(
                             page_content=document_segment.content,
                             metadata={
@@ -265,7 +267,7 @@ class IndexingRunner:
         self,
         tenant_id: str,
         extract_settings: list[ExtractSetting],
-        tmp_processing_rule: dict,
+        tmp_processing_rule: Mapping[str, Any],
         doc_form: str | None = None,
         doc_language: str = "English",
         dataset_id: str | None = None,
@@ -311,14 +313,18 @@ class IndexingRunner:
         qa_preview_texts: list[QAPreviewDetail] = []
 
         total_segments = 0
+        # doc_form represents the segmentation method (general, parent-child, QA)
         index_type = doc_form
         index_processor = IndexProcessorFactory(index_type).init_index_processor()
+        # one extract_setting is one source document
         for extract_setting in extract_settings:
             # extract
             processing_rule = DatasetProcessRule(
                 mode=tmp_processing_rule["mode"], rules=json.dumps(tmp_processing_rule["rules"])
             )
+            # Extract document content
             text_docs = index_processor.extract(extract_setting, process_rule_mode=tmp_processing_rule["mode"])
+            # Cleaning and segmentation
             documents = index_processor.transform(
                 text_docs,
                 current_user=None,
@@ -361,79 +367,86 @@ class IndexingRunner:
 
         if doc_form and doc_form == "qa_model":
             return IndexingEstimate(total_segments=total_segments * 20, qa_preview=qa_preview_texts, preview=[])
+
+        # Generate summary preview
+        summary_index_setting = tmp_processing_rule.get("summary_index_setting")
+        if summary_index_setting and summary_index_setting.get("enable") and preview_texts:
+            preview_texts = index_processor.generate_summary_preview(
+                tenant_id, preview_texts, summary_index_setting, doc_language
+            )
+
         return IndexingEstimate(total_segments=total_segments, preview=preview_texts)
 
     def _extract(
-        self, index_processor: BaseIndexProcessor, dataset_document: DatasetDocument, process_rule: dict
+        self, index_processor: BaseIndexProcessor, dataset_document: DatasetDocument, process_rule: Mapping[str, Any]
     ) -> list[Document]:
-        # load file
-        if dataset_document.data_source_type not in {"upload_file", "notion_import", "website_crawl"}:
-            return []
-
         data_source_info = dataset_document.data_source_info_dict
         text_docs = []
-        if dataset_document.data_source_type == "upload_file":
-            if not data_source_info or "upload_file_id" not in data_source_info:
-                raise ValueError("no upload file found")
-            stmt = select(UploadFile).where(UploadFile.id == data_source_info["upload_file_id"])
-            file_detail = db.session.scalars(stmt).one_or_none()
+        match dataset_document.data_source_type:
+            case DataSourceType.UPLOAD_FILE:
+                if not data_source_info or "upload_file_id" not in data_source_info:
+                    raise ValueError("no upload file found")
+                stmt = select(UploadFile).where(UploadFile.id == data_source_info["upload_file_id"])
+                file_detail = db.session.scalars(stmt).one_or_none()
 
-            if file_detail:
+                if file_detail:
+                    extract_setting = ExtractSetting(
+                        datasource_type=DatasourceType.FILE,
+                        upload_file=file_detail,
+                        document_model=dataset_document.doc_form,
+                    )
+                    text_docs = index_processor.extract(extract_setting, process_rule_mode=process_rule["mode"])
+            case DataSourceType.NOTION_IMPORT:
+                if (
+                    not data_source_info
+                    or "notion_workspace_id" not in data_source_info
+                    or "notion_page_id" not in data_source_info
+                ):
+                    raise ValueError("no notion import info found")
                 extract_setting = ExtractSetting(
-                    datasource_type=DatasourceType.FILE,
-                    upload_file=file_detail,
+                    datasource_type=DatasourceType.NOTION,
+                    notion_info=NotionInfo.model_validate(
+                        {
+                            "credential_id": data_source_info.get("credential_id"),
+                            "notion_workspace_id": data_source_info["notion_workspace_id"],
+                            "notion_obj_id": data_source_info["notion_page_id"],
+                            "notion_page_type": data_source_info["type"],
+                            "document": dataset_document,
+                            "tenant_id": dataset_document.tenant_id,
+                        }
+                    ),
                     document_model=dataset_document.doc_form,
                 )
                 text_docs = index_processor.extract(extract_setting, process_rule_mode=process_rule["mode"])
-        elif dataset_document.data_source_type == "notion_import":
-            if (
-                not data_source_info
-                or "notion_workspace_id" not in data_source_info
-                or "notion_page_id" not in data_source_info
-            ):
-                raise ValueError("no notion import info found")
-            extract_setting = ExtractSetting(
-                datasource_type=DatasourceType.NOTION,
-                notion_info=NotionInfo.model_validate(
-                    {
-                        "credential_id": data_source_info.get("credential_id"),
-                        "notion_workspace_id": data_source_info["notion_workspace_id"],
-                        "notion_obj_id": data_source_info["notion_page_id"],
-                        "notion_page_type": data_source_info["type"],
-                        "document": dataset_document,
-                        "tenant_id": dataset_document.tenant_id,
-                    }
-                ),
-                document_model=dataset_document.doc_form,
-            )
-            text_docs = index_processor.extract(extract_setting, process_rule_mode=process_rule["mode"])
-        elif dataset_document.data_source_type == "website_crawl":
-            if (
-                not data_source_info
-                or "provider" not in data_source_info
-                or "url" not in data_source_info
-                or "job_id" not in data_source_info
-            ):
-                raise ValueError("no website import info found")
-            extract_setting = ExtractSetting(
-                datasource_type=DatasourceType.WEBSITE,
-                website_info=WebsiteInfo.model_validate(
-                    {
-                        "provider": data_source_info["provider"],
-                        "job_id": data_source_info["job_id"],
-                        "tenant_id": dataset_document.tenant_id,
-                        "url": data_source_info["url"],
-                        "mode": data_source_info["mode"],
-                        "only_main_content": data_source_info["only_main_content"],
-                    }
-                ),
-                document_model=dataset_document.doc_form,
-            )
-            text_docs = index_processor.extract(extract_setting, process_rule_mode=process_rule["mode"])
+            case DataSourceType.WEBSITE_CRAWL:
+                if (
+                    not data_source_info
+                    or "provider" not in data_source_info
+                    or "url" not in data_source_info
+                    or "job_id" not in data_source_info
+                ):
+                    raise ValueError("no website import info found")
+                extract_setting = ExtractSetting(
+                    datasource_type=DatasourceType.WEBSITE,
+                    website_info=WebsiteInfo.model_validate(
+                        {
+                            "provider": data_source_info["provider"],
+                            "job_id": data_source_info["job_id"],
+                            "tenant_id": dataset_document.tenant_id,
+                            "url": data_source_info["url"],
+                            "mode": data_source_info["mode"],
+                            "only_main_content": data_source_info["only_main_content"],
+                        }
+                    ),
+                    document_model=dataset_document.doc_form,
+                )
+                text_docs = index_processor.extract(extract_setting, process_rule_mode=process_rule["mode"])
+            case _:
+                return []
         # update document status to splitting
         self._update_document_index_status(
             document_id=dataset_document.id,
-            after_indexing_status="splitting",
+            after_indexing_status=IndexingStatus.SPLITTING,
             extra_update_params={
                 DatasetDocument.parsing_completed_at: naive_utc_now(),
             },
@@ -532,7 +545,8 @@ class IndexingRunner:
         """
         Clean the document text according to the processing rules.
         """
-        if processing_rule.mode == "automatic":
+        rules: AutomaticRulesConfig | dict[str, Any]
+        if processing_rule.mode == ProcessRuleMode.AUTOMATIC:
             rules = DatasetProcessRule.AUTOMATIC_RULES
         else:
             rules = json.loads(processing_rule.rules) if processing_rule.rules else {}
@@ -623,7 +637,7 @@ class IndexingRunner:
         # update document status to completed
         self._update_document_index_status(
             document_id=dataset_document.id,
-            after_indexing_status="completed",
+            after_indexing_status=IndexingStatus.COMPLETED,
             extra_update_params={
                 DatasetDocument.tokens: tokens,
                 DatasetDocument.completed_at: naive_utc_now(),
@@ -646,10 +660,10 @@ class IndexingRunner:
                     DocumentSegment.document_id == document_id,
                     DocumentSegment.dataset_id == dataset_id,
                     DocumentSegment.index_node_id.in_(document_ids),
-                    DocumentSegment.status == "indexing",
+                    DocumentSegment.status == SegmentStatus.INDEXING,
                 ).update(
                     {
-                        DocumentSegment.status: "completed",
+                        DocumentSegment.status: SegmentStatus.COMPLETED,
                         DocumentSegment.enabled: True,
                         DocumentSegment.completed_at: naive_utc_now(),
                     }
@@ -690,10 +704,10 @@ class IndexingRunner:
                 DocumentSegment.document_id == dataset_document.id,
                 DocumentSegment.dataset_id == dataset.id,
                 DocumentSegment.index_node_id.in_(document_ids),
-                DocumentSegment.status == "indexing",
+                DocumentSegment.status == SegmentStatus.INDEXING,
             ).update(
                 {
-                    DocumentSegment.status: "completed",
+                    DocumentSegment.status: SegmentStatus.COMPLETED,
                     DocumentSegment.enabled: True,
                     DocumentSegment.completed_at: naive_utc_now(),
                 }
@@ -712,7 +726,7 @@ class IndexingRunner:
 
     @staticmethod
     def _update_document_index_status(
-        document_id: str, after_indexing_status: str, extra_update_params: dict | None = None
+        document_id: str, after_indexing_status: IndexingStatus, extra_update_params: dict | None = None
     ):
         """
         Update the document indexing status.
@@ -745,7 +759,7 @@ class IndexingRunner:
         dataset: Dataset,
         text_docs: list[Document],
         doc_language: str,
-        process_rule: dict,
+        process_rule: Mapping[str, Any],
         current_user: Account | None = None,
     ) -> list[Document]:
         # get embedding model instance
@@ -790,7 +804,7 @@ class IndexingRunner:
         cur_time = naive_utc_now()
         self._update_document_index_status(
             document_id=dataset_document.id,
-            after_indexing_status="indexing",
+            after_indexing_status=IndexingStatus.INDEXING,
             extra_update_params={
                 DatasetDocument.cleaning_completed_at: cur_time,
                 DatasetDocument.splitting_completed_at: cur_time,
@@ -802,7 +816,7 @@ class IndexingRunner:
         self._update_segments_by_document(
             dataset_document_id=dataset_document.id,
             update_params={
-                DocumentSegment.status: "indexing",
+                DocumentSegment.status: SegmentStatus.INDEXING,
                 DocumentSegment.indexing_at: naive_utc_now(),
             },
         )

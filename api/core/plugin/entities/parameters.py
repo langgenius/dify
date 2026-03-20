@@ -191,7 +191,7 @@ def cast_parameter_value(typ: StrEnum, value: Any, /):
     except ValueError:
         raise
     except Exception:
-        raise ValueError(f"The tool parameter value {value} is not in correct type of {as_normal_type(typ)}.")
+        raise ValueError(f"The tool parameter value {repr(value)} is not in correct type of {as_normal_type(typ)}.")
 
 
 def init_frontend_parameter(rule: PluginParameter, type: StrEnum, value: Any):

@@ -10,7 +10,7 @@ def init_app(app: DifyApp):
         from sentry_sdk.integrations.flask import FlaskIntegration
         from werkzeug.exceptions import HTTPException
 
-        from core.model_runtime.errors.invoke import InvokeRateLimitError
+        from dify_graph.model_runtime.errors.invoke import InvokeRateLimitError
 
         def before_send(event, hint):
             if "exc_info" in hint:

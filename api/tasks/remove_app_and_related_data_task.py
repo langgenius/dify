@@ -48,6 +48,7 @@ from models.workflow import (
     WorkflowArchiveLog,
 )
 from repositories.factory import DifyAPIRepositoryFactory
+from services.api_token_service import ApiTokenCache
 
 logger = logging.getLogger(__name__)
 
@@ -134,6 +135,12 @@ def _delete_app_mcp_servers(tenant_id: str, app_id: str):
 
 def _delete_app_api_tokens(tenant_id: str, app_id: str):
     def del_api_token(session, api_token_id: str):
+        # Fetch token details for cache invalidation
+        token_obj = session.query(ApiToken).where(ApiToken.id == api_token_id).first()
+        if token_obj:
+            # Invalidate cache before deletion
+            ApiTokenCache.delete(token_obj.token, token_obj.type)
+
         session.query(ApiToken).where(ApiToken.id == api_token_id).delete(synchronize_session=False)
 
     _delete_records(
@@ -259,8 +266,8 @@ def _delete_app_workflow_app_logs(tenant_id: str, app_id: str):
 
 
 def _delete_app_workflow_archive_logs(tenant_id: str, app_id: str):
-    def del_workflow_archive_log(workflow_archive_log_id: str):
-        db.session.query(WorkflowArchiveLog).where(WorkflowArchiveLog.id == workflow_archive_log_id).delete(
+    def del_workflow_archive_log(session, workflow_archive_log_id: str):
+        session.query(WorkflowArchiveLog).where(WorkflowArchiveLog.id == workflow_archive_log_id).delete(
             synchronize_session=False
         )
 
@@ -420,7 +427,7 @@ def delete_draft_variables_batch(app_id: str, batch_size: int = 1000) -> int:
     total_files_deleted = 0
 
     while True:
-        with session_factory.create_session() as session:
+        with session_factory.create_session() as session, session.begin():
             # Get a batch of draft variable IDs along with their file_ids
             query_sql = """
                 SELECT id, file_id FROM workflow_draft_variables

@@ -31,6 +31,7 @@
   "list.action.pause": "หยุด",
   "list.action.resume": "ดำเนิน",
   "list.action.settings": "การตั้งค่ากลุ่ม",
+  "list.action.summary": "สร้างสรุป",
   "list.action.sync": "ซิงค์",
   "list.action.unarchive": "ยกเลิกการเก็บถาวร",
   "list.action.uploadFile": "อัปโหลดไฟล์ใหม่",
@@ -75,6 +76,9 @@
   "list.status.indexing": "ดัชนี",
   "list.status.paused": "หยุดชั่วคราว",
   "list.status.queuing": "จัด คิว",
+  "list.summary.generating": "กำลังสร้าง...",
+  "list.summary.generatingSummary": "กำลังสร้างสรุป",
+  "list.summary.ready": "สรุปพร้อมแล้ว",
   "list.table.header.action": "การเคลื่อนไหว",
   "list.table.header.chunkingMode": "โหมดก้อน",
   "list.table.header.fileName": "ชื่อไฟล์",
@@ -329,5 +333,7 @@
   "segment.searchResults_one": "ผล",
   "segment.searchResults_other": "ผลลัพธ์",
   "segment.searchResults_zero": "ผล",
+  "segment.summary": "สรุป",
+  "segment.summaryPlaceholder": "เขียนสรุปสั้นๆ เพื่อการค้นหาที่ดีขึ้น…",
   "segment.vectorHash": "แฮชเวกเตอร์:"
 }

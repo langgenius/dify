@@ -5,12 +5,6 @@ import type {
 import type { IterationNodeType } from '@/app/components/workflow/nodes/iteration/types'
 import type { NodeProps } from '@/app/components/workflow/types'
 import {
-  RiAlertFill,
-  RiCheckboxCircleFill,
-  RiErrorWarningFill,
-  RiLoader2Line,
-} from '@remixicon/react'
-import {
   cloneElement,
   memo,
   useEffect,
@@ -23,6 +17,7 @@ import BlockIcon from '@/app/components/workflow/block-icon'
 import { ToolTypeEnum } from '@/app/components/workflow/block-selector/types'
 import { useNodesReadOnly, useToolIcon } from '@/app/components/workflow/hooks'
 import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
+import { useNodePluginInstallation } from '@/app/components/workflow/hooks/use-node-plugin-installation'
 import { useNodeIterationInteractions } from '@/app/components/workflow/nodes/iteration/use-interactions'
 import { useNodeLoopInteractions } from '@/app/components/workflow/nodes/loop/use-interactions'
 import CopyID from '@/app/components/workflow/nodes/tool/components/copy-id'
@@ -67,6 +62,8 @@ const BaseNode: FC<BaseNodeProps> = ({
   const { handleNodeIterationChildSizeChange } = useNodeIterationInteractions()
   const { handleNodeLoopChildSizeChange } = useNodeLoopInteractions()
   const toolIcon = useToolIcon(data)
+  const { shouldDim: pluginDimmed, isChecking: pluginIsChecking, isMissing: pluginIsMissing, canInstall: pluginCanInstall, uniqueIdentifier: pluginUniqueIdentifier } = useNodePluginInstallation(data)
+  const pluginInstallLocked = !pluginIsChecking && pluginIsMissing && pluginCanInstall && Boolean(pluginUniqueIdentifier)
 
   useEffect(() => {
     if (nodeRef.current && data.selected && data.isInIteration) {
@@ -107,8 +104,8 @@ const BaseNode: FC<BaseNodeProps> = ({
     showExceptionBorder,
   } = useMemo(() => {
     return {
-      showRunningBorder: data._runningStatus === NodeRunningStatus.Running && !showSelectedBorder,
-      showSuccessBorder: (data._runningStatus === NodeRunningStatus.Succeeded || hasVarValue) && !showSelectedBorder,
+      showRunningBorder: (data._runningStatus === NodeRunningStatus.Running || data._runningStatus === NodeRunningStatus.Paused) && !showSelectedBorder,
+      showSuccessBorder: (data._runningStatus === NodeRunningStatus.Succeeded || (hasVarValue && !data._runningStatus)) && !showSelectedBorder,
       showFailedBorder: data._runningStatus === NodeRunningStatus.Failed && !showSelectedBorder,
       showExceptionBorder: data._runningStatus === NodeRunningStatus.Exception && !showSelectedBorder,
     }
@@ -126,7 +123,7 @@ const BaseNode: FC<BaseNodeProps> = ({
       return (
         <div
           className={cn(
-            'system-xs-medium mr-2 text-text-tertiary',
+            'mr-2 text-text-tertiary system-xs-medium',
             data._runningStatus === NodeRunningStatus.Running && 'text-text-accent',
           )}
         >
@@ -144,7 +141,7 @@ const BaseNode: FC<BaseNodeProps> = ({
         'relative flex rounded-2xl border',
         showSelectedBorder ? 'border-components-option-card-option-selected-border' : 'border-transparent',
         data._waitingRun && 'opacity-70',
-        data._pluginInstallLocked && 'cursor-not-allowed',
+        pluginInstallLocked && 'cursor-not-allowed',
       )}
       ref={nodeRef}
       style={{
@@ -152,21 +149,22 @@ const BaseNode: FC<BaseNodeProps> = ({
         height: (data.type === BlockEnum.Iteration || data.type === BlockEnum.Loop) ? data.height : 'auto',
       }}
     >
-      {(data._dimmed || data._pluginInstallLocked) && (
+      {(data._dimmed || pluginDimmed || pluginInstallLocked) && (
         <div
           className={cn(
             'absolute inset-0 rounded-2xl transition-opacity',
-            data._pluginInstallLocked
+            pluginInstallLocked
               ? 'pointer-events-auto z-30 bg-workflow-block-parma-bg opacity-80 backdrop-blur-[2px]'
               : 'pointer-events-none z-20 bg-workflow-block-parma-bg opacity-50',
           )}
+          onClick={pluginInstallLocked ? e => e.stopPropagation() : undefined}
           data-testid="workflow-node-install-overlay"
         />
       )}
       {
         data.type === BlockEnum.DataSource && (
           <div className="absolute inset-[-2px] top-[-22px] z-[-1] rounded-[18px] bg-node-data-source-bg p-0.5 backdrop-blur-[6px]">
-            <div className="system-2xs-semibold-uppercase flex h-5 items-center px-2.5 text-text-tertiary">
+            <div className="flex h-5 items-center px-2.5 text-text-tertiary system-2xs-semibold-uppercase">
               {t('blocks.datasource', { ns: 'workflow' })}
             </div>
           </div>
@@ -221,7 +219,7 @@ const BaseNode: FC<BaseNodeProps> = ({
           )
         }
         {
-          data.type !== BlockEnum.IfElse && data.type !== BlockEnum.QuestionClassifier && !data._isCandidate && (
+          data.type !== BlockEnum.IfElse && data.type !== BlockEnum.QuestionClassifier && data.type !== BlockEnum.HumanInput && !data._isCandidate && (
             <NodeSourceHandle
               id={id}
               data={data}
@@ -235,6 +233,7 @@ const BaseNode: FC<BaseNodeProps> = ({
             <NodeControl
               id={id}
               data={data}
+              pluginInstallLocked={pluginInstallLocked}
             />
           )
         }
@@ -251,7 +250,7 @@ const BaseNode: FC<BaseNodeProps> = ({
           />
           <div
             title={data.title}
-            className="system-sm-semibold-uppercase mr-1 flex grow items-center truncate text-text-primary"
+            className="mr-1 flex grow items-center truncate text-text-primary system-sm-semibold-uppercase"
           >
             <div>
               {data.title}
@@ -267,7 +266,7 @@ const BaseNode: FC<BaseNodeProps> = ({
                   </div>
                 )}
                 >
-                  <div className="system-2xs-medium-uppercase ml-1 flex items-center justify-center rounded-[5px] border-[1px] border-text-warning px-[5px] py-[3px] text-text-warning ">
+                  <div className="ml-1 flex items-center justify-center rounded-[5px] border-[1px] border-text-warning px-[5px] py-[3px] text-text-warning system-2xs-medium-uppercase">
                     {t('nodes.iteration.parallelModeUpper', { ns: 'workflow' })}
                   </div>
                 </Tooltip>
@@ -287,15 +286,27 @@ const BaseNode: FC<BaseNodeProps> = ({
             !!(data.type === BlockEnum.Loop && data._loopIndex) && LoopIndex
           }
           {
-            isLoading
-              ? <RiLoader2Line className="h-3.5 w-3.5 animate-spin text-text-accent" />
-              : data._runningStatus === NodeRunningStatus.Failed
-                ? <RiErrorWarningFill className="h-3.5 w-3.5 text-text-destructive" />
-                : data._runningStatus === NodeRunningStatus.Exception
-                  ? <RiAlertFill className="h-3.5 w-3.5 text-text-warning-secondary" />
-                  : (data._runningStatus === NodeRunningStatus.Succeeded || hasVarValue)
-                      ? <RiCheckboxCircleFill className="h-3.5 w-3.5 text-text-success" />
-                      : null
+            isLoading && <span className="i-ri-loader-2-line h-3.5 w-3.5 animate-spin text-text-accent" />
+          }
+          {
+            !isLoading && data._runningStatus === NodeRunningStatus.Failed && (
+              <span className="i-ri-error-warning-fill h-3.5 w-3.5 text-text-destructive" />
+            )
+          }
+          {
+            !isLoading && data._runningStatus === NodeRunningStatus.Exception && (
+              <span className="i-ri-alert-fill h-3.5 w-3.5 text-text-warning-secondary" />
+            )
+          }
+          {
+            !isLoading && (data._runningStatus === NodeRunningStatus.Succeeded || (hasVarValue && !data._runningStatus)) && (
+              <span className="i-ri-checkbox-circle-fill h-3.5 w-3.5 text-text-success" />
+            )
+          }
+          {
+            !isLoading && data._runningStatus === NodeRunningStatus.Paused && (
+              <span className="i-ri-pause-circle-fill h-3.5 w-3.5 text-text-warning-secondary" />
+            )
           }
         </div>
         {
@@ -328,7 +339,7 @@ const BaseNode: FC<BaseNodeProps> = ({
         }
         {
           !!(data.desc && data.type !== BlockEnum.Iteration && data.type !== BlockEnum.Loop) && (
-            <div className="system-xs-regular whitespace-pre-line break-words px-3 pb-2 pt-1 text-text-tertiary">
+            <div className="whitespace-pre-line break-words px-3 pb-2 pt-1 text-text-tertiary system-xs-regular">
               {data.desc}
             </div>
           )

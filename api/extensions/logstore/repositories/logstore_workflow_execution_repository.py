@@ -8,9 +8,9 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
-from core.workflow.entities import WorkflowExecution
-from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
-from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
+from dify_graph.entities import WorkflowExecution
+from dify_graph.repositories.workflow_execution_repository import WorkflowExecutionRepository
+from dify_graph.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from extensions.logstore.aliyun_logstore import AliyunLogStore
 from libs.helper import extract_tenant_id
 from models import (

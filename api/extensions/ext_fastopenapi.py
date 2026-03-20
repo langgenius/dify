@@ -1,3 +1,5 @@
+from typing import Protocol, cast
+
 from fastopenapi.routers import FlaskRouter
 from flask_cors import CORS
 
@@ -7,6 +9,10 @@ from dify_app import DifyApp
 from extensions.ext_blueprints import AUTHENTICATED_HEADERS, EXPOSED_HEADERS
 
 DOCS_PREFIX = "/fastopenapi"
+
+
+class SupportsIncludeRouter(Protocol):
+    def include_router(self, router: object, *, prefix: str = "") -> None: ...
 
 
 def init_app(app: DifyApp) -> None:
@@ -27,14 +33,19 @@ def init_app(app: DifyApp) -> None:
     )
 
     # Ensure route decorators are evaluated.
+    import controllers.console.init_validate as init_validate_module
     import controllers.console.ping as ping_module
+    from controllers.console import remote_files, setup
 
+    _ = init_validate_module
     _ = ping_module
+    _ = remote_files
+    _ = setup
 
-    router.include_router(console_router, prefix="/console/api")
+    cast(SupportsIncludeRouter, router).include_router(console_router, prefix="/console/api")
     CORS(
         app,
-        resources={r"/console/api/*": {"origins": dify_config.CONSOLE_CORS_ALLOW_ORIGINS}},
+        resources={r"/console/api/.*": {"origins": dify_config.CONSOLE_CORS_ALLOW_ORIGINS}},
         supports_credentials=True,
         allow_headers=list(AUTHENTICATED_HEADERS),
         methods=["GET", "PUT", "POST", "DELETE", "OPTIONS", "PATCH"],

@@ -22,8 +22,9 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
-from core.model_runtime.errors.invoke import InvokeError
-from core.workflow.graph_engine.manager import GraphEngineManager
+from dify_graph.graph_engine.manager import GraphEngineManager
+from dify_graph.model_runtime.errors.invoke import InvokeError
+from extensions.ext_redis import redis_client
 from libs import helper
 from models.model import App, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
@@ -121,6 +122,6 @@ class WorkflowTaskStopApi(WebApiResource):
         AppQueueManager.set_stop_flag_no_user_check(task_id)
 
         # New graph engine command channel mechanism
-        GraphEngineManager.send_stop_command(task_id)
+        GraphEngineManager(redis_client).send_stop_command(task_id)
 
         return {"result": "success"}

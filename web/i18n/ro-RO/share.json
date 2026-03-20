@@ -58,5 +58,15 @@
   "generation.tabs.create": "Rulează o singură dată",
   "generation.tabs.saved": "Salvat",
   "generation.title": "Completare AI",
+  "humanInput.completed": "Se pare că această cerere a fost tratată în altă parte.",
+  "humanInput.expirationTimeNowOrFuture": "Această acțiune va expira {{relativeTime}}.",
+  "humanInput.expired": "Se pare că această cerere a expirat.",
+  "humanInput.expiredTip": "Această acțiune a expirat.",
+  "humanInput.formNotFound": "Formular negăsit.",
+  "humanInput.rateLimitExceeded": "Prea multe cereri, vă rugăm încercați din nou mai târziu.",
+  "humanInput.recorded": "Datele dumneavoastră au fost înregistrate.",
+  "humanInput.sorry": "Ne pare rău!",
+  "humanInput.submissionID": "submission_id: {{id}}",
+  "humanInput.thanks": "Mulțumim!",
   "login.backToHome": "Înapoi la Acasă"
 }

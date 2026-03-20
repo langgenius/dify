@@ -4,7 +4,7 @@ from unittest.mock import Mock, PropertyMock, patch
 import httpx
 import pytest
 
-from core.workflow.nodes.http_request.entities import Response
+from dify_graph.nodes.http_request.entities import Response
 
 
 @pytest.fixture
@@ -104,7 +104,7 @@ def test_mimetype_based_detection(mock_response, content_type, expected_main_typ
     mock_response.headers = {"content-type": content_type}
     type(mock_response).content = PropertyMock(return_value=bytes([0x00]))  # Dummy content
 
-    with patch("core.workflow.nodes.http_request.entities.mimetypes.guess_type") as mock_guess_type:
+    with patch("dify_graph.nodes.http_request.entities.mimetypes.guess_type") as mock_guess_type:
         # Mock the return value based on expected_main_type
         if expected_main_type:
             mock_guess_type.return_value = (f"{expected_main_type}/subtype", None)

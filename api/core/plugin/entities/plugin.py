@@ -8,12 +8,12 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 from core.agent.plugin_entities import AgentStrategyProviderEntity
 from core.datasource.entities.datasource_entities import DatasourceProviderEntity
-from core.model_runtime.entities.provider_entities import ProviderEntity
 from core.plugin.entities.base import BasePluginEntity
 from core.plugin.entities.endpoint import EndpointProviderDeclaration
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderEntity
 from core.trigger.entities.entities import TriggerProviderEntity
+from dify_graph.model_runtime.entities.provider_entities import ProviderEntity
 
 
 class PluginInstallationSource(StrEnum):

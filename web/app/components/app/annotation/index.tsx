@@ -144,7 +144,7 @@ const Annotation: FC<Props> = (props) => {
 
   return (
     <div className="flex h-full flex-col">
-      <p className="system-sm-regular text-text-tertiary">{t('description', { ns: 'appLog' })}</p>
+      <p className="text-text-tertiary system-sm-regular">{t('description', { ns: 'appLog' })}</p>
       <div className="relative flex h-full flex-1 flex-col py-4">
         <Filter appId={appDetail.id} queryParams={queryParams} setQueryParams={setQueryParams}>
           <div className="flex items-center space-x-2">
@@ -152,10 +152,10 @@ const Annotation: FC<Props> = (props) => {
               <>
                 <div className={cn(!annotationConfig?.enabled && 'pr-2', 'flex h-7 items-center space-x-1 rounded-lg border border-components-panel-border bg-components-panel-bg-blur pl-2')}>
                   <MessageFast className="h-4 w-4 text-util-colors-indigo-indigo-600" />
-                  <div className="system-sm-medium text-text-primary">{t('name', { ns: 'appAnnotation' })}</div>
+                  <div className="text-text-primary system-sm-medium">{t('name', { ns: 'appAnnotation' })}</div>
                   <Switch
                     key={controlRefreshSwitch}
-                    defaultValue={annotationConfig?.enabled}
+                    value={annotationConfig?.enabled ?? false}
                     size="md"
                     onChange={async (value) => {
                       if (value) {

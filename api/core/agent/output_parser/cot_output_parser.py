@@ -4,7 +4,7 @@ from collections.abc import Generator
 from typing import Union
 
 from core.agent.entities import AgentScratchpadUnit
-from core.model_runtime.entities.llm_entities import LLMResultChunk
+from dify_graph.model_runtime.entities.llm_entities import LLMResultChunk
 
 
 class CotAgentOutputParser:

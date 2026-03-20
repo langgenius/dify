@@ -31,6 +31,7 @@
   "list.action.pause": "Pauză",
   "list.action.resume": "Reia",
   "list.action.settings": "Setări de segment",
+  "list.action.summary": "Generați rezumat",
   "list.action.sync": "Sincronizează",
   "list.action.unarchive": "Dezarhivează",
   "list.action.uploadFile": "Încarcă un fișier nou",
@@ -75,6 +76,9 @@
   "list.status.indexing": "Indexare",
   "list.status.paused": "Întrerupt",
   "list.status.queuing": "În coadă",
+  "list.summary.generating": "Generare...",
+  "list.summary.generatingSummary": "Generare rezumat",
+  "list.summary.ready": "Rezumat gata",
   "list.table.header.action": "ACȚIUNE",
   "list.table.header.chunkingMode": "MOD DE FRAGMENTARE",
   "list.table.header.fileName": "NUMELE FIȘIERULUI",
@@ -329,5 +333,7 @@
   "segment.searchResults_one": "REZULTAT",
   "segment.searchResults_other": "REZULTATELE",
   "segment.searchResults_zero": "REZULTAT",
+  "segment.summary": "REZUMAT",
+  "segment.summaryPlaceholder": "Scrieți un rezumat scurt pentru o recuperare mai bună…",
   "segment.vectorHash": "Vector hash: "
 }

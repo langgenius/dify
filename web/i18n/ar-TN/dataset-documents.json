@@ -31,6 +31,7 @@
   "list.action.pause": "إيقاف مؤقت",
   "list.action.resume": "استئناف",
   "list.action.settings": "إعدادات التقطيع",
+  "list.action.summary": "إنشاء ملخص",
   "list.action.sync": "مزامنة",
   "list.action.unarchive": "إلغاء الأرشفة",
   "list.action.uploadFile": "تحميل ملف جديد",
@@ -75,6 +76,9 @@
   "list.status.indexing": "فهرسة",
   "list.status.paused": "متوقف مؤقتًا",
   "list.status.queuing": "في الانتظار",
+  "list.summary.generating": "جارٍ الإنشاء...",
+  "list.summary.generatingSummary": "جارٍ إنشاء الملخص",
+  "list.summary.ready": "الملخص جاهز",
   "list.table.header.action": "إجراء",
   "list.table.header.chunkingMode": "وضع التقطيع",
   "list.table.header.fileName": "الاسم",
@@ -329,5 +333,7 @@
   "segment.searchResults_one": "نتيجة",
   "segment.searchResults_other": "نتائج",
   "segment.searchResults_zero": "نتيجة",
+  "segment.summary": "ملخص",
+  "segment.summaryPlaceholder": "اكتب ملخصًا موجزًا لاسترجاع أفضل…",
   "segment.vectorHash": "تجزئة المتجه: "
 }

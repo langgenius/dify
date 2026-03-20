@@ -14,6 +14,7 @@ from controllers.console.app import wraps
 from libs.datetime_utils import naive_utc_now
 from models import App, Tenant
 from models.account import Account, TenantAccountJoin, TenantAccountRole
+from models.enums import FeedbackFromSource, FeedbackRating
 from models.model import AppMode, MessageFeedback
 from services.feedback_service import FeedbackService
 
@@ -77,8 +78,8 @@ class TestFeedbackExportApi:
             app_id=app_id,
             conversation_id=conversation_id,
             message_id=message_id,
-            rating="like",
-            from_source="user",
+            rating=FeedbackRating.LIKE,
+            from_source=FeedbackFromSource.USER,
             content=None,
             from_end_user_id=str(uuid.uuid4()),
             from_account_id=None,
@@ -90,8 +91,8 @@ class TestFeedbackExportApi:
             app_id=app_id,
             conversation_id=conversation_id,
             message_id=message_id,
-            rating="dislike",
-            from_source="admin",
+            rating=FeedbackRating.DISLIKE,
+            from_source=FeedbackFromSource.ADMIN,
             content="The response was not helpful",
             from_end_user_id=None,
             from_account_id=str(uuid.uuid4()),
@@ -277,8 +278,8 @@ class TestFeedbackExportApi:
         # Verify service was called with correct parameters
         mock_export_feedbacks.assert_called_once_with(
             app_id=mock_app_model.id,
-            from_source="user",
-            rating="dislike",
+            from_source=FeedbackFromSource.USER,
+            rating=FeedbackRating.DISLIKE,
             has_comment=True,
             start_date="2024-01-01",
             end_date="2024-12-31",

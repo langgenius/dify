@@ -105,9 +105,9 @@ def trial_app_required(view: Callable[Concatenate[App, P], R] | None = None):
     return decorator
 
 
-def trial_feature_enable(view: Callable[..., R]) -> Callable[..., R]:
+def trial_feature_enable(view: Callable[P, R]):
     @wraps(view)
-    def decorated(*args, **kwargs):
+    def decorated(*args: P.args, **kwargs: P.kwargs):
         features = FeatureService.get_system_features()
         if not features.enable_trial_app:
             abort(403, "Trial app feature is not enabled.")
@@ -116,9 +116,9 @@ def trial_feature_enable(view: Callable[..., R]) -> Callable[..., R]:
     return decorated
 
 
-def explore_banner_enabled(view: Callable[..., R]) -> Callable[..., R]:
+def explore_banner_enabled(view: Callable[P, R]):
     @wraps(view)
-    def decorated(*args, **kwargs):
+    def decorated(*args: P.args, **kwargs: P.kwargs):
         features = FeatureService.get_system_features()
         if not features.enable_explore_banner:
             abort(403, "Explore banner feature is not enabled.")

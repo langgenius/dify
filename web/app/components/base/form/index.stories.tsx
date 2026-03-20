@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import type { FormStoryRender } from '../../../../.storybook/utils/form-story-wrapper'
 import type { FormSchema } from './types'
 import { useStore } from '@tanstack/react-form'

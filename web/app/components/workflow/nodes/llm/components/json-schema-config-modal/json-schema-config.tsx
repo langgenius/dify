@@ -1,12 +1,12 @@
 import type { FC } from 'react'
 import type { SchemaRoot } from '../../types'
-import { RiBracesLine, RiCloseLine, RiTimelineView } from '@remixicon/react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import Toast from '@/app/components/base/toast'
 import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
+import { cn } from '@/utils/classnames'
 import { SegmentedControl } from '../../../../../base/segmented-control'
 import { Type } from '../../types'
 import {
@@ -35,9 +35,17 @@ enum SchemaView {
   JsonSchema = 'jsonSchema',
 }
 
+const TimelineViewIcon: FC<{ className?: string }> = ({ className }) => {
+  return <span className={cn('i-ri-timeline-view', className)} />
+}
+
+const BracesIcon: FC<{ className?: string }> = ({ className }) => {
+  return <span className={cn('i-ri-braces-line', className)} />
+}
+
 const VIEW_TABS = [
-  { Icon: RiTimelineView, text: 'Visual Editor', value: SchemaView.VisualEditor },
-  { Icon: RiBracesLine, text: 'JSON Schema', value: SchemaView.JsonSchema },
+  { Icon: TimelineViewIcon, text: 'Visual Editor', value: SchemaView.VisualEditor },
+  { Icon: BracesIcon, text: 'JSON Schema', value: SchemaView.JsonSchema },
 ]
 
 const DEFAULT_SCHEMA: SchemaRoot = {
@@ -203,11 +211,11 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
     <div className="flex h-full flex-col">
       {/* Header */}
       <div className="relative flex p-6 pb-3 pr-14">
-        <div className="title-2xl-semi-bold grow truncate text-text-primary">
+        <div className="grow truncate text-text-primary title-2xl-semi-bold">
           {t('nodes.llm.jsonSchema.title', { ns: 'workflow' })}
         </div>
         <div className="absolute right-5 top-5 flex h-8 w-8 items-center justify-center p-1.5" onClick={onClose}>
-          <RiCloseLine className="h-[18px] w-[18px] text-text-tertiary" />
+          <span className="i-ri-close-line h-[18px] w-[18px] text-text-tertiary" />
         </div>
       </div>
       {/* Content */}
@@ -249,7 +257,7 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
         {validationError && <ErrorMessage message={validationError} />}
       </div>
       {/* Footer */}
-      <div className="flex items-center gap-x-2 p-6 pt-5">
+      <div className="flex items-center justify-end gap-x-2 p-6 pt-5">
         <div className="flex items-center gap-x-3">
           <div className="flex items-center gap-x-2">
             <Button variant="secondary" onClick={handleResetDefaults}>

@@ -7,9 +7,9 @@ from pydantic import BaseModel, Field, field_validator
 
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, is_admin_or_owner_required, setup_required
-from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.errors.validate import CredentialsValidateFailedError
-from core.model_runtime.utils.encoders import jsonable_encoder
+from dify_graph.model_runtime.entities.model_entities import ModelType
+from dify_graph.model_runtime.errors.validate import CredentialsValidateFailedError
+from dify_graph.model_runtime.utils.encoders import jsonable_encoder
 from libs.helper import uuid_value
 from libs.login import current_account_with_tenant, login_required
 from services.billing_service import BillingService

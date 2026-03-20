@@ -31,6 +31,7 @@
   "list.action.pause": "Jeda",
   "list.action.resume": "Melanjutkan",
   "list.action.settings": "Pengaturan Chunking",
+  "list.action.summary": "Buat ringkasan",
   "list.action.sync": "Sync",
   "list.action.unarchive": "Batalkan arsip",
   "list.action.uploadFile": "Unggah file baru",
@@ -75,6 +76,9 @@
   "list.status.indexing": "Pengindeksan",
   "list.status.paused": "Berhenti",
   "list.status.queuing": "Antrian",
+  "list.summary.generating": "Membuat...",
+  "list.summary.generatingSummary": "Membuat ringkasan",
+  "list.summary.ready": "Ringkasan siap",
   "list.table.header.action": "PERBUATAN",
   "list.table.header.chunkingMode": "CHUNKING MODE",
   "list.table.header.fileName": "NAMA",
@@ -329,5 +333,7 @@
   "segment.searchResults_one": "HASIL",
   "segment.searchResults_other": "HASIL",
   "segment.searchResults_zero": "HASIL",
+  "segment.summary": "RINGKASAN",
+  "segment.summaryPlaceholder": "Tulis ringkasan singkat untuk pencarian yang lebih baik…",
   "segment.vectorHash": "Hash vektor:"
 }

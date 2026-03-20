@@ -6,6 +6,20 @@ files=$(git diff --cached --name-only)
 
 api_modified=false
 web_modified=false
+skip_web_checks=false
+
+git_path() {
+    git rev-parse --git-path "$1"
+}
+
+if [ -f "$(git_path MERGE_HEAD)" ] || \
+   [ -f "$(git_path CHERRY_PICK_HEAD)" ] || \
+   [ -f "$(git_path REVERT_HEAD)" ] || \
+   [ -f "$(git_path SQUASH_MSG)" ] || \
+   [ -d "$(git_path rebase-merge)" ] || \
+   [ -d "$(git_path rebase-apply)" ]; then
+    skip_web_checks=true
+fi
 
 for file in $files
 do
@@ -43,6 +57,11 @@ if $api_modified; then
 fi
 
 if $web_modified; then
+    if $skip_web_checks; then
+        echo "Git operation in progress, skipping web checks"
+        exit 0
+    fi
+
     echo "Running ESLint on web module"
 
     if git diff --cached --quiet -- 'web/**/*.ts' 'web/**/*.tsx'; then

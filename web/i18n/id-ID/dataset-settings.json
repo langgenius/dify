@@ -39,6 +39,12 @@
   "form.retrievalSettings": "Pengaturan Pengambilan",
   "form.save": "Simpan",
   "form.searchModel": "Model pencarian",
+  "form.summaryAutoGen": "Pembuatan Ringkasan Otomatis",
+  "form.summaryAutoGenEnableTip": "Setelah diaktifkan, ringkasan akan dibuat secara otomatis untuk dokumen yang baru ditambahkan. Dokumen yang ada masih dapat diringkas secara manual.",
+  "form.summaryAutoGenTip": "Ringkasan dibuat secara otomatis untuk dokumen yang baru ditambahkan. Dokumen yang ada masih dapat diringkas secara manual.",
+  "form.summaryInstructions": "Instruksi",
+  "form.summaryInstructionsPlaceholder": "Jelaskan aturan atau gaya untuk ringkasan yang dibuat secara otomatis…",
+  "form.summaryModel": "Model Ringkasan",
   "form.upgradeHighQualityTip": "Setelah memutakhirkan ke mode Kualitas Tinggi, kembali ke mode Ekonomis tidak tersedia",
   "title": "Setelan pengetahuan"
 }

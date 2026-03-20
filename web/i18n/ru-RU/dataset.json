@@ -77,6 +77,8 @@
   "externalKnowledgeDescriptionPlaceholder": "Опишите, что входит в эту базу знаний (необязательно)",
   "externalKnowledgeForm.cancel": "Отмена",
   "externalKnowledgeForm.connect": "Соединять",
+  "externalKnowledgeForm.connectedFailed": "Не удалось подключиться к внешней базе знаний",
+  "externalKnowledgeForm.connectedSuccess": "Внешняя база знаний успешно подключена",
   "externalKnowledgeId": "Внешний идентификатор базы знаний",
   "externalKnowledgeIdPlaceholder": "Пожалуйста, введите идентификатор знаний",
   "externalKnowledgeName": "Имя внешнего базы знаний",

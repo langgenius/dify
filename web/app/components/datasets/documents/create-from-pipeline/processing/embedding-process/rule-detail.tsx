@@ -1,5 +1,4 @@
 import type { ProcessRuleResponse } from '@/models/datasets'
-import Image from 'next/image'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -50,7 +49,7 @@ const RuleDetail = ({
         label={t('stepTwo.indexMode', { ns: 'datasetCreation' })}
         displayedValue={t(`stepTwo.${indexingType === IndexingType.ECONOMICAL ? 'economical' : 'qualified'}`, { ns: 'datasetCreation' }) as string}
         valueIcon={(
-          <Image
+          <img
             className="size-4"
             src={
               indexingType === IndexingType.ECONOMICAL
@@ -65,7 +64,7 @@ const RuleDetail = ({
         label={t('form.retrievalSetting.title', { ns: 'datasetSettings' })}
         displayedValue={t(`retrieval.${indexingType === IndexingType.ECONOMICAL ? 'keyword_search' : retrievalMethod ?? 'semantic_search'}.title`, { ns: 'dataset' })}
         valueIcon={(
-          <Image
+          <img
             className="size-4"
             src={
               retrievalMethod === RETRIEVE_METHOD.fullText

@@ -3,16 +3,16 @@ from datetime import datetime
 from unittest.mock import Mock
 
 from core.app.layers.conversation_variable_persist_layer import ConversationVariablePersistenceLayer
-from core.variables import StringVariable
-from core.variables.segments import Segment
-from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID
-from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
-from core.workflow.graph_engine.protocols.command_channel import CommandChannel
-from core.workflow.graph_events.node import NodeRunSucceededEvent
-from core.workflow.node_events import NodeRunResult
-from core.workflow.nodes.variable_assigner.common import helpers as common_helpers
-from core.workflow.runtime.graph_runtime_state_protocol import ReadOnlyGraphRuntimeState
-from core.workflow.system_variable import SystemVariable
+from dify_graph.constants import CONVERSATION_VARIABLE_NODE_ID
+from dify_graph.enums import BuiltinNodeTypes, NodeType, WorkflowNodeExecutionStatus
+from dify_graph.graph_engine.protocols.command_channel import CommandChannel
+from dify_graph.graph_events.node import NodeRunSucceededEvent
+from dify_graph.node_events import NodeRunResult
+from dify_graph.nodes.variable_assigner.common import helpers as common_helpers
+from dify_graph.runtime.graph_runtime_state_protocol import ReadOnlyGraphRuntimeState
+from dify_graph.system_variable import SystemVariable
+from dify_graph.variables import StringVariable
+from dify_graph.variables.segments import Segment
 
 
 class MockReadOnlyVariablePool:
@@ -78,7 +78,7 @@ def test_persists_conversation_variables_from_assigner_output():
     layer = ConversationVariablePersistenceLayer(updater)
     layer.initialize(_build_graph_runtime_state(variable_pool, conversation_id), Mock(spec=CommandChannel))
 
-    event = _build_node_run_succeeded_event(node_type=NodeType.VARIABLE_ASSIGNER, process_data=process_data)
+    event = _build_node_run_succeeded_event(node_type=BuiltinNodeTypes.VARIABLE_ASSIGNER, process_data=process_data)
     layer.on_event(event)
 
     updater.update.assert_called_once_with(conversation_id=conversation_id, variable=variable)
@@ -100,7 +100,7 @@ def test_skips_when_outputs_missing():
     layer = ConversationVariablePersistenceLayer(updater)
     layer.initialize(_build_graph_runtime_state(variable_pool, conversation_id), Mock(spec=CommandChannel))
 
-    event = _build_node_run_succeeded_event(node_type=NodeType.VARIABLE_ASSIGNER)
+    event = _build_node_run_succeeded_event(node_type=BuiltinNodeTypes.VARIABLE_ASSIGNER)
     layer.on_event(event)
 
     updater.update.assert_not_called()
@@ -112,7 +112,7 @@ def test_skips_non_assigner_nodes():
     layer = ConversationVariablePersistenceLayer(updater)
     layer.initialize(_build_graph_runtime_state(MockReadOnlyVariablePool()), Mock(spec=CommandChannel))
 
-    event = _build_node_run_succeeded_event(node_type=NodeType.LLM)
+    event = _build_node_run_succeeded_event(node_type=BuiltinNodeTypes.LLM)
     layer.on_event(event)
 
     updater.update.assert_not_called()
@@ -137,7 +137,7 @@ def test_skips_non_conversation_variables():
     layer = ConversationVariablePersistenceLayer(updater)
     layer.initialize(_build_graph_runtime_state(variable_pool, conversation_id), Mock(spec=CommandChannel))
 
-    event = _build_node_run_succeeded_event(node_type=NodeType.VARIABLE_ASSIGNER, process_data=process_data)
+    event = _build_node_run_succeeded_event(node_type=BuiltinNodeTypes.VARIABLE_ASSIGNER, process_data=process_data)
     layer.on_event(event)
 
     updater.update.assert_not_called()

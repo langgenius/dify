@@ -31,6 +31,7 @@
   "list.action.pause": "暫停",
   "list.action.resume": "恢復",
   "list.action.settings": "分段設定",
+  "list.action.summary": "產生摘要",
   "list.action.sync": "同步",
   "list.action.unarchive": "撤銷歸檔",
   "list.action.uploadFile": "上傳新檔案",
@@ -75,6 +76,9 @@
   "list.status.indexing": "索引中",
   "list.status.paused": "已暫停",
   "list.status.queuing": "排隊中",
+  "list.summary.generating": "產生中...",
+  "list.summary.generatingSummary": "產生摘要中",
+  "list.summary.ready": "摘要已完成",
   "list.table.header.action": "操作",
   "list.table.header.chunkingMode": "分塊模式",
   "list.table.header.fileName": "檔名",
@@ -329,5 +333,7 @@
   "segment.searchResults_one": "結果",
   "segment.searchResults_other": "結果",
   "segment.searchResults_zero": "結果",
+  "segment.summary": "摘要",
+  "segment.summaryPlaceholder": "撰寫簡短的摘要以便更好地檢索…",
   "segment.vectorHash": "向量雜湊："
 }

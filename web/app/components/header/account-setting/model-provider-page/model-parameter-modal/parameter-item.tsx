@@ -1,12 +1,11 @@
-import type { FC } from 'react'
 import type { ModelParameterRule } from '../declarations'
 import { useEffect, useRef, useState } from 'react'
 import Radio from '@/app/components/base/radio'
-import { SimpleSelect } from '@/app/components/base/select'
 import Slider from '@/app/components/base/slider'
 import Switch from '@/app/components/base/switch'
 import TagInput from '@/app/components/base/tag-input'
-import Tooltip from '@/app/components/base/tooltip'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/base/ui/select'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { cn } from '@/utils/classnames'
 import { useLanguage } from '../hooks'
 import { isNullOrUndefined } from '../utils'
@@ -20,13 +19,13 @@ type ParameterItemProps = {
   onSwitch?: (checked: boolean, assignValue: ParameterValue) => void
   isInWorkflow?: boolean
 }
-const ParameterItem: FC<ParameterItemProps> = ({
+function ParameterItem({
   parameterRule,
   value,
   onChange,
   onSwitch,
   isInWorkflow,
-}) => {
+}: ParameterItemProps) {
   const language = useLanguage()
   const [localValue, setLocalValue] = useState(value)
   const numberInputRef = useRef<HTMLInputElement>(null)
@@ -99,17 +98,13 @@ const ParameterItem: FC<ParameterItemProps> = ({
     handleInputChange(e.target.value)
   }
 
-  const handleSelect = (option: { value: string | number, name: string }) => {
-    handleInputChange(option.value)
-  }
-
   const handleTagChange = (newSequences: string[]) => {
     handleInputChange(newSequences)
   }
 
   const handleSwitch = (checked: boolean) => {
     if (onSwitch) {
-      const assignValue: ParameterValue = localValue || getDefaultValue()
+      const assignValue: ParameterValue = localValue ?? getDefaultValue()
 
       onSwitch(checked, assignValue)
     }
@@ -118,7 +113,7 @@ const ParameterItem: FC<ParameterItemProps> = ({
   useEffect(() => {
     if ((parameterRule.type === 'int' || parameterRule.type === 'float') && numberInputRef.current)
       numberInputRef.current.value = `${renderValue}`
-  }, [value])
+  }, [value, parameterRule.type, renderValue])
 
   const renderInput = () => {
     const numberInputWithSlide = (parameterRule.type === 'int' || parameterRule.type === 'float')
@@ -148,7 +143,7 @@ const ParameterItem: FC<ParameterItemProps> = ({
           )}
           <input
             ref={numberInputRef}
-            className="system-sm-regular ml-4 block h-8 w-16 shrink-0 appearance-none rounded-lg bg-components-input-bg-normal pl-3 text-components-input-text-filled outline-none"
+            className="ml-4 block h-8 w-16 shrink-0 appearance-none rounded-lg bg-components-input-bg-normal pl-3 text-components-input-text-filled outline-none system-sm-regular"
             type="number"
             max={parameterRule.max}
             min={parameterRule.min}
@@ -175,7 +170,7 @@ const ParameterItem: FC<ParameterItemProps> = ({
           )}
           <input
             ref={numberInputRef}
-            className="system-sm-regular ml-4 block h-8 w-16 shrink-0 appearance-none rounded-lg bg-components-input-bg-normal pl-3 text-components-input-text-filled outline-none"
+            className="ml-4 block h-8 w-16 shrink-0 appearance-none rounded-lg bg-components-input-bg-normal pl-3 text-components-input-text-filled outline-none system-sm-regular"
             type="number"
             max={parameterRule.max}
             min={parameterRule.min}
@@ -203,7 +198,7 @@ const ParameterItem: FC<ParameterItemProps> = ({
     if (parameterRule.type === 'string' && !parameterRule.options?.length) {
       return (
         <input
-          className={cn(isInWorkflow ? 'w-[150px]' : 'w-full', 'system-sm-regular ml-4 flex h-8 appearance-none items-center rounded-lg bg-components-input-bg-normal px-3 text-components-input-text-filled outline-none')}
+          className={cn(isInWorkflow ? 'w-[150px]' : 'w-full', 'ml-4 flex h-8 appearance-none items-center rounded-lg bg-components-input-bg-normal px-3 text-components-input-text-filled outline-none system-sm-regular')}
           value={renderValue as string}
           onChange={handleStringInputChange}
         />
@@ -213,7 +208,7 @@ const ParameterItem: FC<ParameterItemProps> = ({
     if (parameterRule.type === 'text') {
       return (
         <textarea
-          className="system-sm-regular ml-4 h-20 w-full rounded-lg bg-components-input-bg-normal px-1 text-components-input-text-filled"
+          className="ml-4 h-20 w-full rounded-lg bg-components-input-bg-normal px-1 text-components-input-text-filled system-sm-regular"
           value={renderValue as string}
           onChange={handleStringInputChange}
         />
@@ -222,13 +217,19 @@ const ParameterItem: FC<ParameterItemProps> = ({
 
     if (parameterRule.type === 'string' && !!parameterRule?.options?.length) {
       return (
-        <SimpleSelect
-          className="!py-0"
-          wrapperClassName={cn('!h-8 w-full')}
-          defaultValue={renderValue as string}
-          onSelect={handleSelect}
-          items={parameterRule.options.map(option => ({ value: option, name: option }))}
-        />
+        <Select
+          value={renderValue as string}
+          onValueChange={v => handleInputChange(v ?? undefined)}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {parameterRule.options!.map(option => (
+              <SelectItem key={option} value={option}>{option}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       )
     }
 
@@ -257,7 +258,7 @@ const ParameterItem: FC<ParameterItemProps> = ({
             !parameterRule.required && parameterRule.name !== 'stop' && (
               <div className="mr-2 w-7">
                 <Switch
-                  defaultValue={!isNullOrUndefined(value)}
+                  value={!isNullOrUndefined(value)}
                   onChange={handleSwitch}
                   size="md"
                 />
@@ -265,26 +266,31 @@ const ParameterItem: FC<ParameterItemProps> = ({
             )
           }
           <div
-            className="system-xs-regular mr-0.5 truncate text-text-secondary"
+            className="mr-0.5 truncate text-text-secondary system-xs-regular"
             title={parameterRule.label[language] || parameterRule.label.en_US}
           >
             {parameterRule.label[language] || parameterRule.label.en_US}
           </div>
           {
             parameterRule.help && (
-              <Tooltip
-                popupContent={(
+              <Tooltip>
+                <TooltipTrigger
+                  render={(
+                    <span className="mr-1 flex h-4 w-4 shrink-0 items-center justify-center">
+                      <span aria-hidden className="i-ri-question-line h-3.5 w-3.5 text-text-quaternary" />
+                    </span>
+                  )}
+                />
+                <TooltipContent popupClassName="mr-1">
                   <div className="w-[150px] whitespace-pre-wrap">{parameterRule.help[language] || parameterRule.help.en_US}</div>
-                )}
-                popupClassName="mr-1"
-                triggerClassName="mr-1 w-4 h-4 shrink-0"
-              />
+                </TooltipContent>
+              </Tooltip>
             )
           }
         </div>
         {
           parameterRule.type === 'tag' && (
-            <div className={cn(!isInWorkflow && 'w-[150px]', 'system-xs-regular text-text-tertiary')}>
+            <div className={cn(!isInWorkflow && 'w-[150px]', 'text-text-tertiary system-xs-regular')}>
               {parameterRule?.tagPlaceholder?.[language]}
             </div>
           )

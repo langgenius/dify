@@ -1,4 +1,4 @@
-from core.workflow.nodes.iteration.entities import (
+from dify_graph.nodes.iteration.entities import (
     ErrorHandleMode,
     IterationNodeData,
     IterationStartNodeData,

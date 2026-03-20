@@ -22,7 +22,7 @@ from controllers.console.extension import (
 )
 
 if _NEEDS_METHOD_VIEW_CLEANUP:
-    delattr(builtins, "MethodView")
+    del builtins.MethodView
 from models.account import AccountStatus
 from models.api_based_extension import APIBasedExtension
 
@@ -77,7 +77,7 @@ def _restx_mask_defaults(app: Flask):
 
 
 def test_code_based_extension_get_returns_service_data(app: Flask, monkeypatch: pytest.MonkeyPatch):
-    service_result = {"entrypoint": "main:agent"}
+    service_result = [{"entrypoint": "main:agent"}]
     service_mock = MagicMock(return_value=service_result)
     monkeypatch.setattr(
         "controllers.console.extension.CodeBasedExtensionService.get_code_based_extension",

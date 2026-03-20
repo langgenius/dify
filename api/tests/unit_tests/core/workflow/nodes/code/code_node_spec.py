@@ -1,14 +1,13 @@
 from configs import dify_config
-from core.helper.code_executor.code_executor import CodeLanguage
-from core.variables.types import SegmentType
-from core.workflow.nodes.code.code_node import CodeNode
-from core.workflow.nodes.code.entities import CodeNodeData
-from core.workflow.nodes.code.exc import (
+from dify_graph.nodes.code.code_node import CodeNode
+from dify_graph.nodes.code.entities import CodeLanguage, CodeNodeData
+from dify_graph.nodes.code.exc import (
     CodeNodeError,
     DepthLimitError,
     OutputValidationError,
 )
-from core.workflow.nodes.code.limits import CodeNodeLimits
+from dify_graph.nodes.code.limits import CodeNodeLimits
+from dify_graph.variables.types import SegmentType
 
 CodeNode._limits = CodeNodeLimits(
     max_string_length=dify_config.CODE_MAX_STRING_LENGTH,
@@ -273,7 +272,7 @@ class TestCodeNodeExtractVariableSelector:
         result = CodeNode._extract_variable_selector_to_variable_mapping(
             graph_config={},
             node_id="node_1",
-            node_data=node_data,
+            node_data=CodeNodeData.model_validate(node_data, from_attributes=True),
         )
 
         assert result == {}
@@ -293,7 +292,7 @@ class TestCodeNodeExtractVariableSelector:
         result = CodeNode._extract_variable_selector_to_variable_mapping(
             graph_config={},
             node_id="node_1",
-            node_data=node_data,
+            node_data=CodeNodeData.model_validate(node_data, from_attributes=True),
         )
 
         assert "node_1.input_text" in result
@@ -316,7 +315,7 @@ class TestCodeNodeExtractVariableSelector:
         result = CodeNode._extract_variable_selector_to_variable_mapping(
             graph_config={},
             node_id="code_node",
-            node_data=node_data,
+            node_data=CodeNodeData.model_validate(node_data, from_attributes=True),
         )
 
         assert len(result) == 3
@@ -339,7 +338,7 @@ class TestCodeNodeExtractVariableSelector:
         result = CodeNode._extract_variable_selector_to_variable_mapping(
             graph_config={},
             node_id="node_x",
-            node_data=node_data,
+            node_data=CodeNodeData.model_validate(node_data, from_attributes=True),
         )
 
         assert result["node_x.deep_var"] == ["node", "obj", "nested", "value"]
@@ -438,7 +437,7 @@ class TestCodeNodeInitialization:
             "outputs": {"x": {"type": "number"}},
         }
 
-        node.init_node_data(data)
+        node._node_data = CodeNode._node_data_type.model_validate(data, from_attributes=True)
 
         assert node._node_data.title == "Test Node"
         assert node._node_data.code_language == CodeLanguage.PYTHON3
@@ -454,7 +453,7 @@ class TestCodeNodeInitialization:
             "outputs": {"x": {"type": "number"}},
         }
 
-        node.init_node_data(data)
+        node._node_data = CodeNode._node_data_type.model_validate(data, from_attributes=True)
 
         assert node._node_data.code_language == CodeLanguage.JAVASCRIPT
 

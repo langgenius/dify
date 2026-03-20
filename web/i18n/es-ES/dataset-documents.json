@@ -31,6 +31,7 @@
   "list.action.pause": "Pausa",
   "list.action.resume": "Reanudar",
   "list.action.settings": "Configuración de segmento",
+  "list.action.summary": "Generar resumen",
   "list.action.sync": "Sincronizar",
   "list.action.unarchive": "Desarchivar",
   "list.action.uploadFile": "Subir nuevo archivo",
@@ -75,6 +76,9 @@
   "list.status.indexing": "Indexando",
   "list.status.paused": "Pausado",
   "list.status.queuing": "En cola",
+  "list.summary.generating": "Generando...",
+  "list.summary.generatingSummary": "Generando resumen",
+  "list.summary.ready": "Resumen listo",
   "list.table.header.action": "ACCIÓN",
   "list.table.header.chunkingMode": "MODO DE FRAGMENTACIÓN",
   "list.table.header.fileName": "NOMBRE DEL ARCHIVO",
@@ -329,5 +333,7 @@
   "segment.searchResults_one": "RESULTADO",
   "segment.searchResults_other": "RESULTADOS",
   "segment.searchResults_zero": "RESULTADO",
+  "segment.summary": "RESUMEN",
+  "segment.summaryPlaceholder": "Escriba un breve resumen para una mejor recuperación…",
   "segment.vectorHash": "Hash de vector: "
 }

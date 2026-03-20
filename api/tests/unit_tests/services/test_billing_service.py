@@ -171,22 +171,26 @@ class TestBillingServiceSendRequest:
         "status_code", [httpx.codes.BAD_REQUEST, httpx.codes.INTERNAL_SERVER_ERROR, httpx.codes.NOT_FOUND]
     )
     def test_delete_request_non_200_with_valid_json(self, mock_httpx_request, mock_billing_config, status_code):
-        """Test DELETE request with non-200 status code but valid JSON response.
+        """Test DELETE request with non-200 status code raises ValueError.
 
-        DELETE doesn't check status code, so it returns the error JSON.
+        DELETE now checks status code and raises ValueError for non-200 responses.
         """
         # Arrange
         error_response = {"detail": "Error message"}
         mock_response = MagicMock()
         mock_response.status_code = status_code
+        mock_response.text = "Error message"
         mock_response.json.return_value = error_response
         mock_httpx_request.return_value = mock_response
 
-        # Act
-        result = BillingService._send_request("DELETE", "/test", json={"key": "value"})
-
-        # Assert
-        assert result == error_response
+        # Act & Assert
+        with patch("services.billing_service.logger") as mock_logger:
+            with pytest.raises(ValueError) as exc_info:
+                BillingService._send_request("DELETE", "/test", json={"key": "value"})
+            assert "Unable to process delete request" in str(exc_info.value)
+            # Verify error logging
+            mock_logger.error.assert_called_once()
+            assert "DELETE response" in str(mock_logger.error.call_args)
 
     @pytest.mark.parametrize(
         "status_code", [httpx.codes.BAD_REQUEST, httpx.codes.INTERNAL_SERVER_ERROR, httpx.codes.NOT_FOUND]
@@ -210,9 +214,9 @@ class TestBillingServiceSendRequest:
         "status_code", [httpx.codes.BAD_REQUEST, httpx.codes.INTERNAL_SERVER_ERROR, httpx.codes.NOT_FOUND]
     )
     def test_delete_request_non_200_with_invalid_json(self, mock_httpx_request, mock_billing_config, status_code):
-        """Test DELETE request with non-200 status code and invalid JSON response raises exception.
+        """Test DELETE request with non-200 status code raises ValueError before JSON parsing.
 
-        DELETE doesn't check status code, so it calls response.json() which raises JSONDecodeError
+        DELETE now checks status code before calling response.json(), so ValueError is raised
         when the response cannot be parsed as JSON (e.g., empty response).
         """
         # Arrange
@@ -223,8 +227,13 @@ class TestBillingServiceSendRequest:
         mock_httpx_request.return_value = mock_response
 
         # Act & Assert
-        with pytest.raises(json.JSONDecodeError):
-            BillingService._send_request("DELETE", "/test", json={"key": "value"})
+        with patch("services.billing_service.logger") as mock_logger:
+            with pytest.raises(ValueError) as exc_info:
+                BillingService._send_request("DELETE", "/test", json={"key": "value"})
+            assert "Unable to process delete request" in str(exc_info.value)
+            # Verify error logging
+            mock_logger.error.assert_called_once()
+            assert "DELETE response" in str(mock_logger.error.call_args)
 
     def test_retry_on_request_error(self, mock_httpx_request, mock_billing_config):
         """Test that _send_request retries on httpx.RequestError."""
@@ -789,7 +798,7 @@ class TestBillingServiceAccountManagement:
 
         # Assert
         assert result == expected_response
-        mock_send_request.assert_called_once_with("DELETE", "/account/", params={"account_id": account_id})
+        mock_send_request.assert_called_once_with("DELETE", "/account", params={"account_id": account_id})
 
     def test_is_email_in_freeze_true(self, mock_send_request):
         """Test checking if email is frozen (returns True)."""

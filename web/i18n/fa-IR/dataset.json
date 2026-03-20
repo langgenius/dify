@@ -77,6 +77,8 @@
   "externalKnowledgeDescriptionPlaceholder": "آنچه در این پایگاه دانش وجود دارد را توضیح دهید (اختیاری)",
   "externalKnowledgeForm.cancel": "لغو",
   "externalKnowledgeForm.connect": "اتصال",
+  "externalKnowledgeForm.connectedFailed": "اتصال به پایگاه دانش خارجی ناموفق بود",
+  "externalKnowledgeForm.connectedSuccess": "پایگاه دانش خارجی با موفقیت متصل شد",
   "externalKnowledgeId": "شناسه دانش خارجی",
   "externalKnowledgeIdPlaceholder": "لطفا شناسه دانش را وارد کنید",
   "externalKnowledgeName": "نام دانش خارجی",
