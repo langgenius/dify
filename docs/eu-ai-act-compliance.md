@@ -49,11 +49,11 @@ graph LR
     class KB controller
 ```
 
-**GDPR roles:**
-- **Organizations operating cloud LLM providers (OpenAI, Anthropic, Google)** act as processors — requires DPA.
-- **Organizations operating cloud embedding services** act as processors — requires DPA.
+**GDPR roles** (providers are typically processors for customer-submitted data, but the exact role depends on each provider's terms of service and processing purpose; deployers should review each provider's DPA):
+- **Cloud LLM providers (OpenAI, Anthropic, Google)** typically act as processors — requires DPA.
+- **Cloud embedding services** typically act as processors — requires DPA.
 - **Self-hosted vector stores (Weaviate, Qdrant, pgvector):** Your organization remains the controller — no third-party transfer.
-- **Organizations operating cloud vector stores (Pinecone, Zilliz Cloud)** act as processors — requires DPA.
+- **Cloud vector stores (Pinecone, Zilliz Cloud)** typically act as processors — requires DPA.
 - **Knowledge base documents:** Your organization is the controller — stored in your infrastructure.
 
 ## Article 11: Technical documentation
