@@ -92,8 +92,9 @@ vi.mock('@/app/components/base/confirm', () => ({
       : null,
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
-  default: { notify: vi.fn() },
+const mockToastAdd = vi.hoisted(() => vi.fn())
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: { add: mockToastAdd },
 }))
 
 vi.mock('@/app/components/header/indicator', () => ({

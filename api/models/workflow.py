@@ -1,3 +1,4 @@
+import copy
 import json
 import logging
 from collections.abc import Generator, Mapping, Sequence
@@ -302,26 +303,40 @@ class Workflow(Base):  # bug
     def features(self) -> str:
         """
         Convert old features structure to new features structure.
+
+        This property avoids rewriting the underlying JSON when normalization
+        produces no effective change, to prevent marking the row dirty on read.
         """
         if not self._features:
             return self._features
 
-        features = json.loads(self._features)
-        if features.get("file_upload", {}).get("image", {}).get("enabled", False):
-            image_enabled = True
-            image_number_limits = int(features["file_upload"]["image"].get("number_limits", DEFAULT_FILE_NUMBER_LIMITS))
-            image_transfer_methods = features["file_upload"]["image"].get(
-                "transfer_methods", ["remote_url", "local_file"]
-            )
-            features["file_upload"]["enabled"] = image_enabled
-            features["file_upload"]["number_limits"] = image_number_limits
-            features["file_upload"]["allowed_file_upload_methods"] = image_transfer_methods
-            features["file_upload"]["allowed_file_types"] = features["file_upload"].get("allowed_file_types", ["image"])
-            features["file_upload"]["allowed_file_extensions"] = features["file_upload"].get(
-                "allowed_file_extensions", []
-            )
-            del features["file_upload"]["image"]
-            self._features = json.dumps(features)
+        # Parse once and deep-copy before normalization to detect in-place changes.
+        original_dict = self._decode_features_payload(self._features)
+        if original_dict is None:
+            return self._features
+
+        # Fast-path: if the legacy file_upload.image.enabled shape is absent, skip
+        # deep-copy and normalization entirely and return the stored JSON.
+        file_upload_payload = original_dict.get("file_upload")
+        if not isinstance(file_upload_payload, dict):
+            return self._features
+        file_upload = cast(dict[str, Any], file_upload_payload)
+
+        image_payload = file_upload.get("image")
+        if not isinstance(image_payload, dict):
+            return self._features
+        image = cast(dict[str, Any], image_payload)
+        if "enabled" not in image:
+            return self._features
+
+        normalized_dict = self._normalize_features_payload(copy.deepcopy(original_dict))
+
+        if normalized_dict == original_dict:
+            # No effective change; return stored JSON unchanged.
+            return self._features
+
+        # Normalization changed the payload: persist the normalized JSON.
+        self._features = json.dumps(normalized_dict)
         return self._features
 
     @features.setter
@@ -331,6 +346,44 @@ class Workflow(Base):  # bug
     @property
     def features_dict(self) -> dict[str, Any]:
         return json.loads(self.features) if self.features else {}
+
+    @property
+    def serialized_features(self) -> str:
+        """Return the stored features JSON without triggering compatibility rewrites."""
+        return self._features
+
+    @property
+    def normalized_features_dict(self) -> dict[str, Any]:
+        """Decode features with legacy normalization without mutating the model state."""
+        if not self._features:
+            return {}
+
+        features = self._decode_features_payload(self._features)
+        return self._normalize_features_payload(features) if features is not None else {}
+
+    @staticmethod
+    def _decode_features_payload(features: str) -> dict[str, Any] | None:
+        """Decode workflow features JSON when it contains an object payload."""
+        payload = json.loads(features)
+        return cast(dict[str, Any], payload) if isinstance(payload, dict) else None
+
+    @staticmethod
+    def _normalize_features_payload(features: dict[str, Any]) -> dict[str, Any]:
+        if features.get("file_upload", {}).get("image", {}).get("enabled", False):
+            image_number_limits = int(features["file_upload"]["image"].get("number_limits", DEFAULT_FILE_NUMBER_LIMITS))
+            image_transfer_methods = features["file_upload"]["image"].get(
+                "transfer_methods", ["remote_url", "local_file"]
+            )
+            features["file_upload"]["enabled"] = True
+            features["file_upload"]["number_limits"] = image_number_limits
+            features["file_upload"]["allowed_file_upload_methods"] = image_transfer_methods
+            features["file_upload"]["allowed_file_types"] = features["file_upload"].get("allowed_file_types", ["image"])
+            features["file_upload"]["allowed_file_extensions"] = features["file_upload"].get(
+                "allowed_file_extensions", []
+            )
+            del features["file_upload"]["image"]
+
+        return features
 
     def walk_nodes(
         self, specific_node_type: NodeType | None = None
@@ -517,6 +570,31 @@ class Workflow(Base):  # bug
         )
         self._environment_variables = environment_variables_json
 
+    @staticmethod
+    def normalize_environment_variable_mappings(
+        mappings: Sequence[Mapping[str, Any]],
+    ) -> list[dict[str, Any]]:
+        """Convert masked secret placeholders into the draft hidden sentinel.
+
+        Regular draft sync requests should preserve existing secrets without shipping
+        plaintext values back from the client. The dedicated restore endpoint now
+        copies published secrets server-side, so draft sync only needs to normalize
+        the UI mask into `HIDDEN_VALUE`.
+        """
+        masked_secret_value = encrypter.full_mask_token()
+        normalized_mappings: list[dict[str, Any]] = []
+
+        for mapping in mappings:
+            normalized_mapping = dict(mapping)
+            if (
+                normalized_mapping.get("value_type") == SegmentType.SECRET.value
+                and normalized_mapping.get("value") == masked_secret_value
+            ):
+                normalized_mapping["value"] = HIDDEN_VALUE
+            normalized_mappings.append(normalized_mapping)
+
+        return normalized_mappings
+
     def to_dict(self, *, include_secret: bool = False) -> WorkflowContentDict:
         environment_variables = list(self.environment_variables)
         environment_variables = [
@@ -563,6 +641,12 @@ class Workflow(Base):  # bug
             },
             ensure_ascii=False,
         )
+
+    def copy_serialized_variable_storage_from(self, source_workflow: "Workflow") -> None:
+        """Copy stored variable JSON directly for same-tenant restore flows."""
+        self._environment_variables = source_workflow._environment_variables
+        self._conversation_variables = source_workflow._conversation_variables
+        self._rag_pipeline_variables = source_workflow._rag_pipeline_variables
 
     @staticmethod
     def version_from_datetime(d: datetime) -> str:
