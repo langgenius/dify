@@ -47,6 +47,16 @@ describe('workflow debug useChat – opening statement stability', () => {
     vi.clearAllMocks()
   })
 
+  it('should return empty chatList when config has no opening_statement', () => {
+    const { result } = renderHook(() => useChat({}))
+    expect(result.current.chatList).toEqual([])
+  })
+
+  it('should return empty chatList when opening_statement is an empty string', () => {
+    const { result } = renderHook(() => useChat({ opening_statement: '' }))
+    expect(result.current.chatList).toEqual([])
+  })
+
   it('should use stable id "opening-statement" instead of Date.now()', () => {
     const config = { opening_statement: 'Welcome!' }
 
