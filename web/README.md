@@ -1,6 +1,6 @@
 # Dify Frontend
 
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
 ## Getting Started
 
@@ -91,7 +91,7 @@ pnpm run start --port=3001 --host=0.0.0.0
 
 ## Storybook
 
-This project uses [Storybook](https://storybook.js.org/) for UI component development.
+This project uses [Storybook](https://storybook.js.org) for UI component development.
 
 To start the storybook server, run:
 
@@ -109,7 +109,7 @@ Then follow the [Lint Documentation](./docs/lint.md) to lint the code.
 
 ## Test
 
-We use [Vitest](https://vitest.dev/) and [React Testing Library](https://testing-library.com/docs/react-testing-library/intro/) for Unit Testing.
+We use [Vitest](https://vitest.dev) and [React Testing Library](https://testing-library.com/docs/react-testing-library/intro) for Unit Testing.
 
 **📖 Complete Testing Guide**: See [web/testing/testing.md](./testing/testing.md) for detailed testing specifications, best practices, and examples.
 

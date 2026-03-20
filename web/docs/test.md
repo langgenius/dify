@@ -535,8 +535,8 @@ Test examples in the project:
 
 ## Resources
 
-- [Vitest Documentation](https://vitest.dev/guide/)
-- [React Testing Library Documentation](https://testing-library.com/docs/react-testing-library/intro/)
+- [Vitest Documentation](https://vitest.dev/guide)
+- [React Testing Library Documentation](https://testing-library.com/docs/react-testing-library/intro)
 - [Testing Library Best Practices](https://kentcdodds.com/blog/common-mistakes-with-react-testing-library)
 - [Vitest Mocking Guide](https://vitest.dev/guide/mocking.html)
 
