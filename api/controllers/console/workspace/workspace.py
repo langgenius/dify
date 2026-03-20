@@ -30,7 +30,7 @@ from libs.helper import TimestampField
 from libs.login import current_account_with_tenant, login_required
 from models.account import Tenant, TenantStatus
 from services.account_service import TenantService
-from services.billing_service import BillingService
+from services.billing_service import BillingService, SubscriptionPlan
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
 from services.file_service import FileService
@@ -112,7 +112,7 @@ class TenantListApi(Resource):
         tenant_dicts = []
         is_enterprise_only = dify_config.ENTERPRISE_ENABLED and not dify_config.BILLING_ENABLED
         is_saas = dify_config.EDITION == "CLOUD" and dify_config.BILLING_ENABLED
-        tenant_plans: dict[str, dict] = {}
+        tenant_plans: dict[str, SubscriptionPlan] = {}
         use_legacy_feature_path = not is_enterprise_only and not is_saas
 
         if is_saas:
