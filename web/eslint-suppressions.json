@@ -9897,14 +9897,9 @@
       "count": 2
     }
   },
-  "models/app.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 2
-    }
-  },
   "models/common.ts": {
     "erasable-syntax-only/enums": {
-      "count": 3
+      "count": 1
     },
     "ts/no-explicit-any": {
       "count": 3
@@ -9927,9 +9922,6 @@
     }
   },
   "models/log.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 7
     }
@@ -10086,7 +10078,7 @@
   },
   "types/app.ts": {
     "erasable-syntax-only/enums": {
-      "count": 11
+      "count": 10
     },
     "ts/no-explicit-any": {
       "count": 1
