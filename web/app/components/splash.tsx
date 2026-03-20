@@ -8,9 +8,6 @@ const Splash: FC<PropsWithChildren> = () => {
   const { isLoading, data: loginData } = useIsLogin()
   const isLoggedIn = loginData?.logged_in
 
-  if (isLoading || !isLoggedIn)
-    return null
-
   return null
 }
 export default React.memo(Splash)
