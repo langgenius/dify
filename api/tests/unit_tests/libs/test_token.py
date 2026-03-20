@@ -1,17 +1,19 @@
 from unittest.mock import MagicMock
 
+import pytest
 from werkzeug.wrappers import Response
 
-from constants import COOKIE_NAME_ACCESS_TOKEN, COOKIE_NAME_WEBAPP_ACCESS_TOKEN
+from constants import COOKIE_NAME_ACCESS_TOKEN, COOKIE_NAME_WEBAPP_ACCESS_TOKEN, HEADER_NAME_CSRF_TOKEN
 from libs import token
-from libs.token import extract_access_token, extract_webapp_access_token, set_csrf_token_to_cookie
+from libs.token import check_csrf_token, extract_access_token, extract_webapp_access_token, set_csrf_token_to_cookie
 
 
 class MockRequest:
-    def __init__(self, headers: dict[str, str], cookies: dict[str, str], args: dict[str, str]):
+    def __init__(self, headers: dict[str, str], cookies: dict[str, str], args: dict[str, str], path: str = "/"):
         self.headers: dict[str, str] = headers
         self.cookies: dict[str, str] = cookies
         self.args: dict[str, str] = args
+        self.path = path
 
 
 def test_extract_access_token():
@@ -60,3 +62,19 @@ def test_set_csrf_cookie_includes_domain_when_configured(monkeypatch):
     assert any("csrf_token=abc123" in c for c in cookies)
     assert any("Domain=example.com" in c for c in cookies)
     assert all("__Host-" not in c for c in cookies)
+
+
+def test_check_csrf_token_does_not_swallow_keyboard_interrupt(monkeypatch):
+    monkeypatch.setattr(token.dify_config, "ADMIN_API_KEY_ENABLE", False, raising=False)
+    request = MockRequest(
+        headers={HEADER_NAME_CSRF_TOKEN: "csrf-token"},
+        cookies={"csrf_token": "csrf-token"},
+        args={},
+        path="/console/api/test",
+    )
+    passport_service = MagicMock()
+    passport_service.verify.side_effect = KeyboardInterrupt
+    monkeypatch.setattr(token, "PassportService", lambda: passport_service)
+
+    with pytest.raises(KeyboardInterrupt):
+        check_csrf_token(request, "user-123")  # pyright: ignore[reportArgumentType]

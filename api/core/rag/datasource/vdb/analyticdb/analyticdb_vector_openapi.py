@@ -57,8 +57,8 @@ class AnalyticdbVectorOpenAPI:
         try:
             from alibabacloud_gpdb20160503.client import Client  # type: ignore
             from alibabacloud_tea_openapi import models as open_api_models  # type: ignore
-        except:
-            raise ImportError(_import_err_msg)
+        except ImportError as exc:
+            raise ImportError(_import_err_msg) from exc
         self._collection_name = collection_name.lower()
         self.config = config
         self._client_config = open_api_models.Config(user_agent="dify", **config.to_analyticdb_client_params())
