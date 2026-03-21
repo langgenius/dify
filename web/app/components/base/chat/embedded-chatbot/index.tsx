@@ -2,6 +2,7 @@
 import type { AppData } from '@/models/share'
 import {
   useEffect,
+  useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import ChatWrapper from '@/app/components/base/chat/embedded-chatbot/chat-wrapper'
@@ -81,7 +82,7 @@ const Chatbot = () => {
               'flex shrink-0 items-center gap-1.5 px-2',
             )}
             >
-              <div className="system-2xs-medium-uppercase text-text-tertiary">{t('chat.poweredBy', { ns: 'share' })}</div>
+              <div className="text-text-tertiary system-2xs-medium-uppercase">{t('chat.poweredBy', { ns: 'share' })}</div>
               {
                 systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
                   ? <img src={systemFeatures.branding.workspace_logo} alt="logo" className="block h-5 w-auto" />
@@ -136,44 +137,79 @@ const EmbeddedChatbotWrapper = () => {
     initUserVariables,
   } = useEmbeddedChatbot(AppSourceType.webApp)
 
+  const contextValue = useMemo(() => ({
+    appSourceType: AppSourceType.webApp,
+    appData: (appData as AppData) || null,
+    appParams,
+    appMeta,
+    appChatListDataLoading,
+    currentConversationId,
+    currentConversationItem,
+    appPrevChatList,
+    pinnedConversationList,
+    conversationList,
+    newConversationInputs,
+    newConversationInputsRef,
+    handleNewConversationInputsChange,
+    inputsForms,
+    handleNewConversation,
+    handleStartChat,
+    handleChangeConversation,
+    handleNewConversationCompleted,
+    chatShouldReloadKey,
+    isMobile,
+    isInstalledApp,
+    allowResetChat,
+    appId,
+    handleFeedback,
+    currentChatInstanceRef,
+    themeBuilder,
+    clearChatList,
+    setClearChatList,
+    isResponding,
+    setIsResponding,
+    currentConversationInputs,
+    setCurrentConversationInputs,
+    allInputsHidden,
+    initUserVariables,
+  }), [
+    appData,
+    appParams,
+    appMeta,
+    appChatListDataLoading,
+    currentConversationId,
+    currentConversationItem,
+    appPrevChatList,
+    pinnedConversationList,
+    conversationList,
+    newConversationInputs,
+    newConversationInputsRef,
+    handleNewConversationInputsChange,
+    inputsForms,
+    handleNewConversation,
+    handleStartChat,
+    handleChangeConversation,
+    handleNewConversationCompleted,
+    chatShouldReloadKey,
+    isMobile,
+    isInstalledApp,
+    allowResetChat,
+    appId,
+    handleFeedback,
+    currentChatInstanceRef,
+    themeBuilder,
+    clearChatList,
+    setClearChatList,
+    isResponding,
+    setIsResponding,
+    currentConversationInputs,
+    setCurrentConversationInputs,
+    allInputsHidden,
+    initUserVariables,
+  ])
+
   return (
-    <EmbeddedChatbotContext.Provider value={{
-      appSourceType: AppSourceType.webApp,
-      appData: (appData as AppData) || null,
-      appParams,
-      appMeta,
-      appChatListDataLoading,
-      currentConversationId,
-      currentConversationItem,
-      appPrevChatList,
-      pinnedConversationList,
-      conversationList,
-      newConversationInputs,
-      newConversationInputsRef,
-      handleNewConversationInputsChange,
-      inputsForms,
-      handleNewConversation,
-      handleStartChat,
-      handleChangeConversation,
-      handleNewConversationCompleted,
-      chatShouldReloadKey,
-      isMobile,
-      isInstalledApp,
-      allowResetChat,
-      appId,
-      handleFeedback,
-      currentChatInstanceRef,
-      themeBuilder,
-      clearChatList,
-      setClearChatList,
-      isResponding,
-      setIsResponding,
-      currentConversationInputs,
-      setCurrentConversationInputs,
-      allInputsHidden,
-      initUserVariables,
-    }}
-    >
+    <EmbeddedChatbotContext.Provider value={contextValue}>
       <Chatbot />
     </EmbeddedChatbotContext.Provider>
   )

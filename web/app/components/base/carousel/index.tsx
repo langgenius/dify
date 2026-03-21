@@ -100,19 +100,31 @@ const Carousel: TCarousel = React.forwardRef(
       canScrollNext,
     }))
 
+    const contextValue = React.useMemo(() => ({
+      carouselRef,
+      api,
+      opts,
+      orientation,
+      scrollPrev,
+      scrollNext,
+      selectedIndex,
+      canScrollPrev,
+      canScrollNext,
+    }), [
+      carouselRef,
+      api,
+      opts,
+      orientation,
+      scrollPrev,
+      scrollNext,
+      selectedIndex,
+      canScrollPrev,
+      canScrollNext,
+    ])
+
     return (
       <CarouselContext.Provider
-        value={{
-          carouselRef,
-          api,
-          opts,
-          orientation,
-          scrollPrev,
-          scrollNext,
-          selectedIndex,
-          canScrollPrev,
-          canScrollNext,
-        }}
+        value={contextValue}
       >
         <div
           ref={carouselRef}

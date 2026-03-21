@@ -3,6 +3,7 @@ import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import * as React from 'react'
 import { ToastContext } from '@/app/components/base/toast/context'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
@@ -182,14 +183,22 @@ const createDataset = (overrides: Partial<DataSet> = {}, retrievalOverrides: Par
 }
 
 const renderWithProviders = (dataset: DataSet) => {
+  const Provider = ({ children }: { children: React.ReactNode }) => {
+    const contextValue = React.useMemo(() => ({ notify: mockNotify, close: vi.fn() }), [])
+    return (
+      <ToastContext.Provider value={contextValue}>
+        {children}
+      </ToastContext.Provider>
+    )
+  }
   return render(
-    <ToastContext.Provider value={{ notify: mockNotify, close: vi.fn() }}>
+    <Provider>
       <SettingsModal
         currentDataset={dataset}
         onCancel={mockOnCancel}
         onSave={mockOnSave}
       />
-    </ToastContext.Provider>,
+    </Provider>,
   )
 }
 

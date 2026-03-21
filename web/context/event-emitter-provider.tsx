@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react'
 import type { EventEmitterValue } from './event-emitter'
 import { useEventEmitter } from 'ahooks'
+import { useMemo } from 'react'
 import { EventEmitterContext } from './event-emitter'
 
 type EventEmitterContextProviderProps = {
@@ -14,8 +15,12 @@ export const EventEmitterContextProvider = ({
 }: EventEmitterContextProviderProps) => {
   const eventEmitter = useEventEmitter<EventEmitterValue>()
 
+  const contextValue = useMemo(() => ({
+    eventEmitter,
+  }), [eventEmitter])
+
   return (
-    <EventEmitterContext.Provider value={{ eventEmitter }}>
+    <EventEmitterContext.Provider value={contextValue}>
       {children}
     </EventEmitterContext.Provider>
   )

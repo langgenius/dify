@@ -155,12 +155,12 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
     : t('operation.view', { ns: 'common' })} ${t('metadata.title', { ns: 'datasetDocuments' })}`
 
   return (
-    <DocumentContext.Provider value={{
+    <DocumentContext.Provider value={useMemo(() => ({
       datasetId,
       documentId,
       docForm: documentDetail?.doc_form as ChunkingMode,
       parentMode,
-    }}
+    }), [datasetId, documentId, documentDetail?.doc_form, parentMode])}
     >
       <div className="flex h-full flex-col bg-background-default">
         <div className="flex min-h-16 flex-wrap items-center justify-between border-b border-b-divider-subtle py-2.5 pl-3 pr-4">
