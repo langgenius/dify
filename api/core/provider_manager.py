@@ -65,6 +65,9 @@ class ProviderManager:
 
     The runtime adapter is injected by the composition layer so this class stays
     focused on configuration assembly instead of constructing plugin runtimes.
+    Request-bound managers may carry caller identity in that runtime, and the
+    resulting ``ProviderConfiguration`` objects must reuse it for downstream
+    model-type and schema lookups.
     """
 
     def __init__(self, model_runtime: ModelRuntime):
@@ -264,6 +267,7 @@ class ProviderManager:
                 custom_configuration=custom_configuration,
                 model_settings=model_settings,
             )
+            provider_configuration.bind_model_runtime(self._model_runtime)
 
             provider_configurations[str(provider_id_entity)] = provider_configuration
 

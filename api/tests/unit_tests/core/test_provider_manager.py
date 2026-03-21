@@ -343,6 +343,35 @@ def test_get_provider_model_bundle_raises_for_unknown_provider(mocker: MockerFix
             manager.get_provider_model_bundle("tenant-id", "openai", ModelType.LLM)
 
 
+def test_get_configurations_binds_manager_runtime_to_provider_configuration(
+    mocker: MockerFixture, mock_provider_entity
+):
+    manager = _build_provider_manager(mocker)
+    provider_configuration = Mock()
+    provider_factory = Mock()
+    provider_factory.get_providers.return_value = [mock_provider_entity]
+    custom_configuration = SimpleNamespace(provider=None, models=[])
+    system_configuration = SimpleNamespace(enabled=False, quota_configurations=[], current_quota_type=None)
+
+    with (
+        patch.object(manager, "_get_all_providers", return_value={"openai": []}),
+        patch.object(manager, "_init_trial_provider_records", return_value={"openai": []}),
+        patch.object(manager, "_get_all_provider_models", return_value={"openai": []}),
+        patch.object(manager, "_get_all_preferred_model_providers", return_value={}),
+        patch.object(manager, "_get_all_provider_model_settings", return_value={}),
+        patch.object(manager, "_get_all_provider_load_balancing_configs", return_value={}),
+        patch.object(manager, "_get_all_provider_model_credentials", return_value={}),
+        patch.object(manager, "_to_custom_configuration", return_value=custom_configuration),
+        patch.object(manager, "_to_system_configuration", return_value=system_configuration),
+        patch.object(manager, "_to_model_settings", return_value=[]),
+        patch("core.provider_manager.ModelProviderFactory", return_value=provider_factory),
+        patch("core.provider_manager.ProviderConfiguration", return_value=provider_configuration),
+    ):
+        manager.get_configurations("tenant-id")
+
+    provider_configuration.bind_model_runtime.assert_called_once_with(manager._model_runtime)
+
+
 def test_get_provider_model_bundle_returns_selected_model_type_instance(mocker: MockerFixture):
     manager = _build_provider_manager(mocker)
     provider_configuration = Mock()

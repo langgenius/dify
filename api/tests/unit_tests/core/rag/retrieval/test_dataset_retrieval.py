@@ -4246,6 +4246,7 @@ class TestKnowledgeRetrievalCoverage:
             mock_model_manager.return_value.get_model_instance.return_value = model_instance
             with pytest.raises(Exception) as exc_info:
                 retrieval.knowledge_retrieval(request)
+            mock_model_manager.assert_called_once_with(tenant_id="tenant-1", user_id="user-1")
             assert error_cls in type(exc_info.value).__name__
 
 
@@ -4298,9 +4299,13 @@ class TestRetrieveCoverage:
             ),
         )
         model_config = self._build_model_config()
-        model_config.provider_model_bundle.model_type_instance.get_model_schema.return_value = None
+        model_instance = Mock()
+        model_instance.model_name = "gpt-4"
+        model_instance.credentials = {"api_key": "secret"}
+        model_instance.provider_model_bundle = Mock()
+        model_instance.model_type_instance.get_model_schema.return_value = None
         with patch("core.rag.retrieval.dataset_retrieval.ModelManager.for_tenant") as mock_model_manager:
-            mock_model_manager.return_value.get_model_instance.return_value = Mock()
+            mock_model_manager.return_value.get_model_instance.return_value = model_instance
             result = retrieval.retrieve(
                 app_id="app-1",
                 user_id="user-1",
@@ -4313,7 +4318,57 @@ class TestRetrieveCoverage:
                 hit_callback=Mock(),
                 message_id="m1",
             )
+        mock_model_manager.assert_called_once_with(tenant_id="tenant-1", user_id="user-1")
         assert result == (None, [])
+
+    def test_retrieve_uses_bound_model_instance_schema_and_updates_model_config(
+        self, retrieval: DatasetRetrieval
+    ) -> None:
+        config = DatasetEntity(
+            dataset_ids=["d1"],
+            retrieve_config=DatasetRetrieveConfigEntity(
+                retrieve_strategy=DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE,
+                metadata_filtering_mode="disabled",
+            ),
+        )
+        model_config = self._build_model_config(features=[])
+        model_config.provider_model_bundle.model_type_instance.get_model_schema.return_value = None
+        bound_schema = SimpleNamespace(features=[ModelFeature.TOOL_CALL])
+        bound_bundle = Mock()
+        bound_model_instance = Mock()
+        bound_model_instance.model_name = "gpt-4"
+        bound_model_instance.credentials = {"api_key": "secret"}
+        bound_model_instance.provider_model_bundle = bound_bundle
+        bound_model_instance.model_type_instance.get_model_schema.return_value = bound_schema
+
+        with (
+            patch("core.rag.retrieval.dataset_retrieval.ModelManager.for_tenant") as mock_model_manager,
+            patch.object(retrieval, "_get_available_datasets", return_value=[SimpleNamespace(id="d1")]),
+            patch.object(retrieval, "get_metadata_filter_condition", return_value=(None, None)),
+            patch.object(retrieval, "single_retrieve", return_value=[]) as mock_single_retrieve,
+        ):
+            mock_model_manager.return_value.get_model_instance.return_value = bound_model_instance
+            context, files = retrieval.retrieve(
+                app_id="app-1",
+                user_id="user-1",
+                tenant_id="tenant-1",
+                model_config=model_config,
+                config=config,
+                query="python",
+                invoke_from=InvokeFrom.WEB_APP,
+                show_retrieve_source=False,
+                hit_callback=Mock(),
+                message_id="m1",
+            )
+
+        mock_model_manager.assert_called_once_with(tenant_id="tenant-1", user_id="user-1")
+        mock_single_retrieve.assert_called_once()
+        assert mock_single_retrieve.call_args.args[8] == PlanningStrategy.ROUTER
+        assert model_config.provider_model_bundle is bound_bundle
+        assert model_config.credentials == {"api_key": "secret"}
+        assert model_config.model_schema is bound_schema
+        assert context == ""
+        assert files == []
 
     def test_single_strategy_with_external_documents(self, retrieval: DatasetRetrieval) -> None:
         retrieve_config = DatasetRetrieveConfigEntity(
@@ -4336,7 +4391,12 @@ class TestRetrieveCoverage:
             patch.object(retrieval, "get_metadata_filter_condition", return_value=(None, None)),
             patch.object(retrieval, "single_retrieve", return_value=[external_doc]),
         ):
-            mock_model_manager.return_value.get_model_instance.return_value = Mock()
+            bound_model_instance = Mock()
+            bound_model_instance.model_name = "gpt-4"
+            bound_model_instance.credentials = {}
+            bound_model_instance.provider_model_bundle = Mock()
+            bound_model_instance.model_type_instance.get_model_schema.return_value = SimpleNamespace(features=[])
+            mock_model_manager.return_value.get_model_instance.return_value = bound_model_instance
             context, files = retrieval.retrieve(
                 app_id="app-1",
                 user_id="user-1",
@@ -4432,7 +4492,14 @@ class TestRetrieveCoverage:
             patch("core.rag.retrieval.dataset_retrieval.sign_upload_file", return_value="https://signed"),
             patch("core.rag.retrieval.dataset_retrieval.db.session.execute") as mock_execute,
         ):
-            mock_model_manager.return_value.get_model_instance.return_value = Mock()
+            bound_model_instance = Mock()
+            bound_model_instance.model_name = "gpt-4"
+            bound_model_instance.credentials = {}
+            bound_model_instance.provider_model_bundle = Mock()
+            bound_model_instance.model_type_instance.get_model_schema.return_value = SimpleNamespace(
+                features=[ModelFeature.TOOL_CALL]
+            )
+            mock_model_manager.return_value.get_model_instance.return_value = bound_model_instance
             mock_execute.side_effect = [execute_attachments, execute_docs, execute_datasets]
             context, files = retrieval.retrieve(
                 app_id="app-1",

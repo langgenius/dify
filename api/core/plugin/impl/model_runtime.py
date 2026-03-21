@@ -25,9 +25,12 @@ from models.provider_ids import ModelProviderID
 
 logger = logging.getLogger(__name__)
 
+# `TS` means tenant scope
+TENANT_SCOPE_SCHEMA_CACHE_USER_ID = "__DIFY_TS__"
+
 
 class PluginModelRuntime(ModelRuntime):
-    """Plugin-backed runtime adapter bound to tenant context and a default user."""
+    """Plugin-backed runtime adapter bound to tenant context and optional caller scope."""
 
     tenant_id: str
     user_id: str | None
@@ -479,7 +482,10 @@ class PluginModelRuntime(ModelRuntime):
         model: str,
         credentials: dict[str, Any],
     ) -> str:
-        cache_key = f"{self.tenant_id}:{provider}:{model_type.value}:{model}"
+        # The plugin daemon distinguishes ``None`` from an explicit empty-string
+        # caller id, so the cache must only collapse ``None`` into tenant scope.
+        cache_user_id = TENANT_SCOPE_SCHEMA_CACHE_USER_ID if self.user_id is None else self.user_id
+        cache_key = f"{self.tenant_id}:{provider}:{model_type.value}:{model}:{cache_user_id}"
         sorted_credentials = sorted(credentials.items()) if credentials else []
         if not sorted_credentials:
             return cache_key

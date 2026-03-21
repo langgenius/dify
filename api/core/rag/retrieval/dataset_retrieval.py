@@ -161,7 +161,7 @@ class DatasetRetrieval:
             if request.model_provider is None or request.model_name is None or request.query is None:
                 raise ValueError("model_provider, model_name, and query are required for single retrieval mode")
 
-            model_manager = ModelManager.for_tenant(tenant_id=request.tenant_id)
+            model_manager = ModelManager.for_tenant(tenant_id=request.tenant_id, user_id=request.user_id)
             model_instance = model_manager.get_model_instance(
                 tenant_id=request.tenant_id,
                 model_type=ModelType.LLM,
@@ -384,22 +384,26 @@ class DatasetRetrieval:
             return None, []
         retrieve_config = config.retrieve_config
 
-        # check model is support tool calling
-        model_type_instance = model_config.provider_model_bundle.model_type_instance
-        model_type_instance = cast(LargeLanguageModel, model_type_instance)
-
-        model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
+        model_manager = ModelManager.for_tenant(tenant_id=tenant_id, user_id=user_id)
         model_instance = model_manager.get_model_instance(
             tenant_id=tenant_id, model_type=ModelType.LLM, provider=model_config.provider, model=model_config.model
         )
+        model_type_instance = cast(LargeLanguageModel, model_instance.model_type_instance)
 
-        # get model schema
+        # Reuse the caller-bound model instance for both schema resolution and
+        # downstream planner/invoke calls so a single request never mixes
+        # tenant-scope and request-bound runtimes.
         model_schema = model_type_instance.get_model_schema(
-            model=model_config.model, credentials=model_config.credentials
+            model=model_instance.model_name,
+            credentials=model_instance.credentials,
         )
 
         if not model_schema:
             return None, []
+
+        model_config.provider_model_bundle = model_instance.provider_model_bundle
+        model_config.credentials = model_instance.credentials
+        model_config.model_schema = model_schema
 
         planning_strategy = PlanningStrategy.REACT_ROUTER
         features = model_schema.features

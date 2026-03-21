@@ -10,7 +10,7 @@ import pytest
 from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
 from core.plugin.impl import model_runtime as model_runtime_module
 from core.plugin.impl.model import PluginModelClient
-from core.plugin.impl.model_runtime import PluginModelRuntime
+from core.plugin.impl.model_runtime import PluginModelRuntime, TENANT_SCOPE_SCHEMA_CACHE_USER_ID
 from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
 from dify_graph.model_runtime.entities.common_entities import I18nObject
 from dify_graph.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
@@ -414,6 +414,69 @@ def test_get_schema_cache_key_is_stable_across_credential_order() -> None:
     )
 
     assert first == second
+
+
+def test_get_schema_cache_key_separates_distinct_user_scopes() -> None:
+    first_runtime = PluginModelRuntime(tenant_id="tenant", user_id="user-a", client=Mock(spec=PluginModelClient))
+    second_runtime = PluginModelRuntime(tenant_id="tenant", user_id="user-b", client=Mock(spec=PluginModelClient))
+
+    first = first_runtime._get_schema_cache_key(
+        provider="langgenius/openai/openai",
+        model_type=ModelType.LLM,
+        model="gpt-4o-mini",
+        credentials={"a": "1"},
+    )
+    second = second_runtime._get_schema_cache_key(
+        provider="langgenius/openai/openai",
+        model_type=ModelType.LLM,
+        model="gpt-4o-mini",
+        credentials={"a": "1"},
+    )
+
+    assert first != second
+
+
+def test_get_schema_cache_key_separates_tenant_scope_from_user_scope() -> None:
+    tenant_runtime = PluginModelRuntime(tenant_id="tenant", user_id=None, client=Mock(spec=PluginModelClient))
+    user_runtime = PluginModelRuntime(tenant_id="tenant", user_id="user-a", client=Mock(spec=PluginModelClient))
+
+    tenant_key = tenant_runtime._get_schema_cache_key(
+        provider="langgenius/openai/openai",
+        model_type=ModelType.LLM,
+        model="gpt-4o-mini",
+        credentials={"a": "1"},
+    )
+    user_key = user_runtime._get_schema_cache_key(
+        provider="langgenius/openai/openai",
+        model_type=ModelType.LLM,
+        model="gpt-4o-mini",
+        credentials={"a": "1"},
+    )
+
+    assert tenant_key != user_key
+    assert f":{TENANT_SCOPE_SCHEMA_CACHE_USER_ID}" in tenant_key
+
+
+def test_get_schema_cache_key_separates_tenant_scope_from_empty_string_user_scope() -> None:
+    tenant_runtime = PluginModelRuntime(tenant_id="tenant", user_id=None, client=Mock(spec=PluginModelClient))
+    empty_user_runtime = PluginModelRuntime(tenant_id="tenant", user_id="", client=Mock(spec=PluginModelClient))
+
+    tenant_key = tenant_runtime._get_schema_cache_key(
+        provider="langgenius/openai/openai",
+        model_type=ModelType.LLM,
+        model="gpt-4o-mini",
+        credentials={},
+    )
+    empty_user_key = empty_user_runtime._get_schema_cache_key(
+        provider="langgenius/openai/openai",
+        model_type=ModelType.LLM,
+        model="gpt-4o-mini",
+        credentials={},
+    )
+
+    assert tenant_key != empty_user_key
+    assert empty_user_key.endswith(":")
+    assert TENANT_SCOPE_SCHEMA_CACHE_USER_ID not in empty_user_key
 
 
 def test_get_provider_schema_supports_short_alias_and_rejects_invalid_provider() -> None:
