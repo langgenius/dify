@@ -161,7 +161,7 @@ class OAuthServerUserTokenApi(Resource):
                 if not payload.code:
                     raise BadRequest("code is required")
 
-                if not hmac.compare_digest(payload.client_secret, oauth_provider_app.client_secret):
+                if not hmac.compare_digest(payload.client_secret or "", oauth_provider_app.client_secret or ""):
                     raise BadRequest("client_secret is invalid")
 
                 if payload.redirect_uri not in oauth_provider_app.redirect_uris:
