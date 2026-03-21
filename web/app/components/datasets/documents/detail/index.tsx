@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { DataSourceInfo, FileItem, FullDocumentDetail, LegacyDataSourceInfo } from '@/models/datasets'
+import type { DataSourceInfo, DocumentDisplayStatus, FileItem, FullDocumentDetail, LegacyDataSourceInfo } from '@/models/datasets'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -11,7 +11,7 @@ import Toast from '@/app/components/base/toast'
 import Metadata from '@/app/components/datasets/metadata/metadata-document'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import { ChunkingMode } from '@/models/datasets'
+import { ChunkingMode, DisplayStatusList } from '@/models/datasets'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { useDocumentDetail, useDocumentMetadata, useInvalidDocumentList } from '@/service/knowledge/use-document'
 import { useCheckSegmentBatchImportProgress, useChildSegmentListKey, useSegmentBatchImport, useSegmentListKey } from '@/service/knowledge/use-segment'
@@ -32,7 +32,9 @@ type DocumentDetailProps = {
   documentId: string
 }
 
-const NON_TERMINAL_DISPLAY_STATUSES = new Set(['queuing', 'indexing', 'paused'])
+const NON_TERMINAL_DISPLAY_STATUSES = new Set<typeof DisplayStatusList[number]>(
+  DisplayStatusList.filter(s => s === 'queuing' || s === 'indexing' || s === 'paused'),
+)
 
 const isLegacyDataSourceInfo = (info?: DataSourceInfo): info is LegacyDataSourceInfo => {
   return !!info && 'upload_file' in info
@@ -117,7 +119,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
 
   const isDetailLoading = !documentDetail && !error
 
-  const embedding = NON_TERMINAL_DISPLAY_STATUSES.has(documentDetail?.display_status || '')
+  const embedding = NON_TERMINAL_DISPLAY_STATUSES.has(documentDetail?.display_status as DocumentDisplayStatus)
 
   const documentUploadFile = useMemo(() => {
     if (!documentDetail?.data_source_info)
