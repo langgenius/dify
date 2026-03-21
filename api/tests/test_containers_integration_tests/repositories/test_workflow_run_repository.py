@@ -7,7 +7,8 @@ from datetime import timedelta
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import Engine, delete, exc as sa_exc
+from sqlalchemy import Engine, delete
+from sqlalchemy import exc as sa_exc
 from sqlalchemy.orm import Session, sessionmaker
 
 from dify_graph.entities import WorkflowExecution
@@ -102,7 +103,11 @@ class TestGetPaginatedWorkflowRuns:
         test_scope: _TestScope,
     ) -> None:
         """Return all runs for the given tenant/app when no status filter is applied."""
-        for status in (WorkflowExecutionStatus.SUCCEEDED, WorkflowExecutionStatus.FAILED, WorkflowExecutionStatus.RUNNING):
+        for status in (
+            WorkflowExecutionStatus.SUCCEEDED,
+            WorkflowExecutionStatus.FAILED,
+            WorkflowExecutionStatus.RUNNING,
+        ):
             _create_workflow_run(db_session_with_containers, test_scope, status=status)
 
         result = repository.get_paginated_workflow_runs(
