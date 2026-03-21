@@ -5,6 +5,10 @@ set -x
 SCRIPT_DIR="$(dirname "$(realpath "$0")")"
 cd "$SCRIPT_DIR/../api"
 
+# Avoid shell-level debug env vars overriding api/.env values.
+unset DEBUG
+unset FLASK_DEBUG
+
 uv run flask db upgrade
 
 uv run \
