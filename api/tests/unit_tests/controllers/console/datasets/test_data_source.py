@@ -178,9 +178,6 @@ class TestDataSourceApi:
 
     def test_patch_binding_scoped_to_current_tenant(self, app, patch_tenant, mock_engine):
         """Verify that the patch query includes tenant_id to prevent IDOR attacks."""
-        from sqlalchemy import select as real_select
-
-        from models import DataSourceOauthBinding
 
         api = DataSourceApi()
         method = unwrap(api.patch)
