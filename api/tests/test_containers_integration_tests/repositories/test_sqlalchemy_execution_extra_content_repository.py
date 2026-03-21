@@ -64,10 +64,9 @@ def _cleanup_scope_data(session: Session, scope: _TestScope) -> None:
 
 
 def _seed_base_entities(session: Session, scope: _TestScope) -> None:
-    """Create the base tenant, account, app, and conversation needed by tests."""
+    """Create the base tenant, account, and app needed by tests."""
     tenant = Tenant(id=scope.tenant_id, name=f"Tenant {scope.tenant_id[:8]}")
     session.add(tenant)
-    session.flush()
 
     account = Account(
         id=scope.user_id,
@@ -79,7 +78,6 @@ def _seed_base_entities(session: Session, scope: _TestScope) -> None:
         timezone="UTC",
     )
     session.add(account)
-    session.flush()
 
     tenant_join = TenantAccountJoin(
         tenant_id=scope.tenant_id,
@@ -88,7 +86,6 @@ def _seed_base_entities(session: Session, scope: _TestScope) -> None:
         current=True,
     )
     session.add(tenant_join)
-    session.flush()
 
     app = App(
         id=scope.app_id,
@@ -110,7 +107,6 @@ def _seed_base_entities(session: Session, scope: _TestScope) -> None:
         updated_by=scope.user_id,
     )
     session.add(app)
-    session.flush()
 
 
 def _create_conversation(session: Session, scope: _TestScope) -> Conversation:
@@ -129,7 +125,6 @@ def _create_conversation(session: Session, scope: _TestScope) -> Conversation:
     )
     conversation.inputs = {}
     session.add(conversation)
-    session.flush()
     return conversation
 
 
@@ -157,7 +152,6 @@ def _create_message(
         workflow_run_id=workflow_run_id,
     )
     session.add(message)
-    session.flush()
     return message
 
 
@@ -192,7 +186,6 @@ def _create_submitted_form(
         selected_action_id=action_id,
     )
     session.add(form)
-    session.flush()
     return form
 
 
@@ -225,7 +218,6 @@ def _create_waiting_form(
         expiration_time=expiration_time,
     )
     session.add(form)
-    session.flush()
     return form
 
 
@@ -242,7 +234,6 @@ def _create_human_input_content(
         form_id=form_id,
     )
     session.add(content)
-    session.flush()
     return content
 
 
@@ -263,7 +254,6 @@ def _create_recipient(
         access_token=access_token,
     )
     session.add(recipient)
-    session.flush()
     return recipient
 
 
@@ -276,7 +266,6 @@ def _create_delivery(session: Session, *, form_id: str) -> HumanInputDelivery:
         channel_payload=ConsoleDeliveryPayload().model_dump_json(),
     )
     session.add(delivery)
-    session.flush()
     return delivery
 
 
