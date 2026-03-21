@@ -79,9 +79,7 @@ def trial_app_required(view: Callable[Concatenate[App, P], R] | None = None):
         def decorated(app_id: str, *args: P.args, **kwargs: P.kwargs):
             current_user, _ = current_account_with_tenant()
 
-            trial_app = db.session.scalar(
-                select(TrialApp).where(TrialApp.app_id == str(app_id)).limit(1)
-            )
+            trial_app = db.session.scalar(select(TrialApp).where(TrialApp.app_id == str(app_id)).limit(1))
 
             if trial_app is None:
                 raise TrialAppNotAllowed()
