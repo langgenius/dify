@@ -357,6 +357,8 @@ class WorkflowConverter:
                 "type": BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL,
                 "query_variable_selector": query_variable_selector,
                 "dataset_ids": dataset_config.dataset_ids,
+                "project_id": dataset_config.project_id,
+                "include_public": dataset_config.include_public,
                 "retrieval_mode": retrieve_config.retrieve_strategy.value,
                 "single_retrieval_config": {
                     "model": {

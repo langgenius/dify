@@ -688,3 +688,45 @@ class TestFetchDatasetRetriever:
         request = call_args[1]["request"]
         assert request.metadata_filtering_conditions is not None
         assert request.metadata_filtering_conditions.conditions[0].value == "readme"
+
+    def test_fetch_dataset_retriever_passes_project_scope_flags(
+        self,
+        mock_graph_init_params,
+        mock_graph_runtime_state,
+        mock_rag_retrieval,
+    ):
+        """_fetch_dataset_retriever should pass project/public scope controls into request."""
+        variables = {"query": "What changed?"}
+        node_data = KnowledgeRetrievalNodeData(
+            title="Knowledge Retrieval",
+            type="knowledge-retrieval",
+            dataset_ids=[str(uuid.uuid4())],
+            project_id="project-1",
+            include_public=True,
+            retrieval_mode="multiple",
+            multiple_retrieval_config=MultipleRetrievalConfig(
+                top_k=5,
+                score_threshold=0.7,
+                reranking_enable=False,
+                reranking_mode="reranking_model",
+            ),
+        )
+
+        node_id = str(uuid.uuid4())
+        config = {"id": node_id, "data": node_data.model_dump()}
+        node = KnowledgeRetrievalNode(
+            id=node_id,
+            config=config,
+            graph_init_params=mock_graph_init_params,
+            graph_runtime_state=mock_graph_runtime_state,
+        )
+
+        mock_rag_retrieval.knowledge_retrieval.return_value = []
+        mock_rag_retrieval.llm_usage = LLMUsage.empty_usage()
+
+        node._fetch_dataset_retriever(node_data=node_data, variables=variables)
+
+        call_args = mock_rag_retrieval.knowledge_retrieval.call_args
+        request = call_args[1]["request"]
+        assert request.project_id == "project-1"
+        assert request.include_public is True

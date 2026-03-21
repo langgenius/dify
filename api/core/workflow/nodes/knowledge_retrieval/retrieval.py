@@ -55,6 +55,8 @@ class KnowledgeRetrievalRequest(BaseModel):
     app_id: str = Field(description="Application unique identifier")
     user_from: str = Field(description="Source of the user request (e.g., 'workflow', 'api')")
     dataset_ids: list[str] = Field(description="List of dataset IDs to retrieve from")
+    project_id: str | None = Field(default=None, description="Current project identifier for project-scoped retrieval")
+    include_public: bool = Field(default=False, description="Whether public-space datasets can be included")
     query: str | None = Field(default=None, description="Query text for knowledge retrieval")
     retrieval_mode: str = Field(description="Retrieval strategy: 'single' or 'multiple'")
     model_provider: str | None = Field(default=None, description="Model provider name (e.g., 'openai', 'anthropic')")

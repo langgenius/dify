@@ -208,6 +208,8 @@ class DatasetEntity(BaseModel):
     """
 
     dataset_ids: list[str]
+    project_id: str | None = None
+    include_public: bool = False
     retrieve_config: DatasetRetrieveConfigEntity
 
 

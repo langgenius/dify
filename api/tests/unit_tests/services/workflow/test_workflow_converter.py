@@ -186,6 +186,8 @@ def test__convert_to_knowledge_retrieval_node_for_chatbot():
 
     dataset_config = DatasetEntity(
         dataset_ids=["dataset_id_1", "dataset_id_2"],
+        project_id="project-chat",
+        include_public=True,
         retrieve_config=DatasetRetrieveConfigEntity(
             retrieve_strategy=DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE,
             top_k=5,
@@ -205,6 +207,8 @@ def test__convert_to_knowledge_retrieval_node_for_chatbot():
     assert node["data"]["type"] == "knowledge-retrieval"
     assert node["data"]["query_variable_selector"] == ["sys", "query"]
     assert node["data"]["dataset_ids"] == dataset_config.dataset_ids
+    assert node["data"]["project_id"] == "project-chat"
+    assert node["data"]["include_public"] is True
     assert node["data"]["retrieval_mode"] == dataset_config.retrieve_config.retrieve_strategy.value
     assert node["data"]["multiple_retrieval_config"] == {
         "top_k": dataset_config.retrieve_config.top_k,
@@ -218,6 +222,8 @@ def test__convert_to_knowledge_retrieval_node_for_workflow_app():
 
     dataset_config = DatasetEntity(
         dataset_ids=["dataset_id_1", "dataset_id_2"],
+        project_id="project-workflow",
+        include_public=False,
         retrieve_config=DatasetRetrieveConfigEntity(
             query_variable="query",
             retrieve_strategy=DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE,
@@ -238,6 +244,8 @@ def test__convert_to_knowledge_retrieval_node_for_workflow_app():
     assert node["data"]["type"] == "knowledge-retrieval"
     assert node["data"]["query_variable_selector"] == ["start", dataset_config.retrieve_config.query_variable]
     assert node["data"]["dataset_ids"] == dataset_config.dataset_ids
+    assert node["data"]["project_id"] == "project-workflow"
+    assert node["data"]["include_public"] is False
     assert node["data"]["retrieval_mode"] == dataset_config.retrieve_config.retrieve_strategy.value
     assert node["data"]["multiple_retrieval_config"] == {
         "top_k": dataset_config.retrieve_config.top_k,

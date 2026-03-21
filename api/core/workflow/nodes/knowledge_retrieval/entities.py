@@ -118,6 +118,8 @@ class KnowledgeRetrievalNodeData(BaseNodeData):
     query_variable_selector: list[str] | None | str = None
     query_attachment_selector: list[str] | None | str = None
     dataset_ids: list[str]
+    project_id: str | None = None
+    include_public: bool = False
     retrieval_mode: Literal["single", "multiple"]
     multiple_retrieval_config: MultipleRetrievalConfig | None = None
     single_retrieval_config: SingleRetrievalConfig | None = None

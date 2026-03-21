@@ -77,6 +77,7 @@ from models.dataset import (
     Dataset,
     DatasetMetadata,
     DatasetQuery,
+    DatasetSpaceType,
     DocumentSegment,
     RateLimitLog,
     SegmentAttachmentBinding,
@@ -117,7 +118,12 @@ class DatasetRetrieval:
 
     def knowledge_retrieval(self, request: KnowledgeRetrievalRequest) -> list[Source]:
         self._check_knowledge_rate_limit(request.tenant_id)
-        available_datasets = self._get_available_datasets(request.tenant_id, request.dataset_ids)
+        available_datasets = self._get_available_datasets(
+            request.tenant_id,
+            request.dataset_ids,
+            project_id=request.project_id,
+            include_public=request.include_public,
+        )
         available_datasets_ids = [i.id for i in available_datasets]
         if not available_datasets_ids:
             return []
@@ -1778,7 +1784,14 @@ class DatasetRetrieval:
             if thread_exceptions is not None:
                 thread_exceptions.append(e)
 
-    def _get_available_datasets(self, tenant_id: str, dataset_ids: list[str]) -> list[Dataset]:
+    def _get_available_datasets(
+        self,
+        tenant_id: str,
+        dataset_ids: list[str],
+        *,
+        project_id: str | None = None,
+        include_public: bool = False,
+    ) -> list[Dataset]:
         with session_factory.create_session() as session:
             subquery = (
                 session.query(DocumentModel.dataset_id, func.count(DocumentModel.id).label("available_document_count"))
@@ -1793,10 +1806,24 @@ class DatasetRetrieval:
                 .subquery()
             )
 
+            space_scope = []
+            if project_id:
+                space_scope.append(
+                    and_(
+                        Dataset.space_type == DatasetSpaceType.PROJECT.value,
+                        Dataset.project_id == project_id,
+                    )
+                )
+            if include_public:
+                space_scope.append(Dataset.space_type == DatasetSpaceType.PUBLIC.value)
+            if not space_scope:
+                space_scope.append(Dataset.space_type != DatasetSpaceType.PUBLIC.value)
+
             results = (
                 session.query(Dataset)
                 .outerjoin(subquery, Dataset.id == subquery.c.dataset_id)
                 .where(Dataset.tenant_id == tenant_id, Dataset.id.in_(dataset_ids))
+                .where(or_(*space_scope))
                 .where((subquery.c.available_document_count > 0) | (Dataset.provider == "external"))
                 .all()
             )
