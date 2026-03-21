@@ -3,13 +3,24 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import * as z from 'zod'
 import { BaseFieldType } from '@/app/components/base/form/form-scenarios/base/types'
-import Toast from '@/app/components/base/toast'
 import Actions from '../actions'
 import Form from '../form'
 import Header from '../header'
 
-// Spy on Toast.notify for validation tests
-const toastNotifySpy = vi.spyOn(Toast, 'notify')
+const { mockToastError } = vi.hoisted(() => ({
+  mockToastError: vi.fn(),
+}))
+
+vi.mock('@/app/components/base/ui/toast', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/components/base/ui/toast')>()
+  return {
+    ...actual,
+    toast: {
+      ...actual.toast,
+      error: mockToastError,
+    },
+  }
+})
 
 // Test Data Factory Functions
 
@@ -335,7 +346,7 @@ describe('Form', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    toastNotifySpy.mockClear()
+    mockToastError.mockReset()
   })
 
   describe('Rendering', () => {
@@ -444,10 +455,7 @@ describe('Form', () => {
 
       // Assert - validation error should be shown
       await waitFor(() => {
-        expect(toastNotifySpy).toHaveBeenCalledWith({
-          type: 'error',
-          message: '"field1" is required',
-        })
+        expect(mockToastError).toHaveBeenCalledWith('"field1" is required')
       })
     })
   })
@@ -566,10 +574,7 @@ describe('Form', () => {
       fireEvent.submit(form)
 
       await waitFor(() => {
-        expect(toastNotifySpy).toHaveBeenCalledWith({
-          type: 'error',
-          message: '"field1" is required',
-        })
+        expect(mockToastError).toHaveBeenCalledWith('"field1" is required')
       })
     })
 
@@ -583,7 +588,7 @@ describe('Form', () => {
 
       // Assert - wait a bit and verify onSubmit was not called
       await waitFor(() => {
-        expect(toastNotifySpy).toHaveBeenCalled()
+        expect(mockToastError).toHaveBeenCalled()
       })
       expect(onSubmit).not.toHaveBeenCalled()
     })
