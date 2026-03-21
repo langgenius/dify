@@ -170,6 +170,9 @@ class DifyTestContainers:
         self.dify_sandbox.with_exposed_ports(8194)
         self.dify_sandbox.env = {
             "API_KEY": "test_api_key",
+            # Resolve Node via the container PATH so JavaScript execution tests
+            # do not depend on a specific absolute installation path.
+            "NODEJS_PATH": "node",
         }
         self.dify_sandbox.start()
         sandbox_host = self.dify_sandbox.get_container_host_ip()
