@@ -32,6 +32,7 @@ from extensions.ext_database import db
 # Configure logging for test containers
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
+_TEST_SANDBOX_IMAGE = os.getenv("TEST_SANDBOX_IMAGE", "langgenius/dify-sandbox:0.2.12")
 
 
 class _CloserProtocol(Protocol):
@@ -166,7 +167,7 @@ class DifyTestContainers:
         # Start Dify Sandbox container for code execution environment
         # Dify Sandbox provides a secure environment for executing user code
         logger.info("Initializing Dify Sandbox container...")
-        self.dify_sandbox = DockerContainer(image="langgenius/dify-sandbox:latest").with_network(self.network)
+        self.dify_sandbox = DockerContainer(image=_TEST_SANDBOX_IMAGE).with_network(self.network)
         self.dify_sandbox.with_exposed_ports(8194)
         self.dify_sandbox.env = {
             "API_KEY": "test_api_key",
