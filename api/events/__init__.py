@@ -7,7 +7,10 @@ class _EventHook:
         return self
 
     def __isub__(self, handler):
-        self._handlers.remove(handler)
+        try:
+            self._handlers.remove(handler)
+        except ValueError:
+            pass
         return self
 
     def __call__(self, *args, **kwargs):
