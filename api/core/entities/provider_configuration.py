@@ -101,7 +101,7 @@ class ProviderConfiguration(BaseModel):
                 self.provider.configurate_methods.append(ConfigurateMethod.PREDEFINED_MODEL)
         return self
 
-    def bind_model_runtime(self, model_runtime: "ModelRuntime") -> None:
+    def bind_model_runtime(self, model_runtime: ModelRuntime) -> None:
         """Attach the already-composed runtime for request-bound call chains."""
         self._bound_model_runtime = model_runtime
 

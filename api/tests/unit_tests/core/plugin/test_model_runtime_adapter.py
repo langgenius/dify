@@ -10,7 +10,7 @@ import pytest
 from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
 from core.plugin.impl import model_runtime as model_runtime_module
 from core.plugin.impl.model import PluginModelClient
-from core.plugin.impl.model_runtime import PluginModelRuntime, TENANT_SCOPE_SCHEMA_CACHE_USER_ID
+from core.plugin.impl.model_runtime import TENANT_SCOPE_SCHEMA_CACHE_USER_ID, PluginModelRuntime
 from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
 from dify_graph.model_runtime.entities.common_entities import I18nObject
 from dify_graph.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType

@@ -467,7 +467,9 @@ def test_get_model_type_instance_and_schema_reuse_bound_runtime_factory() -> Non
     mock_factory.get_model_schema.return_value = mock_schema
 
     with (
-        patch("core.entities.provider_configuration.ModelProviderFactory", return_value=mock_factory) as mock_factory_cls,
+        patch(
+            "core.entities.provider_configuration.ModelProviderFactory", return_value=mock_factory
+        ) as mock_factory_cls,
         patch("core.entities.provider_configuration.create_plugin_model_provider_factory") as mock_factory_builder,
     ):
         model_type_instance = configuration.get_model_type_instance(ModelType.LLM)
