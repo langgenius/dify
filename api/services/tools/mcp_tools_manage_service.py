@@ -1,4 +1,5 @@
 import hashlib
+import hmac
 import json
 import logging
 from collections.abc import Mapping
@@ -791,13 +792,17 @@ class MCPToolManageService:
 
         # Check if client_id is masked and unchanged
         final_client_id = client_id
-        if existing_masked.get("client_id") and client_id == existing_masked["client_id"]:
+        if existing_masked.get("client_id") and hmac.compare_digest(client_id, existing_masked["client_id"]):
             # Use existing decrypted value
             final_client_id = existing_decrypted.get("client_id", client_id)
 
         # Check if client_secret is masked and unchanged
         final_client_secret = client_secret
-        if existing_masked.get("client_secret") and client_secret == existing_masked["client_secret"]:
+        if (
+            existing_masked.get("client_secret")
+            and client_secret is not None
+            and hmac.compare_digest(client_secret, existing_masked["client_secret"])
+        ):
             # Use existing decrypted value
             final_client_secret = existing_decrypted.get("client_secret", client_secret)
 
