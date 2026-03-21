@@ -1,0 +1,3 @@
+"""
+Human Input node implementation.
+"""

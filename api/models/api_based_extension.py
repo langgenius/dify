@@ -1,29 +1,36 @@
 import enum
+from datetime import datetime
+from uuid import uuid4
 
-from sqlalchemy import func
+import sqlalchemy as sa
+from sqlalchemy import DateTime, String, func
+from sqlalchemy.orm import Mapped, mapped_column
 
-from .base import Base
-from .engine import db
-from .types import StringUUID
+from .base import TypeBase
+from .types import LongText, StringUUID
 
 
-class APIBasedExtensionPoint(enum.Enum):
+class APIBasedExtensionPoint(enum.StrEnum):
     APP_EXTERNAL_DATA_TOOL_QUERY = "app.external_data_tool.query"
     PING = "ping"
     APP_MODERATION_INPUT = "app.moderation.input"
     APP_MODERATION_OUTPUT = "app.moderation.output"
 
 
-class APIBasedExtension(Base):
+class APIBasedExtension(TypeBase):
     __tablename__ = "api_based_extensions"
     __table_args__ = (
-        db.PrimaryKeyConstraint("id", name="api_based_extension_pkey"),
-        db.Index("api_based_extension_tenant_idx", "tenant_id"),
+        sa.PrimaryKeyConstraint("id", name="api_based_extension_pkey"),
+        sa.Index("api_based_extension_tenant_idx", "tenant_id"),
     )
 
-    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
-    tenant_id = db.Column(StringUUID, nullable=False)
-    name = db.Column(db.String(255), nullable=False)
-    api_endpoint = db.Column(db.String(255), nullable=False)
-    api_key = db.Column(db.Text, nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
+    )
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    api_endpoint: Mapped[str] = mapped_column(String(255), nullable=False)
+    api_key: Mapped[str] = mapped_column(LongText, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )

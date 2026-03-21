@@ -1,0 +1,22 @@
+{
+  "app.changeLogoTip": "SVG veya PNG formatında, en az 80x80px boyutunda",
+  "app.title": "Uygulama başlığı markasını özelleştir",
+  "apply": "Uygula",
+  "change": "Değiştir",
+  "custom": "Özelleştirme",
+  "customize.contactUs": " bizimle iletişime geçin ",
+  "customize.prefix": "Uygulama içindeki marka logosunu özelleştirmek için, lütfen",
+  "customize.suffix": "Enterprise sürümüne yükseltin.",
+  "restore": "Varsayılan Ayarları Geri Yükle",
+  "upgradeTip.des": "Markanızı özelleştirmek için planınızı yükseltin",
+  "upgradeTip.prefix": "Markanızı özelleştirmek için planınızı yükseltin",
+  "upgradeTip.suffix": ".",
+  "upgradeTip.title": "Planınızı yükseltin",
+  "upload": "Yükle",
+  "uploadedFail": "Resim yükleme başarısız oldu, lütfen tekrar yükleyin.",
+  "uploading": "Yükleniyor",
+  "webapp.changeLogo": "Powered by Brand Resmini Değiştir",
+  "webapp.changeLogoTip": "SVG veya PNG formatında, en az 40x40px boyutunda",
+  "webapp.removeBrand": "Powered by Dify'i kaldır",
+  "webapp.title": "web app markasını özelleştir"
+}

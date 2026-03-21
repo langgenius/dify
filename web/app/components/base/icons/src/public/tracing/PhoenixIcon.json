@@ -1,853 +1,853 @@
 {
-	"icon": {
-		"type": "element",
-		"isRootNode": true,
-		"name": "svg",
-		"attributes": {
-			"id": "Layer_2",
-			"data-name": "Layer 2",
-			"xmlns": "http://www.w3.org/2000/svg",
-			"xmlns:xlink": "http://www.w3.org/1999/xlink",
-			"viewBox": "0 0 74 16",
-			"width": "74",
-			"height": "16"
-		},
-		"children": [
-			{
-				"type": "element",
-				"name": "defs",
-				"attributes": {},
-				"children": [
-					{
-						"type": "element",
-						"name": "linearGradient",
-						"attributes": {
-							"id": "linear-gradient",
-							"x1": "6.05",
-							"y1": ".98",
-							"x2": "13.18",
-							"y2": "13.34",
-							"gradientUnits": "userSpaceOnUse"
-						},
-						"children": [
-							{
-								"type": "element",
-								"name": "stop",
-								"attributes": {
-									"offset": "0",
-									"stop-color": "#11bab5"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "stop",
-								"attributes": {
-									"offset": ".5",
-									"stop-color": "#00adee"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "stop",
-								"attributes": {
-									"offset": "1",
-									"stop-color": "#0094c5"
-								},
-								"children": []
-							}
-						]
-					},
-					{
-						"type": "element",
-						"name": "linearGradient",
-						"attributes": {
-							"id": "linear-gradient-2",
-							"x1": "12.99",
-							"y1": "10.87",
-							"x2": "6.97",
-							"y2": ".45",
-							"gradientUnits": "userSpaceOnUse"
-						},
-						"children": [
-							{
-								"type": "element",
-								"name": "stop",
-								"attributes": {
-									"offset": "0",
-									"stop-color": "#fcfdff",
-									"stop-opacity": "0"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "stop",
-								"attributes": {
-									"offset": ".12",
-									"stop-color": "#fcfdff",
-									"stop-opacity": ".17"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "stop",
-								"attributes": {
-									"offset": ".3",
-									"stop-color": "#fcfdff",
-									"stop-opacity": ".42"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "stop",
-								"attributes": {
-									"offset": ".47",
-									"stop-color": "#fcfdff",
-									"stop-opacity": ".63"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "stop",
-								"attributes": {
-									"offset": ".64",
-									"stop-color": "#fcfdff",
-									"stop-opacity": ".79"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "stop",
-								"attributes": {
-									"offset": ".78",
-									"stop-color": "#fcfdff",
-									"stop-opacity": ".9"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "stop",
-								"attributes": {
-									"offset": ".91",
-									"stop-color": "#fcfdff",
-									"stop-opacity": ".97"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "stop",
-								"attributes": {
-									"offset": "1",
-									"stop-color": "#fcfdff"
-								},
-								"children": []
-							}
-						]
-					},
-					{
-						"type": "element",
-						"name": "linearGradient",
-						"attributes": {
-							"id": "linear-gradient-3",
-							"x1": "11.21",
-							"y1": "10.8",
-							"x2": "6.88",
-							"y2": "3.29",
-							"xlink:href": "#linear-gradient-2"
-						},
-						"children": []
-					},
-					{
-						"type": "element",
-						"name": "linearGradient",
-						"attributes": {
-							"id": "linear-gradient-4",
-							"x1": "10.62",
-							"y1": "11.35",
-							"x2": "8.2",
-							"y2": "7.16",
-							"xlink:href": "#linear-gradient-2"
-						},
-						"children": []
-					},
-					{
-						"type": "element",
-						"name": "linearGradient",
-						"attributes": {
-							"id": "linear-gradient-5",
-							"x1": "10.72",
-							"y1": "12.2",
-							"x2": "9.21",
-							"y2": "9.59",
-							"xlink:href": "#linear-gradient-2"
-						},
-						"children": []
-					},
-					{
-						"type": "element",
-						"name": "linearGradient",
-						"attributes": {
-							"id": "linear-gradient-6",
-							"x1": "8.17",
-							"y1": "11.96",
-							"x2": "8.17",
-							"y2": "14.71",
-							"gradientUnits": "userSpaceOnUse"
-						},
-						"children": [
-							{
-								"type": "element",
-								"name": "stop",
-								"attributes": {
-									"offset": "0",
-									"stop-color": "#231f20"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "stop",
-								"attributes": {
-									"offset": ".03",
-									"stop-color": "#231f20",
-									"stop-opacity": ".9"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "stop",
-								"attributes": {
-									"offset": ".22",
-									"stop-color": "#231f20",
-									"stop-opacity": ".4"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "stop",
-								"attributes": {
-									"offset": ".42",
-									"stop-color": "#231f20",
-									"stop-opacity": ".1"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "stop",
-								"attributes": {
-									"offset": ".65",
-									"stop-color": "#231f20",
-									"stop-opacity": "0"
-								},
-								"children": []
-							}
-						]
-					},
-					{
-						"type": "element",
-						"name": "linearGradient",
-						"attributes": {
-							"id": "Fade_to_Black_2",
-							"data-name": "Fade to Black 2",
-							"x1": "11.26",
-							"y1": "11.7",
-							"x2": "11.26",
-							"y2": "13.1",
-							"gradientUnits": "userSpaceOnUse"
-						},
-						"children": [
-							{
-								"type": "element",
-								"name": "stop",
-								"attributes": {
-									"offset": "0",
-									"stop-color": "#231f20"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "stop",
-								"attributes": {
-									"offset": "1",
-									"stop-color": "#231f20",
-									"stop-opacity": "0"
-								},
-								"children": []
-							}
-						]
-					},
-					{
-						"type": "element",
-						"name": "linearGradient",
-						"attributes": {
-							"id": "linear-gradient-7",
-							"x1": "11.94",
-							"y1": "8.07",
-							"x2": "11.94",
-							"y2": "6.92",
-							"gradientUnits": "userSpaceOnUse"
-						},
-						"children": [
-							{
-								"type": "element",
-								"name": "stop",
-								"attributes": {
-									"offset": "0",
-									"stop-color": "#231f20"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "stop",
-								"attributes": {
-									"offset": ".03",
-									"stop-color": "#231f20",
-									"stop-opacity": ".95"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "stop",
-								"attributes": {
-									"offset": ".51",
-									"stop-color": "#231f20",
-									"stop-opacity": ".26"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "stop",
-								"attributes": {
-									"offset": ".81",
-									"stop-color": "#231f20",
-									"stop-opacity": "0"
-								},
-								"children": []
-							}
-						]
-					},
-					{
-						"type": "element",
-						"name": "linearGradient",
-						"attributes": {
-							"id": "linear-gradient-8",
-							"x1": "14.45",
-							"y1": "8.92",
-							"x2": "14.45",
-							"y2": "6.14",
-							"gradientUnits": "userSpaceOnUse"
-						},
-						"children": [
-							{
-								"type": "element",
-								"name": "stop",
-								"attributes": {
-									"offset": "0",
-									"stop-color": "#231f20"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "stop",
-								"attributes": {
-									"offset": ".18",
-									"stop-color": "#231f20",
-									"stop-opacity": ".48"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "stop",
-								"attributes": {
-									"offset": ".38",
-									"stop-color": "#231f20",
-									"stop-opacity": ".12"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "stop",
-								"attributes": {
-									"offset": ".58",
-									"stop-color": "#231f20",
-									"stop-opacity": "0"
-								},
-								"children": []
-							}
-						]
-					},
-					{
-						"type": "element",
-						"name": "linearGradient",
-						"attributes": {
-							"id": "Fade_to_Black_2-2",
-							"data-name": "Fade to Black 2",
-							"x1": "17.03",
-							"y1": "11.1",
-							"x2": "16.07",
-							"y2": "9.44",
-							"xlink:href": "#Fade_to_Black_2"
-						},
-						"children": []
-					},
-					{
-						"type": "element",
-						"name": "linearGradient",
-						"attributes": {
-							"id": "linear-gradient-9",
-							"x1": "17.8",
-							"y1": "10.64",
-							"x2": "16.36",
-							"y2": "8.16",
-							"xlink:href": "#linear-gradient-2"
-						},
-						"children": []
-					},
-					{
-						"type": "element",
-						"name": "linearGradient",
-						"attributes": {
-							"id": "linear-gradient-10",
-							"x1": "14.07",
-							"y1": "10.22",
-							"x2": "16.16",
-							"y2": "9.02",
-							"gradientUnits": "userSpaceOnUse"
-						},
-						"children": [
-							{
-								"type": "element",
-								"name": "stop",
-								"attributes": {
-									"offset": "0",
-									"stop-color": "#231f20"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "stop",
-								"attributes": {
-									"offset": ".31",
-									"stop-color": "#231f20",
-									"stop-opacity": ".5"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "stop",
-								"attributes": {
-									"offset": ".67",
-									"stop-color": "#231f20",
-									"stop-opacity": ".13"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "stop",
-								"attributes": {
-									"offset": "1",
-									"stop-color": "#231f20",
-									"stop-opacity": "0"
-								},
-								"children": []
-							}
-						]
-					}
-				]
-			},
-			{
-				"type": "element",
-				"name": "g",
-				"attributes": {
-					"id": "Layer_1-2",
-					"data-name": "Layer 1"
-				},
-				"children": [
-					{
-						"type": "element",
-						"name": "rect",
-						"attributes": {
-							"style": "fill: none;",
-							"y": ".02",
-							"width": "74",
-							"height": "16"
-						},
-						"children": []
-					},
-					{
-						"type": "element",
-						"name": "g",
-						"attributes": {
-							"id": "Phoenix_horiz_-_gradient",
-							"data-name": "Phoenix horiz - gradient"
-						},
-						"children": [
-							{
-								"type": "element",
-								"name": "path",
-								"attributes": {
-									"style": "fill: url(#linear-gradient);",
-									"d": "M17.91,10c-.04-.19-.14-.36-.28-.51-.06-.06-.12-.11-.19-.16-.03-.02-.07-.05-.1-.07-.04-.03-.09-.05-.14-.08-.19-.09-.34-.19-.48-.29-.06-.04-.11-.09-.16-.13-.12-.11-.21-.2-.27-.3-.02-.03-.04-.07-.05-.1,0-.01-.02-.03-.03-.04-.02-.02-.05-.02-.08-.02-.04,0-.08.04-.08.09,0,.03,0,.07,0,.11,0,.02,0,.04-.03.05,0,0,0,0-.02,0-.03,0-.06.02-.07.04-.02.02-.02.05-.02.08,0,.03.01.04.02.06h0s0,.03.01.04c.01.03.03.05.05.08.03.05.07.09.11.15.01.02.02.04,0,.06-.01.02-.03.03-.05.03-.25-.03-.46-.09-.67-.16-.02,0-.05-.02-.07-.03-.18-.08.15-.41.3-.64.66-1.02.8-2.19.81-3.38,0-1.15-.12-2.27-.35-3.39h0c-.15-.94-.27-1.29-.35-1.42-.02-.03-.04-.06-.06-.07-.02-.01-.03,0-.03,0-.04,0-.09.04-.15.1-.25.26-.23.57-.17.89.31,1.47.55,2.95.44,4.47-.07,1.04-.27,2.05-1,2.86-.04.05-.09.1-.14.14-.05.05-.14.16-.2.11-.08-.06,0-.18.02-.24.43-1,.55-2.05.48-3.12,0-.02,0-.05,0-.07h0s0-.04,0-.06c-.01-.14-.02-.28-.04-.43-.18-1.71-.4-1.82-.4-1.82h0s-.03-.02-.06-.03c-.12-.02-.18.08-.23.15-.23.35-.13.72-.05,1.08.26,1.28.27,2.55-.18,3.79-.04.11-.09.22-.14.33-.05.12-.09.26-.28.2-.18-.06-.13-.19-.1-.31.06-.31.11-.62.14-.93h0s0-.06,0-.09c0-.05,0-.11.01-.16,0-.05,0-.09,0-.13,0-.02,0-.04,0-.07.04-.99-.13-1.44-.19-1.57,0-.02-.01-.03-.02-.04h0s0,0,0,0c-.07-.1-.17-.09-.27,0-.17.17-.27.37-.22.62.13.74.05,1.46-.08,2.19-.02.1-.06.27-.27.23-.14-.03-.17-.09-.18-.21,0-.09,0-.19,0-.28,0,0,0,0,0,0h0s0-.03,0-.04h0s0-.01,0-.02c0-.13-.02-.25-.03-.38,0-.01,0-.02,0-.04-.08-.71-.18-.78-.18-.78-.07-.09-.17-.07-.26.02-.17.17-.26.37-.22.62.03.19.02.13.04.29.01.08.03.23.03.28,0,.04-.01.08-.04.11-.09.09-.23,0-.34-.05-2.08-.86-3.86-2.07-5.42-3.6-.61-.62-1.65-1.88-1.65-1.88h0s-.09-.07-.16-.04c-.14.06-.13.23-.14.38-.02.29.13.51.3.7,2.35,2.74,5.21,4.71,8.67,5.69l.62.16s.01,0,.02,0c0,0,0,0,0,0l.54.14h.01s-.04.01-.06.02c-.59.12-1.76-.1-2.69-.32-.46-.1-.92-.22-1.36-.36-.02,0-.03,0-.03,0h0c-1.73-.55-3.32-1.44-4.7-2.81-.13-.13-.25-.27-.37-.41-.11-.13-.34-.4-.41-.5,0-.01-.02-.02-.03-.03h0s0,0,0,0c-.02-.02-.05-.04-.09-.03-.1.02-.12.12-.14.21-.07.34.04.62.26.88,1.42,1.59,3.2,2.61,5.21,3.28,1.14.38,2.31.61,3.5.76-.71.23-1.44.3-2.18.28-1.43-.04-2.77-.38-4.03-.99-.46-.24-.9-.5-1.01-.58-.07-.04-.13-.07-.2-.02-.13.1-.04.27,0,.4.08.26.25.43.49.55,2.05,1.08,4.22,1.52,6.52,1.13.23-.04.45-.08.7-.16-.39.33-.83.55-1.3.72-1.44.53-2.88.51-4.31.15-.46-.12-.99-.32-.99-.32h0c-.08-.03-.15-.05-.21.04-.1.15-.01.3.08.45.21.33.63.36.95.48.11.04-.19.24-.29.31-.47.36-.94.69-1.41,1.04l-.31.23h0c-.05.04-.1.08-.08.15.03.09.12.1.2.12.34.07.62-.04.89-.24.57-.43,1.15-.84,1.71-1.28.21-.17.4-.15.7-.08-.73.55-1.4,1.06-2.08,1.57-.69.52-1.38,1.04-2.07,1.56l-.46.34s-.01,0-.02.01h0s0,0,0,0c-.04.03-.07.07-.06.11.02.1.14.13.24.15.41.07.66-.08.94-.29,1.39-1.05,2.79-2.09,4.18-3.14.31-.24.63-.37,1.08-.32-.38.29-.75.56-1.11.83l-.98.73s-.01.01-.02.02h0c-.05.04-.09.09-.07.16.04.13.19.15.33.17.24.04.45-.05.64-.19.11-.08.22-.16.33-.24h0s1.5-1.19,1.5-1.19c0,0,.35-.25.76-.49.04-.02.07-.05.11-.07.02,0,.05-.02.11-.05.04-.02.09-.05.13-.07.06-.03.14-.07.22-.12.24-.1.93-.42,1.51-1.03.27-.21.66-.48.95-.62h0s0,0,0,0c.02-.01.04-.02.07-.03h0s0,0,0,0c.01,0,.03-.01.04-.01h.04c.11-.05.28-.06.31.18,0,.06,0,.12,0,.18,0,.05-.01.1-.02.14,0,.04,0,.08.04.1,0,0,.01,0,.02,0,.04.02.09.01.12-.02.01-.01.02-.03.04-.04.15-.15.3-.26.45-.33.23-.1.47-.1.72,0,.12.05.23.11.34.19.05.03.1.07.14.12.03.03.06.05.08.08h0s.02.02.02.02c0,0,0,0,.01.01.02.02.05.02.08.02.03,0,.06-.03.07-.06,0,0,0-.01,0-.02.07-.21.09-.4.04-.59Z"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "path",
-								"attributes": {
-									"style": "fill: #fddab4;",
-									"d": "M13.48,7.75c-.02.1-.03.21-.05.31.02-.1.04-.21.05-.31h0Z"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "path",
-								"attributes": {
-									"style": "fill: #fddab4;",
-									"d": "M15.33,8.9s.02,0,.02,0c0,0-.02,0-.02,0"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "polyline",
-								"attributes": {
-									"style": "fill: #fddab4;",
-									"points": "14.46 8.33 14.46 8.33 14.46 8.33"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "polyline",
-								"attributes": {
-									"style": "fill: #fddab4;",
-									"points": "14.48 8.26 14.48 8.26 14.48 8.26"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "polyline",
-								"attributes": {
-									"style": "fill: #fddab4;",
-									"points": "14.49 8.25 14.49 8.25 14.49 8.25"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "polyline",
-								"attributes": {
-									"style": "fill: #fddab4;",
-									"points": "15.64 8.25 15.63 8.25 15.64 8.25"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "path",
-								"attributes": {
-									"style": "fill: #fddab4;",
-									"d": "M13.81,8.17s-.02.06-.04.08c.01-.03.02-.06.04-.08"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "polyline",
-								"attributes": {
-									"style": "fill: #fddab4;",
-									"points": "12.57 8.11 12.57 8.11 12.57 8.11"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "polyline",
-								"attributes": {
-									"style": "fill: #fddab4;",
-									"points": "12.39 8.03 12.39 8.03 12.39 8.03"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "polyline",
-								"attributes": {
-									"style": "fill: #fddab4;",
-									"points": "12.39 8.03 12.39 8.03 12.39 8.03"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "polyline",
-								"attributes": {
-									"style": "fill: #fddab4;",
-									"points": "12.39 8.03 12.39 8.03 12.39 8.03"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "polyline",
-								"attributes": {
-									"style": "fill: #fddab4;",
-									"points": "12.38 8.02 12.38 8.03 12.38 8.02"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "polyline",
-								"attributes": {
-									"style": "fill: #fddab4;",
-									"points": "12.38 8.02 12.38 8.02 12.38 8.02"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "polyline",
-								"attributes": {
-									"style": "fill: #fddab4;",
-									"points": "12.35 7.89 12.35 7.89 12.35 7.89"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "path",
-								"attributes": {
-									"style": "fill: #fddab4;",
-									"d": "M12.81,7.81s0,.04-.01.06c0-.02,0-.04.01-.06"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "path",
-								"attributes": {
-									"style": "fill: #fddab4;",
-									"d": "M11.67,7.67s-.03.02-.05.03c.02,0,.03-.02.05-.03"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "path",
-								"attributes": {
-									"style": "fill: #e5b3a5;",
-									"d": "M12.39,8.03s.03.03.05.04h0s-.03-.03-.05-.04M12.39,8.03s0,0,0,0c0,0,0,0,0,0M12.39,8.03s0,0,0,0c0,0,0,0,0,0M12.38,8.03s0,0,0,0c0,0,0,0,0,0M12.38,8.02s0,0,0,0c0,0,0,0,0,0M12.38,8.02s0,0,0,0c0,0,0,0,0,0M12.35,7.89s0,0,0,0c0,0,0,0,0,0M12.35,7.89h0s0,0,0,0c0,0,0,0,0,0M11.45,7.68s0,0,0,0c.04.02.09.03.13.03.02,0,.03,0,.05,0-.02,0-.03,0-.05,0-.04,0-.09-.02-.13-.03M12.34,7.54s0,0,0,0c0,0,0,0,0,0"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "path",
-								"attributes": {
-									"style": "fill: #e5b3a5;",
-									"d": "M15.35,8.91s0,0,.01,0h0s0,0-.01,0M14.52,8.58s0,0,0,0c0,0,0,0,0,0M14.39,8.51s.01.06.04.08c.01,0,.02.01.03.01.02,0,.04,0,.05-.02-.02.01-.04.02-.05.02-.01,0-.02,0-.03-.01-.03-.02-.04-.05-.04-.08M14.46,8.33s0,0,0,.01c0,0,0,0,0-.01M14.48,8.26s-.02.05-.03.07c0-.02.02-.05.03-.07M14.49,8.25s0,0,0,0c0,0,0,0,0,0M15.63,8.25s0,0,0,0c0,0,0,0,0,0M15.64,8.24s0,0,0,0c0,0,0,0,0,0M14.49,8.24s0,0,0,0c0,0,0,0,0,0M13.4,8.21c0,.07.03.13.13.16.03.01.06.01.08.01.09,0,.13-.06.16-.13-.03.07-.07.13-.16.13-.02,0-.05,0-.08-.01-.1-.03-.13-.09-.13-.16M12.57,8.11h0,0M12.74,8.04s-.08.07-.14.07c0,0-.01,0-.02,0,0,0,.01,0,.02,0,.07,0,.11-.03.14-.07M14.05,7.54s0,0,0,0c-.03.1-.06.2-.1.3-.04.11-.09.22-.14.33h0c.05-.11.1-.22.14-.33.04-.1.07-.2.1-.3M12.87,7.49c-.02.11-.03.22-.05.33.02-.11.04-.22.06-.33h0M15.52,6.97s0,0,0,0c-.15.49-.38.95-.75,1.36-.04.05-.09.1-.14.14h0s.09-.09.14-.14c.37-.41.6-.87.75-1.36"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "path",
-								"attributes": {
-									"style": "fill: url(#linear-gradient-2); opacity: .4;",
-									"d": "M4.17,2.09s-.04,0-.06.01c-.1.04-.12.14-.13.25.52.68,2.56,3.18,5.78,4.9,0,0,3.15,1.66,6.32,1.84-.25-.03-.46-.09-.67-.16-.01,0-.02,0-.04-.01h0c-1.15-.25-2.13-.56-2.83-.81.01,0,.03,0,.04,0-.01,0-.03,0-.04,0-.04,0-.07-.02-.1-.04-.55-.2-.9-.35-.98-.39-.04-.02-.08-.04-.12-.05-2.08-.86-3.86-2.07-5.42-3.6-.61-.62-1.65-1.88-1.65-1.88h0s-.06-.05-.1-.05"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "path",
-								"attributes": {
-									"style": "fill: url(#linear-gradient-3); opacity: .4;",
-									"d": "M4.39,4.75s-.01,0-.02,0c-.1.02-.12.12-.14.21,0,.02,0,.03,0,.05,1.61,2.18,3.77,3.07,3.77,3.07,2.15,1.01,3.92,1.22,5,1.22.45,0,.77-.04.96-.06-.09,0-.18.01-.28.01-.63,0-1.53-.17-2.29-.35-.46-.1-.92-.22-1.36-.36-.02,0-.03,0-.03,0h0c-1.73-.55-3.32-1.44-4.7-2.81-.13-.13-.25-.27-.37-.41-.11-.13-.34-.4-.41-.5,0-.01-.02-.02-.03-.03h0s0,0,0,0c-.02-.02-.04-.03-.07-.03"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "path",
-								"attributes": {
-									"style": "fill: url(#linear-gradient-4); opacity: .4",
-									"d": "M5.86,8.53s-.05,0-.08.03c-.11.08-.06.22-.02.35.81.49,2.66,1.44,4.84,1.44.83,0,1.7-.14,2.59-.48-.64.21-1.3.28-1.96.28-.07,0-.15,0-.22,0-1.43-.04-2.77-.38-4.03-.99-.46-.24-.9-.5-1.01-.58-.04-.03-.08-.05-.12-.05"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "path",
-								"attributes": {
-									"style": "fill: url(#linear-gradient-5); opacity: .4;",
-									"d": "M13.34,10.6c-.35.27-.75.46-1.16.61-.77.28-1.55.41-2.32.41-.67,0-1.33-.09-1.99-.26-.46-.12-.99-.32-.99-.32h0s-.07-.03-.1-.03c-.04,0-.08.02-.11.06-.05.07-.05.14-.04.21.51.24,1.6.66,2.93.66,1.15,0,2.49-.32,3.78-1.34"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "path",
-								"attributes": {
-									"style": "fill: url(#linear-gradient-6); opacity: .4;",
-									"d": "M9.91,12.25c-1.25,0-2.19-.25-2.31-.29.04.01.07.02.1.03.11.04-.19.24-.29.31-.35.27-.69.52-1.04.77h1.06c.33-.25.67-.5.99-.75.12-.1.24-.13.37-.13.1,0,.2.02.33.05-.73.55-1.4,1.06-2.08,1.57-.4.3-.79.6-1.19.9h1.07c.96-.72,1.92-1.44,2.87-2.16.22-.17.44-.28.71-.32-.2.01-.4.02-.58.02Z"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "path",
-								"attributes": {
-									"style": "fill: url(#Fade_to_Black_2); opacity: .4;",
-									"d": "M9.69,13.1h1.03l.76-.6s.35-.25.76-.49c.04-.02.07-.05.11-.07.02,0,.05-.02.11-.05.04-.02.09-.05.13-.07.07-.03.15-.08.23-.12-.73.31-1.49.46-2.18.52,0,0,.02,0,.03,0,.06,0,.12,0,.18.01-.38.29-.75.56-1.11.83l-.06.05Z"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "path",
-								"attributes": {
-									"style": "fill: url(#linear-gradient-7); opacity: .4;",
-									"d": "M12.35,7.89c0-.09,0-.19,0-.28h0s0,0,0,0c0-.01,0-.03,0-.04h0s0-.02,0-.02c0-.08,0-.16-.02-.23-.25-.1-.48-.24-.69-.39,0,.02,0,.04,0,.07.03.19.02.13.04.29.01.08.03.23.03.28,0,.04-.01.08-.04.11-.03.03-.06.04-.09.04-.04,0-.09-.02-.13-.03.08.04.43.19.98.39-.06-.04-.08-.09-.08-.18Z"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "path",
-								"attributes": {
-									"style": "fill: url(#linear-gradient-8); opacity: .4;",
-									"d": "M16.36,6.14c-.23.32-.51.6-.84.83-.15.49-.38.95-.75,1.36-.04.05-.09.1-.14.14-.05.04-.11.12-.17.12-.01,0-.02,0-.03-.01-.08-.06,0-.18.02-.24.14-.32.24-.65.32-.98-.23.09-.47.15-.72.18-.03.1-.06.2-.1.3-.04.11-.09.22-.14.33-.05.1-.08.21-.2.21-.02,0-.05,0-.08-.01-.18-.06-.13-.19-.1-.31.03-.16.06-.32.08-.49-.22,0-.43-.04-.64-.08-.02.13-.04.26-.07.39-.02.09-.05.24-.21.24-.02,0-.04,0-.06,0,.69.25,1.68.56,2.83.81h0s-.02,0-.03-.01c-.18-.08.15-.41.3-.64.43-.66.64-1.37.73-2.12Z"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "path",
-								"attributes": {
-									"style": "fill: url(#Fade_to_Black_2-2); opacity: .5;",
-									"d": "M16.19,9.7c-.14,0-.29.01-.43.04-.03,0-.05,0-.08,0-.04,0-.08,0-.11-.02,0,0,.01.01.02.02.06.09.1.18.11.28.02.02.03.04.04.07h0s0,0,0,0c0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0h0s0,0,0,0c0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0t0,0s0,0,0,0c0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0s0,0,0,0c0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0s0,0,0,0c0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0h0s0,0,0,0h0s0,0,0,0h0s0,0,0,0h0s0,0,0,0h0s0,0,0,0h0s0,0,0,0h0s0,0,0,0h0s0,0,0,0c0,0,0,0,0,0,0,0,0,0,0,0h0s0,0,0,0h0s0,0,0,0h0s0,0,0,0h0s0,0,0,0h0s0,0,0,0h0s0,0,0,0h0s0,0,0,0h0s0,0,0,0h0s0,.05,0,.07c0,.04,0,.07,0,.11,0,.05-.01.1-.02.14,0,0,0,.01,0,.02,0,.03.02.06.04.08h.02s.03.02.05.02c.03,0,.06-.01.08-.03.01-.01.02-.03.04-.04.15-.15.3-.26.45-.33.12-.05.23-.07.35-.07s.24.02.36.07c.12.05.23.11.34.19.05.03.1.07.14.12.03.03.06.05.08.08h0s.02.02.02.02h.01s.04.03.06.03c-.1-.21-.22-.41-.4-.56-.33-.29-.75-.41-1.18-.41"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "path",
-								"attributes": {
-									"style": "fill: url(#linear-gradient-9); opacity: .4;",
-									"d": "M16.15,8.3h-.02s-.08.05-.08.09c0,.03,0,.07,0,.11,0,.01,0,.02,0,.03.18.26.56.73,1.15.91,0,0,.91.47.68,1.16h0v-.02c.08-.21.09-.4.05-.59-.04-.19-.14-.36-.28-.51-.06-.06-.12-.11-.19-.16-.03-.02-.07-.05-.1-.07-.04-.03-.09-.05-.14-.08-.19-.09-.34-.19-.48-.29-.06-.04-.11-.09-.16-.13-.12-.11-.21-.2-.27-.3-.02-.03-.04-.07-.05-.1,0-.01-.02-.03-.03-.04-.02-.01-.04-.02-.06-.02"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "path",
-								"attributes": {
-									"style": "fill: url(#linear-gradient-10); opacity: .5;",
-									"d": "M15,10.21l.18-.11.77-1.03s-.42-.08-.63-.17c0,0-.21.96-.99,1.77l.29-.21c.11-.08.22-.15.38-.25Z"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "g",
-								"attributes": {},
-								"children": [
-									{
-										"type": "element",
-										"name": "path",
-										"attributes": {
-											"style": "fill: #404041;",
-											"d": "M25.33,4.73h1.97c1.42,0,2.07.73,2.07,2.23v.74c0,1.5-.65,2.23-2.07,2.23h-1.14v4.09h-.82V4.73ZM27.3,9.19c.86,0,1.25-.39,1.25-1.44v-.84c0-1.04-.39-1.44-1.25-1.44h-1.14v3.71h1.14Z"
-										},
-										"children": []
-									},
-									{
-										"type": "element",
-										"name": "path",
-										"attributes": {
-											"style": "fill: #404041;",
-											"d": "M32.4,4.73h.82v4.08h2.54v-4.08h.82v9.3h-.82v-4.48h-2.54v4.48h-.82V4.73Z"
-										},
-										"children": []
-									},
-									{
-										"type": "element",
-										"name": "path",
-										"attributes": {
-											"style": "fill: #404041;",
-											"d": "M39.82,11.9v-5.02c0-1.48.74-2.27,2.09-2.27s2.09.8,2.09,2.27v5.02c0,1.48-.74,2.27-2.09,2.27s-2.09-.8-2.09-2.27ZM43.17,11.95v-5.13c0-1-.45-1.48-1.26-1.48s-1.26.48-1.26,1.48v5.13c0,1,.45,1.46,1.26,1.46s1.26-.47,1.26-1.46Z"
-										},
-										"children": []
-									},
-									{
-										"type": "element",
-										"name": "path",
-										"attributes": {
-											"style": "fill: #404041;",
-											"d": "M47.23,4.73h3.72v.74h-2.9v3.34h2.38v.74h-2.38v3.72h2.9v.76h-3.72V4.73Z"
-										},
-										"children": []
-									},
-									{
-										"type": "element",
-										"name": "path",
-										"attributes": {
-											"style": "fill: #404041;",
-											"d": "M53.93,4.73h1.09l2.42,7.19v-7.19h.77v9.3h-.88l-2.64-7.93v7.93h-.76V4.73Z"
-										},
-										"children": []
-									},
-									{
-										"type": "element",
-										"name": "path",
-										"attributes": {
-											"style": "fill: #404041;",
-											"d": "M61.55,4.73h.82v9.3h-.82V4.73Z"
-										},
-										"children": []
-									},
-									{
-										"type": "element",
-										"name": "path",
-										"attributes": {
-											"style": "fill: #404041;",
-											"d": "M67.19,9.29l-1.82-4.56h.88l1.46,3.69,1.48-3.69h.8l-1.82,4.56,1.9,4.74h-.88l-1.54-3.91-1.55,3.91h-.8l1.9-4.74Z"
-										},
-										"children": []
-									}
-								]
-							}
-						]
-					}
-				]
-			}
-		]
-	},
-	"name": "PhoenixIcon"
+  "icon": {
+    "type": "element",
+    "isRootNode": true,
+    "name": "svg",
+    "attributes": {
+      "id": "Layer_2",
+      "data-name": "Layer 2",
+      "xmlns": "http://www.w3.org/2000/svg",
+      "xmlns:xlink": "http://www.w3.org/1999/xlink",
+      "viewBox": "0 0 74 16",
+      "width": "74",
+      "height": "16"
+    },
+    "children": [
+      {
+        "type": "element",
+        "name": "defs",
+        "attributes": {},
+        "children": [
+          {
+            "type": "element",
+            "name": "linearGradient",
+            "attributes": {
+              "id": "linear-gradient",
+              "x1": "6.05",
+              "y1": ".98",
+              "x2": "13.18",
+              "y2": "13.34",
+              "gradientUnits": "userSpaceOnUse"
+            },
+            "children": [
+              {
+                "type": "element",
+                "name": "stop",
+                "attributes": {
+                  "offset": "0",
+                  "stop-color": "#11bab5"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "stop",
+                "attributes": {
+                  "offset": ".5",
+                  "stop-color": "#00adee"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "stop",
+                "attributes": {
+                  "offset": "1",
+                  "stop-color": "#0094c5"
+                },
+                "children": []
+              }
+            ]
+          },
+          {
+            "type": "element",
+            "name": "linearGradient",
+            "attributes": {
+              "id": "linear-gradient-2",
+              "x1": "12.99",
+              "y1": "10.87",
+              "x2": "6.97",
+              "y2": ".45",
+              "gradientUnits": "userSpaceOnUse"
+            },
+            "children": [
+              {
+                "type": "element",
+                "name": "stop",
+                "attributes": {
+                  "offset": "0",
+                  "stop-color": "#fcfdff",
+                  "stop-opacity": "0"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "stop",
+                "attributes": {
+                  "offset": ".12",
+                  "stop-color": "#fcfdff",
+                  "stop-opacity": ".17"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "stop",
+                "attributes": {
+                  "offset": ".3",
+                  "stop-color": "#fcfdff",
+                  "stop-opacity": ".42"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "stop",
+                "attributes": {
+                  "offset": ".47",
+                  "stop-color": "#fcfdff",
+                  "stop-opacity": ".63"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "stop",
+                "attributes": {
+                  "offset": ".64",
+                  "stop-color": "#fcfdff",
+                  "stop-opacity": ".79"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "stop",
+                "attributes": {
+                  "offset": ".78",
+                  "stop-color": "#fcfdff",
+                  "stop-opacity": ".9"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "stop",
+                "attributes": {
+                  "offset": ".91",
+                  "stop-color": "#fcfdff",
+                  "stop-opacity": ".97"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "stop",
+                "attributes": {
+                  "offset": "1",
+                  "stop-color": "#fcfdff"
+                },
+                "children": []
+              }
+            ]
+          },
+          {
+            "type": "element",
+            "name": "linearGradient",
+            "attributes": {
+              "id": "linear-gradient-3",
+              "x1": "11.21",
+              "y1": "10.8",
+              "x2": "6.88",
+              "y2": "3.29",
+              "xlink:href": "#linear-gradient-2"
+            },
+            "children": []
+          },
+          {
+            "type": "element",
+            "name": "linearGradient",
+            "attributes": {
+              "id": "linear-gradient-4",
+              "x1": "10.62",
+              "y1": "11.35",
+              "x2": "8.2",
+              "y2": "7.16",
+              "xlink:href": "#linear-gradient-2"
+            },
+            "children": []
+          },
+          {
+            "type": "element",
+            "name": "linearGradient",
+            "attributes": {
+              "id": "linear-gradient-5",
+              "x1": "10.72",
+              "y1": "12.2",
+              "x2": "9.21",
+              "y2": "9.59",
+              "xlink:href": "#linear-gradient-2"
+            },
+            "children": []
+          },
+          {
+            "type": "element",
+            "name": "linearGradient",
+            "attributes": {
+              "id": "linear-gradient-6",
+              "x1": "8.17",
+              "y1": "11.96",
+              "x2": "8.17",
+              "y2": "14.71",
+              "gradientUnits": "userSpaceOnUse"
+            },
+            "children": [
+              {
+                "type": "element",
+                "name": "stop",
+                "attributes": {
+                  "offset": "0",
+                  "stop-color": "#231f20"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "stop",
+                "attributes": {
+                  "offset": ".03",
+                  "stop-color": "#231f20",
+                  "stop-opacity": ".9"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "stop",
+                "attributes": {
+                  "offset": ".22",
+                  "stop-color": "#231f20",
+                  "stop-opacity": ".4"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "stop",
+                "attributes": {
+                  "offset": ".42",
+                  "stop-color": "#231f20",
+                  "stop-opacity": ".1"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "stop",
+                "attributes": {
+                  "offset": ".65",
+                  "stop-color": "#231f20",
+                  "stop-opacity": "0"
+                },
+                "children": []
+              }
+            ]
+          },
+          {
+            "type": "element",
+            "name": "linearGradient",
+            "attributes": {
+              "id": "Fade_to_Black_2",
+              "data-name": "Fade to Black 2",
+              "x1": "11.26",
+              "y1": "11.7",
+              "x2": "11.26",
+              "y2": "13.1",
+              "gradientUnits": "userSpaceOnUse"
+            },
+            "children": [
+              {
+                "type": "element",
+                "name": "stop",
+                "attributes": {
+                  "offset": "0",
+                  "stop-color": "#231f20"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "stop",
+                "attributes": {
+                  "offset": "1",
+                  "stop-color": "#231f20",
+                  "stop-opacity": "0"
+                },
+                "children": []
+              }
+            ]
+          },
+          {
+            "type": "element",
+            "name": "linearGradient",
+            "attributes": {
+              "id": "linear-gradient-7",
+              "x1": "11.94",
+              "y1": "8.07",
+              "x2": "11.94",
+              "y2": "6.92",
+              "gradientUnits": "userSpaceOnUse"
+            },
+            "children": [
+              {
+                "type": "element",
+                "name": "stop",
+                "attributes": {
+                  "offset": "0",
+                  "stop-color": "#231f20"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "stop",
+                "attributes": {
+                  "offset": ".03",
+                  "stop-color": "#231f20",
+                  "stop-opacity": ".95"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "stop",
+                "attributes": {
+                  "offset": ".51",
+                  "stop-color": "#231f20",
+                  "stop-opacity": ".26"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "stop",
+                "attributes": {
+                  "offset": ".81",
+                  "stop-color": "#231f20",
+                  "stop-opacity": "0"
+                },
+                "children": []
+              }
+            ]
+          },
+          {
+            "type": "element",
+            "name": "linearGradient",
+            "attributes": {
+              "id": "linear-gradient-8",
+              "x1": "14.45",
+              "y1": "8.92",
+              "x2": "14.45",
+              "y2": "6.14",
+              "gradientUnits": "userSpaceOnUse"
+            },
+            "children": [
+              {
+                "type": "element",
+                "name": "stop",
+                "attributes": {
+                  "offset": "0",
+                  "stop-color": "#231f20"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "stop",
+                "attributes": {
+                  "offset": ".18",
+                  "stop-color": "#231f20",
+                  "stop-opacity": ".48"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "stop",
+                "attributes": {
+                  "offset": ".38",
+                  "stop-color": "#231f20",
+                  "stop-opacity": ".12"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "stop",
+                "attributes": {
+                  "offset": ".58",
+                  "stop-color": "#231f20",
+                  "stop-opacity": "0"
+                },
+                "children": []
+              }
+            ]
+          },
+          {
+            "type": "element",
+            "name": "linearGradient",
+            "attributes": {
+              "id": "Fade_to_Black_2-2",
+              "data-name": "Fade to Black 2",
+              "x1": "17.03",
+              "y1": "11.1",
+              "x2": "16.07",
+              "y2": "9.44",
+              "xlink:href": "#Fade_to_Black_2"
+            },
+            "children": []
+          },
+          {
+            "type": "element",
+            "name": "linearGradient",
+            "attributes": {
+              "id": "linear-gradient-9",
+              "x1": "17.8",
+              "y1": "10.64",
+              "x2": "16.36",
+              "y2": "8.16",
+              "xlink:href": "#linear-gradient-2"
+            },
+            "children": []
+          },
+          {
+            "type": "element",
+            "name": "linearGradient",
+            "attributes": {
+              "id": "linear-gradient-10",
+              "x1": "14.07",
+              "y1": "10.22",
+              "x2": "16.16",
+              "y2": "9.02",
+              "gradientUnits": "userSpaceOnUse"
+            },
+            "children": [
+              {
+                "type": "element",
+                "name": "stop",
+                "attributes": {
+                  "offset": "0",
+                  "stop-color": "#231f20"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "stop",
+                "attributes": {
+                  "offset": ".31",
+                  "stop-color": "#231f20",
+                  "stop-opacity": ".5"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "stop",
+                "attributes": {
+                  "offset": ".67",
+                  "stop-color": "#231f20",
+                  "stop-opacity": ".13"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "stop",
+                "attributes": {
+                  "offset": "1",
+                  "stop-color": "#231f20",
+                  "stop-opacity": "0"
+                },
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "element",
+        "name": "g",
+        "attributes": {
+          "id": "Layer_1-2",
+          "data-name": "Layer 1"
+        },
+        "children": [
+          {
+            "type": "element",
+            "name": "rect",
+            "attributes": {
+              "style": "fill: none;",
+              "y": ".02",
+              "width": "74",
+              "height": "16"
+            },
+            "children": []
+          },
+          {
+            "type": "element",
+            "name": "g",
+            "attributes": {
+              "id": "Phoenix_horiz_-_gradient",
+              "data-name": "Phoenix horiz - gradient"
+            },
+            "children": [
+              {
+                "type": "element",
+                "name": "path",
+                "attributes": {
+                  "style": "fill: url(#linear-gradient);",
+                  "d": "M17.91,10c-.04-.19-.14-.36-.28-.51-.06-.06-.12-.11-.19-.16-.03-.02-.07-.05-.1-.07-.04-.03-.09-.05-.14-.08-.19-.09-.34-.19-.48-.29-.06-.04-.11-.09-.16-.13-.12-.11-.21-.2-.27-.3-.02-.03-.04-.07-.05-.1,0-.01-.02-.03-.03-.04-.02-.02-.05-.02-.08-.02-.04,0-.08.04-.08.09,0,.03,0,.07,0,.11,0,.02,0,.04-.03.05,0,0,0,0-.02,0-.03,0-.06.02-.07.04-.02.02-.02.05-.02.08,0,.03.01.04.02.06h0s0,.03.01.04c.01.03.03.05.05.08.03.05.07.09.11.15.01.02.02.04,0,.06-.01.02-.03.03-.05.03-.25-.03-.46-.09-.67-.16-.02,0-.05-.02-.07-.03-.18-.08.15-.41.3-.64.66-1.02.8-2.19.81-3.38,0-1.15-.12-2.27-.35-3.39h0c-.15-.94-.27-1.29-.35-1.42-.02-.03-.04-.06-.06-.07-.02-.01-.03,0-.03,0-.04,0-.09.04-.15.1-.25.26-.23.57-.17.89.31,1.47.55,2.95.44,4.47-.07,1.04-.27,2.05-1,2.86-.04.05-.09.1-.14.14-.05.05-.14.16-.2.11-.08-.06,0-.18.02-.24.43-1,.55-2.05.48-3.12,0-.02,0-.05,0-.07h0s0-.04,0-.06c-.01-.14-.02-.28-.04-.43-.18-1.71-.4-1.82-.4-1.82h0s-.03-.02-.06-.03c-.12-.02-.18.08-.23.15-.23.35-.13.72-.05,1.08.26,1.28.27,2.55-.18,3.79-.04.11-.09.22-.14.33-.05.12-.09.26-.28.2-.18-.06-.13-.19-.1-.31.06-.31.11-.62.14-.93h0s0-.06,0-.09c0-.05,0-.11.01-.16,0-.05,0-.09,0-.13,0-.02,0-.04,0-.07.04-.99-.13-1.44-.19-1.57,0-.02-.01-.03-.02-.04h0s0,0,0,0c-.07-.1-.17-.09-.27,0-.17.17-.27.37-.22.62.13.74.05,1.46-.08,2.19-.02.1-.06.27-.27.23-.14-.03-.17-.09-.18-.21,0-.09,0-.19,0-.28,0,0,0,0,0,0h0s0-.03,0-.04h0s0-.01,0-.02c0-.13-.02-.25-.03-.38,0-.01,0-.02,0-.04-.08-.71-.18-.78-.18-.78-.07-.09-.17-.07-.26.02-.17.17-.26.37-.22.62.03.19.02.13.04.29.01.08.03.23.03.28,0,.04-.01.08-.04.11-.09.09-.23,0-.34-.05-2.08-.86-3.86-2.07-5.42-3.6-.61-.62-1.65-1.88-1.65-1.88h0s-.09-.07-.16-.04c-.14.06-.13.23-.14.38-.02.29.13.51.3.7,2.35,2.74,5.21,4.71,8.67,5.69l.62.16s.01,0,.02,0c0,0,0,0,0,0l.54.14h.01s-.04.01-.06.02c-.59.12-1.76-.1-2.69-.32-.46-.1-.92-.22-1.36-.36-.02,0-.03,0-.03,0h0c-1.73-.55-3.32-1.44-4.7-2.81-.13-.13-.25-.27-.37-.41-.11-.13-.34-.4-.41-.5,0-.01-.02-.02-.03-.03h0s0,0,0,0c-.02-.02-.05-.04-.09-.03-.1.02-.12.12-.14.21-.07.34.04.62.26.88,1.42,1.59,3.2,2.61,5.21,3.28,1.14.38,2.31.61,3.5.76-.71.23-1.44.3-2.18.28-1.43-.04-2.77-.38-4.03-.99-.46-.24-.9-.5-1.01-.58-.07-.04-.13-.07-.2-.02-.13.1-.04.27,0,.4.08.26.25.43.49.55,2.05,1.08,4.22,1.52,6.52,1.13.23-.04.45-.08.7-.16-.39.33-.83.55-1.3.72-1.44.53-2.88.51-4.31.15-.46-.12-.99-.32-.99-.32h0c-.08-.03-.15-.05-.21.04-.1.15-.01.3.08.45.21.33.63.36.95.48.11.04-.19.24-.29.31-.47.36-.94.69-1.41,1.04l-.31.23h0c-.05.04-.1.08-.08.15.03.09.12.1.2.12.34.07.62-.04.89-.24.57-.43,1.15-.84,1.71-1.28.21-.17.4-.15.7-.08-.73.55-1.4,1.06-2.08,1.57-.69.52-1.38,1.04-2.07,1.56l-.46.34s-.01,0-.02.01h0s0,0,0,0c-.04.03-.07.07-.06.11.02.1.14.13.24.15.41.07.66-.08.94-.29,1.39-1.05,2.79-2.09,4.18-3.14.31-.24.63-.37,1.08-.32-.38.29-.75.56-1.11.83l-.98.73s-.01.01-.02.02h0c-.05.04-.09.09-.07.16.04.13.19.15.33.17.24.04.45-.05.64-.19.11-.08.22-.16.33-.24h0s1.5-1.19,1.5-1.19c0,0,.35-.25.76-.49.04-.02.07-.05.11-.07.02,0,.05-.02.11-.05.04-.02.09-.05.13-.07.06-.03.14-.07.22-.12.24-.1.93-.42,1.51-1.03.27-.21.66-.48.95-.62h0s0,0,0,0c.02-.01.04-.02.07-.03h0s0,0,0,0c.01,0,.03-.01.04-.01h.04c.11-.05.28-.06.31.18,0,.06,0,.12,0,.18,0,.05-.01.1-.02.14,0,.04,0,.08.04.1,0,0,.01,0,.02,0,.04.02.09.01.12-.02.01-.01.02-.03.04-.04.15-.15.3-.26.45-.33.23-.1.47-.1.72,0,.12.05.23.11.34.19.05.03.1.07.14.12.03.03.06.05.08.08h0s.02.02.02.02c0,0,0,0,.01.01.02.02.05.02.08.02.03,0,.06-.03.07-.06,0,0,0-.01,0-.02.07-.21.09-.4.04-.59Z"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "path",
+                "attributes": {
+                  "style": "fill: #fddab4;",
+                  "d": "M13.48,7.75c-.02.1-.03.21-.05.31.02-.1.04-.21.05-.31h0Z"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "path",
+                "attributes": {
+                  "style": "fill: #fddab4;",
+                  "d": "M15.33,8.9s.02,0,.02,0c0,0-.02,0-.02,0"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "polyline",
+                "attributes": {
+                  "style": "fill: #fddab4;",
+                  "points": "14.46 8.33 14.46 8.33 14.46 8.33"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "polyline",
+                "attributes": {
+                  "style": "fill: #fddab4;",
+                  "points": "14.48 8.26 14.48 8.26 14.48 8.26"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "polyline",
+                "attributes": {
+                  "style": "fill: #fddab4;",
+                  "points": "14.49 8.25 14.49 8.25 14.49 8.25"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "polyline",
+                "attributes": {
+                  "style": "fill: #fddab4;",
+                  "points": "15.64 8.25 15.63 8.25 15.64 8.25"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "path",
+                "attributes": {
+                  "style": "fill: #fddab4;",
+                  "d": "M13.81,8.17s-.02.06-.04.08c.01-.03.02-.06.04-.08"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "polyline",
+                "attributes": {
+                  "style": "fill: #fddab4;",
+                  "points": "12.57 8.11 12.57 8.11 12.57 8.11"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "polyline",
+                "attributes": {
+                  "style": "fill: #fddab4;",
+                  "points": "12.39 8.03 12.39 8.03 12.39 8.03"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "polyline",
+                "attributes": {
+                  "style": "fill: #fddab4;",
+                  "points": "12.39 8.03 12.39 8.03 12.39 8.03"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "polyline",
+                "attributes": {
+                  "style": "fill: #fddab4;",
+                  "points": "12.39 8.03 12.39 8.03 12.39 8.03"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "polyline",
+                "attributes": {
+                  "style": "fill: #fddab4;",
+                  "points": "12.38 8.02 12.38 8.03 12.38 8.02"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "polyline",
+                "attributes": {
+                  "style": "fill: #fddab4;",
+                  "points": "12.38 8.02 12.38 8.02 12.38 8.02"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "polyline",
+                "attributes": {
+                  "style": "fill: #fddab4;",
+                  "points": "12.35 7.89 12.35 7.89 12.35 7.89"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "path",
+                "attributes": {
+                  "style": "fill: #fddab4;",
+                  "d": "M12.81,7.81s0,.04-.01.06c0-.02,0-.04.01-.06"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "path",
+                "attributes": {
+                  "style": "fill: #fddab4;",
+                  "d": "M11.67,7.67s-.03.02-.05.03c.02,0,.03-.02.05-.03"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "path",
+                "attributes": {
+                  "style": "fill: #e5b3a5;",
+                  "d": "M12.39,8.03s.03.03.05.04h0s-.03-.03-.05-.04M12.39,8.03s0,0,0,0c0,0,0,0,0,0M12.39,8.03s0,0,0,0c0,0,0,0,0,0M12.38,8.03s0,0,0,0c0,0,0,0,0,0M12.38,8.02s0,0,0,0c0,0,0,0,0,0M12.38,8.02s0,0,0,0c0,0,0,0,0,0M12.35,7.89s0,0,0,0c0,0,0,0,0,0M12.35,7.89h0s0,0,0,0c0,0,0,0,0,0M11.45,7.68s0,0,0,0c.04.02.09.03.13.03.02,0,.03,0,.05,0-.02,0-.03,0-.05,0-.04,0-.09-.02-.13-.03M12.34,7.54s0,0,0,0c0,0,0,0,0,0"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "path",
+                "attributes": {
+                  "style": "fill: #e5b3a5;",
+                  "d": "M15.35,8.91s0,0,.01,0h0s0,0-.01,0M14.52,8.58s0,0,0,0c0,0,0,0,0,0M14.39,8.51s.01.06.04.08c.01,0,.02.01.03.01.02,0,.04,0,.05-.02-.02.01-.04.02-.05.02-.01,0-.02,0-.03-.01-.03-.02-.04-.05-.04-.08M14.46,8.33s0,0,0,.01c0,0,0,0,0-.01M14.48,8.26s-.02.05-.03.07c0-.02.02-.05.03-.07M14.49,8.25s0,0,0,0c0,0,0,0,0,0M15.63,8.25s0,0,0,0c0,0,0,0,0,0M15.64,8.24s0,0,0,0c0,0,0,0,0,0M14.49,8.24s0,0,0,0c0,0,0,0,0,0M13.4,8.21c0,.07.03.13.13.16.03.01.06.01.08.01.09,0,.13-.06.16-.13-.03.07-.07.13-.16.13-.02,0-.05,0-.08-.01-.1-.03-.13-.09-.13-.16M12.57,8.11h0,0M12.74,8.04s-.08.07-.14.07c0,0-.01,0-.02,0,0,0,.01,0,.02,0,.07,0,.11-.03.14-.07M14.05,7.54s0,0,0,0c-.03.1-.06.2-.1.3-.04.11-.09.22-.14.33h0c.05-.11.1-.22.14-.33.04-.1.07-.2.1-.3M12.87,7.49c-.02.11-.03.22-.05.33.02-.11.04-.22.06-.33h0M15.52,6.97s0,0,0,0c-.15.49-.38.95-.75,1.36-.04.05-.09.1-.14.14h0s.09-.09.14-.14c.37-.41.6-.87.75-1.36"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "path",
+                "attributes": {
+                  "style": "fill: url(#linear-gradient-2); opacity: .4;",
+                  "d": "M4.17,2.09s-.04,0-.06.01c-.1.04-.12.14-.13.25.52.68,2.56,3.18,5.78,4.9,0,0,3.15,1.66,6.32,1.84-.25-.03-.46-.09-.67-.16-.01,0-.02,0-.04-.01h0c-1.15-.25-2.13-.56-2.83-.81.01,0,.03,0,.04,0-.01,0-.03,0-.04,0-.04,0-.07-.02-.1-.04-.55-.2-.9-.35-.98-.39-.04-.02-.08-.04-.12-.05-2.08-.86-3.86-2.07-5.42-3.6-.61-.62-1.65-1.88-1.65-1.88h0s-.06-.05-.1-.05"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "path",
+                "attributes": {
+                  "style": "fill: url(#linear-gradient-3); opacity: .4;",
+                  "d": "M4.39,4.75s-.01,0-.02,0c-.1.02-.12.12-.14.21,0,.02,0,.03,0,.05,1.61,2.18,3.77,3.07,3.77,3.07,2.15,1.01,3.92,1.22,5,1.22.45,0,.77-.04.96-.06-.09,0-.18.01-.28.01-.63,0-1.53-.17-2.29-.35-.46-.1-.92-.22-1.36-.36-.02,0-.03,0-.03,0h0c-1.73-.55-3.32-1.44-4.7-2.81-.13-.13-.25-.27-.37-.41-.11-.13-.34-.4-.41-.5,0-.01-.02-.02-.03-.03h0s0,0,0,0c-.02-.02-.04-.03-.07-.03"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "path",
+                "attributes": {
+                  "style": "fill: url(#linear-gradient-4); opacity: .4",
+                  "d": "M5.86,8.53s-.05,0-.08.03c-.11.08-.06.22-.02.35.81.49,2.66,1.44,4.84,1.44.83,0,1.7-.14,2.59-.48-.64.21-1.3.28-1.96.28-.07,0-.15,0-.22,0-1.43-.04-2.77-.38-4.03-.99-.46-.24-.9-.5-1.01-.58-.04-.03-.08-.05-.12-.05"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "path",
+                "attributes": {
+                  "style": "fill: url(#linear-gradient-5); opacity: .4;",
+                  "d": "M13.34,10.6c-.35.27-.75.46-1.16.61-.77.28-1.55.41-2.32.41-.67,0-1.33-.09-1.99-.26-.46-.12-.99-.32-.99-.32h0s-.07-.03-.1-.03c-.04,0-.08.02-.11.06-.05.07-.05.14-.04.21.51.24,1.6.66,2.93.66,1.15,0,2.49-.32,3.78-1.34"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "path",
+                "attributes": {
+                  "style": "fill: url(#linear-gradient-6); opacity: .4;",
+                  "d": "M9.91,12.25c-1.25,0-2.19-.25-2.31-.29.04.01.07.02.1.03.11.04-.19.24-.29.31-.35.27-.69.52-1.04.77h1.06c.33-.25.67-.5.99-.75.12-.1.24-.13.37-.13.1,0,.2.02.33.05-.73.55-1.4,1.06-2.08,1.57-.4.3-.79.6-1.19.9h1.07c.96-.72,1.92-1.44,2.87-2.16.22-.17.44-.28.71-.32-.2.01-.4.02-.58.02Z"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "path",
+                "attributes": {
+                  "style": "fill: url(#Fade_to_Black_2); opacity: .4;",
+                  "d": "M9.69,13.1h1.03l.76-.6s.35-.25.76-.49c.04-.02.07-.05.11-.07.02,0,.05-.02.11-.05.04-.02.09-.05.13-.07.07-.03.15-.08.23-.12-.73.31-1.49.46-2.18.52,0,0,.02,0,.03,0,.06,0,.12,0,.18.01-.38.29-.75.56-1.11.83l-.06.05Z"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "path",
+                "attributes": {
+                  "style": "fill: url(#linear-gradient-7); opacity: .4;",
+                  "d": "M12.35,7.89c0-.09,0-.19,0-.28h0s0,0,0,0c0-.01,0-.03,0-.04h0s0-.02,0-.02c0-.08,0-.16-.02-.23-.25-.1-.48-.24-.69-.39,0,.02,0,.04,0,.07.03.19.02.13.04.29.01.08.03.23.03.28,0,.04-.01.08-.04.11-.03.03-.06.04-.09.04-.04,0-.09-.02-.13-.03.08.04.43.19.98.39-.06-.04-.08-.09-.08-.18Z"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "path",
+                "attributes": {
+                  "style": "fill: url(#linear-gradient-8); opacity: .4;",
+                  "d": "M16.36,6.14c-.23.32-.51.6-.84.83-.15.49-.38.95-.75,1.36-.04.05-.09.1-.14.14-.05.04-.11.12-.17.12-.01,0-.02,0-.03-.01-.08-.06,0-.18.02-.24.14-.32.24-.65.32-.98-.23.09-.47.15-.72.18-.03.1-.06.2-.1.3-.04.11-.09.22-.14.33-.05.1-.08.21-.2.21-.02,0-.05,0-.08-.01-.18-.06-.13-.19-.1-.31.03-.16.06-.32.08-.49-.22,0-.43-.04-.64-.08-.02.13-.04.26-.07.39-.02.09-.05.24-.21.24-.02,0-.04,0-.06,0,.69.25,1.68.56,2.83.81h0s-.02,0-.03-.01c-.18-.08.15-.41.3-.64.43-.66.64-1.37.73-2.12Z"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "path",
+                "attributes": {
+                  "style": "fill: url(#Fade_to_Black_2-2); opacity: .5;",
+                  "d": "M16.19,9.7c-.14,0-.29.01-.43.04-.03,0-.05,0-.08,0-.04,0-.08,0-.11-.02,0,0,.01.01.02.02.06.09.1.18.11.28.02.02.03.04.04.07h0s0,0,0,0c0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0h0s0,0,0,0c0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0t0,0s0,0,0,0c0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0s0,0,0,0c0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0s0,0,0,0c0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0h0s0,0,0,0h0s0,0,0,0h0s0,0,0,0h0s0,0,0,0h0s0,0,0,0h0s0,0,0,0h0s0,0,0,0h0s0,0,0,0c0,0,0,0,0,0,0,0,0,0,0,0h0s0,0,0,0h0s0,0,0,0h0s0,0,0,0h0s0,0,0,0h0s0,0,0,0h0s0,0,0,0h0s0,0,0,0h0s0,0,0,0h0s0,.05,0,.07c0,.04,0,.07,0,.11,0,.05-.01.1-.02.14,0,0,0,.01,0,.02,0,.03.02.06.04.08h.02s.03.02.05.02c.03,0,.06-.01.08-.03.01-.01.02-.03.04-.04.15-.15.3-.26.45-.33.12-.05.23-.07.35-.07s.24.02.36.07c.12.05.23.11.34.19.05.03.1.07.14.12.03.03.06.05.08.08h0s.02.02.02.02h.01s.04.03.06.03c-.1-.21-.22-.41-.4-.56-.33-.29-.75-.41-1.18-.41"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "path",
+                "attributes": {
+                  "style": "fill: url(#linear-gradient-9); opacity: .4;",
+                  "d": "M16.15,8.3h-.02s-.08.05-.08.09c0,.03,0,.07,0,.11,0,.01,0,.02,0,.03.18.26.56.73,1.15.91,0,0,.91.47.68,1.16h0v-.02c.08-.21.09-.4.05-.59-.04-.19-.14-.36-.28-.51-.06-.06-.12-.11-.19-.16-.03-.02-.07-.05-.1-.07-.04-.03-.09-.05-.14-.08-.19-.09-.34-.19-.48-.29-.06-.04-.11-.09-.16-.13-.12-.11-.21-.2-.27-.3-.02-.03-.04-.07-.05-.1,0-.01-.02-.03-.03-.04-.02-.01-.04-.02-.06-.02"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "path",
+                "attributes": {
+                  "style": "fill: url(#linear-gradient-10); opacity: .5;",
+                  "d": "M15,10.21l.18-.11.77-1.03s-.42-.08-.63-.17c0,0-.21.96-.99,1.77l.29-.21c.11-.08.22-.15.38-.25Z"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "g",
+                "attributes": {},
+                "children": [
+                  {
+                    "type": "element",
+                    "name": "path",
+                    "attributes": {
+                      "style": "fill: #404041;",
+                      "d": "M25.33,4.73h1.97c1.42,0,2.07.73,2.07,2.23v.74c0,1.5-.65,2.23-2.07,2.23h-1.14v4.09h-.82V4.73ZM27.3,9.19c.86,0,1.25-.39,1.25-1.44v-.84c0-1.04-.39-1.44-1.25-1.44h-1.14v3.71h1.14Z"
+                    },
+                    "children": []
+                  },
+                  {
+                    "type": "element",
+                    "name": "path",
+                    "attributes": {
+                      "style": "fill: #404041;",
+                      "d": "M32.4,4.73h.82v4.08h2.54v-4.08h.82v9.3h-.82v-4.48h-2.54v4.48h-.82V4.73Z"
+                    },
+                    "children": []
+                  },
+                  {
+                    "type": "element",
+                    "name": "path",
+                    "attributes": {
+                      "style": "fill: #404041;",
+                      "d": "M39.82,11.9v-5.02c0-1.48.74-2.27,2.09-2.27s2.09.8,2.09,2.27v5.02c0,1.48-.74,2.27-2.09,2.27s-2.09-.8-2.09-2.27ZM43.17,11.95v-5.13c0-1-.45-1.48-1.26-1.48s-1.26.48-1.26,1.48v5.13c0,1,.45,1.46,1.26,1.46s1.26-.47,1.26-1.46Z"
+                    },
+                    "children": []
+                  },
+                  {
+                    "type": "element",
+                    "name": "path",
+                    "attributes": {
+                      "style": "fill: #404041;",
+                      "d": "M47.23,4.73h3.72v.74h-2.9v3.34h2.38v.74h-2.38v3.72h2.9v.76h-3.72V4.73Z"
+                    },
+                    "children": []
+                  },
+                  {
+                    "type": "element",
+                    "name": "path",
+                    "attributes": {
+                      "style": "fill: #404041;",
+                      "d": "M53.93,4.73h1.09l2.42,7.19v-7.19h.77v9.3h-.88l-2.64-7.93v7.93h-.76V4.73Z"
+                    },
+                    "children": []
+                  },
+                  {
+                    "type": "element",
+                    "name": "path",
+                    "attributes": {
+                      "style": "fill: #404041;",
+                      "d": "M61.55,4.73h.82v9.3h-.82V4.73Z"
+                    },
+                    "children": []
+                  },
+                  {
+                    "type": "element",
+                    "name": "path",
+                    "attributes": {
+                      "style": "fill: #404041;",
+                      "d": "M67.19,9.29l-1.82-4.56h.88l1.46,3.69,1.48-3.69h.8l-1.82,4.56,1.9,4.74h-.88l-1.54-3.91-1.55,3.91h-.8l1.9-4.74Z"
+                    },
+                    "children": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "name": "PhoenixIcon"
 }

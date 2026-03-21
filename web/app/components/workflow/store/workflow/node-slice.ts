@@ -1,15 +1,17 @@
 import type { StateCreator } from 'zustand'
-import type {
-  Node,
-} from '@/app/components/workflow/types'
+import type { ChecklistItem } from '@/app/components/workflow/hooks/use-checklist'
 import type {
   VariableAssignerNodeType,
 } from '@/app/components/workflow/nodes/variable-assigner/types'
+import type {
+  Node,
+} from '@/app/components/workflow/types'
 import type {
   NodeTracing,
 } from '@/types/workflow'
 
 export type NodeSliceShape = {
+  checklistItems: ChecklistItem[]
   showSingleRunPanel: boolean
   setShowSingleRunPanel: (showSingleRunPanel: boolean) => void
   nodeAnimation: boolean
@@ -35,7 +37,7 @@ export type NodeSliceShape = {
   setShowAssignVariablePopup: (showAssignVariablePopup: NodeSliceShape['showAssignVariablePopup']) => void
   hoveringAssignVariableGroupId?: string
   setHoveringAssignVariableGroupId: (hoveringAssignVariableGroupId?: string) => void
-  connectingNodePayload?: { nodeId: string; nodeType: string; handleType: string; handleId: string | null }
+  connectingNodePayload?: { nodeId: string, nodeType: string, handleType: string, handleId: string | null }
   setConnectingNodePayload: (startConnectingPayload?: NodeSliceShape['connectingNodePayload']) => void
   enteringNodePayload?: {
     nodeId: string
@@ -48,9 +50,15 @@ export type NodeSliceShape = {
   setLoopTimes: (loopTimes: number) => void
   iterParallelLogMap: Map<string, Map<string, NodeTracing[]>>
   setIterParallelLogMap: (iterParallelLogMap: Map<string, Map<string, NodeTracing[]>>) => void
+  pendingSingleRun?: {
+    nodeId: string
+    action: 'run' | 'stop'
+  }
+  setPendingSingleRun: (payload?: NodeSliceShape['pendingSingleRun']) => void
 }
 
 export const createNodeSlice: StateCreator<NodeSliceShape> = set => ({
+  checklistItems: [],
   showSingleRunPanel: false,
   setShowSingleRunPanel: showSingleRunPanel => set(() => ({ showSingleRunPanel })),
   nodeAnimation: false,
@@ -73,4 +81,6 @@ export const createNodeSlice: StateCreator<NodeSliceShape> = set => ({
   setLoopTimes: loopTimes => set(() => ({ loopTimes })),
   iterParallelLogMap: new Map<string, Map<string, NodeTracing[]>>(),
   setIterParallelLogMap: iterParallelLogMap => set(() => ({ iterParallelLogMap })),
+  pendingSingleRun: undefined,
+  setPendingSingleRun: payload => set(() => ({ pendingSingleRun: payload })),
 })

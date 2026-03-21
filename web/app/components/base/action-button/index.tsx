@@ -1,7 +1,8 @@
+import type { VariantProps } from 'class-variance-authority'
 import type { CSSProperties } from 'react'
-import React from 'react'
-import { type VariantProps, cva } from 'class-variance-authority'
-import classNames from '@/utils/classnames'
+import { cva } from 'class-variance-authority'
+import * as React from 'react'
+import { cn } from '@/utils/classnames'
 
 enum ActionButtonState {
   Destructive = 'destructive',
@@ -17,6 +18,7 @@ const actionButtonVariants = cva(
     variants: {
       size: {
         xs: 'action-btn-xs',
+        s: 'action-btn-s',
         m: 'action-btn-m',
         l: 'action-btn-l',
         xl: 'action-btn-xl',
@@ -32,6 +34,7 @@ export type ActionButtonProps = {
   size?: 'xs' | 's' | 'm' | 'l' | 'xl'
   state?: ActionButtonState
   styleCss?: CSSProperties
+  ref?: React.Ref<HTMLButtonElement>
 } & React.ButtonHTMLAttributes<HTMLButtonElement> & VariantProps<typeof actionButtonVariants>
 
 function getActionButtonState(state: ActionButtonState) {
@@ -49,24 +52,24 @@ function getActionButtonState(state: ActionButtonState) {
   }
 }
 
-const ActionButton = React.forwardRef<HTMLButtonElement, ActionButtonProps>(
-  ({ className, size, state = ActionButtonState.Default, styleCss, children, ...props }, ref) => {
-    return (
-      <button
-        type='button'
-        className={classNames(
-          actionButtonVariants({ className, size }),
-          getActionButtonState(state),
-        )}
-        ref={ref}
-        style={styleCss}
-        {...props}
-      >
-        {children}
-      </button>
-    )
-  },
-)
+const ActionButton = ({ className, size, state = ActionButtonState.Default, styleCss, children, ref, disabled, ...props }: ActionButtonProps) => {
+  return (
+    <button
+      type="button"
+      className={cn(
+        actionButtonVariants({ className, size }),
+        getActionButtonState(state),
+        disabled && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',
+      )}
+      disabled={disabled}
+      ref={ref}
+      style={styleCss}
+      {...props}
+    >
+      {children}
+    </button>
+  )
+}
 ActionButton.displayName = 'ActionButton'
 
 export default ActionButton

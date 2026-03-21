@@ -1,16 +1,38 @@
 import json
 from collections.abc import Generator
-from typing import Union
+from typing import Any, Union
 from urllib.parse import urljoin
 
-import requests
-from requests import Response
+import httpx
+from httpx import Response
+from typing_extensions import TypedDict
 
 from core.rag.extractor.watercrawl.exceptions import (
     WaterCrawlAuthenticationError,
     WaterCrawlBadRequestError,
     WaterCrawlPermissionError,
 )
+
+
+class SpiderOptions(TypedDict):
+    max_depth: int
+    page_limit: int
+    allowed_domains: list[str]
+    exclude_paths: list[str]
+    include_paths: list[str]
+
+
+class PageOptions(TypedDict):
+    exclude_tags: list[str]
+    include_tags: list[str]
+    wait_time: int
+    include_html: bool
+    only_main_content: bool
+    include_links: bool
+    timeout: int
+    accept_cookies_selector: str
+    locale: str
+    actions: list[Any]
 
 
 class BaseAPIClient:
@@ -20,28 +42,45 @@ class BaseAPIClient:
         self.session = self.init_session()
 
     def init_session(self):
-        session = requests.Session()
-        session.headers.update({"X-API-Key": self.api_key})
-        session.headers.update({"Content-Type": "application/json"})
-        session.headers.update({"Accept": "application/json"})
-        session.headers.update({"User-Agent": "WaterCrawl-Plugin"})
-        session.headers.update({"Accept-Language": "en-US"})
-        return session
+        headers = {
+            "X-API-Key": self.api_key,
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "User-Agent": "WaterCrawl-Plugin",
+            "Accept-Language": "en-US",
+        }
+        return httpx.Client(headers=headers, timeout=None)
+
+    def _request(
+        self,
+        method: str,
+        endpoint: str,
+        query_params: dict | None = None,
+        data: dict | None = None,
+        **kwargs,
+    ) -> Response:
+        stream = kwargs.pop("stream", False)
+        url = urljoin(self.base_url, endpoint)
+        if stream:
+            request = self.session.build_request(method, url, params=query_params, json=data)
+            return self.session.send(request, stream=True, **kwargs)
+
+        return self.session.request(method, url, params=query_params, json=data, **kwargs)
 
     def _get(self, endpoint: str, query_params: dict | None = None, **kwargs):
-        return self.session.get(urljoin(self.base_url, endpoint), params=query_params, **kwargs)
+        return self._request("GET", endpoint, query_params=query_params, **kwargs)
 
     def _post(self, endpoint: str, query_params: dict | None = None, data: dict | None = None, **kwargs):
-        return self.session.post(urljoin(self.base_url, endpoint), params=query_params, json=data, **kwargs)
+        return self._request("POST", endpoint, query_params=query_params, data=data, **kwargs)
 
     def _put(self, endpoint: str, query_params: dict | None = None, data: dict | None = None, **kwargs):
-        return self.session.put(urljoin(self.base_url, endpoint), params=query_params, json=data, **kwargs)
+        return self._request("PUT", endpoint, query_params=query_params, data=data, **kwargs)
 
     def _delete(self, endpoint: str, query_params: dict | None = None, **kwargs):
-        return self.session.delete(urljoin(self.base_url, endpoint), params=query_params, **kwargs)
+        return self._request("DELETE", endpoint, query_params=query_params, **kwargs)
 
     def _patch(self, endpoint: str, query_params: dict | None = None, data: dict | None = None, **kwargs):
-        return self.session.patch(urljoin(self.base_url, endpoint), params=query_params, json=data, **kwargs)
+        return self._request("PATCH", endpoint, query_params=query_params, data=data, **kwargs)
 
 
 class WaterCrawlAPIClient(BaseAPIClient):
@@ -49,14 +88,17 @@ class WaterCrawlAPIClient(BaseAPIClient):
         super().__init__(api_key, base_url)
 
     def process_eventstream(self, response: Response, download: bool = False) -> Generator:
-        for line in response.iter_lines():
-            line = line.decode("utf-8")
-            if line.startswith("data:"):
-                line = line[5:].strip()
-                data = json.loads(line)
-                if data["type"] == "result" and download:
-                    data["data"] = self.download_result(data["data"])
-                yield data
+        try:
+            for raw_line in response.iter_lines():
+                line = raw_line.decode("utf-8") if isinstance(raw_line, bytes) else raw_line
+                if line.startswith("data:"):
+                    line = line[5:].strip()
+                    data = json.loads(line)
+                    if data["type"] == "result" and download:
+                        data["data"] = self.download_result(data["data"])
+                    yield data
+        finally:
+            response.close()
 
     def process_response(self, response: Response) -> dict | bytes | list | None | Generator:
         if response.status_code == 401:
@@ -101,9 +143,9 @@ class WaterCrawlAPIClient(BaseAPIClient):
     def create_crawl_request(
         self,
         url: Union[list, str] | None = None,
-        spider_options: dict | None = None,
-        page_options: dict | None = None,
-        plugin_options: dict | None = None,
+        spider_options: SpiderOptions | None = None,
+        page_options: PageOptions | None = None,
+        plugin_options: dict[str, Any] | None = None,
     ):
         data = {
             # 'urls': url if isinstance(url, list) else [url],
@@ -156,8 +198,8 @@ class WaterCrawlAPIClient(BaseAPIClient):
     def scrape_url(
         self,
         url: str,
-        page_options: dict | None = None,
-        plugin_options: dict | None = None,
+        page_options: PageOptions | None = None,
+        plugin_options: dict[str, Any] | None = None,
         sync: bool = True,
         prefetched: bool = True,
     ):
@@ -170,7 +212,10 @@ class WaterCrawlAPIClient(BaseAPIClient):
                 return event_data["data"]
 
     def download_result(self, result_object: dict):
-        response = requests.get(result_object["result"])
-        response.raise_for_status()
-        result_object["result"] = response.json()
+        response = httpx.get(result_object["result"], timeout=None)
+        try:
+            response.raise_for_status()
+            result_object["result"] = response.json()
+        finally:
+            response.close()
         return result_object

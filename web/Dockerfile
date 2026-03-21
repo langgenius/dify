@@ -1,14 +1,19 @@
 # base image
-FROM node:22-alpine3.21 AS base
+FROM node:22-alpine AS base
 LABEL maintainer="takatost@gmail.com"
 
 # if you located in China, you can use aliyun mirror to speed up
 # RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
 
+# if you located in China, you can use taobao registry to speed up
+# RUN npm config set registry https://registry.npmmirror.com
+
 RUN apk add --no-cache tzdata
-RUN npm install -g pnpm@10.11.1
+RUN corepack enable
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
+ARG NEXT_PUBLIC_BASE_PATH=""
+ENV NEXT_PUBLIC_BASE_PATH="$NEXT_PUBLIC_BASE_PATH"
 
 
 # install packages
@@ -16,11 +21,10 @@ FROM base AS packages
 
 WORKDIR /app/web
 
-COPY package.json .
-COPY pnpm-lock.yaml .
+COPY package.json pnpm-lock.yaml /app/web/
 
-# if you located in China, you can use taobao registry to speed up
-# RUN pnpm install --frozen-lockfile --registry https://registry.npmmirror.com/
+# Use packageManager from package.json
+RUN corepack install
 
 RUN pnpm install --frozen-lockfile
 
@@ -46,31 +50,31 @@ ENV MARKETPLACE_API_URL=https://marketplace.dify.ai
 ENV MARKETPLACE_URL=https://marketplace.dify.ai
 ENV PORT=3000
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV PM2_INSTANCES=2
 
 # set timezone
 ENV TZ=UTC
 RUN ln -s /usr/share/zoneinfo/${TZ} /etc/localtime \
     && echo ${TZ} > /etc/timezone
 
+# Create non-root user
+ARG dify_uid=1001
+RUN addgroup -S -g ${dify_uid} dify && \
+    adduser -S -u ${dify_uid} -G dify -s /bin/ash -h /home/dify dify && \
+    mkdir /app && \
+    chown -R dify:dify /app
+
 
 WORKDIR /app/web
-COPY --from=builder /app/web/public ./public
-COPY --from=builder /app/web/.next/standalone ./
-COPY --from=builder /app/web/.next/static ./.next/static
 
-COPY docker/entrypoint.sh ./entrypoint.sh
+COPY --from=builder --chown=dify:dify /app/web/public ./public
+COPY --from=builder --chown=dify:dify /app/web/.next/standalone ./
+COPY --from=builder --chown=dify:dify /app/web/.next/static ./.next/static
 
-
-# global runtime packages
-RUN pnpm add -g pm2 \
-    && mkdir /.pm2 \
-    && chown -R 1001:0 /.pm2 /app/web \
-    && chmod -R g=u /.pm2 /app/web
+COPY --chown=dify:dify --chmod=755 docker/entrypoint.sh ./entrypoint.sh
 
 ARG COMMIT_SHA
 ENV COMMIT_SHA=${COMMIT_SHA}
 
-USER 1001
+USER dify
 EXPOSE 3000
 ENTRYPOINT ["/bin/sh", "./entrypoint.sh"]

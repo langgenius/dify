@@ -1,7 +1,7 @@
 import type { StateCreator } from 'zustand'
-import produce from 'immer'
-import type { NodeWithVar, VarInInspect } from '@/types/workflow'
 import type { ValueSelector } from '../../../types'
+import type { NodeWithVar, VarInInspect } from '@/types/workflow'
+import { produce } from 'immer'
 
 type InspectVarsState = {
   currentFocusNodeId: string | null
@@ -23,7 +23,7 @@ type InspectVarsActions = {
 
 export type InspectVarsSliceShape = InspectVarsState & InspectVarsActions
 
-export const createInspectVarsSlice: StateCreator<InspectVarsSliceShape> = (set, get) => {
+export const createInspectVarsSlice: StateCreator<InspectVarsSliceShape> = (set) => {
   return ({
     currentFocusNodeId: null,
     nodesWithInspectVars: [],
@@ -75,12 +75,11 @@ export const createInspectVarsSlice: StateCreator<InspectVarsSliceShape> = (set,
           if (!targetNode)
             return
           const targetVar = targetNode.vars.find(varItem => varItem.id === varId)
-          if(!targetVar)
+          if (!targetVar)
             return
           targetVar.value = value
           targetVar.edited = true
-          },
-        )
+        })
         return {
           nodesWithInspectVars: nodes,
         }
@@ -93,12 +92,11 @@ export const createInspectVarsSlice: StateCreator<InspectVarsSliceShape> = (set,
           if (!targetNode)
             return
           const targetVar = targetNode.vars.find(varItem => varItem.id === varId)
-          if(!targetVar)
+          if (!targetVar)
             return
           targetVar.value = value
           targetVar.edited = false
-          },
-        )
+        })
         return {
           nodesWithInspectVars: nodes,
         }
@@ -111,12 +109,11 @@ export const createInspectVarsSlice: StateCreator<InspectVarsSliceShape> = (set,
           if (!targetNode)
             return
           const targetVar = targetNode.vars.find(varItem => varItem.id === varId)
-          if(!targetVar)
+          if (!targetVar)
             return
           targetVar.name = selector[1]
           targetVar.selector = selector
-          },
-        )
+        })
         return {
           nodesWithInspectVars: nodes,
         }
@@ -131,8 +128,7 @@ export const createInspectVarsSlice: StateCreator<InspectVarsSliceShape> = (set,
           const needChangeVarIndex = targetNode.vars.findIndex(varItem => varItem.id === varId)
           if (needChangeVarIndex !== -1)
             targetNode.vars.splice(needChangeVarIndex, 1)
-          },
-        )
+        })
         return {
           nodesWithInspectVars: nodes,
         }

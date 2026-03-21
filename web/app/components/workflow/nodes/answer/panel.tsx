@@ -1,12 +1,13 @@
 import type { FC } from 'react'
-import React from 'react'
-import { useTranslation } from 'react-i18next'
-import useConfig from './use-config'
 import type { AnswerNodeType } from './types'
-import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import type { NodePanelProps } from '@/app/components/workflow/types'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
+import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
-const i18nPrefix = 'workflow.nodes.answer'
+import useConfig from './use-config'
+
+const i18nPrefix = 'nodes.answer'
 
 const Panel: FC<NodePanelProps<AnswerNodeType>> = ({
   id,
@@ -29,11 +30,11 @@ const Panel: FC<NodePanelProps<AnswerNodeType>> = ({
   })
 
   return (
-    <div className='mb-2 mt-2 space-y-4 px-4'>
+    <div className="mb-2 mt-2 space-y-4 px-4">
       <Editor
         readOnly={readOnly}
         justVar
-        title={t(`${i18nPrefix}.answer`)!}
+        title={t(`${i18nPrefix}.answer`, { ns: 'workflow' })!}
         value={inputs.answer}
         onChange={handleAnswerChange}
         nodesOutputVars={availableVars}

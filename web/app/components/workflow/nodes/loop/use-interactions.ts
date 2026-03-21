@@ -1,24 +1,24 @@
-import { useCallback } from 'react'
-import produce from 'immer'
-import { useTranslation } from 'react-i18next'
-import { useStoreApi } from 'reactflow'
 import type {
   BlockEnum,
   Node,
 } from '../../types'
+import { produce } from 'immer'
+import { useCallback } from 'react'
+import { useStoreApi } from 'reactflow'
+import { useNodesMetaData } from '@/app/components/workflow/hooks'
+import {
+  LOOP_CHILDREN_Z_INDEX,
+  LOOP_PADDING,
+} from '../../constants'
 import {
   generateNewNode,
   getNodeCustomTypeByNodeDataType,
 } from '../../utils'
-import {
-  LOOP_PADDING,
-  NODES_INITIAL_DATA,
-} from '../../constants'
 import { CUSTOM_LOOP_START_NODE } from '../loop-start/constants'
 
 export const useNodeLoopInteractions = () => {
-  const { t } = useTranslation()
   const store = useStoreApi()
+  const { nodesMap: nodesMetaDataMap } = useNodesMetaData()
 
   const handleNodeLoopRerender = useCallback((nodeId: string) => {
     const {
@@ -76,7 +76,7 @@ export const useNodeLoopInteractions = () => {
     const { getNodes } = store.getState()
     const nodes = getNodes()
 
-    const restrictPosition: { x?: number; y?: number } = { x: undefined, y: undefined }
+    const restrictPosition: { x?: number, y?: number } = { x: undefined, y: undefined }
 
     if (node.data.isInLoop) {
       const parentNode = nodes.find(n => n.id === node.parentId)
@@ -108,37 +108,47 @@ export const useNodeLoopInteractions = () => {
       handleNodeLoopRerender(parentId)
   }, [store, handleNodeLoopRerender])
 
-  const handleNodeLoopChildrenCopy = useCallback((nodeId: string, newNodeId: string) => {
+  const handleNodeLoopChildrenCopy = useCallback((nodeId: string, newNodeId: string, idMapping: Record<string, string>) => {
     const { getNodes } = store.getState()
     const nodes = getNodes()
     const childrenNodes = nodes.filter(n => n.parentId === nodeId && n.type !== CUSTOM_LOOP_START_NODE)
+    const newIdMapping = { ...idMapping }
 
-    return childrenNodes.map((child, index) => {
+    const copyChildren = childrenNodes.map((child, index) => {
       const childNodeType = child.data.type as BlockEnum
+      const { defaultValue } = nodesMetaDataMap![childNodeType]
       const nodesWithSameType = nodes.filter(node => node.data.type === childNodeType)
       const { newNode } = generateNewNode({
         type: getNodeCustomTypeByNodeDataType(childNodeType),
         data: {
-          ...NODES_INITIAL_DATA[childNodeType],
+          ...defaultValue,
           ...child.data,
           selected: false,
           _isBundled: false,
           _connectedSourceHandleIds: [],
           _connectedTargetHandleIds: [],
-          title: nodesWithSameType.length > 0 ? `${t(`workflow.blocks.${childNodeType}`)} ${nodesWithSameType.length + 1}` : t(`workflow.blocks.${childNodeType}`),
+          _dimmed: false,
+          title: nodesWithSameType.length > 0 ? `${defaultValue.title} ${nodesWithSameType.length + 1}` : defaultValue.title,
+          isInLoop: true,
           loop_id: newNodeId,
-
+          type: childNodeType,
         },
         position: child.position,
         positionAbsolute: child.positionAbsolute,
         parentId: newNodeId,
         extent: child.extent,
-        zIndex: child.zIndex,
+        zIndex: LOOP_CHILDREN_Z_INDEX,
       })
       newNode.id = `${newNodeId}${newNode.id + index}`
+      newIdMapping[child.id] = newNode.id
       return newNode
     })
-  }, [store, t])
+
+    return {
+      copyChildren,
+      newIdMapping,
+    }
+  }, [store, nodesMetaDataMap])
 
   return {
     handleNodeLoopRerender,

@@ -1,8 +1,10 @@
 import logging
 
-import sendgrid  # type: ignore
+import sendgrid
 from python_http_client.exceptions import ForbiddenError, UnauthorizedError
-from sendgrid.helpers.mail import Content, Email, Mail, To  # type: ignore
+from sendgrid.helpers.mail import Content, Email, Mail, To
+
+logger = logging.getLogger(__name__)
 
 
 class SendGridClient:
@@ -11,8 +13,8 @@ class SendGridClient:
         self._from = _from
 
     def send(self, mail: dict):
-        logging.debug("Sending email with SendGrid")
-
+        logger.debug("Sending email with SendGrid")
+        _to = ""
         try:
             _to = mail["to"]
 
@@ -24,22 +26,22 @@ class SendGridClient:
             to_email = To(_to)
             subject = mail["subject"]
             content = Content("text/html", mail["html"])
-            mail = Mail(from_email, to_email, subject, content)
-            mail_json = mail.get()  # type: ignore
-            response = sg.client.mail.send.post(request_body=mail_json)
-            logging.debug(response.status_code)
-            logging.debug(response.body)
-            logging.debug(response.headers)
+            sg_mail = Mail(from_email, to_email, subject, content)
+            mail_json = sg_mail.get()
+            response = sg.client.mail.send.post(request_body=mail_json)  # type: ignore
+            logger.debug(response.status_code)
+            logger.debug(response.body)
+            logger.debug(response.headers)
 
-        except TimeoutError as e:
-            logging.exception("SendGridClient Timeout occurred while sending email")
+        except TimeoutError:
+            logger.exception("SendGridClient Timeout occurred while sending email")
             raise
-        except (UnauthorizedError, ForbiddenError) as e:
-            logging.exception(
+        except (UnauthorizedError, ForbiddenError):
+            logger.exception(
                 "SendGridClient Authentication failed. "
                 "Verify that your credentials and the 'from' email address are correct"
             )
             raise
-        except Exception as e:
-            logging.exception(f"SendGridClient Unexpected error occurred while sending email to {_to}")
+        except Exception:
+            logger.exception("SendGridClient Unexpected error occurred while sending email to %s", _to)
             raise

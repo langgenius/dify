@@ -1,5 +1,3 @@
-@use '../../themes/light';
-@use '../../themes/dark';
 @use '../../themes/markdown-light';
 @use '../../themes/markdown-dark';
 
@@ -143,10 +141,6 @@
   font-size: 1em;
 }
 
-.markdown-body hr {
-  margin: 24px 0;
-}
-
 .markdown-body hr::before {
   display: table;
   content: "";
@@ -277,18 +271,6 @@
   border-radius: 6px;
 }
 
-.markdown-body h1,
-.markdown-body h2,
-.markdown-body h3,
-.markdown-body h4,
-.markdown-body h5,
-.markdown-body h6 {
-  padding-top: 12px;
-  margin-bottom: 12px;
-  font-weight: var(--base-text-weight-semibold, 600);
-  line-height: 1.25;
-}
-
 .markdown-body h1 {
   font-size: 18px;
 }
@@ -381,14 +363,6 @@
   content: "";
 }
 
-.markdown-body>*:first-child {
-  margin-top: 0 !important;
-}
-
-.markdown-body>*:last-child {
-  margin-bottom: 0 !important;
-}
-
 .markdown-body a:not([href]) {
   color: inherit;
   text-decoration: none;
@@ -407,18 +381,6 @@
 
 .markdown-body .anchor:focus {
   outline: none;
-}
-
-.markdown-body p,
-.markdown-body blockquote,
-.markdown-body ul,
-.markdown-body ol,
-.markdown-body dl,
-.markdown-body table,
-.markdown-body pre,
-.markdown-body details {
-  margin-top: 0;
-  margin-bottom: 12px;
 }
 
 .markdown-body ul,
@@ -544,14 +506,6 @@
   margin-bottom: 0;
 }
 
-.markdown-body li>p {
-  margin-top: 16px;
-}
-
-.markdown-body li+li {
-  margin-top: 0.25em;
-}
-
 .markdown-body dl {
   padding: 0;
 }
@@ -599,6 +553,33 @@
 
 .markdown-body table tbody tr:not(:last-child) td {
   border-bottom: 1px solid var(--color-divider-subtle);
+}
+
+/* streamdown table: bridge shadcn/ui tokens to Dify design system */
+[data-streamdown="table-wrapper"] {
+  border-color: var(--color-divider-subtle);
+}
+
+[data-streamdown="table-wrapper"] > div:has(> [data-streamdown="table"]) {
+  border: none;
+}
+
+[data-streamdown="table-wrapper"] > div:first-child button {
+  color: var(--color-text-tertiary);
+}
+
+[data-streamdown="table-wrapper"] > div:first-child button:hover {
+  color: var(--color-text-primary);
+}
+
+[data-streamdown="table-wrapper"] > div:first-child > div > div {
+  background-color: var(--color-components-panel-bg);
+  border-color: var(--color-divider-subtle);
+}
+
+[data-streamdown="table-wrapper"] > div:first-child > div > div button:hover {
+  color: var(--color-components-menu-item-text-hover);
+  background-color: var(--color-components-menu-item-bg-hover);
 }
 
 .markdown-body table img {
@@ -856,6 +837,18 @@
 
 .markdown-body .pl-c {
   color: var(--color-prettylights-syntax-comment);
+}
+
+.markdown-body .katex {
+  /* Allow long inline formulas to wrap instead of overflowing */
+  white-space: normal !important;
+  overflow-wrap: break-word; /* better cross-browser support */
+  word-break: break-word;   /* non-standard fallback for older WebKit/Blink */
+}
+
+.markdown-body .katex-display {
+  /* Fallback for very long display equations */
+  overflow-x: auto;
 }
 
 .markdown-body .pl-c1,

@@ -1,26 +1,28 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import produce from 'immer'
-import { BlockEnum, VarType } from '../../types'
 import type { Memory, ValueSelector, Var } from '../../types'
+import type { QuestionClassifierNodeType, Topic } from './types'
+import { produce } from 'immer'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useUpdateNodeInternals } from 'reactflow'
+import { checkHasQueryBlock } from '@/app/components/base/prompt-editor/constants'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import { AppModeEnum } from '@/types/app'
 import {
-  useIsChatMode, useNodesReadOnly,
+  useIsChatMode,
+  useNodesReadOnly,
   useWorkflow,
 } from '../../hooks'
-import { useStore } from '../../store'
-import useAvailableVarList from '../_base/hooks/use-available-var-list'
 import useConfigVision from '../../hooks/use-config-vision'
-import type { QuestionClassifierNodeType, Topic } from './types'
-import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
-import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { checkHasQueryBlock } from '@/app/components/base/prompt-editor/constants'
-import { useUpdateNodeInternals } from 'reactflow'
+import { useStore } from '../../store'
+import { BlockEnum, VarType } from '../../types'
+import useAvailableVarList from '../_base/hooks/use-available-var-list'
 
 const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
   const updateNodeInternals = useUpdateNodeInternals()
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const isChatMode = useIsChatMode()
-  const defaultConfig = useStore(s => s.nodesDefaultConfigs)[payload.type]
+  const defaultConfig = useStore(s => s.nodesDefaultConfigs)?.[payload.type]
   const { getBeforeNodesInSameBranch } = useWorkflow()
   const startNode = getBeforeNodesInSameBranch(id).find(node => node.data.type === BlockEnum.Start)
   const startNodeId = startNode?.id
@@ -38,7 +40,7 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
 
   const model = inputs.model
   const modelMode = inputs.model?.mode
-  const isChatModel = modelMode === 'chat'
+  const isChatModel = modelMode === AppModeEnum.CHAT
 
   const {
     isVisionModel,
@@ -55,7 +57,7 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
     },
   })
 
-  const handleModelChanged = useCallback((model: { provider: string; modelId: string; mode?: string }) => {
+  const handleModelChanged = useCallback((model: { provider: string, modelId: string, mode?: string }) => {
     const newInputs = produce(inputRef.current, (draft) => {
       draft.model.provider = model.provider
       draft.model.name = model.modelId
@@ -88,7 +90,6 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
       return
     setModelChanged(false)
     handleVisionConfigAfterModelChanged()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isVisionModel, modelChanged])
 
   const handleQueryVarChange = useCallback((newVar: ValueSelector | string) => {
@@ -110,7 +111,6 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
         query_variable_selector: inputs.query_variable_selector.length > 0 ? inputs.query_variable_selector : query_variable_selector,
       })
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultConfig])
 
   const handleClassesChange = useCallback((newClasses: any) => {

@@ -1,10 +1,10 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   useCSVDownloader,
 } from 'react-papaparse'
-import { useTranslation } from 'react-i18next'
 import { Download02 as DownloadIcon } from '@/app/components/base/icons/src/vender/solid/general'
 
 export type ICSVDownloadProps = {
@@ -26,21 +26,25 @@ const CSVDownload: FC<ICSVDownloadProps> = ({
   })()
 
   return (
-    <div className='mt-6'>
-      <div className='system-sm-medium text-text-primary'>{t('share.generation.csvStructureTitle')}</div>
-      <div className='mt-2 max-h-[500px] overflow-auto'>
-        <table className='w-full table-fixed border-separate border-spacing-0 rounded-lg border border-divider-regular text-xs'>
-          <thead className='text-text-tertiary'>
+    <div className="mt-6">
+      <div className="system-sm-medium text-text-primary">{t('generation.csvStructureTitle', { ns: 'share' })}</div>
+      <div className="mt-2 max-h-[500px] overflow-auto">
+        <table className="w-full table-fixed border-separate border-spacing-0 rounded-lg border border-divider-regular text-xs">
+          <thead className="text-text-tertiary">
             <tr>
               {addQueryContentVars.map((item, i) => (
-                <td key={i} className='h-9 border-b border-divider-regular pl-3 pr-2'>{item.name}</td>
+                <td key={i} className="h-9 border-b border-divider-regular pl-3 pr-2">{item.name}</td>
               ))}
             </tr>
           </thead>
-          <tbody className='text-text-secondary'>
+          <tbody className="text-text-secondary">
             <tr>
               {addQueryContentVars.map((item, i) => (
-                <td key={i} className='h-9 pl-4'>{item.name} {t('share.generation.field')}</td>
+                <td key={i} className="h-9 pl-4">
+                  {item.name}
+                  {' '}
+                  {t('generation.field', { ns: 'share' })}
+                </td>
               ))}
             </tr>
           </tbody>
@@ -49,7 +53,7 @@ const CSVDownload: FC<ICSVDownloadProps> = ({
       <CSVDownloader
         className="mt-2 block cursor-pointer"
         type={Type.Link}
-        filename={'template'}
+        filename="template"
         bom={true}
         config={{
           // delimiter: ';',
@@ -58,9 +62,9 @@ const CSVDownload: FC<ICSVDownloadProps> = ({
           template,
         ]}
       >
-        <div className='system-xs-medium flex h-[18px] items-center space-x-1 text-text-accent'>
-          <DownloadIcon className='h-3 w-3' />
-          <span>{t('share.generation.downloadTemplate')}</span>
+        <div className="system-xs-medium flex h-[18px] items-center space-x-1 text-text-accent">
+          <DownloadIcon className="h-3 w-3" />
+          <span>{t('generation.downloadTemplate', { ns: 'share' })}</span>
         </div>
       </CSVDownloader>
     </div>

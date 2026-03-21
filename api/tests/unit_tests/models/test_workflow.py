@@ -4,13 +4,18 @@ from unittest import mock
 from uuid import uuid4
 
 from constants import HIDDEN_VALUE
-from core.file.enums import FileTransferMethod, FileType
-from core.file.models import File
-from core.variables import FloatVariable, IntegerVariable, SecretVariable, StringVariable
-from core.variables.segments import IntegerSegment, Segment
+from core.helper import encrypter
+from dify_graph.file.enums import FileTransferMethod, FileType
+from dify_graph.file.models import File
+from dify_graph.variables import FloatVariable, IntegerVariable, SecretVariable, StringVariable
+from dify_graph.variables.segments import IntegerSegment, Segment
 from factories.variable_factory import build_segment
-from models.model import EndUser
-from models.workflow import Workflow, WorkflowDraftVariable, WorkflowNodeExecutionModel, is_system_variable_editable
+from models.workflow import (
+    Workflow,
+    WorkflowDraftVariable,
+    WorkflowNodeExecutionModel,
+    is_system_variable_editable,
+)
 
 
 def test_environment_variables():
@@ -43,14 +48,9 @@ def test_environment_variables():
         {"name": "var4", "value": 3.14, "id": str(uuid4()), "selector": ["env", "var4"]}
     )
 
-    # Mock current_user as an EndUser
-    mock_user = mock.Mock(spec=EndUser)
-    mock_user.tenant_id = "tenant_id"
-
     with (
         mock.patch("core.helper.encrypter.encrypt_token", return_value="encrypted_token"),
         mock.patch("core.helper.encrypter.decrypt_token", return_value="secret"),
-        mock.patch("models.workflow.current_user", mock_user),
     ):
         # Set the environment_variables property of the Workflow instance
         variables = [variable1, variable2, variable3, variable4]
@@ -90,14 +90,9 @@ def test_update_environment_variables():
         {"name": "var4", "value": 3.14, "id": str(uuid4()), "selector": ["env", "var4"]}
     )
 
-    # Mock current_user as an EndUser
-    mock_user = mock.Mock(spec=EndUser)
-    mock_user.tenant_id = "tenant_id"
-
     with (
         mock.patch("core.helper.encrypter.encrypt_token", return_value="encrypted_token"),
         mock.patch("core.helper.encrypter.decrypt_token", return_value="secret"),
-        mock.patch("models.workflow.current_user", mock_user),
     ):
         variables = [variable1, variable2, variable3, variable4]
 
@@ -136,14 +131,9 @@ def test_to_dict():
 
     # Create some EnvironmentVariable instances
 
-    # Mock current_user as an EndUser
-    mock_user = mock.Mock(spec=EndUser)
-    mock_user.tenant_id = "tenant_id"
-
     with (
         mock.patch("core.helper.encrypter.encrypt_token", return_value="encrypted_token"),
         mock.patch("core.helper.encrypter.decrypt_token", return_value="secret"),
-        mock.patch("models.workflow.current_user", mock_user),
     ):
         # Set the environment_variables property of the Workflow instance
         workflow.environment_variables = [
@@ -158,6 +148,36 @@ def test_to_dict():
         workflow_dict = workflow.to_dict(include_secret=True)
         assert workflow_dict["environment_variables"][0]["value"] == "secret"
         assert workflow_dict["environment_variables"][1]["value"] == "text"
+
+
+def test_normalize_environment_variable_mappings_converts_full_mask_to_hidden_value():
+    normalized = Workflow.normalize_environment_variable_mappings(
+        [
+            {
+                "id": str(uuid4()),
+                "name": "secret",
+                "value": encrypter.full_mask_token(),
+                "value_type": "secret",
+            }
+        ]
+    )
+
+    assert normalized[0]["value"] == HIDDEN_VALUE
+
+
+def test_normalize_environment_variable_mappings_keeps_hidden_value():
+    normalized = Workflow.normalize_environment_variable_mappings(
+        [
+            {
+                "id": str(uuid4()),
+                "name": "secret",
+                "value": HIDDEN_VALUE,
+                "value_type": "secret",
+            }
+        ]
+    )
+
+    assert normalized[0]["value"] == HIDDEN_VALUE
 
 
 class TestWorkflowNodeExecution:

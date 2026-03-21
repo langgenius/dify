@@ -1,5 +1,5 @@
-import { create } from 'zustand'
 import type { Dependency } from '@/app/components/plugins/types'
+import { create } from 'zustand'
 
 type Shape = {
   dependencies: Dependency[]

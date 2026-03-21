@@ -102,9 +102,14 @@ class TestPhoenixConfig:
         assert config.project == "default"
 
     def test_endpoint_validation_with_path(self):
-        """Test endpoint validation normalizes URL by removing path"""
-        config = PhoenixConfig(endpoint="https://custom.phoenix.com/api/v1")
-        assert config.endpoint == "https://custom.phoenix.com"
+        """Test endpoint validation with path"""
+        config = PhoenixConfig(endpoint="https://app.phoenix.arize.com/s/dify-integration")
+        assert config.endpoint == "https://app.phoenix.arize.com/s/dify-integration"
+
+    def test_endpoint_validation_without_path(self):
+        """Test endpoint validation without path"""
+        config = PhoenixConfig(endpoint="https://app.phoenix.arize.com")
+        assert config.endpoint == "https://app.phoenix.arize.com"
 
 
 class TestLangfuseConfig:
@@ -116,6 +121,13 @@ class TestLangfuseConfig:
         assert config.public_key == "public_key"
         assert config.secret_key == "secret_key"
         assert config.host == "https://custom.langfuse.com"
+
+    def test_valid_config_with_path(self):
+        host = "https://custom.langfuse.com/api/v1"
+        config = LangfuseConfig(public_key="public_key", secret_key="secret_key", host=host)
+        assert config.public_key == "public_key"
+        assert config.secret_key == "secret_key"
+        assert config.host == host
 
     def test_default_values(self):
         """Test default values are set correctly"""
@@ -317,26 +329,43 @@ class TestAliyunConfig:
         assert config.endpoint == "https://tracing-analysis-dc-hz.aliyuncs.com"
 
     def test_endpoint_validation_with_path(self):
-        """Test endpoint validation normalizes URL by removing path"""
+        """Test endpoint validation preserves path for Aliyun endpoints"""
         config = AliyunConfig(
             license_key="test_license", endpoint="https://tracing-analysis-dc-hz.aliyuncs.com/api/v1/traces"
         )
-        assert config.endpoint == "https://tracing-analysis-dc-hz.aliyuncs.com"
+        assert config.endpoint == "https://tracing-analysis-dc-hz.aliyuncs.com/api/v1/traces"
 
     def test_endpoint_validation_invalid_scheme(self):
         """Test endpoint validation rejects invalid schemes"""
-        with pytest.raises(ValidationError, match="URL scheme must be one of"):
+        with pytest.raises(ValidationError, match="URL must start with https:// or http://"):
             AliyunConfig(license_key="test_license", endpoint="ftp://invalid.tracing-analysis-dc-hz.aliyuncs.com")
 
     def test_endpoint_validation_no_scheme(self):
         """Test endpoint validation rejects URLs without scheme"""
-        with pytest.raises(ValidationError, match="URL scheme must be one of"):
+        with pytest.raises(ValidationError, match="URL must start with https:// or http://"):
             AliyunConfig(license_key="test_license", endpoint="invalid.tracing-analysis-dc-hz.aliyuncs.com")
 
     def test_license_key_required(self):
         """Test that license_key is required and cannot be empty"""
         with pytest.raises(ValidationError):
             AliyunConfig(license_key="", endpoint="https://tracing-analysis-dc-hz.aliyuncs.com")
+
+    def test_valid_endpoint_format_examples(self):
+        """Test valid endpoint format examples from comments"""
+        valid_endpoints = [
+            # cms2.0 public endpoint
+            "https://proj-xtrace-123456-cn-heyuan.cn-heyuan.log.aliyuncs.com/apm/trace/opentelemetry",
+            # cms2.0 intranet endpoint
+            "https://proj-xtrace-123456-cn-heyuan.cn-heyuan-intranet.log.aliyuncs.com/apm/trace/opentelemetry",
+            # xtrace public endpoint
+            "http://tracing-cn-heyuan.arms.aliyuncs.com",
+            # xtrace intranet endpoint
+            "http://tracing-cn-heyuan-internal.arms.aliyuncs.com",
+        ]
+
+        for endpoint in valid_endpoints:
+            config = AliyunConfig(license_key="test_license", endpoint=endpoint)
+            assert config.endpoint == endpoint
 
 
 class TestConfigIntegration:
@@ -361,14 +390,16 @@ class TestConfigIntegration:
         """Test that URL normalization works consistently across configs"""
         # Test that paths are removed from endpoints
         arize_config = ArizeConfig(endpoint="https://arize.com/api/v1/test")
-        phoenix_config = PhoenixConfig(endpoint="https://phoenix.com/api/v2/")
+        phoenix_with_path_config = PhoenixConfig(endpoint="https://app.phoenix.arize.com/s/dify-integration")
+        phoenix_without_path_config = PhoenixConfig(endpoint="https://app.phoenix.arize.com")
         aliyun_config = AliyunConfig(
             license_key="test_license", endpoint="https://tracing-analysis-dc-hz.aliyuncs.com/api/v1/traces"
         )
 
         assert arize_config.endpoint == "https://arize.com"
-        assert phoenix_config.endpoint == "https://phoenix.com"
-        assert aliyun_config.endpoint == "https://tracing-analysis-dc-hz.aliyuncs.com"
+        assert phoenix_with_path_config.endpoint == "https://app.phoenix.arize.com/s/dify-integration"
+        assert phoenix_without_path_config.endpoint == "https://app.phoenix.arize.com"
+        assert aliyun_config.endpoint == "https://tracing-analysis-dc-hz.aliyuncs.com/api/v1/traces"
 
     def test_project_default_values(self):
         """Test that project default values are set correctly"""

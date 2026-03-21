@@ -1,13 +1,15 @@
 from contextlib import contextmanager
 from datetime import datetime
-from typing import Optional, Union
+from typing import Any, Union
 from urllib.parse import urlparse
 
-from extensions.ext_database import db
+from sqlalchemy import select
+
+from models.engine import db
 from models.model import Message
 
 
-def filter_none_values(data: dict):
+def filter_none_values(data: dict[str, Any]) -> dict[str, Any]:
     new_data = {}
     for key, value in data.items():
         if value is None:
@@ -20,7 +22,7 @@ def filter_none_values(data: dict):
 
 
 def get_message_data(message_id: str):
-    return db.session.query(Message).filter(Message.id == message_id).first()
+    return db.session.scalar(select(Message).where(Message.id == message_id))
 
 
 @contextmanager
@@ -47,14 +49,12 @@ def replace_text_with_content(data):
         return data
 
 
-def generate_dotted_order(
-    run_id: str, start_time: Union[str, datetime], parent_dotted_order: Optional[str] = None
-) -> str:
+def generate_dotted_order(run_id: str, start_time: Union[str, datetime], parent_dotted_order: str | None = None) -> str:
     """
     generate dotted_order for langsmith
     """
     start_time = datetime.fromisoformat(start_time) if isinstance(start_time, str) else start_time
-    timestamp = start_time.strftime("%Y%m%dT%H%M%S%f")[:-3] + "Z"
+    timestamp = start_time.strftime("%Y%m%dT%H%M%S%f") + "Z"
     current_segment = f"{timestamp}{run_id}"
 
     if parent_dotted_order is None:
@@ -65,7 +65,13 @@ def generate_dotted_order(
 
 def validate_url(url: str, default_url: str, allowed_schemes: tuple = ("https", "http")) -> str:
     """
-    Validate and normalize URL with proper error handling
+    Validate and normalize URL with proper error handling.
+
+    NOTE: This function does not retain the `path` component of the provided URL.
+    In most cases, it is recommended to use `validate_url_with_path` instead.
+
+    This function is deprecated and retained only for compatibility purposes.
+    New implementations should use `validate_url_with_path`.
 
     Args:
         url: The URL to validate
@@ -141,3 +147,14 @@ def validate_project_name(project: str, default_name: str) -> str:
         return default_name
 
     return project.strip()
+
+
+def validate_integer_id(id_str: str) -> str:
+    """
+    Validate and normalize integer ID
+    """
+    id_str = id_str.strip()
+    if not id_str.isdigit():
+        raise ValueError("ID must be a valid integer")
+
+    return id_str

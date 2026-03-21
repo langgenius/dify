@@ -1,21 +1,24 @@
 'use client'
 import type { FC } from 'react'
-import { useTranslation } from 'react-i18next'
-import React, { useCallback } from 'react'
-import produce from 'immer'
-import { RiDeleteBinLine } from '@remixicon/react'
-import OperationSelector from '../operation-selector'
-import { AssignerNodeInputType, WriteMode } from '../../types'
 import type { AssignerNodeOperation } from '../../types'
-import ListNoDataPlaceholder from '@/app/components/workflow/nodes/_base/components/list-no-data-placeholder'
-import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
-import type { ValueSelector, Var, VarType } from '@/app/components/workflow/types'
-import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
+import type { ValueSelector, Var } from '@/app/components/workflow/types'
+import { RiDeleteBinLine } from '@remixicon/react'
+import { noop } from 'es-toolkit/function'
+import { produce } from 'immer'
+import * as React from 'react'
+import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
-import { noop } from 'lodash-es'
+import ListNoDataPlaceholder from '@/app/components/workflow/nodes/_base/components/list-no-data-placeholder'
+import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
+import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
+import BoolValue from '@/app/components/workflow/panel/chat-variable-panel/components/bool-value'
+import { VarType } from '@/app/components/workflow/types'
+import { AssignerNodeInputType, WriteMode } from '../../types'
+import OperationSelector from '../operation-selector'
 
 type Props = {
   readonly: boolean
@@ -59,23 +62,27 @@ const VarList: FC<Props> = ({
     }
   }, [list, onChange])
 
-  const handleOperationChange = useCallback((index: number) => {
+  const handleOperationChange = useCallback((index: number, varType: VarType) => {
     return (item: { value: string | number }) => {
       const newList = produce(list, (draft) => {
         draft[index].operation = item.value as WriteMode
         draft[index].value = '' // Clear value when operation changes
         if (item.value === WriteMode.set || item.value === WriteMode.increment || item.value === WriteMode.decrement
-          || item.value === WriteMode.multiply || item.value === WriteMode.divide)
+          || item.value === WriteMode.multiply || item.value === WriteMode.divide) {
+          if (varType === VarType.boolean)
+            draft[index].value = false
           draft[index].input_type = AssignerNodeInputType.constant
-        else
+        }
+        else {
           draft[index].input_type = AssignerNodeInputType.variable
+        }
       })
       onChange(newList)
     }
   }, [list, onChange])
 
   const handleToAssignedVarChange = useCallback((index: number) => {
-    return (value: ValueSelector | string | number) => {
+    return (value: ValueSelector | string | number | boolean) => {
       const newList = produce(list, (draft) => {
         draft[index].value = value as ValueSelector
       })
@@ -99,7 +106,8 @@ const VarList: FC<Props> = ({
   const handleFilterToAssignedVar = useCallback((index: number) => {
     return (payload: Var) => {
       const { variable_selector, operation } = list[index]
-      if (!variable_selector || !operation || !filterToAssignedVar) return true
+      if (!variable_selector || !operation || !filterToAssignedVar)
+        return true
 
       const assignedVarType = getAssignedVarType?.(variable_selector)
       const isSameVariable = Array.isArray(variable_selector) && variable_selector.join('.') === `${payload.nodeId}.${payload.variable}`
@@ -111,13 +119,13 @@ const VarList: FC<Props> = ({
   if (list.length === 0) {
     return (
       <ListNoDataPlaceholder>
-        {t('workflow.nodes.assigner.noVarTip')}
+        {t('nodes.assigner.noVarTip', { ns: 'workflow' })}
       </ListNoDataPlaceholder>
     )
   }
 
   return (
-    <div className='flex flex-col items-start gap-4 self-stretch'>
+    <div className="flex flex-col items-start gap-4 self-stretch">
       {list.map((item, index) => {
         const assignedVarType = item.variable_selector ? getAssignedVarType?.(item.variable_selector) : undefined
         const toAssignedVarType = (assignedVarType && item.operation && getToAssignedVarType)
@@ -125,9 +133,9 @@ const VarList: FC<Props> = ({
           : undefined
 
         return (
-          <div className='flex items-start gap-1 self-stretch' key={index}>
-            <div className='flex grow flex-col items-start gap-1'>
-              <div className='flex items-center gap-1 self-stretch'>
+          <div className="flex items-start gap-1 self-stretch" key={index}>
+            <div className="flex grow flex-col items-start gap-1">
+              <div className="flex items-center gap-1 self-stretch">
                 <VarReferencePicker
                   readonly={readonly}
                   nodeId={nodeId}
@@ -136,16 +144,16 @@ const VarList: FC<Props> = ({
                   onChange={handleAssignedVarChange(index)}
                   onOpen={handleOpen(index)}
                   filterVar={filterVar}
-                  placeholder={t('workflow.nodes.assigner.selectAssignedVariable') as string}
+                  placeholder={t('nodes.assigner.selectAssignedVariable', { ns: 'workflow' }) as string}
                   minWidth={352}
-                  popupFor='assigned'
-                  className='w-full'
+                  popupFor="assigned"
+                  className="w-full"
                 />
                 <OperationSelector
                   value={item.operation}
-                  placeholder='Operation'
+                  placeholder="Operation"
                   disabled={!item.variable_selector || item.variable_selector.length === 0}
-                  onSelect={handleOperationChange(index)}
+                  onSelect={handleOperationChange(index, assignedVarType!)}
                   assignedVarType={assignedVarType}
                   writeModeTypes={writeModeTypes}
                   writeModeTypesArr={writeModeTypesArr}
@@ -164,28 +172,33 @@ const VarList: FC<Props> = ({
                     onChange={handleToAssignedVarChange(index)}
                     filterVar={handleFilterToAssignedVar(index)}
                     valueTypePlaceHolder={toAssignedVarType}
-                    placeholder={t('workflow.nodes.assigner.setParameter') as string}
+                    placeholder={t('nodes.assigner.setParameter', { ns: 'workflow' }) as string}
                     minWidth={352}
-                    popupFor='toAssigned'
-                    className='w-full'
+                    popupFor="toAssigned"
+                    className="w-full"
                   />
-                )
-              }
-              {item.operation === WriteMode.set && assignedVarType && (
+                )}
+              {!!(item.operation === WriteMode.set && assignedVarType) && (
                 <>
                   {assignedVarType === 'number' && (
                     <Input
                       type="number"
                       value={item.value as number}
                       onChange={e => handleToAssignedVarChange(index)(Number(e.target.value))}
-                      className='w-full'
+                      className="w-full"
                     />
                   )}
                   {assignedVarType === 'string' && (
                     <Textarea
                       value={item.value as string}
                       onChange={e => handleToAssignedVarChange(index)(e.target.value)}
-                      className='w-full'
+                      className="w-full"
+                    />
+                  )}
+                  {assignedVarType === 'boolean' && (
+                    <BoolValue
+                      value={item.value as boolean}
+                      onChange={value => handleToAssignedVarChange(index)(value)}
                     />
                   )}
                   {assignedVarType === 'object' && (
@@ -193,28 +206,29 @@ const VarList: FC<Props> = ({
                       value={item.value as string}
                       language={CodeLanguage.json}
                       onChange={value => handleToAssignedVarChange(index)(value)}
-                      className='w-full'
+                      className="w-full"
                       readOnly={readonly}
                     />
                   )}
                 </>
               )}
               {writeModeTypesNum?.includes(item.operation)
-                && <Input
-                  type="number"
-                  value={item.value as number}
-                  onChange={e => handleToAssignedVarChange(index)(Number(e.target.value))}
-                  placeholder="Enter number value..."
-                  className='w-full'
-                />
-              }
+                && (
+                  <Input
+                    type="number"
+                    value={item.value as number}
+                    onChange={e => handleToAssignedVarChange(index)(Number(e.target.value))}
+                    placeholder="Enter number value..."
+                    className="w-full"
+                  />
+                )}
             </div>
             <ActionButton
-              size='l'
-              className='group shrink-0 hover:!bg-state-destructive-hover'
+              size="l"
+              className="group shrink-0 hover:!bg-state-destructive-hover"
               onClick={handleVarRemove(index)}
             >
-              <RiDeleteBinLine className='h-4 w-4 text-text-tertiary group-hover:text-text-destructive' />
+              <RiDeleteBinLine className="h-4 w-4 text-text-tertiary group-hover:text-text-destructive" />
             </ActionButton>
           </div>
         )

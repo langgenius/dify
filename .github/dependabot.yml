@@ -1,0 +1,212 @@
+version: 2
+
+updates:
+  - package-ecosystem: "pip"
+    directory: "/api"
+    open-pull-requests-limit: 10
+    schedule:
+      interval: "weekly"
+    groups:
+      flask:
+        patterns:
+          - "flask"
+          - "flask-*"
+          - "werkzeug"
+          - "gunicorn"
+      google:
+        patterns:
+          - "google-*"
+          - "googleapis-*"
+      opentelemetry:
+        patterns:
+          - "opentelemetry-*"
+      pydantic:
+        patterns:
+          - "pydantic"
+          - "pydantic-*"
+      llm:
+        patterns:
+          - "langfuse"
+          - "langsmith"
+          - "litellm"
+          - "mlflow*"
+          - "opik"
+          - "weave*"
+          - "arize*"
+          - "tiktoken"
+          - "transformers"
+      database:
+        patterns:
+          - "sqlalchemy"
+          - "psycopg2*"
+          - "psycogreen"
+          - "redis*"
+          - "alembic*"
+      storage:
+        patterns:
+          - "boto3*"
+          - "botocore*"
+          - "azure-*"
+          - "bce-*"
+          - "cos-python-*"
+          - "esdk-obs-*"
+          - "google-cloud-storage"
+          - "opendal"
+          - "oss2"
+          - "supabase*"
+          - "tos*"
+      vdb:
+        patterns:
+          - "alibabacloud*"
+          - "chromadb"
+          - "clickhouse-*"
+          - "clickzetta-*"
+          - "couchbase"
+          - "elasticsearch"
+          - "opensearch-py"
+          - "oracledb"
+          - "pgvect*"
+          - "pymilvus"
+          - "pymochow"
+          - "pyobvector"
+          - "qdrant-client"
+          - "intersystems-*"
+          - "tablestore"
+          - "tcvectordb"
+          - "tidb-vector"
+          - "upstash-*"
+          - "volcengine-*"
+          - "weaviate-*"
+          - "xinference-*"
+          - "mo-vector"
+          - "mysql-connector-*"
+      dev:
+        patterns:
+          - "coverage"
+          - "dotenv-linter"
+          - "faker"
+          - "lxml-stubs"
+          - "basedpyright"
+          - "ruff"
+          - "pytest*"
+          - "types-*"
+          - "boto3-stubs"
+          - "hypothesis"
+          - "pandas-stubs"
+          - "scipy-stubs"
+          - "import-linter"
+          - "celery-types"
+          - "mypy*"
+          - "pyrefly"
+      python-packages:
+        patterns:
+          - "*"
+  - package-ecosystem: "uv"
+    directory: "/api"
+    open-pull-requests-limit: 10
+    schedule:
+      interval: "weekly"
+    groups:
+      flask:
+        patterns:
+          - "flask"
+          - "flask-*"
+          - "werkzeug"
+          - "gunicorn"
+      google:
+        patterns:
+          - "google-*"
+          - "googleapis-*"
+      opentelemetry:
+        patterns:
+          - "opentelemetry-*"
+      pydantic:
+        patterns:
+          - "pydantic"
+          - "pydantic-*"
+      llm:
+        patterns:
+          - "langfuse"
+          - "langsmith"
+          - "litellm"
+          - "mlflow*"
+          - "opik"
+          - "weave*"
+          - "arize*"
+          - "tiktoken"
+          - "transformers"
+      database:
+        patterns:
+          - "sqlalchemy"
+          - "psycopg2*"
+          - "psycogreen"
+          - "redis*"
+          - "alembic*"
+      storage:
+        patterns:
+          - "boto3*"
+          - "botocore*"
+          - "azure-*"
+          - "bce-*"
+          - "cos-python-*"
+          - "esdk-obs-*"
+          - "google-cloud-storage"
+          - "opendal"
+          - "oss2"
+          - "supabase*"
+          - "tos*"
+      vdb:
+        patterns:
+          - "alibabacloud*"
+          - "chromadb"
+          - "clickhouse-*"
+          - "clickzetta-*"
+          - "couchbase"
+          - "elasticsearch"
+          - "opensearch-py"
+          - "oracledb"
+          - "pgvect*"
+          - "pymilvus"
+          - "pymochow"
+          - "pyobvector"
+          - "qdrant-client"
+          - "intersystems-*"
+          - "tablestore"
+          - "tcvectordb"
+          - "tidb-vector"
+          - "upstash-*"
+          - "volcengine-*"
+          - "weaviate-*"
+          - "xinference-*"
+          - "mo-vector"
+          - "mysql-connector-*"
+      dev:
+        patterns:
+          - "coverage"
+          - "dotenv-linter"
+          - "faker"
+          - "lxml-stubs"
+          - "basedpyright"
+          - "ruff"
+          - "pytest*"
+          - "types-*"
+          - "boto3-stubs"
+          - "hypothesis"
+          - "pandas-stubs"
+          - "scipy-stubs"
+          - "import-linter"
+          - "celery-types"
+          - "mypy*"
+          - "pyrefly"
+      python-packages:
+        patterns:
+          - "*"
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    open-pull-requests-limit: 5
+    schedule:
+      interval: "weekly"
+    groups:
+      github-actions-dependencies:
+        patterns:
+          - "*"

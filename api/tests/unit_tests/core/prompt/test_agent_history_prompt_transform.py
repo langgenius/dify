@@ -5,14 +5,14 @@ from core.app.entities.app_invoke_entities import (
 )
 from core.entities.provider_configuration import ProviderModelBundle
 from core.memory.token_buffer_memory import TokenBufferMemory
-from core.model_runtime.entities.message_entities import (
+from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
+from dify_graph.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     SystemPromptMessage,
     ToolPromptMessage,
     UserPromptMessage,
 )
-from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
+from dify_graph.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from models.model import Conversation
 
 

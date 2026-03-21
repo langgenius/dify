@@ -1,15 +1,21 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
+import type { ValueSelector, Var, Variable } from '@/app/components/workflow/types'
+import { RiDraggable } from '@remixicon/react'
+import { useDebounceFn } from 'ahooks'
+import { produce } from 'immer'
+import * as React from 'react'
+import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import produce from 'immer'
+import { ReactSortable } from 'react-sortablejs'
+import { v4 as uuid4 } from 'uuid'
+import Input from '@/app/components/base/input'
+import { toast } from '@/app/components/base/ui/toast'
+import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
+import { cn } from '@/utils/classnames'
+import { checkKeys, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
 import RemoveButton from '../remove-button'
 import VarReferencePicker from './var-reference-picker'
-import Input from '@/app/components/base/input'
-import type { ValueSelector, Var, Variable } from '@/app/components/workflow/types'
-import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
-import { checkKeys, replaceSpaceWithUnderscreInVarNameInput } from '@/utils/var'
-import Toast from '@/app/components/base/toast'
 
 type Props = {
   nodeId: string
@@ -36,27 +42,32 @@ const VarList: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
 
+  const listWithIds = useMemo(() => list.map((item) => {
+    const id = uuid4()
+    return {
+      id,
+      variable: { ...item },
+    }
+  }), [list])
+
+  const { run: validateVarInput } = useDebounceFn((list: Variable[], newKey: string) => {
+    const result = checkKeys([newKey], true)
+    if (!result.isValid) {
+      toast.error(t(`varKeyError.${result.errorMessageKey}`, { ns: 'appDebug', key: result.errorKey }))
+      return
+    }
+    if (list.some(item => item.variable?.trim() === newKey.trim())) {
+      toast.error(t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: newKey }))
+    }
+  }, { wait: 500 })
+
   const handleVarNameChange = useCallback((index: number) => {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
-      replaceSpaceWithUnderscreInVarNameInput(e.target)
+      replaceSpaceWithUnderscoreInVarNameInput(e.target)
 
       const newKey = e.target.value
-      const { isValid, errorKey, errorMessageKey } = checkKeys([newKey], true)
-      if (!isValid) {
-        Toast.notify({
-          type: 'error',
-          message: t(`appDebug.varKeyError.${errorMessageKey}`, { key: errorKey }),
-        })
-        return
-      }
 
-      if (list.map(item => item.variable?.trim()).includes(newKey.trim())) {
-        Toast.notify({
-          type: 'error',
-          message: t('appDebug.varKeyError.keyAlreadyExists', { key: newKey }),
-        })
-        return
-      }
+      validateVarInput(list.toSpliced(index, 1), newKey)
 
       onVarNameChange?.(list[index].variable, newKey)
       const newList = produce(list, (draft) => {
@@ -64,7 +75,7 @@ const VarList: FC<Props> = ({
       })
       onChange(newList)
     }
-  }, [list, onVarNameChange, onChange])
+  }, [list, onVarNameChange, onChange, validateVarInput])
 
   const handleVarReferenceChange = useCallback((index: number) => {
     return (value: ValueSelector | string, varKindType: VarKindType, varInfo?: Var) => {
@@ -105,36 +116,59 @@ const VarList: FC<Props> = ({
     }
   }, [list, onChange])
 
+  const varCount = list.length
+
   return (
-    <div className='space-y-2'>
-      {list.map((item, index) => (
-        <div className='flex items-center space-x-1' key={index}>
-          <Input
-            wrapperClassName='w-[120px]'
-            disabled={readonly}
-            value={list[index].variable}
-            onChange={handleVarNameChange(index)}
-            placeholder={t('workflow.common.variableNamePlaceholder')!}
-          />
-          <VarReferencePicker
-            nodeId={nodeId}
-            readonly={readonly}
-            isShowNodeName
-            className='grow'
-            value={item.variable_type === VarKindType.constant ? (item.value || '') : (item.value_selector || [])}
-            isSupportConstantValue={isSupportConstantValue}
-            onChange={handleVarReferenceChange(index)}
-            defaultVarKindType={item.variable_type}
-            onlyLeafNodeVar={onlyLeafNodeVar}
-            filterVar={filterVar}
-            isSupportFileVar={isSupportFileVar}
-          />
-          {!readonly && (
-            <RemoveButton onClick={handleVarRemove(index)}/>
-          )}
-        </div>
-      ))}
-    </div>
+    <ReactSortable
+      className="space-y-2"
+      list={listWithIds}
+      setList={(list) => { onChange(list.map(item => item.variable)) }}
+      handle=".handle"
+      ghostClass="opacity-50"
+      animation={150}
+    >
+      {list.map((variable, index) => {
+        const canDrag = (() => {
+          if (readonly)
+            return false
+          return varCount > 1
+        })()
+        return (
+          <div className={cn('flex items-center space-x-1', 'group relative')} key={index}>
+            <Input
+              wrapperClassName="w-[120px]"
+              disabled={readonly}
+              value={variable.variable}
+              onChange={handleVarNameChange(index)}
+              placeholder={t('common.variableNamePlaceholder', { ns: 'workflow' })!}
+            />
+            <VarReferencePicker
+              nodeId={nodeId}
+              readonly={readonly}
+              isShowNodeName
+              className="grow"
+              value={variable.variable_type === VarKindType.constant ? (variable.value || '') : (variable.value_selector || [])}
+              isSupportConstantValue={isSupportConstantValue}
+              onChange={handleVarReferenceChange(index)}
+              defaultVarKindType={variable.variable_type}
+              onlyLeafNodeVar={onlyLeafNodeVar}
+              filterVar={filterVar}
+              isSupportFileVar={isSupportFileVar}
+            />
+            {!readonly && (
+              <RemoveButton onClick={handleVarRemove(index)} />
+            )}
+            {canDrag && (
+              <RiDraggable className={cn(
+                'handle absolute -left-4 top-2.5 hidden h-3 w-3 cursor-pointer text-text-quaternary',
+                'group-hover:block',
+              )}
+              />
+            )}
+          </div>
+        )
+      })}
+    </ReactSortable>
   )
 }
 export default React.memo(VarList)

@@ -11,3 +11,7 @@ class FileTooLargeError(BaseServiceError):
 
 class UnsupportedFileTypeError(BaseServiceError):
     pass
+
+
+class BlockedFileExtensionError(BaseServiceError):
+    description = "File extension '{extension}' is not allowed for security reasons"

@@ -1,0 +1,44 @@
+import type { BlockEnum } from '@/app/components/workflow/types'
+import type { UseDifyNodesPath } from '@/types/doc-paths'
+import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
+
+export type GenNodeMetaDataParams = {
+  classification?: BlockClassificationEnum
+  sort: number
+  type: BlockEnum
+  title?: string
+  author?: string
+  helpLinkUri?: UseDifyNodesPath
+  isRequired?: boolean
+  isUndeletable?: boolean
+  isStart?: boolean
+  isSingleton?: boolean
+  isTypeFixed?: boolean
+}
+export const genNodeMetaData = ({
+  classification = BlockClassificationEnum.Default,
+  sort,
+  type,
+  title = '',
+  author = 'Dify',
+  helpLinkUri,
+  isRequired = false,
+  isUndeletable = false,
+  isStart = false,
+  isSingleton = false,
+  isTypeFixed = false,
+}: GenNodeMetaDataParams) => {
+  return {
+    classification,
+    sort,
+    type,
+    title,
+    author,
+    helpLinkUri: helpLinkUri || type,
+    isRequired,
+    isUndeletable,
+    isStart,
+    isSingleton,
+    isTypeFixed,
+  }
+}

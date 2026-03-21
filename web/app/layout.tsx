@@ -1,15 +1,23 @@
-import RoutePrefixHandle from './routePrefixHandle'
-import type { Viewport } from 'next'
-import I18nServer from './components/i18n-server'
-import BrowserInitor from './components/browser-initor'
-import SentryInitor from './components/sentry-initor'
-import { getLocaleOnServer } from '@/i18n/server'
-import { TanstackQueryIniter } from '@/context/query-client'
+import type { Viewport } from '@/next'
+import { Agentation } from 'agentation'
+import { Provider as JotaiProvider } from 'jotai/react'
 import { ThemeProvider } from 'next-themes'
+import { NuqsAdapter } from 'nuqs/adapters/next/app'
+import { IS_DEV } from '@/config'
+import GlobalPublicStoreProvider from '@/context/global-public-context'
+import { TanstackQueryInitializer } from '@/context/query-client'
+import { getDatasetMap } from '@/env'
+import { getLocaleOnServer } from '@/i18n-config/server'
+import { ToastProvider } from './components/base/toast'
+import { ToastHost } from './components/base/ui/toast'
+import { TooltipProvider } from './components/base/ui/tooltip'
+import BrowserInitializer from './components/browser-initializer'
+import { ReactScanLoader } from './components/devtools/react-scan/loader'
+import { I18nServerProvider } from './components/provider/i18n-server'
+import SentryInitializer from './components/sentry-initializer'
+import RoutePrefixHandle from './routePrefixHandle'
 import './styles/globals.css'
 import './styles/markdown.scss'
-import GlobalPublicStoreProvider from '@/context/global-public-context'
-import { DatasetAttr } from '@/types/feature'
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -25,62 +33,62 @@ const LocaleLayout = async ({
   children: React.ReactNode
 }) => {
   const locale = await getLocaleOnServer()
-
-  const datasetMap: Record<DatasetAttr, string | undefined> = {
-    [DatasetAttr.DATA_API_PREFIX]: process.env.NEXT_PUBLIC_API_PREFIX,
-    [DatasetAttr.DATA_PUBLIC_API_PREFIX]: process.env.NEXT_PUBLIC_PUBLIC_API_PREFIX,
-    [DatasetAttr.DATA_MARKETPLACE_API_PREFIX]: process.env.NEXT_PUBLIC_MARKETPLACE_API_PREFIX,
-    [DatasetAttr.DATA_MARKETPLACE_URL_PREFIX]: process.env.NEXT_PUBLIC_MARKETPLACE_URL_PREFIX,
-    [DatasetAttr.DATA_PUBLIC_EDITION]: process.env.NEXT_PUBLIC_EDITION,
-    [DatasetAttr.DATA_PUBLIC_SUPPORT_MAIL_LOGIN]: process.env.NEXT_PUBLIC_SUPPORT_MAIL_LOGIN,
-    [DatasetAttr.DATA_PUBLIC_SENTRY_DSN]: process.env.NEXT_PUBLIC_SENTRY_DSN,
-    [DatasetAttr.DATA_PUBLIC_MAINTENANCE_NOTICE]: process.env.NEXT_PUBLIC_MAINTENANCE_NOTICE,
-    [DatasetAttr.DATA_PUBLIC_SITE_ABOUT]: process.env.NEXT_PUBLIC_SITE_ABOUT,
-    [DatasetAttr.DATA_PUBLIC_TEXT_GENERATION_TIMEOUT_MS]: process.env.NEXT_PUBLIC_TEXT_GENERATION_TIMEOUT_MS,
-    [DatasetAttr.DATA_PUBLIC_MAX_TOOLS_NUM]: process.env.NEXT_PUBLIC_MAX_TOOLS_NUM,
-    [DatasetAttr.DATA_PUBLIC_MAX_PARALLEL_LIMIT]: process.env.NEXT_PUBLIC_MAX_PARALLEL_LIMIT,
-    [DatasetAttr.DATA_PUBLIC_TOP_K_MAX_VALUE]: process.env.NEXT_PUBLIC_TOP_K_MAX_VALUE,
-    [DatasetAttr.DATA_PUBLIC_INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH]: process.env.NEXT_PUBLIC_INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH,
-    [DatasetAttr.DATA_PUBLIC_LOOP_NODE_MAX_COUNT]: process.env.NEXT_PUBLIC_LOOP_NODE_MAX_COUNT,
-    [DatasetAttr.DATA_PUBLIC_MAX_ITERATIONS_NUM]: process.env.NEXT_PUBLIC_MAX_ITERATIONS_NUM,
-    [DatasetAttr.DATA_PUBLIC_MAX_TREE_DEPTH]: process.env.NEXT_PUBLIC_MAX_TREE_DEPTH,
-    [DatasetAttr.DATA_PUBLIC_ALLOW_UNSAFE_DATA_SCHEME]: process.env.NEXT_PUBLIC_ALLOW_UNSAFE_DATA_SCHEME,
-    [DatasetAttr.DATA_PUBLIC_ENABLE_WEBSITE_JINAREADER]: process.env.NEXT_PUBLIC_ENABLE_WEBSITE_JINAREADER,
-    [DatasetAttr.DATA_PUBLIC_ENABLE_WEBSITE_FIRECRAWL]: process.env.NEXT_PUBLIC_ENABLE_WEBSITE_FIRECRAWL,
-    [DatasetAttr.DATA_PUBLIC_ENABLE_WEBSITE_WATERCRAWL]: process.env.NEXT_PUBLIC_ENABLE_WEBSITE_WATERCRAWL,
-  }
+  const datasetMap = getDatasetMap()
 
   return (
     <html lang={locale ?? 'en'} className="h-full" suppressHydrationWarning>
       <head>
-        <meta name="theme-color" content="#FFFFFF" />
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#1C64F2" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="Dify" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/icon-192x192.png" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/icon-192x192.png" />
+        <meta name="msapplication-TileColor" content="#1C64F2" />
+        <meta name="msapplication-config" content="/browserconfig.xml" />
+
+        {/* <ReactGrabLoader /> */}
+        <ReactScanLoader />
       </head>
       <body
-        className="color-scheme h-full select-auto"
+        className="h-full select-auto"
         {...datasetMap}
       >
-        <BrowserInitor>
-          <SentryInitor>
-            <TanstackQueryIniter>
-              <ThemeProvider
-                attribute='data-theme'
-                defaultTheme='system'
-                enableSystem
-                disableTransitionOnChange
-              >
-                <I18nServer>
-                  <GlobalPublicStoreProvider>
-                    {children}
-                  </GlobalPublicStoreProvider>
-                </I18nServer>
-              </ThemeProvider>
-            </TanstackQueryIniter>
-          </SentryInitor>
-        </BrowserInitor>
-        <RoutePrefixHandle />
+        <div className="isolate h-full">
+          <JotaiProvider>
+            <ThemeProvider
+              attribute="data-theme"
+              defaultTheme="system"
+              enableSystem
+              disableTransitionOnChange
+              enableColorScheme={false}
+            >
+              <NuqsAdapter>
+                <BrowserInitializer>
+                  <SentryInitializer>
+                    <TanstackQueryInitializer>
+                      <I18nServerProvider>
+                        <ToastHost timeout={5000} limit={3} />
+                        <ToastProvider>
+                          <GlobalPublicStoreProvider>
+                            <TooltipProvider delay={300} closeDelay={200}>
+                              {children}
+                            </TooltipProvider>
+                          </GlobalPublicStoreProvider>
+                        </ToastProvider>
+                      </I18nServerProvider>
+                    </TanstackQueryInitializer>
+                  </SentryInitializer>
+                </BrowserInitializer>
+              </NuqsAdapter>
+            </ThemeProvider>
+          </JotaiProvider>
+          <RoutePrefixHandle />
+          {IS_DEV && <Agentation />}
+        </div>
       </body>
     </html>
   )

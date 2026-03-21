@@ -3,15 +3,21 @@ from typing import Any, cast
 from uuid import uuid4
 
 from configs import dify_config
-from core.file import File
-from core.variables.exc import VariableError
-from core.variables.segments import (
+from dify_graph.constants import (
+    CONVERSATION_VARIABLE_NODE_ID,
+    ENVIRONMENT_VARIABLE_NODE_ID,
+)
+from dify_graph.file import File
+from dify_graph.variables.exc import VariableError
+from dify_graph.variables.segments import (
     ArrayAnySegment,
+    ArrayBooleanSegment,
     ArrayFileSegment,
     ArrayNumberSegment,
     ArrayObjectSegment,
     ArraySegment,
     ArrayStringSegment,
+    BooleanSegment,
     FileSegment,
     FloatSegment,
     IntegerSegment,
@@ -20,13 +26,15 @@ from core.variables.segments import (
     Segment,
     StringSegment,
 )
-from core.variables.types import SegmentType
-from core.variables.variables import (
+from dify_graph.variables.types import SegmentType
+from dify_graph.variables.variables import (
     ArrayAnyVariable,
+    ArrayBooleanVariable,
     ArrayFileVariable,
     ArrayNumberVariable,
     ArrayObjectVariable,
     ArrayStringVariable,
+    BooleanVariable,
     FileVariable,
     FloatVariable,
     IntegerVariable,
@@ -34,9 +42,8 @@ from core.variables.variables import (
     ObjectVariable,
     SecretVariable,
     StringVariable,
-    Variable,
+    VariableBase,
 )
-from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, ENVIRONMENT_VARIABLE_NODE_ID
 
 
 class UnsupportedSegmentTypeError(Exception):
@@ -48,34 +55,42 @@ class TypeMismatchError(Exception):
 
 
 # Define the constant
-SEGMENT_TO_VARIABLE_MAP = {
-    StringSegment: StringVariable,
-    IntegerSegment: IntegerVariable,
-    FloatSegment: FloatVariable,
-    ObjectSegment: ObjectVariable,
-    FileSegment: FileVariable,
-    ArrayStringSegment: ArrayStringVariable,
+SEGMENT_TO_VARIABLE_MAP: Mapping[type[Segment], type[VariableBase]] = {
+    ArrayAnySegment: ArrayAnyVariable,
+    ArrayBooleanSegment: ArrayBooleanVariable,
+    ArrayFileSegment: ArrayFileVariable,
     ArrayNumberSegment: ArrayNumberVariable,
     ArrayObjectSegment: ArrayObjectVariable,
-    ArrayFileSegment: ArrayFileVariable,
-    ArrayAnySegment: ArrayAnyVariable,
+    ArrayStringSegment: ArrayStringVariable,
+    BooleanSegment: BooleanVariable,
+    FileSegment: FileVariable,
+    FloatSegment: FloatVariable,
+    IntegerSegment: IntegerVariable,
     NoneSegment: NoneVariable,
+    ObjectSegment: ObjectVariable,
+    StringSegment: StringVariable,
 }
 
 
-def build_conversation_variable_from_mapping(mapping: Mapping[str, Any], /) -> Variable:
+def build_conversation_variable_from_mapping(mapping: Mapping[str, Any], /) -> VariableBase:
     if not mapping.get("name"):
         raise VariableError("missing name")
     return _build_variable_from_mapping(mapping=mapping, selector=[CONVERSATION_VARIABLE_NODE_ID, mapping["name"]])
 
 
-def build_environment_variable_from_mapping(mapping: Mapping[str, Any], /) -> Variable:
+def build_environment_variable_from_mapping(mapping: Mapping[str, Any], /) -> VariableBase:
     if not mapping.get("name"):
         raise VariableError("missing name")
     return _build_variable_from_mapping(mapping=mapping, selector=[ENVIRONMENT_VARIABLE_NODE_ID, mapping["name"]])
 
 
-def _build_variable_from_mapping(*, mapping: Mapping[str, Any], selector: Sequence[str]) -> Variable:
+def build_pipeline_variable_from_mapping(mapping: Mapping[str, Any], /) -> VariableBase:
+    if not mapping.get("variable"):
+        raise VariableError("missing variable")
+    return mapping["variable"]
+
+
+def _build_variable_from_mapping(*, mapping: Mapping[str, Any], selector: Sequence[str]) -> VariableBase:
     """
     This factory function is used to create the environment variable or the conversation variable,
     not support the File type.
@@ -85,16 +100,22 @@ def _build_variable_from_mapping(*, mapping: Mapping[str, Any], selector: Sequen
     if (value := mapping.get("value")) is None:
         raise VariableError("missing value")
 
-    result: Variable
+    result: VariableBase
     match value_type:
         case SegmentType.STRING:
             result = StringVariable.model_validate(mapping)
         case SegmentType.SECRET:
             result = SecretVariable.model_validate(mapping)
-        case SegmentType.NUMBER if isinstance(value, int):
+        case SegmentType.NUMBER | SegmentType.INTEGER if isinstance(value, int):
+            mapping = dict(mapping)
+            mapping["value_type"] = SegmentType.INTEGER
             result = IntegerVariable.model_validate(mapping)
-        case SegmentType.NUMBER if isinstance(value, float):
+        case SegmentType.NUMBER | SegmentType.FLOAT if isinstance(value, float):
+            mapping = dict(mapping)
+            mapping["value_type"] = SegmentType.FLOAT
             result = FloatVariable.model_validate(mapping)
+        case SegmentType.BOOLEAN:
+            result = BooleanVariable.model_validate(mapping)
         case SegmentType.NUMBER if not isinstance(value, float | int):
             raise VariableError(f"invalid number value {value}")
         case SegmentType.OBJECT if isinstance(value, dict):
@@ -105,24 +126,28 @@ def _build_variable_from_mapping(*, mapping: Mapping[str, Any], selector: Sequen
             result = ArrayNumberVariable.model_validate(mapping)
         case SegmentType.ARRAY_OBJECT if isinstance(value, list):
             result = ArrayObjectVariable.model_validate(mapping)
+        case SegmentType.ARRAY_BOOLEAN if isinstance(value, list):
+            result = ArrayBooleanVariable.model_validate(mapping)
         case _:
             raise VariableError(f"not supported value type {value_type}")
     if result.size > dify_config.MAX_VARIABLE_SIZE:
         raise VariableError(f"variable size {result.size} exceeds limit {dify_config.MAX_VARIABLE_SIZE}")
     if not result.selector:
         result = result.model_copy(update={"selector": selector})
-    return cast(Variable, result)
-
-
-def infer_segment_type_from_value(value: Any, /) -> SegmentType:
-    return build_segment(value).value_type
+    return cast(VariableBase, result)
 
 
 def build_segment(value: Any, /) -> Segment:
+    # NOTE: If you have runtime type information available, consider using the `build_segment_with_type`
+    # below
     if value is None:
         return NoneSegment()
+    if isinstance(value, Segment):
+        return value
     if isinstance(value, str):
         return StringSegment(value=value)
+    if isinstance(value, bool):
+        return BooleanSegment(value=value)
     if isinstance(value, int):
         return IntegerSegment(value=value)
     if isinstance(value, float):
@@ -134,13 +159,20 @@ def build_segment(value: Any, /) -> Segment:
     if isinstance(value, list):
         items = [build_segment(item) for item in value]
         types = {item.value_type for item in items}
-        if len(types) != 1 or all(isinstance(item, ArraySegment) for item in items):
+        if all(isinstance(item, ArraySegment) for item in items):
             return ArrayAnySegment(value=value)
+        elif len(types) != 1:
+            if types.issubset({SegmentType.NUMBER, SegmentType.INTEGER, SegmentType.FLOAT}):
+                return ArrayNumberSegment(value=value)
+            return ArrayAnySegment(value=value)
+
         match types.pop():
             case SegmentType.STRING:
                 return ArrayStringSegment(value=value)
-            case SegmentType.NUMBER:
+            case SegmentType.NUMBER | SegmentType.INTEGER | SegmentType.FLOAT:
                 return ArrayNumberSegment(value=value)
+            case SegmentType.BOOLEAN:
+                return ArrayBooleanSegment(value=value)
             case SegmentType.OBJECT:
                 return ArrayObjectSegment(value=value)
             case SegmentType.FILE:
@@ -151,6 +183,24 @@ def build_segment(value: Any, /) -> Segment:
                 # This should be unreachable.
                 raise ValueError(f"not supported value {value}")
     raise ValueError(f"not supported value {value}")
+
+
+_segment_factory: Mapping[SegmentType, type[Segment]] = {
+    SegmentType.NONE: NoneSegment,
+    SegmentType.STRING: StringSegment,
+    SegmentType.INTEGER: IntegerSegment,
+    SegmentType.FLOAT: FloatSegment,
+    SegmentType.FILE: FileSegment,
+    SegmentType.BOOLEAN: BooleanSegment,
+    SegmentType.OBJECT: ObjectSegment,
+    # Array types
+    SegmentType.ARRAY_ANY: ArrayAnySegment,
+    SegmentType.ARRAY_STRING: ArrayStringSegment,
+    SegmentType.ARRAY_NUMBER: ArrayNumberSegment,
+    SegmentType.ARRAY_OBJECT: ArrayObjectSegment,
+    SegmentType.ARRAY_FILE: ArrayFileSegment,
+    SegmentType.ARRAY_BOOLEAN: ArrayBooleanSegment,
+}
 
 
 def build_segment_with_type(segment_type: SegmentType, value: Any) -> Segment:
@@ -190,7 +240,7 @@ def build_segment_with_type(segment_type: SegmentType, value: Any) -> Segment:
         if segment_type == SegmentType.NONE:
             return NoneSegment()
         else:
-            raise TypeMismatchError(f"Expected {segment_type}, but got None")
+            raise TypeMismatchError(f"Type mismatch: expected {segment_type}, but got None")
 
     # Handle empty list special case for array types
     if isinstance(value, list) and len(value) == 0:
@@ -198,6 +248,8 @@ def build_segment_with_type(segment_type: SegmentType, value: Any) -> Segment:
             return ArrayAnySegment(value=value)
         elif segment_type == SegmentType.ARRAY_STRING:
             return ArrayStringSegment(value=value)
+        elif segment_type == SegmentType.ARRAY_BOOLEAN:
+            return ArrayBooleanSegment(value=value)
         elif segment_type == SegmentType.ARRAY_NUMBER:
             return ArrayNumberSegment(value=value)
         elif segment_type == SegmentType.ARRAY_OBJECT:
@@ -205,21 +257,25 @@ def build_segment_with_type(segment_type: SegmentType, value: Any) -> Segment:
         elif segment_type == SegmentType.ARRAY_FILE:
             return ArrayFileSegment(value=value)
         else:
-            raise TypeMismatchError(f"Expected {segment_type}, but got empty list")
+            raise TypeMismatchError(f"Type mismatch: expected {segment_type}, but got empty list")
 
-    # Build segment using existing logic to infer actual type
-    inferred_segment = build_segment(value)
-    inferred_type = inferred_segment.value_type
-
+    inferred_type = SegmentType.infer_segment_type(value)
     # Type compatibility checking
+    if inferred_type is None:
+        raise TypeMismatchError(
+            f"Type mismatch: expected {segment_type}, but got python object, type={type(value)}, value={value}"
+        )
     if inferred_type == segment_type:
-        return inferred_segment
-
-    # Type mismatch - raise error with descriptive message
-    raise TypeMismatchError(
-        f"Type mismatch: expected {segment_type}, but value '{value}' "
-        f"(type: {type(value).__name__}) corresponds to {inferred_type}"
-    )
+        segment_class = _segment_factory[segment_type]
+        return segment_class(value_type=segment_type, value=value)
+    elif segment_type == SegmentType.NUMBER and inferred_type in (
+        SegmentType.INTEGER,
+        SegmentType.FLOAT,
+    ):
+        segment_class = _segment_factory[inferred_type]
+        return segment_class(value_type=inferred_type, value=value)
+    else:
+        raise TypeMismatchError(f"Type mismatch: expected {segment_type}, but got {inferred_type}, value={value}")
 
 
 def segment_to_variable(
@@ -229,8 +285,8 @@ def segment_to_variable(
     id: str | None = None,
     name: str | None = None,
     description: str = "",
-) -> Variable:
-    if isinstance(segment, Variable):
+) -> VariableBase:
+    if isinstance(segment, VariableBase):
         return segment
     name = name or selector[-1]
     id = id or str(uuid4())
@@ -240,13 +296,11 @@ def segment_to_variable(
         raise UnsupportedSegmentTypeError(f"not supported segment type {segment_type}")
 
     variable_class = SEGMENT_TO_VARIABLE_MAP[segment_type]
-    return cast(
-        Variable,
-        variable_class(
-            id=id,
-            name=name,
-            description=description,
-            value=segment.value,
-            selector=selector,
-        ),
+    return variable_class(
+        id=id,
+        name=name,
+        description=description,
+        value_type=segment.value_type,
+        value=segment.value,
+        selector=list(selector),
     )

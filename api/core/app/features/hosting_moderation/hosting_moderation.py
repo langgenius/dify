@@ -2,7 +2,7 @@ import logging
 
 from core.app.entities.app_invoke_entities import EasyUIBasedAppGenerateEntity
 from core.helper import moderation
-from core.model_runtime.entities.message_entities import PromptMessage
+from dify_graph.model_runtime.entities.message_entities import PromptMessage
 
 logger = logging.getLogger(__name__)
 

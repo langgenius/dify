@@ -1,71 +1,36 @@
-import { MarketplaceContextProvider } from './context'
+import type { SearchParams } from 'nuqs'
+import { TanstackQueryInitializer } from '@/context/query-client'
 import Description from './description'
-import IntersectionLine from './intersection-line'
-import SearchBoxWrapper from './search-box/search-box-wrapper'
-import PluginTypeSwitch from './plugin-type-switch'
+import { HydrateQueryClient } from './hydration-server'
 import ListWrapper from './list/list-wrapper'
-import type { SearchParams } from './types'
-import { getMarketplaceCollectionsAndPlugins } from './utils'
-import { TanstackQueryIniter } from '@/context/query-client'
+import StickySearchAndSwitchWrapper from './sticky-search-and-switch-wrapper'
 
 type MarketplaceProps = {
-  locale: string
-  searchBoxAutoAnimate?: boolean
   showInstallButton?: boolean
-  shouldExclude?: boolean
-  searchParams?: SearchParams
   pluginTypeSwitchClassName?: string
-  intersectionContainerId?: string
-  scrollContainerId?: string
-  showSearchParams?: boolean
+  /**
+   * Pass the search params from the request to prefetch data on the server.
+   */
+  searchParams?: Promise<SearchParams>
 }
-const Marketplace = async ({
-  locale,
-  searchBoxAutoAnimate = true,
-  showInstallButton = true,
-  shouldExclude,
-  searchParams,
-  pluginTypeSwitchClassName,
-  intersectionContainerId,
-  scrollContainerId,
-  showSearchParams = true,
-}: MarketplaceProps) => {
-  let marketplaceCollections: any = []
-  let marketplaceCollectionPluginsMap = {}
-  if (!shouldExclude) {
-    const marketplaceCollectionsAndPluginsData = await getMarketplaceCollectionsAndPlugins()
-    marketplaceCollections = marketplaceCollectionsAndPluginsData.marketplaceCollections
-    marketplaceCollectionPluginsMap = marketplaceCollectionsAndPluginsData.marketplaceCollectionPluginsMap
-  }
 
+const Marketplace = async ({
+  showInstallButton = true,
+  pluginTypeSwitchClassName,
+  searchParams,
+}: MarketplaceProps) => {
   return (
-    <TanstackQueryIniter>
-      <MarketplaceContextProvider
-        searchParams={searchParams}
-        shouldExclude={shouldExclude}
-        scrollContainerId={scrollContainerId}
-        showSearchParams={showSearchParams}
-      >
-        <Description locale={locale} />
-        <IntersectionLine intersectionContainerId={intersectionContainerId} />
-        <SearchBoxWrapper
-          locale={locale}
-          searchBoxAutoAnimate={searchBoxAutoAnimate}
-        />
-        <PluginTypeSwitch
-          locale={locale}
-          className={pluginTypeSwitchClassName}
-          searchBoxAutoAnimate={searchBoxAutoAnimate}
-          showSearchParams={showSearchParams}
+    <TanstackQueryInitializer>
+      <HydrateQueryClient searchParams={searchParams}>
+        <Description />
+        <StickySearchAndSwitchWrapper
+          pluginTypeSwitchClassName={pluginTypeSwitchClassName}
         />
         <ListWrapper
-          locale={locale}
-          marketplaceCollections={marketplaceCollections}
-          marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap}
           showInstallButton={showInstallButton}
         />
-      </MarketplaceContextProvider>
-    </TanstackQueryIniter>
+      </HydrateQueryClient>
+    </TanstackQueryInitializer>
   )
 }
 

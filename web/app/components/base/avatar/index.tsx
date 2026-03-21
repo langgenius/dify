@@ -1,54 +1,52 @@
-'use client'
-import { useState } from 'react'
-import cn from '@/utils/classnames'
+import type { ImageLoadingStatus } from '@base-ui/react/avatar'
+import { Avatar as BaseAvatar } from '@base-ui/react/avatar'
+import { cn } from '@/utils/classnames'
+
+const SIZES = {
+  'xxs': { root: 'size-4', text: 'text-[7px]' },
+  'xs': { root: 'size-5', text: 'text-[8px]' },
+  'sm': { root: 'size-6', text: 'text-[10px]' },
+  'md': { root: 'size-8', text: 'text-xs' },
+  'lg': { root: 'size-9', text: 'text-sm' },
+  'xl': { root: 'size-10', text: 'text-base' },
+  '2xl': { root: 'size-12', text: 'text-xl' },
+  '3xl': { root: 'size-16', text: 'text-2xl' },
+} as const
+
+export type AvatarSize = keyof typeof SIZES
 
 export type AvatarProps = {
   name: string
   avatar: string | null
-  size?: number
+  size?: AvatarSize
   className?: string
-  textClassName?: string
+  onLoadingStatusChange?: (status: ImageLoadingStatus) => void
 }
-const Avatar = ({
+
+const BASE_CLASS = 'relative inline-flex shrink-0 select-none items-center justify-center overflow-hidden rounded-full bg-primary-600'
+
+export const Avatar = ({
   name,
   avatar,
-  size = 30,
+  size = 'md',
   className,
-  textClassName,
+  onLoadingStatusChange,
 }: AvatarProps) => {
-  const avatarClassName = 'shrink-0 flex items-center rounded-full bg-primary-600'
-  const style = { width: `${size}px`, height: `${size}px`, fontSize: `${size}px`, lineHeight: `${size}px` }
-  const [imgError, setImgError] = useState(false)
-
-  const handleError = () => {
-    setImgError(true)
-  }
-
-  if (avatar && !imgError) {
-    return (
-      <img
-        className={cn(avatarClassName, className)}
-        style={style}
-        alt={name}
-        src={avatar}
-        onError={handleError}
-      />
-    )
-  }
+  const sizeConfig = SIZES[size]
 
   return (
-    <div
-      className={cn(avatarClassName, className)}
-      style={style}
-    >
-      <div
-        className={cn(textClassName, 'scale-[0.4] text-center text-white')}
-        style={style}
-      >
-        {name[0].toLocaleUpperCase()}
-      </div>
-    </div>
+    <BaseAvatar.Root className={cn(BASE_CLASS, sizeConfig.root, className)}>
+      {avatar && (
+        <BaseAvatar.Image
+          src={avatar}
+          alt={name}
+          className="absolute inset-0 size-full object-cover"
+          onLoadingStatusChange={onLoadingStatusChange}
+        />
+      )}
+      <BaseAvatar.Fallback className={cn('font-medium text-white', sizeConfig.text)}>
+        {name?.[0]?.toLocaleUpperCase()}
+      </BaseAvatar.Fallback>
+    </BaseAvatar.Root>
   )
 }
-
-export default Avatar

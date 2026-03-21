@@ -1,8 +1,14 @@
-import { SupportUploadFileTypes, type ValueSelector } from '../../workflow/types'
+import type { ValueSelector } from '../../workflow/types'
+import { SupportUploadFileTypes } from '../../workflow/types'
 
 export const CONTEXT_PLACEHOLDER_TEXT = '{{#context#}}'
 export const HISTORY_PLACEHOLDER_TEXT = '{{#histories#}}'
 export const QUERY_PLACEHOLDER_TEXT = '{{#query#}}'
+export const REQUEST_URL_PLACEHOLDER_TEXT = '{{#url#}}'
+export const CURRENT_PLACEHOLDER_TEXT = '{{#current#}}'
+export const ERROR_MESSAGE_PLACEHOLDER_TEXT = '{{#error_message#}}'
+export const LAST_RUN_PLACEHOLDER_TEXT = '{{#last_run#}}'
+
 export const PRE_PROMPT_PLACEHOLDER_TEXT = '{{#pre_prompt#}}'
 export const UPDATE_DATASETS_EVENT_EMITTER = 'prompt-editor-context-block-update-datasets'
 export const UPDATE_HISTORY_EVENT_EMITTER = 'prompt-editor-history-block-update-role'
@@ -25,15 +31,21 @@ export const checkHasQueryBlock = (text: string) => {
   return text.includes(QUERY_PLACEHOLDER_TEXT)
 }
 
+export const checkHasRequestURLBlock = (text: string) => {
+  if (!text)
+    return false
+  return text.includes(REQUEST_URL_PLACEHOLDER_TEXT)
+}
+
 /*
 * {{#1711617514996.name#}} => [1711617514996, name]
 * {{#1711617514996.sys.query#}} => [sys, query]
 */
 export const getInputVars = (text: string): ValueSelector[] => {
-  if (!text)
+  if (!text || typeof text !== 'string')
     return []
 
-  const allVars = text.match(/{{#([^#]*)#}}/g)
+  const allVars = text.match(/\{\{#([^#]*)#\}\}/g)
   if (allVars && allVars?.length > 0) {
     // {{#context#}}, {{#query#}} is not input vars
     const inputVars = allVars

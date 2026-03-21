@@ -1,6 +1,6 @@
-// Jest Snapshot v1, https://goo.gl/fbAQLP
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`build chat item tree and get thread messages should get thread messages from tree6, using specified message as target 1`] = `
+exports[`build chat item tree and get thread messages > should get thread messages from tree6, using specified message as target 1`] = `
 [
   {
     "children": [
@@ -834,7 +834,7 @@ exports[`build chat item tree and get thread messages should get thread messages
 ]
 `;
 
-exports[`build chat item tree and get thread messages should get thread messages from tree6, using the last message as target 1`] = `
+exports[`build chat item tree and get thread messages > should get thread messages from tree6, using the last message as target 1`] = `
 [
   {
     "children": [
@@ -1804,7 +1804,7 @@ exports[`build chat item tree and get thread messages should get thread messages
 ]
 `;
 
-exports[`build chat item tree and get thread messages should work with partial messages 1 1`] = `
+exports[`build chat item tree and get thread messages > should work with partial messages 1 1`] = `
 [
   {
     "children": [
@@ -2155,7 +2155,7 @@ exports[`build chat item tree and get thread messages should work with partial m
 ]
 `;
 
-exports[`build chat item tree and get thread messages should work with partial messages 2 1`] = `
+exports[`build chat item tree and get thread messages > should work with partial messages 2 1`] = `
 [
   {
     "children": [
@@ -2327,7 +2327,7 @@ exports[`build chat item tree and get thread messages should work with partial m
 ]
 `;
 
-exports[`build chat item tree and get thread messages should work with real world messages 1`] = `
+exports[`build chat item tree and get thread messages > should work with real world messages 1`] = `
 [
   {
     "children": [

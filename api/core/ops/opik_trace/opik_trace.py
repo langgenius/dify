@@ -1,8 +1,9 @@
+import hashlib
 import logging
 import os
 import uuid
 from datetime import datetime, timedelta
-from typing import Optional, cast
+from typing import cast
 
 from opik import Opik, Trace
 from opik.id_helpers import uuid4_to_uuid7
@@ -22,8 +23,7 @@ from core.ops.entities.trace_entity import (
     WorkflowTraceInfo,
 )
 from core.repositories import DifyCoreRepositoryFactory
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
-from core.workflow.nodes.enums import NodeType
+from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 from extensions.ext_database import db
 from models import EndUser, MessageFile, WorkflowNodeExecutionTriggeredFrom
 
@@ -47,7 +47,23 @@ def wrap_metadata(metadata, **kwargs):
     return metadata
 
 
-def prepare_opik_uuid(user_datetime: Optional[datetime], user_uuid: Optional[str]):
+def _seed_to_uuid4(seed: str) -> str:
+    """Derive a deterministic UUID4-formatted string from an arbitrary seed.
+
+    uuid4_to_uuid7 requires a valid UUID v4 string, but some Dify identifiers
+    are not UUIDs (e.g. a workflow_run_id with a "-root" suffix appended to
+    distinguish the root span from the trace).  This helper hashes the seed
+    with MD5 and patches the version/variant bits so the result satisfies the
+    UUID v4 contract.
+    """
+    raw = hashlib.md5(seed.encode()).digest()
+    ba = bytearray(raw)
+    ba[6] = (ba[6] & 0x0F) | 0x40  # version 4
+    ba[8] = (ba[8] & 0x3F) | 0x80  # variant 1
+    return str(uuid.UUID(bytes=bytes(ba)))
+
+
+def prepare_opik_uuid(user_datetime: datetime | None, user_uuid: str | None):
     """Opik needs UUIDv7 while Dify uses UUIDv4 for identifier of most
     messages and objects. The type-hints of BaseTraceInfo indicates that
     objects start_time and message_id could be null which means we cannot map
@@ -96,60 +112,52 @@ class OpikDataTrace(BaseTraceInstance):
             self.generate_name_trace(trace_info)
 
     def workflow_trace(self, trace_info: WorkflowTraceInfo):
-        dify_trace_id = trace_info.workflow_run_id
-        opik_trace_id = prepare_opik_uuid(trace_info.start_time, dify_trace_id)
         workflow_metadata = wrap_metadata(
             trace_info.metadata, message_id=trace_info.message_id, workflow_app_log_id=trace_info.workflow_app_log_id
         )
-        root_span_id = None
 
         if trace_info.message_id:
-            dify_trace_id = trace_info.message_id
-            opik_trace_id = prepare_opik_uuid(trace_info.start_time, dify_trace_id)
-
-            trace_data = {
-                "id": opik_trace_id,
-                "name": TraceTaskName.MESSAGE_TRACE.value,
-                "start_time": trace_info.start_time,
-                "end_time": trace_info.end_time,
-                "metadata": workflow_metadata,
-                "input": wrap_dict("input", trace_info.workflow_run_inputs),
-                "output": wrap_dict("output", trace_info.workflow_run_outputs),
-                "thread_id": trace_info.conversation_id,
-                "tags": ["message", "workflow"],
-                "project_name": self.project,
-            }
-            self.add_trace(trace_data)
-
-            root_span_id = prepare_opik_uuid(trace_info.start_time, trace_info.workflow_run_id)
-            span_data = {
-                "id": root_span_id,
-                "parent_span_id": None,
-                "trace_id": opik_trace_id,
-                "name": TraceTaskName.WORKFLOW_TRACE.value,
-                "input": wrap_dict("input", trace_info.workflow_run_inputs),
-                "output": wrap_dict("output", trace_info.workflow_run_outputs),
-                "start_time": trace_info.start_time,
-                "end_time": trace_info.end_time,
-                "metadata": workflow_metadata,
-                "tags": ["workflow"],
-                "project_name": self.project,
-            }
-            self.add_span(span_data)
+            dify_trace_id = trace_info.trace_id or trace_info.message_id
+            trace_name = TraceTaskName.MESSAGE_TRACE
+            trace_tags = ["message", "workflow"]
+            root_span_seed = trace_info.workflow_run_id
         else:
-            trace_data = {
-                "id": opik_trace_id,
-                "name": TraceTaskName.MESSAGE_TRACE.value,
-                "start_time": trace_info.start_time,
-                "end_time": trace_info.end_time,
-                "metadata": workflow_metadata,
-                "input": wrap_dict("input", trace_info.workflow_run_inputs),
-                "output": wrap_dict("output", trace_info.workflow_run_outputs),
-                "thread_id": trace_info.conversation_id,
-                "tags": ["workflow"],
-                "project_name": self.project,
-            }
-            self.add_trace(trace_data)
+            dify_trace_id = trace_info.trace_id or trace_info.workflow_run_id
+            trace_name = TraceTaskName.WORKFLOW_TRACE
+            trace_tags = ["workflow"]
+            root_span_seed = _seed_to_uuid4(trace_info.workflow_run_id + "-root")
+
+        opik_trace_id = prepare_opik_uuid(trace_info.start_time, dify_trace_id)
+
+        trace_data = {
+            "id": opik_trace_id,
+            "name": trace_name,
+            "start_time": trace_info.start_time,
+            "end_time": trace_info.end_time,
+            "metadata": workflow_metadata,
+            "input": wrap_dict("input", trace_info.workflow_run_inputs),
+            "output": wrap_dict("output", trace_info.workflow_run_outputs),
+            "thread_id": trace_info.conversation_id,
+            "tags": trace_tags,
+            "project_name": self.project,
+        }
+        self.add_trace(trace_data)
+
+        root_span_id = prepare_opik_uuid(trace_info.start_time, root_span_seed)
+        span_data = {
+            "id": root_span_id,
+            "parent_span_id": None,
+            "trace_id": opik_trace_id,
+            "name": TraceTaskName.WORKFLOW_TRACE,
+            "input": wrap_dict("input", trace_info.workflow_run_inputs),
+            "output": wrap_dict("output", trace_info.workflow_run_outputs),
+            "start_time": trace_info.start_time,
+            "end_time": trace_info.end_time,
+            "metadata": workflow_metadata,
+            "tags": ["workflow"],
+            "project_name": self.project,
+        }
+        self.add_span(span_data)
 
         # through workflow_run_id get all_nodes_execution using repository
         session_factory = sessionmaker(bind=db.engine)
@@ -179,16 +187,16 @@ class OpikDataTrace(BaseTraceInstance):
             node_name = node_execution.title
             node_type = node_execution.node_type
             status = node_execution.status
-            if node_type == NodeType.LLM:
+            if node_type == BuiltinNodeTypes.LLM:
                 inputs = node_execution.process_data.get("prompts", {}) if node_execution.process_data else {}
             else:
-                inputs = node_execution.inputs if node_execution.inputs else {}
-            outputs = node_execution.outputs if node_execution.outputs else {}
+                inputs = node_execution.inputs or {}
+            outputs = node_execution.outputs or {}
             created_at = node_execution.created_at or datetime.now()
             elapsed_time = node_execution.elapsed_time
             finished_at = created_at + timedelta(seconds=elapsed_time)
 
-            execution_metadata = node_execution.metadata if node_execution.metadata else {}
+            execution_metadata = node_execution.metadata or {}
             metadata = {str(k): v for k, v in execution_metadata.items()}
             metadata.update(
                 {
@@ -202,7 +210,7 @@ class OpikDataTrace(BaseTraceInstance):
                 }
             )
 
-            process_data = node_execution.process_data if node_execution.process_data else {}
+            process_data = node_execution.process_data or {}
 
             provider = None
             model = None
@@ -232,15 +240,13 @@ class OpikDataTrace(BaseTraceInstance):
             else:
                 run_type = "tool"
 
-            parent_span_id = trace_info.workflow_app_log_id or trace_info.workflow_run_id
-
             if not total_tokens:
                 total_tokens = execution_metadata.get(WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS) or 0
 
             span_data = {
                 "trace_id": opik_trace_id,
                 "id": prepare_opik_uuid(created_at, node_execution_id),
-                "parent_span_id": prepare_opik_uuid(trace_info.start_time, parent_span_id),
+                "parent_span_id": root_span_id,
                 "name": node_name,
                 "type": run_type,
                 "start_time": created_at,
@@ -264,7 +270,7 @@ class OpikDataTrace(BaseTraceInstance):
     def message_trace(self, trace_info: MessageTraceInfo):
         # get message file data
         file_list = cast(list[str], trace_info.file_list) or []
-        message_file_data: Optional[MessageFile] = trace_info.message_file_data
+        message_file_data: MessageFile | None = trace_info.message_file_data
 
         if message_file_data is not None:
             file_url = f"{self.file_base_url}/{message_file_data.url}" if message_file_data else ""
@@ -275,23 +281,23 @@ class OpikDataTrace(BaseTraceInstance):
             return
 
         metadata = trace_info.metadata
-        message_id = trace_info.message_id
+        dify_trace_id = trace_info.trace_id or trace_info.message_id
 
         user_id = message_data.from_account_id
         metadata["user_id"] = user_id
         metadata["file_list"] = file_list
 
         if message_data.from_end_user_id:
-            end_user_data: Optional[EndUser] = (
-                db.session.query(EndUser).filter(EndUser.id == message_data.from_end_user_id).first()
+            end_user_data: EndUser | None = (
+                db.session.query(EndUser).where(EndUser.id == message_data.from_end_user_id).first()
             )
             if end_user_data is not None:
                 end_user_id = end_user_data.session_id
                 metadata["end_user_id"] = end_user_id
 
         trace_data = {
-            "id": prepare_opik_uuid(trace_info.start_time, message_id),
-            "name": TraceTaskName.MESSAGE_TRACE.value,
+            "id": prepare_opik_uuid(trace_info.start_time, dify_trace_id),
+            "name": TraceTaskName.MESSAGE_TRACE,
             "start_time": trace_info.start_time,
             "end_time": trace_info.end_time,
             "metadata": wrap_metadata(metadata),
@@ -329,8 +335,8 @@ class OpikDataTrace(BaseTraceInstance):
         start_time = trace_info.start_time or trace_info.message_data.created_at
 
         span_data = {
-            "trace_id": prepare_opik_uuid(start_time, trace_info.message_id),
-            "name": TraceTaskName.MODERATION_TRACE.value,
+            "trace_id": prepare_opik_uuid(start_time, trace_info.trace_id or trace_info.message_id),
+            "name": TraceTaskName.MODERATION_TRACE,
             "type": "tool",
             "start_time": start_time,
             "end_time": trace_info.end_time or trace_info.message_data.updated_at,
@@ -355,8 +361,8 @@ class OpikDataTrace(BaseTraceInstance):
         start_time = trace_info.start_time or message_data.created_at
 
         span_data = {
-            "trace_id": prepare_opik_uuid(start_time, trace_info.message_id),
-            "name": TraceTaskName.SUGGESTED_QUESTION_TRACE.value,
+            "trace_id": prepare_opik_uuid(start_time, trace_info.trace_id or trace_info.message_id),
+            "name": TraceTaskName.SUGGESTED_QUESTION_TRACE,
             "type": "tool",
             "start_time": start_time,
             "end_time": trace_info.end_time or message_data.updated_at,
@@ -375,8 +381,8 @@ class OpikDataTrace(BaseTraceInstance):
         start_time = trace_info.start_time or trace_info.message_data.created_at
 
         span_data = {
-            "trace_id": prepare_opik_uuid(start_time, trace_info.message_id),
-            "name": TraceTaskName.DATASET_RETRIEVAL_TRACE.value,
+            "trace_id": prepare_opik_uuid(start_time, trace_info.trace_id or trace_info.message_id),
+            "name": TraceTaskName.DATASET_RETRIEVAL_TRACE,
             "type": "tool",
             "start_time": start_time,
             "end_time": trace_info.end_time or trace_info.message_data.updated_at,
@@ -390,7 +396,7 @@ class OpikDataTrace(BaseTraceInstance):
 
     def tool_trace(self, trace_info: ToolTraceInfo):
         span_data = {
-            "trace_id": prepare_opik_uuid(trace_info.start_time, trace_info.message_id),
+            "trace_id": prepare_opik_uuid(trace_info.start_time, trace_info.trace_id or trace_info.message_id),
             "name": trace_info.tool_name,
             "type": "tool",
             "start_time": trace_info.start_time,
@@ -405,8 +411,8 @@ class OpikDataTrace(BaseTraceInstance):
 
     def generate_name_trace(self, trace_info: GenerateNameTraceInfo):
         trace_data = {
-            "id": prepare_opik_uuid(trace_info.start_time, trace_info.message_id),
-            "name": TraceTaskName.GENERATE_NAME_TRACE.value,
+            "id": prepare_opik_uuid(trace_info.start_time, trace_info.trace_id or trace_info.message_id),
+            "name": TraceTaskName.GENERATE_NAME_TRACE,
             "start_time": trace_info.start_time,
             "end_time": trace_info.end_time,
             "metadata": wrap_metadata(trace_info.metadata),
@@ -421,7 +427,7 @@ class OpikDataTrace(BaseTraceInstance):
 
         span_data = {
             "trace_id": trace.id,
-            "name": TraceTaskName.GENERATE_NAME_TRACE.value,
+            "name": TraceTaskName.GENERATE_NAME_TRACE,
             "start_time": trace_info.start_time,
             "end_time": trace_info.end_time,
             "metadata": wrap_metadata(trace_info.metadata),
@@ -452,12 +458,12 @@ class OpikDataTrace(BaseTraceInstance):
             self.opik_client.auth_check()
             return True
         except Exception as e:
-            logger.info(f"Opik API check failed: {str(e)}", exc_info=True)
+            logger.info("Opik API check failed: %s", str(e), exc_info=True)
             raise ValueError(f"Opik API check failed: {str(e)}")
 
     def get_project_url(self):
         try:
             return self.opik_client.get_project_url(project_name=self.project)
         except Exception as e:
-            logger.info(f"Opik get run url failed: {str(e)}", exc_info=True)
+            logger.info("Opik get run url failed: %s", str(e), exc_info=True)
             raise ValueError(f"Opik get run url failed: {str(e)}")

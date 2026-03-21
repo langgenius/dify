@@ -1,3 +1,10 @@
+import type {
+  CommonNodeType,
+  OnSelectBlock,
+} from '@/app/components/workflow/types'
+import {
+  RiAddLine,
+} from '@remixicon/react'
 import {
   memo,
   useCallback,
@@ -5,20 +12,12 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  RiAddLine,
-} from '@remixicon/react'
+import BlockSelector from '@/app/components/workflow/block-selector'
 import {
   useAvailableBlocks,
   useNodesInteractions,
   useNodesReadOnly,
-  useWorkflow,
 } from '@/app/components/workflow/hooks'
-import BlockSelector from '@/app/components/workflow/block-selector'
-import type {
-  CommonNodeType,
-  OnSelectBlock,
-} from '@/app/components/workflow/types'
 
 type AddProps = {
   nodeId: string
@@ -38,37 +37,33 @@ const Add = ({
   const [open, setOpen] = useState(false)
   const { handleNodeAdd } = useNodesInteractions()
   const { nodesReadOnly } = useNodesReadOnly()
-  const { availableNextBlocks } = useAvailableBlocks(nodeData.type, nodeData.isInIteration, nodeData.isInLoop)
-  const { checkParallelLimit } = useWorkflow()
+  const { availableNextBlocks } = useAvailableBlocks(nodeData.type, nodeData.isInIteration || nodeData.isInLoop)
 
-  const handleSelect = useCallback<OnSelectBlock>((type, toolDefaultValue) => {
+  const handleSelect = useCallback<OnSelectBlock>((type, pluginDefaultValue) => {
     handleNodeAdd(
       {
         nodeType: type,
-        toolDefaultValue,
+        pluginDefaultValue,
       },
       {
         prevNodeId: nodeId,
         prevNodeSourceHandle: sourceHandle,
       },
     )
-  }, [nodeId, sourceHandle, handleNodeAdd])
+  }, [handleNodeAdd])
 
   const handleOpenChange = useCallback((newOpen: boolean) => {
-    if (newOpen && !checkParallelLimit(nodeId, sourceHandle))
-      return
-
     setOpen(newOpen)
-  }, [checkParallelLimit, nodeId, sourceHandle])
+  }, [])
 
   const tip = useMemo(() => {
     if (isFailBranch)
-      return t('workflow.common.addFailureBranch')
+      return t('common.addFailureBranch', { ns: 'workflow' })
 
     if (isParallel)
-      return t('workflow.common.addParallelNode')
+      return t('common.addParallelNode', { ns: 'workflow' })
 
-    return t('workflow.panel.selectNextStep')
+    return t('panel.selectNextStep', { ns: 'workflow' })
   }, [isFailBranch, isParallel, t])
   const renderTrigger = useCallback((open: boolean) => {
     return (
@@ -80,10 +75,10 @@ const Add = ({
           ${nodesReadOnly && '!cursor-not-allowed'}
         `}
       >
-        <div className='bg-background-default-dimm mr-1.5 flex h-5 w-5 items-center justify-center rounded-[5px]'>
-          <RiAddLine className='h-3 w-3' />
+        <div className="mr-1.5 flex h-5 w-5 items-center justify-center rounded-[5px] bg-background-default-dimmed">
+          <RiAddLine className="h-3 w-3" />
         </div>
-        <div className='flex items-center uppercase'>
+        <div className="flex items-center uppercase">
           {tip}
         </div>
       </div>
@@ -96,10 +91,10 @@ const Add = ({
       onOpenChange={handleOpenChange}
       disabled={nodesReadOnly}
       onSelect={handleSelect}
-      placement='top'
+      placement="top"
       offset={0}
       trigger={renderTrigger}
-      popupClassName='!w-[328px]'
+      popupClassName="!w-[328px]"
       availableBlocksTypes={availableNextBlocks}
     />
   )

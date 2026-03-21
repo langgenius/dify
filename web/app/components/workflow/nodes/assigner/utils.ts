@@ -1,7 +1,8 @@
 import type { AssignerNodeType } from './types'
+import type { I18nKeysByPrefix } from '@/types/i18n'
 import { AssignerNodeInputType, WriteMode } from './types'
 
-export const checkNodeValid = (payload: AssignerNodeType) => {
+export const checkNodeValid = (_payload: AssignerNodeType) => {
   return true
 }
 
@@ -11,9 +12,14 @@ export const formatOperationName = (type: string) => {
   return type.charAt(0).toUpperCase() + type.slice(1)
 }
 
-type Item = {
-  value: string | number
-  name: string
+export type OperationName = I18nKeysByPrefix<'workflow', 'nodes.assigner.operations.'>
+
+export type Item
+  = | { value: 'divider', name: 'divider' }
+    | { value: string | number, name: OperationName }
+
+export function isOperationItem(item: Item): item is { value: string | number, name: OperationName } {
+  return item.value !== 'divider'
 }
 
 export const getOperationItems = (
@@ -43,7 +49,7 @@ export const getOperationItems = (
     ]
   }
 
-  if (writeModeTypes && ['string', 'object'].includes(assignedVarType || '')) {
+  if (writeModeTypes && ['string', 'boolean', 'object'].includes(assignedVarType || '')) {
     return writeModeTypes.map(type => ({
       value: type,
       name: type,

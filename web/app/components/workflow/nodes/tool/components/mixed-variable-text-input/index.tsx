@@ -1,15 +1,16 @@
+import type {
+  Node,
+  NodeOutPutVar,
+} from '@/app/components/workflow/types'
 import {
   memo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import PromptEditor from '@/app/components/base/prompt-editor'
-import Placeholder from './placeholder'
-import type {
-  Node,
-  NodeOutPutVar,
-} from '@/app/components/workflow/types'
+import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
+import Placeholder from './placeholder'
 
 type MixedVariableTextInputProps = {
   readOnly?: boolean
@@ -17,6 +18,9 @@ type MixedVariableTextInputProps = {
   availableNodes?: Node[]
   value?: string
   onChange?: (text: string) => void
+  showManageInputField?: boolean
+  onManageInputField?: () => void
+  disableVariableInsertion?: boolean
 }
 const MixedVariableTextInput = ({
   readOnly = false,
@@ -24,20 +28,26 @@ const MixedVariableTextInput = ({
   availableNodes = [],
   value = '',
   onChange,
+  showManageInputField,
+  onManageInputField,
+  disableVariableInsertion = false,
 }: MixedVariableTextInputProps) => {
   const { t } = useTranslation()
+  const controlPromptEditorRerenderKey = useStore(s => s.controlPromptEditorRerenderKey)
+
   return (
     <PromptEditor
+      key={controlPromptEditorRerenderKey}
       wrapperClassName={cn(
-        'w-full rounded-lg border border-transparent bg-components-input-bg-normal px-2 py-1',
+        'min-h-8 w-full rounded-lg border border-transparent bg-components-input-bg-normal px-2 py-1',
         'hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
         'focus-within:border-components-input-border-active focus-within:bg-components-input-bg-active focus-within:shadow-xs',
       )}
-      className='caret:text-text-accent'
+      className="caret:text-text-accent"
       editable={!readOnly}
       value={value}
       workflowVariableBlock={{
-        show: true,
+        show: !disableVariableInsertion,
         variables: nodesOutputVars || [],
         workflowNodesMap: availableNodes.reduce((acc, node) => {
           acc[node.id] = {
@@ -46,14 +56,16 @@ const MixedVariableTextInput = ({
           }
           if (node.data.type === BlockEnum.Start) {
             acc.sys = {
-              title: t('workflow.blocks.start'),
+              title: t('blocks.start', { ns: 'workflow' }),
               type: BlockEnum.Start,
             }
           }
           return acc
         }, {} as any),
+        showManageInputField,
+        onManageInputField,
       }}
-      placeholder={<Placeholder />}
+      placeholder={<Placeholder disableVariableInsertion={disableVariableInsertion} />}
       onChange={onChange}
     />
   )

@@ -1,18 +1,22 @@
-import { useCallback, useState } from 'react'
-import produce from 'immer'
-import { useBoolean } from 'ahooks'
 import type { StartNodeType } from './types'
-import { ChangeType } from '@/app/components/workflow/types'
 import type { InputVar, MoreInfo, ValueSelector } from '@/app/components/workflow/types'
-import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import { useBoolean } from 'ahooks'
+import { produce } from 'immer'
+import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Toast from '@/app/components/base/toast'
 import {
   useIsChatMode,
   useNodesReadOnly,
   useWorkflow,
 } from '@/app/components/workflow/hooks'
+import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import { ChangeType } from '@/app/components/workflow/types'
+import { hasDuplicateStr } from '@/utils/var'
 import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
 
 const useConfig = (id: string, payload: StartNodeType) => {
+  const { t } = useTranslation()
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const { handleOutVarRenameChange, isVarUsedInNodes, removeUsedVarInNodes } = useWorkflow()
   const isChatMode = useIsChatMode()
@@ -37,12 +41,12 @@ const useConfig = (id: string, payload: StartNodeType) => {
   }] = useBoolean(false)
   const [removedVar, setRemovedVar] = useState<ValueSelector>([])
   const [removedIndex, setRemoveIndex] = useState(0)
-  const handleVarListChange = useCallback((newList: InputVar[], moreInfo?: { index: number; payload: MoreInfo }) => {
+  const handleVarListChange = useCallback((newList: InputVar[], moreInfo?: { index: number, payload: MoreInfo }) => {
     if (moreInfo?.payload?.type === ChangeType.remove) {
       const varId = nodesWithInspectVars.find(node => node.nodeId === id)?.vars.find((varItem) => {
         return varItem.name === moreInfo?.payload?.payload?.beforeKey
       })?.id
-      if(varId)
+      if (varId)
         deleteInspectVar(id, varId)
 
       if (isVarUsedInNodes([id, moreInfo?.payload?.payload?.beforeKey || ''])) {
@@ -62,7 +66,7 @@ const useConfig = (id: string, payload: StartNodeType) => {
       handleOutVarRenameChange(id, [id, inputs.variables[moreInfo.index].variable], [id, changedVar.variable])
       renameInspectVarName(id, inputs.variables[moreInfo.index].variable, changedVar.variable)
     }
-    else if(moreInfo?.payload?.type !== ChangeType.remove) { // edit var type
+    else if (moreInfo?.payload?.type !== ChangeType.remove) { // edit var type
       deleteNodeInspectorVars(id)
     }
   }, [deleteInspectVar, deleteNodeInspectorVars, handleOutVarRenameChange, id, inputs, isVarUsedInNodes, nodesWithInspectVars, renameInspectVarName, setInputs, showRemoveVarConfirm])
@@ -80,7 +84,27 @@ const useConfig = (id: string, payload: StartNodeType) => {
     const newInputs = produce(inputs, (draft: StartNodeType) => {
       draft.variables.push(payload)
     })
+    const newList = newInputs.variables
+    let errorMsgKey: 'varKeyError.keyAlreadyExists' | '' = ''
+    let typeName: 'variableConfig.varName' | 'variableConfig.labelName' | '' = ''
+    if (hasDuplicateStr(newList.map(item => item.variable))) {
+      errorMsgKey = 'varKeyError.keyAlreadyExists'
+      typeName = 'variableConfig.varName'
+    }
+    else if (hasDuplicateStr(newList.map(item => item.label as string))) {
+      errorMsgKey = 'varKeyError.keyAlreadyExists'
+      typeName = 'variableConfig.labelName'
+    }
+
+    if (errorMsgKey && typeName) {
+      Toast.notify({
+        type: 'error',
+        message: t(errorMsgKey, { ns: 'appDebug', key: t(typeName, { ns: 'appDebug' }) }),
+      })
+      return false
+    }
     setInputs(newInputs)
+    return true
   }, [inputs, setInputs])
   return {
     readOnly,

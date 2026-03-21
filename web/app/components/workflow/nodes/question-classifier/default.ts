@@ -1,17 +1,25 @@
 import type { NodeDefault } from '../../types'
-import { BlockEnum } from '../../types'
 import type { QuestionClassifierNodeType } from './types'
-import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/blocks'
+import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { genNodeMetaData } from '@/app/components/workflow/utils'
+import { AppModeEnum } from '@/types/app'
 
-const i18nPrefix = 'workflow'
+const i18nPrefix = ''
 
+const metaData = genNodeMetaData({
+  classification: BlockClassificationEnum.QuestionUnderstand,
+  sort: 1,
+  type: BlockEnum.QuestionClassifier,
+})
 const nodeDefault: NodeDefault<QuestionClassifierNodeType> = {
+  metaData,
   defaultValue: {
     query_variable_selector: [],
     model: {
       provider: '',
       name: '',
-      mode: 'chat',
+      mode: AppModeEnum.CHAT,
       completion_params: {
         temperature: 0.7,
       },
@@ -40,32 +48,22 @@ const nodeDefault: NodeDefault<QuestionClassifierNodeType> = {
       enabled: false,
     },
   },
-  getAvailablePrevNodes(isChatMode: boolean) {
-    const nodes = isChatMode
-      ? ALL_CHAT_AVAILABLE_BLOCKS
-      : ALL_COMPLETION_AVAILABLE_BLOCKS.filter(type => type !== BlockEnum.End)
-    return nodes
-  },
-  getAvailableNextNodes(isChatMode: boolean) {
-    const nodes = isChatMode ? ALL_CHAT_AVAILABLE_BLOCKS : ALL_COMPLETION_AVAILABLE_BLOCKS
-    return nodes
-  },
   checkValid(payload: QuestionClassifierNodeType, t: any) {
     let errorMessages = ''
     if (!errorMessages && (!payload.query_variable_selector || payload.query_variable_selector.length === 0))
-      errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.nodes.questionClassifiers.inputVars`) })
+      errorMessages = t(`${i18nPrefix}errorMsg.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}nodes.questionClassifiers.inputVars`, { ns: 'workflow' }) })
 
     if (!errorMessages && !payload.model.provider)
-      errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.nodes.questionClassifiers.model`) })
+      errorMessages = t(`${i18nPrefix}errorMsg.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}nodes.questionClassifiers.model`, { ns: 'workflow' }) })
 
     if (!errorMessages && (!payload.classes || payload.classes.length === 0))
-      errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.nodes.questionClassifiers.class`) })
+      errorMessages = t(`${i18nPrefix}errorMsg.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}nodes.questionClassifiers.class`, { ns: 'workflow' }) })
 
     if (!errorMessages && (payload.classes.some(item => !item.name)))
-      errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.nodes.questionClassifiers.topicName`) })
+      errorMessages = t(`${i18nPrefix}errorMsg.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}nodes.questionClassifiers.topicName`, { ns: 'workflow' }) })
 
     if (!errorMessages && payload.vision?.enabled && !payload.vision.configs?.variable_selector?.length)
-      errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.errorMsg.fields.visionVariable`) })
+      errorMessages = t(`${i18nPrefix}errorMsg.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}errorMsg.fields.visionVariable`, { ns: 'workflow' }) })
     return {
       isValid: !errorMessages,
       errorMessage: errorMessages,

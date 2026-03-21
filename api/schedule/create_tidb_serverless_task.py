@@ -1,6 +1,7 @@
 import time
 
 import click
+from sqlalchemy import func, select
 
 import app
 from configs import dify_config
@@ -20,7 +21,7 @@ def create_tidb_serverless_task():
         try:
             # check the number of idle tidb serverless
             idle_tidb_serverless_number = (
-                db.session.query(TidbAuthBinding).filter(TidbAuthBinding.active == False).count()
+                db.session.scalar(select(func.count(TidbAuthBinding.id)).where(TidbAuthBinding.active == False)) or 0
             )
             if idle_tidb_serverless_number >= tidb_serverless_number:
                 break
@@ -33,7 +34,7 @@ def create_tidb_serverless_task():
             break
 
     end_at = time.perf_counter()
-    click.echo(click.style("Create tidb serverless task success latency: {}".format(end_at - start_at), fg="green"))
+    click.echo(click.style(f"Create tidb serverless task success latency: {end_at - start_at}", fg="green"))
 
 
 def create_clusters(batch_size):
@@ -50,10 +51,13 @@ def create_clusters(batch_size):
         )
         for new_cluster in new_clusters:
             tidb_auth_binding = TidbAuthBinding(
+                tenant_id=None,
                 cluster_id=new_cluster["cluster_id"],
                 cluster_name=new_cluster["cluster_name"],
                 account=new_cluster["account"],
                 password=new_cluster["password"],
+                active=False,
+                status="CREATING",
             )
             db.session.add(tidb_auth_binding)
         db.session.commit()

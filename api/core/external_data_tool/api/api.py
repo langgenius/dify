@@ -1,4 +1,4 @@
-from typing import Optional
+from sqlalchemy import select
 
 from core.extension.api_based_extension_requestor import APIBasedExtensionRequestor
 from core.external_data_tool.base import ExternalDataTool
@@ -16,7 +16,7 @@ class ApiExternalDataTool(ExternalDataTool):
     """the unique name of external data tool"""
 
     @classmethod
-    def validate_config(cls, tenant_id: str, config: dict) -> None:
+    def validate_config(cls, tenant_id: str, config: dict):
         """
         Validate the incoming form config data.
 
@@ -28,18 +28,16 @@ class ApiExternalDataTool(ExternalDataTool):
         api_based_extension_id = config.get("api_based_extension_id")
         if not api_based_extension_id:
             raise ValueError("api_based_extension_id is required")
-
         # get api_based_extension
-        api_based_extension = (
-            db.session.query(APIBasedExtension)
-            .filter(APIBasedExtension.tenant_id == tenant_id, APIBasedExtension.id == api_based_extension_id)
-            .first()
+        stmt = select(APIBasedExtension).where(
+            APIBasedExtension.tenant_id == tenant_id, APIBasedExtension.id == api_based_extension_id
         )
+        api_based_extension = db.session.scalar(stmt)
 
         if not api_based_extension:
             raise ValueError("api_based_extension_id is invalid")
 
-    def query(self, inputs: dict, query: Optional[str] = None) -> str:
+    def query(self, inputs: dict, query: str | None = None) -> str:
         """
         Query the external data tool.
 
@@ -49,16 +47,14 @@ class ApiExternalDataTool(ExternalDataTool):
         """
         # get params from config
         if not self.config:
-            raise ValueError("config is required, config: {}".format(self.config))
+            raise ValueError(f"config is required, config: {self.config}")
         api_based_extension_id = self.config.get("api_based_extension_id")
         assert api_based_extension_id is not None, "api_based_extension_id is required"
-
         # get api_based_extension
-        api_based_extension = (
-            db.session.query(APIBasedExtension)
-            .filter(APIBasedExtension.tenant_id == self.tenant_id, APIBasedExtension.id == api_based_extension_id)
-            .first()
+        stmt = select(APIBasedExtension).where(
+            APIBasedExtension.tenant_id == self.tenant_id, APIBasedExtension.id == api_based_extension_id
         )
+        api_based_extension = db.session.scalar(stmt)
 
         if not api_based_extension:
             raise ValueError(
@@ -74,7 +70,7 @@ class ApiExternalDataTool(ExternalDataTool):
             # request api
             requestor = APIBasedExtensionRequestor(api_endpoint=api_based_extension.api_endpoint, api_key=api_key)
         except Exception as e:
-            raise ValueError("[External data tool] API query failed, variable: {}, error: {}".format(self.variable, e))
+            raise ValueError(f"[External data tool] API query failed, variable: {self.variable}, error: {e}")
 
         response_json = requestor.request(
             point=APIBasedExtensionPoint.APP_EXTERNAL_DATA_TOOL_QUERY,
@@ -90,7 +86,7 @@ class ApiExternalDataTool(ExternalDataTool):
 
         if not isinstance(response_json["result"], str):
             raise ValueError(
-                "[External data tool] API query failed, variable: {}, error: result is not string".format(self.variable)
+                f"[External data tool] API query failed, variable: {self.variable}, error: result is not string"
             )
 
         return response_json["result"]

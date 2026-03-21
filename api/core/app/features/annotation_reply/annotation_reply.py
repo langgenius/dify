@@ -1,10 +1,12 @@
 import logging
-from typing import Optional
+
+from sqlalchemy import select
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.rag.datasource.vdb.vector_factory import Vector
 from extensions.ext_database import db
 from models.dataset import Dataset
+from models.enums import CollectionBindingType, ConversationFromSource
 from models.model import App, AppAnnotationSetting, Message, MessageAnnotation
 from services.annotation_service import AppAnnotationService
 from services.dataset_service import DatasetCollectionBindingService
@@ -15,7 +17,7 @@ logger = logging.getLogger(__name__)
 class AnnotationReplyFeature:
     def query(
         self, app_record: App, message: Message, query: str, user_id: str, invoke_from: InvokeFrom
-    ) -> Optional[MessageAnnotation]:
+    ) -> MessageAnnotation | None:
         """
         Query app annotations to reply
         :param app_record: app record
@@ -25,14 +27,16 @@ class AnnotationReplyFeature:
         :param invoke_from: invoke from
         :return:
         """
-        annotation_setting = (
-            db.session.query(AppAnnotationSetting).filter(AppAnnotationSetting.app_id == app_record.id).first()
-        )
+        stmt = select(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_record.id)
+        annotation_setting = db.session.scalar(stmt)
 
         if not annotation_setting:
             return None
 
         collection_binding_detail = annotation_setting.collection_binding_detail
+
+        if not collection_binding_detail:
+            return None
 
         try:
             score_threshold = annotation_setting.score_threshold or 1
@@ -40,7 +44,7 @@ class AnnotationReplyFeature:
             embedding_model_name = collection_binding_detail.model_name
 
             dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
-                embedding_provider_name, embedding_model_name, "annotation"
+                embedding_provider_name, embedding_model_name, CollectionBindingType.ANNOTATION
             )
 
             dataset = Dataset(
@@ -64,15 +68,15 @@ class AnnotationReplyFeature:
                 annotation = AppAnnotationService.get_annotation_by_id(annotation_id)
                 if annotation:
                     if invoke_from in {InvokeFrom.SERVICE_API, InvokeFrom.WEB_APP}:
-                        from_source = "api"
+                        from_source = ConversationFromSource.API
                     else:
-                        from_source = "console"
+                        from_source = ConversationFromSource.CONSOLE
 
                     # insert annotation history
                     AppAnnotationService.add_annotation_history(
                         annotation.id,
                         app_record.id,
-                        annotation.question,
+                        annotation.question_text,
                         annotation.content,
                         query,
                         user_id,
@@ -83,7 +87,7 @@ class AnnotationReplyFeature:
 
                     return annotation
         except Exception as e:
-            logger.warning(f"Query annotation failed, exception: {str(e)}.")
+            logger.warning("Query annotation failed, exception: %s.", str(e))
             return None
 
         return None

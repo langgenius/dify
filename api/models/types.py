@@ -1,38 +1,119 @@
 import enum
-from typing import Generic, TypeVar
+import uuid
+from typing import Any, Generic, TypeVar
 
-from sqlalchemy import CHAR, VARCHAR, TypeDecorator
-from sqlalchemy.dialects.postgresql import UUID
+import sqlalchemy as sa
+from sqlalchemy import CHAR, TEXT, VARCHAR, LargeBinary, TypeDecorator
+from sqlalchemy.dialects.mysql import LONGBLOB, LONGTEXT
+from sqlalchemy.dialects.postgresql import BYTEA, JSONB, UUID
+from sqlalchemy.engine.interfaces import Dialect
+from sqlalchemy.sql.type_api import TypeEngine
+
+from configs import dify_config
 
 
-class StringUUID(TypeDecorator):
+class StringUUID(TypeDecorator[uuid.UUID | str | None]):
     impl = CHAR
     cache_ok = True
 
-    def process_bind_param(self, value, dialect):
+    def process_bind_param(self, value: uuid.UUID | str | None, dialect: Dialect) -> str | None:
         if value is None:
             return value
-        elif dialect.name == "postgresql":
+        elif dialect.name in ["postgresql", "mysql"]:
             return str(value)
         else:
-            return value.hex
+            if isinstance(value, uuid.UUID):
+                return value.hex
+            return value
 
-    def load_dialect_impl(self, dialect):
+    def load_dialect_impl(self, dialect: Dialect) -> TypeEngine[Any]:
         if dialect.name == "postgresql":
             return dialect.type_descriptor(UUID())
         else:
             return dialect.type_descriptor(CHAR(36))
 
-    def process_result_value(self, value, dialect):
+    def process_result_value(self, value: uuid.UUID | str | None, dialect: Dialect) -> str | None:
         if value is None:
             return value
         return str(value)
 
 
+class LongText(TypeDecorator[str | None]):
+    impl = TEXT
+    cache_ok = True
+
+    def process_bind_param(self, value: str | None, dialect: Dialect) -> str | None:
+        if value is None:
+            return value
+        return value
+
+    def load_dialect_impl(self, dialect: Dialect) -> TypeEngine[Any]:
+        if dialect.name == "postgresql":
+            return dialect.type_descriptor(TEXT())
+        elif dialect.name == "mysql":
+            return dialect.type_descriptor(LONGTEXT())
+        else:
+            return dialect.type_descriptor(TEXT())
+
+    def process_result_value(self, value: str | None, dialect: Dialect) -> str | None:
+        if value is None:
+            return value
+        return value
+
+
+class BinaryData(TypeDecorator[bytes | None]):
+    impl = LargeBinary
+    cache_ok = True
+
+    def process_bind_param(self, value: bytes | None, dialect: Dialect) -> bytes | None:
+        if value is None:
+            return value
+        return value
+
+    def load_dialect_impl(self, dialect: Dialect) -> TypeEngine[Any]:
+        if dialect.name == "postgresql":
+            return dialect.type_descriptor(BYTEA())
+        elif dialect.name == "mysql":
+            return dialect.type_descriptor(LONGBLOB())
+        else:
+            return dialect.type_descriptor(LargeBinary())
+
+    def process_result_value(self, value: bytes | None, dialect: Dialect) -> bytes | None:
+        if value is None:
+            return value
+        return value
+
+
+class AdjustedJSON(TypeDecorator[dict | list | None]):
+    impl = sa.JSON
+    cache_ok = True
+
+    def __init__(self, astext_type=None):
+        self.astext_type = astext_type
+        super().__init__()
+
+    def load_dialect_impl(self, dialect: Dialect) -> TypeEngine[Any]:
+        if dialect.name == "postgresql":
+            if self.astext_type:
+                return dialect.type_descriptor(JSONB(astext_type=self.astext_type))
+            else:
+                return dialect.type_descriptor(JSONB())
+        elif dialect.name == "mysql":
+            return dialect.type_descriptor(sa.JSON())
+        else:
+            return dialect.type_descriptor(sa.JSON())
+
+    def process_bind_param(self, value: dict | list | None, dialect: Dialect) -> dict | list | None:
+        return value
+
+    def process_result_value(self, value: dict | list | None, dialect: Dialect) -> dict | list | None:
+        return value
+
+
 _E = TypeVar("_E", bound=enum.StrEnum)
 
 
-class EnumText(TypeDecorator, Generic[_E]):
+class EnumText(TypeDecorator[_E | None], Generic[_E]):
     impl = VARCHAR
     cache_ok = True
 
@@ -50,28 +131,33 @@ class EnumText(TypeDecorator, Generic[_E]):
             # leave some rooms for future longer enum values.
             self._length = max(max_enum_value_len, 20)
 
-    def process_bind_param(self, value: _E | str | None, dialect):
+    def process_bind_param(self, value: _E | str | None, dialect: Dialect) -> str | None:
         if value is None:
             return value
         if isinstance(value, self._enum_class):
             return value.value
-        elif isinstance(value, str):
-            self._enum_class(value)
-            return value
-        else:
-            raise TypeError(f"expected str or {self._enum_class}, got {type(value)}")
+        # Since _E is bound to StrEnum which inherits from str, at this point value must be str
+        self._enum_class(value)
+        return value
 
-    def load_dialect_impl(self, dialect):
+    def load_dialect_impl(self, dialect: Dialect) -> TypeEngine[Any]:
         return dialect.type_descriptor(VARCHAR(self._length))
 
-    def process_result_value(self, value, dialect) -> _E | None:
+    def process_result_value(self, value: str | None, dialect: Dialect) -> _E | None:
         if value is None:
             return value
-        if not isinstance(value, str):
-            raise TypeError(f"expected str, got {type(value)}")
+        # Type annotation guarantees value is str at this point
         return self._enum_class(value)
 
-    def compare_values(self, x, y):
+    def compare_values(self, x: _E | None, y: _E | None) -> bool:
         if x is None or y is None:
             return x is y
         return x == y
+
+
+def adjusted_json_index(index_name, column_name):
+    index_name = index_name or f"{column_name}_idx"
+    if dify_config.DB_TYPE == "postgresql":
+        return sa.Index(index_name, column_name, postgresql_using="gin")
+    else:
+        return None

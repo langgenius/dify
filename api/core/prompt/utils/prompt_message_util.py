@@ -1,7 +1,8 @@
 from collections.abc import Sequence
 from typing import Any, cast
 
-from core.model_runtime.entities import (
+from core.prompt.simple_prompt_transform import ModelMode
+from dify_graph.model_runtime.entities import (
     AssistantPromptMessage,
     AudioPromptMessageContent,
     ImagePromptMessageContent,
@@ -10,12 +11,11 @@ from core.model_runtime.entities import (
     PromptMessageRole,
     TextPromptMessageContent,
 )
-from core.prompt.simple_prompt_transform import ModelMode
 
 
 class PromptMessageUtil:
     @staticmethod
-    def prompt_messages_to_prompt_for_saving(model_mode: str, prompt_messages: Sequence[PromptMessage]) -> list[dict]:
+    def prompt_messages_to_prompt_for_saving(model_mode: str, prompt_messages: Sequence[PromptMessage]):
         """
         Prompt messages to prompt for saving.
         :param model_mode: model mode
@@ -87,7 +87,6 @@ class PromptMessageUtil:
             if isinstance(prompt_message.content, list):
                 for content in prompt_message.content:
                     if content.type == PromptMessageContentType.TEXT:
-                        content = cast(TextPromptMessageContent, content)
                         text += content.data
                     else:
                         content = cast(ImagePromptMessageContent, content)

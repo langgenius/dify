@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import * as React from 'react'
+import { cn } from '@/utils/classnames'
 import s from './style.module.css'
 
 export type ILoadingAnimProps = {
@@ -11,7 +12,7 @@ const LoadingAnim: FC<ILoadingAnimProps> = ({
   type,
 }) => {
   return (
-    <div className={`${s['dot-flashing']} ${s[type]}`}></div>
+    <div className={cn(s['dot-flashing'], s[type])} />
   )
 }
 export default React.memo(LoadingAnim)

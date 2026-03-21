@@ -1,29 +1,28 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
-import {
-  RiEqualizer2Line,
-} from '@remixicon/react'
 import type { PopupProps } from './config-popup'
-import ConfigPopup from './config-popup'
-import cn from '@/utils/classnames'
+
+import * as React from 'react'
+import { useCallback, useRef, useState } from 'react'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import { cn } from '@/utils/classnames'
+import ConfigPopup from './config-popup'
 
 type Props = {
   readOnly: boolean
   className?: string
   hasConfigured: boolean
-  controlShowPopup?: number
+  children?: React.ReactNode
 } & PopupProps
 
 const ConfigBtn: FC<Props> = ({
   className,
   hasConfigured,
-  controlShowPopup,
+  children,
   ...popupProps
 }) => {
   const [open, doSetOpen] = useState(false)
@@ -37,13 +36,6 @@ const ConfigBtn: FC<Props> = ({
     setOpen(!openRef.current)
   }, [setOpen])
 
-  useEffect(() => {
-    if (controlShowPopup)
-      // setOpen(!openRef.current)
-      setOpen(true)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [controlShowPopup])
-
   if (popupProps.readOnly && !hasConfigured)
     return null
 
@@ -51,18 +43,15 @@ const ConfigBtn: FC<Props> = ({
     <PortalToFollowElem
       open={open}
       onOpenChange={setOpen}
-      placement='bottom-end'
-      offset={{
-        mainAxis: 12,
-        crossAxis: hasConfigured ? 8 : 49,
-      }}
+      placement="bottom-end"
+      offset={12}
     >
       <PortalToFollowElemTrigger onClick={handleTrigger}>
-        <div className={cn(className, 'rounded-md p-1')}>
-          <RiEqualizer2Line className='h-4 w-4 text-text-tertiary' />
+        <div className={cn('select-none', className)}>
+          {children}
         </div>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-[11]'>
+      <PortalToFollowElemContent className="z-[11]">
         <ConfigPopup {...popupProps} />
       </PortalToFollowElemContent>
     </PortalToFollowElem>

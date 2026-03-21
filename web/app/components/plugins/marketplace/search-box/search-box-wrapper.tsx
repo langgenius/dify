@@ -1,43 +1,24 @@
 'use client'
 
-import { useMarketplaceContext } from '../context'
-import {
-  useMixedTranslation,
-  useSearchBoxAutoAnimate,
-} from '../hooks'
+import { useTranslation } from '#i18n'
+import { useFilterPluginTags, useSearchPluginText } from '../atoms'
 import SearchBox from './index'
-import cn from '@/utils/classnames'
 
-type SearchBoxWrapperProps = {
-  locale?: string
-  searchBoxAutoAnimate?: boolean
-}
-const SearchBoxWrapper = ({
-  locale,
-  searchBoxAutoAnimate,
-}: SearchBoxWrapperProps) => {
-  const { t } = useMixedTranslation(locale)
-  const intersected = useMarketplaceContext(v => v.intersected)
-  const searchPluginText = useMarketplaceContext(v => v.searchPluginText)
-  const handleSearchPluginTextChange = useMarketplaceContext(v => v.handleSearchPluginTextChange)
-  const filterPluginTags = useMarketplaceContext(v => v.filterPluginTags)
-  const handleFilterPluginTagsChange = useMarketplaceContext(v => v.handleFilterPluginTagsChange)
-  const { searchBoxCanAnimate } = useSearchBoxAutoAnimate(searchBoxAutoAnimate)
+const SearchBoxWrapper = () => {
+  const { t } = useTranslation()
+  const [searchPluginText, handleSearchPluginTextChange] = useSearchPluginText()
+  const [filterPluginTags, handleFilterPluginTagsChange] = useFilterPluginTags()
 
   return (
     <SearchBox
-      inputClassName={cn(
-        'z-[0] mx-auto w-[640px] shrink-0',
-        searchBoxCanAnimate && 'sticky top-3 z-[11]',
-        !intersected && searchBoxCanAnimate && 'w-[508px] transition-[width] duration-300',
-      )}
+      wrapperClassName="z-[11] mx-auto w-[640px] shrink-0"
+      inputClassName="w-full"
       search={searchPluginText}
       onSearchChange={handleSearchPluginTextChange}
       tags={filterPluginTags}
       onTagsChange={handleFilterPluginTagsChange}
-      size='large'
-      locale={locale}
-      placeholder={t('plugin.searchPlugins')}
+      placeholder={t('searchPlugins', { ns: 'plugin' })}
+      usedInMarketplace
     />
   )
 }
