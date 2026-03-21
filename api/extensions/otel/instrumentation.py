@@ -24,12 +24,12 @@ logger = logging.getLogger(__name__)
 
 
 class SupportsInstrument(Protocol):
-    def instrument(self, *args: object, **kwargs: object) -> None: ...
+    def instrument(self, **kwargs: object) -> None: ...
 
 
 class SupportsFlaskInstrumentor(Protocol):
     def instrument_app(
-        self, app: DifyApp, response_hook: Callable[..., None] | None = None, **kwargs: object
+        self, app: DifyApp, response_hook: Callable[[Span, str, list], None] | None = None, **kwargs: object
     ) -> None: ...
 
 
