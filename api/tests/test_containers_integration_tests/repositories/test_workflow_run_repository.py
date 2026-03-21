@@ -15,7 +15,7 @@ from dify_graph.entities import WorkflowExecution
 from dify_graph.enums import WorkflowExecutionStatus
 from libs.datetime_utils import naive_utc_now
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
-from models.workflow import WorkflowRun
+from models.workflow import WorkflowRun, WorkflowType
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 
 
@@ -51,7 +51,7 @@ def _create_workflow_run(
         tenant_id=scope.tenant_id,
         app_id=scope.app_id,
         workflow_id=scope.workflow_id,
-        type="workflow",
+        type=WorkflowType.WORKFLOW,
         triggered_from=triggered_from,
         version="draft",
         graph="{}",
@@ -59,7 +59,7 @@ def _create_workflow_run(
         status=status,
         created_by_role=CreatorUserRole.ACCOUNT,
         created_by=scope.user_id,
-        created_at=now + created_at_offset if created_at_offset else now,
+        created_at=now + created_at_offset if created_at_offset is not None else now,
     )
     session.add(workflow_run)
     session.commit()
@@ -242,23 +242,23 @@ class TestGetPaginatedWorkflowRuns:
         """Runs from other tenants are not returned."""
         _create_workflow_run(db_session_with_containers, test_scope, status=WorkflowExecutionStatus.SUCCEEDED)
 
-        other_scope = _TestScope()
-        _create_workflow_run(db_session_with_containers, other_scope, status=WorkflowExecutionStatus.SUCCEEDED)
+        other_scope = _TestScope(app_id=test_scope.app_id)
+        try:
+            _create_workflow_run(db_session_with_containers, other_scope, status=WorkflowExecutionStatus.SUCCEEDED)
 
-        result = repository.get_paginated_workflow_runs(
-            tenant_id=test_scope.tenant_id,
-            app_id=test_scope.app_id,
-            triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
-            limit=20,
-            last_id=None,
-            status=None,
-        )
+            result = repository.get_paginated_workflow_runs(
+                tenant_id=test_scope.tenant_id,
+                app_id=test_scope.app_id,
+                triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
+                limit=20,
+                last_id=None,
+                status=None,
+            )
 
-        assert len(result.data) == 1
-        assert result.data[0].tenant_id == test_scope.tenant_id
-
-        # Clean up other scope
-        _cleanup_scope_data(db_session_with_containers, other_scope)
+            assert len(result.data) == 1
+            assert result.data[0].tenant_id == test_scope.tenant_id
+        finally:
+            _cleanup_scope_data(db_session_with_containers, other_scope)
 
 
 class TestGetWorkflowRunsCount:
@@ -322,13 +322,14 @@ class TestGetWorkflowRunsCount:
         """Invalid status raises StatementError because the column uses an enum type."""
         _create_workflow_run(db_session_with_containers, test_scope, status=WorkflowExecutionStatus.SUCCEEDED)
 
-        with pytest.raises(sa_exc.StatementError, match="invalid_status"):
+        with pytest.raises(sa_exc.StatementError) as exc_info:
             repository.get_workflow_runs_count(
                 tenant_id=test_scope.tenant_id,
                 app_id=test_scope.app_id,
                 triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
                 status="invalid_status",
             )
+        assert isinstance(exc_info.value.orig, ValueError)
 
     def test_count_with_time_range(
         self,
