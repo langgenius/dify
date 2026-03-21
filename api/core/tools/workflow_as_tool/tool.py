@@ -24,6 +24,7 @@ from dify_graph.model_runtime.entities.llm_entities import LLMUsage, LLMUsageMet
 from factories.file_factory import build_from_mapping
 from models import Account, Tenant
 from models.model import App, EndUser
+from models.utils.file_input_compat import build_file_from_stored_mapping
 from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
@@ -292,10 +293,12 @@ class WorkflowTool(Tool):
                 if file:
                     try:
                         file_var_list = [
-                            # Workflow-as-tool can receive stored file payloads
-                            # from older runs that still include tenant_id.
-                            File.model_validate({key: item for key, item in f.items() if key != "tenant_id"})
+                            build_file_from_stored_mapping(
+                                file_mapping=cast(Mapping[str, Any], f),
+                                tenant_id=str(self.runtime.tenant_id),
+                            )
                             for f in file
+                            if isinstance(f, Mapping)
                         ]
                         for file in file_var_list:
                             file_dict: dict[str, str | None] = {
@@ -306,6 +309,8 @@ class WorkflowTool(Tool):
                                 file_dict["tool_file_id"] = resolve_file_record_id(file.reference)
                             elif file.transfer_method == FileTransferMethod.LOCAL_FILE:
                                 file_dict["upload_file_id"] = resolve_file_record_id(file.reference)
+                            elif file.transfer_method == FileTransferMethod.DATASOURCE_FILE:
+                                file_dict["datasource_file_id"] = resolve_file_record_id(file.reference)
                             elif file.transfer_method == FileTransferMethod.REMOTE_URL:
                                 file_dict["url"] = file.generate_url()
 

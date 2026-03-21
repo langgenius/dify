@@ -211,3 +211,25 @@ def test_inputs_prefer_serialized_tenant_id_when_present(
         "tenant_id": "tenant-from-payload",
         "upload_file_id": "upload-1",
     }
+
+
+@pytest.mark.parametrize("owner_cls", [Conversation, Message])
+def test_inputs_restore_external_remote_url_file_mappings(owner_cls: type[Conversation] | type[Message]) -> None:
+    owner = owner_cls(app_id="app-1")
+    owner.inputs = {
+        "file": {
+            "dify_model_identity": FILE_MODEL_IDENTITY,
+            "transfer_method": FileTransferMethod.REMOTE_URL,
+            "type": "document",
+            "url": "https://example.com/report.pdf",
+            "filename": "report.pdf",
+            "extension": ".pdf",
+            "mime_type": "application/pdf",
+            "size": 1,
+        }
+    }
+
+    restored_file = owner.inputs["file"]
+
+    assert restored_file.transfer_method == FileTransferMethod.REMOTE_URL
+    assert restored_file.remote_url == "https://example.com/report.pdf"

@@ -27,8 +27,10 @@ if TYPE_CHECKING:
 class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
     """Production runtime wiring for ``dify_graph.file``.
 
-    When a request-scoped file access scope is present, opaque file references are
-    re-validated against the database before URLs are signed or storage keys are used.
+    Opaque file references are resolved back to canonical database records before
+    URLs are signed or storage keys are used. When a request-scoped file access
+    scope is present, those lookups additionally enforce tenant and end-user
+    ownership filters.
     """
 
     _file_access_controller: FileAccessControllerProtocol
@@ -141,8 +143,6 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
         parsed_reference = parse_file_reference(file.reference)
         if parsed_reference is None:
             raise ValueError("Missing file reference")
-        if parsed_reference.storage_key and self._file_access_controller.current_scope() is None:
-            return parsed_reference.storage_key
 
         record_id = parsed_reference.record_id
         with session_factory.create_session() as session:

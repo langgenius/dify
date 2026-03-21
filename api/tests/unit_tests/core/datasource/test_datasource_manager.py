@@ -7,6 +7,7 @@ from contexts.wrapper import RecyclableContextVar
 from core.datasource.datasource_manager import DatasourceManager
 from core.datasource.entities.datasource_entities import DatasourceMessage, DatasourceProviderType
 from core.datasource.errors import DatasourceProviderNotFoundError
+from core.workflow.file_reference import parse_file_reference
 from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from dify_graph.file import File
 from dify_graph.file.enums import FileTransferMethod, FileType
@@ -660,6 +661,8 @@ def test_get_upload_file_by_id_builds_file(mocker):
     f = DatasourceManager.get_upload_file_by_id(file_id="fid", tenant_id="t1")
     assert f.related_id == "fid"
     assert f.extension == ".txt"
+    assert parse_file_reference(f.reference).storage_key is None
+    assert f.storage_key == "k"
 
 
 def test_get_upload_file_by_id_raises_when_missing(mocker):

@@ -614,9 +614,9 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                     remote_url=upload_file.source_url,
                     reference=build_file_reference(
                         record_id=str(upload_file.id),
-                        storage_key=upload_file.key,
                     ),
                     size=upload_file.size,
+                    storage_key=upload_file.key,
                 )
                 file_objects.append(file_obj)
             except Exception as e:

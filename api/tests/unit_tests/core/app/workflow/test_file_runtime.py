@@ -168,25 +168,49 @@ def test_load_file_bytes_returns_bytes_and_rejects_non_bytes(monkeypatch: pytest
     runtime = _build_runtime()
     file = _build_file(
         transfer_method=FileTransferMethod.LOCAL_FILE,
-        reference=build_file_reference(record_id="upload-file-id", storage_key="storage-key"),
+        reference=build_file_reference(record_id="upload-file-id"),
     )
+    session = MagicMock()
+    session.get.return_value = SimpleNamespace(key="canonical-storage-key")
+
+    class _SessionContext:
+        def __enter__(self):
+            return session
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    monkeypatch.setattr(file_runtime.session_factory, "create_session", lambda: _SessionContext())
     monkeypatch.setattr(file_runtime.storage, "load", lambda *args, **kwargs: b"image-bytes")
 
     assert runtime.load_file_bytes(file=file) == b"image-bytes"
+    session.get.assert_called_with(UploadFile, "upload-file-id")
 
     monkeypatch.setattr(file_runtime.storage, "load", lambda *args, **kwargs: "not-bytes")
     with pytest.raises(ValueError, match="is not a bytes object"):
         runtime.load_file_bytes(file=file)
 
 
-def test_resolve_storage_key_prefers_encoded_reference() -> None:
+def test_resolve_storage_key_ignores_encoded_reference_when_unscoped(monkeypatch: pytest.MonkeyPatch) -> None:
     runtime = _build_runtime()
     file = _build_file(
         transfer_method=FileTransferMethod.LOCAL_FILE,
-        reference=build_file_reference(record_id="upload-file-id", storage_key="storage-key"),
+        reference=build_file_reference(record_id="upload-file-id", storage_key="tampered-storage-key"),
     )
+    session = MagicMock()
+    session.get.return_value = SimpleNamespace(key="canonical-storage-key")
 
-    assert runtime._resolve_storage_key(file=file) == "storage-key"
+    class _SessionContext:
+        def __enter__(self):
+            return session
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    monkeypatch.setattr(file_runtime.session_factory, "create_session", lambda: _SessionContext())
+
+    assert runtime._resolve_storage_key(file=file) == "canonical-storage-key"
+    session.get.assert_called_once_with(UploadFile, "upload-file-id")
 
 
 def test_resolve_storage_key_uses_canonical_record_when_scope_is_bound(monkeypatch: pytest.MonkeyPatch) -> None:

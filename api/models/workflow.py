@@ -58,11 +58,21 @@ from .base import Base, DefaultFieldsMixin, TypeBase
 from .engine import db
 from .enums import CreatorUserRole, DraftVariableType, ExecutionOffLoadType, WorkflowRunTriggeredFrom
 from .types import EnumText, LongText, StringUUID
+from .utils.file_input_compat import build_file_from_stored_mapping
 
 logger = logging.getLogger(__name__)
 
 SerializedWorkflowValue = dict[str, Any]
 SerializedWorkflowVariables = dict[str, SerializedWorkflowValue]
+
+
+def _resolve_workflow_app_tenant_id(app_id: str) -> str:
+    from .model import App
+
+    tenant_id = db.session.scalar(select(App.tenant_id).where(App.id == app_id))
+    if not tenant_id:
+        raise ValueError(f"Unable to resolve tenant_id for app {app_id}")
+    return tenant_id
 
 
 class WorkflowContentDict(TypedDict):
@@ -1560,10 +1570,9 @@ class WorkflowDraftVariable(Base):
 
     def _loads_value(self) -> Segment:
         value = json.loads(self.value)
-        return self.build_segment_with_type(self.value_type, value)
+        return self.build_segment_from_serialized_value(self.value_type, value)
 
-    @staticmethod
-    def rebuild_file_types(value: Any):
+    def _rebuild_file_types(self, value: Any):
         # NOTE(QuantumGhost): Temporary workaround for structured data handling.
         # By this point, `output` has been converted to dict by
         # `WorkflowEntry.handle_special_values`, so we need to
@@ -1577,8 +1586,59 @@ class WorkflowDraftVariable(Base):
         if isinstance(value, dict):
             if not maybe_file_object(value):
                 return cast(Any, value)
-            # Older serialized File payloads may still carry the removed
-            # graph-level tenant_id field. Strip it at this deserialization edge.
+            tenant_id = _resolve_workflow_app_tenant_id(self.app_id)
+            return build_file_from_stored_mapping(
+                file_mapping=cast(dict[str, Any], value),
+                tenant_id=tenant_id,
+            )
+        elif isinstance(value, list) and value:
+            value_list = cast(list[Any], value)
+            first: Any = value_list[0]
+            if not maybe_file_object(first):
+                return cast(Any, value)
+            tenant_id = _resolve_workflow_app_tenant_id(self.app_id)
+            file_list: list[File] = []
+            for item in value_list:
+                file_list.append(
+                    build_file_from_stored_mapping(
+                        file_mapping=cast(dict[str, Any], item),
+                        tenant_id=tenant_id,
+                    )
+                )
+            return cast(Any, file_list)
+        else:
+            return cast(Any, value)
+
+    def build_segment_from_serialized_value(self, segment_type: SegmentType, value: Any) -> Segment:
+        # Persisted draft variable rows may contain historical file payloads.
+        # Rebuild them through the file factory so tenant ownership, signed URLs,
+        # and storage-backed metadata come from canonical records instead of the
+        # serialized JSON blob.
+        if segment_type == SegmentType.FILE:
+            if isinstance(value, File):
+                return build_segment_with_type(segment_type, value)
+            elif isinstance(value, dict):
+                file = self._rebuild_file_types(value)
+                return build_segment_with_type(segment_type, file)
+            else:
+                raise TypeMismatchError(f"expected dict or File for FileSegment, got {type(value)}")
+        if segment_type == SegmentType.ARRAY_FILE:
+            if not isinstance(value, list):
+                raise TypeMismatchError(f"expected list for ArrayFileSegment, got {type(value)}")
+            file_list = self._rebuild_file_types(value)
+            return build_segment_with_type(segment_type=segment_type, value=file_list)
+
+        return build_segment_with_type(segment_type=segment_type, value=value)
+
+    @staticmethod
+    def rebuild_file_types(value: Any):
+        # Keep the class-level fallback for callers that only need lightweight
+        # structural reconstruction. Persisted draft-variable payloads should go
+        # through `build_segment_from_serialized_value()` so file metadata is
+        # rebuilt from canonical storage records.
+        if isinstance(value, dict):
+            if not maybe_file_object(value):
+                return cast(Any, value)
             normalized_file = dict(value)
             normalized_file.pop("tenant_id", None)
             return File.model_validate(normalized_file)
@@ -1589,8 +1649,6 @@ class WorkflowDraftVariable(Base):
                 return cast(Any, value)
             file_list: list[File] = []
             for item in value_list:
-                # Keep the compatibility handling local to the payload rebuild
-                # path instead of weakening the File model itself.
                 normalized_file = dict(cast(dict[str, Any], item))
                 normalized_file.pop("tenant_id", None)
                 file_list.append(File.model_validate(normalized_file))

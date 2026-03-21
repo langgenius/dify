@@ -6,7 +6,7 @@ from httpx import Response
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.app.file_access import DatabaseFileAccessController, FileAccessScope, bind_file_access_scope
-from core.workflow.file_reference import build_file_reference, resolve_file_record_id
+from core.workflow.file_reference import build_file_reference, parse_file_reference, resolve_file_record_id
 from dify_graph.file import File, FileTransferMethod, FileType, FileUploadConfig
 from factories.file_factory.builders import build_from_mapping as _build_from_mapping
 from models import ToolFile, UploadFile
@@ -109,6 +109,8 @@ def test_build_from_mapping_backward_compatibility(mock_upload_file):
     assert file.transfer_method == FileTransferMethod.LOCAL_FILE
     assert file.type == FileType.IMAGE
     assert resolve_file_record_id(file.reference) == TEST_UPLOAD_FILE_ID
+    assert parse_file_reference(file.reference).storage_key is None
+    assert file.storage_key == "test_key"
 
 
 def test_build_from_mapping_accepts_opaque_reference_for_local_file(mock_upload_file):
@@ -139,6 +141,8 @@ def test_build_from_mapping_accepts_opaque_related_id_for_tool_file(mock_tool_fi
     assert file.transfer_method == FileTransferMethod.TOOL_FILE
     assert file.type == FileType.DOCUMENT
     assert resolve_file_record_id(file.reference) == TEST_TOOL_FILE_ID
+    assert parse_file_reference(file.reference).storage_key is None
+    assert file.storage_key == "tool_file.pdf"
 
 
 @pytest.mark.parametrize(

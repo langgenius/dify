@@ -527,9 +527,9 @@ class DatasetRetrieval:
                                     remote_url=upload_file.source_url,
                                     reference=build_file_reference(
                                         record_id=str(upload_file.id),
-                                        storage_key=upload_file.key,
                                     ),
                                     size=upload_file.size,
+                                    storage_key=upload_file.key,
                                     url=sign_upload_file(upload_file.id, upload_file.extension),
                                 )
                                 context_files.append(attachment_info)

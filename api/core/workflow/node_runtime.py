@@ -247,7 +247,7 @@ class DifyRetrieverAttachmentLoader(RetrieverAttachmentLoaderProtocol):
                     "type": FileType.IMAGE,
                     "transfer_method": FileTransferMethod.LOCAL_FILE,
                     "remote_url": upload_file.source_url,
-                    "reference": build_file_reference(record_id=str(upload_file.id), storage_key=upload_file.key),
+                    "reference": build_file_reference(record_id=str(upload_file.id)),
                     "size": upload_file.size,
                 }
             )

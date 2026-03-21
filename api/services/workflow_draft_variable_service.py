@@ -43,6 +43,7 @@ from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 from models import Account, App, Conversation
 from models.enums import DraftVariableType
+from models.utils.file_input_compat import build_file_from_stored_mapping
 from models.workflow import Workflow, WorkflowDraftVariable, WorkflowDraftVariableFile, is_system_variable_editable
 from repositories.factory import DifyAPIRepositoryFactory
 from services.file_service import FileService
@@ -185,7 +186,7 @@ class DraftVarLoader(VariableLoader):
             return (draft_var.node_id, draft_var.name), variable
 
         deserialized = json.loads(content)
-        segment = WorkflowDraftVariable.build_segment_with_type(variable_file.value_type, deserialized)
+        segment = draft_var.build_segment_from_serialized_value(variable_file.value_type, deserialized)
         variable = segment_to_variable(
             segment=segment,
             selector=draft_var.get_selector(),
@@ -849,6 +850,12 @@ class DraftVariableSaver:
         self._user = user
         self._enclosing_node_id = enclosing_node_id
 
+    def _resolve_app_tenant_id(self) -> str:
+        tenant_id = self._session.scalar(select(App.tenant_id).where(App.id == self._app_id))
+        if not tenant_id:
+            raise ValueError(f"Unable to resolve tenant_id for app {self._app_id}")
+        return tenant_id
+
     def _create_dummy_output_variable(self):
         return WorkflowDraftVariable.new_node_variable(
             app_id=self._app_id,
@@ -906,11 +913,13 @@ class DraftVariableSaver:
             if node_id == SYSTEM_VARIABLE_NODE_ID:
                 if name == SystemVariableKey.FILES:
                     # Here we know the type of variable must be `array[file]`, we
-                    # just build files from the value.
+                    # just rebuild files from the serialized payload.
+                    tenant_id = self._resolve_app_tenant_id()
                     files = [
-                        # Draft variable payloads may predate the removal of
-                        # File.tenant_id, so normalize the raw dict first.
-                        File.model_validate({key: item for key, item in v.items() if key != "tenant_id"})
+                        build_file_from_stored_mapping(
+                            file_mapping=v,
+                            tenant_id=tenant_id,
+                        )
                         for v in value
                     ]
                     if files:

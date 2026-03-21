@@ -48,7 +48,7 @@ class FileUploadConfig(BaseModel):
 
 
 def _parse_reference(reference: str | None) -> tuple[str | None, str | None]:
-    """Best-effort parser for legacy aliases backed by the opaque file reference."""
+    """Best-effort parser for record references and historical storage-key payloads."""
     if not reference:
         return None, None
 
@@ -91,6 +91,8 @@ class File(BaseModel):
     # `remote_url` attribute must not be `None`.
     remote_url: str | None = None  # remote url
     # Opaque workflow-layer reference for files resolved outside ``dify_graph``.
+    # New payloads only carry the backing record id; historical payloads may
+    # still include storage_key and must remain readable.
     reference: str | None = None
     filename: str | None = None
     extension: str | None = Field(default=None, description="File extension, should contain dot")

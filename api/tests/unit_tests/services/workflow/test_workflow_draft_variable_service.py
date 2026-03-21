@@ -14,6 +14,8 @@ from core.workflow.variable_prefixes import (
     SYSTEM_VARIABLE_NODE_ID,
 )
 from dify_graph.enums import BuiltinNodeTypes
+from dify_graph.file.enums import FileTransferMethod, FileType
+from dify_graph.file.models import File
 from dify_graph.variables.segments import StringSegment
 from dify_graph.variables.types import SegmentType
 from libs.uuid_utils import uuidv7
@@ -130,6 +132,47 @@ class TestDraftVariableSaver:
             node_id, name = saver._normalize_variable_for_start_node(c.input_name)
             assert node_id == c.expected_node_id, fail_msg
             assert name == c.expected_name, fail_msg
+
+    def test_build_variables_from_start_mapping_rebuilds_system_files(self):
+        mock_session = MagicMock(spec=Session)
+        mock_user = MagicMock(spec=Account)
+        mock_user.id = str(uuid.uuid4())
+        saver = DraftVariableSaver(
+            session=mock_session,
+            app_id=self._get_test_app_id(),
+            node_id="start",
+            node_type=BuiltinNodeTypes.START,
+            node_execution_id="exec-1",
+            user=mock_user,
+        )
+        rebuilt_file = File(
+            id="file-1",
+            type=FileType.DOCUMENT,
+            transfer_method=FileTransferMethod.LOCAL_FILE,
+            reference="upload-1",
+            filename="test.txt",
+            extension=".txt",
+            mime_type="text/plain",
+            size=12,
+            storage_key="canonical-storage-key",
+        )
+        raw_file = {
+            **rebuilt_file.model_dump(mode="json"),
+            "tenant_id": "legacy-tenant",
+        }
+
+        with (
+            patch.object(saver, "_resolve_app_tenant_id", return_value="tenant-1"),
+            patch(
+                "services.workflow_draft_variable_service.build_file_from_stored_mapping",
+                return_value=rebuilt_file,
+            ) as rebuild_file,
+        ):
+            draft_vars = saver._build_variables_from_start_mapping({"sys.files": [raw_file]})
+
+        sys_var = draft_vars[0]
+        assert sys_var.get_value().value[0] == rebuilt_file
+        rebuild_file.assert_called_once_with(file_mapping=raw_file, tenant_id="tenant-1")
 
     @pytest.fixture
     def mock_session(self):

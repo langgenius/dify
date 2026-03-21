@@ -155,8 +155,9 @@ def _build_from_local_file(
         type=file_type,
         transfer_method=transfer_method,
         remote_url=row.source_url,
-        reference=build_file_reference(record_id=str(row.id), storage_key=row.key),
+        reference=build_file_reference(record_id=str(row.id)),
         size=row.size,
+        storage_key=row.key,
     )
 
 
@@ -201,8 +202,9 @@ def _build_from_remote_url(
             type=file_type,
             transfer_method=transfer_method,
             remote_url=helpers.get_signed_file_url(upload_file_id=str(upload_file_id)),
-            reference=build_file_reference(record_id=str(upload_file.id), storage_key=upload_file.key),
+            reference=build_file_reference(record_id=str(upload_file.id)),
             size=upload_file.size,
+            storage_key=upload_file.key,
         )
 
     url = mapping.get("url") or mapping.get("remote_url")
@@ -264,10 +266,11 @@ def _build_from_tool_file(
         type=file_type,
         transfer_method=transfer_method,
         remote_url=tool_file.original_url,
-        reference=build_file_reference(record_id=str(tool_file.id), storage_key=tool_file.file_key),
+        reference=build_file_reference(record_id=str(tool_file.id)),
         extension=extension,
         mime_type=tool_file.mimetype,
         size=tool_file.size,
+        storage_key=tool_file.file_key,
     )
 
 
@@ -305,10 +308,11 @@ def _build_from_datasource_file(
         type=file_type,
         transfer_method=FileTransferMethod.TOOL_FILE,
         remote_url=datasource_file.source_url,
-        reference=build_file_reference(record_id=str(datasource_file.id), storage_key=datasource_file.key),
+        reference=build_file_reference(record_id=str(datasource_file.id)),
         extension=extension,
         mime_type=datasource_file.mime_type,
         size=datasource_file.size,
+        storage_key=datasource_file.key,
         url=datasource_file.source_url,
     )
 

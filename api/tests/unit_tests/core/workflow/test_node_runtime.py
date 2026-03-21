@@ -263,7 +263,7 @@ def test_dify_retriever_attachment_loader_builds_graph_files(monkeypatch: pytest
     assert mapping["id"] == "upload-file-id"
     assert mapping["transfer_method"] == FileTransferMethod.LOCAL_FILE
     assert mapping["type"] == FileType.IMAGE
-    assert parse_file_reference(mapping["reference"]).storage_key == "storage-key"
+    assert parse_file_reference(mapping["reference"]).storage_key is None
 
 
 def test_dify_tool_file_manager_resolves_conversation_id_for_tool_files(monkeypatch: pytest.MonkeyPatch) -> None:

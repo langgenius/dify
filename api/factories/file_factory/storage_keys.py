@@ -51,9 +51,10 @@ class StorageKeyLoader:
         """Hydrate storage keys by loading their backing file rows in batches.
 
         The sequence shape is preserved. Each file is updated in place with a
-        canonical reference and storage key loaded from an authorized database
-        row. Tenant scoping is enforced by this loader's context rather than by
-        embedding tenant identity inside graph-layer ``File`` values.
+        canonical record reference and storage key loaded from an authorized
+        database row. Tenant scoping is enforced by this loader's context
+        rather than by embedding tenant identity or storage paths inside
+        graph-layer ``File`` values.
 
         For best performance, prefer batches smaller than 1000 files.
         """
@@ -93,7 +94,6 @@ class StorageKeyLoader:
                     raise ValueError(f"Upload file not found for id: {model_id}")
                 file.reference = build_file_reference(
                     record_id=str(upload_file_row.id),
-                    storage_key=upload_file_row.key,
                 )
                 file.storage_key = upload_file_row.key
             elif file.transfer_method == FileTransferMethod.TOOL_FILE:
@@ -102,6 +102,5 @@ class StorageKeyLoader:
                     raise ValueError(f"Tool file not found for id: {model_id}")
                 file.reference = build_file_reference(
                     record_id=str(tool_file_row.id),
-                    storage_key=tool_file_row.file_key,
                 )
                 file.storage_key = tool_file_row.file_key
