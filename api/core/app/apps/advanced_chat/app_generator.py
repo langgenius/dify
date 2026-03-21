@@ -330,9 +330,10 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             engine=db.engine,
             app_id=application_generate_entity.app_config.app_id,
             tenant_id=application_generate_entity.app_config.tenant_id,
+            user_id=user.id,
         )
         draft_var_srv = WorkflowDraftVariableService(db.session())
-        draft_var_srv.prefill_conversation_variable_default_values(workflow)
+        draft_var_srv.prefill_conversation_variable_default_values(workflow, user_id=user.id)
 
         return self._generate(
             workflow=workflow,
@@ -413,9 +414,10 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             engine=db.engine,
             app_id=application_generate_entity.app_config.app_id,
             tenant_id=application_generate_entity.app_config.tenant_id,
+            user_id=user.id,
         )
         draft_var_srv = WorkflowDraftVariableService(db.session())
-        draft_var_srv.prefill_conversation_variable_default_values(workflow)
+        draft_var_srv.prefill_conversation_variable_default_values(workflow, user_id=user.id)
 
         return self._generate(
             workflow=workflow,

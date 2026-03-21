@@ -200,9 +200,12 @@ class TestPluginUploadFromPkgApi:
             app.test_request_context("/", data=data, content_type="multipart/form-data"),
             patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch("controllers.console.workspace.plugin.dify_config.PLUGIN_MAX_PACKAGE_SIZE", 0),
+            patch("controllers.console.workspace.plugin.PluginService.upload_pkg") as upload_pkg_mock,
         ):
             with pytest.raises(ValueError):
                 method(api)
+
+        upload_pkg_mock.assert_not_called()
 
 
 class TestPluginInstallFromPkgApi:
@@ -444,9 +447,12 @@ class TestPluginUploadFromBundleApi:
             ),
             patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch("controllers.console.workspace.plugin.dify_config.PLUGIN_MAX_BUNDLE_SIZE", 0),
+            patch("controllers.console.workspace.plugin.PluginService.upload_bundle") as upload_bundle_mock,
         ):
             with pytest.raises(ValueError):
                 method(api)
+
+        upload_bundle_mock.assert_not_called()
 
 
 class TestPluginInstallFromGithubApi:

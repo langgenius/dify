@@ -193,7 +193,8 @@ class LLMGenerator:
                 error_step = "generate rule config"
             except Exception as e:
                 logger.exception("Failed to generate rule config, model: %s", args.model_config_data.name)
-                rule_config["error"] = str(e)
+                error = str(e)
+                error_step = "generate rule config"
 
             rule_config["error"] = f"Failed to {error_step}. Error: {error}" if error else ""
 
@@ -279,7 +280,8 @@ class LLMGenerator:
 
         except Exception as e:
             logger.exception("Failed to generate rule config, model: %s", args.model_config_data.name)
-            rule_config["error"] = str(e)
+            error = str(e)
+            error_step = "handle unexpected exception"
 
         rule_config["error"] = f"Failed to {error_step}. Error: {error}" if error else ""
 

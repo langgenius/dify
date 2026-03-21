@@ -5,6 +5,7 @@ from uuid import uuid4
 
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document
+from models.enums import DataSourceType, DocumentCreatedFrom
 from services.dataset_service import DatasetService
 
 
@@ -58,7 +59,7 @@ class DatasetDeleteIntegrationDataFactory:
         dataset = Dataset(
             tenant_id=tenant_id,
             name=f"dataset-{uuid4()}",
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             indexing_technique=indexing_technique,
             index_struct=index_struct,
             created_by=created_by,
@@ -84,10 +85,10 @@ class DatasetDeleteIntegrationDataFactory:
             tenant_id=tenant_id,
             dataset_id=dataset_id,
             position=1,
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             batch=f"batch-{uuid4()}",
             name="Document",
-            created_from="upload_file",
+            created_from=DocumentCreatedFrom.WEB,
             created_by=created_by,
             doc_form=doc_form,
         )

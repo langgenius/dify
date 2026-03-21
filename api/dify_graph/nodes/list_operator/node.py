@@ -1,7 +1,7 @@
 from collections.abc import Callable, Sequence
 from typing import Any, TypeAlias, TypeVar
 
-from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
+from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from dify_graph.file import File
 from dify_graph.node_events import NodeRunResult
 from dify_graph.nodes.base.node import Node
@@ -35,7 +35,7 @@ def _negation(filter_: Callable[[_T], bool]) -> Callable[[_T], bool]:
 
 
 class ListOperatorNode(Node[ListOperatorNodeData]):
-    node_type = NodeType.LIST_OPERATOR
+    node_type = BuiltinNodeTypes.LIST_OPERATOR
 
     @classmethod
     def version(cls) -> str:

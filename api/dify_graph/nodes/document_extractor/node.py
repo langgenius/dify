@@ -21,7 +21,8 @@ from docx.oxml.text.paragraph import CT_P
 from docx.table import Table
 from docx.text.paragraph import Paragraph
 
-from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
+from dify_graph.entities.graph_config import NodeConfigDict
+from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from dify_graph.file import File, FileTransferMethod, file_manager
 from dify_graph.node_events import NodeRunResult
 from dify_graph.nodes.base.node import Node
@@ -45,7 +46,7 @@ class DocumentExtractorNode(Node[DocumentExtractorNodeData]):
     Supports plain text, PDF, and DOC/DOCX files.
     """
 
-    node_type = NodeType.DOCUMENT_EXTRACTOR
+    node_type = BuiltinNodeTypes.DOCUMENT_EXTRACTOR
 
     @classmethod
     def version(cls) -> str:
@@ -54,7 +55,7 @@ class DocumentExtractorNode(Node[DocumentExtractorNodeData]):
     def __init__(
         self,
         id: str,
-        config: Mapping[str, Any],
+        config: NodeConfigDict,
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
         *,
@@ -136,12 +137,10 @@ class DocumentExtractorNode(Node[DocumentExtractorNodeData]):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: Mapping[str, Any],
+        node_data: DocumentExtractorNodeData,
     ) -> Mapping[str, Sequence[str]]:
-        # Create typed NodeData from dict
-        typed_node_data = DocumentExtractorNodeData.model_validate(node_data)
-
-        return {node_id + ".files": typed_node_data.variable_selector}
+        _ = graph_config  # Explicitly mark as unused
+        return {node_id + ".files": node_data.variable_selector}
 
 
 def _extract_text_by_mime_type(

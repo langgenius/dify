@@ -7,7 +7,7 @@ to ensure they work correctly with the TableTestRunner.
 
 from configs import dify_config
 from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY
-from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
+from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from dify_graph.nodes.code.limits import CodeNodeLimits
 from tests.unit_tests.core.workflow.graph_engine.test_mock_config import MockConfig, MockConfigBuilder, NodeMockConfig
 from tests.unit_tests.core.workflow.graph_engine.test_mock_factory import MockNodeFactory
@@ -550,12 +550,12 @@ class TestMockNodeFactory:
         )
 
         # Verify that CODE and TEMPLATE_TRANSFORM ARE mocked by default (they require SSRF proxy)
-        assert factory.should_mock_node(NodeType.CODE)
-        assert factory.should_mock_node(NodeType.TEMPLATE_TRANSFORM)
+        assert factory.should_mock_node(BuiltinNodeTypes.CODE)
+        assert factory.should_mock_node(BuiltinNodeTypes.TEMPLATE_TRANSFORM)
 
         # Verify that other third-party service nodes ARE also mocked by default
-        assert factory.should_mock_node(NodeType.LLM)
-        assert factory.should_mock_node(NodeType.AGENT)
+        assert factory.should_mock_node(BuiltinNodeTypes.LLM)
+        assert factory.should_mock_node(BuiltinNodeTypes.AGENT)
 
     def test_factory_creates_mock_template_transform_node(self):
         """Test that MockNodeFactory creates MockTemplateTransformNode for template-transform type."""
@@ -610,7 +610,7 @@ class TestMockNodeFactory:
 
         # Verify the correct mock type was created
         assert isinstance(node, MockTemplateTransformNode)
-        assert factory.should_mock_node(NodeType.TEMPLATE_TRANSFORM)
+        assert factory.should_mock_node(BuiltinNodeTypes.TEMPLATE_TRANSFORM)
 
     def test_factory_creates_mock_code_node(self):
         """Test that MockNodeFactory creates MockCodeNode for code type."""
@@ -667,4 +667,4 @@ class TestMockNodeFactory:
 
         # Verify the correct mock type was created
         assert isinstance(node, MockCodeNode)
-        assert factory.should_mock_node(NodeType.CODE)
+        assert factory.should_mock_node(BuiltinNodeTypes.CODE)

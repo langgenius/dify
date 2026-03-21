@@ -3,7 +3,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from dify_graph.nodes.base import BaseNodeData
+from dify_graph.entities.base_node_data import BaseNodeData
+from dify_graph.enums import BuiltinNodeTypes, NodeType
 
 from .enums import InputType, Operation
 
@@ -22,5 +23,6 @@ class VariableOperationItem(BaseModel):
 
 
 class VariableAssignerNodeData(BaseNodeData):
+    type: NodeType = BuiltinNodeTypes.VARIABLE_ASSIGNER
     version: str = "2"
     items: Sequence[VariableOperationItem] = Field(default_factory=list)

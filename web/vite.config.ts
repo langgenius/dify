@@ -2,11 +2,11 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import react from '@vitejs/plugin-react'
 import vinext from 'vinext'
-import { defineConfig } from 'vite'
 import Inspect from 'vite-plugin-inspect'
-import tsconfigPaths from 'vite-tsconfig-paths'
+import { defineConfig } from 'vite-plus'
 import { createCodeInspectorPlugin, createForceInspectorClientInjectionPlugin } from './plugins/vite/code-inspector'
 import { customI18nHmrPlugin } from './plugins/vite/custom-i18n-hmr'
+import { nextStaticImageTestPlugin } from './plugins/vite/next-static-image-test'
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url))
 const isCI = !!process.env.CI
@@ -20,7 +20,7 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: isTest
       ? [
-          tsconfigPaths(),
+          nextStaticImageTestPlugin({ projectRoot }),
           react(),
           {
             // Stub .mdx files so components importing them can be unit-tested
@@ -34,7 +34,6 @@ export default defineConfig(({ mode }) => {
         ]
       : isStorybook
         ? [
-            tsconfigPaths(),
             react(),
           ]
         : [
@@ -46,7 +45,8 @@ export default defineConfig(({ mode }) => {
               injectTarget: browserInitializerInjectTarget,
               projectRoot,
             }),
-            vinext(),
+            react(),
+            vinext({ react: false }),
             customI18nHmrPlugin({ injectTarget: browserInitializerInjectTarget }),
             // reactGrabOpenFilePlugin({
             //   injectTarget: browserInitializerInjectTarget,
@@ -54,16 +54,14 @@ export default defineConfig(({ mode }) => {
             // }),
           ],
     resolve: {
-      alias: {
-        '~@': projectRoot,
-      },
+      tsconfigPaths: true,
     },
 
     // vinext related config
     ...(!isTest && !isStorybook
       ? {
           optimizeDeps: {
-            exclude: ['nuqs'],
+            exclude: ['@tanstack/react-query'],
           },
           server: {
             port: 3000,

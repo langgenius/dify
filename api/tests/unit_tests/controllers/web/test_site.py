@@ -50,7 +50,7 @@ class TestAppSiteApi:
         app.config["RESTX_MASK_HEADER"] = "X-Fields"
         mock_features.return_value = SimpleNamespace(can_replace_logo=False)
         site_obj = _site()
-        mock_db.session.query.return_value.where.return_value.first.return_value = site_obj
+        mock_db.session.scalar.return_value = site_obj
         tenant = _tenant()
         app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", tenant=tenant, enable_site=True)
         end_user = SimpleNamespace(id="eu-1")
@@ -66,9 +66,9 @@ class TestAppSiteApi:
     @patch("controllers.web.site.db")
     def test_missing_site_raises_forbidden(self, mock_db: MagicMock, app: Flask) -> None:
         app.config["RESTX_MASK_HEADER"] = "X-Fields"
-        mock_db.session.query.return_value.where.return_value.first.return_value = None
+        mock_db.session.scalar.return_value = None
         tenant = _tenant()
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", tenant=tenant)
+        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", tenant=tenant, enable_site=True)
         end_user = SimpleNamespace(id="eu-1")
 
         with app.test_request_context("/site"):
@@ -80,7 +80,7 @@ class TestAppSiteApi:
         app.config["RESTX_MASK_HEADER"] = "X-Fields"
         from models.account import TenantStatus
 
-        mock_db.session.query.return_value.where.return_value.first.return_value = _site()
+        mock_db.session.scalar.return_value = _site()
         tenant = SimpleNamespace(
             id="tenant-1",
             status=TenantStatus.ARCHIVE,

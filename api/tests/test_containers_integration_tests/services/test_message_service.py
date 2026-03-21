@@ -4,6 +4,7 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
+from models.enums import ConversationFromSource, FeedbackRating, InvokeFrom
 from models.model import MessageFeedback
 from services.app_service import AppService
 from services.errors.message import (
@@ -148,8 +149,8 @@ class TestMessageService:
             system_instruction="",
             system_instruction_tokens=0,
             status="normal",
-            invoke_from="console",
-            from_source="console",
+            invoke_from=InvokeFrom.EXPLORE,
+            from_source=ConversationFromSource.CONSOLE,
             from_end_user_id=None,
             from_account_id=account.id,
         )
@@ -186,8 +187,8 @@ class TestMessageService:
             provider_response_latency=0,
             total_price=0,
             currency="USD",
-            invoke_from="console",
-            from_source="console",
+            invoke_from=InvokeFrom.EXPLORE,
+            from_source=ConversationFromSource.CONSOLE,
             from_end_user_id=None,
             from_account_id=account.id,
         )
@@ -405,7 +406,7 @@ class TestMessageService:
         message = self._create_test_message(db_session_with_containers, app, conversation, account, fake)
 
         # Create feedback
-        rating = "like"
+        rating = FeedbackRating.LIKE
         content = fake.text(max_nb_chars=100)
         feedback = MessageService.create_feedback(
             app_model=app, message_id=message.id, user=account, rating=rating, content=content
@@ -435,7 +436,11 @@ class TestMessageService:
         # Test creating feedback with no user
         with pytest.raises(ValueError, match="user cannot be None"):
             MessageService.create_feedback(
-                app_model=app, message_id=message.id, user=None, rating="like", content=fake.text(max_nb_chars=100)
+                app_model=app,
+                message_id=message.id,
+                user=None,
+                rating=FeedbackRating.LIKE,
+                content=fake.text(max_nb_chars=100),
             )
 
     def test_create_feedback_update_existing(
@@ -452,14 +457,14 @@ class TestMessageService:
         message = self._create_test_message(db_session_with_containers, app, conversation, account, fake)
 
         # Create initial feedback
-        initial_rating = "like"
+        initial_rating = FeedbackRating.LIKE
         initial_content = fake.text(max_nb_chars=100)
         feedback = MessageService.create_feedback(
             app_model=app, message_id=message.id, user=account, rating=initial_rating, content=initial_content
         )
 
         # Update feedback
-        updated_rating = "dislike"
+        updated_rating = FeedbackRating.DISLIKE
         updated_content = fake.text(max_nb_chars=100)
         updated_feedback = MessageService.create_feedback(
             app_model=app, message_id=message.id, user=account, rating=updated_rating, content=updated_content
@@ -487,7 +492,11 @@ class TestMessageService:
 
         # Create initial feedback
         feedback = MessageService.create_feedback(
-            app_model=app, message_id=message.id, user=account, rating="like", content=fake.text(max_nb_chars=100)
+            app_model=app,
+            message_id=message.id,
+            user=account,
+            rating=FeedbackRating.LIKE,
+            content=fake.text(max_nb_chars=100),
         )
 
         # Delete feedback by setting rating to None
@@ -538,7 +547,7 @@ class TestMessageService:
                 app_model=app,
                 message_id=message.id,
                 user=account,
-                rating="like" if i % 2 == 0 else "dislike",
+                rating=FeedbackRating.LIKE if i % 2 == 0 else FeedbackRating.DISLIKE,
                 content=f"Feedback {i}: {fake.text(max_nb_chars=50)}",
             )
             feedbacks.append(feedback)
@@ -568,7 +577,11 @@ class TestMessageService:
             message = self._create_test_message(db_session_with_containers, app, conversation, account, fake)
 
             MessageService.create_feedback(
-                app_model=app, message_id=message.id, user=account, rating="like", content=f"Feedback {i}"
+                app_model=app,
+                message_id=message.id,
+                user=account,
+                rating=FeedbackRating.LIKE,
+                content=f"Feedback {i}",
             )
 
         # Get feedbacks with pagination

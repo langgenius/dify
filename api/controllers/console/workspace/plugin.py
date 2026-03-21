@@ -5,6 +5,7 @@ from typing import Any, Literal
 from flask import request, send_file
 from flask_restx import Resource
 from pydantic import BaseModel, Field
+from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
@@ -169,6 +170,20 @@ register_enum_models(
 )
 
 
+def _read_upload_content(file: FileStorage, max_size: int) -> bytes:
+    """
+    Read the uploaded file and validate its actual size before delegating to the plugin service.
+
+    FileStorage.content_length is not reliable for multipart test uploads and may be zero even when
+    content exists, so the controllers validate against the loaded bytes instead.
+    """
+    content = file.read()
+    if len(content) > max_size:
+        raise ValueError("File size exceeds the maximum allowed size")
+
+    return content
+
+
 @console_ns.route("/workspaces/current/plugin/debugging-key")
 class PluginDebuggingKeyApi(Resource):
     @setup_required
@@ -284,12 +299,7 @@ class PluginUploadFromPkgApi(Resource):
         _, tenant_id = current_account_with_tenant()
 
         file = request.files["pkg"]
-
-        # check file size
-        if file.content_length > dify_config.PLUGIN_MAX_PACKAGE_SIZE:
-            raise ValueError("File size exceeds the maximum allowed size")
-
-        content = file.read()
+        content = _read_upload_content(file, dify_config.PLUGIN_MAX_PACKAGE_SIZE)
         try:
             response = PluginService.upload_pkg(tenant_id, content)
         except PluginDaemonClientSideError as e:
@@ -328,12 +338,7 @@ class PluginUploadFromBundleApi(Resource):
         _, tenant_id = current_account_with_tenant()
 
         file = request.files["bundle"]
-
-        # check file size
-        if file.content_length > dify_config.PLUGIN_MAX_BUNDLE_SIZE:
-            raise ValueError("File size exceeds the maximum allowed size")
-
-        content = file.read()
+        content = _read_upload_content(file, dify_config.PLUGIN_MAX_BUNDLE_SIZE)
         try:
             response = PluginService.upload_bundle(tenant_id, content)
         except PluginDaemonClientSideError as e:

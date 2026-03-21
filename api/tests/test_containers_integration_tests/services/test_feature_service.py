@@ -358,10 +358,9 @@ class TestFeatureService:
         assert result is not None
         assert isinstance(result, SystemFeatureModel)
 
-        # --- 1. Verify Response Payload Optimization (Data Minimization) ---
-        # Ensure only essential UI flags are returned to unauthenticated clients
-        # to keep the payload lightweight and adhere to architectural boundaries.
-        assert result.license.status == LicenseStatus.NONE
+        # --- 1. Verify only license *status* is exposed to unauthenticated clients ---
+        # Detailed license info (expiry, workspaces) remains auth-gated.
+        assert result.license.status == LicenseStatus.ACTIVE
         assert result.license.expired_at == ""
         assert result.license.workspaces.enabled is False
         assert result.license.workspaces.limit == 0

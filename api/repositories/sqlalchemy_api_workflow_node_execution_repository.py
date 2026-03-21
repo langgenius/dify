@@ -8,7 +8,7 @@ using SQLAlchemy 2.0 style queries for WorkflowNodeExecutionModel operations.
 import json
 from collections.abc import Sequence
 from datetime import datetime
-from typing import cast
+from typing import Protocol, cast
 
 from sqlalchemy import asc, delete, desc, func, select
 from sqlalchemy.engine import CursorResult
@@ -20,6 +20,20 @@ from repositories.api_workflow_node_execution_repository import (
     DifyAPIWorkflowNodeExecutionRepository,
     WorkflowNodeExecutionSnapshot,
 )
+
+
+class _WorkflowNodeExecutionSnapshotRow(Protocol):
+    id: str
+    node_execution_id: str | None
+    node_id: str
+    node_type: str
+    title: str
+    index: int
+    status: WorkflowNodeExecutionStatus
+    elapsed_time: float | None
+    created_at: datetime
+    finished_at: datetime | None
+    execution_metadata: str | None
 
 
 class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRepository):
@@ -39,6 +53,8 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
     - Maintenance operations for data lifecycle management
     - Thread-safe database operations using session-per-request pattern
     """
+
+    _session_maker: sessionmaker[Session]
 
     def __init__(self, session_maker: sessionmaker[Session]):
         """
@@ -156,12 +172,12 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
         )
 
         with self._session_maker() as session:
-            rows = session.execute(stmt).all()
+            rows = cast(Sequence[_WorkflowNodeExecutionSnapshotRow], session.execute(stmt).all())
 
         return [self._row_to_snapshot(row) for row in rows]
 
     @staticmethod
-    def _row_to_snapshot(row: object) -> WorkflowNodeExecutionSnapshot:
+    def _row_to_snapshot(row: _WorkflowNodeExecutionSnapshotRow) -> WorkflowNodeExecutionSnapshot:
         metadata: dict[str, object] = {}
         execution_metadata = getattr(row, "execution_metadata", None)
         if execution_metadata:

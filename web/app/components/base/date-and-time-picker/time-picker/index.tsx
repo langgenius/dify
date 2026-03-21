@@ -53,6 +53,7 @@ const TimePicker = ({
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
+      /* v8 ignore next 2 -- outside-click closing is handled by PortalToFollowElem; this local ref guard is a defensive fallback. */
       if (containerRef.current && !containerRef.current.contains(event.target as Node))
         setIsOpen(false)
     }

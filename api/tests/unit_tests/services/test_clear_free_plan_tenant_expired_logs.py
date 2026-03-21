@@ -258,38 +258,38 @@ def test_process_tenant_processes_all_batches(monkeypatch: pytest.MonkeyPatch) -
         return q
 
     msg_session_1 = MagicMock()
-    msg_session_1.query.side_effect = (
-        lambda model: make_query_with_batches([[msg1], []]) if model == service_module.Message else MagicMock()
+    msg_session_1.query.side_effect = lambda model: (
+        make_query_with_batches([[msg1], []]) if model == service_module.Message else MagicMock()
     )
     msg_session_1.commit.return_value = None
 
     msg_session_2 = MagicMock()
-    msg_session_2.query.side_effect = (
-        lambda model: make_query_with_batches([[]]) if model == service_module.Message else MagicMock()
+    msg_session_2.query.side_effect = lambda model: (
+        make_query_with_batches([[]]) if model == service_module.Message else MagicMock()
     )
     msg_session_2.commit.return_value = None
 
     conv_session_1 = MagicMock()
-    conv_session_1.query.side_effect = (
-        lambda model: make_query_with_batches([[conv1], []]) if model == service_module.Conversation else MagicMock()
+    conv_session_1.query.side_effect = lambda model: (
+        make_query_with_batches([[conv1], []]) if model == service_module.Conversation else MagicMock()
     )
     conv_session_1.commit.return_value = None
 
     conv_session_2 = MagicMock()
-    conv_session_2.query.side_effect = (
-        lambda model: make_query_with_batches([[]]) if model == service_module.Conversation else MagicMock()
+    conv_session_2.query.side_effect = lambda model: (
+        make_query_with_batches([[]]) if model == service_module.Conversation else MagicMock()
     )
     conv_session_2.commit.return_value = None
 
     wal_session_1 = MagicMock()
-    wal_session_1.query.side_effect = (
-        lambda model: make_query_with_batches([[log1], []]) if model == service_module.WorkflowAppLog else MagicMock()
+    wal_session_1.query.side_effect = lambda model: (
+        make_query_with_batches([[log1], []]) if model == service_module.WorkflowAppLog else MagicMock()
     )
     wal_session_1.commit.return_value = None
 
     wal_session_2 = MagicMock()
-    wal_session_2.query.side_effect = (
-        lambda model: make_query_with_batches([[]]) if model == service_module.WorkflowAppLog else MagicMock()
+    wal_session_2.query.side_effect = lambda model: (
+        make_query_with_batches([[]]) if model == service_module.WorkflowAppLog else MagicMock()
     )
     wal_session_2.commit.return_value = None
 

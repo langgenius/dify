@@ -6,6 +6,7 @@ from typing import Any
 
 from core.agent.base_agent_runner import BaseAgentRunner
 from core.agent.entities import AgentScratchpadUnit
+from core.agent.errors import AgentMaxIterationError
 from core.agent.output_parser.cot_output_parser import CotAgentOutputParser
 from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.entities.queue_entities import QueueAgentThoughtEvent, QueueMessageEndEvent, QueueMessageFileEvent
@@ -22,7 +23,6 @@ from dify_graph.model_runtime.entities.message_entities import (
     ToolPromptMessage,
     UserPromptMessage,
 )
-from dify_graph.nodes.agent.exc import AgentMaxIterationError
 from models.model import Message
 
 logger = logging.getLogger(__name__)

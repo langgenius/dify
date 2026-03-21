@@ -23,7 +23,7 @@ import {
 import { submitHumanInputForm as submitHumanInputFormService } from '@/service/workflow'
 import { TransferMethod } from '@/types/app'
 import { cn } from '@/utils/classnames'
-import Avatar from '../../avatar'
+import { Avatar } from '../../avatar'
 import Chat from '../chat'
 import { useChat } from '../chat/hooks'
 import { getLastAnswer, isValidGeneratedAnswer } from '../utils'
@@ -337,7 +337,7 @@ const ChatWrapper = () => {
               <Avatar
                 avatar={initUserVariables.avatar_url}
                 name={initUserVariables.name || 'user'}
-                size={40}
+                size="xl"
               />
             )
           : undefined

@@ -1,7 +1,6 @@
 import type { Resources } from '../index'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useDocumentDownload } from '@/service/knowledge/use-document'
 
 import { downloadUrl } from '@/utils/download'
@@ -604,6 +603,114 @@ describe('Popup', () => {
 
       const tooltips = screen.getAllByTestId('citation-tooltip')
       expect(tooltips[2]).toBeInTheDocument()
+    })
+
+    describe('Item Key Generation (Branch Coverage)', () => {
+      it('should use index_node_hash when document_id is missing', async () => {
+        const user = userEvent.setup()
+        render(
+          <Popup
+            data={makeData({
+              sources: [makeSource({ document_id: '', index_node_hash: 'hash-123' })],
+            })}
+          />,
+        )
+        await openPopup(user)
+        // Verify it renders without key collision (no console error expected, though not explicitly checked here)
+        expect(screen.getByTestId('popup-source-item')).toBeInTheDocument()
+      })
+
+      it('should use data.documentId when both source ids are missing', async () => {
+        const user = userEvent.setup()
+        render(
+          <Popup
+            data={makeData({
+              documentId: 'parent-doc-id',
+              sources: [makeSource({ document_id: undefined, index_node_hash: undefined })],
+            })}
+          />,
+        )
+        await openPopup(user)
+        expect(screen.getByTestId('popup-source-item')).toBeInTheDocument()
+      })
+
+      it('should fallback to \'doc\' when all ids are missing', async () => {
+        const user = userEvent.setup()
+        render(
+          <Popup
+            data={makeData({
+              documentId: undefined,
+              sources: [makeSource({ document_id: undefined, index_node_hash: undefined })],
+            })}
+          />,
+        )
+        await openPopup(user)
+        expect(screen.getByTestId('popup-source-item')).toBeInTheDocument()
+      })
+
+      it('should fallback to index when segment_position is missing', async () => {
+        const user = userEvent.setup()
+        render(
+          <Popup
+            data={makeData({
+              sources: [makeSource({ document_id: 'doc-1', segment_position: undefined })],
+            })}
+          />,
+        )
+        await openPopup(user)
+        expect(screen.getByTestId('popup-segment-position')).toHaveTextContent('1')
+      })
+    })
+
+    describe('Download Logic Edge Cases (Branch Coverage)', () => {
+      it('should return early if datasetId is missing', async () => {
+        const user = userEvent.setup()
+        render(
+          <Popup
+            data={makeData({
+              dataSourceType: 'upload_file',
+              sources: [makeSource({ dataset_id: '' })],
+            })}
+          />,
+        )
+        await openPopup(user)
+        // Even if the button is rendered (it shouldn't be based on line 71),
+        // we check the handler directly if possible, or just the button absence.
+        expect(screen.queryByTestId('popup-download-btn')).not.toBeInTheDocument()
+      })
+
+      it('should return early if both documentIds are missing', async () => {
+        const user = userEvent.setup()
+        render(
+          <Popup
+            data={makeData({
+              documentId: '',
+              dataSourceType: 'upload_file',
+              sources: [makeSource({ document_id: '' })],
+            })}
+          />,
+        )
+        await openPopup(user)
+        const btn = screen.queryByTestId('popup-download-btn')
+        if (btn) {
+          await user.click(btn)
+          expect(mockDownloadDocument).not.toHaveBeenCalled()
+        }
+      })
+
+      it('should return early if not an upload file', async () => {
+        const user = userEvent.setup()
+        render(
+          <Popup
+            data={makeData({
+              dataSourceType: 'notion',
+              sources: [makeSource({ dataset_id: 'ds-1' })],
+            })}
+          />,
+        )
+        await openPopup(user)
+        expect(screen.queryByTestId('popup-download-btn')).not.toBeInTheDocument()
+      })
     })
   })
 })

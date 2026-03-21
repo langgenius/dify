@@ -115,6 +115,41 @@ describe('Input component', () => {
     expect(input).toBeInTheDocument()
   })
 
+  describe('Additional Layout Branches', () => {
+    it('applies pl-7 when showLeftIcon and size is large', () => {
+      render(<Input showLeftIcon size="large" />)
+      const input = screen.getByRole('textbox')
+      expect(input).toHaveClass('pl-7')
+    })
+
+    it('applies pr-7 when showClearIcon, has value, and size is large', () => {
+      render(<Input showClearIcon value="123" size="large" onChange={vi.fn()} />)
+      const input = screen.getByRole('textbox')
+      expect(input).toHaveClass('pr-7')
+    })
+
+    it('applies pr-7 when destructive and size is large', () => {
+      render(<Input destructive size="large" />)
+      const input = screen.getByRole('textbox')
+      expect(input).toHaveClass('pr-7')
+    })
+
+    it('shows copy icon and applies pr-[26px] when showCopyIcon is true', () => {
+      render(<Input showCopyIcon />)
+      const input = screen.getByRole('textbox')
+      expect(input).toHaveClass('pr-[26px]')
+      // Assert that CopyFeedbackNew wrapper is present
+      const copyWrapper = document.querySelector('.group.absolute.right-0')
+      expect(copyWrapper).toBeInTheDocument()
+    })
+
+    it('shows copy icon and applies pr-7 when showCopyIcon and size is large', () => {
+      render(<Input showCopyIcon size="large" value="my-val" onChange={vi.fn()} />)
+      const input = screen.getByRole('textbox')
+      expect(input).toHaveClass('pr-7')
+    })
+  })
+
   describe('Number Input Formatting', () => {
     it('removes leading zeros on change when current value is zero', () => {
       let changedValue = ''
@@ -128,6 +163,17 @@ describe('Input component', () => {
 
       expect(onChange).toHaveBeenCalledTimes(1)
       expect(changedValue).toBe('42')
+    })
+
+    it('does not normalize when value is 0 and input value is already normalized', () => {
+      const onChange = vi.fn()
+      render(<Input type="number" value={0} onChange={onChange} />)
+
+      const input = screen.getByRole('spinbutton') as HTMLInputElement
+      // The event value ('1') is already normalized, preventing e.target.value reassignment
+      fireEvent.change(input, { target: { value: '1' } })
+
+      expect(onChange).toHaveBeenCalledTimes(1)
     })
 
     it('keeps typed value on change when current value is not zero', () => {

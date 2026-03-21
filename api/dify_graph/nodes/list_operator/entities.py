@@ -3,7 +3,8 @@ from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
-from dify_graph.nodes.base import BaseNodeData
+from dify_graph.entities.base_node_data import BaseNodeData
+from dify_graph.enums import BuiltinNodeTypes, NodeType
 
 
 class FilterOperator(StrEnum):
@@ -62,6 +63,7 @@ class ExtractConfig(BaseModel):
 
 
 class ListOperatorNodeData(BaseNodeData):
+    type: NodeType = BuiltinNodeTypes.LIST_OPERATOR
     variable: Sequence[str] = Field(default_factory=list)
     filter_by: FilterBy
     order_by: OrderByConfig

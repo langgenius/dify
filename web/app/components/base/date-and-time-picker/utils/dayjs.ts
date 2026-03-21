@@ -112,6 +112,7 @@ export const convertTimezoneToOffsetStr = (timezone?: string) => {
   // Extract offset from name format like "-11:00 Niue Time" or "+05:30 India Time"
   // Name format is always "{offset}:{minutes} {timezone name}"
   const offsetMatch = /^([+-]?\d{1,2}):(\d{2})/.exec(tzItem.name)
+  /* v8 ignore next 2 -- timezone.json entries are normalized to "{offset} {name}"; this protects against malformed data only. */
   if (!offsetMatch)
     return DEFAULT_OFFSET_STR
   // Parse hours and minutes separately
@@ -141,6 +142,7 @@ const normalizeMillisecond = (value: string | undefined) => {
     return 0
   if (value.length === 3)
     return Number(value)
+  /* v8 ignore next 2 -- TIME_ONLY_REGEX allows at most 3 fractional digits, so >3 can only occur after future regex changes. */
   if (value.length > 3)
     return Number(value.slice(0, 3))
   return Number(value.padEnd(3, '0'))

@@ -88,7 +88,7 @@ def test_overwrite_string_variable():
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
     )
-    graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
+    graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
 
     node_config = {
         "id": "node_id",
@@ -188,7 +188,7 @@ def test_append_variable_to_array():
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
     )
-    graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
+    graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
 
     node_config = {
         "id": "node_id",
@@ -277,7 +277,7 @@ def test_clear_array():
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
     )
-    graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
+    graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
 
     node_config = {
         "id": "node_id",

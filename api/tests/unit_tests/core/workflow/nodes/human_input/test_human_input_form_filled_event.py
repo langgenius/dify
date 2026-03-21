@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY, GraphInitParams
-from dify_graph.enums import NodeType
+from dify_graph.enums import BuiltinNodeTypes
 from dify_graph.graph_events import (
     NodeRunHumanInputFormFilledEvent,
     NodeRunHumanInputFormTimeoutEvent,
@@ -47,7 +47,7 @@ def _build_node(form_content: str = "Please enter your name:\n\n{{#$output.name#
 
     config = {
         "id": "node-1",
-        "type": NodeType.HUMAN_INPUT.value,
+        "type": BuiltinNodeTypes.HUMAN_INPUT,
         "data": {
             "title": "Human Input",
             "form_content": form_content,
@@ -111,7 +111,7 @@ def _build_timeout_node() -> HumanInputNode:
 
     config = {
         "id": "node-1",
-        "type": NodeType.HUMAN_INPUT.value,
+        "type": BuiltinNodeTypes.HUMAN_INPUT,
         "data": {
             "title": "Human Input",
             "form_content": "Please enter your name:\n\n{{#$output.name#}}",

@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from models import Account
+from models.enums import ConversationFromSource, MessageFileBelongsTo
 from models.model import AppModelConfig, Conversation, EndUser, Message, MessageAgentThought
 from services.account_service import AccountService, TenantService
 from services.agent_service import AgentService
@@ -164,7 +165,7 @@ class TestAgentService:
             inputs={},
             status="normal",
             mode="chat",
-            from_source="api",
+            from_source=ConversationFromSource.API,
         )
         db_session_with_containers.add(conversation)
         db_session_with_containers.commit()
@@ -203,7 +204,7 @@ class TestAgentService:
             answer_unit_price=0.001,
             provider_response_latency=1.5,
             currency="USD",
-            from_source="api",
+            from_source=ConversationFromSource.API,
         )
         db_session_with_containers.add(message)
         db_session_with_containers.commit()
@@ -405,7 +406,7 @@ class TestAgentService:
             inputs={},
             status="normal",
             mode="chat",
-            from_source="api",
+            from_source=ConversationFromSource.API,
         )
         db_session_with_containers.add(conversation)
         db_session_with_containers.commit()
@@ -444,7 +445,7 @@ class TestAgentService:
             answer_unit_price=0.001,
             provider_response_latency=1.5,
             currency="USD",
-            from_source="api",
+            from_source=ConversationFromSource.API,
         )
         db_session_with_containers.add(message)
         db_session_with_containers.commit()
@@ -477,7 +478,7 @@ class TestAgentService:
             inputs={},
             status="normal",
             mode="chat",
-            from_source="api",
+            from_source=ConversationFromSource.API,
         )
         db_session_with_containers.add(conversation)
         db_session_with_containers.commit()
@@ -516,7 +517,7 @@ class TestAgentService:
             answer_unit_price=0.001,
             provider_response_latency=1.5,
             currency="USD",
-            from_source="api",
+            from_source=ConversationFromSource.API,
         )
         db_session_with_containers.add(message)
         db_session_with_containers.commit()
@@ -623,7 +624,7 @@ class TestAgentService:
             inputs={},
             status="normal",
             mode="chat",
-            from_source="api",
+            from_source=ConversationFromSource.API,
             app_model_config_id=None,  # Explicitly set to None
         )
         db_session_with_containers.add(conversation)
@@ -646,7 +647,7 @@ class TestAgentService:
             answer_unit_price=0.001,
             provider_response_latency=1.5,
             currency="USD",
-            from_source="api",
+            from_source=ConversationFromSource.API,
         )
         db_session_with_containers.add(message)
         db_session_with_containers.commit()
@@ -852,7 +853,7 @@ class TestAgentService:
             type=FileType.IMAGE,
             transfer_method=FileTransferMethod.REMOTE_URL,
             url="http://example.com/file1.jpg",
-            belongs_to="user",
+            belongs_to=MessageFileBelongsTo.USER,
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=message.from_account_id,
         )
@@ -861,7 +862,7 @@ class TestAgentService:
             type=FileType.IMAGE,
             transfer_method=FileTransferMethod.REMOTE_URL,
             url="http://example.com/file2.png",
-            belongs_to="user",
+            belongs_to=MessageFileBelongsTo.USER,
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=message.from_account_id,
         )

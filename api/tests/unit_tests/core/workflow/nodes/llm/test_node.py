@@ -34,8 +34,8 @@ from dify_graph.nodes.llm.entities import (
     VisionConfigOptions,
 )
 from dify_graph.nodes.llm.file_saver import LLMFileSaver
-from dify_graph.nodes.llm.node import LLMNode, _handle_memory_completion_mode
-from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory
+from dify_graph.nodes.llm.node import LLMNode
+from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory, TemplateRenderer
 from dify_graph.runtime import GraphRuntimeState, VariablePool
 from dify_graph.system_variable import SystemVariable
 from dify_graph.variables import ArrayAnySegment, ArrayFileSegment, NoneSegment
@@ -107,6 +107,7 @@ def llm_node(
     mock_file_saver = mock.MagicMock(spec=LLMFileSaver)
     mock_credentials_provider = mock.MagicMock(spec=CredentialsProvider)
     mock_model_factory = mock.MagicMock(spec=ModelFactory)
+    mock_template_renderer = mock.MagicMock(spec=TemplateRenderer)
     node_config = {
         "id": "1",
         "data": llm_node_data.model_dump(),
@@ -121,6 +122,7 @@ def llm_node(
         model_factory=mock_model_factory,
         model_instance=mock.MagicMock(spec=ModelInstance),
         llm_file_saver=mock_file_saver,
+        template_renderer=mock_template_renderer,
         http_client=http_client,
     )
     return node
@@ -590,6 +592,33 @@ def test_handle_list_messages_basic(llm_node):
     assert result[0].content == [TextPromptMessageContent(data="Hello, world")]
 
 
+def test_handle_list_messages_jinja2_uses_template_renderer(llm_node):
+    llm_node._template_renderer.render_jinja2.return_value = "Hello, world"
+    messages = [
+        LLMNodeChatModelMessage(
+            text="",
+            jinja2_text="Hello, {{ name }}",
+            role=PromptMessageRole.USER,
+            edition_type="jinja2",
+        )
+    ]
+
+    result = llm_node.handle_list_messages(
+        messages=messages,
+        context=None,
+        jinja2_variables=[],
+        variable_pool=llm_node.graph_runtime_state.variable_pool,
+        vision_detail_config=ImagePromptMessageContent.DETAIL.HIGH,
+        template_renderer=llm_node._template_renderer,
+    )
+
+    assert result == [UserPromptMessage(content=[TextPromptMessageContent(data="Hello, world")])]
+    llm_node._template_renderer.render_jinja2.assert_called_once_with(
+        template="Hello, {{ name }}",
+        inputs={},
+    )
+
+
 def test_handle_memory_completion_mode_uses_prompt_message_interface():
     memory = mock.MagicMock(spec=MockTokenBufferMemory)
     memory.get_history_prompt_messages.return_value = [
@@ -613,8 +642,8 @@ def test_handle_memory_completion_mode_uses_prompt_message_interface():
         window=MemoryConfig.WindowConfig(enabled=True, size=3),
     )
 
-    with mock.patch("dify_graph.nodes.llm.node._calculate_rest_token", return_value=2000) as mock_rest_token:
-        memory_text = _handle_memory_completion_mode(
+    with mock.patch("dify_graph.nodes.llm.llm_utils.calculate_rest_token", return_value=2000) as mock_rest_token:
+        memory_text = llm_utils.handle_memory_completion_mode(
             memory=memory,
             memory_config=memory_config,
             model_instance=model_instance,
@@ -630,6 +659,7 @@ def llm_node_for_multimodal(llm_node_data, graph_init_params, graph_runtime_stat
     mock_file_saver: LLMFileSaver = mock.MagicMock(spec=LLMFileSaver)
     mock_credentials_provider = mock.MagicMock(spec=CredentialsProvider)
     mock_model_factory = mock.MagicMock(spec=ModelFactory)
+    mock_template_renderer = mock.MagicMock(spec=TemplateRenderer)
     node_config = {
         "id": "1",
         "data": llm_node_data.model_dump(),
@@ -644,6 +674,7 @@ def llm_node_for_multimodal(llm_node_data, graph_init_params, graph_runtime_stat
         model_factory=mock_model_factory,
         model_instance=mock.MagicMock(spec=ModelInstance),
         llm_file_saver=mock_file_saver,
+        template_renderer=mock_template_renderer,
         http_client=http_client,
     )
     return node, mock_file_saver

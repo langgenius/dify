@@ -77,6 +77,8 @@
   "externalKnowledgeDescriptionPlaceholder": "Bu Bilgi Bankası'nda neler olduğunu açıklayın (isteğe bağlı)",
   "externalKnowledgeForm.cancel": "İptal",
   "externalKnowledgeForm.connect": "Bağlamak",
+  "externalKnowledgeForm.connectedFailed": "Harici Bilgi Tabanına bağlanılamadı",
+  "externalKnowledgeForm.connectedSuccess": "Harici Bilgi Tabanı başarıyla bağlandı",
   "externalKnowledgeId": "Harici Bilgi Kimliği",
   "externalKnowledgeIdPlaceholder": "Lütfen Bilgi Kimliğini girin",
   "externalKnowledgeName": "Dış Bilgi Adı",

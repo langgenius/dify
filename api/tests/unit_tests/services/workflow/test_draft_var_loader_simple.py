@@ -24,7 +24,11 @@ class TestDraftVarLoaderSimple:
     def draft_var_loader(self, mock_engine):
         """Create DraftVarLoader instance for testing."""
         return DraftVarLoader(
-            engine=mock_engine, app_id="test-app-id", tenant_id="test-tenant-id", fallback_variables=[]
+            engine=mock_engine,
+            app_id="test-app-id",
+            tenant_id="test-tenant-id",
+            user_id="test-user-id",
+            fallback_variables=[],
         )
 
     def test_load_offloaded_variable_string_type_unit(self, draft_var_loader):
@@ -323,7 +327,9 @@ class TestDraftVarLoaderSimple:
 
                                     # Verify service method was called
                                     mock_service.get_draft_variables_by_selectors.assert_called_once_with(
-                                        draft_var_loader._app_id, selectors
+                                        draft_var_loader._app_id,
+                                        selectors,
+                                        user_id=draft_var_loader._user_id,
                                     )
 
                                     # Verify offloaded variable loading was called

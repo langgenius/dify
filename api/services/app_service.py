@@ -19,7 +19,7 @@ from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_user
 from models import Account
-from models.model import App, AppMode, AppModelConfig, Site
+from models.model import App, AppMode, AppModelConfig, IconType, Site
 from models.tools import ApiToolProvider
 from services.billing_service import BillingService
 from services.enterprise.enterprise_service import EnterpriseService
@@ -187,7 +187,10 @@ class AppService:
             for tool in agent_mode.get("tools") or []:
                 if not isinstance(tool, dict) or len(tool.keys()) <= 3:
                     continue
-                agent_tool_entity = AgentToolEntity(**cast(dict[str, Any], tool))
+                typed_tool = {key: value for key, value in tool.items() if isinstance(key, str)}
+                if len(typed_tool) != len(tool):
+                    continue
+                agent_tool_entity = AgentToolEntity.model_validate(typed_tool)
                 # get tool
                 try:
                     tool_runtime = ToolManager.get_agent_tool_runtime(
@@ -254,7 +257,7 @@ class AppService:
         assert current_user is not None
         app.name = args["name"]
         app.description = args["description"]
-        app.icon_type = args["icon_type"]
+        app.icon_type = IconType(args["icon_type"]) if args["icon_type"] else None
         app.icon = args["icon"]
         app.icon_background = args["icon_background"]
         app.use_icon_as_answer_icon = args.get("use_icon_as_answer_icon", False)

@@ -28,7 +28,7 @@ from core.ops.langsmith_trace.entities.langsmith_trace_entity import (
 )
 from core.ops.utils import filter_none_values, generate_dotted_order
 from core.repositories import DifyCoreRepositoryFactory
-from dify_graph.enums import NodeType, WorkflowNodeExecutionMetadataKey
+from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 from extensions.ext_database import db
 from models import EndUser, MessageFile, WorkflowNodeExecutionTriggeredFrom
 
@@ -163,7 +163,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             node_name = node_execution.title
             node_type = node_execution.node_type
             status = node_execution.status
-            if node_type == NodeType.LLM:
+            if node_type == BuiltinNodeTypes.LLM:
                 inputs = node_execution.process_data.get("prompts", {}) if node_execution.process_data else {}
             else:
                 inputs = node_execution.inputs or {}
@@ -197,7 +197,7 @@ class LangSmithDataTrace(BaseTraceInstance):
                         "ls_model_name": process_data.get("model_name", ""),
                     }
                 )
-            elif node_type == NodeType.KNOWLEDGE_RETRIEVAL:
+            elif node_type == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
                 run_type = LangSmithRunType.retriever
             else:
                 run_type = LangSmithRunType.tool

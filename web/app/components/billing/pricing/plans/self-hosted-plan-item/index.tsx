@@ -4,9 +4,9 @@ import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Azure, GoogleCloud } from '@/app/components/base/icons/src/public/billing'
+import { toast } from '@/app/components/base/ui/toast'
 import { useAppContext } from '@/context/app-context'
 import { cn } from '@/utils/classnames'
-import Toast from '../../../../base/toast'
 import { contactSalesUrl, getStartedWithCommunityUrl, getWithPremiumUrl } from '../../../config'
 import { SelfHostedPlan } from '../../../type'
 import { Community, Enterprise, EnterpriseNoise, Premium, PremiumNoise } from '../../assets'
@@ -56,11 +56,7 @@ const SelfHostedPlanItem: FC<SelfHostedPlanItemProps> = ({
   const handleGetPayUrl = useCallback(() => {
     // Only workspace manager can buy plan
     if (!isCurrentWorkspaceManager) {
-      Toast.notify({
-        type: 'error',
-        message: t('buyPermissionDeniedTip', { ns: 'billing' }),
-        className: 'z-[1001]',
-      })
+      toast.error(t('buyPermissionDeniedTip', { ns: 'billing' }))
       return
     }
     if (isFreePlan) {
@@ -82,18 +78,18 @@ const SelfHostedPlanItem: FC<SelfHostedPlanItemProps> = ({
       {/* Noise Effect */}
       {STYLE_MAP[plan].noise}
       <div className="flex flex-col px-5 py-4">
-        <div className=" flex flex-col gap-y-6 px-1 pt-10">
+        <div className="flex flex-col gap-y-6 px-1 pt-10">
           {STYLE_MAP[plan].icon}
           <div className="flex min-h-[104px] flex-col gap-y-2">
             <div className="text-[30px] font-medium leading-[1.2] text-text-primary">{t(`${i18nPrefix}.name`, { ns: 'billing' })}</div>
-            <div className="system-md-regular line-clamp-2 text-text-secondary">{t(`${i18nPrefix}.description`, { ns: 'billing' })}</div>
+            <div className="line-clamp-2 text-text-secondary system-md-regular">{t(`${i18nPrefix}.description`, { ns: 'billing' })}</div>
           </div>
         </div>
         {/* Price */}
         <div className="flex items-end gap-x-2 px-1 pb-8 pt-4">
-          <div className="title-4xl-semi-bold shrink-0 text-text-primary">{t(`${i18nPrefix}.price`, { ns: 'billing' })}</div>
+          <div className="shrink-0 text-text-primary title-4xl-semi-bold">{t(`${i18nPrefix}.price`, { ns: 'billing' })}</div>
           {!isFreePlan && (
-            <span className="system-md-regular pb-0.5 text-text-tertiary">
+            <span className="pb-0.5 text-text-tertiary system-md-regular">
               {t(`${i18nPrefix}.priceTip`, { ns: 'billing' })}
             </span>
           )}
@@ -114,7 +110,7 @@ const SelfHostedPlanItem: FC<SelfHostedPlanItemProps> = ({
               <GoogleCloud />
             </div>
           </div>
-          <span className="system-xs-regular text-text-tertiary">
+          <span className="text-text-tertiary system-xs-regular">
             {t('plans.premium.comingSoon', { ns: 'billing' })}
           </span>
         </div>

@@ -140,7 +140,7 @@ class TestLoginRequired:
 
         # Remove ensure_sync to simulate Flask 1.x
         if hasattr(setup_app, "ensure_sync"):
-            delattr(setup_app, "ensure_sync")
+            del setup_app.ensure_sync
 
         with setup_app.test_request_context():
             mock_user = MockUser("test_user", is_authenticated=True)

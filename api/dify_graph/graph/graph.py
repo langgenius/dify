@@ -8,7 +8,7 @@ from typing import Protocol, cast, final
 from pydantic import TypeAdapter
 
 from dify_graph.entities.graph_config import NodeConfigDict
-from dify_graph.enums import ErrorStrategy, NodeExecutionType, NodeState, NodeType
+from dify_graph.enums import ErrorStrategy, NodeExecutionType, NodeState
 from dify_graph.nodes.base.node import Node
 from libs.typing import is_str
 
@@ -34,7 +34,8 @@ class NodeFactory(Protocol):
 
         :param node_config: node configuration dictionary containing type and other data
         :return: initialized Node instance
-        :raises ValueError: if node type is unknown or configuration is invalid
+        :raises ValueError: if node type is unknown or no implementation exists for the resolved version
+        :raises ValidationError: if node_config does not satisfy NodeConfigDict/BaseNodeData validation
         """
         ...
 
@@ -81,53 +82,6 @@ class Graph:
             node_configs_map[node_config["id"]] = node_config
 
         return node_configs_map
-
-    @classmethod
-    def _find_root_node_id(
-        cls,
-        node_configs_map: Mapping[str, NodeConfigDict],
-        edge_configs: Sequence[Mapping[str, object]],
-        root_node_id: str | None = None,
-    ) -> str:
-        """
-        Find the root node ID if not specified.
-
-        :param node_configs_map: mapping of node ID to node config
-        :param edge_configs: list of edge configurations
-        :param root_node_id: explicitly specified root node ID
-        :return: determined root node ID
-        """
-        if root_node_id:
-            if root_node_id not in node_configs_map:
-                raise ValueError(f"Root node id {root_node_id} not found in the graph")
-            return root_node_id
-
-        # Find nodes with no incoming edges
-        nodes_with_incoming: set[str] = set()
-        for edge_config in edge_configs:
-            target = edge_config.get("target")
-            if isinstance(target, str):
-                nodes_with_incoming.add(target)
-
-        root_candidates = [nid for nid in node_configs_map if nid not in nodes_with_incoming]
-
-        # Prefer START node if available
-        start_node_id = None
-        for nid in root_candidates:
-            node_data = node_configs_map[nid]["data"]
-            node_type = node_data["type"]
-            if not isinstance(node_type, str):
-                continue
-            if NodeType(node_type).is_start_node:
-                start_node_id = nid
-                break
-
-        root_node_id = start_node_id or (root_candidates[0] if root_candidates else None)
-
-        if not root_node_id:
-            raise ValueError("Unable to determine root node ID")
-
-        return root_node_id
 
     @classmethod
     def _build_edges(
@@ -202,6 +156,23 @@ class Graph:
         """Create a fluent builder for assembling a graph programmatically."""
 
         return GraphBuilder(graph_cls=cls)
+
+    @staticmethod
+    def _filter_canvas_only_nodes(node_configs: Sequence[Mapping[str, object]]) -> list[dict[str, object]]:
+        """
+        Remove editor-only nodes before `NodeConfigDict` validation.
+
+        Persisted note widgets use a top-level `type == "custom-note"` but leave
+        `data.type` empty because they are never executable graph nodes. Filter
+        them while configs are still raw dicts so Pydantic does not validate
+        their placeholder payloads against `BaseNodeData.type: NodeType`.
+        """
+        filtered_node_configs: list[dict[str, object]] = []
+        for node_config in node_configs:
+            if node_config.get("type", "") == "custom-note":
+                continue
+            filtered_node_configs.append(dict(node_config))
+        return filtered_node_configs
 
     @classmethod
     def _promote_fail_branch_nodes(cls, nodes: dict[str, Node]) -> None:
@@ -286,15 +257,15 @@ class Graph:
         *,
         graph_config: Mapping[str, object],
         node_factory: NodeFactory,
-        root_node_id: str | None = None,
+        root_node_id: str,
         skip_validation: bool = False,
     ) -> Graph:
         """
-        Initialize graph
+        Initialize a graph with an explicit execution entry point.
 
         :param graph_config: graph config containing nodes and edges
         :param node_factory: factory for creating node instances from config data
-        :param root_node_id: root node id
+        :param root_node_id: active root node id
         :return: graph instance
         """
         # Parse configs
@@ -302,18 +273,18 @@ class Graph:
         node_configs = graph_config.get("nodes", [])
 
         edge_configs = cast(list[dict[str, object]], edge_configs)
+        node_configs = cast(list[dict[str, object]], node_configs)
+        node_configs = cls._filter_canvas_only_nodes(node_configs)
         node_configs = _ListNodeConfigDict.validate_python(node_configs)
 
         if not node_configs:
             raise ValueError("Graph must have at least one node")
 
-        node_configs = [node_config for node_config in node_configs if node_config.get("type", "") != "custom-note"]
-
         # Parse node configurations
         node_configs_map = cls._parse_node_configs(node_configs)
 
-        # Find root node
-        root_node_id = cls._find_root_node_id(node_configs_map, edge_configs, root_node_id)
+        if root_node_id not in node_configs_map:
+            raise ValueError(f"Root node id {root_node_id} not found in the graph")
 
         # Build edges
         edges, in_edges, out_edges = cls._build_edges(edge_configs)
