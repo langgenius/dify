@@ -29,7 +29,10 @@ class RateLimit:
     def __init__(self, client_id: str, max_active_requests: int):
         flush_cache = hasattr(self, "max_active_requests") and self.max_active_requests != max_active_requests
         self.max_active_requests = max_active_requests
-        if flush_cache:
+        # Only flush here if this instance has already been fully initialized,
+        # i.e. the Redis key attributes exist. Otherwise, rely on the flush at
+        # the end of initialization below.
+        if flush_cache and hasattr(self, "active_requests_key") and hasattr(self, "max_active_requests_key"):
             self.flush_cache(use_local_value=True)
         # must be called after max_active_requests is set
         if self.disabled():
