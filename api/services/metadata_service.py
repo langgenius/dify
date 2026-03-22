@@ -7,6 +7,7 @@ from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_account_with_tenant
 from models.dataset import Dataset, DatasetMetadata, DatasetMetadataBinding
+from models.enums import DatasetMetadataType
 from services.dataset_service import DocumentService
 from services.entities.knowledge_entities.knowledge_entities import (
     MetadataArgs,
@@ -130,11 +131,11 @@ class MetadataService:
     @staticmethod
     def get_built_in_fields():
         return [
-            {"name": BuiltInField.document_name, "type": "string"},
-            {"name": BuiltInField.uploader, "type": "string"},
-            {"name": BuiltInField.upload_date, "type": "time"},
-            {"name": BuiltInField.last_update_date, "type": "time"},
-            {"name": BuiltInField.source, "type": "string"},
+            {"name": BuiltInField.document_name, "type": DatasetMetadataType.STRING},
+            {"name": BuiltInField.uploader, "type": DatasetMetadataType.STRING},
+            {"name": BuiltInField.upload_date, "type": DatasetMetadataType.TIME},
+            {"name": BuiltInField.last_update_date, "type": DatasetMetadataType.TIME},
+            {"name": BuiltInField.source, "type": DatasetMetadataType.STRING},
         ]
 
     @staticmethod

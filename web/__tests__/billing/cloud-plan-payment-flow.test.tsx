@@ -11,6 +11,7 @@ import type { BasicPlan } from '@/app/components/billing/type'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
+import { toast, ToastHost } from '@/app/components/base/ui/toast'
 import { ALL_PLANS } from '@/app/components/billing/config'
 import { PlanRange } from '@/app/components/billing/pricing/plan-switcher/plan-range-switcher'
 import CloudPlanItem from '@/app/components/billing/pricing/plans/cloud-plan-item'
@@ -21,7 +22,6 @@ let mockAppCtx: Record<string, unknown> = {}
 const mockFetchSubscriptionUrls = vi.fn()
 const mockInvoices = vi.fn()
 const mockOpenAsyncWindow = vi.fn()
-const mockToastNotify = vi.fn()
 
 // ─── Context mocks ───────────────────────────────────────────────────────────
 vi.mock('@/context/app-context', () => ({
@@ -49,12 +49,8 @@ vi.mock('@/hooks/use-async-window-open', () => ({
   useAsyncWindowOpen: () => mockOpenAsyncWindow,
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
-  default: { notify: (args: unknown) => mockToastNotify(args) },
-}))
-
 // ─── Navigation mocks ───────────────────────────────────────────────────────
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
   usePathname: () => '/billing',
   useSearchParams: () => new URLSearchParams(),
@@ -82,12 +78,15 @@ const renderCloudPlanItem = ({
   canPay = true,
 }: RenderCloudPlanItemOptions = {}) => {
   return render(
-    <CloudPlanItem
-      currentPlan={currentPlan}
-      plan={plan}
-      planRange={planRange}
-      canPay={canPay}
-    />,
+    <>
+      <ToastHost timeout={0} />
+      <CloudPlanItem
+        currentPlan={currentPlan}
+        plan={plan}
+        planRange={planRange}
+        canPay={canPay}
+      />
+    </>,
   )
 }
 
@@ -96,6 +95,7 @@ describe('Cloud Plan Payment Flow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     cleanup()
+    toast.dismiss()
     setupAppContext()
     mockFetchSubscriptionUrls.mockResolvedValue({ url: 'https://pay.example.com/checkout' })
     mockInvoices.mockResolvedValue({ url: 'https://billing.example.com/invoices' })
@@ -283,11 +283,7 @@ describe('Cloud Plan Payment Flow', () => {
       await user.click(button)
 
       await waitFor(() => {
-        expect(mockToastNotify).toHaveBeenCalledWith(
-          expect.objectContaining({
-            type: 'error',
-          }),
-        )
+        expect(screen.getByText('billing.buyPermissionDeniedTip')).toBeInTheDocument()
       })
       // Should not proceed with payment
       expect(mockFetchSubscriptionUrls).not.toHaveBeenCalled()

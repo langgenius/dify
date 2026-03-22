@@ -13,7 +13,11 @@ import { fetchWebhookUrl } from '@/service/apps'
 import { checkKeys, hasDuplicateStr } from '@/utils/var'
 import { WEBHOOK_RAW_VARIABLE_NAME } from './utils/raw-variable'
 
-const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
+export const DEFAULT_STATUS_CODE = 200
+export const MAX_STATUS_CODE = 399
+export const normalizeStatusCode = (statusCode: number) => Math.min(Math.max(statusCode, DEFAULT_STATUS_CODE), MAX_STATUS_CODE)
+
+export const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
   const { t } = useTranslation()
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const { inputs, setInputs } = useNodeCrud<WebhookTriggerNodeType>(id, payload)
@@ -192,15 +196,6 @@ const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
     }))
   }, [inputs, setInputs])
 
-  const handleStatusCodeBlur = useCallback((statusCode: number) => {
-    // Only clamp when user finishes editing (on blur)
-    const clampedStatusCode = Math.min(Math.max(statusCode, 200), 399)
-
-    setInputs(produce(inputs, (draft) => {
-      draft.status_code = clampedStatusCode
-    }))
-  }, [inputs, setInputs])
-
   const handleResponseBodyChange = useCallback((responseBody: string) => {
     setInputs(produce(inputs, (draft) => {
       draft.response_body = responseBody
@@ -247,10 +242,7 @@ const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
     handleBodyChange,
     handleAsyncModeChange,
     handleStatusCodeChange,
-    handleStatusCodeBlur,
     handleResponseBodyChange,
     generateWebhookUrl,
   }
 }
-
-export default useConfig

@@ -23,6 +23,9 @@ from .enums import AppTriggerStatus, AppTriggerType, CreatorUserRole, WorkflowTr
 from .model import Account
 from .types import EnumText, LongText, StringUUID
 
+TriggerJsonObject = dict[str, object]
+TriggerCredentials = dict[str, str]
+
 
 class WorkflowTriggerLogDict(TypedDict):
     id: str
@@ -89,10 +92,14 @@ class TriggerSubscription(TypeBase):
         String(255), nullable=False, comment="Provider identifier (e.g., plugin_id/provider_name)"
     )
     endpoint_id: Mapped[str] = mapped_column(String(255), nullable=False, comment="Subscription endpoint")
-    parameters: Mapped[dict[str, Any]] = mapped_column(sa.JSON, nullable=False, comment="Subscription parameters JSON")
-    properties: Mapped[dict[str, Any]] = mapped_column(sa.JSON, nullable=False, comment="Subscription properties JSON")
+    parameters: Mapped[TriggerJsonObject] = mapped_column(
+        sa.JSON, nullable=False, comment="Subscription parameters JSON"
+    )
+    properties: Mapped[TriggerJsonObject] = mapped_column(
+        sa.JSON, nullable=False, comment="Subscription properties JSON"
+    )
 
-    credentials: Mapped[dict[str, Any]] = mapped_column(
+    credentials: Mapped[TriggerCredentials] = mapped_column(
         sa.JSON, nullable=False, comment="Subscription credentials JSON"
     )
     credential_type: Mapped[str] = mapped_column(String(50), nullable=False, comment="oauth or api_key")
@@ -200,8 +207,8 @@ class TriggerOAuthTenantClient(TypeBase):
     )
 
     @property
-    def oauth_params(self) -> Mapping[str, Any]:
-        return cast(Mapping[str, Any], json.loads(self.encrypted_oauth_params or "{}"))
+    def oauth_params(self) -> Mapping[str, object]:
+        return cast(TriggerJsonObject, json.loads(self.encrypted_oauth_params or "{}"))
 
 
 class WorkflowTriggerLog(TypeBase):

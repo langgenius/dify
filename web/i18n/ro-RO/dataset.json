@@ -77,6 +77,8 @@
   "externalKnowledgeDescriptionPlaceholder": "Descrieți ce este în această bază de cunoștințe (opțional)",
   "externalKnowledgeForm.cancel": "Anula",
   "externalKnowledgeForm.connect": "Conecta",
+  "externalKnowledgeForm.connectedFailed": "Conectarea la baza de cunoștințe externă a eșuat",
+  "externalKnowledgeForm.connectedSuccess": "Baza de cunoștințe externă a fost conectată cu succes",
   "externalKnowledgeId": "ID de cunoștințe extern",
   "externalKnowledgeIdPlaceholder": "Vă rugăm să introduceți ID-ul de cunoștințe",
   "externalKnowledgeName": "Nume cunoștințe externe",

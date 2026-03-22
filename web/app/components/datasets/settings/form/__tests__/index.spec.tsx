@@ -127,6 +127,14 @@ vi.mock('@/service/use-common', () => ({
       ],
     },
   }),
+  useCurrentWorkspace: () => ({
+    data: {
+      trial_credits: 1000,
+      trial_credits_used: 100,
+      next_credit_reset_date: undefined,
+    },
+    isPending: false,
+  }),
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
@@ -189,6 +197,42 @@ vi.mock('@/app/components/base/toast', () => ({
 
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
+}))
+
+vi.mock('../components/indexing-section', () => ({
+  default: ({
+    currentDataset,
+    indexMethod,
+  }: {
+    currentDataset?: DataSet
+    indexMethod?: IndexingType
+  }) => (
+    <div data-testid="indexing-section">
+      {!!currentDataset?.doc_form && (
+        <>
+          <div>form.chunkStructure.title</div>
+          <a href="https://docs.dify.ai/use-dify/knowledge/create-knowledge/chunking-and-cleaning-text">
+            form.chunkStructure.learnMore
+          </a>
+        </>
+      )}
+      {!!(currentDataset
+        && currentDataset.doc_form !== ChunkingMode.parentChild
+        && currentDataset.indexing_technique
+        && indexMethod) && (
+        <div>form.indexMethod</div>
+      )}
+      {indexMethod === IndexingType.QUALIFIED && <div>form.embeddingModel</div>}
+      {currentDataset?.provider !== 'external' && indexMethod && (
+        <>
+          <div>form.retrievalSetting.title</div>
+          <a href="https://docs.dify.ai/use-dify/knowledge/create-knowledge/setting-indexing-methods">
+            form.retrievalSetting.learnMore
+          </a>
+        </>
+      )}
+    </div>
+  ),
 }))
 
 describe('Form', () => {

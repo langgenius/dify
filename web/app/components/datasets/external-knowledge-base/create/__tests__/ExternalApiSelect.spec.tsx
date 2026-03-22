@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
   mutateExternalKnowledgeApis: vi.fn(),
 }))
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: mocks.push, refresh: mocks.refresh }),
 }))
 

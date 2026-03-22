@@ -13,6 +13,7 @@ from dify_graph.variables.types import SegmentType
 from dify_graph.variables.variables import StringVariable
 from extensions.ext_database import db
 from extensions.ext_storage import storage
+from extensions.storage.storage_type import StorageType
 from factories.variable_factory import build_segment
 from libs import datetime_utils
 from models.enums import CreatorUserRole
@@ -347,7 +348,7 @@ class TestDraftVariableLoader(unittest.TestCase):
         # Create an upload file record
         upload_file = UploadFile(
             tenant_id=self._test_tenant_id,
-            storage_type="local",
+            storage_type=StorageType.LOCAL,
             key=f"test_offload_{uuid.uuid4()}.json",
             name="test_offload.json",
             size=len(content_bytes),
@@ -450,7 +451,7 @@ class TestDraftVariableLoader(unittest.TestCase):
         # Create upload file record
         upload_file = UploadFile(
             tenant_id=self._test_tenant_id,
-            storage_type="local",
+            storage_type=StorageType.LOCAL,
             key=f"test_integration_{uuid.uuid4()}.txt",
             name="test_integration.txt",
             size=len(content_bytes),

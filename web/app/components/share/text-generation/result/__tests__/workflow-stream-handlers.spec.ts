@@ -328,7 +328,7 @@ describe('createWorkflowStreamHandlers', () => {
     vi.clearAllMocks()
   })
 
-  const setupHandlers = (overrides: { isTimedOut?: () => boolean } = {}) => {
+  const setupHandlers = (overrides: { isPublicAPI?: boolean, isTimedOut?: () => boolean } = {}) => {
     let completionRes = ''
     let currentTaskId: string | null = null
     let isStopping = false
@@ -359,6 +359,7 @@ describe('createWorkflowStreamHandlers', () => {
     const handlers = createWorkflowStreamHandlers({
       getCompletionRes: () => completionRes,
       getWorkflowProcessData: () => workflowProcessData,
+      isPublicAPI: overrides.isPublicAPI ?? false,
       isTimedOut: overrides.isTimedOut ?? (() => false),
       markEnded,
       notify,
@@ -391,7 +392,7 @@ describe('createWorkflowStreamHandlers', () => {
   }
 
   it('should process workflow success and paused events', () => {
-    const setup = setupHandlers()
+    const setup = setupHandlers({ isPublicAPI: true })
     const handlers = setup.handlers as Required<Pick<IOtherOptions, 'onWorkflowStarted' | 'onTextChunk' | 'onHumanInputRequired' | 'onHumanInputFormFilled' | 'onHumanInputFormTimeout' | 'onWorkflowPaused' | 'onWorkflowFinished' | 'onNodeStarted' | 'onNodeFinished' | 'onIterationStart' | 'onIterationNext' | 'onIterationFinish' | 'onLoopStart' | 'onLoopNext' | 'onLoopFinish'>>
 
     act(() => {
@@ -546,7 +547,11 @@ describe('createWorkflowStreamHandlers', () => {
       resultText: 'Hello',
       status: WorkflowRunningStatus.Succeeded,
     }))
-    expect(sseGetMock).toHaveBeenCalledWith('/workflow/run-1/events', {}, expect.any(Object))
+    expect(sseGetMock).toHaveBeenCalledWith(
+      '/workflow/run-1/events',
+      {},
+      expect.objectContaining({ isPublicAPI: true }),
+    )
     expect(setup.messageId()).toBe('run-1')
     expect(setup.onCompleted).toHaveBeenCalledWith('{"answer":"Hello"}', 3, true)
     expect(setup.setRespondingFalse).toHaveBeenCalled()
@@ -647,6 +652,7 @@ describe('createWorkflowStreamHandlers', () => {
     const handlers = createWorkflowStreamHandlers({
       getCompletionRes: () => '',
       getWorkflowProcessData: () => existingProcess,
+      isPublicAPI: false,
       isTimedOut: () => false,
       markEnded: vi.fn(),
       notify: setup.notify,

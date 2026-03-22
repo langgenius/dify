@@ -17,6 +17,7 @@ import BlockIcon from '@/app/components/workflow/block-icon'
 import { ToolTypeEnum } from '@/app/components/workflow/block-selector/types'
 import { useNodesReadOnly, useToolIcon } from '@/app/components/workflow/hooks'
 import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
+import { useNodePluginInstallation } from '@/app/components/workflow/hooks/use-node-plugin-installation'
 import { useNodeIterationInteractions } from '@/app/components/workflow/nodes/iteration/use-interactions'
 import { useNodeLoopInteractions } from '@/app/components/workflow/nodes/loop/use-interactions'
 import CopyID from '@/app/components/workflow/nodes/tool/components/copy-id'
@@ -61,6 +62,8 @@ const BaseNode: FC<BaseNodeProps> = ({
   const { handleNodeIterationChildSizeChange } = useNodeIterationInteractions()
   const { handleNodeLoopChildSizeChange } = useNodeLoopInteractions()
   const toolIcon = useToolIcon(data)
+  const { shouldDim: pluginDimmed, isChecking: pluginIsChecking, isMissing: pluginIsMissing, canInstall: pluginCanInstall, uniqueIdentifier: pluginUniqueIdentifier } = useNodePluginInstallation(data)
+  const pluginInstallLocked = !pluginIsChecking && pluginIsMissing && pluginCanInstall && Boolean(pluginUniqueIdentifier)
 
   useEffect(() => {
     if (nodeRef.current && data.selected && data.isInIteration) {
@@ -138,7 +141,7 @@ const BaseNode: FC<BaseNodeProps> = ({
         'relative flex rounded-2xl border',
         showSelectedBorder ? 'border-components-option-card-option-selected-border' : 'border-transparent',
         data._waitingRun && 'opacity-70',
-        data._pluginInstallLocked && 'cursor-not-allowed',
+        pluginInstallLocked && 'cursor-not-allowed',
       )}
       ref={nodeRef}
       style={{
@@ -146,14 +149,15 @@ const BaseNode: FC<BaseNodeProps> = ({
         height: (data.type === BlockEnum.Iteration || data.type === BlockEnum.Loop) ? data.height : 'auto',
       }}
     >
-      {(data._dimmed || data._pluginInstallLocked) && (
+      {(data._dimmed || pluginDimmed || pluginInstallLocked) && (
         <div
           className={cn(
             'absolute inset-0 rounded-2xl transition-opacity',
-            data._pluginInstallLocked
+            pluginInstallLocked
               ? 'pointer-events-auto z-30 bg-workflow-block-parma-bg opacity-80 backdrop-blur-[2px]'
               : 'pointer-events-none z-20 bg-workflow-block-parma-bg opacity-50',
           )}
+          onClick={pluginInstallLocked ? e => e.stopPropagation() : undefined}
           data-testid="workflow-node-install-overlay"
         />
       )}
@@ -229,6 +233,7 @@ const BaseNode: FC<BaseNodeProps> = ({
             <NodeControl
               id={id}
               data={data}
+              pluginInstallLocked={pluginInstallLocked}
             />
           )
         }

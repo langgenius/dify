@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { DelimiterInput, MaxLengthInput, OverlapInput } from '../inputs'
 
@@ -61,6 +61,21 @@ describe('MaxLengthInput', () => {
     const input = screen.getByRole('textbox')
     expect(input).toBeInTheDocument()
   })
+
+  it('should reset to the minimum when users clear the value', () => {
+    const onChange = vi.fn()
+    render(<MaxLengthInput value={500} onChange={onChange} />)
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '' } })
+    expect(onChange).toHaveBeenCalledWith(1)
+  })
+
+  it('should clamp out-of-range text edits before updating state', () => {
+    const onChange = vi.fn()
+    render(<MaxLengthInput value={500} max={1000} onChange={onChange} />)
+
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '1200' } })
+    expect(onChange).toHaveBeenLastCalledWith(1000)
+  })
 })
 
 describe('OverlapInput', () => {
@@ -88,5 +103,20 @@ describe('OverlapInput', () => {
     render(<OverlapInput onChange={vi.fn()} />)
     const input = screen.getByRole('textbox')
     expect(input).toBeInTheDocument()
+  })
+
+  it('should reset to the minimum when users clear the value', () => {
+    const onChange = vi.fn()
+    render(<OverlapInput value={50} onChange={onChange} />)
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '' } })
+    expect(onChange).toHaveBeenCalledWith(1)
+  })
+
+  it('should clamp out-of-range text edits before updating state', () => {
+    const onChange = vi.fn()
+    render(<OverlapInput value={50} max={100} onChange={onChange} />)
+
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '150' } })
+    expect(onChange).toHaveBeenLastCalledWith(100)
   })
 })

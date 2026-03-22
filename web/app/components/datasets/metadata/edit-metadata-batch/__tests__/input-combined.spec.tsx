@@ -103,6 +103,18 @@ describe('InputCombined', () => {
       expect(handleChange).toHaveBeenCalled()
     })
 
+    it('should reset cleared number input to 0', () => {
+      const handleChange = vi.fn()
+      render(
+        <InputCombined type={DataType.number} value={42} onChange={handleChange} />,
+      )
+
+      const input = screen.getByRole('textbox')
+      fireEvent.change(input, { target: { value: '' } })
+
+      expect(handleChange).toHaveBeenCalledWith(0)
+    })
+
     it('should display current value for number type', () => {
       const handleChange = vi.fn()
       render(

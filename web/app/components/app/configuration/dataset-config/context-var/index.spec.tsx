@@ -5,7 +5,7 @@ import * as React from 'react'
 import ContextVar from './index'
 
 // Mock external dependencies only
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
   usePathname: () => '/test',
 }))

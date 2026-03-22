@@ -35,6 +35,8 @@
   "error.emailEmpty": "ईमेल पता आवश्यक है",
   "error.emailInValid": "कृपया एक मान्य ईमेल पता दर्ज करें",
   "error.invalidEmailOrPassword": "अमान्य ईमेल या पासवर्ड।",
+  "error.invalidRedirectUrlOrAppCode": "अमान्य रीडायरेक्ट URL या ऐप कोड",
+  "error.invalidSSOProtocol": "अमान्य SSO प्रोटोकॉल",
   "error.nameEmpty": "नाम आवश्यक है",
   "error.passwordEmpty": "पासवर्ड आवश्यक है",
   "error.passwordInvalid": "पासवर्ड में अक्षर और अंक होने चाहिए, और लंबाई 8 से अधिक होनी चाहिए",

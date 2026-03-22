@@ -5,7 +5,7 @@ import { InputVarType } from '@/app/components/workflow/types'
 import { isParametersOutdated, useConfigureButton } from '../use-configure-button'
 
 const mockPush = vi.fn()
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
 }))
 

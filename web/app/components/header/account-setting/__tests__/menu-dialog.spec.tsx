@@ -40,8 +40,7 @@ describe('MenuDialog', () => {
       )
 
       // Assert
-      const panel = screen.getByRole('dialog').querySelector('.custom-class')
-      expect(panel).toBeInTheDocument()
+      expect(screen.getByRole('dialog')).toHaveClass('custom-class')
     })
   })
 

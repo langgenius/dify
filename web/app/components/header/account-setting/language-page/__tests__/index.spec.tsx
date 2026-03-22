@@ -61,7 +61,7 @@ vi.mock('@/app/components/base/select', async () => {
   }
 })
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ refresh: mockRefresh }),
 }))
 

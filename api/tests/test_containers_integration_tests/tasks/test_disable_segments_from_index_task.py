@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from models import Account, Dataset, DocumentSegment
 from models import Document as DatasetDocument
 from models.dataset import DatasetProcessRule
+from models.enums import DataSourceType, DocumentCreatedFrom, ProcessRuleMode, SegmentStatus
 from tasks.disable_segments_from_index_task import disable_segments_from_index_task
 
 
@@ -100,7 +101,7 @@ class TestDisableSegmentsFromIndexTask:
             description=fake.text(max_nb_chars=200),
             provider="vendor",
             permission="only_me",
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             indexing_technique="high_quality",
             created_by=account.id,
             updated_by=account.id,
@@ -134,11 +135,11 @@ class TestDisableSegmentsFromIndexTask:
         document.tenant_id = dataset.tenant_id
         document.dataset_id = dataset.id
         document.position = 1
-        document.data_source_type = "upload_file"
+        document.data_source_type = DataSourceType.UPLOAD_FILE
         document.data_source_info = '{"upload_file_id": "test_file_id"}'
         document.batch = fake.uuid4()
         document.name = f"Test Document {fake.word()}.txt"
-        document.created_from = "upload_file"
+        document.created_from = DocumentCreatedFrom.WEB
         document.created_by = account.id
         document.created_api_request_id = fake.uuid4()
         document.processing_started_at = fake.date_time_this_year()
@@ -197,7 +198,7 @@ class TestDisableSegmentsFromIndexTask:
             segment.enabled = True
             segment.disabled_at = None
             segment.disabled_by = None
-            segment.status = "completed"
+            segment.status = SegmentStatus.COMPLETED
             segment.created_by = account.id
             segment.updated_by = account.id
             segment.indexing_at = fake.date_time_this_year()
@@ -230,7 +231,7 @@ class TestDisableSegmentsFromIndexTask:
         process_rule.id = fake.uuid4()
         process_rule.tenant_id = dataset.tenant_id
         process_rule.dataset_id = dataset.id
-        process_rule.mode = "automatic"
+        process_rule.mode = ProcessRuleMode.AUTOMATIC
         process_rule.rules = (
             "{"
             '"mode": "automatic", '

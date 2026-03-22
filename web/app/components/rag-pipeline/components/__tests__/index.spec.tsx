@@ -1,5 +1,6 @@
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { useState } from 'react'
 import { createMockProviderContextValue } from '@/__mocks__/provider-context'
 
 import Conversion from '../conversion'
@@ -9,14 +10,8 @@ import PublishToast from '../publish-toast'
 import RagPipelineChildren from '../rag-pipeline-children'
 import PipelineScreenShot from '../screenshot'
 
-afterEach(async () => {
-  await act(async () => {
-    await new Promise(resolve => setTimeout(resolve, 0))
-  })
-})
-
 const mockPush = vi.fn()
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useParams: () => ({ datasetId: 'test-dataset-id' }),
   useRouter: () => ({ push: mockPush }),
 }))
@@ -353,9 +348,65 @@ vi.mock('@/app/components/workflow/dsl-export-confirm-modal', () => ({
   ),
 }))
 
+vi.mock('@/app/components/base/app-icon-picker', () => ({
+  default: function MockAppIconPicker({ onSelect, onClose }: {
+    onSelect?: (payload:
+      | { type: 'emoji', icon: string, background: string }
+      | { type: 'image', fileId: string, url: string },
+    ) => void
+    onClose?: () => void
+  }) {
+    const [activeTab, setActiveTab] = useState<'emoji' | 'image'>('emoji')
+    const [selectedEmoji, setSelectedEmoji] = useState({ icon: '😀', background: '#FFFFFF' })
+
+    return (
+      <div data-testid="app-icon-picker">
+        <button type="button" onClick={() => setActiveTab('emoji')}>iconPicker.emoji</button>
+        <button type="button" onClick={() => setActiveTab('image')}>iconPicker.image</button>
+        {activeTab === 'emoji' && (
+          <button
+            type="button"
+            data-testid="picker-emoji-option"
+            onClick={() => setSelectedEmoji({ icon: '🎯', background: '#FFAA00' })}
+          >
+            picker-emoji-option
+          </button>
+        )}
+        {activeTab === 'image' && <div data-testid="picker-image-panel">picker-image-panel</div>}
+        <button type="button" onClick={() => onClose?.()}>iconPicker.cancel</button>
+        <button
+          type="button"
+          onClick={() => {
+            if (activeTab === 'emoji') {
+              onSelect?.({
+                type: 'emoji',
+                icon: selectedEmoji.icon,
+                background: selectedEmoji.background,
+              })
+              return
+            }
+
+            onSelect?.({
+              type: 'image',
+              fileId: 'test-file-id',
+              url: 'https://example.com/icon.png',
+            })
+          }}
+        >
+          iconPicker.ok
+        </button>
+      </div>
+    )
+  },
+}))
+
 // Silence expected console.error from Dialog/Modal rendering
 beforeEach(() => {
   vi.spyOn(console, 'error').mockImplementation(() => {})
+})
+
+afterEach(() => {
+  vi.restoreAllMocks()
 })
 
 // Helper to find the name input in PublishAsKnowledgePipelineModal
@@ -714,10 +765,7 @@ describe('PublishAsKnowledgePipelineModal', () => {
       const appIcon = getAppIcon()
       fireEvent.click(appIcon)
 
-      // Click the first emoji in the grid (search full document since Dialog uses portal)
-      const gridEmojis = document.querySelectorAll('.grid em-emoji')
-      expect(gridEmojis.length).toBeGreaterThan(0)
-      fireEvent.click(gridEmojis[0].parentElement!.parentElement!)
+      fireEvent.click(screen.getByTestId('picker-emoji-option'))
 
       // Click OK to confirm selection
       fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
@@ -874,9 +922,11 @@ describe('RagPipelineChildren', () => {
       ]
 
       if (mockEventSubscriptionCallback) {
-        mockEventSubscriptionCallback({
-          type: 'DSL_EXPORT_CHECK',
-          payload: { data: mockEnvVariables },
+        await act(async () => {
+          mockEventSubscriptionCallback?.({
+            type: 'DSL_EXPORT_CHECK',
+            payload: { data: mockEnvVariables },
+          })
         })
       }
 
@@ -889,8 +939,10 @@ describe('RagPipelineChildren', () => {
       render(<RagPipelineChildren />)
 
       if (mockEventSubscriptionCallback) {
-        mockEventSubscriptionCallback({
-          type: 'OTHER_EVENT',
+        act(() => {
+          mockEventSubscriptionCallback?.({
+            type: 'OTHER_EVENT',
+          })
         })
       }
 
@@ -936,9 +988,11 @@ describe('RagPipelineChildren', () => {
       ]
 
       if (mockEventSubscriptionCallback) {
-        mockEventSubscriptionCallback({
-          type: 'DSL_EXPORT_CHECK',
-          payload: { data: mockEnvVariables },
+        await act(async () => {
+          mockEventSubscriptionCallback?.({
+            type: 'DSL_EXPORT_CHECK',
+            payload: { data: mockEnvVariables },
+          })
         })
       }
 
@@ -955,9 +1009,11 @@ describe('RagPipelineChildren', () => {
       ]
 
       if (mockEventSubscriptionCallback) {
-        mockEventSubscriptionCallback({
-          type: 'DSL_EXPORT_CHECK',
-          payload: { data: mockEnvVariables },
+        await act(async () => {
+          mockEventSubscriptionCallback?.({
+            type: 'DSL_EXPORT_CHECK',
+            payload: { data: mockEnvVariables },
+          })
         })
       }
 
@@ -980,9 +1036,11 @@ describe('RagPipelineChildren', () => {
       ]
 
       if (mockEventSubscriptionCallback) {
-        mockEventSubscriptionCallback({
-          type: 'DSL_EXPORT_CHECK',
-          payload: { data: mockEnvVariables },
+        await act(async () => {
+          mockEventSubscriptionCallback?.({
+            type: 'DSL_EXPORT_CHECK',
+            payload: { data: mockEnvVariables },
+          })
         })
       }
 
@@ -1027,11 +1085,8 @@ describe('Integration Tests', () => {
       // Open picker and select an emoji
       const appIcon = getAppIcon()
       fireEvent.click(appIcon)
-      const gridEmojis = document.querySelectorAll('.grid em-emoji')
-      if (gridEmojis.length > 0) {
-        fireEvent.click(gridEmojis[0].parentElement!.parentElement!)
-        fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
-      }
+      fireEvent.click(screen.getByTestId('picker-emoji-option'))
+      fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
 
       fireEvent.click(screen.getByRole('button', { name: /workflow\.common\.publish/i }))
 

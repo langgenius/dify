@@ -109,7 +109,7 @@ describe('ParameterItem', () => {
 
   it('should render select for string with options', () => {
     render(<ParameterItem parameterRule={createRule({ type: 'string', options: ['a', 'b'] })} value="a" />)
-    // SimpleSelect renders an element with text 'a'
+    // Select renders the selected value in the trigger
     expect(screen.getByText('a')).toBeInTheDocument()
   })
 

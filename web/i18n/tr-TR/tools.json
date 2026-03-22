@@ -126,6 +126,8 @@
   "mcp.modal.headerValuePlaceholder": "örneğin, Taşıyıcı jeton123",
   "mcp.modal.headers": "Başlıklar",
   "mcp.modal.headersTip": "MCP sunucu istekleri ile gönderilecek ek HTTP başlıkları",
+  "mcp.modal.invalidServerIdentifier": "Lütfen geçerli bir sunucu tanımlayıcısı girin",
+  "mcp.modal.invalidServerUrl": "Lütfen geçerli bir sunucu URL'si girin",
   "mcp.modal.maskedHeadersTip": "Başlık değerleri güvenlik amacıyla gizlenmiştir. Değişiklikler gerçek değerleri güncelleyecektir.",
   "mcp.modal.name": "Ad ve Simge",
   "mcp.modal.namePlaceholder": "MCP sunucunuza ad verin",
