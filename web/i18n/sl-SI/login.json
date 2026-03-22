@@ -35,6 +35,8 @@
   "error.emailEmpty": "E-poštni naslov je obvezen",
   "error.emailInValid": "Prosimo, vnesite veljaven e-poštni naslov",
   "error.invalidEmailOrPassword": "Neveljaven e-poštni naslov ali geslo.",
+  "error.invalidRedirectUrlOrAppCode": "Neveljaven URL preusmeritve ali koda aplikacije",
+  "error.invalidSSOProtocol": "Neveljaven protokol SSO",
   "error.nameEmpty": "Ime je obvezno",
   "error.passwordEmpty": "Geslo je obvezno",
   "error.passwordInvalid": "Geslo mora vsebovati črke in številke, dolžina pa mora biti več kot 8 znakov",

@@ -24,17 +24,11 @@ export default function CheckCode() {
   const verify = async () => {
     try {
       if (!code.trim()) {
-        toast.add({
-          type: 'error',
-          title: t('checkCode.emptyCode', { ns: 'login' }),
-        })
+        toast.error(t('checkCode.emptyCode', { ns: 'login' }))
         return
       }
       if (!/\d{6}/.test(code)) {
-        toast.add({
-          type: 'error',
-          title: t('checkCode.invalidCode', { ns: 'login' }),
-        })
+        toast.error(t('checkCode.invalidCode', { ns: 'login' }))
         return
       }
       setIsLoading(true)

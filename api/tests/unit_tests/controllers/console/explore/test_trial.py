@@ -958,8 +958,8 @@ class TestTrialSitApi:
         app_model = MagicMock()
         app_model.id = "a1"
 
-        with app.test_request_context("/"), patch.object(module.db.session, "query") as mock_query:
-            mock_query.return_value.where.return_value.first.return_value = None
+        with app.test_request_context("/"), patch.object(module.db.session, "scalar") as mock_scalar:
+            mock_scalar.return_value = None
             with pytest.raises(Forbidden):
                 method(api, app_model)
 
@@ -973,8 +973,8 @@ class TestTrialSitApi:
         app_model.tenant = MagicMock()
         app_model.tenant.status = TenantStatus.ARCHIVE
 
-        with app.test_request_context("/"), patch.object(module.db.session, "query") as mock_query:
-            mock_query.return_value.where.return_value.first.return_value = site
+        with app.test_request_context("/"), patch.object(module.db.session, "scalar") as mock_scalar:
+            mock_scalar.return_value = site
             with pytest.raises(Forbidden):
                 method(api, app_model)
 
@@ -990,10 +990,10 @@ class TestTrialSitApi:
 
         with (
             app.test_request_context("/"),
-            patch.object(module.db.session, "query") as mock_query,
+            patch.object(module.db.session, "scalar") as mock_scalar,
             patch.object(module.SiteResponse, "model_validate") as mock_validate,
         ):
-            mock_query.return_value.where.return_value.first.return_value = site
+            mock_scalar.return_value = site
             mock_validate_result = MagicMock()
             mock_validate_result.model_dump.return_value = {"name": "test", "icon": "icon"}
             mock_validate.return_value = mock_validate_result

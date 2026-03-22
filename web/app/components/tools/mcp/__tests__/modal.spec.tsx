@@ -3,7 +3,7 @@ import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import MCPModal from '../modal'
 
 // Mock the service API
@@ -48,7 +48,18 @@ vi.mock('@/service/use-plugins', () => ({
   }),
 }))
 
+const mockToastError = vi.hoisted(() => vi.fn())
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    error: mockToastError,
+  },
+}))
+
 describe('MCPModal', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   const createWrapper = () => {
     const queryClient = new QueryClient({
       defaultOptions: {
@@ -299,6 +310,7 @@ describe('MCPModal', () => {
       // Wait a bit and verify onConfirm was not called
       await new Promise(resolve => setTimeout(resolve, 100))
       expect(onConfirm).not.toHaveBeenCalled()
+      expect(mockToastError).toHaveBeenCalledWith('tools.mcp.modal.invalidServerUrl')
     })
 
     it('should not call onConfirm with invalid server identifier', async () => {
@@ -320,6 +332,7 @@ describe('MCPModal', () => {
       // Wait a bit and verify onConfirm was not called
       await new Promise(resolve => setTimeout(resolve, 100))
       expect(onConfirm).not.toHaveBeenCalled()
+      expect(mockToastError).toHaveBeenCalledWith('tools.mcp.modal.invalidServerIdentifier')
     })
   })
 

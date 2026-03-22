@@ -63,16 +63,10 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
     const params: SegmentUpdater = { content: '', attachment_ids: [] }
     if (docForm === ChunkingMode.qa) {
       if (!question.trim()) {
-        return toast.add({
-          type: 'error',
-          title: t('segment.questionEmpty', { ns: 'datasetDocuments' }),
-        })
+        return toast.error(t('segment.questionEmpty', { ns: 'datasetDocuments' }))
       }
       if (!answer.trim()) {
-        return toast.add({
-          type: 'error',
-          title: t('segment.answerEmpty', { ns: 'datasetDocuments' }),
-        })
+        return toast.error(t('segment.answerEmpty', { ns: 'datasetDocuments' }))
       }
 
       params.content = question
@@ -80,10 +74,7 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
     }
     else {
       if (!question.trim()) {
-        return toast.add({
-          type: 'error',
-          title: t('segment.contentEmpty', { ns: 'datasetDocuments' }),
-        })
+        return toast.error(t('segment.contentEmpty', { ns: 'datasetDocuments' }))
       }
 
       params.content = question
@@ -98,9 +89,7 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
     setLoading(true)
     await addSegment({ datasetId, documentId, body: params }, {
       onSuccess() {
-        toast.add({
-          type: 'success',
-          title: t('segment.chunkAdded', { ns: 'datasetDocuments' }),
+        toast.success(t('segment.chunkAdded', { ns: 'datasetDocuments' }), {
           actionProps: {
             children: t('operation.view', { ns: 'common' }),
             onClick: viewNewlyAddedChunk,

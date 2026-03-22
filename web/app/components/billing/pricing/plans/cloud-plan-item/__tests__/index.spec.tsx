@@ -70,7 +70,7 @@ beforeAll(() => {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  toast.close()
+  toast.dismiss()
   mockUseAppContext.mockReturnValue({ isCurrentWorkspaceManager: true })
   mockUseAsyncWindowOpen.mockReturnValue(vi.fn(async open => await open()))
   mockBillingInvoices.mockResolvedValue({ url: 'https://billing.example' })

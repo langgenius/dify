@@ -75,7 +75,7 @@ def enterprise_inner_api_user_auth(view: Callable[P, R]):
         if signature_base64 != token:
             return view(*args, **kwargs)
 
-        kwargs["user"] = db.session.query(EndUser).where(EndUser.id == user_id).first()
+        kwargs["user"] = db.session.get(EndUser, user_id)
 
         return view(*args, **kwargs)
 

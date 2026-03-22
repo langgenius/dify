@@ -30,14 +30,11 @@ export default function Form({
       return
 
     if (!email) {
-      toast.add({ type: 'error', title: t('error.emailEmpty', { ns: 'login' }) })
+      toast.error(t('error.emailEmpty', { ns: 'login' }))
       return
     }
     if (!emailRegex.test(email)) {
-      toast.add({
-        type: 'error',
-        title: t('error.emailInValid', { ns: 'login' }),
-      })
+      toast.error(t('error.emailInValid', { ns: 'login' }))
       return
     }
     const res = await submitMail({ email, language: locale })
