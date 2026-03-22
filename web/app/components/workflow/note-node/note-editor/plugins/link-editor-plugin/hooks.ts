@@ -29,6 +29,7 @@ export const useOpenLink = () => {
 
     const unregister = mergeRegister(
       editor.registerUpdateListener(() => {
+        clearTimeout(updateTimer)
         updateTimer = setTimeout(() => {
           const {
             selectedLinkUrl,
@@ -54,6 +55,7 @@ export const useOpenLink = () => {
       editor.registerCommand(
         CLICK_COMMAND,
         (payload) => {
+          clearTimeout(clickTimer)
           clickTimer = setTimeout(() => {
             const {
               selectedLinkUrl,
