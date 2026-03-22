@@ -35,6 +35,8 @@
   "error.emailEmpty": "L'indirizzo email è obbligatorio",
   "error.emailInValid": "Per favore inserisci un indirizzo email valido",
   "error.invalidEmailOrPassword": "Email o password non validi.",
+  "error.invalidRedirectUrlOrAppCode": "URL di reindirizzamento o codice app non valido",
+  "error.invalidSSOProtocol": "Protocollo SSO non valido",
   "error.nameEmpty": "Il nome è obbligatorio",
   "error.passwordEmpty": "La password è obbligatoria",
   "error.passwordInvalid": "La password deve contenere lettere e numeri, e la lunghezza deve essere maggiore di 8",

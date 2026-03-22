@@ -77,6 +77,8 @@
   "externalKnowledgeDescriptionPlaceholder": "이 기술 자료의 내용 설명 (선택 사항)",
   "externalKnowledgeForm.cancel": "취소",
   "externalKnowledgeForm.connect": "연결",
+  "externalKnowledgeForm.connectedFailed": "외부 지식 베이스 연결에 실패했습니다",
+  "externalKnowledgeForm.connectedSuccess": "외부 지식 베이스가 성공적으로 연결되었습니다",
   "externalKnowledgeId": "외부 지식 ID",
   "externalKnowledgeIdPlaceholder": "지식 ID 를 입력하십시오.",
   "externalKnowledgeName": "외부 지식 이름",

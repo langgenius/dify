@@ -77,6 +77,8 @@
   "externalKnowledgeDescriptionPlaceholder": "描述此知識庫中的內容（選擇）",
   "externalKnowledgeForm.cancel": "取消",
   "externalKnowledgeForm.connect": "連接",
+  "externalKnowledgeForm.connectedFailed": "連接外部知識庫失敗",
+  "externalKnowledgeForm.connectedSuccess": "外部知識庫連接成功",
   "externalKnowledgeId": "外部知識 ID",
   "externalKnowledgeIdPlaceholder": "請輸入 Knowledge ID",
   "externalKnowledgeName": "外部知識名稱",

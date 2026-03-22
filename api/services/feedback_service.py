@@ -7,6 +7,7 @@ from flask import Response
 from sqlalchemy import or_
 
 from extensions.ext_database import db
+from models.enums import FeedbackRating
 from models.model import Account, App, Conversation, Message, MessageFeedback
 
 
@@ -100,7 +101,7 @@ class FeedbackService:
                 "ai_response": message.answer[:500] + "..."
                 if len(message.answer) > 500
                 else message.answer,  # Truncate long responses
-                "feedback_rating": "👍" if feedback.rating == "like" else "👎",
+                "feedback_rating": "👍" if feedback.rating == FeedbackRating.LIKE else "👎",
                 "feedback_rating_raw": feedback.rating,
                 "feedback_comment": feedback.content or "",
                 "feedback_source": feedback.from_source,

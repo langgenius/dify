@@ -5,7 +5,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import Countdown from '@/app/components/signin/countdown'
 import { useLocale } from '@/context/i18n'
 import { useRouter, useSearchParams } from '@/next/navigation'
@@ -26,17 +26,11 @@ export default function CheckCode() {
   const verify = async () => {
     try {
       if (!code.trim()) {
-        Toast.notify({
-          type: 'error',
-          message: t('checkCode.emptyCode', { ns: 'login' }),
-        })
+        toast.error(t('checkCode.emptyCode', { ns: 'login' }))
         return
       }
       if (!/\d{6}/.test(code)) {
-        Toast.notify({
-          type: 'error',
-          message: t('checkCode.invalidCode', { ns: 'login' }),
-        })
+        toast.error(t('checkCode.invalidCode', { ns: 'login' }))
         return
       }
       setIsLoading(true)
@@ -47,10 +41,7 @@ export default function CheckCode() {
         router.push(`/signup/set-password?${params.toString()}`)
       }
       else {
-        Toast.notify({
-          type: 'error',
-          message: t('checkCode.invalidCode', { ns: 'login' }),
-        })
+        toast.error(t('checkCode.invalidCode', { ns: 'login' }))
       }
     }
     catch (error) { console.error(error) }
