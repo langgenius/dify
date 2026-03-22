@@ -284,27 +284,29 @@ class TidbOnQdrantVector(BaseVector):
         from qdrant_client.http import models
         from qdrant_client.http.exceptions import UnexpectedResponse
 
-        for node_id in ids:
-            try:
-                filter = models.Filter(
-                    must=[
-                        models.FieldCondition(
-                            key="metadata.doc_id",
-                            match=models.MatchValue(value=node_id),
-                        ),
-                    ],
-                )
-                self._client.delete(
-                    collection_name=self._collection_name,
-                    points_selector=FilterSelector(filter=filter),
-                )
-            except UnexpectedResponse as e:
-                # Collection does not exist, so return
-                if e.status_code == 404:
-                    return
-                # Some other error occurred, so re-raise the exception
-                else:
-                    raise e
+        if not ids:
+            return
+
+        try:
+            filter = models.Filter(
+                must=[
+                    models.FieldCondition(
+                        key="metadata.doc_id",
+                        match=models.MatchAny(any=ids),
+                    ),
+                ],
+            )
+            self._client.delete(
+                collection_name=self._collection_name,
+                points_selector=FilterSelector(filter=filter),
+            )
+        except UnexpectedResponse as e:
+            # Collection does not exist, so return
+            if e.status_code == 404:
+                return
+            # Some other error occurred, so re-raise the exception
+            else:
+                raise e
 
     def text_exists(self, id: str) -> bool:
         all_collection_name = []
