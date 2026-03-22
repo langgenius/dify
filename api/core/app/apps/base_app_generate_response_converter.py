@@ -1,7 +1,7 @@
 import logging
 from abc import ABC, abstractmethod
 from collections.abc import Generator, Mapping
-from typing import Any, Union
+from typing import Any, Union, cast
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.task_entities import AppBlockingResponse, AppStreamResponse
@@ -31,9 +31,10 @@ class AppGenerateResponseConverter(ABC):
             if isinstance(response, AppBlockingResponse):
                 return cls.convert_blocking_simple_response(response)
             else:
+                stream_response = cast(Generator[AppStreamResponse, Any, None], response)
 
                 def _generate_simple_response() -> Generator[dict | str, Any, None]:
-                    yield from cls.convert_stream_simple_response(response)
+                    yield from cls.convert_stream_simple_response(stream_response)
 
                 return _generate_simple_response()
 
