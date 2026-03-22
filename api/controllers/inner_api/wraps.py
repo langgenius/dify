@@ -81,10 +81,8 @@ def enterprise_inner_api_user_auth(view: Callable[P, R]):
         signature = hmac_new(inner_api_key.encode("utf-8"), data_to_sign.encode("utf-8"), sha1)
         signature_base64 = b64encode(signature.digest()).decode("utf-8")
 
-        if not hmac_compare_digest(signature_base64, token):
-            return view(*args, **kwargs)
-
-        kwargs["user"] = db.session.query(EndUser).where(EndUser.id == user_id).first()
+        if hmac_compare_digest(signature_base64, token):
+            kwargs["user"] = db.session.query(EndUser).where(EndUser.id == user_id).first()
 
         return view(*args, **kwargs)
 
