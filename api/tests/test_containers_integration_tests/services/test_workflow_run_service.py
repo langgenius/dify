@@ -7,7 +7,7 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
-from models.enums import CreatorUserRole
+from models.enums import ConversationFromSource, CreatorUserRole
 from models.model import (
     Message,
 )
@@ -165,7 +165,7 @@ class TestWorkflowRunService:
             inputs={},
             status="normal",
             mode="chat",
-            from_source=CreatorUserRole.ACCOUNT,
+            from_source=ConversationFromSource.CONSOLE,
             from_account_id=account.id,
         )
         db_session_with_containers.add(conversation)
@@ -186,7 +186,7 @@ class TestWorkflowRunService:
         message.answer_price_unit = 0.001
         message.currency = "USD"
         message.status = "normal"
-        message.from_source = CreatorUserRole.ACCOUNT
+        message.from_source = ConversationFromSource.CONSOLE
         message.from_account_id = account.id
         message.workflow_run_id = workflow_run.id
         message.inputs = {"input": "test input"}

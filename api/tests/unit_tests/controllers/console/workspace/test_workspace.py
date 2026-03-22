@@ -449,12 +449,12 @@ class TestSwitchWorkspaceApi:
                 "controllers.console.workspace.workspace.current_account_with_tenant", return_value=(MagicMock(), "t1")
             ),
             patch("controllers.console.workspace.workspace.TenantService.switch_tenant"),
-            patch("controllers.console.workspace.workspace.db.session.query") as query_mock,
+            patch("controllers.console.workspace.workspace.db.session.get") as get_mock,
             patch(
                 "controllers.console.workspace.workspace.WorkspaceService.get_tenant_info", return_value={"id": "t2"}
             ),
         ):
-            query_mock.return_value.get.return_value = tenant
+            get_mock.return_value = tenant
             result = method(api)
 
         assert result["result"] == "success"
@@ -488,9 +488,9 @@ class TestSwitchWorkspaceApi:
                 return_value=(MagicMock(), "t1"),
             ),
             patch("controllers.console.workspace.workspace.TenantService.switch_tenant"),
-            patch("controllers.console.workspace.workspace.db.session.query") as query_mock,
+            patch("controllers.console.workspace.workspace.db.session.get") as get_mock,
         ):
-            query_mock.return_value.get.return_value = None
+            get_mock.return_value = None
 
             with pytest.raises(ValueError):
                 method(api)
