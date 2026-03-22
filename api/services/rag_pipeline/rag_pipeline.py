@@ -79,10 +79,11 @@ from services.entities.knowledge_entities.rag_pipeline_entities import (
     KnowledgeConfiguration,
     PipelineTemplateInfoEntity,
 )
-from services.errors.app import WorkflowHashNotEqualError
+from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.rag_pipeline.pipeline_template.pipeline_template_factory import PipelineTemplateRetrievalFactory
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 from services.workflow_draft_variable_service import DraftVariableSaver, DraftVarLoader
+from services.workflow_restore import apply_published_workflow_snapshot_to_draft
 
 logger = logging.getLogger(__name__)
 
@@ -234,6 +235,21 @@ class RagPipelineService:
 
         return workflow
 
+    def get_published_workflow_by_id(self, pipeline: Pipeline, workflow_id: str) -> Workflow | None:
+        """Fetch a published workflow snapshot by ID for restore operations."""
+        workflow = (
+            db.session.query(Workflow)
+            .where(
+                Workflow.tenant_id == pipeline.tenant_id,
+                Workflow.app_id == pipeline.id,
+                Workflow.id == workflow_id,
+            )
+            .first()
+        )
+        if workflow and workflow.version == Workflow.VERSION_DRAFT:
+            raise IsDraftWorkflowError("source workflow must be published")
+        return workflow
+
     def get_all_published_workflow(
         self,
         *,
@@ -326,6 +342,42 @@ class RagPipelineService:
 
         # return draft workflow
         return workflow
+
+    def restore_published_workflow_to_draft(
+        self,
+        *,
+        pipeline: Pipeline,
+        workflow_id: str,
+        account: Account,
+    ) -> Workflow:
+        """Restore a published pipeline workflow snapshot into the draft workflow.
+
+        Pipelines reuse the shared draft-restore field copy helper, but still own
+        the pipeline-specific flush/link step that wires a newly created draft
+        back onto ``pipeline.workflow_id``.
+        """
+        source_workflow = self.get_published_workflow_by_id(pipeline=pipeline, workflow_id=workflow_id)
+        if not source_workflow:
+            raise WorkflowNotFoundError("Workflow not found.")
+
+        draft_workflow = self.get_draft_workflow(pipeline=pipeline)
+        draft_workflow, is_new_draft = apply_published_workflow_snapshot_to_draft(
+            tenant_id=pipeline.tenant_id,
+            app_id=pipeline.id,
+            source_workflow=source_workflow,
+            draft_workflow=draft_workflow,
+            account=account,
+            updated_at_factory=lambda: datetime.now(UTC).replace(tzinfo=None),
+        )
+
+        if is_new_draft:
+            db.session.add(draft_workflow)
+            db.session.flush()
+            pipeline.workflow_id = draft_workflow.id
+
+        db.session.commit()
+
+        return draft_workflow
 
     def publish_workflow(
         self,

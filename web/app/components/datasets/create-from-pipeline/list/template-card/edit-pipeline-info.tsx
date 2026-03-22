@@ -67,10 +67,7 @@ const EditPipelineInfo = ({
 
   const handleSave = useCallback(async () => {
     if (!name) {
-      toast.add({
-        type: 'error',
-        title: t('editPipelineInfoNameRequired', { ns: 'datasetPipeline' }),
-      })
+      toast.error(t('editPipelineInfoNameRequired', { ns: 'datasetPipeline' }))
       return
     }
     const request = {

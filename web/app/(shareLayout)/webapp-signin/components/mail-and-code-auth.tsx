@@ -22,15 +22,12 @@ export default function MailAndCodeAuth() {
   const handleGetEMailVerificationCode = async () => {
     try {
       if (!email) {
-        toast.add({ type: 'error', title: t('error.emailEmpty', { ns: 'login' }) })
+        toast.error(t('error.emailEmpty', { ns: 'login' }))
         return
       }
 
       if (!emailRegex.test(email)) {
-        toast.add({
-          type: 'error',
-          title: t('error.emailInValid', { ns: 'login' }),
-        })
+        toast.error(t('error.emailInValid', { ns: 'login' }))
         return
       }
       setIsLoading(true)

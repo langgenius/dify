@@ -34,10 +34,12 @@ from .enums import (
     AppMCPServerStatus,
     AppStatus,
     BannerStatus,
+    ConversationFromSource,
     ConversationStatus,
     CreatorUserRole,
     FeedbackFromSource,
     FeedbackRating,
+    InvokeFrom,
     MessageChainType,
     MessageFileBelongsTo,
     MessageStatus,
@@ -1022,10 +1024,12 @@ class Conversation(Base):
     #
     # Its value corresponds to the members of `InvokeFrom`.
     # (api/core/app/entities/app_invoke_entities.py)
-    invoke_from = mapped_column(String(255), nullable=True)
+    invoke_from: Mapped[InvokeFrom | None] = mapped_column(EnumText(InvokeFrom, length=255), nullable=True)
 
     # ref: ConversationSource.
-    from_source: Mapped[str] = mapped_column(String(255), nullable=False)
+    from_source: Mapped[ConversationFromSource] = mapped_column(
+        EnumText(ConversationFromSource, length=255), nullable=False
+    )
     from_end_user_id = mapped_column(StringUUID)
     from_account_id = mapped_column(StringUUID)
     read_at = mapped_column(sa.DateTime)
@@ -1374,8 +1378,10 @@ class Message(Base):
     )
     error: Mapped[str | None] = mapped_column(LongText)
     message_metadata: Mapped[str | None] = mapped_column(LongText)
-    invoke_from: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    from_source: Mapped[str] = mapped_column(String(255), nullable=False)
+    invoke_from: Mapped[InvokeFrom | None] = mapped_column(EnumText(InvokeFrom, length=255), nullable=True)
+    from_source: Mapped[ConversationFromSource] = mapped_column(
+        EnumText(ConversationFromSource, length=255), nullable=False
+    )
     from_end_user_id: Mapped[str | None] = mapped_column(StringUUID)
     from_account_id: Mapped[str | None] = mapped_column(StringUUID)
     created_at: Mapped[datetime] = mapped_column(sa.DateTime, server_default=func.current_timestamp())
