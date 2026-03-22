@@ -220,7 +220,7 @@ class SwitchWorkspaceApi(Resource):
         except Exception:
             raise AccountNotLinkTenantError("Account not link tenant")
 
-        new_tenant = db.session.query(Tenant).get(args.tenant_id)  # Get new tenant
+        new_tenant = db.session.get(Tenant, args.tenant_id)  # Get new tenant
         if new_tenant is None:
             raise ValueError("Tenant not found")
 
