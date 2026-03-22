@@ -202,7 +202,7 @@ class TestDataSourceApi:
             compiled = stmt.compile(compile_kwargs={"literal_binds": True})
             compiled_where = str(compiled)
 
-            assert "tenant_id" in compiled_where, (
+            assert "tenant_id = 'tenant-1'" in compiled_where, (
                 "The patch query must filter by tenant_id to prevent IDOR vulnerabilities"
             )
 
