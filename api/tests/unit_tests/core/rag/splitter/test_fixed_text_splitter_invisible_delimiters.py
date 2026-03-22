@@ -26,97 +26,44 @@ class TestInvisibleDelimiters:
             "length_function": length_function,
         }
 
-    def test_zwsp_literal_delimiter(self, base_splitter_kwargs):
-        """ZWSP (U+200B) should work as a literal delimiter."""
-        zwsp = "\u200b"
+    @pytest.mark.parametrize(
+        "delimiter",
+        [
+            pytest.param("\u200b", id="zwsp"),
+            pytest.param("\ufeff", id="zwnbsp"),
+            pytest.param("\u2063", id="invisible_separator"),
+            pytest.param("\u2060", id="word_joiner"),
+            pytest.param("\u200e", id="ltr_mark"),
+        ],
+    )
+    def test_invisible_literal_delimiters(self, base_splitter_kwargs, delimiter):
+        """Test that various invisible Unicode characters work as literal delimiters."""
         splitter = FixedRecursiveCharacterTextSplitter(
-            fixed_separator=zwsp,
+            fixed_separator=delimiter,
             **base_splitter_kwargs,
         )
 
-        text = f"chunk1{zwsp}chunk2{zwsp}chunk3"
+        text = f"chunk1{delimiter}chunk2{delimiter}chunk3"
         result = splitter.split_text(text)
 
         assert len(result) == 3
         assert result == ["chunk1", "chunk2", "chunk3"]
 
-    def test_zwnbsp_literal_delimiter(self, base_splitter_kwargs):
-        """ZWNBSP (U+FEFF) should work as a literal delimiter."""
-        zwnbsp = "\ufeff"
+    @pytest.mark.parametrize(
+        ("escaped_char", "literal_char"),
+        [
+            pytest.param("\\n", "\n", id="newline"),
+            pytest.param("\\t", "\t", id="tab"),
+        ],
+    )
+    def test_escaped_chars_still_work(self, base_splitter_kwargs, escaped_char, literal_char):
+        """Escaped characters should still be decoded properly."""
         splitter = FixedRecursiveCharacterTextSplitter(
-            fixed_separator=zwnbsp,
+            fixed_separator=escaped_char,
             **base_splitter_kwargs,
         )
 
-        text = f"chunk1{zwnbsp}chunk2{zwnbsp}chunk3"
-        result = splitter.split_text(text)
-
-        assert len(result) == 3
-        assert result == ["chunk1", "chunk2", "chunk3"]
-
-    def test_invisible_separator_literal(self, base_splitter_kwargs):
-        """INVISIBLE SEPARATOR (U+2063) should work as a literal delimiter."""
-        invisible_sep = "\u2063"
-        splitter = FixedRecursiveCharacterTextSplitter(
-            fixed_separator=invisible_sep,
-            **base_splitter_kwargs,
-        )
-
-        text = f"chunk1{invisible_sep}chunk2{invisible_sep}chunk3"
-        result = splitter.split_text(text)
-
-        assert len(result) == 3
-        assert result == ["chunk1", "chunk2", "chunk3"]
-
-    def test_word_joiner_literal(self, base_splitter_kwargs):
-        """WORD JOINER (U+2060) should work as a literal delimiter."""
-        word_joiner = "\u2060"
-        splitter = FixedRecursiveCharacterTextSplitter(
-            fixed_separator=word_joiner,
-            **base_splitter_kwargs,
-        )
-
-        text = f"chunk1{word_joiner}chunk2{word_joiner}chunk3"
-        result = splitter.split_text(text)
-
-        assert len(result) == 3
-        assert result == ["chunk1", "chunk2", "chunk3"]
-
-    def test_ltr_mark_literal(self, base_splitter_kwargs):
-        """LEFT-TO-RIGHT MARK (U+200E) should work as a literal delimiter."""
-        ltr_mark = "\u200e"
-        splitter = FixedRecursiveCharacterTextSplitter(
-            fixed_separator=ltr_mark,
-            **base_splitter_kwargs,
-        )
-
-        text = f"chunk1{ltr_mark}chunk2{ltr_mark}chunk3"
-        result = splitter.split_text(text)
-
-        assert len(result) == 3
-        assert result == ["chunk1", "chunk2", "chunk3"]
-
-    def test_escaped_newline_still_works(self, base_splitter_kwargs):
-        """Escaped newline \\n should still be decoded properly."""
-        splitter = FixedRecursiveCharacterTextSplitter(
-            fixed_separator="\\n",
-            **base_splitter_kwargs,
-        )
-
-        text = "chunk1\nchunk2\nchunk3"
-        result = splitter.split_text(text)
-
-        assert len(result) == 3
-        assert result == ["chunk1", "chunk2", "chunk3"]
-
-    def test_escaped_tab_still_works(self, base_splitter_kwargs):
-        """Escaped tab \\t should still be decoded properly."""
-        splitter = FixedRecursiveCharacterTextSplitter(
-            fixed_separator="\\t",
-            **base_splitter_kwargs,
-        )
-
-        text = "chunk1\tchunk2\tchunk3"
+        text = f"chunk1{literal_char}chunk2{literal_char}chunk3"
         result = splitter.split_text(text)
 
         assert len(result) == 3
