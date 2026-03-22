@@ -16,9 +16,10 @@ class TestInvisibleDelimiters:
     @pytest.fixture
     def base_splitter_kwargs(self):
         """Common kwargs for creating splitters."""
+
         def length_function(texts: list[str]) -> list[int]:
             return [len(text) for text in texts]
-        
+
         return {
             "chunk_size": 100,
             "chunk_overlap": 0,
