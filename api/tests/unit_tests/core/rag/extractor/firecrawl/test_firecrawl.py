@@ -164,6 +164,13 @@ class TestFirecrawlApp:
         with pytest.raises(Exception, match="No page found"):
             app.check_crawl_status("job-1")
 
+    def test_check_crawl_status_completed_with_null_total_raises(self, mocker: MockerFixture):
+        app = FirecrawlApp(api_key="fc-key", base_url="https://custom.firecrawl.dev")
+        mocker.patch("httpx.get", return_value=_response(200, {"status": "completed", "total": None, "data": []}))
+
+        with pytest.raises(Exception, match="No page found"):
+            app.check_crawl_status("job-1")
+
     def test_check_crawl_status_non_completed(self, mocker: MockerFixture):
         app = FirecrawlApp(api_key="fc-key", base_url="https://custom.firecrawl.dev")
         payload = {"status": "processing", "total": 5, "completed": 1, "data": []}
@@ -254,9 +261,9 @@ class TestFirecrawlApp:
             app.check_crawl_status("job-99")
 
     def test_check_crawl_status_pagination_capped_at_total(self, mocker: MockerFixture):
-        """Pagination fetches are capped at total to guard against infinite loops."""
+        """Pagination stops once pages_processed reaches total, even if next is present."""
         app = FirecrawlApp(api_key="fc-key", base_url="https://custom.firecrawl.dev")
-        # total=1: at most 1 fetch is allowed, so the next URL on page2 is never followed
+        # total=1: only the first page should be processed; next must not be followed
         page1 = {
             "status": "completed",
             "total": 1,
@@ -264,22 +271,15 @@ class TestFirecrawlApp:
             "next": "https://custom.firecrawl.dev/v2/crawl/job-cap?skip=1",
             "data": [{"metadata": {"title": "p1", "description": "", "sourceURL": "https://p1"}, "markdown": "m1"}],
         }
-        page2 = {
-            "status": "completed",
-            "total": 1,
-            "completed": 1,
-            "next": "https://custom.firecrawl.dev/v2/crawl/job-cap?skip=2",  # would be page3, but capped
-            "data": [{"metadata": {"title": "p2", "description": "", "sourceURL": "https://p2"}, "markdown": "m2"}],
-        }
-        mock_get = mocker.patch("httpx.get", side_effect=[_response(200, page1), _response(200, page2)])
+        mock_get = mocker.patch("httpx.get", return_value=_response(200, page1))
         mock_storage = MagicMock()
         mock_storage.exists.return_value = False
         mocker.patch.object(firecrawl_module, "storage", mock_storage)
 
         result = app.check_crawl_status("job-cap")
 
-        assert len(result["data"]) == 2
-        assert mock_get.call_count == 2  # initial + 1 fetch (capped at total=1); page3 not fetched
+        assert len(result["data"]) == 1
+        mock_get.assert_called_once()  # initial fetch only; next URL is not followed due to cap
 
     def test_extract_common_fields_and_status_formatter(self):
         app = FirecrawlApp(api_key="fc-key", base_url="https://custom.firecrawl.dev")

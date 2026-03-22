@@ -95,8 +95,9 @@ class FirecrawlApp:
         if response.status_code == 200:
             crawl_status_response = response.json()
             if crawl_status_response.get("status") == "completed":
-                total = crawl_status_response.get("total", 0)
-                if total == 0:
+                # Normalize to avoid None bypassing the zero-guard when the API returns null.
+                total = crawl_status_response.get("total") or 0
+                if total <= 0:
                     raise Exception("Failed to check crawl status. Error: No page found")
                 url_data_list = self._collect_all_crawl_pages(crawl_status_response, headers)
                 if url_data_list:
@@ -123,26 +124,26 @@ class FirecrawlApp:
         Raises an exception if any paginated request fails, to avoid returning
         partial data that is inconsistent with the reported total.
 
-        The number of additional page fetches is capped at ``total`` (the
+        The number of pages processed is capped at ``total`` (the
         server-reported page count) to guard against infinite loops caused by
         a misbehaving server that keeps returning a ``next`` URL.
         """
         total: int = first_page.get("total") or 0
         url_data_list: list[FirecrawlDocumentData] = []
         current_page = first_page
-        fetches = 0
+        pages_processed = 0
         while True:
             for item in current_page.get("data", []):
                 if isinstance(item, dict) and "metadata" in item and "markdown" in item:
                     url_data_list.append(self._extract_common_fields(item))
             next_url: str | None = current_page.get("next")
-            if not next_url or fetches >= total:
+            pages_processed += 1
+            if not next_url or pages_processed >= total:
                 break
             response = self._get_request(next_url, headers)
             if response.status_code != 200:
                 self._handle_error(response, "fetch next crawl page")
             current_page = response.json()
-            fetches += 1
         return url_data_list
 
     def _format_crawl_status_response(
