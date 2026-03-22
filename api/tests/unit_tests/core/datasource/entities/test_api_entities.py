@@ -50,7 +50,7 @@ def test_datasource_provider_api_entity_convert_none_to_empty_list():
         icon="icon",
         label=label,
         type="type",
-        datasources=None,  # type: ignore
+        datasources=None,  # type: ignore[assignment]
     )
 
     assert entity.datasources == []

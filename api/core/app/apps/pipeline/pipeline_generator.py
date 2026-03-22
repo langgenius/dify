@@ -217,7 +217,7 @@ class PipelineGenerator(BaseAppGenerator):
             )
             if invoke_from == InvokeFrom.DEBUGGER or is_retry:
                 return self._generate(
-                    flask_app=current_app._get_current_object(),  # type: ignore
+                    flask_app=current_app._get_current_object(),  # type: ignore[attr-defined]
                     context=contextvars.copy_context(),
                     pipeline=pipeline,
                     workflow_id=workflow.id,
@@ -315,7 +315,7 @@ class PipelineGenerator(BaseAppGenerator):
             worker_thread = threading.Thread(
                 target=self._generate_worker,
                 kwargs={
-                    "flask_app": current_app._get_current_object(),  # type: ignore
+                    "flask_app": current_app._get_current_object(),  # type: ignore[attr-defined]
                     "context": context,
                     "queue_manager": queue_manager,
                     "application_generate_entity": application_generate_entity,
@@ -428,7 +428,7 @@ class PipelineGenerator(BaseAppGenerator):
         )
 
         return self._generate(
-            flask_app=current_app._get_current_object(),  # type: ignore
+            flask_app=current_app._get_current_object(),  # type: ignore[attr-defined]
             pipeline=pipeline,
             workflow_id=workflow.id,
             user=user,
@@ -524,7 +524,7 @@ class PipelineGenerator(BaseAppGenerator):
         )
 
         return self._generate(
-            flask_app=current_app._get_current_object(),  # type: ignore
+            flask_app=current_app._get_current_object(),  # type: ignore[attr-defined]
             pipeline=pipeline,
             workflow_id=workflow.id,
             user=user,

@@ -56,7 +56,7 @@ def rag_pipeline_run_task(
         logger.info("tenant %s received %d rag pipeline invoke entities", tenant_id, len(rag_pipeline_invoke_entities))
 
         # Get Flask app object for thread context
-        flask_app = current_app._get_current_object()  # type: ignore
+        flask_app = current_app._get_current_object()  # type: ignore[attr-defined]
 
         with ThreadPoolExecutor(max_workers=10) as executor:
             futures = []

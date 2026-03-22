@@ -52,7 +52,7 @@ _CACHED_APP = create_app()
 
 @pytest.fixture(scope="session")
 def dify_config() -> DifyConfig:
-    config = DifyConfig()  # type: ignore
+    config = DifyConfig()  # type: ignore[assignment]
     return config
 
 

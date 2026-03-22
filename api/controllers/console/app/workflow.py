@@ -900,7 +900,7 @@ class DefaultBlockConfigApi(Resource):
         """
         Get default block config
         """
-        args = DefaultBlockConfigQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = DefaultBlockConfigQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore[arg-type]
 
         filters = None
         if args.q:
@@ -968,7 +968,7 @@ class PublishedAllWorkflowApi(Resource):
         """
         current_user, _ = current_account_with_tenant()
 
-        args = WorkflowListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = WorkflowListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore[arg-type]
         page = args.page
         limit = args.limit
         user_id = args.user_id

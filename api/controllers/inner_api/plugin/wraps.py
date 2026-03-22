@@ -89,8 +89,8 @@ def get_user_tenant(view_func: Callable[P, R]):
         user = get_user(tenant_id, user_id)
         kwargs["user_model"] = user
 
-        current_app.login_manager._update_request_context_with_user(user)  # type: ignore
-        user_logged_in.send(current_app._get_current_object(), user=current_user)  # type: ignore
+        current_app.login_manager._update_request_context_with_user(user)  # type: ignore[attr-defined]
+        user_logged_in.send(current_app._get_current_object(), user=current_user)  # type: ignore[attr-defined]
 
         return view_func(*args, **kwargs)
 

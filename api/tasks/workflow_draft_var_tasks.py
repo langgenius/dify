@@ -5,7 +5,7 @@ These tasks provide asynchronous storage capabilities for workflow execution dat
 improving performance by offloading storage operations to background workers.
 """
 
-from celery import shared_task  # type: ignore[import-untyped]
+from celery import shared_task
 
 from core.db.session_factory import session_factory
 from services.workflow_draft_variable_service import DraftVarFileDeletion, WorkflowDraftVariableService

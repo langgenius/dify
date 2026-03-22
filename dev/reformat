@@ -17,5 +17,8 @@ uv run --directory api --dev ruff format ./
 # run dotenv-linter linter
 uv run --project api --dev dotenv-linter ./api/.env.example ./web/.env.example
 
+# run pyrefly check
+dev/pyrefly-check-local
+
 # run basedpyright check
 dev/basedpyright-check

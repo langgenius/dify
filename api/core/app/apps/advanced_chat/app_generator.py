@@ -171,7 +171,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
 
         if invoke_from == InvokeFrom.DEBUGGER:
             # always enable retriever resource in debugger mode
-            app_config.additional_features.show_retrieve_source = True  # type: ignore
+            app_config.additional_features.show_retrieve_source = True  # type: ignore[attr-defined]
 
         # init application generate entity
         application_generate_entity = AdvancedChatAppGenerateEntity(
@@ -504,7 +504,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         worker_thread = threading.Thread(
             target=self._generate_worker,
             kwargs={
-                "flask_app": current_app._get_current_object(),  # type: ignore
+                "flask_app": current_app._get_current_object(),  # type: ignore[attr-defined]
                 "application_generate_entity": application_generate_entity,
                 "queue_manager": queue_manager,
                 "conversation_id": conversation.id,

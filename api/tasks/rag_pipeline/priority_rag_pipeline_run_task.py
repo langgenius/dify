@@ -8,7 +8,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 import click
-from celery import shared_task  # type: ignore
+from celery import shared_task
 from flask import current_app, g
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -50,7 +50,7 @@ def priority_rag_pipeline_run_task(
         logger.info("tenant %s received %d rag pipeline invoke entities", tenant_id, len(rag_pipeline_invoke_entities))
 
         # Get Flask app object for thread context
-        flask_app = current_app._get_current_object()  # type: ignore
+        flask_app = current_app._get_current_object()  # type: ignore[attr-defined]
 
         with ThreadPoolExecutor(max_workers=10) as executor:
             futures = []
@@ -87,7 +87,7 @@ def priority_rag_pipeline_run_task(
                 # Process the next waiting task
                 # Keep the flag set to indicate a task is running
                 tenant_isolated_task_queue.set_task_waiting_time()
-                priority_rag_pipeline_run_task.delay(  # type: ignore
+                priority_rag_pipeline_run_task.delay(  # type: ignore[operator]
                     rag_pipeline_invoke_entities_file_id=next_file_id.decode("utf-8")
                     if isinstance(next_file_id, bytes)
                     else next_file_id,

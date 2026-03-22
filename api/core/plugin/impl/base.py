@@ -198,7 +198,7 @@ class BasePluginClient:
         Make a stream request to the plugin daemon inner API and yield the response as a model.
         """
         for line in self._stream_request(method, path, params, headers, data, files):
-            yield type_(**json.loads(line))  # type: ignore
+            yield type_(**json.loads(line))  # type: ignore[misc, operator]
 
     def _request_with_model(
         self,
@@ -246,7 +246,7 @@ class BasePluginClient:
             if transformer:
                 json_response = transformer(json_response)
             # https://stackoverflow.com/questions/59634937/variable-foo-class-is-not-valid-as-type-but-why
-            rep = PluginDaemonBasicResponse[type_].model_validate(json_response)  # type: ignore
+            rep = PluginDaemonBasicResponse[type_].model_validate(json_response)  # type: ignore[valid-type, operator]
         except Exception:
             msg = (
                 f"Failed to parse response from plugin daemon to PluginDaemonBasicResponse [{str(type_.__name__)}],"
@@ -283,7 +283,7 @@ class BasePluginClient:
         """
         for line in self._stream_request(method, path, params, headers, data, files):
             try:
-                rep = PluginDaemonBasicResponse[type_].model_validate_json(line)  # type: ignore
+                rep = PluginDaemonBasicResponse[type_].model_validate_json(line)  # type: ignore[valid-type, operator]
             except (ValueError, TypeError):
                 # TODO modify this when line_data has code and message
                 try:

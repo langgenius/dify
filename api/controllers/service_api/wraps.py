@@ -101,8 +101,8 @@ def validate_app_token(
                 kwargs["end_user"] = end_user
 
                 # Set EndUser as current logged-in user for flask_login.current_user
-                current_app.login_manager._update_request_context_with_user(end_user)  # type: ignore
-                user_logged_in.send(current_app._get_current_object(), user=end_user)  # type: ignore
+                current_app.login_manager._update_request_context_with_user(end_user)  # type: ignore[attr-defined]
+                user_logged_in.send(current_app._get_current_object(), user=end_user)  # type: ignore[attr-defined]
             else:
                 # For service API without end-user context, ensure an Account is logged in
                 # so services relying on current_account_with_tenant() work correctly.
@@ -121,8 +121,8 @@ def validate_app_token(
                 if tenant_owner_info:
                     tenant_model, account = tenant_owner_info
                     account.current_tenant = tenant_model
-                    current_app.login_manager._update_request_context_with_user(account)  # type: ignore
-                    user_logged_in.send(current_app._get_current_object(), user=current_user)  # type: ignore
+                    current_app.login_manager._update_request_context_with_user(account)  # type: ignore[attr-defined]
+                    user_logged_in.send(current_app._get_current_object(), user=current_user)  # type: ignore[attr-defined]
                 else:
                     raise Unauthorized("Tenant owner account not found or tenant is not active.")
 
@@ -303,8 +303,8 @@ def validate_dataset_token(
                 # Login admin
                 if account:
                     account.current_tenant = tenant
-                    current_app.login_manager._update_request_context_with_user(account)  # type: ignore
-                    user_logged_in.send(current_app._get_current_object(), user=current_user)  # type: ignore
+                    current_app.login_manager._update_request_context_with_user(account)  # type: ignore[attr-defined]
+                    user_logged_in.send(current_app._get_current_object(), user=current_user)  # type: ignore[attr-defined]
                 else:
                     raise Unauthorized("Tenant owner account does not exist.")
             else:

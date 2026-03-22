@@ -401,7 +401,7 @@ class VariableTruncator(BaseTruncator):
     def _truncate_json_primitives(self, val: dict[str, object], target_size: int) -> _PartResult[dict[str, object]]: ...
 
     @overload
-    def _truncate_json_primitives(self, val: bool, target_size: int) -> _PartResult[bool]: ...  # type: ignore
+    def _truncate_json_primitives(self, val: bool, target_size: int) -> _PartResult[bool]: ...  # type: ignore[misc]
 
     @overload
     def _truncate_json_primitives(self, val: int, target_size: int) -> _PartResult[int]: ...

@@ -1,5 +1,5 @@
-from flask_restx import (  # type: ignore
-    Resource,  # type: ignore
+from flask_restx import (
+    Resource,
 )
 from pydantic import BaseModel
 from werkzeug.exceptions import Forbidden

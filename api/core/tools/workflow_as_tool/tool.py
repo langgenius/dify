@@ -113,9 +113,9 @@ class WorkflowTool(Tool):
         if outputs is None:
             outputs = {}
         else:
-            outputs, files = self._extract_files(outputs)  # type: ignore
+            outputs, files = self._extract_files(outputs)  # type: ignore[assignment]
             for file in files:
-                yield self.create_file_message(file)  # type: ignore
+                yield self.create_file_message(file)  # type: ignore[arg-type, misc]
 
         # traverse `outputs` field and create variable messages
         for key, value in outputs.items():

@@ -146,7 +146,7 @@ class PluginMigration:
                     futures.append(
                         thread_pool.submit(
                             process_tenant,
-                            current_app._get_current_object(),  # type: ignore
+                            current_app._get_current_object(),  # type: ignore[attr-defined]
                             tenant_id,
                         )
                     )

@@ -2,7 +2,7 @@ import logging
 import uuid
 from typing import ClassVar
 
-from apscheduler.schedulers.background import BackgroundScheduler  # type: ignore
+from apscheduler.schedulers.background import BackgroundScheduler  # type: ignore[reportMissingTypeStubs]
 
 from dify_graph.graph_engine.entities.commands import CommandType, GraphEngineCommand
 from dify_graph.graph_engine.layers.base import GraphEngineLayer

@@ -58,10 +58,10 @@ def init_app(app: DifyApp):
         # FIXME maybe its sqlalchemy issue
         return {
             "pid": os.getpid(),
-            "pool_size": engine.pool.size(),  # type: ignore
-            "checked_in_connections": engine.pool.checkedin(),  # type: ignore
-            "checked_out_connections": engine.pool.checkedout(),  # type: ignore
-            "overflow_connections": engine.pool.overflow(),  # type: ignore
-            "connection_timeout": engine.pool.timeout(),  # type: ignore
-            "recycle_time": db.engine.pool._recycle,  # type: ignore
+            "pool_size": engine.pool.size(),  # type: ignore[attr-defined]
+            "checked_in_connections": engine.pool.checkedin(),  # type: ignore[attr-defined]
+            "checked_out_connections": engine.pool.checkedout(),  # type: ignore[attr-defined]
+            "overflow_connections": engine.pool.overflow(),  # type: ignore[attr-defined]
+            "connection_timeout": engine.pool.timeout(),  # type: ignore[attr-defined]
+            "recycle_time": db.engine.pool._recycle,  # type: ignore[attr-defined]
         }

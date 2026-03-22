@@ -23,7 +23,7 @@ class OnlineDriveDatasourcePluginProviderController(DatasourcePluginProviderCont
         """
         return DatasourceProviderType.ONLINE_DRIVE
 
-    def get_datasource(self, datasource_name: str) -> OnlineDriveDatasourcePlugin:  # type: ignore
+    def get_datasource(self, datasource_name: str) -> OnlineDriveDatasourcePlugin:  # type: ignore[return-value]
         """
         return datasource with given name
         """

@@ -2,7 +2,7 @@ import logging
 import time
 
 import click
-from celery import shared_task  # type: ignore
+from celery import shared_task
 
 from core.db.session_factory import session_factory
 from core.rag.index_processor.constant.doc_type import DocType

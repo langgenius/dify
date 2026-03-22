@@ -28,7 +28,7 @@ class SendGridClient:
             content = Content("text/html", mail["html"])
             sg_mail = Mail(from_email, to_email, subject, content)
             mail_json = sg_mail.get()
-            response = sg.client.mail.send.post(request_body=mail_json)  # type: ignore
+            response = sg.client.mail.send.post(request_body=mail_json)  # type: ignore[operator]
             logger.debug(response.status_code)
             logger.debug(response.body)
             logger.debug(response.headers)

@@ -342,7 +342,7 @@ class CompletionConversationApi(Resource):
     @edit_permission_required
     def get(self, app_model):
         current_user, _ = current_account_with_tenant()
-        args = CompletionConversationQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = CompletionConversationQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore[arg-type]
 
         query = sa.select(Conversation).where(
             Conversation.app_id == app_model.id, Conversation.mode == "completion", Conversation.is_deleted.is_(False)
@@ -378,7 +378,7 @@ class CompletionConversationApi(Resource):
         if args.annotation_status == "annotated":
             query = (
                 query.options(selectinload(Conversation.message_annotations))  # type: ignore[arg-type]
-                .join(  # type: ignore
+                .join(  # type: ignore[arg-type]
                     MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id
                 )
                 .distinct()
@@ -455,7 +455,7 @@ class ChatConversationApi(Resource):
     @edit_permission_required
     def get(self, app_model):
         current_user, _ = current_account_with_tenant()
-        args = ChatConversationQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = ChatConversationQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore[arg-type]
 
         subquery = (
             db.session.query(
@@ -517,7 +517,7 @@ class ChatConversationApi(Resource):
             case "annotated":
                 query = (
                     query.options(selectinload(Conversation.message_annotations))  # type: ignore[arg-type]
-                    .join(  # type: ignore
+                    .join(  # type: ignore[arg-type]
                         MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id
                     )
                     .distinct()

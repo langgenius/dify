@@ -81,7 +81,7 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
     def version(cls) -> str:
         return "1"
 
-    def _run(self) -> Generator[GraphNodeEventBase | NodeEventBase, None, None]:  # type: ignore
+    def _run(self) -> Generator[GraphNodeEventBase | NodeEventBase, None, None]:  # type: ignore[misc, override]
         variable = self._get_iterator_variable()
 
         if self._is_empty_iteration(variable):

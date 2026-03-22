@@ -629,7 +629,7 @@ class ProviderManager:
                                 provider_name=ModelProviderID(provider_name).provider_name,
                                 provider_type=ProviderType.SYSTEM,
                                 quota_type=quota.quota_type,
-                                quota_limit=0,  # type: ignore
+                                quota_limit=0,  # type: ignore[assignment]
                                 quota_used=0,
                                 is_valid=True,
                             )

@@ -80,7 +80,7 @@ class TestPauseReasonDiscriminator:
 
     def test_model_construct_with_invalid_type(self):
         with pytest.raises(ValidationError):
-            holder = _Holder(reason=object())  # type: ignore
+            holder = _Holder(reason=object())  # type: ignore[arg-type]
 
     def test_unknown_type_fails_validation(self):
         """Unknown TYPE values should raise a validation error."""

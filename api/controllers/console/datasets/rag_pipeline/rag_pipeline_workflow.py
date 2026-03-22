@@ -3,7 +3,7 @@ import logging
 from typing import Any, Literal, cast
 
 from flask import abort, request
-from flask_restx import Resource, marshal_with  # type: ignore
+from flask_restx import Resource, marshal_with
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound

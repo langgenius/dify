@@ -120,7 +120,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
                 inputs=variables,
                 process_data={"usage": jsonable_encoder(usage)},
-                outputs=outputs,  # type: ignore
+                outputs=outputs,  # type: ignore[assignment]
                 metadata={
                     WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: usage.total_tokens,
                     WorkflowNodeExecutionMetadataKey.TOTAL_PRICE: usage.total_price,
@@ -282,7 +282,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
                     resolved_value = segment_group.text
             elif isinstance(value, Sequence) and all(isinstance(v, str) for v in value):
                 resolved_values = []
-                for v in value:  # type: ignore
+                for v in value:  # type: ignore[misc]
                     segment_group = variable_pool.convert_template(v)
                     if len(segment_group.value) == 1:
                         resolved_values.append(segment_group.value[0].to_object())

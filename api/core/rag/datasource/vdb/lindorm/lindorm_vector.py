@@ -268,7 +268,7 @@ class LindormVectorStore(BaseVector):
         try:
             params = {"timeout": self._client_config.request_timeout}
             if self._using_ugc:
-                params["routing"] = self._routing  # type: ignore
+                params["routing"] = self._routing  # type: ignore[arg-type, assignment]
             response = self._client.search(index=self._collection_name, body=search_query, params=params)
         except Exception:
             logger.exception("Error executing vector search, query: %s", search_query)

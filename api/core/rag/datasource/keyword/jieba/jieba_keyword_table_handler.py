@@ -44,7 +44,7 @@ class JiebaKeywordTableHandler:
                                         │  & cache to default    │    │  _SimpleTFIDF   │
                                         └────────────────────────┘    └─────────────────┘
         """
-        import jieba.analyse  # type: ignore
+        import jieba.analyse
 
         tfidf = getattr(jieba.analyse, "default_tfidf", None)
         if tfidf is not None:
@@ -53,7 +53,7 @@ class JiebaKeywordTableHandler:
         tfidf_class = getattr(jieba.analyse, "TFIDF", None)
         if tfidf_class is None:
             try:
-                from jieba.analyse.tfidf import TFIDF  # type: ignore
+                from jieba.analyse.tfidf import TFIDF
 
                 tfidf_class = TFIDF
             except Exception:
@@ -69,7 +69,7 @@ class JiebaKeywordTableHandler:
     @staticmethod
     def _build_fallback_tfidf():
         """Fallback lightweight TFIDF for environments missing jieba's TFIDF."""
-        import jieba  # type: ignore
+        import jieba
 
         from core.rag.datasource.keyword.jieba.stopwords import STOPWORDS
 

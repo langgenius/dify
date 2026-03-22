@@ -35,7 +35,7 @@ def poll_workflow_schedules() -> None:
             if not due_schedules:
                 break
 
-            with current_app.producer_or_acquire() as producer:  # type: ignore
+            with current_app.producer_or_acquire() as producer:  # type: ignore[attr-defined]
                 dispatched_count = _process_schedules(session, due_schedules, producer)
                 total_dispatched += dispatched_count
 

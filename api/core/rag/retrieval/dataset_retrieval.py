@@ -417,8 +417,8 @@ class DatasetRetrieval:
             query,
             tenant_id,
             user_id,
-            retrieve_config.metadata_filtering_mode,  # type: ignore
-            retrieve_config.metadata_model_config,  # type: ignore
+            retrieve_config.metadata_filtering_mode,  # type: ignore[arg-type]
+            retrieve_config.metadata_model_config,  # type: ignore[arg-type]
             retrieve_config.metadata_filtering_conditions,
             inputs,
         )
@@ -535,11 +535,11 @@ class DatasetRetrieval:
                         DatasetDocument.enabled == True,
                         DatasetDocument.archived == False,
                     )
-                    documents = db.session.execute(dataset_document_stmt).scalars().all()  # type: ignore
+                    documents = db.session.execute(dataset_document_stmt).scalars().all()  # type: ignore[operator]
                     dataset_stmt = select(Dataset).where(
                         Dataset.id.in_(dataset_ids),
                     )
-                    datasets = db.session.execute(dataset_stmt).scalars().all()  # type: ignore
+                    datasets = db.session.execute(dataset_stmt).scalars().all()  # type: ignore[operator]
                     dataset_map = {i.id: i for i in datasets}
                     document_map = {i.id: i for i in documents}
                     for record in records:
@@ -709,7 +709,7 @@ class DatasetRetrieval:
                     thread = threading.Thread(
                         target=self._on_retrieval_end,
                         kwargs={
-                            "flask_app": current_app._get_current_object(),  # type: ignore
+                            "flask_app": current_app._get_current_object(),  # type: ignore[attr-defined]
                             "documents": results,
                             "message_id": message_id,
                             "timer": timer,
@@ -783,7 +783,7 @@ class DatasetRetrieval:
                 query_thread = threading.Thread(
                     target=self._multiple_retrieve_thread,
                     kwargs={
-                        "flask_app": current_app._get_current_object(),  # type: ignore
+                        "flask_app": current_app._get_current_object(),  # type: ignore[attr-defined]
                         "available_datasets": available_datasets,
                         "metadata_condition": metadata_condition,
                         "metadata_filter_document_ids": metadata_filter_document_ids,
@@ -809,7 +809,7 @@ class DatasetRetrieval:
                     attachment_thread = threading.Thread(
                         target=self._multiple_retrieve_thread,
                         kwargs={
-                            "flask_app": current_app._get_current_object(),  # type: ignore
+                            "flask_app": current_app._get_current_object(),  # type: ignore[attr-defined]
                             "available_datasets": available_datasets,
                             "metadata_condition": metadata_condition,
                             "metadata_filter_document_ids": metadata_filter_document_ids,
@@ -850,7 +850,7 @@ class DatasetRetrieval:
             retrieval_end_thread = threading.Thread(
                 target=self._on_retrieval_end,
                 kwargs={
-                    "flask_app": current_app._get_current_object(),  # type: ignore
+                    "flask_app": current_app._get_current_object(),  # type: ignore[attr-defined]
                     "documents": all_documents,
                     "message_id": message_id,
                     "timer": timer,
@@ -1313,7 +1313,7 @@ class DatasetRetrieval:
             DatasetDocument.enabled == True,
             DatasetDocument.archived == False,
         )
-        filters = []  # type: ignore
+        filters = []  # type: ignore[var-annotated]
         metadata_condition = None
         if metadata_filtering_mode == "disabled":
             return None, None
@@ -1326,28 +1326,28 @@ class DatasetRetrieval:
                 for sequence, filter in enumerate(automatic_metadata_filters):
                     self.process_metadata_filter_func(
                         sequence,
-                        filter.get("condition"),  # type: ignore
-                        filter.get("metadata_name"),  # type: ignore
+                        filter.get("condition"),  # type: ignore[arg-type]
+                        filter.get("metadata_name"),  # type: ignore[arg-type]
                         filter.get("value"),
-                        filters,  # type: ignore
+                        filters,  # type: ignore[arg-type]
                     )
                     conditions.append(
                         Condition(
-                            name=filter.get("metadata_name"),  # type: ignore
-                            comparison_operator=filter.get("condition"),  # type: ignore
+                            name=filter.get("metadata_name"),  # type: ignore[arg-type]
+                            comparison_operator=filter.get("condition"),  # type: ignore[arg-type]
                             value=filter.get("value"),
                         )
                     )
                 metadata_condition = MetadataCondition(
                     logical_operator=metadata_filtering_conditions.logical_operator
                     if metadata_filtering_conditions
-                    else "or",  # type: ignore
+                    else "or",  # type: ignore[assignment]
                     conditions=conditions,
                 )
         elif metadata_filtering_mode == "manual":
             if metadata_filtering_conditions:
                 conditions = []
-                for sequence, condition in enumerate(metadata_filtering_conditions.conditions):  # type: ignore
+                for sequence, condition in enumerate(metadata_filtering_conditions.conditions):  # type: ignore[arg-type]
                     metadata_name = condition.name
                     expected_value = condition.value
                     if expected_value is not None and condition.comparison_operator not in ("empty", "not empty"):
@@ -1374,15 +1374,15 @@ class DatasetRetrieval:
         else:
             raise ValueError("Invalid metadata filtering mode")
         if filters:
-            if metadata_filtering_conditions and metadata_filtering_conditions.logical_operator == "and":  # type: ignore
+            if metadata_filtering_conditions and metadata_filtering_conditions.logical_operator == "and":  # type: ignore[assignment]
                 document_query = document_query.where(and_(*filters))
             else:
                 document_query = document_query.where(or_(*filters))
         documents = document_query.all()
         # group by dataset_id
-        metadata_filter_document_ids = defaultdict(list) if documents else None  # type: ignore
+        metadata_filter_document_ids = defaultdict(list) if documents else None  # type: ignore[var-annotated]
         for document in documents:
-            metadata_filter_document_ids[document.dataset_id].append(document.id)  # type: ignore
+            metadata_filter_document_ids[document.dataset_id].append(document.id)  # type: ignore[index]
         return metadata_filter_document_ids, metadata_condition
 
     def _replace_metadata_filter_value(self, text: str, inputs: dict) -> str:

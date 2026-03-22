@@ -32,7 +32,7 @@ class BaseMail(Resource):
             to=args.to,
             subject=args.subject,
             body=args.body,
-            substitutions=args.substitutions,  # type: ignore
+            substitutions=args.substitutions,  # type: ignore[arg-type]
         )
         return {"message": "success"}, 200
 

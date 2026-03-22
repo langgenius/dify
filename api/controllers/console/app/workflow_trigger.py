@@ -60,7 +60,7 @@ class WebhookTriggerApi(Resource):
     @marshal_with(webhook_trigger_model)
     def get(self, app_model: App):
         """Get webhook trigger for a node"""
-        args = Parser.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = Parser.model_validate(request.args.to_dict(flat=True))  # type: ignore[arg-type]
 
         node_id = args.node_id
 
@@ -114,9 +114,9 @@ class AppTriggersApi(Resource):
         url_prefix = dify_config.CONSOLE_API_URL + "/console/api/workspaces/current/tool-provider/builtin/"
         for trigger in triggers:
             if trigger.trigger_type == "trigger-plugin":
-                trigger.icon = url_prefix + trigger.provider_name + "/icon"  # type: ignore
+                trigger.icon = url_prefix + trigger.provider_name + "/icon"  # type: ignore[attr-defined,operator]
             else:
-                trigger.icon = ""  # type: ignore
+                trigger.icon = ""  # type: ignore[attr-defined]
 
         return {"data": triggers}
 
@@ -159,8 +159,8 @@ class AppTriggerEnableApi(Resource):
         # Add computed icon field
         url_prefix = dify_config.CONSOLE_API_URL + "/console/api/workspaces/current/tool-provider/builtin/"
         if trigger.trigger_type == "trigger-plugin":
-            trigger.icon = url_prefix + trigger.provider_name + "/icon"  # type: ignore
+            trigger.icon = url_prefix + trigger.provider_name + "/icon"  # type: ignore[attr-defined,operator]
         else:
-            trigger.icon = ""  # type: ignore
+            trigger.icon = ""  # type: ignore[attr-defined]
 
         return trigger

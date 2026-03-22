@@ -72,7 +72,7 @@ def capture_flask_context(user: Any = None) -> IExecutionContext:
         RuntimeError: If called outside Flask context
     """
     # Get Flask app instance
-    flask_app = current_app._get_current_object()  # type: ignore
+    flask_app = current_app._get_current_object()  # type: ignore[attr-defined]
 
     # Save current user if available
     saved_user = user

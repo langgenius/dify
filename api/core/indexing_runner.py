@@ -592,7 +592,7 @@ class IndexingRunner:
             # create keyword index
             create_keyword_thread = threading.Thread(
                 target=self._process_keyword_index,
-                args=(current_app._get_current_object(), dataset.id, dataset_document.id, documents),  # type: ignore
+                args=(current_app._get_current_object(), dataset.id, dataset_document.id, documents),  # type: ignore[attr-defined]
             )
             create_keyword_thread.start()
 
@@ -615,7 +615,7 @@ class IndexingRunner:
                     futures.append(
                         executor.submit(
                             self._process_chunk,
-                            current_app._get_current_object(),  # type: ignore
+                            current_app._get_current_object(),  # type: ignore[attr-defined]
                             index_processor,
                             chunk_documents,
                             dataset,
@@ -742,7 +742,7 @@ class IndexingRunner:
 
         if extra_update_params:
             update_params.update(extra_update_params)
-        db.session.query(DatasetDocument).filter_by(id=document_id).update(update_params)  # type: ignore
+        db.session.query(DatasetDocument).filter_by(id=document_id).update(update_params)  # type: ignore[arg-type, operator]
         db.session.commit()
 
     @staticmethod

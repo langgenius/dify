@@ -4,7 +4,13 @@ import re
 from typing import Any, Literal
 
 from pydantic import BaseModel, model_validator
-from pyobvector import VECTOR, ObVecClient, cosine_distance, inner_product, l2_distance  # type: ignore
+from pyobvector import (
+    VECTOR,
+    ObVecClient,
+    cosine_distance,
+    inner_product,
+    l2_distance,
+)
 from sqlalchemy import JSON, Column, String
 from sqlalchemy.dialects.mysql import LONGTEXT
 from sqlalchemy.exc import SQLAlchemyError

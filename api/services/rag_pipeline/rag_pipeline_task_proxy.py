@@ -45,7 +45,7 @@ class RagPipelineTaskProxy:
 
     def _send_to_direct_queue(self, upload_file_id: str, task_func: Callable[[str, str], None]):
         logger.info("tenant %s send file %s to direct queue", self._dataset_tenant_id, upload_file_id)
-        task_func.delay(  # type: ignore
+        task_func.delay(  # type: ignore[attr-defined, operator]
             rag_pipeline_invoke_entities_file_id=upload_file_id,
             tenant_id=self._dataset_tenant_id,
         )
@@ -59,7 +59,7 @@ class RagPipelineTaskProxy:
         else:
             # Set flag and execute task
             self._tenant_isolated_task_queue.set_task_waiting_time()
-            task_func.delay(  # type: ignore
+            task_func.delay(  # type: ignore[attr-defined, operator]
                 rag_pipeline_invoke_entities_file_id=upload_file_id,
                 tenant_id=self._dataset_tenant_id,
             )

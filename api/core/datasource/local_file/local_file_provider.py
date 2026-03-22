@@ -31,7 +31,7 @@ class LocalFileDatasourcePluginProviderController(DatasourcePluginProviderContro
         """
         pass
 
-    def get_datasource(self, datasource_name: str) -> LocalFileDatasourcePlugin:  # type: ignore
+    def get_datasource(self, datasource_name: str) -> LocalFileDatasourcePlugin:  # type: ignore[return-value]
         """
         return datasource with given name
         """

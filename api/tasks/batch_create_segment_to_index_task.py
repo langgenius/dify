@@ -103,7 +103,7 @@ def batch_create_segment_to_index_task(
 
     with tempfile.TemporaryDirectory() as temp_dir:
         suffix = Path(upload_file_key).suffix
-        file_path = f"{temp_dir}/{next(tempfile._get_candidate_names())}{suffix}"  # type: ignore
+        file_path = f"{temp_dir}/{next(tempfile._get_candidate_names())}{suffix}"  # type: ignore[attr-defined, operator]
         storage.download(upload_file_key, file_path)
 
         df = pd.read_csv(file_path)

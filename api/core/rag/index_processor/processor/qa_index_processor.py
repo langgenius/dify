@@ -87,8 +87,8 @@ class QAIndexProcessor(BaseIndexProcessor):
             all_documents.extend(split_documents)
         if preview:
             self._format_qa_document(
-                current_app._get_current_object(),  # type: ignore
-                kwargs.get("tenant_id"),  # type: ignore
+                current_app._get_current_object(),  # type: ignore[attr-defined]
+                kwargs.get("tenant_id"),  # type: ignore[arg-type]
                 all_documents[0],
                 all_qa_documents,
                 kwargs.get("doc_language", "English"),
@@ -101,8 +101,8 @@ class QAIndexProcessor(BaseIndexProcessor):
                     document_format_thread = threading.Thread(
                         target=self._format_qa_document,
                         kwargs={
-                            "flask_app": current_app._get_current_object(),  # type: ignore
-                            "tenant_id": kwargs.get("tenant_id"),  # type: ignore
+                            "flask_app": current_app._get_current_object(),  # type: ignore[attr-defined]
+                            "tenant_id": kwargs.get("tenant_id"),  # type: ignore[arg-type]
                             "document_node": doc,
                             "all_qa_documents": all_qa_documents,
                             "document_language": kwargs.get("doc_language", "English"),
@@ -121,7 +121,7 @@ class QAIndexProcessor(BaseIndexProcessor):
 
         try:
             # Skip the first row
-            df = pd.read_csv(file)  # type: ignore
+            df = pd.read_csv(file)  # type: ignore[misc]
             text_docs = []
             for _, row in df.iterrows():
                 data = Document(page_content=row.iloc[0], metadata={"answer": row.iloc[1]})

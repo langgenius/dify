@@ -41,7 +41,7 @@ class BatchDocumentIndexingProxy(DocumentTaskProxyBase):
             task_func: The Celery task function to call with (tenant_id, dataset_id, document_ids)
         """
         logger.info("tenant %s send documents %s to direct queue", self._tenant_id, self._document_ids)
-        task_func.delay(  # type: ignore
+        task_func.delay(  # type: ignore[attr-defined, operator]
             tenant_id=self._tenant_id, dataset_id=self._dataset_id, document_ids=self._document_ids
         )
 
@@ -70,7 +70,7 @@ class BatchDocumentIndexingProxy(DocumentTaskProxyBase):
         else:
             # Set flag and execute task
             self._tenant_isolated_task_queue.set_task_waiting_time()
-            task_func.delay(  # type: ignore
+            task_func.delay(  # type: ignore[attr-defined, operator]
                 tenant_id=self._tenant_id, dataset_id=self._dataset_id, document_ids=self._document_ids
             )
             logger.info("tenant %s init tasks: %s - %s", self._tenant_id, self._dataset_id, self._document_ids)

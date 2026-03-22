@@ -302,7 +302,7 @@ R = TypeVar("R")
 T = TypeVar("T")
 
 
-def redis_fallback(default_return: T | None = None):  # type: ignore
+def redis_fallback(default_return: T | None = None):  # type: ignore[misc]
     """
     decorator to handle Redis operation exceptions and return a default value when Redis is unavailable.
 

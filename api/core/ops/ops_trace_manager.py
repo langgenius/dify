@@ -936,7 +936,7 @@ class TraceQueueManager:
         self.app_id = app_id
         self.user_id = user_id
         self.trace_instance = OpsTraceManager.get_ops_trace_instance(app_id)
-        self.flask_app = current_app._get_current_object()  # type: ignore
+        self.flask_app = current_app._get_current_object()  # type: ignore[attr-defined]
         if trace_manager_timer is None:
             self.start_timer()
 
@@ -995,4 +995,4 @@ class TraceQueueManager:
                     "file_id": file_id,
                     "app_id": task.app_id,
                 }
-                process_trace_tasks.delay(file_info)  # type: ignore
+                process_trace_tasks.delay(file_info)  # type: ignore[operator]

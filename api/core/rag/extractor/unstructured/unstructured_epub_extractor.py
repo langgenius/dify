@@ -1,6 +1,6 @@
 import logging
 
-import pypandoc  # type: ignore
+import pypandoc
 
 from configs import dify_config
 from core.rag.extractor.extractor_base import BaseExtractor

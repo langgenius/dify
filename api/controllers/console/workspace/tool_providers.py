@@ -267,7 +267,7 @@ class ToolProviderListApi(Resource):
         raw_args = request.args.to_dict()
         query = ToolProviderListQuery.model_validate(raw_args)
 
-        return ToolCommonService.list_tool_providers(user_id, tenant_id, query.type)  # type: ignore
+        return ToolCommonService.list_tool_providers(user_id, tenant_id, query.type)  # type: ignore[arg-type, operator]
 
 
 @console_ns.route("/workspaces/current/tool-provider/builtin/<path:provider>/tools")

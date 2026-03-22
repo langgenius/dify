@@ -162,7 +162,7 @@ class BuiltinToolProviderController(ToolProviderController):
         """
         return self._get_builtin_tools()
 
-    def get_tool(self, tool_name: str) -> BuiltinTool | None:  # type: ignore
+    def get_tool(self, tool_name: str) -> BuiltinTool | None:  # type: ignore[override, return-value]
         """
         returns the tool that the provider can provide
         """

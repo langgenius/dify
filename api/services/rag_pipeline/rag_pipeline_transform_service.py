@@ -270,7 +270,7 @@ class RagPipelineTransformService:
                 plugin_unique_identifier = dependency.get("value", {}).get("plugin_unique_identifier")
                 plugin_id = plugin_unique_identifier.split(":")[0]
                 if plugin_id not in installed_plugins_ids:
-                    plugin_unique_identifier = plugin_migration._fetch_plugin_unique_identifier(plugin_id)  # type: ignore
+                    plugin_unique_identifier = plugin_migration._fetch_plugin_unique_identifier(plugin_id)  # type: ignore[attr-defined]
                     if plugin_unique_identifier:
                         need_install_plugin_unique_identifiers.append(plugin_unique_identifier)
         if need_install_plugin_unique_identifiers:

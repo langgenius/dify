@@ -26,7 +26,7 @@ class TestAppContext:
     def test_app_context_is_abstract(self):
         """Test that AppContext cannot be instantiated directly."""
         with pytest.raises(TypeError):
-            AppContext()  # type: ignore
+            AppContext()  # type: ignore[operator]
 
 
 class TestNullAppContext:

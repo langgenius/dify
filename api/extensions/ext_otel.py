@@ -26,23 +26,23 @@ def init_app(app: DifyApp):
         ConsoleSpanExporter,
     )
     from opentelemetry.sdk.trace.sampling import ParentBasedTraceIdRatio
-    from opentelemetry.semconv._incubating.attributes.deployment_attributes import (  # type: ignore[import-untyped]
+    from opentelemetry.semconv._incubating.attributes.deployment_attributes import (  # type: ignore[reportMissingTypeStubs]
         DEPLOYMENT_ENVIRONMENT_NAME,
     )
-    from opentelemetry.semconv._incubating.attributes.host_attributes import (  # type: ignore[import-untyped]
+    from opentelemetry.semconv._incubating.attributes.host_attributes import (  # type: ignore[reportMissingTypeStubs]
         HOST_ARCH,
         HOST_ID,
         HOST_NAME,
     )
-    from opentelemetry.semconv._incubating.attributes.os_attributes import (  # type: ignore[import-untyped]
+    from opentelemetry.semconv._incubating.attributes.os_attributes import (  # type: ignore[reportMissingTypeStubs]
         OS_DESCRIPTION,
         OS_TYPE,
         OS_VERSION,
     )
-    from opentelemetry.semconv._incubating.attributes.process_attributes import (  # type: ignore[import-untyped]
+    from opentelemetry.semconv._incubating.attributes.process_attributes import (  # type: ignore[reportMissingTypeStubs]
         PROCESS_PID,
     )
-    from opentelemetry.semconv.attributes.service_attributes import (  # type: ignore[import-untyped]
+    from opentelemetry.semconv.attributes.service_attributes import (  # type: ignore[reportMissingTypeStubs]
         SERVICE_NAME,
         SERVICE_VERSION,
     )

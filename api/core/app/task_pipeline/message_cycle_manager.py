@@ -100,7 +100,7 @@ class MessageCycleManager:
                 1,
                 self._generate_conversation_name_worker,
                 kwargs={
-                    "flask_app": current_app._get_current_object(),  # type: ignore
+                    "flask_app": current_app._get_current_object(),  # type: ignore[attr-defined]
                     "conversation_id": conversation_id,
                     "query": query,
                 },

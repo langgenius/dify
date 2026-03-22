@@ -66,7 +66,7 @@ def _duplicate_document_indexing_task_with_tenant_queue(
                 # Process the next waiting task
                 # Keep the flag set to indicate a task is running
                 tenant_isolated_task_queue.set_task_waiting_time()
-                task_func.delay(  # type: ignore
+                task_func.delay(  # type: ignore[attr-defined, operator]
                     tenant_id=document_task.tenant_id,
                     dataset_id=document_task.dataset_id,
                     document_ids=document_task.document_ids,

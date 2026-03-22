@@ -65,7 +65,7 @@ class ClearFreePlanTenantExpiredLogs:
             records = (
                 session.query(model)
                 .where(
-                    model.message_id.in_(batch_message_ids),  # type: ignore
+                    model.message_id.in_(batch_message_ids),  # type: ignore[attr-defined, operator]
                 )
                 .all()
             )
@@ -104,7 +104,7 @@ class ClearFreePlanTenantExpiredLogs:
                 logger.exception("Failed to save %s records", table_name)
 
             session.query(model).where(
-                model.id.in_(record_ids),  # type: ignore
+                model.id.in_(record_ids),  # type: ignore[attr-defined, operator]
             ).delete(synchronize_session=False)
 
             click.echo(

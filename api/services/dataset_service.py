@@ -2068,7 +2068,7 @@ class DocumentService:
                                 documents.append(document)
                                 position += 1
                     elif knowledge_config.data_source.info_list.data_source_type == "notion_import":
-                        notion_info_list = knowledge_config.data_source.info_list.notion_info_list  # type: ignore
+                        notion_info_list = knowledge_config.data_source.info_list.notion_info_list  # type: ignore[assignment]
                         if not notion_info_list:
                             raise ValueError("No notion info list found.")
                         exist_page_ids = []
@@ -2096,7 +2096,7 @@ class DocumentService:
                                         "credential_id": notion_info.credential_id,
                                         "notion_workspace_id": workspace_id,
                                         "notion_page_id": page.page_id,
-                                        "notion_page_icon": page.page_icon.model_dump() if page.page_icon else None,  # type: ignore
+                                        "notion_page_icon": page.page_icon.model_dump() if page.page_icon else None,  # type: ignore[dict-item]
                                         "type": page.type,
                                     }
                                     # Truncate page name to 255 characters to prevent DB field length errors
@@ -2192,15 +2192,15 @@ class DocumentService:
     #             if knowledge_config.data_source:
     #                 if knowledge_config.data_source.info_list.data_source_type == "upload_file":
     #                     upload_file_list = knowledge_config.data_source.info_list.file_info_list.file_ids
-    # # type: ignore
+    #                     # type: ignore[attr-defined]
     #                     count = len(upload_file_list)
     #                 elif knowledge_config.data_source.info_list.data_source_type == "notion_import":
     #                     notion_info_list = knowledge_config.data_source.info_list.notion_info_list
-    #                     for notion_info in notion_info_list:  # type: ignore
+    #                     for notion_info in notion_info_list:  # type: ignore[attr-defined]
     #                         count = count + len(notion_info.pages)
     #                 elif knowledge_config.data_source.info_list.data_source_type == "website_crawl":
     #                     website_info = knowledge_config.data_source.info_list.website_info_list
-    #                     count = len(website_info.urls)  # type: ignore
+    #                     count = len(website_info.urls)  # type: ignore[attr-defined]
     #                 batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
 
     #                 if features.billing.subscription.plan == CloudPlan.SANDBOX and count > 1:
@@ -2249,7 +2249,7 @@ class DocumentService:
     #                     knowledge_config.retrieval_model.model_dump()
     #                     if knowledge_config.retrieval_model
     #                     else default_retrieval_model
-    #                 )  # type: ignore
+    #                 )  # type: ignore[arg-type]
 
     #     documents = []
     #     if knowledge_config.original_document_id:
@@ -2329,8 +2329,8 @@ class DocumentService:
     #                             continue
     #                     document = DocumentService.build_document(
     #                         dataset,
-    #                         dataset_process_rule.id,  # type: ignore
-    #                         knowledge_config.data_source.info_list.data_source_type,  # type: ignore
+    #                         dataset_process_rule.id,  # type: ignore[attr-defined]
+    #                         knowledge_config.data_source.info_list.data_source_type,  # type: ignore[attr-defined]
     #                         knowledge_config.doc_form,
     #                         knowledge_config.doc_language,
     #                         data_source_info,
@@ -2386,8 +2386,8 @@ class DocumentService:
     #                             truncated_page_name = page.page_name[:255] if page.page_name else "nopagename"
     #                             document = DocumentService.build_document(
     #                                 dataset,
-    #                                 dataset_process_rule.id,  # type: ignore
-    #                                 knowledge_config.data_source.info_list.data_source_type,  # type: ignore
+    #                         dataset_process_rule.id,  # type: ignore[attr-defined]
+    #                         knowledge_config.data_source.info_list.data_source_type,  # type: ignore[attr-defined]
     #                                 knowledge_config.doc_form,
     #                                 knowledge_config.doc_language,
     #                                 data_source_info,
@@ -2426,8 +2426,8 @@ class DocumentService:
     #                         document_name = url
     #                     document = DocumentService.build_document(
     #                         dataset,
-    #                         dataset_process_rule.id,  # type: ignore
-    #                         knowledge_config.data_source.info_list.data_source_type,  # type: ignore
+    #                         dataset_process_rule.id,  # type: ignore[attr-defined]
+    #                         knowledge_config.data_source.info_list.data_source_type,  # type: ignore[attr-defined]
     #                         knowledge_config.doc_form,
     #                         knowledge_config.doc_language,
     #                         data_source_info,
@@ -2608,7 +2608,7 @@ class DocumentService:
                             "credential_id": notion_info.credential_id,
                             "notion_workspace_id": workspace_id,
                             "notion_page_id": page.page_id,
-                            "notion_page_icon": page.page_icon.model_dump() if page.page_icon else None,  # type: ignore
+                            "notion_page_icon": page.page_icon.model_dump() if page.page_icon else None,  # type: ignore[dict-item]
                             "type": page.type,
                         }
             elif document_data.data_source.info_list.data_source_type == "website_crawl":
@@ -3420,7 +3420,7 @@ class SegmentService:
                     # calc embedding use tokens
                     if document.doc_form == "qa_model":
                         segment.answer = args.answer
-                        tokens = embedding_model.get_text_embedding_num_tokens(texts=[content + segment.answer])[0]  # type: ignore
+                        tokens = embedding_model.get_text_embedding_num_tokens(texts=[content + segment.answer])[0]  # type: ignore[operator]
                     else:
                         tokens = embedding_model.get_text_embedding_num_tokens(texts=[content])[0]
                 segment.content = content

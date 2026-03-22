@@ -3,7 +3,7 @@ import logging
 import time
 from typing import Any
 
-import holo_search_sdk as holo  # type: ignore
+import holo_search_sdk as holo
 from holo_search_sdk.types import BaseQuantizationType, DistanceType, TokenizerType
 from psycopg import sql as psql
 from pydantic import BaseModel, model_validator

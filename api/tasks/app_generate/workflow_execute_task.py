@@ -137,7 +137,7 @@ class _AppRunner:
 
     @contextlib.contextmanager
     def _setup_flask_context(self, user: Account | EndUser):
-        flask_app = current_app._get_current_object()  # type: ignore
+        flask_app = current_app._get_current_object()  # type: ignore[attr-defined]
         with flask_app.app_context():
             set_login_user(user)
             yield

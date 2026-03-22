@@ -313,7 +313,7 @@ def edit_permission_required(f: Callable[P, R]):
         from libs.login import current_user
         from models import Account
 
-        user = current_user._get_current_object()  # type: ignore
+        user = current_user._get_current_object()  # type: ignore[attr-defined]
         if not isinstance(user, Account):
             raise Forbidden()
         if not current_user.has_edit_permission:

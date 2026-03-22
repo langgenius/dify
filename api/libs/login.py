@@ -26,7 +26,7 @@ def current_account_with_tenant():
     user_proxy = current_user
 
     get_current_object = getattr(user_proxy, "_get_current_object", None)
-    user = get_current_object() if callable(get_current_object) else user_proxy  # type: ignore
+    user = get_current_object() if callable(get_current_object) else user_proxy  # type: ignore[attr-defined]
 
     if not isinstance(user, Account):
         raise ValueError("current_user must be an Account instance")
@@ -81,7 +81,7 @@ def login_required(func: Callable[P, R]) -> Callable[P, R | ResponseReturnValue]
 
         user = _get_user()
         if user is None or not user.is_authenticated:
-            return current_app.login_manager.unauthorized()  # type: ignore
+            return current_app.login_manager.unauthorized()  # type: ignore[attr-defined, operator]
         # we put csrf validation here for less conflicts
         # TODO: maybe find a better place for it.
         check_csrf_token(request, user.id)
@@ -93,7 +93,7 @@ def login_required(func: Callable[P, R]) -> Callable[P, R | ResponseReturnValue]
 def _get_user() -> EndUser | Account | None:
     if has_request_context():
         if "_login_user" not in g:
-            current_app.login_manager._load_user()  # type: ignore
+            current_app.login_manager._load_user()  # type: ignore[attr-defined]
 
         return g._login_user
 

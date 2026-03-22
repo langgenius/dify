@@ -10,7 +10,7 @@ from typing import cast
 from urllib.parse import urlparse
 from uuid import uuid4
 
-import yaml  # type: ignore
+import yaml
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 from flask_login import current_user
@@ -671,7 +671,7 @@ class RagPipelineDslService:
 
         self._append_workflow_export_data(export_data=export_data, pipeline=pipeline, include_secret=include_secret)
 
-        return yaml.dump(export_data, allow_unicode=True)  # type: ignore
+        return yaml.dump(export_data, allow_unicode=True)  # type: ignore[operator]
 
     def _append_workflow_export_data(self, *, export_data: dict, pipeline: Pipeline, include_secret: bool) -> None:
         """

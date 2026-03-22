@@ -115,14 +115,14 @@ class RetrievalService:
         exceptions: list[str] = []
 
         # Optimize multithreading with thread pools
-        with ThreadPoolExecutor(max_workers=dify_config.RETRIEVAL_SERVICE_EXECUTORS) as executor:  # type: ignore
+        with ThreadPoolExecutor(max_workers=dify_config.RETRIEVAL_SERVICE_EXECUTORS) as executor:  # type: ignore[operator]
             futures = []
             retrieval_service = RetrievalService()
             if query:
                 futures.append(
                     executor.submit(
                         retrieval_service._retrieve,
-                        flask_app=current_app._get_current_object(),  # type: ignore
+                        flask_app=current_app._get_current_object(),  # type: ignore[attr-defined]
                         retrieval_method=retrieval_method,
                         dataset=dataset,
                         query=query,
@@ -142,7 +142,7 @@ class RetrievalService:
                     futures.append(
                         executor.submit(
                             retrieval_service._retrieve,
-                            flask_app=current_app._get_current_object(),  # type: ignore
+                            flask_app=current_app._get_current_object(),  # type: ignore[attr-defined]
                             retrieval_method=retrieval_method,
                             dataset=dataset,
                             query=None,
@@ -541,7 +541,7 @@ class RetrievalService:
                         DocumentSegment.status == "completed",
                         DocumentSegment.index_node_id.in_(index_node_ids),
                     )
-                    index_node_segments = session.execute(document_segment_stmt).scalars().all()  # type: ignore
+                    index_node_segments = session.execute(document_segment_stmt).scalars().all()  # type: ignore[assignment, operator]
                     for index_node_segment in index_node_segments:
                         doc_segment_map[index_node_segment.id] = [index_node_segment.index_node_id]
 
@@ -551,7 +551,7 @@ class RetrievalService:
                         DocumentSegment.status == "completed",
                         DocumentSegment.id.in_(segment_ids),
                     )
-                    segments = session.execute(document_segment_stmt).scalars().all()  # type: ignore
+                    segments = session.execute(document_segment_stmt).scalars().all()  # type: ignore[assignment, operator]
 
                 if index_node_segments:
                     segments.extend(index_node_segments)
@@ -564,7 +564,7 @@ class RetrievalService:
                         DocumentSegment.status == "completed",
                         DocumentSegment.id.in_(summary_segment_ids_list),
                     )
-                    summary_segments = session.execute(summary_segment_stmt).scalars().all()  # type: ignore
+                    summary_segments = session.execute(summary_segment_stmt).scalars().all()  # type: ignore[operator]
                     segments.extend(summary_segments)
                     # Add summary segment IDs to segment_ids for summary query
                     for seg in summary_segments:
@@ -747,13 +747,13 @@ class RetrievalService:
         with flask_app.app_context():
             all_documents_item: list[Document] = []
             # Optimize multithreading with thread pools
-            with ThreadPoolExecutor(max_workers=dify_config.RETRIEVAL_SERVICE_EXECUTORS) as executor:  # type: ignore
+            with ThreadPoolExecutor(max_workers=dify_config.RETRIEVAL_SERVICE_EXECUTORS) as executor:  # type: ignore[operator]
                 futures = []
                 if retrieval_method == RetrievalMethod.KEYWORD_SEARCH and query:
                     futures.append(
                         executor.submit(
                             self.keyword_search,
-                            flask_app=current_app._get_current_object(),  # type: ignore
+                            flask_app=current_app._get_current_object(),  # type: ignore[attr-defined]
                             dataset_id=dataset.id,
                             query=query,
                             top_k=top_k,
@@ -767,7 +767,7 @@ class RetrievalService:
                         futures.append(
                             executor.submit(
                                 self.embedding_search,
-                                flask_app=current_app._get_current_object(),  # type: ignore
+                                flask_app=current_app._get_current_object(),  # type: ignore[attr-defined]
                                 dataset_id=dataset.id,
                                 query=query,
                                 top_k=top_k,
@@ -784,7 +784,7 @@ class RetrievalService:
                         futures.append(
                             executor.submit(
                                 self.embedding_search,
-                                flask_app=current_app._get_current_object(),  # type: ignore
+                                flask_app=current_app._get_current_object(),  # type: ignore[attr-defined]
                                 dataset_id=dataset.id,
                                 query=attachment_id,
                                 top_k=top_k,
@@ -801,7 +801,7 @@ class RetrievalService:
                     futures.append(
                         executor.submit(
                             self.full_text_index_search,
-                            flask_app=current_app._get_current_object(),  # type: ignore
+                            flask_app=current_app._get_current_object(),  # type: ignore[attr-defined]
                             dataset_id=dataset.id,
                             query=query,
                             top_k=top_k,

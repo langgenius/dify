@@ -58,7 +58,7 @@ class ImagePreviewApi(Resource):
     def get(self, file_id):
         file_id = str(file_id)
 
-        args = FileSignatureQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = FileSignatureQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore[arg-type]
         timestamp = args.timestamp
         nonce = args.nonce
         sign = args.sign
@@ -100,7 +100,7 @@ class FilePreviewApi(Resource):
     def get(self, file_id):
         file_id = str(file_id)
 
-        args = FilePreviewQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = FilePreviewQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore[arg-type]
 
         try:
             generator, upload_file = FileService(db.engine).get_file_generator_by_file_id(

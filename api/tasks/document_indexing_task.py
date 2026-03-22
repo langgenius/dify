@@ -209,7 +209,7 @@ def _document_indexing_with_tenant_queue(
         logger.info("document indexing tenant isolation queue %s next tasks: %s", tenant_id, next_tasks)
 
         if next_tasks:
-            with current_app.producer_or_acquire() as producer:  # type: ignore
+            with current_app.producer_or_acquire() as producer:  # type: ignore[attr-defined]
                 for next_task in next_tasks:
                     document_task = DocumentTask(**next_task)
                     # Keep the flag set to indicate a task is running

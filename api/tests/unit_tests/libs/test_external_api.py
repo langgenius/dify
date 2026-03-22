@@ -128,8 +128,8 @@ def test_unauthorized_and_force_logout_clears_cookies():
     api = ExternalApi(bp)
 
     @api.route("/force-logout")
-    class ForceLogout(Resource):  # type: ignore
-        def get(self):  # type: ignore
+    class ForceLogout(Resource):  # type: ignore[misc]
+        def get(self):  # type: ignore[misc]
             raise UnauthorizedAndForceLogout()
 
     app.register_blueprint(bp, url_prefix="/api")

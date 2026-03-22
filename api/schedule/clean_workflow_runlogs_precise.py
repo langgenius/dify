@@ -132,7 +132,7 @@ def _delete_batch(
                     SavedMessage,
                 ]
                 for model in message_related_models:
-                    session.query(model).where(model.message_id.in_(message_id_list)).delete(synchronize_session=False)  # type: ignore
+                    session.query(model).where(model.message_id.in_(message_id_list)).delete(synchronize_session=False)  # type: ignore[attr-defined, operator]
                     # error: "DeclarativeAttributeIntercept" has no attribute "message_id". But this type is only in lib
                     # and these 6 types all have the message_id field.
 

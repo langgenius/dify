@@ -299,7 +299,7 @@ class Site(ResponseModel):
     updated_by: str | None = None
     updated_at: int | None = None
 
-    @computed_field(return_type=str | None)  # type: ignore
+    @computed_field(return_type=str | None)  # type: ignore[prop-decorator]
     @property
     def icon_url(self) -> str | None:
         return _build_icon_url(self.icon_type, self.icon)
@@ -349,7 +349,7 @@ class AppPartial(ResponseModel):
     author_name: str | None = None
     has_draft_trigger: bool | None = None
 
-    @computed_field(return_type=str | None)  # type: ignore
+    @computed_field(return_type=str | None)  # type: ignore[prop-decorator]
     @property
     def icon_url(self) -> str | None:
         return _build_icon_url(self.icon_type, self.icon)
@@ -397,7 +397,7 @@ class AppDetailWithSite(AppDetail):
     deleted_tools: list[DeletedTool] = Field(default_factory=list)
     site: Site | None = None
 
-    @computed_field(return_type=str | None)  # type: ignore
+    @computed_field(return_type=str | None)  # type: ignore[prop-decorator]
     @property
     def icon_url(self) -> str | None:
         return _build_icon_url(self.icon_type, self.icon)
@@ -473,7 +473,7 @@ class AppListApi(Resource):
         """Get app list"""
         current_user, current_tenant_id = current_account_with_tenant()
 
-        args = AppListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = AppListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore[arg-type]
         args_dict = args.model_dump()
 
         # get app list
@@ -692,7 +692,7 @@ class AppExportApi(Resource):
     @edit_permission_required
     def get(self, app_model):
         """Export app"""
-        args = AppExportQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = AppExportQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore[arg-type]
 
         payload = AppExportResponse(
             data=AppDslService.export_dsl(

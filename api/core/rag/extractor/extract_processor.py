@@ -75,7 +75,7 @@ class ExtractProcessor:
                             suffix = ""
             # https://stackoverflow.com/questions/26541416/generate-temporary-file-names-without-creating-actual-file-in-python#comment90414256_26541521
             # Generate a temporary filename under the created temp_dir and ensure the directory exists
-            file_path = f"{temp_dir}/{next(tempfile._get_candidate_names())}{suffix}"  # type: ignore
+            file_path = f"{temp_dir}/{next(tempfile._get_candidate_names())}{suffix}"  # type: ignore[attr-defined, operator]
             Path(file_path).write_bytes(response.content)
             extract_setting = ExtractSetting(datasource_type=DatasourceType.FILE, document_model="text_model")
             if return_text:
@@ -100,7 +100,7 @@ class ExtractProcessor:
                     upload_file: UploadFile = extract_setting.upload_file
                     suffix = Path(upload_file.key).suffix
                     # FIXME mypy: Cannot determine type of 'tempfile._get_candidate_names' better not use it here
-                    file_path = f"{temp_dir}/{next(tempfile._get_candidate_names())}{suffix}"  # type: ignore
+                    file_path = f"{temp_dir}/{next(tempfile._get_candidate_names())}{suffix}"  # type: ignore[attr-defined, operator]
                     storage.download(upload_file.key, file_path)
                 input_file = Path(file_path)
                 file_extension = input_file.suffix.lower()

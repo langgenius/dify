@@ -379,7 +379,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
         # Capture Flask app context for worker threads
         flask_app = None
         try:
-            flask_app = current_app._get_current_object()  # type: ignore
+            flask_app = current_app._get_current_object()  # type: ignore[attr-defined]
         except RuntimeError:
             logger.warning("No Flask application context available, summary generation may fail")
 

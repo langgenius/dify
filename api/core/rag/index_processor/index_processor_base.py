@@ -147,7 +147,7 @@ class BaseIndexProcessor(ABC):
                 embedding_model_instance=embedding_model_instance,
             )
 
-        return character_splitter  # type: ignore
+        return character_splitter  # type: ignore[return-value]
 
     def _get_content_files(self, document: Document, current_user: Account | None = None) -> list[AttachmentDocument]:
         """

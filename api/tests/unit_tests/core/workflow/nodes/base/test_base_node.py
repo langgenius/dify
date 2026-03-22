@@ -28,7 +28,7 @@ def _get_all_subclasses(root: type[Node]) -> list[type[Node]]:
 
 
 def test_ensure_subclasses_of_base_node_has_node_type_and_version_method_defined():
-    classes = _get_all_subclasses(Node)  # type: ignore
+    classes = _get_all_subclasses(Node)  # type: ignore[attr-defined]
     type_version_set: set[tuple[NodeType, str]] = set()
 
     for cls in classes:

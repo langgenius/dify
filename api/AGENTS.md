@@ -51,6 +51,7 @@ This is the default standard for backend code in this repo. Follow it for new co
 
 - Use Ruff for formatting and linting (follow `.ruff.toml`).
 - Keep each line under 120 characters (including spaces).
+- Avoid using bare `# type: ignore` to ignore all type violations. Always specify an error code (e.g. `# type: ignore[operator, attr-defined]`).
 
 ### Naming Conventions
 

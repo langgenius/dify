@@ -6,12 +6,19 @@ from typing import Any
 
 import numpy as np
 from pydantic import BaseModel, model_validator
-from pymochow import MochowClient  # type: ignore
-from pymochow.auth.bce_credentials import BceCredentials  # type: ignore
-from pymochow.configuration import Configuration  # type: ignore
-from pymochow.exception import ServerError  # type: ignore
+from pymochow import MochowClient
+from pymochow.auth.bce_credentials import BceCredentials
+from pymochow.configuration import Configuration
+from pymochow.exception import ServerError
 from pymochow.model.database import Database
-from pymochow.model.enum import FieldType, IndexState, IndexType, MetricType, ServerErrCode, TableState  # type: ignore
+from pymochow.model.enum import (
+    FieldType,
+    IndexState,
+    IndexType,
+    MetricType,
+    ServerErrCode,
+    TableState,
+)
 from pymochow.model.schema import (
     Field,
     FilteringIndex,
@@ -23,8 +30,14 @@ from pymochow.model.schema import (
     InvertedIndexParseMode,
     Schema,
     VectorIndex,
-)  # type: ignore
-from pymochow.model.table import AnnSearch, BM25SearchRequest, HNSWSearchParams, Partition, Row  # type: ignore
+)
+from pymochow.model.table import (
+    AnnSearch,
+    BM25SearchRequest,
+    HNSWSearchParams,
+    Partition,
+    Row,
+)
 
 from configs import dify_config
 from core.rag.datasource.vdb.field import Field as VDBField

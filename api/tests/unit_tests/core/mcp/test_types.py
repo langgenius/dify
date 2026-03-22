@@ -89,7 +89,7 @@ class TestRequestParams:
         """Test RequestParams.Meta allows extra fields."""
         meta = RequestParams.Meta(progressToken="token", customField="value")
         assert meta.progressToken == "token"
-        assert meta.customField == "value"  # type: ignore
+        assert meta.customField == "value"  # type: ignore[misc]
 
     def test_request_params_serialization(self):
         """Test RequestParams serialization with _meta alias."""
@@ -179,7 +179,7 @@ class TestCapabilities:
 
         assert caps.experimental == {"feature": {"enabled": True}}
         assert caps.sampling is not None
-        assert caps.roots.listChanged is True  # type: ignore
+        assert caps.roots.listChanged is True  # type: ignore[misc]
 
     def test_server_capabilities(self):
         """Test ServerCapabilities creation."""
@@ -191,9 +191,9 @@ class TestCapabilities:
             completions={},
         )
 
-        assert caps.tools.listChanged is True  # type: ignore
-        assert caps.resources.subscribe is True  # type: ignore
-        assert caps.resources.listChanged is False  # type: ignore
+        assert caps.tools.listChanged is True  # type: ignore[misc]
+        assert caps.resources.subscribe is True  # type: ignore[misc]
+        assert caps.resources.listChanged is False  # type: ignore[misc]
 
 
 class TestInitialization:
@@ -272,7 +272,7 @@ class TestTools:
         )
 
         assert len(result.content) == 1
-        assert result.content[0].text == "Tool executed successfully"  # type: ignore
+        assert result.content[0].text == "Tool executed successfully"  # type: ignore[misc]
         assert result.structuredContent == {"status": "success", "data": "test"}
         assert result.isError is False
 
@@ -434,7 +434,7 @@ class TestCompletion:
         request = CompleteRequest(params=params)
 
         assert request.method == "completion/complete"
-        assert request.params.ref.name == "test_prompt"  # type: ignore
+        assert request.params.ref.name == "test_prompt"  # type: ignore[misc]
         assert request.params.argument.name == "arg1"
 
     def test_complete_result(self):
@@ -474,9 +474,9 @@ class TestValidation:
         tool = Tool(
             name="test",
             inputSchema={},
-            customField="allowed",  # type: ignore
+            customField="allowed",  # type: ignore[misc]
         )
-        assert tool.customField == "allowed"  # type: ignore
+        assert tool.customField == "allowed"  # type: ignore[misc]
 
     def test_result_meta_alias(self):
         """Test Result model with _meta alias."""

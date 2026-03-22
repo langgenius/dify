@@ -72,13 +72,13 @@ class ChromaVector(BaseVector):
 
         collection = self._client.get_or_create_collection(self._collection_name)
         # FIXME: chromadb using numpy array, fix the type error later
-        collection.upsert(ids=uuids, documents=texts, embeddings=embeddings, metadatas=metadatas)  # type: ignore
+        collection.upsert(ids=uuids, documents=texts, embeddings=embeddings, metadatas=metadatas)  # type: ignore[arg-type, operator]
         return uuids
 
     def delete_by_metadata_field(self, key: str, value: str):
         collection = self._client.get_or_create_collection(self._collection_name)
         # FIXME: fix the type error later
-        collection.delete(where={key: {"$eq": value}})  # type: ignore
+        collection.delete(where={key: {"$eq": value}})  # type: ignore[arg-type, dict-item]
 
     def delete(self):
         self._client.delete_collection(self._collection_name)
@@ -101,10 +101,10 @@ class ChromaVector(BaseVector):
             results: QueryResult = collection.query(
                 query_embeddings=query_vector,
                 n_results=kwargs.get("top_k", 4),
-                where={"document_id": {"$in": document_ids_filter}},  # type: ignore
+                where={"document_id": {"$in": document_ids_filter}},  # type: ignore[arg-type, dict-item]
             )
         else:
-            results: QueryResult = collection.query(query_embeddings=query_vector, n_results=kwargs.get("top_k", 4))  # type: ignore
+            results: QueryResult = collection.query(query_embeddings=query_vector, n_results=kwargs.get("top_k", 4))  # type: ignore[arg-type, no-redef]
         score_threshold = float(kwargs.get("score_threshold") or 0.0)
 
         # Check if results contain data

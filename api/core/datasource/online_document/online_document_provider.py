@@ -23,7 +23,7 @@ class OnlineDocumentDatasourcePluginProviderController(DatasourcePluginProviderC
         """
         return DatasourceProviderType.ONLINE_DOCUMENT
 
-    def get_datasource(self, datasource_name: str) -> OnlineDocumentDatasourcePlugin:  # type: ignore
+    def get_datasource(self, datasource_name: str) -> OnlineDocumentDatasourcePlugin:  # type: ignore[return-value]
         """
         return datasource with given name
         """

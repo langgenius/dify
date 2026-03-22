@@ -9,7 +9,7 @@ from collections.abc import Sequence
 from typing import Any
 
 import sqlalchemy as sa
-from aliyun.log import (  # type: ignore[import-untyped]
+from aliyun.log import (  # type: ignore[reportMissingTypeStubs]
     GetLogsRequest,
     IndexConfig,
     IndexKeyConfig,
@@ -18,8 +18,8 @@ from aliyun.log import (  # type: ignore[import-untyped]
     LogItem,
     PutLogsRequest,
 )
-from aliyun.log.auth import AUTH_VERSION_4  # type: ignore[import-untyped]
-from aliyun.log.logexception import LogException  # type: ignore[import-untyped]
+from aliyun.log.auth import AUTH_VERSION_4  # type: ignore[reportMissingTypeStubs]
+from aliyun.log.logexception import LogException  # type: ignore[reportMissingTypeStubs]
 from dotenv import load_dotenv
 from sqlalchemy.orm import DeclarativeBase
 
