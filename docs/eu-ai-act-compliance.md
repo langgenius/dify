@@ -137,12 +137,20 @@ Dify's "citation" feature also supports end-user transparency by showing users w
 
 ## Article 14: Human oversight
 
-For high-risk applications:
+Article 14 requires that high-risk AI systems be designed so that natural persons can effectively oversee them. Dify provides **automated technical safeguards** that support human oversight, but they are not a substitute for it:
 
-- **Annotation/feedback system:** Dify includes annotation features for human review of AI outputs
-- **Moderation:** Built-in content moderation can filter responses before they reach users
-- **Rate limiting:** Controls on API usage prevent runaway AI behavior
-- **Workflow control:** Dify's workflow builder allows inserting human review steps between AI generation and output delivery
+| Dify Feature | What It Does | Oversight Role |
+|-------------|-------------|----------------|
+| Annotation/feedback system | Human review of AI outputs | **Direct oversight** — humans evaluate and correct AI responses |
+| Content moderation | Built-in filtering before responses reach users | **Automated safeguard** — reduces harmful outputs but does not replace human judgment on edge cases |
+| Rate limiting | Controls on API usage | **Automated safeguard** — bounds system behavior, supports overseer's ability to maintain control |
+| Workflow control | Insert human review steps between AI generation and output | **Oversight enabler** — allows building approval gates into the pipeline |
+
+These automated controls are necessary building blocks, but Article 14 compliance requires **human oversight procedures** on top of them:
+- **Escalation procedures** — define what happens when moderation triggers or edge cases arise (who is notified, what action is taken)
+- **Human review pipeline** — for high-stakes decisions, route AI outputs to a qualified person before they take effect
+- **Override mechanism** — a human must be able to halt AI responses or override the system's output
+- **Competence requirements** — the human overseer must understand the system's capabilities, limitations, and the context of its outputs
 
 ### Recommended pattern
 
@@ -163,7 +171,7 @@ Dify's knowledge base feature has specific compliance implications:
 2. **Data Processing Agreements** (Article 28): Required for each cloud LLM and embedding provider
 3. **Data minimization:** Only include necessary context in prompts; avoid sending entire documents when a relevant excerpt suffices
 4. **Right to erasure:** If a user requests deletion, ensure their conversations are removed from Dify's logs AND any vector store entries derived from their data
-5. **Cross-border transfers:** Cloud providers based outside the EEA require Standard Contractual Clauses
+5. **Cross-border transfers:** Providers based outside the EEA — including US-based providers (OpenAI, Anthropic), and any other non-EEA providers you route to — require Standard Contractual Clauses (SCCs) or equivalent safeguards under Chapter V of the GDPR. Review each provider's transfer mechanism individually.
 
 ## Resources
 
