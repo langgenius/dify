@@ -1,3 +1,4 @@
+import hmac
 import os
 from typing import Literal
 
@@ -54,7 +55,8 @@ def validate_init_password(payload: InitValidatePayload) -> InitValidateResponse
     if tenant_count > 0:
         raise AlreadySetupError()
 
-    if payload.password != os.environ.get("INIT_PASSWORD"):
+    init_password = os.environ.get("INIT_PASSWORD")
+    if not init_password or not hmac.compare_digest(payload.password, init_password):
         session["is_init_validated"] = False
         raise InitValidateFailedError()
 

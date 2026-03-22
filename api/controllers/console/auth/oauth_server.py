@@ -1,3 +1,4 @@
+import hmac
 from collections.abc import Callable
 from functools import wraps
 from typing import Concatenate
@@ -163,7 +164,11 @@ class OAuthServerUserTokenApi(Resource):
                 if not payload.code:
                     raise BadRequest("code is required")
 
-                if payload.client_secret != oauth_provider_app.client_secret:
+                if (
+                    not payload.client_secret
+                    or not oauth_provider_app.client_secret
+                    or not hmac.compare_digest(payload.client_secret, oauth_provider_app.client_secret)
+                ):
                     raise BadRequest("client_secret is invalid")
 
                 if payload.redirect_uri not in oauth_provider_app.redirect_uris:
