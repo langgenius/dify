@@ -228,7 +228,7 @@ def _create_human_input_content(
     message_id: str,
     form_id: str,
 ) -> HumanInputContent:
-    content = HumanInputContent(
+    content = HumanInputContent.new(
         workflow_run_id=workflow_run_id,
         message_id=message_id,
         form_id=form_id,
