@@ -108,7 +108,7 @@ Dify's built-in logging covers several Article 12 requirements:
 
 ## Article 13: Transparency to deployers
 
-Article 13 requires providers of high-risk AI systems to supply deployers with the information needed to understand and operate the system correctly. For Dify deployments, this means the upstream LLM and embedding providers must give you:
+Article 13 requires providers of high-risk AI systems to supply deployers with the information needed to understand and operate the system correctly. This is a **documentation obligation**, not a logging obligation. For Dify deployments, this means the upstream LLM and embedding providers must give you:
 
 - Instructions for use, including intended purpose and known limitations
 - Accuracy metrics and performance benchmarks
@@ -117,9 +117,12 @@ Article 13 requires providers of high-risk AI systems to supply deployers with t
 
 As a deployer, collect model cards, system documentation, and accuracy reports from each AI provider your Dify application uses. Maintain these as part of your Annex IV technical documentation.
 
-Dify-specific considerations:
-- **Source attribution** — Dify's RAG pipeline can show which documents informed the response. Enable the "citation" feature to support deployer-side transparency and auditing.
-- **Model identification** — document which LLM model generates responses in each workflow step
+Dify's platform features provide **supporting evidence** that can inform Article 13 documentation, but they do not satisfy Article 13 on their own:
+- **Source attribution** — Dify's RAG citation feature shows which documents informed the response, supporting deployer-side auditing
+- **Model identification** — Dify logs which LLM model generates responses, providing evidence for system documentation
+- **Conversation logs** — execution history helps compile performance and behavior evidence
+
+You must independently produce system documentation covering how your specific Dify deployment uses AI, its intended purpose, performance characteristics, and residual risks.
 
 ## Article 50: End-user transparency
 
@@ -128,8 +131,7 @@ Article 50 requires deployers to inform end users that they are interacting with
 For Dify applications serving end users:
 
 1. **Disclose AI involvement** — tell users they are interacting with an AI system
-2. **Limitations** — disclose known limitations in user-facing terms: hallucination risk, knowledge cutoff dates, confidence boundaries
-3. **AI-generated content labeling** — identify AI-generated content as such
+2. **AI-generated content labeling** — identify AI-generated content as such (e.g., clear labeling in the UI)
 
 Dify's "citation" feature also supports end-user transparency by showing users which knowledge base documents informed the answer.
 
