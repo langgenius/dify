@@ -4744,21 +4744,6 @@
       "count": 4
     }
   },
-  "app/components/header/account-setting/data-source-page/data-source-website/config-firecrawl-modal.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/header/account-setting/data-source-page/data-source-website/config-jina-reader-modal.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/header/account-setting/data-source-page/data-source-website/config-watercrawl-modal.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
   "app/components/header/account-setting/data-source-page/data-source-website/index.tsx": {
     "ts/no-explicit-any": {
       "count": 1
