@@ -10,6 +10,7 @@ const nextConfig: NextConfig = {
   basePath: env.NEXT_PUBLIC_BASE_PATH,
   transpilePackages: ['@t3-oss/env-core', '@t3-oss/env-nextjs', 'echarts', 'zrender'],
   turbopack: {
+    root: process.cwd(),
     rules: codeInspectorPlugin({
       bundler: 'turbopack',
     }),
