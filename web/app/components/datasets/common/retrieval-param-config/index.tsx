@@ -11,8 +11,8 @@ import ScoreThresholdItem from '@/app/components/base/param-item/score-threshold
 import TopKItem from '@/app/components/base/param-item/top-k-item'
 import RadioCard from '@/app/components/base/radio-card'
 import Switch from '@/app/components/base/switch'
-import Toast from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
+import { toast } from '@/app/components/base/ui/toast'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useCurrentProviderAndModel, useModelListAndDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
@@ -59,7 +59,7 @@ const RetrievalParamConfig: FC<Props> = ({
 
   const handleToggleRerankEnable = useCallback((enable: boolean) => {
     if (enable && !currentModel)
-      Toast.notify({ type: 'error', message: t('errorMsg.rerankModelRequired', { ns: 'workflow' }) })
+      toast.error(t('errorMsg.rerankModelRequired', { ns: 'workflow' }))
     onChange({
       ...value,
       reranking_enable: enable,
@@ -96,7 +96,7 @@ const RetrievalParamConfig: FC<Props> = ({
       }
     }
     if (v === RerankingModeEnum.RerankingModel && !currentModel)
-      Toast.notify({ type: 'error', message: t('errorMsg.rerankModelRequired', { ns: 'workflow' }) })
+      toast.error(t('errorMsg.rerankModelRequired', { ns: 'workflow' }))
     onChange(result)
   }
 

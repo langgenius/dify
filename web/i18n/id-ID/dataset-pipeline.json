@@ -35,6 +35,7 @@
   "details.structureTooltip": "Struktur Potongan menentukan bagaimana dokumen dibagi dan diindeks—menawarkan mode Umum, Induk-Anak, dan Tanya Jawab—dan unik untuk setiap basis pengetahuan.",
   "documentSettings.title": "Pengaturan Dokumen",
   "editPipelineInfo": "Mengedit info alur",
+  "editPipelineInfoNameRequired": "Silakan masukkan nama untuk Basis Pengetahuan.",
   "exportDSL.errorTip": "Gagal mengekspor DSL alur",
   "exportDSL.successTip": "Ekspor DSL pipeline berhasil",
   "inputField": "Bidang Masukan",

@@ -4,6 +4,7 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
+from models.enums import ConversationFromSource
 from models.model import EndUser, Message
 from models.web import SavedMessage
 from services.app_service import AppService
@@ -132,11 +133,14 @@ class TestSavedMessageService:
         # Create a simple conversation first
         from models.model import Conversation
 
+        is_account = hasattr(user, "current_tenant")
+        from_source = ConversationFromSource.CONSOLE if is_account else ConversationFromSource.API
+
         conversation = Conversation(
             app_id=app.id,
-            from_source="account" if hasattr(user, "current_tenant") else "end_user",
-            from_end_user_id=user.id if not hasattr(user, "current_tenant") else None,
-            from_account_id=user.id if hasattr(user, "current_tenant") else None,
+            from_source=from_source,
+            from_end_user_id=user.id if not is_account else None,
+            from_account_id=user.id if is_account else None,
             name=fake.sentence(nb_words=3),
             inputs={},
             status="normal",
@@ -150,9 +154,9 @@ class TestSavedMessageService:
         message = Message(
             app_id=app.id,
             conversation_id=conversation.id,
-            from_source="account" if hasattr(user, "current_tenant") else "end_user",
-            from_end_user_id=user.id if not hasattr(user, "current_tenant") else None,
-            from_account_id=user.id if hasattr(user, "current_tenant") else None,
+            from_source=from_source,
+            from_end_user_id=user.id if not is_account else None,
+            from_account_id=user.id if is_account else None,
             inputs={},
             query=fake.sentence(nb_words=5),
             message=fake.text(max_nb_chars=100),

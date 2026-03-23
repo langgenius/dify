@@ -41,26 +41,17 @@ export const DeleteConfirm = (props: Props) => {
 
   const onConfirm = () => {
     if (workflowsInUse > 0 && inputName !== currentName) {
-      toast.add({
-        type: 'error',
-        title: t(`${tPrefix}.confirmInputWarning`, { ns: 'pluginTrigger' }),
-      })
+      toast.error(t(`${tPrefix}.confirmInputWarning`, { ns: 'pluginTrigger' }))
       return
     }
     deleteSubscription(currentId, {
       onSuccess: () => {
-        toast.add({
-          type: 'success',
-          title: t(`${tPrefix}.success`, { ns: 'pluginTrigger', name: currentName }),
-        })
+        toast.success(t(`${tPrefix}.success`, { ns: 'pluginTrigger', name: currentName }))
         refetch?.()
         onClose(true)
       },
       onError: (error: unknown) => {
-        toast.add({
-          type: 'error',
-          title: error instanceof Error ? error.message : t(`${tPrefix}.error`, { ns: 'pluginTrigger', name: currentName }),
-        })
+        toast.error(error instanceof Error ? error.message : t(`${tPrefix}.error`, { ns: 'pluginTrigger', name: currentName }))
       },
     })
   }

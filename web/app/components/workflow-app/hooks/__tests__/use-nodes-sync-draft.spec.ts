@@ -108,4 +108,18 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
 
     expect(mockHandleRefreshWorkflowDraft).not.toHaveBeenCalled()
   })
+
+  it('should not include source_workflow_id in draft sync payloads', async () => {
+    const { result } = renderHook(() => useNodesSyncDraft())
+
+    await act(async () => {
+      await result.current.doSyncWorkflowDraft(false)
+    })
+
+    expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(expect.objectContaining({
+      params: expect.not.objectContaining({
+        source_workflow_id: expect.anything(),
+      }),
+    }))
+  })
 })
