@@ -4739,69 +4739,6 @@
       "count": 2
     }
   },
-  "app/components/header/account-setting/data-source-page/data-source-notion/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "app/components/header/account-setting/data-source-page/data-source-notion/operate/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 4
-    }
-  },
-  "app/components/header/account-setting/data-source-page/data-source-website/config-firecrawl-modal.tsx": {
-    "no-restricted-imports": {
-      "count": 2
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/header/account-setting/data-source-page/data-source-website/config-jina-reader-modal.tsx": {
-    "no-restricted-imports": {
-      "count": 2
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/header/account-setting/data-source-page/data-source-website/config-watercrawl-modal.tsx": {
-    "no-restricted-imports": {
-      "count": 2
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/header/account-setting/data-source-page/data-source-website/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/header/account-setting/data-source-page/panel/config-item.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    },
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/header/account-setting/data-source-page/panel/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
-    }
-  },
-  "app/components/header/account-setting/data-source-page/panel/types.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    }
-  },
   "app/components/header/account-setting/key-validator/declarations.ts": {
     "erasable-syntax-only/enums": {
       "count": 1
