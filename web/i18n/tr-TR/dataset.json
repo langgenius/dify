@@ -176,6 +176,7 @@
   "serviceApi.enabled": "Hizmette",
   "serviceApi.title": "Servis API'si",
   "unavailable": "Kullanılamıyor",
+  "unknownError": "Bilinmeyen hata",
   "updated": "Güncel -leştirilmiş",
   "weightedScore.customized": "Özelleştirilmiş",
   "weightedScore.description": "Verilen ağırlıkları ayarlayarak bu yeniden sıralama stratejisi, anlamsal mı yoksa anahtar kelime eşleştirmesini mi önceliklendireceğini belirler.",
