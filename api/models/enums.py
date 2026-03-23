@@ -323,3 +323,10 @@ class ProviderQuotaType(StrEnum):
             if member.value == value:
                 return member
         raise ValueError(f"No matching enum found for value '{value}'")
+
+
+class ApiTokenType(StrEnum):
+    """API Token type"""
+
+    APP = "app"
+    DATASET = "dataset"
