@@ -14,7 +14,7 @@ import logging
 
 from flask_restx import Resource
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import func, select
 from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.console import console_ns
@@ -95,7 +95,9 @@ class ExploreFolderListApi(Resource):
         _, tenant_id = current_account_with_tenant()
 
         # Position = current count (append to end)
-        count = db.session.query(ExploreAppFolder).filter_by(tenant_id=tenant_id).count()
+        count = db.session.scalar(
+            select(func.count()).select_from(ExploreAppFolder).where(ExploreAppFolder.tenant_id == tenant_id)
+        ) or 0
         folder = ExploreAppFolder(tenant_id=tenant_id, name=payload.name, position=count)
         db.session.add(folder)
         db.session.commit()
@@ -132,11 +134,9 @@ class ExploreFolderApi(Resource):
         _, tenant_id = current_account_with_tenant()
         folder = _get_folder_or_404(str(folder_id), tenant_id)
 
-        has_apps = db.session.query(
-            select(InstalledApp)
-            .where(InstalledApp.folder_id == str(folder_id))
-            .exists()
-        ).scalar()
+        has_apps = db.session.scalar(
+            select(InstalledApp.id).where(InstalledApp.folder_id == str(folder_id)).limit(1)
+        ) is not None
         if has_apps:
             raise BadRequest("Cannot delete a non-empty folder")
 
