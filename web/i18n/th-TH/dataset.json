@@ -176,6 +176,7 @@
   "serviceApi.enabled": "ให้บริการ",
   "serviceApi.title": "บริการ API",
   "unavailable": "ไม่",
+  "unknownError": "ข้อผิดพลาดที่ไม่รู้จัก",
   "updated": "ปรับ ปรุง",
   "weightedScore.customized": "กำหนด เอง",
   "weightedScore.description": "กลยุทธ์การจัดอันดับใหม่นี้จะกําหนดว่าควรจัดลําดับความสําคัญของการจับคู่ความหมายหรือคีย์เวิร์ด",

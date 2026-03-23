@@ -56,7 +56,7 @@
     "no-console": {
       "count": 16
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 4
     },
     "ts/no-explicit-any": {
@@ -74,7 +74,7 @@
     }
   },
   "app/(commonLayout)/app/(appDetailLayout)/[appId]/layout-main.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 2
     },
     "ts/no-explicit-any": {
@@ -173,7 +173,7 @@
     }
   },
   "app/(humanInputLayout)/form/[token]/form.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -186,7 +186,7 @@
     }
   },
   "app/(shareLayout)/components/splash.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -292,7 +292,7 @@
     }
   },
   "app/account/(commonLayout)/delete-account/components/verify-email.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -323,7 +323,7 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 4
     }
   },
@@ -411,10 +411,10 @@
     "no-restricted-imports": {
       "count": 2
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react-refresh/only-export-components": {
       "count": 1
     },
-    "react-refresh/only-export-components": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -433,10 +433,10 @@
     "erasable-syntax-only/enums": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react-refresh/only-export-components": {
       "count": 1
     },
-    "react-refresh/only-export-components": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -470,6 +470,9 @@
     "no-restricted-imports": {
       "count": 1
     },
+    "react/component-hook-factories": {
+      "count": 1
+    },
     "react/no-nested-component-definitions": {
       "count": 1
     },
@@ -489,7 +492,7 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "ts/no-explicit-any": {
@@ -523,7 +526,7 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 5
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -672,6 +675,9 @@
   "app/components/app/configuration/config-var/index.tsx": {
     "no-restricted-imports": {
       "count": 3
+    },
+    "react-refresh/only-export-components": {
+      "count": 1
     }
   },
   "app/components/app/configuration/config-var/input-type-icon.tsx": {
@@ -738,7 +744,7 @@
     }
   },
   "app/components/app/configuration/config/agent/agent-setting/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "ts/no-explicit-any": {
@@ -775,7 +781,10 @@
     }
   },
   "app/components/app/configuration/config/agent/agent-tools/setting-built-in-tool.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -808,7 +817,7 @@
     "no-restricted-imports": {
       "count": 3
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 4
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -840,7 +849,7 @@
     }
   },
   "app/components/app/configuration/config/automatic/prompt-res.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -869,7 +878,7 @@
     "no-restricted-imports": {
       "count": 3
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 4
     },
     "ts/no-explicit-any": {
@@ -950,9 +959,9 @@
   },
   "app/components/app/configuration/dataset-config/params-config/index.tsx": {
     "no-restricted-imports": {
-      "count": 2
+      "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -975,7 +984,7 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 2
     },
     "ts/no-explicit-any": {
@@ -1050,7 +1059,7 @@
     "no-restricted-imports": {
       "count": 2
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 2
     },
     "ts/no-explicit-any": {
@@ -1066,7 +1075,7 @@
     "no-restricted-imports": {
       "count": 3
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "style/multiline-ternary": {
@@ -1145,7 +1154,7 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "ts/no-explicit-any": {
@@ -1167,11 +1176,11 @@
     "no-restricted-imports": {
       "count": 2
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 2
-    },
     "react-refresh/only-export-components": {
       "count": 1
+    },
+    "react/set-state-in-effect": {
+      "count": 2
     }
   },
   "app/components/app/create-from-dsl-modal/uploader.tsx": {
@@ -1198,7 +1207,7 @@
     }
   },
   "app/components/app/log/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -1209,7 +1218,7 @@
     "no-restricted-imports": {
       "count": 2
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 6
     },
     "style/multiline-ternary": {
@@ -1249,7 +1258,7 @@
     "no-restricted-imports": {
       "count": 2
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 3
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -1279,7 +1288,7 @@
     "no-restricted-imports": {
       "count": 2
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -1293,7 +1302,7 @@
     "no-restricted-imports": {
       "count": 4
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 3
     },
     "regexp/no-unused-capturing-group": {
@@ -1312,7 +1321,7 @@
     "no-restricted-imports": {
       "count": 3
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -1320,11 +1329,11 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 3
-    },
     "react-refresh/only-export-components": {
       "count": 1
+    },
+    "react/set-state-in-effect": {
+      "count": 3
     },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 6
@@ -1389,7 +1398,7 @@
     }
   },
   "app/components/app/workflow-log/list.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 2
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -1408,10 +1417,13 @@
     "no-restricted-imports": {
       "count": 5
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/component-hook-factories": {
       "count": 1
     },
     "react/no-nested-component-definitions": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
       "count": 1
     },
     "ts/no-explicit-any": {
@@ -1428,7 +1440,21 @@
       "count": 1
     }
   },
+  "app/components/apps/list.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    },
+    "react/unsupported-syntax": {
+      "count": 2
+    }
+  },
   "app/components/apps/new-app-card.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -1461,7 +1487,7 @@
     }
   },
   "app/components/base/agent-log-modal/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -1533,6 +1559,12 @@
     }
   },
   "app/components/base/auto-height-textarea/index.tsx": {
+    "react-hooks/rules-of-hooks": {
+      "count": 1
+    },
+    "react/rules-of-hooks": {
+      "count": 1
+    },
     "tailwindcss/no-unnecessary-whitespace": {
       "count": 1
     }
@@ -1551,13 +1583,16 @@
     }
   },
   "app/components/base/block-input/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 1
-    },
     "react-refresh/only-export-components": {
       "count": 1
     },
+    "react/component-hook-factories": {
+      "count": 1
+    },
     "react/no-nested-component-definitions": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -1582,8 +1617,14 @@
     }
   },
   "app/components/base/carousel/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    },
     "react-refresh/only-export-components": {
       "count": 1
+    },
+    "react/set-state-in-effect": {
+      "count": 3
     }
   },
   "app/components/base/chat/chat-with-history/chat-wrapper.tsx": {
@@ -1627,7 +1668,7 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 4
     },
     "ts/no-explicit-any": {
@@ -1635,7 +1676,7 @@
     }
   },
   "app/components/base/chat/chat-with-history/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -1679,7 +1720,7 @@
     }
   },
   "app/components/base/chat/chat-with-history/sidebar/operation.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -1705,7 +1746,7 @@
     }
   },
   "app/components/base/chat/chat/answer/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 3
     },
     "ts/no-explicit-any": {
@@ -1723,7 +1764,7 @@
     }
   },
   "app/components/base/chat/chat/answer/workflow-process.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -1744,7 +1785,10 @@
     }
   },
   "app/components/base/chat/chat/citation/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -1752,7 +1796,7 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 2
     },
     "ts/no-explicit-any": {
@@ -1760,7 +1804,7 @@
     }
   },
   "app/components/base/chat/chat/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "ts/no-explicit-any": {
@@ -1803,6 +1847,9 @@
     },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 3
+    },
+    "react/set-state-in-effect": {
+      "count": 6
     }
   },
   "app/components/base/chat/embedded-chatbot/index.tsx": {
@@ -1848,7 +1895,7 @@
     }
   },
   "app/components/base/confirm/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 2
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -1856,7 +1903,7 @@
     }
   },
   "app/components/base/content-dialog/index.stories.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -1896,7 +1943,7 @@
     }
   },
   "app/components/base/date-and-time-picker/date-picker/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 4
     }
   },
@@ -1906,7 +1953,7 @@
     }
   },
   "app/components/base/date-and-time-picker/time-picker/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 2
     }
   },
@@ -1931,12 +1978,17 @@
     }
   },
   "app/components/base/dialog/index.stories.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
   "app/components/base/dialog/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
+      "count": 1
+    }
+  },
+  "app/components/base/drawer-plus/index.stories.tsx": {
+    "react/component-hook-factories": {
       "count": 1
     }
   },
@@ -1946,7 +1998,7 @@
     }
   },
   "app/components/base/emoji-picker/Inner.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -1963,6 +2015,9 @@
   "app/components/base/error-boundary/index.tsx": {
     "react-refresh/only-export-components": {
       "count": 3
+    },
+    "react/component-hook-factories": {
+      "count": 1
     },
     "ts/no-explicit-any": {
       "count": 2
@@ -2012,7 +2067,7 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -2218,6 +2273,9 @@
     }
   },
   "app/components/base/form/form-scenarios/base/field.tsx": {
+    "react/component-hook-factories": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -2241,6 +2299,9 @@
     }
   },
   "app/components/base/form/form-scenarios/input-field/field.tsx": {
+    "react/component-hook-factories": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -2254,6 +2315,9 @@
     }
   },
   "app/components/base/form/form-scenarios/node-panel/field.tsx": {
+    "react/component-hook-factories": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -2297,7 +2361,7 @@
       "count": 1
     },
     "react-refresh/only-export-components": {
-      "count": 1
+      "count": 4
     }
   },
   "app/components/base/icons/utils.ts": {
@@ -2351,6 +2415,11 @@
       "count": 1
     }
   },
+  "app/components/base/input-with-copy/index.tsx": {
+    "react/unsupported-syntax": {
+      "count": 1
+    }
+  },
   "app/components/base/input/index.stories.tsx": {
     "no-console": {
       "count": 2
@@ -2393,7 +2462,7 @@
     }
   },
   "app/components/base/markdown-blocks/code-block.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 7
     },
     "ts/no-explicit-any": {
@@ -2416,17 +2485,17 @@
     }
   },
   "app/components/base/markdown-blocks/plugin-img.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 2
     }
   },
   "app/components/base/markdown-blocks/plugin-paragraph.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 2
     }
   },
   "app/components/base/markdown-blocks/think-block.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "ts/no-explicit-any": {
@@ -2449,7 +2518,7 @@
     }
   },
   "app/components/base/mermaid/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 7
     },
     "regexp/no-super-linear-backtracking": {
@@ -2476,7 +2545,7 @@
     }
   },
   "app/components/base/message-log-modal/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "ts/no-explicit-any": {
@@ -2489,7 +2558,7 @@
     }
   },
   "app/components/base/modal/index.stories.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -2497,7 +2566,7 @@
     "no-console": {
       "count": 4
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -2528,12 +2597,12 @@
     }
   },
   "app/components/base/notion-page-selector/base.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 2
     }
   },
   "app/components/base/notion-page-selector/page-selector/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -2636,6 +2705,11 @@
       "count": 2
     }
   },
+  "app/components/base/prompt-editor/plugins/hitl-input-block/component-ui.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
   "app/components/base/prompt-editor/plugins/hitl-input-block/hitl-input-block-replacement-block.tsx": {
     "ts/no-explicit-any": {
       "count": 1
@@ -2687,11 +2761,17 @@
     }
   },
   "app/components/base/prompt-editor/plugins/shortcuts-popup-plugin/index.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 2
     }
   },
   "app/components/base/prompt-editor/plugins/update-block.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 2
+    },
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -2722,7 +2802,7 @@
     }
   },
   "app/components/base/prompt-log-modal/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -2783,7 +2863,7 @@
     }
   },
   "app/components/base/select/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 2
     },
     "style/multiline-ternary": {
@@ -2835,7 +2915,7 @@
     }
   },
   "app/components/base/tab-slider/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 2
     }
   },
@@ -2849,6 +2929,14 @@
   },
   "app/components/base/tag-input/index.tsx": {
     "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "app/components/base/tag-management/__tests__/selector.spec.tsx": {
+    "react-hooks/rules-of-hooks": {
+      "count": 1
+    },
+    "react/rules-of-hooks": {
       "count": 1
     }
   },
@@ -2904,7 +2992,7 @@
     }
   },
   "app/components/base/video-gallery/VideoPlayer.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -2924,9 +3012,15 @@
   "app/components/base/with-input-validation/index.stories.tsx": {
     "no-console": {
       "count": 1
+    },
+    "react/component-hook-factories": {
+      "count": 1
     }
   },
   "app/components/base/with-input-validation/index.tsx": {
+    "react/component-hook-factories": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -3072,11 +3166,6 @@
       "count": 2
     }
   },
-  "app/components/datasets/common/document-status-with-action/auto-disabled-document.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "app/components/datasets/common/image-list/more.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
@@ -3090,10 +3179,12 @@
       "count": 3
     }
   },
-  "app/components/datasets/common/image-uploader/hooks/use-upload.ts": {
-    "no-restricted-imports": {
+  "app/components/datasets/common/image-uploader/__tests__/store.spec.tsx": {
+    "react/error-boundaries": {
       "count": 1
-    },
+    }
+  },
+  "app/components/datasets/common/image-uploader/hooks/use-upload.ts": {
     "ts/no-explicit-any": {
       "count": 3
     }
@@ -3123,7 +3214,7 @@
   },
   "app/components/datasets/common/retrieval-param-config/index.tsx": {
     "no-restricted-imports": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/datasets/create-from-pipeline/create-options/create-from-dsl-modal/dsl-confirm-modal.tsx": {
@@ -3255,7 +3346,7 @@
     }
   },
   "app/components/datasets/create/file-preview/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -3265,7 +3356,7 @@
     }
   },
   "app/components/datasets/create/notion-page-preview/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -3311,12 +3402,15 @@
     "erasable-syntax-only/enums": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 3
     }
   },
   "app/components/datasets/create/step-two/index.tsx": {
     "no-restricted-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -3389,7 +3483,7 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "ts/no-explicit-any": {
@@ -3416,7 +3510,7 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "ts/no-explicit-any": {
@@ -3451,7 +3545,7 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "ts/no-explicit-any": {
@@ -3471,11 +3565,6 @@
       "count": 1
     }
   },
-  "app/components/datasets/documents/components/document-list/hooks/use-document-actions.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "app/components/datasets/documents/components/documents-header.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -3488,7 +3577,7 @@
   },
   "app/components/datasets/documents/components/rename-modal.tsx": {
     "no-restricted-imports": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/datasets/documents/create-from-pipeline/actions/index.tsx": {
@@ -3535,7 +3624,7 @@
     }
   },
   "app/components/datasets/documents/create-from-pipeline/data-source/online-documents/page-selector/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -3606,7 +3695,7 @@
     }
   },
   "app/components/datasets/documents/create-from-pipeline/data-source/online-drive/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 5
     }
   },
@@ -3734,7 +3823,7 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -3767,7 +3856,7 @@
     }
   },
   "app/components/datasets/documents/detail/completed/common/chunk-content.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -3848,6 +3937,9 @@
   "app/components/datasets/documents/detail/completed/index.tsx": {
     "react-refresh/only-export-components": {
       "count": 1
+    },
+    "react/use-memo": {
+      "count": 1
     }
   },
   "app/components/datasets/documents/detail/completed/segment-card/chunk-content.tsx": {
@@ -3916,6 +4008,12 @@
   "app/components/datasets/documents/detail/metadata/hooks/use-metadata-state.ts": {
     "no-restricted-imports": {
       "count": 1
+    },
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 4
+    },
+    "react/set-state-in-effect": {
+      "count": 4
     }
   },
   "app/components/datasets/documents/detail/segment-add/index.tsx": {
@@ -3964,7 +4062,7 @@
     "no-restricted-imports": {
       "count": 4
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -3982,7 +4080,7 @@
     }
   },
   "app/components/datasets/external-knowledge-base/create/ExternalApiSelect.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -3990,7 +4088,7 @@
     }
   },
   "app/components/datasets/external-knowledge-base/create/ExternalApiSelection.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -4103,6 +4201,11 @@
       "count": 1
     }
   },
+  "app/components/datasets/hit-testing/index.tsx": {
+    "react/unsupported-syntax": {
+      "count": 1
+    }
+  },
   "app/components/datasets/hit-testing/modify-external-retrieval-modal.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
@@ -4142,10 +4245,7 @@
     }
   },
   "app/components/datasets/list/dataset-card/hooks/use-dataset-card-state.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -4201,7 +4301,7 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -4314,11 +4414,6 @@
       "count": 7
     }
   },
-  "app/components/datasets/settings/form/hooks/use-form-state.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "app/components/datasets/settings/index-method/index.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -4397,11 +4492,23 @@
     }
   },
   "app/components/explore/banner/banner-item.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
+      "count": 3
+    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 4
     }
   },
   "app/components/explore/banner/indicator-button.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
+      "count": 2
+    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
@@ -4432,7 +4539,7 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -4508,11 +4615,26 @@
       "count": 2
     }
   },
+  "app/components/goto-anything/command-selector.tsx": {
+    "react/unsupported-syntax": {
+      "count": 2
+    }
+  },
+  "app/components/goto-anything/components/footer.tsx": {
+    "react/unsupported-syntax": {
+      "count": 1
+    }
+  },
   "app/components/goto-anything/context.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 4
-    },
     "react-refresh/only-export-components": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
+      "count": 4
+    }
+  },
+  "app/components/goto-anything/hooks/use-goto-anything-results.ts": {
+    "@tanstack/query/exhaustive-deps": {
       "count": 1
     }
   },
@@ -4531,6 +4653,11 @@
       "count": 1
     },
     "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "app/components/header/account-dropdown/menu-item-content.tsx": {
+    "react-refresh/only-export-components": {
       "count": 1
     }
   },
@@ -4573,9 +4700,6 @@
   "app/components/header/account-setting/data-source-page-new/configure.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
     }
   },
   "app/components/header/account-setting/data-source-page-new/hooks/use-marketplace-all-plugins.ts": {
@@ -4602,77 +4726,11 @@
   "app/components/header/account-setting/data-source-page-new/operator.tsx": {
     "no-restricted-imports": {
       "count": 2
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 5
     }
   },
   "app/components/header/account-setting/data-source-page-new/types.ts": {
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "app/components/header/account-setting/data-source-page/data-source-notion/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "app/components/header/account-setting/data-source-page/data-source-notion/operate/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 4
-    }
-  },
-  "app/components/header/account-setting/data-source-page/data-source-website/config-firecrawl-modal.tsx": {
-    "no-restricted-imports": {
-      "count": 2
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/header/account-setting/data-source-page/data-source-website/config-jina-reader-modal.tsx": {
-    "no-restricted-imports": {
-      "count": 2
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/header/account-setting/data-source-page/data-source-website/config-watercrawl-modal.tsx": {
-    "no-restricted-imports": {
-      "count": 2
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/header/account-setting/data-source-page/data-source-website/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/header/account-setting/data-source-page/panel/config-item.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    },
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/header/account-setting/data-source-page/panel/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
-    }
-  },
-  "app/components/header/account-setting/data-source-page/panel/types.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 1
     }
   },
   "app/components/header/account-setting/key-validator/declarations.ts": {
@@ -4694,26 +4752,8 @@
     }
   },
   "app/components/header/account-setting/members-page/invite-modal/index.tsx": {
-    "no-restricted-imports": {
-      "count": 2
-    },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 3
-    }
-  },
-  "app/components/header/account-setting/members-page/invite-modal/role-selector.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "app/components/header/account-setting/members-page/invited-modal/index.tsx": {
-    "no-restricted-imports": {
-      "count": 2
-    }
-  },
-  "app/components/header/account-setting/members-page/invited-modal/invitation-link.tsx": {
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "app/components/header/account-setting/members-page/operation/index.tsx": {
@@ -4769,9 +4809,6 @@
   "app/components/header/account-setting/model-provider-page/model-auth/add-custom-model.tsx": {
     "no-restricted-imports": {
       "count": 2
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
     }
   },
   "app/components/header/account-setting/model-provider-page/model-auth/authorized/authorized-item.tsx": {
@@ -4782,9 +4819,6 @@
   "app/components/header/account-setting/model-provider-page/model-auth/authorized/index.tsx": {
     "no-restricted-imports": {
       "count": 3
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
     },
     "ts/no-explicit-any": {
       "count": 2
@@ -4803,9 +4837,6 @@
   "app/components/header/account-setting/model-provider-page/model-auth/credential-selector.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 4
     }
   },
   "app/components/header/account-setting/model-provider-page/model-auth/hooks/use-auth.ts": {
@@ -4885,7 +4916,7 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 2
     }
   },
@@ -4916,7 +4947,7 @@
     "no-restricted-imports": {
       "count": 3
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "ts/no-explicit-any": {
@@ -4944,7 +4975,7 @@
     }
   },
   "app/components/header/app-nav/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 2
     },
     "ts/no-explicit-any": {
@@ -5053,7 +5084,12 @@
     }
   },
   "app/components/plugins/install-plugin/install-bundle/item/github-item.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "app/components/plugins/install-plugin/install-bundle/steps/hooks/use-install-multi-state.ts": {
+    "react-hooks/exhaustive-deps": {
       "count": 1
     }
   },
@@ -5640,7 +5676,7 @@
     }
   },
   "app/components/plugins/plugin-page/empty/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 2
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -5672,7 +5708,7 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 2
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -5702,6 +5738,11 @@
   "app/components/plugins/provider-card.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
+    }
+  },
+  "app/components/plugins/readme-panel/index.tsx": {
+    "react/unsupported-syntax": {
+      "count": 1
     }
   },
   "app/components/plugins/readme-panel/store.ts": {
@@ -5813,6 +5854,9 @@
     }
   },
   "app/components/rag-pipeline/components/panel/input-field/editor/form/hidden-fields.tsx": {
+    "react/component-hook-factories": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -5828,11 +5872,17 @@
     }
   },
   "app/components/rag-pipeline/components/panel/input-field/editor/form/initial-fields.tsx": {
+    "react/component-hook-factories": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 2
     }
   },
   "app/components/rag-pipeline/components/panel/input-field/editor/form/show-all-settings.tsx": {
+    "react/component-hook-factories": {
+      "count": 1
+    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
     },
@@ -5861,7 +5911,7 @@
     }
   },
   "app/components/rag-pipeline/components/panel/input-field/hooks.ts": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -6074,7 +6124,7 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -6090,7 +6140,7 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -6130,7 +6180,7 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -6151,6 +6201,9 @@
     }
   },
   "app/components/signin/countdown.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 2
+    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
     }
@@ -6178,7 +6231,7 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 4
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -6462,7 +6515,7 @@
     }
   },
   "app/components/workflow/block-selector/all-start-blocks.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -6486,7 +6539,7 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 2
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -6503,7 +6556,7 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 2
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -6517,13 +6570,13 @@
     }
   },
   "app/components/workflow/block-selector/hooks.ts": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
   "app/components/workflow/block-selector/index-bar.tsx": {
     "react-refresh/only-export-components": {
-      "count": 1
+      "count": 5
     }
   },
   "app/components/workflow/block-selector/main.tsx": {
@@ -6535,7 +6588,7 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -6559,7 +6612,7 @@
     }
   },
   "app/components/workflow/block-selector/rag-tool-recommendations/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -6603,7 +6656,7 @@
     }
   },
   "app/components/workflow/block-selector/tool/tool.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 2
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -6619,7 +6672,7 @@
     }
   },
   "app/components/workflow/block-selector/trigger-plugin/item.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 2
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -6635,7 +6688,7 @@
     }
   },
   "app/components/workflow/block-selector/use-check-vertical-scrollbar.ts": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -6755,6 +6808,11 @@
   "app/components/workflow/hooks-store/store.ts": {
     "ts/no-explicit-any": {
       "count": 6
+    }
+  },
+  "app/components/workflow/hooks/__tests__/use-checklist.spec.ts": {
+    "react/error-boundaries": {
+      "count": 1
     }
   },
   "app/components/workflow/hooks/use-checklist.ts": {
@@ -6904,7 +6962,7 @@
     }
   },
   "app/components/workflow/nodes/_base/components/editor/code-editor/editor-support-vars.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "ts/no-explicit-any": {
@@ -7103,7 +7161,7 @@
     }
   },
   "app/components/workflow/nodes/_base/components/node-handle.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -7232,12 +7290,17 @@
       "count": 1
     }
   },
+  "app/components/workflow/nodes/_base/components/variable/var-list.tsx": {
+    "react/unsupported-syntax": {
+      "count": 1
+    }
+  },
   "app/components/workflow/nodes/_base/components/variable/var-reference-picker.tsx": {
     "no-restricted-imports": {
       "count": 2
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 2
+    "react/set-state-in-effect": {
+      "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 4
@@ -7284,7 +7347,7 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 3
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -7298,7 +7361,7 @@
     }
   },
   "app/components/workflow/nodes/_base/components/workflow-panel/last-run/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 7
     },
     "ts/no-explicit-any": {
@@ -7314,7 +7377,7 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "ts/no-explicit-any": {
@@ -7336,7 +7399,7 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 2
     },
     "ts/no-explicit-any": {
@@ -7349,7 +7412,7 @@
     }
   },
   "app/components/workflow/nodes/_base/hooks/use-toggle-expend.ts": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -7384,6 +7447,9 @@
   },
   "app/components/workflow/nodes/agent/components/tool-icon.tsx": {
     "no-restricted-imports": {
+      "count": 1
+    },
+    "react/unsupported-syntax": {
       "count": 1
     }
   },
@@ -7490,7 +7556,7 @@
     }
   },
   "app/components/workflow/nodes/code/use-config.ts": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 2
     },
     "regexp/no-useless-assertions": {
@@ -7635,7 +7701,7 @@
     }
   },
   "app/components/workflow/nodes/http/use-config.ts": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "ts/no-explicit-any": {
@@ -7734,11 +7800,19 @@
       "count": 2
     }
   },
+  "app/components/workflow/nodes/human-input/components/form-content-preview.tsx": {
+    "react/unsupported-syntax": {
+      "count": 1
+    }
+  },
   "app/components/workflow/nodes/human-input/components/form-content.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/component-hook-factories": {
       "count": 1
     },
     "react/no-nested-component-definitions": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -7884,7 +7958,7 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -8073,7 +8147,7 @@
     }
   },
   "app/components/workflow/nodes/knowledge-retrieval/node.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 2
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -8149,6 +8223,9 @@
     }
   },
   "app/components/workflow/nodes/llm/components/config-prompt.tsx": {
+    "react/unsupported-syntax": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -8208,7 +8285,7 @@
     "no-restricted-imports": {
       "count": 2
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 2
     }
   },
@@ -8241,7 +8318,7 @@
     }
   },
   "app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/edit-card/auto-width-input.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -8298,7 +8375,7 @@
     }
   },
   "app/components/workflow/nodes/llm/use-config.ts": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 2
     },
     "ts/no-explicit-any": {
@@ -8458,7 +8535,7 @@
     }
   },
   "app/components/workflow/nodes/parameter-extractor/use-config.ts": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 2
     },
     "ts/no-explicit-any": {
@@ -8476,13 +8553,16 @@
     }
   },
   "app/components/workflow/nodes/question-classifier/components/class-item.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
   "app/components/workflow/nodes/question-classifier/components/class-list.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
+    },
+    "react/unsupported-syntax": {
+      "count": 2
     }
   },
   "app/components/workflow/nodes/question-classifier/default.ts": {
@@ -8499,7 +8579,7 @@
     }
   },
   "app/components/workflow/nodes/question-classifier/use-config.ts": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 2
     },
     "ts/no-explicit-any": {
@@ -8660,6 +8740,9 @@
     }
   },
   "app/components/workflow/nodes/trigger-plugin/node.tsx": {
+    "react/unsupported-syntax": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -8767,7 +8850,7 @@
     }
   },
   "app/components/workflow/note-node/note-editor/plugins/link-editor-plugin/component.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -8856,7 +8939,7 @@
   },
   "app/components/workflow/panel/chat-record/user-input.tsx": {
     "ts/no-explicit-any": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/workflow/panel/chat-variable-panel/components/array-bool-list.tsx": {
@@ -8905,7 +8988,7 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 8
     },
     "ts/no-explicit-any": {
@@ -8979,7 +9062,7 @@
     "no-restricted-imports": {
       "count": 2
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 4
     },
     "ts/no-explicit-any": {
@@ -9134,7 +9217,7 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 2
     }
   },
@@ -9184,7 +9267,7 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -9439,7 +9522,7 @@
     }
   },
   "app/components/workflow/variable-inspect/value-content.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 5
     },
     "regexp/no-super-linear-backtracking": {
@@ -9513,7 +9596,7 @@
     }
   },
   "app/education-apply/hooks.ts": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 5
     }
   },
@@ -9542,7 +9625,7 @@
     }
   },
   "app/education-apply/verify-state-modal.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -9678,7 +9761,7 @@
     }
   },
   "context/hooks/use-trigger-events-limit-modal.ts": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 3
     }
   },
@@ -9736,12 +9819,15 @@
     }
   },
   "hooks/use-mitt.ts": {
+    "react/component-hook-factories": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 2
     }
   },
   "hooks/use-moderate.ts": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -9754,11 +9840,11 @@
     "no-restricted-imports": {
       "count": 2
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 4
-    },
     "react-refresh/only-export-components": {
       "count": 3
+    },
+    "react/set-state-in-effect": {
+      "count": 4
     }
   },
   "i18n/de-DE/billing.json": {
@@ -9970,7 +10056,7 @@
     }
   },
   "service/use-plugins.ts": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "regexp/no-unused-capturing-group": {
@@ -10066,6 +10152,11 @@
   },
   "utils/completion-params.ts": {
     "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "utils/context.ts": {
+    "react/component-hook-factories": {
       "count": 1
     }
   },

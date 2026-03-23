@@ -244,6 +244,7 @@ const ModelLoadBalancingModal = ({
       <Modal
         isShow={Boolean(model) && open}
         onClose={onClose}
+        wrapperClassName="z-[1002]"
         className="w-[640px] max-w-none px-8 pt-8"
         title={(
           <div className="pb-3 font-semibold">

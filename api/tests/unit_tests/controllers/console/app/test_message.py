@@ -170,7 +170,7 @@ class TestMessageEndpoints:
             mock_app_model,
             qs={"conversation_id": "123e4567-e89b-12d3-a456-426614174000"},
         ) as (api, mock_db, v_args):
-            mock_db.data_query.where.return_value.first.return_value = None
+            mock_db.session.scalar.return_value = None
 
             with pytest.raises(NotFound):
                 api.get(**v_args)
@@ -198,11 +198,11 @@ class TestMessageEndpoints:
             mock_msg.message = {}
             mock_msg.message_metadata_dict = {}
 
-            # mock returns
-            q_mock = mock_db.data_query
-            q_mock.where.return_value.first.side_effect = [mock_conv]
-            q_mock.where.return_value.order_by.return_value.limit.return_value.all.return_value = [mock_msg]
-            mock_db.session.scalar.return_value = False
+            # scalar() is called twice: first for conversation lookup, second for has_more check
+            mock_db.session.scalar.side_effect = [mock_conv, False]
+            scalars_result = MagicMock()
+            scalars_result.all.return_value = [mock_msg]
+            mock_db.session.scalars.return_value = scalars_result
 
             resp = api.get(**v_args)
             assert resp["limit"] == 1
@@ -219,7 +219,7 @@ class TestMessageEndpoints:
             mock_app_model,
             payload={"message_id": "123e4567-e89b-12d3-a456-426614174000"},
         ) as (api, mock_db, v_args):
-            mock_db.data_query.where.return_value.first.return_value = None
+            mock_db.session.scalar.return_value = None
 
             with pytest.raises(NotFound):
                 api.post(**v_args)
@@ -231,7 +231,7 @@ class TestMessageEndpoints:
         ) as (api, mock_db, v_args):
             mock_msg = MagicMock()
             mock_msg.admin_feedback = None
-            mock_db.data_query.where.return_value.first.return_value = mock_msg
+            mock_db.session.scalar.return_value = mock_msg
 
             resp = api.post(**v_args)
             assert resp == {"result": "success"}
@@ -240,7 +240,7 @@ class TestMessageEndpoints:
         with setup_test_context(
             app, MessageAnnotationCountApi, "/apps/app_123/annotations/count", "GET", mock_account, mock_app_model
         ) as (api, mock_db, v_args):
-            mock_db.data_query.where.return_value.count.return_value = 5
+            mock_db.session.scalar.return_value = 5
 
             resp = api.get(**v_args)
             assert resp == {"count": 5}
@@ -314,7 +314,7 @@ class TestMessageEndpoints:
             mock_msg.message = {}
             mock_msg.message_metadata_dict = {}
 
-            mock_db.data_query.where.return_value.first.return_value = mock_msg
+            mock_db.session.scalar.return_value = mock_msg
 
             resp = api.get(**v_args)
             assert resp["id"] == "msg_123"
