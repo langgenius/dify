@@ -176,6 +176,7 @@
   "serviceApi.enabled": "На службе",
   "serviceApi.title": "Сервисный API",
   "unavailable": "Недоступно",
+  "unknownError": "Неизвестная ошибка",
   "updated": "Обновлено",
   "weightedScore.customized": "Настраиваемый",
   "weightedScore.description": "Регулируя назначенные веса, эта стратегия переранжирования определяет, следует ли отдавать приоритет семантическому или ключевому соответствию.",
