@@ -222,6 +222,13 @@ class DatasetMetadataType(StrEnum):
     TIME = "time"
 
 
+class SegmentType(StrEnum):
+    """Document segment type"""
+
+    AUTOMATIC = "automatic"
+    CUSTOMIZED = "customized"
+
+
 class SegmentStatus(StrEnum):
     """Document segment status"""
 
