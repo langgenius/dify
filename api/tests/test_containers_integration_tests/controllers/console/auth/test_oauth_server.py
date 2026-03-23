@@ -319,7 +319,7 @@ def test_oauth_account_successful_retrieval(
     assert response.status_code == 200
     assert response.get_json() == {
         "name": "Test User",
-        "email": "test@example.com",
+        "email": account.email,
         "avatar": "avatar_url",
         "interface_language": "en-US",
         "timezone": "UTC",
