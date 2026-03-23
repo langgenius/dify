@@ -4,7 +4,7 @@ from typing import Literal
 from flask import request
 from flask_restx import Resource, fields, marshal_with
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import exists, select
+from sqlalchemy import exists, func, select
 from werkzeug.exceptions import InternalServerError, NotFound
 
 from controllers.common.schema import register_schema_models
@@ -244,27 +244,25 @@ class ChatMessageListApi(Resource):
     def get(self, app_model):
         args = ChatMessagesQuery.model_validate(request.args.to_dict())
 
-        conversation = (
-            db.session.query(Conversation)
+        conversation = db.session.scalar(
+            select(Conversation)
             .where(Conversation.id == args.conversation_id, Conversation.app_id == app_model.id)
-            .first()
+            .limit(1)
         )
 
         if not conversation:
             raise NotFound("Conversation Not Exists.")
 
         if args.first_id:
-            first_message = (
-                db.session.query(Message)
-                .where(Message.conversation_id == conversation.id, Message.id == args.first_id)
-                .first()
+            first_message = db.session.scalar(
+                select(Message).where(Message.conversation_id == conversation.id, Message.id == args.first_id).limit(1)
             )
 
             if not first_message:
                 raise NotFound("First message not found")
 
-            history_messages = (
-                db.session.query(Message)
+            history_messages = db.session.scalars(
+                select(Message)
                 .where(
                     Message.conversation_id == conversation.id,
                     Message.created_at < first_message.created_at,
@@ -272,16 +270,14 @@ class ChatMessageListApi(Resource):
                 )
                 .order_by(Message.created_at.desc())
                 .limit(args.limit)
-                .all()
-            )
+            ).all()
         else:
-            history_messages = (
-                db.session.query(Message)
+            history_messages = db.session.scalars(
+                select(Message)
                 .where(Message.conversation_id == conversation.id)
                 .order_by(Message.created_at.desc())
                 .limit(args.limit)
-                .all()
-            )
+            ).all()
 
         # Initialize has_more based on whether we have a full page
         if len(history_messages) == args.limit:
@@ -326,7 +322,9 @@ class MessageFeedbackApi(Resource):
 
         message_id = str(args.message_id)
 
-        message = db.session.query(Message).where(Message.id == message_id, Message.app_id == app_model.id).first()
+        message = db.session.scalar(
+            select(Message).where(Message.id == message_id, Message.app_id == app_model.id).limit(1)
+        )
 
         if not message:
             raise NotFound("Message Not Exists.")
@@ -375,7 +373,9 @@ class MessageAnnotationCountApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, app_model):
-        count = db.session.query(MessageAnnotation).where(MessageAnnotation.app_id == app_model.id).count()
+        count = db.session.scalar(
+            select(func.count(MessageAnnotation.id)).where(MessageAnnotation.app_id == app_model.id)
+        )
 
         return {"count": count}
 
@@ -479,7 +479,9 @@ class MessageApi(Resource):
     def get(self, app_model, message_id: str):
         message_id = str(message_id)
 
-        message = db.session.query(Message).where(Message.id == message_id, Message.app_id == app_model.id).first()
+        message = db.session.scalar(
+            select(Message).where(Message.id == message_id, Message.app_id == app_model.id).limit(1)
+        )
 
         if not message:
             raise NotFound("Message Not Exists.")
