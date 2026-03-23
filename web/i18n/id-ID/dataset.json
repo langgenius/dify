@@ -176,6 +176,7 @@
   "serviceApi.enabled": "Sedang Beroperasi",
   "serviceApi.title": "API Layanan",
   "unavailable": "Tidak tersedia",
+  "unknownError": "Kesalahan tidak diketahui",
   "updated": "Diperbarui",
   "weightedScore.customized": "Disesuaikan",
   "weightedScore.description": "Dengan menyesuaikan bobot yang ditetapkan, strategi rerank ini menentukan apakah akan memprioritaskan pencocokan semantik atau kata kunci.",

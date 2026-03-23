@@ -10,6 +10,7 @@ from sqlalchemy import select
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from models.account import Account, Tenant, TenantAccountJoin
+from models.enums import ConversationFromSource
 from models.model import App, Conversation, EndUser, Message, MessageAnnotation
 from services.annotation_service import AppAnnotationService
 from services.conversation_service import ConversationService
@@ -107,7 +108,7 @@ class ConversationServiceIntegrationTestDataFactory:
             system_instruction_tokens=0,
             status="normal",
             invoke_from=invoke_from.value,
-            from_source="api" if isinstance(user, EndUser) else "console",
+            from_source=ConversationFromSource.API if isinstance(user, EndUser) else ConversationFromSource.CONSOLE,
             from_end_user_id=user.id if isinstance(user, EndUser) else None,
             from_account_id=user.id if isinstance(user, Account) else None,
             dialogue_count=0,
@@ -154,7 +155,7 @@ class ConversationServiceIntegrationTestDataFactory:
             currency="USD",
             status="normal",
             invoke_from=InvokeFrom.WEB_APP.value,
-            from_source="api" if isinstance(user, EndUser) else "console",
+            from_source=ConversationFromSource.API if isinstance(user, EndUser) else ConversationFromSource.CONSOLE,
             from_end_user_id=user.id if isinstance(user, EndUser) else None,
             from_account_id=user.id if isinstance(user, Account) else None,
         )

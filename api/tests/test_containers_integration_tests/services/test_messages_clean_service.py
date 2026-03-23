@@ -11,7 +11,14 @@ from sqlalchemy.orm import Session
 from enums.cloud_plan import CloudPlan
 from extensions.ext_redis import redis_client
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
-from models.enums import DataSourceType, FeedbackFromSource, FeedbackRating, MessageChainType, MessageFileBelongsTo
+from models.enums import (
+    ConversationFromSource,
+    DataSourceType,
+    FeedbackFromSource,
+    FeedbackRating,
+    MessageChainType,
+    MessageFileBelongsTo,
+)
 from models.model import (
     App,
     AppAnnotationHitHistory,
@@ -166,7 +173,7 @@ class TestMessagesCleanServiceIntegration:
             name="Test conversation",
             inputs={},
             status="normal",
-            from_source=FeedbackFromSource.USER,
+            from_source=ConversationFromSource.API,
             from_end_user_id=str(uuid.uuid4()),
         )
         db_session_with_containers.add(conversation)
@@ -196,7 +203,7 @@ class TestMessagesCleanServiceIntegration:
             answer_unit_price=Decimal("0.002"),
             total_price=Decimal("0.003"),
             currency="USD",
-            from_source=FeedbackFromSource.USER,
+            from_source=ConversationFromSource.API,
             from_account_id=conversation.from_end_user_id,
             created_at=created_at,
         )
