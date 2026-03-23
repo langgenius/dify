@@ -136,7 +136,7 @@ class GitHubOAuth(OAuth):
             email_info = GITHUB_EMAIL_RECORDS_ADAPTER.validate_python(_json_list(email_response))
             primary_email = next((email for email in email_info if email.get("primary") is True), None)
         except (httpx.HTTPStatusError, ValidationError):
-            logger.warning("Failed to retrieve email from GitHub /user/emails endpoint")
+            logger.warning("Failed to retrieve email from GitHub /user/emails endpoint", exc_info=True)
             primary_email = None
 
         return {**user_info, "email": primary_email.get("email", "") if primary_email else ""}
