@@ -97,8 +97,8 @@ def remove_app_and_related_data_task(self, tenant_id: str, app_id: str):
         raise self.retry(exc=e, countdown=60)  # Retry after 60 seconds
 
 
-def _delete_app_model_configs(tenant_id: str, app_id: str):
-    def del_model_config(session, model_config_id: str):
+def _delete_app_model_configs(tenant_id: str, app_id: str) -> None:
+    def del_model_config(session: Any, model_config_id: str) -> None:
         session.query(AppModelConfig).where(AppModelConfig.id == model_config_id).delete(synchronize_session=False)
 
     _delete_records(
@@ -109,8 +109,8 @@ def _delete_app_model_configs(tenant_id: str, app_id: str):
     )
 
 
-def _delete_app_site(tenant_id: str, app_id: str):
-    def del_site(session, site_id: str):
+def _delete_app_site(tenant_id: str, app_id: str) -> None:
+    def del_site(session: Any, site_id: str) -> None:
         session.query(Site).where(Site.id == site_id).delete(synchronize_session=False)
 
     _delete_records(
@@ -121,8 +121,8 @@ def _delete_app_site(tenant_id: str, app_id: str):
     )
 
 
-def _delete_app_mcp_servers(tenant_id: str, app_id: str):
-    def del_mcp_server(session, mcp_server_id: str):
+def _delete_app_mcp_servers(tenant_id: str, app_id: str) -> None:
+    def del_mcp_server(session: Any, mcp_server_id: str) -> None:
         session.query(AppMCPServer).where(AppMCPServer.id == mcp_server_id).delete(synchronize_session=False)
 
     _delete_records(
@@ -133,8 +133,8 @@ def _delete_app_mcp_servers(tenant_id: str, app_id: str):
     )
 
 
-def _delete_app_api_tokens(tenant_id: str, app_id: str):
-    def del_api_token(session, api_token_id: str):
+def _delete_app_api_tokens(tenant_id: str, app_id: str) -> None:
+    def del_api_token(session: Any, api_token_id: str) -> None:
         # Fetch token details for cache invalidation
         token_obj = session.query(ApiToken).where(ApiToken.id == api_token_id).first()
         if token_obj:
@@ -151,8 +151,8 @@ def _delete_app_api_tokens(tenant_id: str, app_id: str):
     )
 
 
-def _delete_installed_apps(tenant_id: str, app_id: str):
-    def del_installed_app(session, installed_app_id: str):
+def _delete_installed_apps(tenant_id: str, app_id: str) -> None:
+    def del_installed_app(session: Any, installed_app_id: str) -> None:
         session.query(InstalledApp).where(InstalledApp.id == installed_app_id).delete(synchronize_session=False)
 
     _delete_records(
@@ -163,8 +163,8 @@ def _delete_installed_apps(tenant_id: str, app_id: str):
     )
 
 
-def _delete_recommended_apps(tenant_id: str, app_id: str):
-    def del_recommended_app(session, recommended_app_id: str):
+def _delete_recommended_apps(tenant_id: str, app_id: str) -> None:
+    def del_recommended_app(session: Any, recommended_app_id: str) -> None:
         session.query(RecommendedApp).where(RecommendedApp.id == recommended_app_id).delete(synchronize_session=False)
 
     _delete_records(
@@ -175,8 +175,8 @@ def _delete_recommended_apps(tenant_id: str, app_id: str):
     )
 
 
-def _delete_app_annotation_data(tenant_id: str, app_id: str):
-    def del_annotation_hit_history(session, annotation_hit_history_id: str):
+def _delete_app_annotation_data(tenant_id: str, app_id: str) -> None:
+    def del_annotation_hit_history(session: Any, annotation_hit_history_id: str) -> None:
         session.query(AppAnnotationHitHistory).where(AppAnnotationHitHistory.id == annotation_hit_history_id).delete(
             synchronize_session=False
         )
@@ -188,7 +188,7 @@ def _delete_app_annotation_data(tenant_id: str, app_id: str):
         "annotation hit history",
     )
 
-    def del_annotation_setting(session, annotation_setting_id: str):
+    def del_annotation_setting(session: Any, annotation_setting_id: str) -> None:
         session.query(AppAnnotationSetting).where(AppAnnotationSetting.id == annotation_setting_id).delete(
             synchronize_session=False
         )
@@ -201,8 +201,8 @@ def _delete_app_annotation_data(tenant_id: str, app_id: str):
     )
 
 
-def _delete_app_dataset_joins(tenant_id: str, app_id: str):
-    def del_dataset_join(session, dataset_join_id: str):
+def _delete_app_dataset_joins(tenant_id: str, app_id: str) -> None:
+    def del_dataset_join(session: Any, dataset_join_id: str) -> None:
         session.query(AppDatasetJoin).where(AppDatasetJoin.id == dataset_join_id).delete(synchronize_session=False)
 
     _delete_records(
@@ -213,8 +213,8 @@ def _delete_app_dataset_joins(tenant_id: str, app_id: str):
     )
 
 
-def _delete_app_workflows(tenant_id: str, app_id: str):
-    def del_workflow(session, workflow_id: str):
+def _delete_app_workflows(tenant_id: str, app_id: str) -> None:
+    def del_workflow(session: Any, workflow_id: str) -> None:
         session.query(Workflow).where(Workflow.id == workflow_id).delete(synchronize_session=False)
 
     _delete_records(
@@ -225,7 +225,7 @@ def _delete_app_workflows(tenant_id: str, app_id: str):
     )
 
 
-def _delete_app_workflow_runs(tenant_id: str, app_id: str):
+def _delete_app_workflow_runs(tenant_id: str, app_id: str) -> None:
     """Delete all workflow runs for an app using the service repository."""
     session_maker = sessionmaker(bind=db.engine)
     workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
@@ -239,7 +239,7 @@ def _delete_app_workflow_runs(tenant_id: str, app_id: str):
     logger.info("Deleted %s workflow runs for app %s", deleted_count, app_id)
 
 
-def _delete_app_workflow_node_executions(tenant_id: str, app_id: str):
+def _delete_app_workflow_node_executions(tenant_id: str, app_id: str) -> None:
     """Delete all workflow node executions for an app using the service repository."""
     session_maker = sessionmaker(bind=db.engine)
     node_execution_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(session_maker)
@@ -253,8 +253,8 @@ def _delete_app_workflow_node_executions(tenant_id: str, app_id: str):
     logger.info("Deleted %s workflow node executions for app %s", deleted_count, app_id)
 
 
-def _delete_app_workflow_app_logs(tenant_id: str, app_id: str):
-    def del_workflow_app_log(session, workflow_app_log_id: str):
+def _delete_app_workflow_app_logs(tenant_id: str, app_id: str) -> None:
+    def del_workflow_app_log(session: Any, workflow_app_log_id: str) -> None:
         session.query(WorkflowAppLog).where(WorkflowAppLog.id == workflow_app_log_id).delete(synchronize_session=False)
 
     _delete_records(
@@ -265,8 +265,8 @@ def _delete_app_workflow_app_logs(tenant_id: str, app_id: str):
     )
 
 
-def _delete_app_workflow_archive_logs(tenant_id: str, app_id: str):
-    def del_workflow_archive_log(session, workflow_archive_log_id: str):
+def _delete_app_workflow_archive_logs(tenant_id: str, app_id: str) -> None:
+    def del_workflow_archive_log(session: Any, workflow_archive_log_id: str) -> None:
         session.query(WorkflowArchiveLog).where(WorkflowArchiveLog.id == workflow_archive_log_id).delete(
             synchronize_session=False
         )
@@ -279,7 +279,7 @@ def _delete_app_workflow_archive_logs(tenant_id: str, app_id: str):
     )
 
 
-def _delete_archived_workflow_run_files(tenant_id: str, app_id: str):
+def _delete_archived_workflow_run_files(tenant_id: str, app_id: str) -> None:
     prefix = f"{tenant_id}/app_id={app_id}/"
     try:
         archive_storage = get_archive_storage()
@@ -304,8 +304,8 @@ def _delete_archived_workflow_run_files(tenant_id: str, app_id: str):
     logger.info("Deleted %s archive objects for app %s", deleted, app_id)
 
 
-def _delete_app_conversations(tenant_id: str, app_id: str):
-    def del_conversation(session, conversation_id: str):
+def _delete_app_conversations(tenant_id: str, app_id: str) -> None:
+    def del_conversation(session: Any, conversation_id: str) -> None:
         session.query(PinnedConversation).where(PinnedConversation.conversation_id == conversation_id).delete(
             synchronize_session=False
         )
@@ -319,7 +319,7 @@ def _delete_app_conversations(tenant_id: str, app_id: str):
     )
 
 
-def _delete_conversation_variables(*, app_id: str):
+def _delete_conversation_variables(app_id: str) -> None:
     with session_factory.create_session() as session:
         stmt = delete(ConversationVariable).where(ConversationVariable.app_id == app_id)
         session.execute(stmt)
@@ -327,8 +327,8 @@ def _delete_conversation_variables(*, app_id: str):
         logger.info(click.style(f"Deleted conversation variables for app {app_id}", fg="green"))
 
 
-def _delete_app_messages(tenant_id: str, app_id: str):
-    def del_message(session, message_id: str):
+def _delete_app_messages(tenant_id: str, app_id: str) -> None:
+    def del_message(session: Any, message_id: str) -> None:
         session.query(MessageFeedback).where(MessageFeedback.message_id == message_id).delete(synchronize_session=False)
         session.query(MessageAnnotation).where(MessageAnnotation.message_id == message_id).delete(
             synchronize_session=False
@@ -349,8 +349,8 @@ def _delete_app_messages(tenant_id: str, app_id: str):
     )
 
 
-def _delete_workflow_tool_providers(tenant_id: str, app_id: str):
-    def del_tool_provider(session, tool_provider_id: str):
+def _delete_workflow_tool_providers(tenant_id: str, app_id: str) -> None:
+    def del_tool_provider(session: Any, tool_provider_id: str) -> None:
         session.query(WorkflowToolProvider).where(WorkflowToolProvider.id == tool_provider_id).delete(
             synchronize_session=False
         )
@@ -363,8 +363,8 @@ def _delete_workflow_tool_providers(tenant_id: str, app_id: str):
     )
 
 
-def _delete_app_tag_bindings(tenant_id: str, app_id: str):
-    def del_tag_binding(session, tag_binding_id: str):
+def _delete_app_tag_bindings(tenant_id: str, app_id: str) -> None:
+    def del_tag_binding(session: Any, tag_binding_id: str) -> None:
         session.query(TagBinding).where(TagBinding.id == tag_binding_id).delete(synchronize_session=False)
 
     _delete_records(
@@ -375,8 +375,8 @@ def _delete_app_tag_bindings(tenant_id: str, app_id: str):
     )
 
 
-def _delete_end_users(tenant_id: str, app_id: str):
-    def del_end_user(session, end_user_id: str):
+def _delete_end_users(tenant_id: str, app_id: str) -> None:
+    def del_end_user(session: Any, end_user_id: str) -> None:
         session.query(EndUser).where(EndUser.id == end_user_id).delete(synchronize_session=False)
 
     _delete_records(
@@ -387,8 +387,8 @@ def _delete_end_users(tenant_id: str, app_id: str):
     )
 
 
-def _delete_trace_app_configs(tenant_id: str, app_id: str):
-    def del_trace_app_config(session, trace_app_config_id: str):
+def _delete_trace_app_configs(tenant_id: str, app_id: str) -> None:
+    def del_trace_app_config(session: Any, trace_app_config_id: str) -> None:
         session.query(TraceAppConfig).where(TraceAppConfig.id == trace_app_config_id).delete(synchronize_session=False)
 
     _delete_records(
@@ -399,9 +399,9 @@ def _delete_trace_app_configs(tenant_id: str, app_id: str):
     )
 
 
-def _delete_draft_variables(app_id: str):
+def _delete_draft_variables(app_id: str) -> None:
     """Delete all workflow draft variables for an app in batches."""
-    return delete_draft_variables_batch(app_id, batch_size=1000)
+    delete_draft_variables_batch(app_id, batch_size=1000)
 
 
 def delete_draft_variables_batch(app_id: str, batch_size: int = 1000) -> int:
@@ -543,8 +543,8 @@ def _delete_draft_variable_offload_data(session, file_ids: list[str]) -> int:
     return files_deleted
 
 
-def _delete_app_triggers(tenant_id: str, app_id: str):
-    def del_app_trigger(session, trigger_id: str):
+def _delete_app_triggers(tenant_id: str, app_id: str) -> None:
+    def del_app_trigger(session: Any, trigger_id: str) -> None:
         session.query(AppTrigger).where(AppTrigger.id == trigger_id).delete(synchronize_session=False)
 
     _delete_records(
@@ -555,8 +555,8 @@ def _delete_app_triggers(tenant_id: str, app_id: str):
     )
 
 
-def _delete_workflow_plugin_triggers(tenant_id: str, app_id: str):
-    def del_plugin_trigger(session, trigger_id: str):
+def _delete_workflow_plugin_triggers(tenant_id: str, app_id: str) -> None:
+    def del_plugin_trigger(session: Any, trigger_id: str) -> None:
         session.query(WorkflowPluginTrigger).where(WorkflowPluginTrigger.id == trigger_id).delete(
             synchronize_session=False
         )
@@ -569,8 +569,8 @@ def _delete_workflow_plugin_triggers(tenant_id: str, app_id: str):
     )
 
 
-def _delete_workflow_webhook_triggers(tenant_id: str, app_id: str):
-    def del_webhook_trigger(session, trigger_id: str):
+def _delete_workflow_webhook_triggers(tenant_id: str, app_id: str) -> None:
+    def del_webhook_trigger(session: Any, trigger_id: str) -> None:
         session.query(WorkflowWebhookTrigger).where(WorkflowWebhookTrigger.id == trigger_id).delete(
             synchronize_session=False
         )
@@ -583,8 +583,8 @@ def _delete_workflow_webhook_triggers(tenant_id: str, app_id: str):
     )
 
 
-def _delete_workflow_schedule_plans(tenant_id: str, app_id: str):
-    def del_schedule_plan(session, plan_id: str):
+def _delete_workflow_schedule_plans(tenant_id: str, app_id: str) -> None:
+    def del_schedule_plan(session: Any, plan_id: str) -> None:
         session.query(WorkflowSchedulePlan).where(WorkflowSchedulePlan.id == plan_id).delete(synchronize_session=False)
 
     _delete_records(
@@ -595,8 +595,8 @@ def _delete_workflow_schedule_plans(tenant_id: str, app_id: str):
     )
 
 
-def _delete_workflow_trigger_logs(tenant_id: str, app_id: str):
-    def del_trigger_log(session, log_id: str):
+def _delete_workflow_trigger_logs(tenant_id: str, app_id: str) -> None:
+    def del_trigger_log(session: Any, log_id: str) -> None:
         session.query(WorkflowTriggerLog).where(WorkflowTriggerLog.id == log_id).delete(synchronize_session=False)
 
     _delete_records(

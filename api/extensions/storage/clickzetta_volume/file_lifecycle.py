@@ -41,7 +41,7 @@ class FileMetadata:
     tags: dict[str, str] | None = None
     parent_version: int | None = None
 
-    def to_dict(self):
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary format"""
         data = asdict(self)
         data["created_at"] = self.created_at.isoformat()
@@ -62,7 +62,7 @@ class FileMetadata:
 class FileLifecycleManager:
     """File lifecycle manager"""
 
-    def __init__(self, storage, dataset_id: str | None = None):
+    def __init__(self, storage: Any, dataset_id: str | None = None) -> None:
         """Initialize lifecycle manager
 
         Args:
@@ -435,7 +435,7 @@ class FileLifecycleManager:
             logger.exception("Failed to get storage statistics")
             return {}
 
-    def _create_version_backup(self, filename: str, metadata: dict):
+    def _create_version_backup(self, filename: str, metadata: dict[str, Any]) -> None:
         """Create version backup"""
         try:
             # Read current file content
@@ -463,7 +463,7 @@ class FileLifecycleManager:
             logger.warning("Failed to load metadata: %s", e)
             return {}
 
-    def _save_metadata(self, metadata_dict: dict):
+    def _save_metadata(self, metadata_dict: dict[str, Any]) -> None:
         """Save metadata file"""
         try:
             metadata_content = json.dumps(metadata_dict, indent=2, ensure_ascii=False)

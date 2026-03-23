@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, cast
 
 from flask_login import current_user
 from flask_restx import marshal
@@ -9,6 +9,7 @@ from controllers.common.schema import register_schema_model, register_schema_mod
 from controllers.service_api import service_api_ns
 from controllers.service_api.wraps import DatasetApiResource, cloud_edition_billing_rate_limit_check
 from fields.dataset_fields import dataset_metadata_fields
+from models.account import Account
 from services.dataset_service import DatasetService
 from services.entities.knowledge_entities.knowledge_entities import (
     DocumentMetadataOperation,
@@ -55,7 +56,7 @@ class DatasetMetadataCreateServiceApi(DatasetApiResource):
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
             raise NotFound("Dataset not found.")
-        DatasetService.check_dataset_permission(dataset, current_user)
+        DatasetService.check_dataset_permission(dataset, cast(Account | None, current_user))
 
         metadata = MetadataService.create_metadata(dataset_id_str, metadata_args)
         return marshal(metadata, dataset_metadata_fields), 201
@@ -102,7 +103,7 @@ class DatasetMetadataServiceApi(DatasetApiResource):
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
             raise NotFound("Dataset not found.")
-        DatasetService.check_dataset_permission(dataset, current_user)
+        DatasetService.check_dataset_permission(dataset, cast(Account | None, current_user))
 
         metadata = MetadataService.update_metadata_name(dataset_id_str, metadata_id_str, payload.name)
         return marshal(metadata, dataset_metadata_fields), 200
@@ -125,7 +126,7 @@ class DatasetMetadataServiceApi(DatasetApiResource):
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
             raise NotFound("Dataset not found.")
-        DatasetService.check_dataset_permission(dataset, current_user)
+        DatasetService.check_dataset_permission(dataset, cast(Account | None, current_user))
 
         MetadataService.delete_metadata(dataset_id_str, metadata_id_str)
         return "", 204
@@ -166,7 +167,7 @@ class DatasetMetadataBuiltInFieldActionServiceApi(DatasetApiResource):
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
             raise NotFound("Dataset not found.")
-        DatasetService.check_dataset_permission(dataset, current_user)
+        DatasetService.check_dataset_permission(dataset, cast(Account | None, current_user))
 
         match action:
             case "enable":
@@ -196,7 +197,7 @@ class DocumentMetadataEditServiceApi(DatasetApiResource):
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
             raise NotFound("Dataset not found.")
-        DatasetService.check_dataset_permission(dataset, current_user)
+        DatasetService.check_dataset_permission(dataset, cast(Account | None, current_user))
 
         metadata_args = MetadataOperationData.model_validate(service_api_ns.payload or {})
 

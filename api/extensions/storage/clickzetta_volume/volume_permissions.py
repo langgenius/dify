@@ -6,6 +6,7 @@ According to ClickZetta's permission model, different Volume types have differen
 
 import logging
 from enum import StrEnum
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +24,9 @@ class VolumePermission(StrEnum):
 class VolumePermissionManager:
     """Volume permission manager"""
 
-    def __init__(self, connection_or_config, volume_type: str | None = None, volume_name: str | None = None):
+    def __init__(
+        self, connection_or_config: Any, volume_type: str | None = None, volume_name: str | None = None
+    ) -> None:
         """Initialize permission manager
 
         Args:
@@ -434,7 +437,7 @@ class VolumePermissionManager:
         self._permission_cache[cache_key] = permissions
         return permissions
 
-    def clear_permission_cache(self):
+    def clear_permission_cache(self) -> None:
         """Clear permission cache"""
         self._permission_cache.clear()
         logger.debug("Permission cache cleared")
@@ -625,7 +628,9 @@ class VolumePermissionError(Exception):
         super().__init__(message)
 
 
-def check_volume_permission(permission_manager: VolumePermissionManager, operation: str, dataset_id: str | None = None):
+def check_volume_permission(
+    permission_manager: VolumePermissionManager, operation: str, dataset_id: str | None = None
+) -> Any:
     """Permission check decorator function
 
     Args:

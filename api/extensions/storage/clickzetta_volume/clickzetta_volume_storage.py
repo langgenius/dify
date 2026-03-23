@@ -10,6 +10,7 @@ import tempfile
 from collections.abc import Generator
 from io import BytesIO
 from pathlib import Path
+from typing import Any
 
 import clickzetta
 from pydantic import BaseModel, model_validator
@@ -39,7 +40,7 @@ class ClickZettaVolumeConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict):
+    def validate_config(cls, values: dict[str, Any]) -> dict[str, Any]:
         """Validate the configuration values.
 
         This method will first try to use CLICKZETTA_VOLUME_* environment variables,
@@ -110,7 +111,7 @@ class ClickZettaVolumeConfig(BaseModel):
 class ClickZettaVolumeStorage(BaseStorage):
     """ClickZetta Volume storage implementation."""
 
-    def __init__(self, config: ClickZettaVolumeConfig):
+    def __init__(self, config: ClickZettaVolumeConfig) -> None:
         """Initialize ClickZetta Volume storage.
 
         Args:
@@ -124,7 +125,7 @@ class ClickZettaVolumeStorage(BaseStorage):
 
         logger.info("ClickZetta Volume storage initialized with type: %s", config.volume_type)
 
-    def _init_connection(self):
+    def _init_connection(self) -> None:
         """Initialize ClickZetta connection."""
         try:
             self._connection = clickzetta.connect(
@@ -141,7 +142,7 @@ class ClickZettaVolumeStorage(BaseStorage):
             logger.exception("Failed to connect to ClickZetta")
             raise
 
-    def _init_permission_manager(self):
+    def _init_permission_manager(self) -> None:
         """Initialize permission manager."""
         try:
             self._permission_manager = VolumePermissionManager(
@@ -201,7 +202,7 @@ class ClickZettaVolumeStorage(BaseStorage):
         else:
             raise ValueError(f"Unsupported volume type: {self._config.volume_type}")
 
-    def _execute_sql(self, sql: str, fetch: bool = False):
+    def _execute_sql(self, sql: str, fetch: bool = False) -> Any:
         """Execute SQL command."""
         try:
             if self._connection is None:
@@ -215,7 +216,7 @@ class ClickZettaVolumeStorage(BaseStorage):
             logger.exception("SQL execution failed: %s", sql)
             raise
 
-    def _ensure_table_volume_exists(self, dataset_id: str):
+    def _ensure_table_volume_exists(self, dataset_id: str) -> None:
         """Ensure table volume exists for the given dataset_id."""
         if self._config.volume_type != "table" or not dataset_id:
             return
@@ -250,7 +251,7 @@ class ClickZettaVolumeStorage(BaseStorage):
             # Don't raise exception, let the operation continue
             # The table might exist but not be visible due to permissions
 
-    def save(self, filename: str, data: bytes):
+    def save(self, filename: str, data: bytes) -> None:
         """Save data to ClickZetta Volume.
 
         Args:
@@ -381,7 +382,7 @@ class ClickZettaVolumeStorage(BaseStorage):
 
         logger.debug("File %s loaded as stream from ClickZetta Volume", filename)
 
-    def download(self, filename: str, target_filepath: str):
+    def download(self, filename: str, target_filepath: str) -> None:
         """Download file from ClickZetta Volume to local path.
 
         Args:
@@ -435,7 +436,7 @@ class ClickZettaVolumeStorage(BaseStorage):
             logger.warning("Error checking file existence for %s: %s", filename, e)
             return False
 
-    def delete(self, filename: str):
+    def delete(self, filename: str) -> None:
         """Delete file from ClickZetta Volume.
 
         Args:
