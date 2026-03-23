@@ -3,7 +3,7 @@
 from unittest.mock import MagicMock
 
 import pytest
-from core.model_runtime.entities.model_entities import ModelFeature
+from dify_graph.model_runtime.entities.model_entities import ModelFeature
 
 from core.agent.entities import AgentEntity, ExecutionContext
 from core.agent.patterns.function_call import FunctionCallStrategy

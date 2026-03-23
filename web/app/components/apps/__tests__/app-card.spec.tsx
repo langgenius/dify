@@ -263,11 +263,10 @@ describe('AppCard', () => {
     })
 
     it('should render app icon', () => {
-      // AppIcon component renders the emoji icon from app data
       const { container } = render(<AppCard app={mockApp} />)
-      // Check that the icon container is rendered (AppIcon renders within the card)
-      const iconElement = container.querySelector('[class*="icon"]') || container.querySelector('img')
-      expect(iconElement || screen.getByText(mockApp.icon)).toBeTruthy()
+      const emojiElement = container.querySelector('em-emoji')
+      expect(emojiElement).toBeTruthy()
+      expect(emojiElement?.getAttribute('id')).toBe(mockApp.icon)
     })
 
     it('should render app type icon', () => {

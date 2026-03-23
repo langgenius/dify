@@ -26,6 +26,7 @@ vi.mock('../use-workflow', () => ({
 
 vi.mock('../../utils', () => ({
   getNodesConnectedSourceOrTargetHandleIdsMap: vi.fn(() => ({})),
+  genNodeMetaData: vi.fn(({ type, sort }: { type: string, sort: number }) => ({ type, sort })),
 }))
 
 // useNodesSyncDraft is used REAL — via renderWorkflowHook + hooksStoreProps

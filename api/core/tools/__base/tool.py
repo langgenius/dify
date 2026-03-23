@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:  # pragma: no cover
     from models.model import File
 
-from core.model_runtime.entities.message_entities import PromptMessageTool
+from dify_graph.model_runtime.entities.message_entities import PromptMessageTool
 
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.tool_entities import (

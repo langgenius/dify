@@ -3,7 +3,7 @@ Unit tests for sandbox file path detection and conversion.
 """
 
 import pytest
-from core.workflow.variables.segments import ArrayFileSegment, FileSegment
+from dify_graph.variables.segments import ArrayFileSegment, FileSegment
 
 from core.llm_generator.output_parser.file_ref import (
     FILE_PATH_DESCRIPTION_SUFFIX,
@@ -13,7 +13,7 @@ from core.llm_generator.output_parser.file_ref import (
     detect_file_path_fields,
     is_file_path_property,
 )
-from core.workflow.file import File, FileTransferMethod, FileType
+from dify_graph.file import File, FileTransferMethod, FileType
 
 
 def _build_file(file_id: str) -> File:

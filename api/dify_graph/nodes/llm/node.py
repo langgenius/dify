@@ -2201,7 +2201,7 @@ class LLMNode(Node[LLMNodeData]):
 
     def _extract_prompt_files(self, variable_pool: VariablePool) -> list[File]:
         """Extract files from prompt template variables."""
-        from core.workflow.variables import ArrayFileVariable, FileVariable
+        from dify_graph.variables import ArrayFileVariable, FileVariable
 
         files: list[File] = []
 

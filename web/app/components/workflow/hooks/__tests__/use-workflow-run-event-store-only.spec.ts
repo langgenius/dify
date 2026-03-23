@@ -53,7 +53,7 @@ describe('useWorkflowTextChunk', () => {
       },
     })
 
-    result.current.handleWorkflowTextChunk({ data: { text: ' World' } } as TextChunkResponse)
+    result.current.handleWorkflowTextChunk({ data: { text: ' World', chunk_type: 'text' } } as TextChunkResponse)
 
     const state = store.getState().workflowRunningData!
     expect(state.resultText).toBe('Hello World')

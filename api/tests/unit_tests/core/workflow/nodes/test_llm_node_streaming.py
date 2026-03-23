@@ -3,12 +3,12 @@ from collections.abc import Generator
 from typing import Any
 
 import pytest
-from core.model_runtime.entities.llm_entities import LLMUsage
-from core.workflow.entities.tool_entities import ToolResultStatus
-from core.workflow.nodes.llm.node import LLMNode
+from dify_graph.model_runtime.entities.llm_entities import LLMUsage
+from dify_graph.entities.tool_entities import ToolResultStatus
+from dify_graph.nodes.llm.node import LLMNode
 
-from core.workflow.entities import ToolCallResult
-from core.workflow.node_events import ModelInvokeCompletedEvent, NodeEventBase
+from dify_graph.entities import ToolCallResult
+from dify_graph.node_events import ModelInvokeCompletedEvent, NodeEventBase
 
 
 class _StubModelInstance:
@@ -109,9 +109,9 @@ def test_stream_llm_events_no_reasoning_results_in_empty_sequence():
 
 
 def test_serialize_tool_call_strips_files_to_ids():
-    file_cls = pytest.importorskip("core.workflow.file").File
-    file_type = pytest.importorskip("core.workflow.file.enums").FileType
-    transfer_method = pytest.importorskip("core.workflow.file.enums").FileTransferMethod
+    file_cls = pytest.importorskip("dify_graph.file").File
+    file_type = pytest.importorskip("dify_graph.file.enums").FileType
+    transfer_method = pytest.importorskip("dify_graph.file.enums").FileTransferMethod
 
     file_with_id = file_cls(
         id="f1",

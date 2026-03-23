@@ -3,7 +3,7 @@ from typing import Any
 
 import orjson
 
-from core.model_runtime.entities import PromptMessage
+from dify_graph.model_runtime.entities import PromptMessage
 
 from .segment_group import SegmentGroup
 from .segments import ArrayFileSegment, ArrayPromptMessageSegment, FileSegment, Segment

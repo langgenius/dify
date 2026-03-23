@@ -18,7 +18,7 @@ from collections.abc import Mapping
 from functools import reduce
 from typing import Any, cast
 
-from core.workflow.enums import NodeType
+from dify_graph.enums import NodeType
 
 from core.app.entities.app_asset_entities import AppAssetFileTree, AppAssetNode
 from core.sandbox.entities.config import AppAssets

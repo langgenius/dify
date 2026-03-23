@@ -55,8 +55,20 @@ vi.mock('@/service/workflow', () => ({
   syncWorkflowDraft: (p: unknown) => mockSyncWorkflowDraft(p),
 }))
 
-vi.mock('@/service/fetch', () => ({ postWithKeepalive: vi.fn() }))
-vi.mock('@/config', () => ({ API_PREFIX: '/api' }))
+vi.mock('@/service/fetch', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/fetch')>()
+  return {
+    ...actual,
+    postWithKeepalive: vi.fn(),
+  }
+})
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+  return {
+    ...actual,
+    API_PREFIX: '/api',
+  }
+})
 
 const mockHandleRefreshWorkflowDraft = vi.fn()
 vi.mock('@/app/components/workflow-app/hooks', () => ({

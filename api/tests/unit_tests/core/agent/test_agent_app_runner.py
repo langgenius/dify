@@ -4,10 +4,10 @@ from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
 import pytest
-from core.model_runtime.entities.llm_entities import LLMUsage
+from dify_graph.model_runtime.entities.llm_entities import LLMUsage
 
 from core.agent.entities import AgentEntity, AgentLog, AgentPromptEntity, AgentResult
-from core.model_runtime.entities import SystemPromptMessage, UserPromptMessage
+from dify_graph.model_runtime.entities import SystemPromptMessage, UserPromptMessage
 
 
 class TestOrganizePromptMessages:
@@ -184,7 +184,7 @@ class TestClearUserPromptImageMessages:
 
     def test_original_messages_not_modified(self, mock_runner):
         """Test that original messages are not modified (deep copy)."""
-        from core.model_runtime.entities.message_entities import (
+        from dify_graph.model_runtime.entities.message_entities import (
             ImagePromptMessageContent,
             TextPromptMessageContent,
         )
@@ -365,13 +365,13 @@ class TestOrganizeUserQuery:
 
     def test_query_with_files(self, mock_runner):
         """Test organizing a query with files."""
-        from core.workflow.file.models import File
+        from dify_graph.file.models import File
 
         mock_file = MagicMock(spec=File)
         mock_runner.files = [mock_file]
 
         with patch("core.agent.agent_app_runner.file_manager") as mock_fm:
-            from core.model_runtime.entities.message_entities import ImagePromptMessageContent
+            from dify_graph.model_runtime.entities.message_entities import ImagePromptMessageContent
 
             mock_fm.to_prompt_message_content.return_value = ImagePromptMessageContent(
                 data="http://example.com/image.jpg",

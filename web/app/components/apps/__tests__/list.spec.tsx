@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, screen } from '@testing-library/react'
 import * as React from 'react'
 import { useStore as useTagStore } from '@/app/components/base/tag-management/store'
@@ -200,9 +201,17 @@ beforeAll(() => {
   } as unknown as typeof IntersectionObserver
 })
 
-// Render helper wrapping with shared nuqs testing helper.
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: false } },
+})
+
 const renderList = (searchParams = '') => {
-  return renderWithNuqs(<List />, { searchParams })
+  return renderWithNuqs(
+    <QueryClientProvider client={queryClient}>
+      <List />
+    </QueryClientProvider>,
+    { searchParams },
+  )
 }
 
 describe('List', () => {
@@ -399,10 +408,14 @@ describe('List', () => {
 
   describe('Edge Cases', () => {
     it('should handle multiple renders without issues', () => {
-      const { rerender } = renderWithNuqs(<List />)
+      const { rerender } = renderWithNuqs(
+        <QueryClientProvider client={queryClient}><List /></QueryClientProvider>,
+      )
       expect(screen.getByText('app.types.all')).toBeInTheDocument()
 
-      rerender(<List />)
+      rerender(
+        <QueryClientProvider client={queryClient}><List /></QueryClientProvider>,
+      )
       expect(screen.getByText('app.types.all')).toBeInTheDocument()
     })
 

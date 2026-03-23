@@ -2,21 +2,21 @@
 
 from unittest.mock import MagicMock
 
-from core.workflow.entities.tool_entities import ToolResultStatus
-from core.workflow.enums import NodeType
-from core.workflow.graph.graph import Graph
-from core.workflow.graph_engine.response_coordinator.coordinator import ResponseStreamCoordinator
-from core.workflow.graph_engine.response_coordinator.session import ResponseSession
-from core.workflow.nodes.base.entities import BaseNodeData
-from core.workflow.nodes.base.template import Template, VariableSegment
+from dify_graph.entities.tool_entities import ToolResultStatus
+from dify_graph.enums import NodeType
+from dify_graph.graph.graph import Graph
+from dify_graph.graph_engine.response_coordinator.coordinator import ResponseStreamCoordinator
+from dify_graph.graph_engine.response_coordinator.session import ResponseSession
+from dify_graph.nodes.base.entities import BaseNodeData
+from dify_graph.nodes.base.template import Template, VariableSegment
 
-from core.workflow.graph_events import (
+from dify_graph.graph_events import (
     ChunkType,
     NodeRunStreamChunkEvent,
     ToolCall,
     ToolResult,
 )
-from core.workflow.runtime import VariablePool
+from dify_graph.runtime import VariablePool
 
 
 class TestResponseCoordinatorObjectStreaming:

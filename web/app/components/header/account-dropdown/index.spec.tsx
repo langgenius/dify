@@ -77,12 +77,16 @@ const { mockConfig, mockEnv } = vi.hoisted(() => ({
     },
   },
 }))
-vi.mock('@/config', () => ({
-  get IS_CLOUD_EDITION() { return mockConfig.IS_CLOUD_EDITION },
-  get ZENDESK_WIDGET_KEY() { return mockConfig.ZENDESK_WIDGET_KEY },
-  IS_DEV: false,
-  IS_CE_EDITION: false,
-}))
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+  return {
+    ...actual,
+    get IS_CLOUD_EDITION() { return mockConfig.IS_CLOUD_EDITION },
+    get ZENDESK_WIDGET_KEY() { return mockConfig.ZENDESK_WIDGET_KEY },
+    IS_DEV: false,
+    IS_CE_EDITION: false,
+  }
+})
 vi.mock('@/env', () => mockEnv)
 
 const baseAppContextValue: AppContextValue = {

@@ -22,7 +22,7 @@ from sqlalchemy.orm import Session
 
 from core.memory.base import BaseMemory
 from core.model_manager import ModelInstance
-from core.model_runtime.entities import (
+from dify_graph.model_runtime.entities import (
     AssistantPromptMessage,
     MultiModalPromptMessageContent,
     PromptMessage,
@@ -31,9 +31,9 @@ from core.model_runtime.entities import (
     ToolPromptMessage,
     UserPromptMessage,
 )
-from core.model_runtime.entities.message_entities import PromptMessageContentUnionTypes
+from dify_graph.model_runtime.entities.message_entities import PromptMessageContentUnionTypes
 from core.prompt.utils.extract_thread_messages import extract_thread_messages
-from core.workflow.file import file_manager
+from dify_graph.file import file_manager
 from extensions.ext_database import db
 from models.model import Message
 from models.workflow import WorkflowNodeExecutionModel

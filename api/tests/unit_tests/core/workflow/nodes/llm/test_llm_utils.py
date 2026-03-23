@@ -3,12 +3,12 @@
 import string
 from unittest.mock import patch
 
-from core.model_runtime.entities.message_entities import (
+from dify_graph.model_runtime.entities.message_entities import (
     ImagePromptMessageContent,
     TextPromptMessageContent,
     UserPromptMessage,
 )
-from core.workflow.nodes.llm.llm_utils import (
+from dify_graph.nodes.llm.llm_utils import (
     _truncate_multimodal_content,
     build_context,
     restore_multimodal_content_in_messages,
@@ -100,7 +100,7 @@ class TestBuildContext:
 
     def test_excludes_system_messages(self):
         """System messages should be excluded from context."""
-        from core.model_runtime.entities.message_entities import SystemPromptMessage
+        from dify_graph.model_runtime.entities.message_entities import SystemPromptMessage
 
         messages = [
             SystemPromptMessage(content="You are a helpful assistant."),
@@ -125,12 +125,12 @@ class TestBuildContext:
 
     def test_builds_context_with_tool_calls_from_generation_data(self):
         """Should reconstruct full conversation including tool calls when generation_data is provided."""
-        from core.model_runtime.entities.llm_entities import LLMUsage
-        from core.model_runtime.entities.message_entities import (
+        from dify_graph.model_runtime.entities.llm_entities import LLMUsage
+        from dify_graph.model_runtime.entities.message_entities import (
             AssistantPromptMessage,
             ToolPromptMessage,
         )
-        from core.workflow.nodes.llm.entities import (
+        from dify_graph.nodes.llm.entities import (
             LLMGenerationData,
             LLMTraceSegment,
             ModelTraceSegment,
@@ -199,12 +199,12 @@ class TestBuildContext:
 
     def test_builds_context_with_multiple_tool_calls(self):
         """Should handle multiple tool calls in a single conversation."""
-        from core.model_runtime.entities.llm_entities import LLMUsage
-        from core.model_runtime.entities.message_entities import (
+        from dify_graph.model_runtime.entities.llm_entities import LLMUsage
+        from dify_graph.model_runtime.entities.message_entities import (
             AssistantPromptMessage,
             ToolPromptMessage,
         )
-        from core.workflow.nodes.llm.entities import (
+        from dify_graph.nodes.llm.entities import (
             LLMGenerationData,
             LLMTraceSegment,
             ModelTraceSegment,
@@ -291,8 +291,8 @@ class TestBuildContext:
 
     def test_builds_context_with_empty_trace(self):
         """Should fallback to simple context when trace is empty."""
-        from core.model_runtime.entities.llm_entities import LLMUsage
-        from core.workflow.nodes.llm.entities import LLMGenerationData
+        from dify_graph.model_runtime.entities.llm_entities import LLMUsage
+        from dify_graph.nodes.llm.entities import LLMGenerationData
 
         messages = [UserPromptMessage(content="Hello!")]
 
@@ -318,7 +318,7 @@ class TestBuildContext:
 class TestRestoreMultimodalContentInMessages:
     """Tests for restore_multimodal_content_in_messages function."""
 
-    @patch("core.workflow.file.file_manager.restore_multimodal_content")
+    @patch("dify_graph.file.file_manager.restore_multimodal_content")
     def test_restores_multimodal_content(self, mock_restore):
         """Should restore multimodal content in messages."""
         # Setup mock

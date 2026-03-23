@@ -6,7 +6,7 @@ import pytest
 
 from core.agent.entities import ExecutionContext
 from core.agent.patterns.react import ReActStrategy
-from core.model_runtime.entities import SystemPromptMessage, UserPromptMessage
+from dify_graph.model_runtime.entities import SystemPromptMessage, UserPromptMessage
 
 
 @pytest.fixture
@@ -33,7 +33,7 @@ def mock_context():
 @pytest.fixture
 def mock_tool():
     """Create a mock tool."""
-    from core.model_runtime.entities.message_entities import PromptMessageTool
+    from dify_graph.model_runtime.entities.message_entities import PromptMessageTool
 
     tool = MagicMock()
     tool.entity.identity.name = "test_tool"
@@ -158,7 +158,7 @@ class TestBuildPromptWithReactFormat:
     def test_scratchpad_appended_as_assistant_message(self, mock_model_instance, mock_context):
         """Test that agent scratchpad is appended as AssistantPromptMessage."""
         from core.agent.entities import AgentScratchpadUnit
-        from core.model_runtime.entities import AssistantPromptMessage
+        from dify_graph.model_runtime.entities import AssistantPromptMessage
 
         strategy = ReActStrategy(
             model_instance=mock_model_instance,

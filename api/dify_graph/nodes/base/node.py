@@ -378,7 +378,7 @@ class Node(Generic[NodeDataT]):
         Nested nodes are nodes with parent_node_id == self._node_id.
         They are executed before the main node to extract values from list[PromptMessage].
         """
-        from core.app.workflow.node_factory import DifyNodeFactory
+        from core.workflow.node_factory import DifyNodeFactory
 
         extractor_configs = self._find_extractor_node_configs()
         logger.debug("[NestedNode] Found %d nested nodes for parent '%s'", len(extractor_configs), self._node_id)
@@ -689,7 +689,7 @@ class Node(Generic[NodeDataT]):
 
     @_dispatch.register
     def _(self, event: StreamChunkEvent) -> NodeRunStreamChunkEvent:
-        from core.workflow.graph_events import ChunkType
+        from dify_graph.graph_events import ChunkType
 
         return NodeRunStreamChunkEvent(
             id=self.execution_id,
@@ -711,7 +711,7 @@ class Node(Generic[NodeDataT]):
 
     @_dispatch.register
     def _(self, event: ToolCallChunkEvent) -> NodeRunStreamChunkEvent:
-        from core.workflow.graph_events import ChunkType
+        from dify_graph.graph_events import ChunkType
 
         return NodeRunStreamChunkEvent(
             id=self._node_execution_id,
@@ -726,8 +726,8 @@ class Node(Generic[NodeDataT]):
 
     @_dispatch.register
     def _(self, event: ToolResultChunkEvent) -> NodeRunStreamChunkEvent:
-        from core.workflow.entities import ToolResult, ToolResultStatus
-        from core.workflow.graph_events import ChunkType
+        from dify_graph.entities import ToolResult, ToolResultStatus
+        from dify_graph.graph_events import ChunkType
 
         tool_result = event.tool_result or ToolResult()
         status: ToolResultStatus = tool_result.status or ToolResultStatus.SUCCESS
@@ -748,7 +748,7 @@ class Node(Generic[NodeDataT]):
 
     @_dispatch.register
     def _(self, event: ThoughtChunkEvent) -> NodeRunStreamChunkEvent:
-        from core.workflow.graph_events import ChunkType
+        from dify_graph.graph_events import ChunkType
 
         return NodeRunStreamChunkEvent(
             id=self._node_execution_id,

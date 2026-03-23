@@ -2,14 +2,14 @@
 
 from unittest.mock import patch
 
-from core.model_runtime.entities.message_entities import ImagePromptMessageContent
-from core.workflow.file.file_manager import (
+from dify_graph.model_runtime.entities.message_entities import ImagePromptMessageContent
+from dify_graph.file.file_manager import (
     _encode_file_ref,
     restore_multimodal_content,
     to_prompt_message_content,
 )
 
-from core.workflow.file import File, FileTransferMethod, FileType
+from dify_graph.file import File, FileTransferMethod, FileType
 
 
 class TestEncodeFileRef:
@@ -52,8 +52,8 @@ class TestEncodeFileRef:
 class TestToPromptMessageContent:
     """Tests for to_prompt_message_content function with file_ref field."""
 
-    @patch("core.workflow.file.file_manager.dify_config")
-    @patch("core.workflow.file.file_manager._get_encoded_string")
+    @patch("dify_graph.file.file_manager.dify_config")
+    @patch("dify_graph.file.file_manager._get_encoded_string")
     def test_includes_file_ref(self, mock_get_encoded, mock_config):
         """Generated content should include file_ref field."""
         mock_config.MULTIMODAL_SEND_FORMAT = "base64"
@@ -121,9 +121,9 @@ class TestRestoreMultimodalContent:
 
         assert result.url == "https://example.com/image.png"
 
-    @patch("core.workflow.file.file_manager.dify_config")
-    @patch("core.workflow.file.file_manager._build_file_from_ref")
-    @patch("core.workflow.file.file_manager._to_url")
+    @patch("dify_graph.file.file_manager.dify_config")
+    @patch("dify_graph.file.file_manager._build_file_from_ref")
+    @patch("dify_graph.file.file_manager._to_url")
     def test_restores_url_from_file_ref(self, mock_to_url, mock_build_file, mock_config):
         """Content should be restored from file_ref when url is empty (url mode)."""
         mock_config.MULTIMODAL_SEND_FORMAT = "url"
@@ -144,9 +144,9 @@ class TestRestoreMultimodalContent:
         assert result.url == "https://restored-url.com/image.png"
         mock_build_file.assert_called_once()
 
-    @patch("core.workflow.file.file_manager.dify_config")
-    @patch("core.workflow.file.file_manager._build_file_from_ref")
-    @patch("core.workflow.file.file_manager._get_encoded_string")
+    @patch("dify_graph.file.file_manager.dify_config")
+    @patch("dify_graph.file.file_manager._build_file_from_ref")
+    @patch("dify_graph.file.file_manager._get_encoded_string")
     def test_restores_base64_from_file_ref(self, mock_get_encoded, mock_build_file, mock_config):
         """Content should be restored as base64 when in base64 mode."""
         mock_config.MULTIMODAL_SEND_FORMAT = "base64"

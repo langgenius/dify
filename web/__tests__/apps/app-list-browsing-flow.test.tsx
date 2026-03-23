@@ -8,6 +8,7 @@
  */
 import type { AppListResponse } from '@/models/app'
 import type { App } from '@/types/app'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import List from '@/app/components/apps/list'
@@ -165,9 +166,15 @@ const createPage = (apps: App[], hasMore = false, page = 1): AppListResponse => 
   total: apps.length,
 })
 
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: false } },
+})
+
 const renderList = (searchParams?: Record<string, string>) => {
   return renderWithNuqs(
-    <List controlRefreshList={0} />,
+    <QueryClientProvider client={queryClient}>
+      <List controlRefreshList={0} />
+    </QueryClientProvider>,
     { searchParams },
   )
 }
@@ -213,7 +220,9 @@ describe('App List Browsing Flow', () => {
 
     it('should transition from loading to content when data loads', () => {
       mockIsLoading = true
-      const { rerender } = renderWithNuqs(<List controlRefreshList={0} />)
+      const { rerender } = renderWithNuqs(
+        <QueryClientProvider client={queryClient}><List controlRefreshList={0} /></QueryClientProvider>,
+      )
 
       const skeletonCards = document.querySelectorAll('.animate-pulse')
       expect(skeletonCards.length).toBeGreaterThan(0)
@@ -224,7 +233,9 @@ describe('App List Browsing Flow', () => {
         createMockApp({ id: 'app-1', name: 'Loaded App' }),
       ])]
 
-      rerender(<List controlRefreshList={0} />)
+      rerender(
+        <QueryClientProvider client={queryClient}><List controlRefreshList={0} /></QueryClientProvider>,
+      )
 
       expect(screen.getByText('Loaded App')).toBeInTheDocument()
     })
@@ -420,9 +431,13 @@ describe('App List Browsing Flow', () => {
     it('should call refetch when controlRefreshList increments', () => {
       mockPages = [createPage([createMockApp()])]
 
-      const { rerender } = renderWithNuqs(<List controlRefreshList={0} />)
+      const { rerender } = renderWithNuqs(
+        <QueryClientProvider client={queryClient}><List controlRefreshList={0} /></QueryClientProvider>,
+      )
 
-      rerender(<List controlRefreshList={1} />)
+      rerender(
+        <QueryClientProvider client={queryClient}><List controlRefreshList={1} /></QueryClientProvider>,
+      )
 
       expect(mockRefetch).toHaveBeenCalled()
     })

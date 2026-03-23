@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 
-from core.model_runtime.utils.encoders import jsonable_encoder
+from dify_graph.model_runtime.utils.encoders import jsonable_encoder
 from core.session.cli_api import CliApiSession
 from core.skill.entities import ToolDependencies, ToolReference
 from core.tools.entities.tool_entities import ToolParameter, ToolProviderType

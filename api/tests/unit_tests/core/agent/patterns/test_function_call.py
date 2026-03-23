@@ -4,8 +4,8 @@ from decimal import Decimal
 from unittest.mock import MagicMock
 
 import pytest
-from core.model_runtime.entities.llm_entities import LLMUsage
-from core.model_runtime.entities.message_entities import (
+from dify_graph.model_runtime.entities.llm_entities import LLMUsage
+from dify_graph.model_runtime.entities.message_entities import (
     PromptMessageTool,
     SystemPromptMessage,
     UserPromptMessage,
@@ -312,7 +312,7 @@ class TestPromptMessageHandling:
 
     def test_assistant_message_with_tool_calls(self, mock_model_instance, mock_context, mock_tool):
         """Test that assistant messages can contain tool calls."""
-        from core.model_runtime.entities.message_entities import AssistantPromptMessage
+        from dify_graph.model_runtime.entities.message_entities import AssistantPromptMessage
 
         tool_call = AssistantPromptMessage.ToolCall(
             id="call_123",

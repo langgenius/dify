@@ -5,16 +5,16 @@ from collections.abc import Mapping, Sequence
 from pathlib import PurePosixPath
 from typing import Any, cast
 
-from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
-from core.workflow.nodes.base.node import Node
-from core.workflow.variables.segments import ArrayStringSegment, FileSegment
+from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
+from dify_graph.nodes.base.node import Node
+from dify_graph.variables.segments import ArrayStringSegment, FileSegment
 
 from core.sandbox.bash.session import SANDBOX_READY_TIMEOUT
 from core.virtual_environment.__base.command_future import CommandCancelledError, CommandTimeoutError
 from core.virtual_environment.__base.helpers import pipeline
-from core.workflow.file import File, FileTransferMethod
-from core.workflow.node_events import NodeRunResult
-from core.workflow.variables import ArrayFileSegment
+from dify_graph.file import File, FileTransferMethod
+from dify_graph.node_events import NodeRunResult
+from dify_graph.variables import ArrayFileSegment
 from core.zip_sandbox import SandboxDownloadItem
 
 from .entities import FileUploadNodeData

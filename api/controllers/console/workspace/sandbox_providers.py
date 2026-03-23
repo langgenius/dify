@@ -1,6 +1,6 @@
 import logging
 
-from core.model_runtime.utils.encoders import jsonable_encoder
+from dify_graph.model_runtime.utils.encoders import jsonable_encoder
 from flask import request
 from flask_restx import Resource, fields
 from pydantic import BaseModel

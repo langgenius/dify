@@ -20,6 +20,11 @@ vi.mock('@/app/education-apply/hooks', () => ({
   },
 }))
 
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ replace: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
+}))
+
 vi.mock('@/hooks/use-import-dsl', () => ({
   useImportDSL: () => ({
     handleImportDSL: vi.fn(),

@@ -568,7 +568,7 @@ class ToolNode(Node[ToolNodeData]):
         :param parent_node_id: the parent node id to find nested nodes for
         :return: mapping of variable key to variable selector
         """
-        from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
+        from dify_graph.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
 
         result: dict[str, Sequence[str]] = {}
         nodes = graph_config.get("nodes", [])

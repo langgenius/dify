@@ -11,7 +11,7 @@ vi.mock('@/app/components/workflow/store', () => ({
     getState: () => ({
       appId: 'app-1',
       isWorkflowDataLoaded: true,
-      debouncedSyncWorkflowDraft: undefined,
+      debouncedSyncWorkflowDraft: { cancel: vi.fn() },
       setSyncWorkflowDraftHash: mockSetSyncWorkflowDraftHash,
       setIsSyncingWorkflowDraft: vi.fn(),
       setEnvironmentVariables: vi.fn(),

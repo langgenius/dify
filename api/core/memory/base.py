@@ -7,7 +7,7 @@ This module defines the common protocol for memory implementations.
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
 
-from core.model_runtime.entities import ImagePromptMessageContent, PromptMessage
+from dify_graph.model_runtime.entities import ImagePromptMessageContent, PromptMessage
 
 
 class BaseMemory(ABC):
@@ -49,7 +49,7 @@ class BaseMemory(ABC):
         :param message_limit: Maximum number of messages
         :return: Formatted history text
         """
-        from core.model_runtime.entities import (
+        from dify_graph.model_runtime.entities import (
             PromptMessageRole,
             TextPromptMessageContent,
         )

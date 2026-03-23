@@ -14,6 +14,7 @@ const getPromptEditor = () => {
 vi.mock('@/utils/var', () => ({
   checkKeys: (_keys: string[]) => ({ isValid: true }),
   getNewVar: (key: string, type: string) => ({ key, name: key, type, required: true }),
+  basePath: '',
 }))
 
 vi.mock('@/app/components/app/configuration/config-prompt/confirm-add-var', () => ({

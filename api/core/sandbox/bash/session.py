@@ -14,7 +14,7 @@ from core.skill.entities.tool_dependencies import ToolDependencies
 from core.tools.signature import sign_tool_file
 from core.tools.tool_file_manager import ToolFileManager
 from core.virtual_environment.__base.helpers import pipeline
-from core.workflow.file import File, FileTransferMethod, FileType
+from dify_graph.file import File, FileTransferMethod, FileType
 
 from ..bash.dify_cli import DifyCliConfig
 from ..entities import DifyCli

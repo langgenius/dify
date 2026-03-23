@@ -4,7 +4,7 @@ from decimal import Decimal
 from unittest.mock import MagicMock
 
 import pytest
-from core.model_runtime.entities.llm_entities import LLMUsage
+from dify_graph.model_runtime.entities.llm_entities import LLMUsage
 
 from core.agent.entities import AgentLog, ExecutionContext
 from core.agent.patterns.base import AgentPattern

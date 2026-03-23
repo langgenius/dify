@@ -1,4 +1,4 @@
-from core.workflow.file.helpers import get_signed_file_url_for_plugin
+from dify_graph.file.helpers import get_signed_file_url_for_plugin
 from flask import abort
 from flask_restx import Resource
 from pydantic import BaseModel

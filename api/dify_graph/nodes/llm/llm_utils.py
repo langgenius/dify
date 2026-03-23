@@ -199,7 +199,7 @@ def _build_messages_from_trace(
     assistant_response: str,
     file_suffix: str = "",
 ) -> list[PromptMessage]:
-    from core.workflow.nodes.llm.entities import ModelTraceSegment, ToolTraceSegment
+    from dify_graph.nodes.llm.entities import ModelTraceSegment, ToolTraceSegment
 
     messages: list[PromptMessage] = []
     covered_text_len = 0
@@ -266,12 +266,12 @@ def _truncate_multimodal_content(message: PromptMessage) -> PromptMessage:
 
 
 def restore_multimodal_content_in_messages(messages: Sequence[PromptMessage]) -> list[PromptMessage]:
-    from core.workflow.file import file_manager
-
-    return [_restore_message_content(msg, file_manager) for msg in messages]
+    return [_restore_message_content(msg) for msg in messages]
 
 
-def _restore_message_content(message: PromptMessage, file_manager) -> PromptMessage:
+def _restore_message_content(message: PromptMessage) -> PromptMessage:
+    from dify_graph.file.file_manager import restore_multimodal_content
+
     content = message.content
     if content is None or isinstance(content, str):
         return message
@@ -279,7 +279,7 @@ def _restore_message_content(message: PromptMessage, file_manager) -> PromptMess
     restored_content: list[PromptMessageContentUnionTypes] = []
     for item in content:
         if isinstance(item, MultiModalPromptMessageContent):
-            restored_item = file_manager.restore_multimodal_content(item)
+            restored_item = restore_multimodal_content(item)
             restored_content.append(cast(PromptMessageContentUnionTypes, restored_item))
         else:
             restored_content.append(item)

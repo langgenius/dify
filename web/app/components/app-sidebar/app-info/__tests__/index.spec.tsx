@@ -3,10 +3,18 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { AppModeEnum } from '@/types/app'
-import AppInfo from '..'
+import AppInfo from '../index'
 
 let mockIsCurrentWorkspaceEditor = true
 const mockSetPanelOpen = vi.fn()
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ replace: vi.fn() }),
+}))
+
+vi.mock('@/service/use-apps', () => ({
+  useInvalidateAppList: () => vi.fn(),
+}))
 
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
