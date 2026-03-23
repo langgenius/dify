@@ -1466,7 +1466,7 @@ class TestIndexingRunnerEstimate:
         assert transform_kwargs["preview"] is True
         assert transform_kwargs["process_rule"] == {
             "mode": tmp_processing_rule["mode"],
-            "rules": tmp_processing_rule["rules"],
+            "rules": tmp_processing_rule.get("rules"),
         }
 
 
