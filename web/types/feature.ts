@@ -6,7 +6,6 @@ export const SSOProtocol = {
   OAuth2: 'oauth2',
 } as const
 
-// eslint-disable-next-line ts/no-redeclare -- value-type pair
 export type SSOProtocol = typeof SSOProtocol[keyof typeof SSOProtocol]
 
 export const LicenseStatus = {
@@ -18,7 +17,6 @@ export const LicenseStatus = {
   LOST: 'lost',
 } as const
 
-// eslint-disable-next-line ts/no-redeclare -- value-type pair
 export type LicenseStatus = typeof LicenseStatus[keyof typeof LicenseStatus]
 
 export const InstallationScope = {
@@ -28,7 +26,6 @@ export const InstallationScope = {
   OFFICIAL_AND_PARTNER: 'official_and_specific_partners',
 } as const
 
-// eslint-disable-next-line ts/no-redeclare -- value-type pair
 export type InstallationScope = typeof InstallationScope[keyof typeof InstallationScope]
 
 type License = {

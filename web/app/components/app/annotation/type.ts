@@ -38,7 +38,6 @@ export const AnnotationEnableStatus = {
   disable: 'disable',
 } as const
 
-// eslint-disable-next-line ts/no-redeclare -- value-type pair
 export type AnnotationEnableStatus = typeof AnnotationEnableStatus[keyof typeof AnnotationEnableStatus]
 
 export const JobStatus = {
@@ -47,5 +46,4 @@ export const JobStatus = {
   completed: 'completed',
 } as const
 
-// eslint-disable-next-line ts/no-redeclare -- value-type pair
 export type JobStatus = typeof JobStatus[keyof typeof JobStatus]

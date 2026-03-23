@@ -36,6 +36,7 @@ export default antfu(
       overrides: {
         'ts/consistent-type-definitions': ['error', 'type'],
         'ts/no-explicit-any': 'error',
+        'ts/no-redeclare': 'off',
       },
       erasableOnly: true,
     },
