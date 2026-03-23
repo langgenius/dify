@@ -470,6 +470,9 @@
     "no-restricted-imports": {
       "count": 1
     },
+    "react/component-hook-factories": {
+      "count": 1
+    },
     "react/no-nested-component-definitions": {
       "count": 1
     },
@@ -672,6 +675,9 @@
   "app/components/app/configuration/config-var/index.tsx": {
     "no-restricted-imports": {
       "count": 3
+    },
+    "react-refresh/only-export-components": {
+      "count": 1
     }
   },
   "app/components/app/configuration/config-var/input-type-icon.tsx": {
@@ -776,6 +782,9 @@
   },
   "app/components/app/configuration/config/agent/agent-tools/setting-built-in-tool.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -1411,6 +1420,9 @@
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
     },
+    "react/component-hook-factories": {
+      "count": 1
+    },
     "react/no-nested-component-definitions": {
       "count": 1
     },
@@ -1428,7 +1440,18 @@
       "count": 1
     }
   },
+  "app/components/apps/list.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    },
+    "react/unsupported-syntax": {
+      "count": 2
+    }
+  },
   "app/components/apps/new-app-card.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -1533,6 +1556,12 @@
     }
   },
   "app/components/base/auto-height-textarea/index.tsx": {
+    "react-hooks/rules-of-hooks": {
+      "count": 1
+    },
+    "react/rules-of-hooks": {
+      "count": 1
+    },
     "tailwindcss/no-unnecessary-whitespace": {
       "count": 1
     }
@@ -1555,6 +1584,9 @@
       "count": 1
     },
     "react-refresh/only-export-components": {
+      "count": 1
+    },
+    "react/component-hook-factories": {
       "count": 1
     },
     "react/no-nested-component-definitions": {
@@ -1582,6 +1614,9 @@
     }
   },
   "app/components/base/carousel/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    },
     "react-refresh/only-export-components": {
       "count": 1
     }
@@ -1745,6 +1780,9 @@
   },
   "app/components/base/chat/chat/citation/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
       "count": 1
     }
   },
@@ -1940,6 +1978,11 @@
       "count": 1
     }
   },
+  "app/components/base/drawer-plus/index.stories.tsx": {
+    "react/component-hook-factories": {
+      "count": 1
+    }
+  },
   "app/components/base/drawer-plus/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
@@ -1963,6 +2006,9 @@
   "app/components/base/error-boundary/index.tsx": {
     "react-refresh/only-export-components": {
       "count": 3
+    },
+    "react/component-hook-factories": {
+      "count": 1
     },
     "ts/no-explicit-any": {
       "count": 2
@@ -2218,6 +2264,9 @@
     }
   },
   "app/components/base/form/form-scenarios/base/field.tsx": {
+    "react/component-hook-factories": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -2241,6 +2290,9 @@
     }
   },
   "app/components/base/form/form-scenarios/input-field/field.tsx": {
+    "react/component-hook-factories": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -2254,6 +2306,9 @@
     }
   },
   "app/components/base/form/form-scenarios/node-panel/field.tsx": {
+    "react/component-hook-factories": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -2297,7 +2352,7 @@
       "count": 1
     },
     "react-refresh/only-export-components": {
-      "count": 1
+      "count": 4
     }
   },
   "app/components/base/icons/utils.ts": {
@@ -2348,6 +2403,11 @@
   },
   "app/components/base/inline-delete-confirm/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
+      "count": 1
+    }
+  },
+  "app/components/base/input-with-copy/index.tsx": {
+    "react/unsupported-syntax": {
       "count": 1
     }
   },
@@ -2636,6 +2696,11 @@
       "count": 2
     }
   },
+  "app/components/base/prompt-editor/plugins/hitl-input-block/component-ui.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
   "app/components/base/prompt-editor/plugins/hitl-input-block/hitl-input-block-replacement-block.tsx": {
     "ts/no-explicit-any": {
       "count": 1
@@ -2687,11 +2752,17 @@
     }
   },
   "app/components/base/prompt-editor/plugins/shortcuts-popup-plugin/index.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 2
     }
   },
   "app/components/base/prompt-editor/plugins/update-block.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 2
+    },
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -2852,6 +2923,14 @@
       "count": 1
     }
   },
+  "app/components/base/tag-management/__tests__/selector.spec.tsx": {
+    "react-hooks/rules-of-hooks": {
+      "count": 1
+    },
+    "react/rules-of-hooks": {
+      "count": 1
+    }
+  },
   "app/components/base/tag-management/index.stories.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -2924,9 +3003,15 @@
   "app/components/base/with-input-validation/index.stories.tsx": {
     "no-console": {
       "count": 1
+    },
+    "react/component-hook-factories": {
+      "count": 1
     }
   },
   "app/components/base/with-input-validation/index.tsx": {
+    "react/component-hook-factories": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -3088,6 +3173,11 @@
     },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 3
+    }
+  },
+  "app/components/datasets/common/image-uploader/__tests__/store.spec.tsx": {
+    "react/error-boundaries": {
+      "count": 1
     }
   },
   "app/components/datasets/common/image-uploader/hooks/use-upload.ts": {
@@ -3317,6 +3407,9 @@
   },
   "app/components/datasets/create/step-two/index.tsx": {
     "no-restricted-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -3848,6 +3941,9 @@
   "app/components/datasets/documents/detail/completed/index.tsx": {
     "react-refresh/only-export-components": {
       "count": 1
+    },
+    "react/use-memo": {
+      "count": 1
     }
   },
   "app/components/datasets/documents/detail/completed/segment-card/chunk-content.tsx": {
@@ -3916,6 +4012,9 @@
   "app/components/datasets/documents/detail/metadata/hooks/use-metadata-state.ts": {
     "no-restricted-imports": {
       "count": 1
+    },
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 4
     }
   },
   "app/components/datasets/documents/detail/segment-add/index.tsx": {
@@ -4100,6 +4199,11 @@
   },
   "app/components/datasets/hit-testing/components/score.tsx": {
     "unicorn/prefer-number-properties": {
+      "count": 1
+    }
+  },
+  "app/components/datasets/hit-testing/index.tsx": {
+    "react/unsupported-syntax": {
       "count": 1
     }
   },
@@ -4397,11 +4501,17 @@
     }
   },
   "app/components/explore/banner/banner-item.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 4
     }
   },
   "app/components/explore/banner/indicator-button.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
@@ -4508,6 +4618,16 @@
       "count": 2
     }
   },
+  "app/components/goto-anything/command-selector.tsx": {
+    "react/unsupported-syntax": {
+      "count": 2
+    }
+  },
+  "app/components/goto-anything/components/footer.tsx": {
+    "react/unsupported-syntax": {
+      "count": 1
+    }
+  },
   "app/components/goto-anything/context.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 4
@@ -4536,6 +4656,11 @@
       "count": 1
     },
     "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "app/components/header/account-dropdown/menu-item-content.tsx": {
+    "react-refresh/only-export-components": {
       "count": 1
     }
   },
@@ -5059,6 +5184,11 @@
   },
   "app/components/plugins/install-plugin/install-bundle/item/github-item.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    }
+  },
+  "app/components/plugins/install-plugin/install-bundle/steps/hooks/use-install-multi-state.ts": {
+    "react-hooks/exhaustive-deps": {
       "count": 1
     }
   },
@@ -5709,6 +5839,11 @@
       "count": 2
     }
   },
+  "app/components/plugins/readme-panel/index.tsx": {
+    "react/unsupported-syntax": {
+      "count": 1
+    }
+  },
   "app/components/plugins/readme-panel/store.ts": {
     "erasable-syntax-only/enums": {
       "count": 1
@@ -5818,6 +5953,9 @@
     }
   },
   "app/components/rag-pipeline/components/panel/input-field/editor/form/hidden-fields.tsx": {
+    "react/component-hook-factories": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -5833,11 +5971,17 @@
     }
   },
   "app/components/rag-pipeline/components/panel/input-field/editor/form/initial-fields.tsx": {
+    "react/component-hook-factories": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 2
     }
   },
   "app/components/rag-pipeline/components/panel/input-field/editor/form/show-all-settings.tsx": {
+    "react/component-hook-factories": {
+      "count": 1
+    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
     },
@@ -6156,6 +6300,9 @@
     }
   },
   "app/components/signin/countdown.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 2
+    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
     }
@@ -6528,7 +6675,7 @@
   },
   "app/components/workflow/block-selector/index-bar.tsx": {
     "react-refresh/only-export-components": {
-      "count": 1
+      "count": 5
     }
   },
   "app/components/workflow/block-selector/main.tsx": {
@@ -6760,6 +6907,11 @@
   "app/components/workflow/hooks-store/store.ts": {
     "ts/no-explicit-any": {
       "count": 6
+    }
+  },
+  "app/components/workflow/hooks/__tests__/use-checklist.spec.ts": {
+    "react/error-boundaries": {
+      "count": 1
     }
   },
   "app/components/workflow/hooks/use-checklist.ts": {
@@ -7237,6 +7389,11 @@
       "count": 1
     }
   },
+  "app/components/workflow/nodes/_base/components/variable/var-list.tsx": {
+    "react/unsupported-syntax": {
+      "count": 1
+    }
+  },
   "app/components/workflow/nodes/_base/components/variable/var-reference-picker.tsx": {
     "no-restricted-imports": {
       "count": 2
@@ -7389,6 +7546,9 @@
   },
   "app/components/workflow/nodes/agent/components/tool-icon.tsx": {
     "no-restricted-imports": {
+      "count": 1
+    },
+    "react/unsupported-syntax": {
       "count": 1
     }
   },
@@ -7739,8 +7899,16 @@
       "count": 2
     }
   },
+  "app/components/workflow/nodes/human-input/components/form-content-preview.tsx": {
+    "react/unsupported-syntax": {
+      "count": 1
+    }
+  },
   "app/components/workflow/nodes/human-input/components/form-content.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    },
+    "react/component-hook-factories": {
       "count": 1
     },
     "react/no-nested-component-definitions": {
@@ -8154,6 +8322,9 @@
     }
   },
   "app/components/workflow/nodes/llm/components/config-prompt.tsx": {
+    "react/unsupported-syntax": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -8488,6 +8659,9 @@
   "app/components/workflow/nodes/question-classifier/components/class-list.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
+    },
+    "react/unsupported-syntax": {
+      "count": 2
     }
   },
   "app/components/workflow/nodes/question-classifier/default.ts": {
@@ -8665,6 +8839,9 @@
     }
   },
   "app/components/workflow/nodes/trigger-plugin/node.tsx": {
+    "react/unsupported-syntax": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -9741,6 +9918,9 @@
     }
   },
   "hooks/use-mitt.ts": {
+    "react/component-hook-factories": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -10071,6 +10251,11 @@
   },
   "utils/completion-params.ts": {
     "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "utils/context.ts": {
+    "react/component-hook-factories": {
       "count": 1
     }
   },
