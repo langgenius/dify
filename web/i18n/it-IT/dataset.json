@@ -176,6 +176,7 @@
   "serviceApi.enabled": "In servizio",
   "serviceApi.title": "API di servizio",
   "unavailable": "Non disponibile",
+  "unknownError": "Errore sconosciuto",
   "updated": "Aggiornato",
   "weightedScore.customized": "Personalizzato",
   "weightedScore.description": "Regolando i pesi assegnati, questa strategia di riclassificazione determina se dare priorità alla corrispondenza semantica o per parole chiave.",
