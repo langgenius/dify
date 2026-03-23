@@ -31,6 +31,7 @@ class WorkflowExecution(BaseModel):
 
     inputs: Mapping[str, Any] = Field(...)
     outputs: Mapping[str, Any] | None = None
+    result_replay: Mapping[str, Any] | None = None
 
     status: WorkflowExecutionStatus = WorkflowExecutionStatus.RUNNING
     error_message: str = Field(default="")

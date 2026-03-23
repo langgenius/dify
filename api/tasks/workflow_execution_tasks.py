@@ -104,6 +104,9 @@ def _create_workflow_run_from_execution(
     workflow_run.outputs = (
         json.dumps(json_converter.to_json_encodable(execution.outputs)) if execution.outputs else "{}"
     )
+    workflow_run.result_replay = (
+        json.dumps(json_converter.to_json_encodable(execution.result_replay)) if execution.result_replay else None
+    )
     workflow_run.error = execution.error_message
     workflow_run.elapsed_time = execution.elapsed_time
     workflow_run.total_tokens = execution.total_tokens
@@ -125,6 +128,8 @@ def _update_workflow_run_from_execution(workflow_run: WorkflowRun, execution: Wo
     workflow_run.outputs = (
         json.dumps(json_converter.to_json_encodable(execution.outputs)) if execution.outputs else "{}"
     )
+    if execution.result_replay is not None:
+        workflow_run.result_replay = json.dumps(json_converter.to_json_encodable(execution.result_replay))
     workflow_run.error = execution.error_message
     workflow_run.elapsed_time = execution.elapsed_time
     workflow_run.total_tokens = execution.total_tokens

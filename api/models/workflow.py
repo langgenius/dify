@@ -652,6 +652,7 @@ class WorkflowRun(Base):
         nullable=False,
     )
     outputs: Mapped[str | None] = mapped_column(LongText, default="{}")
+    result_replay: Mapped[str | None] = mapped_column(LongText)
     error: Mapped[str | None] = mapped_column(LongText)
     elapsed_time: Mapped[float] = mapped_column(sa.Float, nullable=False, server_default=sa.text("0"))
     total_tokens: Mapped[int] = mapped_column(sa.BigInteger, server_default=sa.text("0"))
@@ -698,6 +699,10 @@ class WorkflowRun(Base):
         return json.loads(self.outputs) if self.outputs else {}
 
     @property
+    def result_replay_dict(self) -> Mapping[str, Any] | None:
+        return json.loads(self.result_replay) if self.result_replay else None
+
+    @property
     @deprecated("This method is retained for historical reasons; avoid using it if possible.")
     def message(self):
         from .model import Message
@@ -729,6 +734,7 @@ class WorkflowRun(Base):
             "status": self.status,
             "outputs": self.outputs_dict,
             "outputs_as_generation": self.outputs_as_generation,
+            "result_replay": self.result_replay_dict,
             "error": self.error,
             "elapsed_time": self.elapsed_time,
             "total_tokens": self.total_tokens,
@@ -754,6 +760,7 @@ class WorkflowRun(Base):
             inputs=json.dumps(data.get("inputs")),
             status=data.get("status"),
             outputs=json.dumps(data.get("outputs")),
+            result_replay=json.dumps(data.get("result_replay")) if data.get("result_replay") is not None else None,
             error=data.get("error"),
             elapsed_time=data.get("elapsed_time"),
             total_tokens=data.get("total_tokens"),

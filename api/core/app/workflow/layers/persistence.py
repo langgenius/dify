@@ -15,6 +15,7 @@ from datetime import datetime
 from typing import Any, Union
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
+from core.app.workflow.result_replay import WorkflowResultReplayBuilder, build_result_replay_from_node_executions
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
@@ -40,6 +41,7 @@ from core.workflow.graph_events import (
     NodeRunPauseRequestedEvent,
     NodeRunRetryEvent,
     NodeRunStartedEvent,
+    NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
 )
 from core.workflow.node_events import NodeRunResult
@@ -94,6 +96,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         self._node_execution_cache: dict[str, WorkflowNodeExecution] = {}
         self._node_snapshots: dict[str, _NodeRuntimeSnapshot] = {}
         self._node_sequence: int = 0
+        self._result_replay_builder = WorkflowResultReplayBuilder()
 
     # ------------------------------------------------------------------
     # GraphEngineLayer lifecycle
@@ -103,6 +106,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         self._node_execution_cache.clear()
         self._node_snapshots.clear()
         self._node_sequence = 0
+        self._result_replay_builder = WorkflowResultReplayBuilder()
 
     def on_event(self, event: GraphEngineEvent) -> None:
         if isinstance(event, GraphRunStartedEvent):
@@ -127,6 +131,10 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
 
         if isinstance(event, GraphRunPausedEvent):
             self._handle_graph_run_paused(event)
+            return
+
+        if isinstance(event, NodeRunStreamChunkEvent):
+            self._handle_node_stream_chunk(event)
             return
 
         if isinstance(event, NodeRunStartedEvent):
@@ -176,6 +184,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
     def _handle_graph_run_succeeded(self, event: GraphRunSucceededEvent) -> None:
         execution = self._get_workflow_execution()
         execution.outputs = event.outputs
+        execution.result_replay = self._build_result_replay(event.outputs)
         execution.status = WorkflowExecutionStatus.SUCCEEDED
         self._populate_completion_statistics(execution)
 
@@ -185,6 +194,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
     def _handle_graph_run_partial_succeeded(self, event: GraphRunPartialSucceededEvent) -> None:
         execution = self._get_workflow_execution()
         execution.outputs = event.outputs
+        execution.result_replay = self._build_result_replay(event.outputs)
         execution.status = WorkflowExecutionStatus.PARTIAL_SUCCEEDED
         execution.exceptions_count = event.exceptions_count
         self._populate_completion_statistics(execution)
@@ -194,6 +204,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
 
     def _handle_graph_run_failed(self, event: GraphRunFailedEvent) -> None:
         execution = self._get_workflow_execution()
+        execution.result_replay = self._build_result_replay(execution.outputs)
         execution.status = WorkflowExecutionStatus.FAILED
         execution.error_message = event.error
         execution.exceptions_count = event.exceptions_count
@@ -205,6 +216,8 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
 
     def _handle_graph_run_aborted(self, event: GraphRunAbortedEvent) -> None:
         execution = self._get_workflow_execution()
+        execution.outputs = event.outputs
+        execution.result_replay = self._build_result_replay(event.outputs)
         execution.status = WorkflowExecutionStatus.STOPPED
         execution.error_message = event.reason or "Workflow execution aborted"
         self._populate_completion_statistics(execution)
@@ -217,6 +230,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         execution = self._get_workflow_execution()
         execution.status = WorkflowExecutionStatus.PAUSED
         execution.outputs = event.outputs
+        execution.result_replay = self._build_result_replay(event.outputs)
         self._populate_completion_statistics(execution, update_finished=False)
 
         self._workflow_execution_repository.save(execution)
@@ -261,6 +275,9 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
             created_at=event.start_at,
         )
         self._node_snapshots[event.id] = snapshot
+
+    def _handle_node_stream_chunk(self, event: NodeRunStreamChunkEvent) -> None:
+        self._result_replay_builder.add_stream_chunk(event)
 
     def _handle_node_retry(self, event: NodeRunRetryEvent) -> None:
         domain_execution = self._get_node_execution(event.id)
@@ -323,6 +340,14 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
 
         handled = WorkflowEntry.handle_special_values(inputs)
         return handled or {}
+
+    def _build_result_replay(self, outputs: Mapping[str, Any] | None) -> Mapping[str, Any] | None:
+        replay = self._result_replay_builder.build(outputs)
+        has_structured_items = bool(replay and replay.get("llm_generation_items"))
+        if has_structured_items:
+            return replay
+
+        return build_result_replay_from_node_executions(outputs, self._node_execution_cache.values()) or replay
 
     def _get_workflow_execution(self) -> WorkflowExecution:
         if self._workflow_execution is None:

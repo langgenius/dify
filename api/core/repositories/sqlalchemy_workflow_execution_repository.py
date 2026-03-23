@@ -109,6 +109,7 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
             graph=graph,
             inputs=inputs,
             outputs=outputs,
+            result_replay=db_model.result_replay_dict,
             status=status,
             error_message=db_model.error or "",
             total_tokens=db_model.total_tokens,
@@ -153,6 +154,11 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
         db_model.outputs = (
             json.dumps(WorkflowRuntimeTypeConverter().to_json_encodable(domain_model.outputs))
             if domain_model.outputs
+            else None
+        )
+        db_model.result_replay = (
+            json.dumps(WorkflowRuntimeTypeConverter().to_json_encodable(domain_model.result_replay))
+            if domain_model.result_replay is not None
             else None
         )
         db_model.status = domain_model.status

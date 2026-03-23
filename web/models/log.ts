@@ -286,6 +286,39 @@ export type WorkflowLogsRequest = {
   limit: number // The default value is 20 and the range is 1-100
 }
 
+export type WorkflowRunReplayFileGroup = {
+  var_name: string
+  files: FileResponse[]
+}
+
+export type WorkflowRunReplayGenerationItem = {
+  type: 'text' | 'thought' | 'tool'
+  text?: string
+  text_completed?: boolean
+  thought_output?: string
+  thought_completed?: boolean
+  tool_name?: string
+  tool_arguments?: string
+  tool_output?: Record<string, unknown> | string
+  tool_files?: unknown[]
+  tool_error?: string
+  tool_duration?: number
+  tool_icon?: string | {
+    background: string
+    content: string
+  }
+  tool_icon_dark?: string | {
+    background: string
+    content: string
+  }
+}
+
+export type WorkflowRunResultReplay = {
+  text?: string
+  llm_generation_items?: WorkflowRunReplayGenerationItem[]
+  files?: WorkflowRunReplayFileGroup[]
+}
+
 export type WorkflowRunDetailResponse = {
   id: string
   version: string
@@ -294,10 +327,12 @@ export type WorkflowRunDetailResponse = {
     edges: Edge[]
     viewport?: Viewport
   }
-  inputs: string
+  inputs: Record<string, unknown> | string
   inputs_truncated: boolean
-  status: 'running' | 'succeeded' | 'failed' | 'stopped'
-  outputs?: string
+  status: 'running' | 'succeeded' | 'failed' | 'stopped' | 'paused' | 'partial-succeeded'
+  outputs?: Record<string, unknown> | string
+  outputs_as_generation?: boolean
+  result_replay?: WorkflowRunResultReplay | null
   outputs_truncated: boolean
   outputs_full_content?: {
     download_url: string

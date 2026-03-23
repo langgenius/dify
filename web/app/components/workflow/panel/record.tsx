@@ -29,6 +29,7 @@ const Record = () => {
         runDetailUrl={getWorkflowRunAndTraceUrl(historyWorkflowData?.id).runUrl}
         tracingListUrl={getWorkflowRunAndTraceUrl(historyWorkflowData?.id).traceUrl}
         getResultCallback={handleResultCallback}
+        useFirstRunResultView
       />
     </div>
   )

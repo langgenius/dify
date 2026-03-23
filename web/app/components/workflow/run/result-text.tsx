@@ -29,7 +29,7 @@ const ResultText: FC<ResultTextProps> = ({
   allFiles,
 }) => {
   const { t } = useTranslation()
-  const generationContentRenderIsUsed = llmGenerationItems?.length && llmGenerationItems.some((item) => {
+  const generationContentRenderIsUsed = !!llmGenerationItems?.length && llmGenerationItems.some((item) => {
     return item.type === 'tool' || item.type === 'thought'
   })
 

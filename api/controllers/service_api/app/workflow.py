@@ -85,6 +85,8 @@ workflow_run_fields = {
     "status": WorkflowRunStatusField,
     "inputs": fields.Raw,
     "outputs": WorkflowRunOutputsField,
+    "outputs_as_generation": fields.Boolean,
+    "result_replay": fields.Raw(attribute="result_replay_dict"),
     "error": fields.String,
     "total_steps": fields.Integer,
     "total_tokens": fields.Integer,
