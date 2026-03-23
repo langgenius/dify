@@ -8,6 +8,7 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
+from dify_graph.file.enums import FileType
 from enums.cloud_plan import CloudPlan
 from extensions.ext_redis import redis_client
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
@@ -253,7 +254,7 @@ class TestMessagesCleanServiceIntegration:
         # MessageFile
         file = MessageFile(
             message_id=message.id,
-            type="image",
+            type=FileType.IMAGE,
             transfer_method="local_file",
             url="http://example.com/test.jpg",
             belongs_to=MessageFileBelongsTo.USER,
