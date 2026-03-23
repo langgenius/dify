@@ -1,6 +1,5 @@
 'use client'
 
-import * as Sentry from '@sentry/react'
 import { useEffect } from 'react'
 
 import { IS_DEV } from '@/config'
@@ -11,7 +10,10 @@ const SentryInitializer = ({
 }: { children: React.ReactElement }) => {
   useEffect(() => {
     const SENTRY_DSN = env.NEXT_PUBLIC_SENTRY_DSN
-    if (!IS_DEV && SENTRY_DSN) {
+    if (IS_DEV || !SENTRY_DSN)
+      return
+
+    void import('@sentry/react').then((Sentry) => {
       Sentry.init({
         dsn: SENTRY_DSN,
         integrations: [
@@ -22,7 +24,7 @@ const SentryInitializer = ({
         replaysSessionSampleRate: 0.1,
         replaysOnErrorSampleRate: 1.0,
       })
-    }
+    })
   }, [])
   return children
 }
