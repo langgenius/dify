@@ -1,34 +1,15 @@
 'use client'
 
-import type { ComponentType } from 'react'
-import { useEffect, useState } from 'react'
 import { IS_DEV } from '@/config'
+import dynamic from '@/next/dynamic'
+
+const Agentation = dynamic(() => import('agentation').then(module => module.Agentation), { ssr: false })
 
 const AgentationLoader = () => {
-  const [AgentationComponent, setAgentationComponent] = useState<ComponentType | null>(null)
-
-  useEffect(() => {
-    if (!IS_DEV)
-      return
-
-    let cancelled = false
-
-    void import('agentation').then((module) => {
-      if (!cancelled)
-        setAgentationComponent(() => module.Agentation)
-    }).catch((error) => {
-      console.error('Failed to load Agentation', error)
-    })
-
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  if (!IS_DEV || !AgentationComponent)
+  if (!IS_DEV)
     return null
 
-  return <AgentationComponent />
+  return <Agentation />
 }
 
 export default AgentationLoader
