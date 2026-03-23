@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from flask import Flask
+from flask import Flask, g
 
 from controllers.console.auth.data_source_bearer_auth import (
     ApiKeyAuthDataSource,
@@ -9,6 +9,14 @@ from controllers.console.auth.data_source_bearer_auth import (
     ApiKeyAuthDataSourceBindingDelete,
 )
 from controllers.console.auth.error import ApiKeyAuthFailedError
+
+
+def _attach_login_manager(app: Flask, user: MagicMock) -> None:
+    user.is_authenticated = True
+    login_manager = MagicMock()
+    login_manager._load_user.side_effect = lambda: setattr(g, "_login_user", user)
+    login_manager.unauthorized.return_value = ("Unauthorized", 401)
+    app.login_manager = login_manager
 
 
 class TestApiKeyAuthDataSource:
@@ -25,6 +33,7 @@ class TestApiKeyAuthDataSource:
     def test_get_api_key_auth_data_source(self, mock_get_list, mock_db, mock_csrf, app):
         from models.account import Account, AccountStatus
 
+        mock_db.session.scalar.return_value = True
         mock_account = MagicMock(spec=Account)
         mock_account.id = "user_123"
         mock_account.status = AccountStatus.ACTIVE
@@ -49,6 +58,7 @@ class TestApiKeyAuthDataSource:
             ),
         ):
             with app.test_request_context("/console/api/api-key-auth/data-source", method="GET"):
+                _attach_login_manager(app, mock_account)
                 proxy_mock = MagicMock()
                 proxy_mock._get_current_object.return_value = mock_account
                 with patch("libs.login.current_user", proxy_mock):
@@ -65,6 +75,7 @@ class TestApiKeyAuthDataSource:
     def test_get_api_key_auth_data_source_empty(self, mock_get_list, mock_db, mock_csrf, app):
         from models.account import Account, AccountStatus
 
+        mock_db.session.scalar.return_value = True
         mock_account = MagicMock(spec=Account)
         mock_account.id = "user_123"
         mock_account.status = AccountStatus.ACTIVE
@@ -81,6 +92,7 @@ class TestApiKeyAuthDataSource:
             ),
         ):
             with app.test_request_context("/console/api/api-key-auth/data-source", method="GET"):
+                _attach_login_manager(app, mock_account)
                 proxy_mock = MagicMock()
                 proxy_mock._get_current_object.return_value = mock_account
                 with patch("libs.login.current_user", proxy_mock):
@@ -106,6 +118,7 @@ class TestApiKeyAuthDataSourceBinding:
     def test_create_binding_successful(self, mock_validate, mock_create, mock_db, mock_csrf, app):
         from models.account import Account, AccountStatus
 
+        mock_db.session.scalar.return_value = True
         mock_account = MagicMock(spec=Account)
         mock_account.id = "user_123"
         mock_account.status = AccountStatus.ACTIVE
@@ -124,6 +137,7 @@ class TestApiKeyAuthDataSourceBinding:
                 method="POST",
                 json={"category": "api_key", "provider": "custom", "credentials": {"key": "value"}},
             ):
+                _attach_login_manager(app, mock_account)
                 proxy_mock = MagicMock()
                 proxy_mock._get_current_object.return_value = mock_account
                 with patch("libs.login.current_user", proxy_mock), patch("flask_login.current_user", proxy_mock):
@@ -142,6 +156,7 @@ class TestApiKeyAuthDataSourceBinding:
     def test_create_binding_failure(self, mock_validate, mock_create, mock_db, mock_csrf, app):
         from models.account import Account, AccountStatus
 
+        mock_db.session.scalar.return_value = True
         mock_account = MagicMock(spec=Account)
         mock_account.id = "user_123"
         mock_account.status = AccountStatus.ACTIVE
@@ -162,6 +177,7 @@ class TestApiKeyAuthDataSourceBinding:
                 method="POST",
                 json={"category": "api_key", "provider": "custom", "credentials": {"key": "value"}},
             ):
+                _attach_login_manager(app, mock_account)
                 proxy_mock = MagicMock()
                 proxy_mock._get_current_object.return_value = mock_account
                 with patch("libs.login.current_user", proxy_mock), patch("flask_login.current_user", proxy_mock):
@@ -184,6 +200,7 @@ class TestApiKeyAuthDataSourceBindingDelete:
     def test_delete_binding_successful(self, mock_delete, mock_db, mock_csrf, app):
         from models.account import Account, AccountStatus
 
+        mock_db.session.scalar.return_value = True
         mock_account = MagicMock(spec=Account)
         mock_account.id = "user_123"
         mock_account.status = AccountStatus.ACTIVE
@@ -198,6 +215,7 @@ class TestApiKeyAuthDataSourceBindingDelete:
             ),
         ):
             with app.test_request_context("/console/api/api-key-auth/data-source/binding_123", method="DELETE"):
+                _attach_login_manager(app, mock_account)
                 proxy_mock = MagicMock()
                 proxy_mock._get_current_object.return_value = mock_account
                 with patch("libs.login.current_user", proxy_mock), patch("flask_login.current_user", proxy_mock):

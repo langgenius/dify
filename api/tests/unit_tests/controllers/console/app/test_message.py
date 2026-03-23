@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from flask import Flask, request
+from flask import Flask, g, request
 from werkzeug.exceptions import InternalServerError, NotFound
 from werkzeug.local import LocalProxy
 
@@ -26,6 +26,14 @@ from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotIni
 from models import App, AppMode
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
+
+
+def _attach_login_manager(app: Flask, user: MagicMock) -> None:
+    user.is_authenticated = True
+    login_manager = MagicMock()
+    login_manager._load_user.side_effect = lambda: setattr(g, "_login_user", user)
+    login_manager.unauthorized.return_value = ("Unauthorized", 401)
+    app.login_manager = login_manager
 
 
 @pytest.fixture
@@ -96,10 +104,12 @@ def setup_test_context(
             return data_query_mock
 
         mock_db.session.query.side_effect = query_side_effect
+        mock_db.session.scalar.return_value = True
         mock_db.data_query = data_query_mock
 
         # Let the caller override the stat db query logic
         proxy_mock = LocalProxy(lambda: mock_account)
+        _attach_login_manager(test_app, mock_account)
 
         query_string = "&".join([f"{k}={v}" for k, v in (qs or {}).items()])
         full_path = f"{route_path}?{query_string}" if qs else route_path
@@ -202,7 +212,7 @@ class TestMessageEndpoints:
             q_mock = mock_db.data_query
             q_mock.where.return_value.first.side_effect = [mock_conv]
             q_mock.where.return_value.order_by.return_value.limit.return_value.all.return_value = [mock_msg]
-            mock_db.session.scalar.return_value = False
+            mock_db.session.scalar.side_effect = [True, False]
 
             resp = api.get(**v_args)
             assert resp["limit"] == 1

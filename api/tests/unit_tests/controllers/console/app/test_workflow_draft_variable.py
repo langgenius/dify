@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from flask import Flask, request
+from flask import Flask, g, request
 from werkzeug.local import LocalProxy
 
 from controllers.console.app.error import DraftWorkflowNotExist
@@ -17,6 +17,14 @@ from controllers.console.app.workflow_draft_variable import (
 from controllers.web.error import InvalidArgumentError, NotFoundError
 from models import App, AppMode
 from models.enums import DraftVariableType
+
+
+def _attach_login_manager(app: Flask, user: MagicMock) -> None:
+    user.is_authenticated = True
+    login_manager = MagicMock()
+    login_manager._load_user.side_effect = lambda: setattr(g, "_login_user", user)
+    login_manager.unauthorized.return_value = ("Unauthorized", 401)
+    app.login_manager = login_manager
 
 
 @pytest.fixture
@@ -70,8 +78,10 @@ def setup_test_context(test_app, endpoint_class, route_path, method, mock_accoun
         mock_query.where.return_value.first.return_value = mock_app_model
         mock_query.where.return_value.where.return_value.first.return_value = mock_app_model
         mock_db_wraps.session.query.return_value = mock_query
+        mock_db_wraps.session.scalar.return_value = True
 
         proxy_mock = LocalProxy(lambda: mock_account)
+        _attach_login_manager(test_app, mock_account)
 
         with patch("libs.login.current_user", proxy_mock), patch("flask_login.current_user", proxy_mock):
             with test_app.test_request_context(route_path, method=method, json=payload):
@@ -101,6 +111,7 @@ class TestWorkflowDraftVariableEndpoints:
 
         mock_var = MagicMock()
         mock_var.app_id = "app_123"
+        mock_var.user_id = "user_123"
         mock_var.id = "var_123"
         mock_var.name = "test_var"
         mock_var.description = ""

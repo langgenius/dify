@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from flask import Flask
+from flask import Flask, g
 from werkzeug.local import LocalProxy
 
 from controllers.console.auth.data_source_oauth import (
@@ -10,6 +10,14 @@ from controllers.console.auth.data_source_oauth import (
     OAuthDataSourceCallback,
     OAuthDataSourceSync,
 )
+
+
+def _attach_login_manager(app: Flask, user: MagicMock) -> None:
+    user.is_authenticated = True
+    login_manager = MagicMock()
+    login_manager._load_user.side_effect = lambda: setattr(g, "_login_user", user)
+    login_manager.unauthorized.return_value = ("Unauthorized", 401)
+    app.login_manager = login_manager
 
 
 class TestOAuthDataSource:
@@ -167,6 +175,7 @@ class TestOAuthDataSourceSync:
     @patch("libs.login.check_csrf_token")
     @patch("controllers.console.wraps.db")
     def test_sync_successful(self, mock_db, mock_csrf, mock_get_providers, app):
+        mock_db.session.scalar.return_value = True
         mock_provider = MagicMock()
         mock_provider.sync_data_source.return_value = None
         mock_get_providers.return_value = {"notion": mock_provider}
@@ -181,6 +190,7 @@ class TestOAuthDataSourceSync:
 
         with patch("controllers.console.wraps.current_account_with_tenant", return_value=(mock_account, MagicMock())):
             with app.test_request_context("/console/api/oauth/data-source/notion/binding_123/sync", method="GET"):
+                _attach_login_manager(app, mock_account)
                 proxy_mock = LocalProxy(lambda: mock_account)
                 with patch("libs.login.current_user", proxy_mock):
                     api_instance = OAuthDataSourceSync()
