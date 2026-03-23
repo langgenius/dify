@@ -1,7 +1,6 @@
 import type { FC } from 'react'
 import type { Label } from '@/app/components/tools/labels/constant'
 import { RiArrowDownSLine } from '@remixicon/react'
-import { useDebounceFn } from 'ahooks'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Tag01, Tag03 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
@@ -9,10 +8,10 @@ import { Check } from '@/app/components/base/icons/src/vender/line/general'
 import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import Input from '@/app/components/base/input'
 import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/app/components/base/ui/popover'
 import { useTags } from '@/app/components/plugins/hooks'
 import { cn } from '@/utils/classnames'
 
@@ -30,18 +29,10 @@ const LabelFilter: FC<LabelFilterProps> = ({
   const { tags: labelList } = useTags()
 
   const [keywords, setKeywords] = useState('')
-  const [searchKeywords, setSearchKeywords] = useState('')
-  const { run: handleSearch } = useDebounceFn(() => {
-    setSearchKeywords(keywords)
-  }, { wait: 500 })
-  const handleKeywordsChange = (value: string) => {
-    setKeywords(value)
-    handleSearch()
-  }
 
   const filteredLabelList = useMemo(() => {
-    return labelList.filter(label => label.name.includes(searchKeywords))
-  }, [labelList, searchKeywords])
+    return labelList.filter(label => label.name.includes(keywords))
+  }, [labelList, keywords])
 
   const currentLabel = useMemo(() => {
     return labelList.find(label => label.name === value[0])
@@ -55,72 +46,70 @@ const LabelFilter: FC<LabelFilterProps> = ({
   }
 
   return (
-    <PortalToFollowElem
+    <Popover
       open={open}
       onOpenChange={setOpen}
-      placement="bottom-start"
-      offset={4}
     >
       <div className="relative">
-        <PortalToFollowElemTrigger
-          onClick={() => setOpen(v => !v)}
-          className="block"
-        >
-          <div className={cn(
-            'flex h-8 cursor-pointer select-none items-center gap-1 rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-2 hover:bg-components-input-bg-hover',
-            !open && !!value.length && 'shadow-xs',
-            open && !!value.length && 'shadow-xs',
+        <PopoverTrigger
+          className={cn(
+            'flex h-8 cursor-pointer select-none items-center gap-1 rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-2 text-left hover:bg-components-input-bg-hover',
+            !!value.length && 'pr-6 shadow-xs',
           )}
-          >
-            <div className="p-[1px]">
-              <Tag01 className="h-3.5 w-3.5 text-text-tertiary" />
-            </div>
-            <div className="text-[13px] leading-[18px] text-text-tertiary">
-              {!value.length && t('tag.placeholder', { ns: 'common' })}
-              {!!value.length && currentLabel?.label}
-            </div>
-            {value.length > 1 && (
-              <div className="text-xs font-medium leading-[18px] text-text-tertiary">{`+${value.length - 1}`}</div>
-            )}
-            {!value.length && (
-              <div className="p-[1px]">
-                <RiArrowDownSLine className="h-3.5 w-3.5 text-text-tertiary" />
-              </div>
-            )}
-            {!!value.length && (
-              <div
-                className="group/clear cursor-pointer p-[1px]"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onChange([])
-                }}
-              >
-                <XCircle className="h-3.5 w-3.5 text-text-tertiary group-hover/clear:text-text-secondary" />
-              </div>
-            )}
+        >
+          <div className="p-[1px]">
+            <Tag01 className="h-3.5 w-3.5 text-text-tertiary" />
           </div>
-        </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className="z-[1002]">
-          <div className="relative w-[240px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg  backdrop-blur-[5px]">
+          <div className="min-w-0 truncate text-[13px] leading-[18px] text-text-tertiary">
+            {!value.length && t('tag.placeholder', { ns: 'common' })}
+            {!!value.length && currentLabel?.label}
+          </div>
+          {value.length > 1 && (
+            <div className="shrink-0 text-xs font-medium leading-[18px] text-text-tertiary">{`+${value.length - 1}`}</div>
+          )}
+          {!value.length && (
+            <div className="shrink-0 p-[1px]">
+              <RiArrowDownSLine className="h-3.5 w-3.5 text-text-tertiary" />
+            </div>
+          )}
+        </PopoverTrigger>
+        {!!value.length && (
+          <button
+            type="button"
+            aria-label={t('operation.clear', { ns: 'common' })}
+            className="group/clear absolute right-2 top-1/2 -translate-y-1/2 p-[1px]"
+            data-testid="label-filter-clear-button"
+            onClick={() => onChange([])}
+          >
+            <XCircle className="h-3.5 w-3.5 text-text-tertiary group-hover/clear:text-text-secondary" />
+          </button>
+        )}
+        <PopoverContent
+          placement="bottom-start"
+          sideOffset={4}
+          popupClassName="w-[240px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]"
+        >
+          <div className="relative">
             <div className="p-2">
               <Input
                 showLeftIcon
                 showClearIcon
                 value={keywords}
-                onChange={e => handleKeywordsChange(e.target.value)}
-                onClear={() => handleKeywordsChange('')}
+                onChange={e => setKeywords(e.target.value)}
+                onClear={() => setKeywords('')}
               />
             </div>
             <div className="p-1">
               {filteredLabelList.map(label => (
-                <div
+                <button
                   key={label.name}
-                  className="flex cursor-pointer select-none items-center gap-2 rounded-lg py-[6px] pl-3 pr-2 hover:bg-state-base-hover"
+                  type="button"
+                  className="flex w-full select-none items-center gap-2 rounded-lg py-[6px] pl-3 pr-2 text-left hover:bg-state-base-hover"
                   onClick={() => selectLabel(label)}
                 >
                   <div title={label.label} className="grow truncate text-sm leading-5 text-text-secondary">{label.label}</div>
                   {value.includes(label.name) && <Check className="h-4 w-4 shrink-0 text-text-accent" />}
-                </div>
+                </button>
               ))}
               {!filteredLabelList.length && (
                 <div className="flex flex-col items-center gap-1 p-3">
@@ -130,9 +119,9 @@ const LabelFilter: FC<LabelFilterProps> = ({
               )}
             </div>
           </div>
-        </PortalToFollowElemContent>
+        </PopoverContent>
       </div>
-    </PortalToFollowElem>
+    </Popover>
 
   )
 }

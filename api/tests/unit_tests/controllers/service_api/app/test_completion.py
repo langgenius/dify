@@ -34,7 +34,7 @@ from controllers.service_api.app.error import (
     NotChatAppError,
 )
 from core.errors.error import QuotaExceededError
-from core.model_runtime.errors.invoke import InvokeError
+from dify_graph.model_runtime.errors.invoke import InvokeError
 from models.model import App, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService

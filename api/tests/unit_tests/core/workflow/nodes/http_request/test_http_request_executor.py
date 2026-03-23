@@ -2,19 +2,19 @@ import pytest
 
 from configs import dify_config
 from core.helper.ssrf_proxy import ssrf_proxy
-from core.workflow.file.file_manager import file_manager
-from core.workflow.nodes.http_request import (
+from dify_graph.file.file_manager import file_manager
+from dify_graph.nodes.http_request import (
     BodyData,
     HttpRequestNodeAuthorization,
     HttpRequestNodeBody,
     HttpRequestNodeConfig,
     HttpRequestNodeData,
 )
-from core.workflow.nodes.http_request.entities import HttpRequestNodeTimeout
-from core.workflow.nodes.http_request.exc import AuthorizationConfigError
-from core.workflow.nodes.http_request.executor import Executor
-from core.workflow.runtime import VariablePool
-from core.workflow.system_variable import SystemVariable
+from dify_graph.nodes.http_request.entities import HttpRequestNodeTimeout
+from dify_graph.nodes.http_request.exc import AuthorizationConfigError
+from dify_graph.nodes.http_request.executor import Executor
+from dify_graph.runtime import VariablePool
+from dify_graph.system_variable import SystemVariable
 
 HTTP_REQUEST_CONFIG = HttpRequestNodeConfig(
     max_connect_timeout=dify_config.HTTP_REQUEST_MAX_CONNECT_TIMEOUT,

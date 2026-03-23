@@ -7,8 +7,8 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
 
-from core.workflow.nodes.human_input.enums import HumanInputFormStatus
-from core.workflow.repositories.human_input_form_repository import (
+from dify_graph.nodes.human_input.enums import HumanInputFormStatus
+from dify_graph.repositories.human_input_form_repository import (
     FormCreateParams,
     HumanInputFormEntity,
     HumanInputFormRecipientEntity,

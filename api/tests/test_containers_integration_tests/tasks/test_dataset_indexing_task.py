@@ -11,6 +11,7 @@ from core.indexing_runner import DocumentIsPausedError
 from enums.cloud_plan import CloudPlan
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document
+from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from tasks.document_indexing_task import (
     _document_indexing,
     _document_indexing_with_tenant_queue,
@@ -139,7 +140,7 @@ class TestDatasetIndexingTaskIntegration:
             tenant_id=tenant.id,
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             indexing_technique="high_quality",
             created_by=account.id,
         )
@@ -155,12 +156,12 @@ class TestDatasetIndexingTaskIntegration:
                 tenant_id=tenant.id,
                 dataset_id=dataset.id,
                 position=position,
-                data_source_type="upload_file",
+                data_source_type=DataSourceType.UPLOAD_FILE,
                 batch="test_batch",
                 name=f"doc-{position}.txt",
-                created_from="upload_file",
+                created_from=DocumentCreatedFrom.WEB,
                 created_by=account.id,
-                indexing_status="waiting",
+                indexing_status=IndexingStatus.WAITING,
                 enabled=True,
             )
             db_session_with_containers.add(document)
@@ -181,7 +182,7 @@ class TestDatasetIndexingTaskIntegration:
         for document_id in document_ids:
             updated = self._query_document(db_session_with_containers, document_id)
             assert updated is not None
-            assert updated.indexing_status == "parsing"
+            assert updated.indexing_status == IndexingStatus.PARSING
             assert updated.processing_started_at is not None
 
     def _assert_documents_error_contains(
@@ -195,7 +196,7 @@ class TestDatasetIndexingTaskIntegration:
         for document_id in document_ids:
             updated = self._query_document(db_session_with_containers, document_id)
             assert updated is not None
-            assert updated.indexing_status == "error"
+            assert updated.indexing_status == IndexingStatus.ERROR
             assert updated.error is not None
             assert expected_error_substring in updated.error
             assert updated.stopped_at is not None
@@ -322,11 +323,14 @@ class TestDatasetIndexingTaskIntegration:
             _document_indexing_with_tenant_queue(dataset.tenant_id, dataset.id, document_ids, task_dispatch_spy)
 
         # Assert
-        task_dispatch_spy.delay.assert_called_once_with(
-            tenant_id=next_task["tenant_id"],
-            dataset_id=next_task["dataset_id"],
-            document_ids=next_task["document_ids"],
-        )
+        # apply_async is used by implementation; assert it was called once with expected kwargs
+        assert task_dispatch_spy.apply_async.call_count == 1
+        call_kwargs = task_dispatch_spy.apply_async.call_args.kwargs.get("kwargs", {})
+        assert call_kwargs == {
+            "tenant_id": next_task["tenant_id"],
+            "dataset_id": next_task["dataset_id"],
+            "document_ids": next_task["document_ids"],
+        }
         set_waiting_spy.assert_called_once()
         delete_key_spy.assert_not_called()
 
@@ -352,7 +356,7 @@ class TestDatasetIndexingTaskIntegration:
             _document_indexing_with_tenant_queue(dataset.tenant_id, dataset.id, document_ids, task_dispatch_spy)
 
         # Assert
-        task_dispatch_spy.delay.assert_not_called()
+        task_dispatch_spy.apply_async.assert_not_called()
         delete_key_spy.assert_called_once()
 
     def test_validation_failure_sets_error_status_when_vector_space_at_limit(
@@ -447,7 +451,7 @@ class TestDatasetIndexingTaskIntegration:
             _document_indexing_with_tenant_queue(dataset.tenant_id, dataset.id, document_ids, task_dispatch_spy)
 
         # Assert
-        task_dispatch_spy.delay.assert_called_once()
+        task_dispatch_spy.apply_async.assert_called_once()
 
     def test_sessions_close_on_successful_indexing(
         self,
@@ -534,7 +538,7 @@ class TestDatasetIndexingTaskIntegration:
             _document_indexing_with_tenant_queue(dataset.tenant_id, dataset.id, document_ids, task_dispatch_spy)
 
         # Assert
-        assert task_dispatch_spy.delay.call_count == concurrency_limit
+        assert task_dispatch_spy.apply_async.call_count == concurrency_limit
         assert set_waiting_spy.call_count == concurrency_limit
 
     def test_task_queue_fifo_ordering(self, db_session_with_containers, patched_external_dependencies):
@@ -565,9 +569,10 @@ class TestDatasetIndexingTaskIntegration:
             _document_indexing_with_tenant_queue(dataset.tenant_id, dataset.id, document_ids, task_dispatch_spy)
 
         # Assert
-        assert task_dispatch_spy.delay.call_count == 3
+        assert task_dispatch_spy.apply_async.call_count == 3
         for index, expected_task in enumerate(ordered_tasks):
-            assert task_dispatch_spy.delay.call_args_list[index].kwargs["document_ids"] == expected_task["document_ids"]
+            call_kwargs = task_dispatch_spy.apply_async.call_args_list[index].kwargs.get("kwargs", {})
+            assert call_kwargs.get("document_ids") == expected_task["document_ids"]
 
     def test_billing_disabled_skips_limit_checks(self, db_session_with_containers, patched_external_dependencies):
         """Skip limit checks when billing feature is disabled."""

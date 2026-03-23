@@ -1,9 +1,10 @@
 import logging
 import time
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
+from typing import Any, Protocol
 
 import click
-from celery import shared_task
+from celery import current_app, shared_task
 
 from configs import dify_config
 from core.db.session_factory import session_factory
@@ -13,10 +14,17 @@ from core.rag.pipeline.queue import TenantIsolatedTaskQueue
 from enums.cloud_plan import CloudPlan
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, Document
+from models.enums import IndexingStatus
 from services.feature_service import FeatureService
 from tasks.generate_summary_index_task import generate_summary_index_task
 
 logger = logging.getLogger(__name__)
+
+
+class CeleryTaskLike(Protocol):
+    def delay(self, *args: Any, **kwargs: Any) -> Any: ...
+
+    def apply_async(self, *args: Any, **kwargs: Any) -> Any: ...
 
 
 @shared_task(queue="dataset")
@@ -74,7 +82,7 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
                     session.query(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).first()
                 )
                 if document:
-                    document.indexing_status = "error"
+                    document.indexing_status = IndexingStatus.ERROR
                     document.error = str(e)
                     document.stopped_at = naive_utc_now()
                     session.add(document)
@@ -89,7 +97,7 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
 
         for document in documents:
             if document:
-                document.indexing_status = "parsing"
+                document.indexing_status = IndexingStatus.PARSING
                 document.processing_started_at = naive_utc_now()
                 session.add(document)
     # Transaction committed and closed
@@ -141,7 +149,7 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
                                 document.need_summary,
                             )
                             if (
-                                document.indexing_status == "completed"
+                                document.indexing_status == IndexingStatus.COMPLETED
                                 and document.doc_form != "qa_model"
                                 and document.need_summary is True
                             ):
@@ -179,8 +187,8 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
 
 
 def _document_indexing_with_tenant_queue(
-    tenant_id: str, dataset_id: str, document_ids: Sequence[str], task_func: Callable[[str, str, Sequence[str]], None]
-):
+    tenant_id: str, dataset_id: str, document_ids: Sequence[str], task_func: CeleryTaskLike
+) -> None:
     try:
         _document_indexing(dataset_id, document_ids)
     except Exception:
@@ -201,16 +209,20 @@ def _document_indexing_with_tenant_queue(
         logger.info("document indexing tenant isolation queue %s next tasks: %s", tenant_id, next_tasks)
 
         if next_tasks:
-            for next_task in next_tasks:
-                document_task = DocumentTask(**next_task)
-                # Process the next waiting task
-                # Keep the flag set to indicate a task is running
-                tenant_isolated_task_queue.set_task_waiting_time()
-                task_func.delay(  # type: ignore
-                    tenant_id=document_task.tenant_id,
-                    dataset_id=document_task.dataset_id,
-                    document_ids=document_task.document_ids,
-                )
+            with current_app.producer_or_acquire() as producer:  # type: ignore
+                for next_task in next_tasks:
+                    document_task = DocumentTask(**next_task)
+                    # Keep the flag set to indicate a task is running
+                    tenant_isolated_task_queue.set_task_waiting_time()
+                    task_func.apply_async(
+                        kwargs={
+                            "tenant_id": document_task.tenant_id,
+                            "dataset_id": document_task.dataset_id,
+                            "document_ids": document_task.document_ids,
+                        },
+                        producer=producer,
+                    )
+
         else:
             # No more waiting tasks, clear the flag
             tenant_isolated_task_queue.delete_task_key()

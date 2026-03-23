@@ -140,6 +140,9 @@ export const useSelectionInteractions = () => {
     const container = document.querySelector('#workflow-container')
     const { x, y } = container!.getBoundingClientRect()
     workflowStore.setState({
+      nodeMenu: undefined,
+      panelMenu: undefined,
+      edgeMenu: undefined,
       selectionMenu: {
         top: e.clientY - y,
         left: e.clientX - x,

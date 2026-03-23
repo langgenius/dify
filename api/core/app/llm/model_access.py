@@ -5,11 +5,11 @@ from typing import Any
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.errors.error import ProviderTokenNotInitError
 from core.model_manager import ModelInstance, ModelManager
-from core.model_runtime.entities.model_entities import ModelType
 from core.provider_manager import ProviderManager
-from core.workflow.nodes.llm.entities import ModelConfig
-from core.workflow.nodes.llm.exc import LLMModeRequiredError, ModelNotExistError
-from core.workflow.nodes.llm.protocols import CredentialsProvider, ModelFactory
+from dify_graph.model_runtime.entities.model_entities import ModelType
+from dify_graph.nodes.llm.entities import ModelConfig
+from dify_graph.nodes.llm.exc import LLMModeRequiredError, ModelNotExistError
+from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory
 
 
 class DifyCredentialsProvider:

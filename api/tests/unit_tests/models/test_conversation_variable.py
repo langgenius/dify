@@ -1,6 +1,6 @@
 from uuid import uuid4
 
-from core.workflow.variables import SegmentType
+from dify_graph.variables import SegmentType
 from factories import variable_factory
 from models import ConversationVariable
 

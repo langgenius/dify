@@ -24,7 +24,7 @@ export function rehypeVariable() {
           parts.push({
             type: 'element',
             tagName: 'variable',
-            properties: { 'data-path': m[0].trim() },
+            properties: { dataPath: m[0].trim() },
             children: [],
           })
 
@@ -77,7 +77,7 @@ export function rehypeNotes() {
           parts.push({
             type: 'element',
             tagName: 'section',
-            properties: { 'data-name': name },
+            properties: { dataName: name },
             children: [],
           })
 

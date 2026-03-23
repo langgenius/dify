@@ -1303,6 +1303,24 @@ class TestBillingServiceSubscriptionOperations:
         # Assert
         assert result == {}
 
+    def test_get_plan_bulk_converts_string_expiration_date_to_int(self, mock_send_request):
+        """Test bulk plan retrieval converts string expiration_date to int."""
+        # Arrange
+        tenant_ids = ["tenant-1"]
+        mock_send_request.return_value = {
+            "data": {
+                "tenant-1": {"plan": "sandbox", "expiration_date": "1735689600"},
+            }
+        }
+
+        # Act
+        result = BillingService.get_plan_bulk(tenant_ids)
+
+        # Assert
+        assert "tenant-1" in result
+        assert isinstance(result["tenant-1"]["expiration_date"], int)
+        assert result["tenant-1"]["expiration_date"] == 1735689600
+
     def test_get_plan_bulk_with_invalid_tenant_plan_skipped(self, mock_send_request):
         """Test bulk plan retrieval when one tenant has invalid plan data (should skip that tenant)."""
         # Arrange

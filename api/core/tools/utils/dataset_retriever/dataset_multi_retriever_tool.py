@@ -1,5 +1,4 @@
 import threading
-from typing import Any
 
 from flask import Flask, current_app
 from pydantic import BaseModel, Field
@@ -7,17 +6,18 @@ from sqlalchemy import select
 
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.model_manager import ModelManager
-from core.model_runtime.entities.model_entities import ModelType
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.rag.models.document import Document as RagDocument
 from core.rag.rerank.rerank_model import RerankModelRunner
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.utils.dataset_retriever.dataset_retriever_base_tool import DatasetRetrieverBaseTool
+from core.tools.utils.dataset_retriever.dataset_retriever_tool import DefaultRetrievalModelDict
+from dify_graph.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
 from models.dataset import Dataset, Document, DocumentSegment
 
-default_retrieval_model: dict[str, Any] = {
+default_retrieval_model: DefaultRetrievalModelDict = {
     "search_method": RetrievalMethod.SEMANTIC_SEARCH,
     "reranking_enable": False,
     "reranking_model": {"reranking_provider_name": "", "reranking_model_name": ""},

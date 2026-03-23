@@ -1,6 +1,8 @@
 import pytest
 
-from core.workflow.variables.types import ArrayValidation, SegmentType
+from dify_graph.variables.segment_group import SegmentGroup
+from dify_graph.variables.segments import StringSegment
+from dify_graph.variables.types import ArrayValidation, SegmentType
 
 
 class TestSegmentTypeIsArrayType:
@@ -69,22 +71,36 @@ class TestSegmentTypeIsValidArrayValidation:
     """
 
     def test_array_validation_all_success(self):
+        # Arrange
         value = ["hello", "world", "foo"]
-        assert SegmentType.ARRAY_STRING.is_valid(value, array_validation=ArrayValidation.ALL)
+        # Act
+        is_valid = SegmentType.ARRAY_STRING.is_valid(value, array_validation=ArrayValidation.ALL)
+        # Assert
+        assert is_valid
 
     def test_array_validation_all_fail(self):
+        # Arrange
         value = ["hello", 123, "world"]
-        # Should return False, since 123 is not a string
-        assert not SegmentType.ARRAY_STRING.is_valid(value, array_validation=ArrayValidation.ALL)
+        # Act
+        is_valid = SegmentType.ARRAY_STRING.is_valid(value, array_validation=ArrayValidation.ALL)
+        # Assert
+        assert not is_valid
 
     def test_array_validation_first(self):
+        # Arrange
         value = ["hello", 123, None]
-        assert SegmentType.ARRAY_STRING.is_valid(value, array_validation=ArrayValidation.FIRST)
+        # Act
+        is_valid = SegmentType.ARRAY_STRING.is_valid(value, array_validation=ArrayValidation.FIRST)
+        # Assert
+        assert is_valid
 
     def test_array_validation_none(self):
+        # Arrange
         value = [1, 2, 3]
-        # validation is None, skip
-        assert SegmentType.ARRAY_STRING.is_valid(value, array_validation=ArrayValidation.NONE)
+        # Act
+        is_valid = SegmentType.ARRAY_STRING.is_valid(value, array_validation=ArrayValidation.NONE)
+        # Assert
+        assert is_valid
 
 
 class TestSegmentTypeGetZeroValue:
@@ -163,3 +179,62 @@ class TestSegmentTypeGetZeroValue:
         for seg_type in unsupported_types:
             with pytest.raises(ValueError, match="unsupported variable type"):
                 SegmentType.get_zero_value(seg_type)
+
+
+class TestSegmentTypeInferSegmentType:
+    @pytest.mark.parametrize(
+        ("value", "expected"),
+        [
+            ([], SegmentType.ARRAY_NUMBER),
+            ([1, 2, 3], SegmentType.ARRAY_NUMBER),
+            ([1, 2.5], SegmentType.ARRAY_NUMBER),
+            (["a", "b"], SegmentType.ARRAY_STRING),
+            ([{"k": "v"}], SegmentType.ARRAY_OBJECT),
+            ([None], SegmentType.ARRAY_ANY),
+            ([True, False], SegmentType.ARRAY_BOOLEAN),
+            ([[1], [2]], SegmentType.ARRAY_ANY),
+            ([1, "a"], SegmentType.ARRAY_ANY),
+            (None, SegmentType.NONE),
+            (True, SegmentType.BOOLEAN),
+            (1, SegmentType.INTEGER),
+            (1.2, SegmentType.FLOAT),
+            ("abc", SegmentType.STRING),
+            ({"k": "v"}, SegmentType.OBJECT),
+        ],
+    )
+    def test_infer_segment_type_supported_values(self, value, expected):
+        assert SegmentType.infer_segment_type(value) == expected
+
+
+class TestSegmentTypeAdditionalMethods:
+    def test_cast_value_for_bool_number_and_array_number(self):
+        assert SegmentType.cast_value(True, SegmentType.INTEGER) == 1
+        assert SegmentType.cast_value(False, SegmentType.NUMBER) == 0
+        assert SegmentType.cast_value([True, False], SegmentType.ARRAY_NUMBER) == [1, 0]
+
+        mixed = [True, 1]
+        assert SegmentType.cast_value(mixed, SegmentType.ARRAY_NUMBER) is mixed
+        assert SegmentType.cast_value("x", SegmentType.STRING) == "x"
+
+    def test_exposed_type_and_element_type(self):
+        assert SegmentType.INTEGER.exposed_type() == SegmentType.NUMBER
+        assert SegmentType.FLOAT.exposed_type() == SegmentType.NUMBER
+        assert SegmentType.STRING.exposed_type() == SegmentType.STRING
+
+        assert SegmentType.ARRAY_STRING.element_type() == SegmentType.STRING
+        assert SegmentType.ARRAY_ANY.element_type() is None
+
+        with pytest.raises(ValueError, match="element_type is only supported by array type"):
+            SegmentType.STRING.element_type()
+
+    def test_group_validation_for_segment_group_and_list(self):
+        valid_group = SegmentGroup(value=[StringSegment(value="a")])
+        assert SegmentType.GROUP.is_valid(valid_group) is True
+        assert SegmentType.GROUP.is_valid([StringSegment(value="b")]) is True
+        assert SegmentType.GROUP.is_valid(["not-segment"]) is False
+
+    def test_unreachable_assertion_branch(self, monkeypatch):
+        monkeypatch.setattr(SegmentType, "is_array_type", lambda self: False)
+
+        with pytest.raises(AssertionError, match="unreachable"):
+            SegmentType.ARRAY_STRING.is_valid(["a"])

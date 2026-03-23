@@ -6,7 +6,7 @@ from core.entities.model_entities import ModelStatus
 from core.entities.provider_entities import ProviderQuotaType, QuotaUnit
 from core.errors.error import QuotaExceededError
 from core.model_manager import ModelInstance
-from core.model_runtime.entities.llm_entities import LLMUsage
+from dify_graph.model_runtime.entities.llm_entities import LLMUsage
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models.provider import Provider, ProviderType

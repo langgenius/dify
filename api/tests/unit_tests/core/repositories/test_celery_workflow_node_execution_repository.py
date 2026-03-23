@@ -11,12 +11,12 @@ from uuid import uuid4
 import pytest
 
 from core.repositories.celery_workflow_node_execution_repository import CeleryWorkflowNodeExecutionRepository
-from core.workflow.entities.workflow_node_execution import (
+from dify_graph.entities.workflow_node_execution import (
     WorkflowNodeExecution,
     WorkflowNodeExecutionStatus,
 )
-from core.workflow.enums import NodeType
-from core.workflow.repositories.workflow_node_execution_repository import OrderConfig
+from dify_graph.enums import BuiltinNodeTypes
+from dify_graph.repositories.workflow_node_execution_repository import OrderConfig
 from libs.datetime_utils import naive_utc_now
 from models import Account, EndUser
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
@@ -61,7 +61,7 @@ def sample_workflow_node_execution():
         workflow_execution_id=str(uuid4()),
         index=1,
         node_id="test_node",
-        node_type=NodeType.START,
+        node_type=BuiltinNodeTypes.START,
         title="Test Node",
         inputs={"input1": "value1"},
         status=WorkflowNodeExecutionStatus.RUNNING,
@@ -259,7 +259,7 @@ class TestCeleryWorkflowNodeExecutionRepository:
             workflow_execution_id=workflow_run_id,
             index=1,
             node_id="node1",
-            node_type=NodeType.START,
+            node_type=BuiltinNodeTypes.START,
             title="Node 1",
             inputs={"input1": "value1"},
             status=WorkflowNodeExecutionStatus.RUNNING,
@@ -272,7 +272,7 @@ class TestCeleryWorkflowNodeExecutionRepository:
             workflow_execution_id=workflow_run_id,
             index=2,
             node_id="node2",
-            node_type=NodeType.LLM,
+            node_type=BuiltinNodeTypes.LLM,
             title="Node 2",
             inputs={"input2": "value2"},
             status=WorkflowNodeExecutionStatus.RUNNING,
@@ -310,7 +310,7 @@ class TestCeleryWorkflowNodeExecutionRepository:
             workflow_execution_id=workflow_run_id,
             index=2,
             node_id="node2",
-            node_type=NodeType.START,
+            node_type=BuiltinNodeTypes.START,
             title="Node 2",
             inputs={},
             status=WorkflowNodeExecutionStatus.RUNNING,
@@ -323,7 +323,7 @@ class TestCeleryWorkflowNodeExecutionRepository:
             workflow_execution_id=workflow_run_id,
             index=1,
             node_id="node1",
-            node_type=NodeType.LLM,
+            node_type=BuiltinNodeTypes.LLM,
             title="Node 1",
             inputs={},
             status=WorkflowNodeExecutionStatus.RUNNING,

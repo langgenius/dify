@@ -1,5 +1,6 @@
 'use client'
 
+import type { InitialConfigType } from '@lexical/react/LexicalComposer'
 import type {
   EditorState,
   LexicalCommand,
@@ -153,7 +154,10 @@ const PromptEditor: FC<PromptEditorProps> = ({
   shortcutPopups = [],
 }) => {
   const { eventEmitter } = useEventEmitterContextContext()
-  const initialConfig = {
+  const initialConfig: InitialConfigType = {
+    theme: {
+      paragraph: 'group-[.clamp]:line-clamp-5 group-focus/editable:!line-clamp-none',
+    },
     namespace: 'prompt-editor',
     nodes: [
       CodeNode,
@@ -214,7 +218,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
           contentEditable={(
             <ContentEditable
               className={cn(
-                'text-text-secondary outline-none',
+                'group/editable text-text-secondary outline-none group-[.clamp]:max-h-24 group-[.clamp]:overflow-y-auto',
                 compact ? 'text-[13px] leading-5' : 'text-sm leading-6',
                 className,
               )}

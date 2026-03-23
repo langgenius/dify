@@ -1,3 +1,4 @@
+import type { AccountSettingTab } from '@/app/components/header/account-setting/constants'
 import type { DataSourceProvider, NotionPage } from '@/models/common'
 import type {
   CrawlOptions,
@@ -10,7 +11,6 @@ import type {
   WebsiteCrawlInfo,
 } from '@/models/datasets'
 import { useBoolean } from 'ahooks'
-import { useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -19,9 +19,11 @@ import AppUnavailable from '@/app/components/base/app-unavailable'
 import Loading from '@/app/components/base/loading'
 import StepTwo from '@/app/components/datasets/create/step-two'
 import AccountSetting from '@/app/components/header/account-setting'
+import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import DatasetDetailContext from '@/context/dataset-detail'
+import { useRouter } from '@/next/navigation'
 import { useDocumentDetail, useInvalidDocumentDetail, useInvalidDocumentList } from '@/service/knowledge/use-document'
 
 type DocumentSettingsProps = {
@@ -33,8 +35,13 @@ const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
   const { t } = useTranslation()
   const router = useRouter()
   const [isShowSetAPIKey, { setTrue: showSetAPIKey, setFalse: hideSetAPIkey }] = useBoolean()
+  const [accountSettingTab, setAccountSettingTab] = React.useState<AccountSettingTab>(ACCOUNT_SETTING_TAB.PROVIDER)
   const { indexingTechnique, dataset } = useContext(DatasetDetailContext)
   const { data: embeddingsDefaultModel } = useDefaultModel(ModelTypeEnum.textEmbedding)
+  const handleOpenAccountSetting = React.useCallback(() => {
+    setAccountSettingTab(ACCOUNT_SETTING_TAB.PROVIDER)
+    showSetAPIKey()
+  }, [showSetAPIKey])
 
   const invalidDocumentList = useInvalidDocumentList(datasetId)
   const invalidDocumentDetail = useInvalidDocumentDetail()
@@ -135,7 +142,7 @@ const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
         {dataset && documentDetail && (
           <StepTwo
             isAPIKeySet={!!embeddingsDefaultModel}
-            onSetting={showSetAPIKey}
+            onSetting={handleOpenAccountSetting}
             datasetId={datasetId}
             dataSourceType={documentDetail.data_source_type as DataSourceType}
             notionPages={currentPage ? [currentPage as unknown as NotionPage] : []}
@@ -155,8 +162,9 @@ const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
       </div>
       {isShowSetAPIKey && (
         <AccountSetting
-          activeTab="provider"
-          onCancel={async () => {
+          activeTab={accountSettingTab}
+          onTabChangeAction={setAccountSettingTab}
+          onCancelAction={async () => {
             hideSetAPIkey()
           }}
         />

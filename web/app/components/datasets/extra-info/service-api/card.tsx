@@ -1,5 +1,4 @@
 import { RiBookOpenLine, RiKey2Line } from '@remixicon/react'
-import Link from 'next/link'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -9,6 +8,7 @@ import { ApiAggregate } from '@/app/components/base/icons/src/vender/knowledge'
 import SecretKeyModal from '@/app/components/develop/secret-key/secret-key-modal'
 import Indicator from '@/app/components/header/indicator'
 import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
+import Link from '@/next/link'
 
 type CardProps = {
   apiBaseUrl: string

@@ -12,6 +12,7 @@ from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from models import Account, Tenant
 from models.dataset import Dataset, Document, DocumentSegment
+from models.enums import IndexingStatus
 from services.feature_service import FeatureService
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 
@@ -63,7 +64,7 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str], user_
                         .first()
                     )
                     if document:
-                        document.indexing_status = "error"
+                        document.indexing_status = IndexingStatus.ERROR
                         document.error = str(e)
                         document.stopped_at = naive_utc_now()
                         session.add(document)
@@ -95,7 +96,7 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str], user_
                     session.execute(segment_delete_stmt)
                     session.commit()
 
-                    document.indexing_status = "parsing"
+                    document.indexing_status = IndexingStatus.PARSING
                     document.processing_started_at = naive_utc_now()
                     session.add(document)
                     session.commit()
@@ -108,7 +109,7 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str], user_
                         indexing_runner.run([document])
                     redis_client.delete(retry_indexing_cache_key)
                 except Exception as ex:
-                    document.indexing_status = "error"
+                    document.indexing_status = IndexingStatus.ERROR
                     document.error = str(ex)
                     document.stopped_at = naive_utc_now()
                     session.add(document)

@@ -32,11 +32,6 @@ os.environ.setdefault("OPENDAL_SCHEME", "fs")
 os.environ.setdefault("OPENDAL_FS_ROOT", "/tmp/dify-storage")
 os.environ.setdefault("STORAGE_TYPE", "opendal")
 
-# Add the API directory to Python path to ensure proper imports
-import sys
-
-sys.path.insert(0, PROJECT_DIR)
-
 from core.db.session_factory import configure_session_factory, session_factory
 from extensions import ext_redis
 

@@ -8,15 +8,15 @@ from core.app.apps.workflow.app_config_manager import WorkflowAppConfig
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
-from core.workflow.enums import WorkflowType
-from core.workflow.graph_engine.command_channels.redis_channel import RedisChannel
-from core.workflow.graph_engine.layers.base import GraphEngineLayer
-from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
-from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
-from core.workflow.variable_loader import VariableLoader
 from core.workflow.workflow_entry import WorkflowEntry
+from dify_graph.enums import WorkflowType
+from dify_graph.graph_engine.command_channels.redis_channel import RedisChannel
+from dify_graph.graph_engine.layers.base import GraphEngineLayer
+from dify_graph.repositories.workflow_execution_repository import WorkflowExecutionRepository
+from dify_graph.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
+from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
+from dify_graph.variable_loader import VariableLoader
 from extensions.ext_redis import redis_client
 from extensions.otel import WorkflowAppRunnerHandler, trace_span
 from libs.datetime_utils import naive_utc_now

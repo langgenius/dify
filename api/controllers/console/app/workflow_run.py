@@ -12,8 +12,8 @@ from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from controllers.web.error import NotFoundError
-from core.workflow.entities.pause_reason import HumanInputRequired
-from core.workflow.enums import WorkflowExecutionStatus
+from dify_graph.entities.pause_reason import HumanInputRequired
+from dify_graph.enums import WorkflowExecutionStatus
 from extensions.ext_database import db
 from fields.end_user_fields import simple_end_user_fields
 from fields.member_fields import simple_account_fields

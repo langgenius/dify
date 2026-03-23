@@ -45,6 +45,7 @@ const pageNameEnrichmentPlugin = (): amplitude.Types.EnrichmentPlugin => {
     execute: async (event: amplitude.Types.Event) => {
       // Only modify page view events
       if (event.event_type === '[Amplitude] Page Viewed' && event.event_properties) {
+        /* v8 ignore next @preserve */
         const pathname = typeof window !== 'undefined' ? window.location.pathname : ''
         event.event_properties['[Amplitude] Page Title'] = getEnglishPageName(pathname)
       }

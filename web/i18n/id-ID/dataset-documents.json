@@ -300,7 +300,7 @@
   "segment.collapseChunks": "Ciutkan potongan",
   "segment.contentEmpty": "Konten tidak boleh kosong",
   "segment.contentPlaceholder": "Tambahkan konten di sini",
-  "segment.dateTimeFormat": "MM / DD / YYYY h: mm",
+  "segment.dateTimeFormat": "MM/DD/YYYY HH:mm",
   "segment.delete": "Hapus potongan ini ?",
   "segment.editChildChunk": "Edit Potongan Anak",
   "segment.editChunk": "Edit Potongan",

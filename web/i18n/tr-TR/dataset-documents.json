@@ -300,7 +300,7 @@
   "segment.collapseChunks": "Parçaları daraltma",
   "segment.contentEmpty": "İçerik boş olamaz",
   "segment.contentPlaceholder": "içeriği buraya ekleyin",
-  "segment.dateTimeFormat": "MM/DD/YYYY h:mm",
+  "segment.dateTimeFormat": "MM/DD/YYYY HH:mm",
   "segment.delete": "Bu parçayı silmek istiyor musunuz?",
   "segment.editChildChunk": "Alt Parçayı Düzenle",
   "segment.editChunk": "Yığını Düzenle",

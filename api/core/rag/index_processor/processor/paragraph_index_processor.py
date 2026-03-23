@@ -12,17 +12,9 @@ from core.app.llm import deduct_llm_quota
 from core.entities.knowledge_entities import PreviewDetail
 from core.llm_generator.prompts import DEFAULT_GENERATOR_SUMMARY_PROMPT
 from core.model_manager import ModelInstance
-from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
-from core.model_runtime.entities.message_entities import (
-    ImagePromptMessageContent,
-    PromptMessage,
-    PromptMessageContentUnionTypes,
-    TextPromptMessageContent,
-    UserPromptMessage,
-)
-from core.model_runtime.entities.model_entities import ModelFeature, ModelType
 from core.provider_manager import ProviderManager
 from core.rag.cleaner.clean_processor import CleanProcessor
+from core.rag.data_post_processor.data_post_processor import RerankingModelDict
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.datasource.vdb.vector_factory import Vector
@@ -31,11 +23,20 @@ from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.extractor.extract_processor import ExtractProcessor
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexStructureType
-from core.rag.index_processor.index_processor_base import BaseIndexProcessor
+from core.rag.index_processor.index_processor_base import BaseIndexProcessor, SummaryIndexSettingDict
 from core.rag.models.document import AttachmentDocument, Document, MultimodalGeneralStructureChunk
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.utils.text_processing_utils import remove_leading_symbols
-from core.workflow.file import File, FileTransferMethod, FileType, file_manager
+from dify_graph.file import File, FileTransferMethod, FileType, file_manager
+from dify_graph.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+from dify_graph.model_runtime.entities.message_entities import (
+    ImagePromptMessageContent,
+    PromptMessage,
+    PromptMessageContentUnionTypes,
+    TextPromptMessageContent,
+    UserPromptMessage,
+)
+from dify_graph.model_runtime.entities.model_entities import ModelFeature, ModelType
 from extensions.ext_database import db
 from factories.file_factory import build_from_mapping
 from libs import helper
@@ -175,7 +176,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         dataset: Dataset,
         top_k: int,
         score_threshold: float,
-        reranking_model: dict,
+        reranking_model: RerankingModelDict,
     ) -> list[Document]:
         # Set search parameters.
         results = RetrievalService.retrieve(
@@ -278,7 +279,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         self,
         tenant_id: str,
         preview_texts: list[PreviewDetail],
-        summary_index_setting: dict,
+        summary_index_setting: SummaryIndexSettingDict,
         doc_language: str | None = None,
     ) -> list[PreviewDetail]:
         """
@@ -362,7 +363,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
     def generate_summary(
         tenant_id: str,
         text: str,
-        summary_index_setting: dict | None = None,
+        summary_index_setting: SummaryIndexSettingDict | None = None,
         segment_id: str | None = None,
         document_language: str | None = None,
     ) -> tuple[str, LLMUsage]:

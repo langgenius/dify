@@ -4,10 +4,10 @@ from typing import cast
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.entities import DEFAULT_PLUGIN_ID
-from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.errors.invoke import InvokeBadRequestError
-from core.model_runtime.model_providers.__base.moderation_model import ModerationModel
-from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
+from dify_graph.model_runtime.entities.model_entities import ModelType
+from dify_graph.model_runtime.errors.invoke import InvokeBadRequestError
+from dify_graph.model_runtime.model_providers.__base.moderation_model import ModerationModel
+from dify_graph.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from extensions.ext_hosting_provider import hosting_configuration
 from models.provider import ProviderType
 

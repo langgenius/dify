@@ -1,15 +1,15 @@
 'use client'
 import type { FormEvent } from 'react'
 import { RiArrowLeftLine, RiMailSendFill } from '@remixicon/react'
-import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import Countdown from '@/app/components/signin/countdown'
 import { useLocale } from '@/context/i18n'
 import { useWebAppStore } from '@/context/web-app-context'
+import { useRouter, useSearchParams } from '@/next/navigation'
 import { sendWebAppEMailLoginCode, webAppEmailLoginWithCode } from '@/service/common'
 import { fetchAccessToken } from '@/service/share'
 import { setWebAppAccessToken, setWebAppPassport } from '@/service/webapp-auth'
@@ -43,24 +43,15 @@ export default function CheckCode() {
     try {
       const appCode = getAppCodeFromRedirectUrl()
       if (!code.trim()) {
-        Toast.notify({
-          type: 'error',
-          message: t('checkCode.emptyCode', { ns: 'login' }),
-        })
+        toast.error(t('checkCode.emptyCode', { ns: 'login' }))
         return
       }
       if (!/\d{6}/.test(code)) {
-        Toast.notify({
-          type: 'error',
-          message: t('checkCode.invalidCode', { ns: 'login' }),
-        })
+        toast.error(t('checkCode.invalidCode', { ns: 'login' }))
         return
       }
       if (!redirectUrl || !appCode) {
-        Toast.notify({
-          type: 'error',
-          message: t('error.redirectUrlMissing', { ns: 'login' }),
-        })
+        toast.error(t('error.redirectUrlMissing', { ns: 'login' }))
         return
       }
       setIsLoading(true)

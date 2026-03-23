@@ -1,8 +1,9 @@
 from enum import StrEnum
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 
 
@@ -126,6 +127,18 @@ class KnowledgeConfig(BaseModel):
     embedding_model_provider: str | None = None
     name: str | None = None
     is_multimodal: bool = False
+
+    @field_validator("doc_form")
+    @classmethod
+    def validate_doc_form(cls, value: str) -> str:
+        valid_forms = [
+            IndexStructureType.PARAGRAPH_INDEX,
+            IndexStructureType.QA_INDEX,
+            IndexStructureType.PARENT_CHILD_INDEX,
+        ]
+        if value not in valid_forms:
+            raise ValueError("Invalid doc_form.")
+        return value
 
 
 class SegmentCreateArgs(BaseModel):

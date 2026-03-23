@@ -4,13 +4,13 @@ from core.app.entities.app_invoke_entities import (
     ModelConfigWithCredentialsEntity,
 )
 from core.memory.token_buffer_memory import TokenBufferMemory
-from core.model_runtime.entities.message_entities import (
+from core.prompt.prompt_transform import PromptTransform
+from dify_graph.model_runtime.entities.message_entities import (
     PromptMessage,
     SystemPromptMessage,
     UserPromptMessage,
 )
-from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from core.prompt.prompt_transform import PromptTransform
+from dify_graph.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 
 
 class AgentHistoryPromptTransform(PromptTransform):

@@ -7,7 +7,7 @@ from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.features.rate_limiting.rate_limit import RateLimitGenerator
 from core.mcp import types as mcp_types
-from core.workflow.variables.input_entities import VariableEntity, VariableEntityType
+from dify_graph.variables.input_entities import VariableEntity, VariableEntityType
 from models.model import App, AppMCPServer, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
 

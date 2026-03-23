@@ -8,6 +8,7 @@ from unittest import mock
 import pytest
 
 from extensions.ext_database import db
+from models.enums import FeedbackFromSource, FeedbackRating
 from models.model import App, Conversation, Message
 from services.feedback_service import FeedbackService
 
@@ -47,8 +48,8 @@ class TestFeedbackService:
             app_id=app_id,
             conversation_id="test-conversation-id",
             message_id="test-message-id",
-            rating="like",
-            from_source="user",
+            rating=FeedbackRating.LIKE,
+            from_source=FeedbackFromSource.USER,
             content="Great answer!",
             from_end_user_id="user-123",
             from_account_id=None,
@@ -61,8 +62,8 @@ class TestFeedbackService:
             app_id=app_id,
             conversation_id="test-conversation-id",
             message_id="test-message-id",
-            rating="dislike",
-            from_source="admin",
+            rating=FeedbackRating.DISLIKE,
+            from_source=FeedbackFromSource.ADMIN,
             content="Could be more detailed",
             from_end_user_id=None,
             from_account_id="admin-456",
@@ -179,8 +180,8 @@ class TestFeedbackService:
         # Test with filters
         result = FeedbackService.export_feedbacks(
             app_id=sample_data["app"].id,
-            from_source="admin",
-            rating="dislike",
+            from_source=FeedbackFromSource.ADMIN,
+            rating=FeedbackRating.DISLIKE,
             has_comment=True,
             start_date="2024-01-01",
             end_date="2024-12-31",
@@ -293,8 +294,8 @@ class TestFeedbackService:
             app_id=sample_data["app"].id,
             conversation_id="test-conversation-id",
             message_id="test-message-id",
-            rating="dislike",
-            from_source="user",
+            rating=FeedbackRating.DISLIKE,
+            from_source=FeedbackFromSource.USER,
             content="回答不够详细，需要更多信息",
             from_end_user_id="user-123",
             from_account_id=None,

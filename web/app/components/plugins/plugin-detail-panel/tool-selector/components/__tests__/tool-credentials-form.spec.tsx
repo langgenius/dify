@@ -12,6 +12,9 @@ vi.mock('@/utils/classnames', () => ({
 
 vi.mock('@/app/components/base/toast', () => ({
   default: { notify: vi.fn() },
+}))
+
+vi.mock('@/app/components/base/toast/context', () => ({
   useToastContext: () => ({ notify: vi.fn() }),
 }))
 

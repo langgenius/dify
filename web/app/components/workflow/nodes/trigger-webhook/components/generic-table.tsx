@@ -96,7 +96,10 @@ const GenericTable: FC<GenericTableProps> = ({
     })
 
     // If the last configured row has content, append a trailing empty row
-    const lastHasContent = !isEmptyRow(data[data.length - 1])
+    const lastRow = data.at(-1)
+    if (!lastRow)
+      return rows
+    const lastHasContent = !isEmptyRow(lastRow)
     if (lastHasContent)
       rows.push({ row: { ...emptyRowData }, dataIndex: null, isVirtual: true })
 
@@ -163,7 +166,7 @@ const GenericTable: FC<GenericTableProps> = ({
               // Ghost/inline style: looks like plain text until focus/hover
               'h-6 rounded-none border-0 bg-transparent px-0 py-0 shadow-none',
               'hover:border-transparent hover:bg-transparent focus:border-transparent focus:bg-transparent',
-              'system-sm-regular text-text-secondary placeholder:text-text-quaternary',
+              'text-text-secondary system-sm-regular placeholder:text-text-quaternary',
             )}
           />
         )
@@ -212,12 +215,12 @@ const GenericTable: FC<GenericTableProps> = ({
     return (
       <div className="rounded-lg border border-divider-regular">
         {showHeader && (
-          <div className="system-xs-medium-uppercase flex h-7 items-center leading-7 text-text-tertiary">
+          <div className="flex h-7 items-center leading-7 text-text-tertiary system-xs-medium-uppercase">
             {columns.map((column, index) => (
               <div
                 key={column.key}
                 className={cn(
-                  'h-full pl-3',
+                  'flex h-full items-center pl-3',
                   column.width && column.width.startsWith('w-') ? 'shrink-0' : 'flex-1',
                   column.width,
                   // Add right border except for last column
@@ -285,7 +288,7 @@ const GenericTable: FC<GenericTableProps> = ({
   return (
     <div className={className}>
       <div className="mb-3 flex items-center justify-between">
-        <h4 className="system-sm-semibold-uppercase text-text-secondary">{title}</h4>
+        <h4 className="text-text-secondary system-sm-semibold-uppercase">{title}</h4>
       </div>
 
       {showPlaceholder

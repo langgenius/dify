@@ -8,7 +8,7 @@ import * as utils from '../utils'
 vi.mock('../utils', () => ({
   generate: vi.fn((icon, key, props) => (
     <svg
-      data-testid="mock-svg"
+      data-testid={key}
       key={key}
       {...props}
     >
@@ -29,7 +29,7 @@ describe('IconBase Component', () => {
 
   it('renders properly with required props', () => {
     render(<IconBase data={mockData} />)
-    const svg = screen.getByTestId('mock-svg')
+    const svg = screen.getByTestId('svg-test-icon')
     expect(svg).toBeInTheDocument()
     expect(svg).toHaveAttribute('data-icon', mockData.name)
     expect(svg).toHaveAttribute('aria-hidden', 'true')
@@ -37,7 +37,7 @@ describe('IconBase Component', () => {
 
   it('passes className to the generated SVG', () => {
     render(<IconBase data={mockData} className="custom-class" />)
-    const svg = screen.getByTestId('mock-svg')
+    const svg = screen.getByTestId('svg-test-icon')
     expect(svg).toHaveAttribute('class', 'custom-class')
     expect(utils.generate).toHaveBeenCalledWith(
       mockData.icon,
@@ -49,7 +49,7 @@ describe('IconBase Component', () => {
   it('handles onClick events', () => {
     const handleClick = vi.fn()
     render(<IconBase data={mockData} onClick={handleClick} />)
-    const svg = screen.getByTestId('mock-svg')
+    const svg = screen.getByTestId('svg-test-icon')
     fireEvent.click(svg)
     expect(handleClick).toHaveBeenCalledTimes(1)
   })

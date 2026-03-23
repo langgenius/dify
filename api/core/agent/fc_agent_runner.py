@@ -5,9 +5,14 @@ from copy import deepcopy
 from typing import Any, Union
 
 from core.agent.base_agent_runner import BaseAgentRunner
+from core.agent.errors import AgentMaxIterationError
 from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.entities.queue_entities import QueueAgentThoughtEvent, QueueMessageEndEvent, QueueMessageFileEvent
-from core.model_runtime.entities import (
+from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
+from core.tools.entities.tool_entities import ToolInvokeMeta
+from core.tools.tool_engine import ToolEngine
+from dify_graph.file import file_manager
+from dify_graph.model_runtime.entities import (
     AssistantPromptMessage,
     LLMResult,
     LLMResultChunk,
@@ -20,12 +25,7 @@ from core.model_runtime.entities import (
     ToolPromptMessage,
     UserPromptMessage,
 )
-from core.model_runtime.entities.message_entities import ImagePromptMessageContent, PromptMessageContentUnionTypes
-from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
-from core.tools.entities.tool_entities import ToolInvokeMeta
-from core.tools.tool_engine import ToolEngine
-from core.workflow.file import file_manager
-from core.workflow.nodes.agent.exc import AgentMaxIterationError
+from dify_graph.model_runtime.entities.message_entities import ImagePromptMessageContent, PromptMessageContentUnionTypes
 from models.model import Message
 
 logger = logging.getLogger(__name__)

@@ -4,7 +4,7 @@ import List from '../index'
 
 const mockPush = vi.fn()
 const mockReplace = vi.fn()
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
     replace: mockReplace,

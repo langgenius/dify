@@ -2,11 +2,14 @@ from unittest.mock import patch
 
 import pytest
 from faker import Faker
+from sqlalchemy.orm import Session
 
+from models.enums import ConversationFromSource
 from models.model import EndUser, Message
 from models.web import SavedMessage
 from services.app_service import AppService
 from services.saved_message_service import SavedMessageService
+from tests.test_containers_integration_tests.helpers import generate_valid_password
 
 
 class TestSavedMessageService:
@@ -38,7 +41,7 @@ class TestSavedMessageService:
                 "message_service": mock_message_service,
             }
 
-    def _create_test_app_and_account(self, db_session_with_containers, mock_external_service_dependencies):
+    def _create_test_app_and_account(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Helper method to create a test app and account for testing.
 
@@ -63,7 +66,7 @@ class TestSavedMessageService:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            password=fake.password(length=12),
+            password=generate_valid_password(fake),
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
@@ -85,7 +88,7 @@ class TestSavedMessageService:
 
         return app, account
 
-    def _create_test_end_user(self, db_session_with_containers, app):
+    def _create_test_end_user(self, db_session_with_containers: Session, app):
         """
         Helper method to create a test end user for testing.
 
@@ -108,14 +111,12 @@ class TestSavedMessageService:
             is_anonymous=False,
         )
 
-        from extensions.ext_database import db
-
-        db.session.add(end_user)
-        db.session.commit()
+        db_session_with_containers.add(end_user)
+        db_session_with_containers.commit()
 
         return end_user
 
-    def _create_test_message(self, db_session_with_containers, app, user):
+    def _create_test_message(self, db_session_with_containers: Session, app, user):
         """
         Helper method to create a test message for testing.
 
@@ -132,29 +133,30 @@ class TestSavedMessageService:
         # Create a simple conversation first
         from models.model import Conversation
 
+        is_account = hasattr(user, "current_tenant")
+        from_source = ConversationFromSource.CONSOLE if is_account else ConversationFromSource.API
+
         conversation = Conversation(
             app_id=app.id,
-            from_source="account" if hasattr(user, "current_tenant") else "end_user",
-            from_end_user_id=user.id if not hasattr(user, "current_tenant") else None,
-            from_account_id=user.id if hasattr(user, "current_tenant") else None,
+            from_source=from_source,
+            from_end_user_id=user.id if not is_account else None,
+            from_account_id=user.id if is_account else None,
             name=fake.sentence(nb_words=3),
             inputs={},
             status="normal",
             mode="chat",
         )
 
-        from extensions.ext_database import db
-
-        db.session.add(conversation)
-        db.session.commit()
+        db_session_with_containers.add(conversation)
+        db_session_with_containers.commit()
 
         # Create message
         message = Message(
             app_id=app.id,
             conversation_id=conversation.id,
-            from_source="account" if hasattr(user, "current_tenant") else "end_user",
-            from_end_user_id=user.id if not hasattr(user, "current_tenant") else None,
-            from_account_id=user.id if hasattr(user, "current_tenant") else None,
+            from_source=from_source,
+            from_end_user_id=user.id if not is_account else None,
+            from_account_id=user.id if is_account else None,
             inputs={},
             query=fake.sentence(nb_words=5),
             message=fake.text(max_nb_chars=100),
@@ -165,16 +167,16 @@ class TestSavedMessageService:
             answer_unit_price=0.002,
             total_price=0.003,
             currency="USD",
-            status="success",
+            status="normal",
         )
 
-        db.session.add(message)
-        db.session.commit()
+        db_session_with_containers.add(message)
+        db_session_with_containers.commit()
 
         return message
 
     def test_pagination_by_last_id_success_with_account_user(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test successful pagination by last ID with account user.
@@ -207,10 +209,8 @@ class TestSavedMessageService:
             created_by=account.id,
         )
 
-        from extensions.ext_database import db
-
-        db.session.add_all([saved_message1, saved_message2])
-        db.session.commit()
+        db_session_with_containers.add_all([saved_message1, saved_message2])
+        db_session_with_containers.commit()
 
         # Mock MessageService.pagination_by_last_id return value
         from libs.infinite_scroll_pagination import InfiniteScrollPagination
@@ -240,15 +240,15 @@ class TestSavedMessageService:
         assert actual_include_ids == expected_include_ids
 
         # Verify database state
-        db.session.refresh(saved_message1)
-        db.session.refresh(saved_message2)
+        db_session_with_containers.refresh(saved_message1)
+        db_session_with_containers.refresh(saved_message2)
         assert saved_message1.id is not None
         assert saved_message2.id is not None
         assert saved_message1.created_by_role == "account"
         assert saved_message2.created_by_role == "account"
 
     def test_pagination_by_last_id_success_with_end_user(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test successful pagination by last ID with end user.
@@ -282,10 +282,8 @@ class TestSavedMessageService:
             created_by=end_user.id,
         )
 
-        from extensions.ext_database import db
-
-        db.session.add_all([saved_message1, saved_message2])
-        db.session.commit()
+        db_session_with_containers.add_all([saved_message1, saved_message2])
+        db_session_with_containers.commit()
 
         # Mock MessageService.pagination_by_last_id return value
         from libs.infinite_scroll_pagination import InfiniteScrollPagination
@@ -317,14 +315,16 @@ class TestSavedMessageService:
         assert actual_include_ids == expected_include_ids
 
         # Verify database state
-        db.session.refresh(saved_message1)
-        db.session.refresh(saved_message2)
+        db_session_with_containers.refresh(saved_message1)
+        db_session_with_containers.refresh(saved_message2)
         assert saved_message1.id is not None
         assert saved_message2.id is not None
         assert saved_message1.created_by_role == "end_user"
         assert saved_message2.created_by_role == "end_user"
 
-    def test_save_success_with_new_message(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_save_success_with_new_message(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test successful save of a new message.
 
@@ -347,10 +347,9 @@ class TestSavedMessageService:
 
         # Assert: Verify the expected outcomes
         # Check if saved message was created in database
-        from extensions.ext_database import db
 
         saved_message = (
-            db.session.query(SavedMessage)
+            db_session_with_containers.query(SavedMessage)
             .where(
                 SavedMessage.app_id == app.id,
                 SavedMessage.message_id == message.id,
@@ -373,10 +372,12 @@ class TestSavedMessageService:
         )
 
         # Verify database state
-        db.session.refresh(saved_message)
+        db_session_with_containers.refresh(saved_message)
         assert saved_message.id is not None
 
-    def test_pagination_by_last_id_error_no_user(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_pagination_by_last_id_error_no_user(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test error handling when no user is provided.
 
@@ -396,12 +397,11 @@ class TestSavedMessageService:
         assert "User is required" in str(exc_info.value)
 
         # Verify no database operations were performed
-        from extensions.ext_database import db
 
-        saved_messages = db.session.query(SavedMessage).all()
+        saved_messages = db_session_with_containers.query(SavedMessage).all()
         assert len(saved_messages) == 0
 
-    def test_save_error_no_user(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_save_error_no_user(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test error handling when saving message with no user.
 
@@ -422,10 +422,9 @@ class TestSavedMessageService:
         assert result is None
 
         # Verify no saved message was created
-        from extensions.ext_database import db
 
         saved_message = (
-            db.session.query(SavedMessage)
+            db_session_with_containers.query(SavedMessage)
             .where(
                 SavedMessage.app_id == app.id,
                 SavedMessage.message_id == message.id,
@@ -435,7 +434,9 @@ class TestSavedMessageService:
 
         assert saved_message is None
 
-    def test_delete_success_existing_message(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_delete_success_existing_message(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test successful deletion of an existing saved message.
 
@@ -457,14 +458,12 @@ class TestSavedMessageService:
             created_by=account.id,
         )
 
-        from extensions.ext_database import db
-
-        db.session.add(saved_message)
-        db.session.commit()
+        db_session_with_containers.add(saved_message)
+        db_session_with_containers.commit()
 
         # Verify saved message exists
         assert (
-            db.session.query(SavedMessage)
+            db_session_with_containers.query(SavedMessage)
             .where(
                 SavedMessage.app_id == app.id,
                 SavedMessage.message_id == message.id,
@@ -481,7 +480,7 @@ class TestSavedMessageService:
         # Assert: Verify the expected outcomes
         # Check if saved message was deleted from database
         deleted_saved_message = (
-            db.session.query(SavedMessage)
+            db_session_with_containers.query(SavedMessage)
             .where(
                 SavedMessage.app_id == app.id,
                 SavedMessage.message_id == message.id,
@@ -494,11 +493,13 @@ class TestSavedMessageService:
         assert deleted_saved_message is None
 
         # Verify database state
-        db.session.commit()
+        db_session_with_containers.commit()
         # The message should still exist, only the saved_message should be deleted
-        assert db.session.query(Message).where(Message.id == message.id).first() is not None
+        assert db_session_with_containers.query(Message).where(Message.id == message.id).first() is not None
 
-    def test_pagination_by_last_id_error_no_user(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_pagination_by_last_id_error_no_user(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test error handling when no user is provided.
 
@@ -522,7 +523,7 @@ class TestSavedMessageService:
         # Instead, we verify that the error was properly raised
         pass
 
-    def test_save_error_no_user(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_save_error_no_user(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test error handling when saving message with no user.
 
@@ -543,10 +544,9 @@ class TestSavedMessageService:
         assert result is None
 
         # Verify no saved message was created
-        from extensions.ext_database import db
 
         saved_message = (
-            db.session.query(SavedMessage)
+            db_session_with_containers.query(SavedMessage)
             .where(
                 SavedMessage.app_id == app.id,
                 SavedMessage.message_id == message.id,
@@ -556,7 +556,9 @@ class TestSavedMessageService:
 
         assert saved_message is None
 
-    def test_delete_success_existing_message(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_delete_success_existing_message(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test successful deletion of an existing saved message.
 
@@ -578,14 +580,12 @@ class TestSavedMessageService:
             created_by=account.id,
         )
 
-        from extensions.ext_database import db
-
-        db.session.add(saved_message)
-        db.session.commit()
+        db_session_with_containers.add(saved_message)
+        db_session_with_containers.commit()
 
         # Verify saved message exists
         assert (
-            db.session.query(SavedMessage)
+            db_session_with_containers.query(SavedMessage)
             .where(
                 SavedMessage.app_id == app.id,
                 SavedMessage.message_id == message.id,
@@ -602,7 +602,7 @@ class TestSavedMessageService:
         # Assert: Verify the expected outcomes
         # Check if saved message was deleted from database
         deleted_saved_message = (
-            db.session.query(SavedMessage)
+            db_session_with_containers.query(SavedMessage)
             .where(
                 SavedMessage.app_id == app.id,
                 SavedMessage.message_id == message.id,
@@ -615,6 +615,6 @@ class TestSavedMessageService:
         assert deleted_saved_message is None
 
         # Verify database state
-        db.session.commit()
+        db_session_with_containers.commit()
         # The message should still exist, only the saved_message should be deleted
-        assert db.session.query(Message).where(Message.id == message.id).first() is not None
+        assert db_session_with_containers.query(Message).where(Message.id == message.id).first() is not None

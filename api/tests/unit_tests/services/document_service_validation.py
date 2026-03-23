@@ -111,7 +111,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
-from core.model_runtime.entities.model_entities import ModelType
+from dify_graph.model_runtime.entities.model_entities import ModelType
 from models.dataset import Dataset, DatasetProcessRule, Document
 from services.dataset_service import DatasetService, DocumentService
 from services.entities.knowledge_entities.knowledge_entities import (

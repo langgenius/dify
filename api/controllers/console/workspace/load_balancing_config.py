@@ -5,8 +5,8 @@ from werkzeug.exceptions import Forbidden
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, setup_required
-from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.errors.validate import CredentialsValidateFailedError
+from dify_graph.model_runtime.entities.model_entities import ModelType
+from dify_graph.model_runtime.errors.validate import CredentialsValidateFailedError
 from libs.login import current_account_with_tenant, login_required
 from models import TenantAccountRole
 from services.model_load_balancing_service import ModelLoadBalancingService

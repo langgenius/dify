@@ -12,25 +12,24 @@ import time
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
-from core.app.entities.app_invoke_entities import InvokeFrom
-from core.app.workflow.node_factory import DifyNodeFactory
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.model_manager import ModelInstance
-from core.workflow.entities import GraphInitParams
-from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
-from core.workflow.graph import Graph
-from core.workflow.graph_engine import GraphEngine, GraphEngineConfig
-from core.workflow.graph_engine.command_channels import InMemoryChannel
-from core.workflow.graph_events import (
+from core.workflow.node_factory import DifyNodeFactory, get_default_root_node_id
+from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
+from dify_graph.graph import Graph
+from dify_graph.graph_engine import GraphEngine, GraphEngineConfig
+from dify_graph.graph_engine.command_channels import InMemoryChannel
+from dify_graph.graph_events import (
     GraphRunSucceededEvent,
     NodeRunStartedEvent,
     NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
 )
-from core.workflow.node_events import NodeRunResult, StreamCompletedEvent
-from core.workflow.nodes.llm.node import LLMNode
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
-from models.enums import UserFrom
+from dify_graph.node_events import NodeRunResult, StreamCompletedEvent
+from dify_graph.nodes.llm.node import LLMNode
+from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
+from tests.workflow_test_utils import build_test_graph_init_params
 
 from .test_table_runner import TableTestRunner
 
@@ -87,11 +86,11 @@ def test_parallel_streaming_workflow():
     graph_config = workflow_config.get("graph", {})
 
     # Create graph initialization parameters
-    init_params = GraphInitParams(
-        tenant_id="test_tenant",
-        app_id="test_app",
+    init_params = build_test_graph_init_params(
         workflow_id="test_workflow",
         graph_config=graph_config,
+        tenant_id="test_tenant",
+        app_id="test_app",
         user_id="test_user",
         user_from=UserFrom.ACCOUNT,
         invoke_from=InvokeFrom.WEB_APP,
@@ -100,8 +99,8 @@ def test_parallel_streaming_workflow():
 
     # Create variable pool with system variables
     system_variables = SystemVariable(
-        user_id=init_params.user_id,
-        app_id=init_params.app_id,
+        user_id="test_user",
+        app_id="test_app",
         workflow_id=init_params.workflow_id,
         files=[],
         query="Tell me about yourself",  # User query
@@ -119,7 +118,11 @@ def test_parallel_streaming_workflow():
     with patch.object(
         DifyNodeFactory, "_build_model_instance_for_llm_node", return_value=MagicMock(spec=ModelInstance), autospec=True
     ):
-        graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
+        graph = Graph.init(
+            graph_config=graph_config,
+            node_factory=node_factory,
+            root_node_id=get_default_root_node_id(graph_config),
+        )
 
     # Create the graph engine
     engine = GraphEngine(
@@ -165,7 +168,9 @@ def test_parallel_streaming_workflow():
     stream_chunk_events = [e for e in events if isinstance(e, NodeRunStreamChunkEvent)]
 
     # Get Answer node start event
-    answer_start_events = [e for e in events if isinstance(e, NodeRunStartedEvent) and e.node_type == NodeType.ANSWER]
+    answer_start_events = [
+        e for e in events if isinstance(e, NodeRunStartedEvent) and e.node_type == BuiltinNodeTypes.ANSWER
+    ]
     assert len(answer_start_events) == 1, f"Expected 1 Answer node start event, got {len(answer_start_events)}"
     answer_start_event = answer_start_events[0]
 
@@ -212,7 +217,9 @@ def test_parallel_streaming_workflow():
 
     # Get LLM completion events
     llm_completed_events = [
-        (i, e) for i, e in enumerate(events) if isinstance(e, NodeRunSucceededEvent) and e.node_type == NodeType.LLM
+        (i, e)
+        for i, e in enumerate(events)
+        if isinstance(e, NodeRunSucceededEvent) and e.node_type == BuiltinNodeTypes.LLM
     ]
 
     # Check LLM completion order - in the current implementation, LLMs run sequentially
@@ -264,7 +271,7 @@ def test_parallel_streaming_workflow():
     # According to Answer node configuration: '{{#1754339725656.text#}}{{#1754339718571.text#}}'
     # This means LLM 2 output should come first, then LLM 1 output
     answer_complete_events = [
-        e for e in events if isinstance(e, NodeRunSucceededEvent) and e.node_type == NodeType.ANSWER
+        e for e in events if isinstance(e, NodeRunSucceededEvent) and e.node_type == BuiltinNodeTypes.ANSWER
     ]
     assert len(answer_complete_events) == 1, f"Expected 1 Answer completion event, got {len(answer_complete_events)}"
 

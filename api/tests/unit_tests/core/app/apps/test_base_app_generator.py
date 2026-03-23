@@ -1,7 +1,9 @@
+from unittest.mock import MagicMock
+
 import pytest
 
 from core.app.apps.base_app_generator import BaseAppGenerator
-from core.workflow.variables.input_entities import VariableEntity, VariableEntityType
+from dify_graph.variables.input_entities import VariableEntity, VariableEntityType
 
 
 def test_validate_inputs_with_zero():
@@ -366,3 +368,132 @@ def test_validate_inputs_optional_file_with_empty_string_ignores_default():
     )
 
     assert result is None
+
+
+class TestBaseAppGeneratorExtras:
+    def test_prepare_user_inputs_converts_files_and_lists(self, monkeypatch):
+        base_app_generator = BaseAppGenerator()
+
+        variables = [
+            VariableEntity(
+                variable="file",
+                label="file",
+                type=VariableEntityType.FILE,
+                required=False,
+                allowed_file_types=[],
+                allowed_file_extensions=[],
+                allowed_file_upload_methods=[],
+            ),
+            VariableEntity(
+                variable="file_list",
+                label="file_list",
+                type=VariableEntityType.FILE_LIST,
+                required=False,
+                allowed_file_types=[],
+                allowed_file_extensions=[],
+                allowed_file_upload_methods=[],
+            ),
+            VariableEntity(
+                variable="json",
+                label="json",
+                type=VariableEntityType.JSON_OBJECT,
+                required=False,
+            ),
+        ]
+
+        monkeypatch.setattr(
+            "core.app.apps.base_app_generator.file_factory.build_from_mapping",
+            lambda mapping, tenant_id, config, strict_type_validation=False: "file-object",
+        )
+        monkeypatch.setattr(
+            "core.app.apps.base_app_generator.file_factory.build_from_mappings",
+            lambda mappings, tenant_id, config: ["file-1", "file-2"],
+        )
+
+        user_inputs = {
+            "file": {"id": "file-id"},
+            "file_list": [{"id": "file-1"}, {"id": "file-2"}],
+            "json": {"key": "value"},
+        }
+
+        prepared = base_app_generator._prepare_user_inputs(
+            user_inputs=user_inputs,
+            variables=variables,
+            tenant_id="tenant-id",
+        )
+
+        assert prepared["file"] == "file-object"
+        assert prepared["file_list"] == ["file-1", "file-2"]
+        assert prepared["json"] == {"key": "value"}
+
+    def test_prepare_user_inputs_rejects_invalid_dict_inputs(self):
+        base_app_generator = BaseAppGenerator()
+        variables = [
+            VariableEntity(
+                variable="text",
+                label="text",
+                type=VariableEntityType.TEXT_INPUT,
+                required=False,
+            )
+        ]
+
+        with pytest.raises(ValueError, match="must be a string"):
+            base_app_generator._prepare_user_inputs(
+                user_inputs={"text": {"unexpected": "dict"}},
+                variables=variables,
+                tenant_id="tenant-id",
+            )
+
+    def test_prepare_user_inputs_rejects_invalid_list_inputs(self):
+        base_app_generator = BaseAppGenerator()
+        variables = [
+            VariableEntity(
+                variable="text",
+                label="text",
+                type=VariableEntityType.TEXT_INPUT,
+                required=False,
+            )
+        ]
+
+        with pytest.raises(ValueError, match="must be a string"):
+            base_app_generator._prepare_user_inputs(
+                user_inputs={"text": [{"unexpected": "dict"}]},
+                variables=variables,
+                tenant_id="tenant-id",
+            )
+
+    def test_convert_to_event_stream(self):
+        base_app_generator = BaseAppGenerator()
+
+        assert base_app_generator.convert_to_event_stream({"ok": True}) == {"ok": True}
+
+        def _gen():
+            yield {"delta": "hi"}
+            yield "ping"
+
+        converted = list(base_app_generator.convert_to_event_stream(_gen()))
+
+        assert converted[0].startswith("data: ")
+        assert "\n\n" in converted[0]
+        assert converted[1] == "event: ping\n\n"
+
+    def test_get_draft_var_saver_factory_debugger(self):
+        from core.app.entities.app_invoke_entities import InvokeFrom
+        from dify_graph.enums import BuiltinNodeTypes
+        from models import Account
+
+        base_app_generator = BaseAppGenerator()
+        account = Account(name="Tester", email="tester@example.com")
+        account.id = "account-id"
+        account.tenant_id = "tenant-id"
+
+        factory = base_app_generator._get_draft_var_saver_factory(InvokeFrom.DEBUGGER, account)
+        saver = factory(
+            session=MagicMock(),
+            app_id="app-id",
+            node_id="node-id",
+            node_type=BuiltinNodeTypes.START,
+            node_execution_id="node-exec-id",
+        )
+
+        assert saver is not None

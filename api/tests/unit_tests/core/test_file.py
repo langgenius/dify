@@ -1,6 +1,6 @@
 import json
 
-from core.workflow.file import File, FileTransferMethod, FileType, FileUploadConfig
+from dify_graph.file import File, FileTransferMethod, FileType, FileUploadConfig
 from models.workflow import Workflow
 
 

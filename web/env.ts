@@ -115,6 +115,7 @@ const clientSchema = {
    */
   NEXT_PUBLIC_SENTRY_DSN: z.string().optional(),
   NEXT_PUBLIC_SITE_ABOUT: z.string().optional(),
+  NEXT_PUBLIC_SUPPORT_EMAIL_ADDRESS: z.email().optional(),
   NEXT_PUBLIC_SUPPORT_MAIL_LOGIN: coercedBoolean.default(false),
   /**
    * The timeout for the text generation in millisecond
@@ -153,12 +154,8 @@ export const env = createEnv({
      */
     TEXT_GENERATION_TIMEOUT_MS: coercedNumber.default(60000),
   },
-  shared: {
-    NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-  },
   client: clientSchema,
   experimental__runtimeEnv: {
-    NODE_ENV: process.env.NODE_ENV,
     NEXT_PUBLIC_ALLOW_EMBED: isServer ? process.env.NEXT_PUBLIC_ALLOW_EMBED : getRuntimeEnvFromBody('allowEmbed'),
     NEXT_PUBLIC_ALLOW_UNSAFE_DATA_SCHEME: isServer ? process.env.NEXT_PUBLIC_ALLOW_UNSAFE_DATA_SCHEME : getRuntimeEnvFromBody('allowUnsafeDataScheme'),
     NEXT_PUBLIC_AMPLITUDE_API_KEY: isServer ? process.env.NEXT_PUBLIC_AMPLITUDE_API_KEY : getRuntimeEnvFromBody('amplitudeApiKey'),
@@ -188,6 +185,7 @@ export const env = createEnv({
     NEXT_PUBLIC_PUBLIC_API_PREFIX: isServer ? process.env.NEXT_PUBLIC_PUBLIC_API_PREFIX : getRuntimeEnvFromBody('publicApiPrefix'),
     NEXT_PUBLIC_SENTRY_DSN: isServer ? process.env.NEXT_PUBLIC_SENTRY_DSN : getRuntimeEnvFromBody('sentryDsn'),
     NEXT_PUBLIC_SITE_ABOUT: isServer ? process.env.NEXT_PUBLIC_SITE_ABOUT : getRuntimeEnvFromBody('siteAbout'),
+    NEXT_PUBLIC_SUPPORT_EMAIL_ADDRESS: isServer ? process.env.NEXT_PUBLIC_SUPPORT_EMAIL_ADDRESS : getRuntimeEnvFromBody('supportEmailAddress'),
     NEXT_PUBLIC_SUPPORT_MAIL_LOGIN: isServer ? process.env.NEXT_PUBLIC_SUPPORT_MAIL_LOGIN : getRuntimeEnvFromBody('supportMailLogin'),
     NEXT_PUBLIC_TEXT_GENERATION_TIMEOUT_MS: isServer ? process.env.NEXT_PUBLIC_TEXT_GENERATION_TIMEOUT_MS : getRuntimeEnvFromBody('textGenerationTimeoutMs'),
     NEXT_PUBLIC_TOP_K_MAX_VALUE: isServer ? process.env.NEXT_PUBLIC_TOP_K_MAX_VALUE : getRuntimeEnvFromBody('topKMaxValue'),

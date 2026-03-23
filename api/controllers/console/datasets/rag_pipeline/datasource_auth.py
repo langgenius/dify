@@ -9,9 +9,9 @@ from configs import dify_config
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
-from core.model_runtime.errors.validate import CredentialsValidateFailedError
-from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.impl.oauth import OAuthHandler
+from dify_graph.model_runtime.errors.validate import CredentialsValidateFailedError
+from dify_graph.model_runtime.utils.encoders import jsonable_encoder
 from libs.login import current_account_with_tenant, login_required
 from models.provider_ids import DatasourceProviderID
 from services.datasource_provider_service import DatasourceProviderService

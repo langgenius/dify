@@ -52,14 +52,14 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 
 from core.entities.embedding_type import EmbeddingInputType
-from core.model_runtime.entities.model_entities import ModelPropertyKey
-from core.model_runtime.entities.text_embedding_entities import EmbeddingResult, EmbeddingUsage
-from core.model_runtime.errors.invoke import (
+from core.rag.embedding.cached_embedding import CacheEmbedding
+from dify_graph.model_runtime.entities.model_entities import ModelPropertyKey
+from dify_graph.model_runtime.entities.text_embedding_entities import EmbeddingResult, EmbeddingUsage
+from dify_graph.model_runtime.errors.invoke import (
     InvokeAuthorizationError,
     InvokeConnectionError,
     InvokeRateLimitError,
 )
-from core.rag.embedding.cached_embedding import CacheEmbedding
 from models.dataset import Embedding
 
 

@@ -6,6 +6,13 @@ from typing import Any
 
 
 class ConfigHelper:
+    _LEGACY_SECTION_MAP = {
+        "admin_config": "admin",
+        "token_config": "auth",
+        "app_config": "app",
+        "api_key_config": "api_key",
+    }
+
     """Helper class for reading and writing configuration files."""
 
     def __init__(self, base_dir: Path | None = None):
@@ -50,14 +57,8 @@ class ConfigHelper:
             Dictionary containing config data, or None if file doesn't exist
         """
         # Provide backward compatibility for old config names
-        if filename in ["admin_config", "token_config", "app_config", "api_key_config"]:
-            section_map = {
-                "admin_config": "admin",
-                "token_config": "auth",
-                "app_config": "app",
-                "api_key_config": "api_key",
-            }
-            return self.get_state_section(section_map[filename])
+        if filename in self._LEGACY_SECTION_MAP:
+            return self.get_state_section(self._LEGACY_SECTION_MAP[filename])
 
         config_path = self.get_config_path(filename)
 
@@ -85,14 +86,11 @@ class ConfigHelper:
             True if successful, False otherwise
         """
         # Provide backward compatibility for old config names
-        if filename in ["admin_config", "token_config", "app_config", "api_key_config"]:
-            section_map = {
-                "admin_config": "admin",
-                "token_config": "auth",
-                "app_config": "app",
-                "api_key_config": "api_key",
-            }
-            return self.update_state_section(section_map[filename], data)
+        if filename in self._LEGACY_SECTION_MAP:
+            return self.update_state_section(
+                self._LEGACY_SECTION_MAP[filename],
+                data,
+            )
 
         self.ensure_config_dir()
         config_path = self.get_config_path(filename)

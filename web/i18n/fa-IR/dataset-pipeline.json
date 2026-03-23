@@ -35,6 +35,7 @@
   "details.structureTooltip": "ساختار Chunk نحوه تقسیم و نمایه سازی اسناد را تعیین می کند - حالت های عمومی، والد-فرزند و پرسش و پاسخ را ارائه می دهد - و برای هر پایگاه دانش منحصر به فرد است.",
   "documentSettings.title": "تنظیمات سند",
   "editPipelineInfo": "ویرایش اطلاعات خط لوله",
+  "editPipelineInfoNameRequired": "لطفاً یک نام برای پایگاه دانش وارد کنید.",
   "exportDSL.errorTip": "صادرات DSL خط لوله انجام نشد",
   "exportDSL.successTip": "DSL خط لوله را با موفقیت صادر کنید",
   "inputField": "فیلد ورودی",

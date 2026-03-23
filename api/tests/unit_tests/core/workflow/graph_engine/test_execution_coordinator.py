@@ -4,11 +4,11 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from core.workflow.graph_engine.command_processing.command_processor import CommandProcessor
-from core.workflow.graph_engine.domain.graph_execution import GraphExecution
-from core.workflow.graph_engine.graph_state_manager import GraphStateManager
-from core.workflow.graph_engine.orchestration.execution_coordinator import ExecutionCoordinator
-from core.workflow.graph_engine.worker_management.worker_pool import WorkerPool
+from dify_graph.graph_engine.command_processing.command_processor import CommandProcessor
+from dify_graph.graph_engine.domain.graph_execution import GraphExecution
+from dify_graph.graph_engine.graph_state_manager import GraphStateManager
+from dify_graph.graph_engine.orchestration.execution_coordinator import ExecutionCoordinator
+from dify_graph.graph_engine.worker_management.worker_pool import WorkerPool
 
 
 def _build_coordinator(graph_execution: GraphExecution) -> tuple[ExecutionCoordinator, MagicMock, MagicMock]:

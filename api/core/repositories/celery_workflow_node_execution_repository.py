@@ -12,8 +12,8 @@ from typing import Union
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecution
-from core.workflow.repositories.workflow_node_execution_repository import (
+from dify_graph.entities.workflow_node_execution import WorkflowNodeExecution
+from dify_graph.repositories.workflow_node_execution_repository import (
     OrderConfig,
     WorkflowNodeExecutionRepository,
 )

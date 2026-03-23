@@ -36,7 +36,7 @@ const ImageGallery: FC<Props> = ({
   const imgNum = srcs.length
   const imgStyle = getWidthStyle(imgNum)
   return (
-    <div className={cn(s[`img-${imgNum}`], 'flex flex-wrap')}>
+    <div className={cn(s[`img-${imgNum}`], 'flex flex-wrap')} data-testid="image-gallery">
       {srcs.map((src, index) => (
         !src
           ? null

@@ -3,11 +3,13 @@
 import type { PluginDetail } from '../../../types'
 import type { ModalStates, VersionTarget } from './use-detail-header-state'
 import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import Toast from '@/app/components/base/toast'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { uninstallPlugin } from '@/service/plugins'
+import { useInvalidateCheckInstalled } from '@/service/use-plugins'
 import { useInvalidateAllToolProviders } from '@/service/use-tools'
 import { useGitHubReleases } from '../../../install-plugin/hooks'
 import { PluginCategoryEnum, PluginSource } from '../../../types'
@@ -36,13 +38,19 @@ export const usePluginOperations = ({
   isFromMarketplace,
   onUpdate,
 }: UsePluginOperationsParams): UsePluginOperationsReturn => {
+  const { t } = useTranslation()
   const { checkForUpdates, fetchReleases } = useGitHubReleases()
   const { setShowUpdatePluginModal } = useModalContext()
   const { refreshModelProviders } = useProviderContext()
+  const invalidateCheckInstalled = useInvalidateCheckInstalled()
   const invalidateAllToolProviders = useInvalidateAllToolProviders()
 
   const { id, meta, plugin_id } = detail
   const { author, category, name } = detail.declaration || detail
+  const handlePluginUpdated = useCallback((isDelete?: boolean) => {
+    invalidateCheckInstalled()
+    onUpdate?.(isDelete)
+  }, [invalidateCheckInstalled, onUpdate])
 
   const handleUpdate = useCallback(async (isDowngrade?: boolean) => {
     if (isFromMarketplace) {
@@ -71,7 +79,7 @@ export const usePluginOperations = ({
     if (needUpdate) {
       setShowUpdatePluginModal({
         onSaveCallback: () => {
-          onUpdate?.()
+          handlePluginUpdated()
         },
         payload: {
           type: PluginSource.github,
@@ -97,15 +105,15 @@ export const usePluginOperations = ({
     checkForUpdates,
     setShowUpdatePluginModal,
     detail,
-    onUpdate,
+    handlePluginUpdated,
     modalStates,
     versionPicker,
   ])
 
   const handleUpdatedFromMarketplace = useCallback(() => {
-    onUpdate?.()
+    handlePluginUpdated()
     modalStates.hideUpdateModal()
-  }, [onUpdate, modalStates])
+  }, [handlePluginUpdated, modalStates])
 
   const handleDelete = useCallback(async () => {
     modalStates.showDeleting()
@@ -114,7 +122,11 @@ export const usePluginOperations = ({
 
     if (res.success) {
       modalStates.hideDeleteConfirm()
-      onUpdate?.(true)
+      Toast.notify({
+        type: 'success',
+        message: t('action.deleteSuccess', { ns: 'plugin' }),
+      })
+      handlePluginUpdated(true)
 
       if (PluginCategoryEnum.model.includes(category))
         refreshModelProviders()
@@ -130,7 +142,7 @@ export const usePluginOperations = ({
     plugin_id,
     name,
     modalStates,
-    onUpdate,
+    handlePluginUpdated,
     refreshModelProviders,
     invalidateAllToolProviders,
   ])

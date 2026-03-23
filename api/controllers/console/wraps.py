@@ -7,6 +7,7 @@ from functools import wraps
 from typing import ParamSpec, TypeVar
 
 from flask import abort, request
+from sqlalchemy import select
 
 from configs import dify_config
 from controllers.console.auth.error import AuthenticationFailedError, EmailCodeError
@@ -218,13 +219,9 @@ def setup_required(view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
         # check setup
-        if (
-            dify_config.EDITION == "SELF_HOSTED"
-            and os.environ.get("INIT_PASSWORD")
-            and not db.session.query(DifySetup).first()
-        ):
-            raise NotInitValidateError()
-        elif dify_config.EDITION == "SELF_HOSTED" and not db.session.query(DifySetup).first():
+        if dify_config.EDITION == "SELF_HOSTED" and not db.session.scalar(select(DifySetup).limit(1)):
+            if os.environ.get("INIT_PASSWORD"):
+                raise NotInitValidateError()
             raise NotSetupError()
 
         return view(*args, **kwargs)

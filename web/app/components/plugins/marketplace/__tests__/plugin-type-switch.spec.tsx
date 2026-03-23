@@ -1,9 +1,8 @@
-import type { UrlUpdateEvent } from 'nuqs/adapters/testing'
 import type { ReactNode } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { Provider as JotaiProvider } from 'jotai'
-import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import PluginTypeSwitch from '../plugin-type-switch'
 
 vi.mock('#i18n', () => ({
@@ -25,15 +24,15 @@ vi.mock('#i18n', () => ({
 }))
 
 const createWrapper = (searchParams = '') => {
-  const onUrlUpdate = vi.fn<(event: UrlUpdateEvent) => void>()
+  const { wrapper: NuqsWrapper } = createNuqsTestWrapper({ searchParams })
   const Wrapper = ({ children }: { children: ReactNode }) => (
     <JotaiProvider>
-      <NuqsTestingAdapter searchParams={searchParams} onUrlUpdate={onUrlUpdate}>
+      <NuqsWrapper>
         {children}
-      </NuqsTestingAdapter>
+      </NuqsWrapper>
     </JotaiProvider>
   )
-  return { Wrapper, onUrlUpdate }
+  return { Wrapper }
 }
 
 describe('PluginTypeSwitch', () => {
@@ -75,31 +74,40 @@ describe('PluginTypeSwitch', () => {
     const { Wrapper } = createWrapper('?category=all')
     render(<PluginTypeSwitch />, { wrapper: Wrapper })
 
-    // Click on Models option — should not throw
-    expect(() => fireEvent.click(screen.getByText('Models'))).not.toThrow()
+    fireEvent.click(screen.getByText('Models'))
+
+    const modelsButton = screen.getByText('Models').closest('div')
+    expect(modelsButton?.className).toContain('!bg-components-main-nav-nav-button-bg-active')
   })
 
   it('should handle clicking on category with collections (Tools)', () => {
     const { Wrapper } = createWrapper('?category=model')
     render(<PluginTypeSwitch />, { wrapper: Wrapper })
 
-    // Click on "Tools" which has collections → setSearchMode(null)
-    expect(() => fireEvent.click(screen.getByText('Tools'))).not.toThrow()
+    fireEvent.click(screen.getByText('Tools'))
+
+    const toolsButton = screen.getByText('Tools').closest('div')
+    expect(toolsButton?.className).toContain('!bg-components-main-nav-nav-button-bg-active')
   })
 
   it('should handle clicking on category without collections (Models)', () => {
     const { Wrapper } = createWrapper('?category=all')
     render(<PluginTypeSwitch />, { wrapper: Wrapper })
 
-    // Click on "Models" which does NOT have collections → no setSearchMode call
-    expect(() => fireEvent.click(screen.getByText('Models'))).not.toThrow()
+    fireEvent.click(screen.getByText('Models'))
+
+    const modelsButton = screen.getByText('Models').closest('div')
+    expect(modelsButton?.className).toContain('!bg-components-main-nav-nav-button-bg-active')
   })
 
   it('should handle clicking on bundles', () => {
     const { Wrapper } = createWrapper('?category=all')
     render(<PluginTypeSwitch />, { wrapper: Wrapper })
 
-    expect(() => fireEvent.click(screen.getByText('Bundles'))).not.toThrow()
+    fireEvent.click(screen.getByText('Bundles'))
+
+    const bundlesButton = screen.getByText('Bundles').closest('div')
+    expect(bundlesButton?.className).toContain('!bg-components-main-nav-nav-button-bg-active')
   })
 
   it('should handle clicking on each category', () => {
@@ -108,7 +116,10 @@ describe('PluginTypeSwitch', () => {
 
     const categories = ['All', 'Models', 'Tools', 'Data Sources', 'Triggers', 'Agents', 'Extensions', 'Bundles']
     categories.forEach((category) => {
-      expect(() => fireEvent.click(screen.getByText(category))).not.toThrow()
+      fireEvent.click(screen.getByText(category))
+
+      const button = screen.getByText(category).closest('div')
+      expect(button?.className).toContain('!bg-components-main-nav-nav-button-bg-active')
     })
   })
 

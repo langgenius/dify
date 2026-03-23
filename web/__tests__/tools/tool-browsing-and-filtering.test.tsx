@@ -28,9 +28,13 @@ vi.mock('react-i18next', () => ({
   }),
 }))
 
-vi.mock('nuqs', () => ({
-  useQueryState: () => ['builtin', vi.fn()],
-}))
+vi.mock('nuqs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nuqs')>()
+  return {
+    ...actual,
+    useQueryState: () => ['builtin', vi.fn()],
+  }
+})
 
 vi.mock('@/context/global-public-context', () => ({
   useGlobalPublicStore: () => ({ enable_marketplace: false }),
@@ -210,6 +214,12 @@ vi.mock('@/app/components/plugins/marketplace/empty', () => ({
 
 vi.mock('@/app/components/tools/marketplace', () => ({
   default: () => null,
+}))
+
+vi.mock('@/app/components/tools/marketplace/hooks', () => ({
+  useMarketplace: () => ({
+    handleScroll: vi.fn(),
+  }),
 }))
 
 vi.mock('@/app/components/tools/mcp', () => ({

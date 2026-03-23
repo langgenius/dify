@@ -2,8 +2,8 @@ from typing import cast
 
 import pytest
 
-from core.workflow.file.models import File, FileTransferMethod, FileType
-from core.workflow.system_variable import SystemVariable, SystemVariableReadOnlyView
+from dify_graph.file.models import File, FileTransferMethod, FileType
+from dify_graph.system_variable import SystemVariable, SystemVariableReadOnlyView
 
 
 class TestSystemVariableReadOnlyView:
