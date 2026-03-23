@@ -7,9 +7,9 @@ export const MediaType = {
   pc: 'pc',
 } as const
 
-export type MediaTypeValue = (typeof MediaType)[keyof typeof MediaType]
+type MediaTypeValue = (typeof MediaType)[keyof typeof MediaType]
 
-const useBreakpoints = () => {
+const useBreakpoints = (): MediaTypeValue => {
   const [width, setWidth] = React.useState(globalThis.innerWidth)
   const media = (() => {
     if (width <= 640)
