@@ -8939,7 +8939,7 @@
   },
   "app/components/workflow/panel/chat-record/user-input.tsx": {
     "ts/no-explicit-any": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/workflow/panel/chat-variable-panel/components/array-bool-list.tsx": {
