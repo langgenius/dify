@@ -12,15 +12,9 @@ import dynamic from '@/next/dynamic'
 import { fetchAppDetail } from '@/service/explore'
 import List from './list'
 
-const DSLConfirmModal = dynamic(() => import('../app/create-from-dsl-modal/dsl-confirm-modal'), {
-  ssr: false,
-})
-const CreateAppModal = dynamic(() => import('../explore/create-app-modal'), {
-  ssr: false,
-})
-const TryApp = dynamic(() => import('../explore/try-app'), {
-  ssr: false,
-})
+const DSLConfirmModal = dynamic(() => import('../app/create-from-dsl-modal/dsl-confirm-modal'), { ssr: false })
+const CreateAppModal = dynamic(() => import('../explore/create-app-modal'), { ssr: false })
+const TryApp = dynamic(() => import('../explore/try-app'), { ssr: false })
 
 const Apps = () => {
   const { t } = useTranslation()

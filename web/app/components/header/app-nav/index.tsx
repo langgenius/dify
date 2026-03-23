@@ -17,15 +17,9 @@ import { useInfiniteAppList } from '@/service/use-apps'
 import { AppModeEnum } from '@/types/app'
 import Nav from '../nav'
 
-const CreateAppTemplateDialog = dynamic(() => import('@/app/components/app/create-app-dialog'), {
-  ssr: false,
-})
-const CreateAppModal = dynamic(() => import('@/app/components/app/create-app-modal'), {
-  ssr: false,
-})
-const CreateFromDSLModal = dynamic(() => import('@/app/components/app/create-from-dsl-modal'), {
-  ssr: false,
-})
+const CreateAppTemplateDialog = dynamic(() => import('@/app/components/app/create-app-dialog'), { ssr: false })
+const CreateAppModal = dynamic(() => import('@/app/components/app/create-app-modal'), { ssr: false })
+const CreateFromDSLModal = dynamic(() => import('@/app/components/app/create-from-dsl-modal'), { ssr: false })
 
 const AppNav = () => {
   const { t } = useTranslation()
