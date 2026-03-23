@@ -3,6 +3,8 @@ import type { FC } from 'react'
 import {
   RiDeleteBinLine,
   RiEditLine,
+  RiFolderLine,
+  RiFolderReduceLine,
 } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
@@ -23,6 +25,9 @@ export type IItemOperationProps = {
   isShowDelete: boolean
   togglePin: () => void
   onDelete: () => void
+  isInFolder?: boolean
+  onMoveToFolder?: () => void
+  onRemoveFromFolder?: () => void
 }
 
 const ItemOperation: FC<IItemOperationProps> = ({
@@ -34,6 +39,9 @@ const ItemOperation: FC<IItemOperationProps> = ({
   onRenameConversation,
   isShowDelete,
   onDelete,
+  isInFolder,
+  onMoveToFolder,
+  onRemoveFromFolder,
 }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -75,6 +83,23 @@ const ItemOperation: FC<IItemOperationProps> = ({
             <Pin02 className="h-4 w-4 shrink-0 text-text-secondary" />
             <span className={s.actionName}>{isPinned ? t('sidebar.action.unpin', { ns: 'explore' }) : t('sidebar.action.pin', { ns: 'explore' })}</span>
           </div>
+          {isInFolder
+            ? (
+              onRemoveFromFolder && (
+                <div className={cn(s.actionItem, 'group hover:bg-state-base-hover')} onClick={() => { onRemoveFromFolder(); setOpen(false) }}>
+                  <RiFolderReduceLine className="h-4 w-4 shrink-0 text-text-secondary" />
+                  <span className={s.actionName}>{t('sidebar.action.removeFromFolder', { ns: 'explore' })}</span>
+                </div>
+              )
+            )
+            : (
+              onMoveToFolder && (
+                <div className={cn(s.actionItem, 'group hover:bg-state-base-hover')} onClick={() => { onMoveToFolder(); setOpen(false) }}>
+                  <RiFolderLine className="h-4 w-4 shrink-0 text-text-secondary" />
+                  <span className={s.actionName}>{t('sidebar.action.moveToFolder', { ns: 'explore' })}</span>
+                </div>
+              )
+            )}
           {isShowRenameConversation && (
             <div className={cn(s.actionItem, 'group hover:bg-state-base-hover')} onClick={onRenameConversation}>
               <RiEditLine className="h-4 w-4 shrink-0 text-text-secondary" />

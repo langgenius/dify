@@ -76,6 +76,7 @@ class InstalledAppsListApi(Resource):
                 "app": installed_app.app,
                 "app_owner_tenant_id": installed_app.app_owner_tenant_id,
                 "is_pinned": installed_app.is_pinned,
+                "folder_id": installed_app.folder_id,
                 "last_used_at": installed_app.last_used_at,
                 "editable": current_user.role in {"owner", "admin"},
                 "uninstallable": current_tenant_id == installed_app.app_owner_tenant_id,
@@ -133,15 +134,13 @@ class InstalledAppsListApi(Resource):
     def post(self):
         payload = InstalledAppCreatePayload.model_validate(console_ns.payload or {})
 
-        recommended_app = db.session.scalar(
-            select(RecommendedApp).where(RecommendedApp.app_id == payload.app_id).limit(1)
-        )
+        recommended_app = db.session.query(RecommendedApp).where(RecommendedApp.app_id == payload.app_id).first()
         if recommended_app is None:
             raise NotFound("Recommended app not found")
 
         _, current_tenant_id = current_account_with_tenant()
 
-        app = db.session.get(App, payload.app_id)
+        app = db.session.query(App).where(App.id == payload.app_id).first()
 
         if app is None:
             raise NotFound("App entity not found")
@@ -149,10 +148,10 @@ class InstalledAppsListApi(Resource):
         if not app.is_public:
             raise Forbidden("You can't install a non-public app")
 
-        installed_app = db.session.scalar(
-            select(InstalledApp)
+        installed_app = (
+            db.session.query(InstalledApp)
             .where(and_(InstalledApp.app_id == payload.app_id, InstalledApp.tenant_id == current_tenant_id))
-            .limit(1)
+            .first()
         )
 
         if installed_app is None:
