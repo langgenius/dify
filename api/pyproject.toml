@@ -202,7 +202,7 @@ tools = ["cloudscraper~=1.2.71", "nltk~=3.9.1"]
 # Required by vector store clients
 ############################################################
 vdb = [
-    "alibabacloud_gpdb20160503~=3.8.0",
+    "alibabacloud_gpdb20160503~=5.1.0",
     "alibabacloud_tea_openapi~=0.4.3",
     "chromadb==0.5.20",
     "clickhouse-connect~=0.14.1",
