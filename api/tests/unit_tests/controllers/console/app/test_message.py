@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from flask import Flask, request
+from flask import Flask, g, request
 from werkzeug.exceptions import InternalServerError, NotFound
 from werkzeug.local import LocalProxy
 
@@ -33,6 +33,9 @@ def app():
     flask_app = Flask(__name__)
     flask_app.config["TESTING"] = True
     flask_app.config["RESTX_MASK_HEADER"] = "X-Fields"
+    mock_lm = MagicMock()
+    mock_lm._load_user = lambda: setattr(__import__("flask").g, "_login_user", MagicMock())
+    flask_app.login_manager = mock_lm
     return flask_app
 
 
@@ -110,6 +113,7 @@ def setup_test_context(
             patch("controllers.console.app.message.attach_message_extra_contents", return_value=None),
         ):
             with test_app.test_request_context(full_path, method=method, json=payload):
+                g._login_user = mock_account
                 request.view_args = {"app_id": "app_123"}
 
                 if "suggested-questions" in route_path:
@@ -202,7 +206,7 @@ class TestMessageEndpoints:
             q_mock = mock_db.data_query
             q_mock.where.return_value.first.side_effect = [mock_conv]
             q_mock.where.return_value.order_by.return_value.limit.return_value.all.return_value = [mock_msg]
-            mock_db.session.scalar.return_value = False
+            mock_db.session.scalar.side_effect = [MagicMock(), False]
 
             resp = api.get(**v_args)
             assert resp["limit"] == 1

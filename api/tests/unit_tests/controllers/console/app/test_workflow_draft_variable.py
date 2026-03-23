@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from flask import Flask, request
+from flask import Flask, g, request
 from werkzeug.local import LocalProxy
 
 from controllers.console.app.error import DraftWorkflowNotExist
@@ -24,6 +24,9 @@ def app():
     flask_app = Flask(__name__)
     flask_app.config["TESTING"] = True
     flask_app.config["RESTX_MASK_HEADER"] = "X-Fields"
+    mock_lm = MagicMock()
+    mock_lm._load_user = lambda: setattr(__import__("flask").g, "_login_user", MagicMock())
+    flask_app.login_manager = mock_lm
     return flask_app
 
 
@@ -75,6 +78,7 @@ def setup_test_context(test_app, endpoint_class, route_path, method, mock_accoun
 
         with patch("libs.login.current_user", proxy_mock), patch("flask_login.current_user", proxy_mock):
             with test_app.test_request_context(route_path, method=method, json=payload):
+                g._login_user = mock_account
                 request.view_args = {"app_id": "app_123"}
                 # extract node_id or variable_id from path manually since view_args overrides
                 if "nodes/" in route_path:
@@ -102,6 +106,7 @@ class TestWorkflowDraftVariableEndpoints:
         mock_var = MagicMock()
         mock_var.app_id = "app_123"
         mock_var.id = "var_123"
+        mock_var.user_id = "user_123"
         mock_var.name = "test_var"
         mock_var.description = ""
         mock_var.get_variable_type.return_value = variable_type
@@ -151,8 +156,11 @@ class TestWorkflowDraftVariableEndpoints:
                 mock_app_model,
             )
 
+    @patch("controllers.console.app.workflow_draft_variable.SandboxService")
     @patch("controllers.console.app.workflow_draft_variable.WorkflowDraftVariableService")
-    def test_workflow_variable_collection_delete(self, mock_draft_srv, app, mock_account, mock_app_model):
+    def test_workflow_variable_collection_delete(
+        self, mock_draft_srv, mock_sandbox_srv, app, mock_account, mock_app_model,
+    ):
         resp = setup_test_context(
             app,
             WorkflowVariableCollectionApi,

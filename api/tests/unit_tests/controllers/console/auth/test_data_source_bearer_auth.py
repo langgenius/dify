@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from flask import Flask
+from flask import Flask, g
 
 from controllers.console.auth.data_source_bearer_auth import (
     ApiKeyAuthDataSource,
@@ -17,6 +17,9 @@ class TestApiKeyAuthDataSource:
         app = Flask(__name__)
         app.config["TESTING"] = True
         app.config["WTF_CSRF_ENABLED"] = False
+        mock_lm = MagicMock()
+        mock_lm._load_user = lambda: setattr(__import__("flask").g, "_login_user", MagicMock())
+        app.login_manager = mock_lm
         return app
 
     @patch("libs.login.check_csrf_token")
@@ -49,6 +52,7 @@ class TestApiKeyAuthDataSource:
             ),
         ):
             with app.test_request_context("/console/api/api-key-auth/data-source", method="GET"):
+                g._login_user = mock_account
                 proxy_mock = MagicMock()
                 proxy_mock._get_current_object.return_value = mock_account
                 with patch("libs.login.current_user", proxy_mock):
@@ -81,6 +85,7 @@ class TestApiKeyAuthDataSource:
             ),
         ):
             with app.test_request_context("/console/api/api-key-auth/data-source", method="GET"):
+                g._login_user = mock_account
                 proxy_mock = MagicMock()
                 proxy_mock._get_current_object.return_value = mock_account
                 with patch("libs.login.current_user", proxy_mock):
@@ -97,6 +102,9 @@ class TestApiKeyAuthDataSourceBinding:
         app = Flask(__name__)
         app.config["TESTING"] = True
         app.config["WTF_CSRF_ENABLED"] = False
+        mock_lm = MagicMock()
+        mock_lm._load_user = lambda: setattr(__import__("flask").g, "_login_user", MagicMock())
+        app.login_manager = mock_lm
         return app
 
     @patch("libs.login.check_csrf_token")
@@ -124,6 +132,7 @@ class TestApiKeyAuthDataSourceBinding:
                 method="POST",
                 json={"category": "api_key", "provider": "custom", "credentials": {"key": "value"}},
             ):
+                g._login_user = mock_account
                 proxy_mock = MagicMock()
                 proxy_mock._get_current_object.return_value = mock_account
                 with patch("libs.login.current_user", proxy_mock), patch("flask_login.current_user", proxy_mock):
@@ -162,6 +171,7 @@ class TestApiKeyAuthDataSourceBinding:
                 method="POST",
                 json={"category": "api_key", "provider": "custom", "credentials": {"key": "value"}},
             ):
+                g._login_user = mock_account
                 proxy_mock = MagicMock()
                 proxy_mock._get_current_object.return_value = mock_account
                 with patch("libs.login.current_user", proxy_mock), patch("flask_login.current_user", proxy_mock):
@@ -176,6 +186,9 @@ class TestApiKeyAuthDataSourceBindingDelete:
         app = Flask(__name__)
         app.config["TESTING"] = True
         app.config["WTF_CSRF_ENABLED"] = False
+        mock_lm = MagicMock()
+        mock_lm._load_user = lambda: setattr(__import__("flask").g, "_login_user", MagicMock())
+        app.login_manager = mock_lm
         return app
 
     @patch("libs.login.check_csrf_token")
@@ -198,6 +211,7 @@ class TestApiKeyAuthDataSourceBindingDelete:
             ),
         ):
             with app.test_request_context("/console/api/api-key-auth/data-source/binding_123", method="DELETE"):
+                g._login_user = mock_account
                 proxy_mock = MagicMock()
                 proxy_mock._get_current_object.return_value = mock_account
                 with patch("libs.login.current_user", proxy_mock), patch("flask_login.current_user", proxy_mock):

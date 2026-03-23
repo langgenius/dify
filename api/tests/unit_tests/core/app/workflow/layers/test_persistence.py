@@ -42,6 +42,7 @@ def test_update_node_execution_prefers_event_finished_at(monkeypatch: pytest.Mon
         predecessor_node_id=None,
         iteration_id="iter-1",
         loop_id=None,
+        parent_node_id=None,
         created_at=node_execution.created_at,
     )
 

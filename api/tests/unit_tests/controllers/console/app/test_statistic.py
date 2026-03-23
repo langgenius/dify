@@ -2,7 +2,7 @@ from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
 import pytest
-from flask import Flask, request
+from flask import Flask, g, request
 from werkzeug.local import LocalProxy
 
 from controllers.console.app.statistic import (
@@ -22,6 +22,9 @@ from models import App, AppMode
 def app():
     flask_app = Flask(__name__)
     flask_app.config["TESTING"] = True
+    mock_lm = MagicMock()
+    mock_lm._load_user = lambda: setattr(__import__("flask").g, "_login_user", MagicMock())
+    flask_app.login_manager = mock_lm
     return flask_app
 
 
@@ -85,6 +88,7 @@ def setup_test_context(
 
         with patch("libs.login.current_user", proxy_mock), patch("flask_login.current_user", proxy_mock):
             with test_app.test_request_context(route_path, method="GET"):
+                g._login_user = mock_account
                 request.view_args = {"app_id": "app_123"}
                 api_instance = endpoint_class()
                 response = api_instance.get(app_id="app_123")

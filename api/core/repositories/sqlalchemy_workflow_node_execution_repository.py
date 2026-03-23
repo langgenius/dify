@@ -18,7 +18,7 @@ from tenacity import before_sleep_log, retry, retry_if_exception, stop_after_att
 
 from configs import dify_config
 from dify_graph.entities import WorkflowNodeExecution
-from dify_graph.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from dify_graph.model_runtime.utils.encoders import jsonable_encoder
 from dify_graph.repositories.workflow_node_execution_repository import OrderConfig, WorkflowNodeExecutionRepository
 from dify_graph.workflow_type_encoder import WorkflowRuntimeTypeConverter
@@ -460,7 +460,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
 
             # Save LLMGenerationDetail for LLM nodes with successful execution
             if (
-                domain_model.node_type == NodeType.LLM
+                domain_model.node_type == BuiltinNodeTypes.LLM
                 and domain_model.status == WorkflowNodeExecutionStatus.SUCCEEDED
                 and domain_model.outputs is not None
             ):

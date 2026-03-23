@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from flask import Flask
+from flask import Flask, g
 from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.console.auth.oauth_server import (
@@ -17,6 +17,9 @@ class TestOAuthServerAppApi:
     def app(self):
         app = Flask(__name__)
         app.config["TESTING"] = True
+        mock_lm = MagicMock()
+        mock_lm._load_user = lambda: setattr(__import__("flask").g, "_login_user", MagicMock())
+        app.login_manager = mock_lm
         return app
 
     @pytest.fixture
@@ -85,6 +88,9 @@ class TestOAuthServerUserAuthorizeApi:
     def app(self):
         app = Flask(__name__)
         app.config["TESTING"] = True
+        mock_lm = MagicMock()
+        mock_lm._load_user = lambda: setattr(__import__("flask").g, "_login_user", MagicMock())
+        app.login_manager = mock_lm
         return app
 
     @pytest.fixture
@@ -117,6 +123,7 @@ class TestOAuthServerUserAuthorizeApi:
         mock_sign.return_value = "auth_code_123"
 
         with app.test_request_context("/oauth/provider/authorize", method="POST", json={"client_id": "test_client_id"}):
+            g._login_user = mock_account
             with patch("libs.login.current_user", mock_account):
                 api_instance = OAuthServerUserAuthorizeApi()
                 response = api_instance.post()
@@ -130,6 +137,9 @@ class TestOAuthServerUserTokenApi:
     def app(self):
         app = Flask(__name__)
         app.config["TESTING"] = True
+        mock_lm = MagicMock()
+        mock_lm._load_user = lambda: setattr(__import__("flask").g, "_login_user", MagicMock())
+        app.login_manager = mock_lm
         return app
 
     @pytest.fixture
@@ -291,6 +301,9 @@ class TestOAuthServerUserAccountApi:
     def app(self):
         app = Flask(__name__)
         app.config["TESTING"] = True
+        mock_lm = MagicMock()
+        mock_lm._load_user = lambda: setattr(__import__("flask").g, "_login_user", MagicMock())
+        app.login_manager = mock_lm
         return app
 
     @pytest.fixture

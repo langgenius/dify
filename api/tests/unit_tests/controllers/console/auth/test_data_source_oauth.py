@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from flask import Flask
+from flask import Flask, g
 from werkzeug.local import LocalProxy
 
 from controllers.console.auth.data_source_oauth import (
@@ -17,6 +17,9 @@ class TestOAuthDataSource:
     def app(self):
         app = Flask(__name__)
         app.config["TESTING"] = True
+        mock_lm = MagicMock()
+        mock_lm._load_user = lambda: setattr(__import__("flask").g, "_login_user", MagicMock())
+        app.login_manager = mock_lm
         return app
 
     @patch("controllers.console.auth.data_source_oauth.get_oauth_providers")
@@ -85,6 +88,9 @@ class TestOAuthDataSourceCallback:
     def app(self):
         app = Flask(__name__)
         app.config["TESTING"] = True
+        mock_lm = MagicMock()
+        mock_lm._load_user = lambda: setattr(__import__("flask").g, "_login_user", MagicMock())
+        app.login_manager = mock_lm
         return app
 
     @patch("controllers.console.auth.data_source_oauth.get_oauth_providers")
@@ -128,6 +134,9 @@ class TestOAuthDataSourceBinding:
     def app(self):
         app = Flask(__name__)
         app.config["TESTING"] = True
+        mock_lm = MagicMock()
+        mock_lm._load_user = lambda: setattr(__import__("flask").g, "_login_user", MagicMock())
+        app.login_manager = mock_lm
         return app
 
     @patch("controllers.console.auth.data_source_oauth.get_oauth_providers")
@@ -161,6 +170,9 @@ class TestOAuthDataSourceSync:
     def app(self):
         app = Flask(__name__)
         app.config["TESTING"] = True
+        mock_lm = MagicMock()
+        mock_lm._load_user = lambda: setattr(__import__("flask").g, "_login_user", MagicMock())
+        app.login_manager = mock_lm
         return app
 
     @patch("controllers.console.auth.data_source_oauth.get_oauth_providers")
@@ -181,6 +193,7 @@ class TestOAuthDataSourceSync:
 
         with patch("controllers.console.wraps.current_account_with_tenant", return_value=(mock_account, MagicMock())):
             with app.test_request_context("/console/api/oauth/data-source/notion/binding_123/sync", method="GET"):
+                g._login_user = mock_account
                 proxy_mock = LocalProxy(lambda: mock_account)
                 with patch("libs.login.current_user", proxy_mock):
                     api_instance = OAuthDataSourceSync()

@@ -2444,6 +2444,8 @@ class TestWorkflowServiceDraftExecution:
             patch("services.workflow_service.DifyCoreRepositoryFactory") as mock_repo_factory,
             patch("services.workflow_service.DraftVariableSaver") as mock_saver_cls,
             patch("services.workflow_service.storage"),
+            patch("services.workflow_service.SandboxProviderService"),
+            patch("services.workflow_service.SandboxService"),
         ):
             mock_node = MagicMock()
             mock_node.node_type = BuiltinNodeTypes.START
@@ -2513,6 +2515,8 @@ class TestWorkflowServiceDraftExecution:
             patch("services.workflow_service.DifyCoreRepositoryFactory"),
             patch("services.workflow_service.DraftVariableSaver"),
             patch("services.workflow_service.storage"),
+            patch("services.workflow_service.SandboxProviderService"),
+            patch("services.workflow_service.SandboxService"),
         ):
             mock_node = MagicMock()
             mock_node.node_type = BuiltinNodeTypes.LLM

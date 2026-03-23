@@ -56,9 +56,13 @@ from dify_graph.enums import (
 )
 from dify_graph.file import File, FileTransferMethod, FileType
 from dify_graph.model_runtime.entities import (
+    AssistantPromptMessage,
     ImagePromptMessageContent,
     PromptMessage,
+    PromptMessageRole,
+    SystemPromptMessage,
     TextPromptMessageContent,
+    UserPromptMessage,
 )
 from dify_graph.model_runtime.entities.llm_entities import (
     LLMResult,
@@ -94,6 +98,7 @@ from dify_graph.variables import (
     ArrayFileSegment,
     ArrayPromptMessageSegment,
     ArraySegment,
+    FileSegment,
     NoneSegment,
     ObjectSegment,
     StringSegment,

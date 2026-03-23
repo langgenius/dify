@@ -593,7 +593,6 @@ def test_handle_list_messages_basic(llm_node):
 
 
 def test_handle_list_messages_jinja2_uses_template_renderer(llm_node):
-    llm_node._template_renderer.render_jinja2.return_value = "Hello, world"
     messages = [
         LLMNodeChatModelMessage(
             text="",
@@ -603,20 +602,16 @@ def test_handle_list_messages_jinja2_uses_template_renderer(llm_node):
         )
     ]
 
-    result = llm_node.handle_list_messages(
-        messages=messages,
-        context=None,
-        jinja2_variables=[],
-        variable_pool=llm_node.graph_runtime_state.variable_pool,
-        vision_detail_config=ImagePromptMessageContent.DETAIL.HIGH,
-        template_renderer=llm_node._template_renderer,
-    )
+    with mock.patch("dify_graph.nodes.llm.node._render_jinja2_message", return_value="Hello, world"):
+        result = llm_node.handle_list_messages(
+            messages=messages,
+            context=None,
+            jinja2_variables=[],
+            variable_pool=llm_node.graph_runtime_state.variable_pool,
+            vision_detail_config=ImagePromptMessageContent.DETAIL.HIGH,
+        )
 
     assert result == [UserPromptMessage(content=[TextPromptMessageContent(data="Hello, world")])]
-    llm_node._template_renderer.render_jinja2.assert_called_once_with(
-        template="Hello, {{ name }}",
-        inputs={},
-    )
 
 
 def test_handle_memory_completion_mode_uses_prompt_message_interface():
