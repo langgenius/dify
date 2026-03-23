@@ -21,7 +21,7 @@
   "checkCode.validTime": "Kodun 5 dakika boyunca geçerli olduğunu unutmayın",
   "checkCode.verificationCode": "Doğrulama kodu",
   "checkCode.verificationCodePlaceholder": "6 haneli kodu girin",
-  "checkCode.verify": "Doğrulamak",
+  "checkCode.verify": "Doğrula",
   "checkEmailForResetLink": "Şifrenizi sıfırlamak için bir bağlantı içeren e-postayı kontrol edin. Birkaç dakika içinde görünmezse, spam klasörünüzü kontrol ettiğinizden emin olun.",
   "confirmPassword": "Şifreyi Onayla",
   "confirmPasswordPlaceholder": "Yeni şifrenizi onaylayın",
