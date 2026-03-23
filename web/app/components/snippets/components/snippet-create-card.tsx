@@ -6,16 +6,24 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/components/base/ui/toast'
 import CreateSnippetDialog from '@/app/components/workflow/create-snippet-dialog'
 import { useRouter } from '@/next/navigation'
-import { useCreateSnippetMutation } from '@/service/use-snippets'
+import {
+  useCreateSnippetMutation,
+} from '@/service/use-snippets'
+import SnippetImportDSLDialog from './snippet-import-dsl-dialog'
 
 const SnippetCreateCard = () => {
   const { t } = useTranslation('snippet')
   const { push } = useRouter()
   const createSnippetMutation = useCreateSnippetMutation()
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const [isImportDSLDialogOpen, setIsImportDSLDialogOpen] = useState(false)
 
   const handleCreateFromBlank = () => {
     setIsCreateDialogOpen(true)
+  }
+
+  const handleImportDSL = () => {
+    setIsImportDSLDialogOpen(true)
   }
 
   const handleCreateSnippet = ({
@@ -64,7 +72,11 @@ const SnippetCreateCard = () => {
             <span aria-hidden className="i-ri-sticky-note-add-line mr-2 h-4 w-4 shrink-0" />
             {t('createFromBlank')}
           </button>
-          <button type="button" className="flex w-full cursor-pointer items-center rounded-lg px-6 py-[7px] text-[13px] font-medium leading-[18px] text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary">
+          <button
+            type="button"
+            className="flex w-full cursor-pointer items-center rounded-lg px-6 py-[7px] text-[13px] font-medium leading-[18px] text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
+            onClick={handleImportDSL}
+          >
             <span aria-hidden className="i-ri-file-upload-line mr-2 h-4 w-4 shrink-0" />
             {t('importDSL', { ns: 'app' })}
           </button>
@@ -78,6 +90,17 @@ const SnippetCreateCard = () => {
           isSubmitting={createSnippetMutation.isPending}
           onClose={() => setIsCreateDialogOpen(false)}
           onConfirm={handleCreateSnippet}
+        />
+      )}
+
+      {isImportDSLDialogOpen && (
+        <SnippetImportDSLDialog
+          show={isImportDSLDialogOpen}
+          onClose={() => setIsImportDSLDialogOpen(false)}
+          onSuccess={(snippetId) => {
+            setIsImportDSLDialogOpen(false)
+            push(`/snippets/${snippetId}/orchestrate`)
+          }}
         />
       )}
     </>

@@ -1,10 +1,11 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import SnippetCreateCard from '../snippet-create-card'
 
-const { mockPush, mockMutate, mockToastSuccess } = vi.hoisted(() => ({
+const { mockPush, mockCreateMutate, mockToastSuccess, mockToastError } = vi.hoisted(() => ({
   mockPush: vi.fn(),
-  mockMutate: vi.fn(),
+  mockCreateMutate: vi.fn(),
   mockToastSuccess: vi.fn(),
+  mockToastError: vi.fn(),
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -16,15 +17,29 @@ vi.mock('@/next/navigation', () => ({
 vi.mock('@/app/components/base/ui/toast', () => ({
   toast: {
     success: mockToastSuccess,
-    error: vi.fn(),
+    error: mockToastError,
   },
 }))
 
 vi.mock('@/service/use-snippets', () => ({
   useCreateSnippetMutation: () => ({
-    mutate: mockMutate,
+    mutate: mockCreateMutate,
     isPending: false,
   }),
+}))
+
+vi.mock('../snippet-import-dsl-dialog', () => ({
+  default: ({ show, onClose, onSuccess }: { show: boolean, onClose: () => void, onSuccess?: (snippetId: string) => void }) => {
+    if (!show)
+      return null
+
+    return (
+      <div data-testid="snippet-import-dsl-dialog">
+        <button type="button" onClick={() => onSuccess?.('snippet-imported')}>Complete Import</button>
+        <button type="button" onClick={onClose}>Close Import</button>
+      </div>
+    )
+  },
 }))
 
 describe('SnippetCreateCard', () => {
@@ -34,7 +49,7 @@ describe('SnippetCreateCard', () => {
 
   describe('Create From Blank', () => {
     it('should open the create dialog and create a snippet from the modal', async () => {
-      mockMutate.mockImplementation((_payload, options?: { onSuccess?: (snippet: { id: string }) => void }) => {
+      mockCreateMutate.mockImplementation((_payload, options?: { onSuccess?: (snippet: { id: string }) => void }) => {
         options?.onSuccess?.({ id: 'snippet-123' })
       })
 
@@ -51,7 +66,7 @@ describe('SnippetCreateCard', () => {
       })
       fireEvent.click(screen.getByRole('button', { name: /workflow\.snippet\.confirm/i }))
 
-      expect(mockMutate).toHaveBeenCalledWith({
+      expect(mockCreateMutate).toHaveBeenCalledWith({
         body: {
           name: 'My Snippet',
           description: 'Useful snippet description',
@@ -71,7 +86,22 @@ describe('SnippetCreateCard', () => {
         expect(mockPush).toHaveBeenCalledWith('/snippets/snippet-123/orchestrate')
       })
 
-      expect(mockToastSuccess).toHaveBeenCalledWith('workflow.createSuccess')
+      expect(mockToastSuccess).toHaveBeenCalledWith('workflow.snippet.createSuccess')
+    })
+  })
+
+  describe('Import DSL', () => {
+    it('should open the import dialog and navigate when the import succeeds', async () => {
+      render(<SnippetCreateCard />)
+
+      fireEvent.click(screen.getByRole('button', { name: 'app.importDSL' }))
+      expect(screen.getByTestId('snippet-import-dsl-dialog')).toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole('button', { name: 'Complete Import' }))
+
+      await waitFor(() => {
+        expect(mockPush).toHaveBeenCalledWith('/snippets/snippet-imported/orchestrate')
+      })
     })
   })
 })

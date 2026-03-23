@@ -3,6 +3,8 @@
   "createFailed": "创建 Snippet 失败",
   "createFromBlank": "创建空白 Snippet",
   "defaultName": "未命名 Snippet",
+  "importFailed": "导入 Snippet DSL 失败",
+  "importSuccess": "Snippet 导入成功",
   "inputFieldButton": "输入字段",
   "notFoundDescription": "未找到对应的 snippet 静态数据。",
   "notFoundTitle": "未找到 Snippet",

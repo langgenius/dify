@@ -8,6 +8,7 @@ import type {
 import type {
   CreateSnippetPayload,
   Snippet as SnippetContract,
+  SnippetDSLImportResponse,
   SnippetListResponse,
   SnippetWorkflow,
   UpdateSnippetPayload,
@@ -266,8 +267,49 @@ export const useIncrementSnippetUseCountMutation = () => {
   })
 }
 
+export const useImportSnippetDSLMutation = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation<SnippetDSLImportResponse, Error, { mode: 'yaml-content' | 'yaml-url', yamlContent?: string, yamlUrl?: string }>({
+    mutationFn: ({ mode, yamlContent, yamlUrl }) => {
+      return consoleClient.snippets.import({
+        body: {
+          mode,
+          yaml_content: yamlContent,
+          yaml_url: yamlUrl,
+        },
+      }) as Promise<SnippetDSLImportResponse>
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.snippets.key(),
+      })
+    },
+  })
+}
+
+export const useConfirmSnippetImportMutation = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation<SnippetDSLImportResponse, Error, { importId: string }>({
+    mutationFn: ({ importId }) => {
+      return consoleClient.snippets.confirmImport({
+        params: {
+          importId,
+        },
+      }) as Promise<SnippetDSLImportResponse>
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.snippets.key(),
+      })
+    },
+  })
+}
+
 export type {
   CreateSnippetPayload,
+  SnippetDSLImportResponse,
   SnippetListResponse,
   UpdateSnippetPayload,
 }

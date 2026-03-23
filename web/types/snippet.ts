@@ -51,6 +51,15 @@ export type SnippetImportPayload = {
   description?: string
 }
 
+export type SnippetDSLImportResponse = {
+  id: string
+  status: string
+  snippet_id?: string
+  current_dsl_version?: string
+  imported_dsl_version?: string
+  error: string
+}
+
 export type IncrementSnippetUseCountResponse = {
   result: string
   use_count: number

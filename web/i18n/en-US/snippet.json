@@ -3,6 +3,8 @@
   "createFailed": "Failed to create snippet",
   "createFromBlank": "Create from blank",
   "defaultName": "Untitled Snippet",
+  "importFailed": "Failed to import snippet DSL",
+  "importSuccess": "Snippet imported",
   "inputFieldButton": "Input Field",
   "notFoundDescription": "The requested snippet mock was not found.",
   "notFoundTitle": "Snippet not found",
