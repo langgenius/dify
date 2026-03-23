@@ -123,6 +123,9 @@ def test_delete_binding_successful(
     )
 
     assert response.status_code == 204
-    assert db_session_with_containers.scalar(
-        select(DataSourceApiKeyAuthBinding).where(DataSourceApiKeyAuthBinding.id == binding.id)
-    ) is None
+    assert (
+        db_session_with_containers.scalar(
+            select(DataSourceApiKeyAuthBinding).where(DataSourceApiKeyAuthBinding.id == binding.id)
+        )
+        is None
+    )
