@@ -1,5 +1,6 @@
 'use client'
 import type { ReactNode } from 'react'
+import type { IToastProps } from './context'
 import {
   RiAlertFill,
   RiCheckboxCircleFill,
@@ -11,31 +12,13 @@ import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { createContext, useContext } from 'use-context-selector'
 import ActionButton from '@/app/components/base/action-button'
 import { cn } from '@/utils/classnames'
-
-export type IToastProps = {
-  type?: 'success' | 'error' | 'warning' | 'info'
-  size?: 'md' | 'sm'
-  duration?: number
-  message: string
-  children?: ReactNode
-  onClose?: () => void
-  className?: string
-  customComponent?: ReactNode
-}
-type IToastContext = {
-  notify: (props: IToastProps) => void
-  close: () => void
-}
+import { ToastContext, useToastContext } from './context'
 
 export type ToastHandle = {
   clear?: VoidFunction
 }
-
-export const ToastContext = createContext<IToastContext>({} as IToastContext)
-export const useToastContext = () => useContext(ToastContext)
 const Toast = ({
   type = 'info',
   size = 'md',
@@ -183,3 +166,5 @@ Toast.notify = ({
 }
 
 export default Toast
+
+export type { IToastProps } from './context'

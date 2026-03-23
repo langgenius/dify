@@ -5,8 +5,8 @@ from unittest.mock import MagicMock
 import pytest
 from sqlalchemy.orm import sessionmaker
 
-from core.workflow.enums import NodeType
-from core.workflow.nodes.human_input.entities import (
+from dify_graph.enums import NodeType
+from dify_graph.nodes.human_input.entities import (
     EmailDeliveryConfig,
     EmailDeliveryMethod,
     EmailRecipients,

@@ -24,7 +24,7 @@ from controllers.console.wraps import (
 )
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
-from core.model_runtime.errors.invoke import InvokeError
+from dify_graph.model_runtime.errors.invoke import InvokeError
 from extensions.ext_database import db
 from fields.raws import FilesContainedField
 from libs.helper import TimestampField, uuid_value

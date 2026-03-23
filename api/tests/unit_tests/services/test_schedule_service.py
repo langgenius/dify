@@ -5,8 +5,8 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 from sqlalchemy.orm import Session
 
-from core.workflow.nodes.trigger_schedule.entities import ScheduleConfig, SchedulePlanUpdate, VisualConfig
-from core.workflow.nodes.trigger_schedule.exc import ScheduleConfigError
+from dify_graph.nodes.trigger_schedule.entities import ScheduleConfig, SchedulePlanUpdate, VisualConfig
+from dify_graph.nodes.trigger_schedule.exc import ScheduleConfigError
 from events.event_handlers.sync_workflow_schedule_when_app_published import (
     sync_schedule_from_workflow,
 )
@@ -136,7 +136,7 @@ class TestScheduleService(unittest.TestCase):
 
     def test_update_schedule_not_found(self):
         """Test updating a non-existent schedule raises exception."""
-        from core.workflow.nodes.trigger_schedule.exc import ScheduleNotFoundError
+        from dify_graph.nodes.trigger_schedule.exc import ScheduleNotFoundError
 
         mock_session = MagicMock(spec=Session)
         mock_session.get.return_value = None
@@ -172,7 +172,7 @@ class TestScheduleService(unittest.TestCase):
 
     def test_delete_schedule_not_found(self):
         """Test deleting a non-existent schedule raises exception."""
-        from core.workflow.nodes.trigger_schedule.exc import ScheduleNotFoundError
+        from dify_graph.nodes.trigger_schedule.exc import ScheduleNotFoundError
 
         mock_session = MagicMock(spec=Session)
         mock_session.get.return_value = None

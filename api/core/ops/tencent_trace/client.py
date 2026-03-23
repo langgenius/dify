@@ -120,7 +120,8 @@ class TencentTraceClient:
 
         # Metrics exporter and instruments
         try:
-            from opentelemetry.sdk.metrics import Histogram, MeterProvider
+            from opentelemetry.sdk.metrics import Histogram as SdkHistogram
+            from opentelemetry.sdk.metrics import MeterProvider
             from opentelemetry.sdk.metrics.export import AggregationTemporality, PeriodicExportingMetricReader
 
             protocol = os.getenv("OTEL_EXPORTER_OTLP_PROTOCOL", "").strip().lower()
@@ -128,7 +129,7 @@ class TencentTraceClient:
             use_http_json = protocol in {"http/json", "http-json"}
 
             # Tencent APM works best with delta aggregation temporality
-            preferred_temporality: dict[type, AggregationTemporality] = {Histogram: AggregationTemporality.DELTA}
+            preferred_temporality: dict[type, AggregationTemporality] = {SdkHistogram: AggregationTemporality.DELTA}
 
             def _create_metric_exporter(exporter_cls, **kwargs):
                 """Create metric exporter with preferred_temporality support"""

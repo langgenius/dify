@@ -4,18 +4,17 @@ import uuid
 import pytest
 
 from configs import dify_config
-from core.app.entities.app_invoke_entities import InvokeFrom
-from core.app.workflow.node_factory import DifyNodeFactory
-from core.workflow.entities import GraphInitParams
-from core.workflow.enums import WorkflowNodeExecutionStatus
-from core.workflow.graph import Graph
-from core.workflow.node_events import NodeRunResult
-from core.workflow.nodes.code.code_node import CodeNode
-from core.workflow.nodes.code.limits import CodeNodeLimits
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
-from models.enums import UserFrom
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.workflow.node_factory import DifyNodeFactory
+from dify_graph.enums import WorkflowNodeExecutionStatus
+from dify_graph.graph import Graph
+from dify_graph.node_events import NodeRunResult
+from dify_graph.nodes.code.code_node import CodeNode
+from dify_graph.nodes.code.limits import CodeNodeLimits
+from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
 from tests.integration_tests.workflow.nodes.__mock.code_executor import setup_code_executor_mock
+from tests.workflow_test_utils import build_test_graph_init_params
 
 CODE_MAX_STRING_LENGTH = dify_config.CODE_MAX_STRING_LENGTH
 
@@ -32,11 +31,11 @@ def init_code_node(code_config: dict):
         "nodes": [{"data": {"type": "start", "title": "Start"}, "id": "start"}, code_config],
     }
 
-    init_params = GraphInitParams(
-        tenant_id="1",
-        app_id="1",
+    init_params = build_test_graph_init_params(
         workflow_id="1",
         graph_config=graph_config,
+        tenant_id="1",
+        app_id="1",
         user_id="1",
         user_from=UserFrom.ACCOUNT,
         invoke_from=InvokeFrom.DEBUGGER,

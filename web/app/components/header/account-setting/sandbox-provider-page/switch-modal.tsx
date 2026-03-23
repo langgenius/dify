@@ -5,7 +5,7 @@ import { memo, useCallback } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
-import { useToastContext } from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import { useActivateSandboxProvider } from '@/service/use-sandbox-provider'
 import { PROVIDER_STATIC_LABELS } from './constants'
 

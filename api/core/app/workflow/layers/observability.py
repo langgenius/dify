@@ -16,10 +16,10 @@ from opentelemetry.trace import Span, SpanKind, Tracer, get_tracer, set_span_in_
 from typing_extensions import override
 
 from configs import dify_config
-from core.workflow.enums import NodeType
-from core.workflow.graph_engine.layers.base import GraphEngineLayer
-from core.workflow.graph_events import GraphNodeEventBase
-from core.workflow.nodes.base.node import Node
+from dify_graph.enums import NodeType
+from dify_graph.graph_engine.layers.base import GraphEngineLayer
+from dify_graph.graph_events import GraphNodeEventBase
+from dify_graph.nodes.base.node import Node
 from extensions.otel.parser import (
     DefaultNodeOTelParser,
     LLMNodeOTelParser,

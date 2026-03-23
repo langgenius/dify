@@ -10,7 +10,7 @@ vi.mock('next/navigation', () => ({
 }))
 
 const mockNotify = vi.fn()
-vi.mock('@/app/components/base/toast', () => ({
+vi.mock('@/app/components/base/toast/context', () => ({
   ToastContext: {
     Provider: ({ children }: { children: React.ReactNode }) => children,
   },

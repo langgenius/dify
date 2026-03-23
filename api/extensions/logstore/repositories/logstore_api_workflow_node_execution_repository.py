@@ -13,7 +13,7 @@ from typing import Any
 
 from sqlalchemy.orm import sessionmaker
 
-from core.workflow.enums import WorkflowNodeExecutionStatus
+from dify_graph.enums import WorkflowNodeExecutionStatus
 from extensions.logstore.aliyun_logstore import AliyunLogStore
 from extensions.logstore.repositories import safe_float, safe_int
 from extensions.logstore.sql_escape import escape_identifier, escape_logstore_query_value

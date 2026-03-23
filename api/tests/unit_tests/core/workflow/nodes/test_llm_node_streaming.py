@@ -3,12 +3,12 @@ from collections.abc import Generator
 from typing import Any
 
 import pytest
-
 from core.model_runtime.entities.llm_entities import LLMUsage
-from core.workflow.entities import ToolCallResult
 from core.workflow.entities.tool_entities import ToolResultStatus
-from core.workflow.node_events import ModelInvokeCompletedEvent, NodeEventBase
 from core.workflow.nodes.llm.node import LLMNode
+
+from core.workflow.entities import ToolCallResult
+from core.workflow.node_events import ModelInvokeCompletedEvent, NodeEventBase
 
 
 class _StubModelInstance:

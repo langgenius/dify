@@ -4,10 +4,10 @@ Parser for tool nodes that captures tool-specific metadata.
 
 from opentelemetry.trace import Span
 
-from core.workflow.enums import WorkflowNodeExecutionMetadataKey
-from core.workflow.graph_events import GraphNodeEventBase
-from core.workflow.nodes.base.node import Node
-from core.workflow.nodes.tool.entities import ToolNodeData
+from dify_graph.enums import WorkflowNodeExecutionMetadataKey
+from dify_graph.graph_events import GraphNodeEventBase
+from dify_graph.nodes.base.node import Node
+from dify_graph.nodes.tool.entities import ToolNodeData
 from extensions.otel.parser.base import DefaultNodeOTelParser, safe_json_dumps
 from extensions.otel.semconv.gen_ai import ToolAttributes
 

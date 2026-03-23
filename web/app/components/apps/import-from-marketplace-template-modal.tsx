@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
-import { useToastContext } from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import { MARKETPLACE_API_PREFIX, MARKETPLACE_URL_PREFIX } from '@/config'
 import {
   fetchMarketplaceTemplateDSL,

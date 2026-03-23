@@ -4,7 +4,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { usePathname } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useToastContext } from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { ChunkingMode } from '@/models/datasets'
 import {

@@ -80,6 +80,9 @@ vi.mock('@/service/use-plugins', () => ({
 }))
 
 vi.mock('nuqs', () => ({
+  parseAsStringEnum: vi.fn(() => ({
+    withDefault: vi.fn(() => ({})),
+  })),
   useQueryState: vi.fn(() => ['plugins', vi.fn()]),
 }))
 

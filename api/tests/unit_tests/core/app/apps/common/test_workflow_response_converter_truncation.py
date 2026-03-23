@@ -23,9 +23,9 @@ from core.app.entities.queue_entities import (
     QueueNodeStartedEvent,
     QueueNodeSucceededEvent,
 )
-from core.workflow.entities.workflow_start_reason import WorkflowStartReason
-from core.workflow.enums import NodeType
-from core.workflow.system_variable import SystemVariable
+from dify_graph.entities.workflow_start_reason import WorkflowStartReason
+from dify_graph.enums import NodeType
+from dify_graph.system_variable import SystemVariable
 from libs.datetime_utils import naive_utc_now
 from models import Account
 from models.model import AppMode

@@ -1,6 +1,6 @@
 import type { PluginProvider } from '@/models/common'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { useToastContext } from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import { useAppContext } from '@/context/app-context'
 import SerpapiPlugin from './SerpapiPlugin'
 import { updatePluginKey, validatePluginKey } from './utils'
@@ -20,7 +20,7 @@ const mockEventEmitter = vi.hoisted(() => {
   }
 })
 
-vi.mock('@/app/components/base/toast', () => ({
+vi.mock('@/app/components/base/toast/context', () => ({
   useToastContext: vi.fn(),
 }))
 

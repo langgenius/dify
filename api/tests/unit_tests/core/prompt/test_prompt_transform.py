@@ -2,10 +2,10 @@
 
 # from core.app.app_config.entities import ModelConfigEntity
 # from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
-# from core.model_runtime.entities.message_entities import UserPromptMessage
-# from core.model_runtime.entities.model_entities import AIModelEntity, ModelPropertyKey, ParameterRule
-# from core.model_runtime.entities.provider_entities import ProviderEntity
-# from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+# from dify_graph.model_runtime.entities.message_entities import UserPromptMessage
+# from dify_graph.model_runtime.entities.model_entities import AIModelEntity, ModelPropertyKey, ParameterRule
+# from dify_graph.model_runtime.entities.provider_entities import ProviderEntity
+# from dify_graph.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 # from core.prompt.prompt_transform import PromptTransform
 
 

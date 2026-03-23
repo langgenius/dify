@@ -1,13 +1,13 @@
 from configs import dify_config
-from core.workflow.nodes.code.code_node import CodeNode
-from core.workflow.nodes.code.entities import CodeLanguage, CodeNodeData
-from core.workflow.nodes.code.exc import (
+from dify_graph.nodes.code.code_node import CodeNode
+from dify_graph.nodes.code.entities import CodeLanguage, CodeNodeData
+from dify_graph.nodes.code.exc import (
     CodeNodeError,
     DepthLimitError,
     OutputValidationError,
 )
-from core.workflow.nodes.code.limits import CodeNodeLimits
-from core.workflow.variables.types import SegmentType
+from dify_graph.nodes.code.limits import CodeNodeLimits
+from dify_graph.variables.types import SegmentType
 
 CodeNode._limits = CodeNodeLimits(
     max_string_length=dify_config.CODE_MAX_STRING_LENGTH,

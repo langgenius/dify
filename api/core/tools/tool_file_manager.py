@@ -243,7 +243,7 @@ class ToolFileManager:
 
 
 # init tool_file_parser
-from core.workflow.file.tool_file_parser import set_tool_file_manager_factory
+from dify_graph.file.tool_file_parser import set_tool_file_manager_factory
 
 
 def _factory() -> ToolFileManager:

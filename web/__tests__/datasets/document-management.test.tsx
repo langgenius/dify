@@ -7,9 +7,10 @@
  */
 
 import type { SimpleDocumentDetail } from '@/models/datasets'
-import { act, renderHook } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { DataSourceType } from '@/models/datasets'
+import { renderHookWithNuqs } from '@/test/nuqs-testing'
 
 const mockPush = vi.fn()
 vi.mock('next/navigation', () => ({
@@ -28,11 +29,15 @@ const { useDocumentSort } = await import(
 const { useDocumentSelection } = await import(
   '@/app/components/datasets/documents/components/document-list/hooks/use-document-selection',
 )
-const { default: useDocumentListQueryState } = await import(
+const { useDocumentListQueryState } = await import(
   '@/app/components/datasets/documents/hooks/use-document-list-query-state',
 )
 
 type LocalDoc = SimpleDocumentDetail & { percent?: number }
+
+const renderQueryStateHook = (searchParams = '') => {
+  return renderHookWithNuqs(() => useDocumentListQueryState(), { searchParams })
+}
 
 const createDoc = (overrides?: Partial<LocalDoc>): LocalDoc => ({
   id: `doc-${Math.random().toString(36).slice(2, 8)}`,
@@ -85,7 +90,7 @@ describe('Document Management Flow', () => {
 
   describe('URL-based Query State', () => {
     it('should parse default query from empty URL params', () => {
-      const { result } = renderHook(() => useDocumentListQueryState())
+      const { result } = renderQueryStateHook()
 
       expect(result.current.query).toEqual({
         page: 1,
@@ -96,107 +101,85 @@ describe('Document Management Flow', () => {
       })
     })
 
-    it('should update query and push to router', () => {
-      const { result } = renderHook(() => useDocumentListQueryState())
+    it('should update keyword query with replace history', async () => {
+      const { result, onUrlUpdate } = renderQueryStateHook()
 
       act(() => {
         result.current.updateQuery({ keyword: 'test', page: 2 })
       })
 
-      expect(mockPush).toHaveBeenCalled()
-      // The push call should contain the updated query params
-      const pushUrl = mockPush.mock.calls[0][0] as string
-      expect(pushUrl).toContain('keyword=test')
-      expect(pushUrl).toContain('page=2')
+      await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      expect(update.options.history).toBe('replace')
+      expect(update.searchParams.get('keyword')).toBe('test')
+      expect(update.searchParams.get('page')).toBe('2')
     })
 
-    it('should reset query to defaults', () => {
-      const { result } = renderHook(() => useDocumentListQueryState())
+    it('should reset query to defaults', async () => {
+      const { result, onUrlUpdate } = renderQueryStateHook()
 
       act(() => {
         result.current.resetQuery()
       })
 
-      expect(mockPush).toHaveBeenCalled()
-      // Default query omits default values from URL
-      const pushUrl = mockPush.mock.calls[0][0] as string
-      expect(pushUrl).toBe('/datasets/ds-1/documents')
+      await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      expect(update.options.history).toBe('replace')
+      expect(update.searchParams.toString()).toBe('')
     })
   })
 
   describe('Document Sort Integration', () => {
-    it('should return documents unsorted when no sort field set', () => {
-      const docs = [
-        createDoc({ id: 'doc-1', name: 'Banana.txt', word_count: 300 }),
-        createDoc({ id: 'doc-2', name: 'Apple.txt', word_count: 100 }),
-        createDoc({ id: 'doc-3', name: 'Cherry.txt', word_count: 200 }),
-      ]
-
+    it('should derive sort field and order from remote sort value', () => {
       const { result } = renderHook(() => useDocumentSort({
-        documents: docs,
-        statusFilterValue: '',
         remoteSortValue: '-created_at',
+        onRemoteSortChange: vi.fn(),
       }))
 
-      expect(result.current.sortField).toBeNull()
-      expect(result.current.sortedDocuments).toHaveLength(3)
+      expect(result.current.sortField).toBe('created_at')
+      expect(result.current.sortOrder).toBe('desc')
     })
 
-    it('should sort by name descending', () => {
-      const docs = [
-        createDoc({ id: 'doc-1', name: 'Banana.txt' }),
-        createDoc({ id: 'doc-2', name: 'Apple.txt' }),
-        createDoc({ id: 'doc-3', name: 'Cherry.txt' }),
-      ]
-
+    it('should call remote sort change with descending sort for a new field', () => {
+      const onRemoteSortChange = vi.fn()
       const { result } = renderHook(() => useDocumentSort({
-        documents: docs,
-        statusFilterValue: '',
         remoteSortValue: '-created_at',
+        onRemoteSortChange,
       }))
 
       act(() => {
-        result.current.handleSort('name')
+        result.current.handleSort('hit_count')
       })
 
-      expect(result.current.sortField).toBe('name')
-      expect(result.current.sortOrder).toBe('desc')
-      const names = result.current.sortedDocuments.map(d => d.name)
-      expect(names).toEqual(['Cherry.txt', 'Banana.txt', 'Apple.txt'])
+      expect(onRemoteSortChange).toHaveBeenCalledWith('-hit_count')
     })
 
-    it('should toggle sort order on same field click', () => {
-      const docs = [createDoc({ id: 'doc-1', name: 'A.txt' }), createDoc({ id: 'doc-2', name: 'B.txt' })]
-
+    it('should toggle descending to ascending when clicking active field', () => {
+      const onRemoteSortChange = vi.fn()
       const { result } = renderHook(() => useDocumentSort({
-        documents: docs,
-        statusFilterValue: '',
-        remoteSortValue: '-created_at',
+        remoteSortValue: '-hit_count',
+        onRemoteSortChange,
       }))
 
-      act(() => result.current.handleSort('name'))
-      expect(result.current.sortOrder).toBe('desc')
+      act(() => {
+        result.current.handleSort('hit_count')
+      })
 
-      act(() => result.current.handleSort('name'))
-      expect(result.current.sortOrder).toBe('asc')
+      expect(onRemoteSortChange).toHaveBeenCalledWith('hit_count')
     })
 
-    it('should filter by status before sorting', () => {
-      const docs = [
-        createDoc({ id: 'doc-1', name: 'A.txt', display_status: 'available' }),
-        createDoc({ id: 'doc-2', name: 'B.txt', display_status: 'error' }),
-        createDoc({ id: 'doc-3', name: 'C.txt', display_status: 'available' }),
-      ]
-
+    it('should ignore null sort field updates', () => {
+      const onRemoteSortChange = vi.fn()
       const { result } = renderHook(() => useDocumentSort({
-        documents: docs,
-        statusFilterValue: 'available',
         remoteSortValue: '-created_at',
+        onRemoteSortChange,
       }))
 
-      // Only 'available' documents should remain
-      expect(result.current.sortedDocuments).toHaveLength(2)
-      expect(result.current.sortedDocuments.every(d => d.display_status === 'available')).toBe(true)
+      act(() => {
+        result.current.handleSort(null)
+      })
+
+      expect(onRemoteSortChange).not.toHaveBeenCalled()
     })
   })
 
@@ -309,14 +292,13 @@ describe('Document Management Flow', () => {
   describe('Cross-Module: Query State → Sort → Selection Pipeline', () => {
     it('should maintain consistent default state across all hooks', () => {
       const docs = [createDoc({ id: 'doc-1' })]
-      const { result: queryResult } = renderHook(() => useDocumentListQueryState())
+      const { result: queryResult } = renderQueryStateHook()
       const { result: sortResult } = renderHook(() => useDocumentSort({
-        documents: docs,
-        statusFilterValue: queryResult.current.query.status,
         remoteSortValue: queryResult.current.query.sort,
+        onRemoteSortChange: vi.fn(),
       }))
       const { result: selResult } = renderHook(() => useDocumentSelection({
-        documents: sortResult.current.sortedDocuments,
+        documents: docs,
         selectedIds: [],
         onSelectedIdChange: vi.fn(),
       }))
@@ -325,8 +307,9 @@ describe('Document Management Flow', () => {
       expect(queryResult.current.query.sort).toBe('-created_at')
       expect(queryResult.current.query.status).toBe('all')
 
-      // Sort inherits 'all' status → no filtering applied
-      expect(sortResult.current.sortedDocuments).toHaveLength(1)
+      // Sort state is derived from URL default sort.
+      expect(sortResult.current.sortField).toBe('created_at')
+      expect(sortResult.current.sortOrder).toBe('desc')
 
       // Selection starts empty
       expect(selResult.current.isAllSelected).toBe(false)

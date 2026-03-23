@@ -6,8 +6,8 @@ from typing import Any
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
-from core.workflow.enums import WorkflowExecutionStatus
-from models import Account, App, EndUser, WorkflowAppLog, WorkflowArchiveLog, WorkflowRun
+from dify_graph.enums import WorkflowExecutionStatus
+from models import Account, App, EndUser, TenantAccountJoin, WorkflowAppLog, WorkflowArchiveLog, WorkflowRun
 from models.enums import AppTriggerType, CreatorUserRole
 from models.trigger import WorkflowTriggerLog
 from services.plugin.plugin_service import PluginService
@@ -132,7 +132,14 @@ class WorkflowAppService:
                 ),
             )
         if created_by_account:
-            account = session.scalar(select(Account).where(Account.email == created_by_account))
+            account = session.scalar(
+                select(Account)
+                .join(TenantAccountJoin, TenantAccountJoin.account_id == Account.id)
+                .where(
+                    Account.email == created_by_account,
+                    TenantAccountJoin.tenant_id == app_model.tenant_id,
+                )
+            )
             if not account:
                 raise ValueError(f"Account not found: {created_by_account}")
 

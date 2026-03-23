@@ -1,4 +1,4 @@
-import type { NavIcon } from './navLink'
+import type { NavIcon } from './nav-link'
 import { useHover, useKeyPress } from 'ahooks'
 import { usePathname } from 'next/navigation'
 import * as React from 'react'
@@ -14,7 +14,7 @@ import AppInfo from './app-info'
 import AppSidebarDropdown from './app-sidebar-dropdown'
 import DatasetInfo from './dataset-info'
 import DatasetSidebarDropdown from './dataset-sidebar-dropdown'
-import NavLink from './navLink'
+import NavLink from './nav-link'
 import ToggleButton from './toggle-button'
 
 export type IAppDetailNavProps = {

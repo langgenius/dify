@@ -4,10 +4,10 @@ from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
 import pytest
+from core.model_runtime.entities.llm_entities import LLMUsage
 
 from core.agent.entities import AgentEntity, AgentLog, AgentPromptEntity, AgentResult
 from core.model_runtime.entities import SystemPromptMessage, UserPromptMessage
-from core.model_runtime.entities.llm_entities import LLMUsage
 
 
 class TestOrganizePromptMessages:

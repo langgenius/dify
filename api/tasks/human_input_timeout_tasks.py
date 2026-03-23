@@ -7,8 +7,8 @@ from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
 from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
-from core.workflow.enums import WorkflowExecutionStatus
-from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
+from dify_graph.enums import WorkflowExecutionStatus
+from dify_graph.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from libs.datetime_utils import ensure_naive_utc, naive_utc_now
@@ -58,7 +58,7 @@ def check_and_handle_human_input_timeouts(limit: int = 100) -> None:
     """Scan for expired human input forms and resume or end workflows."""
 
     session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
-    form_repo = HumanInputFormSubmissionRepository(session_factory)
+    form_repo = HumanInputFormSubmissionRepository()
     service = HumanInputService(session_factory, form_repository=form_repo)
     now = naive_utc_now()
     global_timeout_seconds = dify_config.HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS

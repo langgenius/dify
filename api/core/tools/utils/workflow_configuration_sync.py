@@ -3,9 +3,9 @@ from typing import Any
 
 from core.tools.entities.tool_entities import WorkflowToolParameterConfiguration
 from core.tools.errors import WorkflowToolHumanInputNotSupportedError
-from core.workflow.enums import NodeType
-from core.workflow.nodes.base.entities import OutputVariableEntity
-from core.workflow.variables.input_entities import VariableEntity
+from dify_graph.enums import NodeType
+from dify_graph.nodes.base.entities import OutputVariableEntity
+from dify_graph.variables.input_entities import VariableEntity
 
 
 class WorkflowToolConfigurationUtils:

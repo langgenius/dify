@@ -1,6 +1,6 @@
 import pytest
 
-from core.workflow.variables.types import ArrayValidation, SegmentType
+from dify_graph.variables.types import ArrayValidation, SegmentType
 
 
 class TestSegmentTypeIsArrayType:

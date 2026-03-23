@@ -16,7 +16,7 @@ import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import { useLocalFileUploader } from '@/app/components/base/image-uploader/hooks'
 import Modal from '@/app/components/base/modal'
-import { ToastContext } from '@/app/components/base/toast'
+import { ToastContext } from '@/app/components/base/toast/context'
 import { DISABLE_UPLOAD_IMAGE_AS_ICON } from '@/config'
 import { updateUserProfile } from '@/service/common'
 

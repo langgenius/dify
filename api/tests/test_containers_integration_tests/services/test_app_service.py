@@ -2,6 +2,7 @@ from unittest.mock import create_autospec, patch
 
 import pytest
 from faker import Faker
+from sqlalchemy.orm import Session
 
 from constants.model_template import default_app_templates
 from models import Account
@@ -44,7 +45,7 @@ class TestAppService:
                 "account_feature_service": mock_account_feature_service,
             }
 
-    def test_create_app_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_create_app_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test successful app creation with basic parameters.
         """
@@ -98,7 +99,9 @@ class TestAppService:
         assert app.is_public is False
         assert app.is_universal is False
 
-    def test_create_app_with_different_modes(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_create_app_with_different_modes(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test app creation with different app modes.
         """
@@ -141,7 +144,7 @@ class TestAppService:
             assert app.tenant_id == tenant.id
             assert app.created_by == account.id
 
-    def test_get_app_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_get_app_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test successful app retrieval.
         """
@@ -189,7 +192,7 @@ class TestAppService:
         assert retrieved_app.tenant_id == created_app.tenant_id
         assert retrieved_app.created_by == created_app.created_by
 
-    def test_get_paginate_apps_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_get_paginate_apps_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test successful paginated app list retrieval.
         """
@@ -243,7 +246,9 @@ class TestAppService:
             assert app.tenant_id == tenant.id
             assert app.mode == "chat"
 
-    def test_get_paginate_apps_with_filters(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_get_paginate_apps_with_filters(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test paginated app list with various filters.
         """
@@ -316,7 +321,9 @@ class TestAppService:
         my_apps = app_service.get_paginate_apps(account.id, tenant.id, created_by_me_args)
         assert len(my_apps.items) == 1
 
-    def test_get_paginate_apps_with_tag_filters(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_get_paginate_apps_with_tag_filters(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test paginated app list with tag filters.
         """
@@ -386,7 +393,7 @@ class TestAppService:
             # Should return None when no apps match tag filter
             assert paginated_apps is None
 
-    def test_update_app_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_update_app_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test successful app update with all fields.
         """
@@ -455,7 +462,7 @@ class TestAppService:
         assert updated_app.tenant_id == app.tenant_id
         assert updated_app.created_by == app.created_by
 
-    def test_update_app_name_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_update_app_name_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test successful app name update.
         """
@@ -508,7 +515,7 @@ class TestAppService:
         assert updated_app.tenant_id == app.tenant_id
         assert updated_app.created_by == app.created_by
 
-    def test_update_app_icon_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_update_app_icon_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test successful app icon update.
         """
@@ -565,7 +572,9 @@ class TestAppService:
         assert updated_app.tenant_id == app.tenant_id
         assert updated_app.created_by == app.created_by
 
-    def test_update_app_site_status_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_update_app_site_status_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test successful app site status update.
         """
@@ -623,7 +632,9 @@ class TestAppService:
         assert updated_app.tenant_id == app.tenant_id
         assert updated_app.created_by == app.created_by
 
-    def test_update_app_api_status_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_update_app_api_status_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test successful app API status update.
         """
@@ -681,7 +692,9 @@ class TestAppService:
         assert updated_app.tenant_id == app.tenant_id
         assert updated_app.created_by == app.created_by
 
-    def test_update_app_site_status_no_change(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_update_app_site_status_no_change(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test app site status update when status doesn't change.
         """
@@ -732,7 +745,7 @@ class TestAppService:
         assert updated_app.tenant_id == app.tenant_id
         assert updated_app.created_by == app.created_by
 
-    def test_delete_app_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_delete_app_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test successful app deletion.
         """
@@ -778,12 +791,13 @@ class TestAppService:
             mock_delete_task.delay.assert_called_once_with(tenant_id=tenant.id, app_id=app_id)
 
         # Verify app was deleted from database
-        from extensions.ext_database import db
 
-        deleted_app = db.session.query(App).filter_by(id=app_id).first()
+        deleted_app = db_session_with_containers.query(App).filter_by(id=app_id).first()
         assert deleted_app is None
 
-    def test_delete_app_with_related_data(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_delete_app_with_related_data(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test app deletion with related data cleanup.
         """
@@ -839,12 +853,11 @@ class TestAppService:
             mock_delete_task.delay.assert_called_once_with(tenant_id=tenant.id, app_id=app_id)
 
         # Verify app was deleted from database
-        from extensions.ext_database import db
 
-        deleted_app = db.session.query(App).filter_by(id=app_id).first()
+        deleted_app = db_session_with_containers.query(App).filter_by(id=app_id).first()
         assert deleted_app is None
 
-    def test_get_app_meta_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_get_app_meta_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test successful app metadata retrieval.
         """
@@ -883,7 +896,7 @@ class TestAppService:
         assert "tool_icons" in app_meta
         # Note: get_app_meta currently only returns tool_icons
 
-    def test_get_app_code_by_id_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_get_app_code_by_id_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test successful app code retrieval by app ID.
         """
@@ -923,7 +936,7 @@ class TestAppService:
         assert app_code is not None
         assert len(app_code) > 0
 
-    def test_get_app_id_by_code_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_get_app_id_by_code_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test successful app ID retrieval by app code.
         """
@@ -963,10 +976,9 @@ class TestAppService:
         site.status = "normal"
         site.default_language = "en-US"
         site.customize_token_strategy = "uuid"
-        from extensions.ext_database import db
 
-        db.session.add(site)
-        db.session.commit()
+        db_session_with_containers.add(site)
+        db_session_with_containers.commit()
 
         # Get app ID by code
         app_id = AppService.get_app_id_by_code(site.code)
@@ -974,7 +986,7 @@ class TestAppService:
         # Verify app ID was retrieved correctly
         assert app_id == app.id
 
-    def test_create_app_invalid_mode(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_create_app_invalid_mode(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test app creation with invalid mode.
         """
@@ -1010,7 +1022,7 @@ class TestAppService:
             app_service.create_app(tenant.id, app_args, account)
 
     def test_get_apps_with_special_characters_in_name(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         r"""
         Test app retrieval with special characters in name search to verify SQL injection prevention.

@@ -14,8 +14,8 @@ from controllers.service_api.wraps import (
     DatasetApiResource,
     cloud_edition_billing_rate_limit_check,
 )
-from core.model_runtime.entities.model_entities import ModelType
 from core.provider_manager import ProviderManager
+from dify_graph.model_runtime.entities.model_entities import ModelType
 from fields.dataset_fields import dataset_detail_fields
 from fields.tag_fields import DataSetTag
 from libs.login import current_user

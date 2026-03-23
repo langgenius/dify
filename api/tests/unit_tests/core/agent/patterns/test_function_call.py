@@ -4,14 +4,14 @@ from decimal import Decimal
 from unittest.mock import MagicMock
 
 import pytest
-
-from core.agent.entities import AgentLog, ExecutionContext
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.model_runtime.entities.message_entities import (
     PromptMessageTool,
     SystemPromptMessage,
     UserPromptMessage,
 )
+
+from core.agent.entities import AgentLog, ExecutionContext
 
 
 @pytest.fixture

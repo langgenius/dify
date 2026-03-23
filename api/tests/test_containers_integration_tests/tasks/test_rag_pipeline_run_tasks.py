@@ -4,11 +4,11 @@ from unittest.mock import patch
 
 import pytest
 from faker import Faker
+from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity
 from core.app.entities.rag_pipeline_invoke_entities import RagPipelineInvokeEntity
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
-from extensions.ext_database import db
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Pipeline
 from models.workflow import Workflow
@@ -52,7 +52,7 @@ class TestRagPipelineRunTasks:
                 "delete_file": mock_delete_file,
             }
 
-    def _create_test_pipeline_and_workflow(self, db_session_with_containers):
+    def _create_test_pipeline_and_workflow(self, db_session_with_containers: Session):
         """
         Helper method to create test pipeline and workflow for testing.
 
@@ -71,15 +71,15 @@ class TestRagPipelineRunTasks:
             interface_language="en-US",
             status="active",
         )
-        db.session.add(account)
-        db.session.commit()
+        db_session_with_containers.add(account)
+        db_session_with_containers.commit()
 
         tenant = Tenant(
             name=fake.company(),
             status="normal",
         )
-        db.session.add(tenant)
-        db.session.commit()
+        db_session_with_containers.add(tenant)
+        db_session_with_containers.commit()
 
         # Create tenant-account join
         join = TenantAccountJoin(
@@ -88,8 +88,8 @@ class TestRagPipelineRunTasks:
             role=TenantAccountRole.OWNER,
             current=True,
         )
-        db.session.add(join)
-        db.session.commit()
+        db_session_with_containers.add(join)
+        db_session_with_containers.commit()
 
         # Create workflow
         workflow = Workflow(
@@ -107,8 +107,8 @@ class TestRagPipelineRunTasks:
             conversation_variables=[],
             rag_pipeline_variables=[],
         )
-        db.session.add(workflow)
-        db.session.commit()
+        db_session_with_containers.add(workflow)
+        db_session_with_containers.commit()
 
         # Create pipeline
         pipeline = Pipeline(
@@ -119,14 +119,14 @@ class TestRagPipelineRunTasks:
             created_by=account.id,
         )
         pipeline.id = str(uuid.uuid4())
-        db.session.add(pipeline)
-        db.session.commit()
+        db_session_with_containers.add(pipeline)
+        db_session_with_containers.commit()
 
         # Refresh entities to ensure they're properly loaded
-        db.session.refresh(account)
-        db.session.refresh(tenant)
-        db.session.refresh(workflow)
-        db.session.refresh(pipeline)
+        db_session_with_containers.refresh(account)
+        db_session_with_containers.refresh(tenant)
+        db_session_with_containers.refresh(workflow)
+        db_session_with_containers.refresh(pipeline)
 
         return account, tenant, pipeline, workflow
 
@@ -209,7 +209,7 @@ class TestRagPipelineRunTasks:
         return json.dumps(entities_data)
 
     def test_priority_rag_pipeline_run_task_success(
-        self, db_session_with_containers, mock_pipeline_generator, mock_file_service
+        self, db_session_with_containers: Session, mock_pipeline_generator, mock_file_service
     ):
         """
         Test successful priority RAG pipeline run task execution.
@@ -254,7 +254,7 @@ class TestRagPipelineRunTasks:
             assert isinstance(call_kwargs["application_generate_entity"], RagPipelineGenerateEntity)
 
     def test_rag_pipeline_run_task_success(
-        self, db_session_with_containers, mock_pipeline_generator, mock_file_service
+        self, db_session_with_containers: Session, mock_pipeline_generator, mock_file_service
     ):
         """
         Test successful regular RAG pipeline run task execution.
@@ -299,7 +299,7 @@ class TestRagPipelineRunTasks:
             assert isinstance(call_kwargs["application_generate_entity"], RagPipelineGenerateEntity)
 
     def test_priority_rag_pipeline_run_task_with_waiting_tasks(
-        self, db_session_with_containers, mock_pipeline_generator, mock_file_service
+        self, db_session_with_containers: Session, mock_pipeline_generator, mock_file_service
     ):
         """
         Test priority RAG pipeline run task with waiting tasks in queue using real Redis.
@@ -351,7 +351,7 @@ class TestRagPipelineRunTasks:
             assert len(remaining_tasks) == 1  # 2 original - 1 pulled = 1 remaining
 
     def test_rag_pipeline_run_task_legacy_compatibility(
-        self, db_session_with_containers, mock_pipeline_generator, mock_file_service
+        self, db_session_with_containers: Session, mock_pipeline_generator, mock_file_service
     ):
         """
         Test regular RAG pipeline run task with legacy Redis queue format for backward compatibility.
@@ -419,7 +419,7 @@ class TestRagPipelineRunTasks:
         redis_client.delete(legacy_task_key)
 
     def test_rag_pipeline_run_task_with_waiting_tasks(
-        self, db_session_with_containers, mock_pipeline_generator, mock_file_service
+        self, db_session_with_containers: Session, mock_pipeline_generator, mock_file_service
     ):
         """
         Test regular RAG pipeline run task with waiting tasks in queue using real Redis.
@@ -469,7 +469,7 @@ class TestRagPipelineRunTasks:
             assert len(remaining_tasks) == 2  # 3 original - 1 pulled = 2 remaining
 
     def test_priority_rag_pipeline_run_task_error_handling(
-        self, db_session_with_containers, mock_pipeline_generator, mock_file_service
+        self, db_session_with_containers: Session, mock_pipeline_generator, mock_file_service
     ):
         """
         Test error handling in priority RAG pipeline run task using real Redis.
@@ -526,7 +526,7 @@ class TestRagPipelineRunTasks:
             assert len(remaining_tasks) == 0
 
     def test_rag_pipeline_run_task_error_handling(
-        self, db_session_with_containers, mock_pipeline_generator, mock_file_service
+        self, db_session_with_containers: Session, mock_pipeline_generator, mock_file_service
     ):
         """
         Test error handling in regular RAG pipeline run task using real Redis.
@@ -581,7 +581,7 @@ class TestRagPipelineRunTasks:
             assert len(remaining_tasks) == 0
 
     def test_priority_rag_pipeline_run_task_tenant_isolation(
-        self, db_session_with_containers, mock_pipeline_generator, mock_file_service
+        self, db_session_with_containers: Session, mock_pipeline_generator, mock_file_service
     ):
         """
         Test tenant isolation in priority RAG pipeline run task using real Redis.
@@ -648,7 +648,7 @@ class TestRagPipelineRunTasks:
             assert queue1._task_key != queue2._task_key
 
     def test_rag_pipeline_run_task_tenant_isolation(
-        self, db_session_with_containers, mock_pipeline_generator, mock_file_service
+        self, db_session_with_containers: Session, mock_pipeline_generator, mock_file_service
     ):
         """
         Test tenant isolation in regular RAG pipeline run task using real Redis.
@@ -713,7 +713,7 @@ class TestRagPipelineRunTasks:
             assert queue1._task_key != queue2._task_key
 
     def test_run_single_rag_pipeline_task_success(
-        self, db_session_with_containers, mock_pipeline_generator, flask_app_with_containers
+        self, db_session_with_containers: Session, mock_pipeline_generator, flask_app_with_containers
     ):
         """
         Test successful run_single_rag_pipeline_task execution.
@@ -748,7 +748,7 @@ class TestRagPipelineRunTasks:
         assert isinstance(call_kwargs["application_generate_entity"], RagPipelineGenerateEntity)
 
     def test_run_single_rag_pipeline_task_entity_validation_error(
-        self, db_session_with_containers, mock_pipeline_generator, flask_app_with_containers
+        self, db_session_with_containers: Session, mock_pipeline_generator, flask_app_with_containers
     ):
         """
         Test run_single_rag_pipeline_task with invalid entity data.
@@ -793,7 +793,7 @@ class TestRagPipelineRunTasks:
         mock_pipeline_generator.assert_not_called()
 
     def test_run_single_rag_pipeline_task_database_entity_not_found(
-        self, db_session_with_containers, mock_pipeline_generator, flask_app_with_containers
+        self, db_session_with_containers: Session, mock_pipeline_generator, flask_app_with_containers
     ):
         """
         Test run_single_rag_pipeline_task with non-existent database entities.
@@ -838,7 +838,7 @@ class TestRagPipelineRunTasks:
         mock_pipeline_generator.assert_not_called()
 
     def test_priority_rag_pipeline_run_task_file_not_found(
-        self, db_session_with_containers, mock_pipeline_generator, mock_file_service
+        self, db_session_with_containers: Session, mock_pipeline_generator, mock_file_service
     ):
         """
         Test priority RAG pipeline run task with non-existent file.
@@ -888,7 +888,7 @@ class TestRagPipelineRunTasks:
             assert len(remaining_tasks) == 0
 
     def test_rag_pipeline_run_task_file_not_found(
-        self, db_session_with_containers, mock_pipeline_generator, mock_file_service
+        self, db_session_with_containers: Session, mock_pipeline_generator, mock_file_service
     ):
         """
         Test regular RAG pipeline run task with non-existent file.

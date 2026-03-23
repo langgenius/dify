@@ -8,7 +8,7 @@ from werkzeug.exceptions import Forbidden
 
 import services
 from core.tools.tool_file_manager import ToolFileManager
-from core.workflow.file.helpers import verify_plugin_file_signature
+from dify_graph.file.helpers import verify_plugin_file_signature
 from fields.file_fields import FileResponse
 
 from ..common.errors import (

@@ -3,9 +3,9 @@ import types
 import pytest
 
 from core.entities.provider_entities import CredentialConfiguration, CustomModelConfiguration
-from core.model_runtime.entities.common_entities import I18nObject
-from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.entities.provider_entities import ConfigurateMethod
+from dify_graph.model_runtime.entities.common_entities import I18nObject
+from dify_graph.model_runtime.entities.model_entities import ModelType
+from dify_graph.model_runtime.entities.provider_entities import ConfigurateMethod
 from models.provider import ProviderType
 from services.model_provider_service import ModelProviderService
 

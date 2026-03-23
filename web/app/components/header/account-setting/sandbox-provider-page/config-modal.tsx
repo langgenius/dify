@@ -9,7 +9,7 @@ import { BaseForm } from '@/app/components/base/form/components/base'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import Modal from '@/app/components/base/modal'
 import RadioUI from '@/app/components/base/radio/ui'
-import { useToastContext } from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import {
   useActivateSandboxProvider,
   useDeleteSandboxProviderConfig,

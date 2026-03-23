@@ -14,7 +14,7 @@ from werkzeug.http import parse_options_header
 
 from constants import AUDIO_EXTENSIONS, DOCUMENT_EXTENSIONS, IMAGE_EXTENSIONS, VIDEO_EXTENSIONS
 from core.helper import ssrf_proxy
-from core.workflow.file import File, FileBelongsTo, FileTransferMethod, FileType, FileUploadConfig, helpers
+from dify_graph.file import File, FileBelongsTo, FileTransferMethod, FileType, FileUploadConfig, helpers
 from extensions.ext_database import db
 from models import MessageFile, ToolFile, UploadFile
 

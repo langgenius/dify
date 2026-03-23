@@ -11,8 +11,8 @@ from sqlalchemy.orm import sessionmaker
 from core.repositories.sqlalchemy_workflow_node_execution_repository import (
     SQLAlchemyWorkflowNodeExecutionRepository,
 )
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecution
-from core.workflow.enums import NodeType
+from dify_graph.entities.workflow_node_execution import WorkflowNodeExecution
+from dify_graph.enums import NodeType
 from models import Account, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 
 

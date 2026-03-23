@@ -4,7 +4,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from core.workflow.file import File
+from dify_graph.file import File
 
 
 class ChildDocument(BaseModel):

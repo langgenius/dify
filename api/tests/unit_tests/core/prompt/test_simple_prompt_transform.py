@@ -2,8 +2,8 @@ from unittest.mock import MagicMock
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.memory.token_buffer_memory import TokenBufferMemory
-from core.model_runtime.entities.message_entities import AssistantPromptMessage, UserPromptMessage
 from core.prompt.simple_prompt_transform import SimplePromptTransform
+from dify_graph.model_runtime.entities.message_entities import AssistantPromptMessage, UserPromptMessage
 from models.model import AppMode, Conversation
 
 

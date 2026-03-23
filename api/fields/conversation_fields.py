@@ -5,7 +5,7 @@ from typing import Any, TypeAlias
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from core.workflow.file import File
+from dify_graph.file import File
 
 JSONValue: TypeAlias = Any
 

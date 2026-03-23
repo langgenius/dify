@@ -4,6 +4,9 @@ from io import BytesIO
 from typing import Any
 from unittest.mock import MagicMock
 
+from core.workflow.enums import WorkflowNodeExecutionStatus
+from core.workflow.system_variable import SystemVariable
+
 from core.entities.provider_entities import BasicProviderConfig
 from core.virtual_environment.__base.entities import (
     Arch,
@@ -17,10 +20,8 @@ from core.virtual_environment.__base.virtual_environment import VirtualEnvironme
 from core.virtual_environment.channel.queue_transport import QueueTransportReadCloser
 from core.virtual_environment.channel.transport import NopTransportWriteCloser
 from core.workflow.entities import GraphInitParams
-from core.workflow.enums import WorkflowNodeExecutionStatus
 from core.workflow.nodes.command.node import CommandNode
 from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
 
 
 class FakeVirtualEnvironment(VirtualEnvironment):

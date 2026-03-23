@@ -10,10 +10,10 @@ from flask import Flask
 from controllers.console import wraps as console_wraps
 from controllers.console.app import workflow_run as workflow_run_module
 from controllers.web.error import NotFoundError
-from core.workflow.entities.pause_reason import HumanInputRequired
-from core.workflow.enums import WorkflowExecutionStatus
-from core.workflow.nodes.human_input.entities import FormInput, UserAction
-from core.workflow.nodes.human_input.enums import FormInputType
+from dify_graph.entities.pause_reason import HumanInputRequired
+from dify_graph.enums import WorkflowExecutionStatus
+from dify_graph.nodes.human_input.entities import FormInput, UserAction
+from dify_graph.nodes.human_input.enums import FormInputType
 from libs import login as login_lib
 from models.account import Account, AccountStatus, TenantAccountRole
 from models.workflow import WorkflowRun

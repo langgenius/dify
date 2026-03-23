@@ -2,7 +2,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from constants import DEFAULT_FILE_NUMBER_LIMITS
-from core.workflow.file import FileUploadConfig
+from dify_graph.file import FileUploadConfig
 
 
 class FileUploadConfigManager:

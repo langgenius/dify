@@ -1,4 +1,4 @@
-from core.workflow.file import File, FileTransferMethod, FileType
+from dify_graph.file import File, FileTransferMethod, FileType
 
 
 def test_file():

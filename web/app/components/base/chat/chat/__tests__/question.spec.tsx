@@ -9,7 +9,7 @@ import { vi } from 'vitest'
 
 import Toast from '../../../toast'
 import { ThemeBuilder } from '../../embedded-chatbot/theme/theme-context'
-import { ChatContextProvider } from '../context'
+import { ChatContextProvider } from '../context-provider'
 import Question from '../question'
 
 // Global Mocks

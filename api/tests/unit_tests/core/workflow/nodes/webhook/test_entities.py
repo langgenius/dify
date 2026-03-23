@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from core.workflow.nodes.trigger_webhook.entities import (
+from dify_graph.nodes.trigger_webhook.entities import (
     ContentType,
     Method,
     WebhookBodyParameter,
@@ -297,7 +297,7 @@ def test_webhook_body_parameter_edge_cases():
 
 def test_webhook_data_inheritance():
     """Test WebhookData inherits from BaseNodeData correctly."""
-    from core.workflow.nodes.base import BaseNodeData
+    from dify_graph.nodes.base import BaseNodeData
 
     # Test that WebhookData is a subclass of BaseNodeData
     assert issubclass(WebhookData, BaseNodeData)

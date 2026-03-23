@@ -43,6 +43,8 @@ This command lints the entire project and is intended for final verification bef
 If a new rule causes many existing code errors or automatic fixes generate too many diffs, do not use the `--fix` option for automatic fixes.
 You can introduce the rule first, then use the `--suppress-all` option to temporarily suppress these errors, and gradually fix them in subsequent changes.
 
+For overlay migration policy and cleanup phases, see [Overlay Migration Guide](./overlay-migration.md).
+
 ## Type Check
 
 You should be able to see suggestions from TypeScript in your editor for all open files.

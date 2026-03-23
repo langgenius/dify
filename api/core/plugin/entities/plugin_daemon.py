@@ -10,14 +10,14 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from core.agent.plugin_entities import AgentProviderEntityWithPlugin
 from core.datasource.entities.datasource_entities import DatasourceProviderEntityWithPlugin
-from core.model_runtime.entities.model_entities import AIModelEntity
-from core.model_runtime.entities.provider_entities import ProviderEntity
 from core.plugin.entities.base import BasePluginEntity
 from core.plugin.entities.parameters import PluginParameterOption
 from core.plugin.entities.plugin import PluginDeclaration, PluginEntity
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderEntityWithPlugin
 from core.trigger.entities.entities import TriggerProviderEntity
+from dify_graph.model_runtime.entities.model_entities import AIModelEntity
+from dify_graph.model_runtime.entities.provider_entities import ProviderEntity
 
 T = TypeVar("T", bound=(BaseModel | dict | list | bool | str))
 

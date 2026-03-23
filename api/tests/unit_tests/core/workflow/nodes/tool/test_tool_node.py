@@ -8,18 +8,18 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from core.model_runtime.entities.llm_entities import LLMUsage
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
-from core.workflow.entities import GraphInitParams
-from core.workflow.file import File, FileTransferMethod, FileType
-from core.workflow.node_events import StreamChunkEvent, StreamCompletedEvent
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
-from core.workflow.variables.segments import ArrayFileSegment
+from dify_graph.file import File, FileTransferMethod, FileType
+from dify_graph.model_runtime.entities.llm_entities import LLMUsage
+from dify_graph.node_events import StreamChunkEvent, StreamCompletedEvent
+from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
+from dify_graph.variables.segments import ArrayFileSegment
+from tests.workflow_test_utils import build_test_graph_init_params
 
 if TYPE_CHECKING:  # pragma: no cover - imported for type checking only
-    from core.workflow.nodes.tool.tool_node import ToolNode
+    from dify_graph.nodes.tool.tool_node import ToolNode
 
 
 @pytest.fixture
@@ -31,7 +31,7 @@ def tool_node(monkeypatch) -> ToolNode:
         ops_stub.TraceTask = object  # pragma: no cover - stub attribute
         monkeypatch.setitem(sys.modules, module_name, ops_stub)
 
-    from core.workflow.nodes.tool.tool_node import ToolNode
+    from dify_graph.nodes.tool.tool_node import ToolNode
 
     graph_config: dict[str, Any] = {
         "nodes": [
@@ -54,11 +54,11 @@ def tool_node(monkeypatch) -> ToolNode:
         "edges": [],
     }
 
-    init_params = GraphInitParams(
-        tenant_id="tenant-id",
-        app_id="app-id",
+    init_params = build_test_graph_init_params(
         workflow_id="workflow-id",
         graph_config=graph_config,
+        tenant_id="tenant-id",
+        app_id="app-id",
         user_id="user-id",
         user_from="account",
         invoke_from="debugger",

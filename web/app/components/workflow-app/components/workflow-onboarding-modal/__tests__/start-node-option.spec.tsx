@@ -47,7 +47,6 @@ describe('StartNodeOption', () => {
       // Assert
       const title = screen.getByText('Test Title')
       expect(title).toBeInTheDocument()
-      expect(title).toHaveClass('system-md-semi-bold')
       expect(title).toHaveClass('text-text-primary')
     })
 

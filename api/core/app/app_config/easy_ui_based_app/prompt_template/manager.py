@@ -4,8 +4,8 @@ from core.app.app_config.entities import (
     AdvancedCompletionPromptTemplateEntity,
     PromptTemplateEntity,
 )
-from core.model_runtime.entities.message_entities import PromptMessageRole
 from core.prompt.simple_prompt_transform import ModelMode
+from dify_graph.model_runtime.entities.message_entities import PromptMessageRole
 from models.model import AppMode
 
 

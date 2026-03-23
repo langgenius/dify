@@ -1,5 +1,5 @@
-from core.workflow.runtime import VariablePool
-from core.workflow.variables.segments import (
+from dify_graph.runtime import VariablePool
+from dify_graph.variables.segments import (
     BooleanSegment,
     IntegerSegment,
     NoneSegment,

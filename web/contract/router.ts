@@ -14,7 +14,7 @@ import {
   treeContract,
   updateFileContentContract,
 } from './console/app-asset'
-import { workflowOnlineUsersContract } from './console/apps'
+import { appDeleteContract, workflowOnlineUsersContract } from './console/apps'
 import { bindPartnerStackContract, invoicesContract } from './console/billing'
 import {
   exploreAppDetailContract,
@@ -80,6 +80,10 @@ export const consoleRouterContract = {
     avatar: accountAvatarContract,
   },
   systemFeatures: systemFeaturesContract,
+  apps: {
+    deleteApp: appDeleteContract,
+    workflowOnlineUsers: workflowOnlineUsersContract,
+  },
   explore: {
     apps: exploreAppsContract,
     appDetail: exploreAppDetailContract,
@@ -124,9 +128,6 @@ export const consoleRouterContract = {
     publish: publishContract,
     getFileUploadUrl: getFileUploadUrlContract,
     batchUpload: batchUploadContract,
-  },
-  apps: {
-    workflowOnlineUsers: workflowOnlineUsersContract,
   },
   workflowDraft: {
     environmentVariables: workflowDraftEnvironmentVariablesContract,

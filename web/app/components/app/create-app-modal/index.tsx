@@ -19,7 +19,7 @@ import { BubbleTextMod, ChatBot, ListSparkle, Logic } from '@/app/components/bas
 import Input from '@/app/components/base/input'
 import CustomSelect from '@/app/components/base/select/custom'
 import Textarea from '@/app/components/base/textarea'
-import { ToastContext } from '@/app/components/base/toast'
+import { ToastContext } from '@/app/components/base/toast/context'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { MARKETPLACE_URL_PREFIX, NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { STORAGE_KEYS } from '@/config/storage-keys'

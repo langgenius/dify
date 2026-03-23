@@ -24,7 +24,7 @@ from core.llm_generator.context_models import (
 )
 from core.llm_generator.entities import RuleCodeGeneratePayload, RuleGeneratePayload, RuleStructuredOutputPayload
 from core.llm_generator.llm_generator import LLMGenerator
-from core.model_runtime.errors.invoke import InvokeError
+from dify_graph.model_runtime.errors.invoke import InvokeError
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant, login_required
 from models import App

@@ -3,12 +3,13 @@
 from unittest.mock import patch
 
 from core.model_runtime.entities.message_entities import ImagePromptMessageContent
-from core.workflow.file import File, FileTransferMethod, FileType
 from core.workflow.file.file_manager import (
     _encode_file_ref,
     restore_multimodal_content,
     to_prompt_message_content,
 )
+
+from core.workflow.file import File, FileTransferMethod, FileType
 
 
 class TestEncodeFileRef:

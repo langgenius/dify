@@ -49,21 +49,21 @@ from core.plugin.impl.datasource import PluginDatasourceManager
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.tool_manager import ToolManager
 from core.trigger.trigger_manager import TriggerManager
-from core.workflow.entities.pause_reason import HumanInputRequired
-from core.workflow.entities.workflow_start_reason import WorkflowStartReason
-from core.workflow.enums import (
+from core.workflow.workflow_entry import WorkflowEntry
+from dify_graph.entities.pause_reason import HumanInputRequired
+from dify_graph.entities.workflow_start_reason import WorkflowStartReason
+from dify_graph.enums import (
     NodeType,
     SystemVariableKey,
     WorkflowExecutionStatus,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
-from core.workflow.file import FILE_MODEL_IDENTITY, File
-from core.workflow.runtime import GraphRuntimeState
-from core.workflow.system_variable import SystemVariable
-from core.workflow.variables.segments import ArrayFileSegment, FileSegment, Segment
-from core.workflow.workflow_entry import WorkflowEntry
-from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
+from dify_graph.file import FILE_MODEL_IDENTITY, File
+from dify_graph.runtime import GraphRuntimeState
+from dify_graph.system_variable import SystemVariable
+from dify_graph.variables.segments import ArrayFileSegment, FileSegment, Segment
+from dify_graph.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models import Account, EndUser

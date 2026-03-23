@@ -1,4 +1,4 @@
-import type { Operation } from './app-operations'
+import type { Operation } from './app-info/app-operations'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
@@ -21,7 +21,7 @@ import CardView from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overvie
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Button from '@/app/components/base/button'
 import ContentDialog from '@/app/components/base/content-dialog'
-import { ToastContext } from '@/app/components/base/toast'
+import { ToastContext } from '@/app/components/base/toast/context'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
@@ -35,7 +35,7 @@ import { getRedirection } from '@/utils/app-redirection'
 import { cn } from '@/utils/classnames'
 import { downloadBlob } from '@/utils/download'
 import AppIcon from '../base/app-icon'
-import AppOperations from './app-operations'
+import AppOperations from './app-info/app-operations'
 
 const SwitchAppModal = dynamic(() => import('@/app/components/app/switch-app-modal'), {
   ssr: false,

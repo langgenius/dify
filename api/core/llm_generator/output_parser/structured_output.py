@@ -15,18 +15,18 @@ from core.llm_generator.prompts import (
     STRUCTURED_OUTPUT_TOOL_CALL_PROMPT,
 )
 from core.model_manager import ModelInstance
-from core.model_runtime.callbacks.base_callback import Callback
-from core.model_runtime.entities.llm_entities import (
+from dify_graph.model_runtime.callbacks.base_callback import Callback
+from dify_graph.model_runtime.entities.llm_entities import (
     LLMResult,
     LLMResultWithStructuredOutput,
 )
-from core.model_runtime.entities.message_entities import (
+from dify_graph.model_runtime.entities.message_entities import (
     PromptMessage,
     PromptMessageTool,
     SystemPromptMessage,
     UserPromptMessage,
 )
-from core.model_runtime.entities.model_entities import AIModelEntity, ModelFeature, ParameterRule
+from dify_graph.model_runtime.entities.model_entities import AIModelEntity, ModelFeature, ParameterRule
 
 
 class ResponseFormat(StrEnum):

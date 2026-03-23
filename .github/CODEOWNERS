@@ -36,7 +36,7 @@
 /api/core/workflow/graph/ @laipz8200 @QuantumGhost
 /api/core/workflow/graph_events/ @laipz8200 @QuantumGhost
 /api/core/workflow/node_events/ @laipz8200 @QuantumGhost
-/api/core/model_runtime/ @laipz8200 @QuantumGhost
+/api/dify_graph/model_runtime/ @laipz8200 @QuantumGhost
 
 # Backend - Workflow - Nodes (Agent, Iteration, Loop, LLM)
 /api/core/workflow/nodes/agent/ @Nov1c444

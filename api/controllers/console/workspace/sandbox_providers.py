@@ -1,12 +1,12 @@
 import logging
 
+from core.model_runtime.utils.encoders import jsonable_encoder
 from flask import request
 from flask_restx import Resource, fields
 from pydantic import BaseModel
 
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, setup_required
-from core.model_runtime.utils.encoders import jsonable_encoder
 from libs.login import current_account_with_tenant, login_required
 from services.sandbox.sandbox_provider_service import SandboxProviderService
 

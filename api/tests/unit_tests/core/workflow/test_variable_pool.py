@@ -3,12 +3,12 @@ from collections import defaultdict
 
 import pytest
 
-from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, ENVIRONMENT_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
-from core.workflow.file import File, FileTransferMethod, FileType
-from core.workflow.runtime import VariablePool
-from core.workflow.system_variable import SystemVariable
-from core.workflow.variables import FileSegment, StringSegment
-from core.workflow.variables.segments import (
+from dify_graph.constants import CONVERSATION_VARIABLE_NODE_ID, ENVIRONMENT_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
+from dify_graph.file import File, FileTransferMethod, FileType
+from dify_graph.runtime import VariablePool
+from dify_graph.system_variable import SystemVariable
+from dify_graph.variables import FileSegment, StringSegment
+from dify_graph.variables.segments import (
     ArrayAnySegment,
     ArrayFileSegment,
     ArrayNumberSegment,
@@ -19,7 +19,7 @@ from core.workflow.variables.segments import (
     NoneSegment,
     ObjectSegment,
 )
-from core.workflow.variables.variables import (
+from dify_graph.variables.variables import (
     ArrayNumberVariable,
     ArrayObjectVariable,
     ArrayStringVariable,

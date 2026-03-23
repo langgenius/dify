@@ -2,7 +2,7 @@ from collections.abc import Generator
 
 from core.datasource.datasource_manager import DatasourceManager
 from core.datasource.entities.datasource_entities import DatasourceMessage
-from core.workflow.node_events import StreamCompletedEvent
+from dify_graph.node_events import StreamCompletedEvent
 
 
 def _gen_var_stream() -> Generator[DatasourceMessage, None, None]:

@@ -8,7 +8,7 @@ from uuid import uuid4
 from sqlalchemy import Engine, delete
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.workflow.enums import WorkflowNodeExecutionStatus
+from dify_graph.enums import WorkflowNodeExecutionStatus
 from libs.datetime_utils import naive_utc_now
 from models.enums import CreatorUserRole
 from models.workflow import WorkflowNodeExecutionModel

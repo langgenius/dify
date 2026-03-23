@@ -14,7 +14,7 @@ from uuid import uuid4
 
 import pytest
 
-from core.workflow.enums import (
+from dify_graph.enums import (
     NodeType,
     WorkflowExecutionStatus,
     WorkflowNodeExecutionStatus,

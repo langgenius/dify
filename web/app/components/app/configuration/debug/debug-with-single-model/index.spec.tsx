@@ -387,7 +387,7 @@ vi.mock('@/context/event-emitter', () => ({
 }))
 
 // Mock toast context
-vi.mock('@/app/components/base/toast', () => ({
+vi.mock('@/app/components/base/toast/context', () => ({
   useToastContext: vi.fn(() => ({
     notify: vi.fn(),
   })),

@@ -1,8 +1,8 @@
 import pytest
 from pydantic import ValidationError
 
-from core.workflow.nodes.code.entities import CodeLanguage, CodeNodeData
-from core.workflow.variables.types import SegmentType
+from dify_graph.nodes.code.entities import CodeLanguage, CodeNodeData
+from dify_graph.variables.types import SegmentType
 
 
 class TestCodeNodeDataOutput:

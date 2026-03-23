@@ -1,4 +1,16 @@
 'use client'
+/**
+ * @deprecated Use semantic overlay primitives from `@/app/components/base/ui/` instead.
+ * This component will be removed after migration is complete.
+ * See: https://github.com/langgenius/dify/issues/32767
+ *
+ * Migration guide:
+ * - Tooltip → `@/app/components/base/ui/tooltip`
+ * - Menu/Dropdown → `@/app/components/base/ui/dropdown-menu`
+ * - Popover → `@/app/components/base/ui/popover`
+ * - Dialog/Modal → `@/app/components/base/ui/dialog`
+ * - Select → `@/app/components/base/ui/select`
+ */
 import type { OffsetOptions, Placement } from '@floating-ui/react'
 import {
   autoUpdate,
@@ -33,6 +45,7 @@ export type PortalToFollowElemOptions = {
   triggerPopupSameWidth?: boolean
 }
 
+/** @deprecated Use semantic overlay primitives instead. See #32767. */
 export function usePortalToFollowElem({
   placement = 'bottom',
   open: controlledOpen,
@@ -110,6 +123,7 @@ export function usePortalToFollowElemContext() {
   return context
 }
 
+/** @deprecated Use semantic overlay primitives instead. See #32767. */
 export function PortalToFollowElem({
   children,
   ...options
@@ -124,6 +138,7 @@ export function PortalToFollowElem({
   )
 }
 
+/** @deprecated Use semantic overlay primitives instead. See #32767. */
 export const PortalToFollowElemTrigger = (
   {
     ref: propRef,
@@ -164,6 +179,7 @@ export const PortalToFollowElemTrigger = (
 }
 PortalToFollowElemTrigger.displayName = 'PortalToFollowElemTrigger'
 
+/** @deprecated Use semantic overlay primitives instead. See #32767. */
 export const PortalToFollowElemContent = (
   {
     ref: propRef,

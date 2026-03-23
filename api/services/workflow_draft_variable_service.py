@@ -14,20 +14,20 @@ from sqlalchemy.sql.expression import and_, or_
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, ENVIRONMENT_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
-from core.workflow.enums import SystemVariableKey
-from core.workflow.file.models import File
-from core.workflow.nodes import NodeType
-from core.workflow.nodes.variable_assigner.common.helpers import get_updated_variables
-from core.workflow.variable_loader import VariableLoader
-from core.workflow.variables import Segment, StringSegment, VariableBase
-from core.workflow.variables.consts import SELECTORS_LENGTH
-from core.workflow.variables.segments import (
+from dify_graph.constants import CONVERSATION_VARIABLE_NODE_ID, ENVIRONMENT_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
+from dify_graph.enums import SystemVariableKey
+from dify_graph.file.models import File
+from dify_graph.nodes import NodeType
+from dify_graph.nodes.variable_assigner.common.helpers import get_updated_variables
+from dify_graph.variable_loader import VariableLoader
+from dify_graph.variables import Segment, StringSegment, VariableBase
+from dify_graph.variables.consts import SELECTORS_LENGTH
+from dify_graph.variables.segments import (
     ArrayFileSegment,
     FileSegment,
 )
-from core.workflow.variables.types import SegmentType
-from core.workflow.variables.utils import dumps_with_segments
+from dify_graph.variables.types import SegmentType
+from dify_graph.variables.utils import dumps_with_segments
 from extensions.ext_storage import storage
 from factories.file_factory import StorageKeyLoader
 from factories.variable_factory import build_segment, segment_to_variable
@@ -70,7 +70,7 @@ class UpdateNotSupportedError(WorkflowDraftVariableError):
 class DraftVarLoader(VariableLoader):
     # This implements the VariableLoader interface for loading draft variables.
     #
-    # ref: core.workflow.variable_loader.VariableLoader
+    # ref: dify_graph.variable_loader.VariableLoader
 
     # Database engine used for loading variables.
     _engine: Engine

@@ -17,7 +17,7 @@ from controllers.service_api.wraps import (
 )
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
-from core.model_runtime.entities.model_entities import ModelType
+from dify_graph.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
 from fields.segment_fields import child_chunk_fields, segment_fields
 from libs.login import current_account_with_tenant

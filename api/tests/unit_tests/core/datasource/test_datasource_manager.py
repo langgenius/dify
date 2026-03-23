@@ -3,8 +3,8 @@ from collections.abc import Generator
 
 from core.datasource.datasource_manager import DatasourceManager
 from core.datasource.entities.datasource_entities import DatasourceMessage
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.node_events import StreamChunkEvent, StreamCompletedEvent
+from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionStatus
+from dify_graph.node_events import StreamChunkEvent, StreamCompletedEvent
 
 
 def _gen_messages_text_only(text: str) -> Generator[DatasourceMessage, None, None]:

@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 import pytest
 from faker import Faker
+from sqlalchemy.orm import Session
 
 from models.enums import CreatorUserRole
 from models.model import (
@@ -48,7 +49,7 @@ class TestWorkflowRunService:
                 "account_feature_service": mock_account_feature_service,
             }
 
-    def _create_test_app_and_account(self, db_session_with_containers, mock_external_service_dependencies):
+    def _create_test_app_and_account(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Helper method to create a test app and account for testing.
 
@@ -94,7 +95,7 @@ class TestWorkflowRunService:
         return app, account
 
     def _create_test_workflow_run(
-        self, db_session_with_containers, app, account, triggered_from="debugging", offset_minutes=0
+        self, db_session_with_containers: Session, app, account, triggered_from="debugging", offset_minutes=0
     ):
         """
         Helper method to create a test workflow run for testing.
@@ -109,8 +110,6 @@ class TestWorkflowRunService:
             WorkflowRun: Created workflow run instance
         """
         fake = Faker()
-
-        from extensions.ext_database import db
 
         # Create workflow run with offset timestamp
         base_time = datetime.now(UTC)
@@ -136,12 +135,12 @@ class TestWorkflowRunService:
             finished_at=created_time,
         )
 
-        db.session.add(workflow_run)
-        db.session.commit()
+        db_session_with_containers.add(workflow_run)
+        db_session_with_containers.commit()
 
         return workflow_run
 
-    def _create_test_message(self, db_session_with_containers, app, account, workflow_run):
+    def _create_test_message(self, db_session_with_containers: Session, app, account, workflow_run):
         """
         Helper method to create a test message for testing.
 
@@ -156,8 +155,6 @@ class TestWorkflowRunService:
         """
         fake = Faker()
 
-        from extensions.ext_database import db
-
         # Create conversation first (required for message)
         from models.model import Conversation
 
@@ -170,8 +167,8 @@ class TestWorkflowRunService:
             from_source=CreatorUserRole.ACCOUNT,
             from_account_id=account.id,
         )
-        db.session.add(conversation)
-        db.session.commit()
+        db_session_with_containers.add(conversation)
+        db_session_with_containers.commit()
 
         # Create message
         message = Message()
@@ -193,12 +190,14 @@ class TestWorkflowRunService:
         message.workflow_run_id = workflow_run.id
         message.inputs = {"input": "test input"}
 
-        db.session.add(message)
-        db.session.commit()
+        db_session_with_containers.add(message)
+        db_session_with_containers.commit()
 
         return message
 
-    def test_get_paginate_workflow_runs_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_get_paginate_workflow_runs_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test successful pagination of workflow runs with debugging trigger.
 
@@ -239,7 +238,7 @@ class TestWorkflowRunService:
             assert workflow_run.tenant_id == app.tenant_id
 
     def test_get_paginate_workflow_runs_with_last_id(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test pagination of workflow runs with last_id parameter.
@@ -282,7 +281,7 @@ class TestWorkflowRunService:
             assert workflow_run.tenant_id == app.tenant_id
 
     def test_get_paginate_workflow_runs_default_limit(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test pagination of workflow runs with default limit.
@@ -320,7 +319,7 @@ class TestWorkflowRunService:
             assert workflow_run_result.tenant_id == app.tenant_id
 
     def test_get_paginate_advanced_chat_workflow_runs_success(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test successful pagination of advanced chat workflow runs with message information.
@@ -365,7 +364,7 @@ class TestWorkflowRunService:
             assert workflow_run.app_id == app.id
             assert workflow_run.tenant_id == app.tenant_id
 
-    def test_get_workflow_run_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_get_workflow_run_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test successful retrieval of workflow run by ID.
 
@@ -395,7 +394,7 @@ class TestWorkflowRunService:
         assert result.type == "chat"
         assert result.version == "1.0.0"
 
-    def test_get_workflow_run_not_found(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_get_workflow_run_not_found(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test workflow run retrieval when run ID does not exist.
 
@@ -419,7 +418,7 @@ class TestWorkflowRunService:
         assert result is None
 
     def test_get_workflow_run_node_executions_success(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test successful retrieval of workflow run node executions.
@@ -438,7 +437,6 @@ class TestWorkflowRunService:
         workflow_run = self._create_test_workflow_run(db_session_with_containers, app, account, "debugging")
 
         # Create node executions
-        from extensions.ext_database import db
         from models.workflow import WorkflowNodeExecutionModel
 
         node_executions = []
@@ -462,7 +460,7 @@ class TestWorkflowRunService:
                 created_by=account.id,
                 created_at=datetime.now(UTC),
             )
-            db.session.add(node_execution)
+            db_session_with_containers.add(node_execution)
             node_executions.append(node_execution)
 
         paused_node_execution = WorkflowNodeExecutionModel(
@@ -484,9 +482,9 @@ class TestWorkflowRunService:
             created_by=account.id,
             created_at=datetime.now(UTC),
         )
-        db.session.add(paused_node_execution)
+        db_session_with_containers.add(paused_node_execution)
 
-        db.session.commit()
+        db_session_with_containers.commit()
 
         # Act: Execute the method under test
         workflow_run_service = WorkflowRunService()
@@ -509,7 +507,7 @@ class TestWorkflowRunService:
             assert node_execution.node_id.startswith("node_")
 
     def test_get_workflow_run_node_executions_empty(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test getting node executions for a workflow run with no executions.
@@ -560,7 +558,7 @@ class TestWorkflowRunService:
         assert len(result) == 0
 
     def test_get_workflow_run_node_executions_invalid_workflow_run_id(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test getting node executions with invalid workflow run ID.
@@ -611,7 +609,7 @@ class TestWorkflowRunService:
         assert len(result) == 0
 
     def test_get_workflow_run_node_executions_database_error(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test getting node executions when database encounters an error.
@@ -662,7 +660,7 @@ class TestWorkflowRunService:
             )
 
     def test_get_workflow_run_node_executions_end_user(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test node execution retrieval for end user.
@@ -680,7 +678,6 @@ class TestWorkflowRunService:
         workflow_run = self._create_test_workflow_run(db_session_with_containers, app, account, "debugging")
 
         # Create end user
-        from extensions.ext_database import db
         from models.model import EndUser
 
         end_user = EndUser(
@@ -692,8 +689,8 @@ class TestWorkflowRunService:
             external_user_id=str(uuid.uuid4()),
             name=fake.name(),
         )
-        db.session.add(end_user)
-        db.session.commit()
+        db_session_with_containers.add(end_user)
+        db_session_with_containers.commit()
 
         # Create node execution
         from models.workflow import WorkflowNodeExecutionModel
@@ -717,8 +714,8 @@ class TestWorkflowRunService:
             created_by=end_user.id,
             created_at=datetime.now(UTC),
         )
-        db.session.add(node_execution)
-        db.session.commit()
+        db_session_with_containers.add(node_execution)
+        db_session_with_containers.commit()
 
         # Act: Execute the method under test
         workflow_run_service = WorkflowRunService()

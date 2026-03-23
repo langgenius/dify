@@ -3,7 +3,7 @@ import type { FullDocumentDetail } from '@/models/datasets'
 import { act, renderHook } from '@testing-library/react'
 import * as React from 'react'
 import { describe, expect, it, vi } from 'vitest'
-import { ToastContext } from '@/app/components/base/toast'
+import { ToastContext } from '@/app/components/base/toast/context'
 
 import { useMetadataState } from '../use-metadata-state'
 

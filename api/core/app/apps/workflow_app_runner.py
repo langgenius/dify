@@ -4,7 +4,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any, cast
 
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
-from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
 from core.app.entities.queue_entities import (
     AppQueueEvent,
     QueueAgentLogEvent,
@@ -29,12 +29,13 @@ from core.app.entities.queue_entities import (
     QueueWorkflowStartedEvent,
     QueueWorkflowSucceededEvent,
 )
-from core.app.workflow.node_factory import DifyNodeFactory
-from core.workflow.entities import GraphInitParams
-from core.workflow.entities.pause_reason import HumanInputRequired
-from core.workflow.graph import Graph
-from core.workflow.graph_engine.layers.base import GraphEngineLayer
-from core.workflow.graph_events import (
+from core.workflow.node_factory import DifyNodeFactory
+from core.workflow.workflow_entry import WorkflowEntry
+from dify_graph.entities import GraphInitParams
+from dify_graph.entities.pause_reason import HumanInputRequired
+from dify_graph.graph import Graph
+from dify_graph.graph_engine.layers.base import GraphEngineLayer
+from dify_graph.graph_events import (
     GraphEngineEvent,
     GraphRunFailedEvent,
     GraphRunPartialSucceededEvent,
@@ -60,14 +61,12 @@ from core.workflow.graph_events import (
     NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
 )
-from core.workflow.graph_events.graph import GraphRunAbortedEvent
-from core.workflow.nodes import NodeType
-from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
-from core.workflow.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
-from core.workflow.workflow_entry import WorkflowEntry
-from models.enums import UserFrom
+from dify_graph.graph_events.graph import GraphRunAbortedEvent
+from dify_graph.nodes import NodeType
+from dify_graph.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
+from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
+from dify_graph.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from models.workflow import Workflow
 from tasks.mail_human_input_delivery_task import dispatch_human_input_email_task
 
@@ -119,13 +118,15 @@ class WorkflowBasedAppRunner:
 
         # Create required parameters for Graph.init
         graph_init_params = GraphInitParams(
-            tenant_id=tenant_id or "",
-            app_id=self._app_id,
             workflow_id=workflow_id,
             graph_config=graph_config,
-            user_id=user_id,
-            user_from=user_from,
-            invoke_from=invoke_from,
+            run_context=build_dify_run_context(
+                tenant_id=tenant_id or "",
+                app_id=self._app_id,
+                user_id=user_id,
+                user_from=user_from,
+                invoke_from=invoke_from,
+            ),
             call_depth=0,
         )
 
@@ -267,13 +268,15 @@ class WorkflowBasedAppRunner:
 
         # Create required parameters for Graph.init
         graph_init_params = GraphInitParams(
-            tenant_id=workflow.tenant_id,
-            app_id=self._app_id,
             workflow_id=workflow.id,
             graph_config=graph_config,
-            user_id="",
-            user_from=UserFrom.ACCOUNT,
-            invoke_from=InvokeFrom.DEBUGGER,
+            run_context=build_dify_run_context(
+                tenant_id=workflow.tenant_id,
+                app_id=self._app_id,
+                user_id="",
+                user_from=UserFrom.ACCOUNT,
+                invoke_from=InvokeFrom.DEBUGGER,
+            ),
             call_depth=0,
         )
 

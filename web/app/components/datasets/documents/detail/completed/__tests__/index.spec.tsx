@@ -65,7 +65,7 @@ vi.mock('../../context', () => ({
   },
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
+vi.mock('@/app/components/base/toast/context', () => ({
   ToastContext: { Provider: ({ children }: { children: React.ReactNode }) => children, Consumer: () => null },
   useToastContext: () => ({ notify: mockNotify }),
 }))

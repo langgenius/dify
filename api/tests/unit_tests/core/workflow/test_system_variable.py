@@ -4,9 +4,9 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
-from core.workflow.file.enums import FileTransferMethod, FileType
-from core.workflow.file.models import File
-from core.workflow.system_variable import SystemVariable
+from dify_graph.file.enums import FileTransferMethod, FileType
+from dify_graph.file.models import File
+from dify_graph.system_variable import SystemVariable
 
 # Test data constants for SystemVariable serialization tests
 VALID_BASE_DATA: dict[str, Any] = {

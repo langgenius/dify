@@ -22,7 +22,7 @@ from core.tools.entities.tool_entities import (
 )
 from core.tools.utils.workflow_configuration_sync import WorkflowToolConfigurationUtils
 from core.tools.workflow_as_tool.tool import WorkflowTool
-from core.workflow.variables.input_entities import VariableEntity, VariableEntityType
+from dify_graph.variables.input_entities import VariableEntity, VariableEntityType
 from extensions.ext_database import db
 from models.account import Account
 from models.model import App, AppMode

@@ -10,13 +10,13 @@ from core.entities.provider_configuration import ProviderConfiguration
 from core.helper import encrypter
 from core.helper.model_provider_cache import ProviderCredentialsCache, ProviderCredentialsCacheType
 from core.model_manager import LBModelManager
-from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.entities.provider_entities import (
+from core.provider_manager import ProviderManager
+from dify_graph.model_runtime.entities.model_entities import ModelType
+from dify_graph.model_runtime.entities.provider_entities import (
     ModelCredentialSchema,
     ProviderCredentialSchema,
 )
-from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
-from core.provider_manager import ProviderManager
+from dify_graph.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models.provider import LoadBalancingModelConfig, ProviderCredential, ProviderModelCredential

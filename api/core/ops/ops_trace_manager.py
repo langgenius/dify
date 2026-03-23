@@ -35,7 +35,7 @@ from models.workflow import WorkflowAppLog
 from tasks.ops_trace_task import process_trace_tasks
 
 if TYPE_CHECKING:
-    from core.workflow.entities import WorkflowExecution
+    from dify_graph.entities import WorkflowExecution
 
 logger = logging.getLogger(__name__)
 

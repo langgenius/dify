@@ -20,7 +20,7 @@ const mockAddModelCredential = vi.fn()
 const mockEditProviderCredential = vi.fn()
 const mockEditModelCredential = vi.fn()
 
-vi.mock('@/app/components/base/toast', () => ({
+vi.mock('@/app/components/base/toast/context', () => ({
   useToastContext: () => ({ notify: mockNotify }),
 }))
 

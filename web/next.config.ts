@@ -15,7 +15,7 @@ const parseBooleanEnv = (value: string | undefined): boolean | undefined => {
 const enableSourceMap = parseBooleanEnv(env.ENABLE_SOURCE_MAP)
 const enableProdSourceMapsFallback = parseBooleanEnv(env.ENABLE_PROD_SOURCEMAP) ?? false
 const enableProdSourceMaps = enableSourceMap ?? enableProdSourceMapsFallback
-const isDev = env.NODE_ENV === 'development'
+const isDev = process.env.NODE_ENV === 'development'
 const withMDX = createMDX({
   extension: /\.mdx?$/,
   options: {
@@ -37,7 +37,6 @@ const remoteImageURLs = ([hasSetWebPrefix ? new URL(`${env.NEXT_PUBLIC_WEB_PREFI
 
 const nextConfig: NextConfig = {
   basePath: env.NEXT_PUBLIC_BASE_PATH,
-  serverExternalPackages: ['esbuild'],
   transpilePackages: ['@t3-oss/env-core', '@t3-oss/env-nextjs', 'echarts', 'zrender'],
   turbopack: {
     rules: codeInspectorPlugin({

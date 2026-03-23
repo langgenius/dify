@@ -155,7 +155,6 @@ const WorkflowChildren = ({ headerLeftSlot }: WorkflowChildrenProps) => {
     handleSyncWorkflowDraft(true, false, {
       onSuccess: () => {
         autoGenerateWebhookUrl(newNode.id)
-        console.log('Node successfully saved to draft')
       },
       onError: () => {
         console.error('Failed to save node to draft')

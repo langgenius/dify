@@ -4,7 +4,7 @@ from typing import cast
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from core.workflow.nodes.trigger_schedule.entities import SchedulePlanUpdate
+from dify_graph.nodes.trigger_schedule.entities import SchedulePlanUpdate
 from events.app_event import app_published_workflow_was_updated
 from extensions.ext_database import db
 from models import AppMode, Workflow, WorkflowSchedulePlan

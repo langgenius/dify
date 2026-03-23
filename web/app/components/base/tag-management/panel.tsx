@@ -10,7 +10,7 @@ import { useContext } from 'use-context-selector'
 import Checkbox from '@/app/components/base/checkbox'
 import Divider from '@/app/components/base/divider'
 import Input from '@/app/components/base/input'
-import { ToastContext } from '@/app/components/base/toast'
+import { ToastContext } from '@/app/components/base/toast/context'
 import { bindTag, createTag, unBindTag } from '@/service/tag'
 import { useStore as useTagStore } from './store'
 

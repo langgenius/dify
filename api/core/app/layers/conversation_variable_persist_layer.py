@@ -1,12 +1,12 @@
 import logging
 
-from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID
-from core.workflow.conversation_variable_updater import ConversationVariableUpdater
-from core.workflow.enums import NodeType
-from core.workflow.graph_engine.layers.base import GraphEngineLayer
-from core.workflow.graph_events import GraphEngineEvent, NodeRunSucceededEvent
-from core.workflow.nodes.variable_assigner.common import helpers as common_helpers
-from core.workflow.variables import VariableBase
+from dify_graph.constants import CONVERSATION_VARIABLE_NODE_ID
+from dify_graph.conversation_variable_updater import ConversationVariableUpdater
+from dify_graph.enums import NodeType
+from dify_graph.graph_engine.layers.base import GraphEngineLayer
+from dify_graph.graph_events import GraphEngineEvent, NodeRunSucceededEvent
+from dify_graph.nodes.variable_assigner.common import helpers as common_helpers
+from dify_graph.variables import VariableBase
 
 logger = logging.getLogger(__name__)
 

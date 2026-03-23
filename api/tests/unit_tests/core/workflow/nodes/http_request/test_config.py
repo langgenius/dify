@@ -1,4 +1,4 @@
-from core.workflow.nodes.http_request import build_http_request_config
+from dify_graph.nodes.http_request import build_http_request_config
 
 
 def test_build_http_request_config_uses_literal_defaults():

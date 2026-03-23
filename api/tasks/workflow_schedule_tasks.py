@@ -3,7 +3,7 @@ import logging
 from celery import shared_task
 
 from core.db.session_factory import session_factory
-from core.workflow.nodes.trigger_schedule.exc import (
+from dify_graph.nodes.trigger_schedule.exc import (
     ScheduleExecutionError,
     ScheduleNotFoundError,
     TenantOwnerNotFoundError,

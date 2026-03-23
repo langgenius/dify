@@ -1,6 +1,6 @@
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.node_events import NodeRunResult, StreamCompletedEvent
-from core.workflow.nodes.datasource.datasource_node import DatasourceNode
+from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionStatus
+from dify_graph.node_events import NodeRunResult, StreamCompletedEvent
+from dify_graph.nodes.datasource.datasource_node import DatasourceNode
 
 
 class _Seg:

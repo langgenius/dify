@@ -1,7 +1,7 @@
 import dataclasses
 
-from core.workflow.nodes.base import variable_template_parser
-from core.workflow.nodes.base.entities import VariableSelector
+from dify_graph.nodes.base import variable_template_parser
+from dify_graph.nodes.base.entities import VariableSelector
 
 
 def test_extract_selectors_from_template():

@@ -1,6 +1,6 @@
 import { act, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ChatContextProvider } from '@/app/components/base/chat/chat/context'
+import { ChatContextProvider } from '@/app/components/base/chat/chat/context-provider'
 import ThinkBlock from '../think-block'
 
 // Mock react-i18next

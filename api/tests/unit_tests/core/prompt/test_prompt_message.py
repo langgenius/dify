@@ -1,4 +1,4 @@
-from core.model_runtime.entities.message_entities import (
+from dify_graph.model_runtime.entities.message_entities import (
     ImagePromptMessageContent,
     TextPromptMessageContent,
     UserPromptMessage,

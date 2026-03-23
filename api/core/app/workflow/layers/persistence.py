@@ -17,17 +17,17 @@ from typing import Any, Union
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
-from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
-from core.workflow.entities import WorkflowExecution, WorkflowNodeExecution
-from core.workflow.enums import (
+from dify_graph.constants import SYSTEM_VARIABLE_NODE_ID
+from dify_graph.entities import WorkflowExecution, WorkflowNodeExecution
+from dify_graph.enums import (
     SystemVariableKey,
     WorkflowExecutionStatus,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
     WorkflowType,
 )
-from core.workflow.graph_engine.layers.base import GraphEngineLayer
-from core.workflow.graph_events import (
+from dify_graph.graph_engine.layers.base import GraphEngineLayer
+from dify_graph.graph_events import (
     GraphEngineEvent,
     GraphRunAbortedEvent,
     GraphRunFailedEvent,
@@ -42,9 +42,9 @@ from core.workflow.graph_events import (
     NodeRunStartedEvent,
     NodeRunSucceededEvent,
 )
-from core.workflow.node_events import NodeRunResult
-from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
-from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
+from dify_graph.node_events import NodeRunResult
+from dify_graph.repositories.workflow_execution_repository import WorkflowExecutionRepository
+from dify_graph.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from libs.datetime_utils import naive_utc_now
 
 

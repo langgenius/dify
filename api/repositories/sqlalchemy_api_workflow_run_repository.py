@@ -33,9 +33,9 @@ from sqlalchemy import and_, delete, func, null, or_, select, tuple_
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, selectinload, sessionmaker
 
-from core.workflow.entities.pause_reason import HumanInputRequired, PauseReason, PauseReasonType, SchedulingPause
-from core.workflow.enums import WorkflowExecutionStatus, WorkflowType
-from core.workflow.nodes.human_input.entities import FormDefinition
+from dify_graph.entities.pause_reason import HumanInputRequired, PauseReason, PauseReasonType, SchedulingPause
+from dify_graph.enums import WorkflowExecutionStatus, WorkflowType
+from dify_graph.nodes.human_input.entities import FormDefinition
 from extensions.ext_storage import storage
 from libs.datetime_utils import naive_utc_now
 from libs.helper import convert_datetime_to_date

@@ -111,3 +111,8 @@ class RedisConfig(BaseSettings):
         description="Enable client side cache in redis",
         default=False,
     )
+
+    REDIS_MAX_CONNECTIONS: PositiveInt | None = Field(
+        description="Maximum connections in the Redis connection pool (unset for library default)",
+        default=None,
+    )

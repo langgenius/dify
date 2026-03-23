@@ -4,7 +4,7 @@ from uuid import UUID
 
 from flask import request
 from flask_restx import marshal
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy import desc, select
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -60,6 +60,13 @@ class DocumentTextCreatePayload(BaseModel):
     embedding_model: str | None = None
     embedding_model_provider: str | None = None
 
+    @field_validator("doc_form")
+    @classmethod
+    def validate_doc_form(cls, value: str) -> str:
+        if value not in Dataset.DOC_FORM_LIST:
+            raise ValueError("Invalid doc_form.")
+        return value
+
 
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
@@ -71,6 +78,13 @@ class DocumentTextUpdate(BaseModel):
     doc_form: str = "text_model"
     doc_language: str = "English"
     retrieval_model: RetrievalModel | None = None
+
+    @field_validator("doc_form")
+    @classmethod
+    def validate_doc_form(cls, value: str) -> str:
+        if value not in Dataset.DOC_FORM_LIST:
+            raise ValueError("Invalid doc_form.")
+        return value
 
     @model_validator(mode="after")
     def check_text_and_name(self) -> Self:

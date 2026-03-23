@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.console.wraps import account_initialization_required, setup_required
-from core.model_runtime.utils.encoders import jsonable_encoder
+from dify_graph.model_runtime.utils.encoders import jsonable_encoder
 from libs.login import current_account_with_tenant, login_required
 from models import Account
 from models.model import OAuthProviderApp

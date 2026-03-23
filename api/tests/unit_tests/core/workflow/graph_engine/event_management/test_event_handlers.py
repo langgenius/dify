@@ -2,18 +2,18 @@
 
 from __future__ import annotations
 
-from core.workflow.enums import NodeExecutionType, NodeState, NodeType, WorkflowNodeExecutionStatus
-from core.workflow.graph import Graph
-from core.workflow.graph_engine.domain.graph_execution import GraphExecution
-from core.workflow.graph_engine.event_management.event_handlers import EventHandler
-from core.workflow.graph_engine.event_management.event_manager import EventManager
-from core.workflow.graph_engine.graph_state_manager import GraphStateManager
-from core.workflow.graph_engine.ready_queue.in_memory import InMemoryReadyQueue
-from core.workflow.graph_engine.response_coordinator.coordinator import ResponseStreamCoordinator
-from core.workflow.graph_events import NodeRunRetryEvent, NodeRunStartedEvent
-from core.workflow.node_events import NodeRunResult
-from core.workflow.nodes.base.entities import RetryConfig
-from core.workflow.runtime import GraphRuntimeState, VariablePool
+from dify_graph.enums import NodeExecutionType, NodeState, NodeType, WorkflowNodeExecutionStatus
+from dify_graph.graph import Graph
+from dify_graph.graph_engine.domain.graph_execution import GraphExecution
+from dify_graph.graph_engine.event_management.event_handlers import EventHandler
+from dify_graph.graph_engine.event_management.event_manager import EventManager
+from dify_graph.graph_engine.graph_state_manager import GraphStateManager
+from dify_graph.graph_engine.ready_queue.in_memory import InMemoryReadyQueue
+from dify_graph.graph_engine.response_coordinator.coordinator import ResponseStreamCoordinator
+from dify_graph.graph_events import NodeRunRetryEvent, NodeRunStartedEvent
+from dify_graph.node_events import NodeRunResult
+from dify_graph.nodes.base.entities import RetryConfig
+from dify_graph.runtime import GraphRuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
 
 

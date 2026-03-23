@@ -3,7 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import ModerationSettingModal from '../moderation-setting-modal'
 
 const mockNotify = vi.fn()
-vi.mock('@/app/components/base/toast', () => ({
+vi.mock('@/app/components/base/toast/context', () => ({
   useToastContext: () => ({ notify: mockNotify }),
 }))
 

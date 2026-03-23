@@ -2,6 +2,7 @@ from unittest.mock import patch
 
 import pytest
 from faker import Faker
+from sqlalchemy.orm import Session
 
 from models.api_based_extension import APIBasedExtension
 from services.account_service import AccountService, TenantService
@@ -31,7 +32,7 @@ class TestAPIBasedExtensionService:
                 "requestor_instance": mock_requestor_instance,
             }
 
-    def _create_test_account_and_tenant(self, db_session_with_containers, mock_external_service_dependencies):
+    def _create_test_account_and_tenant(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Helper method to create a test account and tenant for testing.
 
@@ -61,7 +62,7 @@ class TestAPIBasedExtensionService:
 
         return account, tenant
 
-    def test_save_extension_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_save_extension_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test successful saving of API-based extension.
         """
@@ -90,15 +91,16 @@ class TestAPIBasedExtensionService:
         assert saved_extension.created_at is not None
 
         # Verify extension was saved to database
-        from extensions.ext_database import db
 
-        db.session.refresh(saved_extension)
+        db_session_with_containers.refresh(saved_extension)
         assert saved_extension.id is not None
 
         # Verify ping connection was called
         mock_external_service_dependencies["requestor_instance"].request.assert_called_once()
 
-    def test_save_extension_validation_errors(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_save_extension_validation_errors(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test validation errors when saving extension with invalid data.
         """
@@ -132,7 +134,9 @@ class TestAPIBasedExtensionService:
         with pytest.raises(ValueError, match="api_key must not be empty"):
             APIBasedExtensionService.save(extension_data)
 
-    def test_get_all_by_tenant_id_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_get_all_by_tenant_id_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test successful retrieval of all extensions by tenant ID.
         """
@@ -169,7 +173,7 @@ class TestAPIBasedExtensionService:
                 # Verify descending order (newer first)
                 assert extension.created_at <= extension_list[i - 1].created_at
 
-    def test_get_with_tenant_id_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_get_with_tenant_id_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test successful retrieval of extension by tenant ID and extension ID.
         """
@@ -200,7 +204,9 @@ class TestAPIBasedExtensionService:
         assert retrieved_extension.api_key == extension_data.api_key  # Should be decrypted
         assert retrieved_extension.created_at is not None
 
-    def test_get_with_tenant_id_not_found(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_get_with_tenant_id_not_found(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test retrieval of extension when extension is not found.
         """
@@ -214,7 +220,7 @@ class TestAPIBasedExtensionService:
         with pytest.raises(ValueError, match="API based extension is not found"):
             APIBasedExtensionService.get_with_tenant_id(tenant.id, non_existent_extension_id)
 
-    def test_delete_extension_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_delete_extension_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test successful deletion of extension.
         """
@@ -238,12 +244,15 @@ class TestAPIBasedExtensionService:
         APIBasedExtensionService.delete(created_extension)
 
         # Verify extension was deleted
-        from extensions.ext_database import db
 
-        deleted_extension = db.session.query(APIBasedExtension).where(APIBasedExtension.id == extension_id).first()
+        deleted_extension = (
+            db_session_with_containers.query(APIBasedExtension).where(APIBasedExtension.id == extension_id).first()
+        )
         assert deleted_extension is None
 
-    def test_save_extension_duplicate_name(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_save_extension_duplicate_name(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test validation error when saving extension with duplicate name.
         """
@@ -272,7 +281,9 @@ class TestAPIBasedExtensionService:
         with pytest.raises(ValueError, match="name must be unique, it is already existed"):
             APIBasedExtensionService.save(extension_data2)
 
-    def test_save_extension_update_existing(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_save_extension_update_existing(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test successful update of existing extension.
         """
@@ -329,7 +340,9 @@ class TestAPIBasedExtensionService:
         assert retrieved_extension.api_endpoint == new_endpoint
         assert retrieved_extension.api_key == new_api_key  # Should be decrypted when retrieved
 
-    def test_save_extension_connection_error(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_save_extension_connection_error(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test connection error when saving extension with invalid endpoint.
         """
@@ -356,7 +369,7 @@ class TestAPIBasedExtensionService:
             APIBasedExtensionService.save(extension_data)
 
     def test_save_extension_invalid_api_key_length(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test validation error when saving extension with API key that is too short.
@@ -378,7 +391,7 @@ class TestAPIBasedExtensionService:
         with pytest.raises(ValueError, match="api_key must be at least 5 characters"):
             APIBasedExtensionService.save(extension_data)
 
-    def test_save_extension_empty_fields(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_save_extension_empty_fields(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test validation errors when saving extension with empty required fields.
         """
@@ -412,7 +425,9 @@ class TestAPIBasedExtensionService:
         with pytest.raises(ValueError, match="api_key must not be empty"):
             APIBasedExtensionService.save(extension_data)
 
-    def test_get_all_by_tenant_id_empty_list(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_get_all_by_tenant_id_empty_list(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test retrieval of extensions when no extensions exist for tenant.
         """
@@ -428,7 +443,9 @@ class TestAPIBasedExtensionService:
         assert len(extension_list) == 0
         assert extension_list == []
 
-    def test_save_extension_invalid_ping_response(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_save_extension_invalid_ping_response(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test validation error when ping response is invalid.
         """
@@ -452,7 +469,9 @@ class TestAPIBasedExtensionService:
         with pytest.raises(ValueError, match="{'result': 'invalid'}"):
             APIBasedExtensionService.save(extension_data)
 
-    def test_save_extension_missing_ping_result(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_save_extension_missing_ping_result(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test validation error when ping response is missing result field.
         """
@@ -476,7 +495,9 @@ class TestAPIBasedExtensionService:
         with pytest.raises(ValueError, match="{'status': 'ok'}"):
             APIBasedExtensionService.save(extension_data)
 
-    def test_get_with_tenant_id_wrong_tenant(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_get_with_tenant_id_wrong_tenant(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test retrieval of extension when tenant ID doesn't match.
         """

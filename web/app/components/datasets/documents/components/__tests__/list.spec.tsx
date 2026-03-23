@@ -20,9 +20,8 @@ const mockHandleSave = vi.fn()
 vi.mock('../document-list/hooks', () => ({
   useDocumentSort: vi.fn(() => ({
     sortField: null,
-    sortOrder: null,
+    sortOrder: 'desc',
     handleSort: mockHandleSort,
-    sortedDocuments: [],
   })),
   useDocumentSelection: vi.fn(() => ({
     isAllSelected: false,
@@ -125,8 +124,8 @@ const defaultProps = {
   pagination: { total: 0, current: 1, limit: 10, onChange: vi.fn() },
   onUpdate: vi.fn(),
   onManageMetadata: vi.fn(),
-  statusFilterValue: 'all',
-  remoteSortValue: '',
+  remoteSortValue: '-created_at',
+  onSortChange: vi.fn(),
 }
 
 describe('DocumentList', () => {
@@ -140,8 +139,6 @@ describe('DocumentList', () => {
       render(<DocumentList {...defaultProps} />)
 
       expect(screen.getByText('#')).toBeInTheDocument()
-      expect(screen.getByTestId('sort-name')).toBeInTheDocument()
-      expect(screen.getByTestId('sort-word_count')).toBeInTheDocument()
       expect(screen.getByTestId('sort-hit_count')).toBeInTheDocument()
       expect(screen.getByTestId('sort-created_at')).toBeInTheDocument()
     })
@@ -164,10 +161,9 @@ describe('DocumentList', () => {
     it('should render document rows from sortedDocuments', () => {
       const docs = [createDoc({ id: 'a', name: 'Doc A' }), createDoc({ id: 'b', name: 'Doc B' })]
       vi.mocked(useDocumentSort).mockReturnValue({
-        sortField: null,
+        sortField: 'created_at',
         sortOrder: 'desc',
         handleSort: mockHandleSort,
-        sortedDocuments: docs,
       } as unknown as ReturnType<typeof useDocumentSort>)
 
       render(<DocumentList {...defaultProps} documents={docs} />)
@@ -182,9 +178,9 @@ describe('DocumentList', () => {
     it('should call handleSort when sort header is clicked', () => {
       render(<DocumentList {...defaultProps} />)
 
-      fireEvent.click(screen.getByTestId('sort-name'))
+      fireEvent.click(screen.getByTestId('sort-created_at'))
 
-      expect(mockHandleSort).toHaveBeenCalledWith('name')
+      expect(mockHandleSort).toHaveBeenCalledWith('created_at')
     })
   })
 
@@ -229,7 +225,6 @@ describe('DocumentList', () => {
         sortField: null,
         sortOrder: 'desc',
         handleSort: mockHandleSort,
-        sortedDocuments: [],
       } as unknown as ReturnType<typeof useDocumentSort>)
 
       render(<DocumentList {...defaultProps} documents={[]} />)
