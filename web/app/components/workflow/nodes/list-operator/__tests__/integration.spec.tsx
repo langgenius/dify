@@ -1,7 +1,7 @@
 /* eslint-disable ts/no-explicit-any, style/jsx-one-expression-per-line */
 import type { ListFilterNodeType } from '../types'
 import type { PanelProps } from '@/types/workflow'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
@@ -160,7 +160,6 @@ describe('list-operator path', () => {
     })
 
     it('should change the selected sub variable', async () => {
-      const user = userEvent.setup()
       const onChange = vi.fn()
       const { unmount } = render(
         <SubVariablePicker
@@ -169,15 +168,16 @@ describe('list-operator path', () => {
         />,
       )
 
-      const trigger = screen.getByRole('button', { name: 'size' })
-      fireEvent.click(trigger)
+      const trigger = screen.getByRole('button')
 
-      await waitFor(() => {
-        expect(trigger).toHaveAttribute('aria-expanded', 'true')
+      await act(async () => {
+        fireEvent.keyDown(trigger, { key: 'ArrowDown' })
       })
 
-      const listbox = await screen.findByRole('listbox')
-      await user.click(within(listbox).getByText('name'))
+      const option = await screen.findByText('name')
+      await act(async () => {
+        fireEvent.click(option)
+      })
 
       await waitFor(() => {
         expect(onChange).toHaveBeenCalledWith('name')
