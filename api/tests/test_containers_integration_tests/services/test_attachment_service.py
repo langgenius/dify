@@ -1,6 +1,7 @@
 """Testcontainers integration tests for AttachmentService."""
 
 import base64
+from datetime import UTC, datetime
 from unittest.mock import patch
 from uuid import uuid4
 
@@ -11,6 +12,7 @@ from werkzeug.exceptions import NotFound
 
 import services.attachment_service as attachment_service_module
 from extensions.ext_database import db
+from extensions.storage.storage_type import StorageType
 from models.enums import CreatorUserRole
 from models.model import UploadFile
 from services.attachment_service import AttachmentService
@@ -19,9 +21,8 @@ from services.attachment_service import AttachmentService
 class TestAttachmentService:
     def _create_upload_file(self, db_session_with_containers, *, tenant_id: str | None = None) -> UploadFile:
         upload_file = UploadFile(
-            id=str(uuid4()),
             tenant_id=tenant_id or str(uuid4()),
-            storage_type="opendal",
+            storage_type=StorageType.OPENDAL,
             key=f"upload/{uuid4()}.txt",
             name="test-file.txt",
             size=100,
@@ -29,6 +30,8 @@ class TestAttachmentService:
             mime_type="text/plain",
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=str(uuid4()),
+            created_at=datetime.now(UTC),
+            used=False,
         )
         db_session_with_containers.add(upload_file)
         db_session_with_containers.commit()
