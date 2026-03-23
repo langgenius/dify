@@ -205,7 +205,7 @@
   "thought.used": "Kullanıldı",
   "thought.using": "Kullanılıyor",
   "title": "Araçlar",
-  "toolNameUsageTip": "Agent akıl yürütme ve prompt için araç çağrı adı",
+  "toolNameUsageTip": "Ajan akıl yürütme ve prompt için araç çağrı adı",
   "toolRemoved": "Araç kaldırıldı",
   "type.builtIn": "Yerleşik",
   "type.custom": "Özel",

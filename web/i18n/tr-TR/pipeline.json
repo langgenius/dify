@@ -15,7 +15,7 @@
   "inputField.manage": "Yönet",
   "publishToast.desc": "İşlem hattı yayımlanmadığında, bilgi bankası düğümündeki öbek yapısını değiştirebilirsiniz ve işlem hattı düzenlemesi ve değişiklikleri otomatik olarak taslak olarak kaydedilir.",
   "publishToast.title": "Bu işlem hattı henüz yayımlanmadı",
-  "ragToolSuggestions.noRecommendationPlugins": "Önerilen eklenti yok, daha fazlasını <CustomLink>Marketplace</CustomLink> içinde bulabilirsiniz",
+  "ragToolSuggestions.noRecommendationPlugins": "Önerilen eklenti yok, daha fazlasını <CustomLink>Pazar Yeri</CustomLink> içinde bulabilirsiniz",
   "ragToolSuggestions.title": "RAG için Öneriler",
   "result.resultPreview.error": "Yürütme sırasında hata oluştu",
   "result.resultPreview.footerTip": "Test çalıştırma modunda, {{count}} parçaya kadar önizleme yapabilirsiniz",
