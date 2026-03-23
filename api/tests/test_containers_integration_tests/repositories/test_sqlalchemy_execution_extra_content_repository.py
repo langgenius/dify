@@ -133,6 +133,7 @@ def _create_conversation(session: Session, scope: _TestScope) -> Conversation:
     )
     conversation.inputs = {}
     session.add(conversation)
+    session.flush()
     return conversation
 
 
@@ -160,6 +161,7 @@ def _create_message(
         workflow_run_id=workflow_run_id,
     )
     session.add(message)
+    session.flush()
     return message
 
 
@@ -194,6 +196,7 @@ def _create_submitted_form(
         selected_action_id=action_id,
     )
     session.add(form)
+    session.flush()
     return form
 
 
@@ -226,6 +229,7 @@ def _create_waiting_form(
         expiration_time=expiration_time,
     )
     session.add(form)
+    session.flush()
     return form
 
 
@@ -275,6 +279,7 @@ def _create_delivery(session: Session, *, form_id: str) -> HumanInputDelivery:
         channel_payload=ConsoleDeliveryPayload().model_dump_json(),
     )
     session.add(delivery)
+    session.flush()
     return delivery
 
 
