@@ -6,7 +6,7 @@ from flask import abort, request
 from flask_restx import Resource, marshal_with  # type: ignore
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
+from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound
 
 import services
 from controllers.common.schema import register_schema_models
@@ -16,7 +16,11 @@ from controllers.console.app.error import (
     DraftWorkflowNotExist,
     DraftWorkflowNotSync,
 )
-from controllers.console.app.workflow import workflow_model, workflow_pagination_model
+from controllers.console.app.workflow import (
+    RESTORE_SOURCE_WORKFLOW_MUST_BE_PUBLISHED_MESSAGE,
+    workflow_model,
+    workflow_pagination_model,
+)
 from controllers.console.app.workflow_run import (
     workflow_run_detail_model,
     workflow_run_node_execution_list_model,
@@ -42,7 +46,8 @@ from libs.login import current_account_with_tenant, current_user, login_required
 from models import Account
 from models.dataset import Pipeline
 from models.model import EndUser
-from services.errors.app import WorkflowHashNotEqualError
+from models.workflow import Workflow
+from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
 from services.rag_pipeline.pipeline_generate_service import PipelineGenerateService
 from services.rag_pipeline.rag_pipeline import RagPipelineService
@@ -203,9 +208,12 @@ class DraftRagPipelineApi(Resource):
             abort(415)
 
         payload = DraftWorkflowSyncPayload.model_validate(payload_dict)
+        rag_pipeline_service = RagPipelineService()
 
         try:
-            environment_variables_list = payload.environment_variables or []
+            environment_variables_list = Workflow.normalize_environment_variable_mappings(
+                payload.environment_variables or [],
+            )
             environment_variables = [
                 variable_factory.build_environment_variable_from_mapping(obj) for obj in environment_variables_list
             ]
@@ -213,7 +221,6 @@ class DraftRagPipelineApi(Resource):
             conversation_variables = [
                 variable_factory.build_conversation_variable_from_mapping(obj) for obj in conversation_variables_list
             ]
-            rag_pipeline_service = RagPipelineService()
             workflow = rag_pipeline_service.sync_draft_workflow(
                 pipeline=pipeline,
                 graph=payload.graph,
@@ -703,6 +710,36 @@ class PublishedAllRagPipelineApi(Resource):
                 "limit": limit,
                 "has_more": has_more,
             }
+
+
+@console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/<string:workflow_id>/restore")
+class RagPipelineDraftWorkflowRestoreApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @get_rag_pipeline
+    def post(self, pipeline: Pipeline, workflow_id: str):
+        current_user, _ = current_account_with_tenant()
+        rag_pipeline_service = RagPipelineService()
+
+        try:
+            workflow = rag_pipeline_service.restore_published_workflow_to_draft(
+                pipeline=pipeline,
+                workflow_id=workflow_id,
+                account=current_user,
+            )
+        except IsDraftWorkflowError as exc:
+            # Use a stable, predefined message to keep the 400 response consistent
+            raise BadRequest(RESTORE_SOURCE_WORKFLOW_MUST_BE_PUBLISHED_MESSAGE) from exc
+        except WorkflowNotFoundError as exc:
+            raise NotFound(str(exc)) from exc
+
+        return {
+            "result": "success",
+            "hash": workflow.unique_hash,
+            "updated_at": TimestampField().format(workflow.updated_at or workflow.created_at),
+        }
 
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/<string:workflow_id>")
