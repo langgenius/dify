@@ -100,10 +100,17 @@ class TestOAuthServerServiceTokenOperations:
 
         assert access_token == str(token_uuids[0])
         assert refresh_token == str(token_uuids[1])
+        code_key = OAUTH_AUTHORIZATION_CODE_REDIS_KEY.format(client_id="client-1", code="code-1")
+        mock_redis.delete.assert_called_once_with(code_key)
         mock_redis.set.assert_any_call(
             OAUTH_ACCESS_TOKEN_REDIS_KEY.format(client_id="client-1", token=access_token),
             b"user-1",
             ex=OAUTH_ACCESS_TOKEN_EXPIRES_IN,
+        )
+        mock_redis.set.assert_any_call(
+            OAUTH_REFRESH_TOKEN_REDIS_KEY.format(client_id="client-1", token=refresh_token),
+            b"user-1",
+            ex=OAUTH_REFRESH_TOKEN_EXPIRES_IN,
         )
 
     def test_sign_access_token_raises_bad_request_for_invalid_refresh_token(self, mock_redis):
