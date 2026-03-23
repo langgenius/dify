@@ -22,6 +22,7 @@ from core.ops.entities.trace_entity import (
     TraceTaskName,
     WorkflowTraceInfo,
 )
+from core.ops.utils import should_trace_as_llm
 from core.repositories import DifyCoreRepositoryFactory
 from dify_graph.enums import NodeType, WorkflowNodeExecutionMetadataKey
 from extensions.ext_database import db
@@ -218,7 +219,7 @@ class OpikDataTrace(BaseTraceInstance):
             completion_tokens = 0
             prompt_tokens = 0
 
-            if process_data and process_data.get("model_mode") == "chat":
+            if should_trace_as_llm(node_type, process_data):
                 run_type = "llm"
                 provider = process_data.get("model_provider", None)
                 model = process_data.get("model_name", "")
