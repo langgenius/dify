@@ -21,6 +21,8 @@ let clientWidthSpy: { mockRestore: () => void } | null = null
 let clientHeightSpy: { mockRestore: () => void } | null = null
 let offsetWidthSpy: { mockRestore: () => void } | null = null
 let offsetHeightSpy: { mockRestore: () => void } | null = null
+let consoleErrorSpy: ReturnType<typeof vi.spyOn> | null = null
+let consoleWarnSpy: ReturnType<typeof vi.spyOn> | null = null
 
 type AudioContextCtor = new () => unknown
 type WindowWithLegacyAudio = Window & {
@@ -83,6 +85,8 @@ describe('CodeBlock', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseTheme.mockReturnValue({ theme: Theme.light })
+    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     clientWidthSpy = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(900)
     clientHeightSpy = vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(400)
     offsetWidthSpy = vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(900)
@@ -98,6 +102,10 @@ describe('CodeBlock', () => {
 
   afterEach(() => {
     vi.useRealTimers()
+    consoleErrorSpy?.mockRestore()
+    consoleWarnSpy?.mockRestore()
+    consoleErrorSpy = null
+    consoleWarnSpy = null
     clientWidthSpy?.mockRestore()
     clientHeightSpy?.mockRestore()
     offsetWidthSpy?.mockRestore()
