@@ -439,9 +439,7 @@ class TestForgotPasswordResetApi:
     @patch("controllers.console.auth.forgot_password.AccountService.get_reset_password_data")
     @patch("controllers.console.auth.forgot_password.AccountService.revoke_reset_password_token")
     @patch("controllers.console.auth.forgot_password.AccountService.get_account_by_email_with_case_fallback")
-    def test_reset_password_account_not_found(
-        self, mock_get_account, mock_revoke_token, mock_get_data, app
-    ):
+    def test_reset_password_account_not_found(self, mock_get_account, mock_revoke_token, mock_get_data, app):
         """
         Test password reset for non-existent account.
 
