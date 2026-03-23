@@ -168,6 +168,7 @@ class DifyTestContainers:
 
         # Start Dify Sandbox container for code execution environment
         # Dify Sandbox provides a secure environment for executing user code
+        # Use pinned version 0.2.12 to match production docker-compose configuration
         logger.info("Initializing Dify Sandbox container...")
         sandbox_image = os.getenv(SANDBOX_TEST_IMAGE_ENV, DEFAULT_SANDBOX_TEST_IMAGE)
         self.dify_sandbox = DockerContainer(image=sandbox_image).with_network(self.network)
