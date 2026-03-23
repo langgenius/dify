@@ -2,10 +2,14 @@ import type { InvitationResponse } from '@/models/common'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
-import { ToastContext } from '@/app/components/base/toast/context'
+import { toast } from '@/app/components/base/ui/toast'
 import { useProviderContextSelector } from '@/context/provider-context'
 import { inviteMember } from '@/service/common'
 import InviteModal from '../index'
+
+const { mockToastError } = vi.hoisted(() => ({
+  mockToastError: vi.fn(),
+}))
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContextSelector: vi.fn(),
@@ -14,6 +18,11 @@ vi.mock('@/context/provider-context', () => ({
   })),
 }))
 vi.mock('@/service/common')
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    error: mockToastError,
+  },
+}))
 vi.mock('@/context/i18n', () => ({
   useLocale: () => 'en-US',
 }))
@@ -37,7 +46,6 @@ describe('InviteModal', () => {
   const mockOnCancel = vi.fn()
   const mockOnSend = vi.fn()
   const mockRefreshLicenseLimit = vi.fn()
-  const mockNotify = vi.fn()
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -49,9 +57,7 @@ describe('InviteModal', () => {
   })
 
   const renderModal = (isEmailSetup = true) => render(
-    <ToastContext.Provider value={{ notify: mockNotify, close: vi.fn() }}>
-      <InviteModal isEmailSetup={isEmailSetup} onCancel={mockOnCancel} onSend={mockOnSend} />
-    </ToastContext.Provider>,
+    <InviteModal isEmailSetup={isEmailSetup} onCancel={mockOnCancel} onSend={mockOnSend} />,
   )
   const fillEmails = (value: string) => {
     fireEvent.change(screen.getByTestId('mock-email-input'), { target: { value } })
@@ -143,10 +149,7 @@ describe('InviteModal', () => {
     fillEmails('invalid@email.c')
     await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
 
-    expect(mockNotify).toHaveBeenCalledWith({
-      type: 'error',
-      message: 'common.members.emailInvalid',
-    })
+    expect(toast.error).toHaveBeenCalledWith('common.members.emailInvalid')
     expect(inviteMember).not.toHaveBeenCalled()
   })
 
