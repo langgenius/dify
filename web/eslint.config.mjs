@@ -65,6 +65,7 @@ export default antfu(
     rules: {
       ...pluginReact.configs['recommended-typescript'].rules,
       'react/prefer-namespace-import': 'error',
+      'react/set-state-in-effect': 'error',
     },
   },
   {
