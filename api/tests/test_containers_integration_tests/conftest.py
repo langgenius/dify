@@ -165,8 +165,9 @@ class DifyTestContainers:
 
         # Start Dify Sandbox container for code execution environment
         # Dify Sandbox provides a secure environment for executing user code
+        # Use pinned version 0.2.12 to match production docker-compose configuration
         logger.info("Initializing Dify Sandbox container...")
-        self.dify_sandbox = DockerContainer(image="langgenius/dify-sandbox:latest").with_network(self.network)
+        self.dify_sandbox = DockerContainer(image="langgenius/dify-sandbox:0.2.12").with_network(self.network)
         self.dify_sandbox.with_exposed_ports(8194)
         self.dify_sandbox.env = {
             "API_KEY": "test_api_key",

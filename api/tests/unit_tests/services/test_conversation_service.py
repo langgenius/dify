@@ -15,6 +15,7 @@ from sqlalchemy import asc, desc
 from core.app.entities.app_invoke_entities import InvokeFrom
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account, ConversationVariable
+from models.enums import ConversationFromSource
 from models.model import App, Conversation, EndUser, Message
 from services.conversation_service import ConversationService
 from services.errors.conversation import (
@@ -350,7 +351,7 @@ class TestConversationServiceGetConversation:
         app_model = ConversationServiceTestDataFactory.create_app_mock()
         user = ConversationServiceTestDataFactory.create_account_mock()
         conversation = ConversationServiceTestDataFactory.create_conversation_mock(
-            from_account_id=user.id, from_source="console"
+            from_account_id=user.id, from_source=ConversationFromSource.CONSOLE
         )
 
         mock_query = mock_db_session.query.return_value
@@ -374,7 +375,7 @@ class TestConversationServiceGetConversation:
         app_model = ConversationServiceTestDataFactory.create_app_mock()
         user = ConversationServiceTestDataFactory.create_end_user_mock()
         conversation = ConversationServiceTestDataFactory.create_conversation_mock(
-            from_end_user_id=user.id, from_source="api"
+            from_end_user_id=user.id, from_source=ConversationFromSource.API
         )
 
         mock_query = mock_db_session.query.return_value
@@ -1111,7 +1112,7 @@ class TestConversationServiceEdgeCases:
         mock_session_factory.create_session.return_value.__enter__.return_value = mock_session
 
         conversation = ConversationServiceTestDataFactory.create_conversation_mock(
-            from_source="api", from_end_user_id="user-123"
+            from_source=ConversationFromSource.API, from_end_user_id="user-123"
         )
         mock_session.scalars.return_value.all.return_value = [conversation]
 
@@ -1143,7 +1144,7 @@ class TestConversationServiceEdgeCases:
         mock_session_factory.create_session.return_value.__enter__.return_value = mock_session
 
         conversation = ConversationServiceTestDataFactory.create_conversation_mock(
-            from_source="console", from_account_id="account-123"
+            from_source=ConversationFromSource.CONSOLE, from_account_id="account-123"
         )
         mock_session.scalars.return_value.all.return_value = [conversation]
 

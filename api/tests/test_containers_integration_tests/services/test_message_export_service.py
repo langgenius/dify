@@ -7,7 +7,7 @@ import pytest
 from sqlalchemy.orm import Session
 
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
-from models.enums import FeedbackFromSource, FeedbackRating
+from models.enums import ConversationFromSource, FeedbackFromSource, FeedbackRating
 from models.model import (
     App,
     AppAnnotationHitHistory,
@@ -94,7 +94,7 @@ class TestAppMessageExportServiceIntegration:
             name="conv",
             inputs={"seed": 1},
             status="normal",
-            from_source="api",
+            from_source=ConversationFromSource.API,
             from_end_user_id=str(uuid.uuid4()),
         )
         session.add(conversation)
@@ -129,7 +129,7 @@ class TestAppMessageExportServiceIntegration:
             total_price=Decimal("0.003"),
             currency="USD",
             message_metadata=message_metadata,
-            from_source="api",
+            from_source=ConversationFromSource.API,
             from_end_user_id=conversation.from_end_user_id,
             created_at=created_at,
         )

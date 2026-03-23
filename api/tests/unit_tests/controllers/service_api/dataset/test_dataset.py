@@ -35,6 +35,7 @@ from controllers.service_api.dataset.dataset import (
 from controllers.service_api.dataset.error import DatasetInUseError, DatasetNameDuplicateError, InvalidActionError
 from models.account import Account
 from models.dataset import DatasetPermissionEnum
+from models.enums import TagType
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
 from services.tag_service import TagService
 
@@ -277,7 +278,7 @@ class TestDatasetTagsApi:
         mock_tag = Mock()
         mock_tag.id = "tag_1"
         mock_tag.name = "Test Tag"
-        mock_tag.type = "knowledge"
+        mock_tag.type = TagType.KNOWLEDGE
         mock_tag.binding_count = "0"  # Required for Pydantic validation - must be string
         mock_tag_service.get_tags.return_value = [mock_tag]
 
@@ -316,7 +317,7 @@ class TestDatasetTagsApi:
         mock_tag = Mock()
         mock_tag.id = "new_tag_1"
         mock_tag.name = "New Tag"
-        mock_tag.type = "knowledge"
+        mock_tag.type = TagType.KNOWLEDGE
         mock_tag_service.save_tags.return_value = mock_tag
         mock_service_api_ns.payload = {"name": "New Tag"}
 
@@ -378,7 +379,7 @@ class TestDatasetTagsApi:
         mock_tag = Mock()
         mock_tag.id = "tag_1"
         mock_tag.name = "Updated Tag"
-        mock_tag.type = "knowledge"
+        mock_tag.type = TagType.KNOWLEDGE
         mock_tag.binding_count = "5"
         mock_tag_service.update_tags.return_value = mock_tag
         mock_tag_service.get_tag_binding_count.return_value = 5
@@ -866,7 +867,7 @@ class TestTagService:
         mock_tag = Mock()
         mock_tag.id = str(uuid.uuid4())
         mock_tag.name = "New Tag"
-        mock_tag.type = "knowledge"
+        mock_tag.type = TagType.KNOWLEDGE
         mock_save.return_value = mock_tag
 
         result = TagService.save_tags({"name": "New Tag", "type": "knowledge"})
