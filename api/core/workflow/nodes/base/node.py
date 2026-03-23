@@ -360,7 +360,6 @@ class Node(Generic[NodeDataT]):
                 if not isinstance(event, NodeRunStreamChunkEvent):
                     yield event
 
-
     def run(self) -> Generator[GraphNodeEventBase, None, None]:
         execution_id = self.ensure_execution_id()
         self._start_at = naive_utc_now()

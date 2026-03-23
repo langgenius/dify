@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from core.variables.types import SegmentType
+from core.workflow.variables.types import SegmentType
 
 
 class SuggestedQuestionsOutput(BaseModel):
