@@ -1293,6 +1293,8 @@ describe('useChat – handleResume', () => {
     mockHandleRun.mockReset()
     mockSseGet.mockReset()
   })
+
+  async function setupResumeWithTree() {
     let sendCallbacks: any
     mockHandleRun.mockImplementation((_params: any, callbacks: any) => {
       sendCallbacks = callbacks
@@ -2587,6 +2589,8 @@ describe('useChat – updateCurrentQAOnTree with parent_message_id', () => {
       capturedCallbacks = callbacks
     })
   })
+
+  it('should handle follow-up message with parent_message_id', async () => {
     const { result } = renderHook(() => useChat({}))
 
     act(() => {
