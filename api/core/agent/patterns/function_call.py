@@ -12,7 +12,6 @@ from collections.abc import Generator
 from typing import Any, Union
 
 from core.agent.entities import AgentLog, AgentResult
-from core.workflow.file import File
 from core.model_runtime.entities import (
     AssistantPromptMessage,
     LLMResult,
@@ -24,6 +23,7 @@ from core.model_runtime.entities import (
     ToolPromptMessage,
 )
 from core.tools.entities.tool_entities import ToolInvokeMeta
+from core.workflow.file import File
 
 from .base import AgentPattern
 

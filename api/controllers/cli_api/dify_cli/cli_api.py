@@ -7,7 +7,6 @@ from controllers.cli_api.dify_cli.wraps import get_cli_user_tenant, plugin_data
 from controllers.cli_api.wraps import cli_api_only
 from controllers.console.wraps import setup_required
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.workflow.file.helpers import get_signed_file_url_for_plugin
 from core.plugin.backwards_invocation.app import PluginAppBackwardsInvocation
 from core.plugin.backwards_invocation.base import BaseBackwardsInvocationResponse
 from core.plugin.backwards_invocation.model import PluginModelBackwardsInvocation
@@ -23,6 +22,7 @@ from core.session.cli_api import CliContext
 from core.skill.entities import ToolInvocationRequest
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.tool_manager import ToolManager
+from core.workflow.file.helpers import get_signed_file_url_for_plugin
 from libs.helper import length_prefixed_response
 from models.account import Account
 from models.model import EndUser, Tenant

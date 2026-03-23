@@ -8,7 +8,6 @@ from core.agent.entities import AgentEntity, AgentLog, AgentResult
 from core.agent.patterns.strategy_factory import StrategyFactory
 from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.entities.queue_entities import QueueAgentThoughtEvent, QueueMessageEndEvent, QueueMessageFileEvent
-from core.workflow.file import file_manager
 from core.model_runtime.entities import (
     AssistantPromptMessage,
     LLMResult,
@@ -25,6 +24,7 @@ from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransfo
 from core.tools.__base.tool import Tool
 from core.tools.entities.tool_entities import ToolInvokeMeta
 from core.tools.tool_engine import ToolEngine
+from core.workflow.file import file_manager
 from models.model import Message
 
 logger = logging.getLogger(__name__)

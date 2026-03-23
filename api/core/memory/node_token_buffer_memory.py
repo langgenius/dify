@@ -20,7 +20,6 @@ from typing import cast
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from core.workflow.file import file_manager
 from core.memory.base import BaseMemory
 from core.model_manager import ModelInstance
 from core.model_runtime.entities import (
@@ -34,6 +33,7 @@ from core.model_runtime.entities import (
 )
 from core.model_runtime.entities.message_entities import PromptMessageContentUnionTypes
 from core.prompt.utils.extract_thread_messages import extract_thread_messages
+from core.workflow.file import file_manager
 from extensions.ext_database import db
 from models.model import Message
 from models.workflow import WorkflowNodeExecutionModel

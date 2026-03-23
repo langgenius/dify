@@ -7,7 +7,6 @@ import os
 import shlex
 from types import TracebackType
 
-from core.workflow.file import File, FileTransferMethod, FileType
 from core.sandbox.sandbox import Sandbox
 from core.session.cli_api import CliApiSession, CliApiSessionManager, CliContext
 from core.skill.entities import ToolAccessPolicy
@@ -15,6 +14,7 @@ from core.skill.entities.tool_dependencies import ToolDependencies
 from core.tools.signature import sign_tool_file
 from core.tools.tool_file_manager import ToolFileManager
 from core.virtual_environment.__base.helpers import pipeline
+from core.workflow.file import File, FileTransferMethod, FileType
 
 from ..bash.dify_cli import DifyCliConfig
 from ..entities import DifyCli

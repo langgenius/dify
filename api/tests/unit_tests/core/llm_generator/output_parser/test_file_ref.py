@@ -4,7 +4,6 @@ Unit tests for sandbox file path detection and conversion.
 
 import pytest
 
-from core.workflow.file import File, FileTransferMethod, FileType
 from core.llm_generator.output_parser.file_ref import (
     FILE_PATH_DESCRIPTION_SUFFIX,
     FILE_PATH_FORMAT,
@@ -14,6 +13,7 @@ from core.llm_generator.output_parser.file_ref import (
     is_file_path_property,
 )
 from core.variables.segments import ArrayFileSegment, FileSegment
+from core.workflow.file import File, FileTransferMethod, FileType
 
 
 def _build_file(file_id: str) -> File:

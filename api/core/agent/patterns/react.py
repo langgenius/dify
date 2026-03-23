@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING, Any, Union
 
 from core.agent.entities import AgentLog, AgentResult, AgentScratchpadUnit, ExecutionContext
 from core.agent.output_parser.cot_output_parser import CotAgentOutputParser
-from core.workflow.file import File
 from core.model_manager import ModelInstance
 from core.model_runtime.entities import (
     AssistantPromptMessage,
@@ -18,6 +17,7 @@ from core.model_runtime.entities import (
     PromptMessage,
     SystemPromptMessage,
 )
+from core.workflow.file import File
 
 from .base import AgentPattern, ToolInvokeHook
 

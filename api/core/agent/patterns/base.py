@@ -10,7 +10,6 @@ from collections.abc import Callable, Generator
 from typing import TYPE_CHECKING, Any
 
 from core.agent.entities import AgentLog, AgentResult, ExecutionContext
-from core.workflow.file import File
 from core.model_manager import ModelInstance
 from core.model_runtime.entities import (
     AssistantPromptMessage,
@@ -23,6 +22,7 @@ from core.model_runtime.entities import (
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.model_runtime.entities.message_entities import TextPromptMessageContent
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolInvokeMeta
+from core.workflow.file import File
 
 if TYPE_CHECKING:
     from core.tools.__base.tool import Tool
