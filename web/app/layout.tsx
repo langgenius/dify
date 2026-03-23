@@ -12,8 +12,8 @@ import { TooltipProvider } from './components/base/ui/tooltip'
 import BrowserInitializer from './components/browser-initializer'
 import { AgentationLoader } from './components/devtools/agentation-loader'
 import { ReactScanLoader } from './components/devtools/react-scan/loader'
+import LazySentryInitializer from './components/lazy-sentry-initializer'
 import { I18nServerProvider } from './components/provider/i18n-server'
-import SentryInitializer from './components/sentry-initializer'
 import RoutePrefixHandle from './routePrefixHandle'
 import './styles/globals.css'
 import './styles/markdown.scss'
@@ -67,7 +67,7 @@ const LocaleLayout = async ({
             >
               <NuqsAdapter>
                 <BrowserInitializer>
-                  <SentryInitializer>
+                  <LazySentryInitializer>
                     <TanstackQueryInitializer>
                       <I18nServerProvider>
                         <ToastHost timeout={5000} limit={3} />
@@ -80,7 +80,7 @@ const LocaleLayout = async ({
                         </ToastProvider>
                       </I18nServerProvider>
                     </TanstackQueryInitializer>
-                  </SentryInitializer>
+                  </LazySentryInitializer>
                 </BrowserInitializer>
               </NuqsAdapter>
             </ThemeProvider>
