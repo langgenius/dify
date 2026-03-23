@@ -6,19 +6,19 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import Banner from '../banner'
 
 const mockUseGetBanners = vi.fn()
-const mockUseUserProfile = vi.fn()
+const mockUseSelector = vi.fn()
 const mockTrackEvent = vi.fn()
 
 vi.mock('@/service/use-explore', () => ({
   useGetBanners: (...args: unknown[]) => mockUseGetBanners(...args),
 }))
 
-vi.mock('@/service/use-common', () => ({
-  useUserProfile: (...args: unknown[]) => mockUseUserProfile(...args),
-}))
-
 vi.mock('@/context/i18n', () => ({
   useLocale: () => 'en-US',
+}))
+
+vi.mock('@/context/app-context', () => ({
+  useSelector: (...args: unknown[]) => mockUseSelector(...args),
 }))
 
 vi.mock('@/app/components/base/amplitude', () => ({
@@ -103,13 +103,11 @@ const createMockBanner = (id: string, status: string = 'enabled', title: string 
 describe('Banner', () => {
   beforeEach(() => {
     vi.useFakeTimers()
-    mockUseUserProfile.mockReturnValue({
-      data: {
-        profile: {
-          id: 'account-123',
-        },
+    mockUseSelector.mockImplementation(selector => selector({
+      userProfile: {
+        id: 'account-123',
       },
-    })
+    }))
   })
 
   afterEach(() => {
@@ -293,6 +291,23 @@ describe('Banner', () => {
         account_id: 'account-123',
         event_time: expect.any(Number),
       }))
+    })
+
+    it('does not track impressions when account id is unavailable', () => {
+      mockUseSelector.mockImplementation(selector => selector({
+        userProfile: {
+          id: '',
+        },
+      }))
+      mockUseGetBanners.mockReturnValue({
+        data: [createMockBanner('1', 'enabled', 'Enabled Banner 1')],
+        isLoading: false,
+        isError: false,
+      })
+
+      render(<Banner />)
+
+      expect(mockTrackEvent).not.toHaveBeenCalled()
     })
   })
 

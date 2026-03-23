@@ -3,8 +3,8 @@ import * as React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { Carousel } from '@/app/components/base/carousel'
+import { useSelector } from '@/context/app-context'
 import { useLocale } from '@/context/i18n'
-import { useUserProfile } from '@/service/use-common'
 import { useGetBanners } from '@/service/use-explore'
 import Loading from '../../base/loading'
 import { BannerItem } from './banner-item'
@@ -25,7 +25,7 @@ const LoadingState: FC = () => (
 const Banner: FC = () => {
   const locale = useLocale()
   const { data: banners, isLoading, isError } = useGetBanners(locale)
-  const { data: userProfileResp } = useUserProfile()
+  const accountId = useSelector(s => s.userProfile.id)
   const [isHovered, setIsHovered] = useState(false)
   const [isResizing, setIsResizing] = useState(false)
   const resizeTimerRef = useRef<NodeJS.Timeout | null>(null)
@@ -61,6 +61,9 @@ const Banner: FC = () => {
   }, [])
 
   useEffect(() => {
+    if (!accountId)
+      return
+
     enabledBanners.forEach((banner, index) => {
       if (trackedBannerIdsRef.current.has(banner.id))
         return
@@ -72,12 +75,12 @@ const Banner: FC = () => {
         link: banner.link,
         page: 'explore',
         language: locale,
-        account_id: userProfileResp?.profile.id,
+        account_id: accountId,
         event_time: Date.now(),
       })
       trackedBannerIdsRef.current.add(banner.id)
     })
-  }, [enabledBanners, locale, userProfileResp?.profile.id])
+  }, [accountId, enabledBanners, locale])
 
   if (isLoading)
     return <LoadingState />
@@ -108,7 +111,7 @@ const Banner: FC = () => {
               isPaused={isPaused}
               sort={index + 1}
               language={locale}
-              accountId={userProfileResp?.profile.id}
+              accountId={accountId}
             />
           </Carousel.Item>
         ))}
