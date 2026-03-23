@@ -3,7 +3,7 @@
 import type { Types } from '@amplitude/analytics-browser'
 import type { FC } from 'react'
 import * as React from 'react'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { AMPLITUDE_API_KEY, IS_CLOUD_EDITION } from '@/config'
 
 export type IAmplitudeProps = {
@@ -56,31 +56,41 @@ const pageNameEnrichmentPlugin = (): Types.EnrichmentPlugin => {
 const AmplitudeProvider: FC<IAmplitudeProps> = ({
   sessionReplaySampleRate = 0.5,
 }) => {
+  const initializedRef = useRef(false)
+
   useEffect(() => {
     // Only enable in Saas edition with valid API key
-    if (!isAmplitudeEnabled())
+    if (!isAmplitudeEnabled() || initializedRef.current)
       return
+    initializedRef.current = true
 
     void Promise.all([
       import('@amplitude/analytics-browser'),
       import('@amplitude/plugin-session-replay-browser'),
     ]).then(([amplitude, replay]) => {
-      amplitude.init(AMPLITUDE_API_KEY, {
-        defaultTracking: {
-          sessions: true,
-          pageViews: true,
-          formInteractions: true,
-          fileDownloads: true,
-          attribution: true,
-        },
-      })
+      try {
+        amplitude.init(AMPLITUDE_API_KEY, {
+          defaultTracking: {
+            sessions: true,
+            pageViews: true,
+            formInteractions: true,
+            fileDownloads: true,
+            attribution: true,
+          },
+        })
 
-      amplitude.add(pageNameEnrichmentPlugin())
+        amplitude.add(pageNameEnrichmentPlugin())
 
-      const sessionReplay = replay.sessionReplayPlugin({
-        sampleRate: sessionReplaySampleRate,
-      })
-      amplitude.add(sessionReplay)
+        const sessionReplay = replay.sessionReplayPlugin({
+          sampleRate: sessionReplaySampleRate,
+        })
+        amplitude.add(sessionReplay)
+      }
+      catch (error) {
+        console.error('Failed to initialize Amplitude', error)
+      }
+    }).catch((error) => {
+      console.error('Failed to load Amplitude modules', error)
     })
   }, [sessionReplaySampleRate])
 

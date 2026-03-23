@@ -11,9 +11,18 @@ const AgentationLoader = () => {
     if (!IS_DEV)
       return
 
+    let cancelled = false
+
     void import('agentation').then((module) => {
-      setAgentationComponent(() => module.Agentation)
+      if (!cancelled)
+        setAgentationComponent(() => module.Agentation)
+    }).catch((error) => {
+      console.error('Failed to load Agentation', error)
     })
+
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   if (!IS_DEV || !AgentationComponent)

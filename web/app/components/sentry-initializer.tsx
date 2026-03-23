@@ -14,16 +14,23 @@ const SentryInitializer = ({
       return
 
     void import('@sentry/react').then((Sentry) => {
-      Sentry.init({
-        dsn: SENTRY_DSN,
-        integrations: [
-          Sentry.browserTracingIntegration(),
-          Sentry.replayIntegration(),
-        ],
-        tracesSampleRate: 0.1,
-        replaysSessionSampleRate: 0.1,
-        replaysOnErrorSampleRate: 1.0,
-      })
+      try {
+        Sentry.init({
+          dsn: SENTRY_DSN,
+          integrations: [
+            Sentry.browserTracingIntegration(),
+            Sentry.replayIntegration(),
+          ],
+          tracesSampleRate: 0.1,
+          replaysSessionSampleRate: 0.1,
+          replaysOnErrorSampleRate: 1.0,
+        })
+      }
+      catch (error) {
+        console.error('Failed to initialize Sentry', error)
+      }
+    }).catch((error) => {
+      console.error('Failed to load Sentry modules', error)
     })
   }, [])
   return children
