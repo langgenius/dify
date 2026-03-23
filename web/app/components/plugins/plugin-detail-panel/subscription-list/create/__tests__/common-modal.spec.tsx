@@ -1333,12 +1333,9 @@ describe('CommonCreateModal', () => {
       mockVerifyCredentials.mockImplementation((params, { onSuccess }) => {
         onSuccess()
       })
+      const builder = createMockSubscriptionBuilder()
 
-      render(<CommonCreateModal {...defaultProps} />)
-
-      await waitFor(() => {
-        expect(mockCreateBuilder).toHaveBeenCalled()
-      })
+      render(<CommonCreateModal {...defaultProps} builder={builder} />)
 
       fireEvent.click(screen.getByTestId('modal-confirm'))
 

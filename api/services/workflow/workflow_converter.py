@@ -1,5 +1,7 @@
 import json
-from typing import Any, TypedDict
+from typing import Any
+
+from typing_extensions import TypedDict
 
 from core.app.app_config.entities import (
     DatasetEntity,
@@ -32,6 +34,17 @@ class _NodeType(TypedDict):
     id: str
     position: None
     data: dict[str, Any]
+
+
+class _EdgeType(TypedDict):
+    id: str
+    source: str
+    target: str
+
+
+class WorkflowGraph(TypedDict):
+    nodes: list[_NodeType]
+    edges: list[_EdgeType]
 
 
 class WorkflowConverter:
@@ -107,7 +120,7 @@ class WorkflowConverter:
         app_config = self._convert_to_app_config(app_model=app_model, app_model_config=app_model_config)
 
         # init workflow graph
-        graph: dict[str, Any] = {"nodes": [], "edges": []}
+        graph: WorkflowGraph = {"nodes": [], "edges": []}
 
         # Convert list:
         # - variables -> start
@@ -385,7 +398,7 @@ class WorkflowConverter:
         self,
         original_app_mode: AppMode,
         new_app_mode: AppMode,
-        graph: dict,
+        graph: WorkflowGraph,
         model_config: ModelConfigEntity,
         prompt_template: PromptTemplateEntity,
         file_upload: FileUploadConfig | None = None,
@@ -595,7 +608,7 @@ class WorkflowConverter:
             "data": {"title": "ANSWER", "type": BuiltinNodeTypes.ANSWER, "answer": "{{#llm.text#}}"},
         }
 
-    def _create_edge(self, source: str, target: str):
+    def _create_edge(self, source: str, target: str) -> _EdgeType:
         """
         Create Edge
         :param source: source node id
@@ -604,7 +617,7 @@ class WorkflowConverter:
         """
         return {"id": f"{source}-{target}", "source": source, "target": target}
 
-    def _append_node(self, graph: dict[str, Any], node: _NodeType):
+    def _append_node(self, graph: WorkflowGraph, node: _NodeType):
         """
         Append Node to Graph
 

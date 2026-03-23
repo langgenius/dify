@@ -5,6 +5,7 @@ Unit tests for WorkflowResponseConverter focusing on process_data truncation fun
 import uuid
 from collections.abc import Mapping
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import Mock
 
@@ -233,6 +234,50 @@ class TestWorkflowResponseConverter:
         assert response is not None
         assert response.data.process_data == {}
         assert response.data.process_data_truncated is False
+
+    def test_workflow_node_finish_response_prefers_event_finished_at(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Finished timestamps should come from the event, not delayed queue processing time."""
+        converter = self.create_workflow_response_converter()
+        start_at = datetime(2024, 1, 1, 0, 0, 0, tzinfo=UTC).replace(tzinfo=None)
+        finished_at = datetime(2024, 1, 1, 0, 0, 2, tzinfo=UTC).replace(tzinfo=None)
+        delayed_processing_time = datetime(2024, 1, 1, 0, 0, 10, tzinfo=UTC).replace(tzinfo=None)
+
+        monkeypatch.setattr(
+            "core.app.apps.common.workflow_response_converter.naive_utc_now",
+            lambda: delayed_processing_time,
+        )
+        converter.workflow_start_to_stream_response(
+            task_id="bootstrap",
+            workflow_run_id="run-id",
+            workflow_id="wf-id",
+            reason=WorkflowStartReason.INITIAL,
+        )
+
+        event = QueueNodeSucceededEvent(
+            node_id="test-node-id",
+            node_type=BuiltinNodeTypes.CODE,
+            node_execution_id="node-exec-1",
+            start_at=start_at,
+            finished_at=finished_at,
+            in_iteration_id=None,
+            in_loop_id=None,
+            inputs={},
+            process_data={},
+            outputs={},
+            execution_metadata={},
+        )
+
+        response = converter.workflow_node_finish_to_stream_response(
+            event=event,
+            task_id="test-task-id",
+        )
+
+        assert response is not None
+        assert response.data.elapsed_time == 2.0
+        assert response.data.finished_at == int(finished_at.timestamp())
 
     def test_workflow_node_retry_response_uses_truncated_process_data(self):
         """Test that node retry response uses get_response_process_data()."""

@@ -25,6 +25,7 @@ from fields.conversation_fields import ResultResponse
 from fields.message_fields import SuggestedQuestionsResponse, WebMessageInfiniteScrollPagination, WebMessageListItem
 from libs import helper
 from libs.helper import uuid_value
+from models.enums import FeedbackRating
 from models.model import AppMode
 from services.app_generate_service import AppGenerateService
 from services.errors.app import MoreLikeThisDisabledError
@@ -157,7 +158,7 @@ class MessageFeedbackApi(WebApiResource):
                 app_model=app_model,
                 message_id=message_id,
                 user=end_user,
-                rating=payload.rating,
+                rating=FeedbackRating(payload.rating) if payload.rating else None,
                 content=payload.content,
             )
         except MessageNotExistsError:

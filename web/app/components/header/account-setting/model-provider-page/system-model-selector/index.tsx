@@ -123,7 +123,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
       },
     })
     if (res.result === 'success') {
-      toast.add({ type: 'success', title: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
       setOpen(false)
 
       const allModelTypes = [ModelTypeEnum.textGeneration, ModelTypeEnum.textEmbedding, ModelTypeEnum.rerank, ModelTypeEnum.speech2text, ModelTypeEnum.tts]

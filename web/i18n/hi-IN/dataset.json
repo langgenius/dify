@@ -77,6 +77,8 @@
   "externalKnowledgeDescriptionPlaceholder": "वर्णन करें कि इस ज्ञानकोष में क्या है (वैकल्पिक)",
   "externalKnowledgeForm.cancel": "रद्द करना",
   "externalKnowledgeForm.connect": "जोड़ना",
+  "externalKnowledgeForm.connectedFailed": "बाहरी ज्ञान आधार से कनेक्ट करने में विफल",
+  "externalKnowledgeForm.connectedSuccess": "बाहरी ज्ञान आधार सफलतापूर्वक कनेक्ट हुआ",
   "externalKnowledgeId": "बाहरी ज्ञान ID",
   "externalKnowledgeIdPlaceholder": "कृपया नॉलेज आईडी दर्ज करें",
   "externalKnowledgeName": "बाहरी ज्ञान का नाम",

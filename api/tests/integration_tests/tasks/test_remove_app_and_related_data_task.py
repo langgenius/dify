@@ -6,6 +6,7 @@ from sqlalchemy import delete
 
 from core.db.session_factory import session_factory
 from dify_graph.variables.segments import StringSegment
+from extensions.storage.storage_type import StorageType
 from models import Tenant
 from models.enums import CreatorUserRole
 from models.model import App, UploadFile
@@ -197,7 +198,7 @@ class TestDeleteDraftVariablesWithOffloadIntegration:
         with session_factory.create_session() as session:
             upload_file1 = UploadFile(
                 tenant_id=tenant.id,
-                storage_type="local",
+                storage_type=StorageType.LOCAL,
                 key="test/file1.json",
                 name="file1.json",
                 size=1024,
@@ -210,7 +211,7 @@ class TestDeleteDraftVariablesWithOffloadIntegration:
             )
             upload_file2 = UploadFile(
                 tenant_id=tenant.id,
-                storage_type="local",
+                storage_type=StorageType.LOCAL,
                 key="test/file2.json",
                 name="file2.json",
                 size=2048,
@@ -430,7 +431,7 @@ class TestDeleteDraftVariablesSessionCommit:
         with session_factory.create_session() as session:
             upload_file1 = UploadFile(
                 tenant_id=tenant.id,
-                storage_type="local",
+                storage_type=StorageType.LOCAL,
                 key="test/file1.json",
                 name="file1.json",
                 size=1024,
@@ -443,7 +444,7 @@ class TestDeleteDraftVariablesSessionCommit:
             )
             upload_file2 = UploadFile(
                 tenant_id=tenant.id,
-                storage_type="local",
+                storage_type=StorageType.LOCAL,
                 key="test/file2.json",
                 name="file2.json",
                 size=2048,
