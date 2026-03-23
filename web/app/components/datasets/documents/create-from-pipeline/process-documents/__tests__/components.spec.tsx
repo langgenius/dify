@@ -7,8 +7,8 @@ import Actions from '../actions'
 import Form from '../form'
 import Header from '../header'
 
-const { mockToastAdd } = vi.hoisted(() => ({
-  mockToastAdd: vi.fn(),
+const { mockToastError } = vi.hoisted(() => ({
+  mockToastError: vi.fn(),
 }))
 
 vi.mock('@/app/components/base/ui/toast', async (importOriginal) => {
@@ -17,7 +17,7 @@ vi.mock('@/app/components/base/ui/toast', async (importOriginal) => {
     ...actual,
     toast: {
       ...actual.toast,
-      add: mockToastAdd,
+      error: mockToastError,
     },
   }
 })
@@ -346,7 +346,7 @@ describe('Form', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockToastAdd.mockReset()
+    mockToastError.mockReset()
   })
 
   describe('Rendering', () => {
@@ -455,10 +455,7 @@ describe('Form', () => {
 
       // Assert - validation error should be shown
       await waitFor(() => {
-        expect(mockToastAdd).toHaveBeenCalledWith({
-          type: 'error',
-          title: '"field1" is required',
-        })
+        expect(mockToastError).toHaveBeenCalledWith('"field1" is required')
       })
     })
   })
@@ -577,10 +574,7 @@ describe('Form', () => {
       fireEvent.submit(form)
 
       await waitFor(() => {
-        expect(mockToastAdd).toHaveBeenCalledWith({
-          type: 'error',
-          title: '"field1" is required',
-        })
+        expect(mockToastError).toHaveBeenCalledWith('"field1" is required')
       })
     })
 
@@ -594,7 +588,7 @@ describe('Form', () => {
 
       // Assert - wait a bit and verify onSubmit was not called
       await waitFor(() => {
-        expect(mockToastAdd).toHaveBeenCalled()
+        expect(mockToastError).toHaveBeenCalled()
       })
       expect(onSubmit).not.toHaveBeenCalled()
     })

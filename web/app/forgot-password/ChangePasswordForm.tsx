@@ -29,10 +29,7 @@ const ChangePasswordForm = () => {
   const [showSuccess, setShowSuccess] = useState(false)
 
   const showErrorMessage = useCallback((message: string) => {
-    toast.add({
-      type: 'error',
-      title: message,
-    })
+    toast.error(message)
   }, [])
 
   const valid = useCallback(() => {

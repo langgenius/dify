@@ -20,10 +20,7 @@ const CreateCard = () => {
       onSuccess: (data) => {
         if (data) {
           const { id } = data
-          toast.add({
-            type: 'success',
-            title: t('creation.successTip', { ns: 'datasetPipeline' }),
-          })
+          toast.success(t('creation.successTip', { ns: 'datasetPipeline' }))
           invalidDatasetList()
           trackEvent('create_datasets_from_scratch', {
             dataset_id: id,
@@ -32,10 +29,7 @@ const CreateCard = () => {
         }
       },
       onError: () => {
-        toast.add({
-          type: 'error',
-          title: t('creation.errorTip', { ns: 'datasetPipeline' }),
-        })
+        toast.error(t('creation.errorTip', { ns: 'datasetPipeline' }))
       },
     })
   }, [createEmptyDataset, push, invalidDatasetList, t])

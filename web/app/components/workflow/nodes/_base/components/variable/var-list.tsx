@@ -53,17 +53,11 @@ const VarList: FC<Props> = ({
   const { run: validateVarInput } = useDebounceFn((list: Variable[], newKey: string) => {
     const result = checkKeys([newKey], true)
     if (!result.isValid) {
-      toast.add({
-        type: 'error',
-        title: t(`varKeyError.${result.errorMessageKey}`, { ns: 'appDebug', key: result.errorKey }),
-      })
+      toast.error(t(`varKeyError.${result.errorMessageKey}`, { ns: 'appDebug', key: result.errorKey }))
       return
     }
     if (list.some(item => item.variable?.trim() === newKey.trim())) {
-      toast.add({
-        type: 'error',
-        title: t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: newKey }),
-      })
+      toast.error(t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: newKey }))
     }
   }, { wait: 500 })
 
