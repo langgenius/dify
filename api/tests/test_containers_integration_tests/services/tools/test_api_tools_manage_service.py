@@ -684,4 +684,3 @@ class TestApiToolManageService:
                 schema_type="bad-schema-type",
                 schema="schema",
             )
-
