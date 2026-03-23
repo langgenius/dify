@@ -115,7 +115,7 @@ const ConfigFirecrawlModal: FC<Props> = ({
             />
           </div>
           <div className="my-8 flex h-8 items-center justify-between">
-            <a className="flex items-center space-x-1 text-xs font-normal leading-[18px] text-text-accent" target="_blank" href="https://www.firecrawl.dev/account">
+            <a className="flex items-center space-x-1 text-xs font-normal leading-[18px] text-text-accent" target="_blank" rel="noopener noreferrer" href="https://www.firecrawl.dev/account">
               <span>{t(`${I18N_PREFIX}.getApiKeyLinkText`, { ns: 'datasetCreation' })}</span>
               <span aria-hidden className="i-custom-vender-line-general-link-external-02 h-3 w-3" />
             </a>
