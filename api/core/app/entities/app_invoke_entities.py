@@ -120,6 +120,11 @@ class AppGenerateEntity(BaseModel):
     # Note: The `user_id` field does not indicate whether the user is a platform user or an end user.
     user_id: str
 
+    # Session identifier used as system_user_id in workflow execution.
+    # For external API calls (SERVICE_API / WEB_APP): holds EndUser.session_id.
+    # For internal calls (DEBUGGER / EXPLORE): holds Account.id (same as user_id).
+    user_session_id: str = ""
+
     # extras
     stream: bool
     invoke_from: InvokeFrom

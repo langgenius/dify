@@ -146,13 +146,12 @@ def test_resume_path_runs_worker_with_runtime_state(mocker):
     workflow = SimpleNamespace(
         id="workflow", tenant_id="tenant", app_id="app", graph_dict={}, type="workflow", version="1"
     )
-    end_user = SimpleNamespace(session_id="end-user-session")
     app_record = SimpleNamespace(id="app")
 
     session = MagicMock()
     session.__enter__.return_value = session
     session.__exit__.return_value = False
-    session.scalar.side_effect = [workflow, end_user, app_record]
+    session.scalar.side_effect = [workflow, app_record]
     mocker.patch("core.app.apps.workflow.app_generator.session_factory", return_value=session)
 
     runner_instance = MagicMock()
@@ -188,6 +187,7 @@ def test_resume_path_runs_worker_with_runtime_state(mocker):
     application_generate_entity = SimpleNamespace(
         task_id="task",
         user_id="user",
+        user_session_id="end-user-session",
         invoke_from="service-api",
         app_config=app_config,
         files=[],

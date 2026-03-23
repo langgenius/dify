@@ -190,6 +190,7 @@ class PipelineGenerator(BaseAppGenerator):
                 ),
                 files=[],
                 user_id=user.id,
+                user_session_id=user.session_id if isinstance(user, EndUser) else user.id,
                 stream=streaming,
                 invoke_from=invoke_from,
                 call_depth=call_depth,
@@ -394,6 +395,7 @@ class PipelineGenerator(BaseAppGenerator):
             inputs={},
             files=[],
             user_id=user.id,
+            user_session_id=user.session_id if isinstance(user, EndUser) else user.id,
             stream=streaming,
             invoke_from=InvokeFrom.DEBUGGER,
             call_depth=0,
@@ -491,6 +493,7 @@ class PipelineGenerator(BaseAppGenerator):
             inputs={},
             files=[],
             user_id=user.id,
+            user_session_id=user.session_id if isinstance(user, EndUser) else user.id,
             stream=streaming,
             invoke_from=InvokeFrom.DEBUGGER,
             extras={"auto_generate_conversation_name": False},
@@ -578,15 +581,14 @@ class PipelineGenerator(BaseAppGenerator):
                         InvokeFrom.SERVICE_API,
                     }
 
-                    if is_external_api_call:
-                        # For external API calls, use end user's session ID
-                        end_user = session.scalar(
-                            select(EndUser).where(EndUser.id == application_generate_entity.user_id)
-                        )
-                        system_user_id = end_user.session_id if end_user else ""
-                    else:
-                        # For internal calls, use the original user ID
-                        system_user_id = application_generate_entity.user_id
+                    # For external API calls, use end user's session ID
+                    # For internal calls, use the original user ID
+                    system_user_id = (
+                        application_generate_entity.user_session_id
+                        if is_external_api_call
+                        else application_generate_entity.user_id
+                    )
+
                     # workflow app
                     runner = PipelineRunner(
                         application_generate_entity=application_generate_entity,
