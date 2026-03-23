@@ -21,7 +21,6 @@ const config: KnipConfig = {
 
     '@storybook/addon-onboarding',
 
-    '@voidzero-dev/vite-plus-core',
   ],
   rules: {
     files: 'warn',
@@ -32,7 +31,6 @@ const config: KnipConfig = {
     unresolved: 'warn',
     exports: 'warn',
     nsExports: 'warn',
-    classMembers: 'warn',
     types: 'warn',
     nsTypes: 'warn',
     enumMembers: 'warn',
