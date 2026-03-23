@@ -2,20 +2,17 @@
 import type { RoleKey } from './role-selector'
 import type { InvitationResult } from '@/models/common'
 import { useBoolean } from 'ahooks'
-import { noop } from 'es-toolkit/function'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ReactMultiEmail } from 'react-multi-email'
-import { useContext } from 'use-context-selector'
 import Button from '@/app/components/base/button'
-import Modal from '@/app/components/base/modal'
-import { ToastContext } from '@/app/components/base/toast/context'
+import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@/app/components/base/ui/dialog'
+import { toast } from '@/app/components/base/ui/toast'
 import { emailRegex } from '@/config'
 import { useLocale } from '@/context/i18n'
 import { useProviderContextSelector } from '@/context/provider-context'
 import { inviteMember } from '@/service/common'
 import { cn } from '@/utils/classnames'
-import s from './index.module.css'
 import RoleSelector from './role-selector'
 import 'react-multi-email/dist/style.css'
 
@@ -34,7 +31,6 @@ const InviteModal = ({
   const licenseLimit = useProviderContextSelector(s => s.licenseLimit)
   const refreshLicenseLimit = useProviderContextSelector(s => s.refreshLicenseLimit)
   const [emails, setEmails] = useState<string[]>([])
-  const { notify } = useContext(ToastContext)
   const [isLimited, setIsLimited] = useState(false)
   const [isLimitExceeded, setIsLimitExceeded] = useState(false)
   const [usedSize, setUsedSize] = useState(licenseLimit.workspace_members.size ?? 0)
@@ -74,21 +70,28 @@ const InviteModal = ({
       catch { }
     }
     else {
-      notify({ type: 'error', message: t('members.emailInvalid', { ns: 'common' }) })
+      toast.error(t('members.emailInvalid', { ns: 'common' }))
     }
     setIsSubmitted()
-  }, [isLimitExceeded, emails, role, locale, onCancel, onSend, notify, t, isSubmitting, refreshLicenseLimit, setIsSubmitted, setIsSubmitting])
+  }, [isLimitExceeded, emails, role, locale, onCancel, onSend, t, isSubmitting, refreshLicenseLimit, setIsSubmitted, setIsSubmitting])
 
   return (
-    <div className={cn(s.wrap)}>
-      <Modal overflowVisible isShow onClose={noop} className={cn(s.modal)}>
-        <div className="mb-2 flex justify-between">
-          <div className="text-xl font-semibold text-text-primary">{t('members.inviteTeamMember', { ns: 'common' })}</div>
-          <div
-            data-testid="invite-modal-close"
-            className="i-ri-close-line h-4 w-4 cursor-pointer text-text-tertiary"
-            onClick={onCancel}
-          />
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open)
+          onCancel()
+      }}
+    >
+      <DialogContent
+        backdropProps={{ forceRender: true }}
+        className="w-[400px] overflow-visible px-8 py-6"
+      >
+        <DialogCloseButton data-testid="invite-modal-close" className="right-8 top-6" />
+        <div className="mb-2 pr-8">
+          <DialogTitle className="text-xl font-semibold text-text-primary">
+            {t('members.inviteTeamMember', { ns: 'common' })}
+          </DialogTitle>
         </div>
         <div className="mb-3 text-[13px] text-text-tertiary">{t('members.inviteTeamMemberTip', { ns: 'common' })}</div>
         {!isEmailSetup && (
@@ -152,8 +155,8 @@ const InviteModal = ({
             {t('members.sendInvite', { ns: 'common' })}
           </Button>
         </div>
-      </Modal>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
