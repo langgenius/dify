@@ -16,11 +16,15 @@ from services.account_service import AccountService
 
 
 @pytest.fixture
-def app():
+def app(attach_login_manager):
     app = Flask(__name__)
     app.config["TESTING"] = True
     app.config["RESTX_MASK_HEADER"] = "X-Fields"
-    app.login_manager = SimpleNamespace(_load_user=lambda: None)
+
+    class _AnonymousUser:
+        is_authenticated = False
+
+    attach_login_manager(app, _AnonymousUser())
     return app
 
 

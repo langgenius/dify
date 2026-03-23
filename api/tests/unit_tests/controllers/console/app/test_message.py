@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from flask import Flask, g, request
+from flask import Flask, request
 from werkzeug.exceptions import InternalServerError, NotFound
 from werkzeug.local import LocalProxy
 
@@ -28,19 +28,12 @@ from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
 
 
-def _attach_login_manager(app: Flask, user: MagicMock) -> None:
-    user.is_authenticated = True
-    login_manager = MagicMock()
-    login_manager._load_user.side_effect = lambda: setattr(g, "_login_user", user)
-    login_manager.unauthorized.return_value = ("Unauthorized", 401)
-    app.login_manager = login_manager
-
-
 @pytest.fixture
-def app():
+def app(attach_login_manager):
     flask_app = Flask(__name__)
     flask_app.config["TESTING"] = True
     flask_app.config["RESTX_MASK_HEADER"] = "X-Fields"
+    flask_app.attach_login_manager = lambda user: attach_login_manager(flask_app, user)
     return flask_app
 
 
@@ -109,7 +102,7 @@ def setup_test_context(
 
         # Let the caller override the stat db query logic
         proxy_mock = LocalProxy(lambda: mock_account)
-        _attach_login_manager(test_app, mock_account)
+        test_app.attach_login_manager(mock_account)
 
         query_string = "&".join([f"{k}={v}" for k, v in (qs or {}).items()])
         full_path = f"{route_path}?{query_string}" if qs else route_path

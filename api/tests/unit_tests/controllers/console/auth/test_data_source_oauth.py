@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from flask import Flask, g
+from flask import Flask
 from werkzeug.local import LocalProxy
 
 from controllers.console.auth.data_source_oauth import (
@@ -12,19 +12,12 @@ from controllers.console.auth.data_source_oauth import (
 )
 
 
-def _attach_login_manager(app: Flask, user: MagicMock) -> None:
-    user.is_authenticated = True
-    login_manager = MagicMock()
-    login_manager._load_user.side_effect = lambda: setattr(g, "_login_user", user)
-    login_manager.unauthorized.return_value = ("Unauthorized", 401)
-    app.login_manager = login_manager
-
-
 class TestOAuthDataSource:
     @pytest.fixture
-    def app(self):
+    def app(self, attach_login_manager):
         app = Flask(__name__)
         app.config["TESTING"] = True
+        app.attach_login_manager = lambda user: attach_login_manager(app, user)
         return app
 
     @patch("controllers.console.auth.data_source_oauth.get_oauth_providers")
@@ -90,9 +83,10 @@ class TestOAuthDataSource:
 
 class TestOAuthDataSourceCallback:
     @pytest.fixture
-    def app(self):
+    def app(self, attach_login_manager):
         app = Flask(__name__)
         app.config["TESTING"] = True
+        app.attach_login_manager = lambda user: attach_login_manager(app, user)
         return app
 
     @patch("controllers.console.auth.data_source_oauth.get_oauth_providers")
@@ -133,9 +127,10 @@ class TestOAuthDataSourceCallback:
 
 class TestOAuthDataSourceBinding:
     @pytest.fixture
-    def app(self):
+    def app(self, attach_login_manager):
         app = Flask(__name__)
         app.config["TESTING"] = True
+        app.attach_login_manager = lambda user: attach_login_manager(app, user)
         return app
 
     @patch("controllers.console.auth.data_source_oauth.get_oauth_providers")
@@ -166,9 +161,10 @@ class TestOAuthDataSourceBinding:
 
 class TestOAuthDataSourceSync:
     @pytest.fixture
-    def app(self):
+    def app(self, attach_login_manager):
         app = Flask(__name__)
         app.config["TESTING"] = True
+        app.attach_login_manager = lambda user: attach_login_manager(app, user)
         return app
 
     @patch("controllers.console.auth.data_source_oauth.get_oauth_providers")
@@ -190,7 +186,7 @@ class TestOAuthDataSourceSync:
 
         with patch("controllers.console.wraps.current_account_with_tenant", return_value=(mock_account, MagicMock())):
             with app.test_request_context("/console/api/oauth/data-source/notion/binding_123/sync", method="GET"):
-                _attach_login_manager(app, mock_account)
+                app.attach_login_manager(mock_account)
                 proxy_mock = LocalProxy(lambda: mock_account)
                 with patch("libs.login.current_user", proxy_mock):
                     api_instance = OAuthDataSourceSync()

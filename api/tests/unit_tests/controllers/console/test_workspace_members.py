@@ -9,10 +9,14 @@ from models.account import Account, TenantAccountRole
 
 
 @pytest.fixture
-def app():
+def app(attach_login_manager):
     flask_app = Flask(__name__)
     flask_app.config["TESTING"] = True
-    flask_app.login_manager = SimpleNamespace(_load_user=lambda: None)
+
+    class _AnonymousUser:
+        is_authenticated = False
+
+    attach_login_manager(flask_app, _AnonymousUser())
     return flask_app
 
 

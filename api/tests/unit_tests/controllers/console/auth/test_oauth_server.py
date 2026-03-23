@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from flask import Flask, g
+from flask import Flask
 from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.console.auth.oauth_server import (
@@ -12,19 +12,12 @@ from controllers.console.auth.oauth_server import (
 )
 
 
-def _attach_login_manager(app: Flask, user: MagicMock) -> None:
-    user.is_authenticated = True
-    login_manager = MagicMock()
-    login_manager._load_user.side_effect = lambda: setattr(g, "_login_user", user)
-    login_manager.unauthorized.return_value = ("Unauthorized", 401)
-    app.login_manager = login_manager
-
-
 class TestOAuthServerAppApi:
     @pytest.fixture
-    def app(self):
+    def app(self, attach_login_manager):
         app = Flask(__name__)
         app.config["TESTING"] = True
+        app.attach_login_manager = lambda user: attach_login_manager(app, user)
         return app
 
     @pytest.fixture
@@ -90,9 +83,10 @@ class TestOAuthServerAppApi:
 
 class TestOAuthServerUserAuthorizeApi:
     @pytest.fixture
-    def app(self):
+    def app(self, attach_login_manager):
         app = Flask(__name__)
         app.config["TESTING"] = True
+        app.attach_login_manager = lambda user: attach_login_manager(app, user)
         return app
 
     @pytest.fixture
@@ -126,7 +120,7 @@ class TestOAuthServerUserAuthorizeApi:
         mock_sign.return_value = "auth_code_123"
 
         with app.test_request_context("/oauth/provider/authorize", method="POST", json={"client_id": "test_client_id"}):
-            _attach_login_manager(app, mock_account)
+            app.attach_login_manager(mock_account)
             with patch("libs.login.current_user", mock_account):
                 api_instance = OAuthServerUserAuthorizeApi()
                 response = api_instance.post()
@@ -137,9 +131,10 @@ class TestOAuthServerUserAuthorizeApi:
 
 class TestOAuthServerUserTokenApi:
     @pytest.fixture
-    def app(self):
+    def app(self, attach_login_manager):
         app = Flask(__name__)
         app.config["TESTING"] = True
+        app.attach_login_manager = lambda user: attach_login_manager(app, user)
         return app
 
     @pytest.fixture
@@ -298,9 +293,10 @@ class TestOAuthServerUserTokenApi:
 
 class TestOAuthServerUserAccountApi:
     @pytest.fixture
-    def app(self):
+    def app(self, attach_login_manager):
         app = Flask(__name__)
         app.config["TESTING"] = True
+        app.attach_login_manager = lambda user: attach_login_manager(app, user)
         return app
 
     @pytest.fixture
