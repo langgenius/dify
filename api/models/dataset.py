@@ -11,7 +11,7 @@ import time
 from collections.abc import Sequence
 from datetime import datetime
 from json import JSONDecodeError
-from typing import Any, TypedDict, cast
+from typing import Any, NotRequired, TypedDict, cast
 from uuid import uuid4
 
 import sqlalchemy as sa
@@ -68,8 +68,8 @@ class AutomaticRulesConfig(TypedDict):
 
 
 class ProcessRuleDict(TypedDict):
-    id: str
-    dataset_id: str
+    id: NotRequired[str]
+    dataset_id: NotRequired[str]
     mode: str
     rules: dict[str, Any] | None
 

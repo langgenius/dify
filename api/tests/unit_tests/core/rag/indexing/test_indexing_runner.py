@@ -1431,6 +1431,44 @@ class TestIndexingRunnerEstimate:
                     doc_form=IndexStructureType.PARAGRAPH_INDEX,
                 )
 
+    def test_indexing_estimate_uses_lightweight_preview_process_rule(self, mock_dependencies):
+        """Test preview estimation avoids constructing a persisted DatasetProcessRule ORM object."""
+        # Arrange
+        runner = IndexingRunner()
+        tenant_id = str(uuid.uuid4())
+        extract_setting = MagicMock()
+        tmp_processing_rule = create_mock_process_rule(mode="automatic")
+
+        mock_features = MagicMock()
+        mock_features.billing.enabled = False
+        mock_dependencies["feature_service"].get_features.return_value = mock_features
+
+        mock_processor = MagicMock()
+        mock_processor.extract.return_value = [Document(page_content="source", metadata={"doc_id": "source-1"})]
+        mock_processor.transform.return_value = [Document(page_content="preview chunk", metadata={"doc_id": "chunk-1"})]
+        mock_dependencies["factory"].return_value.init_index_processor.return_value = mock_processor
+
+        with patch("core.indexing_runner.DatasetProcessRule", side_effect=AssertionError("ORM should not be created")):
+            # Act
+            estimate = runner.indexing_estimate(
+                tenant_id=tenant_id,
+                extract_settings=[extract_setting],
+                tmp_processing_rule=tmp_processing_rule,
+                doc_form=IndexStructureType.PARAGRAPH_INDEX,
+            )
+
+        # Assert
+        assert estimate.total_segments == 1
+        assert len(estimate.preview) == 1
+        assert estimate.preview[0].content == "preview chunk"
+
+        transform_kwargs = mock_processor.transform.call_args.kwargs
+        assert transform_kwargs["preview"] is True
+        assert transform_kwargs["process_rule"] == {
+            "mode": tmp_processing_rule["mode"],
+            "rules": tmp_processing_rule["rules"],
+        }
+
 
 class TestIndexingRunnerProcessChunk:
     """Unit tests for chunk processing in parallel.

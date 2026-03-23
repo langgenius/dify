@@ -38,7 +38,7 @@ from extensions.ext_storage import storage
 from libs import helper
 from libs.datetime_utils import naive_utc_now
 from models import Account
-from models.dataset import AutomaticRulesConfig, ChildChunk, Dataset, DatasetProcessRule, DocumentSegment
+from models.dataset import AutomaticRulesConfig, ChildChunk, Dataset, DatasetProcessRule, DocumentSegment, ProcessRuleDict
 from models.dataset import Document as DatasetDocument
 from models.enums import DataSourceType, IndexingStatus, ProcessRuleMode, SegmentStatus
 from models.model import UploadFile
@@ -318,10 +318,11 @@ class IndexingRunner:
         index_processor = IndexProcessorFactory(index_type).init_index_processor()
         # one extract_setting is one source document
         for extract_setting in extract_settings:
-            # extract
-            processing_rule = DatasetProcessRule(
-                mode=tmp_processing_rule["mode"], rules=json.dumps(tmp_processing_rule["rules"])
-            )
+            # Preview only needs the rule payload, not a persisted ORM record.
+            processing_rule: ProcessRuleDict = {
+                "mode": tmp_processing_rule["mode"],
+                "rules": tmp_processing_rule.get("rules"),
+            }
             # Extract document content
             text_docs = index_processor.extract(extract_setting, process_rule_mode=tmp_processing_rule["mode"])
             # Cleaning and segmentation
@@ -329,7 +330,7 @@ class IndexingRunner:
                 text_docs,
                 current_user=None,
                 embedding_model_instance=embedding_model_instance,
-                process_rule=processing_rule.to_dict(),
+                process_rule=processing_rule,
                 tenant_id=tenant_id,
                 doc_language=doc_language,
                 preview=True,
