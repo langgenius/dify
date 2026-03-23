@@ -398,6 +398,7 @@ class TestWorkflowDraftVariableEndpoints:
         method = _unwrap(api.get)
 
         monkeypatch.setattr(workflow_draft_variable_module, "db", SimpleNamespace(engine=MagicMock()))
+        monkeypatch.setattr(workflow_draft_variable_module, "current_user", SimpleNamespace(id="user-1"))
 
         class DummySession:
             def __enter__(self):

@@ -3,7 +3,7 @@ import time
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, NewType, Union
+from typing import Any, NewType, TypedDict, Union
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -74,6 +74,20 @@ from services.variable_truncator import BaseTruncator, DummyVariableTruncator, V
 
 NodeExecutionId = NewType("NodeExecutionId", str)
 logger = logging.getLogger(__name__)
+
+
+class AccountCreatedByDict(TypedDict):
+    id: str
+    name: str
+    email: str
+
+
+class EndUserCreatedByDict(TypedDict):
+    id: str
+    user: str
+
+
+CreatedByDict = AccountCreatedByDict | EndUserCreatedByDict
 
 
 @dataclass(slots=True)
@@ -249,19 +263,19 @@ class WorkflowResponseConverter:
         outputs_mapping = graph_runtime_state.outputs or {}
         encoded_outputs = WorkflowRuntimeTypeConverter().to_json_encodable(outputs_mapping)
 
-        created_by: Mapping[str, object] | None
+        created_by: CreatedByDict | dict[str, object] = {}
         user = self._user
         if isinstance(user, Account):
-            created_by = {
-                "id": user.id,
-                "name": user.name,
-                "email": user.email,
-            }
-        else:
-            created_by = {
-                "id": user.id,
-                "user": user.session_id,
-            }
+            created_by = AccountCreatedByDict(
+                id=user.id,
+                name=user.name,
+                email=user.email,
+            )
+        elif isinstance(user, EndUser):
+            created_by = EndUserCreatedByDict(
+                id=user.id,
+                user=user.session_id,
+            )
 
         return WorkflowFinishStreamResponse(
             task_id=task_id,
@@ -503,7 +517,7 @@ class WorkflowResponseConverter:
         snapshot = self._pop_snapshot(event.node_execution_id)
 
         start_at = snapshot.start_at if snapshot else event.start_at
-        finished_at = naive_utc_now()
+        finished_at = event.finished_at or naive_utc_now()
         elapsed_time = (finished_at - start_at).total_seconds()
 
         inputs, inputs_truncated = self._truncate_mapping(event.inputs)

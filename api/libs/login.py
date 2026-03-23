@@ -77,12 +77,14 @@ def login_required(func: Callable[P, R]) -> Callable[P, R | ResponseReturnValue]
     @wraps(func)
     def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R | ResponseReturnValue:
         if request.method in EXEMPT_METHODS or dify_config.LOGIN_DISABLED:
-            pass
-        elif current_user is not None and not current_user.is_authenticated:
+            return current_app.ensure_sync(func)(*args, **kwargs)
+
+        user = _get_user()
+        if user is None or not user.is_authenticated:
             return current_app.login_manager.unauthorized()  # type: ignore
         # we put csrf validation here for less conflicts
         # TODO: maybe find a better place for it.
-        check_csrf_token(request, current_user.id)
+        check_csrf_token(request, user.id)
         return current_app.ensure_sync(func)(*args, **kwargs)
 
     return decorated_view

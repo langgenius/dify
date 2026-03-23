@@ -3,8 +3,10 @@ import type { FormValue } from '@/app/components/header/account-setting/model-pr
 import type { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import type { GenRes } from '@/service/debug'
 import type { AppModeEnum, CompletionParams, Model, ModelModeType } from '@/types/app'
-import { useSessionStorageState } from 'ahooks'
-import useBoolean from 'ahooks/lib/useBoolean'
+import {
+  useBoolean,
+  useSessionStorageState,
+} from 'ahooks'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -212,7 +214,6 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
           <div className="mb-4">
             <ModelParameterModal
               popupClassName="!w-[520px]"
-              portalToFollowElemContentClassName="z-[1000]"
               isAdvancedMode={true}
               provider={model.provider}
               completionParams={model.completion_params}
@@ -224,7 +225,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
           </div>
           <div>
             <div className="text-[0px]">
-              <div className="system-sm-semibold-uppercase mb-1.5 text-text-secondary">{t('codegen.instruction', { ns: 'appDebug' })}</div>
+              <div className="mb-1.5 text-text-secondary system-sm-semibold-uppercase">{t('codegen.instruction', { ns: 'appDebug' })}</div>
               <InstructionEditor
                 editorKey={editorKey}
                 value={instruction}
@@ -248,7 +249,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
                 disabled={isLoading}
               >
                 <Generator className="h-4 w-4" />
-                <span className="text-xs font-semibold ">{t('codegen.generate', { ns: 'appDebug' })}</span>
+                <span className="text-xs font-semibold">{t('codegen.generate', { ns: 'appDebug' })}</span>
               </Button>
             </div>
           </div>

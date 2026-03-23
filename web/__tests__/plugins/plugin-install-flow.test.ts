@@ -22,33 +22,6 @@ vi.mock('@/service/plugins', () => ({
   checkTaskStatus: vi.fn(),
 }))
 
-vi.mock('@/utils/semver', () => ({
-  compareVersion: (a: string, b: string) => {
-    const parse = (v: string) => v.replace(/^v/, '').split('.').map(Number)
-    const [aMajor, aMinor = 0, aPatch = 0] = parse(a)
-    const [bMajor, bMinor = 0, bPatch = 0] = parse(b)
-    if (aMajor !== bMajor)
-      return aMajor > bMajor ? 1 : -1
-    if (aMinor !== bMinor)
-      return aMinor > bMinor ? 1 : -1
-    if (aPatch !== bPatch)
-      return aPatch > bPatch ? 1 : -1
-    return 0
-  },
-  getLatestVersion: (versions: string[]) => {
-    return versions.sort((a, b) => {
-      const parse = (v: string) => v.replace(/^v/, '').split('.').map(Number)
-      const [aMaj, aMin = 0, aPat = 0] = parse(a)
-      const [bMaj, bMin = 0, bPat = 0] = parse(b)
-      if (aMaj !== bMaj)
-        return bMaj - aMaj
-      if (aMin !== bMin)
-        return bMin - aMin
-      return bPat - aPat
-    })[0]
-  },
-}))
-
 const { useGitHubReleases, useGitHubUpload } = await import(
   '@/app/components/plugins/install-plugin/hooks',
 )

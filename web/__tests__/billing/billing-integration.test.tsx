@@ -64,7 +64,7 @@ vi.mock('@/service/use-education', () => ({
 
 // ─── Navigation mocks ───────────────────────────────────────────────────────
 const mockRouterPush = vi.fn()
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: mockRouterPush }),
   usePathname: () => '/billing',
   useSearchParams: () => new URLSearchParams(),

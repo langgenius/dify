@@ -1,3 +1,5 @@
+from typing import TypedDict
+
 from core.tools.signature import sign_tool_file
 from dify_graph.file import helpers as file_helpers
 from dify_graph.file.enums import FileTransferMethod
@@ -6,7 +8,20 @@ from models.model import MessageFile, UploadFile
 MAX_TOOL_FILE_EXTENSION_LENGTH = 10
 
 
-def prepare_file_dict(message_file: MessageFile, upload_files_map: dict[str, UploadFile]) -> dict:
+class MessageFileInfoDict(TypedDict):
+    related_id: str
+    extension: str
+    filename: str
+    size: int
+    mime_type: str
+    transfer_method: str
+    type: str
+    url: str
+    upload_file_id: str
+    remote_url: str | None
+
+
+def prepare_file_dict(message_file: MessageFile, upload_files_map: dict[str, UploadFile]) -> MessageFileInfoDict:
     """
     Prepare file dictionary for message end stream response.
 

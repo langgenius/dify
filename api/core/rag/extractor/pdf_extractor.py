@@ -15,6 +15,7 @@ from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
 from extensions.ext_database import db
 from extensions.ext_storage import storage
+from extensions.storage.storage_type import StorageType
 from libs.datetime_utils import naive_utc_now
 from models.enums import CreatorUserRole
 from models.model import UploadFile
@@ -150,7 +151,7 @@ class PdfExtractor(BaseExtractor):
                     # save file to db
                     upload_file = UploadFile(
                         tenant_id=self._tenant_id,
-                        storage_type=dify_config.STORAGE_TYPE,
+                        storage_type=StorageType(dify_config.STORAGE_TYPE),
                         key=file_key,
                         name=file_key,
                         size=len(img_bytes),

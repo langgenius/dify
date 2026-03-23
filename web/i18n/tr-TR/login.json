@@ -35,6 +35,8 @@
   "error.emailEmpty": "E-posta adresi gereklidir",
   "error.emailInValid": "Geçerli bir e-posta adresi girin",
   "error.invalidEmailOrPassword": "Geçersiz e-posta veya şifre.",
+  "error.invalidRedirectUrlOrAppCode": "Geçersiz yönlendirme URL'si veya uygulama kodu",
+  "error.invalidSSOProtocol": "Geçersiz SSO protokolü",
   "error.nameEmpty": "İsim gereklidir",
   "error.passwordEmpty": "Şifre gereklidir",
   "error.passwordInvalid": "Şifre harf ve rakamlardan oluşmalı ve uzunluğu 8 karakterden fazla olmalıdır",

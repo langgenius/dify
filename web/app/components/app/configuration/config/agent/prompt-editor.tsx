@@ -96,7 +96,7 @@ const Editor: FC<Props> = ({
                 )}
           </div>
         </div>
-        <div className={cn(editorHeight, ' min-h-[102px] overflow-y-auto px-4 text-sm text-gray-700')}>
+        <div className={cn(editorHeight, 'min-h-[102px] overflow-y-auto px-4 text-sm text-gray-700')}>
           <PromptEditor
             className={editorHeight}
             value={value}

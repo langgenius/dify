@@ -11,6 +11,7 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+from core.rag.datasource.vdb.weaviate import weaviate_vector as weaviate_vector_module
 from core.rag.datasource.vdb.weaviate.weaviate_vector import WeaviateConfig, WeaviateVector
 from core.rag.models.document import Document
 
@@ -19,6 +20,7 @@ class TestWeaviateVector(unittest.TestCase):
     """Tests for WeaviateVector class with focus on doc_type metadata handling."""
 
     def setUp(self):
+        weaviate_vector_module._weaviate_client = None
         self.config = WeaviateConfig(
             endpoint="http://localhost:8080",
             api_key="test-key",
@@ -26,6 +28,9 @@ class TestWeaviateVector(unittest.TestCase):
         )
         self.collection_name = "Test_Collection_Node"
         self.attributes = ["doc_id", "dataset_id", "document_id", "doc_hash", "doc_type"]
+
+    def tearDown(self):
+        weaviate_vector_module._weaviate_client = None
 
     @patch("core.rag.datasource.vdb.weaviate.weaviate_vector.weaviate")
     def _create_weaviate_vector(self, mock_weaviate_module):
