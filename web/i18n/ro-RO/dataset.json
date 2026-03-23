@@ -176,6 +176,7 @@
   "serviceApi.enabled": "În serviciu",
   "serviceApi.title": "API de servicii",
   "unavailable": "Indisponibil",
+  "unknownError": "Eroare necunoscută",
   "updated": "Actualizat",
   "weightedScore.customized": "Personalizat",
   "weightedScore.description": "Prin ajustarea ponderilor atribuite, această strategie de reclasificare determină dacă să prioritizeze potrivirea semantică sau pe cea a cuvintelor cheie.",
