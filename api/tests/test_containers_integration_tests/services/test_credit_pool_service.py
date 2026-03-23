@@ -40,9 +40,7 @@ class TestCreditPoolService:
         assert result is None
 
     def test_check_credits_available_returns_false_when_no_pool(self, db_session_with_containers):
-        result = CreditPoolService.check_credits_available(
-            tenant_id=self._create_tenant_id(), credits_required=10
-        )
+        result = CreditPoolService.check_credits_available(tenant_id=self._create_tenant_id(), credits_required=10)
 
         assert result is False
 
@@ -67,9 +65,7 @@ class TestCreditPoolService:
 
     def test_check_and_deduct_credits_raises_when_no_pool(self, db_session_with_containers):
         with pytest.raises(QuotaExceededError, match="Credit pool not found"):
-            CreditPoolService.check_and_deduct_credits(
-                tenant_id=self._create_tenant_id(), credits_required=10
-            )
+            CreditPoolService.check_and_deduct_credits(tenant_id=self._create_tenant_id(), credits_required=10)
 
     def test_check_and_deduct_credits_raises_when_no_remaining(self, db_session_with_containers):
         tenant_id = self._create_tenant_id()
@@ -85,9 +81,7 @@ class TestCreditPoolService:
         CreditPoolService.create_default_pool(tenant_id)
         credits_required = 10
 
-        result = CreditPoolService.check_and_deduct_credits(
-            tenant_id=tenant_id, credits_required=credits_required
-        )
+        result = CreditPoolService.check_and_deduct_credits(tenant_id=tenant_id, credits_required=credits_required)
 
         assert result == credits_required
         db_session_with_containers.expire_all()
@@ -101,9 +95,7 @@ class TestCreditPoolService:
         pool.quota_used = pool.quota_limit - remaining
         db_session_with_containers.commit()
 
-        result = CreditPoolService.check_and_deduct_credits(
-            tenant_id=tenant_id, credits_required=200
-        )
+        result = CreditPoolService.check_and_deduct_credits(tenant_id=tenant_id, credits_required=200)
 
         assert result == remaining
         db_session_with_containers.expire_all()
