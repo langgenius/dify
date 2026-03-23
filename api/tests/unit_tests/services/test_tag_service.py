@@ -103,7 +103,7 @@ class TagServiceTestDataFactory:
     def create_tag_mock(
         tag_id: str = "tag-123",
         name: str = "Test Tag",
-        tag_type: str = TagType.APP,
+        tag_type: TagType = TagType.APP,
         tenant_id: str = "tenant-123",
         **kwargs,
     ) -> Mock:
