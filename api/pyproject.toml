@@ -202,13 +202,13 @@ tools = ["cloudscraper~=1.2.71", "nltk~=3.9.1"]
 # Required by vector store clients
 ############################################################
 vdb = [
-    "alibabacloud_gpdb20160503~=3.8.0",
+    "alibabacloud_gpdb20160503~=5.1.0",
     "alibabacloud_tea_openapi~=0.4.3",
     "chromadb==0.5.20",
     "clickhouse-connect~=0.14.1",
     "clickzetta-connector-python>=0.8.102",
     "couchbase~=4.5.0",
-    "elasticsearch==8.14.0",
+    "elasticsearch==9.3.0",
     "opensearch-py==3.1.0",
     "oracledb==3.4.2",
     "pgvecto-rs[sqlalchemy]~=0.2.1",
@@ -216,7 +216,7 @@ vdb = [
     "pymilvus~=2.6.10",
     "pymochow==2.3.6",
     "pyobvector~=0.2.17",
-    "qdrant-client==1.9.0",
+    "qdrant-client==1.17.1",
     "intersystems-irispython>=5.1.0",
     "tablestore==6.4.1",
     "tcvectordb~=2.0.0",
