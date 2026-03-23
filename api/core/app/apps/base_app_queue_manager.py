@@ -122,7 +122,7 @@ class AppQueueManager(ABC):
         """Attach the live graph runtime state reference for downstream consumers."""
         self._graph_runtime_state = graph_runtime_state
 
-    def publish(self, event: AppQueueEvent, pub_from: PublishFrom):
+    def publish(self, event: AppQueueEvent, pub_from: PublishFrom) -> None:
         """
         Publish event to queue
         :param event:

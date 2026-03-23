@@ -36,9 +36,9 @@ ERROR_MSG_INVALID_ENCRYPTED_DATA = "Invalid encrypted data"
 ERROR_MSG_INVALID_ENCRYPTED_CODE = "Invalid encrypted code"
 
 
-def account_initialization_required(view: Callable[P, R]):
+def account_initialization_required(view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
-    def decorated(*args: P.args, **kwargs: P.kwargs):
+    def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
         # check account initialization
         current_user, _ = current_account_with_tenant()
         if current_user.status == AccountStatus.UNINITIALIZED:
@@ -214,9 +214,9 @@ def cloud_utm_record(view: Callable[P, R]):
     return decorated
 
 
-def setup_required(view: Callable[P, R]):
+def setup_required(view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
-    def decorated(*args: P.args, **kwargs: P.kwargs):
+    def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
         # check setup
         if (
             dify_config.EDITION == "SELF_HOSTED"

@@ -8,9 +8,9 @@ from typing import Any
 
 from opentelemetry.trace import Span
 
-from core.variables import Segment
 from core.workflow.graph_events import GraphNodeEventBase
 from core.workflow.nodes.base.node import Node
+from core.workflow.variables import Segment
 from extensions.otel.parser.base import DefaultNodeOTelParser, safe_json_dumps
 from extensions.otel.semconv.gen_ai import RetrieverAttributes
 

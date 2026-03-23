@@ -1,4 +1,3 @@
-import { RiCloseLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useState } from 'react'
@@ -129,8 +128,12 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
       onClose={noop}
       className="!w-[420px] !p-6"
     >
-      <div className="absolute right-5 top-5 cursor-pointer p-1.5" onClick={onClose}>
-        <RiCloseLine className="h-5 w-5 text-text-tertiary" />
+      <div
+        data-testid="transfer-modal-close"
+        className="absolute right-5 top-5 cursor-pointer p-1.5"
+        onClick={onClose}
+      >
+        <div className="i-ri-close-line h-5 w-5 text-text-tertiary" />
       </div>
       {step === STEP.start && (
         <>
@@ -150,6 +153,7 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
           <div className="pt-3"></div>
           <div className="space-y-2">
             <Button
+              data-testid="transfer-modal-send-code"
               className="!w-full"
               variant="primary"
               onClick={sendCodeToOriginEmail}
@@ -157,6 +161,7 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
               {t('members.transferModal.sendVerifyCode', { ns: 'common' })}
             </Button>
             <Button
+              data-testid="transfer-modal-cancel"
               className="!w-full"
               onClick={onClose}
             >
@@ -182,6 +187,7 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
           <div className="pt-3">
             <div className="mb-1 flex h-6 items-center text-text-secondary system-sm-medium">{t('members.transferModal.codeLabel', { ns: 'common' })}</div>
             <Input
+              data-testid="transfer-modal-code-input"
               className="!w-full"
               placeholder={t('members.transferModal.codePlaceholder', { ns: 'common' })}
               value={code}
@@ -191,6 +197,7 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
           </div>
           <div className="mt-3 space-y-2">
             <Button
+              data-testid="transfer-modal-continue"
               disabled={code.length !== 6}
               className="!w-full"
               variant="primary"
@@ -199,6 +206,7 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
               {t('members.transferModal.continue', { ns: 'common' })}
             </Button>
             <Button
+              data-testid="transfer-modal-cancel"
               className="!w-full"
               onClick={onClose}
             >
@@ -211,7 +219,13 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
               <span>{t('members.transferModal.resendCount', { ns: 'common', count: time })}</span>
             )}
             {!time && (
-              <span onClick={sendCodeToOriginEmail} className="cursor-pointer text-text-accent-secondary system-xs-medium">{t('members.transferModal.resend', { ns: 'common' })}</span>
+              <span
+                data-testid="transfer-modal-resend"
+                onClick={sendCodeToOriginEmail}
+                className="cursor-pointer text-text-accent-secondary system-xs-medium"
+              >
+                {t('members.transferModal.resend', { ns: 'common' })}
+              </span>
             )}
           </div>
         </>
@@ -233,6 +247,7 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
           </div>
           <div className="mt-4 space-y-2">
             <Button
+              data-testid="transfer-modal-submit"
               disabled={!newOwner || isTransfer}
               className="!w-full"
               variant="warning"
@@ -241,6 +256,7 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
               {t('members.transferModal.transfer', { ns: 'common' })}
             </Button>
             <Button
+              data-testid="transfer-modal-cancel"
               className="!w-full"
               onClick={onClose}
             >

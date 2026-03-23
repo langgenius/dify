@@ -14,6 +14,7 @@ from core.ops.aliyun_trace.data_exporter.traceclient import (
 )
 from core.ops.aliyun_trace.entities.aliyun_trace_entity import SpanData, TraceMetadata
 from core.ops.aliyun_trace.entities.semconv import (
+    DIFY_APP_ID,
     GEN_AI_COMPLETION,
     GEN_AI_INPUT_MESSAGE,
     GEN_AI_OUTPUT_MESSAGE,
@@ -99,6 +100,16 @@ class AliyunDataTrace(BaseTraceInstance):
             logger.info("Aliyun get project url failed: %s", str(e), exc_info=True)
             raise ValueError(f"Aliyun get project url failed: {str(e)}")
 
+    def _extract_app_id(self, trace_info: BaseTraceInfo) -> str:
+        """Extract app_id from trace_info, trying metadata first then message_data."""
+        app_id = trace_info.metadata.get("app_id")
+        if app_id:
+            return str(app_id)
+        message_data = getattr(trace_info, "message_data", None)
+        if message_data is not None:
+            return str(getattr(message_data, "app_id", ""))
+        return ""
+
     def workflow_trace(self, trace_info: WorkflowTraceInfo):
         trace_metadata = TraceMetadata(
             trace_id=convert_to_trace_id(trace_info.workflow_run_id),
@@ -143,13 +154,16 @@ class AliyunDataTrace(BaseTraceInstance):
             name="message",
             start_time=convert_datetime_to_nanoseconds(trace_info.start_time),
             end_time=convert_datetime_to_nanoseconds(trace_info.end_time),
-            attributes=create_common_span_attributes(
-                session_id=trace_metadata.session_id,
-                user_id=trace_metadata.user_id,
-                span_kind=GenAISpanKind.CHAIN,
-                inputs=inputs_json,
-                outputs=outputs_str,
-            ),
+            attributes={
+                **create_common_span_attributes(
+                    session_id=trace_metadata.session_id,
+                    user_id=trace_metadata.user_id,
+                    span_kind=GenAISpanKind.CHAIN,
+                    inputs=inputs_json,
+                    outputs=outputs_str,
+                ),
+                DIFY_APP_ID: self._extract_app_id(trace_info),
+            },
             status=status,
             links=trace_metadata.links,
             span_kind=SpanKind.SERVER,
@@ -441,6 +455,8 @@ class AliyunDataTrace(BaseTraceInstance):
         inputs_json = serialize_json_data(trace_info.workflow_run_inputs)
         outputs_json = serialize_json_data(trace_info.workflow_run_outputs)
 
+        app_id = self._extract_app_id(trace_info)
+
         if message_span_id:
             message_span = SpanData(
                 trace_id=trace_metadata.trace_id,
@@ -449,13 +465,16 @@ class AliyunDataTrace(BaseTraceInstance):
                 name="message",
                 start_time=convert_datetime_to_nanoseconds(trace_info.start_time),
                 end_time=convert_datetime_to_nanoseconds(trace_info.end_time),
-                attributes=create_common_span_attributes(
-                    session_id=trace_metadata.session_id,
-                    user_id=trace_metadata.user_id,
-                    span_kind=GenAISpanKind.CHAIN,
-                    inputs=trace_info.workflow_run_inputs.get("sys.query") or "",
-                    outputs=outputs_json,
-                ),
+                attributes={
+                    **create_common_span_attributes(
+                        session_id=trace_metadata.session_id,
+                        user_id=trace_metadata.user_id,
+                        span_kind=GenAISpanKind.CHAIN,
+                        inputs=trace_info.workflow_run_inputs.get("sys.query") or "",
+                        outputs=outputs_json,
+                    ),
+                    DIFY_APP_ID: app_id,
+                },
                 status=status,
                 links=trace_metadata.links,
                 span_kind=SpanKind.SERVER,
@@ -469,13 +488,16 @@ class AliyunDataTrace(BaseTraceInstance):
             name="workflow",
             start_time=convert_datetime_to_nanoseconds(trace_info.start_time),
             end_time=convert_datetime_to_nanoseconds(trace_info.end_time),
-            attributes=create_common_span_attributes(
-                session_id=trace_metadata.session_id,
-                user_id=trace_metadata.user_id,
-                span_kind=GenAISpanKind.CHAIN,
-                inputs=inputs_json,
-                outputs=outputs_json,
-            ),
+            attributes={
+                **create_common_span_attributes(
+                    session_id=trace_metadata.session_id,
+                    user_id=trace_metadata.user_id,
+                    span_kind=GenAISpanKind.CHAIN,
+                    inputs=inputs_json,
+                    outputs=outputs_json,
+                ),
+                **({DIFY_APP_ID: app_id} if message_span_id is None else {}),
+            },
             status=status,
             links=trace_metadata.links,
             span_kind=SpanKind.SERVER if message_span_id is None else SpanKind.INTERNAL,

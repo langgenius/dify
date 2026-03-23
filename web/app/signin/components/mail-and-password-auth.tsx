@@ -78,7 +78,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
           router.replace(`/signin/invite-settings?${searchParams.toString()}`)
         }
         else {
-          const redirectUrl = resolvePostLoginRedirect(searchParams)
+          const redirectUrl = resolvePostLoginRedirect()
           router.replace(redirectUrl || '/apps')
         }
       }

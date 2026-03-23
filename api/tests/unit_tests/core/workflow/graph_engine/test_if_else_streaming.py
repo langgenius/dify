@@ -1,4 +1,5 @@
 import time
+from unittest import mock
 
 from core.model_runtime.entities.llm_entities import LLMMode
 from core.model_runtime.entities.message_entities import PromptMessageRole
@@ -85,6 +86,8 @@ def _build_if_else_graph(branch_value: str, mock_config: MockConfig) -> tuple[Gr
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
             mock_config=mock_config,
+            credentials_provider=mock.Mock(),
+            model_factory=mock.Mock(),
         )
         return llm_node
 

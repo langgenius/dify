@@ -2,6 +2,7 @@ import tempfile
 from binascii import hexlify, unhexlify
 from collections.abc import Generator
 
+from core.app.llm import deduct_llm_quota
 from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
 from core.model_manager import ModelManager
 from core.model_runtime.entities.llm_entities import (
@@ -29,7 +30,6 @@ from core.plugin.entities.request import (
 )
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.utils.model_invocation_utils import ModelInvocationUtils
-from core.workflow.nodes.llm import llm_utils
 from models.account import Tenant
 
 
@@ -63,16 +63,14 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
             def handle() -> Generator[LLMResultChunk, None, None]:
                 for chunk in response:
                     if chunk.delta.usage:
-                        llm_utils.deduct_llm_quota(
-                            tenant_id=tenant.id, model_instance=model_instance, usage=chunk.delta.usage
-                        )
+                        deduct_llm_quota(tenant_id=tenant.id, model_instance=model_instance, usage=chunk.delta.usage)
                     chunk.prompt_messages = []
                     yield chunk
 
             return handle()
         else:
             if response.usage:
-                llm_utils.deduct_llm_quota(tenant_id=tenant.id, model_instance=model_instance, usage=response.usage)
+                deduct_llm_quota(tenant_id=tenant.id, model_instance=model_instance, usage=response.usage)
 
             def handle_non_streaming(response: LLMResult) -> Generator[LLMResultChunk, None, None]:
                 yield LLMResultChunk(
@@ -120,26 +118,37 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
             user=user_id,
         )
 
-        if response.usage:
-            llm_utils.deduct_llm_quota(tenant_id=tenant.id, model_instance=model_instance, usage=response.usage)
+        if isinstance(response, Generator):
 
-        def handle_non_streaming(
-            response: LLMResultWithStructuredOutput,
-        ) -> Generator[LLMResultChunkWithStructuredOutput, None, None]:
-            yield LLMResultChunkWithStructuredOutput(
-                model=response.model,
-                prompt_messages=[],
-                system_fingerprint=response.system_fingerprint,
-                structured_output=response.structured_output,
-                delta=LLMResultChunkDelta(
-                    index=0,
-                    message=response.message,
-                    usage=response.usage,
-                    finish_reason="",
-                ),
-            )
+            def handle() -> Generator[LLMResultChunkWithStructuredOutput, None, None]:
+                for chunk in response:
+                    if chunk.delta.usage:
+                        deduct_llm_quota(tenant_id=tenant.id, model_instance=model_instance, usage=chunk.delta.usage)
+                    chunk.prompt_messages = []
+                    yield chunk
 
-        return handle_non_streaming(response)
+            return handle()
+        else:
+            if response.usage:
+                deduct_llm_quota(tenant_id=tenant.id, model_instance=model_instance, usage=response.usage)
+
+            def handle_non_streaming(
+                response: LLMResultWithStructuredOutput,
+            ) -> Generator[LLMResultChunkWithStructuredOutput, None, None]:
+                yield LLMResultChunkWithStructuredOutput(
+                    model=response.model,
+                    prompt_messages=[],
+                    system_fingerprint=response.system_fingerprint,
+                    structured_output=response.structured_output,
+                    delta=LLMResultChunkDelta(
+                        index=0,
+                        message=response.message,
+                        usage=response.usage,
+                        finish_reason="",
+                    ),
+                )
+
+            return handle_non_streaming(response)
 
     @classmethod
     def invoke_text_embedding(cls, user_id: str, tenant: Tenant, payload: RequestInvokeTextEmbedding):

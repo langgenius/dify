@@ -1,5 +1,4 @@
 'use client'
-import { RiCloseLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -44,8 +43,8 @@ const EditWorkspaceModal = ({
     <div className={cn(s.wrap)}>
       <Modal overflowVisible isShow onClose={noop} className={cn(s.modal)}>
         <div className="mb-2 flex justify-between">
-          <div className="text-xl font-semibold text-text-primary">{t('account.editWorkspaceInfo', { ns: 'common' })}</div>
-          <RiCloseLine className="h-4 w-4 cursor-pointer text-text-tertiary" onClick={onCancel} />
+          <div className="text-xl font-semibold text-text-primary" data-testid="edit-workspace-title">{t('account.editWorkspaceInfo', { ns: 'common' })}</div>
+          <div className="i-ri-close-line h-4 w-4 cursor-pointer text-text-tertiary" data-testid="edit-workspace-close" onClick={onCancel} />
         </div>
         <div>
           <div className="mb-2 text-sm font-medium text-text-primary">{t('account.workspaceName', { ns: 'common' })}</div>
@@ -59,11 +58,13 @@ const EditWorkspaceModal = ({
             onClear={() => {
               setName(currentWorkspace.name)
             }}
+            showClearIcon
           />
 
           <div className="sticky bottom-0 -mx-2 mt-2 flex flex-wrap items-center justify-end gap-x-2 bg-components-panel-bg px-2 pt-4">
             <Button
               size="large"
+              data-testid="edit-workspace-cancel"
               onClick={onCancel}
             >
               {t('operation.cancel', { ns: 'common' })}
@@ -71,6 +72,7 @@ const EditWorkspaceModal = ({
             <Button
               size="large"
               variant="primary"
+              data-testid="edit-workspace-confirm"
               onClick={() => {
                 changeWorkspaceInfo(name)
                 onCancel()

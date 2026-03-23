@@ -1,7 +1,7 @@
 from flask_restx import fields
 
 from core.helper import encrypter
-from core.variables import SecretVariable, SegmentType, VariableBase
+from core.workflow.variables import SecretVariable, SegmentType, VariableBase
 from fields.member_fields import simple_account_fields
 from libs.helper import TimestampField
 

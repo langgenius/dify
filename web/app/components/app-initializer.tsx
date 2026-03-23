@@ -84,7 +84,7 @@ export const AppInitializer = ({
           return
         }
 
-        const redirectUrl = resolvePostLoginRedirect(searchParams)
+        const redirectUrl = resolvePostLoginRedirect()
         if (redirectUrl) {
           location.replace(redirectUrl)
           return

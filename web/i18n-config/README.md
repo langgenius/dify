@@ -6,7 +6,7 @@ This directory contains i18n tooling and configuration. Translation files live u
 
 ## File Structure
 
-```
+```txt
 web/i18n
 ├── en-US
 │   ├── app.json
@@ -36,7 +36,7 @@ By default we will use `LanguagesSupported` to determine which languages are sup
 
 1. Create a new folder for the new language.
 
-```
+```txt
 cd web/i18n
 cp -r en-US id-ID
 ```
@@ -98,7 +98,7 @@ export const languages = [
   {
     value: 'ru-RU',
     name: 'Русский(Россия)',
-    example: ' Привет, Dify!',
+    example: 'Привет, Dify!',
     supported: false,
   },
   {

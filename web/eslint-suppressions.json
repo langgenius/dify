@@ -848,9 +848,6 @@
   },
   "app/components/base/chat/chat/citation/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 3
-    },
-    "ts/no-explicit-any": {
       "count": 1
     }
   },
@@ -1044,14 +1041,6 @@
       "count": 4
     }
   },
-  "app/components/base/file-uploader/utils.spec.ts": {
-    "test/no-identical-title": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
   "app/components/base/file-uploader/utils.ts": {
     "ts/no-explicit-any": {
       "count": 3
@@ -1179,11 +1168,6 @@
     "no-console": {
       "count": 2
     },
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/base/input/index.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -1639,11 +1623,6 @@
       "count": 4
     }
   },
-  "app/components/base/with-input-validation/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
   "app/components/base/with-input-validation/index.stories.tsx": {
     "no-console": {
       "count": 1
@@ -2075,11 +2054,6 @@
   "app/components/header/account-setting/model-provider-page/declarations.ts": {
     "ts/no-explicit-any": {
       "count": 4
-    }
-  },
-  "app/components/header/account-setting/model-provider-page/hooks.spec.ts": {
-    "ts/no-explicit-any": {
-      "count": 2
     }
   },
   "app/components/header/account-setting/model-provider-page/hooks.ts": {
@@ -4105,11 +4079,6 @@
   "hooks/use-pay.tsx": {
     "react-refresh/only-export-components": {
       "count": 3
-    }
-  },
-  "i18n-config/README.md": {
-    "no-irregular-whitespace": {
-      "count": 1
     }
   },
   "i18n/de-DE/billing.json": {

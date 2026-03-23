@@ -10,16 +10,14 @@ from urllib.parse import urlencode, urlparse
 import httpx
 from json_repair import repair_json
 
-from configs import dify_config
-from core.helper.ssrf_proxy import ssrf_proxy
-from core.variables.segments import ArrayFileSegment, FileSegment
 from core.workflow.file.enums import FileTransferMethod
-from core.workflow.file.file_manager import file_manager as default_file_manager
 from core.workflow.runtime import VariablePool
+from core.workflow.variables.segments import ArrayFileSegment, FileSegment
 
 from ..protocols import FileManagerProtocol, HttpClientProtocol
 from .entities import (
     HttpRequestNodeAuthorization,
+    HttpRequestNodeConfig,
     HttpRequestNodeData,
     HttpRequestNodeTimeout,
     Response,
@@ -78,10 +76,13 @@ class Executor:
         node_data: HttpRequestNodeData,
         timeout: HttpRequestNodeTimeout,
         variable_pool: VariablePool,
-        max_retries: int = dify_config.SSRF_DEFAULT_MAX_RETRIES,
-        http_client: HttpClientProtocol | None = None,
-        file_manager: FileManagerProtocol | None = None,
+        http_request_config: HttpRequestNodeConfig,
+        max_retries: int | None = None,
+        ssl_verify: bool | None = None,
+        http_client: HttpClientProtocol,
+        file_manager: FileManagerProtocol,
     ):
+        self._http_request_config = http_request_config
         # If authorization API key is present, convert the API key using the variable pool
         if node_data.authorization.type == "api-key":
             if node_data.authorization.config is None:
@@ -99,16 +100,22 @@ class Executor:
         self.method = node_data.method
         self.auth = node_data.authorization
         self.timeout = timeout
-        self.ssl_verify = node_data.ssl_verify
+        self.ssl_verify = ssl_verify if ssl_verify is not None else node_data.ssl_verify
+        if self.ssl_verify is None:
+            self.ssl_verify = self._http_request_config.ssl_verify
+        if not isinstance(self.ssl_verify, bool):
+            raise ValueError("ssl_verify must be a boolean")
         self.params = None
         self.headers = {}
         self.content = None
         self.files = None
         self.data = None
         self.json = None
-        self.max_retries = max_retries
-        self._http_client = http_client or ssrf_proxy
-        self._file_manager = file_manager or default_file_manager
+        self.max_retries = (
+            max_retries if max_retries is not None else self._http_request_config.ssrf_default_max_retries
+        )
+        self._http_client = http_client
+        self._file_manager = file_manager
 
         # init template
         self.variable_pool = variable_pool
@@ -319,9 +326,9 @@ class Executor:
         executor_response = Response(response)
 
         threshold_size = (
-            dify_config.HTTP_REQUEST_NODE_MAX_BINARY_SIZE
+            self._http_request_config.max_binary_size
             if executor_response.is_file
-            else dify_config.HTTP_REQUEST_NODE_MAX_TEXT_SIZE
+            else self._http_request_config.max_text_size
         )
         if executor_response.size > threshold_size:
             raise ResponseSizeError(

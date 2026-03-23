@@ -31,15 +31,14 @@ class TestDuplicateDocumentIndexingTasks:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("tasks.duplicate_document_indexing_task.IndexingRunner") as mock_indexing_runner,
-            patch("tasks.duplicate_document_indexing_task.FeatureService") as mock_feature_service,
-            patch("tasks.duplicate_document_indexing_task.IndexProcessorFactory") as mock_index_processor_factory,
+            patch("tasks.duplicate_document_indexing_task.IndexingRunner", autospec=True) as mock_indexing_runner,
+            patch("tasks.duplicate_document_indexing_task.FeatureService", autospec=True) as mock_feature_service,
+            patch(
+                "tasks.duplicate_document_indexing_task.IndexProcessorFactory", autospec=True
+            ) as mock_index_processor_factory,
         ):
             # Setup mock indexing runner
-            mock_runner_instance = MagicMock()
-            mock_indexing_runner.return_value = mock_runner_instance
-
-            # Setup mock feature service
+            mock_runner_instance = mock_indexing_runner.return_value  # Setup mock feature service
             mock_features = MagicMock()
             mock_features.billing.enabled = False
             mock_feature_service.get_features.return_value = mock_features
@@ -650,7 +649,7 @@ class TestDuplicateDocumentIndexingTasks:
             updated_document = db_session_with_containers.query(Document).where(Document.id == doc_id).first()
             assert updated_document.indexing_status == "parsing"
 
-    @patch("tasks.duplicate_document_indexing_task.TenantIsolatedTaskQueue")
+    @patch("tasks.duplicate_document_indexing_task.TenantIsolatedTaskQueue", autospec=True)
     def test_normal_duplicate_document_indexing_task_with_tenant_queue(
         self, mock_queue_class, db_session_with_containers, mock_external_service_dependencies
     ):
@@ -693,7 +692,7 @@ class TestDuplicateDocumentIndexingTasks:
             updated_document = db_session_with_containers.query(Document).where(Document.id == doc_id).first()
             assert updated_document.indexing_status == "parsing"
 
-    @patch("tasks.duplicate_document_indexing_task.TenantIsolatedTaskQueue")
+    @patch("tasks.duplicate_document_indexing_task.TenantIsolatedTaskQueue", autospec=True)
     def test_priority_duplicate_document_indexing_task_with_tenant_queue(
         self, mock_queue_class, db_session_with_containers, mock_external_service_dependencies
     ):
@@ -737,7 +736,7 @@ class TestDuplicateDocumentIndexingTasks:
             updated_document = db_session_with_containers.query(Document).where(Document.id == doc_id).first()
             assert updated_document.indexing_status == "parsing"
 
-    @patch("tasks.duplicate_document_indexing_task.TenantIsolatedTaskQueue")
+    @patch("tasks.duplicate_document_indexing_task.TenantIsolatedTaskQueue", autospec=True)
     def test_tenant_queue_wrapper_processes_next_tasks(
         self, mock_queue_class, db_session_with_containers, mock_external_service_dependencies
     ):

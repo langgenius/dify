@@ -18,18 +18,22 @@ class TestAppGenerateService:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("services.billing_service.BillingService") as mock_billing_service,
-            patch("services.app_generate_service.WorkflowService") as mock_workflow_service,
-            patch("services.app_generate_service.RateLimit") as mock_rate_limit,
-            patch("services.app_generate_service.CompletionAppGenerator") as mock_completion_generator,
-            patch("services.app_generate_service.ChatAppGenerator") as mock_chat_generator,
-            patch("services.app_generate_service.AgentChatAppGenerator") as mock_agent_chat_generator,
-            patch("services.app_generate_service.AdvancedChatAppGenerator") as mock_advanced_chat_generator,
-            patch("services.app_generate_service.WorkflowAppGenerator") as mock_workflow_generator,
-            patch("services.app_generate_service.MessageBasedAppGenerator") as mock_message_based_generator,
-            patch("services.account_service.FeatureService") as mock_account_feature_service,
-            patch("services.app_generate_service.dify_config") as mock_dify_config,
-            patch("configs.dify_config") as mock_global_dify_config,
+            patch("services.billing_service.BillingService", autospec=True) as mock_billing_service,
+            patch("services.app_generate_service.WorkflowService", autospec=True) as mock_workflow_service,
+            patch("services.app_generate_service.RateLimit", autospec=True) as mock_rate_limit,
+            patch("services.app_generate_service.CompletionAppGenerator", autospec=True) as mock_completion_generator,
+            patch("services.app_generate_service.ChatAppGenerator", autospec=True) as mock_chat_generator,
+            patch("services.app_generate_service.AgentChatAppGenerator", autospec=True) as mock_agent_chat_generator,
+            patch(
+                "services.app_generate_service.AdvancedChatAppGenerator", autospec=True
+            ) as mock_advanced_chat_generator,
+            patch("services.app_generate_service.WorkflowAppGenerator", autospec=True) as mock_workflow_generator,
+            patch(
+                "services.app_generate_service.MessageBasedAppGenerator", autospec=True
+            ) as mock_message_based_generator,
+            patch("services.account_service.FeatureService", autospec=True) as mock_account_feature_service,
+            patch("services.app_generate_service.dify_config", autospec=True) as mock_dify_config,
+            patch("configs.dify_config", autospec=True) as mock_global_dify_config,
         ):
             # Setup default mock returns for billing service
             mock_billing_service.update_tenant_feature_plan_usage.return_value = {
@@ -983,7 +987,7 @@ class TestAppGenerateService:
         }
 
         # Execute the method under test
-        with patch("services.app_generate_service.AppExecutionParams") as mock_exec_params:
+        with patch("services.app_generate_service.AppExecutionParams", autospec=True) as mock_exec_params:
             mock_payload = MagicMock()
             mock_payload.workflow_run_id = fake.uuid4()
             mock_payload.model_dump_json.return_value = "{}"

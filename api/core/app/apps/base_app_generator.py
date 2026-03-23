@@ -3,7 +3,6 @@ from typing import TYPE_CHECKING, Any, Union, final
 
 from sqlalchemy.orm import Session
 
-from core.app.app_config.entities import VariableEntityType
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.enums import NodeType
 from core.workflow.file import File, FileUploadConfig
@@ -12,13 +11,14 @@ from core.workflow.repositories.draft_variable_repository import (
     DraftVariableSaverFactory,
     NoopDraftVariableSaver,
 )
+from core.workflow.variables.input_entities import VariableEntityType
 from factories import file_factory
 from libs.orjson import orjson_dumps
 from models import Account, EndUser
 from services.workflow_draft_variable_service import DraftVariableSaver as DraftVariableSaverImpl
 
 if TYPE_CHECKING:
-    from core.app.app_config.entities import VariableEntity
+    from core.workflow.variables.input_entities import VariableEntity
 
 
 class BaseAppGenerator:

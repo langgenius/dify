@@ -41,7 +41,7 @@ class TestCreateSegmentToIndexTask:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("tasks.create_segment_to_index_task.IndexProcessorFactory") as mock_factory,
+            patch("tasks.create_segment_to_index_task.IndexProcessorFactory", autospec=True) as mock_factory,
         ):
             # Setup default mock returns
             mock_processor = MagicMock()
@@ -708,7 +708,7 @@ class TestCreateSegmentToIndexTask:
         redis_client.set(cache_key, "processing", ex=300)
 
         # Mock Redis to raise exception in finally block
-        with patch.object(redis_client, "delete", side_effect=Exception("Redis connection failed")):
+        with patch.object(redis_client, "delete", side_effect=Exception("Redis connection failed"), autospec=True):
             # Act: Execute the task - Redis failure should not prevent completion
             with pytest.raises(Exception) as exc_info:
                 create_segment_to_index_task(segment.id)

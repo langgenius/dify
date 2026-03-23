@@ -9,7 +9,7 @@ from core.helper.ssrf_proxy import (
 )
 
 
-@patch("core.helper.ssrf_proxy._get_ssrf_client")
+@patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
 def test_successful_request(mock_get_client):
     mock_client = MagicMock()
     mock_response = MagicMock()
@@ -22,7 +22,7 @@ def test_successful_request(mock_get_client):
     mock_client.request.assert_called_once()
 
 
-@patch("core.helper.ssrf_proxy._get_ssrf_client")
+@patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
 def test_retry_exceed_max_retries(mock_get_client):
     mock_client = MagicMock()
     mock_response = MagicMock()
@@ -71,7 +71,7 @@ class TestGetUserProvidedHostHeader:
         assert result in ("first.com", "second.com")
 
 
-@patch("core.helper.ssrf_proxy._get_ssrf_client")
+@patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
 def test_host_header_preservation_with_user_header(mock_get_client):
     """Test that user-provided Host header is preserved in the request."""
     mock_client = MagicMock()
@@ -89,7 +89,7 @@ def test_host_header_preservation_with_user_header(mock_get_client):
     assert call_kwargs["headers"]["host"] == custom_host
 
 
-@patch("core.helper.ssrf_proxy._get_ssrf_client")
+@patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
 @pytest.mark.parametrize("host_key", ["host", "HOST", "Host"])
 def test_host_header_preservation_case_insensitive(mock_get_client, host_key):
     """Test that Host header is preserved regardless of case."""
@@ -113,7 +113,7 @@ class TestFollowRedirectsParameter:
     These tests verify that follow_redirects is correctly passed to client.request().
     """
 
-    @patch("core.helper.ssrf_proxy._get_ssrf_client")
+    @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
     def test_follow_redirects_passed_to_request(self, mock_get_client):
         """Verify follow_redirects IS passed to client.request()."""
         mock_client = MagicMock()
@@ -128,7 +128,7 @@ class TestFollowRedirectsParameter:
         call_kwargs = mock_client.request.call_args.kwargs
         assert call_kwargs.get("follow_redirects") is True
 
-    @patch("core.helper.ssrf_proxy._get_ssrf_client")
+    @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
     def test_allow_redirects_converted_to_follow_redirects(self, mock_get_client):
         """Verify allow_redirects (requests-style) is converted to follow_redirects (httpx-style)."""
         mock_client = MagicMock()
@@ -145,7 +145,7 @@ class TestFollowRedirectsParameter:
         assert call_kwargs.get("follow_redirects") is True
         assert "allow_redirects" not in call_kwargs
 
-    @patch("core.helper.ssrf_proxy._get_ssrf_client")
+    @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
     def test_follow_redirects_not_set_when_not_specified(self, mock_get_client):
         """Verify follow_redirects is not in kwargs when not specified (httpx default behavior)."""
         mock_client = MagicMock()
@@ -160,7 +160,7 @@ class TestFollowRedirectsParameter:
         call_kwargs = mock_client.request.call_args.kwargs
         assert "follow_redirects" not in call_kwargs
 
-    @patch("core.helper.ssrf_proxy._get_ssrf_client")
+    @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
     def test_follow_redirects_takes_precedence_over_allow_redirects(self, mock_get_client):
         """Verify follow_redirects takes precedence when both are specified."""
         mock_client = MagicMock()

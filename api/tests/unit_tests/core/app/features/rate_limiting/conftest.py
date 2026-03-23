@@ -84,7 +84,7 @@ def mock_time():
         mock_time_val += seconds
         return mock_time_val
 
-    with patch("time.time", return_value=mock_time_val) as mock:
+    with patch("time.time", return_value=mock_time_val, autospec=True) as mock:
         mock.increment = increment_time
         yield mock
 

@@ -1,5 +1,5 @@
 import logging
-from collections.abc import Callable, Generator, Iterable, Sequence
+from collections.abc import Callable, Generator, Iterable, Mapping, Sequence
 from typing import IO, Any, Literal, Optional, Union, cast, overload
 
 from configs import dify_config
@@ -35,9 +35,12 @@ class ModelInstance:
 
     def __init__(self, provider_model_bundle: ProviderModelBundle, model: str):
         self.provider_model_bundle = provider_model_bundle
-        self.model = model
+        self.model_name = model
         self.provider = provider_model_bundle.configuration.provider.provider
         self.credentials = self._fetch_credentials_from_bundle(provider_model_bundle, model)
+        # Runtime LLM invocation fields.
+        self.parameters: Mapping[str, Any] = {}
+        self.stop: Sequence[str] = ()
         self.model_type_instance = self.provider_model_bundle.model_type_instance
         self.load_balancing_manager = self._get_load_balancing_manager(
             configuration=provider_model_bundle.configuration,
@@ -163,7 +166,7 @@ class ModelInstance:
             Union[LLMResult, Generator],
             self._round_robin_invoke(
                 function=self.model_type_instance.invoke,
-                model=self.model,
+                model=self.model_name,
                 credentials=self.credentials,
                 prompt_messages=prompt_messages,
                 model_parameters=model_parameters,
@@ -191,7 +194,7 @@ class ModelInstance:
             int,
             self._round_robin_invoke(
                 function=self.model_type_instance.get_num_tokens,
-                model=self.model,
+                model=self.model_name,
                 credentials=self.credentials,
                 prompt_messages=prompt_messages,
                 tools=tools,
@@ -215,7 +218,7 @@ class ModelInstance:
             EmbeddingResult,
             self._round_robin_invoke(
                 function=self.model_type_instance.invoke,
-                model=self.model,
+                model=self.model_name,
                 credentials=self.credentials,
                 texts=texts,
                 user=user,
@@ -243,7 +246,7 @@ class ModelInstance:
             EmbeddingResult,
             self._round_robin_invoke(
                 function=self.model_type_instance.invoke,
-                model=self.model,
+                model=self.model_name,
                 credentials=self.credentials,
                 multimodel_documents=multimodel_documents,
                 user=user,
@@ -264,7 +267,7 @@ class ModelInstance:
             list[int],
             self._round_robin_invoke(
                 function=self.model_type_instance.get_num_tokens,
-                model=self.model,
+                model=self.model_name,
                 credentials=self.credentials,
                 texts=texts,
             ),
@@ -294,7 +297,7 @@ class ModelInstance:
             RerankResult,
             self._round_robin_invoke(
                 function=self.model_type_instance.invoke,
-                model=self.model,
+                model=self.model_name,
                 credentials=self.credentials,
                 query=query,
                 docs=docs,
@@ -328,7 +331,7 @@ class ModelInstance:
             RerankResult,
             self._round_robin_invoke(
                 function=self.model_type_instance.invoke_multimodal_rerank,
-                model=self.model,
+                model=self.model_name,
                 credentials=self.credentials,
                 query=query,
                 docs=docs,
@@ -352,7 +355,7 @@ class ModelInstance:
             bool,
             self._round_robin_invoke(
                 function=self.model_type_instance.invoke,
-                model=self.model,
+                model=self.model_name,
                 credentials=self.credentials,
                 text=text,
                 user=user,
@@ -373,7 +376,7 @@ class ModelInstance:
             str,
             self._round_robin_invoke(
                 function=self.model_type_instance.invoke,
-                model=self.model,
+                model=self.model_name,
                 credentials=self.credentials,
                 file=file,
                 user=user,
@@ -396,7 +399,7 @@ class ModelInstance:
             Iterable[bytes],
             self._round_robin_invoke(
                 function=self.model_type_instance.invoke,
-                model=self.model,
+                model=self.model_name,
                 credentials=self.credentials,
                 content_text=content_text,
                 user=user,
@@ -469,7 +472,7 @@ class ModelInstance:
         if not isinstance(self.model_type_instance, TTSModel):
             raise Exception("Model type instance is not TTSModel")
         return self.model_type_instance.get_tts_model_voices(
-            model=self.model, credentials=self.credentials, language=language
+            model=self.model_name, credentials=self.credentials, language=language
         )
 
 

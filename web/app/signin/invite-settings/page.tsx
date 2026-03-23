@@ -56,7 +56,7 @@ export default function InviteSettingsPage() {
       if (res.result === 'success') {
         // Tokens are now stored in cookies by the backend
         await setLocaleOnClient(language, false)
-        const redirectUrl = resolvePostLoginRedirect(searchParams)
+        const redirectUrl = resolvePostLoginRedirect()
         router.replace(redirectUrl || '/apps')
       }
     }

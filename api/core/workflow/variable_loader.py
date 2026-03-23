@@ -2,9 +2,9 @@ import abc
 from collections.abc import Mapping, Sequence
 from typing import Any, Protocol
 
-from core.variables import VariableBase
-from core.variables.consts import SELECTORS_LENGTH
 from core.workflow.runtime import VariablePool
+from core.workflow.variables import VariableBase
+from core.workflow.variables.consts import SELECTORS_LENGTH
 
 
 class VariableLoader(Protocol):

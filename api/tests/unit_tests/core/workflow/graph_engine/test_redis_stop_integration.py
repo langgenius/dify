@@ -32,25 +32,26 @@ class TestRedisStopIntegration:
         mock_redis.pipeline.return_value.__enter__ = Mock(return_value=mock_pipeline)
         mock_redis.pipeline.return_value.__exit__ = Mock(return_value=None)
 
-        with patch("core.workflow.graph_engine.manager.redis_client", mock_redis):
-            # Execute
-            GraphEngineManager.send_stop_command(task_id, reason="Test stop")
+        manager = GraphEngineManager(mock_redis)
 
-            # Verify
-            mock_redis.pipeline.assert_called_once()
+        # Execute
+        manager.send_stop_command(task_id, reason="Test stop")
 
-            # Check that rpush was called with correct arguments
-            calls = mock_pipeline.rpush.call_args_list
-            assert len(calls) == 1
+        # Verify
+        mock_redis.pipeline.assert_called_once()
 
-            # Verify the channel key
-            assert calls[0][0][0] == expected_channel_key
+        # Check that rpush was called with correct arguments
+        calls = mock_pipeline.rpush.call_args_list
+        assert len(calls) == 1
 
-            # Verify the command data
-            command_json = calls[0][0][1]
-            command_data = json.loads(command_json)
-            assert command_data["command_type"] == CommandType.ABORT
-            assert command_data["reason"] == "Test stop"
+        # Verify the channel key
+        assert calls[0][0][0] == expected_channel_key
+
+        # Verify the command data
+        command_json = calls[0][0][1]
+        command_data = json.loads(command_json)
+        assert command_data["command_type"] == CommandType.ABORT
+        assert command_data["reason"] == "Test stop"
 
     def test_graph_engine_manager_sends_pause_command(self):
         """Test that GraphEngineManager correctly sends pause command through Redis."""
@@ -62,18 +63,18 @@ class TestRedisStopIntegration:
         mock_redis.pipeline.return_value.__enter__ = Mock(return_value=mock_pipeline)
         mock_redis.pipeline.return_value.__exit__ = Mock(return_value=None)
 
-        with patch("core.workflow.graph_engine.manager.redis_client", mock_redis):
-            GraphEngineManager.send_pause_command(task_id, reason="Awaiting resources")
+        manager = GraphEngineManager(mock_redis)
+        manager.send_pause_command(task_id, reason="Awaiting resources")
 
-            mock_redis.pipeline.assert_called_once()
-            calls = mock_pipeline.rpush.call_args_list
-            assert len(calls) == 1
-            assert calls[0][0][0] == expected_channel_key
+        mock_redis.pipeline.assert_called_once()
+        calls = mock_pipeline.rpush.call_args_list
+        assert len(calls) == 1
+        assert calls[0][0][0] == expected_channel_key
 
-            command_json = calls[0][0][1]
-            command_data = json.loads(command_json)
-            assert command_data["command_type"] == CommandType.PAUSE.value
-            assert command_data["reason"] == "Awaiting resources"
+        command_json = calls[0][0][1]
+        command_data = json.loads(command_json)
+        assert command_data["command_type"] == CommandType.PAUSE.value
+        assert command_data["reason"] == "Awaiting resources"
 
     def test_graph_engine_manager_handles_redis_failure_gracefully(self):
         """Test that GraphEngineManager handles Redis failures without raising exceptions."""
@@ -82,13 +83,13 @@ class TestRedisStopIntegration:
         # Mock redis client to raise exception
         mock_redis = MagicMock()
         mock_redis.pipeline.side_effect = redis.ConnectionError("Redis connection failed")
+        manager = GraphEngineManager(mock_redis)
 
-        with patch("core.workflow.graph_engine.manager.redis_client", mock_redis):
-            # Should not raise exception
-            try:
-                GraphEngineManager.send_stop_command(task_id)
-            except Exception as e:
-                pytest.fail(f"GraphEngineManager.send_stop_command raised {e} unexpectedly")
+        # Should not raise exception
+        try:
+            manager.send_stop_command(task_id)
+        except Exception as e:
+            pytest.fail(f"GraphEngineManager.send_stop_command raised {e} unexpectedly")
 
     def test_app_queue_manager_no_user_check(self):
         """Test that AppQueueManager.set_stop_flag_no_user_check works without user validation."""
@@ -251,13 +252,10 @@ class TestRedisStopIntegration:
         mock_redis.pipeline.return_value.__enter__ = Mock(return_value=mock_pipeline)
         mock_redis.pipeline.return_value.__exit__ = Mock(return_value=None)
 
-        with (
-            patch("core.app.apps.base_app_queue_manager.redis_client", mock_redis),
-            patch("core.workflow.graph_engine.manager.redis_client", mock_redis),
-        ):
+        with patch("core.app.apps.base_app_queue_manager.redis_client", mock_redis):
             # Execute both stop mechanisms
             AppQueueManager.set_stop_flag_no_user_check(task_id)
-            GraphEngineManager.send_stop_command(task_id)
+            GraphEngineManager(mock_redis).send_stop_command(task_id)
 
             # Verify legacy stop flag was set
             expected_stop_flag_key = f"generate_task_stopped:{task_id}"

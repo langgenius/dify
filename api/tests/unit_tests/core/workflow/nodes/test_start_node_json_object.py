@@ -4,12 +4,12 @@ import time
 import pytest
 from pydantic import ValidationError as PydanticValidationError
 
-from core.app.app_config.entities import VariableEntity, VariableEntityType
 from core.workflow.entities import GraphInitParams
 from core.workflow.nodes.start.entities import StartNodeData
 from core.workflow.nodes.start.start_node import StartNode
 from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
+from core.workflow.variables.input_entities import VariableEntity, VariableEntityType
 
 
 def make_start_node(user_inputs, variables):

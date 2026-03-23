@@ -1,6 +1,6 @@
 from typing import Any
 
-from core.variables import SegmentType
+from core.workflow.variables import SegmentType
 
 from .enums import Operation
 

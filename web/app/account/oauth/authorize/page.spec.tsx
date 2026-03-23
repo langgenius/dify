@@ -1,11 +1,10 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { setPostLoginRedirect } from '@/app/signin/utils/post-login-redirect'
 import { useAppContext } from '@/context/app-context'
 import { useIsLogin } from '@/service/use-common'
 import { useAuthorizeOAuthApp, useOAuthAppInfo } from '@/service/use-oauth'
-import { storage } from '@/utils/storage'
-import { OAUTH_AUTHORIZE_PENDING_KEY, OAUTH_AUTHORIZE_PENDING_TTL, REDIRECT_URL_KEY } from './constants'
 import OAuthAuthorize from './page'
 
 vi.mock('next/navigation', () => ({
@@ -30,8 +29,18 @@ vi.mock('@/service/use-oauth', () => ({
   useOAuthAppInfo: vi.fn(),
 }))
 
-const FIXED_DATE = new Date('2026-02-10T12:00:00.000Z')
+vi.mock('@/app/signin/utils/post-login-redirect', () => ({
+  setPostLoginRedirect: vi.fn(),
+}))
+
 const SEARCH_QUERY = 'client_id=dcfcd6a4-5799-405a-a6d7-04261b24dd02&redirect_uri=https%3A%2F%2Fcreators.dify.dev%2Fapi%2Fv1%2Foauth%2Fcallback%2Fdify&response_type=code'
+
+const expectedOAuthReturnUrl = () => {
+  const params = new URLSearchParams(SEARCH_QUERY)
+  const clientId = decodeURIComponent(params.get('client_id') || '')
+  const redirectUri = decodeURIComponent(params.get('redirect_uri') || '')
+  return `${globalThis.location.origin}/account/oauth/authorize?client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}`
+}
 
 const createOAuthAppInfo = () => ({
   app_label: {
@@ -46,10 +55,7 @@ describe('OAuthAuthorize redirect persistence', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    storage.resetCache()
     localStorage.clear()
-    vi.useFakeTimers()
-    vi.setSystemTime(FIXED_DATE)
 
     vi.mocked(useRouter).mockReturnValue({
       push,
@@ -74,11 +80,7 @@ describe('OAuthAuthorize redirect persistence', () => {
     } as never)
   })
 
-  afterEach(() => {
-    vi.useRealTimers()
-  })
-
-  it('should store full authorize url and navigate to signin when switch account is clicked', () => {
+  it('should set post-login redirect and navigate to signin when switch account is clicked', () => {
     // Arrange
     vi.mocked(useIsLogin).mockReturnValue({
       isLoading: false,
@@ -91,22 +93,12 @@ describe('OAuthAuthorize redirect persistence', () => {
     fireEvent.click(switchAccountButton)
 
     // Assert
-    const expectedStoredReturnUrl = `${window.location.origin}/account/oauth/authorize?${SEARCH_QUERY}`
-    const expectedDecodedReturnUrl = decodeURIComponent(expectedStoredReturnUrl)
     expect(push).toHaveBeenCalledTimes(1)
-    const pushedUrl = push.mock.calls[0][0] as string
-    const pushedParams = new URLSearchParams(pushedUrl.split('?')[1])
-    expect(pushedParams.has(REDIRECT_URL_KEY)).toBe(true)
-    expect(decodeURIComponent(pushedParams.get(REDIRECT_URL_KEY)!)).toBe(expectedDecodedReturnUrl)
-
-    const storedPendingRedirect = storage.get<{ value: string, expiry: number }>(OAUTH_AUTHORIZE_PENDING_KEY)
-    expect(storedPendingRedirect).toEqual({
-      value: expectedStoredReturnUrl,
-      expiry: Math.floor((FIXED_DATE.getTime() + OAUTH_AUTHORIZE_PENDING_TTL * 1000) / 1000),
-    })
+    expect(push).toHaveBeenCalledWith('/signin')
+    expect(vi.mocked(setPostLoginRedirect)).toHaveBeenCalledWith(expectedOAuthReturnUrl())
   })
 
-  it('should store full authorize url and navigate to signin when login button is clicked for logged-out users', () => {
+  it('should set post-login redirect and navigate to signin when login button is clicked for logged-out users', () => {
     // Arrange
     vi.mocked(useIsLogin).mockReturnValue({
       isLoading: false,
@@ -119,9 +111,8 @@ describe('OAuthAuthorize redirect persistence', () => {
     fireEvent.click(loginButton)
 
     // Assert
-    const expectedReturnUrl = `${window.location.origin}/account/oauth/authorize?${SEARCH_QUERY}`
     expect(push).toHaveBeenCalledTimes(1)
-    expect(push).toHaveBeenCalledWith(`/signin?${REDIRECT_URL_KEY}=${encodeURIComponent(expectedReturnUrl)}`)
-    expect(storage.get<{ value: string }>(OAUTH_AUTHORIZE_PENDING_KEY)?.value).toBe(expectedReturnUrl)
+    expect(push).toHaveBeenCalledWith('/signin')
+    expect(vi.mocked(setPostLoginRedirect)).toHaveBeenCalledWith(expectedOAuthReturnUrl())
   })
 })

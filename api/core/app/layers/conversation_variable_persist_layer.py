@@ -1,12 +1,12 @@
 import logging
 
-from core.variables import VariableBase
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID
 from core.workflow.conversation_variable_updater import ConversationVariableUpdater
 from core.workflow.enums import NodeType
 from core.workflow.graph_engine.layers.base import GraphEngineLayer
 from core.workflow.graph_events import GraphEngineEvent, NodeRunSucceededEvent
 from core.workflow.nodes.variable_assigner.common import helpers as common_helpers
+from core.workflow.variables import VariableBase
 
 logger = logging.getLogger(__name__)
 

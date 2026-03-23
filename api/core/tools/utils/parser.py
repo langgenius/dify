@@ -2,7 +2,7 @@ import re
 from json import dumps as json_dumps
 from json import loads as json_loads
 from json.decoder import JSONDecodeError
-from typing import Any
+from typing import Any, TypedDict
 
 import httpx
 from flask import request
@@ -12,6 +12,12 @@ from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import ApiProviderSchemaType, ToolParameter
 from core.tools.errors import ToolApiSchemaError, ToolNotSupportedError, ToolProviderNotFoundError
+
+
+class InterfaceDict(TypedDict):
+    path: str
+    method: str
+    operation: dict[str, Any]
 
 
 class ApiBasedToolSchemaParser:
@@ -35,7 +41,7 @@ class ApiBasedToolSchemaParser:
             server_url = matched_servers[0] if matched_servers else server_url
 
         # list all interfaces
-        interfaces = []
+        interfaces: list[InterfaceDict] = []
         for path, path_item in openapi["paths"].items():
             methods = ["get", "post", "put", "delete", "patch", "head", "options", "trace"]
             for method in methods:

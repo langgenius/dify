@@ -49,7 +49,6 @@ from core.plugin.impl.datasource import PluginDatasourceManager
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.tool_manager import ToolManager
 from core.trigger.trigger_manager import TriggerManager
-from core.variables.segments import ArrayFileSegment, FileSegment, Segment
 from core.workflow.entities.pause_reason import HumanInputRequired
 from core.workflow.entities.workflow_start_reason import WorkflowStartReason
 from core.workflow.enums import (
@@ -62,6 +61,7 @@ from core.workflow.enums import (
 from core.workflow.file import FILE_MODEL_IDENTITY, File
 from core.workflow.runtime import GraphRuntimeState
 from core.workflow.system_variable import SystemVariable
+from core.workflow.variables.segments import ArrayFileSegment, FileSegment, Segment
 from core.workflow.workflow_entry import WorkflowEntry
 from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from extensions.ext_database import db

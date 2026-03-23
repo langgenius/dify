@@ -50,8 +50,26 @@ class TestDealDatasetVectorIndexTask:
             mock_factory.return_value = mock_instance
             yield mock_factory
 
+    @pytest.fixture
+    def account_and_tenant(self, db_session_with_containers, mock_external_service_dependencies):
+        """Create an account with an owner tenant for testing.
+
+        Returns a tuple of (account, tenant) where tenant is guaranteed to be non-None.
+        """
+        fake = Faker()
+        account = AccountService.create_account(
+            email=fake.email(),
+            name=fake.name(),
+            interface_language="en-US",
+            password=fake.password(length=12),
+        )
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        tenant = account.current_tenant
+        assert tenant is not None
+        return account, tenant
+
     def test_deal_dataset_vector_index_task_remove_action_success(
-        self, db_session_with_containers, mock_index_processor_factory, mock_external_service_dependencies
+        self, db_session_with_containers, mock_index_processor_factory, account_and_tenant
     ):
         """
         Test successful removal of dataset vector index.
@@ -63,16 +81,7 @@ class TestDealDatasetVectorIndexTask:
         4. Completes without errors
         """
         fake = Faker()
-
-        # Create test data
-        account = AccountService.create_account(
-            email=fake.email(),
-            name=fake.name(),
-            interface_language="en-US",
-            password=fake.password(length=12),
-        )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
-        tenant = account.current_tenant
+        account, tenant = account_and_tenant
 
         # Create dataset
         dataset = Dataset(
@@ -118,7 +127,7 @@ class TestDealDatasetVectorIndexTask:
         assert mock_processor.clean.call_count >= 0  # For now, just check it doesn't fail
 
     def test_deal_dataset_vector_index_task_add_action_success(
-        self, db_session_with_containers, mock_index_processor_factory, mock_external_service_dependencies
+        self, db_session_with_containers, mock_index_processor_factory, account_and_tenant
     ):
         """
         Test successful addition of dataset vector index.
@@ -132,16 +141,7 @@ class TestDealDatasetVectorIndexTask:
         6. Updates document status to completed
         """
         fake = Faker()
-
-        # Create test data
-        account = AccountService.create_account(
-            email=fake.email(),
-            name=fake.name(),
-            interface_language="en-US",
-            password=fake.password(length=12),
-        )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
-        tenant = account.current_tenant
+        account, tenant = account_and_tenant
 
         # Create dataset
         dataset = Dataset(
@@ -227,7 +227,7 @@ class TestDealDatasetVectorIndexTask:
         mock_processor.load.assert_called_once()
 
     def test_deal_dataset_vector_index_task_update_action_success(
-        self, db_session_with_containers, mock_index_processor_factory, mock_external_service_dependencies
+        self, db_session_with_containers, mock_index_processor_factory, account_and_tenant
     ):
         """
         Test successful update of dataset vector index.
@@ -242,16 +242,7 @@ class TestDealDatasetVectorIndexTask:
         7. Updates document status to completed
         """
         fake = Faker()
-
-        # Create test data
-        account = AccountService.create_account(
-            email=fake.email(),
-            name=fake.name(),
-            interface_language="en-US",
-            password=fake.password(length=12),
-        )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
-        tenant = account.current_tenant
+        account, tenant = account_and_tenant
 
         # Create dataset with parent-child index
         dataset = Dataset(
@@ -338,7 +329,7 @@ class TestDealDatasetVectorIndexTask:
         mock_processor.load.assert_called_once()
 
     def test_deal_dataset_vector_index_task_dataset_not_found_error(
-        self, db_session_with_containers, mock_index_processor_factory, mock_external_service_dependencies
+        self, db_session_with_containers, mock_index_processor_factory, account_and_tenant
     ):
         """
         Test task behavior when dataset is not found.
@@ -358,7 +349,7 @@ class TestDealDatasetVectorIndexTask:
         mock_processor.load.assert_not_called()
 
     def test_deal_dataset_vector_index_task_add_action_no_documents(
-        self, db_session_with_containers, mock_index_processor_factory, mock_external_service_dependencies
+        self, db_session_with_containers, mock_index_processor_factory, account_and_tenant
     ):
         """
         Test add action when no documents exist for the dataset.
@@ -367,16 +358,7 @@ class TestDealDatasetVectorIndexTask:
         a dataset exists but has no documents to process.
         """
         fake = Faker()
-
-        # Create test data
-        account = AccountService.create_account(
-            email=fake.email(),
-            name=fake.name(),
-            interface_language="en-US",
-            password=fake.password(length=12),
-        )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
-        tenant = account.current_tenant
+        account, tenant = account_and_tenant
 
         # Create dataset without documents
         dataset = Dataset(
@@ -399,7 +381,7 @@ class TestDealDatasetVectorIndexTask:
         mock_processor.load.assert_not_called()
 
     def test_deal_dataset_vector_index_task_add_action_no_segments(
-        self, db_session_with_containers, mock_index_processor_factory, mock_external_service_dependencies
+        self, db_session_with_containers, mock_index_processor_factory, account_and_tenant
     ):
         """
         Test add action when documents exist but have no segments.
@@ -408,16 +390,7 @@ class TestDealDatasetVectorIndexTask:
         documents exist but contain no segments to process.
         """
         fake = Faker()
-
-        # Create test data
-        account = AccountService.create_account(
-            email=fake.email(),
-            name=fake.name(),
-            interface_language="en-US",
-            password=fake.password(length=12),
-        )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
-        tenant = account.current_tenant
+        account, tenant = account_and_tenant
 
         # Create dataset
         dataset = Dataset(
@@ -464,7 +437,7 @@ class TestDealDatasetVectorIndexTask:
         mock_processor.load.assert_not_called()
 
     def test_deal_dataset_vector_index_task_update_action_no_documents(
-        self, db_session_with_containers, mock_index_processor_factory, mock_external_service_dependencies
+        self, db_session_with_containers, mock_index_processor_factory, account_and_tenant
     ):
         """
         Test update action when no documents exist for the dataset.
@@ -473,16 +446,7 @@ class TestDealDatasetVectorIndexTask:
         a dataset exists but has no documents to process during update.
         """
         fake = Faker()
-
-        # Create test data
-        account = AccountService.create_account(
-            email=fake.email(),
-            name=fake.name(),
-            interface_language="en-US",
-            password=fake.password(length=12),
-        )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
-        tenant = account.current_tenant
+        account, tenant = account_and_tenant
 
         # Create dataset without documents
         dataset = Dataset(
@@ -506,7 +470,7 @@ class TestDealDatasetVectorIndexTask:
         mock_processor.load.assert_not_called()
 
     def test_deal_dataset_vector_index_task_add_action_with_exception_handling(
-        self, db_session_with_containers, mock_index_processor_factory, mock_external_service_dependencies
+        self, db_session_with_containers, mock_index_processor_factory, account_and_tenant
     ):
         """
         Test add action with exception handling during processing.
@@ -515,16 +479,7 @@ class TestDealDatasetVectorIndexTask:
         during document processing and updates document status to error.
         """
         fake = Faker()
-
-        # Create test data
-        account = AccountService.create_account(
-            email=fake.email(),
-            name=fake.name(),
-            interface_language="en-US",
-            password=fake.password(length=12),
-        )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
-        tenant = account.current_tenant
+        account, tenant = account_and_tenant
 
         # Create dataset
         dataset = Dataset(
@@ -611,7 +566,7 @@ class TestDealDatasetVectorIndexTask:
         assert "Test exception during indexing" in updated_document.error
 
     def test_deal_dataset_vector_index_task_with_custom_index_type(
-        self, db_session_with_containers, mock_index_processor_factory, mock_external_service_dependencies
+        self, db_session_with_containers, mock_index_processor_factory, account_and_tenant
     ):
         """
         Test task behavior with custom index type (QA_INDEX).
@@ -620,16 +575,7 @@ class TestDealDatasetVectorIndexTask:
         and initializes the appropriate index processor.
         """
         fake = Faker()
-
-        # Create test data
-        account = AccountService.create_account(
-            email=fake.email(),
-            name=fake.name(),
-            interface_language="en-US",
-            password=fake.password(length=12),
-        )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
-        tenant = account.current_tenant
+        account, tenant = account_and_tenant
 
         # Create dataset with custom index type
         dataset = Dataset(
@@ -696,7 +642,7 @@ class TestDealDatasetVectorIndexTask:
         mock_processor.load.assert_called_once()
 
     def test_deal_dataset_vector_index_task_with_default_index_type(
-        self, db_session_with_containers, mock_index_processor_factory, mock_external_service_dependencies
+        self, db_session_with_containers, mock_index_processor_factory, account_and_tenant
     ):
         """
         Test task behavior with default index type (PARAGRAPH_INDEX).
@@ -705,16 +651,7 @@ class TestDealDatasetVectorIndexTask:
         when dataset.doc_form is None.
         """
         fake = Faker()
-
-        # Create test data
-        account = AccountService.create_account(
-            email=fake.email(),
-            name=fake.name(),
-            interface_language="en-US",
-            password=fake.password(length=12),
-        )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
-        tenant = account.current_tenant
+        account, tenant = account_and_tenant
 
         # Create dataset without doc_form (should use default)
         dataset = Dataset(
@@ -781,7 +718,7 @@ class TestDealDatasetVectorIndexTask:
         mock_processor.load.assert_called_once()
 
     def test_deal_dataset_vector_index_task_multiple_documents_processing(
-        self, db_session_with_containers, mock_index_processor_factory, mock_external_service_dependencies
+        self, db_session_with_containers, mock_index_processor_factory, account_and_tenant
     ):
         """
         Test task processing with multiple documents and segments.
@@ -790,16 +727,7 @@ class TestDealDatasetVectorIndexTask:
         and their segments in sequence.
         """
         fake = Faker()
-
-        # Create test data
-        account = AccountService.create_account(
-            email=fake.email(),
-            name=fake.name(),
-            interface_language="en-US",
-            password=fake.password(length=12),
-        )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
-        tenant = account.current_tenant
+        account, tenant = account_and_tenant
 
         # Create dataset
         dataset = Dataset(
@@ -893,7 +821,7 @@ class TestDealDatasetVectorIndexTask:
         assert mock_processor.load.call_count == 3
 
     def test_deal_dataset_vector_index_task_document_status_transitions(
-        self, db_session_with_containers, mock_index_processor_factory, mock_external_service_dependencies
+        self, db_session_with_containers, mock_index_processor_factory, account_and_tenant
     ):
         """
         Test document status transitions during task execution.
@@ -902,16 +830,7 @@ class TestDealDatasetVectorIndexTask:
         'completed' to 'indexing' and back to 'completed' during processing.
         """
         fake = Faker()
-
-        # Create test data
-        account = AccountService.create_account(
-            email=fake.email(),
-            name=fake.name(),
-            interface_language="en-US",
-            password=fake.password(length=12),
-        )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
-        tenant = account.current_tenant
+        account, tenant = account_and_tenant
 
         # Create dataset
         dataset = Dataset(
@@ -999,7 +918,7 @@ class TestDealDatasetVectorIndexTask:
         assert updated_document.indexing_status == "completed"
 
     def test_deal_dataset_vector_index_task_with_disabled_documents(
-        self, db_session_with_containers, mock_index_processor_factory, mock_external_service_dependencies
+        self, db_session_with_containers, mock_index_processor_factory, account_and_tenant
     ):
         """
         Test task behavior with disabled documents.
@@ -1008,16 +927,7 @@ class TestDealDatasetVectorIndexTask:
         during processing.
         """
         fake = Faker()
-
-        # Create test data
-        account = AccountService.create_account(
-            email=fake.email(),
-            name=fake.name(),
-            interface_language="en-US",
-            password=fake.password(length=12),
-        )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
-        tenant = account.current_tenant
+        account, tenant = account_and_tenant
 
         # Create dataset
         dataset = Dataset(
@@ -1129,7 +1039,7 @@ class TestDealDatasetVectorIndexTask:
         mock_processor.load.assert_called_once()
 
     def test_deal_dataset_vector_index_task_with_archived_documents(
-        self, db_session_with_containers, mock_index_processor_factory, mock_external_service_dependencies
+        self, db_session_with_containers, mock_index_processor_factory, account_and_tenant
     ):
         """
         Test task behavior with archived documents.
@@ -1138,16 +1048,7 @@ class TestDealDatasetVectorIndexTask:
         during processing.
         """
         fake = Faker()
-
-        # Create test data
-        account = AccountService.create_account(
-            email=fake.email(),
-            name=fake.name(),
-            interface_language="en-US",
-            password=fake.password(length=12),
-        )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
-        tenant = account.current_tenant
+        account, tenant = account_and_tenant
 
         # Create dataset
         dataset = Dataset(
@@ -1259,7 +1160,7 @@ class TestDealDatasetVectorIndexTask:
         mock_processor.load.assert_called_once()
 
     def test_deal_dataset_vector_index_task_with_incomplete_documents(
-        self, db_session_with_containers, mock_index_processor_factory, mock_external_service_dependencies
+        self, db_session_with_containers, mock_index_processor_factory, account_and_tenant
     ):
         """
         Test task behavior with documents that have incomplete indexing status.
@@ -1268,16 +1169,7 @@ class TestDealDatasetVectorIndexTask:
         incomplete indexing status during processing.
         """
         fake = Faker()
-
-        # Create test data
-        account = AccountService.create_account(
-            email=fake.email(),
-            name=fake.name(),
-            interface_language="en-US",
-            password=fake.password(length=12),
-        )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
-        tenant = account.current_tenant
+        account, tenant = account_and_tenant
 
         # Create dataset
         dataset = Dataset(

@@ -90,14 +90,14 @@ def mock_tool_node():
 @pytest.fixture
 def mock_is_instrument_flag_enabled_false():
     """Mock is_instrument_flag_enabled to return False."""
-    with patch("core.app.workflow.layers.observability.is_instrument_flag_enabled", return_value=False):
+    with patch("core.app.workflow.layers.observability.is_instrument_flag_enabled", return_value=False, autospec=True):
         yield
 
 
 @pytest.fixture
 def mock_is_instrument_flag_enabled_true():
     """Mock is_instrument_flag_enabled to return True."""
-    with patch("core.app.workflow.layers.observability.is_instrument_flag_enabled", return_value=True):
+    with patch("core.app.workflow.layers.observability.is_instrument_flag_enabled", return_value=True, autospec=True):
         yield
 
 

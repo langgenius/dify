@@ -653,7 +653,7 @@ export const useMutationClearAllTaskPlugin = () => {
 export const usePluginManifestInfo = (pluginUID: string) => {
   return useQuery({
     enabled: !!pluginUID,
-    queryKey: [[NAME_SPACE, 'manifest', pluginUID]],
+    queryKey: [NAME_SPACE, 'manifest', pluginUID],
     queryFn: () => getMarketplace<{ data: { plugin: PluginInfoFromMarketPlace, version: { version: string } } }>(`/plugins/${pluginUID}`),
     retry: 0,
   })

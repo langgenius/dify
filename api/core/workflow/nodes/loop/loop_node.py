@@ -6,7 +6,6 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any, Literal, cast
 
 from core.model_runtime.entities.llm_entities import LLMUsage
-from core.variables import Segment, SegmentType
 from core.workflow.enums import (
     NodeExecutionType,
     NodeType,
@@ -31,6 +30,7 @@ from core.workflow.nodes.base import LLMUsageTrackingMixin
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.loop.entities import LoopCompletedReason, LoopNodeData, LoopVariableData
 from core.workflow.utils.condition.processor import ConditionProcessor
+from core.workflow.variables import Segment, SegmentType
 from factories.variable_factory import TypeMismatchError, build_segment_with_type, segment_to_variable
 from libs.datetime_utils import naive_utc_now
 
@@ -413,6 +413,7 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
 
     def _create_graph_engine(self, start_at: datetime, root_node_id: str):
         # Import dependencies
+        from core.app.workflow.layers.llm_quota import LLMQuotaLayer
         from core.app.workflow.node_factory import DifyNodeFactory
         from core.workflow.entities import GraphInitParams
         from core.workflow.graph import Graph
@@ -454,5 +455,6 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
             command_channel=InMemoryChannel(),  # Use InMemoryChannel for sub-graphs
             config=GraphEngineConfig(),
         )
+        graph_engine.layer(LLMQuotaLayer())
 
         return graph_engine

@@ -19,14 +19,14 @@ class TestAgentService:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("services.agent_service.PluginAgentClient") as mock_plugin_agent_client,
-            patch("services.agent_service.ToolManager") as mock_tool_manager,
-            patch("services.agent_service.AgentConfigManager") as mock_agent_config_manager,
+            patch("services.agent_service.PluginAgentClient", autospec=True) as mock_plugin_agent_client,
+            patch("services.agent_service.ToolManager", autospec=True) as mock_tool_manager,
+            patch("services.agent_service.AgentConfigManager", autospec=True) as mock_agent_config_manager,
             patch("services.agent_service.current_user", create_autospec(Account, instance=True)) as mock_current_user,
-            patch("services.app_service.FeatureService") as mock_feature_service,
-            patch("services.app_service.EnterpriseService") as mock_enterprise_service,
-            patch("services.app_service.ModelManager") as mock_model_manager,
-            patch("services.account_service.FeatureService") as mock_account_feature_service,
+            patch("services.app_service.FeatureService", autospec=True) as mock_feature_service,
+            patch("services.app_service.EnterpriseService", autospec=True) as mock_enterprise_service,
+            patch("services.app_service.ModelManager", autospec=True) as mock_model_manager,
+            patch("services.account_service.FeatureService", autospec=True) as mock_account_feature_service,
         ):
             # Setup default mock returns for agent service
             mock_plugin_agent_client_instance = mock_plugin_agent_client.return_value

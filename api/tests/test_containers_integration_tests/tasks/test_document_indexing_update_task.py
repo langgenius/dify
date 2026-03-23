@@ -16,15 +16,13 @@ class TestDocumentIndexingUpdateTask:
         - IndexingRunner.run([...])
         """
         with (
-            patch("tasks.document_indexing_update_task.IndexProcessorFactory") as mock_factory,
-            patch("tasks.document_indexing_update_task.IndexingRunner") as mock_runner,
+            patch("tasks.document_indexing_update_task.IndexProcessorFactory", autospec=True) as mock_factory,
+            patch("tasks.document_indexing_update_task.IndexingRunner", autospec=True) as mock_runner,
         ):
             processor_instance = MagicMock()
             mock_factory.return_value.init_index_processor.return_value = processor_instance
 
-            runner_instance = MagicMock()
-            mock_runner.return_value = runner_instance
-
+            runner_instance = mock_runner.return_value
             yield {
                 "factory": mock_factory,
                 "processor": processor_instance,

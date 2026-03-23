@@ -199,11 +199,32 @@ def test_mock_config_builder():
 
 def test_mock_factory_node_type_detection():
     """Test that MockNodeFactory correctly identifies nodes to mock."""
+    from core.app.entities.app_invoke_entities import InvokeFrom
+    from core.workflow.entities import GraphInitParams
+    from core.workflow.runtime import GraphRuntimeState, VariablePool
+    from models.enums import UserFrom
+
     from .test_mock_factory import MockNodeFactory
 
+    graph_init_params = GraphInitParams(
+        tenant_id="test",
+        app_id="test",
+        workflow_id="test",
+        graph_config={},
+        user_id="test",
+        user_from=UserFrom.ACCOUNT,
+        invoke_from=InvokeFrom.SERVICE_API,
+        call_depth=0,
+    )
+    graph_runtime_state = GraphRuntimeState(
+        variable_pool=VariablePool(environment_variables=[], conversation_variables=[], user_inputs={}),
+        start_at=0,
+        total_tokens=0,
+        node_run_steps=0,
+    )
     factory = MockNodeFactory(
-        graph_init_params=None,  # Will be set by test
-        graph_runtime_state=None,  # Will be set by test
+        graph_init_params=graph_init_params,
+        graph_runtime_state=graph_runtime_state,
         mock_config=None,
     )
 
@@ -288,7 +309,11 @@ def test_workflow_without_auto_mock():
 
 def test_register_custom_mock_node():
     """Test registering a custom mock implementation for a node type."""
+    from core.app.entities.app_invoke_entities import InvokeFrom
+    from core.workflow.entities import GraphInitParams
     from core.workflow.nodes.template_transform import TemplateTransformNode
+    from core.workflow.runtime import GraphRuntimeState, VariablePool
+    from models.enums import UserFrom
 
     from .test_mock_factory import MockNodeFactory
 
@@ -298,9 +323,25 @@ def test_register_custom_mock_node():
             # Custom mock implementation
             pass
 
+    graph_init_params = GraphInitParams(
+        tenant_id="test",
+        app_id="test",
+        workflow_id="test",
+        graph_config={},
+        user_id="test",
+        user_from=UserFrom.ACCOUNT,
+        invoke_from=InvokeFrom.SERVICE_API,
+        call_depth=0,
+    )
+    graph_runtime_state = GraphRuntimeState(
+        variable_pool=VariablePool(environment_variables=[], conversation_variables=[], user_inputs={}),
+        start_at=0,
+        total_tokens=0,
+        node_run_steps=0,
+    )
     factory = MockNodeFactory(
-        graph_init_params=None,
-        graph_runtime_state=None,
+        graph_init_params=graph_init_params,
+        graph_runtime_state=graph_runtime_state,
         mock_config=None,
     )
 

@@ -5,12 +5,6 @@ from typing import TYPE_CHECKING, Any, Literal
 from core.app.app_config.entities import DatasetRetrieveConfigEntity
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.variables import (
-    ArrayFileSegment,
-    FileSegment,
-    StringSegment,
-)
-from core.variables.segments import ArrayObjectSegment
 from core.workflow.entities import GraphInitParams
 from core.workflow.enums import (
     NodeType,
@@ -22,6 +16,12 @@ from core.workflow.nodes.base import LLMUsageTrackingMixin
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.llm.file_saver import FileSaverImpl, LLMFileSaver
 from core.workflow.repositories.rag_retrieval_protocol import KnowledgeRetrievalRequest, RAGRetrievalProtocol, Source
+from core.workflow.variables import (
+    ArrayFileSegment,
+    FileSegment,
+    StringSegment,
+)
+from core.workflow.variables.segments import ArrayObjectSegment
 
 from .entities import KnowledgeRetrievalNodeData
 from .exc import (

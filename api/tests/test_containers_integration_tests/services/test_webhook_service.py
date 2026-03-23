@@ -22,16 +22,13 @@ class TestWebhookService:
     def mock_external_dependencies(self):
         """Mock external service dependencies."""
         with (
-            patch("services.trigger.webhook_service.AsyncWorkflowService") as mock_async_service,
-            patch("services.trigger.webhook_service.ToolFileManager") as mock_tool_file_manager,
-            patch("services.trigger.webhook_service.file_factory") as mock_file_factory,
-            patch("services.account_service.FeatureService") as mock_feature_service,
+            patch("services.trigger.webhook_service.AsyncWorkflowService", autospec=True) as mock_async_service,
+            patch("services.trigger.webhook_service.ToolFileManager", autospec=True) as mock_tool_file_manager,
+            patch("services.trigger.webhook_service.file_factory", autospec=True) as mock_file_factory,
+            patch("services.account_service.FeatureService", autospec=True) as mock_feature_service,
         ):
             # Mock ToolFileManager
-            mock_tool_file_instance = MagicMock()
-            mock_tool_file_manager.return_value = mock_tool_file_instance
-
-            # Mock file creation
+            mock_tool_file_instance = mock_tool_file_manager.return_value  # Mock file creation
             mock_tool_file = MagicMock()
             mock_tool_file.id = "test_file_id"
             mock_tool_file_instance.create_file_by_raw.return_value = mock_tool_file
@@ -435,12 +432,12 @@ class TestWebhookService:
 
         with flask_app_with_containers.app_context():
             # Mock tenant owner lookup to return the test account
-            with patch("services.trigger.webhook_service.select") as mock_select:
+            with patch("services.trigger.webhook_service.select", autospec=True) as mock_select:
                 mock_query = MagicMock()
                 mock_select.return_value.join.return_value.where.return_value = mock_query
 
                 # Mock the session to return our test account
-                with patch("services.trigger.webhook_service.Session") as mock_session:
+                with patch("services.trigger.webhook_service.Session", autospec=True) as mock_session:
                     mock_session_instance = MagicMock()
                     mock_session.return_value.__enter__.return_value = mock_session_instance
                     mock_session_instance.scalar.return_value = test_data["account"]
@@ -462,7 +459,7 @@ class TestWebhookService:
         with flask_app_with_containers.app_context():
             # Mock EndUserService to raise an exception
             with patch(
-                "services.trigger.webhook_service.EndUserService.get_or_create_end_user_by_type"
+                "services.trigger.webhook_service.EndUserService.get_or_create_end_user_by_type", autospec=True
             ) as mock_end_user:
                 mock_end_user.side_effect = ValueError("Failed to create end user")
 

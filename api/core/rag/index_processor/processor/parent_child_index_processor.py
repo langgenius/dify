@@ -126,7 +126,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
         multimodal_documents: list[AttachmentDocument] | None = None,
         with_keywords: bool = True,
         **kwargs,
-    ):
+    ) -> None:
         if dataset.indexing_technique == "high_quality":
             vector = Vector(dataset)
             for document in documents:
@@ -139,7 +139,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
             if multimodal_documents and dataset.is_multimodal:
                 vector.create_multimodal(multimodal_documents)
 
-    def clean(self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, **kwargs):
+    def clean(self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, **kwargs) -> None:
         # node_ids is segment's node_ids
         # Note: Summary indexes are now disabled (not deleted) when segments are disabled.
         # This method is called for actual deletion scenarios (e.g., when segment is deleted).
@@ -272,7 +272,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                     child_nodes.append(child_document)
         return child_nodes
 
-    def index(self, dataset: Dataset, document: DatasetDocument, chunks: Any):
+    def index(self, dataset: Dataset, document: DatasetDocument, chunks: Any) -> None:
         parent_childs = ParentChildStructureChunk.model_validate(chunks)
         documents = []
         for parent_child in parent_childs.parent_child_chunks:

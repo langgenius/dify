@@ -2,14 +2,14 @@ import json
 from collections.abc import Mapping, MutableMapping, Sequence
 from typing import TYPE_CHECKING, Any
 
-from core.variables import SegmentType, VariableBase
-from core.variables.consts import SELECTORS_LENGTH
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID
 from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
 from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.variable_assigner.common import helpers as common_helpers
 from core.workflow.nodes.variable_assigner.common.exc import VariableOperatorNodeError
+from core.workflow.variables import SegmentType, VariableBase
+from core.workflow.variables.consts import SELECTORS_LENGTH
 
 from . import helpers
 from .entities import VariableAssignerNodeData, VariableOperationItem

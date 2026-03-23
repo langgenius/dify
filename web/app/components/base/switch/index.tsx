@@ -4,11 +4,12 @@ import * as React from 'react'
 import { cn } from '@/utils/classnames'
 
 type SwitchProps = {
-  value: boolean
-  onChange?: (value: boolean) => void
-  size?: 'xs' | 'sm' | 'md' | 'lg' | 'l'
-  disabled?: boolean
-  className?: string
+  'value': boolean
+  'onChange'?: (value: boolean) => void
+  'size'?: 'xs' | 'sm' | 'md' | 'lg' | 'l'
+  'disabled'?: boolean
+  'className'?: string
+  'data-testid'?: string
 }
 
 const Switch = (
@@ -19,6 +20,7 @@ const Switch = (
     size = 'md',
     disabled = false,
     className,
+    'data-testid': dataTestid,
   }: SwitchProps & {
     ref?: React.RefObject<HTMLButtonElement>
   },
@@ -56,6 +58,7 @@ const Switch = (
         onChange?.(checked)
       }}
       className={cn(wrapStyle[size], value ? 'bg-components-toggle-bg' : 'bg-components-toggle-bg-unchecked', 'relative inline-flex shrink-0 cursor-pointer rounded-[5px] border-2 border-transparent transition-colors duration-200 ease-in-out', disabled ? '!cursor-not-allowed !opacity-50' : '', size === 'xs' && 'rounded-sm', className)}
+      data-testid={dataTestid}
     >
       <span
         aria-hidden="true"

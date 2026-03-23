@@ -1,107 +1,79 @@
-import type { Member } from '@/models/common'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useState } from 'react'
 import { vi } from 'vitest'
 import { useMembers } from '@/service/use-common'
 import MemberSelector from './member-selector'
 
 vi.mock('@/service/use-common')
 
-const MemberSelectorHarness = ({ initialValue = '', exclude = [] as string[] }: { initialValue?: string, exclude?: string[] }) => {
-  const [selected, setSelected] = useState<string>(initialValue)
-  return (
-    <>
-      <MemberSelector value={selected} onSelect={setSelected} exclude={exclude} />
-      {selected && (
-        <div>
-          Selected:
-          {' '}
-          {selected}
-        </div>
-      )}
-    </>
-  )
-}
+const mockAccounts = [
+  { id: '1', name: 'John Doe', email: 'john@example.com', avatar_url: '' },
+  { id: '2', name: 'Jane Smith', email: 'jane@example.com', avatar_url: '' },
+  { id: '3', name: 'Bob Wilson', email: 'bob@example.com', avatar_url: '' },
+]
 
 describe('MemberSelector', () => {
-  const mockMembers = [
-    { id: '1', name: 'User 1', email: 'user1@example.com', role: 'admin' },
-    { id: '2', name: 'User 2', email: 'user2@example.com', role: 'normal' },
-  ] as Member[]
+  const mockOnSelect = vi.fn()
 
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(useMembers).mockReturnValue({
-      data: { accounts: mockMembers },
+      data: { accounts: mockAccounts },
     } as unknown as ReturnType<typeof useMembers>)
   })
 
-  it('should show member options when selector is opened', async () => {
-    const user = userEvent.setup()
-
-    render(<MemberSelectorHarness />)
-
-    await user.click(screen.getByText(/members\.transferModal\.transferPlaceholder/i))
-
-    expect(screen.getByPlaceholderText(/common\.operation\.search/i)).toBeInTheDocument()
-    expect(screen.getByText('User 1')).toBeInTheDocument()
-    expect(screen.getByText('User 2')).toBeInTheDocument()
+  it('should render placeholder when no value is selected', () => {
+    render(<MemberSelector onSelect={mockOnSelect} />)
+    expect(screen.getByText(/members\.transferModal\.transferPlaceholder/i)).toBeInTheDocument()
   })
 
-  it('should filter displayed members by search term', async () => {
-    const user = userEvent.setup()
-
-    render(<MemberSelectorHarness />)
-
-    await user.click(screen.getByText(/members\.transferModal\.transferPlaceholder/i))
-    await user.type(screen.getByPlaceholderText(/common\.operation\.search/i), 'User 2')
-
-    expect(screen.queryByText('User 1')).not.toBeInTheDocument()
-    expect(screen.getByText('User 2')).toBeInTheDocument()
+  it('should render selected member info', () => {
+    render(<MemberSelector value="1" onSelect={mockOnSelect} />)
+    expect(screen.getByText('John Doe')).toBeInTheDocument()
+    expect(screen.getByText('john@example.com')).toBeInTheDocument()
   })
 
-  it('should show selected member after clicking an option', async () => {
+  it('should open dropdown and show filtered list on click', async () => {
     const user = userEvent.setup()
+    render(<MemberSelector onSelect={mockOnSelect} exclude={['1']} />)
 
-    render(<MemberSelectorHarness />)
+    await user.click(screen.getByTestId('member-selector-trigger'))
 
-    await user.click(screen.getByText(/members\.transferModal\.transferPlaceholder/i))
-    await user.click(screen.getByText('User 1'))
-
-    expect(screen.getByText('Selected: 1')).toBeInTheDocument()
+    const items = screen.getAllByTestId('member-selector-item')
+    expect(items).toHaveLength(2) // Jane and Bob (John excluded)
+    expect(screen.queryByText('John Doe')).not.toBeInTheDocument()
+    expect(screen.getByText('Jane Smith')).toBeInTheDocument()
   })
 
-  it('should show selected value details when an initial value is provided', () => {
-    render(<MemberSelectorHarness initialValue="2" />)
+  it('should filter list by search value', async () => {
+    const user = userEvent.setup()
+    render(<MemberSelector onSelect={mockOnSelect} />)
 
-    expect(screen.getByText('User 2')).toBeInTheDocument()
-    expect(screen.getByText('user2@example.com')).toBeInTheDocument()
+    await user.click(screen.getByTestId('member-selector-trigger'))
+    await user.type(screen.getByTestId('member-selector-search'), 'Jane')
+
+    const items = screen.getAllByTestId('member-selector-item')
+    expect(items).toHaveLength(1)
+    expect(screen.getByText('Jane Smith')).toBeInTheDocument()
+    expect(screen.queryByText('Bob Wilson')).not.toBeInTheDocument()
   })
 
-  it('should hide excluded members from options', async () => {
+  it('should call onSelect and close dropdown when an item is clicked', async () => {
     const user = userEvent.setup()
+    render(<MemberSelector onSelect={mockOnSelect} />)
 
-    render(<MemberSelectorHarness exclude={['1']} />)
+    await user.click(screen.getByTestId('member-selector-trigger'))
+    await user.click(screen.getByText('Jane Smith'))
 
-    await user.click(screen.getByText(/members\.transferModal\.transferPlaceholder/i))
-
-    expect(screen.queryByText('User 1')).not.toBeInTheDocument()
-    expect(screen.getByText('User 2')).toBeInTheDocument()
+    expect(mockOnSelect).toHaveBeenCalledWith('2')
+    await waitFor(() => {
+      expect(screen.queryByTestId('member-selector-search')).not.toBeInTheDocument()
+    })
   })
 
-  it('should render empty options when member data is unavailable', async () => {
-    const user = userEvent.setup()
-
-    vi.mocked(useMembers).mockReturnValue({
-      data: undefined,
-    } as unknown as ReturnType<typeof useMembers>)
-
-    render(<MemberSelectorHarness />)
-
-    await user.click(screen.getByText(/members\.transferModal\.transferPlaceholder/i))
-
-    expect(screen.queryByText('User 1')).not.toBeInTheDocument()
-    expect(screen.queryByText('User 2')).not.toBeInTheDocument()
+  it('should handle missing data gracefully', () => {
+    vi.mocked(useMembers).mockReturnValue({ data: undefined } as unknown as ReturnType<typeof useMembers>)
+    render(<MemberSelector onSelect={mockOnSelect} />)
+    expect(screen.getByText(/members\.transferModal\.transferPlaceholder/i)).toBeInTheDocument()
   })
 })

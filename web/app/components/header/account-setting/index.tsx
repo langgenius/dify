@@ -1,26 +1,8 @@
 'use client'
 import type { AccountSettingTab } from '@/app/components/header/account-setting/constants'
-import {
-  RiBox3Fill,
-  RiBox3Line,
-  RiBrain2Fill,
-  RiBrain2Line,
-  RiCloseLine,
-  RiColorFilterFill,
-  RiColorFilterLine,
-  RiDatabase2Fill,
-  RiDatabase2Line,
-  RiGroup2Fill,
-  RiGroup2Line,
-  RiMoneyDollarCircleFill,
-  RiMoneyDollarCircleLine,
-  RiPuzzle2Fill,
-  RiPuzzle2Line,
-  RiTranslate2,
-} from '@remixicon/react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
+import SearchInput from '@/app/components/base/search-input'
 import BillingPage from '@/app/components/billing/billing-page'
 import CustomPage from '@/app/components/custom/custom-page'
 import {
@@ -79,20 +61,20 @@ export default function AccountSetting({
       {
         key: ACCOUNT_SETTING_TAB.MODEL_PROVIDER,
         name: t('settings.provider', { ns: 'common' }),
-        icon: <RiBrain2Line className={iconClassName} />,
-        activeIcon: <RiBrain2Fill className={iconClassName} />,
+        icon: <span className={cn('i-ri-brain-2-line', iconClassName)} />,
+        activeIcon: <span className={cn('i-ri-brain-2-fill', iconClassName)} />,
       },
       {
         key: ACCOUNT_SETTING_TAB.SANDBOX_PROVIDER,
         name: t('settings.sandboxProvider', { ns: 'common' }),
-        icon: <RiBox3Line className={iconClassName} />,
-        activeIcon: <RiBox3Fill className={iconClassName} />,
+        icon: <span className={cn('i-ri-box-3-line', iconClassName)} />,
+        activeIcon: <span className={cn('i-ri-box-3-fill', iconClassName)} />,
       },
       {
         key: ACCOUNT_SETTING_TAB.MEMBERS,
         name: t('settings.members', { ns: 'common' }),
-        icon: <RiGroup2Line className={iconClassName} />,
-        activeIcon: <RiGroup2Fill className={iconClassName} />,
+        icon: <span className={cn('i-ri-group-2-line', iconClassName)} />,
+        activeIcon: <span className={cn('i-ri-group-2-fill', iconClassName)} />,
       },
     ]
 
@@ -101,8 +83,8 @@ export default function AccountSetting({
         key: ACCOUNT_SETTING_TAB.BILLING,
         name: t('settings.billing', { ns: 'common' }),
         description: t('plansCommon.receiptInfo', { ns: 'billing' }),
-        icon: <RiMoneyDollarCircleLine className={iconClassName} />,
-        activeIcon: <RiMoneyDollarCircleFill className={iconClassName} />,
+        icon: <span className={cn('i-ri-money-dollar-circle-line', iconClassName)} />,
+        activeIcon: <span className={cn('i-ri-money-dollar-circle-fill', iconClassName)} />,
       })
     }
 
@@ -110,14 +92,14 @@ export default function AccountSetting({
       {
         key: ACCOUNT_SETTING_TAB.DATA_SOURCE,
         name: t('settings.dataSource', { ns: 'common' }),
-        icon: <RiDatabase2Line className={iconClassName} />,
-        activeIcon: <RiDatabase2Fill className={iconClassName} />,
+        icon: <span className={cn('i-ri-database-2-line', iconClassName)} />,
+        activeIcon: <span className={cn('i-ri-database-2-fill', iconClassName)} />,
       },
       {
         key: ACCOUNT_SETTING_TAB.API_BASED_EXTENSION,
         name: t('settings.apiBasedExtension', { ns: 'common' }),
-        icon: <RiPuzzle2Line className={iconClassName} />,
-        activeIcon: <RiPuzzle2Fill className={iconClassName} />,
+        icon: <span className={cn('i-ri-puzzle-2-line', iconClassName)} />,
+        activeIcon: <span className={cn('i-ri-puzzle-2-fill', iconClassName)} />,
       },
     )
 
@@ -125,8 +107,8 @@ export default function AccountSetting({
       items.push({
         key: ACCOUNT_SETTING_TAB.CUSTOM,
         name: t('custom', { ns: 'custom' }),
-        icon: <RiColorFilterLine className={iconClassName} />,
-        activeIcon: <RiColorFilterFill className={iconClassName} />,
+        icon: <span className={cn('i-ri-color-filter-line', iconClassName)} />,
+        activeIcon: <span className={cn('i-ri-color-filter-fill', iconClassName)} />,
       })
     }
 
@@ -149,8 +131,8 @@ export default function AccountSetting({
         {
           key: ACCOUNT_SETTING_TAB.LANGUAGE,
           name: t('settings.language', { ns: 'common' }),
-          icon: <RiTranslate2 className={iconClassName} />,
-          activeIcon: <RiTranslate2 className={iconClassName} />,
+          icon: <span className={cn('i-ri-translate-2', iconClassName)} />,
+          activeIcon: <span className={cn('i-ri-translate-2', iconClassName)} />,
         },
       ],
     },
@@ -222,7 +204,7 @@ export default function AccountSetting({
               className="px-2"
               onClick={onCancel}
             >
-              <RiCloseLine className="h-5 w-5" />
+              <span className="i-ri-close-line h-5 w-5" />
             </Button>
             <div className="mt-1 text-text-tertiary system-2xs-medium-uppercase">ESC</div>
           </div>
@@ -236,11 +218,9 @@ export default function AccountSetting({
               </div>
               {activeItem?.key === ACCOUNT_SETTING_TAB.MODEL_PROVIDER && (
                 <div className="flex grow justify-end">
-                  <Input
-                    showLeftIcon
-                    wrapperClassName="!w-[200px]"
-                    className="!h-8 !text-[13px]"
-                    onChange={e => setSearchValue(e.target.value)}
+                  <SearchInput
+                    className="w-[200px]"
+                    onChange={setSearchValue}
                     value={searchValue}
                   />
                 </div>
@@ -248,13 +228,13 @@ export default function AccountSetting({
             </div>
             <div className="px-4 pt-2 sm:px-8">
               {activeMenu === ACCOUNT_SETTING_TAB.MODEL_PROVIDER && <ModelProviderPage searchText={searchValue} />}
-              {activeMenu === 'sandbox-provider' && <SandboxProviderPage />}
-              {activeMenu === 'members' && <MembersPage />}
-              {activeMenu === 'billing' && <BillingPage />}
-              {activeMenu === 'data-source' && <DataSourcePage />}
-              {activeMenu === 'api-based-extension' && <ApiBasedExtensionPage />}
-              {activeMenu === 'custom' && <CustomPage />}
-              {activeMenu === 'language' && <LanguagePage />}
+              {activeMenu === ACCOUNT_SETTING_TAB.SANDBOX_PROVIDER && <SandboxProviderPage />}
+              {activeMenu === ACCOUNT_SETTING_TAB.MEMBERS && <MembersPage />}
+              {activeMenu === ACCOUNT_SETTING_TAB.BILLING && <BillingPage />}
+              {activeMenu === ACCOUNT_SETTING_TAB.DATA_SOURCE && <DataSourcePage />}
+              {activeMenu === ACCOUNT_SETTING_TAB.API_BASED_EXTENSION && <ApiBasedExtensionPage />}
+              {activeMenu === ACCOUNT_SETTING_TAB.CUSTOM && <CustomPage />}
+              {activeMenu === ACCOUNT_SETTING_TAB.LANGUAGE && <LanguagePage />}
             </div>
           </div>
         </div>

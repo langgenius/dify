@@ -6,7 +6,6 @@ import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.workflow.node_factory import DifyNodeFactory
-from core.variables import ArrayFileSegment
 from core.workflow.entities import GraphInitParams
 from core.workflow.enums import WorkflowNodeExecutionStatus
 from core.workflow.file import File, FileTransferMethod, FileType
@@ -16,6 +15,7 @@ from core.workflow.nodes.if_else.if_else_node import IfElseNode
 from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
 from core.workflow.utils.condition.entities import Condition, SubCondition, SubVariableCondition
+from core.workflow.variables import ArrayFileSegment
 from extensions.ext_database import db
 from models.enums import UserFrom
 

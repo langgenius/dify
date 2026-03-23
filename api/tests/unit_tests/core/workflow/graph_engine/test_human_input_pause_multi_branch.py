@@ -1,9 +1,9 @@
 import datetime
 import time
 from collections.abc import Iterable
+from unittest import mock
 from unittest.mock import MagicMock
 
-from core.model_runtime.entities.llm_entities import LLMMode
 from core.model_runtime.entities.message_entities import PromptMessageRole
 from core.workflow.entities import GraphInitParams
 from core.workflow.graph import Graph
@@ -82,7 +82,7 @@ def _build_branching_graph(
     def _create_llm_node(node_id: str, title: str, prompt_text: str) -> MockLLMNode:
         llm_data = LLMNodeData(
             title=title,
-            model=ModelConfig(provider="openai", name="gpt-3.5-turbo", mode=LLMMode.CHAT, completion_params={}),
+            model=ModelConfig(provider="openai", name="gpt-3.5-turbo", mode="chat", completion_params={}),
             prompt_template=[
                 LLMNodeChatModelMessage(
                     text=prompt_text,
@@ -101,6 +101,8 @@ def _build_branching_graph(
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
             mock_config=mock_config,
+            credentials_provider=mock.Mock(),
+            model_factory=mock.Mock(),
         )
         return llm_node
 

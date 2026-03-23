@@ -5,7 +5,7 @@ from base64 import b64encode
 from collections.abc import Mapping
 from typing import Any
 
-from core.variables.utils import dumps_with_segments
+from core.workflow.variables.utils import dumps_with_segments
 
 
 class TemplateTransformer(ABC):

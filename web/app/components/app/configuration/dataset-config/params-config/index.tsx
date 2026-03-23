@@ -61,8 +61,7 @@ const ParamsConfig = ({
     if (tempDataSetConfigs.retrieval_model === RETRIEVE_TYPE.multiWay) {
       if (tempDataSetConfigs.reranking_enable
         && tempDataSetConfigs.reranking_mode === RerankingModeEnum.RerankingModel
-        && !isCurrentRerankModelValid
-      ) {
+        && !isCurrentRerankModelValid) {
         errMsg = t('datasetConfig.rerankModelRequired', { ns: 'appDebug' })
       }
     }

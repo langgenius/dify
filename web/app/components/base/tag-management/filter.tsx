@@ -1,12 +1,9 @@
 import type { FC } from 'react'
 import type { Tag } from '@/app/components/base/tag-management/constant'
-import { RiArrowDownSLine } from '@remixicon/react'
 import { useDebounceFn, useMount } from 'ahooks'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Tag01, Tag03 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
-import { Check } from '@/app/components/base/icons/src/vender/line/general'
-import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import Input from '@/app/components/base/input'
 import {
   PortalToFollowElem,
@@ -85,7 +82,7 @@ const TagFilter: FC<TagFilterProps> = ({
           )}
           >
             <div className="p-[1px]">
-              <Tag01 className="h-3.5 w-3.5 text-text-tertiary" />
+              <Tag01 className="h-3.5 w-3.5 text-text-tertiary" data-testid="tag-filter-trigger-icon" />
             </div>
             <div className="text-[13px] leading-[18px] text-text-secondary">
               {!value.length && t('tag.placeholder', { ns: 'common' })}
@@ -96,7 +93,7 @@ const TagFilter: FC<TagFilterProps> = ({
             )}
             {!value.length && (
               <div className="p-[1px]">
-                <RiArrowDownSLine className="h-3.5 w-3.5 text-text-tertiary" />
+                <span className="i-ri-arrow-down-s-line h-3.5 w-3.5 text-text-tertiary" data-testid="tag-filter-arrow-down-icon" />
               </div>
             )}
             {!!value.length && (
@@ -106,8 +103,9 @@ const TagFilter: FC<TagFilterProps> = ({
                   e.stopPropagation()
                   onChange([])
                 }}
+                data-testid="tag-filter-clear-button"
               >
-                <XCircle className="h-3.5 w-3.5 text-text-tertiary group-hover/clear:text-text-secondary" />
+                <span className="i-custom-vender-solid-general-x-circle h-3.5 w-3.5 text-text-tertiary group-hover/clear:text-text-secondary" />
               </div>
             )}
           </div>
@@ -131,7 +129,7 @@ const TagFilter: FC<TagFilterProps> = ({
                   onClick={() => selectTag(tag)}
                 >
                   <div title={tag.name} className="grow truncate text-sm leading-5 text-text-tertiary">{tag.name}</div>
-                  {value.includes(tag.id) && <Check className="h-4 w-4 shrink-0 text-text-secondary" />}
+                  {value.includes(tag.id) && <span className="i-custom-vender-line-general-check h-4 w-4 shrink-0 text-text-secondary" data-testid="tag-filter-selected-icon" />}
                 </div>
               ))}
               {!filteredTagList.length && (

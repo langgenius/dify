@@ -216,7 +216,7 @@ class TestDeleteSegmentFromIndexTask:
         db_session_with_containers.commit()
         return segments
 
-    @patch("tasks.delete_segment_from_index_task.IndexProcessorFactory")
+    @patch("tasks.delete_segment_from_index_task.IndexProcessorFactory", autospec=True)
     def test_delete_segment_from_index_task_success(self, mock_index_processor_factory, db_session_with_containers):
         """
         Test successful segment deletion from index with comprehensive verification.
@@ -399,7 +399,7 @@ class TestDeleteSegmentFromIndexTask:
         # Verify the task completed without exceptions
         assert result is None  # Task should return None when indexing is not completed
 
-    @patch("tasks.delete_segment_from_index_task.IndexProcessorFactory")
+    @patch("tasks.delete_segment_from_index_task.IndexProcessorFactory", autospec=True)
     def test_delete_segment_from_index_task_index_processor_clean(
         self, mock_index_processor_factory, db_session_with_containers
     ):
@@ -457,7 +457,7 @@ class TestDeleteSegmentFromIndexTask:
             mock_index_processor_factory.reset_mock()
             mock_processor.reset_mock()
 
-    @patch("tasks.delete_segment_from_index_task.IndexProcessorFactory")
+    @patch("tasks.delete_segment_from_index_task.IndexProcessorFactory", autospec=True)
     def test_delete_segment_from_index_task_exception_handling(
         self, mock_index_processor_factory, db_session_with_containers
     ):
@@ -501,7 +501,7 @@ class TestDeleteSegmentFromIndexTask:
         assert call_args[1]["with_keywords"] is True
         assert call_args[1]["delete_child_chunks"] is True
 
-    @patch("tasks.delete_segment_from_index_task.IndexProcessorFactory")
+    @patch("tasks.delete_segment_from_index_task.IndexProcessorFactory", autospec=True)
     def test_delete_segment_from_index_task_empty_index_node_ids(
         self, mock_index_processor_factory, db_session_with_containers
     ):
@@ -543,7 +543,7 @@ class TestDeleteSegmentFromIndexTask:
         assert call_args[1]["with_keywords"] is True
         assert call_args[1]["delete_child_chunks"] is True
 
-    @patch("tasks.delete_segment_from_index_task.IndexProcessorFactory")
+    @patch("tasks.delete_segment_from_index_task.IndexProcessorFactory", autospec=True)
     def test_delete_segment_from_index_task_large_index_node_ids(
         self, mock_index_processor_factory, db_session_with_containers
     ):

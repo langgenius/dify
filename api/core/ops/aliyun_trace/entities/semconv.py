@@ -3,6 +3,9 @@ from typing import Final
 
 ACS_ARMS_SERVICE_FEATURE: Final[str] = "acs.arms.service.feature"
 
+# Dify-specific attributes
+DIFY_APP_ID: Final[str] = "dify.app_id"
+
 # Public attributes
 GEN_AI_SESSION_ID: Final[str] = "gen_ai.session.id"
 GEN_AI_USER_ID: Final[str] = "gen_ai.user.id"

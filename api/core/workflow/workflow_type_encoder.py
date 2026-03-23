@@ -4,8 +4,8 @@ from typing import Any, overload
 
 from pydantic import BaseModel
 
-from core.variables import Segment
 from core.workflow.file.models import File
+from core.workflow.variables import Segment
 
 
 class WorkflowRuntimeTypeConverter:

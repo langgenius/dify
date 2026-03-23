@@ -138,10 +138,10 @@ class TestGraphRuntimeState:
             _ = state.response_coordinator
 
         mock_graph = MagicMock()
-        with patch("core.workflow.graph_engine.response_coordinator.ResponseStreamCoordinator") as coordinator_cls:
-            coordinator_instance = MagicMock()
-            coordinator_cls.return_value = coordinator_instance
-
+        with patch(
+            "core.workflow.graph_engine.response_coordinator.ResponseStreamCoordinator", autospec=True
+        ) as coordinator_cls:
+            coordinator_instance = coordinator_cls.return_value
             state.configure(graph=mock_graph)
 
             assert state.response_coordinator is coordinator_instance
@@ -204,7 +204,7 @@ class TestGraphRuntimeState:
 
         mock_graph = MagicMock()
         stub = StubCoordinator()
-        with patch.object(GraphRuntimeState, "_build_response_coordinator", return_value=stub):
+        with patch.object(GraphRuntimeState, "_build_response_coordinator", return_value=stub, autospec=True):
             state.attach_graph(mock_graph)
 
         stub.state = "configured"
@@ -230,7 +230,7 @@ class TestGraphRuntimeState:
         assert restored_execution.started is True
 
         new_stub = StubCoordinator()
-        with patch.object(GraphRuntimeState, "_build_response_coordinator", return_value=new_stub):
+        with patch.object(GraphRuntimeState, "_build_response_coordinator", return_value=new_stub, autospec=True):
             restored.attach_graph(mock_graph)
 
         assert new_stub.state == "configured"
@@ -251,14 +251,14 @@ class TestGraphRuntimeState:
 
         mock_graph = MagicMock()
         original_stub = StubCoordinator()
-        with patch.object(GraphRuntimeState, "_build_response_coordinator", return_value=original_stub):
+        with patch.object(GraphRuntimeState, "_build_response_coordinator", return_value=original_stub, autospec=True):
             state.attach_graph(mock_graph)
 
         original_stub.state = "configured"
         snapshot = state.dumps()
 
         new_stub = StubCoordinator()
-        with patch.object(GraphRuntimeState, "_build_response_coordinator", return_value=new_stub):
+        with patch.object(GraphRuntimeState, "_build_response_coordinator", return_value=new_stub, autospec=True):
             restored = GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0)
             restored.attach_graph(mock_graph)
             restored.loads(snapshot)

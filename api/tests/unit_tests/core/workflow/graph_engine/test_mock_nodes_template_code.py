@@ -24,6 +24,16 @@ DEFAULT_CODE_LIMITS = CodeNodeLimits(
 )
 
 
+class _NoopCodeExecutor:
+    def execute(self, *, language: object, code: str, inputs: dict[str, object]) -> dict[str, object]:
+        _ = (language, code, inputs)
+        return {}
+
+    def is_execution_error(self, error: Exception) -> bool:
+        _ = error
+        return False
+
+
 class TestMockTemplateTransformNode:
     """Test cases for MockTemplateTransformNode."""
 
@@ -205,9 +215,9 @@ class TestMockTemplateTransformNode:
 
     def test_mock_template_transform_node_with_variables(self):
         """Test that MockTemplateTransformNode processes templates with variables."""
-        from core.variables import StringVariable
         from core.workflow.entities import GraphInitParams
         from core.workflow.runtime import GraphRuntimeState, VariablePool
+        from core.workflow.variables import StringVariable
 
         # Create test parameters
         graph_init_params = GraphInitParams(
@@ -319,6 +329,7 @@ class TestMockCodeNode:
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
             mock_config=mock_config,
+            code_executor=_NoopCodeExecutor(),
             code_limits=DEFAULT_CODE_LIMITS,
         )
 
@@ -384,6 +395,7 @@ class TestMockCodeNode:
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
             mock_config=mock_config,
+            code_executor=_NoopCodeExecutor(),
             code_limits=DEFAULT_CODE_LIMITS,
         )
 
@@ -453,6 +465,7 @@ class TestMockCodeNode:
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
             mock_config=mock_config,
+            code_executor=_NoopCodeExecutor(),
             code_limits=DEFAULT_CODE_LIMITS,
         )
 

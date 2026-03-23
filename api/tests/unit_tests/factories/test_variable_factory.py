@@ -7,7 +7,8 @@ import pytest
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
-from core.variables import (
+from core.workflow.file import File, FileTransferMethod, FileType
+from core.workflow.variables import (
     ArrayNumberVariable,
     ArrayObjectVariable,
     ArrayStringVariable,
@@ -16,8 +17,8 @@ from core.variables import (
     SecretVariable,
     StringVariable,
 )
-from core.variables.exc import VariableError
-from core.variables.segments import (
+from core.workflow.variables.exc import VariableError
+from core.workflow.variables.segments import (
     ArrayAnySegment,
     ArrayFileSegment,
     ArrayNumberSegment,
@@ -32,8 +33,7 @@ from core.variables.segments import (
     Segment,
     StringSegment,
 )
-from core.variables.types import SegmentType
-from core.workflow.file import File, FileTransferMethod, FileType
+from core.workflow.variables.types import SegmentType
 from factories import variable_factory
 from factories.variable_factory import TypeMismatchError, build_segment, build_segment_with_type
 

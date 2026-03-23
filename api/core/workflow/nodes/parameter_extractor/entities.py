@@ -8,9 +8,9 @@ from pydantic import (
 )
 
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
-from core.variables.types import SegmentType
 from core.workflow.nodes.base import BaseNodeData
 from core.workflow.nodes.llm.entities import ModelConfig, VisionConfig
+from core.workflow.variables.types import SegmentType
 
 _OLD_BOOL_TYPE_NAME = "bool"
 _OLD_SELECT_TYPE_NAME = "select"

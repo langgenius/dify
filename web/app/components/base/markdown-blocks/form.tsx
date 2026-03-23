@@ -100,7 +100,7 @@ const MarkdownForm = ({ node }: any) => {
           return (
             <label
               key={index}
-              htmlFor={child.properties.for}
+              htmlFor={child.properties.htmlFor || child.properties.name}
               className="my-2 text-text-secondary system-md-semibold"
             >
               {child.children[0]?.value || ''}
@@ -161,6 +161,7 @@ const MarkdownForm = ({ node }: any) => {
                       [child.properties.name]: !prevValues[child.properties.name],
                     }))
                   }}
+                  id={child.properties.name}
                 />
                 <span>{child.properties.dataTip || child.properties['data-tip'] || ''}</span>
               </div>

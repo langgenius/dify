@@ -360,7 +360,7 @@ class TestEndToEndCacheFlow:
 class TestRedisFailover:
     """Test behavior when Redis is unavailable."""
 
-    @patch("services.api_token_service.redis_client")
+    @patch("services.api_token_service.redis_client", autospec=True)
     def test_graceful_degradation_when_redis_fails(self, mock_redis):
         """Test system degrades gracefully when Redis is unavailable."""
         from redis import RedisError

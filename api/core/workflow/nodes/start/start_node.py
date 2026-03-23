@@ -2,12 +2,12 @@ from typing import Any
 
 from jsonschema import Draft7Validator, ValidationError
 
-from core.app.app_config.entities import VariableEntityType
 from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
 from core.workflow.enums import NodeExecutionType, NodeType, WorkflowNodeExecutionStatus
 from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.start.entities import StartNodeData
+from core.workflow.variables.input_entities import VariableEntityType
 
 
 class StartNode(Node[StartNodeData]):

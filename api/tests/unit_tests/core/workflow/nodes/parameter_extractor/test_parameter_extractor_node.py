@@ -8,7 +8,6 @@ from typing import Any
 import pytest
 
 from core.model_runtime.entities import LLMMode
-from core.variables.types import SegmentType
 from core.workflow.nodes.llm import ModelConfig, VisionConfig
 from core.workflow.nodes.parameter_extractor.entities import ParameterConfig, ParameterExtractorNodeData
 from core.workflow.nodes.parameter_extractor.exc import (
@@ -18,6 +17,7 @@ from core.workflow.nodes.parameter_extractor.exc import (
     RequiredParameterMissingError,
 )
 from core.workflow.nodes.parameter_extractor.parameter_extractor_node import ParameterExtractorNode
+from core.workflow.variables.types import SegmentType
 from factories.variable_factory import build_segment_with_type
 
 

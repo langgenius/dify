@@ -5,7 +5,6 @@ from collections.abc import Mapping
 from pydantic import Field
 from sqlalchemy.orm import Session
 
-from core.app.app_config.entities import VariableEntity, VariableEntityType
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.db.session_factory import session_factory
 from core.plugin.entities.parameters import PluginParameterOption
@@ -23,6 +22,7 @@ from core.tools.entities.tool_entities import (
 )
 from core.tools.utils.workflow_configuration_sync import WorkflowToolConfigurationUtils
 from core.tools.workflow_as_tool.tool import WorkflowTool
+from core.workflow.variables.input_entities import VariableEntity, VariableEntityType
 from extensions.ext_database import db
 from models.account import Account
 from models.model import App, AppMode

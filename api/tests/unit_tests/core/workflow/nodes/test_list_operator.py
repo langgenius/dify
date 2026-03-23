@@ -3,7 +3,6 @@ from unittest.mock import MagicMock
 import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.variables import ArrayFileSegment
 from core.workflow.enums import WorkflowNodeExecutionStatus
 from core.workflow.file import File, FileTransferMethod, FileType
 from core.workflow.nodes.list_operator.entities import (
@@ -17,6 +16,7 @@ from core.workflow.nodes.list_operator.entities import (
 )
 from core.workflow.nodes.list_operator.exc import InvalidKeyError
 from core.workflow.nodes.list_operator.node import ListOperatorNode, _get_file_extract_string_func
+from core.workflow.variables import ArrayFileSegment
 from models.enums import UserFrom
 
 

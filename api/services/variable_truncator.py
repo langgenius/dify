@@ -7,7 +7,9 @@ from typing import Any, Generic, TypeAlias, TypeVar, overload
 
 from configs import dify_config
 from core.model_runtime.entities import PromptMessage
-from core.variables.segments import (
+from core.workflow.file.models import File
+from core.workflow.nodes.variable_assigner.common.helpers import UpdatedVariable
+from core.workflow.variables.segments import (
     ArrayFileSegment,
     ArraySegment,
     BooleanSegment,
@@ -19,9 +21,7 @@ from core.variables.segments import (
     Segment,
     StringSegment,
 )
-from core.variables.utils import dumps_with_segments
-from core.workflow.file.models import File
-from core.workflow.nodes.variable_assigner.common.helpers import UpdatedVariable
+from core.workflow.variables.utils import dumps_with_segments
 
 _MAX_DEPTH = 100
 

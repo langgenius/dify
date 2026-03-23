@@ -305,10 +305,6 @@ class Node(Generic[NodeDataT]):
         """
         raise NotImplementedError
 
-    def _should_stop(self) -> bool:
-        """Check if execution should be stopped."""
-        return self.graph_runtime_state.stop_event.is_set()
-
     def _find_extractor_node_configs(self) -> list[dict[str, Any]]:
         """
         Find all extractor node configurations that have parent_node_id == self._node_id.
@@ -338,7 +334,6 @@ class Node(Generic[NodeDataT]):
         if not extractor_configs:
             return
 
-        # Use DifyNodeFactory to properly instantiate nodes with required dependencies
         node_factory = DifyNodeFactory(
             graph_init_params=self._graph_init_params,
             graph_runtime_state=self.graph_runtime_state,
@@ -352,22 +347,19 @@ class Node(Generic[NodeDataT]):
             try:
                 nested_node = node_factory.create_node(config)
             except ValueError:
-                # Skip nodes that cannot be created (e.g., unknown type)
                 continue
 
-            # Execute and process nested node events
             for event in nested_node.run():
-                # Tag event with parent node id for stream ordering and history tracking
                 if isinstance(event, GraphNodeEventBase):
                     event.in_parent_node_id = self._node_id
 
                 if isinstance(event, NodeRunSucceededEvent):
-                    # Store nested node outputs in variable pool
                     outputs: Mapping[str, Any] = event.node_run_result.outputs
                     for variable_name, variable_value in outputs.items():
                         self.graph_runtime_state.variable_pool.add((node_id, variable_name), variable_value)
                 if not isinstance(event, NodeRunStreamChunkEvent):
                     yield event
+
 
     def run(self) -> Generator[GraphNodeEventBase, None, None]:
         execution_id = self.ensure_execution_id()
@@ -440,21 +432,6 @@ class Node(Generic[NodeDataT]):
                     yield event
                 else:
                     yield event
-
-                if self._should_stop():
-                    error_message = "Execution cancelled"
-                    yield NodeRunFailedEvent(
-                        id=self.execution_id,
-                        node_id=self._node_id,
-                        node_type=self.node_type,
-                        start_at=self._start_at,
-                        node_run_result=NodeRunResult(
-                            status=WorkflowNodeExecutionStatus.FAILED,
-                            error=error_message,
-                        ),
-                        error=error_message,
-                    )
-                    return
         except Exception as e:
             logger.exception("Node %s failed to run", self._node_id)
             result = NodeRunResult(

@@ -16,23 +16,10 @@ import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
 import Toast from '@/app/components/base/toast'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { setPostLoginRedirect } from '@/app/signin/utils/post-login-redirect'
 import { useAppContext } from '@/context/app-context'
 import { useIsLogin } from '@/service/use-common'
 import { useAuthorizeOAuthApp, useOAuthAppInfo } from '@/service/use-oauth'
-import { storage } from '@/utils/storage'
-import {
-  OAUTH_AUTHORIZE_PENDING_KEY,
-  OAUTH_AUTHORIZE_PENDING_TTL,
-  REDIRECT_URL_KEY,
-} from './constants'
-
-function setItemWithExpiry(key: string, value: string, ttl: number) {
-  const item = {
-    value,
-    expiry: Math.floor((Date.now() + ttl * 1000) / 1000),
-  }
-  storage.set(key, item)
-}
 
 function buildReturnUrl(pathname: string, search: string) {
   try {
@@ -85,10 +72,9 @@ export default function OAuthAuthorize() {
   const isLoading = isOAuthLoading || isIsLoginLoading
   const onLoginSwitchClick = () => {
     try {
-      const authorizeQuery = searchParams.toString()
-      const returnUrl = buildReturnUrl('/account/oauth/authorize', authorizeQuery ? `?${authorizeQuery}` : '')
-      setItemWithExpiry(OAUTH_AUTHORIZE_PENDING_KEY, returnUrl, OAUTH_AUTHORIZE_PENDING_TTL)
-      router.push(`/signin?${REDIRECT_URL_KEY}=${encodeURIComponent(returnUrl)}`)
+      const returnUrl = buildReturnUrl('/account/oauth/authorize', `?client_id=${encodeURIComponent(client_id)}&redirect_uri=${encodeURIComponent(redirect_uri)}`)
+      setPostLoginRedirect(returnUrl)
+      router.push('/signin')
     }
     catch {
       router.push('/signin')

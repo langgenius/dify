@@ -103,16 +103,16 @@ def test__normalize_non_stream_plugin_result__empty_iterator_defaults():
     assert result.system_fingerprint is None
 
 
-def test__normalize_non_stream_plugin_result__closes_chunk_iterator():
+def test__normalize_non_stream_plugin_result__accumulates_all_chunks():
+    """All chunks are accumulated from the iterator."""
     prompt_messages = [UserPromptMessage(content="hi")]
 
-    chunk = _make_chunk(content="hello", usage=LLMUsage.empty_usage())
     closed: list[bool] = []
 
     def _chunk_iter():
         try:
-            yield chunk
-            yield _make_chunk(content="ignored", usage=LLMUsage.empty_usage())
+            yield _make_chunk(content="hello", usage=LLMUsage.empty_usage())
+            yield _make_chunk(content=" world", usage=LLMUsage.empty_usage())
         finally:
             closed.append(True)
 
@@ -122,5 +122,5 @@ def test__normalize_non_stream_plugin_result__closes_chunk_iterator():
         result=_chunk_iter(),
     )
 
-    assert result.message.content == "hello"
+    assert result.message.content == "hello world"
     assert closed == [True]

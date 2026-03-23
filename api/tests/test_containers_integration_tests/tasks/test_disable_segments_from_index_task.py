@@ -147,8 +147,7 @@ class TestDisableSegmentsFromIndexTask:
         document.cleaning_completed_at = fake.date_time_this_year()
         document.splitting_completed_at = fake.date_time_this_year()
         document.tokens = fake.random_int(min=50, max=500)
-        document.indexing_started_at = fake.date_time_this_year()
-        document.indexing_completed_at = fake.date_time_this_year()
+        document.completed_at = fake.date_time_this_year()
         document.indexing_status = "completed"
         document.enabled = True
         document.archived = False

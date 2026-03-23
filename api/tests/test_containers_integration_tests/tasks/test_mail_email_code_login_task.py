@@ -53,8 +53,8 @@ class TestSendEmailCodeLoginMailTask:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("tasks.mail_email_code_login.mail") as mock_mail,
-            patch("tasks.mail_email_code_login.get_email_i18n_service") as mock_email_service,
+            patch("tasks.mail_email_code_login.mail", autospec=True) as mock_mail,
+            patch("tasks.mail_email_code_login.get_email_i18n_service", autospec=True) as mock_email_service,
         ):
             # Setup default mock returns
             mock_mail.is_inited.return_value = True
@@ -573,7 +573,7 @@ class TestSendEmailCodeLoginMailTask:
             mock_email_service_instance.send_email.side_effect = exception
 
             # Mock logging to capture error messages
-            with patch("tasks.mail_email_code_login.logger") as mock_logger:
+            with patch("tasks.mail_email_code_login.logger", autospec=True) as mock_logger:
                 # Act: Execute the task - it should handle the exception gracefully
                 send_email_code_login_mail_task(
                     language=test_language,

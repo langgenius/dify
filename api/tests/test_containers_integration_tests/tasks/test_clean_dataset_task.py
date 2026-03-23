@@ -63,8 +63,8 @@ class TestCleanDatasetTask:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("tasks.clean_dataset_task.storage") as mock_storage,
-            patch("tasks.clean_dataset_task.IndexProcessorFactory") as mock_index_processor_factory,
+            patch("tasks.clean_dataset_task.storage", autospec=True) as mock_storage,
+            patch("tasks.clean_dataset_task.IndexProcessorFactory", autospec=True) as mock_index_processor_factory,
         ):
             # Setup default mock returns
             mock_storage.delete.return_value = None
@@ -597,7 +597,7 @@ class TestCleanDatasetTask:
         db_session_with_containers.commit()
 
         # Mock the get_image_upload_file_ids function to return our image file IDs
-        with patch("tasks.clean_dataset_task.get_image_upload_file_ids") as mock_get_image_ids:
+        with patch("tasks.clean_dataset_task.get_image_upload_file_ids", autospec=True) as mock_get_image_ids:
             mock_get_image_ids.return_value = [f.id for f in image_files]
 
             # Execute the task

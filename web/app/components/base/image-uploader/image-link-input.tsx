@@ -40,6 +40,7 @@ const ImageLinkInput: FC<ImageLinkInputProps> = ({
         value={imageLink}
         onChange={e => setImageLink(e.target.value)}
         placeholder={t('imageUploader.pasteImageLinkInputPlaceholder', { ns: 'common' }) || ''}
+        data-testid="image-link-input"
       />
       <Button
         variant="primary"

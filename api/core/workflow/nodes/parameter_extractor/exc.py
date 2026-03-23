@@ -1,6 +1,6 @@
 from typing import Any
 
-from core.variables.types import SegmentType
+from core.workflow.variables.types import SegmentType
 
 
 class ParameterExtractorNodeError(ValueError):

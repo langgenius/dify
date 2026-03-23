@@ -6,9 +6,6 @@ import pytest
 from docx.oxml.text.paragraph import CT_P
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.variables import ArrayFileSegment
-from core.variables.segments import ArrayStringSegment
-from core.variables.variables import StringVariable
 from core.workflow.entities import GraphInitParams
 from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
 from core.workflow.file import File, FileTransferMethod
@@ -20,6 +17,9 @@ from core.workflow.nodes.document_extractor.node import (
     _extract_text_from_pdf,
     _extract_text_from_plain_text,
 )
+from core.workflow.variables import ArrayFileSegment
+from core.workflow.variables.segments import ArrayStringSegment
+from core.workflow.variables.variables import StringVariable
 from models.enums import UserFrom
 
 

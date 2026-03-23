@@ -1,8 +1,8 @@
 from collections.abc import Mapping, Sequence
 
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
-from core.variables.segments import ArrayFileSegment, FileSegment
 from core.workflow.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
+from core.workflow.variables.segments import ArrayFileSegment, FileSegment
 
 
 class TestWorkflowResponseConverterFetchFilesFromVariableValue:

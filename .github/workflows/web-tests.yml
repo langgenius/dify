@@ -3,14 +3,22 @@ name: Web Tests
 on:
   workflow_call:
 
+permissions:
+  contents: read
+
 concurrency:
   group: web-tests-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
 jobs:
   test:
-    name: Web Tests
+    name: Web Tests (${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shardIndex: [1, 2, 3, 4]
+        shardTotal: [4]
     defaults:
       run:
         shell: bash
@@ -39,7 +47,58 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run tests
-        run: pnpm test:ci
+        run: pnpm vitest run --reporter=blob --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} --coverage
+
+      - name: Upload blob report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: blob-report-${{ matrix.shardIndex }}
+          path: web/.vitest-reports/*
+          include-hidden-files: true
+          retention-days: 1
+
+  merge-reports:
+    name: Merge Test Reports
+    if: ${{ !cancelled() }}
+    needs: [test]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./web
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          package_json_file: web/package.json
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: ./web/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Download blob reports
+        uses: actions/download-artifact@v6
+        with:
+          path: web/.vitest-reports
+          pattern: blob-report-*
+          merge-multiple: true
+
+      - name: Merge reports
+        run: pnpm vitest --merge-reports --coverage --silent=passed-only
 
       - name: Coverage Summary
         if: always()

@@ -57,7 +57,7 @@ export default function CheckCode() {
           router.replace(`/signin/invite-settings?${searchParams.toString()}`)
         }
         else {
-          const redirectUrl = resolvePostLoginRedirect(searchParams)
+          const redirectUrl = resolvePostLoginRedirect()
           router.replace(redirectUrl || '/apps')
         }
       }

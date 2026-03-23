@@ -4,6 +4,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
 import { createMockProviderContextValue } from '@/__mocks__/provider-context'
+import { Plan } from '@/app/components/billing/type'
 import { useAppContext } from '@/context/app-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useProviderContext } from '@/context/provider-context'
@@ -60,6 +61,9 @@ vi.mock('./transfer-ownership-modal', () => ({
       <button onClick={onClose}>Close Transfer Modal</button>
     </div>
   ),
+}))
+vi.mock('@/app/components/billing/upgrade-btn', () => ({
+  default: () => <div>Upgrade Button</div>,
 }))
 
 describe('MembersPage', () => {
@@ -190,5 +194,90 @@ describe('MembersPage', () => {
 
     expect(screen.queryByRole('button', { name: /invite/i })).not.toBeInTheDocument()
     expect(screen.queryByText('Transfer ownership')).not.toBeInTheDocument()
+  })
+
+  it('should open and close edit workspace modal', async () => {
+    const user = userEvent.setup()
+
+    render(<MembersPage />)
+
+    await user.click(screen.getByTestId('edit-workspace-pencil'))
+    expect(screen.getByText('Edit Workspace Modal')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Close Edit Workspace' }))
+    expect(screen.queryByText('Edit Workspace Modal')).not.toBeInTheDocument()
+  })
+
+  it('should close transfer ownership modal when close is clicked', async () => {
+    const user = userEvent.setup()
+
+    render(<MembersPage />)
+
+    await user.click(screen.getByRole('button', { name: /transfer ownership/i }))
+    expect(screen.getByText('Transfer Ownership Modal')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Close Transfer Modal' }))
+    expect(screen.queryByText('Transfer Ownership Modal')).not.toBeInTheDocument()
+  })
+
+  it('should show pending status and you indicator', () => {
+    const pendingAccount: Member = {
+      ...mockAccounts[1],
+      status: 'pending',
+    }
+    vi.mocked(useMembers).mockReturnValue({
+      data: { accounts: [mockAccounts[0], pendingAccount] },
+      refetch: mockRefetch,
+    } as unknown as ReturnType<typeof useMembers>)
+
+    render(<MembersPage />)
+
+    expect(screen.getByText(/members\.pending/i)).toBeInTheDocument()
+    expect(screen.getByText(/members\.you/i)).toBeInTheDocument() // Current user is owner@example.com
+  })
+
+  it('should show billing information for limited plan', () => {
+    vi.mocked(useProviderContext).mockReturnValue(createMockProviderContextValue({
+      enableBilling: true,
+      plan: {
+        type: Plan.sandbox,
+        total: { teamMembers: 5 } as unknown as ReturnType<typeof useProviderContext>['plan']['total'],
+      } as unknown as ReturnType<typeof useProviderContext>['plan'],
+    }))
+
+    render(<MembersPage />)
+
+    expect(screen.getByText(/plansCommon\.member/i)).toBeInTheDocument()
+    expect(screen.getByText('2')).toBeInTheDocument() // accounts.length
+    expect(screen.getByText('/')).toBeInTheDocument()
+    expect(screen.getByText('5')).toBeInTheDocument() // plan.total.teamMembers
+  })
+
+  it('should show unlimited billing information', () => {
+    vi.mocked(useProviderContext).mockReturnValue(createMockProviderContextValue({
+      enableBilling: true,
+      plan: {
+        type: Plan.sandbox,
+        total: { teamMembers: -1 } as unknown as ReturnType<typeof useProviderContext>['plan']['total'],
+      } as unknown as ReturnType<typeof useProviderContext>['plan'],
+    }))
+
+    render(<MembersPage />)
+
+    expect(screen.getByText(/plansCommon\.unlimited/i)).toBeInTheDocument()
+  })
+
+  it('should show upgrade button when member limit is full', () => {
+    vi.mocked(useProviderContext).mockReturnValue(createMockProviderContextValue({
+      enableBilling: true,
+      plan: {
+        type: Plan.sandbox,
+        total: { teamMembers: 2 } as unknown as ReturnType<typeof useProviderContext>['plan']['total'],
+      } as unknown as ReturnType<typeof useProviderContext>['plan'],
+    }))
+
+    render(<MembersPage />)
+
+    expect(screen.getByText('Upgrade Button')).toBeInTheDocument()
   })
 })

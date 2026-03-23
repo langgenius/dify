@@ -23,6 +23,7 @@ from core.errors.error import (
 )
 from core.model_runtime.errors.invoke import InvokeError
 from core.workflow.graph_engine.manager import GraphEngineManager
+from extensions.ext_redis import redis_client
 from libs import helper
 from libs.login import current_account_with_tenant
 from models.model import AppMode, InstalledApp
@@ -100,6 +101,6 @@ class InstalledAppWorkflowTaskStopApi(InstalledAppResource):
         AppQueueManager.set_stop_flag_no_user_check(task_id)
 
         # New graph engine command channel mechanism
-        GraphEngineManager.send_stop_command(task_id)
+        GraphEngineManager(redis_client).send_stop_command(task_id)
 
         return {"result": "success"}

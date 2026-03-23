@@ -72,7 +72,8 @@ const ImageInput: FC<UploaderProps> = ({
   const handleShowImage = () => {
     if (isAnimatedImage) {
       return (
-        <img src={inputImage?.url} alt="" />
+        // eslint-disable-next-line next/no-img-element
+        <img src={inputImage?.url} alt="" data-testid="animated-image" />
       )
     }
 
@@ -107,7 +108,7 @@ const ImageInput: FC<UploaderProps> = ({
                   <div className="mb-[2px] text-sm font-medium">
                     <span className="pointer-events-none">
                       {t('imageInput.dropImageHere', { ns: 'common' })}
-&nbsp;
+                    &nbsp;
                     </span>
                     <button type="button" className="text-components-button-primary-bg" onClick={() => inputRef.current?.click()}>{t('imageInput.browse', { ns: 'common' })}</button>
                     <input
@@ -117,6 +118,7 @@ const ImageInput: FC<UploaderProps> = ({
                       onClick={e => ((e.target as HTMLInputElement).value = '')}
                       accept={ALLOW_FILE_EXTENSIONS.map(ext => `.${ext}`).join(',')}
                       onChange={handleLocalFileInput}
+                      data-testid="image-input"
                     />
                   </div>
                   <div className="pointer-events-none">{t('imageInput.supportedFormats', { ns: 'common' })}</div>
