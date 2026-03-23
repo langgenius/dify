@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING
 
 from core.agent.entities import AgentEntity, ExecutionContext
 from core.model_manager import ModelInstance
-from dify_graph.model_runtime.entities.model_entities import ModelFeature
 from dify_graph.file.models import File
+from dify_graph.model_runtime.entities.model_entities import ModelFeature
 
 from .base import AgentPattern, ToolInvokeHook
 from .function_call import FunctionCallStrategy

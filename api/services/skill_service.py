@@ -18,8 +18,6 @@ from collections.abc import Mapping
 from functools import reduce
 from typing import Any, cast
 
-from dify_graph.enums import NodeType
-
 from core.app.entities.app_asset_entities import AppAssetFileTree, AppAssetNode
 from core.sandbox.entities.config import AppAssets
 from core.skill.assembler import SkillBundleAssembler, SkillDocumentAssembler
@@ -28,6 +26,7 @@ from core.skill.entities.skill_document import SkillDocument
 from core.skill.entities.skill_metadata import SkillMetadata
 from core.skill.entities.tool_dependencies import ToolDependencies, ToolDependency
 from core.skill.skill_manager import SkillManager
+from dify_graph.enums import NodeType
 from models.model import App
 from services.app_asset_service import AppAssetService
 

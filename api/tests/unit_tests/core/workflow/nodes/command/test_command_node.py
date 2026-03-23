@@ -4,9 +4,6 @@ from io import BytesIO
 from typing import Any
 from unittest.mock import MagicMock
 
-from dify_graph.enums import WorkflowNodeExecutionStatus
-from dify_graph.system_variable import SystemVariable
-
 from core.entities.provider_entities import BasicProviderConfig
 from core.virtual_environment.__base.entities import (
     Arch,
@@ -19,10 +16,12 @@ from core.virtual_environment.__base.entities import (
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
 from core.virtual_environment.channel.queue_transport import QueueTransportReadCloser
 from core.virtual_environment.channel.transport import NopTransportWriteCloser
+from core.workflow.nodes.command.node import CommandNode
 from dify_graph.entities import GraphInitParams
 from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY
-from core.workflow.nodes.command.node import CommandNode
+from dify_graph.enums import WorkflowNodeExecutionStatus
 from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
 
 
 class FakeVirtualEnvironment(VirtualEnvironment):

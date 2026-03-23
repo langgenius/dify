@@ -2,19 +2,18 @@ import logging
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
-from dify_graph.nodes.base.entities import VariableSelector
-from dify_graph.nodes.base.node import Node
-from dify_graph.nodes.base.variable_template_parser import VariableTemplateParser
-
 from core.sandbox import sandbox_debug
 from core.sandbox.bash.session import SANDBOX_READY_TIMEOUT
 from core.virtual_environment.__base.command_future import CommandCancelledError, CommandTimeoutError
 from core.virtual_environment.__base.helpers import submit_command, with_connection
-from dify_graph.node_events import NodeRunResult
-from dify_graph.nodes.base import variable_template_parser
 from core.workflow.nodes.command.entities import CommandNodeData
 from core.workflow.nodes.command.exc import CommandExecutionError
+from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
+from dify_graph.node_events import NodeRunResult
+from dify_graph.nodes.base import variable_template_parser
+from dify_graph.nodes.base.entities import VariableSelector
+from dify_graph.nodes.base.node import Node
+from dify_graph.nodes.base.variable_template_parser import VariableTemplateParser
 
 logger = logging.getLogger(__name__)
 

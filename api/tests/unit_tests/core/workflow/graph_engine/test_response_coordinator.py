@@ -7,15 +7,14 @@ from dify_graph.enums import NodeType
 from dify_graph.graph.graph import Graph
 from dify_graph.graph_engine.response_coordinator.coordinator import ResponseStreamCoordinator
 from dify_graph.graph_engine.response_coordinator.session import ResponseSession
-from dify_graph.nodes.base.entities import BaseNodeData
-from dify_graph.nodes.base.template import Template, VariableSegment
-
 from dify_graph.graph_events import (
     ChunkType,
     NodeRunStreamChunkEvent,
     ToolCall,
     ToolResult,
 )
+from dify_graph.nodes.base.entities import BaseNodeData
+from dify_graph.nodes.base.template import Template, VariableSegment
 from dify_graph.runtime import VariablePool
 
 

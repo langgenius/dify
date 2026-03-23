@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any, Union
 from core.agent.entities import AgentLog, AgentResult, AgentScratchpadUnit, ExecutionContext
 from core.agent.output_parser.cot_output_parser import CotAgentOutputParser
 from core.model_manager import ModelInstance
+from dify_graph.file import File
 from dify_graph.model_runtime.entities import (
     AssistantPromptMessage,
     LLMResult,
@@ -17,7 +18,6 @@ from dify_graph.model_runtime.entities import (
     PromptMessage,
     SystemPromptMessage,
 )
-from dify_graph.file import File
 
 from .base import AgentPattern, ToolInvokeHook
 

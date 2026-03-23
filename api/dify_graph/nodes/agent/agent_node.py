@@ -517,9 +517,8 @@ class AgentNode(Node[AgentNodeData]):
         Fetch memory instance for saving node memory.
         This is a simplified version that doesn't require model_instance.
         """
-        from dify_graph.model_runtime.entities.model_entities import ModelType
-
         from core.model_manager import ModelManager
+        from dify_graph.model_runtime.entities.model_entities import ModelType
 
         node_data = self.node_data
         if not node_data.memory:

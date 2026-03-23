@@ -2,14 +2,13 @@
 
 from unittest.mock import patch
 
-from dify_graph.model_runtime.entities.message_entities import ImagePromptMessageContent
+from dify_graph.file import File, FileTransferMethod, FileType
 from dify_graph.file.file_manager import (
     _encode_file_ref,
     restore_multimodal_content,
     to_prompt_message_content,
 )
-
-from dify_graph.file import File, FileTransferMethod, FileType
+from dify_graph.model_runtime.entities.message_entities import ImagePromptMessageContent
 
 
 class TestEncodeFileRef:

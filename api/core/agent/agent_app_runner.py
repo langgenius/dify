@@ -8,6 +8,11 @@ from core.agent.entities import AgentEntity, AgentLog, AgentResult
 from core.agent.patterns.strategy_factory import StrategyFactory
 from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.entities.queue_entities import QueueAgentThoughtEvent, QueueMessageEndEvent, QueueMessageFileEvent
+from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
+from core.tools.__base.tool import Tool
+from core.tools.entities.tool_entities import ToolInvokeMeta
+from core.tools.tool_engine import ToolEngine
+from dify_graph.file import file_manager
 from dify_graph.model_runtime.entities import (
     AssistantPromptMessage,
     LLMResult,
@@ -20,11 +25,6 @@ from dify_graph.model_runtime.entities import (
     UserPromptMessage,
 )
 from dify_graph.model_runtime.entities.message_entities import ImagePromptMessageContent, PromptMessageContentUnionTypes
-from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
-from core.tools.__base.tool import Tool
-from core.tools.entities.tool_entities import ToolInvokeMeta
-from core.tools.tool_engine import ToolEngine
-from dify_graph.file import file_manager
 from models.model import Message
 
 logger = logging.getLogger(__name__)

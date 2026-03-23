@@ -2,8 +2,8 @@ from unittest.mock import MagicMock
 
 from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
-from dify_graph.graph_events import NodeRunStreamChunkEvent
 from dify_graph.enums import NodeType
+from dify_graph.graph_events import NodeRunStreamChunkEvent
 
 
 class DummyQueueManager:

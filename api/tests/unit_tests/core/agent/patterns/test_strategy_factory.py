@@ -3,12 +3,12 @@
 from unittest.mock import MagicMock
 
 import pytest
-from dify_graph.model_runtime.entities.model_entities import ModelFeature
 
 from core.agent.entities import AgentEntity, ExecutionContext
 from core.agent.patterns.function_call import FunctionCallStrategy
 from core.agent.patterns.react import ReActStrategy
 from core.agent.patterns.strategy_factory import StrategyFactory
+from dify_graph.model_runtime.entities.model_entities import ModelFeature
 
 
 @pytest.fixture

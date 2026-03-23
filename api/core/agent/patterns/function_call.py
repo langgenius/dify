@@ -12,6 +12,8 @@ from collections.abc import Generator
 from typing import Any, Union
 
 from core.agent.entities import AgentLog, AgentResult
+from core.tools.entities.tool_entities import ToolInvokeMeta
+from dify_graph.file import File
 from dify_graph.model_runtime.entities import (
     AssistantPromptMessage,
     LLMResult,
@@ -22,8 +24,6 @@ from dify_graph.model_runtime.entities import (
     PromptMessageTool,
     ToolPromptMessage,
 )
-from core.tools.entities.tool_entities import ToolInvokeMeta
-from dify_graph.file import File
 
 from .base import AgentPattern
 

@@ -11,6 +11,8 @@ from typing import TYPE_CHECKING, Any
 
 from core.agent.entities import AgentLog, AgentResult, ExecutionContext
 from core.model_manager import ModelInstance
+from core.tools.entities.tool_entities import ToolInvokeMessage, ToolInvokeMeta
+from dify_graph.file import File
 from dify_graph.model_runtime.entities import (
     AssistantPromptMessage,
     LLMResult,
@@ -21,8 +23,6 @@ from dify_graph.model_runtime.entities import (
 )
 from dify_graph.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.model_runtime.entities.message_entities import TextPromptMessageContent
-from core.tools.entities.tool_entities import ToolInvokeMessage, ToolInvokeMeta
-from dify_graph.file import File
 
 if TYPE_CHECKING:
     from core.tools.__base.tool import Tool
