@@ -695,7 +695,7 @@
   "nodes.knowledgeRetrieval.metadata.options.automatic.subTitle": "Kullanıcı sorgusuna dayalı olarak otomatik olarak meta veri filtreleme koşulları oluşturun.",
   "nodes.knowledgeRetrieval.metadata.options.automatic.title": "Otomatik",
   "nodes.knowledgeRetrieval.metadata.options.disabled.subTitle": "Meta veri filtreleme özelliğini devre dışı bırakma",
-  "nodes.knowledgeRetrieval.metadata.options.disabled.title": "Devre Dışı Bırakıldı.",
+  "nodes.knowledgeRetrieval.metadata.options.disabled.title": "Devre Dışı",
   "nodes.knowledgeRetrieval.metadata.options.manual.subTitle": "Manuel olarak meta veri filtreleme koşulları ekleyin",
   "nodes.knowledgeRetrieval.metadata.options.manual.title": "Kılavuz",
   "nodes.knowledgeRetrieval.metadata.panel.add": "Koşul Ekle",

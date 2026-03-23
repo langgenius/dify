@@ -126,7 +126,7 @@
   "metadata.datasetMetadata.deleteContent": "Bu {{name}} meta verisini silmek istediğinizden emin misiniz?",
   "metadata.datasetMetadata.deleteTitle": "Silmek için onayla",
   "metadata.datasetMetadata.description": "Bu bilgideki tüm meta verileri yönetebilirsiniz. Değişiklikler her belgeye senkronize edilecektir.",
-  "metadata.datasetMetadata.disabled": "Devre Dışı Bırakıldı.",
+  "metadata.datasetMetadata.disabled": "Devre Dışı",
   "metadata.datasetMetadata.name": "İsim",
   "metadata.datasetMetadata.namePlaceholder": "Meta veri adı",
   "metadata.datasetMetadata.rename": "Yeniden Adlandır",
