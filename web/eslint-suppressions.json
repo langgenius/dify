@@ -959,7 +959,7 @@
   },
   "app/components/app/configuration/dataset-config/params-config/index.tsx": {
     "no-restricted-imports": {
-      "count": 2
+      "count": 1
     },
     "react/set-state-in-effect": {
       "count": 1
@@ -3166,11 +3166,6 @@
       "count": 2
     }
   },
-  "app/components/datasets/common/document-status-with-action/auto-disabled-document.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "app/components/datasets/common/image-list/more.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
@@ -3190,9 +3185,6 @@
     }
   },
   "app/components/datasets/common/image-uploader/hooks/use-upload.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 3
     }
@@ -3222,7 +3214,7 @@
   },
   "app/components/datasets/common/retrieval-param-config/index.tsx": {
     "no-restricted-imports": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/datasets/create-from-pipeline/create-options/create-from-dsl-modal/dsl-confirm-modal.tsx": {
@@ -3573,11 +3565,6 @@
       "count": 1
     }
   },
-  "app/components/datasets/documents/components/document-list/hooks/use-document-actions.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "app/components/datasets/documents/components/documents-header.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -3590,7 +3577,7 @@
   },
   "app/components/datasets/documents/components/rename-modal.tsx": {
     "no-restricted-imports": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/datasets/documents/create-from-pipeline/actions/index.tsx": {
@@ -4258,9 +4245,6 @@
     }
   },
   "app/components/datasets/list/dataset-card/hooks/use-dataset-card-state.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "react/set-state-in-effect": {
       "count": 1
     }
@@ -4428,11 +4412,6 @@
   "app/components/datasets/settings/form/components/indexing-section.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 7
-    }
-  },
-  "app/components/datasets/settings/form/hooks/use-form-state.ts": {
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "app/components/datasets/settings/index-method/index.tsx": {
@@ -4721,9 +4700,6 @@
   "app/components/header/account-setting/data-source-page-new/configure.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
     }
   },
   "app/components/header/account-setting/data-source-page-new/hooks/use-marketplace-all-plugins.ts": {
@@ -4750,77 +4726,11 @@
   "app/components/header/account-setting/data-source-page-new/operator.tsx": {
     "no-restricted-imports": {
       "count": 2
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 5
     }
   },
   "app/components/header/account-setting/data-source-page-new/types.ts": {
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "app/components/header/account-setting/data-source-page/data-source-notion/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "app/components/header/account-setting/data-source-page/data-source-notion/operate/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 4
-    }
-  },
-  "app/components/header/account-setting/data-source-page/data-source-website/config-firecrawl-modal.tsx": {
-    "no-restricted-imports": {
-      "count": 2
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/header/account-setting/data-source-page/data-source-website/config-jina-reader-modal.tsx": {
-    "no-restricted-imports": {
-      "count": 2
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/header/account-setting/data-source-page/data-source-website/config-watercrawl-modal.tsx": {
-    "no-restricted-imports": {
-      "count": 2
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/header/account-setting/data-source-page/data-source-website/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/header/account-setting/data-source-page/panel/config-item.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    },
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/header/account-setting/data-source-page/panel/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
-    }
-  },
-  "app/components/header/account-setting/data-source-page/panel/types.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 1
     }
   },
   "app/components/header/account-setting/key-validator/declarations.ts": {
@@ -4842,26 +4752,8 @@
     }
   },
   "app/components/header/account-setting/members-page/invite-modal/index.tsx": {
-    "no-restricted-imports": {
-      "count": 2
-    },
     "react/set-state-in-effect": {
       "count": 3
-    }
-  },
-  "app/components/header/account-setting/members-page/invite-modal/role-selector.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "app/components/header/account-setting/members-page/invited-modal/index.tsx": {
-    "no-restricted-imports": {
-      "count": 2
-    }
-  },
-  "app/components/header/account-setting/members-page/invited-modal/invitation-link.tsx": {
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "app/components/header/account-setting/members-page/operation/index.tsx": {
@@ -4917,9 +4809,6 @@
   "app/components/header/account-setting/model-provider-page/model-auth/add-custom-model.tsx": {
     "no-restricted-imports": {
       "count": 2
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
     }
   },
   "app/components/header/account-setting/model-provider-page/model-auth/authorized/authorized-item.tsx": {
@@ -4930,9 +4819,6 @@
   "app/components/header/account-setting/model-provider-page/model-auth/authorized/index.tsx": {
     "no-restricted-imports": {
       "count": 3
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
     },
     "ts/no-explicit-any": {
       "count": 2
@@ -4951,9 +4837,6 @@
   "app/components/header/account-setting/model-provider-page/model-auth/credential-selector.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 4
     }
   },
   "app/components/header/account-setting/model-provider-page/model-auth/hooks/use-auth.ts": {
@@ -9056,7 +8939,7 @@
   },
   "app/components/workflow/panel/chat-record/user-input.tsx": {
     "ts/no-explicit-any": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/workflow/panel/chat-variable-panel/components/array-bool-list.tsx": {
@@ -9910,11 +9793,6 @@
   "hooks/use-async-window-open.spec.ts": {
     "ts/no-explicit-any": {
       "count": 6
-    }
-  },
-  "hooks/use-breakpoints.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 1
     }
   },
   "hooks/use-format-time-from-now.spec.ts": {
