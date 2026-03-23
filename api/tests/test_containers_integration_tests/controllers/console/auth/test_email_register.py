@@ -6,7 +6,6 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
-from flask import Flask
 
 from controllers.console.auth.email_register import (
     EmailRegisterCheckApi,
