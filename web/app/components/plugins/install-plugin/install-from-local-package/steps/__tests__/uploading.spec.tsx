@@ -161,20 +161,12 @@ describe('Uploading', () => {
       })
     })
 
-    // NOTE: The uploadFile API has an unconventional contract where it always rejects.
-    // Success vs failure is determined by whether response.message exists:
-    // - If response.message exists → treated as failure (calls onFailed)
-    // - If response.message is absent → treated as success (calls onPackageUploaded/onBundleUploaded)
-    // This explains why we use mockRejectedValue for "success" scenarios below.
-
-    it('should call onPackageUploaded when upload rejects without error message (success case)', async () => {
+    it('should call onPackageUploaded when upload resolves (success case)', async () => {
       const mockResult = {
         unique_identifier: 'test-uid',
         manifest: createMockManifest(),
       }
-      mockUploadFile.mockRejectedValue({
-        response: mockResult,
-      })
+      mockUploadFile.mockResolvedValue(mockResult)
 
       const onPackageUploaded = vi.fn()
       render(
@@ -193,11 +185,9 @@ describe('Uploading', () => {
       })
     })
 
-    it('should call onBundleUploaded when upload rejects without error message (success case)', async () => {
+    it('should call onBundleUploaded when upload resolves (success case)', async () => {
       const mockDependencies = createMockDependencies()
-      mockUploadFile.mockRejectedValue({
-        response: mockDependencies,
-      })
+      mockUploadFile.mockResolvedValue(mockDependencies)
 
       const onBundleUploaded = vi.fn()
       render(
@@ -261,9 +251,7 @@ describe('Uploading', () => {
   // ================================
   describe('Edge Cases', () => {
     it('should handle empty response gracefully', async () => {
-      mockUploadFile.mockRejectedValue({
-        response: {},
-      })
+      mockUploadFile.mockResolvedValue({})
 
       const onPackageUploaded = vi.fn()
       render(<Uploading {...defaultProps} onPackageUploaded={onPackageUploaded} />)
@@ -277,9 +265,7 @@ describe('Uploading', () => {
     })
 
     it('should handle response with only unique_identifier', async () => {
-      mockUploadFile.mockRejectedValue({
-        response: { unique_identifier: 'only-uid' },
-      })
+      mockUploadFile.mockResolvedValue({ unique_identifier: 'only-uid' })
 
       const onPackageUploaded = vi.fn()
       render(<Uploading {...defaultProps} onPackageUploaded={onPackageUploaded} />)

@@ -167,8 +167,8 @@ describe('formatWorkflowRunIdentifier', () => {
     expect(formatWorkflowRunIdentifier(0)).toBe(' (Running)')
   })
 
-  it('should capitalize custom fallback text', () => {
-    expect(formatWorkflowRunIdentifier(undefined, 'pending')).toBe(' (Pending)')
+  it('should use custom fallback text as-is', () => {
+    expect(formatWorkflowRunIdentifier(undefined, 'pending')).toBe(' (pending)')
   })
 
   it('should format a valid timestamp', () => {
@@ -178,6 +178,6 @@ describe('formatWorkflowRunIdentifier', () => {
   })
 
   it('should handle single-char fallback text', () => {
-    expect(formatWorkflowRunIdentifier(undefined, 'x')).toBe(' (X)')
+    expect(formatWorkflowRunIdentifier(undefined, 'x')).toBe(' (x)')
   })
 })

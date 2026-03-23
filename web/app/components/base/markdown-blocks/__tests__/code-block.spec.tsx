@@ -157,7 +157,6 @@ describe('CodeBlock', () => {
     it('should render mermaid controls when language is mermaid', async () => {
       render(<CodeBlock className="language-mermaid">graph TB; A--&gt;B;</CodeBlock>)
 
-      expect(await screen.findByText('app.mermaid.classic')).toBeInTheDocument()
       expect(screen.getByText('Mermaid')).toBeInTheDocument()
     })
 

@@ -488,17 +488,20 @@ describe('WorkflowVariableBlockComponent', () => {
       />,
     )
 
-    const updateHandler = mockRegisterCommand.mock.calls[0][1] as (map: Record<string, unknown>) => boolean
+    const updateHandler = mockRegisterCommand.mock.calls[0][1] as (payload: { workflowNodesMap: Record<string, unknown>, nodeOutputVars: unknown[] }) => boolean
     let result = false
     act(() => {
       result = updateHandler({
-        'node-1': {
-          title: 'Updated',
-          type: BlockEnum.LLM,
-          width: 100,
-          height: 50,
-          position: { x: 0, y: 0 },
+        workflowNodesMap: {
+          'node-1': {
+            title: 'Updated',
+            type: BlockEnum.LLM,
+            width: 100,
+            height: 50,
+            position: { x: 0, y: 0 },
+          },
         },
+        nodeOutputVars: [],
       })
     })
 

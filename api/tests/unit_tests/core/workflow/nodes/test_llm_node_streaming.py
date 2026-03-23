@@ -29,7 +29,7 @@ def _drain(generator: Generator[NodeEventBase, None, Any]):
 @pytest.fixture(autouse=True)
 def patch_deduct_llm_quota(monkeypatch):
     # Avoid touching real quota logic during unit tests
-    monkeypatch.setattr("core.workflow.nodes.llm.node.llm_utils.deduct_llm_quota", lambda **_: None)
+    monkeypatch.setattr("core.app.llm.quota.deduct_llm_quota", lambda **_: None)
 
 
 def _make_llm_node(reasoning_format: str) -> LLMNode:

@@ -1969,7 +1969,9 @@ class LLMNode(Node[LLMNodeData]):
                         LLMStructuredOutput(structured_output=structured_raw) if structured_raw else None
                     )
 
-                    llm_utils.deduct_llm_quota(tenant_id=self.tenant_id, model_instance=model_instance, usage=usage)
+                    from core.app.llm.quota import deduct_llm_quota
+
+                    deduct_llm_quota(tenant_id=self.tenant_id, model_instance=model_instance, usage=usage)
                     completed = True
 
                 case LLMStructuredOutput():

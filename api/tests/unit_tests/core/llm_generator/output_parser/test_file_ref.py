@@ -12,8 +12,8 @@ from core.llm_generator.output_parser.file_ref import (
     detect_file_path_fields,
     is_file_path_property,
 )
-from core.workflow.variables.segments import ArrayFileSegment, FileSegment
 from core.workflow.file import File, FileTransferMethod, FileType
+from core.workflow.variables.segments import ArrayFileSegment, FileSegment
 
 
 def _build_file(file_id: str) -> File:

@@ -30,6 +30,9 @@ const mocks = vi.hoisted(() => {
       registerUpdateListener: vi.fn(() => vi.fn()),
       dispatchCommand: vi.fn(),
       getRootElement: vi.fn(() => rootElement),
+      getEditorState: vi.fn(() => ({
+        read: <T,>(fn: () => T): T => fn(),
+      })),
       parseEditorState: vi.fn(() => ({ state: 'parsed' })),
       setEditorState: vi.fn(),
       focus: vi.fn(),

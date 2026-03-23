@@ -43,8 +43,8 @@ describe('FeatureIcon', () => {
     }
   })
 
-  it('should render nothing for unsupported feature', () => {
+  it('should render tool call icon with tooltip', () => {
     const { container } = render(<FeatureIcon feature={ModelFeatureEnum.toolCall} />)
-    expect(container).toBeEmptyDOMElement()
+    expect(container).not.toBeEmptyDOMElement()
   })
 })

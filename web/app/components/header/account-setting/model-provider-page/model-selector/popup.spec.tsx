@@ -193,7 +193,7 @@ describe('Popup', () => {
     fireEvent.click(screen.getByText('common.model.settingsLink'))
 
     expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
-      payload: 'provider',
+      payload: 'model-provider',
     })
   })
 })

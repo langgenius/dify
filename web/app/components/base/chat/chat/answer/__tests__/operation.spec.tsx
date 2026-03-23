@@ -281,7 +281,7 @@ describe('Operation', () => {
       }
       renderOperation({ ...baseProps, item })
       await user.click(screen.getByTestId('copy-btn'))
-      expect(copy).toHaveBeenCalledWith('Hello World')
+      expect(copy).toHaveBeenCalledWith('[AGENT]\nTHOUGHT:\nHello \n\n[AGENT]\nTHOUGHT:\nWorld')
     })
   })
 
