@@ -78,9 +78,7 @@ def test_oauth_callback_invalid_provider(test_client_with_containers: FlaskClien
 def test_get_binding_successful(test_client_with_containers: FlaskClient) -> None:
     provider = MagicMock()
     with patch("controllers.console.auth.data_source_oauth.get_oauth_providers", return_value={"notion": provider}):
-        response = test_client_with_containers.get(
-            "/console/api/oauth/data-source/binding/notion?code=auth_code_123"
-        )
+        response = test_client_with_containers.get("/console/api/oauth/data-source/binding/notion?code=auth_code_123")
 
     assert response.status_code == 200
     assert response.get_json() == {"result": "success"}
