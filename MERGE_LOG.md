@@ -8,7 +8,7 @@
 | 2 | `9c339239` | 129 | Mid refactors: model_runtime, prompt, storage | ✅ |
 | 3 | `92bde350` | 56 | dify_graph 大迁移 | ✅ |
 | 4 | `fb41b215` | 165 | Post-backend refactors | ✅ |
-| 5 | `main HEAD` | 103 | Final changes | ⬚ |
+| 5 | `main HEAD` | 153 | Final changes | ✅ |
 
 - **Base commit**: `98466e2d`
 - **Branch**: `sandboxed-agent-rebase`
@@ -93,3 +93,28 @@
 - Fixed frontend test mocks: useUserProfile, useLeaderRestoreListener, next/navigation
 
 ### Test Results: ✅ Backend 11608 passed, Frontend skipped (vitest hang issue with forks pool)
+
+---
+
+## Segment 5: Final Changes (153 commits → `main HEAD`) ✅
+
+### Conflicts: 83 files
+- 10 backend content (app_factory, enums, llm_utils, llm/node, workflow model, etc.)
+- 62 frontend content (model-provider pages, workflow nodes, plugins, etc.)
+- 11 lock/config files (uv.lock, pnpm-lock, eslint-suppressions, docker, i18n, etc.)
+
+### Post-merge fixes
+- Added `login_manager` mock to 6 controller test fixture files
+- Removed duplicate `MemoryConfig` import in llm_utils.py
+- Added missing branch deps back to package.json (fflate, loro-crdt, etc.)
+- Restored lint-staged `--no-warn-ignored` flag
+
+### Test Results: ✅ Backend 12234 passed, Frontend skipped
+
+---
+
+## Final Summary
+
+All 5 segments merged successfully. Total: 553 commits from main integrated.
+- **Backend**: 12234 tests passing
+- **Frontend**: vitest has a hang issue with forks pool; tests pass individually but full suite hangs
