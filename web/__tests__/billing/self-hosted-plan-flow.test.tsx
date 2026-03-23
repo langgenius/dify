@@ -66,7 +66,7 @@ describe('Self-Hosted Plan Flow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     cleanup()
-    toast.close()
+    toast.dismiss()
     setupAppContext()
 
     // Mock window.location with minimal getter/setter (Location props are non-enumerable)

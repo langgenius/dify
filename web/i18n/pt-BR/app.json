@@ -36,6 +36,8 @@
   "createApp": "CRIAR APLICATIVO",
   "createFromConfigFile": "Criar a partir do arquivo DSL",
   "deleteAppConfirmContent": "A exclusão do aplicativo é irreversível. Os usuários não poderão mais acessar seu aplicativo e todas as configurações de prompt e logs serão permanentemente excluídas.",
+  "deleteAppConfirmInputLabel": "Para confirmar, digite \"{{appName}}\" na caixa abaixo:",
+  "deleteAppConfirmInputPlaceholder": "Digite o nome do aplicativo",
   "deleteAppConfirmTitle": "Excluir este aplicativo?",
   "dslUploader.browse": "Navegar",
   "dslUploader.button": "Arraste e solte o arquivo, ou",

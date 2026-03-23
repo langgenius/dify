@@ -7,6 +7,7 @@ from uuid import uuid4
 
 import pytest
 
+from extensions.storage.storage_type import StorageType
 from models import Account
 from models.dataset import Dataset, Document
 from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom
@@ -83,7 +84,7 @@ def make_upload_file(db_session_with_containers, tenant_id: str, file_id: str, n
     """Persist an upload file row referenced by document.data_source_info."""
     upload_file = UploadFile(
         tenant_id=tenant_id,
-        storage_type="local",
+        storage_type=StorageType.LOCAL,
         key=f"uploads/{uuid4()}",
         name=name,
         size=128,
