@@ -1,11 +1,14 @@
 'use client'
 
-// z-index strategy (relies on root `isolation: isolate` in layout.tsx):
-//   All overlay primitives (Tooltip / Popover / Dropdown / Select / Dialog) — z-50
+//   z-index strategy (relies on root `isolation: isolate` in layout.tsx):
+//   All base/ui/* overlay primitives — z-[1002]
 //   Overlays share the same z-index; DOM order handles stacking when multiple are open.
 //   This ensures overlays inside a Dialog (e.g. a Tooltip on a dialog button) render
 //   above the dialog backdrop instead of being clipped by it.
-//   Toast — z-[99], always on top (defined in toast component)
+//   During migration, z-[1002] is chosen to sit above all legacy overlays
+//   (Modal z-[60], PortalToFollowElem callers up to z-[1001]).
+//   Once all legacy overlays are migrated, this can be reduced back to z-50.
+//   Toast — z-[9999], always on top (defined in toast component)
 
 import { Dialog as BaseDialog } from '@base-ui/react/dialog'
 import * as React from 'react'
@@ -54,14 +57,14 @@ export function DialogContent({
     <DialogPortal>
       <BaseDialog.Backdrop
         className={cn(
-          'fixed inset-0 z-50 bg-background-overlay',
+          'fixed inset-0 z-[1002] bg-background-overlay',
           'transition-opacity duration-150 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 motion-reduce:transition-none',
           overlayClassName,
         )}
       />
       <BaseDialog.Popup
         className={cn(
-          'fixed left-1/2 top-1/2 z-50 max-h-[80dvh] w-[480px] max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto overscroll-contain rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-6 shadow-xl',
+          'fixed left-1/2 top-1/2 z-[1002] max-h-[80dvh] w-[480px] max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto overscroll-contain rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-6 shadow-xl',
           'transition-[transform,scale,opacity] duration-150 data-[ending-style]:scale-95 data-[starting-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 motion-reduce:transition-none',
           className,
         )}

@@ -762,11 +762,12 @@ class TestDocumentIndexingTasks:
         mock_external_service_dependencies["indexing_runner_instance"].run.assert_called_once()
 
         # Verify task function was called for each waiting task
-        assert mock_task_func.delay.call_count == 1
+        assert mock_task_func.apply_async.call_count == 1
 
         # Verify correct parameters for each call
-        calls = mock_task_func.delay.call_args_list
-        assert calls[0][1] == {"tenant_id": tenant_id, "dataset_id": dataset_id, "document_ids": ["waiting-doc-1"]}
+        calls = mock_task_func.apply_async.call_args_list
+        sent_kwargs = calls[0][1]["kwargs"]
+        assert sent_kwargs == {"tenant_id": tenant_id, "dataset_id": dataset_id, "document_ids": ["waiting-doc-1"]}
 
         # Verify queue is empty after processing (tasks were pulled)
         remaining_tasks = queue.pull_tasks(count=10)  # Pull more than we added
@@ -830,11 +831,15 @@ class TestDocumentIndexingTasks:
             assert updated_document.processing_started_at is not None
 
         # Verify waiting task was still processed despite core processing error
-        mock_task_func.delay.assert_called_once()
+        mock_task_func.apply_async.assert_called_once()
 
         # Verify correct parameters for the call
-        call = mock_task_func.delay.call_args
-        assert call[1] == {"tenant_id": tenant_id, "dataset_id": dataset_id, "document_ids": ["waiting-doc-1"]}
+        call = mock_task_func.apply_async.call_args
+        assert call[1]["kwargs"] == {
+            "tenant_id": tenant_id,
+            "dataset_id": dataset_id,
+            "document_ids": ["waiting-doc-1"],
+        }
 
         # Verify queue is empty after processing (task was pulled)
         remaining_tasks = queue.pull_tasks(count=10)
@@ -896,9 +901,13 @@ class TestDocumentIndexingTasks:
         mock_external_service_dependencies["indexing_runner_instance"].run.assert_called_once()
 
         # Verify only tenant1's waiting task was processed
-        mock_task_func.delay.assert_called_once()
-        call = mock_task_func.delay.call_args
-        assert call[1] == {"tenant_id": tenant1_id, "dataset_id": dataset1_id, "document_ids": ["tenant1-doc-1"]}
+        mock_task_func.apply_async.assert_called_once()
+        call = mock_task_func.apply_async.call_args
+        assert call[1]["kwargs"] == {
+            "tenant_id": tenant1_id,
+            "dataset_id": dataset1_id,
+            "document_ids": ["tenant1-doc-1"],
+        }
 
         # Verify tenant1's queue is empty
         remaining_tasks1 = queue1.pull_tasks(count=10)

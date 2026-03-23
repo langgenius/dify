@@ -20,9 +20,13 @@ const mockEventEmitter = vi.hoisted(() => {
   }
 })
 
-vi.mock('@/app/components/base/toast/context', () => ({
-  useToastContext: vi.fn(),
-}))
+vi.mock('@/app/components/base/toast/context', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/components/base/toast/context')>()
+  return {
+    ...actual,
+    useToastContext: vi.fn(),
+  }
+})
 
 vi.mock('@/context/app-context', () => ({
   useAppContext: vi.fn(),

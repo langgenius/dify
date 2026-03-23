@@ -8,13 +8,14 @@ vi.mock('@/app/components/base/image-gallery', () => ({
   ),
 }))
 
+type MockChildNode = {
+  tagName?: string
+  properties?: { src?: string }
+  children?: MockChildNode[]
+}
+
 type MockNode = {
-  children?: Array<{
-    tagName?: string
-    properties?: {
-      src?: string
-    }
-  }>
+  children?: MockChildNode[]
 }
 
 type ParagraphProps = {
@@ -92,5 +93,39 @@ describe('Paragraph', () => {
     })
 
     expect(screen.getByText('Fallback').tagName).toBe('P')
+  })
+
+  it('should render div instead of p when image is not the first child', () => {
+    renderParagraph({
+      node: {
+        children: [
+          { tagName: 'span' },
+          { tagName: 'img', properties: { src: 'test.png' } },
+        ],
+      },
+      children: [<span key="0">Text before</span>, <img key="1" src="test.png" alt="" />],
+    })
+
+    const wrapper = screen.getByText('Text before').closest('.markdown-p')
+    expect(wrapper).toBeInTheDocument()
+    expect(wrapper!.tagName).toBe('DIV')
+  })
+
+  it('should render div when image is nested inside a link', () => {
+    renderParagraph({
+      node: {
+        children: [
+          {
+            tagName: 'a',
+            children: [{ tagName: 'img', properties: { src: 'nested.png' } }],
+          },
+        ],
+      },
+      children: <a href="#"><img src="nested.png" alt="" /></a>,
+    })
+
+    const wrapper = screen.getByRole('link').closest('.markdown-p')
+    expect(wrapper).toBeInTheDocument()
+    expect(wrapper!.tagName).toBe('DIV')
   })
 })

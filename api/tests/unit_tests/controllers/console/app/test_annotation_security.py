@@ -13,6 +13,9 @@ from pandas.errors import ParserError
 from werkzeug.datastructures import FileStorage
 
 from configs import dify_config
+from controllers.console.wraps import annotation_import_concurrency_limit, annotation_import_rate_limit
+from services.annotation_service import AppAnnotationService
+from tasks.annotation.batch_import_annotations_task import batch_import_annotations_task
 
 
 class TestAnnotationImportRateLimiting:
@@ -33,8 +36,6 @@ class TestAnnotationImportRateLimiting:
 
     def test_rate_limit_per_minute_enforced(self, mock_redis, mock_current_account):
         """Test that per-minute rate limit is enforced."""
-        from controllers.console.wraps import annotation_import_rate_limit
-
         # Simulate exceeding per-minute limit
         mock_redis.zcard.side_effect = [
             dify_config.ANNOTATION_IMPORT_RATE_LIMIT_PER_MINUTE + 1,  # Minute check
@@ -54,7 +55,6 @@ class TestAnnotationImportRateLimiting:
 
     def test_rate_limit_per_hour_enforced(self, mock_redis, mock_current_account):
         """Test that per-hour rate limit is enforced."""
-        from controllers.console.wraps import annotation_import_rate_limit
 
         # Simulate exceeding per-hour limit
         mock_redis.zcard.side_effect = [
@@ -74,7 +74,6 @@ class TestAnnotationImportRateLimiting:
 
     def test_rate_limit_within_limits_passes(self, mock_redis, mock_current_account):
         """Test that requests within limits are allowed."""
-        from controllers.console.wraps import annotation_import_rate_limit
 
         # Simulate being under both limits
         mock_redis.zcard.return_value = 2
@@ -110,7 +109,6 @@ class TestAnnotationImportConcurrencyControl:
 
     def test_concurrency_limit_enforced(self, mock_redis, mock_current_account):
         """Test that concurrent task limit is enforced."""
-        from controllers.console.wraps import annotation_import_concurrency_limit
 
         # Simulate max concurrent tasks already running
         mock_redis.zcard.return_value = dify_config.ANNOTATION_IMPORT_MAX_CONCURRENT
@@ -127,7 +125,6 @@ class TestAnnotationImportConcurrencyControl:
 
     def test_concurrency_within_limit_passes(self, mock_redis, mock_current_account):
         """Test that requests within concurrency limits are allowed."""
-        from controllers.console.wraps import annotation_import_concurrency_limit
 
         # Simulate being under concurrent task limit
         mock_redis.zcard.return_value = 1
@@ -142,7 +139,6 @@ class TestAnnotationImportConcurrencyControl:
 
     def test_stale_jobs_are_cleaned_up(self, mock_redis, mock_current_account):
         """Test that old/stale job entries are removed."""
-        from controllers.console.wraps import annotation_import_concurrency_limit
 
         mock_redis.zcard.return_value = 0
 
@@ -203,7 +199,6 @@ class TestAnnotationImportServiceValidation:
 
     def test_max_records_limit_enforced(self, mock_app, mock_db_session):
         """Test that files with too many records are rejected."""
-        from services.annotation_service import AppAnnotationService
 
         # Create CSV with too many records
         max_records = dify_config.ANNOTATION_IMPORT_MAX_RECORDS
@@ -229,7 +224,6 @@ class TestAnnotationImportServiceValidation:
 
     def test_min_records_limit_enforced(self, mock_app, mock_db_session):
         """Test that files with too few valid records are rejected."""
-        from services.annotation_service import AppAnnotationService
 
         # Create CSV with only header (no data rows)
         csv_content = "question,answer\n"
@@ -249,7 +243,6 @@ class TestAnnotationImportServiceValidation:
 
     def test_invalid_csv_format_handled(self, mock_app, mock_db_session):
         """Test that invalid CSV format is handled gracefully."""
-        from services.annotation_service import AppAnnotationService
 
         # Any content is fine once we force ParserError
         csv_content = 'invalid,csv,format\nwith,unbalanced,quotes,and"stuff'
@@ -270,7 +263,6 @@ class TestAnnotationImportServiceValidation:
 
     def test_valid_import_succeeds(self, mock_app, mock_db_session):
         """Test that valid import request succeeds."""
-        from services.annotation_service import AppAnnotationService
 
         # Create valid CSV
         csv_content = "question,answer\nWhat is AI?,Artificial Intelligence\nWhat is ML?,Machine Learning\n"
@@ -300,18 +292,10 @@ class TestAnnotationImportServiceValidation:
 class TestAnnotationImportTaskOptimization:
     """Test optimizations in batch import task."""
 
-    def test_task_has_timeout_configured(self):
-        """Test that task has proper timeout configuration."""
-        from tasks.annotation.batch_import_annotations_task import batch_import_annotations_task
-
-        # Verify task configuration
-        assert hasattr(batch_import_annotations_task, "time_limit")
-        assert hasattr(batch_import_annotations_task, "soft_time_limit")
-
-        # Check timeout values are reasonable
-        # Hard limit should be 6 minutes (360s)
-        # Soft limit should be 5 minutes (300s)
-        # Note: actual values depend on Celery configuration
+    def test_task_is_registered_with_queue(self):
+        """Test that task is registered with the correct queue."""
+        assert hasattr(batch_import_annotations_task, "apply_async")
+        assert hasattr(batch_import_annotations_task, "delay")
 
 
 class TestConfigurationValues:

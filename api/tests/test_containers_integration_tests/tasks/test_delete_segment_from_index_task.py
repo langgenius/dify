@@ -48,7 +48,7 @@ class TestDeleteSegmentFromIndexTask:
             Tenant: Created test tenant instance
         """
         fake = fake or Faker()
-        tenant = Tenant(name=f"Test Tenant {fake.company()}", plan="basic", status="active")
+        tenant = Tenant(name=f"Test Tenant {fake.company()}", plan="basic", status="normal")
         tenant.id = fake.uuid4()
         tenant.created_at = fake.date_time_this_year()
         tenant.updated_at = tenant.created_at

@@ -2,6 +2,7 @@ import uuid
 from unittest.mock import ANY, MagicMock, patch
 
 import pytest
+import sqlalchemy as sa
 from faker import Faker
 from sqlalchemy.orm import Session
 
@@ -10,6 +11,7 @@ from models.model import EndUser
 from models.workflow import Workflow
 from services.app_generate_service import AppGenerateService
 from services.errors.app import WorkflowIdFormatError, WorkflowNotFoundError
+from tests.test_containers_integration_tests.helpers import generate_valid_password
 
 
 class TestAppGenerateService:
@@ -147,7 +149,7 @@ class TestAppGenerateService:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            password=fake.password(length=12),
+            password=generate_valid_password(fake),
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
@@ -491,19 +493,19 @@ class TestAppGenerateService:
         )
 
         # Manually set invalid mode after creation
+        # With EnumText, invalid values are rejected at the DB level during flush,
+        # raising StatementError wrapping ValueError
         app.mode = "invalid_mode"
 
         # Setup test arguments
         args = {"inputs": {"query": fake.text(max_nb_chars=50)}, "response_mode": "streaming"}
 
-        # Execute the method under test and expect ValueError
-        with pytest.raises(ValueError) as exc_info:
+        # Execute the method under test and expect either ValueError (direct) or
+        # StatementError (from EnumText validation during autoflush)
+        with pytest.raises((ValueError, sa.exc.StatementError)):
             AppGenerateService.generate(
                 app_model=app, user=account, args=args, invoke_from=InvokeFrom.SERVICE_API, streaming=True
             )
-
-        # Verify error message
-        assert "Invalid app mode" in str(exc_info.value)
 
     def test_generate_with_workflow_id_format_error(
         self, db_session_with_containers: Session, mock_external_service_dependencies

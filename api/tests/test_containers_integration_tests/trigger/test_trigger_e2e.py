@@ -14,11 +14,16 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.plugin.entities.request import TriggerInvokeEventResponse
+from core.trigger.constants import (
+    TRIGGER_PLUGIN_NODE_TYPE,
+    TRIGGER_SCHEDULE_NODE_TYPE,
+    TRIGGER_WEBHOOK_NODE_TYPE,
+)
 from core.trigger.debug import event_selectors
 from core.trigger.debug.event_bus import TriggerDebugEventBus
 from core.trigger.debug.event_selectors import PluginTriggerDebugEventPoller, WebhookTriggerDebugEventPoller
 from core.trigger.debug.events import PluginTriggerDebugEvent, build_plugin_pool_key
-from dify_graph.enums import NodeType
+from dify_graph.enums import BuiltinNodeTypes
 from libs.datetime_utils import naive_utc_now
 from models.account import Account, Tenant
 from models.enums import AppTriggerStatus, AppTriggerType, CreatorUserRole, WorkflowTriggerStatus
@@ -48,10 +53,10 @@ WEBHOOK_ID_DEBUG = "whdebug1234567890123456"
 TEST_TRIGGER_URL = "https://trigger.example.com/base"
 
 
-def _build_workflow_graph(root_node_id: str, trigger_type: NodeType) -> str:
+def _build_workflow_graph(root_node_id: str, trigger_type: str) -> str:
     """Build a minimal workflow graph JSON for testing."""
-    node_data: dict[str, Any] = {"type": trigger_type.value, "title": "trigger"}
-    if trigger_type == NodeType.TRIGGER_WEBHOOK:
+    node_data: dict[str, Any] = {"type": trigger_type, "title": "trigger"}
+    if trigger_type == TRIGGER_WEBHOOK_NODE_TYPE:
         node_data.update(
             {
                 "method": "POST",
@@ -64,7 +69,7 @@ def _build_workflow_graph(root_node_id: str, trigger_type: NodeType) -> str:
     graph = {
         "nodes": [
             {"id": root_node_id, "data": node_data},
-            {"id": "answer-1", "data": {"type": NodeType.ANSWER.value, "title": "answer"}},
+            {"id": "answer-1", "data": {"type": BuiltinNodeTypes.ANSWER, "title": "answer"}},
         ],
         "edges": [{"source": root_node_id, "target": "answer-1", "sourceHandle": "success"}],
     }
@@ -82,8 +87,8 @@ def test_publish_blocks_start_and_trigger_coexistence(
 
     graph = {
         "nodes": [
-            {"id": "start", "data": {"type": NodeType.START.value}},
-            {"id": "trig", "data": {"type": NodeType.TRIGGER_WEBHOOK.value}},
+            {"id": "start", "data": {"type": BuiltinNodeTypes.START}},
+            {"id": "trig", "data": {"type": TRIGGER_WEBHOOK_NODE_TYPE}},
         ],
         "edges": [],
     }
@@ -152,7 +157,7 @@ def test_webhook_trigger_creates_trigger_log(
     tenant, account = tenant_and_account
 
     webhook_node_id = "webhook-node"
-    graph_json = _build_workflow_graph(webhook_node_id, NodeType.TRIGGER_WEBHOOK)
+    graph_json = _build_workflow_graph(webhook_node_id, TRIGGER_WEBHOOK_NODE_TYPE)
     published_workflow = Workflow.new(
         tenant_id=tenant.id,
         app_id=app_model.id,
@@ -282,7 +287,7 @@ def test_schedule_visual_debug_poll_generates_event(monkeypatch: pytest.MonkeyPa
     node_config = {
         "id": "schedule-visual",
         "data": {
-            "type": NodeType.TRIGGER_SCHEDULE.value,
+            "type": TRIGGER_SCHEDULE_NODE_TYPE,
             "mode": "visual",
             "frequency": "daily",
             "visual_config": {"time": "3:00 PM"},
@@ -372,7 +377,7 @@ def test_webhook_debug_dispatches_event(
     """Webhook single-step debug should dispatch debug event and be pollable."""
     tenant, account = tenant_and_account
     webhook_node_id = "webhook-debug-node"
-    graph_json = _build_workflow_graph(webhook_node_id, NodeType.TRIGGER_WEBHOOK)
+    graph_json = _build_workflow_graph(webhook_node_id, TRIGGER_WEBHOOK_NODE_TYPE)
     draft_workflow = Workflow.new(
         tenant_id=tenant.id,
         app_id=app_model.id,
@@ -443,7 +448,7 @@ def test_plugin_single_step_debug_flow(
     node_config = {
         "id": node_id,
         "data": {
-            "type": NodeType.TRIGGER_PLUGIN.value,
+            "type": TRIGGER_PLUGIN_NODE_TYPE,
             "title": "plugin",
             "plugin_id": "plugin-1",
             "plugin_unique_identifier": "plugin-1",
@@ -519,14 +524,14 @@ def test_schedule_trigger_creates_trigger_log(
             {
                 "id": schedule_node_id,
                 "data": {
-                    "type": NodeType.TRIGGER_SCHEDULE.value,
+                    "type": TRIGGER_SCHEDULE_NODE_TYPE,
                     "title": "schedule",
                     "mode": "cron",
                     "cron_expression": "0 9 * * *",
                     "timezone": "UTC",
                 },
             },
-            {"id": "answer-1", "data": {"type": NodeType.ANSWER.value, "title": "answer"}},
+            {"id": "answer-1", "data": {"type": BuiltinNodeTypes.ANSWER, "title": "answer"}},
         ],
         "edges": [{"source": schedule_node_id, "target": "answer-1", "sourceHandle": "success"}],
     }
@@ -639,7 +644,7 @@ def test_schedule_visual_cron_conversion(
     node_config: dict[str, Any] = {
         "id": "schedule-node",
         "data": {
-            "type": NodeType.TRIGGER_SCHEDULE.value,
+            "type": TRIGGER_SCHEDULE_NODE_TYPE,
             "mode": mode,
             "timezone": "UTC",
         },
@@ -680,7 +685,7 @@ def test_plugin_trigger_full_chain_with_db_verification(
             {
                 "id": plugin_node_id,
                 "data": {
-                    "type": NodeType.TRIGGER_PLUGIN.value,
+                    "type": TRIGGER_PLUGIN_NODE_TYPE,
                     "title": "plugin",
                     "plugin_id": "test-plugin",
                     "plugin_unique_identifier": "test-plugin",
@@ -690,7 +695,7 @@ def test_plugin_trigger_full_chain_with_db_verification(
                     "parameters": {},
                 },
             },
-            {"id": "answer-1", "data": {"type": NodeType.ANSWER.value, "title": "answer"}},
+            {"id": "answer-1", "data": {"type": BuiltinNodeTypes.ANSWER, "title": "answer"}},
         ],
         "edges": [{"source": plugin_node_id, "target": "answer-1", "sourceHandle": "success"}],
     }
@@ -826,7 +831,7 @@ def test_plugin_debug_via_http_endpoint(
     node_config = {
         "id": node_id,
         "data": {
-            "type": NodeType.TRIGGER_PLUGIN.value,
+            "type": TRIGGER_PLUGIN_NODE_TYPE,
             "title": "plugin-debug",
             "plugin_id": "debug-plugin",
             "plugin_unique_identifier": "debug-plugin",

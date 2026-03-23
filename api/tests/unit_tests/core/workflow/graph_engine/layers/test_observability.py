@@ -16,7 +16,7 @@ import pytest
 from opentelemetry.trace import StatusCode
 
 from core.app.workflow.layers.observability import ObservabilityLayer
-from dify_graph.enums import NodeType
+from dify_graph.enums import BuiltinNodeTypes
 
 
 class TestObservabilityLayerInitialization:
@@ -29,7 +29,7 @@ class TestObservabilityLayerInitialization:
         layer = ObservabilityLayer()
         assert not layer._is_disabled
         assert layer._tracer is not None
-        assert NodeType.TOOL in layer._parsers
+        assert BuiltinNodeTypes.TOOL in layer._parsers
         assert layer._default_parser is not None
 
     @patch("core.app.workflow.layers.observability.dify_config.ENABLE_OTEL", False)
@@ -39,7 +39,7 @@ class TestObservabilityLayerInitialization:
         layer = ObservabilityLayer()
         assert not layer._is_disabled
         assert layer._tracer is not None
-        assert NodeType.TOOL in layer._parsers
+        assert BuiltinNodeTypes.TOOL in layer._parsers
         assert layer._default_parser is not None
 
 
@@ -117,7 +117,7 @@ class TestObservabilityLayerParserIntegration:
         attrs = spans[0].attributes
         assert attrs["node.id"] == mock_start_node.id
         assert attrs["node.execution_id"] == mock_start_node.execution_id
-        assert attrs["node.type"] == mock_start_node.node_type.value
+        assert attrs["node.type"] == mock_start_node.node_type
 
     @patch("core.app.workflow.layers.observability.dify_config.ENABLE_OTEL", True)
     @pytest.mark.usefixtures("mock_is_instrument_flag_enabled_false")

@@ -134,5 +134,46 @@ describe('ConfigJinaReaderModal Component', () => {
       resolveSave!({ result: 'success' })
       await waitFor(() => expect(mockOnSaved).toHaveBeenCalledTimes(1))
     })
+
+    it('should show encryption info and external link in the modal', async () => {
+      render(<ConfigJinaReaderModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
+
+      // Verify PKCS1_OAEP link exists
+      const pkcsLink = screen.getByText('PKCS1_OAEP')
+      expect(pkcsLink.closest('a')).toHaveAttribute('href', 'https://pycryptodome.readthedocs.io/en/latest/src/cipher/oaep.html')
+
+      // Verify the Jina Reader external link
+      const jinaLink = screen.getByRole('link', { name: /datasetCreation\.jinaReader\.getApiKeyLinkText/i })
+      expect(jinaLink).toHaveAttribute('target', '_blank')
+    })
+
+    it('should return early when save is clicked while already saving (isSaving guard)', async () => {
+      const user = userEvent.setup()
+      // Arrange - a save that never resolves so isSaving stays true
+      let resolveFirst: (value: { result: 'success' }) => void
+      const neverResolves = new Promise<{ result: 'success' }>((resolve) => {
+        resolveFirst = resolve
+      })
+      vi.mocked(createDataSourceApiKeyBinding).mockReturnValue(neverResolves)
+      render(<ConfigJinaReaderModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
+
+      const apiKeyInput = screen.getByPlaceholderText('datasetCreation.jinaReader.apiKeyPlaceholder')
+      await user.type(apiKeyInput, 'valid-key')
+
+      const saveBtn = screen.getByRole('button', { name: /common\.operation\.save/i })
+      // First click - starts saving, isSaving becomes true
+      await user.click(saveBtn)
+      expect(createDataSourceApiKeyBinding).toHaveBeenCalledTimes(1)
+
+      // Second click using fireEvent bypasses disabled check - hits isSaving guard
+      const { fireEvent: fe } = await import('@testing-library/react')
+      fe.click(saveBtn)
+      // Still only called once because isSaving=true returns early
+      expect(createDataSourceApiKeyBinding).toHaveBeenCalledTimes(1)
+
+      // Cleanup
+      resolveFirst!({ result: 'success' })
+      await waitFor(() => expect(mockOnSaved).toHaveBeenCalled())
+    })
   })
 })

@@ -88,10 +88,15 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({ data, onSave, onCan
     try {
       setLoading(true)
       if (isEditMode && onEdit) {
+        // Only send [__HIDDEN__] when the user has not changed the key, otherwise
+        // send the actual api_key so updated tokens are persisted.
+        const apiKeyToSend = formData.settings.api_key === '[__HIDDEN__]'
+          ? '[__HIDDEN__]'
+          : formData.settings.api_key
         await onEdit(
           {
             ...formData,
-            settings: { ...formData.settings, api_key: formData.settings.api_key ? '[__HIDDEN__]' : formData.settings.api_key },
+            settings: { ...formData.settings, api_key: apiKeyToSend },
           },
         )
         notify({ type: 'success', message: 'External API updated successfully' })

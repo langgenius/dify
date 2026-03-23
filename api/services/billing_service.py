@@ -393,3 +393,78 @@ class BillingService:
         for item in data:
             tenant_whitelist.append(item["tenant_id"])
         return tenant_whitelist
+
+    @classmethod
+    def get_account_notification(cls, account_id: str) -> dict:
+        """Return the active in-product notification for account_id, if any.
+
+        Calling this endpoint also marks the notification as seen; subsequent
+        calls will return should_show=false when frequency='once'.
+
+        Response shape (mirrors GetAccountNotificationReply):
+          {
+            "should_show": bool,
+            "notification": {          # present only when should_show=true
+              "notification_id": str,
+              "contents": {            # lang -> LangContent
+                "en": {"lang": "en", "title": ..., "subtitle": ..., "body": ..., "title_pic_url": ...},
+                ...
+              },
+              "frequency": "once" | "every_page_load"
+            }
+          }
+        """
+        return cls._send_request("GET", "/notifications/active", params={"account_id": account_id})
+
+    @classmethod
+    def upsert_notification(
+        cls,
+        contents: list[dict],
+        frequency: str = "once",
+        status: str = "active",
+        notification_id: str | None = None,
+        start_time: str | None = None,
+        end_time: str | None = None,
+    ) -> dict:
+        """Create or update a notification.
+
+        contents: list of {"lang": str, "title": str, "subtitle": str, "body": str, "title_pic_url": str}
+        start_time / end_time: RFC3339 strings (e.g. "2026-03-01T00:00:00Z"), optional.
+        Returns {"notification_id": str}.
+        """
+        payload: dict = {
+            "contents": contents,
+            "frequency": frequency,
+            "status": status,
+        }
+        if notification_id:
+            payload["notification_id"] = notification_id
+        if start_time:
+            payload["start_time"] = start_time
+        if end_time:
+            payload["end_time"] = end_time
+        return cls._send_request("POST", "/notifications", json=payload)
+
+    @classmethod
+    def batch_add_notification_accounts(cls, notification_id: str, account_ids: list[str]) -> dict:
+        """Register target account IDs for a notification (max 1000 per call).
+
+        Returns {"count": int}.
+        """
+        return cls._send_request(
+            "POST",
+            f"/notifications/{notification_id}/accounts",
+            json={"account_ids": account_ids},
+        )
+
+    @classmethod
+    def dismiss_notification(cls, notification_id: str, account_id: str) -> dict:
+        """Mark a notification as dismissed for an account.
+
+        Returns {"success": bool}.
+        """
+        return cls._send_request(
+            "POST",
+            f"/notifications/{notification_id}/dismiss",
+            json={"account_id": account_id},
+        )

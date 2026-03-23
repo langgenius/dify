@@ -110,7 +110,7 @@ class TestCleanDatasetTask:
         tenant = Tenant(
             name=fake.company(),
             plan="basic",
-            status="active",
+            status="normal",
         )
 
         db_session_with_containers.add(tenant)

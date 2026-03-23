@@ -1,13 +1,12 @@
-import { Menu } from '@base-ui/react/menu'
+import type { ComponentPropsWithoutRef, ReactNode } from 'react'
 import { fireEvent, render, screen, within } from '@testing-library/react'
+import Link from 'next/link'
 import { describe, expect, it, vi } from 'vitest'
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuPortal,
-  DropdownMenuRadioGroup,
+  DropdownMenuLinkItem,
   DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
@@ -15,18 +14,22 @@ import {
   DropdownMenuTrigger,
 } from '../index'
 
-describe('dropdown-menu wrapper', () => {
-  describe('alias exports', () => {
-    it('should map direct aliases to the corresponding Menu primitive when importing menu roots', () => {
-      expect(DropdownMenu).toBe(Menu.Root)
-      expect(DropdownMenuPortal).toBe(Menu.Portal)
-      expect(DropdownMenuTrigger).toBe(Menu.Trigger)
-      expect(DropdownMenuSub).toBe(Menu.SubmenuRoot)
-      expect(DropdownMenuGroup).toBe(Menu.Group)
-      expect(DropdownMenuRadioGroup).toBe(Menu.RadioGroup)
-    })
-  })
+vi.mock('next/link', () => ({
+  default: ({
+    href,
+    children,
+    ...props
+  }: {
+    href: string
+    children?: ReactNode
+  } & Omit<ComponentPropsWithoutRef<'a'>, 'href'>) => (
+    <a href={href} {...props}>
+      {children}
+    </a>
+  ),
+}))
 
+describe('dropdown-menu wrapper', () => {
   describe('DropdownMenuContent', () => {
     it('should position content at bottom-end with default placement when props are omitted', () => {
       render(
@@ -246,6 +249,99 @@ describe('dropdown-menu wrapper', () => {
 
       expect(item).toHaveAttribute('id', `menu-item-${String(destructive)}`)
       expect(item).not.toHaveAttribute('destructive')
+      expect(handleClick).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe('DropdownMenuLinkItem', () => {
+    it('should render as anchor and keep href/target attributes when link props are provided', () => {
+      render(
+        <DropdownMenu open>
+          <DropdownMenuTrigger aria-label="menu trigger">Open</DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuLinkItem href="https://example.com/docs" target="_blank" rel="noopener noreferrer">
+              Docs
+            </DropdownMenuLinkItem>
+          </DropdownMenuContent>
+        </DropdownMenu>,
+      )
+
+      const link = screen.getByRole('menuitem', { name: 'Docs' })
+      expect(link.tagName.toLowerCase()).toBe('a')
+      expect(link).toHaveAttribute('href', 'https://example.com/docs')
+      expect(link).toHaveAttribute('target', '_blank')
+      expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+    })
+
+    it('should keep link semantics and not leak closeOnClick prop when closeOnClick is false', () => {
+      render(
+        <DropdownMenu open>
+          <DropdownMenuTrigger aria-label="menu trigger">Open</DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuLinkItem
+              href="https://example.com/docs"
+              closeOnClick={false}
+              aria-label="docs link"
+            >
+              Docs
+            </DropdownMenuLinkItem>
+          </DropdownMenuContent>
+        </DropdownMenu>,
+      )
+
+      const link = screen.getByRole('menuitem', { name: 'docs link' })
+      expect(link.tagName.toLowerCase()).toBe('a')
+      expect(link).toHaveAttribute('href', 'https://example.com/docs')
+      expect(link).not.toHaveAttribute('closeOnClick')
+    })
+
+    it('should preserve link semantics when render prop uses a custom link component', () => {
+      render(
+        <DropdownMenu open>
+          <DropdownMenuTrigger aria-label="menu trigger">Open</DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuLinkItem
+              render={<Link href="/account" />}
+              aria-label="account link"
+            >
+              Account settings
+            </DropdownMenuLinkItem>
+          </DropdownMenuContent>
+        </DropdownMenu>,
+      )
+
+      const link = screen.getByRole('menuitem', { name: 'account link' })
+      expect(link.tagName.toLowerCase()).toBe('a')
+      expect(link).toHaveAttribute('href', '/account')
+      expect(link).toHaveTextContent('Account settings')
+    })
+
+    it.each([true, false])('should remain interactive and not leak destructive prop when destructive is %s', (destructive) => {
+      const handleClick = vi.fn()
+
+      render(
+        <DropdownMenu open>
+          <DropdownMenuTrigger aria-label="menu trigger">Open</DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuLinkItem
+              destructive={destructive}
+              href="https://example.com/docs"
+              aria-label="docs link"
+              id={`menu-link-${String(destructive)}`}
+              onClick={handleClick}
+            >
+              Docs
+            </DropdownMenuLinkItem>
+          </DropdownMenuContent>
+        </DropdownMenu>,
+      )
+
+      const link = screen.getByRole('menuitem', { name: 'docs link' })
+      fireEvent.click(link)
+
+      expect(link.tagName.toLowerCase()).toBe('a')
+      expect(link).toHaveAttribute('id', `menu-link-${String(destructive)}`)
+      expect(link).not.toHaveAttribute('destructive')
       expect(handleClick).toHaveBeenCalledTimes(1)
     })
   })

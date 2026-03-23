@@ -26,7 +26,8 @@ from controllers.console.wraps import (
 )
 from core.ops.ops_trace_manager import OpsTraceManager
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from dify_graph.enums import NodeType, WorkflowExecutionStatus
+from core.trigger.constants import TRIGGER_NODE_TYPES
+from dify_graph.enums import WorkflowExecutionStatus
 from dify_graph.file import helpers as file_helpers
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant, login_required
@@ -522,11 +523,7 @@ class AppListApi(Resource):
                 .scalars()
                 .all()
             )
-            trigger_node_types = {
-                NodeType.TRIGGER_WEBHOOK,
-                NodeType.TRIGGER_SCHEDULE,
-                NodeType.TRIGGER_PLUGIN,
-            }
+            trigger_node_types = TRIGGER_NODE_TYPES
             for workflow in draft_workflows:
                 # Check sandbox feature
                 if workflow.get_feature(WorkflowFeatures.SANDBOX).enabled:

@@ -71,9 +71,80 @@ describe('MemberSelector', () => {
     })
   })
 
+  it('should filter list by email when name does not match', async () => {
+    const user = userEvent.setup()
+    render(<MemberSelector onSelect={mockOnSelect} />)
+
+    await user.click(screen.getByTestId('member-selector-trigger'))
+    await user.type(screen.getByTestId('member-selector-search'), 'john@')
+
+    const items = screen.getAllByTestId('member-selector-item')
+    expect(items).toHaveLength(1)
+    expect(screen.getByText('John Doe')).toBeInTheDocument()
+    expect(screen.queryByText('Jane Smith')).not.toBeInTheDocument()
+  })
+
+  it('should show placeholder when value does not match any account', () => {
+    render(<MemberSelector value="nonexistent-id" onSelect={mockOnSelect} />)
+
+    expect(screen.getByText(/members\.transferModal\.transferPlaceholder/i)).toBeInTheDocument()
+  })
+
   it('should handle missing data gracefully', () => {
     vi.mocked(useMembers).mockReturnValue({ data: undefined } as unknown as ReturnType<typeof useMembers>)
     render(<MemberSelector onSelect={mockOnSelect} />)
     expect(screen.getByText(/members\.transferModal\.transferPlaceholder/i)).toBeInTheDocument()
+  })
+
+  it('should filter by email when account name is empty', async () => {
+    const user = userEvent.setup()
+    vi.mocked(useMembers).mockReturnValue({
+      data: { accounts: [...mockAccounts, { id: '4', name: '', email: 'noname@example.com', avatar_url: '' }] },
+    } as unknown as ReturnType<typeof useMembers>)
+    render(<MemberSelector onSelect={mockOnSelect} />)
+
+    await user.click(screen.getByTestId('member-selector-trigger'))
+    await user.type(screen.getByTestId('member-selector-search'), 'noname@')
+
+    const items = screen.getAllByTestId('member-selector-item')
+    expect(items).toHaveLength(1)
+  })
+
+  it('should apply hover background class when dropdown is open', async () => {
+    const user = userEvent.setup()
+    render(<MemberSelector onSelect={mockOnSelect} />)
+
+    const trigger = screen.getByTestId('member-selector-trigger')
+    await user.click(trigger)
+
+    expect(trigger).toHaveClass('bg-state-base-hover-alt')
+  })
+
+  it('should not match account when neither name nor email contains search value', async () => {
+    const user = userEvent.setup()
+    render(<MemberSelector onSelect={mockOnSelect} />)
+
+    await user.click(screen.getByTestId('member-selector-trigger'))
+    await user.type(screen.getByTestId('member-selector-search'), 'xyz-no-match-xyz')
+
+    expect(screen.queryByTestId('member-selector-item')).not.toBeInTheDocument()
+  })
+
+  it('should fall back to empty string for account with undefined email when searching', async () => {
+    const user = userEvent.setup()
+    vi.mocked(useMembers).mockReturnValue({
+      data: {
+        accounts: [
+          { id: '1', name: 'John', email: undefined as unknown as string, avatar_url: '' },
+        ],
+      },
+    } as unknown as ReturnType<typeof useMembers>)
+    render(<MemberSelector onSelect={mockOnSelect} />)
+
+    await user.click(screen.getByTestId('member-selector-trigger'))
+    await user.type(screen.getByTestId('member-selector-search'), 'john')
+
+    const items = screen.getAllByTestId('member-selector-item')
+    expect(items).toHaveLength(1)
   })
 })

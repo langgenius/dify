@@ -13,11 +13,13 @@ vi.mock('./hooks', () => ({
 
 // Mock Authorized
 vi.mock('./authorized', () => ({
-  default: ({ renderTrigger, items, popupTitle }: { renderTrigger: (o?: boolean) => React.ReactNode, items: { length: number }, popupTitle: string }) => (
+  default: ({ renderTrigger, items, popupTitle }: { renderTrigger: (o?: boolean) => React.ReactNode, items: Array<{ selectedCredential?: unknown }>, popupTitle: string }) => (
     <div data-testid="authorized-mock">
-      <div data-testid="trigger-container">{renderTrigger()}</div>
+      <div data-testid="trigger-closed">{renderTrigger()}</div>
+      <div data-testid="trigger-open">{renderTrigger(true)}</div>
       <div data-testid="popup-title">{popupTitle}</div>
       <div data-testid="items-count">{items.length}</div>
+      <div data-testid="items-selected">{items.map((it, i) => <span key={i} data-testid={`selected-${i}`}>{it.selectedCredential ? 'has-cred' : 'no-cred'}</span>)}</div>
     </div>
   ),
 }))
@@ -55,8 +57,41 @@ describe('ManageCustomModelCredentials', () => {
     render(<ManageCustomModelCredentials provider={mockProvider} />)
 
     expect(screen.getByTestId('authorized-mock')).toBeInTheDocument()
-    expect(screen.getByText(/modelProvider.auth.manageCredentials/)).toBeInTheDocument()
+    expect(screen.getAllByText(/modelProvider.auth.manageCredentials/).length).toBeGreaterThan(0)
     expect(screen.getByTestId('items-count')).toHaveTextContent('2')
     expect(screen.getByTestId('popup-title')).toHaveTextContent('modelProvider.auth.customModelCredentials')
+  })
+
+  it('should render trigger in both open and closed states', () => {
+    const mockModels = [
+      {
+        model: 'gpt-4',
+        available_model_credentials: [{ credential_id: 'c1', credential_name: 'Key 1' }],
+        current_credential_id: 'c1',
+        current_credential_name: 'Key 1',
+      },
+    ]
+    mockUseCustomModels.mockReturnValue(mockModels)
+
+    render(<ManageCustomModelCredentials provider={mockProvider} />)
+
+    expect(screen.getByTestId('trigger-closed')).toBeInTheDocument()
+    expect(screen.getByTestId('trigger-open')).toBeInTheDocument()
+  })
+
+  it('should pass undefined selectedCredential when model has no current_credential_id', () => {
+    const mockModels = [
+      {
+        model: 'gpt-3.5',
+        available_model_credentials: [{ credential_id: 'c1', credential_name: 'Key 1' }],
+        current_credential_id: '',
+        current_credential_name: '',
+      },
+    ]
+    mockUseCustomModels.mockReturnValue(mockModels)
+
+    render(<ManageCustomModelCredentials provider={mockProvider} />)
+
+    expect(screen.getByTestId('selected-0')).toHaveTextContent('no-cred')
   })
 })

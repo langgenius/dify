@@ -1,8 +1,9 @@
 import json
+from contextlib import ExitStack
 from typing import Self
 from uuid import UUID
 
-from flask import request
+from flask import request, send_file
 from flask_restx import marshal
 from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy import desc, select
@@ -100,6 +101,15 @@ class DocumentListQuery(BaseModel):
     status: str | None = Field(default=None, description="Document status filter")
 
 
+DOCUMENT_BATCH_DOWNLOAD_ZIP_MAX_DOCS = 100
+
+
+class DocumentBatchDownloadZipPayload(BaseModel):
+    """Request payload for bulk downloading uploaded documents as a ZIP archive."""
+
+    document_ids: list[UUID] = Field(..., min_length=1, max_length=DOCUMENT_BATCH_DOWNLOAD_ZIP_MAX_DOCS)
+
+
 register_enum_models(service_api_ns, RetrievalMethod)
 
 register_schema_models(
@@ -109,6 +119,7 @@ register_schema_models(
     DocumentTextCreatePayload,
     DocumentTextUpdate,
     DocumentListQuery,
+    DocumentBatchDownloadZipPayload,
     Rule,
     PreProcessingRule,
     Segmentation,
@@ -540,6 +551,46 @@ class DocumentListApi(DatasetApiResource):
         return response
 
 
+@service_api_ns.route("/datasets/<uuid:dataset_id>/documents/download-zip")
+class DocumentBatchDownloadZipApi(DatasetApiResource):
+    """Download multiple uploaded-file documents as a single ZIP archive."""
+
+    @service_api_ns.expect(service_api_ns.models[DocumentBatchDownloadZipPayload.__name__])
+    @service_api_ns.doc("download_documents_as_zip")
+    @service_api_ns.doc(description="Download selected uploaded documents as a single ZIP archive")
+    @service_api_ns.doc(params={"dataset_id": "Dataset ID"})
+    @service_api_ns.doc(
+        responses={
+            200: "ZIP archive generated successfully",
+            401: "Unauthorized - invalid API token",
+            403: "Forbidden - insufficient permissions",
+            404: "Document or dataset not found",
+        }
+    )
+    @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
+    def post(self, tenant_id, dataset_id):
+        payload = DocumentBatchDownloadZipPayload.model_validate(service_api_ns.payload or {})
+
+        upload_files, download_name = DocumentService.prepare_document_batch_download_zip(
+            dataset_id=str(dataset_id),
+            document_ids=[str(document_id) for document_id in payload.document_ids],
+            tenant_id=str(tenant_id),
+            current_user=current_user,
+        )
+
+        with ExitStack() as stack:
+            zip_path = stack.enter_context(FileService.build_upload_files_zip_tempfile(upload_files=upload_files))
+            response = send_file(
+                zip_path,
+                mimetype="application/zip",
+                as_attachment=True,
+                download_name=download_name,
+            )
+            cleanup = stack.pop_all()
+            response.call_on_close(cleanup.close)
+        return response
+
+
 @service_api_ns.route("/datasets/<uuid:dataset_id>/documents/<string:batch>/indexing-status")
 class DocumentIndexingStatusApi(DatasetApiResource):
     @service_api_ns.doc("get_document_indexing_status")
@@ -598,6 +649,35 @@ class DocumentIndexingStatusApi(DatasetApiResource):
             documents_status.append(marshal(document_dict, document_status_fields))
         data = {"data": documents_status}
         return data
+
+
+@service_api_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/download")
+class DocumentDownloadApi(DatasetApiResource):
+    """Return a signed download URL for a document's original uploaded file."""
+
+    @service_api_ns.doc("get_document_download_url")
+    @service_api_ns.doc(description="Get a signed download URL for a document's original uploaded file")
+    @service_api_ns.doc(params={"dataset_id": "Dataset ID", "document_id": "Document ID"})
+    @service_api_ns.doc(
+        responses={
+            200: "Download URL generated successfully",
+            401: "Unauthorized - invalid API token",
+            403: "Forbidden - insufficient permissions",
+            404: "Document or upload file not found",
+        }
+    )
+    @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
+    def get(self, tenant_id, dataset_id, document_id):
+        dataset = self.get_dataset(str(dataset_id), str(tenant_id))
+        document = DocumentService.get_document(dataset.id, str(document_id))
+
+        if not document:
+            raise NotFound("Document not found.")
+
+        if document.tenant_id != str(tenant_id):
+            raise Forbidden("No permission.")
+
+        return {"url": DocumentService.get_document_download_url(document)}
 
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>")

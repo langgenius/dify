@@ -1,7 +1,7 @@
-import type { AfterResponseHook, BeforeErrorHook, BeforeRequestHook, Hooks } from 'ky'
+import type { AfterResponseHook, BeforeRequestHook, Hooks } from 'ky'
 import type { IOtherOptions } from './base'
 import Cookies from 'js-cookie'
-import ky from 'ky'
+import ky, { HTTPError } from 'ky'
 import Toast from '@/app/components/base/toast'
 import { API_PREFIX, APP_VERSION, CSRF_COOKIE_NAME, CSRF_HEADER_NAME, IS_MARKETPLACE, MARKETPLACE_API_PREFIX, PASSPORT_HEADER_NAME, PUBLIC_API_PREFIX, WEB_APP_SHARE_CODE_HEADER_NAME } from '@/config'
 import { getWebAppAccessToken, getWebAppPassport } from './webapp-auth'
@@ -40,37 +40,19 @@ export type ResponseError = {
 
 const afterResponseErrorCode = (otherOptions: IOtherOptions): AfterResponseHook => {
   return async (_request, _options, response) => {
-    const clonedResponse = response.clone()
-    if (!/^([23])\d{2}$/.test(String(clonedResponse.status))) {
-      const bodyJson = clonedResponse.json() as Promise<ResponseError>
-      switch (clonedResponse.status) {
-        case 403:
-          bodyJson.then((data: ResponseError) => {
-            if (!otherOptions.silent)
-              Toast.notify({ type: 'error', message: data.message })
-            if (data.code === 'already_setup')
-              globalThis.location.href = `${globalThis.location.origin}/signin`
-          })
-          break
-        case 401:
-          return Promise.reject(response)
-        // fall through
-        default:
-          bodyJson.then((data: ResponseError) => {
-            if (!otherOptions.silent)
-              Toast.notify({ type: 'error', message: data.message })
-          })
-          return Promise.reject(response)
-      }
-    }
-  }
-}
+    if (!/^([23])\d{2}$/.test(String(response.status))) {
+      const errorData = await response.clone()
+        .json()
+        .then(data => data as ResponseError)
+        .catch(() => null)
+      const shouldNotifyError = response.status !== 401 && errorData && !otherOptions.silent
 
-const beforeErrorToast = (otherOptions: IOtherOptions): BeforeErrorHook => {
-  return (error) => {
-    if (!otherOptions.silent)
-      Toast.notify({ type: 'error', message: error.message })
-    return error
+      if (shouldNotifyError)
+        Toast.notify({ type: 'error', message: errorData.message })
+
+      if (response.status === 403 && errorData?.code === 'already_setup')
+        globalThis.location.href = `${globalThis.location.origin}/signin`
+    }
   }
 }
 
@@ -137,7 +119,7 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
         mode: 'cors',
         credentials: 'include', // always send cookies、HTTP Basic authentication.
         redirect: 'follow',
-      }
+      } as const
     : {
         mode: 'cors',
         credentials: 'include', // always send cookies、HTTP Basic authentication.
@@ -146,8 +128,8 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
         }),
         method: 'GET',
         redirect: 'follow',
-      }
-  const { params, body, headers: headersFromProps, ...init } = Object.assign({}, baseOptions, options)
+      } as const
+  const { params, body, headers: headersFromProps, ...init } = { ...baseOptions, ...options }
   const headers = new Headers(headersFromProps || {})
 
   const {
@@ -189,10 +171,6 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
   const client = baseClient.extend({
     hooks: {
       ...baseHooks,
-      beforeError: [
-        ...baseHooks.beforeError || [],
-        beforeErrorToast(otherOptions),
-      ],
       beforeRequest: [
         ...baseHooks.beforeRequest || [],
         isPublicAPI && beforeRequestPublicWithCode,
@@ -204,28 +182,36 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
     },
   })
 
-  const res = await client(request || fetchPathname, {
-    ...init,
-    headers,
-    credentials: isMarketplaceAPI
-      ? 'omit'
-      : (options.credentials || 'include'),
-    retry: {
-      methods: [],
-    },
-    ...(bodyStringify && !fetchCompat ? { json: body } : { body: body as BodyInit }),
-    searchParams: !fetchCompat ? params : undefined,
-    fetch(resource: RequestInfo | URL, options?: RequestInit) {
-      if (resource instanceof Request && options) {
-        const mergedHeaders = new Headers(options.headers || {})
-        resource.headers.forEach((value, key) => {
-          mergedHeaders.append(key, value)
-        })
-        options.headers = mergedHeaders
-      }
-      return globalThis.fetch(resource, options)
-    },
-  })
+  let res: Response
+  try {
+    res = await client(request || fetchPathname, {
+      ...init,
+      headers,
+      credentials: isMarketplaceAPI
+        ? 'omit'
+        : (options.credentials || 'include'),
+      retry: {
+        methods: [],
+      },
+      ...(bodyStringify && !fetchCompat ? { json: body } : { body: body as BodyInit }),
+      searchParams: !fetchCompat ? params : undefined,
+      fetch(resource: RequestInfo | URL, options?: RequestInit) {
+        if (resource instanceof Request && options) {
+          const mergedHeaders = new Headers(options.headers || {})
+          resource.headers.forEach((value, key) => {
+            mergedHeaders.append(key, value)
+          })
+          options.headers = mergedHeaders
+        }
+        return globalThis.fetch(resource, options)
+      },
+    })
+  }
+  catch (error) {
+    if (error instanceof HTTPError)
+      throw error.response.clone()
+    throw error
+  }
 
   if (needAllResponseContent || fetchCompat)
     return res as T

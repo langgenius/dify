@@ -14,11 +14,16 @@ const _dirname = typeof __dirname !== 'undefined'
   : path.dirname(fileURLToPath(import.meta.url))
 
 const disableSVGOptimize = process.env.TAILWIND_MODE === 'ESLINT'
+const parseColorOptions = {
+  fallback: () => 'currentColor',
+}
 const svgOptimizeConfig = {
   cleanupSVG: !disableSVGOptimize,
   deOptimisePaths: !disableSVGOptimize,
   runSVGO: !disableSVGOptimize,
-  parseColors: !disableSVGOptimize,
+  parseColors: !disableSVGOptimize
+    ? parseColorOptions
+    : false,
 }
 
 const config = {

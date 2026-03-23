@@ -15,6 +15,7 @@ from faker import Faker
 from models.dataset import Dataset, Document, DocumentSegment
 from services.account_service import AccountService, TenantService
 from tasks.deal_dataset_vector_index_task import deal_dataset_vector_index_task
+from tests.test_containers_integration_tests.helpers import generate_valid_password
 
 
 class TestDealDatasetVectorIndexTask:
@@ -61,7 +62,7 @@ class TestDealDatasetVectorIndexTask:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            password=fake.password(length=12),
+            password=generate_valid_password(fake),
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant

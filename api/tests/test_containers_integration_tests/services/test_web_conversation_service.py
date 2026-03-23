@@ -12,6 +12,7 @@ from models.web import PinnedConversation
 from services.account_service import AccountService, TenantService
 from services.app_service import AppService
 from services.web_conversation_service import WebConversationService
+from tests.test_containers_integration_tests.helpers import generate_valid_password
 
 
 class TestWebConversationService:
@@ -69,7 +70,7 @@ class TestWebConversationService:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            password=fake.password(length=12),
+            password=generate_valid_password(fake),
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant

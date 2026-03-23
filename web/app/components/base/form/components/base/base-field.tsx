@@ -1,6 +1,5 @@
 import type { AnyFieldApi } from '@tanstack/react-form'
 import type { FieldState, FormSchema, TypeWithI18N } from '@/app/components/base/form/types'
-import { RiExternalLinkLine } from '@remixicon/react'
 import { useStore } from '@tanstack/react-form'
 import {
   isValidElement,
@@ -198,6 +197,7 @@ const BaseField = ({
           }
           {tooltip && (
             <Tooltip
+              triggerTestId="base-field-tooltip-trigger"
               popupContent={<div className="w-[200px]">{translatedTooltip}</div>}
               triggerClassName="ml-0.5 w-4 h-4"
             />
@@ -270,9 +270,11 @@ const BaseField = ({
           }
           {
             formItemType === FormTypeEnum.radio && (
-              <div className={cn(
-                memorizedOptions.length < 3 ? 'flex items-center space-x-2' : 'space-y-2',
-              )}
+              <div
+                className={cn(
+                  memorizedOptions.length < 3 ? 'flex items-center space-x-2' : 'space-y-2',
+                )}
+                data-testid="radio-group"
               >
                 {
                   memorizedOptions.map(option => (
@@ -339,7 +341,7 @@ const BaseField = ({
             <span className="break-all">
               {translatedHelp}
             </span>
-            <RiExternalLinkLine className="ml-1 h-3 w-3 shrink-0" />
+            <div className="i-ri-external-link-line ml-1 h-3 w-3 shrink-0" />
           </a>
         )
       }

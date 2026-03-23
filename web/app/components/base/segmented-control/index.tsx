@@ -4,7 +4,6 @@ import { cva } from 'class-variance-authority'
 import * as React from 'react'
 import { cn } from '@/utils/classnames'
 import Divider from '../divider'
-import './index.css'
 
 type SegmentedControlOption<T> = {
   value: T

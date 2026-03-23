@@ -65,9 +65,15 @@ class VariablePool(BaseModel):
         # Add environment variables to the variable pool
         for var in self.environment_variables:
             self.add((ENVIRONMENT_VARIABLE_NODE_ID, var.name), var)
-        # Add conversation variables to the variable pool
+        # Add conversation variables to the variable pool. When restoring from a serialized
+        # snapshot, `variable_dictionary` already carries the latest runtime values.
+        # In that case, keep existing entries instead of overwriting them with the
+        # bootstrap list.
         for var in self.conversation_variables:
-            self.add((CONVERSATION_VARIABLE_NODE_ID, var.name), var)
+            selector = (CONVERSATION_VARIABLE_NODE_ID, var.name)
+            if self._has(selector):
+                continue
+            self.add(selector, var)
         # Add rag pipeline variables to the variable pool
         if self.rag_pipeline_variables:
             rag_pipeline_variables_map: defaultdict[Any, dict[Any, Any]] = defaultdict(dict)

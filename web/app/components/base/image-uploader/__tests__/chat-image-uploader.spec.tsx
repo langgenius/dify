@@ -1,6 +1,6 @@
 import type { useLocalFileUploader } from '../hooks'
 import type { ImageFile, VisionSettings } from '@/types/app'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Resolution, TransferMethod } from '@/types/app'
 import ChatImageUploader from '../chat-image-uploader'
@@ -193,6 +193,23 @@ describe('ChatImageUploader', () => {
       expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
     })
 
+    it('should keep popover closed when trigger wrapper is clicked while disabled', async () => {
+      const user = userEvent.setup()
+      const settings = createSettings({
+        transfer_methods: [TransferMethod.remote_url],
+      })
+      render(<ChatImageUploader settings={settings} onUpload={defaultOnUpload} disabled />)
+
+      const button = screen.getByRole('button')
+      const triggerWrapper = button.parentElement
+      if (!triggerWrapper)
+        throw new Error('Expected trigger wrapper to exist')
+
+      await user.click(triggerWrapper)
+
+      expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    })
+
     it('should show OR separator and local uploader when both methods are available', async () => {
       const user = userEvent.setup()
       const settings = createSettings({
@@ -205,6 +222,59 @@ describe('ChatImageUploader', () => {
       expect(screen.getByText(/OR/i)).toBeInTheDocument()
       expect(screen.getByRole('textbox')).toBeInTheDocument()
       expect(queryFileInput()).toBeInTheDocument()
+    })
+
+    it('should close popover when local upload calls closePopover in mixed mode', async () => {
+      const user = userEvent.setup()
+      const settings = createSettings({
+        transfer_methods: [TransferMethod.local_file, TransferMethod.remote_url],
+      })
+
+      mocks.handleLocalFileUpload.mockImplementation((file) => {
+        mocks.hookArgs?.onUpload({
+          type: TransferMethod.local_file,
+          _id: 'mixed-local-upload-id',
+          fileId: '',
+          progress: 0,
+          url: 'data:image/png;base64,mixed',
+          file,
+        } as ImageFile)
+      })
+
+      render(<ChatImageUploader settings={settings} onUpload={defaultOnUpload} />)
+
+      await user.click(screen.getByRole('button'))
+      expect(screen.getByRole('textbox')).toBeInTheDocument()
+
+      const localInput = getFileInput()
+      const file = new File(['hello'], 'mixed.png', { type: 'image/png' })
+      await user.upload(localInput, file)
+
+      expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    })
+
+    it('should toggle local-upload hover style in mixed transfer mode', async () => {
+      const user = userEvent.setup()
+      const settings = createSettings({
+        transfer_methods: [TransferMethod.local_file, TransferMethod.remote_url],
+      })
+      render(<ChatImageUploader settings={settings} onUpload={defaultOnUpload} />)
+
+      await user.click(screen.getByRole('button'))
+
+      const uploadFromComputer = screen.getByText('common.imageUploader.uploadFromComputer')
+      expect(uploadFromComputer).not.toHaveClass('bg-primary-50')
+
+      const localInput = getFileInput()
+      const hoverWrapper = localInput.parentElement
+      if (!hoverWrapper)
+        throw new Error('Expected local uploader wrapper to exist')
+
+      fireEvent.mouseEnter(hoverWrapper)
+      expect(uploadFromComputer).toHaveClass('bg-primary-50')
+
+      fireEvent.mouseLeave(hoverWrapper)
+      expect(uploadFromComputer).not.toHaveClass('bg-primary-50')
     })
 
     it('should not show OR separator or local uploader when only remote_url method', async () => {

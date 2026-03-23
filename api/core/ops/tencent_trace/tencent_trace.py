@@ -27,7 +27,7 @@ from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
 from dify_graph.entities.workflow_node_execution import (
     WorkflowNodeExecution,
 )
-from dify_graph.nodes import NodeType
+from dify_graph.nodes import BuiltinNodeTypes
 from extensions.ext_database import db
 from models import Account, App, TenantAccountJoin, WorkflowNodeExecutionTriggeredFrom
 
@@ -179,7 +179,7 @@ class TencentDataTrace(BaseTraceInstance):
                     if node_span:
                         self.trace_client.add_span(node_span)
 
-                        if node_execution.node_type == NodeType.LLM:
+                        if node_execution.node_type == BuiltinNodeTypes.LLM:
                             self._record_llm_metrics(node_execution)
                 except Exception:
                     logger.exception("[Tencent APM] Failed to process node execution: %s", node_execution.id)
@@ -192,15 +192,15 @@ class TencentDataTrace(BaseTraceInstance):
     ) -> SpanData | None:
         """Build span for different node types"""
         try:
-            if node_execution.node_type == NodeType.LLM:
+            if node_execution.node_type == BuiltinNodeTypes.LLM:
                 return TencentSpanBuilder.build_workflow_llm_span(
                     trace_id, workflow_span_id, trace_info, node_execution
                 )
-            elif node_execution.node_type == NodeType.KNOWLEDGE_RETRIEVAL:
+            elif node_execution.node_type == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
                 return TencentSpanBuilder.build_workflow_retrieval_span(
                     trace_id, workflow_span_id, trace_info, node_execution
                 )
-            elif node_execution.node_type == NodeType.TOOL:
+            elif node_execution.node_type == BuiltinNodeTypes.TOOL:
                 return TencentSpanBuilder.build_workflow_tool_span(
                     trace_id, workflow_span_id, trace_info, node_execution
                 )

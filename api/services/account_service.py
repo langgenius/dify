@@ -1089,9 +1089,9 @@ class TenantService:
 
         ta = db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=account.id).first()
         if ta:
-            ta.role = role
+            ta.role = TenantAccountRole(role)
         else:
-            ta = TenantAccountJoin(tenant_id=tenant.id, account_id=account.id, role=role)
+            ta = TenantAccountJoin(tenant_id=tenant.id, account_id=account.id, role=TenantAccountRole(role))
             db.session.add(ta)
 
         db.session.commit()
@@ -1319,10 +1319,10 @@ class TenantService:
                 db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, role="owner").first()
             )
             if current_owner_join:
-                current_owner_join.role = "admin"
+                current_owner_join.role = TenantAccountRole.ADMIN
 
         # Update the role of the target member
-        target_member_join.role = new_role
+        target_member_join.role = TenantAccountRole(new_role)
         db.session.commit()
 
     @staticmethod

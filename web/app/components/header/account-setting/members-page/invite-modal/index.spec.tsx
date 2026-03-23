@@ -1,5 +1,5 @@
 import type { InvitationResponse } from '@/models/common'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
 import { ToastContext } from '@/app/components/base/toast/context'
@@ -171,6 +171,66 @@ describe('InviteModal', () => {
     expect(screen.queryByText('user@example.com')).not.toBeInTheDocument()
   })
 
+  it('should show unlimited label when workspace member limit is zero', async () => {
+    vi.mocked(useProviderContextSelector).mockImplementation(selector => selector({
+      licenseLimit: { workspace_members: { size: 5, limit: 0 } },
+      refreshLicenseLimit: mockRefreshLicenseLimit,
+    } as unknown as Parameters<typeof selector>[0]))
+
+    renderModal()
+
+    expect(await screen.findByText(/license\.unlimited/i)).toBeInTheDocument()
+  })
+
+  it('should initialize usedSize to zero when workspace_members.size is null', async () => {
+    vi.mocked(useProviderContextSelector).mockImplementation(selector => selector({
+      licenseLimit: { workspace_members: { size: null, limit: 10 } },
+      refreshLicenseLimit: mockRefreshLicenseLimit,
+    } as unknown as Parameters<typeof selector>[0]))
+
+    renderModal()
+
+    // usedSize starts at 0 (via ?? 0 fallback), no emails added → counter shows 0
+    expect(await screen.findByText('0')).toBeInTheDocument()
+  })
+
+  it('should not call onSend when invite result is not success', async () => {
+    const user = userEvent.setup()
+    vi.mocked(inviteMember).mockResolvedValue({
+      result: 'error',
+      invitation_results: [],
+    } as unknown as InvitationResponse)
+
+    renderModal()
+
+    await user.type(screen.getByTestId('mock-email-input'), 'user@example.com')
+    await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
+
+    await waitFor(() => {
+      expect(inviteMember).toHaveBeenCalled()
+      expect(mockOnSend).not.toHaveBeenCalled()
+      expect(mockOnCancel).not.toHaveBeenCalled()
+    })
+  })
+
+  it('should show destructive text color when used size exceeds limit', async () => {
+    const user = userEvent.setup()
+
+    vi.mocked(useProviderContextSelector).mockImplementation(selector => selector({
+      licenseLimit: { workspace_members: { size: 10, limit: 10 } },
+      refreshLicenseLimit: mockRefreshLicenseLimit,
+    } as unknown as Parameters<typeof selector>[0]))
+
+    renderModal()
+
+    const input = screen.getByTestId('mock-email-input')
+    await user.type(input, 'user@example.com')
+
+    // usedSize = 10 + 1 = 11 > limit 10 → destructive color
+    const counter = screen.getByText('11')
+    expect(counter.closest('div')).toHaveClass('text-text-destructive')
+  })
+
   it('should not submit if already submitting', async () => {
     const user = userEvent.setup()
     let resolveInvite: (value: InvitationResponse) => void
@@ -201,5 +261,73 @@ describe('InviteModal', () => {
     await waitFor(() => {
       expect(mockOnCancel).toHaveBeenCalled()
     })
+  })
+
+  it('should show destructive color and disable send button when limit is exactly met with one email', async () => {
+    const user = userEvent.setup()
+
+    // size=10, limit=10 - adding 1 email makes usedSize=11 > limit=10
+    vi.mocked(useProviderContextSelector).mockImplementation(selector => selector({
+      licenseLimit: { workspace_members: { size: 10, limit: 10 } },
+      refreshLicenseLimit: mockRefreshLicenseLimit,
+    } as unknown as Parameters<typeof selector>[0]))
+
+    renderModal()
+
+    const input = screen.getByTestId('mock-email-input')
+    await user.type(input, 'user@example.com')
+
+    // isLimitExceeded=true → button is disabled, cannot submit
+    const sendBtn = screen.getByRole('button', { name: /members\.sendInvite/i })
+    expect(sendBtn).toBeDisabled()
+    expect(inviteMember).not.toHaveBeenCalled()
+  })
+
+  it('should hit isSubmitting guard inside handleSend when button is force-clicked during submission', async () => {
+    const user = userEvent.setup()
+    let resolveInvite: (value: InvitationResponse) => void
+    const invitePromise = new Promise<InvitationResponse>((resolve) => {
+      resolveInvite = resolve
+    })
+    vi.mocked(inviteMember).mockReturnValue(invitePromise)
+
+    renderModal()
+
+    const input = screen.getByTestId('mock-email-input')
+    await user.type(input, 'user@example.com')
+
+    const sendBtn = screen.getByRole('button', { name: /members\.sendInvite/i })
+
+    // First click starts submission
+    await user.click(sendBtn)
+    expect(inviteMember).toHaveBeenCalledTimes(1)
+
+    // Force-click bypasses disabled attribute → hits isSubmitting guard in handleSend
+    fireEvent.click(sendBtn)
+    expect(inviteMember).toHaveBeenCalledTimes(1)
+
+    // Cleanup
+    resolveInvite!({ result: 'success', invitation_results: [] })
+    await waitFor(() => {
+      expect(mockOnCancel).toHaveBeenCalled()
+    })
+  })
+
+  it('should not show error text color when isLimited is false even with many emails', async () => {
+    // size=0, limit=0 → isLimited=false, usedSize=emails.length
+    vi.mocked(useProviderContextSelector).mockImplementation(selector => selector({
+      licenseLimit: { workspace_members: { size: 0, limit: 0 } },
+      refreshLicenseLimit: mockRefreshLicenseLimit,
+    } as unknown as Parameters<typeof selector>[0]))
+
+    const user = userEvent.setup()
+    renderModal()
+
+    const input = screen.getByTestId('mock-email-input')
+    await user.type(input, 'user@example.com')
+
+    // isLimited=false → no destructive color
+    const counter = screen.getByText('1')
+    expect(counter.closest('div')).not.toHaveClass('text-text-destructive')
   })
 })

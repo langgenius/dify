@@ -175,12 +175,11 @@ describe('DocumentList', () => {
         ...defaultProps,
         selectedIds: ['doc-1', 'doc-2', 'doc-3'],
       }
-      const { container } = render(<DocumentList {...props} />, { wrapper: createWrapper() })
+      render(<DocumentList {...props} />, { wrapper: createWrapper() })
 
-      const checkboxes = findCheckboxes(container)
       // When checked, checkbox should have a check icon (svg) inside
-      checkboxes.forEach((checkbox) => {
-        const checkIcon = checkbox.querySelector('svg')
+      props.selectedIds.forEach((id) => {
+        const checkIcon = screen.getByTestId(`check-icon-doc-row-${id}`)
         expect(checkIcon).toBeInTheDocument()
       })
     })

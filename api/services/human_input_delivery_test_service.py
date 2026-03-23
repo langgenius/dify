@@ -245,5 +245,6 @@ class EmailDeliveryTestHandler:
         )
         if token:
             substitutions["form_token"] = token
-            substitutions["form_link"] = _build_form_link(token) or ""
+            link = _build_form_link(token)
+            substitutions["form_link"] = link if link is not None else f"/form/{token}"
         return substitutions

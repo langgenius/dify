@@ -6,7 +6,8 @@ from pydantic import BaseModel, field_validator, model_validator
 from pydantic_core.core_schema import ValidationInfo
 
 from core.tools.entities.tool_entities import ToolProviderType
-from dify_graph.nodes.base.entities import BaseNodeData
+from dify_graph.entities.base_node_data import BaseNodeData
+from dify_graph.enums import BuiltinNodeTypes, NodeType
 
 # Pattern to match mention format: {{@node.context@}}instruction
 MENTION_VALUE_PATTERN = re.compile(r"^\{\{@([a-zA-Z0-9_]+)\.context@\}\}(.*)$", re.DOTALL)
@@ -69,6 +70,8 @@ class ToolEntity(BaseModel):
 
 
 class ToolNodeData(BaseNodeData, ToolEntity):
+    type: NodeType = BuiltinNodeTypes.TOOL
+
     class ToolInput(BaseModel):
         # TODO: check this type
         value: Union[Any, list[str]]

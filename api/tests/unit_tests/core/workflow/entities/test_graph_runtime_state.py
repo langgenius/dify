@@ -4,8 +4,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from dify_graph.constants import CONVERSATION_VARIABLE_NODE_ID
 from dify_graph.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper, VariablePool
+from dify_graph.variables.variables import StringVariable
 
 
 class StubCoordinator:
@@ -278,3 +280,17 @@ class TestGraphRuntimeState:
         assert restored_execution.started is True
 
         assert new_stub.state == "configured"
+
+    def test_snapshot_restore_preserves_updated_conversation_variable(self):
+        variable_pool = VariablePool(
+            conversation_variables=[StringVariable(name="session_name", value="before")],
+        )
+        variable_pool.add((CONVERSATION_VARIABLE_NODE_ID, "session_name"), "after")
+
+        state = GraphRuntimeState(variable_pool=variable_pool, start_at=time())
+        snapshot = state.dumps()
+        restored = GraphRuntimeState.from_snapshot(snapshot)
+
+        restored_value = restored.variable_pool.get((CONVERSATION_VARIABLE_NODE_ID, "session_name"))
+        assert restored_value is not None
+        assert restored_value.value == "after"

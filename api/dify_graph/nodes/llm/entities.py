@@ -8,11 +8,12 @@ from core.agent.entities import AgentLog, AgentResult
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
 from core.tools.entities.tool_entities import ToolProviderType
 from dify_graph.entities import ToolCall, ToolCallResult
+from dify_graph.entities.base_node_data import BaseNodeData
+from dify_graph.enums import BuiltinNodeTypes, NodeType
 from dify_graph.file import File
 from dify_graph.model_runtime.entities import ImagePromptMessageContent, LLMMode
 from dify_graph.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.node_events import AgentLogEvent
-from dify_graph.nodes.base import BaseNodeData
 from dify_graph.nodes.base.entities import VariableSelector
 
 
@@ -367,6 +368,7 @@ class ToolSetting(BaseModel):
 
 
 class LLMNodeData(BaseNodeData):
+    type: NodeType = BuiltinNodeTypes.LLM
     model: ModelConfig
     prompt_template: Sequence[PromptTemplateItem] | LLMNodeCompletionModelPromptTemplate
     prompt_config: PromptConfig = Field(default_factory=PromptConfig)

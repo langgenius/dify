@@ -1,0 +1,19 @@
+name: Anti-Slop PR Check
+
+on:
+  pull_request_target:
+    types: [opened, edited, synchronize]
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  anti-slop:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: peakoss/anti-slop@v0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          close-pr: false
+          failure-add-pr-labels: "needs-revision"

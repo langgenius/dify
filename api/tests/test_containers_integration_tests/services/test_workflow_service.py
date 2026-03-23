@@ -62,7 +62,7 @@ class TestWorkflowService:
         tenant = Tenant(
             name=f"Test Tenant {fake.company()}",
             plan="basic",
-            status="active",
+            status="normal",
         )
         tenant.id = account.current_tenant_id
         tenant.created_at = fake.date_time_this_year()
@@ -860,8 +860,8 @@ class TestWorkflowService:
         # Act
         try:
             result = workflow_service.get_default_block_config(node_type=invalid_node_type)
-            # If we get here, the service should return None for invalid types
-            assert result is None
+            # If we get here, the service should return an empty config for invalid types.
+            assert result == {}
         except ValueError:
             # It's also acceptable for the service to raise a ValueError for invalid types
             pass
@@ -1090,20 +1090,19 @@ class TestWorkflowService:
 
         This test ensures that the service correctly handles feature validation
         for unsupported app modes, preventing invalid operations.
+        With EnumText, invalid values are rejected at the DB level during flush,
+        raising StatementError wrapping ValueError.
         """
         # Arrange
         fake = Faker()
         app = self._create_test_app(db_session_with_containers, fake)
         app.mode = "invalid_mode"  # Invalid mode
 
-        db_session_with_containers.commit()
+        # Act & Assert - EnumText validation rejects invalid values at DB flush
+        import sqlalchemy as sa
 
-        workflow_service = WorkflowService()
-        features = {"test": "value"}
-
-        # Act & Assert
-        with pytest.raises(ValueError, match="Invalid app mode: invalid_mode"):
-            workflow_service.validate_features_structure(app_model=app, features=features)
+        with pytest.raises((ValueError, sa.exc.StatementError)):
+            db_session_with_containers.commit()
 
     def test_update_workflow_success(self, db_session_with_containers: Session):
         """
@@ -1429,14 +1428,14 @@ class TestWorkflowService:
             import uuid
             from datetime import datetime
 
-            from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
+            from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
             from dify_graph.graph_events import NodeRunSucceededEvent
             from dify_graph.node_events import NodeRunResult
             from dify_graph.nodes.base.node import Node
 
             # Create mock node
             mock_node = MagicMock(spec=Node)
-            mock_node.node_type = NodeType.START
+            mock_node.node_type = BuiltinNodeTypes.START
             mock_node.title = "Test Node"
             mock_node.error_strategy = None
 
@@ -1453,7 +1452,7 @@ class TestWorkflowService:
             mock_event = NodeRunSucceededEvent(
                 id=str(uuid.uuid4()),
                 node_id=node_id,
-                node_type=NodeType.START,
+                node_type=BuiltinNodeTypes.START,
                 node_run_result=mock_result,
                 start_at=datetime.now(),
             )
@@ -1474,9 +1473,9 @@ class TestWorkflowService:
         # Assert
         assert result is not None
         assert result.node_id == node_id
-        from dify_graph.enums import NodeType
+        from dify_graph.enums import BuiltinNodeTypes
 
-        assert result.node_type == NodeType.START  # Should match the mock node type
+        assert result.node_type == BuiltinNodeTypes.START  # Should match the mock node type
         assert result.title == "Test Node"
         # Import the enum for comparison
         from dify_graph.enums import WorkflowNodeExecutionStatus
@@ -1504,14 +1503,14 @@ class TestWorkflowService:
             import uuid
             from datetime import datetime
 
-            from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
+            from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
             from dify_graph.graph_events import NodeRunFailedEvent
             from dify_graph.node_events import NodeRunResult
             from dify_graph.nodes.base.node import Node
 
             # Create mock node
             mock_node = MagicMock(spec=Node)
-            mock_node.node_type = NodeType.LLM
+            mock_node.node_type = BuiltinNodeTypes.LLM
             mock_node.title = "Test Node"
             mock_node.error_strategy = None
 
@@ -1526,7 +1525,7 @@ class TestWorkflowService:
             mock_event = NodeRunFailedEvent(
                 id=str(uuid.uuid4()),
                 node_id=node_id,
-                node_type=NodeType.LLM,
+                node_type=BuiltinNodeTypes.LLM,
                 node_run_result=mock_result,
                 error="Test error message",
                 start_at=datetime.now(),
@@ -1573,14 +1572,14 @@ class TestWorkflowService:
             import uuid
             from datetime import datetime
 
-            from dify_graph.enums import ErrorStrategy, NodeType, WorkflowNodeExecutionStatus
+            from dify_graph.enums import BuiltinNodeTypes, ErrorStrategy, WorkflowNodeExecutionStatus
             from dify_graph.graph_events import NodeRunFailedEvent
             from dify_graph.node_events import NodeRunResult
             from dify_graph.nodes.base.node import Node
 
             # Create mock node with continue_on_error
             mock_node = MagicMock(spec=Node)
-            mock_node.node_type = NodeType.TOOL
+            mock_node.node_type = BuiltinNodeTypes.TOOL
             mock_node.title = "Test Node"
             mock_node.error_strategy = ErrorStrategy.DEFAULT_VALUE
             mock_node.default_value_dict = {"default_output": "default_value"}
@@ -1596,7 +1595,7 @@ class TestWorkflowService:
             mock_event = NodeRunFailedEvent(
                 id=str(uuid.uuid4()),
                 node_id=node_id,
-                node_type=NodeType.TOOL,
+                node_type=BuiltinNodeTypes.TOOL,
                 node_run_result=mock_result,
                 error="Test error message",
                 start_at=datetime.now(),

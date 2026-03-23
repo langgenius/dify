@@ -388,37 +388,33 @@ describe('DataSourceNotion Component', () => {
   })
 
   describe('Additional Action Edge Cases', () => {
-    it('should cover all possible falsy/nullish branches for connection data in handleAuthAgain and useEffect', async () => {
+    it.each([
+      undefined,
+      null,
+      {},
+      { data: undefined },
+      { data: null },
+      { data: '' },
+      { data: 0 },
+      { data: false },
+      { data: 'http' },
+      { data: 'internal' },
+      { data: 'unknown' },
+    ])('should cover connection data branch: %s', async (val) => {
       vi.mocked(useDataSourceIntegrates).mockReturnValue(mockQuerySuccess({ data: mockWorkspaces }))
+      /* eslint-disable-next-line ts/no-explicit-any */
+      vi.mocked(useNotionConnection).mockReturnValue({ data: val, isSuccess: true } as any)
+
       render(<DataSourceNotion />)
 
-      const connectionCases = [
-        undefined,
-        null,
-        {},
-        { data: undefined },
-        { data: null },
-        { data: '' },
-        { data: 0 },
-        { data: false },
-        { data: 'http' },
-        { data: 'internal' },
-        { data: 'unknown' },
-      ]
+      // Trigger handleAuthAgain with these values
+      const workspaceItem = getWorkspaceItem('Workspace 1')
+      const actionBtn = within(workspaceItem).getByRole('button')
+      fireEvent.click(actionBtn)
+      const authAgainBtn = await screen.findByText('common.dataSource.notion.changeAuthorizedPages')
+      fireEvent.click(authAgainBtn)
 
-      for (const val of connectionCases) {
-        /* eslint-disable-next-line ts/no-explicit-any */
-        vi.mocked(useNotionConnection).mockReturnValue({ data: val, isSuccess: true } as any)
-
-        // Trigger handleAuthAgain with these values
-        const workspaceItem = getWorkspaceItem('Workspace 1')
-        const actionBtn = within(workspaceItem).getByRole('button')
-        fireEvent.click(actionBtn)
-        const authAgainBtn = await screen.findByText('common.dataSource.notion.changeAuthorizedPages')
-        fireEvent.click(authAgainBtn)
-      }
-
-      await waitFor(() => expect(useNotionConnection).toHaveBeenCalled())
+      expect(useNotionConnection).toHaveBeenCalled()
     })
   })
 

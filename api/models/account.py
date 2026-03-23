@@ -8,12 +8,12 @@ from uuid import uuid4
 import sqlalchemy as sa
 from flask_login import UserMixin
 from sqlalchemy import DateTime, String, func, select
-from sqlalchemy.orm import Mapped, Session, mapped_column, validates
+from sqlalchemy.orm import Mapped, Session, mapped_column
 from typing_extensions import deprecated
 
 from .base import TypeBase
 from .engine import db
-from .types import LongText, StringUUID
+from .types import EnumText, LongText, StringUUID
 
 
 class TenantAccountRole(enum.StrEnum):
@@ -104,7 +104,9 @@ class Account(UserMixin, TypeBase):
     last_active_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.current_timestamp(), nullable=False, init=False
     )
-    status: Mapped[str] = mapped_column(String(16), server_default=sa.text("'active'"), default="active")
+    status: Mapped[AccountStatus] = mapped_column(
+        EnumText(AccountStatus, length=16), server_default=sa.text("'active'"), default=AccountStatus.ACTIVE
+    )
     initialized_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.current_timestamp(), nullable=False, init=False
@@ -115,12 +117,6 @@ class Account(UserMixin, TypeBase):
 
     role: TenantAccountRole | None = field(default=None, init=False)
     _current_tenant: "Tenant | None" = field(default=None, init=False)
-
-    @validates("status")
-    def _normalize_status(self, _key: str, value: str | AccountStatus) -> str:
-        if isinstance(value, AccountStatus):
-            return value.value
-        return value
 
     @property
     def is_password_set(self):
@@ -177,8 +173,7 @@ class Account(UserMixin, TypeBase):
         return self.role
 
     def get_status(self) -> AccountStatus:
-        status_str = self.status
-        return AccountStatus(status_str)
+        return self.status
 
     @classmethod
     def get_by_openid(cls, provider: str, open_id: str):
@@ -249,7 +244,9 @@ class Tenant(TypeBase):
     name: Mapped[str] = mapped_column(String(255))
     encrypt_public_key: Mapped[str | None] = mapped_column(LongText, default=None)
     plan: Mapped[str] = mapped_column(String(255), server_default=sa.text("'basic'"), default="basic")
-    status: Mapped[str] = mapped_column(String(255), server_default=sa.text("'normal'"), default="normal")
+    status: Mapped[TenantStatus] = mapped_column(
+        EnumText(TenantStatus, length=255), server_default=sa.text("'normal'"), default=TenantStatus.NORMAL
+    )
     custom_config: Mapped[str | None] = mapped_column(LongText, default=None)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.current_timestamp(), nullable=False, init=False
@@ -291,7 +288,9 @@ class TenantAccountJoin(TypeBase):
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     account_id: Mapped[str] = mapped_column(StringUUID)
     current: Mapped[bool] = mapped_column(sa.Boolean, server_default=sa.text("false"), default=False)
-    role: Mapped[str] = mapped_column(String(16), server_default="normal", default="normal")
+    role: Mapped[TenantAccountRole] = mapped_column(
+        EnumText(TenantAccountRole, length=16), server_default="normal", default=TenantAccountRole.NORMAL
+    )
     invited_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.current_timestamp(), nullable=False, init=False
@@ -324,6 +323,11 @@ class AccountIntegrate(TypeBase):
     )
 
 
+class InvitationCodeStatus(enum.StrEnum):
+    UNUSED = "unused"
+    USED = "used"
+
+
 class InvitationCode(TypeBase):
     __tablename__ = "invitation_codes"
     __table_args__ = (
@@ -335,7 +339,11 @@ class InvitationCode(TypeBase):
     id: Mapped[int] = mapped_column(sa.Integer, init=False)
     batch: Mapped[str] = mapped_column(String(255))
     code: Mapped[str] = mapped_column(String(32))
-    status: Mapped[str] = mapped_column(String(16), server_default=sa.text("'unused'"), default="unused")
+    status: Mapped[InvitationCodeStatus] = mapped_column(
+        EnumText(InvitationCodeStatus, length=16),
+        server_default=sa.text("'unused'"),
+        default=InvitationCodeStatus.UNUSED,
+    )
     used_at: Mapped[datetime | None] = mapped_column(DateTime, default=None)
     used_by_tenant_id: Mapped[str | None] = mapped_column(StringUUID, default=None)
     used_by_account_id: Mapped[str | None] = mapped_column(StringUUID, default=None)
@@ -367,10 +375,13 @@ class TenantPluginPermission(TypeBase):
     )
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     install_permission: Mapped[InstallPermission] = mapped_column(
-        String(16), nullable=False, server_default="everyone", default=InstallPermission.EVERYONE
+        EnumText(InstallPermission, length=16),
+        nullable=False,
+        server_default="everyone",
+        default=InstallPermission.EVERYONE,
     )
     debug_permission: Mapped[DebugPermission] = mapped_column(
-        String(16), nullable=False, server_default="noone", default=DebugPermission.NOBODY
+        EnumText(DebugPermission, length=16), nullable=False, server_default="noone", default=DebugPermission.NOBODY
     )
 
 
@@ -396,10 +407,13 @@ class TenantPluginAutoUpgradeStrategy(TypeBase):
     )
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     strategy_setting: Mapped[StrategySetting] = mapped_column(
-        String(16), nullable=False, server_default="fix_only", default=StrategySetting.FIX_ONLY
+        EnumText(StrategySetting, length=16),
+        nullable=False,
+        server_default="fix_only",
+        default=StrategySetting.FIX_ONLY,
     )
     upgrade_mode: Mapped[UpgradeMode] = mapped_column(
-        String(16), nullable=False, server_default="exclude", default=UpgradeMode.EXCLUDE
+        EnumText(UpgradeMode, length=16), nullable=False, server_default="exclude", default=UpgradeMode.EXCLUDE
     )
     exclude_plugins: Mapped[list[str]] = mapped_column(sa.JSON, nullable=False, default_factory=list)
     include_plugins: Mapped[list[str]] = mapped_column(sa.JSON, nullable=False, default_factory=list)

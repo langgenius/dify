@@ -146,14 +146,15 @@ export const removeCredentials = async (predefined: boolean, provider: string, v
     }
   }
   else {
-    if (v) {
-      const { __model_name, __model_type } = v
-      body = {
-        model: __model_name,
-        model_type: __model_type,
-      }
-      url = `/workspaces/current/model-providers/${provider}/models`
+    if (!v)
+      return
+
+    const { __model_name, __model_type } = v
+    body = {
+      model: __model_name,
+      model_type: __model_type,
     }
+    url = `/workspaces/current/model-providers/${provider}/models`
   }
 
   return deleteModelProvider({ url, body })

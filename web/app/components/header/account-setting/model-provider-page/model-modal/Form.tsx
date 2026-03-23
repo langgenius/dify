@@ -211,6 +211,7 @@ function Form<
             )}
             {tooltipContent}
           </div>
+          {/* eslint-disable-next-line tailwindcss/no-unknown-classes */}
           <div className={cn('grid gap-3', `grid-cols-${options?.length}`)}>
             {options.filter((option) => {
               if (option.show_on.length)

@@ -36,6 +36,7 @@ const VariableLabel = ({
       )}
       onClick={onClick}
       ref={ref}
+      {...(isExceptionVariable ? { 'data-testid': 'exception-variable' } : {})}
     >
       {isShowNodeLabel && (
         <VariableNodeLabel

@@ -46,8 +46,10 @@ from core.tools.tool_file_manager import ToolFileManager
 from core.tools.tool_manager import ToolManager
 from dify_graph.constants import SYSTEM_VARIABLE_NODE_ID
 from dify_graph.entities import GraphInitParams, ToolCall, ToolResult, ToolResultStatus
+from dify_graph.entities.graph_config import NodeConfigDict
 from dify_graph.entities.tool_entities import ToolCallResult
 from dify_graph.enums import (
+    BuiltinNodeTypes,
     NodeType,
     SystemVariableKey,
     WorkflowNodeExecutionMetadataKey,
@@ -95,6 +97,7 @@ from dify_graph.nodes.base.entities import VariableSelector
 from dify_graph.nodes.base.node import Node
 from dify_graph.nodes.base.variable_template_parser import VariableTemplateParser
 from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory
+from dify_graph.nodes.protocols import HttpClientProtocol
 from dify_graph.runtime import VariablePool
 from dify_graph.variables import (
     ArrayFileSegment,
@@ -146,7 +149,7 @@ logger = logging.getLogger(__name__)
 
 
 class LLMNode(Node[LLMNodeData]):
-    node_type = NodeType.LLM
+    node_type = BuiltinNodeTypes.LLM
 
     # Compiled regex for extracting <think> blocks (with compatibility for attributes)
     _THINK_PATTERN = re.compile(r"<think[^>]*>(.*?)</think>", re.IGNORECASE | re.DOTALL)
@@ -164,13 +167,14 @@ class LLMNode(Node[LLMNodeData]):
     def __init__(
         self,
         id: str,
-        config: Mapping[str, Any],
+        config: NodeConfigDict,
         graph_init_params: GraphInitParams,
         graph_runtime_state: GraphRuntimeState,
         *,
         credentials_provider: CredentialsProvider,
         model_factory: ModelFactory,
         model_instance: ModelInstance,
+        http_client: HttpClientProtocol,
         memory: PromptMessageMemory | None = None,
         llm_file_saver: LLMFileSaver | None = None,
     ):
@@ -193,6 +197,7 @@ class LLMNode(Node[LLMNodeData]):
             llm_file_saver = FileSaverImpl(
                 user_id=dify_ctx.user_id,
                 tenant_id=dify_ctx.tenant_id,
+                http_client=http_client,
             )
         self._llm_file_saver = llm_file_saver
 
@@ -1220,7 +1225,7 @@ class LLMNode(Node[LLMNodeData]):
                 )
             elif isinstance(context_value_variable, ArraySegment):
                 context_str = ""
-                original_retriever_resource: list[RetrievalSourceMetadata] = []
+                original_retriever_resource: list[dict[str, Any]] = []
                 context_files: list[File] = []
                 for item in context_value_variable.value:
                     if isinstance(item, str):
@@ -1236,11 +1241,14 @@ class LLMNode(Node[LLMNodeData]):
                         retriever_resource = self._convert_to_original_retriever_resource(item)
                         if retriever_resource:
                             original_retriever_resource.append(retriever_resource)
+                            segment_id = retriever_resource.get("segment_id")
+                            if not segment_id:
+                                continue
                             attachments_with_bindings = db.session.execute(
                                 select(SegmentAttachmentBinding, UploadFile)
                                 .join(UploadFile, UploadFile.id == SegmentAttachmentBinding.attachment_id)
                                 .where(
-                                    SegmentAttachmentBinding.segment_id == retriever_resource.segment_id,
+                                    SegmentAttachmentBinding.segment_id == segment_id,
                                 )
                             ).all()
                             if attachments_with_bindings:
@@ -1266,7 +1274,7 @@ class LLMNode(Node[LLMNodeData]):
                     context_files=context_files,
                 )
 
-    def _convert_to_original_retriever_resource(self, context_dict: dict) -> RetrievalSourceMetadata | None:
+    def _convert_to_original_retriever_resource(self, context_dict: dict) -> dict[str, Any] | None:
         if (
             "metadata" in context_dict
             and "_source" in context_dict["metadata"]
@@ -1274,28 +1282,26 @@ class LLMNode(Node[LLMNodeData]):
         ):
             metadata = context_dict.get("metadata", {})
 
-            source = RetrievalSourceMetadata(
-                position=metadata.get("position"),
-                dataset_id=metadata.get("dataset_id"),
-                dataset_name=metadata.get("dataset_name"),
-                document_id=metadata.get("document_id"),
-                document_name=metadata.get("document_name"),
-                data_source_type=metadata.get("data_source_type"),
-                segment_id=metadata.get("segment_id"),
-                retriever_from=metadata.get("retriever_from"),
-                score=metadata.get("score"),
-                hit_count=metadata.get("segment_hit_count"),
-                word_count=metadata.get("segment_word_count"),
-                segment_position=metadata.get("segment_position"),
-                index_node_hash=metadata.get("segment_index_node_hash"),
-                content=context_dict.get("content"),
-                page=metadata.get("page"),
-                doc_metadata=metadata.get("doc_metadata"),
-                files=context_dict.get("files"),
-                summary=context_dict.get("summary"),
-            )
-
-            return source
+            return {
+                "position": metadata.get("position"),
+                "dataset_id": metadata.get("dataset_id"),
+                "dataset_name": metadata.get("dataset_name"),
+                "document_id": metadata.get("document_id"),
+                "document_name": metadata.get("document_name"),
+                "data_source_type": metadata.get("data_source_type"),
+                "segment_id": metadata.get("segment_id"),
+                "retriever_from": metadata.get("retriever_from"),
+                "score": metadata.get("score"),
+                "hit_count": metadata.get("segment_hit_count"),
+                "word_count": metadata.get("segment_word_count"),
+                "segment_position": metadata.get("segment_position"),
+                "index_node_hash": metadata.get("segment_index_node_hash"),
+                "content": context_dict.get("content"),
+                "page": metadata.get("page"),
+                "doc_metadata": metadata.get("doc_metadata"),
+                "files": context_dict.get("files"),
+                "summary": context_dict.get("summary"),
+            }
 
         return None
 
@@ -1503,14 +1509,11 @@ class LLMNode(Node[LLMNodeData]):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: Mapping[str, Any],
+        node_data: LLMNodeData,
     ) -> Mapping[str, Sequence[str]]:
         # graph_config is not used in this node type
         _ = graph_config  # Explicitly mark as unused
-        # Create typed NodeData from dict
-        typed_node_data = LLMNodeData.model_validate(node_data)
-
-        prompt_template = typed_node_data.prompt_template
+        prompt_template = node_data.prompt_template
         variable_selectors = []
         prompt_context_selectors: list[Sequence[str]] = []
         if isinstance(prompt_template, list):
@@ -1538,7 +1541,7 @@ class LLMNode(Node[LLMNodeData]):
             variable_key = f"#{'.'.join(context_selector)}#"
             variable_mapping[variable_key] = list(context_selector)
 
-        memory = typed_node_data.memory
+        memory = node_data.memory
         if memory and memory.query_prompt_template:
             query_variable_selectors = VariableTemplateParser(
                 template=memory.query_prompt_template
@@ -1546,16 +1549,16 @@ class LLMNode(Node[LLMNodeData]):
             for variable_selector in query_variable_selectors:
                 variable_mapping[variable_selector.variable] = variable_selector.value_selector
 
-        if typed_node_data.context.enabled:
-            variable_mapping["#context#"] = typed_node_data.context.variable_selector
+        if node_data.context.enabled:
+            variable_mapping["#context#"] = node_data.context.variable_selector
 
-        if typed_node_data.vision.enabled:
-            variable_mapping["#files#"] = typed_node_data.vision.configs.variable_selector
+        if node_data.vision.enabled:
+            variable_mapping["#files#"] = node_data.vision.configs.variable_selector
 
-        if typed_node_data.memory:
+        if node_data.memory:
             variable_mapping["#sys.query#"] = ["sys", SystemVariableKey.QUERY]
 
-        if typed_node_data.prompt_config:
+        if node_data.prompt_config:
             enable_jinja = False
 
             if isinstance(prompt_template, list):
@@ -1567,7 +1570,7 @@ class LLMNode(Node[LLMNodeData]):
                 enable_jinja = True
 
             if enable_jinja:
-                for variable_selector in typed_node_data.prompt_config.jinja2_variables or []:
+                for variable_selector in node_data.prompt_config.jinja2_variables or []:
                     variable_mapping[variable_selector.variable] = variable_selector.value_selector
 
         variable_mapping = {node_id + "." + key: value for key, value in variable_mapping.items()}

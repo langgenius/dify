@@ -1,5 +1,6 @@
 import type { ModelItem, ModelProvider } from '../declarations'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { ConfigurationMethodEnum } from '../declarations'
 import ModelList from './model-list'
 
 const mockSetShowModelLoadBalancingModal = vi.fn()
@@ -102,6 +103,122 @@ describe('ModelList', () => {
       />,
     )
 
+    expect(screen.queryByTestId('manage-credentials')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('add-custom-model')).not.toBeInTheDocument()
+  })
+
+  // isConfigurable=false: predefinedModel only provider hides custom model actions
+  it('should hide custom model actions when provider uses predefinedModel only', () => {
+    // Arrange
+    const predefinedProvider = {
+      provider: 'test-provider',
+      configurate_methods: ['predefinedModel'],
+    } as unknown as ModelProvider
+
+    // Act
+    render(
+      <ModelList
+        provider={predefinedProvider}
+        models={mockModels}
+        onCollapse={mockOnCollapse}
+        onChange={mockOnChange}
+      />,
+    )
+
+    // Assert
+    expect(screen.queryByTestId('manage-credentials')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('add-custom-model')).not.toBeInTheDocument()
+  })
+
+  it('should call onSave (onChange) and onClose from the load balancing modal callbacks', () => {
+    render(
+      <ModelList
+        provider={mockProvider}
+        models={mockModels}
+        onCollapse={mockOnCollapse}
+        onChange={mockOnChange}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'gpt-4' }))
+    expect(mockSetShowModelLoadBalancingModal).toHaveBeenCalled()
+
+    const callArg = mockSetShowModelLoadBalancingModal.mock.calls[0][0]
+
+    callArg.onSave('test-provider')
+    expect(mockOnChange).toHaveBeenCalledWith('test-provider')
+
+    callArg.onClose()
+    expect(mockSetShowModelLoadBalancingModal).toHaveBeenCalledWith(null)
+  })
+
+  // fetchFromRemote filtered out: provider with only fetchFromRemote
+  it('should hide custom model actions when provider uses fetchFromRemote only', () => {
+    // Arrange
+    const fetchOnlyProvider = {
+      provider: 'test-provider',
+      configurate_methods: ['fetchFromRemote'],
+    } as unknown as ModelProvider
+
+    // Act
+    render(
+      <ModelList
+        provider={fetchOnlyProvider}
+        models={mockModels}
+        onCollapse={mockOnCollapse}
+        onChange={mockOnChange}
+      />,
+    )
+
+    // Assert
+    expect(screen.queryByTestId('manage-credentials')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('add-custom-model')).not.toBeInTheDocument()
+  })
+
+  it('should show custom model actions when provider is configurable and user is workspace manager', () => {
+    // Arrange: use ConfigurationMethodEnum.customizableModel ('customizable-model') so isConfigurable=true
+    const configurableProvider = {
+      provider: 'test-provider',
+      configurate_methods: [ConfigurationMethodEnum.customizableModel],
+    } as unknown as ModelProvider
+
+    mockIsCurrentWorkspaceManager = true
+
+    // Act
+    render(
+      <ModelList
+        provider={configurableProvider}
+        models={mockModels}
+        onCollapse={mockOnCollapse}
+        onChange={mockOnChange}
+      />,
+    )
+
+    // Assert: custom model actions are shown (isConfigurable=true && isCurrentWorkspaceManager=true)
+    expect(screen.getByTestId('manage-credentials')).toBeInTheDocument()
+    expect(screen.getByTestId('add-custom-model')).toBeInTheDocument()
+  })
+
+  it('should hide custom model actions when provider is configurable but user is not workspace manager', () => {
+    // Arrange: use ConfigurationMethodEnum.customizableModel ('customizable-model') so isConfigurable=true, but manager=false
+    const configurableProvider = {
+      provider: 'test-provider',
+      configurate_methods: [ConfigurationMethodEnum.customizableModel],
+    } as unknown as ModelProvider
+
+    mockIsCurrentWorkspaceManager = false
+
+    // Act
+    render(
+      <ModelList
+        provider={configurableProvider}
+        models={mockModels}
+        onCollapse={mockOnCollapse}
+        onChange={mockOnChange}
+      />,
+    )
+
+    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
     expect(screen.queryByTestId('manage-credentials')).not.toBeInTheDocument()
     expect(screen.queryByTestId('add-custom-model')).not.toBeInTheDocument()
   })

@@ -14,10 +14,11 @@ from sqlalchemy.sql.expression import and_, or_
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.trigger.constants import is_trigger_node_type
 from dify_graph.constants import CONVERSATION_VARIABLE_NODE_ID, ENVIRONMENT_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
-from dify_graph.enums import SystemVariableKey
+from dify_graph.enums import NodeType, SystemVariableKey
 from dify_graph.file.models import File
-from dify_graph.nodes import NodeType
+from dify_graph.nodes import BuiltinNodeTypes
 from dify_graph.nodes.variable_assigner.common.helpers import get_updated_variables
 from dify_graph.variable_loader import VariableLoader
 from dify_graph.variables import Segment, StringSegment, VariableBase
@@ -386,7 +387,7 @@ class WorkflowDraftVariableService:
             #
             # This implementation must remain synchronized with the `_build_from_variable_assigner_mapping`
             # and `save` methods.
-            if node_type == NodeType.VARIABLE_ASSIGNER:
+            if node_type == BuiltinNodeTypes.VARIABLE_ASSIGNER:
                 return variable
             output_value = outputs_dict.get(variable.name, absent)
         else:
@@ -753,8 +754,8 @@ class DraftVariableSaver:
     # technical variables from being exposed in the draft environment, particularly those
     # that aren't meant to be directly edited or viewed by users.
     _EXCLUDE_VARIABLE_NAMES_MAPPING: dict[NodeType, frozenset[str]] = {
-        NodeType.LLM: frozenset(["finish_reason"]),
-        NodeType.LOOP: frozenset(["loop_round"]),
+        BuiltinNodeTypes.LLM: frozenset(["finish_reason"]),
+        BuiltinNodeTypes.LOOP: frozenset(["loop_round"]),
     }
 
     # Database session used for persisting draft variables.
@@ -815,7 +816,7 @@ class DraftVariableSaver:
         )
 
     def _should_save_output_variables_for_draft(self) -> bool:
-        if self._enclosing_node_id is not None and self._node_type != NodeType.VARIABLE_ASSIGNER:
+        if self._enclosing_node_id is not None and self._node_type != BuiltinNodeTypes.VARIABLE_ASSIGNER:
             # Currently we do not save output variables for nodes inside loop or iteration.
             return False
         return True
@@ -1053,9 +1054,9 @@ class DraftVariableSaver:
             process_data = {}
         if not self._should_save_output_variables_for_draft():
             return
-        if self._node_type == NodeType.VARIABLE_ASSIGNER:
+        if self._node_type == BuiltinNodeTypes.VARIABLE_ASSIGNER:
             draft_vars = self._build_from_variable_assigner_mapping(process_data=process_data)
-        elif self._node_type == NodeType.START or self._node_type.is_trigger_node:
+        elif self._node_type == BuiltinNodeTypes.START or is_trigger_node_type(self._node_type):
             draft_vars = self._build_variables_from_start_mapping(outputs)
         else:
             draft_vars = self._build_variables_from_mapping(outputs)
@@ -1071,7 +1072,7 @@ class DraftVariableSaver:
 
     @staticmethod
     def _should_variable_be_visible(node_id: str, node_type: NodeType, name: str) -> bool:
-        if node_type in NodeType.IF_ELSE:
+        if node_type == BuiltinNodeTypes.IF_ELSE:
             return False
         if node_id == SYSTEM_VARIABLE_NODE_ID and not is_system_variable_editable(name):
             return False

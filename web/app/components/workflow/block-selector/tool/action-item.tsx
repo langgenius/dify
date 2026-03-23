@@ -112,7 +112,7 @@ const ToolItem: FC<Props> = ({
           })
         }}
       >
-        <div className={cn('flex h-8 items-center truncate border-l-2 border-divider-subtle pl-4 text-text-secondary system-sm-medium')}>
+        <div className={cn('truncate border-l-2 border-divider-subtle py-2 pl-4 text-text-secondary system-sm-medium')}>
           <span className={cn(disabled && 'opacity-30')}>{payload.label[language]}</span>
         </div>
         {isAdded && (

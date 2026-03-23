@@ -13,6 +13,7 @@ def init_app(app: DifyApp):
         convert_to_agent_apps,
         create_tenant,
         delete_archived_workflow_runs,
+        export_app_messages,
         extract_plugins,
         extract_unique_plugins,
         file_usage,
@@ -68,6 +69,7 @@ def init_app(app: DifyApp):
         restore_workflow_runs,
         clean_workflow_runs,
         clean_expired_messages,
+        export_app_messages,
     ]
     for cmd in cmds_to_register:
         app.cli.add_command(cmd)

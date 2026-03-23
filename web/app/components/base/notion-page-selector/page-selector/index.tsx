@@ -133,6 +133,7 @@ const ItemComponent = ({ index, style, data }: ListChildComponentProps<{
     <div
       className={cn('group flex cursor-pointer items-center rounded-md pl-2 pr-[2px] hover:bg-state-base-hover', previewPageId === current.page_id && 'bg-state-base-hover')}
       style={{ ...style, top: style.top as number + 8, left: 8, right: 8, width: 'calc(100% - 16px)' }}
+      data-testid={`notion-page-row-${current.page_id}`}
     >
       <Checkbox
         className="mr-2 shrink-0"

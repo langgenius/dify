@@ -3,7 +3,7 @@ from typing import Any
 
 from core.tools.entities.tool_entities import WorkflowToolParameterConfiguration
 from core.tools.errors import WorkflowToolHumanInputNotSupportedError
-from dify_graph.enums import NodeType
+from dify_graph.enums import BuiltinNodeTypes
 from dify_graph.nodes.base.entities import OutputVariableEntity
 from dify_graph.variables.input_entities import VariableEntity
 
@@ -51,7 +51,7 @@ class WorkflowToolConfigurationUtils:
     def ensure_no_human_input_nodes(cls, graph: Mapping[str, Any]) -> None:
         nodes = graph.get("nodes", [])
         for node in nodes:
-            if node.get("data", {}).get("type") == NodeType.HUMAN_INPUT:
+            if node.get("data", {}).get("type") == BuiltinNodeTypes.HUMAN_INPUT:
                 raise WorkflowToolHumanInputNotSupportedError()
 
     @classmethod

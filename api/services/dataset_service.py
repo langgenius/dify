@@ -254,7 +254,7 @@ class DatasetService:
         dataset.embedding_model_provider = embedding_model.provider if embedding_model else None
         dataset.embedding_model = embedding_model.model_name if embedding_model else None
         dataset.retrieval_model = retrieval_model.model_dump() if retrieval_model else None
-        dataset.permission = permission or DatasetPermissionEnum.ONLY_ME
+        dataset.permission = DatasetPermissionEnum(permission) if permission else DatasetPermissionEnum.ONLY_ME
         dataset.provider = provider
         if summary_index_setting is not None:
             dataset.summary_index_setting = summary_index_setting

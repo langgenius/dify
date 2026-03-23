@@ -12,7 +12,7 @@ from core.app.entities.app_invoke_entities import (
     build_dify_run_context,
 )
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
-from core.workflow.node_factory import DifyNodeFactory
+from core.workflow.node_factory import DifyNodeFactory, get_default_root_node_id
 from core.workflow.workflow_entry import WorkflowEntry
 from dify_graph.entities.graph_init_params import GraphInitParams
 from dify_graph.enums import WorkflowType
@@ -274,6 +274,8 @@ class PipelineRunner(WorkflowBasedAppRunner):
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
         )
+        if start_node_id is None:
+            start_node_id = get_default_root_node_id(graph_config)
         graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id=start_node_id)
 
         if not graph:

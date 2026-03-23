@@ -75,6 +75,7 @@ import {
   CustomGroupNode,
 } from './custom-group-node'
 import DatasetsDetailProvider from './datasets-detail-store/provider'
+import EdgeContextmenu from './edge-contextmenu'
 import HelpLine from './help-line'
 import {
   useEdgesInteractions,
@@ -358,6 +359,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
       setNodes(v.payload.nodes)
       store.getState().setNodes(v.payload.nodes)
       setEdges(v.payload.edges)
+      workflowStore.setState({ edgeMenu: undefined })
 
       if (v.payload.viewport)
         reactflow.setViewport(v.payload.viewport)
@@ -532,6 +534,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
     handleEdgeEnter,
     handleEdgeLeave,
     handleEdgesChange,
+    handleEdgeContextMenu,
   } = useEdgesInteractions()
   const {
     handleSelectionStart,
@@ -647,6 +650,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
       <Operator handleRedo={handleHistoryForward} handleUndo={handleHistoryBack} />
       {!isSubGraph && <PanelContextmenu />}
       {!isSubGraph && <NodeContextmenu />}
+      {!isSubGraph && <EdgeContextmenu />}
       {!isSubGraph && <SelectionContextmenu />}
       {!isSubGraph && <HelpLine />}
       {!!showConfirm && (
@@ -744,6 +748,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
         onEdgeMouseEnter={handleEdgeEnter}
         onEdgeMouseLeave={handleEdgeLeave}
         onEdgesChange={handleEdgesChange}
+        onEdgeContextMenu={isSubGraph ? undefined : handleEdgeContextMenu}
         onSelectionStart={isSubGraph ? undefined : handleSelectionStart}
         onSelectionChange={isSubGraph ? undefined : handleSelectionChange}
         onSelectionDrag={isSubGraph ? undefined : handleSelectionDrag}

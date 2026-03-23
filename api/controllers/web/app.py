@@ -1,4 +1,5 @@
 import logging
+from typing import Any, cast
 
 from flask import request
 from flask_restx import Resource
@@ -57,14 +58,14 @@ class AppParameterApi(WebApiResource):
             if workflow is None:
                 raise AppUnavailableError()
 
-            features_dict = workflow.features_dict
+            features_dict: dict[str, Any] = workflow.features_dict
             user_input_form = workflow.user_input_form(to_old_structure=True)
         else:
             app_model_config = app_model.app_model_config
             if app_model_config is None:
                 raise AppUnavailableError()
 
-            features_dict = app_model_config.to_dict()
+            features_dict = cast(dict[str, Any], app_model_config.to_dict())
 
             user_input_form = features_dict.get("user_input_form", [])
 

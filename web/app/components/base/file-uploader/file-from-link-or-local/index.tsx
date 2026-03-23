@@ -36,8 +36,12 @@ const FileFromLinkOrLocal = ({
   const [showError, setShowError] = useState(false)
   const { handleLoadFileFromLink } = useFile(fileConfig)
   const disabled = !!fileConfig.number_limits && files.length >= fileConfig.number_limits
+  const fileLinkPlaceholder = t('fileUploader.pasteFileLinkInputPlaceholder', { ns: 'common' })
+  /* v8 ignore next -- fallback for missing i18n key is not reliably testable under current global translation mocks in jsdom @preserve */
+  const fileLinkPlaceholderText = fileLinkPlaceholder || ''
 
   const handleSaveUrl = () => {
+    /* v8 ignore next -- guarded by UI-level disabled state (`disabled={!url || disabled}`), not reachable in jsdom click flow  @preserve */
     if (!url)
       return
 
@@ -71,7 +75,7 @@ const FileFromLinkOrLocal = ({
                 >
                   <input
                     className="mr-0.5 block grow appearance-none bg-transparent px-1 outline-none system-sm-regular"
-                    placeholder={t('fileUploader.pasteFileLinkInputPlaceholder', { ns: 'common' }) || ''}
+                    placeholder={fileLinkPlaceholderText}
                     value={url}
                     onChange={(e) => {
                       setShowError(false)

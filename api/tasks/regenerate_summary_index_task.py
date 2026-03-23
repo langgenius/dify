@@ -16,7 +16,7 @@ from services.summary_index_service import SummaryIndexService
 logger = logging.getLogger(__name__)
 
 
-@shared_task(queue="dataset")
+@shared_task(queue="dataset_summary")
 def regenerate_summary_index_task(
     dataset_id: str,
     regenerate_reason: str = "summary_model_changed",

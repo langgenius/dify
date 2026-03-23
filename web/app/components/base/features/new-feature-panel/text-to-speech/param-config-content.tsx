@@ -164,7 +164,7 @@ const VoiceParamConfig = ({
         </div>
         <div className="flex items-center gap-1">
           <Listbox
-            value={voiceItem ?? {}}
+            value={voiceItem}
             disabled={!languageItem}
             onChange={(value: Item) => {
               handleChange({

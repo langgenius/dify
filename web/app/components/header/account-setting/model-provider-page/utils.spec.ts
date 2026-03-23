@@ -33,7 +33,7 @@ vi.mock('@/service/common', () => ({
 }))
 
 describe('utils', () => {
-  afterEach(() => {
+  beforeEach(() => {
     vi.clearAllMocks()
   })
 
@@ -97,6 +97,18 @@ describe('utils', () => {
       const result = await validateCredentials(true, 'provider', {})
       expect(result).toEqual({ status: ValidatedStatus.Error, message: 'network error' })
     })
+
+    it('should return Unknown error when non-Error is thrown', async () => {
+      (validateModelProvider as unknown as Mock).mockRejectedValue('string error')
+      const result = await validateCredentials(true, 'provider', {})
+      expect(result).toEqual({ status: ValidatedStatus.Error, message: 'Unknown error' })
+    })
+
+    it('should return default error message when error field is empty', async () => {
+      (validateModelProvider as unknown as Mock).mockResolvedValue({ result: 'error', error: '' })
+      const result = await validateCredentials(true, 'provider', {})
+      expect(result).toEqual({ status: ValidatedStatus.Error, message: 'error' })
+    })
   })
 
   describe('validateLoadBalancingCredentials', () => {
@@ -139,6 +151,24 @@ describe('utils', () => {
       (validateModelLoadBalancingCredentials as unknown as Mock).mockResolvedValue({ result: 'error', error: 'failed' })
       const result = await validateLoadBalancingCredentials(true, 'provider', {})
       expect(result).toEqual({ status: ValidatedStatus.Error, message: 'failed' })
+    })
+
+    it('should return Unknown error when non-Error is thrown', async () => {
+      (validateModelLoadBalancingCredentials as unknown as Mock).mockRejectedValue(42)
+      const result = await validateLoadBalancingCredentials(true, 'provider', {})
+      expect(result).toEqual({ status: ValidatedStatus.Error, message: 'Unknown error' })
+    })
+
+    it('should handle exception with Error', async () => {
+      (validateModelLoadBalancingCredentials as unknown as Mock).mockRejectedValue(new Error('Timeout'))
+      const result = await validateLoadBalancingCredentials(true, 'provider', {})
+      expect(result).toEqual({ status: ValidatedStatus.Error, message: 'Timeout' })
+    })
+
+    it('should return default error message when error field is empty', async () => {
+      (validateModelLoadBalancingCredentials as unknown as Mock).mockResolvedValue({ result: 'error', error: '' })
+      const result = await validateLoadBalancingCredentials(true, 'provider', {})
+      expect(result).toEqual({ status: ValidatedStatus.Error, message: 'error' })
     })
   })
 
@@ -216,6 +246,19 @@ describe('utils', () => {
         },
       })
     })
+
+    it('should remove predefined credentials without credentialId', async () => {
+      await removeCredentials(true, 'provider', {})
+      expect(deleteModelProvider).toHaveBeenCalledWith({
+        url: '/workspaces/current/model-providers/provider/credentials',
+        body: undefined,
+      })
+    })
+
+    it('should not call delete endpoint when non-predefined payload is falsy', async () => {
+      await removeCredentials(false, 'provider', null as unknown as Record<string, unknown>)
+      expect(deleteModelProvider).not.toHaveBeenCalled()
+    })
   })
 
   describe('genModelTypeFormSchema', () => {
@@ -228,11 +271,22 @@ describe('utils', () => {
   })
 
   describe('genModelNameFormSchema', () => {
-    it('should generate form schema', () => {
+    it('should generate default form schema when no model provided', () => {
       const schema = genModelNameFormSchema()
       expect(schema.type).toBe(FormTypeEnum.textInput)
       expect(schema.variable).toBe('__model_name')
       expect(schema.required).toBe(true)
+      expect(schema.label.en_US).toBe('Model Name')
+      expect(schema.placeholder!.en_US).toBe('Please enter model name')
+    })
+
+    it('should use provided label and placeholder when model is given', () => {
+      const schema = genModelNameFormSchema({
+        label: { en_US: 'Custom', zh_Hans: 'Custom' },
+        placeholder: { en_US: 'Enter custom', zh_Hans: 'Enter custom' },
+      })
+      expect(schema.label.en_US).toBe('Custom')
+      expect(schema.placeholder!.en_US).toBe('Enter custom')
     })
   })
 })

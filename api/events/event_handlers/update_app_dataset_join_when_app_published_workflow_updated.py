@@ -2,8 +2,8 @@ from typing import cast
 
 from sqlalchemy import select
 
-from dify_graph.nodes import NodeType
-from dify_graph.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
+from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
+from dify_graph.nodes import BuiltinNodeTypes
 from events.app_event import app_published_workflow_was_updated
 from extensions.ext_database import db
 from models.dataset import AppDatasetJoin
@@ -53,7 +53,7 @@ def get_dataset_ids_from_workflow(published_workflow: Workflow) -> set[str]:
 
     # fetch all knowledge retrieval nodes
     knowledge_retrieval_nodes = [
-        node for node in nodes if node.get("data", {}).get("type") == NodeType.KNOWLEDGE_RETRIEVAL
+        node for node in nodes if node.get("data", {}).get("type") == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL
     ]
 
     if not knowledge_retrieval_nodes:

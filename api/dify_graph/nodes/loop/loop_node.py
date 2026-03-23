@@ -5,9 +5,10 @@ from collections.abc import Callable, Generator, Mapping, Sequence
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Literal, cast
 
+from dify_graph.entities.graph_config import NodeConfigDictAdapter
 from dify_graph.enums import (
+    BuiltinNodeTypes,
     NodeExecutionType,
-    NodeType,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
@@ -45,7 +46,7 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
     Loop Node.
     """
 
-    node_type = NodeType.LOOP
+    node_type = BuiltinNodeTypes.LOOP
     execution_type = NodeExecutionType.CONTAINER
 
     @classmethod
@@ -249,11 +250,11 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
             if isinstance(event, GraphNodeEventBase):
                 self._append_loop_info_to_event(event=event, loop_run_index=current_index)
 
-            if isinstance(event, GraphNodeEventBase) and event.node_type == NodeType.LOOP_START:
+            if isinstance(event, GraphNodeEventBase) and event.node_type == BuiltinNodeTypes.LOOP_START:
                 continue
             if isinstance(event, GraphNodeEventBase):
                 yield event
-            if isinstance(event, NodeRunSucceededEvent) and event.node_type == NodeType.LOOP_END:
+            if isinstance(event, NodeRunSucceededEvent) and event.node_type == BuiltinNodeTypes.LOOP_END:
                 reach_break_node = True
             if isinstance(event, GraphRunFailedEvent):
                 raise Exception(event.error)
@@ -298,11 +299,8 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: Mapping[str, Any],
+        node_data: LoopNodeData,
     ) -> Mapping[str, Sequence[str]]:
-        # Create typed NodeData from dict
-        typed_node_data = LoopNodeData.model_validate(node_data)
-
         variable_mapping = {}
 
         # Extract loop node IDs statically from graph_config
@@ -317,17 +315,16 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
 
             # variable selector to variable mapping
             try:
-                # Get node class
-                from dify_graph.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
-
-                node_type = NodeType(sub_node_config.get("data", {}).get("type"))
-                if node_type not in NODE_TYPE_CLASSES_MAPPING:
+                typed_sub_node_config = NodeConfigDictAdapter.validate_python(sub_node_config)
+                node_type = typed_sub_node_config["data"].type
+                node_mapping = Node.get_node_type_classes_mapping()
+                if node_type not in node_mapping:
                     continue
-                node_version = sub_node_config.get("data", {}).get("version", "1")
-                node_cls = NODE_TYPE_CLASSES_MAPPING[node_type][node_version]
+                node_version = str(typed_sub_node_config["data"].version)
+                node_cls = node_mapping[node_type][node_version]
 
                 sub_node_variable_mapping = node_cls.extract_variable_selector_to_variable_mapping(
-                    graph_config=graph_config, config=sub_node_config
+                    graph_config=graph_config, config=typed_sub_node_config
                 )
                 sub_node_variable_mapping = cast(dict[str, Sequence[str]], sub_node_variable_mapping)
             except NotImplementedError:
@@ -342,7 +339,7 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
 
             variable_mapping.update(sub_node_variable_mapping)
 
-        for loop_variable in typed_node_data.loop_variables or []:
+        for loop_variable in node_data.loop_variables or []:
             if loop_variable.value_type == "variable":
                 assert loop_variable.value is not None, "Loop variable value must be provided for variable type"
                 # add loop variable to variable mapping

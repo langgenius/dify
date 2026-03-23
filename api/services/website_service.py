@@ -124,7 +124,7 @@ class WebsiteService:
         if provider == "firecrawl":
             plugin_id = "langgenius/firecrawl_datasource"
         elif provider == "watercrawl":
-            plugin_id = "langgenius/watercrawl_datasource"
+            plugin_id = "watercrawl/watercrawl_datasource"
         elif provider == "jinareader":
             plugin_id = "langgenius/jina_datasource"
         else:

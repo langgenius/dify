@@ -185,12 +185,30 @@ describe('CustomizedPagination', () => {
       expect(onChange).toHaveBeenCalledWith(0)
     })
 
-    it('should ignore non-numeric input', () => {
+    it('should ignore non-numeric input and empty input', () => {
       render(<CustomizedPagination {...defaultProps} />)
       fireEvent.click(screen.getByText('/'))
       const input = screen.getByRole('textbox')
+
       fireEvent.change(input, { target: { value: 'abc' } })
       expect(input).toHaveValue('')
+
+      fireEvent.change(input, { target: { value: '' } })
+      expect(input).toHaveValue('')
+    })
+
+    it('should show per page tip on hover and hide on leave', () => {
+      const onLimitChange = vi.fn()
+      render(<CustomizedPagination {...defaultProps} onLimitChange={onLimitChange} />)
+
+      const container = screen.getByText('25').closest('div.flex.items-center.gap-\\[1px\\]')!
+
+      fireEvent.mouseEnter(container)
+      // I18n mock returns ns.key
+      expect(screen.getByText('common.pagination.perPage')).toBeInTheDocument()
+
+      fireEvent.mouseLeave(container)
+      expect(screen.queryByText('common.pagination.perPage')).not.toBeInTheDocument()
     })
 
     it('should call onLimitChange when limit option is clicked', () => {
@@ -198,6 +216,17 @@ describe('CustomizedPagination', () => {
       render(<CustomizedPagination {...defaultProps} onLimitChange={onLimitChange} />)
       fireEvent.click(screen.getByText('25'))
       expect(onLimitChange).toHaveBeenCalledWith(25)
+    })
+
+    it('should call onLimitChange with 10 when 10 option is clicked', () => {
+      const onLimitChange = vi.fn()
+      render(<CustomizedPagination {...defaultProps} onLimitChange={onLimitChange} />)
+      // The limit selector contains options 10, 25, 50.
+      // Query specifically within the limit container
+      const container = screen.getByText('25').closest('div.flex.items-center.gap-\\[1px\\]')!
+      const option10 = Array.from(container.children).find(el => el.textContent === '10')!
+      fireEvent.click(option10)
+      expect(onLimitChange).toHaveBeenCalledWith(10)
     })
 
     it('should call onLimitChange with 50 when 50 option is clicked', () => {
@@ -213,12 +242,84 @@ describe('CustomizedPagination', () => {
       fireEvent.click(screen.getByText('3'))
       expect(onChange).toHaveBeenCalledWith(2) // 0-indexed
     })
+
+    it('should correctly select active limit style for 25 and 50', () => {
+      // Test limit 25
+      const { container: containerA } = render(<CustomizedPagination current={0} total={100} limit={25} onChange={vi.fn()} onLimitChange={vi.fn()} />)
+      const wrapper25 = Array.from(containerA.querySelectorAll('div.system-sm-medium')).find(el => el.textContent === '25')!
+      expect(wrapper25).toHaveClass('bg-components-segmented-control-item-active-bg')
+
+      // Test limit 50
+      const { container: containerB } = render(<CustomizedPagination current={0} total={100} limit={50} onChange={vi.fn()} onLimitChange={vi.fn()} />)
+      const wrapper50 = Array.from(containerB.querySelectorAll('div.system-sm-medium')).find(el => el.textContent === '50')!
+      expect(wrapper50).toHaveClass('bg-components-segmented-control-item-active-bg')
+    })
   })
 
   describe('Edge Cases', () => {
     it('should handle total of 0', () => {
       const { container } = render(<CustomizedPagination {...defaultProps} total={0} />)
       expect(container).toBeInTheDocument()
+    })
+
+    it('should handle confirm when input value is unchanged (covers false branch of empty string check)', () => {
+      vi.useFakeTimers()
+      const onChange = vi.fn()
+      render(<CustomizedPagination {...defaultProps} current={4} onChange={onChange} />)
+      fireEvent.click(screen.getByText('/'))
+      const input = screen.getByRole('textbox')
+
+      // Blur without changing anything
+      fireEvent.blur(input)
+
+      act(() => {
+        vi.advanceTimersByTime(500)
+      })
+
+      // onChange should NOT be called
+      expect(onChange).not.toHaveBeenCalled()
+      expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    })
+
+    it('should ignore other keys in handleInputKeyDown (covers false branch of Escape check)', () => {
+      render(<CustomizedPagination {...defaultProps} current={4} />)
+      fireEvent.click(screen.getByText('/'))
+      const input = screen.getByRole('textbox')
+
+      fireEvent.keyDown(input, { key: 'a' })
+      expect(screen.getByRole('textbox')).toBeInTheDocument()
+    })
+
+    it('should trigger handleInputConfirm with empty string specifically on keydown Enter', async () => {
+      const { userEvent } = await import('@testing-library/user-event')
+      const user = userEvent.setup()
+      render(<CustomizedPagination {...defaultProps} current={4} />)
+      fireEvent.click(screen.getByText('/'))
+      const input = screen.getByRole('textbox')
+
+      await user.clear(input)
+      await user.type(input, '{Enter}')
+
+      // Wait for debounce 500ms
+      await new Promise(r => setTimeout(r, 600))
+
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    })
+
+    it('should explicitly trigger Escape key logic in handleInputKeyDown', async () => {
+      const { userEvent } = await import('@testing-library/user-event')
+      const user = userEvent.setup()
+      render(<CustomizedPagination {...defaultProps} current={4} />)
+      fireEvent.click(screen.getByText('/'))
+      const input = screen.getByRole('textbox')
+
+      await user.type(input, '{Escape}')
+
+      // Wait for debounce 500ms
+      await new Promise(r => setTimeout(r, 600))
+
+      expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
     })
 
     it('should handle single page', () => {

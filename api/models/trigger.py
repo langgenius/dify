@@ -227,7 +227,7 @@ class WorkflowTriggerLog(TypeBase):
 
     queue_name: Mapped[str] = mapped_column(String(100), nullable=False)
     celery_task_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    created_by_role: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_by_role: Mapped[CreatorUserRole] = mapped_column(EnumText(CreatorUserRole, length=255), nullable=False)
     created_by: Mapped[str] = mapped_column(String(255), nullable=False)
     retry_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
     elapsed_time: Mapped[float | None] = mapped_column(sa.Float, nullable=True, default=None)

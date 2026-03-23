@@ -14,7 +14,7 @@ from services.summary_index_service import SummaryIndexService
 logger = logging.getLogger(__name__)
 
 
-@shared_task(queue="dataset")
+@shared_task(queue="dataset_summary")
 def generate_summary_index_task(dataset_id: str, document_id: str, segment_ids: list[str] | None = None):
     """
     Async generate summary index for document segments.

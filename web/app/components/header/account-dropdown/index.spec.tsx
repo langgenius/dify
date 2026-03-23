@@ -70,6 +70,7 @@ const { mockConfig, mockEnv } = vi.hoisted(() => ({
   mockConfig: {
     IS_CLOUD_EDITION: false,
     ZENDESK_WIDGET_KEY: '',
+    SUPPORT_EMAIL_ADDRESS: '',
   },
   mockEnv: {
     env: {
@@ -77,16 +78,13 @@ const { mockConfig, mockEnv } = vi.hoisted(() => ({
     },
   },
 }))
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-  return {
-    ...actual,
-    get IS_CLOUD_EDITION() { return mockConfig.IS_CLOUD_EDITION },
-    get ZENDESK_WIDGET_KEY() { return mockConfig.ZENDESK_WIDGET_KEY },
-    IS_DEV: false,
-    IS_CE_EDITION: false,
-  }
-})
+vi.mock('@/config', () => ({
+  get IS_CLOUD_EDITION() { return mockConfig.IS_CLOUD_EDITION },
+  get ZENDESK_WIDGET_KEY() { return mockConfig.ZENDESK_WIDGET_KEY },
+  get SUPPORT_EMAIL_ADDRESS() { return mockConfig.SUPPORT_EMAIL_ADDRESS },
+  IS_DEV: false,
+  IS_CE_EDITION: false,
+}))
 vi.mock('@/env', () => mockEnv)
 
 const baseAppContextValue: AppContextValue = {
@@ -248,6 +246,23 @@ describe('AccountDropdown', () => {
 
       // Assert
       expect(screen.getByText('common.userProfile.compliance')).toBeInTheDocument()
+    })
+
+    // Compound AND middle-false: IS_CLOUD_EDITION=true but isCurrentWorkspaceOwner=false
+    it('should hide Compliance in Cloud Edition when user is not workspace owner', () => {
+      // Arrange
+      mockConfig.IS_CLOUD_EDITION = true
+      vi.mocked(useAppContext).mockReturnValue({
+        ...baseAppContextValue,
+        isCurrentWorkspaceOwner: false,
+      })
+
+      // Act
+      renderWithRouter(<AppSelector />)
+      fireEvent.click(screen.getByRole('button'))
+
+      // Assert
+      expect(screen.queryByText('common.userProfile.compliance')).not.toBeInTheDocument()
     })
   })
 

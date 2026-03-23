@@ -3,11 +3,12 @@
  * Extracted from the main markdown renderer for modularity.
  * Uses the ImageGallery component to display images.
  */
-import * as React from 'react'
+import { memo, useMemo } from 'react'
 import ImageGallery from '@/app/components/base/image-gallery'
 
-const Img = ({ src }: any) => {
-  return <div className="markdown-img-wrapper"><ImageGallery srcs={[src]} /></div>
-}
+const Img = memo(({ src }: { src: string }) => {
+  const srcs = useMemo(() => [src], [src])
+  return <div className="markdown-img-wrapper"><ImageGallery srcs={srcs} /></div>
+})
 
 export default Img

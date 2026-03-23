@@ -49,13 +49,13 @@ describe('Operation', () => {
     mockUseProviderContext.mockReturnValue({ datasetOperatorEnabled: false })
   })
 
-  it('renders the current role label', () => {
+  it('should render the current role label when member has editor role', () => {
     renderOperation()
 
     expect(screen.getByText('common.members.editor')).toBeInTheDocument()
   })
 
-  it('shows dataset operator option when the feature flag is enabled', async () => {
+  it('should show dataset operator option when feature flag is enabled', async () => {
     const user = userEvent.setup()
 
     mockUseProviderContext.mockReturnValue({ datasetOperatorEnabled: true })
@@ -66,7 +66,7 @@ describe('Operation', () => {
     expect(await screen.findByText('common.members.datasetOperator')).toBeInTheDocument()
   })
 
-  it('shows owner-allowed role options for admin operators', async () => {
+  it('should show owner-allowed role options when operator role is admin', async () => {
     const user = userEvent.setup()
 
     renderOperation({}, 'admin')
@@ -77,7 +77,7 @@ describe('Operation', () => {
     expect(screen.getByText('common.members.normal')).toBeInTheDocument()
   })
 
-  it('does not show role options for unsupported operators', async () => {
+  it('should not show role options when operator role is unsupported', async () => {
     const user = userEvent.setup()
 
     renderOperation({}, 'normal')
@@ -88,7 +88,7 @@ describe('Operation', () => {
     expect(screen.getByText('common.members.removeFromTeam')).toBeInTheDocument()
   })
 
-  it('calls updateMemberRole and onOperate when selecting another role', async () => {
+  it('should call updateMemberRole and onOperate when selecting another role', async () => {
     const user = userEvent.setup()
     const onOperate = vi.fn()
     renderOperation({}, 'owner', onOperate)
@@ -102,7 +102,24 @@ describe('Operation', () => {
     })
   })
 
-  it('calls deleteMemberOrCancelInvitation when removing the member', async () => {
+  it('should show dataset operator option when operator is admin and feature flag is enabled', async () => {
+    const user = userEvent.setup()
+    mockUseProviderContext.mockReturnValue({ datasetOperatorEnabled: true })
+    renderOperation({}, 'admin')
+
+    await user.click(screen.getByText('common.members.editor'))
+
+    expect(await screen.findByText('common.members.datasetOperator')).toBeInTheDocument()
+    expect(screen.queryByText('common.members.admin')).not.toBeInTheDocument()
+  })
+
+  it('should fall back to normal role label when member role is unknown', () => {
+    renderOperation({ role: 'unknown_role' as Member['role'] })
+
+    expect(screen.getByText('common.members.normal')).toBeInTheDocument()
+  })
+
+  it('should call deleteMemberOrCancelInvitation when removing the member', async () => {
     const user = userEvent.setup()
     const onOperate = vi.fn()
     renderOperation({}, 'owner', onOperate)

@@ -1,5 +1,5 @@
 import uuid
-from typing import Literal, cast
+from typing import Any, Literal, cast
 
 from core.app.app_config.entities import (
     DatasetEntity,
@@ -8,13 +8,13 @@ from core.app.app_config.entities import (
     ModelConfig,
 )
 from core.entities.agent_entities import PlanningStrategy
-from models.model import AppMode
+from models.model import AppMode, AppModelConfigDict
 from services.dataset_service import DatasetService
 
 
 class DatasetConfigManager:
     @classmethod
-    def convert(cls, config: dict) -> DatasetEntity | None:
+    def convert(cls, config: AppModelConfigDict) -> DatasetEntity | None:
         """
         Convert model config to model config
 
@@ -25,11 +25,15 @@ class DatasetConfigManager:
             datasets = config.get("dataset_configs", {}).get("datasets", {"strategy": "router", "datasets": []})
 
             for dataset in datasets.get("datasets", []):
+                if not isinstance(dataset, dict):
+                    continue
                 keys = list(dataset.keys())
                 if len(keys) == 0 or keys[0] != "dataset":
                     continue
 
                 dataset = dataset["dataset"]
+                if not isinstance(dataset, dict):
+                    continue
 
                 if "enabled" not in dataset or not dataset["enabled"]:
                     continue
@@ -47,15 +51,14 @@ class DatasetConfigManager:
             agent_dict = config.get("agent_mode", {})
 
             for tool in agent_dict.get("tools", []):
-                keys = tool.keys()
-                if len(keys) == 1:
+                if len(tool) == 1:
                     # old standard
                     key = list(tool.keys())[0]
 
                     if key != "dataset":
                         continue
 
-                    tool_item = tool[key]
+                    tool_item = cast(dict[str, Any], tool)[key]
 
                     if "enabled" not in tool_item or not tool_item["enabled"]:
                         continue

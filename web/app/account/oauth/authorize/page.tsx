@@ -11,14 +11,13 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import * as React from 'react'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import Avatar from '@/app/components/base/avatar'
+import { Avatar } from '@/app/components/base/avatar'
 import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
 import Toast from '@/app/components/base/toast'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { setPostLoginRedirect } from '@/app/signin/utils/post-login-redirect'
-import { useAppContext } from '@/context/app-context'
-import { useIsLogin } from '@/service/use-common'
+import { useIsLogin, useUserProfile } from '@/service/use-common'
 import { useAuthorizeOAuthApp, useOAuthAppInfo } from '@/service/use-oauth'
 
 function buildReturnUrl(pathname: string, search: string) {
@@ -62,7 +61,8 @@ export default function OAuthAuthorize() {
   const searchParams = useSearchParams()
   const client_id = decodeURIComponent(searchParams.get('client_id') || '')
   const redirect_uri = decodeURIComponent(searchParams.get('redirect_uri') || '')
-  const { userProfile } = useAppContext()
+  const { data: userProfileResp } = useUserProfile()
+  const userProfile = userProfileResp?.profile
   const { data: authAppInfo, isLoading: isOAuthLoading, isError } = useOAuthAppInfo(client_id, redirect_uri)
   const { mutateAsync: authorize, isPending: authorizing } = useAuthorizeOAuthApp()
   const hasNotifiedRef = useRef(false)
@@ -138,7 +138,7 @@ export default function OAuthAuthorize() {
       {isLoggedIn && userProfile && (
         <div className="flex items-center justify-between rounded-xl bg-background-section-burn-inverted p-3">
           <div className="flex items-center gap-2.5">
-            <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size={36} />
+            <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size="lg" />
             <div>
               <div className="system-md-semi-bold text-text-secondary">{userProfile.name}</div>
               <div className="text-text-tertiary system-xs-regular">{userProfile.email}</div>

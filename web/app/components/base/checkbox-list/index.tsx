@@ -161,6 +161,7 @@ const CheckboxList: FC<CheckboxListProps> = ({
         <div
           className="p-1"
           style={maxHeight ? { maxHeight, overflowY: 'auto' } : {}}
+          data-testid="options-container"
         >
           {!filteredOptions.length
             ? (
@@ -183,6 +184,7 @@ const CheckboxList: FC<CheckboxListProps> = ({
                   return (
                     <div
                       key={option.value}
+                      data-testid="option-item"
                       className={cn(
                         'flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-state-base-hover',
                         option.disabled && 'cursor-not-allowed opacity-50',

@@ -3,7 +3,8 @@ from collections.abc import Mapping, MutableMapping, Sequence
 from typing import TYPE_CHECKING, Any
 
 from dify_graph.constants import CONVERSATION_VARIABLE_NODE_ID
-from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
+from dify_graph.entities.graph_config import NodeConfigDict
+from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from dify_graph.node_events import NodeRunResult
 from dify_graph.nodes.base.node import Node
 from dify_graph.nodes.variable_assigner.common import helpers as common_helpers
@@ -51,12 +52,12 @@ def _source_mapping_from_item(mapping: MutableMapping[str, Sequence[str]], node_
 
 
 class VariableAssignerNode(Node[VariableAssignerNodeData]):
-    node_type = NodeType.VARIABLE_ASSIGNER
+    node_type = BuiltinNodeTypes.VARIABLE_ASSIGNER
 
     def __init__(
         self,
         id: str,
-        config: Mapping[str, Any],
+        config: NodeConfigDict,
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
     ):
@@ -94,13 +95,10 @@ class VariableAssignerNode(Node[VariableAssignerNodeData]):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: Mapping[str, Any],
+        node_data: VariableAssignerNodeData,
     ) -> Mapping[str, Sequence[str]]:
-        # Create typed NodeData from dict
-        typed_node_data = VariableAssignerNodeData.model_validate(node_data)
-
         var_mapping: dict[str, Sequence[str]] = {}
-        for item in typed_node_data.items:
+        for item in node_data.items:
             _target_mapping_from_item(var_mapping, node_id, item)
             _source_mapping_from_item(var_mapping, node_id, item)
         return var_mapping

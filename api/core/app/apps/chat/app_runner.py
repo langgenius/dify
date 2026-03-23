@@ -173,8 +173,10 @@ class ChatAppRunner(AppRunner):
                 memory=memory,
                 message_id=message.id,
                 inputs=inputs,
-                vision_enabled=application_generate_entity.app_config.app_model_config_dict.get("file_upload", {}).get(
-                    "enabled", False
+                vision_enabled=bool(
+                    application_generate_entity.app_config.app_model_config_dict.get("file_upload", {})
+                    .get("image", {})
+                    .get("enabled", False)
                 ),
             )
             context_files = retrieved_files or []

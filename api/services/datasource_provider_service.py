@@ -824,6 +824,7 @@ class DatasourceProviderService:
                 "langgenius/firecrawl_datasource",
                 "langgenius/notion_datasource",
                 "langgenius/jina_datasource",
+                "watercrawl/watercrawl_datasource",
             ]:
                 datasource_provider_id = DatasourceProviderID(f"{datasource.plugin_id}/{datasource.provider}")
                 credentials = self.list_datasource_credentials(

@@ -78,6 +78,8 @@ const Sidebar = ({ isPanel, panelVisible }: Props) => {
     if (showRename)
       handleRenameConversation(showRename.id, newName, { onSuccess: handleCancelRename })
   }, [showRename, handleRenameConversation, handleCancelRename])
+  const pinnedTitle = t('chat.pinnedTitle', { ns: 'share' }) || ''
+  const deleteConversationContent = t('chat.deleteConversation.content', { ns: 'share' }) || ''
 
   return (
     <div className={cn(
@@ -122,7 +124,7 @@ const Sidebar = ({ isPanel, panelVisible }: Props) => {
           <div className="mb-4">
             <List
               isPin
-              title={t('chat.pinnedTitle', { ns: 'share' }) || ''}
+              title={pinnedTitle}
               list={pinnedConversationList}
               onChangeConversation={handleChangeConversation}
               onOperate={handleOperate}
@@ -168,7 +170,7 @@ const Sidebar = ({ isPanel, panelVisible }: Props) => {
         {!!showConfirm && (
           <Confirm
             title={t('chat.deleteConversation.title', { ns: 'share' })}
-            content={t('chat.deleteConversation.content', { ns: 'share' }) || ''}
+            content={deleteConversationContent}
             isShow
             onCancel={handleCancelConfirm}
             onConfirm={handleDelete}

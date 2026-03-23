@@ -1,0 +1,13 @@
+name: Setup Web Environment
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Vite+
+      uses: voidzero-dev/setup-vp@b5d848f5a62488f3d3d920f8aa6ac318a60c5f07 # v1
+      with:
+        node-version-file: "./web/.nvmrc"
+        cache: true
+        run-install: |
+          - cwd: ./web
+            args: ['--frozen-lockfile']

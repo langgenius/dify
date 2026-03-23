@@ -24,10 +24,6 @@ vi.mock('../hooks', () => ({
   useLanguage: () => mockLanguage,
 }))
 
-vi.mock('@/app/components/base/icons/src/public/llm', () => ({
-  OpenaiYellow: () => <svg data-testid="openai-yellow-icon" />,
-}))
-
 const createI18nText = (value: string): I18nText => ({
   en_US: value,
   zh_Hans: value,
@@ -92,10 +88,10 @@ describe('ModelIcon', () => {
       icon_small: createI18nText('openai.png'),
     })
 
-    render(<ModelIcon provider={provider} modelName="o1" />)
+    const { container } = render(<ModelIcon provider={provider} modelName="o1" />)
 
     expect(screen.queryByRole('img', { name: /model-icon/i })).not.toBeInTheDocument()
-    expect(screen.getByTestId('openai-yellow-icon')).toBeInTheDocument()
+    expect(container.querySelector('svg')).toBeInTheDocument()
   })
 
   // Edge case
@@ -104,5 +100,26 @@ describe('ModelIcon', () => {
 
     expect(screen.queryByRole('img', { name: /model-icon/i })).not.toBeInTheDocument()
     expect(container.firstChild).not.toBeNull()
+  })
+
+  it('should render OpenAI Yellow icon for langgenius/openai/openai provider with model starting with o', () => {
+    const provider = createModel({
+      provider: 'langgenius/openai/openai',
+      icon_small: createI18nText('openai.png'),
+    })
+
+    const { container } = render(<ModelIcon provider={provider} modelName="o3" />)
+
+    expect(screen.queryByRole('img', { name: /model-icon/i })).not.toBeInTheDocument()
+    expect(container.querySelector('svg')).toBeInTheDocument()
+  })
+
+  it('should apply opacity-50 when isDeprecated is true', () => {
+    const provider = createModel()
+
+    const { container } = render(<ModelIcon provider={provider} isDeprecated={true} />)
+
+    const wrapper = container.querySelector('.opacity-50')
+    expect(wrapper).toBeInTheDocument()
   })
 })

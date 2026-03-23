@@ -8,7 +8,11 @@ import type {
 } from '../types'
 import { produce } from 'immer'
 import { useCallback } from 'react'
+import {
+  useStoreApi,
+} from 'reactflow'
 import { BlockEnum } from '../types'
+import { useWorkflowStore } from '../store'
 import { getNodesConnectedSourceOrTargetHandleIdsMap } from '../utils'
 import { useCollaborativeWorkflow } from './use-collaborative-workflow'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
@@ -16,10 +20,53 @@ import { useNodesReadOnly } from './use-workflow'
 import { useWorkflowHistory, WorkflowHistoryEvent } from './use-workflow-history'
 
 export const useEdgesInteractions = () => {
+  const store = useStoreApi()
+  const workflowStore = useWorkflowStore()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { getNodesReadOnly } = useNodesReadOnly()
   const { saveStateToHistory } = useWorkflowHistory()
   const collaborativeWorkflow = useCollaborativeWorkflow()
+
+  const deleteEdgeById = useCallback((edgeId: string) => {
+    const {
+      getNodes,
+      setNodes,
+      edges,
+      setEdges,
+    } = store.getState()
+    const currentEdgeIndex = edges.findIndex(edge => edge.id === edgeId)
+
+    if (currentEdgeIndex < 0)
+      return
+    const currentEdge = edges[currentEdgeIndex]
+    const nodes = getNodes()
+    const nodesConnectedSourceOrTargetHandleIdsMap = getNodesConnectedSourceOrTargetHandleIdsMap(
+      [
+        { type: 'remove', edge: currentEdge },
+      ],
+      nodes,
+    )
+    const newNodes = produce(nodes, (draft: Node[]) => {
+      draft.forEach((node) => {
+        if (nodesConnectedSourceOrTargetHandleIdsMap[node.id]) {
+          node.data = {
+            ...node.data,
+            ...nodesConnectedSourceOrTargetHandleIdsMap[node.id],
+          }
+        }
+      })
+    })
+    setNodes(newNodes)
+    const newEdges = produce(edges, (draft) => {
+      draft.splice(currentEdgeIndex, 1)
+    })
+    setEdges(newEdges)
+    const currentEdgeMenu = workflowStore.getState().edgeMenu
+    if (currentEdgeMenu?.edgeId === currentEdge.id)
+      workflowStore.setState({ edgeMenu: undefined })
+    handleSyncWorkflowDraft()
+    saveStateToHistory(WorkflowHistoryEvent.EdgeDelete)
+  }, [store, workflowStore, handleSyncWorkflowDraft, saveStateToHistory])
 
   const handleEdgeEnter = useCallback<EdgeMouseHandler>((_, edge) => {
     if (getNodesReadOnly())
@@ -81,9 +128,12 @@ export const useEdgesInteractions = () => {
       return draft.filter(edge => !edgeWillBeDeleted.find(e => e.id === edge.id))
     })
     setEdges(newEdges)
+    const currentEdgeMenu = workflowStore.getState().edgeMenu
+    if (currentEdgeMenu && edgeWillBeDeleted.some(edge => edge.id === currentEdgeMenu.edgeId))
+      workflowStore.setState({ edgeMenu: undefined })
     handleSyncWorkflowDraft()
     saveStateToHistory(WorkflowHistoryEvent.EdgeDeleteByDeleteBranch)
-  }, [getNodesReadOnly, collaborativeWorkflow, handleSyncWorkflowDraft, saveStateToHistory])
+  }, [getNodesReadOnly, collaborativeWorkflow, workflowStore, handleSyncWorkflowDraft, saveStateToHistory])
 
   const handleEdgeDelete = useCallback(() => {
     if (getNodesReadOnly())
@@ -101,10 +151,8 @@ export const useEdgesInteractions = () => {
       return
     const currentEdge = edges[currentEdgeIndex]
 
-    // collect edges to delete (including corresponding real edges for temp edges)
     const edgesToDelete: Set<string> = new Set([currentEdge.id])
 
-    // if deleting a temp edge connected to a group, also delete the corresponding real hidden edge
     if (currentEdge.data?._isTemp) {
       const groupNode = nodes.find(n =>
         n.data.type === BlockEnum.Group
@@ -115,7 +163,6 @@ export const useEdgesInteractions = () => {
         const memberIds = new Set((groupNode.data.members || []).map((m: { id: string }) => m.id))
 
         if (currentEdge.target === groupNode.id) {
-          // inbound temp edge: find real edge with same source, target is a head node
           edges.forEach((edge) => {
             if (edge.source === currentEdge.source
               && memberIds.has(edge.target)
@@ -125,7 +172,6 @@ export const useEdgesInteractions = () => {
           })
         }
         else if (currentEdge.source === groupNode.id) {
-          // outbound temp edge: sourceHandle format is "leafNodeId-originalHandle"
           const sourceHandle = currentEdge.sourceHandle || ''
           const lastDashIndex = sourceHandle.lastIndexOf('-')
           if (lastDashIndex > 0) {
@@ -171,6 +217,13 @@ export const useEdgesInteractions = () => {
     handleSyncWorkflowDraft()
     saveStateToHistory(WorkflowHistoryEvent.EdgeDelete)
   }, [getNodesReadOnly, collaborativeWorkflow, handleSyncWorkflowDraft, saveStateToHistory])
+
+  const handleEdgeDeleteById = useCallback((edgeId: string) => {
+    if (getNodesReadOnly())
+      return
+
+    deleteEdgeById(edgeId)
+  }, [deleteEdgeById, getNodesReadOnly])
 
   const handleEdgesChange = useCallback<OnEdgesChange>((changes) => {
     if (getNodesReadOnly())
@@ -243,16 +296,60 @@ export const useEdgesInteractions = () => {
       })
     })
     setEdges(newEdges)
+    const currentEdgeMenu = workflowStore.getState().edgeMenu
+    if (currentEdgeMenu && !newEdges.some(edge => edge.id === currentEdgeMenu.edgeId))
+      workflowStore.setState({ edgeMenu: undefined })
     handleSyncWorkflowDraft()
     saveStateToHistory(WorkflowHistoryEvent.EdgeSourceHandleChange)
-  }, [getNodesReadOnly, collaborativeWorkflow, handleSyncWorkflowDraft, saveStateToHistory])
+  }, [getNodesReadOnly, collaborativeWorkflow, workflowStore, handleSyncWorkflowDraft, saveStateToHistory])
+
+  const handleEdgeContextMenu = useCallback<EdgeMouseHandler>((e, edge) => {
+    if (getNodesReadOnly())
+      return
+
+    e.preventDefault()
+
+    const { nodes, setNodes, edges, setEdges } = collaborativeWorkflow.getState()
+    const newEdges = produce(edges, (draft) => {
+      draft.forEach((item) => {
+        item.selected = item.id === edge.id
+        if (item.data._isBundled)
+          item.data._isBundled = false
+      })
+    })
+    setEdges(newEdges)
+    if (nodes.some(node => node.data.selected || node.selected || node.data._isBundled)) {
+      const newNodes = produce(nodes, (draft: Node[]) => {
+        draft.forEach((node) => {
+          node.data.selected = false
+          if (node.data._isBundled)
+            node.data._isBundled = false
+          node.selected = false
+        })
+      })
+      setNodes(newNodes)
+    }
+
+    workflowStore.setState({
+      nodeMenu: undefined,
+      panelMenu: undefined,
+      selectionMenu: undefined,
+      edgeMenu: {
+        clientX: e.clientX,
+        clientY: e.clientY,
+        edgeId: edge.id,
+      },
+    })
+  }, [collaborativeWorkflow, workflowStore, getNodesReadOnly])
 
   return {
     handleEdgeEnter,
     handleEdgeLeave,
     handleEdgeDeleteByDeleteBranch,
     handleEdgeDelete,
+    handleEdgeDeleteById,
     handleEdgesChange,
     handleEdgeSourceHandleChange,
+    handleEdgeContextMenu,
   }
 }

@@ -7,7 +7,7 @@ import pytest
 from core.workflow.node_factory import DifyNodeFactory
 from dify_graph.graph import Graph
 from dify_graph.graph.validation import GraphValidationError
-from dify_graph.nodes import NodeType
+from dify_graph.nodes import BuiltinNodeTypes
 from dify_graph.runtime import GraphRuntimeState, VariablePool
 from dify_graph.system_variable import SystemVariable
 from tests.workflow_test_utils import build_test_graph_init_params
@@ -92,7 +92,7 @@ def test_iteration_root_requires_skip_validation():
     )
 
     assert graph.root_node.id == node_id
-    assert graph.root_node.node_type == NodeType.ITERATION
+    assert graph.root_node.node_type == BuiltinNodeTypes.ITERATION
 
 
 def test_loop_root_requires_skip_validation():
@@ -115,4 +115,4 @@ def test_loop_root_requires_skip_validation():
     )
 
     assert graph.root_node.id == node_id
-    assert graph.root_node.node_type == NodeType.LOOP
+    assert graph.root_node.node_type == BuiltinNodeTypes.LOOP

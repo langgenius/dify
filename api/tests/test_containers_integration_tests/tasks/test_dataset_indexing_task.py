@@ -322,11 +322,14 @@ class TestDatasetIndexingTaskIntegration:
             _document_indexing_with_tenant_queue(dataset.tenant_id, dataset.id, document_ids, task_dispatch_spy)
 
         # Assert
-        task_dispatch_spy.delay.assert_called_once_with(
-            tenant_id=next_task["tenant_id"],
-            dataset_id=next_task["dataset_id"],
-            document_ids=next_task["document_ids"],
-        )
+        # apply_async is used by implementation; assert it was called once with expected kwargs
+        assert task_dispatch_spy.apply_async.call_count == 1
+        call_kwargs = task_dispatch_spy.apply_async.call_args.kwargs.get("kwargs", {})
+        assert call_kwargs == {
+            "tenant_id": next_task["tenant_id"],
+            "dataset_id": next_task["dataset_id"],
+            "document_ids": next_task["document_ids"],
+        }
         set_waiting_spy.assert_called_once()
         delete_key_spy.assert_not_called()
 
@@ -352,7 +355,7 @@ class TestDatasetIndexingTaskIntegration:
             _document_indexing_with_tenant_queue(dataset.tenant_id, dataset.id, document_ids, task_dispatch_spy)
 
         # Assert
-        task_dispatch_spy.delay.assert_not_called()
+        task_dispatch_spy.apply_async.assert_not_called()
         delete_key_spy.assert_called_once()
 
     def test_validation_failure_sets_error_status_when_vector_space_at_limit(
@@ -447,7 +450,7 @@ class TestDatasetIndexingTaskIntegration:
             _document_indexing_with_tenant_queue(dataset.tenant_id, dataset.id, document_ids, task_dispatch_spy)
 
         # Assert
-        task_dispatch_spy.delay.assert_called_once()
+        task_dispatch_spy.apply_async.assert_called_once()
 
     def test_sessions_close_on_successful_indexing(
         self,
@@ -534,7 +537,7 @@ class TestDatasetIndexingTaskIntegration:
             _document_indexing_with_tenant_queue(dataset.tenant_id, dataset.id, document_ids, task_dispatch_spy)
 
         # Assert
-        assert task_dispatch_spy.delay.call_count == concurrency_limit
+        assert task_dispatch_spy.apply_async.call_count == concurrency_limit
         assert set_waiting_spy.call_count == concurrency_limit
 
     def test_task_queue_fifo_ordering(self, db_session_with_containers, patched_external_dependencies):
@@ -565,9 +568,10 @@ class TestDatasetIndexingTaskIntegration:
             _document_indexing_with_tenant_queue(dataset.tenant_id, dataset.id, document_ids, task_dispatch_spy)
 
         # Assert
-        assert task_dispatch_spy.delay.call_count == 3
+        assert task_dispatch_spy.apply_async.call_count == 3
         for index, expected_task in enumerate(ordered_tasks):
-            assert task_dispatch_spy.delay.call_args_list[index].kwargs["document_ids"] == expected_task["document_ids"]
+            call_kwargs = task_dispatch_spy.apply_async.call_args_list[index].kwargs.get("kwargs", {})
+            assert call_kwargs.get("document_ids") == expected_task["document_ids"]
 
     def test_billing_disabled_skips_limit_checks(self, db_session_with_containers, patched_external_dependencies):
         """Skip limit checks when billing feature is disabled."""

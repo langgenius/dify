@@ -124,12 +124,12 @@ def test_message_cycle_manager_uses_new_conversation_flag(monkeypatch):
         def start(self):
             self.started = True
 
-    def fake_thread(**kwargs):
+    def fake_thread(*args, **kwargs):
         thread = DummyThread(**kwargs)
         captured["thread"] = thread
         return thread
 
-    monkeypatch.setattr(message_cycle_manager, "Thread", fake_thread)
+    monkeypatch.setattr(message_cycle_manager, "Timer", fake_thread)
 
     manager = MessageCycleManager(application_generate_entity=entity, task_state=MagicMock())
     thread = manager.generate_conversation_name(conversation_id="existing-conversation-id", query="hello")

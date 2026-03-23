@@ -27,6 +27,7 @@ import {
   exploreInstalledAppsContract,
   exploreInstalledAppUninstallContract,
 } from './console/explore'
+import { notificationContract, notificationDismissContract } from './console/notification'
 import {
   downloadFileContract,
   listFilesContract,
@@ -105,6 +106,8 @@ export const consoleRouterContract = {
     invoices: invoicesContract,
     bindPartnerStack: bindPartnerStackContract,
   },
+  notification: notificationContract,
+  notificationDismiss: notificationDismissContract,
   sandboxProvider: {
     getSandboxProviderList: getSandboxProviderListContract,
     saveSandboxProviderConfig: saveSandboxProviderConfigContract,
