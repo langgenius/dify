@@ -122,19 +122,13 @@ const ProviderDetail = ({
     await getCustomProvider()
     // Use fresh data from form submission to avoid race condition with collection.labels
     setCustomCollection(prev => prev ? { ...prev, labels: data.labels } : null)
-    toast.add({
-      type: 'success',
-      title: t('api.actionSuccess', { ns: 'common' }),
-    })
+    toast.success(t('api.actionSuccess', { ns: 'common' }))
     setIsShowEditCustomCollectionModal(false)
   }
   const doRemoveCustomToolCollection = async () => {
     await removeCustomCollection(collection?.name as string)
     onRefreshData()
-    toast.add({
-      type: 'success',
-      title: t('api.actionSuccess', { ns: 'common' }),
-    })
+    toast.success(t('api.actionSuccess', { ns: 'common' }))
     setIsShowEditCustomCollectionModal(false)
   }
   // workflow provider
@@ -161,10 +155,7 @@ const ProviderDetail = ({
   const removeWorkflowToolProvider = async () => {
     await deleteWorkflowTool(collection.id)
     onRefreshData()
-    toast.add({
-      type: 'success',
-      title: t('api.actionSuccess', { ns: 'common' }),
-    })
+    toast.success(t('api.actionSuccess', { ns: 'common' }))
     setIsShowEditWorkflowToolModal(false)
   }
   const updateWorkflowToolProvider = async (data: WorkflowToolProviderRequest & Partial<{
@@ -175,10 +166,7 @@ const ProviderDetail = ({
     invalidateAllWorkflowTools()
     onRefreshData()
     getWorkflowToolProvider()
-    toast.add({
-      type: 'success',
-      title: t('api.actionSuccess', { ns: 'common' }),
-    })
+    toast.success(t('api.actionSuccess', { ns: 'common' }))
     setIsShowEditWorkflowToolModal(false)
   }
   const onClickCustomToolDelete = () => {
@@ -385,19 +373,13 @@ const ProviderDetail = ({
             onCancel={() => setShowSettingAuth(false)}
             onSaved={async (value) => {
               await updateBuiltInToolCredential(collection.name, value)
-              toast.add({
-                type: 'success',
-                title: t('api.actionSuccess', { ns: 'common' }),
-              })
+              toast.success(t('api.actionSuccess', { ns: 'common' }))
               await onRefreshData()
               setShowSettingAuth(false)
             }}
             onRemove={async () => {
               await removeBuiltInToolCredential(collection.name)
-              toast.add({
-                type: 'success',
-                title: t('api.actionSuccess', { ns: 'common' }),
-              })
+              toast.success(t('api.actionSuccess', { ns: 'common' }))
               await onRefreshData()
               setShowSettingAuth(false)
             }}

@@ -48,10 +48,7 @@ const NormalForm = () => {
       }
 
       if (message) {
-        toast.add({
-          type: 'error',
-          title: message,
-        })
+        toast.error(message)
       }
       setAllMethodsAreDisabled(!systemFeatures.enable_social_oauth_login && !systemFeatures.enable_email_code_login && !systemFeatures.enable_email_password_login && !systemFeatures.sso_enforced_for_signin)
       setShowORLine((systemFeatures.enable_social_oauth_login || systemFeatures.sso_enforced_for_signin) && (systemFeatures.enable_email_code_login || systemFeatures.enable_email_password_login))

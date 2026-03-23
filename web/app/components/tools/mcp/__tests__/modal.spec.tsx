@@ -48,10 +48,10 @@ vi.mock('@/service/use-plugins', () => ({
   }),
 }))
 
-const mockToastAdd = vi.hoisted(() => vi.fn())
+const mockToastError = vi.hoisted(() => vi.fn())
 vi.mock('@/app/components/base/ui/toast', () => ({
   toast: {
-    add: mockToastAdd,
+    error: mockToastError,
   },
 }))
 
@@ -310,10 +310,7 @@ describe('MCPModal', () => {
       // Wait a bit and verify onConfirm was not called
       await new Promise(resolve => setTimeout(resolve, 100))
       expect(onConfirm).not.toHaveBeenCalled()
-      expect(mockToastAdd).toHaveBeenCalledWith({
-        type: 'error',
-        title: 'tools.mcp.modal.invalidServerUrl',
-      })
+      expect(mockToastError).toHaveBeenCalledWith('tools.mcp.modal.invalidServerUrl')
     })
 
     it('should not call onConfirm with invalid server identifier', async () => {
@@ -335,10 +332,7 @@ describe('MCPModal', () => {
       // Wait a bit and verify onConfirm was not called
       await new Promise(resolve => setTimeout(resolve, 100))
       expect(onConfirm).not.toHaveBeenCalled()
-      expect(mockToastAdd).toHaveBeenCalledWith({
-        type: 'error',
-        title: 'tools.mcp.modal.invalidServerIdentifier',
-      })
+      expect(mockToastError).toHaveBeenCalledWith('tools.mcp.modal.invalidServerIdentifier')
     })
   })
 

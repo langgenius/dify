@@ -4,8 +4,8 @@ import { MediaType } from '@/hooks/use-breakpoints'
 import { AppModeEnum } from '@/types/app'
 import SideBar from '../index'
 
-const { mockToastAdd } = vi.hoisted(() => ({
-  mockToastAdd: vi.fn(),
+const { mockToastSuccess } = vi.hoisted(() => ({
+  mockToastSuccess: vi.fn(),
 }))
 
 const mockSegments = ['apps']
@@ -47,14 +47,16 @@ vi.mock('@/service/use-explore', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
-  toast: {
-    add: mockToastAdd,
-    close: vi.fn(),
-    update: vi.fn(),
-    promise: vi.fn(),
-  },
-}))
+vi.mock('@/app/components/base/ui/toast', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/components/base/ui/toast')>()
+  return {
+    ...actual,
+    toast: {
+      ...actual.toast,
+      success: mockToastSuccess,
+    },
+  }
+})
 
 const createInstalledApp = (overrides: Partial<InstalledApp> = {}): InstalledApp => ({
   id: overrides.id ?? 'app-123',
@@ -166,10 +168,7 @@ describe('SideBar', () => {
 
       await waitFor(() => {
         expect(mockUninstall).toHaveBeenCalledWith('app-123')
-        expect(mockToastAdd).toHaveBeenCalledWith(expect.objectContaining({
-          type: 'success',
-          title: 'common.api.remove',
-        }))
+        expect(mockToastSuccess).toHaveBeenCalledWith('common.api.remove')
       })
     })
 
@@ -183,10 +182,7 @@ describe('SideBar', () => {
 
       await waitFor(() => {
         expect(mockUpdatePinStatus).toHaveBeenCalledWith({ appId: 'app-123', isPinned: true })
-        expect(mockToastAdd).toHaveBeenCalledWith(expect.objectContaining({
-          type: 'success',
-          title: 'common.api.success',
-        }))
+        expect(mockToastSuccess).toHaveBeenCalledWith('common.api.success')
       })
     })
 

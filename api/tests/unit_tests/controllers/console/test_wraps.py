@@ -328,7 +328,7 @@ class TestSystemSetup:
     def test_should_raise_not_init_validate_error_with_init_password(self, mock_environ_get, mock_db):
         """Test NotInitValidateError when INIT_PASSWORD is set but setup not complete"""
         # Arrange
-        mock_db.session.query.return_value.first.return_value = None  # No setup
+        mock_db.session.scalar.return_value = None  # No setup
         mock_environ_get.return_value = "some_password"
 
         @setup_required
@@ -345,7 +345,7 @@ class TestSystemSetup:
     def test_should_raise_not_setup_error_without_init_password(self, mock_environ_get, mock_db):
         """Test NotSetupError when no INIT_PASSWORD and setup not complete"""
         # Arrange
-        mock_db.session.query.return_value.first.return_value = None  # No setup
+        mock_db.session.scalar.return_value = None  # No setup
         mock_environ_get.return_value = None  # No INIT_PASSWORD
 
         @setup_required

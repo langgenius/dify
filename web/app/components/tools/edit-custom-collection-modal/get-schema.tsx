@@ -27,10 +27,7 @@ const GetSchema: FC<Props> = ({
   const [isParsing, setIsParsing] = useState(false)
   const handleImportFromUrl = async () => {
     if (!importUrl.startsWith('http://') && !importUrl.startsWith('https://')) {
-      toast.add({
-        type: 'error',
-        title: t('createTool.urlError', { ns: 'tools' }),
-      })
+      toast.error(t('createTool.urlError', { ns: 'tools' }))
       return
     }
     setIsParsing(true)
