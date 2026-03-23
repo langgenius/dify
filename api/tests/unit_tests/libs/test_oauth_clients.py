@@ -103,6 +103,18 @@ class TestGitHubOAuth(BaseOAuthTest):
                 [{"email": "secondary@example.com", "primary": False}],
                 "12345+testuser@users.noreply.github.com",
             ),
+            # User with private email (null email and name from API)
+            (
+                {"id": 12345, "login": "testuser", "name": None, "email": None},
+                [{"email": "primary@example.com", "primary": True}],
+                "primary@example.com",
+            ),
+            # User with private email and no primary in emails endpoint
+            (
+                {"id": 12345, "login": "testuser", "name": None, "email": None},
+                [],
+                "12345+testuser@users.noreply.github.com",
+            ),
         ],
     )
     @patch("httpx.get", autospec=True)
@@ -118,7 +130,7 @@ class TestGitHubOAuth(BaseOAuthTest):
         user_info = oauth.get_user_info("test_token")
 
         assert user_info.id == str(user_data["id"])
-        assert user_info.name == user_data["name"]
+        assert user_info.name == (user_data["name"] or "")
         assert user_info.email == expected_email
 
     @patch("httpx.get", autospec=True)
