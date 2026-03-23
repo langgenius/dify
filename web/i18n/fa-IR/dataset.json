@@ -176,6 +176,7 @@
   "serviceApi.enabled": "در حال خدمت",
   "serviceApi.title": "رابط برنامه‌نویسی سرویس",
   "unavailable": "در دسترس نیست",
+  "unknownError": "خطای ناشناخته",
   "updated": "بروز رسانی",
   "weightedScore.customized": "سفارشی‌سازی شده",
   "weightedScore.description": "با تنظیم وزن‌های اختصاص داده شده، این استراتژی دوباره رتبه‌بندی تعیین می‌کند که آیا اولویت با تطابق معنایی یا کلمات کلیدی است.",
