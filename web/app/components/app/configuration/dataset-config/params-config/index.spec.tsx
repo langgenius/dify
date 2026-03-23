@@ -3,7 +3,7 @@ import type { DatasetConfigs } from '@/models/debug'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import {
   useCurrentProviderAndModel,
   useModelListAndDefaultModelAndCurrentProviderAndModel,
@@ -75,7 +75,7 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-param
 
 const mockedUseModelListAndDefaultModelAndCurrentProviderAndModel = useModelListAndDefaultModelAndCurrentProviderAndModel as MockedFunction<typeof useModelListAndDefaultModelAndCurrentProviderAndModel>
 const mockedUseCurrentProviderAndModel = useCurrentProviderAndModel as MockedFunction<typeof useCurrentProviderAndModel>
-let toastNotifySpy: MockInstance
+let toastErrorSpy: MockInstance
 
 const createDatasetConfigs = (overrides: Partial<DatasetConfigs> = {}): DatasetConfigs => {
   return {
@@ -140,7 +140,7 @@ describe('dataset-config/params-config', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useRealTimers()
-    toastNotifySpy = vi.spyOn(Toast, 'notify').mockImplementation(() => ({}))
+    toastErrorSpy = vi.spyOn(toast, 'error').mockImplementation(() => '')
     mockedUseModelListAndDefaultModelAndCurrentProviderAndModel.mockReturnValue({
       modelList: [],
       defaultModel: undefined,
@@ -154,7 +154,7 @@ describe('dataset-config/params-config', () => {
   })
 
   afterEach(() => {
-    toastNotifySpy.mockRestore()
+    toastErrorSpy.mockRestore()
   })
 
   // Rendering tests (REQUIRED)
@@ -254,10 +254,7 @@ describe('dataset-config/params-config', () => {
       await user.click(dialogScope.getByRole('button', { name: 'common.operation.save' }))
 
       // Assert
-      expect(toastNotifySpy).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'appDebug.datasetConfig.rerankModelRequired',
-      })
+      expect(toastErrorSpy).toHaveBeenCalledWith('appDebug.datasetConfig.rerankModelRequired')
       expect(screen.getByRole('dialog')).toBeInTheDocument()
     })
   })

@@ -959,7 +959,7 @@
   },
   "app/components/app/configuration/dataset-config/params-config/index.tsx": {
     "no-restricted-imports": {
-      "count": 2
+      "count": 1
     },
     "react/set-state-in-effect": {
       "count": 1
@@ -3166,11 +3166,6 @@
       "count": 2
     }
   },
-  "app/components/datasets/common/document-status-with-action/auto-disabled-document.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "app/components/datasets/common/image-list/more.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
@@ -3190,9 +3185,6 @@
     }
   },
   "app/components/datasets/common/image-uploader/hooks/use-upload.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 3
     }
@@ -3222,7 +3214,7 @@
   },
   "app/components/datasets/common/retrieval-param-config/index.tsx": {
     "no-restricted-imports": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/datasets/create-from-pipeline/create-options/create-from-dsl-modal/dsl-confirm-modal.tsx": {
@@ -3573,11 +3565,6 @@
       "count": 1
     }
   },
-  "app/components/datasets/documents/components/document-list/hooks/use-document-actions.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "app/components/datasets/documents/components/documents-header.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -3590,7 +3577,7 @@
   },
   "app/components/datasets/documents/components/rename-modal.tsx": {
     "no-restricted-imports": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/datasets/documents/create-from-pipeline/actions/index.tsx": {
@@ -4258,9 +4245,6 @@
     }
   },
   "app/components/datasets/list/dataset-card/hooks/use-dataset-card-state.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "react/set-state-in-effect": {
       "count": 1
     }
@@ -4428,11 +4412,6 @@
   "app/components/datasets/settings/form/components/indexing-section.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 7
-    }
-  },
-  "app/components/datasets/settings/form/hooks/use-form-state.ts": {
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "app/components/datasets/settings/index-method/index.tsx": {
