@@ -9,6 +9,7 @@ from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
+from dify_graph.repositories.human_input_form_repository import FormCreateParams, FormNotFoundError
 
 from core.repositories.human_input_repository import (
     HumanInputFormRecord,
@@ -30,7 +31,6 @@ from dify_graph.nodes.human_input.entities import (
     WebAppDeliveryMethod,
 )
 from dify_graph.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
-from dify_graph.repositories.human_input_form_repository import FormCreateParams, FormNotFoundError
 from libs.datetime_utils import naive_utc_now
 from models.human_input import HumanInputFormRecipient, RecipientType
 

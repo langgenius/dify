@@ -10,6 +10,7 @@ from unittest.mock import MagicMock, Mock
 
 import psycopg2.errors
 import pytest
+from dify_graph.repositories.workflow_node_execution_repository import OrderConfig
 from sqlalchemy import Engine, create_engine
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
@@ -28,7 +29,6 @@ from dify_graph.enums import (
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
-from dify_graph.repositories.workflow_node_execution_repository import OrderConfig
 from models import Account, EndUser
 from models.enums import ExecutionOffLoadType
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload, WorkflowNodeExecutionTriggeredFrom
