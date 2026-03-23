@@ -9795,11 +9795,6 @@
       "count": 6
     }
   },
-  "hooks/use-breakpoints.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    }
-  },
   "hooks/use-format-time-from-now.spec.ts": {
     "regexp/no-dupe-disjunctions": {
       "count": 5

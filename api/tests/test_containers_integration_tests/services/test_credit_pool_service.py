@@ -6,6 +6,7 @@ import pytest
 
 from core.errors.error import QuotaExceededError
 from models import TenantCreditPool
+from models.enums import ProviderQuotaType
 from services.credit_pool_service import CreditPoolService
 
 
@@ -20,7 +21,7 @@ class TestCreditPoolService:
 
         assert isinstance(pool, TenantCreditPool)
         assert pool.tenant_id == tenant_id
-        assert pool.pool_type == "trial"
+        assert pool.pool_type == ProviderQuotaType.TRIAL
         assert pool.quota_used == 0
         assert pool.quota_limit > 0
 
@@ -28,14 +29,14 @@ class TestCreditPoolService:
         tenant_id = self._create_tenant_id()
         CreditPoolService.create_default_pool(tenant_id)
 
-        result = CreditPoolService.get_pool(tenant_id=tenant_id, pool_type="trial")
+        result = CreditPoolService.get_pool(tenant_id=tenant_id, pool_type=ProviderQuotaType.TRIAL)
 
         assert result is not None
         assert result.tenant_id == tenant_id
-        assert result.pool_type == "trial"
+        assert result.pool_type == ProviderQuotaType.TRIAL
 
     def test_get_pool_returns_none_when_not_exists(self, db_session_with_containers):
-        result = CreditPoolService.get_pool(tenant_id=self._create_tenant_id(), pool_type="trial")
+        result = CreditPoolService.get_pool(tenant_id=self._create_tenant_id(), pool_type=ProviderQuotaType.TRIAL)
 
         assert result is None
 

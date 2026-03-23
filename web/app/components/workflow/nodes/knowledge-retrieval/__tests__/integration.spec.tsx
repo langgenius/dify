@@ -4,8 +4,9 @@ import type {
   MetadataShape,
 } from '../types'
 import type { DataSet, MetadataInDoc } from '@/models/datasets'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useEffect, useRef } from 'react'
 import {
   ChunkingMode,
   DatasetPermission,
@@ -173,17 +174,26 @@ vi.mock('@/app/components/app/configuration/dataset-config/select-dataset', () =
 
 vi.mock('@/app/components/app/configuration/dataset-config/settings-modal', () => ({
   __esModule: true,
-  default: ({ currentDataset, onSave, onCancel }: { currentDataset: DataSet, onSave: (dataset: DataSet) => void, onCancel: () => void }) => (
-    <div>
-      <div>{currentDataset.name}</div>
-      <button type="button" onClick={() => onSave(createDataset({ ...currentDataset, name: 'Updated Dataset' }))}>
-        save-settings
-      </button>
-      <button type="button" onClick={onCancel}>
-        cancel-settings
-      </button>
-    </div>
-  ),
+  default: function MockSettingsModal({ currentDataset, onSave, onCancel }: { currentDataset: DataSet, onSave: (dataset: DataSet) => void, onCancel: () => void }) {
+    const hasSavedRef = useRef(false)
+
+    useEffect(() => {
+      if (hasSavedRef.current)
+        return
+
+      hasSavedRef.current = true
+      onSave(createDataset({ ...currentDataset, name: 'Updated Dataset' }))
+    }, [currentDataset, onSave])
+
+    return (
+      <div>
+        <div>{currentDataset.name}</div>
+        <button type="button" onClick={onCancel}>
+          cancel-settings
+        </button>
+      </div>
+    )
+  },
 }))
 
 vi.mock('@/app/components/app/configuration/dataset-config/params-config/config-content', () => ({
@@ -265,6 +275,13 @@ vi.mock('../components/metadata/metadata-panel', () => ({
 }))
 
 describe('knowledge-retrieval path', () => {
+  const getDatasetItem = () => {
+    const datasetItem = screen.getByText('Dataset Name').closest('.group\\/dataset-item')
+    if (!(datasetItem instanceof HTMLElement))
+      throw new Error('Dataset item container not found')
+    return datasetItem
+  }
+
   beforeEach(() => {
     vi.clearAllMocks()
     mockHasEditPermissionForDataset.mockReturnValue(true)
@@ -293,33 +310,43 @@ describe('knowledge-retrieval path', () => {
       ])
     })
 
-    it('should support editing and removing a dataset item', async () => {
-      const user = userEvent.setup()
+    it('should support editing a dataset item', async () => {
       const onChange = vi.fn()
-      const onRemove = vi.fn()
 
       render(
         <DatasetItem
           payload={createDataset({ is_multimodal: true })}
           onChange={onChange}
-          onRemove={onRemove}
+          onRemove={vi.fn()}
         />,
       )
 
       expect(screen.getByText('Dataset Name')).toBeInTheDocument()
-      fireEvent.mouseOver(screen.getByText('Dataset Name').closest('.group\\/dataset-item')!)
+      const datasetItem = getDatasetItem()
+      fireEvent.click(within(datasetItem).getByRole('button', { name: 'common.operation.edit' }))
 
-      const buttons = screen.getAllByRole('button')
-      await user.click(buttons[0]!)
-      await user.click(screen.getByText('save-settings'))
-      await user.click(buttons[1]!)
+      await waitFor(() => {
+        expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ name: 'Updated Dataset' }))
+      })
+    })
 
-      expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ name: 'Updated Dataset' }))
+    it('should support removing a dataset item', () => {
+      const onRemove = vi.fn()
+
+      render(
+        <DatasetItem
+          payload={createDataset({ is_multimodal: true })}
+          onChange={vi.fn()}
+          onRemove={onRemove}
+        />,
+      )
+
+      const datasetItem = getDatasetItem()
+      fireEvent.click(within(datasetItem).getByRole('button', { name: 'common.operation.remove' }))
       expect(onRemove).toHaveBeenCalled()
     })
 
-    it('should render empty and populated dataset lists', async () => {
-      const user = userEvent.setup()
+    it('should render empty and populated dataset lists', () => {
       const onChange = vi.fn()
 
       const { rerender } = render(
@@ -338,8 +365,8 @@ describe('knowledge-retrieval path', () => {
         />,
       )
 
-      fireEvent.mouseOver(screen.getByText('Dataset Name').closest('.group\\/dataset-item')!)
-      await user.click(screen.getAllByRole('button')[1]!)
+      const datasetItem = getDatasetItem()
+      fireEvent.click(within(datasetItem).getByRole('button', { name: 'common.operation.remove' }))
 
       expect(onChange).toHaveBeenCalledWith([])
     })

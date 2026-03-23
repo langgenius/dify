@@ -1,7 +1,9 @@
 import type { FC } from 'react'
 import * as React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { trackEvent } from '@/app/components/base/amplitude'
 import { Carousel } from '@/app/components/base/carousel'
+import { useSelector } from '@/context/app-context'
 import { useLocale } from '@/context/i18n'
 import { useGetBanners } from '@/service/use-explore'
 import Loading from '../../base/loading'
@@ -23,9 +25,11 @@ const LoadingState: FC = () => (
 const Banner: FC = () => {
   const locale = useLocale()
   const { data: banners, isLoading, isError } = useGetBanners(locale)
+  const accountId = useSelector(s => s.userProfile.id)
   const [isHovered, setIsHovered] = useState(false)
   const [isResizing, setIsResizing] = useState(false)
   const resizeTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const trackedBannerIdsRef = useRef<Set<string>>(new Set())
 
   const enabledBanners = useMemo(
     () => banners?.filter(banner => banner.status === 'enabled') ?? [],
@@ -56,6 +60,28 @@ const Banner: FC = () => {
     }
   }, [])
 
+  useEffect(() => {
+    if (!accountId)
+      return
+
+    enabledBanners.forEach((banner, index) => {
+      if (trackedBannerIdsRef.current.has(banner.id))
+        return
+
+      trackEvent('explore_banner_impression', {
+        banner_id: banner.id,
+        title: banner.content.title,
+        sort: index + 1,
+        link: banner.link,
+        page: 'explore',
+        language: locale,
+        account_id: accountId,
+        event_time: Date.now(),
+      })
+      trackedBannerIdsRef.current.add(banner.id)
+    })
+  }, [accountId, enabledBanners, locale])
+
   if (isLoading)
     return <LoadingState />
 
@@ -77,12 +103,15 @@ const Banner: FC = () => {
       onMouseLeave={() => setIsHovered(false)}
     >
       <Carousel.Content>
-        {enabledBanners.map(banner => (
+        {enabledBanners.map((banner, index) => (
           <Carousel.Item key={banner.id}>
             <BannerItem
               banner={banner}
               autoplayDelay={AUTOPLAY_DELAY}
               isPaused={isPaused}
+              sort={index + 1}
+              language={locale}
+              accountId={accountId}
             />
           </Carousel.Item>
         ))}
