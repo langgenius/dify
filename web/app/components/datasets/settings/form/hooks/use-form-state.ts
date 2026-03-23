@@ -6,7 +6,7 @@ import type { IconInfo, SummaryIndexSetting as SummaryIndexSettingType } from '@
 import type { RetrievalConfig } from '@/types/app'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -123,12 +123,12 @@ export const useFormState = () => {
       return
 
     if (!name?.trim()) {
-      Toast.notify({ type: 'error', message: t('form.nameError', { ns: 'datasetSettings' }) })
+      toast.error(t('form.nameError', { ns: 'datasetSettings' }))
       return
     }
 
     if (!isReRankModelSelected({ rerankModelList, retrievalConfig, indexMethod })) {
-      Toast.notify({ type: 'error', message: t('datasetConfig.rerankModelRequired', { ns: 'appDebug' }) })
+      toast.error(t('datasetConfig.rerankModelRequired', { ns: 'appDebug' }))
       return
     }
 
@@ -176,7 +176,7 @@ export const useFormState = () => {
       }
 
       await updateDatasetSetting({ datasetId: currentDataset!.id, body })
-      Toast.notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
 
       if (mutateDatasets) {
         await mutateDatasets()
@@ -184,7 +184,7 @@ export const useFormState = () => {
       }
     }
     catch {
-      Toast.notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
     }
     finally {
       setLoading(false)

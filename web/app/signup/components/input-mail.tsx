@@ -4,7 +4,7 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import Split from '@/app/signin/split'
 import { emailRegex } from '@/config'
 import { useGlobalPublicStore } from '@/context/global-public-context'
@@ -30,14 +30,11 @@ export default function Form({
       return
 
     if (!email) {
-      Toast.notify({ type: 'error', message: t('error.emailEmpty', { ns: 'login' }) })
+      toast.error(t('error.emailEmpty', { ns: 'login' }))
       return
     }
     if (!emailRegex.test(email)) {
-      Toast.notify({
-        type: 'error',
-        message: t('error.emailInValid', { ns: 'login' }),
-      })
+      toast.error(t('error.emailInValid', { ns: 'login' }))
       return
     }
     const res = await submitMail({ email, language: locale })

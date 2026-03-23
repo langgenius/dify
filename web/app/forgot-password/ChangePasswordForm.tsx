@@ -4,7 +4,7 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { validPassword } from '@/config'
 import { useSearchParams } from '@/next/navigation'
 import { changePasswordWithToken } from '@/service/common'
@@ -29,10 +29,7 @@ const ChangePasswordForm = () => {
   const [showSuccess, setShowSuccess] = useState(false)
 
   const showErrorMessage = useCallback((message: string) => {
-    Toast.notify({
-      type: 'error',
-      message,
-    })
+    toast.error(message)
   }, [])
 
   const valid = useCallback(() => {

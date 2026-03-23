@@ -6,7 +6,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.rag.datasource.vdb.vector_factory import Vector
 from extensions.ext_database import db
 from models.dataset import Dataset
-from models.enums import CollectionBindingType
+from models.enums import CollectionBindingType, ConversationFromSource
 from models.model import App, AppAnnotationSetting, Message, MessageAnnotation
 from services.annotation_service import AppAnnotationService
 from services.dataset_service import DatasetCollectionBindingService
@@ -68,9 +68,9 @@ class AnnotationReplyFeature:
                 annotation = AppAnnotationService.get_annotation_by_id(annotation_id)
                 if annotation:
                     if invoke_from in {InvokeFrom.SERVICE_API, InvokeFrom.WEB_APP}:
-                        from_source = "api"
+                        from_source = ConversationFromSource.API
                     else:
-                        from_source = "console"
+                        from_source = ConversationFromSource.CONSOLE
 
                     # insert annotation history
                     AppAnnotationService.add_annotation_history(

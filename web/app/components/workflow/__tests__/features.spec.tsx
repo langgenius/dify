@@ -2,11 +2,11 @@ import type { InputVar } from '../types'
 import type { PromptVariable } from '@/models/debug'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import ReactFlow, { ReactFlowProvider, useNodes } from 'reactflow'
+import { useNodes } from 'reactflow'
 import Features from '../features'
 import { InputVarType } from '../types'
 import { createStartNode } from './fixtures'
-import { renderWorkflowComponent } from './workflow-test-env'
+import { renderWorkflowFlowComponent } from './workflow-test-env'
 
 const mockHandleSyncWorkflowDraft = vi.fn()
 const mockHandleAddVariable = vi.fn()
@@ -112,17 +112,15 @@ const DelayedFeatures = () => {
   return <Features />
 }
 
-const renderFeatures = (options?: Parameters<typeof renderWorkflowComponent>[1]) => {
-  return renderWorkflowComponent(
-    <div style={{ width: 800, height: 600 }}>
-      <ReactFlowProvider>
-        <ReactFlow nodes={[startNode]} edges={[]} fitView />
-        <DelayedFeatures />
-      </ReactFlowProvider>
-    </div>,
-    options,
+const renderFeatures = (options?: Omit<Parameters<typeof renderWorkflowFlowComponent>[1], 'nodes' | 'edges'>) =>
+  renderWorkflowFlowComponent(
+    <DelayedFeatures />,
+    {
+      nodes: [startNode],
+      edges: [],
+      ...options,
+    },
   )
-}
 
 describe('Features', () => {
   beforeEach(() => {
