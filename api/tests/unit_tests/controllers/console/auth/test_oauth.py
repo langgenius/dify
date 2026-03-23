@@ -425,13 +425,13 @@ class TestAccountGeneration:
         return account
 
     @patch("controllers.console.auth.oauth.AccountService.get_account_by_email_with_case_fallback")
-    @patch("controllers.console.auth.oauth.Session")
+    @patch("controllers.console.auth.oauth.sessionmaker")
     @patch("controllers.console.auth.oauth.Account")
     @patch("controllers.console.auth.oauth.db")
     def test_should_get_account_by_openid_or_email(
         self, mock_db, mock_account_model, mock_session, mock_get_account, user_info, mock_account
     ):
-        # Mock db.engine for Session creation
+        # Mock db.engine for sessionmaker creation
         mock_db.engine = MagicMock()
 
         # Test OpenID found
@@ -444,7 +444,7 @@ class TestAccountGeneration:
         # Test fallback to email lookup
         mock_account_model.get_by_openid.return_value = None
         mock_session_instance = MagicMock()
-        mock_session.return_value.__enter__.return_value = mock_session_instance
+        mock_session.return_value.begin.return_value.__enter__.return_value = mock_session_instance
         mock_get_account.return_value = mock_account
 
         result = _get_account_by_openid_or_email("github", user_info)

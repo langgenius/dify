@@ -20,7 +20,7 @@ def app():
 
 
 class TestEmailRegisterSendEmailApi:
-    @patch("controllers.console.auth.email_register.Session")
+    @patch("controllers.console.auth.email_register.sessionmaker")
     @patch("controllers.console.auth.email_register.AccountService.get_account_by_email_with_case_fallback")
     @patch("controllers.console.auth.email_register.AccountService.send_email_register_email")
     @patch("controllers.console.auth.email_register.BillingService.is_email_in_freeze")
@@ -41,7 +41,7 @@ class TestEmailRegisterSendEmailApi:
         mock_account = MagicMock()
 
         mock_session = MagicMock()
-        mock_session_cls.return_value.__enter__.return_value = mock_session
+        mock_session_cls.return_value.begin.return_value.__enter__.return_value = mock_session
         mock_get_account.return_value = mock_account
 
         feature_flags = SimpleNamespace(enable_email_password_login=True, is_allow_register=True)
@@ -114,7 +114,7 @@ class TestEmailRegisterResetApi:
     @patch("controllers.console.auth.email_register.AccountService.reset_login_error_rate_limit")
     @patch("controllers.console.auth.email_register.AccountService.login")
     @patch("controllers.console.auth.email_register.EmailRegisterResetApi._create_new_account")
-    @patch("controllers.console.auth.email_register.Session")
+    @patch("controllers.console.auth.email_register.sessionmaker")
     @patch("controllers.console.auth.email_register.AccountService.get_account_by_email_with_case_fallback")
     @patch("controllers.console.auth.email_register.AccountService.revoke_email_register_token")
     @patch("controllers.console.auth.email_register.AccountService.get_email_register_data")
@@ -138,7 +138,7 @@ class TestEmailRegisterResetApi:
         mock_login.return_value = token_pair
 
         mock_session = MagicMock()
-        mock_session_cls.return_value.__enter__.return_value = mock_session
+        mock_session_cls.return_value.begin.return_value.__enter__.return_value = mock_session
         mock_get_account.return_value = None
 
         feature_flags = SimpleNamespace(enable_email_password_login=True, is_allow_register=True)

@@ -20,7 +20,7 @@ def app():
 
 
 class TestForgotPasswordSendEmailApi:
-    @patch("controllers.console.auth.forgot_password.Session")
+    @patch("controllers.console.auth.forgot_password.sessionmaker")
     @patch("controllers.console.auth.forgot_password.AccountService.get_account_by_email_with_case_fallback")
     @patch("controllers.console.auth.forgot_password.AccountService.send_reset_password_email")
     @patch("controllers.console.auth.forgot_password.AccountService.is_email_send_ip_limit", return_value=False)
@@ -38,7 +38,7 @@ class TestForgotPasswordSendEmailApi:
         mock_get_account.return_value = mock_account
         mock_send_email.return_value = "token-123"
         mock_session = MagicMock()
-        mock_session_cls.return_value.__enter__.return_value = mock_session
+        mock_session_cls.return_value.begin.return_value.__enter__.return_value = mock_session
 
         wraps_features = SimpleNamespace(enable_email_password_login=True, is_allow_register=True)
         controller_features = SimpleNamespace(is_allow_register=True)
@@ -117,7 +117,7 @@ class TestForgotPasswordCheckApi:
 
 class TestForgotPasswordResetApi:
     @patch("controllers.console.auth.forgot_password.ForgotPasswordResetApi._update_existing_account")
-    @patch("controllers.console.auth.forgot_password.Session")
+    @patch("controllers.console.auth.forgot_password.sessionmaker")
     @patch("controllers.console.auth.forgot_password.AccountService.get_account_by_email_with_case_fallback")
     @patch("controllers.console.auth.forgot_password.AccountService.revoke_reset_password_token")
     @patch("controllers.console.auth.forgot_password.AccountService.get_reset_password_data")
@@ -135,7 +135,7 @@ class TestForgotPasswordResetApi:
         mock_get_account.return_value = mock_account
 
         mock_session = MagicMock()
-        mock_session_cls.return_value.__enter__.return_value = mock_session
+        mock_session_cls.return_value.begin.return_value.__enter__.return_value = mock_session
 
         wraps_features = SimpleNamespace(enable_email_password_login=True)
         with (

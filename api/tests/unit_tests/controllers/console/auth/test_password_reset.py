@@ -30,10 +30,10 @@ from controllers.console.error import AccountNotFound, EmailSendIpLimitError
 
 @pytest.fixture(autouse=True)
 def _mock_forgot_password_session():
-    with patch("controllers.console.auth.forgot_password.Session") as mock_session_cls:
+    with patch("controllers.console.auth.forgot_password.sessionmaker") as mock_session_cls:
         mock_session = MagicMock()
-        mock_session_cls.return_value.__enter__.return_value = mock_session
-        mock_session_cls.return_value.__exit__.return_value = None
+        mock_session_cls.return_value.begin.return_value.__enter__.return_value = mock_session
+        mock_session_cls.return_value.begin.return_value.__exit__.return_value = None
         yield mock_session
 
 
