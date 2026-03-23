@@ -18,7 +18,11 @@ import {
 } from '@/service/use-triggers'
 import { useStore } from '../store'
 import { BlockEnum } from '../types'
-import { matchDataSource, matchToolInCollection, matchTriggerProvider } from '../utils/plugin-install-check'
+import {
+  matchDataSource,
+  matchToolInCollection,
+  matchTriggerProvider,
+} from '../utils/plugin-install-check'
 
 export type InstallationState = {
   isChecking: boolean
@@ -53,6 +57,7 @@ const useToolInstallation = (data: ToolNodeType, enabled: boolean): Installation
   const collectionInfo = useMemo(() => {
     if (!enabled)
       return undefined
+
     switch (data.provider_type) {
       case CollectionType.builtIn:
         return {
@@ -98,6 +103,7 @@ const useToolInstallation = (data: ToolNodeType, enabled: boolean): Installation
   const matchedCollection = useMemo(() => {
     if (!collection || !collection.length)
       return undefined
+
     return matchToolInCollection(collection, { plugin_id, provider_id, provider_name })
   }, [collection, plugin_id, provider_id, provider_name])
 
@@ -132,6 +138,7 @@ const useTriggerInstallation = (data: PluginTriggerNodeType, enabled: boolean): 
   const matchedProvider = useMemo(() => {
     if (!triggerProviders || !triggerProviders.length)
       return undefined
+
     return matchTriggerProvider(triggerProviders, { plugin_id, provider_id, provider_name })
   }, [plugin_id, provider_id, provider_name, triggerProviders])
 
@@ -162,6 +169,7 @@ const useDataSourceInstallation = (data: DataSourceNodeType, _enabled: boolean):
   const matchedPlugin = useMemo(() => {
     if (!dataSourceList || !dataSourceList.length)
       return undefined
+
     return matchDataSource(dataSourceList, { plugin_unique_identifier, plugin_id, provider_name })
   }, [dataSourceList, plugin_id, plugin_unique_identifier, provider_name])
 
@@ -201,5 +209,6 @@ export const useNodePluginInstallation = (data: CommonNodeType): InstallationSta
     return triggerInstallation
   if (isDataSource)
     return dataSourceInstallation
+
   return NOOP_INSTALLATION
 }

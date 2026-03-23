@@ -74,31 +74,40 @@ describe('PluginTypeSwitch', () => {
     const { Wrapper } = createWrapper('?category=all')
     render(<PluginTypeSwitch />, { wrapper: Wrapper })
 
-    // Click on Models option — should not throw
-    expect(() => fireEvent.click(screen.getByText('Models'))).not.toThrow()
+    fireEvent.click(screen.getByText('Models'))
+
+    const modelsButton = screen.getByText('Models').closest('div')
+    expect(modelsButton?.className).toContain('!bg-components-main-nav-nav-button-bg-active')
   })
 
   it('should handle clicking on category with collections (Tools)', () => {
     const { Wrapper } = createWrapper('?category=model')
     render(<PluginTypeSwitch />, { wrapper: Wrapper })
 
-    // Click on "Tools" which has collections → setSearchMode(null)
-    expect(() => fireEvent.click(screen.getByText('Tools'))).not.toThrow()
+    fireEvent.click(screen.getByText('Tools'))
+
+    const toolsButton = screen.getByText('Tools').closest('div')
+    expect(toolsButton?.className).toContain('!bg-components-main-nav-nav-button-bg-active')
   })
 
   it('should handle clicking on category without collections (Models)', () => {
     const { Wrapper } = createWrapper('?category=all')
     render(<PluginTypeSwitch />, { wrapper: Wrapper })
 
-    // Click on "Models" which does NOT have collections → no setSearchMode call
-    expect(() => fireEvent.click(screen.getByText('Models'))).not.toThrow()
+    fireEvent.click(screen.getByText('Models'))
+
+    const modelsButton = screen.getByText('Models').closest('div')
+    expect(modelsButton?.className).toContain('!bg-components-main-nav-nav-button-bg-active')
   })
 
   it('should handle clicking on bundles', () => {
     const { Wrapper } = createWrapper('?category=all')
     render(<PluginTypeSwitch />, { wrapper: Wrapper })
 
-    expect(() => fireEvent.click(screen.getByText('Bundles'))).not.toThrow()
+    fireEvent.click(screen.getByText('Bundles'))
+
+    const bundlesButton = screen.getByText('Bundles').closest('div')
+    expect(bundlesButton?.className).toContain('!bg-components-main-nav-nav-button-bg-active')
   })
 
   it('should handle clicking on each category', () => {
@@ -107,7 +116,10 @@ describe('PluginTypeSwitch', () => {
 
     const categories = ['All', 'Models', 'Tools', 'Data Sources', 'Triggers', 'Agents', 'Extensions', 'Bundles']
     categories.forEach((category) => {
-      expect(() => fireEvent.click(screen.getByText(category))).not.toThrow()
+      fireEvent.click(screen.getByText(category))
+
+      const button = screen.getByText(category).closest('div')
+      expect(button?.className).toContain('!bg-components-main-nav-nav-button-bg-active')
     })
   })
 

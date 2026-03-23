@@ -73,7 +73,7 @@ export type GetVarType = (payload: {
 export type WorkflowVariableBlockType = {
   show?: boolean
   variables?: NodeOutPutVar[]
-  workflowNodesMap?: Record<string, Pick<Node['data'], 'title' | 'type' | 'height' | 'width' | 'position'>>
+  workflowNodesMap?: WorkflowNodesMap
   onInsert?: () => void
   onDelete?: () => void
   getVarType?: GetVarType
@@ -94,12 +94,14 @@ export type AgentBlockType = {
   onSelect?: (agent: AgentNode) => void
 }
 
+export type WorkflowNodesMap = Record<string, Pick<Node['data'], 'title' | 'type' | 'height' | 'width' | 'position'> & { modelProvider?: string }>
+
 export type HITLInputBlockType = {
   show?: boolean
   nodeId: string
   formInputs?: FormInputItem[]
   variables?: NodeOutPutVar[]
-  workflowNodesMap?: Record<string, Pick<Node['data'], 'title' | 'type' | 'height' | 'width' | 'position'>>
+  workflowNodesMap?: WorkflowNodesMap
   getVarType?: GetVarType
   onFormInputsChange?: (inputs: FormInputItem[]) => void
   onFormInputItemRemove: (varName: string) => void

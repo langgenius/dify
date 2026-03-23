@@ -1,15 +1,15 @@
 'use client'
 import { noop } from 'es-toolkit/function'
-import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { emailRegex } from '@/config'
 import { useLocale } from '@/context/i18n'
 import { useWebAppStore } from '@/context/web-app-context'
+import Link from '@/next/link'
+import { useRouter, useSearchParams } from '@/next/navigation'
 import { webAppLogin } from '@/service/common'
 import { fetchAccessToken } from '@/service/share'
 import { setWebAppAccessToken, setWebAppPassport } from '@/service/webapp-auth'
@@ -46,26 +46,20 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
   const appCode = getAppCodeFromRedirectUrl()
   const handleEmailPasswordLogin = async () => {
     if (!email) {
-      Toast.notify({ type: 'error', message: t('error.emailEmpty', { ns: 'login' }) })
+      toast.error(t('error.emailEmpty', { ns: 'login' }))
       return
     }
     if (!emailRegex.test(email)) {
-      Toast.notify({
-        type: 'error',
-        message: t('error.emailInValid', { ns: 'login' }),
-      })
+      toast.error(t('error.emailInValid', { ns: 'login' }))
       return
     }
     if (!password?.trim()) {
-      Toast.notify({ type: 'error', message: t('error.passwordEmpty', { ns: 'login' }) })
+      toast.error(t('error.passwordEmpty', { ns: 'login' }))
       return
     }
 
     if (!redirectUrl || !appCode) {
-      Toast.notify({
-        type: 'error',
-        message: t('error.redirectUrlMissing', { ns: 'login' }),
-      })
+      toast.error(t('error.redirectUrlMissing', { ns: 'login' }))
       return
     }
     try {
@@ -94,15 +88,12 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
         router.replace(decodeURIComponent(redirectUrl))
       }
       else {
-        Toast.notify({
-          type: 'error',
-          message: res.data,
-        })
+        toast.error(res.data)
       }
     }
     catch (e: any) {
       if (e.code === 'authentication_failed')
-        Toast.notify({ type: 'error', message: e.message })
+        toast.error(e.message)
     }
     finally {
       setIsLoading(false)

@@ -36,6 +36,8 @@
   "createApp": "BUAT APLIKASI",
   "createFromConfigFile": "Buat dari file DSL",
   "deleteAppConfirmContent": "Menghapus aplikasi tidak dapat diubah. Pengguna tidak akan dapat lagi mengakses aplikasi Anda, dan semua konfigurasi prompt serta log akan dihapus secara permanen.",
+  "deleteAppConfirmInputLabel": "Untuk konfirmasi, ketik \"{{appName}}\" di kotak di bawah ini:",
+  "deleteAppConfirmInputPlaceholder": "Masukkan nama aplikasi",
   "deleteAppConfirmTitle": "Hapus aplikasi ini?",
   "dslUploader.browse": "Ramban",
   "dslUploader.button": "Seret dan lepas file, atau",

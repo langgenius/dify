@@ -1,13 +1,13 @@
 import { noop } from 'es-toolkit/function'
-import { useRouter, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '@/app/components/signin/countdown'
 import { emailRegex } from '@/config'
 import { useLocale } from '@/context/i18n'
+import { useRouter, useSearchParams } from '@/next/navigation'
 import { sendWebAppEMailLoginCode } from '@/service/common'
 
 export default function MailAndCodeAuth() {
@@ -22,15 +22,12 @@ export default function MailAndCodeAuth() {
   const handleGetEMailVerificationCode = async () => {
     try {
       if (!email) {
-        Toast.notify({ type: 'error', message: t('error.emailEmpty', { ns: 'login' }) })
+        toast.error(t('error.emailEmpty', { ns: 'login' }))
         return
       }
 
       if (!emailRegex.test(email)) {
-        Toast.notify({
-          type: 'error',
-          message: t('error.emailInValid', { ns: 'login' }),
-        })
+        toast.error(t('error.emailInValid', { ns: 'login' }))
         return
       }
       setIsLoading(true)

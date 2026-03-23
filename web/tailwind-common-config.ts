@@ -113,9 +113,6 @@ const config = {
         2: '0.02',
         8: '0.08',
       },
-      fontFamily: {
-        instrument: ['var(--font-instrument-serif)', 'serif'],
-      },
       fontSize: {
         '2xs': '0.625rem',
       },

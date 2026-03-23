@@ -801,6 +801,27 @@ class TestAuthOrchestration:
         urls = build_protected_resource_metadata_discovery_urls(None, "https://api.example.com")
         assert urls == ["https://api.example.com/.well-known/oauth-protected-resource"]
 
+    def test_build_protected_resource_metadata_discovery_urls_with_relative_hint(self):
+        urls = build_protected_resource_metadata_discovery_urls(
+            "/.well-known/oauth-protected-resource/tenant/mcp",
+            "https://api.example.com/tenant/mcp",
+        )
+        assert urls == [
+            "https://api.example.com/.well-known/oauth-protected-resource/tenant/mcp",
+            "https://api.example.com/.well-known/oauth-protected-resource",
+        ]
+
+    def test_build_protected_resource_metadata_discovery_urls_ignores_scheme_less_hint(self):
+        urls = build_protected_resource_metadata_discovery_urls(
+            "/openapi-mcp.cn-hangzhou.aliyuncs.com/.well-known/oauth-protected-resource/tenant/mcp",
+            "https://openapi-mcp.cn-hangzhou.aliyuncs.com/tenant/mcp",
+        )
+
+        assert urls == [
+            "https://openapi-mcp.cn-hangzhou.aliyuncs.com/.well-known/oauth-protected-resource/tenant/mcp",
+            "https://openapi-mcp.cn-hangzhou.aliyuncs.com/.well-known/oauth-protected-resource",
+        ]
+
     def test_build_oauth_authorization_server_metadata_discovery_urls(self):
         # Case 1: with auth_server_url
         urls = build_oauth_authorization_server_metadata_discovery_urls(

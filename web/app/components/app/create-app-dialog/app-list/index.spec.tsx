@@ -40,8 +40,8 @@ vi.mock('../app-card', () => ({
 vi.mock('@/app/components/explore/create-app-modal', () => ({
   default: () => <div data-testid="create-from-template-modal" />,
 }))
-vi.mock('@/app/components/base/toast', () => ({
-  default: { notify: vi.fn() },
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: { add: vi.fn() },
 }))
 vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: vi.fn(),
@@ -63,7 +63,7 @@ vi.mock('@/app/components/workflow/plugin-dependency/hooks', () => ({
 vi.mock('@/utils/app-redirection', () => ({
   getRedirection: vi.fn(),
 }))
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
 }))
 

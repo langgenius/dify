@@ -13,6 +13,7 @@ This document tracks the migration away from legacy overlay APIs.
   - `@/app/components/base/popover`
   - `@/app/components/base/dropdown`
   - `@/app/components/base/dialog`
+  - `@/app/components/base/toast` (including `context`)
 - Replacement primitives:
   - `@/app/components/base/ui/tooltip`
   - `@/app/components/base/ui/dropdown-menu`
@@ -21,7 +22,8 @@ This document tracks the migration away from legacy overlay APIs.
   - `@/app/components/base/ui/dialog`
   - `@/app/components/base/ui/alert-dialog`
   - `@/app/components/base/ui/select`
-- Tracking issue: https://github.com/langgenius/dify/issues/32767
+  - `@/app/components/base/ui/toast`
+- Tracking issue: <https://github.com/langgenius/dify/issues/32767>
 
 ## ESLint policy
 
@@ -42,6 +44,13 @@ This document tracks the migration away from legacy overlay APIs.
    - Remove remaining allowlist entries.
    - Remove legacy overlay implementations when import count reaches zero.
 
+## Toast migration strategy
+
+- During migration, `@/app/components/base/toast` and `@/app/components/base/ui/toast` may coexist.
+- All new toast usage must go through `@/app/components/base/ui/toast`.
+- When a file with legacy toast usage is touched, prefer migrating that call site in the same change; full-repo toast cleanup is not required in one PR.
+- `@/app/components/base/ui/toast` is the design-system stack toast host. Legacy `ToastContext`, `ToastProvider`, anchored toast behavior, and ad-hoc mount patterns stay in `base/toast` until their call sites are migrated away.
+
 ## Allowlist maintenance
 
 - After each migration batch, run:
@@ -55,26 +64,31 @@ pnpm -C web lint:fix --prune-suppressions <changed-files>
 
 ## z-index strategy
 
-All new overlay primitives in `base/ui/` share a single z-index value: **`z-[1002]`**.
+All new overlay primitives in `base/ui/` share a single z-index value:
+**`z-[1002]`**, except Toast which stays at **`z-[1101]`** during migration.
 
 ### Why z-[1002]?
 
 During the migration period, legacy and new overlays coexist. Legacy overlays
 portal to `document.body` with explicit z-index values:
 
-| Layer | z-index | Components |
-|-------|---------|------------|
-| Legacy Drawer | `z-[30]` | `base/drawer` |
-| Legacy Modal | `z-[60]` | `base/modal` (default) |
-| Legacy PortalToFollowElem callers | up to `z-[1001]` | various business components |
-| **New UI primitives** | **`z-[1002]`** | `base/ui/*` (Popover, Dialog, Tooltip, etc.) |
-| Legacy Modal (highPriority) | `z-[1100]` | `base/modal` (`highPriority={true}`) |
-| Toast | `z-[9999]` | `base/toast` |
+| Layer                             | z-index          | Components                                   |
+| --------------------------------- | ---------------- | -------------------------------------------- |
+| Legacy Drawer                     | `z-[30]`         | `base/drawer`                                |
+| Legacy Modal                      | `z-[60]`         | `base/modal` (default)                       |
+| Legacy PortalToFollowElem callers | up to `z-[1001]` | various business components                  |
+| **New UI primitives**             | **`z-[1002]`**   | `base/ui/*` (Popover, Dialog, Tooltip, etc.) |
+| Legacy Modal (highPriority)       | `z-[1100]`       | `base/modal` (`highPriority={true}`)         |
+| Toast (legacy + new)              | `z-[1101]`       | `base/toast`, `base/ui/toast`                |
 
 `z-[1002]` sits above all common legacy overlays, so new primitives always
 render on top without needing per-call-site z-index hacks. Among themselves,
 new primitives share the same z-index and rely on **DOM order** for stacking
 (later portal = on top).
+
+Toast intentionally stays one layer above the remaining legacy `highPriority`
+modal path (`z-[1100]`) so notifications keep their current visibility without
+falling back to `z-[9999]`.
 
 ### Rules
 
@@ -91,7 +105,7 @@ new primitives share the same z-index and rely on **DOM order** for stacking
 Once all legacy overlays are removed:
 
 1. Reduce `z-[1002]` back to `z-50` across all `base/ui/` primitives.
-1. Reduce Toast from `z-[9999]` to `z-[99]`.
+1. Reduce Toast from `z-[1101]` to `z-[51]`.
 1. Remove this section from the migration guide.
 
 ## React Refresh policy for base UI primitives

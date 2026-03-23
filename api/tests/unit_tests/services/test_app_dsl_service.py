@@ -263,7 +263,7 @@ def test_import_app_completed_uses_declared_dependencies(monkeypatch):
 
     assert result.status == ImportStatus.COMPLETED
     assert result.app_id == "app-new"
-    draft_var_service.delete_workflow_variables.assert_called_once_with(app_id="app-new")
+    draft_var_service.delete_app_workflow_variables.assert_called_once_with(app_id="app-new")
 
 
 @pytest.mark.parametrize("has_workflow", [True, False])
@@ -305,7 +305,7 @@ def test_import_app_legacy_versions_extract_dependencies(monkeypatch, has_workfl
         account=_account_mock(), import_mode=ImportMode.YAML_CONTENT, yaml_content=_yaml_dump(data)
     )
     assert result.status == ImportStatus.COMPLETED_WITH_WARNINGS
-    draft_var_service.delete_workflow_variables.assert_called_once_with(app_id="app-legacy")
+    draft_var_service.delete_app_workflow_variables.assert_called_once_with(app_id="app-legacy")
 
 
 def test_import_app_yaml_error_returns_failed(monkeypatch):
@@ -670,6 +670,44 @@ def test_export_dsl_delegates_by_mode(monkeypatch):
     )
     AppDslService.export_dsl(chat_app)
     assert model_calls == [True]
+
+
+def test_export_dsl_preserves_icon_and_icon_type(monkeypatch):
+    monkeypatch.setattr(AppDslService, "_append_workflow_export_data", lambda **_kwargs: None)
+
+    emoji_app = SimpleNamespace(
+        mode=AppMode.WORKFLOW.value,
+        tenant_id="tenant-1",
+        name="Emoji App",
+        icon="🎨",
+        icon_type=IconType.EMOJI,
+        icon_background="#FF5733",
+        description="App with emoji icon",
+        use_icon_as_answer_icon=True,
+        app_model_config=None,
+    )
+    yaml_output = AppDslService.export_dsl(emoji_app)
+    data = yaml.safe_load(yaml_output)
+    assert data["app"]["icon"] == "🎨"
+    assert data["app"]["icon_type"] == "emoji"
+    assert data["app"]["icon_background"] == "#FF5733"
+
+    image_app = SimpleNamespace(
+        mode=AppMode.WORKFLOW.value,
+        tenant_id="tenant-1",
+        name="Image App",
+        icon="https://example.com/icon.png",
+        icon_type=IconType.IMAGE,
+        icon_background="#FFEAD5",
+        description="App with image icon",
+        use_icon_as_answer_icon=False,
+        app_model_config=None,
+    )
+    yaml_output = AppDslService.export_dsl(image_app)
+    data = yaml.safe_load(yaml_output)
+    assert data["app"]["icon"] == "https://example.com/icon.png"
+    assert data["app"]["icon_type"] == "image"
+    assert data["app"]["icon_background"] == "#FFEAD5"
 
 
 def test_append_workflow_export_data_filters_and_overrides(monkeypatch):

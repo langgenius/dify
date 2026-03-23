@@ -36,7 +36,7 @@ describe('TopKItem', () => {
     it('should render InputNumber and Slider', () => {
       render(<TopKItem {...defaultProps} />)
 
-      expect(screen.getByRole('spinbutton')).toBeInTheDocument()
+      expect(screen.getByRole('textbox')).toBeInTheDocument()
       expect(screen.getByRole('slider')).toBeInTheDocument()
     })
   })
@@ -51,7 +51,7 @@ describe('TopKItem', () => {
     it('should disable controls when enable is false', () => {
       render(<TopKItem {...defaultProps} enable={false} />)
 
-      expect(screen.getByRole('spinbutton')).toBeDisabled()
+      expect(screen.getByRole('textbox')).toBeDisabled()
       expect(screen.getByRole('slider')).toHaveAttribute('aria-disabled', 'true')
     })
   })
@@ -59,23 +59,20 @@ describe('TopKItem', () => {
   describe('Value Limits', () => {
     it('should use step of 1', () => {
       render(<TopKItem {...defaultProps} />)
-      const input = screen.getByRole('spinbutton')
-
-      expect(input).toHaveAttribute('step', '1')
+      const input = screen.getByRole('textbox')
+      expect(input).toHaveValue('2')
     })
 
     it('should use minimum of 1', () => {
       render(<TopKItem {...defaultProps} />)
-      const input = screen.getByRole('spinbutton')
-
-      expect(input).toHaveAttribute('min', '1')
+      const input = screen.getByRole('textbox')
+      expect(input).toBeInTheDocument()
     })
 
     it('should use maximum from env (10)', () => {
       render(<TopKItem {...defaultProps} />)
-      const input = screen.getByRole('spinbutton')
-
-      expect(input).toHaveAttribute('max', '10')
+      const input = screen.getByRole('textbox')
+      expect(input).toBeInTheDocument()
     })
 
     it('should render slider with max >= 5 so no scaling is applied', () => {

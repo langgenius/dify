@@ -33,15 +33,16 @@ export type AvailableNodesMetaData = {
 }
 
 export type HooksStore = ReturnType<typeof createHooksStore>
+export type SyncDraftCallback = {
+  onSuccess?: () => void
+  onError?: () => void
+  onSettled?: () => void
+}
 export type CommonHooksFnMap = {
   interactionMode?: InteractionMode
   doSyncWorkflowDraft: (
     notRefreshWhenSyncError?: boolean,
-    callback?: {
-      onSuccess?: () => void
-      onError?: () => void
-      onSettled?: () => void
-    },
+    callback?: SyncDraftCallback,
   ) => Promise<void>
   syncWorkflowDraftWhenPageClose: () => void
   handleRefreshWorkflowDraft: () => void

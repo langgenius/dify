@@ -4,7 +4,6 @@ import type { ReactNode } from 'react'
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
 import type { InjectWorkflowStoreSliceFn } from '@/app/components/workflow/store'
 import dynamic from 'next/dynamic'
-import { useSearchParams } from 'next/navigation'
 import { useQueryState } from 'nuqs'
 import {
   useCallback,
@@ -38,6 +37,7 @@ import {
 } from '@/app/components/workflow/utils'
 import { useAppContext } from '@/context/app-context'
 import { upgradeAppRuntime } from '@/service/apps'
+import { useSearchParams } from '@/next/navigation'
 import { fetchRunDetail } from '@/service/log'
 import { useAppTriggers } from '@/service/use-tools'
 import { AppModeEnum } from '@/types/app'

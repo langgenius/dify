@@ -47,9 +47,8 @@ const AppSelector: FC<Props> = ({
   onSelect,
 }) => {
   const { t } = useTranslation()
-  const [isShow, onShowChange] = useState(false)
+  const [isShow, setIsShow] = useState(false)
   const [searchText, setSearchText] = useState('')
-  const [isLoadingMore, setIsLoadingMore] = useState(false)
 
   const {
     data,
@@ -97,25 +96,16 @@ const AppSelector: FC<Props> = ({
   const hasMore = hasNextPage ?? true
 
   const handleLoadMore = useCallback(async () => {
-    if (isLoadingMore || isFetchingNextPage || !hasMore)
+    if (isFetchingNextPage || !hasMore)
       return
 
-    setIsLoadingMore(true)
-    try {
-      await fetchNextPage()
-    }
-    finally {
-      // Add a small delay to ensure state updates are complete
-      setTimeout(() => {
-        setIsLoadingMore(false)
-      }, 300)
-    }
-  }, [isLoadingMore, isFetchingNextPage, hasMore, fetchNextPage])
+    await fetchNextPage()
+  }, [fetchNextPage, hasMore, isFetchingNextPage])
 
   const handleTriggerClick = () => {
     if (disabled)
       return
-    onShowChange(true)
+    setIsShow(true)
   }
 
   const [isShowChooseApp, setIsShowChooseApp] = useState(false)
@@ -157,7 +147,7 @@ const AppSelector: FC<Props> = ({
         placement={placement}
         offset={offset}
         open={isShow}
-        onOpenChange={onShowChange}
+        onOpenChange={setIsShow}
       >
         <PortalToFollowElemTrigger
           className="w-full"
@@ -187,7 +177,7 @@ const AppSelector: FC<Props> = ({
                 onSelect={handleSelectApp}
                 scope={scope || 'all'}
                 apps={appsForPicker}
-                isLoading={isLoading || isLoadingMore || isFetchingNextPage}
+                isLoading={isLoading || isFetchingNextPage}
                 hasMore={hasMore}
                 onLoadMore={handleLoadMore}
                 searchText={searchText}

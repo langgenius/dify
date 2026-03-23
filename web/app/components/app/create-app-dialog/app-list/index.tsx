@@ -4,7 +4,6 @@ import type { CreateAppModalProps } from '@/app/components/explore/create-app-mo
 import type { App } from '@/models/explore'
 import { RiRobot2Line } from '@remixicon/react'
 import { useDebounceFn } from 'ahooks'
-import { useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -14,12 +13,13 @@ import { buttonVariants } from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import Input from '@/app/components/base/input'
 import Loading from '@/app/components/base/loading'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import CreateAppModal from '@/app/components/explore/create-app-modal'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { MARKETPLACE_URL_PREFIX, NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { DSLImportMode } from '@/models/app'
+import { useRouter } from '@/next/navigation'
 import { importDSL } from '@/service/apps'
 import { fetchAppDetail } from '@/service/explore'
 import { useExploreAppList } from '@/service/use-explore'
@@ -140,10 +140,7 @@ const Apps = ({
       })
 
       setIsShowCreateModal(false)
-      Toast.notify({
-        type: 'success',
-        message: t('newApp.appCreated', { ns: 'app' }),
-      })
+      toast.success(t('newApp.appCreated', { ns: 'app' }))
       if (onSuccess)
         onSuccess()
       if (app.app_id)
@@ -152,7 +149,7 @@ const Apps = ({
       getRedirection(isCurrentWorkspaceEditor, { id: app.app_id!, mode }, push)
     }
     catch {
-      Toast.notify({ type: 'error', message: t('newApp.appCreateFailed', { ns: 'app' }) })
+      toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
     }
   }
 

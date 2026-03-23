@@ -73,9 +73,8 @@ const BaseNode: FC<BaseNodeProps> = ({
   const appId = useStore(s => s.appId)
   const { nodePanelPresence } = useCollaboration(appId as string)
   const controlMode = useStore(s => s.controlMode)
-  const { shouldDim: pluginShouldDim, isChecking: pluginIsChecking, isMissing: pluginIsMissing, canInstall: pluginCanInstall, uniqueIdentifier: pluginUniqueIdentifier } = useNodePluginInstallation(data)
+  const { shouldDim: pluginDimmed, isChecking: pluginIsChecking, isMissing: pluginIsMissing, canInstall: pluginCanInstall, uniqueIdentifier: pluginUniqueIdentifier } = useNodePluginInstallation(data)
   const pluginInstallLocked = !pluginIsChecking && pluginIsMissing && pluginCanInstall && Boolean(pluginUniqueIdentifier)
-  const pluginDimmed = pluginShouldDim
 
   const currentUserPresence = useMemo(() => {
     const userId = userProfile?.id || ''

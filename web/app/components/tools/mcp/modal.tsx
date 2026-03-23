@@ -14,7 +14,7 @@ import { Mcp } from '@/app/components/base/icons/src/vender/other'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
 import TabSlider from '@/app/components/base/tab-slider'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { MCPAuthMethod } from '@/app/components/tools/types'
 import { cn } from '@/utils/classnames'
 import { shouldUseMcpIconForAppIcon } from '@/utils/mcp'
@@ -82,11 +82,11 @@ const MCPModalContent: FC<MCPModalContentProps> = ({
 
   const submit = async () => {
     if (!isValidUrl(state.url)) {
-      Toast.notify({ type: 'error', message: 'invalid server url' })
+      toast.error(t('mcp.modal.invalidServerUrl', { ns: 'tools' }))
       return
     }
     if (!isValidServerID(state.serverIdentifier.trim())) {
-      Toast.notify({ type: 'error', message: 'invalid server identifier' })
+      toast.error(t('mcp.modal.invalidServerIdentifier', { ns: 'tools' }))
       return
     }
     const formattedHeaders = state.headers.reduce((acc, item) => {

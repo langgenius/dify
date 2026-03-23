@@ -4,7 +4,6 @@ import {
   RiArrowRightUpLine,
 } from '@remixicon/react'
 import { useTheme } from 'next-themes'
-import Link from 'next/link'
 import {
   memo,
   useCallback,
@@ -15,6 +14,7 @@ import Divider from '@/app/components/base/divider'
 import Loading from '@/app/components/base/loading'
 import List from '@/app/components/plugins/marketplace/list'
 import ProviderCard from '@/app/components/plugins/provider-card'
+import Link from '@/next/link'
 import { cn } from '@/utils/classnames'
 import { getMarketplaceUrl } from '@/utils/var'
 import {

@@ -11,7 +11,6 @@ import {
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { gte } from 'semver'
 import Tooltip from '@/app/components/base/tooltip'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
 import { API_PREFIX } from '@/config'
@@ -20,6 +19,7 @@ import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import useTheme from '@/hooks/use-theme'
 import { cn } from '@/utils/classnames'
+import { isEqualOrLaterThanVersion } from '@/utils/semver'
 import { getMarketplaceUrl } from '@/utils/var'
 import Badge from '../../base/badge'
 import { Github } from '../../base/icons/src/public/common'
@@ -71,7 +71,7 @@ const PluginItem: FC<Props> = ({
   const isDifyVersionCompatible = useMemo(() => {
     if (!langGeniusVersionInfo.current_version)
       return true
-    return gte(langGeniusVersionInfo.current_version, declarationMeta.minimum_dify_version ?? '0.0.0')
+    return isEqualOrLaterThanVersion(langGeniusVersionInfo.current_version, declarationMeta.minimum_dify_version ?? '0.0.0')
   }, [declarationMeta.minimum_dify_version, langGeniusVersionInfo.current_version])
 
   const isDeprecated = useMemo(() => {

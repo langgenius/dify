@@ -55,6 +55,7 @@ describe('Toast', () => {
       )
 
       const successToast = getToastElementByMessage('Success message')
+      expect(successToast).toHaveClass('z-[1101]')
       const successIcon = within(successToast).getByTestId('toast-icon-success')
       expect(successIcon).toHaveClass('text-text-success')
 

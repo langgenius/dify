@@ -207,6 +207,45 @@ class TestEmailDeliveryTestHandler:
         assert kwargs["to"] == "test@example.com"
         assert "RENDERED_Subj" in kwargs["subject"]
 
+    def test_send_test_sanitizes_subject(self, monkeypatch):
+        monkeypatch.setattr(
+            service_module.FeatureService,
+            "get_features",
+            lambda _id: SimpleNamespace(human_input_email_delivery_enabled=True),
+        )
+        monkeypatch.setattr(service_module.mail, "is_inited", lambda: True)
+        mock_mail_send = MagicMock()
+        monkeypatch.setattr(service_module.mail, "send", mock_mail_send)
+        monkeypatch.setattr(
+            service_module,
+            "render_email_template",
+            lambda template, substitutions: template.replace("{{ recipient_email }}", substitutions["recipient_email"]),
+        )
+
+        handler = EmailDeliveryTestHandler(session_factory=MagicMock())
+        handler._resolve_recipients = MagicMock(return_value=["test@example.com"])
+
+        context = DeliveryTestContext(
+            tenant_id="t1",
+            app_id="a1",
+            node_id="n1",
+            node_title="title",
+            rendered_content="content",
+            recipients=[DeliveryTestEmailRecipient(email="test@example.com", form_token="token123")],
+        )
+        method = EmailDeliveryMethod(
+            config=EmailDeliveryConfig(
+                recipients=EmailRecipients(whole_workspace=False, items=[]),
+                subject="<b>Notice</b>\r\nBCC:{{ recipient_email }}",
+                body="Body",
+            )
+        )
+
+        handler.send_test(context=context, method=method)
+
+        _, kwargs = mock_mail_send.call_args
+        assert kwargs["subject"] == "Notice BCC:test@example.com"
+
     def test_resolve_recipients(self):
         handler = EmailDeliveryTestHandler(session_factory=MagicMock())
 

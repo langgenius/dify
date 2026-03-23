@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Notion } from '@/app/components/base/icons/src/public/common'
 import { Markdown } from '@/app/components/base/markdown'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { usePreviewOnlineDocument } from '@/service/use-pipeline'
 import { formatNumberAbbreviated } from '@/utils/format'
@@ -44,10 +44,7 @@ const OnlineDocumentPreview = ({
         setContent(data.content)
       },
       onError(error) {
-        Toast.notify({
-          type: 'error',
-          message: error.message,
-        })
+        toast.error(error.message)
       },
     })
   }, [currentPage.page_id])

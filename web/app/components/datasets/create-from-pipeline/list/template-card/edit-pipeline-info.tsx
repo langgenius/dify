@@ -9,7 +9,7 @@ import AppIconPicker from '@/app/components/base/app-icon-picker'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { useInvalidCustomizedTemplateList, useUpdateTemplateInfo } from '@/service/use-pipeline'
 
 type EditPipelineInfoProps = {
@@ -67,10 +67,7 @@ const EditPipelineInfo = ({
 
   const handleSave = useCallback(async () => {
     if (!name) {
-      Toast.notify({
-        type: 'error',
-        message: 'Please enter a name for the Knowledge Base.',
-      })
+      toast.error(t('editPipelineInfoNameRequired', { ns: 'datasetPipeline' }))
       return
     }
     const request = {

@@ -1,10 +1,19 @@
-import { RiQuestionLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { InputNumber } from '@/app/components/base/input-number'
 import Slider from '@/app/components/base/slider'
 import Tooltip from '@/app/components/base/tooltip'
+import {
+  NumberField,
+  NumberFieldControls,
+  NumberFieldDecrement,
+  NumberFieldGroup,
+  NumberFieldIncrement,
+  NumberFieldInput,
+} from '@/app/components/base/ui/number-field'
+
+const MIN_KEYWORD_NUMBER = 0
+const MAX_KEYWORD_NUMBER = 50
 
 type KeyWordNumberProps = {
   keywordNumber: number
@@ -17,9 +26,8 @@ const KeyWordNumber = ({
 }: KeyWordNumberProps) => {
   const { t } = useTranslation()
 
-  const handleInputChange = useCallback((value: number | undefined) => {
-    if (value)
-      onKeywordNumberChange(value)
+  const handleInputChange = useCallback((value: number | null) => {
+    onKeywordNumberChange(value ?? MIN_KEYWORD_NUMBER)
   }, [onKeywordNumberChange])
 
   return (
@@ -29,23 +37,33 @@ const KeyWordNumber = ({
           {t('form.numberOfKeywords', { ns: 'datasetSettings' })}
         </div>
         <Tooltip
-          popupContent="number of keywords"
+          popupContent={t('form.numberOfKeywords', { ns: 'datasetSettings' })}
         >
-          <RiQuestionLine className="h-3.5 w-3.5 text-text-quaternary" />
+          <span className="i-ri-question-line h-3.5 w-3.5 text-text-quaternary" />
         </Tooltip>
       </div>
       <Slider
         className="mr-3 w-[206px] shrink-0"
         value={keywordNumber}
-        max={50}
+        min={MIN_KEYWORD_NUMBER}
+        max={MAX_KEYWORD_NUMBER}
         onChange={onKeywordNumberChange}
       />
-      <InputNumber
-        wrapperClassName="shrink-0 w-12"
-        type="number"
+      <NumberField
+        className="w-12 shrink-0"
+        min={MIN_KEYWORD_NUMBER}
+        max={MAX_KEYWORD_NUMBER}
         value={keywordNumber}
-        onChange={handleInputChange}
-      />
+        onValueChange={handleInputChange}
+      >
+        <NumberFieldGroup size="regular">
+          <NumberFieldInput size="regular" />
+          <NumberFieldControls>
+            <NumberFieldIncrement size="regular" />
+            <NumberFieldDecrement size="regular" />
+          </NumberFieldControls>
+        </NumberFieldGroup>
+      </NumberField>
     </div>
   )
 }

@@ -1,7 +1,6 @@
 'use client'
 import type { FC } from 'react'
 import type { RetrievalConfig } from '@/types/app'
-import Image from 'next/image'
 
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
@@ -215,11 +214,11 @@ const RetrievalParamConfig: FC<Props> = ({
                     isChosen={value.reranking_mode === option.value}
                     onChosen={() => handleChangeRerankMode(option.value)}
                     icon={(
-                      <Image
+                      <img
                         src={
                           option.value === RerankingModeEnum.WeightedScore
-                            ? ProgressIndicator
-                            : Reranking
+                            ? ProgressIndicator.src
+                            : Reranking.src
                         }
                         alt=""
                       />

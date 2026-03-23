@@ -302,6 +302,9 @@ const Editor: FC<Props> = ({
                             width: node.width,
                             height: node.height,
                             position: node.position,
+                            ...(node.data.type === BlockEnum.LLM && {
+                              modelProvider: (node.data as { model?: ModelConfig }).model?.provider,
+                            }),
                           }
                           if (node.data.type === BlockEnum.Start) {
                             acc.sys = {

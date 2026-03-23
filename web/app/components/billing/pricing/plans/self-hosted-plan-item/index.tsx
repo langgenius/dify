@@ -4,9 +4,9 @@ import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Azure, GoogleCloud } from '@/app/components/base/icons/src/public/billing'
+import { toast } from '@/app/components/base/ui/toast'
 import { useAppContext } from '@/context/app-context'
 import { cn } from '@/utils/classnames'
-import Toast from '../../../../base/toast'
 import { contactSalesUrl, getStartedWithCommunityUrl, getWithPremiumUrl } from '../../../config'
 import { SelfHostedPlan } from '../../../type'
 import { Community, Enterprise, EnterpriseNoise, Premium, PremiumNoise } from '../../assets'
@@ -56,11 +56,7 @@ const SelfHostedPlanItem: FC<SelfHostedPlanItemProps> = ({
   const handleGetPayUrl = useCallback(() => {
     // Only workspace manager can buy plan
     if (!isCurrentWorkspaceManager) {
-      Toast.notify({
-        type: 'error',
-        message: t('buyPermissionDeniedTip', { ns: 'billing' }),
-        className: 'z-[1001]',
-      })
+      toast.error(t('buyPermissionDeniedTip', { ns: 'billing' }))
       return
     }
     if (isFreePlan) {

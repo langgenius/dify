@@ -378,6 +378,7 @@ class QueueNodeSucceededEvent(AppQueueEvent):
     in_parent_node_id: str | None = None
     """parent node id if this is an extractor node event"""
     start_at: datetime
+    finished_at: datetime | None = None
 
     inputs: Mapping[str, object] = Field(default_factory=dict)
     process_data: Mapping[str, object] = Field(default_factory=dict)
@@ -435,6 +436,7 @@ class QueueNodeExceptionEvent(AppQueueEvent):
     in_parent_node_id: str | None = None
     """parent node id if this is an extractor node event"""
     start_at: datetime
+    finished_at: datetime | None = None
 
     inputs: Mapping[str, object] = Field(default_factory=dict)
     process_data: Mapping[str, object] = Field(default_factory=dict)
@@ -461,6 +463,7 @@ class QueueNodeFailedEvent(AppQueueEvent):
     in_parent_node_id: str | None = None
     """parent node id if this is an extractor node event"""
     start_at: datetime
+    finished_at: datetime | None = None
 
     inputs: Mapping[str, object] = Field(default_factory=dict)
     process_data: Mapping[str, object] = Field(default_factory=dict)

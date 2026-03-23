@@ -10,8 +10,8 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
+import { toast } from '@/app/components/base/ui/toast'
 import { importSchemaFromURL } from '@/service/tools'
-import Toast from '../../base/toast'
 import examples from './examples'
 
 type Props = {
@@ -27,10 +27,7 @@ const GetSchema: FC<Props> = ({
   const [isParsing, setIsParsing] = useState(false)
   const handleImportFromUrl = async () => {
     if (!importUrl.startsWith('http://') && !importUrl.startsWith('https://')) {
-      Toast.notify({
-        type: 'error',
-        message: t('createTool.urlError', { ns: 'tools' }),
-      })
+      toast.error(t('createTool.urlError', { ns: 'tools' }))
       return
     }
     setIsParsing(true)

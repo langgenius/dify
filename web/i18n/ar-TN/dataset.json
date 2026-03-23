@@ -77,6 +77,8 @@
   "externalKnowledgeDescriptionPlaceholder": "صف ما يوجد في قاعدة المعرفة هذه (اختياري)",
   "externalKnowledgeForm.cancel": "إلغاء",
   "externalKnowledgeForm.connect": "اتصال",
+  "externalKnowledgeForm.connectedFailed": "فشل الاتصال بقاعدة المعرفة الخارجية",
+  "externalKnowledgeForm.connectedSuccess": "تم الاتصال بقاعدة المعرفة الخارجية بنجاح",
   "externalKnowledgeId": "معرف المعرفة الخارجية",
   "externalKnowledgeIdPlaceholder": "يرجى إدخال معرف المعرفة",
   "externalKnowledgeName": "اسم المعرفة الخارجية",

@@ -54,11 +54,10 @@ from dify_graph.enums import (
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
-from dify_graph.file import File, FileTransferMethod, FileType, file_manager
+from dify_graph.file import File, FileTransferMethod, FileType
 from dify_graph.model_runtime.entities import (
     ImagePromptMessageContent,
     PromptMessage,
-    PromptMessageContentType,
     TextPromptMessageContent,
 )
 from dify_graph.model_runtime.entities.llm_entities import (
@@ -69,14 +68,7 @@ from dify_graph.model_runtime.entities.llm_entities import (
     LLMStructuredOutput,
     LLMUsage,
 )
-from dify_graph.model_runtime.entities.message_entities import (
-    AssistantPromptMessage,
-    PromptMessageContentUnionTypes,
-    PromptMessageRole,
-    SystemPromptMessage,
-    UserPromptMessage,
-)
-from dify_graph.model_runtime.entities.model_entities import ModelFeature, ModelPropertyKey
+from dify_graph.model_runtime.entities.message_entities import PromptMessageContentUnionTypes
 from dify_graph.model_runtime.memory import PromptMessageMemory
 from dify_graph.model_runtime.utils.encoders import jsonable_encoder
 from dify_graph.node_events import (
@@ -95,14 +87,13 @@ from dify_graph.node_events.node import ChunkType, ThoughtEndChunkEvent, Thought
 from dify_graph.nodes.base.entities import VariableSelector
 from dify_graph.nodes.base.node import Node
 from dify_graph.nodes.base.variable_template_parser import VariableTemplateParser
-from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory
+from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory, TemplateRenderer
 from dify_graph.nodes.protocols import HttpClientProtocol
 from dify_graph.runtime import VariablePool
 from dify_graph.variables import (
     ArrayFileSegment,
     ArrayPromptMessageSegment,
     ArraySegment,
-    FileSegment,
     NoneSegment,
     ObjectSegment,
     StringSegment,
@@ -133,9 +124,6 @@ from .exc import (
     InvalidContextStructureError,
     InvalidVariableTypeError,
     LLMNodeError,
-    MemoryRolePrefixRequiredError,
-    NoPromptFoundError,
-    TemplateTypeNotSupportError,
     VariableNotFoundError,
 )
 from .file_saver import FileSaverImpl, LLMFileSaver
@@ -162,6 +150,7 @@ class LLMNode(Node[LLMNodeData]):
     _model_factory: ModelFactory
     _model_instance: ModelInstance
     _memory: PromptMessageMemory | None
+    _template_renderer: TemplateRenderer
 
     def __init__(
         self,
@@ -174,6 +163,7 @@ class LLMNode(Node[LLMNodeData]):
         model_factory: ModelFactory,
         model_instance: ModelInstance,
         http_client: HttpClientProtocol,
+        template_renderer: TemplateRenderer,
         memory: PromptMessageMemory | None = None,
         llm_file_saver: LLMFileSaver | None = None,
     ):
@@ -190,6 +180,7 @@ class LLMNode(Node[LLMNodeData]):
         self._model_factory = model_factory
         self._model_instance = model_instance
         self._memory = memory
+        self._template_renderer = template_renderer
 
         if llm_file_saver is None:
             dify_ctx = self.require_dify_context()
@@ -1326,7 +1317,6 @@ class LLMNode(Node[LLMNodeData]):
         model_schema = llm_utils.fetch_model_schema(model_instance=model_instance)
 
         if isinstance(prompt_template, list):
-            # For chat model
             prompt_messages.extend(
                 LLMNode.handle_list_messages(
                     messages=prompt_template,
@@ -1338,16 +1328,13 @@ class LLMNode(Node[LLMNodeData]):
                 )
             )
 
-            # Get memory messages for chat mode
             memory_messages = _handle_memory_chat_mode(
                 memory=memory,
                 memory_config=memory_config,
                 model_instance=model_instance,
             )
-            # Extend prompt_messages with memory messages
             prompt_messages.extend(memory_messages)
 
-            # Add current query to the prompt messages
             if sys_query:
                 message = LLMNodeChatModelMessage(
                     text=sys_query,
@@ -1365,7 +1352,6 @@ class LLMNode(Node[LLMNodeData]):
                 )
 
         elif isinstance(prompt_template, LLMNodeCompletionModelPromptTemplate):
-            # For completion model
             prompt_messages.extend(
                 _handle_completion_template(
                     template=prompt_template,
@@ -1375,15 +1361,12 @@ class LLMNode(Node[LLMNodeData]):
                 )
             )
 
-            # Get memory text for completion model
             memory_text = _handle_memory_completion_mode(
                 memory=memory,
                 memory_config=memory_config,
                 model_instance=model_instance,
             )
-            # Insert histories into the prompt
             prompt_content = prompt_messages[0].content
-            # For issue #11247 - Check if prompt content is a string or a list
             prompt_content_type = type(prompt_content)
             if prompt_content_type == str:
                 prompt_content = str(prompt_content)
@@ -1403,7 +1386,6 @@ class LLMNode(Node[LLMNodeData]):
             else:
                 raise ValueError("Invalid prompt content type")
 
-            # Add current query to the prompt message
             if sys_query:
                 if prompt_content_type == str:
                     prompt_content = str(prompt_messages[0].content).replace("#sys.query#", sys_query)
@@ -1418,14 +1400,11 @@ class LLMNode(Node[LLMNodeData]):
         else:
             raise TemplateTypeNotSupportError(type_name=str(type(prompt_template)))
 
-        # The sys_files will be deprecated later
         if vision_enabled and sys_files:
             file_prompts = []
             for file in sys_files:
                 file_prompt = file_manager.to_prompt_message_content(file, image_detail_config=vision_detail)
                 file_prompts.append(file_prompt)
-            # If last prompt is a user prompt, add files into its contents,
-            # otherwise append a new user prompt
             if (
                 len(prompt_messages) > 0
                 and isinstance(prompt_messages[-1], UserPromptMessage)
@@ -1435,14 +1414,11 @@ class LLMNode(Node[LLMNodeData]):
             else:
                 prompt_messages.append(UserPromptMessage(content=file_prompts))
 
-        # The context_files
         if vision_enabled and context_files:
             file_prompts = []
             for file in context_files:
                 file_prompt = file_manager.to_prompt_message_content(file, image_detail_config=vision_detail)
                 file_prompts.append(file_prompt)
-            # If last prompt is a user prompt, add files into its contents,
-            # otherwise append a new user prompt
             if (
                 len(prompt_messages) > 0
                 and isinstance(prompt_messages[-1], UserPromptMessage)
@@ -1452,20 +1428,17 @@ class LLMNode(Node[LLMNodeData]):
             else:
                 prompt_messages.append(UserPromptMessage(content=file_prompts))
 
-        # Remove empty messages and filter unsupported content
         filtered_prompt_messages = []
         for prompt_message in prompt_messages:
             if isinstance(prompt_message.content, list):
                 prompt_message_content: list[PromptMessageContentUnionTypes] = []
                 for content_item in prompt_message.content:
-                    # Skip content if features are not defined
                     if not model_schema.features:
                         if content_item.type != PromptMessageContentType.TEXT:
                             continue
                         prompt_message_content.append(content_item)
                         continue
 
-                    # Skip content if corresponding feature is not supported
                     if (
                         (
                             content_item.type == PromptMessageContentType.IMAGE
@@ -1680,7 +1653,6 @@ class LLMNode(Node[LLMNodeData]):
                     prompt_messages.append(prompt_message)
 
                 if file_contents:
-                    # Create message with image contents
                     prompt_message = _combine_message_content_with_role(contents=file_contents, role=message.role)
                     prompt_messages.append(prompt_message)
 
@@ -2824,7 +2796,6 @@ def _handle_memory_chat_mode(
     model_instance: ModelInstance,
 ) -> Sequence[PromptMessage]:
     memory_messages: Sequence[PromptMessage] = []
-    # Get messages from memory for chat model
     if memory and memory_config:
         rest_tokens = _calculate_rest_token(
             prompt_messages=[],
@@ -2844,7 +2815,6 @@ def _handle_memory_completion_mode(
     model_instance: ModelInstance,
 ) -> str:
     memory_text = ""
-    # Get history text from memory for completion model
     if memory and memory_config:
         rest_tokens = _calculate_rest_token(
             prompt_messages=[],
@@ -2869,17 +2839,6 @@ def _handle_completion_template(
     jinja2_variables: Sequence[VariableSelector],
     variable_pool: VariablePool,
 ) -> Sequence[PromptMessage]:
-    """Handle completion template processing outside of LLMNode class.
-
-    Args:
-        template: The completion model prompt template
-        context: Optional context string
-        jinja2_variables: Variables for jinja2 template rendering
-        variable_pool: Variable pool for template conversion
-
-    Returns:
-        Sequence of prompt messages
-    """
     prompt_messages = []
     if template.edition_type == "jinja2":
         result_text = _render_jinja2_message(

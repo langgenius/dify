@@ -17,7 +17,9 @@ import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/compo
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import VarList from '@/app/components/workflow/nodes/_base/components/variable/var-list'
+import { useProviderContextSelector } from '@/context/provider-context'
 import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
+import { extractPluginId } from '../../utils/plugin'
 import ConfigVision from '../_base/components/config-vision'
 import MemoryConfig from '../_base/components/memory-config'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
@@ -31,6 +33,7 @@ import { useNodeTools } from './components/tools/use-node-tools'
 import useConfig from './use-config'
 import { useNodeSkills } from './use-node-skills'
 import { useStructuredOutputMutualExclusion } from './use-structured-output-mutual-exclusion'
+import { getLLMModelIssue, LLMModelIssueCode } from './utils'
 
 const i18nPrefix = 'nodes.llm'
 
@@ -120,6 +123,18 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
   } = useNodeTools(id)
 
   const model = inputs.model
+  const isModelProviderInstalled = useProviderContextSelector((state) => {
+    const modelIssue = getLLMModelIssue({ modelProvider: model?.provider })
+    if (modelIssue === LLMModelIssueCode.providerRequired)
+      return true
+
+    const modelProviderPluginId = extractPluginId(model.provider)
+    return state.modelProviders.some(provider => extractPluginId(provider.provider) === modelProviderPluginId)
+  })
+  const hasModelWarning = getLLMModelIssue({
+    modelProvider: model?.provider,
+    isModelProviderInstalled,
+  }) !== null
 
   const handleModelChange = useCallback((model: {
     provider: string
@@ -155,6 +170,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
         <Field
           title={t(`${i18nPrefix}.model`, { ns: 'workflow' })}
           required
+          warningDot={hasModelWarning}
         >
           <ModelParameterModal
             popupClassName="!w-[387px]"

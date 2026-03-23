@@ -13,7 +13,7 @@ from libs.datetime_utils import naive_utc_now
 from libs.token import _real_cookie_name, generate_csrf_token
 from models import Account, DifySetup, Tenant, TenantAccountJoin
 from models.account import AccountStatus, TenantAccountRole
-from models.enums import CreatorUserRole
+from models.enums import ConversationFromSource, CreatorUserRole
 from models.model import App, AppMode, Conversation, Message
 from models.workflow import WorkflowRun
 from services.account_service import AccountService
@@ -75,7 +75,7 @@ def _create_conversation(db_session: Session, app_id: str, account_id: str) -> C
         inputs={},
         status="normal",
         mode=AppMode.CHAT,
-        from_source=CreatorUserRole.ACCOUNT,
+        from_source=ConversationFromSource.CONSOLE,
         from_account_id=account_id,
     )
     db_session.add(conversation)
@@ -124,7 +124,7 @@ def _create_message(
         answer_price_unit=0.001,
         currency="USD",
         status="normal",
-        from_source=CreatorUserRole.ACCOUNT,
+        from_source=ConversationFromSource.CONSOLE,
         from_account_id=account_id,
         workflow_run_id=workflow_run_id,
         inputs={"query": "Hello"},

@@ -20,7 +20,6 @@ import {
 } from 'ahooks'
 import { isEqual } from 'es-toolkit/predicate'
 import { setAutoFreeze } from 'immer'
-import dynamic from 'next/dynamic'
 import {
   Fragment,
   memo,
@@ -45,6 +44,7 @@ import ReactFlow, {
 import Toast from '@/app/components/base/toast'
 import { IS_DEV } from '@/config'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
+import dynamic from '@/next/dynamic'
 import {
   useAllBuiltInTools,
   useAllCustomTools,

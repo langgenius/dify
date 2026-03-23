@@ -1,16 +1,16 @@
 'use client'
 import type { FormEvent } from 'react'
 import { RiArrowLeftLine, RiMailSendFill } from '@remixicon/react'
-import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import Countdown from '@/app/components/signin/countdown'
-
 import { useLocale } from '@/context/i18n'
+
+import { useRouter, useSearchParams } from '@/next/navigation'
 import { emailLoginWithCode, sendEMailLoginCode } from '@/service/common'
 import { encryptVerificationCode } from '@/utils/encryption'
 import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
@@ -31,17 +31,11 @@ export default function CheckCode() {
   const verify = async () => {
     try {
       if (!code.trim()) {
-        Toast.notify({
-          type: 'error',
-          message: t('checkCode.emptyCode', { ns: 'login' }),
-        })
+        toast.error(t('checkCode.emptyCode', { ns: 'login' }))
         return
       }
       if (!/\d{6}/.test(code)) {
-        Toast.notify({
-          type: 'error',
-          message: t('checkCode.invalidCode', { ns: 'login' }),
-        })
+        toast.error(t('checkCode.invalidCode', { ns: 'login' }))
         return
       }
       setIsLoading(true)

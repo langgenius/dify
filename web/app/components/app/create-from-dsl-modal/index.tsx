@@ -3,7 +3,6 @@
 import type { DocPathWithoutLang } from '@/types/doc-paths'
 import { useKeyPress } from 'ahooks'
 import { noop } from 'es-toolkit/function'
-import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
@@ -22,6 +21,7 @@ import {
   DSLImportMode,
   DSLImportStatus,
 } from '@/models/app'
+import { useRouter } from '@/next/navigation'
 import {
   importAppBundle,
   importDSL,
@@ -270,10 +270,8 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         isShow={show}
         onClose={noop}
       >
-        <div className="flex items-start justify-between pb-3 pl-6 pr-5 pt-6">
-          <div className="text-text-primary title-2xl-semi-bold">
-            {t('importApp', { ns: 'app' })}
-          </div>
+        <div className="flex items-center justify-between pb-3 pl-6 pr-5 pt-6 text-text-primary title-2xl-semi-bold">
+          {t('importApp', { ns: 'app' })}
           <div
             className="flex h-8 w-8 cursor-pointer items-center justify-center"
             onClick={() => onClose()}
@@ -281,9 +279,9 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
             <span className="i-ri-close-line h-[18px] w-[18px] text-text-tertiary" aria-hidden="true" />
           </div>
         </div>
-        <div className="border-b border-divider-subtle px-6">
-          <div className="flex h-9 items-center gap-6 text-text-tertiary system-md-semibold">
-            {tabs.map(tab => (
+        <div className="flex h-9 items-center space-x-6 border-b border-divider-subtle px-6 text-text-tertiary system-md-semibold">
+          {
+            tabs.map(tab => (
               <div
                 key={tab.key}
                 className={cn(
@@ -298,7 +296,6 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
                 )}
               </div>
             ))}
-          </div>
         </div>
         <div className="px-6 py-4">
           {currentTab === CreateFromDSLModalTab.FROM_FILE && (

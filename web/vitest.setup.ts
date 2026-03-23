@@ -100,9 +100,6 @@ afterEach(async () => {
   })
 })
 
-// mock next/image to avoid width/height requirements for data URLs
-vi.mock('next/image')
-
 // mock foxact/use-clipboard - not available in test environment
 vi.mock('foxact/use-clipboard', () => ({
   useClipboard: () => ({

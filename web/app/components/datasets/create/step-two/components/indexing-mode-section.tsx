@@ -3,8 +3,6 @@
 import type { FC } from 'react'
 import type { DefaultModel, Model } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { RetrievalConfig } from '@/types/app'
-import Image from 'next/image'
-import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import Button from '@/app/components/base/button'
@@ -17,6 +15,7 @@ import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-me
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { useDocLink } from '@/context/i18n'
 import { ChunkingMode } from '@/models/datasets'
+import Link from '@/next/link'
 import { cn } from '@/utils/classnames'
 import { indexMethodIcon } from '../../icons'
 import { IndexingType } from '../hooks'
@@ -98,7 +97,7 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
               </div>
             )}
             description={t('stepTwo.qualifiedTip', { ns: 'datasetCreation' })}
-            icon={<Image src={indexMethodIcon.high_quality} alt="" />}
+            icon={<img src={indexMethodIcon.high_quality} alt="" />}
             isActive={!hasSetIndexType && indexType === IndexingType.QUALIFIED}
             disabled={hasSetIndexType}
             onSwitched={() => onIndexTypeChange(IndexingType.QUALIFIED)}
@@ -143,7 +142,7 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
                 className="h-full"
                 title={t('stepTwo.economical', { ns: 'datasetCreation' })}
                 description={t('stepTwo.economicalTip', { ns: 'datasetCreation' })}
-                icon={<Image src={indexMethodIcon.economical} alt="" />}
+                icon={<img src={indexMethodIcon.economical} alt="" />}
                 isActive={!hasSetIndexType && indexType === IndexingType.ECONOMICAL}
                 disabled={hasSetIndexType || docForm !== ChunkingMode.text}
                 onSwitched={() => onIndexTypeChange(IndexingType.ECONOMICAL)}

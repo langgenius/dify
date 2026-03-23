@@ -3,7 +3,14 @@ import type { FC } from 'react'
 import Slider from '@/app/components/base/slider'
 import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
-import { InputNumber } from '../input-number'
+import {
+  NumberField,
+  NumberFieldControls,
+  NumberFieldDecrement,
+  NumberFieldGroup,
+  NumberFieldIncrement,
+  NumberFieldInput,
+} from '../ui/number-field'
 
 type Props = {
   className?: string
@@ -47,20 +54,22 @@ const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1,
       </div>
       <div className="mt-1 flex items-center">
         <div className="mr-3 flex shrink-0 items-center">
-          <InputNumber
+          <NumberField
             disabled={!enable}
-            type="number"
             min={min}
             max={max}
             step={step}
-            amount={step}
-            size="regular"
             value={value}
-            onChange={(value) => {
-              onChange(id, value)
-            }}
-            className="w-[72px]"
-          />
+            onValueChange={nextValue => onChange(id, nextValue ?? min)}
+          >
+            <NumberFieldGroup size="regular">
+              <NumberFieldInput size="regular" className="w-[72px]" />
+              <NumberFieldControls>
+                <NumberFieldIncrement size="regular" />
+                <NumberFieldDecrement size="regular" />
+              </NumberFieldControls>
+            </NumberFieldGroup>
+          </NumberField>
         </div>
         <div className="flex grow items-center">
           <Slider

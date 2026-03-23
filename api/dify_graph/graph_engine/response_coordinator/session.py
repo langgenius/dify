@@ -3,10 +3,6 @@ Internal response session management for response coordinator.
 
 This module contains the private ResponseSession class used internally
 by ResponseStreamCoordinator to manage streaming sessions.
-
-`RESPONSE_SESSION_NODE_TYPES` is intentionally mutable so downstream applications
-can opt additional response-capable node types into session creation without
-patching the coordinator.
 """
 
 from __future__ import annotations
@@ -14,7 +10,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol, cast
 
-from dify_graph.enums import BuiltinNodeTypes, NodeType
 from dify_graph.nodes.base.template import Template
 from dify_graph.runtime.graph_runtime_state import NodeProtocol
 
@@ -23,12 +18,6 @@ class _ResponseSessionNodeProtocol(NodeProtocol, Protocol):
     """Structural contract required from nodes that can open a response session."""
 
     def get_streaming_template(self) -> Template: ...
-
-
-RESPONSE_SESSION_NODE_TYPES: list[NodeType] = [
-    BuiltinNodeTypes.ANSWER,
-    BuiltinNodeTypes.END,
-]
 
 
 @dataclass
@@ -49,8 +38,8 @@ class ResponseSession:
         Create a ResponseSession from a response-capable node.
 
         The parameter is typed as `NodeProtocol` because the graph is exposed behind a protocol at the runtime layer.
-        At runtime this must be a node whose `node_type` is listed in `RESPONSE_SESSION_NODE_TYPES`
-        and which implements `get_streaming_template()`.
+        At runtime this must be a node that implements `get_streaming_template()`. The coordinator decides which
+        graph nodes should be treated as response-capable before they reach this factory.
 
         Args:
             node: Node from the materialized workflow graph.
@@ -59,15 +48,8 @@ class ResponseSession:
             ResponseSession configured with the node's streaming template
 
         Raises:
-            TypeError: If node is not a supported response node type.
+            TypeError: If node does not implement the response-session streaming contract.
         """
-        if node.node_type not in RESPONSE_SESSION_NODE_TYPES:
-            supported_node_types = ", ".join(RESPONSE_SESSION_NODE_TYPES)
-            raise TypeError(
-                "ResponseSession.from_node only supports node types in "
-                f"RESPONSE_SESSION_NODE_TYPES: {supported_node_types}"
-            )
-
         response_node = cast(_ResponseSessionNodeProtocol, node)
         try:
             template = response_node.get_streaming_template()

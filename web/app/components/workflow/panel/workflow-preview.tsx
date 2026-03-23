@@ -11,9 +11,9 @@ import Button from '@/app/components/base/button'
 import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows'
 import Loading from '@/app/components/base/loading'
 import Tooltip from '@/app/components/base/tooltip'
+import { toast } from '@/app/components/base/ui/toast'
 import { submitHumanInputForm } from '@/service/workflow'
 import { cn } from '@/utils/classnames'
-import Toast from '../../base/toast'
 import {
   useWorkflowInteractions,
 } from '../hooks'
@@ -239,7 +239,7 @@ const WorkflowPreview = () => {
                           copy(content)
                         else
                           copy(JSON.stringify(content))
-                        Toast.notify({ type: 'success', message: t('actionMsg.copySuccessfully', { ns: 'common' }) })
+                        toast.success(t('actionMsg.copySuccessfully', { ns: 'common' }))
                       }}
                     >
                       <span className="i-ri-clipboard-line h-3.5 w-3.5" />

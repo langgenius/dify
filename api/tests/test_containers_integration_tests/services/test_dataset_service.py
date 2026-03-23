@@ -15,6 +15,7 @@ from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from dify_graph.model_runtime.entities.model_entities import ModelType
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, DatasetPermissionEnum, Document, ExternalKnowledgeBindings, Pipeline
+from models.enums import DatasetRuntimeMode, DataSourceType, DocumentCreatedFrom, IndexingStatus
 from services.dataset_service import DatasetService
 from services.entities.knowledge_entities.knowledge_entities import RerankingModel, RetrievalModel
 from services.entities.knowledge_entities.rag_pipeline_entities import IconInfo, RagPipelineDatasetCreateEntity
@@ -74,7 +75,7 @@ class DatasetServiceIntegrationDataFactory:
             tenant_id=tenant_id,
             name=name,
             description=description,
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             indexing_technique=indexing_technique,
             created_by=created_by,
             provider=provider,
@@ -98,13 +99,13 @@ class DatasetServiceIntegrationDataFactory:
             tenant_id=dataset.tenant_id,
             dataset_id=dataset.id,
             position=1,
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             data_source_info='{"upload_file_id": "upload-file-id"}',
             batch=str(uuid4()),
             name=name,
-            created_from="web",
+            created_from=DocumentCreatedFrom.WEB,
             created_by=created_by,
-            indexing_status="completed",
+            indexing_status=IndexingStatus.COMPLETED,
             doc_form="text_model",
         )
         db_session_with_containers.add(document)
@@ -437,7 +438,7 @@ class TestDatasetServiceCreateRagPipelineDataset:
         created_pipeline = db_session_with_containers.get(Pipeline, result.pipeline_id)
         assert created_dataset is not None
         assert created_dataset.name == entity.name
-        assert created_dataset.runtime_mode == "rag_pipeline"
+        assert created_dataset.runtime_mode == DatasetRuntimeMode.RAG_PIPELINE
         assert created_dataset.created_by == account.id
         assert created_dataset.permission == DatasetPermissionEnum.ONLY_ME
         assert created_pipeline is not None

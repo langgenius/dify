@@ -8,6 +8,8 @@
 import { cleanup, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+let mockTheme = 'light'
+
 vi.mock('#i18n', () => ({
   useTranslation: () => ({
     t: (key: string) => key,
@@ -19,16 +21,16 @@ vi.mock('@/context/i18n', () => ({
 }))
 
 vi.mock('@/hooks/use-theme', () => ({
-  default: () => ({ theme: 'light' }),
+  default: () => ({ theme: mockTheme }),
 }))
 
 vi.mock('@/i18n-config', () => ({
   renderI18nObject: (obj: Record<string, string>, locale: string) => obj[locale] || obj.en_US || '',
 }))
 
-vi.mock('@/types/app', () => ({
-  Theme: { dark: 'dark', light: 'light' },
-}))
+vi.mock('@/types/app', async () => {
+  return vi.importActual<typeof import('@/types/app')>('@/types/app')
+})
 
 vi.mock('@/utils/classnames', () => ({
   cn: (...args: unknown[]) => args.filter(a => typeof a === 'string' && a).join(' '),
@@ -100,6 +102,7 @@ type CardPayload = Parameters<typeof Card>[0]['payload']
 describe('Plugin Card Rendering Integration', () => {
   beforeEach(() => {
     cleanup()
+    mockTheme = 'light'
   })
 
   const makePayload = (overrides = {}) => ({
@@ -194,9 +197,7 @@ describe('Plugin Card Rendering Integration', () => {
   })
 
   it('uses dark icon when theme is dark and icon_dark is provided', () => {
-    vi.doMock('@/hooks/use-theme', () => ({
-      default: () => ({ theme: 'dark' }),
-    }))
+    mockTheme = 'dark'
 
     const payload = makePayload({
       icon: 'https://example.com/icon-light.png',
@@ -204,7 +205,7 @@ describe('Plugin Card Rendering Integration', () => {
     })
 
     render(<Card payload={payload} />)
-    expect(screen.getByTestId('card-icon')).toBeInTheDocument()
+    expect(screen.getByTestId('card-icon')).toHaveTextContent('https://example.com/icon-dark.png')
   })
 
   it('shows loading placeholder when isLoading is true', () => {

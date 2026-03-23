@@ -111,7 +111,7 @@ vi.mock('@/app/components/base/chat/chat/log', () => ({
   default: () => <button data-testid="log-btn"><div className="i-ri-file-list-3-line" /></button>,
 }))
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useParams: vi.fn(() => ({ appId: 'test-app' })),
   usePathname: vi.fn(() => '/apps/test-app'),
 }))

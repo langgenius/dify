@@ -78,7 +78,7 @@ from dify_graph.system_variable import SystemVariable
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models import Account, Conversation, EndUser, LLMGenerationDetail, Message, MessageFile
-from models.enums import CreatorUserRole, MessageStatus
+from models.enums import CreatorUserRole, MessageFileBelongsTo, MessageStatus
 from models.execution_extra_content import HumanInputContent
 from models.workflow import Workflow
 
@@ -1116,7 +1116,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                 type=file["type"],
                 transfer_method=file["transfer_method"],
                 url=file["remote_url"],
-                belongs_to="assistant",
+                belongs_to=MessageFileBelongsTo.ASSISTANT,
                 upload_file_id=file["related_id"],
                 created_by_role=CreatorUserRole.ACCOUNT
                 if message.invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER}

@@ -68,7 +68,7 @@ const {
   mockPathname: { current: '/datasets/test/documents/test' },
 }))
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   usePathname: () => mockPathname.current,
 }))
 

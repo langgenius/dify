@@ -3,8 +3,10 @@ import type { FormValue } from '@/app/components/header/account-setting/model-pr
 import type { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import type { GenRes } from '@/service/debug'
 import type { AppModeEnum, CompletionParams, Model, ModelModeType } from '@/types/app'
-import { useSessionStorageState } from 'ahooks'
-import useBoolean from 'ahooks/lib/useBoolean'
+import {
+  useBoolean,
+  useSessionStorageState,
+} from 'ahooks'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -207,7 +209,6 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
           <div className="mb-4">
             <ModelParameterModal
               popupClassName="!w-[520px]"
-              portalToFollowElemContentClassName="z-[1000]"
               isAdvancedMode={true}
               provider={model.provider}
               completionParams={model.completion_params}

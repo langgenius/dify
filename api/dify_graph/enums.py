@@ -259,6 +259,9 @@ _END_STATE = frozenset(
 class WorkflowNodeExecutionMetadataKey(StrEnum):
     """
     Node Run Metadata Key.
+
+    Values in this enum are persisted as execution metadata and must stay in sync
+    with every node that writes `NodeRunResult.metadata`.
     """
 
     TOTAL_TOKENS = "total_tokens"
@@ -282,6 +285,7 @@ class WorkflowNodeExecutionMetadataKey(StrEnum):
     DATASOURCE_INFO = "datasource_info"
     LLM_CONTENT_SEQUENCE = "llm_content_sequence"
     LLM_TRACE = "llm_trace"
+    TRIGGER_INFO = "trigger_info"
     COMPLETED_REASON = "completed_reason"  # completed reason for loop node
     PARENT_NODE_ID = "parent_node_id"  # parent node id for nested nodes (extractor nodes)
 

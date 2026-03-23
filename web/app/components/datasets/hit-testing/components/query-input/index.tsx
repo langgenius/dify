@@ -14,7 +14,6 @@ import {
   RiEqualizer2Line,
   RiPlayCircleLine,
 } from '@remixicon/react'
-import Image from 'next/image'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -178,7 +177,7 @@ const QueryInput = ({
   }, [text, externalRetrievalSettings, externalKnowledgeBaseHitTestingMutation, onUpdateList, setExternalHitResult])
 
   const retrievalMethod = isEconomy ? RETRIEVE_METHOD.keywordSearch : retrievalConfig.search_method
-  const icon = <Image className="size-3.5 text-util-colors-purple-purple-600" src={getIcon(retrievalMethod)} alt="" />
+  const icon = <img className="size-3.5 text-util-colors-purple-purple-600" src={getIcon(retrievalMethod)} alt="" />
   const TextAreaComp = useMemo(() => {
     return (
       <Textarea
