@@ -4,10 +4,9 @@ runs:
   using: composite
   steps:
     - name: Setup Vite+
-      uses: voidzero-dev/setup-vp@906b5821fc79472a80264736a266e06643cca1fc # v1.2.1
+      uses: hyoban/setup-vp@1cdfccdc7707ff98278acf8c30342869ac9fda57 # v1.2.1
       with:
-        node-version-file: web/.nvmrc
+        working-directory: web
+        node-version-file: .nvmrc
         cache: true
-        cache-dependency-path: web/pnpm-lock.yaml
-        run-install: |
-          cwd: ./web
+        run-install: true
