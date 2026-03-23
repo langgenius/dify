@@ -4758,26 +4758,8 @@
     }
   },
   "app/components/header/account-setting/members-page/invite-modal/index.tsx": {
-    "no-restricted-imports": {
-      "count": 2
-    },
     "react/set-state-in-effect": {
       "count": 3
-    }
-  },
-  "app/components/header/account-setting/members-page/invite-modal/role-selector.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "app/components/header/account-setting/members-page/invited-modal/index.tsx": {
-    "no-restricted-imports": {
-      "count": 2
-    }
-  },
-  "app/components/header/account-setting/members-page/invited-modal/invitation-link.tsx": {
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "app/components/header/account-setting/members-page/operation/index.tsx": {
