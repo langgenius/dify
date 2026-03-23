@@ -3,6 +3,7 @@ from uuid import uuid4
 
 from sqlalchemy import select
 
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from models.dataset import Dataset, Document
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from services.dataset_service import DocumentService
@@ -42,7 +43,7 @@ def _create_document(
         name=f"doc-{uuid4()}",
         created_from=DocumentCreatedFrom.WEB,
         created_by=str(uuid4()),
-        doc_form="text_model",
+        doc_form=IndexStructureType.PARAGRAPH_INDEX,
     )
     document.id = str(uuid4())
     document.indexing_status = indexing_status
