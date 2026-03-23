@@ -1,5 +1,8 @@
 {
   "create": "CREATE SNIPPET",
+  "createFailed": "Failed to create snippet",
+  "createFromBlank": "Create from blank",
+  "defaultName": "Untitled Snippet",
   "inputFieldButton": "Input Field",
   "notFoundDescription": "The requested snippet mock was not found.",
   "notFoundTitle": "Snippet not found",

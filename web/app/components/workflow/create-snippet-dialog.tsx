@@ -10,7 +10,6 @@ import AppIconPicker from '@/app/components/base/app-icon-picker'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
-import Toast from '@/app/components/base/toast'
 import { Dialog, DialogCloseButton, DialogContent, DialogPortal, DialogTitle } from '@/app/components/base/ui/dialog'
 import ShortcutsName from './shortcuts-name'
 
@@ -26,6 +25,7 @@ type CreateSnippetDialogProps = {
   selectedNodeIds: string[]
   onClose: () => void
   onConfirm: (payload: CreateSnippetDialogPayload) => void
+  isSubmitting?: boolean
 }
 
 const defaultIcon: AppIconSelection = {
@@ -39,6 +39,7 @@ const CreateSnippetDialog: FC<CreateSnippetDialogProps> = ({
   selectedNodeIds,
   onClose,
   onConfirm,
+  isSubmitting = false,
 }) => {
   const { t } = useTranslation()
   const [name, setName] = useState('')
@@ -73,15 +74,13 @@ const CreateSnippetDialog: FC<CreateSnippetDialogProps> = ({
     }
 
     onConfirm(payload)
-    Toast.notify({
-      type: 'success',
-      message: t('snippet.createSuccess', { ns: 'workflow' }),
-    })
-    handleClose()
-  }, [description, handleClose, icon, name, onConfirm, selectedNodeIds, t])
+  }, [description, icon, name, onConfirm, selectedNodeIds])
 
   useKeyPress(['meta.enter', 'ctrl.enter'], () => {
     if (!isOpen)
+      return
+
+    if (isSubmitting)
       return
 
     handleConfirm()
@@ -109,6 +108,7 @@ const CreateSnippetDialog: FC<CreateSnippetDialogProps> = ({
                   value={name}
                   onChange={e => setName(e.target.value)}
                   placeholder={t('snippet.namePlaceholder', { ns: 'workflow' }) || ''}
+                  disabled={isSubmitting}
                   autoFocus
                 />
               </div>
@@ -133,17 +133,19 @@ const CreateSnippetDialog: FC<CreateSnippetDialogProps> = ({
                 value={description}
                 onChange={e => setDescription(e.target.value)}
                 placeholder={t('snippet.descriptionPlaceholder', { ns: 'workflow' }) || ''}
+                disabled={isSubmitting}
               />
             </div>
           </div>
 
           <div className="flex items-center justify-end gap-2 px-6 pb-6 pt-5">
-            <Button onClick={handleClose}>
+            <Button disabled={isSubmitting} onClick={handleClose}>
               {t('operation.cancel', { ns: 'common' })}
             </Button>
             <Button
               variant="primary"
-              disabled={!name.trim()}
+              disabled={!name.trim() || isSubmitting}
+              loading={isSubmitting}
               onClick={handleConfirm}
             >
               {t('snippet.confirm', { ns: 'workflow' })}
