@@ -102,7 +102,7 @@
   "overview.appInfo.settings.workflow.show": "Göster",
   "overview.appInfo.settings.workflow.showDesc": "web app'te iş akışı ayrıntılarını gösterme veya gizleme",
   "overview.appInfo.settings.workflow.subTitle": "İş Akışı Detayları",
-  "overview.appInfo.settings.workflow.title": "Workflow Adımları",
+  "overview.appInfo.settings.workflow.title": "İş Akışı Adımları",
   "overview.appInfo.title": "Web Uygulaması",
   "overview.disableTooltip.triggerMode": "Trigger Düğümü modunda {{feature}} özelliği desteklenmiyor.",
   "overview.status.disable": "Devre Dışı",

@@ -210,12 +210,12 @@
   "structOutput.required": "Gerekli",
   "structOutput.structured": "Yapılandırılmış",
   "structOutput.structuredTip": "Yapılandırılmış Çıktılar, modelin sağladığınız JSON Şemasına uyacak şekilde her zaman yanıtlar üretmesini sağlayan bir özelliktir.",
-  "switch": "Workflow Orkestrasyonuna Geç",
+  "switch": "İş Akışı Orkestrasyonuna Geç",
   "switchLabel": "Oluşturulacak uygulama kopyası",
   "switchStart": "Geçişi Başlat",
   "switchTip": "izin vermeyecek",
   "switchTipEnd": " Temel Orkestrasyona geri dönmek.",
-  "switchTipStart": "Sizin için yeni bir uygulama kopyası oluşturulacak ve yeni kopya Workflow Orkestrasyonuna geçecektir. Yeni kopya ",
+  "switchTipStart": "Sizin için yeni bir uygulama kopyası oluşturulacak ve yeni kopya İş Akışı Orkestrasyonuna geçecektir. Yeni kopya ",
   "theme.switchDark": "Koyu tema geçiş yap",
   "theme.switchLight": "Aydınlık tema'ya geç",
   "tracing.aliyun.description": "Alibaba Cloud tarafından sağlanan tamamen yönetilen ve bakım gerektirmeyen gözlemleme platformu, Dify uygulamalarının kutudan çıkar çıkmaz izlenmesi, takip edilmesi ve değerlendirilmesine olanak tanır.",
@@ -281,5 +281,5 @@
   "types.basic": "Temel",
   "types.chatbot": "Chatbot",
   "types.completion": "Tamamlama",
-  "types.workflow": "Workflow"
+  "types.workflow": "İş Akışı"
 }

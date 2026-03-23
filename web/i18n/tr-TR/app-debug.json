@@ -40,7 +40,7 @@
   "datasetConfig.embeddingModelRequired": "Yapılandırılmış bir Gömme Modeli gereklidir",
   "datasetConfig.knowledgeTip": "Bilgi eklemek için “+” düğmesine tıklayın",
   "datasetConfig.params": "Parametreler",
-  "datasetConfig.rerankModelRequired": "Rerank modeli gereklidir",
+  "datasetConfig.rerankModelRequired": "Yeniden Sıralama modeli gereklidir",
   "datasetConfig.retrieveChangeTip": "Dizin modunu ve geri alım modunu değiştirmek, bu Bilgi ile ilişkili uygulamaları etkileyebilir.",
   "datasetConfig.retrieveMultiWay.description": "Kullanıcı niyetine dayanarak, tüm Bilgilerde sorgular, çoklu kaynaklardan ilgili metni alır ve yeniden sıraladıktan sonra kullanıcı sorgusuyla eşleşen en iyi sonuçları seçer.",
   "datasetConfig.retrieveMultiWay.title": "Çoklu yol geri alım",
