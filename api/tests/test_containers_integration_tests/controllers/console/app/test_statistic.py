@@ -204,7 +204,7 @@ def test_daily_token_cost_statistic(
     assert response.status_code == 200
     payload = response.get_json()
     assert payload["data"][0]["token_count"] == 100
-    assert payload["data"][0]["total_price"] == "0.02"
+    assert Decimal(payload["data"][0]["total_price"]) == Decimal("0.02")
 
 
 def test_average_session_interaction_statistic(

@@ -64,7 +64,7 @@ def test_oauth_callback_missing_code(test_client_with_containers: FlaskClient) -
         response = test_client_with_containers.get("/console/api/oauth/data-source/callback/notion")
 
     assert response.status_code == 302
-    assert "error=Access denied" in response.location
+    assert "error=Access%20denied" in response.location
 
 
 def test_oauth_callback_invalid_provider(test_client_with_containers: FlaskClient) -> None:

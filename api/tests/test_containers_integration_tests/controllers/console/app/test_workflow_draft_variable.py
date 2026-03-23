@@ -207,6 +207,8 @@ def test_node_variable_collection_delete(
     app = create_console_app(db_session_with_containers, tenant.id, account.id, AppMode.WORKFLOW)
     target = _create_node_variable(db_session_with_containers, app.id, account.id, node_id="node_123")
     untouched = _create_node_variable(db_session_with_containers, app.id, account.id, node_id="node_456")
+    target_id = target.id
+    untouched_id = untouched.id
 
     response = test_client_with_containers.delete(
         f"/console/api/apps/{app.id}/workflows/draft/nodes/node_123/variables",
@@ -215,11 +217,11 @@ def test_node_variable_collection_delete(
 
     assert response.status_code == 204
     assert (
-        db_session_with_containers.scalar(select(WorkflowDraftVariable).where(WorkflowDraftVariable.id == target.id))
+        db_session_with_containers.scalar(select(WorkflowDraftVariable).where(WorkflowDraftVariable.id == target_id))
         is None
     )
     assert (
-        db_session_with_containers.scalar(select(WorkflowDraftVariable).where(WorkflowDraftVariable.id == untouched.id))
+        db_session_with_containers.scalar(select(WorkflowDraftVariable).where(WorkflowDraftVariable.id == untouched_id))
         is not None
     )
 
