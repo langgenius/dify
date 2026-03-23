@@ -4,7 +4,7 @@ runs:
   using: composite
   steps:
     - name: Setup Vite+
-      uses: voidzero-dev/setup-vp@fd19e0626188613eec92a77e875180c6445b56ba # v1.2.0
+      uses: hyoban/setup-vp@7f4d9186789ba176e3c16dc339388459b54d8d0a # v1.2.0
       with:
         node-version-file: web/.nvmrc
         cache: true
