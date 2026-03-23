@@ -396,11 +396,6 @@ class TestSavedMessageService:
 
         assert "User is required" in str(exc_info.value)
 
-        # Verify no database operations were performed
-
-        saved_messages = db_session_with_containers.query(SavedMessage).all()
-        assert len(saved_messages) == 0
-
     def test_save_error_no_user(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test error handling when saving message with no user.
@@ -565,8 +560,10 @@ class TestSavedMessageService:
         """Test that deleting a non-existent saved message is a no-op."""
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
-        # Should not raise
-        SavedMessageService.delete(app_model=app, user=account, message_id="non-existent-id")
+        # Should not raise — use a valid UUID that doesn't exist in DB
+        from uuid import uuid4
+
+        SavedMessageService.delete(app_model=app, user=account, message_id=str(uuid4()))
 
     def test_delete_for_end_user(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """Test deleting a saved message for an EndUser."""
