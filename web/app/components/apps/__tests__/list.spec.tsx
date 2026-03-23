@@ -288,7 +288,7 @@ describe('List', () => {
       expect(screen.getByText('snippet.create')).toBeInTheDocument()
       expect(screen.getByText('Tone Rewriter')).toBeInTheDocument()
       expect(screen.getByText('Rewrites rough drafts into a concise, professional tone for internal stakeholder updates.')).toBeInTheDocument()
-      expect(screen.getByRole('link', { name: /Tone Rewriter/i })).toHaveAttribute('href', '/snippets/snippet-1')
+      expect(screen.getByRole('link', { name: /Tone Rewriter/i })).toHaveAttribute('href', '/snippets/snippet-1/orchestrate')
       expect(screen.queryByTestId('new-app-card')).not.toBeInTheDocument()
       expect(screen.queryByTestId('app-card-app-1')).not.toBeInTheDocument()
     })

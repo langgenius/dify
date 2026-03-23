@@ -1,0 +1,44 @@
+'use client'
+
+import type { StudioPageType } from '.'
+import Link from '@/next/link'
+import { cn } from '@/utils/classnames'
+
+type Props = {
+  pageType: StudioPageType
+  appsLabel: string
+  snippetsLabel: string
+}
+
+const StudioRouteSwitch = ({
+  pageType,
+  appsLabel,
+  snippetsLabel,
+}: Props) => {
+  return (
+    <div className="flex items-center rounded-lg border-[0.5px] border-divider-subtle bg-[rgba(200,206,218,0.2)] p-[1px]">
+      <Link
+        href="/apps"
+        className={cn(
+          'flex h-8 items-center rounded-lg px-3 text-[14px] leading-5 text-text-secondary',
+          pageType === 'apps' && 'bg-components-card-bg font-semibold text-text-primary shadow-xs',
+          pageType !== 'apps' && 'font-medium',
+        )}
+      >
+        {appsLabel}
+      </Link>
+      <Link
+        href="/snippets"
+        className={cn(
+          'flex h-8 items-center rounded-lg px-3 text-[14px] leading-5 text-text-secondary',
+          pageType === 'snippets' && 'bg-components-card-bg font-semibold text-text-primary shadow-xs',
+          pageType !== 'snippets' && 'font-medium',
+        )}
+      >
+        {snippetsLabel}
+      </Link>
+    </div>
+  )
+}
+
+export default StudioRouteSwitch

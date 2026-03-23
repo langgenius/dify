@@ -2,7 +2,6 @@
 
 import type { FC } from 'react'
 import type { StudioPageType } from '.'
-import type { SnippetListItem } from '@/models/snippet'
 import type { App } from '@/types/app'
 import { useDebounceFn } from 'ahooks'
 import { useQueryState } from 'nuqs'
@@ -16,10 +15,11 @@ import { useAppContext } from '@/context/app-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { CheckModal } from '@/hooks/use-pay'
 import dynamic from '@/next/dynamic'
-import Link from '@/next/link'
 import { useInfiniteAppList } from '@/service/use-apps'
 import { getSnippetListMock } from '@/service/use-snippets.mock'
 import { cn } from '@/utils/classnames'
+import SnippetCard from '../snippets/components/snippet-card'
+import SnippetCreateCard from '../snippets/components/snippet-create-card'
 import AppCard from './app-card'
 import { AppCardSkeleton } from './app-card-skeleton'
 import AppTypeFilter from './app-type-filter'
@@ -30,6 +30,7 @@ import Footer from './footer'
 import useAppsQueryState from './hooks/use-apps-query-state'
 import { useDSLDragDrop } from './hooks/use-dsl-drag-drop'
 import NewAppCard from './new-app-card'
+import StudioRouteSwitch from './studio-route-switch'
 
 const TagManagementModal = dynamic(() => import('@/app/components/base/tag-management'), {
   ssr: false,
@@ -37,93 +38,6 @@ const TagManagementModal = dynamic(() => import('@/app/components/base/tag-manag
 const CreateFromDSLModal = dynamic(() => import('@/app/components/app/create-from-dsl-modal'), {
   ssr: false,
 })
-
-const StudioRouteSwitch = ({ pageType, appsLabel, snippetsLabel }: { pageType: StudioPageType, appsLabel: string, snippetsLabel: string }) => {
-  return (
-    <div className="flex items-center rounded-lg border-[0.5px] border-divider-subtle bg-[rgba(200,206,218,0.2)] p-[1px]">
-      <Link
-        href="/apps"
-        className={cn(
-          'flex h-8 items-center rounded-lg px-3 text-[14px] leading-5 text-text-secondary',
-          pageType === 'apps' && 'bg-components-card-bg font-semibold text-text-primary shadow-xs',
-          pageType !== 'apps' && 'font-medium',
-        )}
-      >
-        {appsLabel}
-      </Link>
-      <Link
-        href="/snippets"
-        className={cn(
-          'flex h-8 items-center rounded-lg px-3 text-[14px] leading-5 text-text-secondary',
-          pageType === 'snippets' && 'bg-components-card-bg font-semibold text-text-primary shadow-xs',
-          pageType !== 'snippets' && 'font-medium',
-        )}
-      >
-        {snippetsLabel}
-      </Link>
-    </div>
-  )
-}
-
-const SnippetCreateCard = () => {
-  const { t } = useTranslation('snippet')
-
-  return (
-    <div className="relative col-span-1 inline-flex h-[160px] flex-col justify-between rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg transition-opacity">
-      <div className="grow rounded-t-xl p-2">
-        <div className="px-6 pb-1 pt-2 text-xs font-medium leading-[18px] text-text-tertiary">{t('create')}</div>
-        <div className="mb-1 flex w-full items-center rounded-lg px-6 py-[7px] text-[13px] font-medium leading-[18px] text-text-tertiary">
-          <span aria-hidden className="i-ri-sticky-note-add-line mr-2 h-4 w-4 shrink-0" />
-          {t('newApp.startFromBlank', { ns: 'app' })}
-        </div>
-        <div className="flex w-full items-center rounded-lg px-6 py-[7px] text-[13px] font-medium leading-[18px] text-text-tertiary">
-          <span aria-hidden className="i-ri-file-upload-line mr-2 h-4 w-4 shrink-0" />
-          {t('importDSL', { ns: 'app' })}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-const SnippetCard = ({
-  snippet,
-}: {
-  snippet: SnippetListItem
-}) => {
-  return (
-    <Link href={`/snippets/${snippet.id}/orchestrate`} className="group col-span-1">
-      <article className="relative inline-flex h-[160px] w-full flex-col rounded-xl border border-components-card-border bg-components-card-bg shadow-sm transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:shadow-lg">
-        {snippet.status && (
-          <div className="absolute right-0 top-0 rounded-bl-lg rounded-tr-xl bg-background-default-dimmed px-2 py-1 text-[10px] font-medium uppercase leading-3 text-text-placeholder">
-            {snippet.status}
-          </div>
-        )}
-        <div className="flex h-[66px] items-center gap-3 px-[14px] pb-3 pt-[14px]">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-divider-regular text-xl text-white" style={{ background: snippet.iconBackground }}>
-            <span aria-hidden>{snippet.icon}</span>
-          </div>
-          <div className="w-0 grow py-[1px]">
-            <div className="truncate text-sm font-semibold leading-5 text-text-secondary" title={snippet.name}>
-              {snippet.name}
-            </div>
-          </div>
-        </div>
-        <div className="h-[58px] px-[14px] text-xs leading-normal text-text-tertiary">
-          <div className="line-clamp-2" title={snippet.description}>
-            {snippet.description}
-          </div>
-        </div>
-        <div className="mt-auto flex items-center gap-1 px-[14px] pb-3 pt-2 text-xs leading-4 text-text-tertiary">
-          <span className="truncate">{snippet.author}</span>
-          <span>·</span>
-          <span className="truncate">{snippet.updatedAt}</span>
-          <span>·</span>
-          <span className="truncate">{snippet.usage}</span>
-        </div>
-      </article>
-    </Link>
-  )
-}
 
 type Props = {
   controlRefreshList?: number
