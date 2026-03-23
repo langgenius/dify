@@ -59,6 +59,7 @@ vi.mock('../hooks/use-dsl-drag-drop', () => ({
 
 const mockRefetch = vi.fn()
 const mockFetchNextPage = vi.fn()
+const mockFetchSnippetNextPage = vi.fn()
 
 const mockServiceState = {
   error: null as Error | null,
@@ -115,6 +116,57 @@ vi.mock('@/service/use-apps', () => ({
   }),
   useDeleteAppMutation: () => ({
     mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+}))
+
+const mockSnippetServiceState = {
+  error: null as Error | null,
+  hasNextPage: false,
+  isLoading: false,
+  isFetching: false,
+  isFetchingNextPage: false,
+}
+
+const defaultSnippetData = {
+  pages: [{
+    data: [
+      {
+        id: 'snippet-1',
+        name: 'Tone Rewriter',
+        description: 'Rewrites rough drafts into a concise, professional tone for internal stakeholder updates.',
+        author: '',
+        updatedAt: '2024-01-02 10:00',
+        usage: '19',
+        icon: '🪄',
+        iconBackground: '#E0EAFF',
+        status: undefined,
+      },
+    ],
+    total: 1,
+  }],
+}
+
+vi.mock('@/service/use-snippets', () => ({
+  useInfiniteSnippetList: () => ({
+    data: defaultSnippetData,
+    isLoading: mockSnippetServiceState.isLoading,
+    isFetching: mockSnippetServiceState.isFetching,
+    isFetchingNextPage: mockSnippetServiceState.isFetchingNextPage,
+    fetchNextPage: mockFetchSnippetNextPage,
+    hasNextPage: mockSnippetServiceState.hasNextPage,
+    error: mockSnippetServiceState.error,
+  }),
+  useCreateSnippetMutation: () => ({
+    mutate: vi.fn(),
+    isPending: false,
+  }),
+  useImportSnippetDSLMutation: () => ({
+    mutate: vi.fn(),
+    isPending: false,
+  }),
+  useConfirmSnippetImportMutation: () => ({
+    mutate: vi.fn(),
     isPending: false,
   }),
 }))
@@ -227,6 +279,11 @@ describe('List', () => {
     mockQueryState.tagIDs = []
     mockQueryState.keywords = ''
     mockQueryState.isCreatedByMe = false
+    mockSnippetServiceState.error = null
+    mockSnippetServiceState.hasNextPage = false
+    mockSnippetServiceState.isLoading = false
+    mockSnippetServiceState.isFetching = false
+    mockSnippetServiceState.isFetchingNextPage = false
     intersectionCallback = null
     localStorage.clear()
   })
@@ -282,7 +339,7 @@ describe('List', () => {
   })
 
   describe('Snippets Mode', () => {
-    it('should render the snippets create card and fake snippet card', () => {
+    it('should render the snippets create card and snippet card from the real query hook', () => {
       renderList({ pageType: 'snippets' })
 
       expect(screen.getByText('snippet.create')).toBeInTheDocument()
@@ -293,14 +350,15 @@ describe('List', () => {
       expect(screen.queryByTestId('app-card-app-1')).not.toBeInTheDocument()
     })
 
-    it('should filter local snippets by the search input and show the snippet empty state', () => {
+    it('should request the next snippet page when the infinite-scroll anchor intersects', () => {
+      mockSnippetServiceState.hasNextPage = true
       renderList({ pageType: 'snippets' })
 
-      const input = screen.getByRole('textbox')
-      fireEvent.change(input, { target: { value: 'missing snippet' } })
+      act(() => {
+        intersectionCallback?.([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver)
+      })
 
-      expect(screen.queryByText('Tone Rewriter')).not.toBeInTheDocument()
-      expect(screen.getByText('workflow.tabs.noSnippetsFound')).toBeInTheDocument()
+      expect(mockFetchSnippetNextPage).toHaveBeenCalled()
     })
 
     it('should not render app-only controls in snippets mode', () => {
@@ -311,14 +369,14 @@ describe('List', () => {
       expect(screen.queryByText('app.newApp.dropDSLToCreateApp')).not.toBeInTheDocument()
     })
 
-    it('should reserve the infinite-scroll anchor without fetching more pages', () => {
+    it('should not fetch the next snippet page when no more data is available', () => {
       renderList({ pageType: 'snippets' })
 
       act(() => {
         intersectionCallback?.([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver)
       })
 
-      expect(mockFetchNextPage).not.toHaveBeenCalled()
+      expect(mockFetchSnippetNextPage).not.toHaveBeenCalled()
     })
   })
 })

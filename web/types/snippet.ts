@@ -1,6 +1,13 @@
+import type { AppIconType } from '@/types/app'
+
 export type SnippetType = 'node' | 'group'
 
-export type SnippetIconInfo = Record<string, unknown>
+export type SnippetIconInfo = {
+  icon_type: AppIconType | null
+  icon: string
+  icon_background?: string
+  icon_url?: string
+}
 
 export type SnippetInputField = Record<string, unknown>
 
@@ -16,6 +23,7 @@ export type Snippet = {
   input_fields: SnippetInputField[]
   created_at: number
   updated_at: number
+  author: string
 }
 
 export type SnippetListItem = Omit<Snippet, 'version' | 'input_fields'>

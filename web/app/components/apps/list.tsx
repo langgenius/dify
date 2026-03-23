@@ -16,7 +16,7 @@ import { useGlobalPublicStore } from '@/context/global-public-context'
 import { CheckModal } from '@/hooks/use-pay'
 import dynamic from '@/next/dynamic'
 import { useInfiniteAppList } from '@/service/use-apps'
-import { getSnippetListMock } from '@/service/use-snippets.mock'
+import { useInfiniteSnippetList } from '@/service/use-snippets'
 import { cn } from '@/utils/classnames'
 import SnippetCard from '../snippets/components/snippet-card'
 import SnippetCreateCard from '../snippets/components/snippet-create-card'
@@ -61,6 +61,7 @@ const List: FC<Props> = ({
   const { query: { tagIDs = [], keywords = '', isCreatedByMe: queryIsCreatedByMe = false }, setQuery } = useAppsQueryState()
   const [tagFilterValue, setTagFilterValue] = useState<string[]>(tagIDs)
   const [appKeywords, setAppKeywords] = useState(keywords)
+  const [snippetKeywordsInput, setSnippetKeywordsInput] = useState('')
   const [snippetKeywords, setSnippetKeywords] = useState('')
   const [showCreateFromDSLModal, setShowCreateFromDSLModal] = useState(false)
   const [droppedDSLFile, setDroppedDSLFile] = useState<File | undefined>()
@@ -109,6 +110,22 @@ const List: FC<Props> = ({
     enabled: isAppsPage && !isCurrentWorkspaceDatasetOperator,
   })
 
+  const {
+    data: snippetData,
+    isLoading: isSnippetListLoading,
+    isFetching: isSnippetListFetching,
+    isFetchingNextPage: isSnippetListFetchingNextPage,
+    fetchNextPage: fetchSnippetNextPage,
+    hasNextPage: hasSnippetNextPage,
+    error: snippetError,
+  } = useInfiniteSnippetList({
+    page: 1,
+    limit: 30,
+    keyword: snippetKeywords || undefined,
+  }, {
+    enabled: !isAppsPage,
+  })
+
   useEffect(() => {
     if (isAppsPage && controlRefreshList > 0)
       refetch()
@@ -128,10 +145,13 @@ const List: FC<Props> = ({
     if (isCurrentWorkspaceDatasetOperator)
       return
 
-    const hasMore = isAppsPage ? (hasNextPage ?? true) : false
+    const hasMore = isAppsPage ? (hasNextPage ?? true) : (hasSnippetNextPage ?? true)
+    const isPageLoading = isAppsPage ? isLoading : isSnippetListLoading
+    const isNextPageFetching = isAppsPage ? isFetchingNextPage : isSnippetListFetchingNextPage
+    const currentError = isAppsPage ? error : snippetError
     let observer: IntersectionObserver | undefined
 
-    if (error) {
+    if (currentError) {
       observer?.disconnect()
       return
     }
@@ -141,8 +161,12 @@ const List: FC<Props> = ({
       const dynamicMargin = Math.max(100, Math.min(containerHeight * 0.2, 200))
 
       observer = new IntersectionObserver((entries) => {
-        if (entries[0].isIntersecting && !isLoading && !isFetchingNextPage && !error && hasMore)
-          fetchNextPage()
+        if (entries[0].isIntersecting && !isPageLoading && !isNextPageFetching && !currentError && hasMore) {
+          if (isAppsPage)
+            fetchNextPage()
+          else
+            fetchSnippetNextPage()
+        }
       }, {
         root: containerRef.current,
         rootMargin: `${dynamicMargin}px`,
@@ -152,10 +176,14 @@ const List: FC<Props> = ({
     }
 
     return () => observer?.disconnect()
-  }, [error, fetchNextPage, hasNextPage, isAppsPage, isCurrentWorkspaceDatasetOperator, isFetchingNextPage, isLoading])
+  }, [error, fetchNextPage, fetchSnippetNextPage, hasNextPage, hasSnippetNextPage, isAppsPage, isCurrentWorkspaceDatasetOperator, isFetchingNextPage, isLoading, isSnippetListFetchingNextPage, isSnippetListLoading, snippetError])
 
   const { run: handleAppSearch } = useDebounceFn((value: string) => {
     setAppKeywords(value)
+  }, { wait: 500 })
+
+  const { run: handleSnippetSearch } = useDebounceFn((value: string) => {
+    setSnippetKeywords(value)
   }, { wait: 500 })
 
   const handleKeywordsChange = useCallback((value: string) => {
@@ -165,8 +193,9 @@ const List: FC<Props> = ({
       return
     }
 
-    setSnippetKeywords(value)
-  }, [handleAppSearch, isAppsPage, setKeywords])
+    setSnippetKeywordsInput(value)
+    handleSnippetSearch(value)
+  }, [handleAppSearch, handleSnippetSearch, isAppsPage, setKeywords])
 
   const { run: handleTagsUpdate } = useDebounceFn((value: string[]) => {
     setTagIDs(value)
@@ -181,23 +210,16 @@ const List: FC<Props> = ({
     return (data?.pages ?? []).flatMap(({ data: apps }) => apps)
   }, [data?.pages])
 
-  const snippetItems = useMemo(() => getSnippetListMock(), [])
+  const snippetItems = useMemo(() => {
+    return (snippetData?.pages ?? []).flatMap(({ data }) => data)
+  }, [snippetData?.pages])
 
-  const filteredSnippetItems = useMemo(() => {
-    const normalizedKeywords = snippetKeywords.trim().toLowerCase()
-    if (!normalizedKeywords)
-      return snippetItems
-
-    return snippetItems.filter(item =>
-      item.name.toLowerCase().includes(normalizedKeywords)
-      || item.description.toLowerCase().includes(normalizedKeywords),
-    )
-  }, [snippetItems, snippetKeywords])
-
-  const showSkeleton = isAppsPage && (isLoading || (isFetching && data?.pages?.length === 0))
+  const showSkeleton = isAppsPage
+    ? (isLoading || (isFetching && data?.pages?.length === 0))
+    : (isSnippetListLoading || (isSnippetListFetching && snippetItems.length === 0))
   const hasAnyApp = (data?.pages?.[0]?.total ?? 0) > 0
-  const hasAnySnippet = filteredSnippetItems.length > 0
-  const currentKeywords = isAppsPage ? keywords : snippetKeywords
+  const hasAnySnippet = snippetItems.length > 0
+  const currentKeywords = isAppsPage ? keywords : snippetKeywordsInput
 
   return (
     <>
@@ -265,7 +287,7 @@ const List: FC<Props> = ({
             <AppCard key={app.id} app={app} onRefresh={refetch} />
           ))}
 
-          {!showSkeleton && !isAppsPage && hasAnySnippet && filteredSnippetItems.map(snippet => (
+          {!showSkeleton && !isAppsPage && hasAnySnippet && snippetItems.map(snippet => (
             <SnippetCard key={snippet.id} snippet={snippet} />
           ))}
 
@@ -278,6 +300,10 @@ const List: FC<Props> = ({
           )}
 
           {isAppsPage && isFetchingNextPage && (
+            <AppCardSkeleton count={3} />
+          )}
+
+          {!isAppsPage && isSnippetListFetchingNextPage && (
             <AppCardSkeleton count={3} />
           )}
         </div>

@@ -14,6 +14,8 @@ import type {
   UpdateSnippetPayload,
 } from '@/types/snippet'
 import {
+  keepPreviousData,
+  useInfiniteQuery,
   useMutation,
   useQuery,
   useQueryClient,
@@ -131,6 +133,8 @@ const isNotFoundError = (error: unknown) => {
   return !!error && typeof error === 'object' && 'status' in error && error.status === 404
 }
 
+const snippetListKey = (params: SnippetListParams) => ['snippets', 'list', params]
+
 export const useSnippetList = (params: SnippetListParams = {}, options?: { enabled?: boolean }) => {
   const query = normalizeSnippetListParams(params)
 
@@ -151,6 +155,26 @@ export const useSnippetListItems = (params: SnippetListParams = {}, options?: { 
       return response.data.map(toSnippetListItem)
     },
     enabled: options?.enabled ?? true,
+  })
+}
+
+export const useInfiniteSnippetList = (params: SnippetListParams = {}, options?: { enabled?: boolean }) => {
+  const normalizedParams = normalizeSnippetListParams(params)
+
+  return useInfiniteQuery<SnippetListResponse>({
+    queryKey: snippetListKey(normalizedParams),
+    queryFn: ({ pageParam = normalizedParams.page }) => {
+      return consoleClient.snippets.list({
+        query: {
+          ...normalizedParams,
+          page: pageParam as number,
+        },
+      })
+    },
+    getNextPageParam: lastPage => lastPage.has_more ? lastPage.page + 1 : undefined,
+    initialPageParam: normalizedParams.page,
+    placeholderData: keepPreviousData,
+    ...options,
   })
 }
 
