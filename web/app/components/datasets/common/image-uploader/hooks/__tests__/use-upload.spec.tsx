@@ -3,9 +3,13 @@ import type { FileEntity } from '../../types'
 import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { FileContextProvider } from '../../store'
 import { useUpload } from '../use-upload'
+
+const { mockToastError } = vi.hoisted(() => ({
+  mockToastError: vi.fn(),
+}))
 
 vi.mock('@/service/use-common', () => ({
   useFileUploadConfig: vi.fn(() => ({
@@ -17,9 +21,9 @@ vi.mock('@/service/use-common', () => ({
   })),
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
-  default: {
-    notify: vi.fn(),
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    error: mockToastError,
   },
 }))
 
@@ -177,10 +181,7 @@ describe('useUpload hook', () => {
       })
 
       await waitFor(() => {
-        expect(Toast.notify).toHaveBeenCalledWith({
-          type: 'error',
-          message: expect.any(String),
-        })
+        expect(toast.error).toHaveBeenCalledWith(expect.any(String))
       })
     })
 
@@ -204,13 +205,11 @@ describe('useUpload hook', () => {
         result.current.fileChangeHandle(mockEvent)
       })
 
-      // Should not show type error for valid image type
-      type ToastCall = [{ type: string, message: string }]
-      const mockNotify = vi.mocked(Toast.notify)
+      // Should not show file-extension error for valid image type
+      type ToastCall = [string]
+      const mockNotify = vi.mocked(toast.error)
       const calls = mockNotify.mock.calls as ToastCall[]
-      const typeErrorCalls = calls.filter(
-        (call: ToastCall) => call[0].type === 'error' && call[0].message.includes('Extension'),
-      )
+      const typeErrorCalls = calls.filter(call => call[0].includes('common.fileUploader.fileExtensionNotSupport'))
       expect(typeErrorCalls.length).toBe(0)
     })
   })
@@ -261,7 +260,7 @@ describe('useUpload hook', () => {
       })
 
       // Should not throw and not show error
-      expect(Toast.notify).not.toHaveBeenCalled()
+      expect(toast.error).not.toHaveBeenCalled()
     })
 
     it('should handle null files', () => {
@@ -314,10 +313,7 @@ describe('useUpload hook', () => {
       })
 
       await waitFor(() => {
-        expect(Toast.notify).toHaveBeenCalledWith({
-          type: 'error',
-          message: expect.any(String),
-        })
+        expect(toast.error).toHaveBeenCalledWith(expect.any(String))
       })
     })
   })
@@ -419,10 +415,7 @@ describe('useUpload hook', () => {
       })
 
       await waitFor(() => {
-        expect(Toast.notify).toHaveBeenCalledWith({
-          type: 'error',
-          message: 'Upload error',
-        })
+        expect(toast.error).toHaveBeenCalledWith('Upload error')
       })
     })
   })
@@ -481,10 +474,7 @@ describe('useUpload hook', () => {
       })
 
       await waitFor(() => {
-        expect(Toast.notify).toHaveBeenCalledWith({
-          type: 'error',
-          message: 'Upload error',
-        })
+        expect(toast.error).toHaveBeenCalledWith('Upload error')
       })
     })
   })
@@ -522,10 +512,7 @@ describe('useUpload hook', () => {
       })
 
       await waitFor(() => {
-        expect(Toast.notify).toHaveBeenCalledWith({
-          type: 'error',
-          message: expect.any(String),
-        })
+        expect(toast.error).toHaveBeenCalledWith(expect.any(String))
       })
     })
   })
@@ -610,10 +597,7 @@ describe('useUpload hook', () => {
       })
 
       await waitFor(() => {
-        expect(Toast.notify).toHaveBeenCalledWith({
-          type: 'error',
-          message: expect.any(String),
-        })
+        expect(toast.error).toHaveBeenCalledWith(expect.any(String))
       })
 
       // Restore original MockFileReader
@@ -773,10 +757,7 @@ describe('useUpload hook', () => {
 
       // Should show error toast for invalid file type
       await waitFor(() => {
-        expect(Toast.notify).toHaveBeenCalledWith({
-          type: 'error',
-          message: expect.any(String),
-        })
+        expect(toast.error).toHaveBeenCalledWith(expect.any(String))
       })
     })
 

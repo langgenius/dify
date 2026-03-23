@@ -1605,6 +1605,7 @@ dependencies = [
     { name = "pydantic-extra-types" },
     { name = "pydantic-settings" },
     { name = "pyjwt" },
+    { name = "pypandoc" },
     { name = "pypdfium2" },
     { name = "python-docx" },
     { name = "python-dotenv" },
@@ -1807,6 +1808,7 @@ requires-dist = [
     { name = "pydantic-extra-types", specifier = "~=2.11.0" },
     { name = "pydantic-settings", specifier = "~=2.13.1" },
     { name = "pyjwt", specifier = "~=2.12.0" },
+    { name = "pypandoc", specifier = "~=1.13" },
     { name = "pypdfium2", specifier = "==5.6.0" },
     { name = "python-docx", specifier = "~=1.2.0" },
     { name = "python-dotenv", specifier = "==1.2.2" },
@@ -5378,6 +5380,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/38/8a/c459f45844f1f90e9edf80c0f434ec3b1a65132efb240cfab8f26b1836c3/pyobvector-0.2.25.tar.gz", hash = "sha256:94d987583255ed8aba701d37a5d7c2727ec5fd7e0288cd9dd87a1f5ee36dd923", size = 78511, upload-time = "2026-03-10T07:18:32.283Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d1/7d/037401cecb34728d1c28ea05e196ea3c9d50a1ce0f2172e586e075ff55d8/pyobvector-0.2.25-py3-none-any.whl", hash = "sha256:ae0153f99bd0222783ed7e3951efc31a0d2b462d926b6f86ebd2033409aede8f", size = 64663, upload-time = "2026-03-10T07:18:29.789Z" },
+]
+
+[[package]]
+name = "pypandoc"
+version = "1.17"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/ea/d6/410615fc433e5d1eacc00db2044ae2a9c82302df0d35366fe2bd15de024d/pypandoc-1.17.tar.gz", hash = "sha256:51179abfd6e582a25ed03477541b48836b5bba5a4c3b282a547630793934d799", size = 69071, upload-time = "2026-03-14T22:39:07.21Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/0c/86/e2ffa604eacfbec3f430b1d850e7e04c4101eca1a5828f9ae54bf51dfba4/pypandoc-1.17-py3-none-any.whl", hash = "sha256:01fdbffa61edb9f8e82e8faad6954efcb7b6f8f0634aead4d89e322a00225a67", size = 23554, upload-time = "2026-03-14T22:38:46.007Z" },
 ]
 
 [[package]]
