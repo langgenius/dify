@@ -7,7 +7,7 @@
 | 1 | `657eeb65` | 50 | Early changes: deps, Switch组件, 基础重构 | ✅ |
 | 2 | `9c339239` | 129 | Mid refactors: model_runtime, prompt, storage | ✅ |
 | 3 | `92bde350` | 56 | dify_graph 大迁移 | ✅ |
-| 4 | `fb41b215` | 165 | Post-backend refactors | ⬚ |
+| 4 | `fb41b215` | 165 | Post-backend refactors | ✅ |
 | 5 | `main HEAD` | 103 | Final changes | ⬚ |
 
 - **Base commit**: `98466e2d`
@@ -72,3 +72,24 @@
 - Fixed 15 frontend test files: QueryClientProvider wrapping, i18n key renames (importDSL→importApp), emoji rendering assertions, controlMode default, missing mock exports
 
 ### Test Results: ✅ Backend 6222 passed, Frontend 25031+ passed
+
+---
+
+## Segment 4: Post-backend Refactors (165 commits → `fb41b215`) ✅
+
+### Conflicts: 44 files
+- 3 modify/delete (commands.py, cot/fc agent runners → keep deletion)
+- 16 backend content (enums, base_node_data, graph, llm/node, tool_node, etc.)
+- 19 frontend content (avatar, text-generation, block-selector, edge interactions, etc.)
+- 6 lock/config files (pyproject.toml, uv.lock, package.json, pnpm-lock, eslint-suppressions)
+
+### Post-merge fixes
+- Updated `BaseNodeData` import: `dify_graph.nodes.base` → `dify_graph.entities.base_node_data`
+- Changed `NodeType.COMMAND/FILE_UPLOAD` → `BuiltinNodeTypes.COMMAND/FILE_UPLOAD`
+- Fixed `system_oauth_encryption` → `system_encryption` rename in commands/plugin.py
+- Removed tests for deleted agent runner modules (4 files)
+- Fixed Avatar: default → named import + numeric → string size API in 5 collaboration files
+- Added missing skill deps: @monaco-editor/react, react-arborist, @tanstack/react-virtual
+- Fixed frontend test mocks: useUserProfile, useLeaderRestoreListener, next/navigation
+
+### Test Results: ✅ Backend 11608 passed, Frontend skipped (vitest hang issue with forks pool)
