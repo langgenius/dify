@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from dify_graph.nodes.human_input.entities import FormInput
@@ -61,7 +61,7 @@ class HumanInputForm:
 
     @property
     def is_expired(self) -> bool:
-        return self.expires_at is not None and datetime.utcnow() > self.expires_at
+        return self.expires_at is not None and datetime.now(UTC) > self.expires_at
 
     @property
     def is_submitted(self) -> bool:
@@ -70,7 +70,7 @@ class HumanInputForm:
     def mark_submitted(self, inputs: dict[str, Any], action: str) -> None:
         self.submitted_data = inputs
         self.submitted_action = action
-        self.submitted_at = datetime.utcnow()
+        self.submitted_at = datetime.now(UTC)
 
     def submit(self, inputs: dict[str, Any], action: str) -> None:
         self.mark_submitted(inputs, action)

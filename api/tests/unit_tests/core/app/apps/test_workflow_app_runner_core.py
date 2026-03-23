@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import pytest
@@ -195,7 +195,7 @@ class TestWorkflowBasedAppRunner:
                 node_id="node",
                 node_type=BuiltinNodeTypes.START,
                 node_title="Start",
-                start_at=datetime.utcnow(),
+                start_at=datetime.now(UTC),
             ),
         )
         runner._handle_event(
@@ -232,7 +232,7 @@ class TestWorkflowBasedAppRunner:
                 node_id="node",
                 node_type=BuiltinNodeTypes.LLM,
                 node_title="Iter",
-                start_at=datetime.utcnow(),
+                start_at=datetime.now(UTC),
                 inputs={},
                 outputs={"ok": True},
                 metadata={},
@@ -246,7 +246,7 @@ class TestWorkflowBasedAppRunner:
                 node_id="node",
                 node_type=BuiltinNodeTypes.LLM,
                 node_title="Loop",
-                start_at=datetime.utcnow(),
+                start_at=datetime.now(UTC),
                 inputs={},
                 outputs={},
                 metadata={},

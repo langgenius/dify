@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -372,7 +372,7 @@ class TestPublishedPipelineApis:
 
         workflow = MagicMock(
             id="w1",
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
         )
 
         session = MagicMock()
