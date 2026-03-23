@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useCurrentProviderAndModel, useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import {
@@ -66,10 +66,7 @@ const ParamsConfig = ({
       }
     }
     if (errMsg) {
-      Toast.notify({
-        type: 'error',
-        message: errMsg,
-      })
+      toast.error(errMsg)
     }
     return !errMsg
   }
