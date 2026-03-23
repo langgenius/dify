@@ -9,7 +9,17 @@ const mockConfig = vi.hoisted(() => ({
   IS_CLOUD_EDITION: true,
 }))
 
-vi.mock('@/config', () => mockConfig)
+vi.mock('@/config', () => ({
+  get AMPLITUDE_API_KEY() {
+    return mockConfig.AMPLITUDE_API_KEY
+  },
+  get IS_CLOUD_EDITION() {
+    return mockConfig.IS_CLOUD_EDITION
+  },
+  get isAmplitudeEnabled() {
+    return mockConfig.IS_CLOUD_EDITION && !!mockConfig.AMPLITUDE_API_KEY
+  },
+}))
 
 vi.mock('@amplitude/analytics-browser', () => ({
   init: vi.fn(),
