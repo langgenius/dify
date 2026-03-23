@@ -36,6 +36,7 @@ from extensions.ext_database import db
 from fields.document_fields import document_fields, document_status_fields
 from libs.login import current_user
 from models.dataset import Dataset, Document, DocumentSegment
+from models.enums import SegmentStatus
 from services.dataset_service import DatasetService, DocumentService
 from services.entities.knowledge_entities.knowledge_entities import (
     KnowledgeConfig,
@@ -622,13 +623,15 @@ class DocumentIndexingStatusApi(DatasetApiResource):
                 .where(
                     DocumentSegment.completed_at.isnot(None),
                     DocumentSegment.document_id == str(document.id),
-                    DocumentSegment.status != "re_segment",
+                    DocumentSegment.status != SegmentStatus.RE_SEGMENT,
                 )
                 .count()
             )
             total_segments = (
                 db.session.query(DocumentSegment)
-                .where(DocumentSegment.document_id == str(document.id), DocumentSegment.status != "re_segment")
+                .where(
+                    DocumentSegment.document_id == str(document.id), DocumentSegment.status != SegmentStatus.RE_SEGMENT
+                )
                 .count()
             )
             # Create a dictionary with document attributes and additional fields

@@ -1,10 +1,18 @@
 import type { FC, PropsWithChildren, ReactNode } from 'react'
 import type { InputProps } from '@/app/components/base/input'
-import type { InputNumberProps } from '@/app/components/base/input-number'
+import type { NumberFieldInputProps, NumberFieldRootProps, NumberFieldSize } from '@/app/components/base/ui/number-field'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import { InputNumber } from '@/app/components/base/input-number'
 import Tooltip from '@/app/components/base/tooltip'
+import {
+  NumberField,
+  NumberFieldControls,
+  NumberFieldDecrement,
+  NumberFieldGroup,
+  NumberFieldIncrement,
+  NumberFieldInput,
+  NumberFieldUnit,
+} from '@/app/components/base/ui/number-field'
 import { env } from '@/env'
 
 const TextLabel: FC<PropsWithChildren> = (props) => {
@@ -25,7 +33,7 @@ export const DelimiterInput: FC<InputProps & { tooltip?: string }> = (props) => 
   return (
     <FormField label={(
       <div className="mb-1 flex items-center">
-        <span className="system-sm-semibold mr-0.5">{t('stepTwo.separator', { ns: 'datasetCreation' })}</span>
+        <span className="mr-0.5 system-sm-semibold">{t('stepTwo.separator', { ns: 'datasetCreation' })}</span>
         <Tooltip
           popupContent={(
             <div className="max-w-[200px]">
@@ -46,19 +54,69 @@ export const DelimiterInput: FC<InputProps & { tooltip?: string }> = (props) => 
   )
 }
 
-export const MaxLengthInput: FC<InputNumberProps> = (props) => {
+type CompoundNumberInputProps = Omit<NumberFieldRootProps, 'children' | 'className' | 'onValueChange'> & Omit<NumberFieldInputProps, 'children' | 'size' | 'onChange'> & {
+  unit?: ReactNode
+  size?: NumberFieldSize
+  onChange: (value: number) => void
+}
+
+function CompoundNumberInput({
+  onChange,
+  unit,
+  size = 'large',
+  className,
+  ...props
+}: CompoundNumberInputProps) {
+  const { value, defaultValue, min, max, step, disabled, readOnly, required, id, name, onBlur, ...inputProps } = props
+  const emptyValue = defaultValue ?? min ?? 0
+
+  return (
+    <NumberField
+      value={value}
+      defaultValue={defaultValue}
+      min={min}
+      max={max}
+      step={step}
+      disabled={disabled}
+      readOnly={readOnly}
+      required={required}
+      id={id}
+      name={name}
+      onValueChange={value => onChange(value ?? emptyValue)}
+    >
+      <NumberFieldGroup size={size}>
+        <NumberFieldInput
+          {...inputProps}
+          size={size}
+          className={className}
+          onBlur={onBlur}
+        />
+        {Boolean(unit) && (
+          <NumberFieldUnit size={size}>
+            {unit}
+          </NumberFieldUnit>
+        )}
+        <NumberFieldControls>
+          <NumberFieldIncrement size={size} />
+          <NumberFieldDecrement size={size} />
+        </NumberFieldControls>
+      </NumberFieldGroup>
+    </NumberField>
+  )
+}
+
+export const MaxLengthInput: FC<CompoundNumberInputProps> = (props) => {
   const maxValue = env.NEXT_PUBLIC_INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH
 
   const { t } = useTranslation()
   return (
     <FormField label={(
-      <div className="system-sm-semibold mb-1">
+      <div className="mb-1 system-sm-semibold">
         {t('stepTwo.maxLength', { ns: 'datasetCreation' })}
       </div>
     )}
     >
-      <InputNumber
-        type="number"
+      <CompoundNumberInput
         size="large"
         placeholder={`≤ ${maxValue}`}
         max={maxValue}
@@ -69,7 +127,7 @@ export const MaxLengthInput: FC<InputNumberProps> = (props) => {
   )
 }
 
-export const OverlapInput: FC<InputNumberProps> = (props) => {
+export const OverlapInput: FC<CompoundNumberInputProps> = (props) => {
   const { t } = useTranslation()
   return (
     <FormField label={(
@@ -85,8 +143,7 @@ export const OverlapInput: FC<InputNumberProps> = (props) => {
       </div>
     )}
     >
-      <InputNumber
-        type="number"
+      <CompoundNumberInput
         size="large"
         placeholder={t('stepTwo.overlap', { ns: 'datasetCreation' }) || ''}
         min={1}

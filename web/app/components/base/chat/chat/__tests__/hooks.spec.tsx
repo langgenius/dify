@@ -1,8 +1,8 @@
 import type { ChatConfig, ChatItemInTree } from '../../types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { act, renderHook } from '@testing-library/react'
-import { useParams, usePathname } from 'next/navigation'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { useParams, usePathname } from '@/next/navigation'
 import { sseGet, ssePost } from '@/service/base'
 import { useChat } from '../hooks'
 
@@ -28,7 +28,7 @@ vi.mock('@/hooks/use-timestamp', () => ({
   default: () => ({ formatTime: vi.fn().mockReturnValue('10:00 AM') }),
 }))
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useParams: vi.fn(() => ({})),
   usePathname: vi.fn(() => ''),
   useRouter: vi.fn(() => ({})),
@@ -139,6 +139,145 @@ describe('useChat', () => {
 
     expect(result.current.chatList[0].content).toBe('Hello Bob')
     expect(result.current.chatList[0].suggestedQuestions).toEqual(['Ask Bob'])
+  })
+
+  describe('opening statement referential stability', () => {
+    it('should keep the same item reference across multiple streaming chatTree mutations', () => {
+      let callbacks: HookCallbacks
+
+      vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+
+      const config = {
+        opening_statement: 'Welcome!',
+        suggested_questions: ['Q1', 'Q2'],
+      }
+      const { result } = renderHook(() => useChat(config as ChatConfig))
+
+      const openerInitial = result.current.chatList[0]
+      expect(openerInitial.isOpeningStatement).toBe(true)
+      expect(openerInitial.content).toBe('Welcome!')
+
+      act(() => {
+        result.current.handleSend('url', { query: 'hello' }, {})
+      })
+
+      act(() => {
+        callbacks.onWorkflowStarted({ workflow_run_id: 'wr-1', task_id: 't-1' })
+      })
+      expect(result.current.chatList[0]).toBe(openerInitial)
+
+      act(() => {
+        callbacks.onData('chunk-1 ', true, { messageId: 'm-1', conversationId: 'c-1', taskId: 't-1' })
+      })
+      expect(result.current.chatList.length).toBeGreaterThan(1)
+      expect(result.current.chatList[0]).toBe(openerInitial)
+
+      act(() => {
+        callbacks.onData('chunk-2 ', false, { messageId: 'm-1' })
+      })
+      expect(result.current.chatList[0]).toBe(openerInitial)
+
+      act(() => {
+        callbacks.onData('chunk-3', false, { messageId: 'm-1' })
+        callbacks.onMessageEnd({ metadata: { retriever_resources: [] } })
+        callbacks.onWorkflowFinished({ data: { status: 'succeeded' } })
+        callbacks.onCompleted()
+      })
+      expect(result.current.chatList[0]).toBe(openerInitial)
+      expect(result.current.chatList.at(-1)!.content).toBe('chunk-1 chunk-2 chunk-3')
+    })
+
+    it('should keep stable reference when getIntroduction identity changes but output is identical', () => {
+      const config = {
+        opening_statement: 'Hello {{name}}',
+        suggested_questions: ['Ask about {{name}}'],
+      }
+
+      const { result, rerender } = renderHook(
+        ({ fs }) => useChat(config as ChatConfig, fs as UseChatFormSettings),
+        { initialProps: { fs: { inputs: { name: 'Alice' }, inputsForm: [] } } },
+      )
+
+      const openerBefore = result.current.chatList[0]
+      expect(openerBefore.content).toBe('Hello Alice')
+      expect(openerBefore.suggestedQuestions).toEqual(['Ask about Alice'])
+
+      rerender({ fs: { inputs: { name: 'Alice' }, inputsForm: [] } })
+
+      expect(result.current.chatList[0]).toBe(openerBefore)
+    })
+
+    it('should produce a new item when the processed content actually changes', () => {
+      const config = {
+        opening_statement: 'Hello {{name}}',
+        suggested_questions: ['Ask {{name}}'],
+      }
+
+      const { result, rerender } = renderHook(
+        ({ fs }) => useChat(config as ChatConfig, fs as UseChatFormSettings),
+        { initialProps: { fs: { inputs: { name: 'Alice' }, inputsForm: [] } } },
+      )
+
+      const before = result.current.chatList[0]
+
+      rerender({ fs: { inputs: { name: 'Bob' }, inputsForm: [] } })
+
+      const after = result.current.chatList[0]
+      expect(after).not.toBe(before)
+      expect(after.content).toBe('Hello Bob')
+      expect(after.suggestedQuestions).toEqual(['Ask Bob'])
+    })
+
+    it('should keep content and suggestedQuestions stable for opener already in prevChatTree even when sibling metadata changes', () => {
+      let callbacks: HookCallbacks
+      vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+
+      const config = {
+        opening_statement: 'Hello updated',
+        suggested_questions: ['S1'],
+      }
+      const prevChatTree = [{
+        id: 'opening-statement',
+        content: 'old',
+        isAnswer: true,
+        isOpeningStatement: true,
+        suggestedQuestions: [],
+      }]
+
+      const { result } = renderHook(() =>
+        useChat(config as ChatConfig, undefined, prevChatTree as ChatItemInTree[]),
+      )
+
+      const openerBefore = result.current.chatList[0]
+      expect(openerBefore.content).toBe('Hello updated')
+      expect(openerBefore.suggestedQuestions).toEqual(['S1'])
+
+      const contentBefore = openerBefore.content
+      const suggestionsBefore = openerBefore.suggestedQuestions
+
+      act(() => {
+        result.current.handleSend('url', { query: 'msg' }, {})
+      })
+      act(() => {
+        callbacks.onData('resp', true, { messageId: 'm-1', conversationId: 'c-1', taskId: 't-1' })
+      })
+
+      expect(result.current.chatList.length).toBeGreaterThan(1)
+      const openerAfter = result.current.chatList[0]
+      expect(openerAfter.content).toBe(contentBefore)
+      expect(openerAfter.suggestedQuestions).toBe(suggestionsBefore)
+    })
+
+    it('should use a stable id of "opening-statement"', () => {
+      const { result } = renderHook(() =>
+        useChat({ opening_statement: 'Hi' } as ChatConfig),
+      )
+      expect(result.current.chatList[0].id).toBe('opening-statement')
+    })
   })
 
   describe('handleSend', () => {

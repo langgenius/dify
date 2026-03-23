@@ -1,7 +1,7 @@
 import type { PluginProvider } from '@/models/common'
 import { LockClosedIcon } from '@heroicons/react/24/solid'
-import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
+import Link from '@/next/link'
 import { usePluginProviders } from '@/service/use-common'
 import SerpapiPlugin from './SerpapiPlugin'
 

@@ -27,7 +27,7 @@ vi.mock('@/app/components/datasets/external-knowledge-base/create/RetrievalSetti
 
 // Mock Setup
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: vi.fn(),
     replace: vi.fn(),

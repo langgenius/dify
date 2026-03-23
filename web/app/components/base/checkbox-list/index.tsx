@@ -1,6 +1,5 @@
 'use client'
 import type { FC } from 'react'
-import Image from 'next/image'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
@@ -169,7 +168,7 @@ const CheckboxList: FC<CheckboxListProps> = ({
                   {searchQuery
                     ? (
                         <div className="flex flex-col items-center justify-center gap-2">
-                          <Image alt="search menu" src={SearchMenu} width={32} />
+                          <img alt="search menu" src={SearchMenu.src} width={32} />
                           <span className="text-text-secondary system-sm-regular">{t('operation.noSearchResults', { ns: 'common', content: title })}</span>
                           <Button variant="secondary-accent" size="small" onClick={() => setSearchQuery('')}>{t('operation.resetKeywords', { ns: 'common' })}</Button>
                         </div>

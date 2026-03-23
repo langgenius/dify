@@ -3,9 +3,9 @@
 import type { RefObject } from 'react'
 import type { Plugin } from '../../plugins/types'
 import type { ActionItem, SearchResult } from '../actions/types'
-import { useRouter } from 'next/navigation'
 import { useCallback, useState } from 'react'
 import { selectWorkflowNode } from '@/app/components/workflow/utils/node-navigation'
+import { useRouter } from '@/next/navigation'
 import { slashCommandRegistry } from '../actions/commands/registry'
 
 export type UseGotoAnythingNavigationReturn = {

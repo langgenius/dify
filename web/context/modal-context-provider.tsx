@@ -11,7 +11,6 @@ import type { InputVar } from '@/app/components/workflow/types'
 import type { ExpireNoticeModalPayloadProps } from '@/app/education-apply/expire-notice-modal'
 import type { ApiBasedExtension, ExternalDataTool } from '@/models/common'
 import type { ModerationConfig, PromptVariable } from '@/models/debug'
-import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
 
@@ -27,6 +26,7 @@ import {
   useAccountSettingModal,
   usePricingModal,
 } from '@/hooks/use-query-params'
+import dynamic from '@/next/dynamic'
 import { useTriggerEventsLimitModal } from './hooks/use-trigger-events-limit-modal'
 import {
   ModalContext,
@@ -266,8 +266,8 @@ export const ModalContextProvider = ({
           accountSettingTab && (
             <AccountSetting
               activeTab={accountSettingTab}
-              onCancel={handleCancelAccountSettingModal}
-              onTabChange={handleAccountSettingTabChange}
+              onCancelAction={handleCancelAccountSettingModal}
+              onTabChangeAction={handleAccountSettingTabChange}
             />
           )
         }

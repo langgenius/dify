@@ -70,7 +70,6 @@ class PluginManagerService:
                 "POST",
                 "/pre-uninstall-plugin",
                 json=body.model_dump(),
-                raise_for_status=True,
                 timeout=dify_config.ENTERPRISE_REQUEST_TIMEOUT,
             )
         except Exception:

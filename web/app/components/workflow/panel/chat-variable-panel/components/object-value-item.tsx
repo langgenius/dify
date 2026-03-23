@@ -96,7 +96,7 @@ const ObjectValueItem: FC<Props> = ({
       {/* Key */}
       <div className="w-[120px] border-r border-gray-200">
         <input
-          className="system-xs-regular placeholder:system-xs-regular block h-7 w-full appearance-none px-2 text-text-secondary caret-primary-600 outline-none placeholder:text-components-input-text-placeholder  hover:bg-state-base-hover focus:bg-components-input-bg-active"
+          className="block h-7 w-full appearance-none px-2 text-text-secondary caret-primary-600 outline-none system-xs-regular placeholder:text-components-input-text-placeholder placeholder:system-xs-regular hover:bg-state-base-hover focus:bg-components-input-bg-active"
           placeholder={t('chatVariable.modal.objectKey', { ns: 'workflow' }) || ''}
           value={list[index].key}
           onChange={handleKeyChange(index)}
@@ -115,7 +115,7 @@ const ObjectValueItem: FC<Props> = ({
       {/* Value */}
       <div className="relative w-[230px]">
         <input
-          className="system-xs-regular placeholder:system-xs-regular block h-7 w-full appearance-none px-2 text-text-secondary caret-primary-600 outline-none placeholder:text-components-input-text-placeholder  hover:bg-state-base-hover focus:bg-components-input-bg-active"
+          className="block h-7 w-full appearance-none px-2 text-text-secondary caret-primary-600 outline-none system-xs-regular placeholder:text-components-input-text-placeholder placeholder:system-xs-regular hover:bg-state-base-hover focus:bg-components-input-bg-active"
           placeholder={t('chatVariable.modal.objectValue', { ns: 'workflow' }) || ''}
           value={list[index].value}
           onChange={handleValueChange(index)}

@@ -8,7 +8,7 @@
 //   During migration, z-[1002] is chosen to sit above all legacy overlays
 //   (Modal z-[60], PortalToFollowElem callers up to z-[1001]).
 //   Once all legacy overlays are migrated, this can be reduced back to z-50.
-//   Toast — z-[9999], always on top (defined in toast component)
+//   Toast uses z-[1101] during migration so it stays above legacy highPriority modals.
 
 import { Dialog as BaseDialog } from '@base-ui/react/dialog'
 import * as React from 'react'
@@ -46,20 +46,24 @@ type DialogContentProps = {
   children: React.ReactNode
   className?: string
   overlayClassName?: string
+  backdropProps?: React.ComponentPropsWithoutRef<typeof BaseDialog.Backdrop>
 }
 
 export function DialogContent({
   children,
   className,
   overlayClassName,
+  backdropProps,
 }: DialogContentProps) {
   return (
     <DialogPortal>
       <BaseDialog.Backdrop
+        {...backdropProps}
         className={cn(
           'fixed inset-0 z-[1002] bg-background-overlay',
           'transition-opacity duration-150 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 motion-reduce:transition-none',
           overlayClassName,
+          backdropProps?.className,
         )}
       />
       <BaseDialog.Popup

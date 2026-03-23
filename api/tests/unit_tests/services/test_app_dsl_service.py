@@ -263,7 +263,7 @@ def test_import_app_completed_uses_declared_dependencies(monkeypatch):
 
     assert result.status == ImportStatus.COMPLETED
     assert result.app_id == "app-new"
-    draft_var_service.delete_workflow_variables.assert_called_once_with(app_id="app-new")
+    draft_var_service.delete_app_workflow_variables.assert_called_once_with(app_id="app-new")
 
 
 @pytest.mark.parametrize("has_workflow", [True, False])
@@ -305,7 +305,7 @@ def test_import_app_legacy_versions_extract_dependencies(monkeypatch, has_workfl
         account=_account_mock(), import_mode=ImportMode.YAML_CONTENT, yaml_content=_yaml_dump(data)
     )
     assert result.status == ImportStatus.COMPLETED_WITH_WARNINGS
-    draft_var_service.delete_workflow_variables.assert_called_once_with(app_id="app-legacy")
+    draft_var_service.delete_app_workflow_variables.assert_called_once_with(app_id="app-legacy")
 
 
 def test_import_app_yaml_error_returns_failed(monkeypatch):

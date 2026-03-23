@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
   externalKnowledgeApiList: [] as Array<{ id: string, name: string, settings: { endpoint: string } }>,
 }))
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: mocks.push, refresh: mocks.refresh }),
 }))
 

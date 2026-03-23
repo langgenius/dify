@@ -10,7 +10,7 @@ from core.model_manager import ModelInstance
 from dify_graph.enums import WorkflowNodeExecutionStatus
 from dify_graph.node_events import StreamCompletedEvent
 from dify_graph.nodes.llm.node import LLMNode
-from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory
+from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory, TemplateRenderer
 from dify_graph.nodes.protocols import HttpClientProtocol
 from dify_graph.runtime import GraphRuntimeState, VariablePool
 from dify_graph.system_variable import SystemVariable
@@ -75,6 +75,7 @@ def init_llm_node(config: dict) -> LLMNode:
         credentials_provider=MagicMock(spec=CredentialsProvider),
         model_factory=MagicMock(spec=ModelFactory),
         model_instance=MagicMock(spec=ModelInstance),
+        template_renderer=MagicMock(spec=TemplateRenderer),
         http_client=MagicMock(spec=HttpClientProtocol),
     )
 
@@ -158,7 +159,7 @@ def test_execute_llm():
         return mock_model_instance
 
     # Mock fetch_prompt_messages to avoid database calls
-    def mock_fetch_prompt_messages_1(**_kwargs):
+    def mock_fetch_prompt_messages_1(*_args, **_kwargs):
         from dify_graph.model_runtime.entities.message_entities import SystemPromptMessage, UserPromptMessage
 
         return [

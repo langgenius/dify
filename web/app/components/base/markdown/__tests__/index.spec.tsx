@@ -7,7 +7,7 @@ const { mockReactMarkdownWrapper } = vi.hoisted(() => ({
   mockReactMarkdownWrapper: vi.fn(),
 }))
 
-vi.mock('next/dynamic', () => ({
+vi.mock('@/next/dynamic', () => ({
   default: () => {
     const MockStreamdownWrapper = (props: { latexContent: string }) => {
       mockReactMarkdownWrapper(props)

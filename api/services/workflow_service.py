@@ -63,7 +63,12 @@ from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeEx
 from repositories.factory import DifyAPIRepositoryFactory
 from services.billing_service import BillingService
 from services.enterprise.plugin_manager_service import PluginCredentialType
-from services.errors.app import IsDraftWorkflowError, TriggerNodeLimitExceededError, WorkflowHashNotEqualError
+from services.errors.app import (
+    IsDraftWorkflowError,
+    TriggerNodeLimitExceededError,
+    WorkflowHashNotEqualError,
+    WorkflowNotFoundError,
+)
 from services.workflow.workflow_converter import WorkflowConverter
 
 from .errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
@@ -75,6 +80,7 @@ from .human_input_delivery_test_service import (
     HumanInputDeliveryTestService,
 )
 from .workflow_draft_variable_service import DraftVariableSaver, DraftVarLoader, WorkflowDraftVariableService
+from .workflow_restore import apply_published_workflow_snapshot_to_draft
 
 
 class WorkflowService:
@@ -278,6 +284,43 @@ class WorkflowService:
 
         # return draft workflow
         return workflow
+
+    def restore_published_workflow_to_draft(
+        self,
+        *,
+        app_model: App,
+        workflow_id: str,
+        account: Account,
+    ) -> Workflow:
+        """Restore a published workflow snapshot into the draft workflow.
+
+        Secret environment variables are copied server-side from the selected
+        published workflow so the normal draft sync flow stays stateless.
+        """
+        source_workflow = self.get_published_workflow_by_id(app_model=app_model, workflow_id=workflow_id)
+        if not source_workflow:
+            raise WorkflowNotFoundError("Workflow not found.")
+
+        self.validate_features_structure(app_model=app_model, features=source_workflow.normalized_features_dict)
+        self.validate_graph_structure(graph=source_workflow.graph_dict)
+
+        draft_workflow = self.get_draft_workflow(app_model=app_model)
+        draft_workflow, is_new_draft = apply_published_workflow_snapshot_to_draft(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            source_workflow=source_workflow,
+            draft_workflow=draft_workflow,
+            account=account,
+            updated_at_factory=naive_utc_now,
+        )
+
+        if is_new_draft:
+            db.session.add(draft_workflow)
+
+        db.session.commit()
+        app_draft_workflow_was_synced.send(app_model, synced_draft_workflow=draft_workflow)
+
+        return draft_workflow
 
     def publish_workflow(
         self,
@@ -697,7 +740,7 @@ class WorkflowService:
 
         with Session(bind=db.engine, expire_on_commit=False) as session, session.begin():
             draft_var_srv = WorkflowDraftVariableService(session)
-            draft_var_srv.prefill_conversation_variable_default_values(draft_workflow)
+            draft_var_srv.prefill_conversation_variable_default_values(draft_workflow, user_id=account.id)
 
         node_config = draft_workflow.get_node_config_by_id(node_id)
         node_type = Workflow.get_node_type_from_node_config(node_config)
@@ -740,6 +783,7 @@ class WorkflowService:
             engine=db.engine,
             app_id=app_model.id,
             tenant_id=app_model.tenant_id,
+            user_id=account.id,
         )
 
         enclosing_node_type_and_id = draft_workflow.get_enclosing_node_type_and_id(node_config)
@@ -831,6 +875,7 @@ class WorkflowService:
             workflow=draft_workflow,
             node_config=node_config,
             manual_inputs=inputs or {},
+            user_id=account.id,
         )
         node = self._build_human_input_node(
             workflow=draft_workflow,
@@ -891,6 +936,7 @@ class WorkflowService:
             workflow=draft_workflow,
             node_config=node_config,
             manual_inputs=inputs or {},
+            user_id=account.id,
         )
         node = self._build_human_input_node(
             workflow=draft_workflow,
@@ -967,6 +1013,7 @@ class WorkflowService:
             workflow=draft_workflow,
             node_config=node_config,
             manual_inputs=inputs or {},
+            user_id=account.id,
         )
         node = self._build_human_input_node(
             workflow=draft_workflow,
@@ -1102,10 +1149,11 @@ class WorkflowService:
         workflow: Workflow,
         node_config: NodeConfigDict,
         manual_inputs: Mapping[str, Any],
+        user_id: str,
     ) -> VariablePool:
         with Session(bind=db.engine, expire_on_commit=False) as session, session.begin():
             draft_var_srv = WorkflowDraftVariableService(session)
-            draft_var_srv.prefill_conversation_variable_default_values(workflow)
+            draft_var_srv.prefill_conversation_variable_default_values(workflow, user_id=user_id)
 
         variable_pool = VariablePool(
             system_variables=SystemVariable.default(),
@@ -1118,6 +1166,7 @@ class WorkflowService:
             engine=db.engine,
             app_id=app_model.id,
             tenant_id=app_model.tenant_id,
+            user_id=user_id,
         )
         variable_mapping = HumanInputNode.extract_variable_selector_to_variable_mapping(
             graph_config=workflow.graph_dict,

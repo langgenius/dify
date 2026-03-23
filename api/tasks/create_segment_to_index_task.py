@@ -10,6 +10,7 @@ from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from models.dataset import DocumentSegment
+from models.enums import IndexingStatus, SegmentStatus
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +32,7 @@ def create_segment_to_index_task(segment_id: str, keywords: list[str] | None = N
             logger.info(click.style(f"Segment not found: {segment_id}", fg="red"))
             return
 
-        if segment.status != "waiting":
+        if segment.status != SegmentStatus.WAITING:
             return
 
         indexing_cache_key = f"segment_{segment.id}_indexing"
@@ -40,7 +41,7 @@ def create_segment_to_index_task(segment_id: str, keywords: list[str] | None = N
             # update segment status to indexing
             session.query(DocumentSegment).filter_by(id=segment.id).update(
                 {
-                    DocumentSegment.status: "indexing",
+                    DocumentSegment.status: SegmentStatus.INDEXING,
                     DocumentSegment.indexing_at: naive_utc_now(),
                 }
             )
@@ -70,7 +71,7 @@ def create_segment_to_index_task(segment_id: str, keywords: list[str] | None = N
             if (
                 not dataset_document.enabled
                 or dataset_document.archived
-                or dataset_document.indexing_status != "completed"
+                or dataset_document.indexing_status != IndexingStatus.COMPLETED
             ):
                 logger.info(click.style(f"Segment {segment.id} document status is invalid, pass.", fg="cyan"))
                 return
@@ -82,7 +83,7 @@ def create_segment_to_index_task(segment_id: str, keywords: list[str] | None = N
             # update segment to completed
             session.query(DocumentSegment).filter_by(id=segment.id).update(
                 {
-                    DocumentSegment.status: "completed",
+                    DocumentSegment.status: SegmentStatus.COMPLETED,
                     DocumentSegment.completed_at: naive_utc_now(),
                 }
             )
@@ -94,7 +95,7 @@ def create_segment_to_index_task(segment_id: str, keywords: list[str] | None = N
             logger.exception("create segment to index failed")
             segment.enabled = False
             segment.disabled_at = naive_utc_now()
-            segment.status = "error"
+            segment.status = SegmentStatus.ERROR
             segment.error = str(e)
             session.commit()
         finally:
