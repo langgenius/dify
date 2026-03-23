@@ -1765,12 +1765,49 @@ describe('useChat – handleResume', () => {
       expect(mockFetchInspectVars).not.toHaveBeenCalled()
     })
 
-    it('should return early on error', () => {
-      setupResumeWithTree()
+    it('should still call fetchInspectVars on error but skip suggested questions', () => {
+      const mockGetSuggested = vi.fn().mockResolvedValue({ data: ['s1'] })
+      let sendCallbacks: any
+      mockHandleRun.mockImplementation((_params: any, callbacks: any) => {
+        sendCallbacks = callbacks
+      })
+      mockSseGet.mockImplementation((_url: any, _opts: any, options: any) => {
+        capturedResumeOptions = options
+      })
+
+      const hook = renderHook(() =>
+        useChat({ suggested_questions_after_answer: { enabled: true } }),
+      )
+
+      act(() => {
+        hook.result.current.handleSend({ query: 'test' }, {})
+      })
+      act(() => {
+        sendCallbacks.onWorkflowStarted({
+          workflow_run_id: 'wfr-1',
+          task_id: 'task-1',
+          conversation_id: null,
+          message_id: 'msg-resume',
+        })
+      })
+      act(() => {
+        sendCallbacks.onCompleted(false)
+      })
+      mockFetchInspectVars.mockClear()
+      mockInvalidAllLastRun.mockClear()
+
+      act(() => {
+        hook.result.current.handleResume('msg-resume', 'wfr-1', {
+          onGetSuggestedQuestions: mockGetSuggested,
+        })
+      })
       act(() => {
         capturedResumeOptions.onCompleted(true)
       })
-      expect(mockFetchInspectVars).toHaveBeenCalled()
+
+      expect(mockFetchInspectVars).toHaveBeenCalledWith({})
+      expect(mockInvalidAllLastRun).toHaveBeenCalled()
+      expect(mockGetSuggested).not.toHaveBeenCalled()
     })
 
     it('should fetch suggested questions when enabled', async () => {
@@ -2724,12 +2761,60 @@ describe('useChat – conversationId and setTargetMessageId', () => {
     expect(result.current.conversationId).toBe('')
   })
 
-  it('setTargetMessageId should be callable', () => {
-    const { result } = renderHook(() => useChat({}))
-    expect(typeof result.current.setTargetMessageId).toBe('function')
+  it('setTargetMessageId should change chatList thread path', () => {
+    const prevChatTree: ChatItemInTree[] = [
+      {
+        id: 'q1',
+        content: 'question 1',
+        isAnswer: false,
+        children: [
+          {
+            id: 'a1',
+            content: 'answer 1',
+            isAnswer: true,
+            children: [
+              {
+                id: 'q2-branch-a',
+                content: 'branch A question',
+                isAnswer: false,
+                children: [
+                  { id: 'a2-branch-a', content: 'branch A answer', isAnswer: true, children: [] },
+                ],
+              },
+              {
+                id: 'q2-branch-b',
+                content: 'branch B question',
+                isAnswer: false,
+                children: [
+                  { id: 'a2-branch-b', content: 'branch B answer', isAnswer: true, children: [] },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ]
+
+    const { result } = renderHook(() => useChat({}, undefined, prevChatTree))
+
+    const defaultList = result.current.chatList
+    expect(defaultList.some(item => item.id === 'a1')).toBe(true)
+
     act(() => {
-      result.current.setTargetMessageId('some-id')
+      result.current.setTargetMessageId('a2-branch-a')
     })
+
+    const listA = result.current.chatList
+    expect(listA.some(item => item.id === 'a2-branch-a')).toBe(true)
+    expect(listA.some(item => item.id === 'a2-branch-b')).toBe(false)
+
+    act(() => {
+      result.current.setTargetMessageId('a2-branch-b')
+    })
+
+    const listB = result.current.chatList
+    expect(listB.some(item => item.id === 'a2-branch-b')).toBe(true)
+    expect(listB.some(item => item.id === 'a2-branch-a')).toBe(false)
   })
 })
 
