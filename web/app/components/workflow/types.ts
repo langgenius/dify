@@ -37,7 +37,6 @@ export enum BlockEnum {
   Code = 'code',
   TemplateTransform = 'template-transform',
   HttpRequest = 'http-request',
-  Group = 'group',
   VariableAssigner = 'variable-assigner',
   VariableAggregator = 'variable-aggregator',
   Tool = 'tool',
@@ -92,7 +91,6 @@ export type CommonNodeType<T = {}> = {
   _isEntering?: boolean
   _showAddVariablePopup?: boolean
   _holdAddVariablePopup?: boolean
-  _hiddenInGroupId?: string
   _iterationLength?: number
   _iterationIndex?: number
   _waitingRun?: boolean
@@ -128,7 +126,6 @@ export type CommonEdgeType = {
   _connectedNodeIsHovering?: boolean
   _connectedNodeIsSelected?: boolean
   _isBundled?: boolean
-  _hiddenInGroupId?: string
   _sourceRunningStatus?: NodeRunningStatus
   _targetRunningStatus?: NodeRunningStatus
   _waitingRun?: boolean

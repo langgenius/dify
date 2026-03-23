@@ -65,7 +65,6 @@ class NodeType(StrEnum):
     HUMAN_INPUT = "human-input"
     COMMAND = "command"
     FILE_UPLOAD = "file-upload"
-    GROUP = "group"
 
     @property
     def is_trigger_node(self) -> bool:

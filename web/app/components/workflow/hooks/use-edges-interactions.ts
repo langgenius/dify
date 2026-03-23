@@ -8,7 +8,6 @@ import type {
 } from '../types'
 import { produce } from 'immer'
 import { useCallback } from 'react'
-import { BlockEnum } from '../types'
 import { getNodesConnectedSourceOrTargetHandleIdsMap } from '../utils'
 import { useCollaborativeWorkflow } from './use-collaborative-workflow'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
@@ -101,49 +100,6 @@ export const useEdgesInteractions = () => {
       return
     const currentEdge = edges[currentEdgeIndex]
 
-    // collect edges to delete (including corresponding real edges for temp edges)
-    const edgesToDelete: Set<string> = new Set([currentEdge.id])
-
-    // if deleting a temp edge connected to a group, also delete the corresponding real hidden edge
-    if (currentEdge.data?._isTemp) {
-      const groupNode = nodes.find(n =>
-        n.data.type === BlockEnum.Group
-        && (n.id === currentEdge.source || n.id === currentEdge.target),
-      )
-
-      if (groupNode) {
-        const memberIds = new Set((groupNode.data.members || []).map((m: { id: string }) => m.id))
-
-        if (currentEdge.target === groupNode.id) {
-          // inbound temp edge: find real edge with same source, target is a head node
-          edges.forEach((edge) => {
-            if (edge.source === currentEdge.source
-              && memberIds.has(edge.target)
-              && edge.sourceHandle === currentEdge.sourceHandle) {
-              edgesToDelete.add(edge.id)
-            }
-          })
-        }
-        else if (currentEdge.source === groupNode.id) {
-          // outbound temp edge: sourceHandle format is "leafNodeId-originalHandle"
-          const sourceHandle = currentEdge.sourceHandle || ''
-          const lastDashIndex = sourceHandle.lastIndexOf('-')
-          if (lastDashIndex > 0) {
-            const leafNodeId = sourceHandle.substring(0, lastDashIndex)
-            const originalHandle = sourceHandle.substring(lastDashIndex + 1)
-
-            edges.forEach((edge) => {
-              if (edge.source === leafNodeId
-                && edge.target === currentEdge.target
-                && (edge.sourceHandle || 'source') === originalHandle) {
-                edgesToDelete.add(edge.id)
-              }
-            })
-          }
-        }
-      }
-    }
-
     const nodesConnectedSourceOrTargetHandleIdsMap = getNodesConnectedSourceOrTargetHandleIdsMap(
       [
         { type: 'remove', edge: currentEdge },
@@ -163,7 +119,7 @@ export const useEdgesInteractions = () => {
     setNodes(newNodes)
     const newEdges = produce(edges, (draft) => {
       for (let i = draft.length - 1; i >= 0; i--) {
-        if (edgesToDelete.has(draft[i].id))
+        if (draft[i].id === currentEdge.id)
           draft.splice(i, 1)
       }
     })
