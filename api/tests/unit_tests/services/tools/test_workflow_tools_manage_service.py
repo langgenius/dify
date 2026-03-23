@@ -1,667 +1,955 @@
+"""
+Unit tests for services.tools.workflow_tools_manage_service
+
+Covers WorkflowToolManageService: create, update, list, delete, get, list_single.
+"""
+
 import json
 from types import SimpleNamespace
-from typing import Any, cast
 from unittest.mock import MagicMock
 
 import pytest
 
 from core.tools.entities.tool_entities import ToolParameter, WorkflowToolParameterConfiguration
+from core.tools.errors import WorkflowToolHumanInputNotSupportedError
+from models.model import App
 from models.tools import WorkflowToolProvider
-from services.tools import workflow_tools_manage_service as service_module
+from services.tools import workflow_tools_manage_service
 from services.tools.workflow_tools_manage_service import WorkflowToolManageService
+
+# ---------------------------------------------------------------------------
+# Shared helpers / fake infrastructure
+# ---------------------------------------------------------------------------
+
+
+class DummyWorkflow:
+    """Minimal in-memory Workflow substitute."""
+
+    def __init__(self, graph_dict: dict, version: str = "1.0.0") -> None:
+        self._graph_dict = graph_dict
+        self.version = version
+
+    @property
+    def graph_dict(self) -> dict:
+        return self._graph_dict
+
+
+class FakeQuery:
+    """Chainable query object that always returns a fixed result."""
+
+    def __init__(self, result: object) -> None:
+        self._result = result
+
+    def where(self, *args: object, **kwargs: object) -> "FakeQuery":
+        return self
+
+    def first(self) -> object:
+        return self._result
+
+    def delete(self) -> int:
+        return 1
+
+
+class DummySession:
+    """Minimal SQLAlchemy session substitute."""
+
+    def __init__(self) -> None:
+        self.added: list[WorkflowToolProvider] = []
+        self.committed: bool = False
+
+    def __enter__(self) -> "DummySession":
+        return self
+
+    def __exit__(self, exc_type: object, exc: object, tb: object) -> bool:
+        return False
+
+    def add(self, obj: WorkflowToolProvider) -> None:
+        self.added.append(obj)
+
+    def begin(self) -> "DummySession":
+        return self
+
+    def commit(self) -> None:
+        self.committed = True
 
 
 def _build_parameters() -> list[WorkflowToolParameterConfiguration]:
     return [
-        WorkflowToolParameterConfiguration(
-            name="query",
-            description="input query",
-            form=ToolParameter.ToolParameterForm.LLM,
-        )
+        WorkflowToolParameterConfiguration(name="input", description="input", form=ToolParameter.ToolParameterForm.LLM),
     ]
 
 
-def _query_chain_with_first(first_result: Any) -> MagicMock:
-    query = MagicMock()
-    query.where.return_value.first.return_value = first_result
-    return query
+def _build_fake_db(
+    *,
+    existing_tool: WorkflowToolProvider | None = None,
+    app: object | None = None,
+    tool_by_id: WorkflowToolProvider | None = None,
+) -> tuple[MagicMock, DummySession]:
+    """
+    Build a fake db object plus a DummySession for Session context-manager.
+
+    query(WorkflowToolProvider) returns existing_tool on first call,
+    then tool_by_id on subsequent calls (or None if not provided).
+    query(App) returns app.
+    """
+    call_counts: dict[str, int] = {"wftp": 0}
+
+    def query(model: type) -> FakeQuery:
+        if model is WorkflowToolProvider:
+            call_counts["wftp"] += 1
+            if call_counts["wftp"] == 1:
+                return FakeQuery(existing_tool)
+            return FakeQuery(tool_by_id)
+        if model is App:
+            return FakeQuery(app)
+        return FakeQuery(None)
+
+    fake_db = MagicMock()
+    fake_db.session = SimpleNamespace(query=query, commit=MagicMock())
+    dummy_session = DummySession()
+    return fake_db, dummy_session
 
 
-def test_create_workflow_tool_should_raise_when_name_or_app_already_exists(monkeypatch: pytest.MonkeyPatch) -> None:
-    # Arrange
-    existing = MagicMock()
-    db_session = MagicMock()
-    db_session.query.return_value = _query_chain_with_first(existing)
-    monkeypatch.setattr(service_module.db, "session", db_session)
+# ---------------------------------------------------------------------------
+# TestCreateWorkflowTool
+# ---------------------------------------------------------------------------
 
-    # Act / Assert
-    with pytest.raises(ValueError, match="already exists"):
+
+class TestCreateWorkflowTool:
+    """Tests for WorkflowToolManageService.create_workflow_tool."""
+
+    def test_should_raise_when_human_input_nodes_present(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Human-input nodes must be rejected before any provider is created."""
+        # Arrange
+        workflow = DummyWorkflow(graph_dict={"nodes": [{"id": "n1", "data": {"type": "human-input"}}]})
+        app = SimpleNamespace(workflow=workflow)
+        fake_session = SimpleNamespace(query=lambda m: FakeQuery(None) if m is WorkflowToolProvider else FakeQuery(app))
+        monkeypatch.setattr(workflow_tools_manage_service.db, "session", fake_session)
+        mock_from_db = MagicMock()
+        monkeypatch.setattr(workflow_tools_manage_service.WorkflowToolProviderController, "from_db", mock_from_db)
+
+        # Act + Assert
+        with pytest.raises(WorkflowToolHumanInputNotSupportedError) as exc_info:
+            WorkflowToolManageService.create_workflow_tool(
+                user_id="user-id",
+                tenant_id="tenant-id",
+                workflow_app_id="app-id",
+                name="tool_name",
+                label="Tool",
+                icon={"type": "emoji", "emoji": "🔧"},
+                description="desc",
+                parameters=_build_parameters(),
+            )
+
+        assert exc_info.value.error_code == "workflow_tool_human_input_not_supported"
+        mock_from_db.assert_not_called()
+
+    def test_should_raise_when_duplicate_name_or_app_id(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Existing provider with same name or app_id raises ValueError."""
+        # Arrange
+        existing = MagicMock(spec=WorkflowToolProvider)
+        monkeypatch.setattr(
+            workflow_tools_manage_service.db,
+            "session",
+            SimpleNamespace(query=lambda m: FakeQuery(existing)),
+        )
+
+        # Act + Assert
+        with pytest.raises(ValueError, match="already exists"):
+            WorkflowToolManageService.create_workflow_tool(
+                user_id="u",
+                tenant_id="t",
+                workflow_app_id="app-1",
+                name="dup",
+                label="Dup",
+                icon={},
+                description="",
+                parameters=[],
+            )
+
+    def test_should_raise_when_app_not_found(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """ValueError when the referenced App does not exist."""
+        # Arrange
+        call_count = {"n": 0}
+
+        def query(m: type) -> FakeQuery:
+            call_count["n"] += 1
+            if m is WorkflowToolProvider:
+                return FakeQuery(None)
+            return FakeQuery(None)  # App returns None
+
+        monkeypatch.setattr(workflow_tools_manage_service.db, "session", SimpleNamespace(query=query))
+
+        # Act + Assert
+        with pytest.raises(ValueError, match="not found"):
+            WorkflowToolManageService.create_workflow_tool(
+                user_id="u",
+                tenant_id="t",
+                workflow_app_id="missing-app",
+                name="n",
+                label="L",
+                icon={},
+                description="",
+                parameters=[],
+            )
+
+    def test_should_raise_when_workflow_not_found(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """ValueError when the App has no attached Workflow."""
+        # Arrange
+        app_no_workflow = SimpleNamespace(workflow=None)
+
+        def query(m: type) -> FakeQuery:
+            if m is WorkflowToolProvider:
+                return FakeQuery(None)
+            return FakeQuery(app_no_workflow)
+
+        monkeypatch.setattr(workflow_tools_manage_service.db, "session", SimpleNamespace(query=query))
+
+        # Act + Assert
+        with pytest.raises(ValueError, match="Workflow not found"):
+            WorkflowToolManageService.create_workflow_tool(
+                user_id="u",
+                tenant_id="t",
+                workflow_app_id="app-id",
+                name="n",
+                label="L",
+                icon={},
+                description="",
+                parameters=[],
+            )
+
+    def test_should_raise_when_from_db_fails(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Exceptions from WorkflowToolProviderController.from_db are wrapped as ValueError."""
+        # Arrange
+        workflow = DummyWorkflow(graph_dict={"nodes": []})
+        app = SimpleNamespace(workflow=workflow)
+
+        def query(m: type) -> FakeQuery:
+            if m is WorkflowToolProvider:
+                return FakeQuery(None)
+            return FakeQuery(app)
+
+        fake_db = MagicMock()
+        fake_db.session = SimpleNamespace(query=query)
+        monkeypatch.setattr(workflow_tools_manage_service, "db", fake_db)
+        dummy_session = DummySession()
+        monkeypatch.setattr(workflow_tools_manage_service, "Session", lambda *_, **__: dummy_session)
+        monkeypatch.setattr(
+            workflow_tools_manage_service.WorkflowToolProviderController,
+            "from_db",
+            MagicMock(side_effect=RuntimeError("bad config")),
+        )
+
+        # Act + Assert
+        with pytest.raises(ValueError, match="bad config"):
+            WorkflowToolManageService.create_workflow_tool(
+                user_id="u",
+                tenant_id="t",
+                workflow_app_id="app-id",
+                name="n",
+                label="L",
+                icon={},
+                description="",
+                parameters=[],
+            )
+
+    def test_should_succeed_and_persist_provider(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Happy path: provider is added to session and success dict is returned."""
+        # Arrange
+        workflow = DummyWorkflow(graph_dict={"nodes": []}, version="2.0.0")
+        app = SimpleNamespace(workflow=workflow)
+
+        def query(m: type) -> FakeQuery:
+            if m is WorkflowToolProvider:
+                return FakeQuery(None)
+            return FakeQuery(app)
+
+        fake_db = MagicMock()
+        fake_db.session = SimpleNamespace(query=query)
+        monkeypatch.setattr(workflow_tools_manage_service, "db", fake_db)
+        dummy_session = DummySession()
+        monkeypatch.setattr(workflow_tools_manage_service, "Session", lambda *_, **__: dummy_session)
+        monkeypatch.setattr(workflow_tools_manage_service.WorkflowToolProviderController, "from_db", MagicMock())
+
+        icon = {"type": "emoji", "emoji": "🔧"}
+
+        # Act
+        result = WorkflowToolManageService.create_workflow_tool(
+            user_id="user-id",
+            tenant_id="tenant-id",
+            workflow_app_id="app-id",
+            name="tool_name",
+            label="Tool",
+            icon=icon,
+            description="desc",
+            parameters=_build_parameters(),
+        )
+
+        # Assert
+        assert result == {"result": "success"}
+        assert len(dummy_session.added) == 1
+        created: WorkflowToolProvider = dummy_session.added[0]
+        assert created.name == "tool_name"
+        assert created.label == "Tool"
+        assert created.icon == json.dumps(icon)
+        assert created.version == "2.0.0"
+
+    def test_should_call_label_manager_when_labels_provided(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Labels are forwarded to ToolLabelManager when provided."""
+        # Arrange
+        workflow = DummyWorkflow(graph_dict={"nodes": []})
+        app = SimpleNamespace(workflow=workflow)
+
+        def query(m: type) -> FakeQuery:
+            if m is WorkflowToolProvider:
+                return FakeQuery(None)
+            return FakeQuery(app)
+
+        fake_db = MagicMock()
+        fake_db.session = SimpleNamespace(query=query)
+        monkeypatch.setattr(workflow_tools_manage_service, "db", fake_db)
+        dummy_session = DummySession()
+        monkeypatch.setattr(workflow_tools_manage_service, "Session", lambda *_, **__: dummy_session)
+        monkeypatch.setattr(workflow_tools_manage_service.WorkflowToolProviderController, "from_db", MagicMock())
+        mock_label_mgr = MagicMock()
+        monkeypatch.setattr(workflow_tools_manage_service.ToolLabelManager, "update_tool_labels", mock_label_mgr)
+        mock_to_ctrl = MagicMock()
+        monkeypatch.setattr(
+            workflow_tools_manage_service.ToolTransformService, "workflow_provider_to_controller", mock_to_ctrl
+        )
+
+        # Act
         WorkflowToolManageService.create_workflow_tool(
-            user_id="user-1",
-            tenant_id="tenant-1",
-            workflow_app_id="app-1",
-            name="tool-a",
-            label="Tool A",
-            icon={"type": "emoji", "content": "A"},
-            description="desc",
-            parameters=_build_parameters(),
+            user_id="u",
+            tenant_id="t",
+            workflow_app_id="app-id",
+            name="n",
+            label="L",
+            icon={},
+            description="",
+            parameters=[],
+            labels=["tag1", "tag2"],
         )
 
+        # Assert
+        mock_label_mgr.assert_called_once()
 
-def test_create_workflow_tool_should_raise_when_app_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
-    # Arrange
-    db_session = MagicMock()
-    db_session.query.side_effect = [
-        _query_chain_with_first(None),
-        _query_chain_with_first(None),
-    ]
-    monkeypatch.setattr(service_module.db, "session", db_session)
 
-    # Act / Assert
-    with pytest.raises(ValueError, match="App app-1 not found"):
-        WorkflowToolManageService.create_workflow_tool(
-            user_id="user-1",
-            tenant_id="tenant-1",
-            workflow_app_id="app-1",
-            name="tool-a",
-            label="Tool A",
-            icon={"type": "emoji", "content": "A"},
-            description="desc",
-            parameters=_build_parameters(),
+# ---------------------------------------------------------------------------
+# TestUpdateWorkflowTool
+# ---------------------------------------------------------------------------
+
+
+class TestUpdateWorkflowTool:
+    """Tests for WorkflowToolManageService.update_workflow_tool."""
+
+    def _make_provider(self) -> WorkflowToolProvider:
+        p = MagicMock(spec=WorkflowToolProvider)
+        p.app_id = "app-id"
+        p.tenant_id = "tenant-id"
+        return p
+
+    def test_should_raise_when_name_duplicated(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """If another tool with the given name already exists, raise ValueError."""
+        # Arrange
+        existing = MagicMock(spec=WorkflowToolProvider)
+
+        def query(m: type) -> FakeQuery:
+            return FakeQuery(existing)
+
+        monkeypatch.setattr(workflow_tools_manage_service.db, "session", SimpleNamespace(query=query))
+
+        # Act + Assert
+        with pytest.raises(ValueError, match="already exists"):
+            WorkflowToolManageService.update_workflow_tool(
+                user_id="u",
+                tenant_id="t",
+                workflow_tool_id="tool-1",
+                name="dup",
+                label="L",
+                icon={},
+                description="",
+                parameters=[],
+            )
+
+    def test_should_raise_when_tool_not_found(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """ValueError when the workflow tool to update does not exist."""
+        # Arrange
+        call_count = {"n": 0}
+
+        def query(m: type) -> FakeQuery:
+            call_count["n"] += 1
+            # 1st call: name uniqueness check → None (no duplicate)
+            # 2nd call: fetch tool by id → None (not found)
+            return FakeQuery(None)
+
+        monkeypatch.setattr(workflow_tools_manage_service.db, "session", SimpleNamespace(query=query))
+
+        # Act + Assert
+        with pytest.raises(ValueError, match="not found"):
+            WorkflowToolManageService.update_workflow_tool(
+                user_id="u",
+                tenant_id="t",
+                workflow_tool_id="missing",
+                name="n",
+                label="L",
+                icon={},
+                description="",
+                parameters=[],
+            )
+
+    def test_should_raise_when_app_not_found(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """ValueError when the tool's referenced App has been removed."""
+        # Arrange
+        provider = self._make_provider()
+        call_count = {"n": 0}
+
+        def query(m: type) -> FakeQuery:
+            call_count["n"] += 1
+            if m is WorkflowToolProvider:
+                # 1st: duplicate name check (None), 2nd: fetch provider
+                return FakeQuery(None) if call_count["n"] == 1 else FakeQuery(provider)
+            return FakeQuery(None)  # App not found
+
+        monkeypatch.setattr(workflow_tools_manage_service.db, "session", SimpleNamespace(query=query))
+
+        # Act + Assert
+        with pytest.raises(ValueError, match="not found"):
+            WorkflowToolManageService.update_workflow_tool(
+                user_id="u",
+                tenant_id="t",
+                workflow_tool_id="tool-1",
+                name="n",
+                label="L",
+                icon={},
+                description="",
+                parameters=[],
+            )
+
+    def test_should_raise_when_workflow_not_found(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """ValueError when the App exists but has no Workflow."""
+        # Arrange
+        provider = self._make_provider()
+        app_no_wf = SimpleNamespace(workflow=None)
+        call_count = {"n": 0}
+
+        def query(m: type) -> FakeQuery:
+            call_count["n"] += 1
+            if m is WorkflowToolProvider:
+                return FakeQuery(None) if call_count["n"] == 1 else FakeQuery(provider)
+            return FakeQuery(app_no_wf)
+
+        monkeypatch.setattr(workflow_tools_manage_service.db, "session", SimpleNamespace(query=query))
+
+        # Act + Assert
+        with pytest.raises(ValueError, match="Workflow not found"):
+            WorkflowToolManageService.update_workflow_tool(
+                user_id="u",
+                tenant_id="t",
+                workflow_tool_id="tool-1",
+                name="n",
+                label="L",
+                icon={},
+                description="",
+                parameters=[],
+            )
+
+    def test_should_raise_when_from_db_fails(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Exceptions from from_db are re-raised as ValueError."""
+        # Arrange
+        provider = self._make_provider()
+        workflow = DummyWorkflow(graph_dict={"nodes": []})
+        app = SimpleNamespace(workflow=workflow)
+        call_count = {"n": 0}
+
+        def query(m: type) -> FakeQuery:
+            call_count["n"] += 1
+            if m is WorkflowToolProvider:
+                return FakeQuery(None) if call_count["n"] == 1 else FakeQuery(provider)
+            return FakeQuery(app)
+
+        monkeypatch.setattr(
+            workflow_tools_manage_service.db,
+            "session",
+            SimpleNamespace(query=query, commit=MagicMock()),
+        )
+        monkeypatch.setattr(
+            workflow_tools_manage_service.WorkflowToolProviderController,
+            "from_db",
+            MagicMock(side_effect=RuntimeError("from_db error")),
         )
 
+        # Act + Assert
+        with pytest.raises(ValueError, match="from_db error"):
+            WorkflowToolManageService.update_workflow_tool(
+                user_id="u",
+                tenant_id="t",
+                workflow_tool_id="tool-1",
+                name="n",
+                label="L",
+                icon={},
+                description="",
+                parameters=[],
+            )
 
-def test_create_workflow_tool_should_raise_when_workflow_missing(monkeypatch: pytest.MonkeyPatch) -> None:
-    # Arrange
-    app = SimpleNamespace(workflow=None)
-    db_session = MagicMock()
-    db_session.query.side_effect = [
-        _query_chain_with_first(None),
-        _query_chain_with_first(app),
-    ]
-    monkeypatch.setattr(service_module.db, "session", db_session)
+    def test_should_succeed_and_call_commit(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Happy path: provider fields are updated and session committed."""
+        # Arrange
+        provider = self._make_provider()
+        workflow = DummyWorkflow(graph_dict={"nodes": []}, version="3.0.0")
+        app = SimpleNamespace(workflow=workflow)
+        call_count = {"n": 0}
 
-    # Act / Assert
-    with pytest.raises(ValueError, match="Workflow not found for app app-1"):
-        WorkflowToolManageService.create_workflow_tool(
-            user_id="user-1",
-            tenant_id="tenant-1",
-            workflow_app_id="app-1",
-            name="tool-a",
-            label="Tool A",
-            icon={"type": "emoji", "content": "A"},
-            description="desc",
-            parameters=_build_parameters(),
+        def query(m: type) -> FakeQuery:
+            call_count["n"] += 1
+            if m is WorkflowToolProvider:
+                return FakeQuery(None) if call_count["n"] == 1 else FakeQuery(provider)
+            return FakeQuery(app)
+
+        mock_commit = MagicMock()
+        monkeypatch.setattr(
+            workflow_tools_manage_service.db,
+            "session",
+            SimpleNamespace(query=query, commit=mock_commit),
         )
+        monkeypatch.setattr(workflow_tools_manage_service.WorkflowToolProviderController, "from_db", MagicMock())
 
+        icon = {"type": "emoji", "emoji": "🛠"}
 
-def test_create_workflow_tool_should_raise_when_provider_controller_validation_fails(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    # Arrange
-    workflow = SimpleNamespace(graph_dict={"nodes": []}, version="1.2.3")
-    app = SimpleNamespace(workflow=workflow)
-    db_session = MagicMock()
-    db_session.query.side_effect = [
-        _query_chain_with_first(None),
-        _query_chain_with_first(app),
-    ]
-    monkeypatch.setattr(service_module.db, "session", db_session)
-    monkeypatch.setattr(
-        service_module.WorkflowToolProviderController,
-        "from_db",
-        MagicMock(side_effect=RuntimeError("invalid provider")),
-    )
-
-    # Act / Assert
-    with pytest.raises(ValueError, match="invalid provider"):
-        WorkflowToolManageService.create_workflow_tool(
-            user_id="user-1",
-            tenant_id="tenant-1",
-            workflow_app_id="app-1",
-            name="tool-a",
-            label="Tool A",
-            icon={"type": "emoji", "content": "A"},
-            description="desc",
-            parameters=_build_parameters(),
-        )
-
-
-def test_create_workflow_tool_should_persist_provider_and_update_labels(monkeypatch: pytest.MonkeyPatch) -> None:
-    # Arrange
-    workflow = SimpleNamespace(graph_dict={"nodes": [{"data": {"type": "start"}}]}, version="2.0.0")
-    app = SimpleNamespace(workflow=workflow)
-
-    db_session = MagicMock()
-    db_session.query.side_effect = [
-        _query_chain_with_first(None),
-        _query_chain_with_first(app),
-    ]
-
-    stored: list[Any] = []
-
-    class _SessionContext:
-        def __enter__(self) -> "_SessionContext":
-            return self
-
-        def __exit__(self, exc_type, exc, tb) -> bool:
-            return False
-
-        def begin(self) -> "_SessionContext":
-            return self
-
-        def add(self, obj: Any) -> None:
-            stored.append(obj)
-
-    monkeypatch.setattr(service_module, "db", SimpleNamespace(session=db_session, engine=MagicMock()))
-    monkeypatch.setattr(service_module, "Session", lambda *args, **kwargs: _SessionContext())
-    monkeypatch.setattr(service_module.WorkflowToolProviderController, "from_db", MagicMock(return_value=MagicMock()))
-
-    workflow_controller = MagicMock()
-    monkeypatch.setattr(
-        service_module.ToolTransformService,
-        "workflow_provider_to_controller",
-        MagicMock(return_value=workflow_controller),
-    )
-    update_labels_mock = MagicMock()
-    monkeypatch.setattr(service_module.ToolLabelManager, "update_tool_labels", update_labels_mock)
-
-    # Act
-    result = WorkflowToolManageService.create_workflow_tool(
-        user_id="user-1",
-        tenant_id="tenant-1",
-        workflow_app_id="app-1",
-        name="tool-a",
-        label="Tool A",
-        icon={"type": "emoji", "content": "A"},
-        description="desc",
-        parameters=_build_parameters(),
-        privacy_policy="privacy",
-        labels=["automation"],
-    )
-
-    # Assert
-    assert result == {"result": "success"}
-    assert len(stored) == 1
-    assert stored[0].name == "tool-a"
-    assert stored[0].icon == json.dumps({"type": "emoji", "content": "A"})
-    assert stored[0].version == "2.0.0"
-    update_labels_mock.assert_called_once_with(workflow_controller, ["automation"])
-
-
-def test_update_workflow_tool_should_raise_when_name_conflicts(monkeypatch: pytest.MonkeyPatch) -> None:
-    # Arrange
-    db_session = MagicMock()
-    db_session.query.return_value = _query_chain_with_first(MagicMock())
-    monkeypatch.setattr(service_module.db, "session", db_session)
-
-    # Act / Assert
-    with pytest.raises(ValueError, match="already exists"):
-        WorkflowToolManageService.update_workflow_tool(
-            user_id="user-1",
-            tenant_id="tenant-1",
+        # Act
+        result = WorkflowToolManageService.update_workflow_tool(
+            user_id="u",
+            tenant_id="t",
             workflow_tool_id="tool-1",
-            name="tool-a",
-            label="Tool A",
-            icon={"type": "emoji", "content": "A"},
-            description="desc",
+            name="new_name",
+            label="New Label",
+            icon=icon,
+            description="new desc",
             parameters=_build_parameters(),
         )
 
+        # Assert
+        assert result == {"result": "success"}
+        mock_commit.assert_called_once()
+        assert provider.name == "new_name"
+        assert provider.label == "New Label"
+        assert provider.icon == json.dumps(icon)
+        assert provider.version == "3.0.0"
 
-def test_update_workflow_tool_should_raise_when_tool_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
-    # Arrange
-    db_session = MagicMock()
-    db_session.query.side_effect = [
-        _query_chain_with_first(None),
-        _query_chain_with_first(None),
-    ]
-    monkeypatch.setattr(service_module.db, "session", db_session)
+    def test_should_call_label_manager_when_labels_provided(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Labels are forwarded to ToolLabelManager during update."""
+        # Arrange
+        provider = self._make_provider()
+        workflow = DummyWorkflow(graph_dict={"nodes": []})
+        app = SimpleNamespace(workflow=workflow)
+        call_count = {"n": 0}
 
-    # Act / Assert
-    with pytest.raises(ValueError, match="Tool tool-1 not found"):
+        def query(m: type) -> FakeQuery:
+            call_count["n"] += 1
+            if m is WorkflowToolProvider:
+                return FakeQuery(None) if call_count["n"] == 1 else FakeQuery(provider)
+            return FakeQuery(app)
+
+        monkeypatch.setattr(
+            workflow_tools_manage_service.db,
+            "session",
+            SimpleNamespace(query=query, commit=MagicMock()),
+        )
+        monkeypatch.setattr(workflow_tools_manage_service.WorkflowToolProviderController, "from_db", MagicMock())
+        mock_label_mgr = MagicMock()
+        monkeypatch.setattr(workflow_tools_manage_service.ToolLabelManager, "update_tool_labels", mock_label_mgr)
+        monkeypatch.setattr(
+            workflow_tools_manage_service.ToolTransformService, "workflow_provider_to_controller", MagicMock()
+        )
+
+        # Act
         WorkflowToolManageService.update_workflow_tool(
-            user_id="user-1",
-            tenant_id="tenant-1",
+            user_id="u",
+            tenant_id="t",
             workflow_tool_id="tool-1",
-            name="tool-a",
-            label="Tool A",
-            icon={"type": "emoji", "content": "A"},
-            description="desc",
-            parameters=_build_parameters(),
+            name="n",
+            label="L",
+            icon={},
+            description="",
+            parameters=[],
+            labels=["a"],
         )
 
+        # Assert
+        mock_label_mgr.assert_called_once()
 
-def test_update_workflow_tool_should_raise_when_workflow_app_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
-    # Arrange
-    workflow_tool = SimpleNamespace(app_id="app-1", id="tool-1")
-    db_session = MagicMock()
-    db_session.query.side_effect = [
-        _query_chain_with_first(None),
-        _query_chain_with_first(workflow_tool),
-        _query_chain_with_first(None),
-    ]
-    monkeypatch.setattr(service_module.db, "session", db_session)
 
-    # Act / Assert
-    with pytest.raises(ValueError, match="App app-1 not found"):
-        WorkflowToolManageService.update_workflow_tool(
-            user_id="user-1",
-            tenant_id="tenant-1",
-            workflow_tool_id="tool-1",
-            name="tool-a",
-            label="Tool A",
-            icon={"type": "emoji", "content": "A"},
-            description="desc",
-            parameters=_build_parameters(),
+# ---------------------------------------------------------------------------
+# TestListTenantWorkflowTools
+# ---------------------------------------------------------------------------
+
+
+class TestListTenantWorkflowTools:
+    """Tests for WorkflowToolManageService.list_tenant_workflow_tools."""
+
+    def test_should_return_empty_list_when_no_tools(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """An empty database yields an empty result list."""
+        # Arrange
+        fake_scalars = MagicMock()
+        fake_scalars.all.return_value = []
+        fake_db = MagicMock()
+        fake_db.session.scalars.return_value = fake_scalars
+        monkeypatch.setattr(workflow_tools_manage_service, "db", fake_db)
+
+        # Act
+        result = WorkflowToolManageService.list_tenant_workflow_tools("u", "t")
+
+        # Assert
+        assert result == []
+
+    def test_should_skip_broken_providers_and_log(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Providers that fail to load are logged and skipped."""
+        # Arrange
+        good_provider = MagicMock(spec=WorkflowToolProvider)
+        good_provider.id = "good-id"
+        good_provider.app_id = "app-good"
+        bad_provider = MagicMock(spec=WorkflowToolProvider)
+        bad_provider.id = "bad-id"
+        bad_provider.app_id = "app-bad"
+
+        fake_scalars = MagicMock()
+        fake_scalars.all.return_value = [good_provider, bad_provider]
+        fake_db = MagicMock()
+        fake_db.session.scalars.return_value = fake_scalars
+        monkeypatch.setattr(workflow_tools_manage_service, "db", fake_db)
+
+        good_ctrl = MagicMock()
+        good_ctrl.provider_id = "good-id"
+
+        def to_controller(provider: WorkflowToolProvider) -> MagicMock:
+            if provider is bad_provider:
+                raise RuntimeError("broken provider")
+            return good_ctrl
+
+        monkeypatch.setattr(
+            workflow_tools_manage_service.ToolTransformService, "workflow_provider_to_controller", to_controller
+        )
+        mock_get_labels = MagicMock(return_value={})
+        monkeypatch.setattr(workflow_tools_manage_service.ToolLabelManager, "get_tools_labels", mock_get_labels)
+        mock_to_user = MagicMock()
+        mock_to_user.return_value.tools = []
+        monkeypatch.setattr(
+            workflow_tools_manage_service.ToolTransformService, "workflow_provider_to_user_provider", mock_to_user
+        )
+        monkeypatch.setattr(workflow_tools_manage_service.ToolTransformService, "repack_provider", MagicMock())
+        mock_get_tools = MagicMock(return_value=[MagicMock()])
+        good_ctrl.get_tools = mock_get_tools
+        monkeypatch.setattr(
+            workflow_tools_manage_service.ToolTransformService, "convert_tool_entity_to_api_entity", MagicMock()
         )
 
+        # Act
+        result = WorkflowToolManageService.list_tenant_workflow_tools("u", "t")
 
-def test_update_workflow_tool_should_raise_when_workflow_missing(monkeypatch: pytest.MonkeyPatch) -> None:
-    # Arrange
-    workflow_tool = SimpleNamespace(app_id="app-1", id="tool-1")
-    app = SimpleNamespace(workflow=None)
-    db_session = MagicMock()
-    db_session.query.side_effect = [
-        _query_chain_with_first(None),
-        _query_chain_with_first(workflow_tool),
-        _query_chain_with_first(app),
-    ]
-    monkeypatch.setattr(service_module.db, "session", db_session)
+        # Assert - only good provider contributed
+        assert len(result) == 1
 
-    # Act / Assert
-    with pytest.raises(ValueError, match="Workflow not found"):
-        WorkflowToolManageService.update_workflow_tool(
-            user_id="user-1",
-            tenant_id="tenant-1",
-            workflow_tool_id="tool-1",
-            name="tool-a",
-            label="Tool A",
-            icon={"type": "emoji", "content": "A"},
-            description="desc",
-            parameters=_build_parameters(),
+    def test_should_return_tools_for_all_providers(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """All successfully loaded providers appear in the result."""
+        # Arrange
+        provider = MagicMock(spec=WorkflowToolProvider)
+        provider.id = "p-1"
+        provider.app_id = "app-1"
+
+        fake_scalars = MagicMock()
+        fake_scalars.all.return_value = [provider]
+        fake_db = MagicMock()
+        fake_db.session.scalars.return_value = fake_scalars
+        monkeypatch.setattr(workflow_tools_manage_service, "db", fake_db)
+
+        ctrl = MagicMock()
+        ctrl.provider_id = "p-1"
+        ctrl.get_tools.return_value = [MagicMock()]
+        monkeypatch.setattr(
+            workflow_tools_manage_service.ToolTransformService,
+            "workflow_provider_to_controller",
+            MagicMock(return_value=ctrl),
+        )
+        monkeypatch.setattr(
+            workflow_tools_manage_service.ToolLabelManager, "get_tools_labels", MagicMock(return_value={"p-1": []})
+        )
+        user_provider = MagicMock()
+        user_provider.tools = []
+        monkeypatch.setattr(
+            workflow_tools_manage_service.ToolTransformService,
+            "workflow_provider_to_user_provider",
+            MagicMock(return_value=user_provider),
+        )
+        monkeypatch.setattr(workflow_tools_manage_service.ToolTransformService, "repack_provider", MagicMock())
+        monkeypatch.setattr(
+            workflow_tools_manage_service.ToolTransformService, "convert_tool_entity_to_api_entity", MagicMock()
         )
 
+        # Act
+        result = WorkflowToolManageService.list_tenant_workflow_tools("u", "t")
 
-def test_update_workflow_tool_should_raise_when_controller_validation_fails(monkeypatch: pytest.MonkeyPatch) -> None:
-    # Arrange
-    workflow = SimpleNamespace(graph_dict={"nodes": [{"data": {"type": "start"}}]}, version="2.0.0")
-    workflow_tool = SimpleNamespace(
-        app_id="app-1",
-        id="tool-1",
-        tenant_id="tenant-1",
-        name="old",
-        label="old",
-        icon="{}",
-        description="old",
-        parameter_configuration="[]",
-        privacy_policy="",
-        version="1.0.0",
-        updated_at=None,
-    )
-    app = SimpleNamespace(workflow=workflow)
+        # Assert
+        assert len(result) == 1
+        assert result[0] is user_provider
 
-    db_session = MagicMock()
-    db_session.query.side_effect = [
-        _query_chain_with_first(None),
-        _query_chain_with_first(workflow_tool),
-        _query_chain_with_first(app),
-    ]
-    monkeypatch.setattr(service_module.db, "session", db_session)
-    monkeypatch.setattr(
-        service_module.WorkflowToolProviderController,
-        "from_db",
-        MagicMock(side_effect=RuntimeError("broken config")),
-    )
 
-    # Act / Assert
-    with pytest.raises(ValueError, match="broken config"):
-        WorkflowToolManageService.update_workflow_tool(
-            user_id="user-1",
-            tenant_id="tenant-1",
-            workflow_tool_id="tool-1",
-            name="tool-new",
-            label="Tool New",
-            icon={"type": "emoji", "content": "N"},
-            description="new",
-            parameters=_build_parameters(),
+# ---------------------------------------------------------------------------
+# TestDeleteWorkflowTool
+# ---------------------------------------------------------------------------
+
+
+class TestDeleteWorkflowTool:
+    """Tests for WorkflowToolManageService.delete_workflow_tool."""
+
+    def test_should_delete_and_commit(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """delete_workflow_tool queries, deletes, commits, and returns success."""
+        # Arrange
+        mock_query = MagicMock()
+        mock_query.where.return_value.delete.return_value = 1
+        mock_commit = MagicMock()
+        fake_session = SimpleNamespace(query=lambda m: mock_query, commit=mock_commit)
+        monkeypatch.setattr(workflow_tools_manage_service.db, "session", fake_session)
+
+        # Act
+        result = WorkflowToolManageService.delete_workflow_tool("u", "t", "tool-1")
+
+        # Assert
+        assert result == {"result": "success"}
+        mock_commit.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# TestGetWorkflowToolByToolId / ByAppId
+# ---------------------------------------------------------------------------
+
+
+class TestGetWorkflowToolByToolIdAndAppId:
+    """Tests for get_workflow_tool_by_tool_id and get_workflow_tool_by_app_id."""
+
+    def test_get_by_tool_id_should_raise_when_db_tool_is_none(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Raises ValueError when no WorkflowToolProvider found by tool id."""
+        # Arrange
+        monkeypatch.setattr(
+            workflow_tools_manage_service.db,
+            "session",
+            SimpleNamespace(query=lambda m: FakeQuery(None)),
         )
 
+        # Act + Assert
+        with pytest.raises(ValueError, match="Tool not found"):
+            WorkflowToolManageService.get_workflow_tool_by_tool_id("u", "t", "missing")
 
-def test_update_workflow_tool_should_update_fields_commit_and_labels(monkeypatch: pytest.MonkeyPatch) -> None:
-    # Arrange
-    workflow = SimpleNamespace(graph_dict={"nodes": [{"data": {"type": "start"}}]}, version="3.0.0")
-    workflow_tool = SimpleNamespace(
-        app_id="app-1",
-        id="tool-1",
-        tenant_id="tenant-1",
-        name="old",
-        label="old",
-        icon="{}",
-        description="old",
-        parameter_configuration="[]",
-        privacy_policy="",
-        version="1.0.0",
-        updated_at=None,
-    )
-    app = SimpleNamespace(workflow=workflow)
+    def test_get_by_app_id_should_raise_when_db_tool_is_none(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Raises ValueError when no WorkflowToolProvider found by app id."""
+        # Arrange
+        monkeypatch.setattr(
+            workflow_tools_manage_service.db,
+            "session",
+            SimpleNamespace(query=lambda m: FakeQuery(None)),
+        )
 
-    db_session = MagicMock()
-    db_session.query.side_effect = [
-        _query_chain_with_first(None),
-        _query_chain_with_first(workflow_tool),
-        _query_chain_with_first(app),
-    ]
-    monkeypatch.setattr(service_module.db, "session", db_session)
-    monkeypatch.setattr(service_module.WorkflowToolProviderController, "from_db", MagicMock(return_value=MagicMock()))
-
-    workflow_controller = MagicMock()
-    monkeypatch.setattr(
-        service_module.ToolTransformService,
-        "workflow_provider_to_controller",
-        MagicMock(return_value=workflow_controller),
-    )
-    update_labels_mock = MagicMock()
-    monkeypatch.setattr(service_module.ToolLabelManager, "update_tool_labels", update_labels_mock)
-
-    # Act
-    result = WorkflowToolManageService.update_workflow_tool(
-        user_id="user-1",
-        tenant_id="tenant-1",
-        workflow_tool_id="tool-1",
-        name="tool-new",
-        label="Tool New",
-        icon={"type": "emoji", "content": "N"},
-        description="new",
-        parameters=_build_parameters(),
-        privacy_policy="privacy",
-        labels=["ops"],
-    )
-
-    # Assert
-    assert result == {"result": "success"}
-    assert workflow_tool.name == "tool-new"
-    assert workflow_tool.label == "Tool New"
-    assert workflow_tool.icon == json.dumps({"type": "emoji", "content": "N"})
-    assert workflow_tool.version == "3.0.0"
-    db_session.commit.assert_called_once()
-    update_labels_mock.assert_called_once_with(workflow_controller, ["ops"])
+        # Act + Assert
+        with pytest.raises(ValueError, match="Tool not found"):
+            WorkflowToolManageService.get_workflow_tool_by_app_id("u", "t", "missing-app")
 
 
-def test_list_tenant_workflow_tools_should_skip_invalid_controller_and_build_result(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    # Arrange
-    provider_valid = SimpleNamespace(id="provider-1", app_id="app-1")
-    provider_invalid = SimpleNamespace(id="provider-2", app_id="app-2")
-    db_session = MagicMock()
-    db_session.scalars.return_value.all.return_value = [provider_valid, provider_invalid]
-    monkeypatch.setattr(service_module.db, "session", db_session)
-
-    valid_controller = MagicMock()
-    valid_controller.provider_id = "provider-1"
-    valid_controller.get_tools.return_value = [MagicMock()]
-
-    def _to_controller(provider: Any) -> Any:
-        if provider.id == "provider-2":
-            raise RuntimeError("deleted")
-        return valid_controller
-
-    monkeypatch.setattr(
-        service_module.ToolTransformService,
-        "workflow_provider_to_controller",
-        MagicMock(side_effect=_to_controller),
-    )
-    monkeypatch.setattr(
-        service_module.ToolLabelManager,
-        "get_tools_labels",
-        MagicMock(return_value={"provider-1": ["L"]}),
-    )
-
-    user_provider = MagicMock()
-    user_provider.tools = []
-    monkeypatch.setattr(
-        service_module.ToolTransformService,
-        "workflow_provider_to_user_provider",
-        MagicMock(return_value=user_provider),
-    )
-    monkeypatch.setattr(service_module.ToolTransformService, "repack_provider", MagicMock())
-    monkeypatch.setattr(
-        service_module.ToolTransformService,
-        "convert_tool_entity_to_api_entity",
-        MagicMock(return_value=MagicMock()),
-    )
-    logger_exception_mock = MagicMock()
-    monkeypatch.setattr(service_module.logger, "exception", logger_exception_mock)
-
-    # Act
-    result = WorkflowToolManageService.list_tenant_workflow_tools(user_id="user-1", tenant_id="tenant-1")
-
-    # Assert
-    assert len(result) == 1
-    assert result[0] is user_provider
-    assert len(user_provider.tools) == 1
-    logger_exception_mock.assert_called_once()
+# ---------------------------------------------------------------------------
+# TestGetWorkflowTool (private _get_workflow_tool)
+# ---------------------------------------------------------------------------
 
 
-def test_delete_workflow_tool_should_delete_and_commit(monkeypatch: pytest.MonkeyPatch) -> None:
-    # Arrange
-    query = MagicMock()
-    query.where.return_value.delete.return_value = 1
-    db_session = MagicMock()
-    db_session.query.return_value = query
-    monkeypatch.setattr(service_module.db, "session", db_session)
+class TestGetWorkflowTool:
+    """Tests for the internal _get_workflow_tool helper."""
 
-    # Act
-    result = WorkflowToolManageService.delete_workflow_tool(
-        user_id="user-1",
-        tenant_id="tenant-1",
-        workflow_tool_id="tool-1",
-    )
+    def test_should_raise_when_db_tool_none(self) -> None:
+        """_get_workflow_tool raises ValueError when db_tool is None."""
+        with pytest.raises(ValueError, match="Tool not found"):
+            WorkflowToolManageService._get_workflow_tool("t", None)
 
-    # Assert
-    assert result == {"result": "success"}
-    query.where.return_value.delete.assert_called_once()
-    db_session.commit.assert_called_once()
+    def test_should_raise_when_app_not_found(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """ValueError when the corresponding App row is missing."""
+        # Arrange
+        db_tool = MagicMock(spec=WorkflowToolProvider)
+        db_tool.app_id = "app-1"
+        db_tool.tenant_id = "t"
+        monkeypatch.setattr(
+            workflow_tools_manage_service.db,
+            "session",
+            SimpleNamespace(query=lambda m: FakeQuery(None)),
+        )
 
+        # Act + Assert
+        with pytest.raises(ValueError, match="not found"):
+            WorkflowToolManageService._get_workflow_tool("t", db_tool)
 
-def test_get_workflow_tool_by_tool_id_should_delegate_to_private_getter(monkeypatch: pytest.MonkeyPatch) -> None:
-    # Arrange
-    provider = SimpleNamespace(id="tool-1")
-    db_session = MagicMock()
-    db_session.query.return_value = _query_chain_with_first(provider)
-    monkeypatch.setattr(service_module.db, "session", db_session)
-    private_mock = MagicMock(return_value={"name": "tool"})
-    monkeypatch.setattr(WorkflowToolManageService, "_get_workflow_tool", private_mock)
+    def test_should_raise_when_workflow_not_found(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """ValueError when App has no attached Workflow."""
+        # Arrange
+        db_tool = MagicMock(spec=WorkflowToolProvider)
+        db_tool.app_id = "app-1"
+        db_tool.tenant_id = "t"
+        app = SimpleNamespace(workflow=None)
+        monkeypatch.setattr(
+            workflow_tools_manage_service.db,
+            "session",
+            SimpleNamespace(query=lambda m: FakeQuery(app)),
+        )
 
-    # Act
-    result = WorkflowToolManageService.get_workflow_tool_by_tool_id("user-1", "tenant-1", "tool-1")
+        # Act + Assert
+        with pytest.raises(ValueError, match="Workflow not found"):
+            WorkflowToolManageService._get_workflow_tool("t", db_tool)
 
-    # Assert
-    assert result == {"name": "tool"}
-    private_mock.assert_called_once_with("tenant-1", provider)
+    def test_should_raise_when_no_workflow_tools(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """ValueError when the controller returns no WorkflowTool instances."""
+        # Arrange
+        db_tool = MagicMock(spec=WorkflowToolProvider)
+        db_tool.app_id = "app-1"
+        db_tool.tenant_id = "t"
+        db_tool.id = "tool-1"
+        workflow = DummyWorkflow(graph_dict={"nodes": []})
+        app = SimpleNamespace(workflow=workflow)
+        monkeypatch.setattr(
+            workflow_tools_manage_service.db,
+            "session",
+            SimpleNamespace(query=lambda m: FakeQuery(app)),
+        )
+        ctrl = MagicMock()
+        ctrl.get_tools.return_value = []
+        monkeypatch.setattr(
+            workflow_tools_manage_service.ToolTransformService,
+            "workflow_provider_to_controller",
+            MagicMock(return_value=ctrl),
+        )
 
+        # Act + Assert
+        with pytest.raises(ValueError, match="not found"):
+            WorkflowToolManageService._get_workflow_tool("t", db_tool)
 
-def test_get_workflow_tool_by_app_id_should_delegate_to_private_getter(monkeypatch: pytest.MonkeyPatch) -> None:
-    # Arrange
-    provider = SimpleNamespace(id="tool-1")
-    db_session = MagicMock()
-    db_session.query.return_value = _query_chain_with_first(provider)
-    monkeypatch.setattr(service_module.db, "session", db_session)
-    private_mock = MagicMock(return_value={"name": "tool"})
-    monkeypatch.setattr(WorkflowToolManageService, "_get_workflow_tool", private_mock)
+    def test_should_return_dict_on_success(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Happy path: returns a dict with name, label, icon, synced, etc."""
+        # Arrange
+        db_tool = MagicMock(spec=WorkflowToolProvider)
+        db_tool.app_id = "app-1"
+        db_tool.tenant_id = "t"
+        db_tool.id = "tool-1"
+        db_tool.name = "my_tool"
+        db_tool.label = "My Tool"
+        db_tool.icon = json.dumps({"emoji": "🔧"})
+        db_tool.description = "some desc"
+        db_tool.privacy_policy = ""
+        db_tool.version = "1.0"
+        db_tool.parameter_configurations = []
+        workflow = DummyWorkflow(graph_dict={"nodes": []}, version="1.0")
+        app = SimpleNamespace(workflow=workflow)
+        monkeypatch.setattr(
+            workflow_tools_manage_service.db,
+            "session",
+            SimpleNamespace(query=lambda m: FakeQuery(app)),
+        )
 
-    # Act
-    result = WorkflowToolManageService.get_workflow_tool_by_app_id("user-1", "tenant-1", "app-1")
+        workflow_tool = MagicMock()
+        workflow_tool.entity.output_schema = {"type": "object"}
+        ctrl = MagicMock()
+        ctrl.get_tools.return_value = [workflow_tool]
+        monkeypatch.setattr(
+            workflow_tools_manage_service.ToolTransformService,
+            "workflow_provider_to_controller",
+            MagicMock(return_value=ctrl),
+        )
+        mock_convert = MagicMock(return_value={"tool": "api_entity"})
+        monkeypatch.setattr(
+            workflow_tools_manage_service.ToolTransformService, "convert_tool_entity_to_api_entity", mock_convert
+        )
+        monkeypatch.setattr(
+            workflow_tools_manage_service.ToolLabelManager, "get_tool_labels", MagicMock(return_value=[])
+        )
 
-    # Assert
-    assert result == {"name": "tool"}
-    private_mock.assert_called_once_with("tenant-1", provider)
+        # Act
+        result = WorkflowToolManageService._get_workflow_tool("t", db_tool)
 
-
-def test_get_workflow_tool_should_raise_when_db_tool_missing() -> None:
-    # Arrange
-    db_tool = None
-
-    # Act / Assert
-    with pytest.raises(ValueError, match="Tool not found"):
-        WorkflowToolManageService._get_workflow_tool("tenant-1", cast(WorkflowToolProvider, db_tool))
-
-
-def test_get_workflow_tool_should_raise_when_app_missing(monkeypatch: pytest.MonkeyPatch) -> None:
-    # Arrange
-    db_tool = SimpleNamespace(app_id="app-1", tenant_id="tenant-1", id="tool-1")
-    db_session = MagicMock()
-    db_session.query.return_value = _query_chain_with_first(None)
-    monkeypatch.setattr(service_module.db, "session", db_session)
-
-    # Act / Assert
-    with pytest.raises(ValueError, match="App app-1 not found"):
-        WorkflowToolManageService._get_workflow_tool("tenant-1", cast(WorkflowToolProvider, db_tool))
-
-
-def test_get_workflow_tool_should_raise_when_workflow_missing(monkeypatch: pytest.MonkeyPatch) -> None:
-    # Arrange
-    db_tool = SimpleNamespace(app_id="app-1", tenant_id="tenant-1", id="tool-1")
-    app = SimpleNamespace(workflow=None)
-    db_session = MagicMock()
-    db_session.query.return_value = _query_chain_with_first(app)
-    monkeypatch.setattr(service_module.db, "session", db_session)
-
-    # Act / Assert
-    with pytest.raises(ValueError, match="Workflow not found"):
-        WorkflowToolManageService._get_workflow_tool("tenant-1", cast(WorkflowToolProvider, db_tool))
-
-
-def test_get_workflow_tool_should_raise_when_no_runtime_tools_found(monkeypatch: pytest.MonkeyPatch) -> None:
-    # Arrange
-    db_tool = SimpleNamespace(app_id="app-1", tenant_id="tenant-1", id="tool-1")
-    app = SimpleNamespace(workflow=SimpleNamespace(version="1.0.0"))
-    db_session = MagicMock()
-    db_session.query.return_value = _query_chain_with_first(app)
-    monkeypatch.setattr(service_module.db, "session", db_session)
-
-    controller = MagicMock()
-    controller.get_tools.return_value = []
-    monkeypatch.setattr(
-        service_module.ToolTransformService,
-        "workflow_provider_to_controller",
-        MagicMock(return_value=controller),
-    )
-
-    # Act / Assert
-    with pytest.raises(ValueError, match="Tool tool-1 not found"):
-        WorkflowToolManageService._get_workflow_tool("tenant-1", cast(WorkflowToolProvider, db_tool))
-
-
-def test_get_workflow_tool_should_return_full_payload_for_synced_tool(monkeypatch: pytest.MonkeyPatch) -> None:
-    # Arrange
-    db_tool = SimpleNamespace(
-        app_id="app-1",
-        tenant_id="tenant-1",
-        id="tool-1",
-        name="tool-name",
-        label="Tool Name",
-        icon=json.dumps({"type": "emoji", "content": "A"}),
-        description="desc",
-        parameter_configurations=_build_parameters(),
-        version="2.0.0",
-        privacy_policy="privacy",
-    )
-    app = SimpleNamespace(workflow=SimpleNamespace(version="2.0.0"))
-    db_session = MagicMock()
-    db_session.query.return_value = _query_chain_with_first(app)
-    monkeypatch.setattr(service_module.db, "session", db_session)
-
-    runtime_tool = MagicMock()
-    runtime_tool.entity.output_schema = {"answer": {"type": "string"}}
-
-    controller = MagicMock()
-    controller.get_tools.return_value = [runtime_tool]
-    monkeypatch.setattr(
-        service_module.ToolTransformService,
-        "workflow_provider_to_controller",
-        MagicMock(return_value=controller),
-    )
-    monkeypatch.setattr(service_module.ToolLabelManager, "get_tool_labels", MagicMock(return_value=["ops"]))
-    api_tool = MagicMock()
-    monkeypatch.setattr(
-        service_module.ToolTransformService,
-        "convert_tool_entity_to_api_entity",
-        MagicMock(return_value=api_tool),
-    )
-
-    # Act
-    result = WorkflowToolManageService._get_workflow_tool("tenant-1", cast(WorkflowToolProvider, db_tool))
-
-    # Assert
-    assert result["name"] == "tool-name"
-    assert result["workflow_tool_id"] == "tool-1"
-    assert result["workflow_app_id"] == "app-1"
-    assert result["icon"] == {"type": "emoji", "content": "A"}
-    assert result["output_schema"] == {"answer": {"type": "string"}}
-    assert result["tool"] is api_tool
-    assert result["synced"] is True
+        # Assert
+        assert result["name"] == "my_tool"
+        assert result["label"] == "My Tool"
+        assert result["synced"] is True
+        assert "icon" in result
+        assert "output_schema" in result
 
 
-def test_list_single_workflow_tools_should_raise_when_tool_missing(monkeypatch: pytest.MonkeyPatch) -> None:
-    # Arrange
-    db_session = MagicMock()
-    db_session.query.return_value = _query_chain_with_first(None)
-    monkeypatch.setattr(service_module.db, "session", db_session)
-
-    # Act / Assert
-    with pytest.raises(ValueError, match="Tool tool-1 not found"):
-        WorkflowToolManageService.list_single_workflow_tools("user-1", "tenant-1", "tool-1")
+# ---------------------------------------------------------------------------
+# TestListSingleWorkflowTools
+# ---------------------------------------------------------------------------
 
 
-def test_list_single_workflow_tools_should_raise_when_controller_returns_no_tools(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    # Arrange
-    db_tool = SimpleNamespace(id="tool-1", tenant_id="tenant-1")
-    db_session = MagicMock()
-    db_session.query.return_value = _query_chain_with_first(db_tool)
-    monkeypatch.setattr(service_module.db, "session", db_session)
+class TestListSingleWorkflowTools:
+    """Tests for WorkflowToolManageService.list_single_workflow_tools."""
 
-    controller = MagicMock()
-    controller.get_tools.return_value = []
-    monkeypatch.setattr(
-        service_module.ToolTransformService,
-        "workflow_provider_to_controller",
-        MagicMock(return_value=controller),
-    )
+    def test_should_raise_when_tool_not_found(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """ValueError when the specified tool does not exist in DB."""
+        # Arrange
+        monkeypatch.setattr(
+            workflow_tools_manage_service.db,
+            "session",
+            SimpleNamespace(query=lambda m: FakeQuery(None)),
+        )
 
-    # Act / Assert
-    with pytest.raises(ValueError, match="Tool tool-1 not found"):
-        WorkflowToolManageService.list_single_workflow_tools("user-1", "tenant-1", "tool-1")
+        # Act + Assert
+        with pytest.raises(ValueError, match="not found"):
+            WorkflowToolManageService.list_single_workflow_tools("u", "t", "tool-1")
 
+    def test_should_raise_when_no_workflow_tools(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """ValueError when the controller yields no tools for the provider."""
+        # Arrange
+        db_tool = MagicMock(spec=WorkflowToolProvider)
+        db_tool.id = "tool-1"
+        db_tool.tenant_id = "t"
+        monkeypatch.setattr(
+            workflow_tools_manage_service.db,
+            "session",
+            SimpleNamespace(query=lambda m: FakeQuery(db_tool)),
+        )
+        ctrl = MagicMock()
+        ctrl.get_tools.return_value = []
+        monkeypatch.setattr(
+            workflow_tools_manage_service.ToolTransformService,
+            "workflow_provider_to_controller",
+            MagicMock(return_value=ctrl),
+        )
 
-def test_list_single_workflow_tools_should_return_single_api_tool(monkeypatch: pytest.MonkeyPatch) -> None:
-    # Arrange
-    db_tool = SimpleNamespace(id="tool-1", tenant_id="tenant-1")
-    db_session = MagicMock()
-    db_session.query.return_value = _query_chain_with_first(db_tool)
-    monkeypatch.setattr(service_module.db, "session", db_session)
+        # Act + Assert
+        with pytest.raises(ValueError, match="not found"):
+            WorkflowToolManageService.list_single_workflow_tools("u", "t", "tool-1")
 
-    runtime_tool = MagicMock()
-    controller = MagicMock()
-    controller.get_tools.return_value = [runtime_tool]
-    monkeypatch.setattr(
-        service_module.ToolTransformService,
-        "workflow_provider_to_controller",
-        MagicMock(return_value=controller),
-    )
-    monkeypatch.setattr(service_module.ToolLabelManager, "get_tool_labels", MagicMock(return_value=["ops"]))
-    api_tool = MagicMock()
-    monkeypatch.setattr(
-        service_module.ToolTransformService,
-        "convert_tool_entity_to_api_entity",
-        MagicMock(return_value=api_tool),
-    )
+    def test_should_return_api_entity_list(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Happy path: returns list with one ToolApiEntity."""
+        # Arrange
+        db_tool = MagicMock(spec=WorkflowToolProvider)
+        db_tool.id = "tool-1"
+        db_tool.tenant_id = "t"
+        monkeypatch.setattr(
+            workflow_tools_manage_service.db,
+            "session",
+            SimpleNamespace(query=lambda m: FakeQuery(db_tool)),
+        )
+        workflow_tool = MagicMock()
+        ctrl = MagicMock()
+        ctrl.get_tools.return_value = [workflow_tool]
+        monkeypatch.setattr(
+            workflow_tools_manage_service.ToolTransformService,
+            "workflow_provider_to_controller",
+            MagicMock(return_value=ctrl),
+        )
+        api_entity = MagicMock()
+        monkeypatch.setattr(
+            workflow_tools_manage_service.ToolTransformService,
+            "convert_tool_entity_to_api_entity",
+            MagicMock(return_value=api_entity),
+        )
+        monkeypatch.setattr(
+            workflow_tools_manage_service.ToolLabelManager, "get_tool_labels", MagicMock(return_value=[])
+        )
 
-    # Act
-    result = WorkflowToolManageService.list_single_workflow_tools("user-1", "tenant-1", "tool-1")
+        # Act
+        result = WorkflowToolManageService.list_single_workflow_tools("u", "t", "tool-1")
 
-    # Assert
-    assert result == [api_tool]
+        # Assert
+        assert result == [api_entity]
