@@ -69,7 +69,7 @@ class _WorkflowChildEngineBuilder:
         root_node_id: str,
         variable_pool: VariablePool | None = None,
     ) -> GraphEngine:
-        """Build a child engine with a fresh runtime state and no inherited layers."""
+        """Build a child engine with a fresh runtime state and only child-safe layers."""
         child_graph_runtime_state = GraphRuntimeState(
             variable_pool=variable_pool if variable_pool is not None else parent_graph_runtime_state.variable_pool,
             start_at=time.perf_counter(),
@@ -101,6 +101,7 @@ class _WorkflowChildEngineBuilder:
             config=config,
             child_engine_builder=self,
         )
+        child_engine.layer(LLMQuotaLayer())
         return child_engine
 
 

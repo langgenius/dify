@@ -20,3 +20,7 @@ class IterationGraphNotFoundError(IterationNodeError):
 
 class IterationIndexNotFoundError(IterationNodeError):
     """Raised when the iteration index is not found."""
+
+
+class ChildGraphAbortedError(IterationNodeError):
+    """Raised when a child graph aborts and the container must stop immediately."""

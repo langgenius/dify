@@ -1,4 +1,5 @@
 from collections import UserString
+from contextlib import nullcontext
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch, sentinel
 
@@ -6,19 +7,56 @@ import pytest
 
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.model_manager import ModelInstance
 from core.workflow import workflow_entry
+from dify_graph.entities.base_node_data import BaseNodeData
 from dify_graph.entities.graph_config import NodeConfigDictAdapter
-from dify_graph.enums import NodeType
+from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
 from dify_graph.errors import WorkflowNodeRunFailedError
 from dify_graph.file.enums import FileTransferMethod, FileType
 from dify_graph.file.models import File
+from dify_graph.graph import Graph
 from dify_graph.graph_events import GraphRunFailedEvent
+from dify_graph.model_runtime.entities.llm_entities import LLMUsage
+from dify_graph.node_events import NodeRunResult
 from dify_graph.nodes import BuiltinNodeTypes
+from dify_graph.nodes.base.node import Node
 from dify_graph.runtime import ChildGraphNotFoundError
+from tests.workflow_test_utils import build_test_graph_init_params, build_test_variable_pool
 
 
 def _build_typed_node_config(node_type: NodeType):
     return NodeConfigDictAdapter.validate_python({"id": "node-id", "data": {"type": node_type}})
+
+
+def _build_wrapped_model_instance() -> tuple[SimpleNamespace, ModelInstance]:
+    raw_model_instance = ModelInstance.__new__(ModelInstance)
+    return SimpleNamespace(_model_instance=raw_model_instance), raw_model_instance
+
+
+class _FakeModelNodeMixin:
+    @classmethod
+    def version(cls) -> str:
+        return "1"
+
+    def post_init(self) -> None:
+        self.model_instance, self.raw_model_instance = _build_wrapped_model_instance()
+        self.usage_snapshot = LLMUsage.empty_usage()
+        self.usage_snapshot.total_tokens = 1
+
+    def _run(self) -> NodeRunResult:
+        return NodeRunResult(
+            status=WorkflowNodeExecutionStatus.SUCCEEDED,
+            llm_usage=self.usage_snapshot,
+        )
+
+
+class _FakeLLMNode(_FakeModelNodeMixin, Node[BaseNodeData]):
+    node_type = BuiltinNodeTypes.LLM
+
+
+class _FakeQuestionClassifierNode(_FakeModelNodeMixin, Node[BaseNodeData]):
+    node_type = BuiltinNodeTypes.QUESTION_CLASSIFIER
 
 
 class TestWorkflowChildEngineBuilder:
@@ -53,7 +91,7 @@ class TestWorkflowChildEngineBuilder:
                     root_node_id="missing",
                 )
 
-    def test_build_child_engine_constructs_graph_engine_without_layers(self):
+    def test_build_child_engine_constructs_graph_engine_with_quota_layer_only(self):
         builder = workflow_entry._WorkflowChildEngineBuilder()
         graph_init_params = SimpleNamespace(graph_config={"nodes": [{"id": "root"}]})
         parent_graph_runtime_state = SimpleNamespace(
@@ -76,6 +114,7 @@ class TestWorkflowChildEngineBuilder:
             patch.object(workflow_entry, "GraphEngine", return_value=child_engine) as graph_engine_cls,
             patch.object(workflow_entry, "GraphEngineConfig", return_value=sentinel.graph_engine_config),
             patch.object(workflow_entry, "InMemoryChannel", return_value=sentinel.command_channel),
+            patch.object(workflow_entry, "LLMQuotaLayer", return_value=sentinel.llm_quota_layer),
         ):
             result = builder.build_child_engine(
                 workflow_id="workflow-id",
@@ -108,7 +147,71 @@ class TestWorkflowChildEngineBuilder:
             config=sentinel.graph_engine_config,
             child_engine_builder=builder,
         )
-        child_engine.layer.assert_not_called()
+        assert child_engine.layer.call_args_list == [((sentinel.llm_quota_layer,), {})]
+
+    @pytest.mark.parametrize("node_cls", [_FakeLLMNode, _FakeQuestionClassifierNode])
+    def test_build_child_engine_runs_llm_quota_layer_for_child_model_nodes(self, node_cls):
+        builder = workflow_entry._WorkflowChildEngineBuilder()
+        graph_init_params = build_test_graph_init_params(
+            graph_config={"nodes": [{"id": "root"}], "edges": []},
+        )
+        parent_graph_runtime_state = SimpleNamespace(
+            execution_context=nullcontext(None),
+            variable_pool=build_test_variable_pool(),
+        )
+        created_node: dict[str, _FakeLLMNode | _FakeQuestionClassifierNode] = {}
+
+        def build_graph(*, graph_config, node_factory, root_node_id):
+            _ = graph_config
+            node = node_cls(
+                id=root_node_id,
+                config={
+                    "id": root_node_id,
+                    "data": {
+                        "type": node_cls.node_type,
+                        "title": "Child Model",
+                    },
+                },
+                graph_init_params=node_factory.graph_init_params,
+                graph_runtime_state=node_factory.graph_runtime_state,
+            )
+            created_node["node"] = node
+            return Graph(
+                nodes={root_node_id: node},
+                edges={},
+                in_edges={},
+                out_edges={},
+                root_node=node,
+            )
+
+        with (
+            patch.object(
+                workflow_entry,
+                "DifyNodeFactory",
+                side_effect=lambda graph_init_params, graph_runtime_state: SimpleNamespace(
+                    graph_init_params=graph_init_params,
+                    graph_runtime_state=graph_runtime_state,
+                ),
+            ),
+            patch.object(workflow_entry.Graph, "init", side_effect=build_graph),
+            patch("core.app.workflow.layers.llm_quota.ensure_llm_quota_available") as ensure_quota,
+            patch("core.app.workflow.layers.llm_quota.deduct_llm_quota") as deduct_quota,
+        ):
+            child_engine = builder.build_child_engine(
+                workflow_id="workflow-id",
+                graph_init_params=graph_init_params,
+                parent_graph_runtime_state=parent_graph_runtime_state,
+                root_node_id="root",
+            )
+            list(child_engine.run())
+
+        node = created_node["node"]
+        ensure_quota.assert_called_once_with(model_instance=node.raw_model_instance)
+        deduct_quota.assert_called_once_with(
+            tenant_id="tenant",
+            model_instance=node.raw_model_instance,
+            usage=node.usage_snapshot,
+        )
 
 
 class TestWorkflowEntryInit:

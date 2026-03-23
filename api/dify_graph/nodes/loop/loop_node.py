@@ -14,6 +14,7 @@ from dify_graph.enums import (
 )
 from dify_graph.graph_events import (
     GraphNodeEventBase,
+    GraphRunAbortedEvent,
     GraphRunFailedEvent,
     NodeRunSucceededEvent,
 )
@@ -37,6 +38,7 @@ if TYPE_CHECKING:
     from dify_graph.graph_engine import GraphEngine
 
 logger = logging.getLogger(__name__)
+_DEFAULT_CHILD_ABORT_REASON = "child graph aborted"
 
 
 class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
@@ -123,7 +125,10 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
                 graph_engine = self._create_graph_engine(start_at=start_at, root_node_id=root_node_id)
 
                 loop_start_time = datetime.now(UTC).replace(tzinfo=None)
-                reach_break_node = yield from self._run_single_loop(graph_engine=graph_engine, current_index=i)
+                try:
+                    reach_break_node = yield from self._run_single_loop(graph_engine=graph_engine, current_index=i)
+                finally:
+                    loop_usage = self._merge_usage(loop_usage, graph_engine.graph_runtime_state.llm_usage)
                 # Track loop duration
                 loop_duration_map[str(i)] = (datetime.now(UTC).replace(tzinfo=None) - loop_start_time).total_seconds()
 
@@ -139,9 +144,6 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
                     else:
                         # For other outputs, just update
                         self.graph_runtime_state.set_output(key, value)
-
-                # Accumulate usage from the sub-graph execution
-                loop_usage = self._merge_usage(loop_usage, graph_engine.graph_runtime_state.llm_usage)
 
                 # Collect loop variable values after iteration
                 single_loop_variable = {}
@@ -254,6 +256,8 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
                 yield event
             if isinstance(event, NodeRunSucceededEvent) and event.node_type == BuiltinNodeTypes.LOOP_END:
                 reach_break_node = True
+            if isinstance(event, GraphRunAbortedEvent):
+                raise RuntimeError(event.reason or _DEFAULT_CHILD_ABORT_REASON)
             if isinstance(event, GraphRunFailedEvent):
                 raise Exception(event.error)
 

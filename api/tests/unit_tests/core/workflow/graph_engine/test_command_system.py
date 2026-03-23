@@ -73,9 +73,8 @@ def test_abort_command():
         config=GraphEngineConfig(),
     )
 
-    # Send abort command before starting
-    abort_command = AbortCommand(reason="Test abort")
-    command_channel.send_command(abort_command)
+    # Queue an abort request before starting.
+    engine.request_abort("Test abort")
 
     # Run engine and collect events
     events = list(engine.run())

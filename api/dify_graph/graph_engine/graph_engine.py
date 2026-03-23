@@ -213,6 +213,10 @@ class GraphEngine:
         self._bind_layer_context(layer)
         return self
 
+    def request_abort(self, reason: str | None = None) -> None:
+        """Queue an abort command for this engine."""
+        self._command_channel.send_command(AbortCommand(reason=reason or "User requested abort"))
+
     def create_child_engine(
         self,
         *,
