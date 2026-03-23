@@ -278,10 +278,10 @@ class TestObjectTruncation:
 
         # Values should be truncated if they exist
         for key, value in result.value.items():
-            if isinstance(value, str):
-                original_value = obj_with_long_values[key]
-                # Value should be same or smaller
-                assert len(value) <= len(original_value)
+            assert isinstance(value, str)
+            original_value = obj_with_long_values[key]
+            # Value should be same or smaller
+            assert len(value) <= len(original_value)
 
     def test_object_key_dropping(self, small_truncator):
         """Test object truncation where keys are dropped due to size constraints."""
@@ -510,8 +510,7 @@ class TestEdgeCases:
         # Unicode characters
         unicode_text = "你好世界你好世界你好世界"  # Multi-byte UTF-8 characters
         result = truncator.truncate(StringSegment(value=unicode_text))
-        if len(unicode_text) > 10:
-            assert result.truncated is True
+        assert result.truncated is True
 
         # Special JSON characters
         special_chars = '{"key": "value with \\"quotes\\" and \\n newlines"}'
@@ -633,13 +632,12 @@ class TestIntegrationScenarios:
         result = truncator.truncate(segment)
 
         assert isinstance(result, TruncationResult)
-        # Should handle all data types appropriately
-        if result.truncated:
-            # Verify the result is smaller or equal than original
-            original_size = truncator.calculate_json_size(mixed_data)
-            if isinstance(result.result, ObjectSegment):
-                result_size = truncator.calculate_json_size(result.result.value)
-                assert result_size <= original_size
+        assert result.truncated is True
+        assert isinstance(result.result, ObjectSegment)
+        # Verify the result is smaller or equal than original
+        original_size = truncator.calculate_json_size(mixed_data)
+        result_size = truncator.calculate_json_size(result.result.value)
+        assert result_size <= original_size
 
     def test_file_and_array_file_variable_mapping(self, file):
         truncator = VariableTruncator(string_length_limit=30, array_element_limit=3, max_size_bytes=300)
@@ -741,7 +739,7 @@ def test_truncate_variable_mapping_should_mark_over_budget_keys_with_ellipsis() 
 
     # Assert
     assert result == {"very_long_key": "..."}
-    assert truncated is False
+    assert truncated is True
 
 
 def test_truncate_variable_mapping_should_handle_segment_values() -> None:
@@ -784,7 +782,11 @@ def test_truncate_should_use_string_fallback_when_truncated_value_size_exceeds_l
 ) -> None:
     # Arrange
     truncator = VariableTruncator(max_size_bytes=10)
-    forced_result = truncator_module._PartResult(value="this is too long", value_size=100, truncated=True)
+    forced_result = truncator_module._PartResult(
+        value=StringSegment(value="this is too long"),
+        value_size=100,
+        truncated=True,
+    )
     monkeypatch.setattr(truncator, "_truncate_segment", lambda *_args, **_kwargs: forced_result)
 
     # Act
@@ -793,6 +795,7 @@ def test_truncate_should_use_string_fallback_when_truncated_value_size_exceeds_l
     # Assert
     assert result.truncated is True
     assert isinstance(result.result, StringSegment)
+    assert not result.result.value.startswith('"')
 
 
 def test_truncate_segment_should_raise_assertion_for_unexpected_truncatable_segment(
