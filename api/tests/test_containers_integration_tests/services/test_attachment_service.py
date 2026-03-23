@@ -61,9 +61,7 @@ class TestAttachmentService:
         upload_file = self._create_upload_file(db_session_with_containers)
         service = AttachmentService(session_factory=sessionmaker(bind=db.engine))
 
-        with patch.object(
-            attachment_service_module.storage, "load_once", return_value=b"binary-content"
-        ) as mock_load:
+        with patch.object(attachment_service_module.storage, "load_once", return_value=b"binary-content") as mock_load:
             result = service.get_file_base64(upload_file.id)
 
         assert result == base64.b64encode(b"binary-content").decode()
