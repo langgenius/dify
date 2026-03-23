@@ -8,7 +8,7 @@ from core.virtual_environment.__base.command_future import CommandCancelledError
 from core.virtual_environment.__base.helpers import submit_command, with_connection
 from core.workflow.nodes.command.entities import CommandNodeData
 from core.workflow.nodes.command.exc import CommandExecutionError
-from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
+from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from dify_graph.node_events import NodeRunResult
 from dify_graph.nodes.base import variable_template_parser
 from dify_graph.nodes.base.entities import VariableSelector
@@ -22,7 +22,7 @@ COMMAND_NODE_TIMEOUT_SECONDS = 60 * 10
 
 
 class CommandNode(Node[CommandNodeData]):
-    node_type = NodeType.COMMAND
+    node_type = BuiltinNodeTypes.COMMAND
 
     def _render_template(self, template: str) -> str:
         parser = VariableTemplateParser(template=template)

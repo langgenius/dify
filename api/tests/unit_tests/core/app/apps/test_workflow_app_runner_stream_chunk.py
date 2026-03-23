@@ -2,7 +2,7 @@ from unittest.mock import MagicMock
 
 from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
-from dify_graph.enums import NodeType
+from dify_graph.enums import BuiltinNodeTypes
 from dify_graph.graph_events import NodeRunStreamChunkEvent
 
 
@@ -21,7 +21,7 @@ def test_skip_empty_final_chunk() -> None:
     empty_final_event = NodeRunStreamChunkEvent(
         id="exec",
         node_id="node",
-        node_type=NodeType.LLM,
+        node_type=BuiltinNodeTypes.LLM,
         selector=["node", "text"],
         chunk="",
         is_final=True,
@@ -33,7 +33,7 @@ def test_skip_empty_final_chunk() -> None:
     normal_event = NodeRunStreamChunkEvent(
         id="exec",
         node_id="node",
-        node_type=NodeType.LLM,
+        node_type=BuiltinNodeTypes.LLM,
         selector=["node", "text"],
         chunk="hi",
         is_final=False,

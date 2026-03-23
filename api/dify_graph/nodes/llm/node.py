@@ -31,7 +31,6 @@ from core.memory.base import BaseMemory
 from core.model_manager import ModelInstance
 from core.prompt.entities.advanced_prompt_entities import CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
-from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.sandbox import Sandbox
 from core.sandbox.bash.session import MAX_OUTPUT_FILE_SIZE, MAX_OUTPUT_FILES, SandboxBashSession
 from core.sandbox.entities.config import AppAssets

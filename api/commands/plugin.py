@@ -9,7 +9,7 @@ from configs import dify_config
 from core.helper import encrypter
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.plugin import PluginInstaller
-from core.tools.utils.system_oauth_encryption import encrypt_system_oauth_params
+from core.tools.utils.system_encryption import encrypt_system_params as encrypt_system_oauth_params
 from extensions.ext_database import db
 from models import Tenant
 from models.oauth import DatasourceOauthParamConfig, DatasourceProvider

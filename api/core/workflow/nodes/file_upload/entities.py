@@ -1,6 +1,6 @@
 from collections.abc import Sequence
 
-from dify_graph.nodes.base import BaseNodeData
+from dify_graph.entities.base_node_data import BaseNodeData
 
 
 class FileUploadNodeData(BaseNodeData):

@@ -6,6 +6,7 @@ import pytest
 from core.app.app_config.entities import ModelConfig
 from core.llm_generator.entities import RuleCodeGeneratePayload, RuleGeneratePayload, RuleStructuredOutputPayload
 from core.llm_generator.llm_generator import LLMGenerator
+from core.llm_generator.output_models import InstructionModifyOutput
 from dify_graph.model_runtime.entities.llm_entities import LLMMode, LLMResult
 from dify_graph.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 
@@ -317,15 +318,15 @@ class TestLLMGenerator:
         with patch("extensions.ext_database.db.session.query") as mock_query:
             mock_query.return_value.where.return_value.order_by.return_value.first.return_value = None
 
-            # Mock __instruction_modify_common call via invoke_llm
-            mock_response = MagicMock()
-            mock_response.message.get_text_content.return_value = '{"modified": "prompt"}'
-            mock_model_instance.invoke_llm.return_value = mock_response
-
-            result = LLMGenerator.instruction_modify_legacy(
-                "tenant_id", "flow_id", "current", "instruction", model_config_entity, "ideal"
-            )
-            assert result == {"modified": "prompt"}
+            pydantic_response = InstructionModifyOutput(modified="prompt", message="done")
+            with patch(
+                "core.llm_generator.output_parser.structured_output.invoke_llm_with_pydantic_model",
+                return_value=pydantic_response,
+            ):
+                result = LLMGenerator.instruction_modify_legacy(
+                    "tenant_id", "flow_id", "current", "instruction", model_config_entity, "ideal"
+                )
+            assert result == {"modified": "prompt", "message": "done"}
 
     def test_instruction_modify_legacy_with_last_run(self, mock_model_instance, model_config_entity):
         with patch("extensions.ext_database.db.session.query") as mock_query:
@@ -335,14 +336,15 @@ class TestLLMGenerator:
             last_run.error = "e"
             mock_query.return_value.where.return_value.order_by.return_value.first.return_value = last_run
 
-            mock_response = MagicMock()
-            mock_response.message.get_text_content.return_value = '{"modified": "prompt"}'
-            mock_model_instance.invoke_llm.return_value = mock_response
-
-            result = LLMGenerator.instruction_modify_legacy(
-                "tenant_id", "flow_id", "current", "instruction", model_config_entity, "ideal"
-            )
-            assert result == {"modified": "prompt"}
+            pydantic_response = InstructionModifyOutput(modified="prompt", message="done")
+            with patch(
+                "core.llm_generator.output_parser.structured_output.invoke_llm_with_pydantic_model",
+                return_value=pydantic_response,
+            ):
+                result = LLMGenerator.instruction_modify_legacy(
+                    "tenant_id", "flow_id", "current", "instruction", model_config_entity, "ideal"
+                )
+            assert result == {"modified": "prompt", "message": "done"}
 
     def test_instruction_modify_workflow_app_not_found(self):
         with patch("extensions.ext_database.db.session") as mock_session:
@@ -371,27 +373,27 @@ class TestLLMGenerator:
             last_run.node_type = "llm"
             last_run.status = "s"
             last_run.error = "e"
-            # Return regular values, not Mocks
             last_run.execution_metadata_dict = {"agent_log": [{"status": "s", "error": "e", "data": {}}]}
             last_run.load_full_inputs.return_value = {"in": "val"}
 
             workflow_service.get_node_last_run.return_value = last_run
 
-            mock_response = MagicMock()
-            mock_response.message.get_text_content.return_value = '{"modified": "workflow"}'
-            mock_model_instance.invoke_llm.return_value = mock_response
-
-            result = LLMGenerator.instruction_modify_workflow(
-                "tenant_id",
-                "flow_id",
-                "node_id",
-                "current",
-                "instruction",
-                model_config_entity,
-                "ideal",
-                workflow_service,
-            )
-            assert result == {"modified": "workflow"}
+            pydantic_response = InstructionModifyOutput(modified="workflow", message="done")
+            with patch(
+                "core.llm_generator.output_parser.structured_output.invoke_llm_with_pydantic_model",
+                return_value=pydantic_response,
+            ):
+                result = LLMGenerator.instruction_modify_workflow(
+                    "tenant_id",
+                    "flow_id",
+                    "node_id",
+                    "current",
+                    "instruction",
+                    model_config_entity,
+                    "ideal",
+                    workflow_service,
+                )
+            assert result == {"modified": "workflow", "message": "done"}
 
     def test_instruction_modify_workflow_no_last_run_fallback(self, mock_model_instance, model_config_entity):
         with patch("extensions.ext_database.db.session") as mock_session:
@@ -403,48 +405,49 @@ class TestLLMGenerator:
             workflow_service.get_draft_workflow.return_value = workflow
             workflow_service.get_node_last_run.return_value = None
 
-            mock_response = MagicMock()
-            mock_response.message.get_text_content.return_value = '{"modified": "fallback"}'
-            mock_model_instance.invoke_llm.return_value = mock_response
-
-            result = LLMGenerator.instruction_modify_workflow(
-                "tenant_id",
-                "flow_id",
-                "node_id",
-                "current",
-                "instruction",
-                model_config_entity,
-                "ideal",
-                workflow_service,
-            )
-            assert result == {"modified": "fallback"}
+            pydantic_response = InstructionModifyOutput(modified="fallback", message="done")
+            with patch(
+                "core.llm_generator.output_parser.structured_output.invoke_llm_with_pydantic_model",
+                return_value=pydantic_response,
+            ):
+                result = LLMGenerator.instruction_modify_workflow(
+                    "tenant_id",
+                    "flow_id",
+                    "node_id",
+                    "current",
+                    "instruction",
+                    model_config_entity,
+                    "ideal",
+                    workflow_service,
+                )
+            assert result == {"modified": "fallback", "message": "done"}
 
     def test_instruction_modify_workflow_node_type_fallback(self, mock_model_instance, model_config_entity):
         with patch("extensions.ext_database.db.session") as mock_session:
             mock_session.return_value.query.return_value.where.return_value.first.return_value = MagicMock()
             workflow = MagicMock()
-            # Cause exception in node_type logic
             workflow.graph_dict = {"graph": {"nodes": []}}
 
             workflow_service = MagicMock()
             workflow_service.get_draft_workflow.return_value = workflow
             workflow_service.get_node_last_run.return_value = None
 
-            mock_response = MagicMock()
-            mock_response.message.get_text_content.return_value = '{"modified": "fallback"}'
-            mock_model_instance.invoke_llm.return_value = mock_response
-
-            result = LLMGenerator.instruction_modify_workflow(
-                "tenant_id",
-                "flow_id",
-                "node_id",
-                "current",
-                "instruction",
-                model_config_entity,
-                "ideal",
-                workflow_service,
-            )
-            assert result == {"modified": "fallback"}
+            pydantic_response = InstructionModifyOutput(modified="fallback", message="done")
+            with patch(
+                "core.llm_generator.output_parser.structured_output.invoke_llm_with_pydantic_model",
+                return_value=pydantic_response,
+            ):
+                result = LLMGenerator.instruction_modify_workflow(
+                    "tenant_id",
+                    "flow_id",
+                    "node_id",
+                    "current",
+                    "instruction",
+                    model_config_entity,
+                    "ideal",
+                    workflow_service,
+                )
+            assert result == {"modified": "fallback", "message": "done"}
 
     def test_instruction_modify_workflow_empty_agent_log(self, mock_model_instance, model_config_entity):
         with patch("extensions.ext_database.db.session") as mock_session:
@@ -459,27 +462,27 @@ class TestLLMGenerator:
             last_run.node_type = "llm"
             last_run.status = "s"
             last_run.error = "e"
-            # Return regular empty list, not a Mock
             last_run.execution_metadata_dict = {"agent_log": []}
             last_run.load_full_inputs.return_value = {}
 
             workflow_service.get_node_last_run.return_value = last_run
 
-            mock_response = MagicMock()
-            mock_response.message.get_text_content.return_value = '{"modified": "workflow"}'
-            mock_model_instance.invoke_llm.return_value = mock_response
-
-            result = LLMGenerator.instruction_modify_workflow(
-                "tenant_id",
-                "flow_id",
-                "node_id",
-                "current",
-                "instruction",
-                model_config_entity,
-                "ideal",
-                workflow_service,
-            )
-            assert result == {"modified": "workflow"}
+            pydantic_response = InstructionModifyOutput(modified="workflow", message="done")
+            with patch(
+                "core.llm_generator.output_parser.structured_output.invoke_llm_with_pydantic_model",
+                return_value=pydantic_response,
+            ):
+                result = LLMGenerator.instruction_modify_workflow(
+                    "tenant_id",
+                    "flow_id",
+                    "node_id",
+                    "current",
+                    "instruction",
+                    model_config_entity,
+                    "ideal",
+                    workflow_service,
+                )
+            assert result == {"modified": "workflow", "message": "done"}
 
     def test_instruction_modify_common_placeholders(self, mock_model_instance, model_config_entity):
         # Testing placeholders replacement via instruction_modify_legacy for convenience
@@ -513,7 +516,7 @@ class TestLLMGenerator:
                 "tenant_id", "flow_id", "current", "instruction", model_config_entity, "ideal"
             )
             assert "An unexpected error occurred" in result["error"]
-            assert "Could not find a valid JSON object" in result["error"]
+            assert "Failed to parse structured output" in result["error"]
 
     def test_instruction_modify_common_not_dict(self, mock_model_instance, model_config_entity):
         with patch("extensions.ext_database.db.session.query") as mock_query:

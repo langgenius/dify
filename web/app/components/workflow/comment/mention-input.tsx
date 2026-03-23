@@ -18,7 +18,7 @@ import {
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import Textarea from 'react-textarea-autosize'
-import Avatar from '@/app/components/base/avatar'
+import { Avatar } from '@/app/components/base/avatar'
 import Button from '@/app/components/base/button'
 import { EnterKey } from '@/app/components/base/icons/src/public/common'
 import { fetchMentionableUsers } from '@/service/workflow-comment'
@@ -660,7 +660,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
               <Avatar
                 avatar={user.avatar_url || null}
                 name={user.name}
-                size={24}
+                size="sm"
                 className="shrink-0"
               />
               <div className="min-w-0 flex-1">

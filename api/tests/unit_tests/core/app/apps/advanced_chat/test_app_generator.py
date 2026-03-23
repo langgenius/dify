@@ -422,7 +422,10 @@ class TestAdvancedChatAppGeneratorInternals:
         pause_state_config = SimpleNamespace(session_factory="session-factory", state_owner_user_id="owner")
 
         response = generator._generate(
-            workflow=SimpleNamespace(features={"feature": True}),
+            workflow=SimpleNamespace(
+                features={"feature": True},
+                get_feature=lambda key: SimpleNamespace(enabled=False),
+            ),
             user=SimpleNamespace(id="user"),
             invoke_from=InvokeFrom.WEB_APP,
             application_generate_entity=application_generate_entity,
@@ -517,7 +520,10 @@ class TestAdvancedChatAppGeneratorInternals:
         )
 
         response = generator._generate(
-            workflow=SimpleNamespace(features={}),
+            workflow=SimpleNamespace(
+                features={},
+                get_feature=lambda key: SimpleNamespace(enabled=False),
+            ),
             user=SimpleNamespace(id="user"),
             invoke_from=InvokeFrom.WEB_APP,
             application_generate_entity=application_generate_entity,

@@ -84,6 +84,13 @@ vi.mock('next/dynamic', () => ({
   default: () => () => null,
 }))
 
+vi.mock('next/navigation', () => ({
+  useParams: () => ({ appId: 'test-app-id' }),
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
+  usePathname: () => '/app/test-app-id',
+}))
+
 vi.mock('reactflow', async () => {
   const mod = await import('./reactflow-mock-state')
   const base = mod.createReactFlowModuleMock()
@@ -277,6 +284,7 @@ vi.mock('../hooks', () => ({
   useWorkflowRefreshDraft: () => ({
     handleRefreshWorkflowDraft: vi.fn(),
   }),
+  useLeaderRestoreListener: vi.fn(),
 }))
 
 vi.mock('../hooks/use-workflow-search', () => ({

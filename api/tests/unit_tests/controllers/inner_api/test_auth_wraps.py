@@ -292,8 +292,8 @@ class TestPluginInnerApiOnly:
                     protected_view()
                 assert exc_info.value.code == 404
 
-    def test_should_return_404_when_api_key_invalid(self, app: Flask):
-        """Test that 404 is returned when X-Inner-Api-Key header is invalid (note: returns 404, not 401)"""
+    def test_should_return_401_when_api_key_invalid(self, app: Flask):
+        """Test that 401 is returned when X-Inner-Api-Key header is invalid."""
 
         # Arrange
         @plugin_inner_api_only
@@ -306,4 +306,4 @@ class TestPluginInnerApiOnly:
                 with patch.object(dify_config, "INNER_API_KEY_FOR_PLUGIN", "valid_plugin_key"):
                     with pytest.raises(HTTPException) as exc_info:
                         protected_view()
-                    assert exc_info.value.code == 404
+                    assert exc_info.value.code == 401

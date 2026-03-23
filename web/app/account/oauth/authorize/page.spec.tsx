@@ -22,6 +22,9 @@ vi.mock('@/context/app-context', () => ({
 
 vi.mock('@/service/use-common', () => ({
   useIsLogin: vi.fn(),
+  useUserProfile: vi.fn().mockReturnValue({
+    data: { profile: { avatar_url: '', name: 'Dify User', email: 'dify@example.com' } },
+  }),
 }))
 
 vi.mock('@/service/use-oauth', () => ({

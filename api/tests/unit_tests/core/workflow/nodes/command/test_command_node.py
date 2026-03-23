@@ -19,7 +19,7 @@ from core.virtual_environment.channel.transport import NopTransportWriteCloser
 from core.workflow.nodes.command.node import CommandNode
 from dify_graph.entities import GraphInitParams
 from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY
-from dify_graph.enums import WorkflowNodeExecutionStatus
+from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from dify_graph.runtime import GraphRuntimeState, VariablePool
 from dify_graph.system_variable import SystemVariable
 
@@ -161,6 +161,7 @@ def _make_node(
         config={
             "id": "node-config-id",
             "data": {
+                "type": BuiltinNodeTypes.COMMAND,
                 "title": "Command",
                 "command": command,
                 "working_directory": working_directory,

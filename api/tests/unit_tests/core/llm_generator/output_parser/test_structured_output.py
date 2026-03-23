@@ -18,8 +18,6 @@ from core.llm_generator.output_parser.structured_output import (
 from core.model_manager import ModelInstance
 from dify_graph.model_runtime.entities.llm_entities import (
     LLMResult,
-    LLMResultChunk,
-    LLMResultChunkDelta,
     LLMResultWithStructuredOutput,
     LLMUsage,
 )
@@ -257,7 +255,6 @@ class TestStructuredOutput:
             model_instance=model_instance,
             prompt_messages=[UserPromptMessage(content="hi")],
             json_schema={"type": "object"},
-            stream=False,
         )
 
         assert isinstance(result, LLMResultWithStructuredOutput)
@@ -267,6 +264,7 @@ class TestStructuredOutput:
     def test_invoke_llm_with_structured_output_no_stream_prompt_based(self):
         model_schema = MagicMock(spec=AIModelEntity)
         model_schema.support_structure_output = False
+        model_schema.features = []
         model_schema.parameter_rules = [
             ParameterRule(
                 name="response_format",
@@ -294,7 +292,6 @@ class TestStructuredOutput:
             model_instance=model_instance,
             prompt_messages=[UserPromptMessage(content="hi")],
             json_schema={"type": "object"},
-            stream=False,
         )
 
         assert isinstance(result, LLMResultWithStructuredOutput)
@@ -304,6 +301,7 @@ class TestStructuredOutput:
     def test_invoke_llm_with_structured_output_no_string_error(self):
         model_schema = MagicMock(spec=AIModelEntity)
         model_schema.support_structure_output = False
+        model_schema.features = []
         model_schema.parameter_rules = []
 
         model_instance = MagicMock(spec=ModelInstance)
@@ -319,83 +317,66 @@ class TestStructuredOutput:
                 model_instance=model_instance,
                 prompt_messages=[],
                 json_schema={},
-                stream=False,
             )
-        assert "Failed to parse structured output, LLM result is not a string" in str(excinfo.value)
+        assert "Failed to parse structured output" in str(excinfo.value)
 
-    def test_invoke_llm_with_structured_output_stream(self):
+    def test_invoke_llm_with_structured_output_returns_result(self):
+        """After stream removal, invoke_llm_with_structured_output always returns non-streaming."""
         model_schema = MagicMock(spec=AIModelEntity)
         model_schema.support_structure_output = False
+        model_schema.features = []
         model_schema.parameter_rules = []
         model_schema.model = "gpt-4"
 
         model_instance = MagicMock(spec=ModelInstance)
+        mock_result = MagicMock(spec=LLMResult)
+        mock_result.message = AssistantPromptMessage(content='{"key": "value"}')
+        mock_result.model = "gpt-4"
+        mock_result.usage = LLMUsage.empty_usage()
+        mock_result.system_fingerprint = "fp1"
+        mock_result.prompt_messages = [UserPromptMessage(content="hi")]
 
-        # Mock chunks
-        chunk1 = MagicMock(spec=LLMResultChunk)
-        chunk1.delta = LLMResultChunkDelta(
-            index=0, message=AssistantPromptMessage(content='{"key": '), usage=LLMUsage.empty_usage()
-        )
-        chunk1.prompt_messages = [UserPromptMessage(content="hi")]
-        chunk1.system_fingerprint = "fp1"
+        model_instance.invoke_llm.return_value = mock_result
 
-        chunk2 = MagicMock(spec=LLMResultChunk)
-        chunk2.delta = LLMResultChunkDelta(index=0, message=AssistantPromptMessage(content='"value"}'))
-        chunk2.prompt_messages = [UserPromptMessage(content="hi")]
-        chunk2.system_fingerprint = "fp1"
-
-        chunk3 = MagicMock(spec=LLMResultChunk)
-        chunk3.delta = LLMResultChunkDelta(
-            index=0,
-            message=AssistantPromptMessage(
-                content=[
-                    TextPromptMessageContent(data=" "),
-                ]
-            ),
-        )
-        chunk3.prompt_messages = [UserPromptMessage(content="hi")]
-        chunk3.system_fingerprint = "fp1"
-
-        event4 = MagicMock()
-        event4.delta = LLMResultChunkDelta(index=0, message=AssistantPromptMessage(content=""))
-
-        model_instance.invoke_llm.return_value = [chunk1, chunk2, chunk3, event4]
-
-        generator = invoke_llm_with_structured_output(
+        result = invoke_llm_with_structured_output(
             provider="openai",
             model_schema=model_schema,
             model_instance=model_instance,
             prompt_messages=[UserPromptMessage(content="hi")],
             json_schema={},
-            stream=True,
         )
 
-        chunks = list(generator)
-        assert len(chunks) == 5
-        assert chunks[-1].structured_output == {"key": "value"}
-        assert chunks[-1].system_fingerprint == "fp1"
-        assert chunks[-1].prompt_messages == [UserPromptMessage(content="hi")]
+        assert isinstance(result, LLMResultWithStructuredOutput)
+        assert result.structured_output == {"key": "value"}
+        assert result.system_fingerprint == "fp1"
+        assert result.prompt_messages == [UserPromptMessage(content="hi")]
 
-    def test_invoke_llm_with_structured_output_stream_no_id_events(self):
+    def test_invoke_llm_with_structured_output_empty_response_error(self):
+        """When the model returns a non-parseable result, an error is raised."""
         model_schema = MagicMock(spec=AIModelEntity)
         model_schema.support_structure_output = False
+        model_schema.features = []
         model_schema.parameter_rules = []
         model_schema.model = "gpt-4"
 
         model_instance = MagicMock(spec=ModelInstance)
-        model_instance.invoke_llm.return_value = []
+        mock_result = MagicMock(spec=LLMResult)
+        mock_result.message = AssistantPromptMessage(content="")
+        mock_result.model = "gpt-4"
+        mock_result.usage = LLMUsage.empty_usage()
+        mock_result.system_fingerprint = "fp1"
+        mock_result.prompt_messages = []
 
-        generator = invoke_llm_with_structured_output(
-            provider="openai",
-            model_schema=model_schema,
-            model_instance=model_instance,
-            prompt_messages=[],
-            json_schema={},
-            stream=True,
-        )
+        model_instance.invoke_llm.return_value = mock_result
 
         with pytest.raises(OutputParserError):
-            list(generator)
+            invoke_llm_with_structured_output(
+                provider="openai",
+                model_schema=model_schema,
+                model_instance=model_instance,
+                prompt_messages=[],
+                json_schema={},
+            )
 
     def test_parse_structured_output_empty_string(self):
         with pytest.raises(OutputParserError):

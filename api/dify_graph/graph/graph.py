@@ -286,7 +286,6 @@ class Graph:
             if node_config.get("data", {}).get("type", "") != "group"
         ]
 
-
         # Parse node configurations
         node_configs_map = cls._parse_node_configs(node_configs)
 

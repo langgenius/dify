@@ -9,7 +9,7 @@ from core.sandbox.bash.session import SANDBOX_READY_TIMEOUT
 from core.virtual_environment.__base.command_future import CommandCancelledError, CommandTimeoutError
 from core.virtual_environment.__base.helpers import pipeline
 from core.zip_sandbox import SandboxDownloadItem
-from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
+from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from dify_graph.file import File, FileTransferMethod
 from dify_graph.node_events import NodeRunResult
 from dify_graph.nodes.base.node import Node
@@ -29,7 +29,7 @@ class FileUploadNode(Node[FileUploadNodeData]):
     files, it generates storage-backed presigned URLs and lets sandbox download directly.
     """
 
-    node_type = NodeType.FILE_UPLOAD
+    node_type = BuiltinNodeTypes.FILE_UPLOAD
 
     @classmethod
     def version(cls) -> str:

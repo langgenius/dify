@@ -1,4 +1,3 @@
-import logging
 from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 

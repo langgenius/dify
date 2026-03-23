@@ -57,8 +57,6 @@ class OutputVariableEntity(BaseModel):
         return v
 
 
-
-
 class BaseIterationNodeData(BaseNodeData):
     start_node_id: str | None = None
 

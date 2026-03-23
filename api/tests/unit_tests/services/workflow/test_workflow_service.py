@@ -309,6 +309,7 @@ class TestWorkflowService:
         mock_workflow.tenant_id = "tenant-1"
         mock_workflow.environment_variables = []
         mock_workflow.conversation_variables = []
+        mock_workflow.get_feature.return_value = SimpleNamespace(enabled=False)
 
         # Mock node config
         mock_workflow.get_node_config_by_id.return_value = NodeConfigDictAdapter.validate_python(
@@ -324,7 +325,7 @@ class TestWorkflowService:
         mock_node_exec = MagicMock()
         mock_node_exec.id = "exec-1"
         mock_node_exec.process_data = {}
-        mock_run = MagicMock()
+        mock_run = MagicMock(return_value=(MagicMock(), MagicMock()))
         monkeypatch.setattr(workflow_service_module.WorkflowEntry, "single_step_run", mock_run)
 
         # Mock execution handling
@@ -350,8 +351,9 @@ class TestWorkflowService:
         mock_saver = MagicMock()
         monkeypatch.setattr(workflow_service_module, "DraftVariableSaver", MagicMock(return_value=mock_saver))
 
-        # Mock DB
+        # Mock DB and storage
         monkeypatch.setattr(workflow_service_module, "db", SimpleNamespace(engine=MagicMock()))
+        monkeypatch.setattr(workflow_service_module, "storage", MagicMock())
 
         monkeypatch.setattr(workflow_service_module, "Session", dummy_session_cls)
 
@@ -378,6 +380,7 @@ class TestWorkflowService:
         mock_workflow.tenant_id = "tenant-1"
         mock_workflow.environment_variables = []
         mock_workflow.conversation_variables = []
+        mock_workflow.get_feature.return_value = SimpleNamespace(enabled=False)
         mock_workflow.get_node_config_by_id.return_value = NodeConfigDictAdapter.validate_python(
             {"id": "node-1", "data": {"type": BuiltinNodeTypes.LLM}}
         )
@@ -385,7 +388,9 @@ class TestWorkflowService:
 
         monkeypatch.setattr(workflow_service_module, "WorkflowDraftVariableService", MagicMock())
         monkeypatch.setattr(workflow_service_module, "DraftVarLoader", MagicMock())
-        monkeypatch.setattr(workflow_service_module.WorkflowEntry, "single_step_run", MagicMock())
+        monkeypatch.setattr(
+            workflow_service_module.WorkflowEntry, "single_step_run", MagicMock(return_value=(MagicMock(), MagicMock()))
+        )
 
         mock_node_exec = MagicMock()
         mock_node_exec.id = "exec-invalid"
@@ -404,6 +409,7 @@ class TestWorkflowService:
         mock_repo.get_execution_by_id.return_value = None
 
         monkeypatch.setattr(workflow_service_module, "db", SimpleNamespace(engine=MagicMock()))
+        monkeypatch.setattr(workflow_service_module, "storage", MagicMock())
 
         monkeypatch.setattr(workflow_service_module, "Session", dummy_session_cls)
 

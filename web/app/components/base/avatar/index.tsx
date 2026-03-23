@@ -20,6 +20,7 @@ export type AvatarProps = {
   avatar: string | null
   size?: AvatarSize
   className?: string
+  backgroundColor?: string
   onLoadingStatusChange?: (status: ImageLoadingStatus) => void
 }
 
@@ -30,12 +31,16 @@ export const Avatar = ({
   avatar,
   size = 'md',
   className,
+  backgroundColor,
   onLoadingStatusChange,
 }: AvatarProps) => {
   const sizeConfig = SIZES[size]
 
   return (
-    <BaseAvatar.Root className={cn(BASE_CLASS, sizeConfig.root, className)}>
+    <BaseAvatar.Root
+      className={cn(BASE_CLASS, sizeConfig.root, className)}
+      style={backgroundColor ? { backgroundColor } : undefined}
+    >
       {avatar && (
         <BaseAvatar.Image
           src={avatar}

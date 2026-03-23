@@ -1,6 +1,7 @@
 import type { FC } from 'react'
+import type { AvatarSize } from '@/app/components/base/avatar'
 import { memo } from 'react'
-import Avatar from '@/app/components/base/avatar'
+import { Avatar } from '@/app/components/base/avatar'
 import { getUserColor } from '@/app/components/workflow/collaboration/utils/user-color'
 import { useAppContext } from '@/context/app-context'
 
@@ -8,6 +9,30 @@ type User = {
   id: string
   name: string
   avatar_url?: string | null
+}
+
+/** Map legacy pixel size to Avatar token (closest; ties favor smaller px, e.g. 28 -> sm). */
+function numericPxToAvatarSize(px: number): AvatarSize {
+  const candidates: { px: number, size: AvatarSize }[] = [
+    { px: 16, size: 'xxs' },
+    { px: 20, size: 'xs' },
+    { px: 24, size: 'sm' },
+    { px: 32, size: 'md' },
+    { px: 36, size: 'lg' },
+    { px: 40, size: 'xl' },
+    { px: 48, size: '2xl' },
+    { px: 64, size: '3xl' },
+  ]
+  let best = candidates[0]!
+  let bestDist = Math.abs(px - best.px)
+  for (const c of candidates) {
+    const d = Math.abs(px - c.px)
+    if (d < bestDist || (d === bestDist && c.px < best.px)) {
+      best = c
+      bestDist = d
+    }
+  }
+  return best.size
 }
 
 type UserAvatarListProps = {
@@ -50,7 +75,7 @@ export const UserAvatarList: FC<UserAvatarListProps> = memo(({
             <Avatar
               name={user.name}
               avatar={user.avatar_url || null}
-              size={size}
+              size={numericPxToAvatarSize(size)}
               className="ring-2 ring-components-panel-bg"
               backgroundColor={userColor}
             />

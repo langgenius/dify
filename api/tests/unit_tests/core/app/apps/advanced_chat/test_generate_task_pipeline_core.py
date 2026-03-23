@@ -125,7 +125,20 @@ class TestAdvancedChatGenerateTaskPipeline:
             )
         )
 
-        event = SimpleNamespace(text="hi", from_variable_selector=None)
+        event = SimpleNamespace(
+            text="hi",
+            from_variable_selector=None,
+            tool_call=None,
+            tool_result=None,
+            chunk_type=None,
+            node_id=None,
+            model_provider=None,
+            model_name=None,
+            model_icon=None,
+            model_icon_dark=None,
+            model_usage=None,
+            model_duration=None,
+        )
 
         responses = list(pipeline._handle_text_chunk_event(event))
 
@@ -389,7 +402,20 @@ class TestAdvancedChatGenerateTaskPipeline:
 
         pipeline._message_cycle_manager = SimpleNamespace(message_to_stream_response=lambda **kwargs: "chunk")
 
-        event = SimpleNamespace(text="hi", from_variable_selector=["a"])
+        event = SimpleNamespace(
+            text="hi",
+            from_variable_selector=["a"],
+            tool_call=None,
+            tool_result=None,
+            chunk_type=None,
+            node_id=None,
+            model_provider=None,
+            model_name=None,
+            model_icon=None,
+            model_icon_dark=None,
+            model_usage=None,
+            model_duration=None,
+        )
         queue_message = SimpleNamespace(event=event)
 
         responses = list(

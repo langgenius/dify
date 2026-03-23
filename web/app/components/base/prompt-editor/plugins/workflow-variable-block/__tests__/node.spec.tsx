@@ -104,6 +104,7 @@ describe('WorkflowVariableBlockNode', () => {
         variables: ['node-1', 'answer'],
         workflowNodesMap: { 'node-1': { title: 'A', type: BlockEnum.LLM } },
         getVarType,
+        nodeOutputVars: [],
         environmentVariables,
         conversationVariables,
         ragVariables,
