@@ -93,7 +93,7 @@ const ConfigJinaReaderModal: FC<Props> = ({
             />
           </div>
           <div className="my-8 flex h-8 items-center justify-between">
-            <a className="flex items-center space-x-1 text-xs font-normal leading-[18px] text-text-accent" target="_blank" href="https://jina.ai/reader/">
+            <a className="flex items-center space-x-1 text-xs font-normal leading-[18px] text-text-accent" target="_blank" rel="noopener noreferrer" href="https://jina.ai/reader/">
               <span>{t(`${I18N_PREFIX}.getApiKeyLinkText`, { ns: 'datasetCreation' })}</span>
               <span aria-hidden className="i-custom-vender-line-general-link-external-02 h-3 w-3" />
             </a>
