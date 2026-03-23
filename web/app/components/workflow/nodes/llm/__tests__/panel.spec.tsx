@@ -1,10 +1,8 @@
 import type { LLMNodeType } from '../types'
 import type { ModelProvider } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { ProviderContextState } from '@/context/provider-context'
 import type { PanelProps } from '@/types/workflow'
 import { render, screen } from '@testing-library/react'
-import * as React from 'react'
-import { defaultPlan } from '@/app/components/billing/config'
+import { createMockProviderContextValue } from '@/__mocks__/provider-context'
 import {
   ConfigurationMethodEnum,
   CurrentSystemQuotaTypeEnum,
@@ -12,16 +10,12 @@ import {
   ModelTypeEnum,
   PreferredProviderTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useProviderContextSelector } from '@/context/provider-context'
+import { ProviderContext } from '@/context/provider-context'
 import { AppModeEnum } from '@/types/app'
 import { BlockEnum } from '../../../types'
 import Panel from '../panel'
 
 const mockUseConfig = vi.fn()
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContextSelector: vi.fn(),
-}))
 
 vi.mock('../use-config', () => ({
   default: (...args: unknown[]) => mockUseConfig(...args),
@@ -31,79 +25,11 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-param
   default: () => <div data-testid="model-parameter-modal" />,
 }))
 
-vi.mock('../components/config-prompt', () => ({
-  default: () => <div data-testid="config-prompt" />,
-}))
-
-vi.mock('../../_base/components/config-vision', () => ({
-  default: () => null,
-}))
-
-vi.mock('../../_base/components/memory-config', () => ({
-  default: () => null,
-}))
-
 vi.mock('../../_base/components/variable/var-reference-picker', () => ({
   default: () => null,
 }))
 
-vi.mock('@/app/components/workflow/nodes/_base/components/prompt/editor', () => ({
-  default: () => null,
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-list', () => ({
-  default: () => null,
-}))
-
-vi.mock('../components/reasoning-format-config', () => ({
-  default: () => null,
-}))
-
-vi.mock('../components/structure-output', () => ({
-  default: () => null,
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/output-vars', () => ({
-  default: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
-  VarItem: () => null,
-}))
-
 type MockUseConfigReturn = ReturnType<typeof mockUseConfig>
-
-const modelProviderSelector = vi.mocked(useProviderContextSelector)
-
-const createProviderContextState = (modelProviders: ModelProvider[]): ProviderContextState => ({
-  modelProviders,
-  refreshModelProviders: vi.fn(),
-  textGenerationModelList: [],
-  supportRetrievalMethods: [],
-  isAPIKeySet: true,
-  plan: defaultPlan,
-  isFetchedPlan: true,
-  enableBilling: false,
-  onPlanInfoChanged: vi.fn(),
-  enableReplaceWebAppLogo: false,
-  modelLoadBalancingEnabled: false,
-  datasetOperatorEnabled: false,
-  enableEducationPlan: false,
-  isEducationWorkspace: false,
-  isEducationAccount: false,
-  allowRefreshEducationVerify: false,
-  educationAccountExpireAt: null,
-  isLoadingEducationAccountInfo: false,
-  isFetchingEducationAccountInfo: false,
-  webappCopyrightEnabled: false,
-  licenseLimit: {
-    workspace_members: {
-      size: 0,
-      limit: 0,
-    },
-  },
-  refreshLicenseLimit: vi.fn(),
-  isAllowTransferWorkspace: false,
-  isAllowPublishAsCustomKnowledgePipelineTemplate: false,
-  humanInputEmailDeliveryEnabled: false,
-})
 
 const createMockModelProvider = (provider: string): ModelProvider => ({
   provider,
@@ -142,7 +68,7 @@ const baseNodeData: LLMNodeType = {
   desc: '',
   model: {
     provider: 'openai',
-    name: 'gpt-4o',
+    name: '',
     mode: AppModeEnum.CHAT,
     completion_params: {},
   },
@@ -196,20 +122,23 @@ const buildUseConfigResult = (overrides?: Partial<MockUseConfigReturn>) => ({
 
 const renderPanel = (data?: Partial<LLMNodeType>) => {
   return render(
-    <Panel
-      id="llm-node"
-      data={{ ...baseNodeData, ...data }}
-      panelProps={panelProps}
-    />,
+    <ProviderContext.Provider value={createMockProviderContextValue({
+      modelProviders: [createMockModelProvider('openai')],
+      isFetchedPlan: true,
+    })}
+    >
+      <Panel
+        id="llm-node"
+        data={{ ...baseNodeData, ...data }}
+        panelProps={panelProps}
+      />
+    </ProviderContext.Provider>,
   )
 }
 
 describe('LLM Panel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    modelProviderSelector.mockImplementation(selector => selector(
-      createProviderContextState([createMockModelProvider('openai')]),
-    ))
     mockUseConfig.mockReturnValue(buildUseConfigResult())
   })
 
