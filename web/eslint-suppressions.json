@@ -4516,6 +4516,11 @@
       "count": 1
     }
   },
+  "app/components/goto-anything/hooks/use-goto-anything-results.ts": {
+    "@tanstack/query/exhaustive-deps": {
+      "count": 1
+    }
+  },
   "app/components/goto-anything/index.tsx": {
     "no-restricted-imports": {
       "count": 1
