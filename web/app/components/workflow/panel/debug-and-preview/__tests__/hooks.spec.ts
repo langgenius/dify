@@ -457,6 +457,26 @@ describe('useChat – handleSend SSE callbacks', () => {
     return hook
   }
 
+  function startWorkflow(overrides: Record<string, any> = {}) {
+    act(() => {
+      capturedCallbacks.onWorkflowStarted({
+        workflow_run_id: 'wfr-1',
+        task_id: 'task-1',
+        conversation_id: null,
+        message_id: null,
+        ...overrides,
+      })
+    })
+  }
+
+  function startNode(nodeId: string, traceId: string, extra: Record<string, any> = {}) {
+    act(() => {
+      capturedCallbacks.onNodeStarted({
+        data: { node_id: nodeId, id: traceId, ...extra },
+      })
+    })
+  }
+
   describe('onData', () => {
     it('should append message content', () => {
       const { result } = setupAndSend()
@@ -781,45 +801,15 @@ describe('useChat – handleSend SSE callbacks', () => {
 
     it('should not override existing conversationId when conversation_id is null', () => {
       const { result } = setupAndSend()
-
-      act(() => {
-        capturedCallbacks.onWorkflowStarted({
-          workflow_run_id: 'wfr-1',
-          task_id: 'task-1',
-          conversation_id: null,
-          message_id: null,
-        })
-      })
-
+      startWorkflow()
       expect(result.current.conversationId).toBe('')
     })
 
     it('should resume existing workflow process when tracing exists', () => {
       const { result } = setupAndSend()
-
-      act(() => {
-        capturedCallbacks.onWorkflowStarted({
-          workflow_run_id: 'wfr-1',
-          task_id: 'task-1',
-          conversation_id: null,
-          message_id: null,
-        })
-      })
-
-      act(() => {
-        capturedCallbacks.onNodeStarted({
-          data: { node_id: 'n1', id: 'trace-1' },
-        })
-      })
-
-      act(() => {
-        capturedCallbacks.onWorkflowStarted({
-          workflow_run_id: 'wfr-2',
-          task_id: 'task-2',
-          conversation_id: null,
-          message_id: null,
-        })
-      })
+      startWorkflow()
+      startNode('n1', 'trace-1')
+      startWorkflow({ workflow_run_id: 'wfr-2', task_id: 'task-2' })
 
       const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
       expect(answer!.workflowProcess!.status).toBe('running')
@@ -846,15 +836,7 @@ describe('useChat – handleSend SSE callbacks', () => {
   describe('onWorkflowFinished', () => {
     it('should update workflow process status', () => {
       const { result } = setupAndSend()
-
-      act(() => {
-        capturedCallbacks.onWorkflowStarted({
-          workflow_run_id: 'wfr-1',
-          task_id: 'task-1',
-          conversation_id: null,
-          message_id: null,
-        })
-      })
+      startWorkflow()
 
       act(() => {
         capturedCallbacks.onWorkflowFinished({ data: { status: 'succeeded' } })
@@ -868,15 +850,7 @@ describe('useChat – handleSend SSE callbacks', () => {
   describe('onIterationStart / onIterationFinish', () => {
     it('should push tracing entry on start', () => {
       const { result } = setupAndSend()
-
-      act(() => {
-        capturedCallbacks.onWorkflowStarted({
-          workflow_run_id: 'wfr-1',
-          task_id: 'task-1',
-          conversation_id: null,
-          message_id: null,
-        })
-      })
+      startWorkflow()
 
       act(() => {
         capturedCallbacks.onIterationStart({
@@ -894,15 +868,7 @@ describe('useChat – handleSend SSE callbacks', () => {
 
     it('should update matching tracing on finish', () => {
       const { result } = setupAndSend()
-
-      act(() => {
-        capturedCallbacks.onWorkflowStarted({
-          workflow_run_id: 'wfr-1',
-          task_id: 'task-1',
-          conversation_id: null,
-          message_id: null,
-        })
-      })
+      startWorkflow()
 
       act(() => {
         capturedCallbacks.onIterationStart({
@@ -925,15 +891,7 @@ describe('useChat – handleSend SSE callbacks', () => {
 
     it('should not update tracing on finish when id does not match', () => {
       const { result } = setupAndSend()
-
-      act(() => {
-        capturedCallbacks.onWorkflowStarted({
-          workflow_run_id: 'wfr-1',
-          task_id: 'task-1',
-          conversation_id: null,
-          message_id: null,
-        })
-      })
+      startWorkflow()
 
       act(() => {
         capturedCallbacks.onIterationStart({
@@ -956,15 +914,7 @@ describe('useChat – handleSend SSE callbacks', () => {
   describe('onLoopStart / onLoopFinish', () => {
     it('should push tracing entry on start', () => {
       const { result } = setupAndSend()
-
-      act(() => {
-        capturedCallbacks.onWorkflowStarted({
-          workflow_run_id: 'wfr-1',
-          task_id: 'task-1',
-          conversation_id: null,
-          message_id: null,
-        })
-      })
+      startWorkflow()
 
       act(() => {
         capturedCallbacks.onLoopStart({
@@ -982,15 +932,7 @@ describe('useChat – handleSend SSE callbacks', () => {
 
     it('should update matching tracing on finish', () => {
       const { result } = setupAndSend()
-
-      act(() => {
-        capturedCallbacks.onWorkflowStarted({
-          workflow_run_id: 'wfr-1',
-          task_id: 'task-1',
-          conversation_id: null,
-          message_id: null,
-        })
-      })
+      startWorkflow()
 
       act(() => {
         capturedCallbacks.onLoopStart({
@@ -1014,15 +956,7 @@ describe('useChat – handleSend SSE callbacks', () => {
 
     it('should not update tracing on finish when id does not match', () => {
       const { result } = setupAndSend()
-
-      act(() => {
-        capturedCallbacks.onWorkflowStarted({
-          workflow_run_id: 'wfr-1',
-          task_id: 'task-1',
-          conversation_id: null,
-          message_id: null,
-        })
-      })
+      startWorkflow()
 
       act(() => {
         capturedCallbacks.onLoopStart({
@@ -1045,21 +979,8 @@ describe('useChat – handleSend SSE callbacks', () => {
   describe('onNodeStarted / onNodeRetry / onNodeFinished', () => {
     it('should add new tracing entry', () => {
       const { result } = setupAndSend()
-
-      act(() => {
-        capturedCallbacks.onWorkflowStarted({
-          workflow_run_id: 'wfr-1',
-          task_id: 'task-1',
-          conversation_id: null,
-          message_id: null,
-        })
-      })
-
-      act(() => {
-        capturedCallbacks.onNodeStarted({
-          data: { node_id: 'node-1', id: 'trace-1' },
-        })
-      })
+      startWorkflow()
+      startNode('node-1', 'trace-1')
 
       const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
       expect(answer!.workflowProcess!.tracing).toHaveLength(1)
@@ -1071,27 +992,9 @@ describe('useChat – handleSend SSE callbacks', () => {
 
     it('should update existing tracing entry with same node_id', () => {
       const { result } = setupAndSend()
-
-      act(() => {
-        capturedCallbacks.onWorkflowStarted({
-          workflow_run_id: 'wfr-1',
-          task_id: 'task-1',
-          conversation_id: null,
-          message_id: null,
-        })
-      })
-
-      act(() => {
-        capturedCallbacks.onNodeStarted({
-          data: { node_id: 'node-1', id: 'trace-1' },
-        })
-      })
-
-      act(() => {
-        capturedCallbacks.onNodeStarted({
-          data: { node_id: 'node-1', id: 'trace-1-v2' },
-        })
-      })
+      startWorkflow()
+      startNode('node-1', 'trace-1')
+      startNode('node-1', 'trace-1-v2')
 
       const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
       expect(answer!.workflowProcess!.tracing).toHaveLength(1)
@@ -1103,15 +1006,7 @@ describe('useChat – handleSend SSE callbacks', () => {
 
     it('should push retry data to tracing', () => {
       const { result } = setupAndSend()
-
-      act(() => {
-        capturedCallbacks.onWorkflowStarted({
-          workflow_run_id: 'wfr-1',
-          task_id: 'task-1',
-          conversation_id: null,
-          message_id: null,
-        })
-      })
+      startWorkflow()
 
       act(() => {
         capturedCallbacks.onNodeRetry({
@@ -1129,21 +1024,8 @@ describe('useChat – handleSend SSE callbacks', () => {
 
     it('should update tracing entry on finish by id', () => {
       const { result } = setupAndSend()
-
-      act(() => {
-        capturedCallbacks.onWorkflowStarted({
-          workflow_run_id: 'wfr-1',
-          task_id: 'task-1',
-          conversation_id: null,
-          message_id: null,
-        })
-      })
-
-      act(() => {
-        capturedCallbacks.onNodeStarted({
-          data: { node_id: 'node-1', id: 'trace-1' },
-        })
-      })
+      startWorkflow()
+      startNode('node-1', 'trace-1')
 
       act(() => {
         capturedCallbacks.onNodeFinished({
@@ -1161,21 +1043,8 @@ describe('useChat – handleSend SSE callbacks', () => {
 
     it('should not update tracing on finish when id does not match', () => {
       const { result } = setupAndSend()
-
-      act(() => {
-        capturedCallbacks.onWorkflowStarted({
-          workflow_run_id: 'wfr-1',
-          task_id: 'task-1',
-          conversation_id: null,
-          message_id: null,
-        })
-      })
-
-      act(() => {
-        capturedCallbacks.onNodeStarted({
-          data: { node_id: 'node-1', id: 'trace-1' },
-        })
-      })
+      startWorkflow()
+      startNode('node-1', 'trace-1')
 
       act(() => {
         capturedCallbacks.onNodeFinished({
@@ -1194,27 +1063,13 @@ describe('useChat – handleSend SSE callbacks', () => {
   describe('onAgentLog', () => {
     function setupWithNode() {
       const hook = setupAndSend()
-
-      act(() => {
-        capturedCallbacks.onWorkflowStarted({
-          workflow_run_id: 'wfr-1',
-          task_id: 'task-1',
-          conversation_id: null,
-          message_id: null,
-        })
-      })
-
+      startWorkflow()
       return hook
     }
 
     it('should create execution_metadata.agent_log when no execution_metadata exists', () => {
       const { result } = setupWithNode()
-
-      act(() => {
-        capturedCallbacks.onNodeStarted({
-          data: { node_id: 'agent-node', id: 'trace-agent' },
-        })
-      })
+      startNode('agent-node', 'trace-agent')
 
       act(() => {
         capturedCallbacks.onAgentLog({
@@ -1229,12 +1084,7 @@ describe('useChat – handleSend SSE callbacks', () => {
 
     it('should create agent_log array when execution_metadata exists but no agent_log', () => {
       const { result } = setupWithNode()
-
-      act(() => {
-        capturedCallbacks.onNodeStarted({
-          data: { node_id: 'agent-node', id: 'trace-agent', execution_metadata: { parallel_id: 'p1' } },
-        })
-      })
+      startNode('agent-node', 'trace-agent', { execution_metadata: { parallel_id: 'p1' } })
 
       act(() => {
         capturedCallbacks.onAgentLog({
@@ -1249,15 +1099,8 @@ describe('useChat – handleSend SSE callbacks', () => {
 
     it('should update existing agent_log entry by message_id', () => {
       const { result } = setupWithNode()
-
-      act(() => {
-        capturedCallbacks.onNodeStarted({
-          data: {
-            node_id: 'agent-node',
-            id: 'trace-agent',
-            execution_metadata: { agent_log: [{ message_id: 'log-1', content: 'v1' }] },
-          },
-        })
+      startNode('agent-node', 'trace-agent', {
+        execution_metadata: { agent_log: [{ message_id: 'log-1', content: 'v1' }] },
       })
 
       act(() => {
@@ -1274,15 +1117,8 @@ describe('useChat – handleSend SSE callbacks', () => {
 
     it('should push new agent_log entry when message_id does not match', () => {
       const { result } = setupWithNode()
-
-      act(() => {
-        capturedCallbacks.onNodeStarted({
-          data: {
-            node_id: 'agent-node',
-            id: 'trace-agent',
-            execution_metadata: { agent_log: [{ message_id: 'log-1', content: 'v1' }] },
-          },
-        })
+      startNode('agent-node', 'trace-agent', {
+        execution_metadata: { agent_log: [{ message_id: 'log-1', content: 'v1' }] },
       })
 
       act(() => {
@@ -1310,21 +1146,8 @@ describe('useChat – handleSend SSE callbacks', () => {
   describe('onHumanInputRequired', () => {
     it('should add form data to humanInputFormDataList', () => {
       const { result } = setupAndSend()
-
-      act(() => {
-        capturedCallbacks.onWorkflowStarted({
-          workflow_run_id: 'wfr-1',
-          task_id: 'task-1',
-          conversation_id: null,
-          message_id: null,
-        })
-      })
-
-      act(() => {
-        capturedCallbacks.onNodeStarted({
-          data: { node_id: 'human-node', id: 'trace-human' },
-        })
-      })
+      startWorkflow()
+      startNode('human-node', 'trace-human')
 
       act(() => {
         capturedCallbacks.onHumanInputRequired({
@@ -1340,21 +1163,8 @@ describe('useChat – handleSend SSE callbacks', () => {
 
     it('should update existing form for same node_id', () => {
       const { result } = setupAndSend()
-
-      act(() => {
-        capturedCallbacks.onWorkflowStarted({
-          workflow_run_id: 'wfr-1',
-          task_id: 'task-1',
-          conversation_id: null,
-          message_id: null,
-        })
-      })
-
-      act(() => {
-        capturedCallbacks.onNodeStarted({
-          data: { node_id: 'human-node', id: 'trace-human' },
-        })
-      })
+      startWorkflow()
+      startNode('human-node', 'trace-human')
 
       act(() => {
         capturedCallbacks.onHumanInputRequired({
@@ -1375,15 +1185,7 @@ describe('useChat – handleSend SSE callbacks', () => {
 
     it('should push new form data for different node_id', () => {
       const { result } = setupAndSend()
-
-      act(() => {
-        capturedCallbacks.onWorkflowStarted({
-          workflow_run_id: 'wfr-1',
-          task_id: 'task-1',
-          conversation_id: null,
-          message_id: null,
-        })
-      })
+      startWorkflow()
 
       act(() => {
         capturedCallbacks.onHumanInputRequired({
@@ -1405,21 +1207,8 @@ describe('useChat – handleSend SSE callbacks', () => {
 
     it('should set tracing node status to Paused when tracing index found', () => {
       const { result } = setupAndSend()
-
-      act(() => {
-        capturedCallbacks.onWorkflowStarted({
-          workflow_run_id: 'wfr-1',
-          task_id: 'task-1',
-          conversation_id: null,
-          message_id: null,
-        })
-      })
-
-      act(() => {
-        capturedCallbacks.onNodeStarted({
-          data: { node_id: 'human-node', id: 'trace-human' },
-        })
-      })
+      startWorkflow()
+      startNode('human-node', 'trace-human')
 
       act(() => {
         capturedCallbacks.onHumanInputRequired({
@@ -1436,15 +1225,7 @@ describe('useChat – handleSend SSE callbacks', () => {
   describe('onHumanInputFormFilled', () => {
     it('should remove form and add to filled list', () => {
       const { result } = setupAndSend()
-
-      act(() => {
-        capturedCallbacks.onWorkflowStarted({
-          workflow_run_id: 'wfr-1',
-          task_id: 'task-1',
-          conversation_id: null,
-          message_id: null,
-        })
-      })
+      startWorkflow()
 
       act(() => {
         capturedCallbacks.onHumanInputRequired({
@@ -1469,15 +1250,7 @@ describe('useChat – handleSend SSE callbacks', () => {
   describe('onHumanInputFormTimeout', () => {
     it('should update expiration_time on form data', () => {
       const { result } = setupAndSend()
-
-      act(() => {
-        capturedCallbacks.onWorkflowStarted({
-          workflow_run_id: 'wfr-1',
-          task_id: 'task-1',
-          conversation_id: null,
-          message_id: null,
-        })
-      })
+      startWorkflow()
 
       act(() => {
         capturedCallbacks.onHumanInputRequired({
@@ -1500,15 +1273,7 @@ describe('useChat – handleSend SSE callbacks', () => {
   describe('onWorkflowPaused', () => {
     it('should set status to Paused', () => {
       const { result } = setupAndSend()
-
-      act(() => {
-        capturedCallbacks.onWorkflowStarted({
-          workflow_run_id: 'wfr-1',
-          task_id: 'task-1',
-          conversation_id: null,
-          message_id: null,
-        })
-      })
+      startWorkflow()
 
       act(() => {
         capturedCallbacks.onWorkflowPaused({ data: {} })
