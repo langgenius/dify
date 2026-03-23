@@ -1,6 +1,6 @@
 import * as amplitude from '@amplitude/analytics-browser'
 import { sessionReplayPlugin } from '@amplitude/plugin-session-replay-browser'
-import { render, waitFor } from '@testing-library/react'
+import { render } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import AmplitudeProvider, { isAmplitudeEnabled } from '../AmplitudeProvider'
 
@@ -44,12 +44,10 @@ describe('AmplitudeProvider', () => {
   })
 
   describe('Component', () => {
-    it('initializes amplitude when enabled', async () => {
+    it('initializes amplitude when enabled', () => {
       render(<AmplitudeProvider sessionReplaySampleRate={0.8} />)
 
-      await waitFor(() => {
-        expect(amplitude.init).toHaveBeenCalledWith('test-api-key', expect.any(Object))
-      })
+      expect(amplitude.init).toHaveBeenCalledWith('test-api-key', expect.any(Object))
       expect(sessionReplayPlugin).toHaveBeenCalledWith({ sampleRate: 0.8 })
       expect(amplitude.add).toHaveBeenCalledTimes(2)
     })
@@ -64,10 +62,6 @@ describe('AmplitudeProvider', () => {
 
     it('pageNameEnrichmentPlugin logic works as expected', async () => {
       render(<AmplitudeProvider />)
-      await waitFor(() => {
-        expect(amplitude.add).toHaveBeenCalled()
-      })
-
       const plugin = vi.mocked(amplitude.add).mock.calls[0]?.[0] as amplitude.Types.EnrichmentPlugin | undefined
       expect(plugin).toBeDefined()
       if (!plugin?.execute || !plugin.setup)

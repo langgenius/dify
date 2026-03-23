@@ -1,6 +1,5 @@
 'use client'
 
-import type { Types } from '@amplitude/analytics-browser'
 import type { FC } from 'react'
 import * as amplitude from '@amplitude/analytics-browser'
 import { sessionReplayPlugin } from '@amplitude/plugin-session-replay-browser'
@@ -12,8 +11,6 @@ export type IAmplitudeProps = {
   sessionReplaySampleRate?: number
 }
 
-let initialized = false
-
 // Check if Amplitude should be enabled
 export const isAmplitudeEnabled = () => {
   return IS_CLOUD_EDITION && !!AMPLITUDE_API_KEY
@@ -21,6 +18,7 @@ export const isAmplitudeEnabled = () => {
 
 // Map URL pathname to English page name for consistent Amplitude tracking
 const getEnglishPageName = (pathname: string): string => {
+  // Remove leading slash and get the first segment
   const segments = pathname.replace(/^\//, '').split('/')
   const firstSegment = segments[0] || 'home'
 
@@ -38,12 +36,14 @@ const getEnglishPageName = (pathname: string): string => {
   return pageNameMap[firstSegment] || firstSegment.charAt(0).toUpperCase() + firstSegment.slice(1)
 }
 
-const pageNameEnrichmentPlugin = (): Types.EnrichmentPlugin => {
+// Enrichment plugin to override page title with English name for page view events
+const pageNameEnrichmentPlugin = (): amplitude.Types.EnrichmentPlugin => {
   return {
     name: 'page-name-enrichment',
     type: 'enrichment',
     setup: async () => undefined,
-    execute: async (event: Types.Event) => {
+    execute: async (event: amplitude.Types.Event) => {
+      // Only modify page view events
       if (event.event_type === '[Amplitude] Page Viewed' && event.event_properties) {
         /* v8 ignore next @preserve */
         const pathname = typeof window !== 'undefined' ? window.location.pathname : ''
@@ -58,34 +58,32 @@ const AmplitudeProvider: FC<IAmplitudeProps> = ({
   sessionReplaySampleRate = 0.5,
 }) => {
   useEffect(() => {
-    if (!isAmplitudeEnabled() || initialized)
+    // Only enable in Saas edition with valid API key
+    if (!isAmplitudeEnabled())
       return
 
-    initialized = true
+    // Initialize Amplitude
+    amplitude.init(AMPLITUDE_API_KEY, {
+      defaultTracking: {
+        sessions: true,
+        pageViews: true,
+        formInteractions: true,
+        fileDownloads: true,
+        attribution: true,
+      },
+    })
 
-    try {
-      amplitude.init(AMPLITUDE_API_KEY, {
-        defaultTracking: {
-          sessions: true,
-          pageViews: true,
-          formInteractions: true,
-          fileDownloads: true,
-          attribution: true,
-        },
-      })
+    // Add page name enrichment plugin to override page title with English name
+    amplitude.add(pageNameEnrichmentPlugin())
 
-      amplitude.add(pageNameEnrichmentPlugin())
+    // Add Session Replay plugin
+    const sessionReplay = sessionReplayPlugin({
+      sampleRate: sessionReplaySampleRate,
+    })
+    amplitude.add(sessionReplay)
+  }, [])
 
-      const sessionReplay = sessionReplayPlugin({
-        sampleRate: sessionReplaySampleRate,
-      })
-      amplitude.add(sessionReplay)
-    }
-    catch (error) {
-      console.error('Failed to initialize Amplitude', error)
-    }
-  }, [sessionReplaySampleRate])
-
+  // This is a client component that renders nothing
   return null
 }
 
