@@ -5,7 +5,8 @@ Part of #32454 — replaces the mock-based unit tests with real database interac
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from collections.abc import Generator
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from decimal import Decimal
 from uuid import uuid4
@@ -16,7 +17,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from dify_graph.nodes.human_input.entities import FormDefinition, UserAction
 from dify_graph.nodes.human_input.enums import HumanInputFormStatus
-from models.account import Account, Tenant, TenantAccountJoin
+from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import ConversationFromSource, InvokeFrom
 from models.execution_extra_content import ExecutionExtraContent, HumanInputContent
 from models.human_input import (
@@ -32,11 +33,14 @@ from repositories.sqlalchemy_execution_extra_content_repository import SQLAlchem
 
 @dataclass
 class _TestScope:
-    """Per-test data scope used to isolate DB rows."""
+    """Per-test data scope used to isolate DB rows.
 
-    tenant_id: str = field(default_factory=lambda: str(uuid4()))
-    app_id: str = field(default_factory=lambda: str(uuid4()))
-    user_id: str = field(default_factory=lambda: str(uuid4()))
+    IDs are populated after flushing the base entities to the database.
+    """
+
+    tenant_id: str = ""
+    app_id: str = ""
+    user_id: str = ""
 
 
 def _cleanup_scope_data(session: Session, scope: _TestScope) -> None:
@@ -65,12 +69,13 @@ def _cleanup_scope_data(session: Session, scope: _TestScope) -> None:
 
 def _seed_base_entities(session: Session, scope: _TestScope) -> None:
     """Create the base tenant, account, and app needed by tests."""
-    tenant = Tenant(id=scope.tenant_id, name=f"Tenant {scope.tenant_id[:8]}")
+    tenant = Tenant(name="Test Tenant")
     session.add(tenant)
+    session.flush()
+    scope.tenant_id = tenant.id
 
     account = Account(
-        id=scope.user_id,
-        name=f"Account {scope.user_id[:8]}",
+        name="Test Account",
         email=f"test_{uuid4()}@example.com",
         password="hashed-password",
         password_salt="salt",
@@ -78,23 +83,24 @@ def _seed_base_entities(session: Session, scope: _TestScope) -> None:
         timezone="UTC",
     )
     session.add(account)
+    session.flush()
+    scope.user_id = account.id
 
     tenant_join = TenantAccountJoin(
         tenant_id=scope.tenant_id,
         account_id=scope.user_id,
-        role="owner",
+        role=TenantAccountRole.OWNER,
         current=True,
     )
     session.add(tenant_join)
 
     app = App(
-        id=scope.app_id,
         tenant_id=scope.tenant_id,
-        name=f"App {scope.app_id[:8]}",
+        name="Test App",
         description="",
         mode="chat",
         icon_type="emoji",
-        icon="🤖",
+        icon="bot",
         icon_background="#FFFFFF",
         enable_site=False,
         enable_api=True,
@@ -107,6 +113,8 @@ def _seed_base_entities(session: Session, scope: _TestScope) -> None:
         updated_by=scope.user_id,
     )
     session.add(app)
+    session.flush()
+    scope.app_id = app.id
 
 
 def _create_conversation(session: Session, scope: _TestScope) -> Conversation:
@@ -258,11 +266,12 @@ def _create_recipient(
 
 
 def _create_delivery(session: Session, *, form_id: str) -> HumanInputDelivery:
-    from models.human_input import ConsoleDeliveryPayload, DeliveryMethodType
+    from dify_graph.nodes.human_input.enums import DeliveryMethodType
+    from models.human_input import ConsoleDeliveryPayload
 
     delivery = HumanInputDelivery(
         form_id=form_id,
-        delivery_method_type=DeliveryMethodType.CONSOLE,
+        delivery_method_type=DeliveryMethodType.WEBAPP,
         channel_payload=ConsoleDeliveryPayload().model_dump_json(),
     )
     session.add(delivery)
@@ -278,7 +287,7 @@ def repository(db_session_with_containers: Session) -> SQLAlchemyExecutionExtraC
 
 
 @pytest.fixture
-def test_scope(db_session_with_containers: Session) -> _TestScope:
+def test_scope(db_session_with_containers: Session) -> Generator[_TestScope]:
     """Provide an isolated scope and clean related data after each test."""
     scope = _TestScope()
     _seed_base_entities(db_session_with_containers, scope)
