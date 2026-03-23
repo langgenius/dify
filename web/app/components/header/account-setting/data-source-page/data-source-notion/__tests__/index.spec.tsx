@@ -13,6 +13,10 @@ import DataSourceNotion from '../index'
 
 type MockQueryResult<T> = UseQueryResult<T, Error>
 
+const { mockToastInfo } = vi.hoisted(() => ({
+  mockToastInfo: vi.fn(),
+}))
+
 // Mock dependencies
 vi.mock('@/context/app-context', () => ({
   useAppContext: vi.fn(),
@@ -27,6 +31,12 @@ vi.mock('@/service/use-common', () => ({
   useDataSourceIntegrates: vi.fn(),
   useNotionConnection: vi.fn(),
   useInvalidDataSourceIntegrates: vi.fn(),
+}))
+
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    info: mockToastInfo,
+  },
 }))
 
 describe('DataSourceNotion Component', () => {
@@ -76,9 +86,6 @@ describe('DataSourceNotion Component', () => {
 
     const locationMock = { href: '', assign: vi.fn() }
     Object.defineProperty(window, 'location', { value: locationMock, writable: true, configurable: true })
-
-    // Clear document body to avoid toast leaks between tests
-    document.body.innerHTML = ''
   })
 
   afterEach(() => {
@@ -312,7 +319,9 @@ describe('DataSourceNotion Component', () => {
       render(<DataSourceNotion />)
 
       // Assert
-      expect(await screen.findByText('common.dataSource.notion.integratedAlert')).toBeInTheDocument()
+      await waitFor(() => {
+        expect(mockToastInfo).toHaveBeenCalledWith('common.dataSource.notion.integratedAlert')
+      })
     })
 
     it('should handle various data types and missing properties in connection data correctly', async () => {
@@ -323,7 +332,7 @@ describe('DataSourceNotion Component', () => {
       // Assert
       await waitFor(() => {
         expect(window.location.href).toBe('')
-        expect(screen.queryByText('common.dataSource.notion.integratedAlert')).not.toBeInTheDocument()
+        expect(mockToastInfo).not.toHaveBeenCalled()
       })
 
       // Act (Broken object)

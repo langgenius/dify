@@ -6,7 +6,7 @@ import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import NotionIcon from '@/app/components/base/notion-icon'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { useAppContext } from '@/context/app-context'
 import { useDataSourceIntegrates, useNotionConnection } from '@/service/use-common'
 import Panel from '../panel'
@@ -63,10 +63,7 @@ const DataSourceNotion: FC<Props> = ({
         window.location.href = data.data
       }
       else if (data.data === 'internal') {
-        Toast.notify({
-          type: 'info',
-          message: t('dataSource.notion.integratedAlert', { ns: 'common' }),
-        })
+        toast.info(t('dataSource.notion.integratedAlert', { ns: 'common' }))
       }
     }
   }, [data, t])

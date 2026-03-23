@@ -1,14 +1,8 @@
 'use client'
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
-import {
-  RiDeleteBinLine,
-  RiLoopLeftLine,
-  RiMoreFill,
-  RiStickyNoteAddLine,
-} from '@remixicon/react'
 import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { syncDataSourceNotion, updateDataSourceNotionAction } from '@/service/common'
 import { useInvalidDataSourceIntegrates } from '@/service/use-common'
 import { cn } from '@/utils/classnames'
@@ -28,10 +22,7 @@ export default function Operate({
   const invalidateDataSourceIntegrates = useInvalidDataSourceIntegrates()
 
   const updateIntegrates = () => {
-    Toast.notify({
-      type: 'success',
-      message: t('api.success', { ns: 'common' }),
-    })
+    toast.success(t('api.success', { ns: 'common' }))
     invalidateDataSourceIntegrates()
   }
   const handleSync = async () => {
@@ -49,7 +40,7 @@ export default function Operate({
         ({ open }) => (
           <>
             <MenuButton className={cn('flex h-8 w-8 items-center justify-center rounded-lg hover:bg-state-base-hover', open && 'bg-state-base-hover')}>
-              <RiMoreFill className="h-4 w-4 text-text-secondary" />
+              <span aria-hidden className="i-ri-more-fill h-4 w-4 text-text-secondary" />
             </MenuButton>
             <Transition
               as={Fragment}
@@ -67,7 +58,7 @@ export default function Operate({
                       className="flex cursor-pointer rounded-lg px-3 py-2 hover:bg-state-base-hover"
                       onClick={onAuthAgain}
                     >
-                      <RiStickyNoteAddLine className="mr-2 mt-[2px] h-4 w-4 text-text-tertiary" />
+                      <span aria-hidden className="i-ri-sticky-note-add-line mr-2 mt-[2px] h-4 w-4 text-text-tertiary" />
                       <div>
                         <div className="system-sm-semibold text-text-secondary">{t('dataSource.notion.changeAuthorizedPages', { ns: 'common' })}</div>
                         <div className="system-xs-regular text-text-tertiary">
@@ -80,7 +71,7 @@ export default function Operate({
                   </MenuItem>
                   <MenuItem>
                     <div className="flex cursor-pointer rounded-lg px-3 py-2 hover:bg-state-base-hover" onClick={handleSync}>
-                      <RiLoopLeftLine className="mr-2 mt-[2px] h-4 w-4 text-text-tertiary" />
+                      <span aria-hidden className="i-ri-loop-left-line mr-2 mt-[2px] h-4 w-4 text-text-tertiary" />
                       <div className="system-sm-semibold text-text-secondary">{t('dataSource.notion.sync', { ns: 'common' })}</div>
                     </div>
                   </MenuItem>
@@ -88,7 +79,7 @@ export default function Operate({
                 <MenuItem>
                   <div className="border-t border-divider-subtle p-1">
                     <div className="flex cursor-pointer rounded-lg px-3 py-2 hover:bg-state-base-hover" onClick={handleRemove}>
-                      <RiDeleteBinLine className="mr-2 mt-[2px] h-4 w-4 text-text-tertiary" />
+                      <span aria-hidden className="i-ri-delete-bin-line mr-2 mt-[2px] h-4 w-4 text-text-tertiary" />
                       <div className="system-sm-semibold text-text-secondary">{t('dataSource.notion.remove', { ns: 'common' })}</div>
                     </div>
                   </div>

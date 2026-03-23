@@ -4,7 +4,7 @@ import type { DataSourceItem } from '@/models/common'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import s from '@/app/components/datasets/create/website/index.module.css'
 import { useAppContext } from '@/context/app-context'
 import { DataSourceProvider } from '@/models/common'
@@ -33,7 +33,7 @@ const DataSourceWebsite: FC<Props> = ({ provider }) => {
 
   useEffect(() => {
     checkSetApiKey()
-  }, [])
+  }, [checkSetApiKey])
 
   const [configTarget, setConfigTarget] = useState<DataSourceProvider | null>(null)
   const showConfig = useCallback((provider: DataSourceProvider) => {
@@ -49,10 +49,10 @@ const DataSourceWebsite: FC<Props> = ({ provider }) => {
     hideConfig()
   }, [checkSetApiKey, hideConfig])
 
-  const getIdByProvider = (provider: DataSourceProvider): string | undefined => {
+  const getIdByProvider = useCallback((provider: DataSourceProvider): string | undefined => {
     const source = sources.find(item => item.provider === provider)
     return source?.id
-  }
+  }, [sources])
 
   const getProviderName = (provider: DataSourceProvider): string => {
     if (provider === DataSourceProvider.fireCrawl)
@@ -70,13 +70,10 @@ const DataSourceWebsite: FC<Props> = ({ provider }) => {
       if (dataSourceId) {
         await removeDataSourceApiKeyBinding(dataSourceId)
         setSources(sources.filter(item => item.provider !== provider))
-        Toast.notify({
-          type: 'success',
-          message: t('api.remove', { ns: 'common' }),
-        })
+        toast.success(t('api.remove', { ns: 'common' }))
       }
     }
-  }, [sources, t])
+  }, [getIdByProvider, sources, t])
 
   return (
     <>

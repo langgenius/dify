@@ -578,6 +578,7 @@
   "provider.azure.apiKey": "API Key",
   "provider.azure.apiKeyPlaceholder": "Enter your API key here",
   "provider.azure.helpTip": "Learn Azure OpenAI Service",
+  "provider.baseUrl": "Base URL",
   "provider.comingSoon": "Coming Soon",
   "provider.editKey": "Edit",
   "provider.encrypted.back": " technology.",

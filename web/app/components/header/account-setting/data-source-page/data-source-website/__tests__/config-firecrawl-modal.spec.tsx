@@ -10,8 +10,20 @@ import ConfigFirecrawlModal from '../config-firecrawl-modal'
  * Tests validation, save logic, and basic rendering for the Firecrawl configuration modal.
  */
 
+const { mockToastError, mockToastSuccess } = vi.hoisted(() => ({
+  mockToastError: vi.fn(),
+  mockToastSuccess: vi.fn(),
+}))
+
 vi.mock('@/service/datasets', () => ({
   createDataSourceApiKeyBinding: vi.fn(),
+}))
+
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    error: mockToastError,
+    success: mockToastSuccess,
+  },
 }))
 
 describe('ConfigFirecrawlModal Component', () => {
@@ -24,10 +36,8 @@ describe('ConfigFirecrawlModal Component', () => {
 
   describe('Initial Rendering', () => {
     it('should render the modal with all fields and buttons', () => {
-      // Act
       render(<ConfigFirecrawlModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
 
-      // Assert
       expect(screen.getByText('datasetCreation.firecrawl.configFirecrawl')).toBeInTheDocument()
       expect(screen.getByPlaceholderText('datasetCreation.firecrawl.apiKeyPlaceholder')).toBeInTheDocument()
       expect(screen.getByPlaceholderText('https://api.firecrawl.dev')).toBeInTheDocument()
@@ -39,29 +49,23 @@ describe('ConfigFirecrawlModal Component', () => {
 
   describe('Form Interactions', () => {
     it('should update state when input fields change', async () => {
-      // Arrange
       render(<ConfigFirecrawlModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
       const apiKeyInput = screen.getByPlaceholderText('datasetCreation.firecrawl.apiKeyPlaceholder')
       const baseUrlInput = screen.getByPlaceholderText('https://api.firecrawl.dev')
 
-      // Act
       fireEvent.change(apiKeyInput, { target: { value: 'firecrawl-key' } })
       fireEvent.change(baseUrlInput, { target: { value: 'https://custom.firecrawl.dev' } })
 
-      // Assert
       expect(apiKeyInput).toHaveValue('firecrawl-key')
       expect(baseUrlInput).toHaveValue('https://custom.firecrawl.dev')
     })
 
     it('should call onCancel when cancel button is clicked', async () => {
       const user = userEvent.setup()
-      // Arrange
       render(<ConfigFirecrawlModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
 
-      // Act
       await user.click(screen.getByRole('button', { name: /common\.operation\.cancel/i }))
 
-      // Assert
       expect(mockOnCancel).toHaveBeenCalled()
     })
   })
@@ -69,32 +73,26 @@ describe('ConfigFirecrawlModal Component', () => {
   describe('Validation', () => {
     it('should show error when saving without API Key', async () => {
       const user = userEvent.setup()
-      // Arrange
       render(<ConfigFirecrawlModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
 
-      // Act
       await user.click(screen.getByRole('button', { name: /common\.operation\.save/i }))
 
-      // Assert
       await waitFor(() => {
-        expect(screen.getByText('common.errorMsg.fieldRequired:{"field":"API Key"}')).toBeInTheDocument()
+        expect(mockToastError).toHaveBeenCalledWith('common.errorMsg.fieldRequired:{"field":"common.provider.apiKey"}')
       })
       expect(createDataSourceApiKeyBinding).not.toHaveBeenCalled()
     })
 
     it('should show error for invalid Base URL format', async () => {
       const user = userEvent.setup()
-      // Arrange
       render(<ConfigFirecrawlModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
       const baseUrlInput = screen.getByPlaceholderText('https://api.firecrawl.dev')
 
-      // Act
       await user.type(baseUrlInput, 'ftp://invalid-url.com')
       await user.click(screen.getByRole('button', { name: /common\.operation\.save/i }))
 
-      // Assert
       await waitFor(() => {
-        expect(screen.getByText('common.errorMsg.urlError')).toBeInTheDocument()
+        expect(mockToastError).toHaveBeenCalledWith('common.errorMsg.urlError')
       })
       expect(createDataSourceApiKeyBinding).not.toHaveBeenCalled()
     })
@@ -103,16 +101,13 @@ describe('ConfigFirecrawlModal Component', () => {
   describe('Saving Logic', () => {
     it('should save successfully with valid API Key and custom URL', async () => {
       const user = userEvent.setup()
-      // Arrange
       vi.mocked(createDataSourceApiKeyBinding).mockResolvedValue({ result: 'success' })
       render(<ConfigFirecrawlModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
 
-      // Act
       await user.type(screen.getByPlaceholderText('datasetCreation.firecrawl.apiKeyPlaceholder'), 'valid-key')
       await user.type(screen.getByPlaceholderText('https://api.firecrawl.dev'), 'http://my-firecrawl.com')
       await user.click(screen.getByRole('button', { name: /common\.operation\.save/i }))
 
-      // Assert
       await waitFor(() => {
         expect(createDataSourceApiKeyBinding).toHaveBeenCalledWith({
           category: 'website',
@@ -127,22 +122,19 @@ describe('ConfigFirecrawlModal Component', () => {
         })
       })
       await waitFor(() => {
-        expect(screen.getByText('common.api.success')).toBeInTheDocument()
+        expect(mockToastSuccess).toHaveBeenCalledWith('common.api.success')
         expect(mockOnSaved).toHaveBeenCalled()
       })
     })
 
     it('should use default Base URL if none is provided during save', async () => {
       const user = userEvent.setup()
-      // Arrange
       vi.mocked(createDataSourceApiKeyBinding).mockResolvedValue({ result: 'success' })
       render(<ConfigFirecrawlModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
 
-      // Act
       await user.type(screen.getByPlaceholderText('datasetCreation.firecrawl.apiKeyPlaceholder'), 'test-key')
       await user.click(screen.getByRole('button', { name: /common\.operation\.save/i }))
 
-      // Assert
       await waitFor(() => {
         expect(createDataSourceApiKeyBinding).toHaveBeenCalledWith(expect.objectContaining({
           credentials: expect.objectContaining({
@@ -156,7 +148,6 @@ describe('ConfigFirecrawlModal Component', () => {
 
     it('should ignore multiple save clicks while saving is in progress', async () => {
       const user = userEvent.setup()
-      // Arrange
       let resolveSave: (value: CommonResponse) => void
       const savePromise = new Promise<CommonResponse>((resolve) => {
         resolveSave = resolve
@@ -166,30 +157,24 @@ describe('ConfigFirecrawlModal Component', () => {
       await user.type(screen.getByPlaceholderText('datasetCreation.firecrawl.apiKeyPlaceholder'), 'test-key')
       const saveBtn = screen.getByRole('button', { name: /common\.operation\.save/i })
 
-      // Act
       await user.click(saveBtn)
       await user.click(saveBtn)
 
-      // Assert
       expect(createDataSourceApiKeyBinding).toHaveBeenCalledTimes(1)
 
-      // Cleanup
       resolveSave!({ result: 'success' })
       await waitFor(() => expect(mockOnSaved).toHaveBeenCalledTimes(1))
     })
 
     it('should accept base_url starting with https://', async () => {
       const user = userEvent.setup()
-      // Arrange
       vi.mocked(createDataSourceApiKeyBinding).mockResolvedValue({ result: 'success' })
       render(<ConfigFirecrawlModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
 
-      // Act
       await user.type(screen.getByPlaceholderText('datasetCreation.firecrawl.apiKeyPlaceholder'), 'test-key')
       await user.type(screen.getByPlaceholderText('https://api.firecrawl.dev'), 'https://secure-firecrawl.com')
       await user.click(screen.getByRole('button', { name: /common\.operation\.save/i }))
 
-      // Assert
       await waitFor(() => {
         expect(createDataSourceApiKeyBinding).toHaveBeenCalledWith(expect.objectContaining({
           credentials: expect.objectContaining({
