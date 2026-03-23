@@ -85,9 +85,6 @@ importers:
       '@heroicons/react':
         specifier: 2.2.0
         version: 2.2.0(react@19.2.4)
-      '@hono/node-server':
-        specifier: 1.19.11
-        version: 1.19.11(hono@4.12.8)
       '@lexical/code':
         specifier: npm:lexical-code-no-prism@0.41.0
         version: lexical-code-no-prism@0.41.0(@lexical/utils@0.42.0)(lexical@0.42.0)
@@ -211,9 +208,6 @@ importers:
       foxact:
         specifier: 0.3.0
         version: 0.3.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      hono:
-        specifier: 4.12.8
-        version: 4.12.8
       html-entities:
         specifier: 2.6.0
         version: 2.6.0
@@ -392,6 +386,9 @@ importers:
       '@eslint-react/eslint-plugin':
         specifier: 3.0.0
         version: 3.0.0(eslint@10.1.0(jiti@1.21.7))(typescript@5.9.3)
+      '@hono/node-server':
+        specifier: 1.19.11
+        version: 1.19.11(hono@4.12.8)
       '@iconify-json/heroicons':
         specifier: 1.2.3
         version: 1.2.3
@@ -554,6 +551,9 @@ importers:
       eslint-plugin-storybook:
         specifier: 10.3.1
         version: 10.3.1(eslint@10.1.0(jiti@1.21.7))(storybook@10.3.1(@testing-library/dom@10.4.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(typescript@5.9.3)
+      hono:
+        specifier: 4.12.8
+        version: 4.12.8
       husky:
         specifier: 9.1.7
         version: 9.1.7
