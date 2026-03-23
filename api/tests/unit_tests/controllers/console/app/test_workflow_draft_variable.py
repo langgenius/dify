@@ -102,6 +102,7 @@ class TestWorkflowDraftVariableEndpoints:
         mock_var = MagicMock()
         mock_var.app_id = "app_123"
         mock_var.id = "var_123"
+        mock_var.user_id = "user_123"
         mock_var.name = "test_var"
         mock_var.description = ""
         mock_var.get_variable_type.return_value = variable_type

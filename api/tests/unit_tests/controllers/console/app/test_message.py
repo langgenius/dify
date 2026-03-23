@@ -202,7 +202,7 @@ class TestMessageEndpoints:
             q_mock = mock_db.data_query
             q_mock.where.return_value.first.side_effect = [mock_conv]
             q_mock.where.return_value.order_by.return_value.limit.return_value.all.return_value = [mock_msg]
-            mock_db.session.scalar.return_value = False
+            mock_db.session.scalar.side_effect = [True, False]
 
             resp = api.get(**v_args)
             assert resp["limit"] == 1
