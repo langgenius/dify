@@ -73,11 +73,11 @@ const ConfigJinaReaderModal: FC<Props> = ({
     <Dialog open onOpenChange={open => !open && onCancel()}>
       <DialogContent
         backdropProps={{ forceRender: true }}
-        className="w-[640px] max-w-[calc(100vw-1rem)] overflow-hidden p-0"
+        className="w-[640px] max-w-[calc(100vw-1rem)] p-0"
       >
         <div className="px-8 pt-8">
           <div className="mb-4 flex items-center justify-between">
-            <DialogTitle className="system-xl-semibold text-text-primary">
+            <DialogTitle className="text-text-primary system-xl-semibold">
               {t(`${I18N_PREFIX}.configJinaReader`, { ns: 'datasetCreation' })}
             </DialogTitle>
           </div>
