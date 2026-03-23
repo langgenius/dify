@@ -19,7 +19,6 @@ export const DSLImportMode = {
   YAML_URL: 'yaml-url',
 } as const
 
-// eslint-disable-next-line ts/no-redeclare -- value-type pair
 export type DSLImportMode = typeof DSLImportMode[keyof typeof DSLImportMode]
 
 export const DSLImportStatus = {
@@ -29,7 +28,6 @@ export const DSLImportStatus = {
   FAILED: 'failed',
 } as const
 
-// eslint-disable-next-line ts/no-redeclare -- value-type pair
 export type DSLImportStatus = typeof DSLImportStatus[keyof typeof DSLImportStatus]
 
 export type AppListResponse = {

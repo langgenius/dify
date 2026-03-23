@@ -94,7 +94,6 @@ export const ProviderName = {
   ChatGLM: 'chatglm',
 } as const
 
-// eslint-disable-next-line ts/no-redeclare -- value-type pair
 export type ProviderName = typeof ProviderName[keyof typeof ProviderName]
 
 export type ProviderAzureToken = {
@@ -196,7 +195,6 @@ export const DataSourceCategory = {
   website: 'website',
 } as const
 
-// eslint-disable-next-line ts/no-redeclare -- value-type pair
 export type DataSourceCategory = typeof DataSourceCategory[keyof typeof DataSourceCategory]
 
 export enum DataSourceProvider {

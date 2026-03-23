@@ -150,7 +150,6 @@ export const AgentStrategy = {
   react: 'react',
 } as const
 
-// eslint-disable-next-line ts/no-redeclare -- value-type pair
 export type AgentStrategy = typeof AgentStrategy[keyof typeof AgentStrategy]
 
 export type CompletionParams = {

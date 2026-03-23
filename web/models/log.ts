@@ -221,7 +221,6 @@ export const WorkflowRunTriggeredFrom = {
   PLUGIN: 'plugin',
 } as const
 
-// eslint-disable-next-line ts/no-redeclare -- value-type pair
 export type WorkflowRunTriggeredFrom = typeof WorkflowRunTriggeredFrom[keyof typeof WorkflowRunTriggeredFrom]
 
 export type TriggerMetadata = {
