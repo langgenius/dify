@@ -10,7 +10,7 @@
   "agent.setting.description": "Ajan Asistanı ayarları, Ajan modunu ve yerleşik promptlar gibi gelişmiş özellikleri ayarlamanıza olanak tanır. Sadece Ajan türünde kullanılabilir.",
   "agent.setting.maximumIterations.description": "Bir Ajan asistanının gerçekleştirebileceği yineleme sayısını sınırlayın",
   "agent.setting.maximumIterations.name": "Maksimum Yineleme",
-  "agent.setting.name": "Agent Ayarları",
+  "agent.setting.name": "Ajan Ayarları",
   "agent.tools.description": "Araçlar kullanmak, internette arama yapmak veya bilimsel hesaplamalar yapmak gibi LLM yeteneklerini genişletebilir",
   "agent.tools.enabled": "Etkinleştirildi",
   "agent.tools.name": "Araçlar",
