@@ -135,11 +135,11 @@ class CommandNode(Node[CommandNodeData]):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: Mapping[str, Any],
+        node_data: CommandNodeData,
     ) -> Mapping[str, Sequence[str]]:
         _ = graph_config
 
-        typed_node_data = CommandNodeData.model_validate(node_data)
+        typed_node_data = node_data
 
         selectors: list[VariableSelector] = []
         selectors += list(variable_template_parser.extract_selectors_from_template(typed_node_data.command))

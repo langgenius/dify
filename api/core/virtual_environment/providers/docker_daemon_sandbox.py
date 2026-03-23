@@ -148,8 +148,7 @@ class DockerDemuxer:
         to periodically check for errors and closed state instead of blocking forever.
         """
         if self._error:
-            error = cast(BaseException, self._error)
-            raise TransportEOFError(f"Demuxer error: {error}") from error
+            raise TransportEOFError(f"Demuxer error: {self._error}") from self._error
 
         while True:
             try:
@@ -584,7 +583,7 @@ class DockerDaemonEnvironment(VirtualEnvironment):
                 stderr=True,
                 tty=False,
                 workdir=working_dir,
-                environment=environments,
+                environment=dict(environments) if environments else None,
             ),
         )
 

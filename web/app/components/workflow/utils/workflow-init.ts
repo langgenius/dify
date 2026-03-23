@@ -1,5 +1,3 @@
-import type { CustomGroupNodeData } from '../custom-group-node'
-import type { GroupNodeData } from '../nodes/group/types'
 import type { IfElseNodeType } from '../nodes/if-else/types'
 import type { IterationNodeType } from '../nodes/iteration/types'
 import type { LLMNodeType } from '../nodes/llm/types'
@@ -20,7 +18,6 @@ import {
   NODE_WIDTH_X_OFFSET,
   START_INITIAL_POSITION,
 } from '../constants'
-import { CUSTOM_GROUP_NODE, GROUP_CHILDREN_Z_INDEX } from '../custom-group-node'
 import { branchNameCorrect } from '../nodes/if-else/utils'
 import { CUSTOM_ITERATION_START_NODE } from '../nodes/iteration-start/constants'
 import { CUSTOM_LOOP_START_NODE } from '../nodes/loop-start/constants'
@@ -93,16 +90,10 @@ export const preprocessNodesAndEdges = (nodes: Node[], edges: Edge[]) => {
     node => node.data.type === BlockEnum.Iteration,
   )
   const hasLoopNode = nodes.some(node => node.data.type === BlockEnum.Loop)
-  const hasGroupNode = nodes.some(node => node.type === CUSTOM_GROUP_NODE)
-  const hasBusinessGroupNode = nodes.some(
-    node => node.data.type === BlockEnum.Group,
-  )
 
   if (
     !hasIterationNode
     && !hasLoopNode
-    && !hasGroupNode
-    && !hasBusinessGroupNode
   ) {
     return {
       nodes,
@@ -231,137 +222,9 @@ export const preprocessNodesAndEdges = (nodes: Node[], edges: Edge[]) => {
     }
   })
 
-  // Derive Group internal edges (input → entries, leaves → exits)
-  const groupInternalEdges: Edge[] = []
-  const groupNodes = nodes.filter(node => node.type === CUSTOM_GROUP_NODE)
-
-  for (const groupNode of groupNodes) {
-    const groupData = groupNode.data as unknown as CustomGroupNodeData
-    const { group } = groupData
-
-    if (!group)
-      continue
-
-    const { inputNodeId, entryNodeIds, exitPorts } = group
-
-    // Derive edges: input → each entry node
-    for (const entryId of entryNodeIds) {
-      const entryNode = nodesMap[entryId]
-      if (entryNode) {
-        groupInternalEdges.push({
-          id: `group-internal-${inputNodeId}-source-${entryId}-target`,
-          type: 'custom',
-          source: inputNodeId,
-          sourceHandle: 'source',
-          target: entryId,
-          targetHandle: 'target',
-          data: {
-            sourceType: '' as any, // Group input has empty type
-            targetType: entryNode.data.type,
-            _isGroupInternal: true,
-            _groupId: groupNode.id,
-          },
-          zIndex: GROUP_CHILDREN_Z_INDEX,
-        } as Edge)
-      }
-    }
-
-    // Derive edges: each leaf node → exit port
-    for (const exitPort of exitPorts) {
-      const leafNode = nodesMap[exitPort.leafNodeId]
-      if (leafNode) {
-        groupInternalEdges.push({
-          id: `group-internal-${exitPort.leafNodeId}-${exitPort.sourceHandle}-${exitPort.portNodeId}-target`,
-          type: 'custom',
-          source: exitPort.leafNodeId,
-          sourceHandle: exitPort.sourceHandle,
-          target: exitPort.portNodeId,
-          targetHandle: 'target',
-          data: {
-            sourceType: leafNode.data.type,
-            targetType: '' as string, // Exit port has empty type
-            _isGroupInternal: true,
-            _groupId: groupNode.id,
-          },
-          zIndex: GROUP_CHILDREN_Z_INDEX,
-        } as Edge)
-      }
-    }
-  }
-
-  // Rebuild isTemp edges for business Group nodes (BlockEnum.Group)
-  // These edges connect the group node to external nodes for visual display
-  const groupTempEdges: Edge[] = []
-  const inboundEdgeIds = new Set<string>()
-
-  nodes.forEach((groupNode) => {
-    if (groupNode.data.type !== BlockEnum.Group)
-      return
-
-    const groupData = groupNode.data as GroupNodeData
-    const {
-      members = [],
-      headNodeIds = [],
-      leafNodeIds = [],
-      handlers = [],
-    } = groupData
-    const memberSet = new Set(members.map(m => m.id))
-    const headSet = new Set(headNodeIds)
-    const leafSet = new Set(leafNodeIds)
-
-    edges.forEach((edge) => {
-      // Inbound edge: source outside group, target is a head node
-      // Use Set to dedupe since multiple head nodes may share same external source
-      if (!memberSet.has(edge.source) && headSet.has(edge.target)) {
-        const sourceHandle = edge.sourceHandle || 'source'
-        const edgeId = `${edge.source}-${sourceHandle}-${groupNode.id}-target`
-        if (!inboundEdgeIds.has(edgeId)) {
-          inboundEdgeIds.add(edgeId)
-          groupTempEdges.push({
-            id: edgeId,
-            type: 'custom',
-            source: edge.source,
-            sourceHandle,
-            target: groupNode.id,
-            targetHandle: 'target',
-            data: {
-              sourceType: edge.data?.sourceType,
-              targetType: BlockEnum.Group,
-              _isTemp: true,
-            },
-          } as Edge)
-        }
-      }
-
-      // Outbound edge: source is a leaf node, target outside group
-      if (leafSet.has(edge.source) && !memberSet.has(edge.target)) {
-        const edgeSourceHandle = edge.sourceHandle || 'source'
-        const handler = handlers.find(
-          h =>
-            h.nodeId === edge.source && h.sourceHandle === edgeSourceHandle,
-        )
-        if (handler) {
-          groupTempEdges.push({
-            id: `${groupNode.id}-${handler.id}-${edge.target}-${edge.targetHandle}`,
-            type: 'custom',
-            source: groupNode.id,
-            sourceHandle: handler.id,
-            target: edge.target!,
-            targetHandle: edge.targetHandle,
-            data: {
-              sourceType: BlockEnum.Group,
-              targetType: edge.data?.targetType,
-              _isTemp: true,
-            },
-          } as Edge)
-        }
-      }
-    })
-  })
-
   return {
     nodes: [...nodes, ...newIterationStartNodes, ...newLoopStartNodes],
-    edges: [...edges, ...newEdges, ...groupInternalEdges, ...groupTempEdges],
+    edges: [...edges, ...newEdges],
   }
 }
 
@@ -447,16 +310,6 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
       ).classes.map((topic) => {
         return topic
       })
-    }
-
-    if (node.data.type === BlockEnum.Group) {
-      const groupData = node.data as GroupNodeData
-      if (groupData.handlers?.length) {
-        node.data._targetBranches = groupData.handlers.map(handler => ({
-          id: handler.id,
-          name: handler.label || handler.id,
-        }))
-      }
     }
 
     if (node.data.type === BlockEnum.Iteration) {

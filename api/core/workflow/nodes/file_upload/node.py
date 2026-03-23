@@ -157,10 +157,10 @@ class FileUploadNode(Node[FileUploadNodeData]):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: Mapping[str, Any],
+        node_data: FileUploadNodeData,
     ) -> Mapping[str, Sequence[str]]:
         _ = graph_config
-        typed_node_data = FileUploadNodeData.model_validate(node_data)
+        typed_node_data = node_data
         return {node_id + ".files": typed_node_data.variable_selector}
 
     @staticmethod

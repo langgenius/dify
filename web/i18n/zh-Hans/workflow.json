@@ -1154,6 +1154,8 @@
   "versionHistory.editVersionInfo": "编辑信息",
   "versionHistory.filter.all": "全部",
   "versionHistory.filter.empty": "没有匹配的版本",
+  "viewPicker.graph": "工作流",
+  "viewPicker.skill": "技能",
   "versionHistory.filter.onlyShowNamedVersions": "只显示已命名版本",
   "versionHistory.filter.onlyYours": "仅你的",
   "versionHistory.filter.reset": "重置",

@@ -17,6 +17,7 @@ from sqlalchemy import select
 
 from core.agent.entities import AgentEntity, AgentLog, AgentResult, AgentToolEntity, ExecutionContext
 from core.agent.patterns import StrategyFactory
+from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.helper.code_executor import CodeExecutor, CodeLanguage
 from core.llm_generator.output_parser.errors import OutputParserError
 from core.llm_generator.output_parser.file_ref import (
@@ -28,9 +29,10 @@ from core.llm_generator.output_parser.structured_output import (
     invoke_llm_with_structured_output,
 )
 from core.memory.base import BaseMemory
-from core.model_manager import ModelInstance
+from core.model_manager import ModelInstance, ModelManager
 from core.prompt.entities.advanced_prompt_entities import CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
+from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.sandbox import Sandbox
 from core.sandbox.bash.session import MAX_OUTPUT_FILE_SIZE, MAX_OUTPUT_FILES, SandboxBashSession
 from core.sandbox.entities.config import AppAssets
@@ -38,6 +40,7 @@ from core.skill.assembler import SkillDocumentAssembler
 from core.skill.constants import SkillAttrs
 from core.skill.entities.skill_bundle import SkillBundle
 from core.skill.entities.skill_document import SkillDocument
+from core.skill.entities.skill_metadata import SkillMetadata
 from core.skill.entities.tool_dependencies import ToolDependencies, ToolDependency
 from core.tools.__base.tool import Tool
 from core.tools.signature import sign_tool_file, sign_upload_file
@@ -54,15 +57,12 @@ from dify_graph.enums import (
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
-from dify_graph.file import File, FileTransferMethod, FileType
+from dify_graph.file import File, FileTransferMethod, FileType, file_manager
 from dify_graph.model_runtime.entities import (
-    AssistantPromptMessage,
     ImagePromptMessageContent,
     PromptMessage,
-    PromptMessageRole,
-    SystemPromptMessage,
+    PromptMessageContentType,
     TextPromptMessageContent,
-    UserPromptMessage,
 )
 from dify_graph.model_runtime.entities.llm_entities import (
     LLMResult,
@@ -72,8 +72,18 @@ from dify_graph.model_runtime.entities.llm_entities import (
     LLMStructuredOutput,
     LLMUsage,
 )
-from dify_graph.model_runtime.entities.message_entities import PromptMessageContentUnionTypes
-from dify_graph.model_runtime.memory import PromptMessageMemory
+from dify_graph.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    PromptMessageContentUnionTypes,
+    PromptMessageRole,
+    SystemPromptMessage,
+    UserPromptMessage,
+)
+from dify_graph.model_runtime.entities.model_entities import (
+    ModelFeature,
+    ModelPropertyKey,
+    ModelType,
+)
 from dify_graph.model_runtime.utils.encoders import jsonable_encoder
 from dify_graph.node_events import (
     AgentLogEvent,
@@ -91,7 +101,6 @@ from dify_graph.node_events.node import ChunkType, ThoughtEndChunkEvent, Thought
 from dify_graph.nodes.base.entities import VariableSelector
 from dify_graph.nodes.base.node import Node
 from dify_graph.nodes.base.variable_template_parser import VariableTemplateParser
-from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory, TemplateRenderer
 from dify_graph.nodes.protocols import HttpClientProtocol
 from dify_graph.runtime import VariablePool
 from dify_graph.variables import (
@@ -116,6 +125,7 @@ from .entities import (
     LLMNodeCompletionModelPromptTemplate,
     LLMNodeData,
     LLMTraceSegment,
+    ModelConfig,
     ModelTraceSegment,
     PromptMessageContext,
     StreamBuffers,
@@ -129,6 +139,10 @@ from .exc import (
     InvalidContextStructureError,
     InvalidVariableTypeError,
     LLMNodeError,
+    MemoryRolePrefixRequiredError,
+    ModelNotExistError,
+    NoPromptFoundError,
+    TemplateTypeNotSupportError,
     VariableNotFoundError,
 )
 from .file_saver import FileSaverImpl, LLMFileSaver
@@ -146,16 +160,7 @@ class LLMNode(Node[LLMNodeData]):
     # Compiled regex for extracting <think> blocks (with compatibility for attributes)
     _THINK_PATTERN = re.compile(r"<think[^>]*>(.*?)</think>", re.IGNORECASE | re.DOTALL)
 
-    # Instance attributes specific to LLMNode.
-    # Output variable for file
-    _file_outputs: list[File]
-
     _llm_file_saver: LLMFileSaver
-    _credentials_provider: CredentialsProvider
-    _model_factory: ModelFactory
-    _model_instance: ModelInstance
-    _memory: PromptMessageMemory | None
-    _template_renderer: TemplateRenderer
 
     def __init__(
         self,
@@ -164,12 +169,12 @@ class LLMNode(Node[LLMNodeData]):
         graph_init_params: GraphInitParams,
         graph_runtime_state: GraphRuntimeState,
         *,
-        credentials_provider: CredentialsProvider,
-        model_factory: ModelFactory,
-        model_instance: ModelInstance,
         http_client: HttpClientProtocol,
-        template_renderer: TemplateRenderer,
-        memory: PromptMessageMemory | None = None,
+        credentials_provider: object | None = None,
+        model_factory: object | None = None,
+        model_instance: object | None = None,
+        template_renderer: object | None = None,
+        memory: object | None = None,
         llm_file_saver: LLMFileSaver | None = None,
     ):
         super().__init__(
@@ -178,14 +183,7 @@ class LLMNode(Node[LLMNodeData]):
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
         )
-        # LLM file outputs, used for MultiModal outputs.
-        self._file_outputs = []
-
-        self._credentials_provider = credentials_provider
-        self._model_factory = model_factory
-        self._model_instance = model_instance
-        self._memory = memory
-        self._template_renderer = template_renderer
+        self._file_outputs: list[File] = []
 
         if llm_file_saver is None:
             dify_ctx = self.require_dify_context()
@@ -252,11 +250,12 @@ class LLMNode(Node[LLMNodeData]):
                 node_inputs["#context_files#"] = [file.model_dump() for file in context_files]
 
             # fetch model config
-            model_instance = self._model_instance
-            model_name = model_instance.model_name
-            model_provider = model_instance.provider
-            model_stop = model_instance.stop
+            model_instance, model_config = LLMNode._fetch_model_config(
+                node_data_model=self.node_data.model,
+                tenant_id=self.tenant_id,
+            )
 
+            # fetch memory
             memory = llm_utils.fetch_memory(
                 variable_pool=variable_pool,
                 app_id=self.app_id,
@@ -274,6 +273,7 @@ class LLMNode(Node[LLMNodeData]):
                 ):
                     query = query_variable.text
 
+            # Get prompt messages
             prompt_messages: Sequence[PromptMessage]
             stop: Sequence[str] | None
             if isinstance(prompt_template, list) and context_refs:
@@ -285,7 +285,7 @@ class LLMNode(Node[LLMNodeData]):
                     files=files,
                     context=context,
                     memory=memory,
-                    model_instance=model_instance,
+                    model_config=model_config,
                     context_files=context_files,
                 )
             else:
@@ -294,8 +294,7 @@ class LLMNode(Node[LLMNodeData]):
                     sys_files=files,
                     context=context,
                     memory=memory,
-                    model_instance=model_instance,
-                    stop=model_stop,
+                    model_config=model_config,
                     prompt_template=cast(
                         Sequence[LLMNodeChatModelMessage] | LLMNodeCompletionModelPromptTemplate,
                         self.node_data.prompt_template,
@@ -305,24 +304,10 @@ class LLMNode(Node[LLMNodeData]):
                     vision_detail=self.node_data.vision.configs.detail,
                     variable_pool=variable_pool,
                     jinja2_variables=self.node_data.prompt_config.jinja2_variables,
+                    tenant_id=self.tenant_id,
                     context_files=context_files,
                     sandbox=self.graph_runtime_state.sandbox,
                 )
-
-            # handle invoke result
-            generator = LLMNode.invoke_llm(
-                model_instance=model_instance,
-                prompt_messages=prompt_messages,
-                stop=stop,
-                user_id=self.require_dify_context().user_id,
-                structured_output_enabled=self.node_data.structured_output_enabled,
-                structured_output=self.node_data.structured_output,
-                file_saver=self._llm_file_saver,
-                file_outputs=self._file_outputs,
-                node_id=self._node_id,
-                node_type=self.node_type,
-                reasoning_format=self.node_data.reasoning_format,
-            )
 
             # Variables for outputs
             generation_data: LLMGenerationData | None = None
@@ -436,14 +421,14 @@ class LLMNode(Node[LLMNodeData]):
 
             # Unified process_data building
             process_data = {
-                "model_mode": self.node_data.model.mode,
+                "model_mode": model_config.mode,
                 "prompts": PromptMessageUtil.prompt_messages_to_prompt_for_saving(
-                    model_mode=self.node_data.model.mode, prompt_messages=prompt_messages
+                    model_mode=model_config.mode, prompt_messages=prompt_messages
                 ),
                 "usage": jsonable_encoder(usage),
                 "finish_reason": finish_reason,
-                "model_provider": model_provider,
-                "model_name": model_name,
+                "model_provider": model_config.provider,
+                "model_name": model_config.model,
             }
             if self.tool_call_enabled and self._node_data.tools:
                 process_data["tools"] = [
@@ -558,21 +543,6 @@ class LLMNode(Node[LLMNodeData]):
 
         The ``generation`` field always carries the full structured representation
         (content, reasoning, tool_calls, sequence) regardless of runtime mode.
-
-        Args:
-            is_sandbox: Whether the current runtime is sandbox mode.
-            clean_text: Processed text for outputs["text"]; may keep <think> tags for "tagged" format.
-            reasoning_content: Native model reasoning from the API response.
-            generation_reasoning_content: Reasoning for the generation field, extracted from <think>
-                tags via _split_reasoning (always tag-free). Falls back to reasoning_content
-                if empty (no <think> tags found).
-            generation_clean_content: Clean text for the generation field (always tag-free).
-                Differs from clean_text only when reasoning_format is "tagged".
-            usage: LLM usage statistics.
-            finish_reason: Finish reason from LLM.
-            prompt_messages: Prompt messages sent to the LLM.
-            generation_data: Multi-turn generation data from tool/sandbox invocation, or None.
-            structured_output: Structured output if enabled.
         """
         # Common outputs shared by both runtimes
         outputs: dict[str, Any] = {
@@ -588,21 +558,17 @@ class LLMNode(Node[LLMNodeData]):
 
         # Build generation field
         if generation_data:
-            # Agent/sandbox runtime: generation_data captures multi-turn interactions
             generation = {
                 "content": generation_data.text,
-                "reasoning_content": generation_data.reasoning_contents,  # [thought1, thought2, ...]
+                "reasoning_content": generation_data.reasoning_contents,
                 "tool_calls": [self._serialize_tool_call(item) for item in generation_data.tool_calls],
                 "sequence": generation_data.sequence,
             }
             files_to_output = list(generation_data.files)
-            # Merge auto-collected/structured-output files from self._file_outputs
             if self._file_outputs:
                 existing_ids = {f.id for f in files_to_output}
                 files_to_output.extend(f for f in self._file_outputs if f.id not in existing_ids)
         else:
-            # Classical runtime: use pre-computed generation-specific text pair,
-            # falling back to native model reasoning if no <think> tags were found.
             generation_reasoning = generation_reasoning_content or reasoning_content
             generation_content = generation_clean_content or clean_text
             sequence: list[dict[str, Any]] = []
@@ -630,6 +596,7 @@ class LLMNode(Node[LLMNodeData]):
     @staticmethod
     def invoke_llm(
         *,
+        node_data_model: ModelConfig,
         model_instance: ModelInstance,
         prompt_messages: Sequence[PromptMessage],
         stop: Sequence[str] | None = None,
@@ -642,10 +609,11 @@ class LLMNode(Node[LLMNodeData]):
         node_type: NodeType,
         reasoning_format: Literal["separated", "tagged"] = "tagged",
     ) -> Generator[NodeEventBase | LLMStructuredOutput, None, None]:
-        model_parameters = model_instance.parameters
-        invoke_model_parameters = dict(model_parameters)
-
-        model_schema = llm_utils.fetch_model_schema(model_instance=model_instance)
+        model_schema = model_instance.model_type_instance.get_model_schema(
+            node_data_model.name, model_instance.credentials
+        )
+        if not model_schema:
+            raise ValueError(f"Model schema not found for {node_data_model.name}")
 
         invoke_result: LLMResult | Generator[LLMResultChunk | LLMStructuredOutput, None, None]
         if structured_output_schema:
@@ -657,7 +625,7 @@ class LLMNode(Node[LLMNodeData]):
                 model_instance=model_instance,
                 prompt_messages=prompt_messages,
                 json_schema=structured_output_schema,
-                model_parameters=invoke_model_parameters,
+                model_parameters=node_data_model.completion_params,
                 stop=list(stop or []),
                 user=user_id,
                 allow_file_path=allow_file_path,
@@ -667,7 +635,7 @@ class LLMNode(Node[LLMNodeData]):
 
             invoke_result = model_instance.invoke_llm(
                 prompt_messages=list(prompt_messages),
-                model_parameters=invoke_model_parameters,
+                model_parameters=node_data_model.completion_params,
                 stop=list(stop or []),
                 stream=True,
                 user=user_id,
@@ -725,12 +693,10 @@ class LLMNode(Node[LLMNodeData]):
         first_token_time = None
         has_content = False
 
-        collected_structured_output = None  # Collect structured_output from streaming chunks
-        # Consume the invoke result and handle generator exception
+        collected_structured_output = None
         try:
             for result in invoke_result:
                 if isinstance(result, LLMResultChunkWithStructuredOutput):
-                    # Collect structured_output from the chunk
                     if result.structured_output is not None:
                         collected_structured_output = dict(result.structured_output)
                     yield result
@@ -741,20 +707,17 @@ class LLMNode(Node[LLMNodeData]):
                         file_saver=file_saver,
                         file_outputs=file_outputs,
                     ):
-                        # Detect first token for TTFT calculation
                         if text_part and not has_content:
                             first_token_time = time.perf_counter()
                             has_content = True
 
                         full_text_buffer.write(text_part)
-                        # Text output: always forward raw chunk (keep <think> tags intact)
                         yield StreamChunkEvent(
                             selector=[node_id, "text"],
                             chunk=text_part,
                             is_final=False,
                         )
 
-                        # Generation output: split out thoughts, forward only non-thought content chunks
                         for kind, segment in think_parser.process(text_part):
                             if not segment:
                                 if kind not in {"thought_start", "thought_end"}:
@@ -786,12 +749,9 @@ class LLMNode(Node[LLMNodeData]):
                                     is_final=False,
                                 )
 
-                    # Update the whole metadata
                     if not model and result.model:
                         model = result.model
                     if len(prompt_messages) == 0:
-                        # TODO(QuantumGhost): it seems that this update has no visable effect.
-                        # What's the purpose of the line below?
                         prompt_messages = list(result.prompt_messages)
                     if usage.prompt_tokens == 0 and result.delta.usage:
                         usage = result.delta.usage
@@ -829,15 +789,12 @@ class LLMNode(Node[LLMNodeData]):
                     is_final=False,
                 )
 
-        # Extract reasoning content from <think> tags in the main text
         full_text = full_text_buffer.getvalue()
 
         if reasoning_format == "tagged":
-            # Keep <think> tags in text for backward compatibility
             clean_text = full_text
             reasoning_content = "".join(reasoning_chunks)
         else:
-            # Extract clean text and reasoning from <think> tags
             clean_text, reasoning_content = LLMNode._split_reasoning(full_text, reasoning_format)
             if reasoning_chunks and not reasoning_content:
                 reasoning_content = "".join(reasoning_chunks)
@@ -853,13 +810,10 @@ class LLMNode(Node[LLMNodeData]):
             usage.time_to_generate = round(llm_streaming_time_to_generate, 3)
 
         yield ModelInvokeCompletedEvent(
-            # Use clean_text for separated mode, full_text for tagged mode
             text=clean_text if reasoning_format == "separated" else full_text,
             usage=usage,
             finish_reason=finish_reason,
-            # Reasoning content for workflow variables and downstream nodes
             reasoning_content=reasoning_content,
-            # Pass structured output if collected from streaming chunks
             structured_output=collected_structured_output,
         )
 
@@ -872,35 +826,14 @@ class LLMNode(Node[LLMNodeData]):
     def _split_reasoning(
         cls, text: str, reasoning_format: Literal["separated", "tagged"] = "tagged"
     ) -> tuple[str, str]:
-        """
-        Split reasoning content from text based on reasoning_format strategy.
-
-        Args:
-            text: Full text that may contain <think> blocks
-            reasoning_format: Strategy for handling reasoning content
-                - "separated": Remove <think> tags and return clean text + reasoning_content field
-                - "tagged": Keep <think> tags in text, return empty reasoning_content
-
-        Returns:
-            tuple of (clean_text, reasoning_content)
-        """
-
         if reasoning_format == "tagged":
             return text, ""
 
-        # Find all <think>...</think> blocks (case-insensitive)
         matches = cls._THINK_PATTERN.findall(text)
-
-        # Extract reasoning content from all <think> blocks
         reasoning_content = "\n".join(match.strip() for match in matches) if matches else ""
-
-        # Remove all <think>...</think> blocks from original text
         clean_text = cls._THINK_PATTERN.sub("", text)
-
-        # Clean up extra whitespace
         clean_text = re.sub(r"\n\s*\n", "\n\n", clean_text).strip()
 
-        # Separated mode: always return clean text and reasoning_content
         return clean_text, reasoning_content or ""
 
     def _transform_chat_messages(
@@ -921,15 +854,6 @@ class LLMNode(Node[LLMNodeData]):
     def _parse_prompt_template(
         self,
     ) -> tuple[list[LLMNodeChatModelMessage], list[PromptMessageContext], list[tuple[int, str]]]:
-        """
-        Parse prompt_template to separate static messages and context references.
-
-        Returns:
-            Tuple of (static_messages, context_refs, template_order)
-            - static_messages: list of LLMNodeChatModelMessage
-            - context_refs: list of PromptMessageContext
-            - template_order: list of (index, type) tuples preserving original order
-        """
         prompt_template = self.node_data.prompt_template
         static_messages: list[LLMNodeChatModelMessage] = []
         context_refs: list[PromptMessageContext] = []
@@ -943,7 +867,6 @@ class LLMNode(Node[LLMNodeData]):
                 else:
                     static_messages.append(item)
                     template_order.append((idx, "static"))
-            # Transform static messages for jinja2
             if static_messages:
                 self.node_data.prompt_template = self._transform_chat_messages(static_messages)
 
@@ -962,34 +885,24 @@ class LLMNode(Node[LLMNodeData]):
         model_config: ModelConfigWithCredentialsEntity,
         context_files: list[File],
     ) -> tuple[list[PromptMessage], Sequence[str] | None]:
-        """
-        Build prompt messages by combining static messages and context references in DSL order.
-
-        Returns:
-            Tuple of (prompt_messages, stop_sequences)
-        """
         variable_pool = self.graph_runtime_state.variable_pool
 
-        # Process messages in DSL order: iterate once and handle each type directly
         combined_messages: list[PromptMessage] = []
         context_idx = 0
         static_idx = 0
 
         for _, type_ in template_order:
             if type_ == "context":
-                # Handle context reference
                 ctx_ref = context_refs[context_idx]
                 ctx_var = variable_pool.get(ctx_ref.value_selector)
                 if ctx_var is None:
                     raise VariableNotFoundError(f"Variable {'.'.join(ctx_ref.value_selector)} not found")
                 if not isinstance(ctx_var, ArrayPromptMessageSegment):
                     raise InvalidVariableTypeError(f"Variable {'.'.join(ctx_ref.value_selector)} is not array[message]")
-                # Restore multimodal content (base64/url) that was truncated when saving context
                 restored_messages = llm_utils.restore_multimodal_content_in_messages(ctx_var.value)
                 combined_messages.extend(restored_messages)
                 context_idx += 1
             else:
-                # Handle static message
                 static_msg = static_messages[static_idx]
                 processed_msgs = LLMNode.handle_list_messages(
                     messages=[static_msg],
@@ -1002,7 +915,6 @@ class LLMNode(Node[LLMNodeData]):
                 combined_messages.extend(processed_msgs)
                 static_idx += 1
 
-        # Append memory messages
         memory_messages = _handle_memory_chat_mode(
             memory=memory,
             memory_config=self.node_data.memory,
@@ -1010,7 +922,6 @@ class LLMNode(Node[LLMNodeData]):
         )
         combined_messages.extend(memory_messages)
 
-        # Append current query if provided
         if query:
             query_message = LLMNodeChatModelMessage(
                 text=query,
@@ -1026,7 +937,6 @@ class LLMNode(Node[LLMNodeData]):
             )
             combined_messages.extend(query_msgs)
 
-        # Handle files (sys_files and context_files)
         combined_messages = self._append_files_to_messages(
             messages=combined_messages,
             sys_files=files,
@@ -1034,7 +944,6 @@ class LLMNode(Node[LLMNodeData]):
             model_config=model_config,
         )
 
-        # Filter empty messages and get stop sequences
         combined_messages = self._filter_messages(combined_messages, model_config)
         stop = self._get_stop_sequences(model_config)
 
@@ -1048,11 +957,9 @@ class LLMNode(Node[LLMNodeData]):
         context_files: list[File],
         model_config: ModelConfigWithCredentialsEntity,
     ) -> list[PromptMessage]:
-        """Append sys_files and context_files to messages."""
         vision_enabled = self.node_data.vision.enabled
         vision_detail = self.node_data.vision.configs.detail
 
-        # Handle sys_files (will be deprecated later)
         if vision_enabled and sys_files:
             file_prompts = [
                 file_manager.to_prompt_message_content(file, image_detail_config=vision_detail) for file in sys_files
@@ -1062,7 +969,6 @@ class LLMNode(Node[LLMNodeData]):
             else:
                 messages.append(UserPromptMessage(content=file_prompts))
 
-        # Handle context_files
         if vision_enabled and context_files:
             file_prompts = [
                 file_manager.to_prompt_message_content(file, image_detail_config=vision_detail)
@@ -1078,21 +984,18 @@ class LLMNode(Node[LLMNodeData]):
     def _filter_messages(
         self, messages: list[PromptMessage], model_config: ModelConfigWithCredentialsEntity
     ) -> list[PromptMessage]:
-        """Filter empty messages and unsupported content types."""
         filtered_messages: list[PromptMessage] = []
 
         for message in messages:
             if isinstance(message.content, list):
                 filtered_content: list[PromptMessageContentUnionTypes] = []
                 for content_item in message.content:
-                    # Skip non-text content if features are not defined
                     if not model_config.model_schema.features:
                         if content_item.type != PromptMessageContentType.TEXT:
                             continue
                         filtered_content.append(content_item)
                         continue
 
-                    # Skip content if corresponding feature is not supported
                     feature_map = {
                         PromptMessageContentType.IMAGE: ModelFeature.VISION,
                         PromptMessageContentType.DOCUMENT: ModelFeature.DOCUMENT,
@@ -1104,7 +1007,6 @@ class LLMNode(Node[LLMNodeData]):
                         continue
                     filtered_content.append(content_item)
 
-                # Simplify single text content
                 if len(filtered_content) == 1 and filtered_content[0].type == PromptMessageContentType.TEXT:
                     message.content = filtered_content[0].data
                 else:
@@ -1122,7 +1024,6 @@ class LLMNode(Node[LLMNodeData]):
         return filtered_messages
 
     def _get_stop_sequences(self, model_config: ModelConfigWithCredentialsEntity) -> Sequence[str] | None:
-        """Get stop sequences from model config."""
         return model_config.stop
 
     def _fetch_jinja_inputs(self, node_data: LLMNodeData) -> dict[str, str]:
@@ -1138,14 +1039,8 @@ class LLMNode(Node[LLMNodeData]):
                 raise VariableNotFoundError(f"Variable {variable_selector.variable} not found")
 
             def parse_dict(input_dict: Mapping[str, Any]) -> str:
-                """
-                Parse dict into string
-                """
-                # check if it's a context structure
                 if "metadata" in input_dict and "_source" in input_dict["metadata"] and "content" in input_dict:
                     return str(input_dict["content"])
-
-                # else, parse the dict
                 try:
                     return json.dumps(input_dict, ensure_ascii=False)
                 except Exception:
@@ -1220,7 +1115,7 @@ class LLMNode(Node[LLMNodeData]):
                 )
             elif isinstance(context_value_variable, ArraySegment):
                 context_str = ""
-                original_retriever_resource: list[dict[str, Any]] = []
+                original_retriever_resource: list[RetrievalSourceMetadata] = []
                 context_files: list[File] = []
                 for item in context_value_variable.value:
                     if isinstance(item, str):
@@ -1236,14 +1131,11 @@ class LLMNode(Node[LLMNodeData]):
                         retriever_resource = self._convert_to_original_retriever_resource(item)
                         if retriever_resource:
                             original_retriever_resource.append(retriever_resource)
-                            segment_id = retriever_resource.get("segment_id")
-                            if not segment_id:
-                                continue
                             attachments_with_bindings = db.session.execute(
                                 select(SegmentAttachmentBinding, UploadFile)
                                 .join(UploadFile, UploadFile.id == SegmentAttachmentBinding.attachment_id)
                                 .where(
-                                    SegmentAttachmentBinding.segment_id == segment_id,
+                                    SegmentAttachmentBinding.segment_id == retriever_resource.segment_id,
                                 )
                             ).all()
                             if attachments_with_bindings:
@@ -1253,7 +1145,7 @@ class LLMNode(Node[LLMNodeData]):
                                         filename=upload_file.name,
                                         extension="." + upload_file.extension,
                                         mime_type=upload_file.mime_type,
-                                        tenant_id=self.require_dify_context().tenant_id,
+                                        tenant_id=self.tenant_id,
                                         type=FileType.IMAGE,
                                         transfer_method=FileTransferMethod.LOCAL_FILE,
                                         remote_url=upload_file.source_url,
@@ -1264,12 +1156,12 @@ class LLMNode(Node[LLMNodeData]):
                                     )
                                     context_files.append(attachment_info)
                 yield RunRetrieverResourceEvent(
-                    retriever_resources=original_retriever_resource,
+                    retriever_resources=[r.model_dump() for r in original_retriever_resource],
                     context=context_str.strip(),
                     context_files=context_files,
                 )
 
-    def _convert_to_original_retriever_resource(self, context_dict: dict) -> dict[str, Any] | None:
+    def _convert_to_original_retriever_resource(self, context_dict: dict) -> RetrievalSourceMetadata | None:
         if (
             "metadata" in context_dict
             and "_source" in context_dict["metadata"]
@@ -1277,28 +1169,49 @@ class LLMNode(Node[LLMNodeData]):
         ):
             metadata = context_dict.get("metadata", {})
 
-            return {
-                "position": metadata.get("position"),
-                "dataset_id": metadata.get("dataset_id"),
-                "dataset_name": metadata.get("dataset_name"),
-                "document_id": metadata.get("document_id"),
-                "document_name": metadata.get("document_name"),
-                "data_source_type": metadata.get("data_source_type"),
-                "segment_id": metadata.get("segment_id"),
-                "retriever_from": metadata.get("retriever_from"),
-                "score": metadata.get("score"),
-                "hit_count": metadata.get("segment_hit_count"),
-                "word_count": metadata.get("segment_word_count"),
-                "segment_position": metadata.get("segment_position"),
-                "index_node_hash": metadata.get("segment_index_node_hash"),
-                "content": context_dict.get("content"),
-                "page": metadata.get("page"),
-                "doc_metadata": metadata.get("doc_metadata"),
-                "files": context_dict.get("files"),
-                "summary": context_dict.get("summary"),
-            }
+            source = RetrievalSourceMetadata(
+                position=metadata.get("position"),
+                dataset_id=metadata.get("dataset_id"),
+                dataset_name=metadata.get("dataset_name"),
+                document_id=metadata.get("document_id"),
+                document_name=metadata.get("document_name"),
+                data_source_type=metadata.get("data_source_type"),
+                segment_id=metadata.get("segment_id"),
+                retriever_from=metadata.get("retriever_from"),
+                score=metadata.get("score"),
+                hit_count=metadata.get("segment_hit_count"),
+                word_count=metadata.get("segment_word_count"),
+                segment_position=metadata.get("segment_position"),
+                index_node_hash=metadata.get("segment_index_node_hash"),
+                content=context_dict.get("content"),
+                page=metadata.get("page"),
+                doc_metadata=metadata.get("doc_metadata"),
+                files=context_dict.get("files"),
+                summary=context_dict.get("summary"),
+            )
+
+            return source
 
         return None
+
+    @staticmethod
+    def _fetch_model_config(
+        *,
+        node_data_model: ModelConfig,
+        tenant_id: str,
+    ) -> tuple[ModelInstance, ModelConfigWithCredentialsEntity]:
+        model, model_config_with_cred = llm_utils.fetch_model_config(
+            tenant_id=tenant_id, node_data_model=node_data_model
+        )
+        completion_params = model_config_with_cred.parameters
+
+        model_schema = model.model_type_instance.get_model_schema(node_data_model.name, model.credentials)
+        if not model_schema:
+            raise ModelNotExistError(f"Model {node_data_model.name} not exist.")
+
+        model_config_with_cred.parameters = completion_params
+        node_data_model.completion_params = completion_params
+        return model, model_config_with_cred
 
     @staticmethod
     def fetch_prompt_messages(
@@ -1307,19 +1220,18 @@ class LLMNode(Node[LLMNodeData]):
         sys_files: Sequence[File],
         context: str | None = None,
         memory: BaseMemory | None = None,
-        model_instance: ModelInstance,
+        model_config: ModelConfigWithCredentialsEntity,
         prompt_template: Sequence[LLMNodeChatModelMessage] | LLMNodeCompletionModelPromptTemplate,
-        stop: Sequence[str] | None = None,
         memory_config: MemoryConfig | None = None,
         vision_enabled: bool = False,
         vision_detail: ImagePromptMessageContent.DETAIL,
         variable_pool: VariablePool,
         jinja2_variables: Sequence[VariableSelector],
+        tenant_id: str,
         context_files: list[File] | None = None,
         sandbox: Sandbox | None = None,
     ) -> tuple[Sequence[PromptMessage], Sequence[str] | None]:
         prompt_messages: list[PromptMessage] = []
-        model_schema = llm_utils.fetch_model_schema(model_instance=model_instance)
 
         if isinstance(prompt_template, list):
             prompt_messages.extend(
@@ -1336,7 +1248,7 @@ class LLMNode(Node[LLMNodeData]):
             memory_messages = _handle_memory_chat_mode(
                 memory=memory,
                 memory_config=memory_config,
-                model_instance=model_instance,
+                model_config=model_config,
             )
             prompt_messages.extend(memory_messages)
 
@@ -1369,7 +1281,7 @@ class LLMNode(Node[LLMNodeData]):
             memory_text = _handle_memory_completion_mode(
                 memory=memory,
                 memory_config=memory_config,
-                model_instance=model_instance,
+                model_config=model_config,
             )
             prompt_content = prompt_messages[0].content
             prompt_content_type = type(prompt_content)
@@ -1438,7 +1350,7 @@ class LLMNode(Node[LLMNodeData]):
             if isinstance(prompt_message.content, list):
                 prompt_message_content: list[PromptMessageContentUnionTypes] = []
                 for content_item in prompt_message.content:
-                    if not model_schema.features:
+                    if not model_config.model_schema.features:
                         if content_item.type != PromptMessageContentType.TEXT:
                             continue
                         prompt_message_content.append(content_item)
@@ -1447,19 +1359,19 @@ class LLMNode(Node[LLMNodeData]):
                     if (
                         (
                             content_item.type == PromptMessageContentType.IMAGE
-                            and ModelFeature.VISION not in model_schema.features
+                            and ModelFeature.VISION not in model_config.model_schema.features
                         )
                         or (
                             content_item.type == PromptMessageContentType.DOCUMENT
-                            and ModelFeature.DOCUMENT not in model_schema.features
+                            and ModelFeature.DOCUMENT not in model_config.model_schema.features
                         )
                         or (
                             content_item.type == PromptMessageContentType.VIDEO
-                            and ModelFeature.VIDEO not in model_schema.features
+                            and ModelFeature.VIDEO not in model_config.model_schema.features
                         )
                         or (
                             content_item.type == PromptMessageContentType.AUDIO
-                            and ModelFeature.AUDIO not in model_schema.features
+                            and ModelFeature.AUDIO not in model_config.model_schema.features
                         )
                     ):
                         continue
@@ -1478,7 +1390,19 @@ class LLMNode(Node[LLMNodeData]):
                 "Please ensure a prompt is properly configured before proceeding."
             )
 
-        return filtered_prompt_messages, stop
+        model = ModelManager().get_model_instance(
+            tenant_id=tenant_id,
+            model_type=ModelType.LLM,
+            provider=model_config.provider,
+            model=model_config.model,
+        )
+        model_schema = model.model_type_instance.get_model_schema(
+            model=model_config.model,
+            credentials=model.credentials,
+        )
+        if not model_schema:
+            raise ModelNotExistError(f"Model {model_config.model} not exist.")
+        return filtered_prompt_messages, model_config.stop
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(
@@ -1488,15 +1412,14 @@ class LLMNode(Node[LLMNodeData]):
         node_id: str,
         node_data: LLMNodeData,
     ) -> Mapping[str, Sequence[str]]:
-        # graph_config is not used in this node type
-        _ = graph_config  # Explicitly mark as unused
-        prompt_template = node_data.prompt_template
+        _ = graph_config
+        typed_node_data = node_data
+
+        prompt_template = typed_node_data.prompt_template
         variable_selectors = []
         prompt_context_selectors: list[Sequence[str]] = []
         if isinstance(prompt_template, list):
             for item in prompt_template:
-                # Check PromptMessageContext first (same order as _parse_prompt_template)
-                # This extracts value_selector which is used by variable_pool.get(ctx_ref.value_selector)
                 if isinstance(item, PromptMessageContext):
                     if len(item.value_selector) >= 2:
                         prompt_context_selectors.append(item.value_selector)
@@ -1518,7 +1441,7 @@ class LLMNode(Node[LLMNodeData]):
             variable_key = f"#{'.'.join(context_selector)}#"
             variable_mapping[variable_key] = list(context_selector)
 
-        memory = node_data.memory
+        memory = typed_node_data.memory
         if memory and memory.query_prompt_template:
             query_variable_selectors = VariableTemplateParser(
                 template=memory.query_prompt_template
@@ -1526,16 +1449,16 @@ class LLMNode(Node[LLMNodeData]):
             for variable_selector in query_variable_selectors:
                 variable_mapping[variable_selector.variable] = variable_selector.value_selector
 
-        if node_data.context.enabled:
-            variable_mapping["#context#"] = node_data.context.variable_selector
+        if typed_node_data.context.enabled:
+            variable_mapping["#context#"] = typed_node_data.context.variable_selector
 
-        if node_data.vision.enabled:
-            variable_mapping["#files#"] = node_data.vision.configs.variable_selector
+        if typed_node_data.vision.enabled:
+            variable_mapping["#files#"] = typed_node_data.vision.configs.variable_selector
 
-        if node_data.memory:
+        if typed_node_data.memory:
             variable_mapping["#sys.query#"] = ["sys", SystemVariableKey.QUERY]
 
-        if node_data.prompt_config:
+        if typed_node_data.prompt_config:
             enable_jinja = False
 
             if isinstance(prompt_template, list):
@@ -1547,7 +1470,7 @@ class LLMNode(Node[LLMNodeData]):
                 enable_jinja = True
 
             if enable_jinja:
-                for variable_selector in node_data.prompt_config.jinja2_variables or []:
+                for variable_selector in typed_node_data.prompt_config.jinja2_variables or []:
                     variable_mapping[variable_selector.variable] = variable_selector.value_selector
 
         variable_mapping = {node_id + "." + key: value for key, value in variable_mapping.items()}
@@ -1606,7 +1529,9 @@ class LLMNode(Node[LLMNodeData]):
                 if bundle is not None:
                     skill_entry = SkillDocumentAssembler(bundle).assemble_document(
                         document=SkillDocument(
-                            skill_id="anonymous", content=result_text, metadata=message.metadata or {}
+                            skill_id="anonymous",
+                            content=result_text,
+                            metadata=SkillMetadata.model_validate(message.metadata or {}),
                         ),
                         base_path=AppAssets.PATH,
                     )
@@ -1645,7 +1570,9 @@ class LLMNode(Node[LLMNodeData]):
                 if plain_text and bundle is not None:
                     skill_entry = SkillDocumentAssembler(bundle).assemble_document(
                         document=SkillDocument(
-                            skill_id="anonymous", content=plain_text, metadata=message.metadata or {}
+                            skill_id="anonymous",
+                            content=plain_text,
+                            metadata=SkillMetadata.model_validate(message.metadata or {}),
                         ),
                         base_path=AppAssets.PATH,
                     )
@@ -1680,25 +1607,19 @@ class LLMNode(Node[LLMNodeData]):
         ):
             buffer.write(text_part)
 
-        # Extract reasoning content from <think> tags in the main text
         full_text = buffer.getvalue()
 
         if reasoning_format == "tagged":
-            # Keep <think> tags in text for backward compatibility
             clean_text = full_text
             reasoning_content = ""
         else:
-            # Extract clean text and reasoning from <think> tags
             clean_text, reasoning_content = LLMNode._split_reasoning(full_text, reasoning_format)
 
         event = ModelInvokeCompletedEvent(
-            # Use clean_text for separated mode, full_text for tagged mode
             text=clean_text if reasoning_format == "separated" else full_text,
             usage=invoke_result.usage,
             finish_reason=None,
-            # Reasoning content for workflow variables and downstream nodes
             reasoning_content=reasoning_content,
-            # Pass structured output if enabled
             structured_output=getattr(invoke_result, "structured_output", None),
         )
         if request_latency is not None:
@@ -1711,15 +1632,6 @@ class LLMNode(Node[LLMNodeData]):
         content: ImagePromptMessageContent,
         file_saver: LLMFileSaver,
     ) -> File:
-        """_save_multimodal_output saves multi-modal contents generated by LLM plugins.
-
-        There are two kinds of multimodal outputs:
-
-          - Inlined data encoded in base64, which would be saved to storage directly.
-          - Remote files referenced by an url, which would be downloaded and then saved to storage.
-
-        Currently, only image files are supported.
-        """
         if content.url != "":
             saved_file = file_saver.save_remote_url(content.url, FileType.IMAGE)
         else:
@@ -1810,12 +1722,6 @@ class LLMNode(Node[LLMNodeData]):
         *,
         structured_output: Mapping[str, Any],
     ) -> dict[str, Any]:
-        """
-        Fetch the structured output schema from the node data.
-
-        Returns:
-            dict[str, Any]: The structured output schema
-        """
         if not structured_output:
             raise LLMNodeError("Please provide a valid structured output schema")
         structured_output_schema = json.dumps(structured_output.get("schema", {}), ensure_ascii=False)
@@ -1837,17 +1743,6 @@ class LLMNode(Node[LLMNodeData]):
         file_saver: LLMFileSaver,
         file_outputs: list[File],
     ) -> Generator[str, None, None]:
-        """Convert intermediate prompt messages into strings and yield them to the caller.
-
-        If the messages contain non-textual content (e.g., multimedia like images or videos),
-        it will be saved separately, and the corresponding Markdown representation will
-        be yielded to the caller.
-        """
-
-        # NOTE(QuantumGhost): This function should yield results to the caller immediately
-        # whenever new content or partial content is available. Avoid any intermediate buffering
-        # of results. Additionally, do not yield empty strings; instead, yield from an empty list
-        # if necessary.
         if contents is None:
             yield from []
             return
@@ -1889,26 +1784,16 @@ class LLMNode(Node[LLMNodeData]):
         NodeEventBase,
         None,
         tuple[
-            str,  # clean_text: processed text for outputs["text"]
-            str,  # reasoning_content: native model reasoning
-            str,  # generation_reasoning_content: reasoning for generation field (from <think> tags)
-            str,  # generation_clean_content: clean text for generation field (always tag-free)
+            str,
+            str,
+            str,
+            str,
             LLMUsage,
             str | None,
             LLMStructuredOutput | None,
             LLMGenerationData | None,
         ],
     ]:
-        """Stream events and capture generator return value in one place.
-
-        Uses generator delegation so _run stays concise while still emitting events.
-
-        Returns two pairs of text fields because outputs["text"] and generation["content"]
-        may differ when reasoning_format is "tagged":
-        - clean_text / reasoning_content: for top-level outputs (may keep <think> tags)
-        - generation_clean_content / generation_reasoning_content: for the generation field
-          (always tag-free, extracted via _split_reasoning with "separated" mode)
-        """
         clean_text = ""
         reasoning_content = ""
         generation_reasoning_content = ""
@@ -1928,7 +1813,6 @@ class LLMNode(Node[LLMNodeData]):
                 break
 
             if completed:
-                # After completion we still drain to reach StopIteration.value
                 continue
 
             match event:
@@ -1950,7 +1834,6 @@ class LLMNode(Node[LLMNodeData]):
                     generation_clean_content = clean_text
 
                     if self.node_data.reasoning_format == "tagged":
-                        # Keep tagged text for output; also extract reasoning for generation field
                         generation_clean_content, generation_reasoning_content = LLMNode._split_reasoning(
                             clean_text, reasoning_format="separated"
                         )
@@ -1964,9 +1847,7 @@ class LLMNode(Node[LLMNodeData]):
                         LLMStructuredOutput(structured_output=structured_raw) if structured_raw else None
                     )
 
-                    from core.app.llm.quota import deduct_llm_quota
-
-                    deduct_llm_quota(tenant_id=self.tenant_id, model_instance=model_instance, usage=usage)
+                    llm_utils.deduct_llm_quota(tenant_id=self.tenant_id, model_instance=model_instance, usage=usage)
                     completed = True
 
                 case LLMStructuredOutput():
@@ -1995,8 +1876,6 @@ class LLMNode(Node[LLMNodeData]):
         return {tool.tool_id(): tool for tool in tools}
 
     def _extract_tool_dependencies(self) -> ToolDependencies | None:
-        """Extract tool artifact from prompt template."""
-
         sandbox = self.graph_runtime_state.sandbox
         if not sandbox:
             raise LLMNodeError("Sandbox not found")
@@ -2006,7 +1885,11 @@ class LLMNode(Node[LLMNodeData]):
         for prompt in self.node_data.prompt_template:
             if isinstance(prompt, LLMNodeChatModelMessage):
                 skill_entry = SkillDocumentAssembler(bundle).assemble_document(
-                    document=SkillDocument(skill_id="anonymous", content=prompt.text, metadata=prompt.metadata or {}),
+                    document=SkillDocument(
+                        skill_id="anonymous",
+                        content=prompt.text,
+                        metadata=SkillMetadata.model_validate(prompt.metadata or {}),
+                    ),
                     base_path=AppAssets.PATH,
                 )
                 tool_deps_list.append(skill_entry.tools)
@@ -2031,20 +1914,10 @@ class LLMNode(Node[LLMNodeData]):
         node_inputs: dict[str, Any],
         process_data: dict[str, Any],
     ) -> Generator[NodeEventBase, None, LLMGenerationData]:
-        """Invoke LLM with tools support (from Agent V2).
-
-        Returns LLMGenerationData with text, reasoning_contents, tool_calls, usage, finish_reason, files
-        """
-        # Get model features to determine strategy
         model_features = self._get_model_features(model_instance)
-
-        # Prepare tool instances
         tool_instances = self._prepare_tool_instances(variable_pool)
-
-        # Prepare prompt files (files that come from prompt variables, not vision files)
         prompt_files = self._extract_prompt_files(variable_pool)
 
-        # Use factory to create appropriate strategy
         strategy = StrategyFactory.create_strategy(
             model_features=model_features,
             model_instance=model_instance,
@@ -2054,7 +1927,6 @@ class LLMNode(Node[LLMNodeData]):
             context=ExecutionContext(user_id=self.user_id, app_id=self.app_id, tenant_id=self.tenant_id),
         )
 
-        # Run strategy
         outputs = strategy.run(
             prompt_messages=list(prompt_messages),
             model_parameters=self._node_data.model.completion_params,
@@ -2076,7 +1948,6 @@ class LLMNode(Node[LLMNodeData]):
     ) -> Generator[NodeEventBase, None, LLMGenerationData]:
         result: LLMGenerationData | None = None
 
-        # FIXME(Mairuis): Async processing for bash session.
         with SandboxBashSession(sandbox=sandbox, node_id=self.id, tools=tool_dependencies) as session:
             prompt_files = self._extract_prompt_files(variable_pool)
             model_features = self._get_model_features(model_instance)
@@ -2100,7 +1971,6 @@ class LLMNode(Node[LLMNodeData]):
 
             result = yield from self._process_tool_outputs(outputs)
 
-            # Auto-collect sandbox output/ files, deduplicate by id
             collected_files = session.collect_output_files()
             if collected_files:
                 existing_ids = {f.id for f in self._file_outputs}
@@ -2112,7 +1982,6 @@ class LLMNode(Node[LLMNodeData]):
         return result
 
     def _get_model_features(self, model_instance: ModelInstance) -> list[ModelFeature]:
-        """Get model schema to determine features."""
         try:
             model_type_instance = model_instance.model_type_instance
             model_schema = model_type_instance.get_model_schema(
@@ -2125,17 +1994,14 @@ class LLMNode(Node[LLMNodeData]):
             return []
 
     def _prepare_tool_instances(self, variable_pool: VariablePool) -> list[Tool]:
-        """Prepare tool instances from configuration."""
         tool_instances = []
 
         if self._node_data.tools:
             for tool in self._node_data.tools:
                 try:
-                    # Process settings to extract the correct structure
                     processed_settings = {}
                     for key, value in tool.settings.items():
                         if isinstance(value, dict) and "value" in value and isinstance(value["value"], dict):
-                            # Extract the nested value if it has the ToolInput structure
                             if "type" in value["value"] and "value" in value["value"]:
                                 processed_settings[key] = value["value"]
                             else:
@@ -2143,10 +2009,8 @@ class LLMNode(Node[LLMNodeData]):
                         else:
                             processed_settings[key] = value
 
-                    # Merge parameters with processed settings (similar to Agent Node logic)
                     merged_parameters = {**tool.parameters, **processed_settings}
 
-                    # Create AgentToolEntity from ToolMetadata
                     agent_tool = AgentToolEntity(
                         provider_id=tool.provider_name,
                         provider_type=tool.type,
@@ -2156,7 +2020,6 @@ class LLMNode(Node[LLMNodeData]):
                         credential_id=tool.credential_id,
                     )
 
-                    # Get tool runtime from ToolManager
                     tool_runtime = ToolManager.get_agent_tool_runtime(
                         tenant_id=self.tenant_id,
                         app_id=self.app_id,
@@ -2165,7 +2028,6 @@ class LLMNode(Node[LLMNodeData]):
                         variable_pool=variable_pool,
                     )
 
-                    # Apply custom description from extra field if available
                     if tool.extra.get("description") and tool_runtime.entity.description:
                         tool_runtime.entity.description.llm = (
                             tool.extra.get("description") or tool_runtime.entity.description.llm
@@ -2179,12 +2041,10 @@ class LLMNode(Node[LLMNodeData]):
         return tool_instances
 
     def _extract_prompt_files(self, variable_pool: VariablePool) -> list[File]:
-        """Extract files from prompt template variables."""
-        from dify_graph.variables import ArrayFileVariable, FileVariable
+        from dify_graph.variables.variables import ArrayFileVariable, FileVariable
 
         files: list[File] = []
 
-        # Extract variables from prompt template
         if isinstance(self._node_data.prompt_template, list):
             for message in self._node_data.prompt_template:
                 if message.text:
@@ -2202,10 +2062,7 @@ class LLMNode(Node[LLMNodeData]):
 
     @staticmethod
     def _serialize_tool_call(tool_call: ToolCallResult) -> dict[str, Any]:
-        """Convert ToolCallResult into JSON-friendly dict."""
-
         def _file_to_ref(file: File) -> str | None:
-            # Align with streamed tool result events which carry file IDs
             return file.id or file.related_id
 
         files = []
@@ -2225,7 +2082,6 @@ class LLMNode(Node[LLMNodeData]):
         }
 
     def _generate_model_provider_icon_url(self, provider: str, dark: bool = False) -> str | None:
-        """Generate icon URL for model provider."""
         from yarl import URL
 
         from configs import dify_config
@@ -2247,8 +2103,6 @@ class LLMNode(Node[LLMNodeData]):
             return None
 
     def _emit_model_start(self, trace_state: TraceState) -> Generator[NodeEventBase, None, None]:
-        """Yield a MODEL_START event with model identity info at the beginning of a model turn.
-        Idempotent: only emits once per turn (guarded by trace_state.model_start_emitted)."""
         if trace_state.model_start_emitted:
             return
         trace_state.model_start_emitted = True
@@ -2272,8 +2126,6 @@ class LLMNode(Node[LLMNodeData]):
         trace_state: TraceState,
         error: str | None = None,
     ) -> Generator[NodeEventBase, None, None]:
-        """Flush pending thought/content buffers into a single model trace segment
-        and yield a MODEL_END chunk event with usage/duration metrics."""
         if not buffers.pending_thought and not buffers.pending_content and not buffers.pending_tool_calls:
             return
 
@@ -2348,7 +2200,6 @@ class LLMNode(Node[LLMNodeData]):
         else:
             agent_context.agent_logs.append(agent_log_event)
 
-        # Handle THOUGHT log completion - capture usage for model segment
         if output.log_type == AgentLog.LogType.THOUGHT and output.status == AgentLog.LogStatus.SUCCESS:
             llm_usage = output.metadata.get(AgentLog.LogMetadata.LLM_USAGE) if output.metadata else None
             if llm_usage:
@@ -2393,7 +2244,6 @@ class LLMNode(Node[LLMNodeData]):
             if tool_call_id and tool_call_id not in trace_state.tool_call_index_map:
                 trace_state.tool_call_index_map[tool_call_id] = len(trace_state.tool_call_index_map)
 
-            # Flush model segment before tool result processing
             yield from self._flush_model_segment(buffers, trace_state)
 
             if output.status == AgentLog.LogStatus.ERROR:
@@ -2434,7 +2284,6 @@ class LLMNode(Node[LLMNodeData]):
             if tool_call_id:
                 trace_state.tool_trace_map[tool_call_id] = tool_call_segment
 
-            # Start new model segment tracking
             trace_state.model_segment_start_time = time.perf_counter()
 
             yield ToolResultChunkEvent(
@@ -2562,12 +2411,9 @@ class LLMNode(Node[LLMNodeData]):
         if buffers.current_turn_reasoning:
             buffers.reasoning_per_turn.append("".join(buffers.current_turn_reasoning))
 
-        # For final flush, use aggregate.usage if pending_usage is not set
-        # (e.g., for simple LLM calls without tool invocations)
         if trace_state.pending_usage is None:
             trace_state.pending_usage = aggregate.usage
 
-        # Flush final model segment
         yield from self._flush_model_segment(buffers, trace_state)
 
     def _close_streams(self) -> Generator[NodeEventBase, None, None]:
@@ -2688,7 +2534,6 @@ class LLMNode(Node[LLMNodeData]):
         self,
         outputs: Generator[LLMResultChunk | AgentLog, None, AgentResult],
     ) -> Generator[NodeEventBase, None, LLMGenerationData]:
-        """Process strategy outputs and convert to node events."""
         state = ToolOutputState()
 
         try:
@@ -2715,17 +2560,12 @@ class LLMNode(Node[LLMNodeData]):
         return self._build_generation_data(state.trace, state.agent, state.aggregate, state.stream)
 
     def _accumulate_usage(self, total_usage: LLMUsage, delta_usage: LLMUsage) -> None:
-        """Accumulate LLM usage statistics."""
         total_usage.prompt_tokens += delta_usage.prompt_tokens
         total_usage.completion_tokens += delta_usage.completion_tokens
         total_usage.total_tokens += delta_usage.total_tokens
         total_usage.prompt_price += delta_usage.prompt_price
         total_usage.completion_price += delta_usage.completion_price
         total_usage.total_price += delta_usage.total_price
-
-    @property
-    def model_instance(self) -> ModelInstance:
-        return self._model_instance
 
 
 def _combine_message_content_with_role(
@@ -2765,26 +2605,26 @@ def _render_jinja2_message(
 
 
 def _calculate_rest_token(
-    *,
-    prompt_messages: list[PromptMessage],
-    model_instance: ModelInstance,
+    *, prompt_messages: list[PromptMessage], model_config: ModelConfigWithCredentialsEntity
 ) -> int:
     rest_tokens = 2000
-    runtime_model_schema = llm_utils.fetch_model_schema(model_instance=model_instance)
-    runtime_model_parameters = model_instance.parameters
 
-    model_context_tokens = runtime_model_schema.model_properties.get(ModelPropertyKey.CONTEXT_SIZE)
+    model_context_tokens = model_config.model_schema.model_properties.get(ModelPropertyKey.CONTEXT_SIZE)
     if model_context_tokens:
+        model_instance = ModelInstance(
+            provider_model_bundle=model_config.provider_model_bundle, model=model_config.model
+        )
+
         curr_message_tokens = model_instance.get_llm_num_tokens(prompt_messages)
 
         max_tokens = 0
-        for parameter_rule in runtime_model_schema.parameter_rules:
+        for parameter_rule in model_config.model_schema.parameter_rules:
             if parameter_rule.name == "max_tokens" or (
                 parameter_rule.use_template and parameter_rule.use_template == "max_tokens"
             ):
                 max_tokens = (
-                    runtime_model_parameters.get(parameter_rule.name)
-                    or runtime_model_parameters.get(str(parameter_rule.use_template))
+                    model_config.parameters.get(parameter_rule.name)
+                    or model_config.parameters.get(str(parameter_rule.use_template))
                     or 0
                 )
 
@@ -2798,14 +2638,11 @@ def _handle_memory_chat_mode(
     *,
     memory: BaseMemory | None,
     memory_config: MemoryConfig | None,
-    model_instance: ModelInstance,
+    model_config: ModelConfigWithCredentialsEntity,
 ) -> Sequence[PromptMessage]:
     memory_messages: Sequence[PromptMessage] = []
     if memory and memory_config:
-        rest_tokens = _calculate_rest_token(
-            prompt_messages=[],
-            model_instance=model_instance,
-        )
+        rest_tokens = _calculate_rest_token(prompt_messages=[], model_config=model_config)
         memory_messages = memory.get_history_prompt_messages(
             max_token_limit=rest_tokens,
             message_limit=memory_config.window.size if memory_config.window.enabled else None,
@@ -2817,18 +2654,14 @@ def _handle_memory_completion_mode(
     *,
     memory: BaseMemory | None,
     memory_config: MemoryConfig | None,
-    model_instance: ModelInstance,
+    model_config: ModelConfigWithCredentialsEntity,
 ) -> str:
     memory_text = ""
     if memory and memory_config:
-        rest_tokens = _calculate_rest_token(
-            prompt_messages=[],
-            model_instance=model_instance,
-        )
+        rest_tokens = _calculate_rest_token(prompt_messages=[], model_config=model_config)
         if not memory_config.role_prefix:
             raise MemoryRolePrefixRequiredError("Memory role prefix is required for completion model.")
-        memory_text = llm_utils.fetch_memory_text(
-            memory=memory,
+        memory_text = memory.get_history_prompt_text(
             max_token_limit=rest_tokens,
             message_limit=memory_config.window.size if memory_config.window.enabled else None,
             human_prefix=memory_config.role_prefix.user,

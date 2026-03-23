@@ -1,6 +1,13 @@
 import { memo } from 'react'
-import { InputNumber } from '@/app/components/base/input-number'
 import Tooltip from '@/app/components/base/tooltip'
+import {
+  NumberField,
+  NumberFieldControls,
+  NumberFieldDecrement,
+  NumberFieldGroup,
+  NumberFieldIncrement,
+  NumberFieldInput,
+} from '@/app/components/base/ui/number-field'
 
 import { cn } from '@/utils/classnames'
 
@@ -20,14 +27,21 @@ const MaxIterations = ({ value = 10, onChange, className, disabled }: MaxIterati
           triggerClassName="shrink-0 w-4 h-4"
         />
       </div>
-      <InputNumber
-        className={cn('w-14 shrink-0', disabled && 'opacity-50')}
+      <NumberField
         value={value}
-        onChange={onChange ?? (() => {})}
+        onValueChange={v => (onChange ?? (() => {}))(v ?? 1)}
         min={1}
         step={1}
         disabled={disabled}
-      />
+      >
+        <NumberFieldGroup className={cn('w-20 shrink-0', disabled && 'opacity-50')}>
+          <NumberFieldInput />
+          <NumberFieldControls>
+            <NumberFieldIncrement />
+            <NumberFieldDecrement />
+          </NumberFieldControls>
+        </NumberFieldGroup>
+      </NumberField>
     </div>
   )
 }

@@ -18,8 +18,6 @@ import EndNode from './end/node'
 import EndPanel from './end/panel'
 import FileUploadNode from './file-upload/node'
 import FileUploadPanel from './file-upload/panel'
-import GroupNode from './group/node'
-import GroupPanel from './group/panel'
 import HttpNode from './http/node'
 import HttpPanel from './http/panel'
 import HumanInputNode from './human-input/node'
@@ -86,7 +84,6 @@ export const NodeComponentMap: Record<string, ComponentType<any>> = {
   [BlockEnum.TriggerPlugin]: TriggerPluginNode,
   [BlockEnum.Command]: CommandNode,
   [BlockEnum.FileUpload]: FileUploadNode,
-  [BlockEnum.Group]: GroupNode,
 }
 
 export const PanelComponentMap: Record<string, ComponentType<any>> = {
@@ -118,5 +115,4 @@ export const PanelComponentMap: Record<string, ComponentType<any>> = {
   [BlockEnum.TriggerPlugin]: TriggerPluginPanel,
   [BlockEnum.Command]: CommandPanel,
   [BlockEnum.FileUpload]: FileUploadPanel,
-  [BlockEnum.Group]: GroupPanel,
 }

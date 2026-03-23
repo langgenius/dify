@@ -1154,6 +1154,8 @@
   "versionHistory.editVersionInfo": "Edit version info",
   "versionHistory.filter.all": "All",
   "versionHistory.filter.empty": "No matching version history found",
+  "viewPicker.graph": "Workflow",
+  "viewPicker.skill": "Skill",
   "versionHistory.filter.onlyShowNamedVersions": "Only show named versions",
   "versionHistory.filter.onlyYours": "Only yours",
   "versionHistory.filter.reset": "Reset Filter",

@@ -175,11 +175,11 @@ class SandboxBuilder:
 
                     if sandbox.is_cancelled():
                         return
-                    # Storage mount is part of readiness. If restore/mount fails,
-                    # the sandbox must surface initialization failure instead of
-                    # becoming "ready" with missing files.
-                    if not sandbox.mount():
-                        raise RuntimeError("Sandbox storage mount failed")
+                    # Attempt to restore prior workspace state.  mount() returns
+                    # False when no archive exists yet (first run for this
+                    # sandbox_id), which is a normal case — not an error.
+                    # Actual failures (download/extract) surface as exceptions.
+                    sandbox.mount()
                     sandbox.mark_ready()
             except Exception as exc:
                 try:

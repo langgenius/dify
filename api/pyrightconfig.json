@@ -36,7 +36,10 @@
     "gmpy2",
     "sendgrid",
     "sendgrid.helpers.mail",
-    "holo_search_sdk.types"
+    "holo_search_sdk.types",
+    "daytona",
+    "e2b",
+    "e2b.exceptions"
   ],
   "reportUnknownMemberType": "hint",
   "reportUnknownParameterType": "hint",

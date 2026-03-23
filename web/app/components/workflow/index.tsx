@@ -66,14 +66,6 @@ import {
 } from './constants'
 import CustomConnectionLine from './custom-connection-line'
 import CustomEdge from './custom-edge'
-import {
-  CUSTOM_GROUP_EXIT_PORT_NODE,
-  CUSTOM_GROUP_INPUT_NODE,
-  CUSTOM_GROUP_NODE,
-  CustomGroupExitPortNode,
-  CustomGroupInputNode,
-  CustomGroupNode,
-} from './custom-group-node'
 import DatasetsDetailProvider from './datasets-detail-store/provider'
 import EdgeContextmenu from './edge-contextmenu'
 import HelpLine from './help-line'
@@ -140,9 +132,6 @@ const nodeTypes = {
   [CUSTOM_ITERATION_START_NODE]: CustomIterationStartNode,
   [CUSTOM_LOOP_START_NODE]: CustomLoopStartNode,
   [CUSTOM_DATA_SOURCE_EMPTY_NODE]: CustomDataSourceEmptyNode,
-  [CUSTOM_GROUP_NODE]: CustomGroupNode,
-  [CUSTOM_GROUP_INPUT_NODE]: CustomGroupInputNode,
-  [CUSTOM_GROUP_EXIT_PORT_NODE]: CustomGroupExitPortNode,
 }
 const edgeTypes = {
   [CUSTOM_EDGE]: CustomEdge,

@@ -1,10 +1,10 @@
 import type {
   Connection,
 } from 'reactflow'
-import type { GroupNodeData } from '../nodes/group/types'
 import type { IterationNodeType } from '../nodes/iteration/types'
 import type { LoopNodeType } from '../nodes/loop/types'
 import type {
+  BlockEnum,
   Edge,
   Node,
   ValueSelector,
@@ -32,8 +32,7 @@ import {
   useStore,
   useWorkflowStore,
 } from '../store'
-
-import { BlockEnum, WorkflowRunningStatus } from '../types'
+import { WorkflowRunningStatus } from '../types'
 import {
   getWorkflowEntryNode,
   isWorkflowEntryNode,
@@ -346,7 +345,7 @@ export const useWorkflow = () => {
     return startNodes
   }, [nodesMap, getRootNodesById])
 
-  const isValidConnection = useCallback(({ source, sourceHandle, target }: Connection) => {
+  const isValidConnection = useCallback(({ source, target }: Connection) => {
     const { nodes, edges } = collaborativeWorkflow.getState()
     const sourceNode: Node = nodes.find(node => node.id === source)!
     const targetNode: Node = nodes.find(node => node.id === target)!
@@ -357,42 +356,15 @@ export const useWorkflow = () => {
     if (sourceNode.parentId !== targetNode.parentId)
       return false
 
-    // For Group nodes, use the leaf node's type for validation
-    // sourceHandle format: "${leafNodeId}-${originalSourceHandle}"
-    let actualSourceType = sourceNode.data.type
-    if (sourceNode.data.type === BlockEnum.Group && sourceHandle) {
-      const lastDashIndex = sourceHandle.lastIndexOf('-')
-      if (lastDashIndex > 0) {
-        const leafNodeId = sourceHandle.substring(0, lastDashIndex)
-        const leafNode = nodes.find(node => node.id === leafNodeId)
-        if (leafNode)
-          actualSourceType = leafNode.data.type
-      }
-    }
-
     if (sourceNode && targetNode) {
-      const sourceNodeAvailableNextNodes = getAvailableBlocks(actualSourceType, !!sourceNode.parentId).availableNextBlocks
+      const sourceNodeAvailableNextNodes = getAvailableBlocks(sourceNode.data.type, !!sourceNode.parentId).availableNextBlocks
       const targetNodeAvailablePrevNodes = getAvailableBlocks(targetNode.data.type, !!targetNode.parentId).availablePrevBlocks
 
-      if (targetNode.data.type === BlockEnum.Group) {
-        const groupData = targetNode.data as GroupNodeData
-        const headNodeIds = groupData.headNodeIds || []
-        if (headNodeIds.length > 0) {
-          const headNode = nodes.find(node => node.id === headNodeIds[0])
-          if (headNode) {
-            const headNodeAvailablePrevNodes = getAvailableBlocks(headNode.data.type, !!targetNode.parentId).availablePrevBlocks
-            if (!headNodeAvailablePrevNodes.includes(actualSourceType))
-              return false
-          }
-        }
-      }
-      else {
-        if (!sourceNodeAvailableNextNodes.includes(targetNode.data.type))
-          return false
+      if (!sourceNodeAvailableNextNodes.includes(targetNode.data.type))
+        return false
 
-        if (!targetNodeAvailablePrevNodes.includes(actualSourceType))
-          return false
-      }
+      if (!targetNodeAvailablePrevNodes.includes(sourceNode.data.type))
+        return false
     }
 
     const hasCycle = (node: Node, visited = new Set()) => {

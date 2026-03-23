@@ -651,7 +651,7 @@ const BasePanel: FC<BasePanelProps> = ({
             )
           }
           {
-            !needsToolAuth && !currentDataSource && !currentTriggerPlugin && data.type !== BlockEnum.Group && (
+            !needsToolAuth && !currentDataSource && !currentTriggerPlugin && (
               <div className="flex items-center justify-between pl-4 pr-3">
                 <Tab
                   value={tabType}
@@ -660,9 +660,9 @@ const BasePanel: FC<BasePanelProps> = ({
               </div>
             )
           }
-          {data.type !== BlockEnum.Group && <Split />}
+          <Split />
         </div>
-        {(tabType === TabType.settings || data.type === BlockEnum.Group) && (
+        {tabType === TabType.settings && (
           <div className="flex flex-1 flex-col overflow-y-auto">
             <div>
               {cloneElement(children as any, {

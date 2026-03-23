@@ -322,6 +322,18 @@ class Node(Generic[NodeDataT]):
         return cast(DifyRunContextProtocol, raw_ctx)
 
     @property
+    def tenant_id(self) -> str:
+        return self.require_dify_context().tenant_id
+
+    @property
+    def app_id(self) -> str:
+        return self.require_dify_context().app_id
+
+    @property
+    def user_id(self) -> str:
+        return self.require_dify_context().user_id
+
+    @property
     def execution_id(self) -> str:
         return self._node_execution_id
 

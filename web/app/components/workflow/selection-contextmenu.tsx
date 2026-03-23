@@ -23,7 +23,6 @@ import { shallow } from 'zustand/shallow'
 import Tooltip from '@/app/components/base/tooltip'
 import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
 import { useNodesInteractions, useNodesReadOnly, useNodesSyncDraft } from './hooks'
-import { useMakeGroupAvailability } from './hooks/use-make-group'
 import { useSelectionInteractions } from './hooks/use-selection-interactions'
 import { useWorkflowHistory, WorkflowHistoryEvent } from './hooks/use-workflow-history'
 import ShortcutsName from './shortcuts-name'
@@ -86,7 +85,6 @@ const SelectionContextmenu = () => {
     handleNodesCopy,
     handleNodesDuplicate,
     handleNodesDelete,
-    handleMakeGroup,
   } = useNodesInteractions()
   const selectionMenu = useStore(s => s.selectionMenu)
 
@@ -99,8 +97,6 @@ const SelectionContextmenu = () => {
     ids.sort()
     return ids
   }, shallow)
-
-  const { canMakeGroup } = useMakeGroupAvailability(selectedNodeIds)
 
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { saveStateToHistory } = useWorkflowHistory()
@@ -434,25 +430,6 @@ const SelectionContextmenu = () => {
       <div ref={menuRef} className="w-[244px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl">
         {!nodesReadOnly && (
           <>
-            <div className="p-1">
-              <div
-                className={`flex h-8 items-center justify-between rounded-lg px-3 text-sm ${
-                  canMakeGroup
-                    ? 'cursor-pointer text-text-secondary hover:bg-state-base-hover'
-                    : 'cursor-not-allowed text-text-disabled'
-                }`}
-                onClick={() => {
-                  if (!canMakeGroup)
-                    return
-                  handleMakeGroup()
-                  handleSelectionContextmenuCancel()
-                }}
-              >
-                {t('operator.makeGroup', { ns: 'workflow' })}
-                <ShortcutsName keys={['ctrl', 'g']} className={!canMakeGroup ? 'opacity-50' : ''} />
-              </div>
-            </div>
-            <div className="h-px bg-divider-regular" />
             <div className="p-1">
               <div
                 className="flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"

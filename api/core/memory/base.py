@@ -20,7 +20,6 @@ class BaseMemory(ABC):
     @abstractmethod
     def get_history_prompt_messages(
         self,
-        *,
         max_token_limit: int = 2000,
         message_limit: int | None = None,
     ) -> Sequence[PromptMessage]:

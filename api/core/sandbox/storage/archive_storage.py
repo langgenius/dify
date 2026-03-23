@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 
-from core.virtual_environment.__base.exec import PipelineExecutionError
 from core.virtual_environment.__base.helpers import pipeline
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
 from extensions.storage.base_storage import BaseStorage
@@ -47,19 +46,15 @@ class ArchiveSandboxStorage(SandboxStorage):
         download_url = self._storage.get_download_url(self._storage_key, _ARCHIVE_TIMEOUT)
         archive = "archive.tar.gz"
 
-        try:
-            (
-                pipeline(sandbox)
-                .add(["curl", "-fsSL", download_url, "-o", archive], error_message="Failed to download archive")
-                .add(
-                    ["sh", "-c", 'tar -xzf "$1" 2>/dev/null; exit $?', "sh", archive], error_message="Failed to extract"
-                )
-                .add(["rm", archive], error_message="Failed to cleanup")
-                .execute(timeout=_ARCHIVE_TIMEOUT, raise_on_error=True)
+        (
+            pipeline(sandbox)
+            .add(["curl", "-fsSL", download_url, "-o", archive], error_message="Failed to download archive")
+            .add(
+                ["sh", "-c", 'tar -xzf "$1" 2>/dev/null; exit $?', "sh", archive], error_message="Failed to extract"
             )
-        except PipelineExecutionError:
-            logger.exception("Failed to mount archive for sandbox %s", self._sandbox_id)
-            return False
+            .add(["rm", archive], error_message="Failed to cleanup")
+            .execute(timeout=_ARCHIVE_TIMEOUT, raise_on_error=True)
+        )
 
         logger.info("Mounted archive for sandbox %s", self._sandbox_id)
         return True

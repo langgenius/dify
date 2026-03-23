@@ -8,7 +8,6 @@ import {
 import { useStore as useAppStore } from '@/app/components/app/store'
 import AppIcon from '@/app/components/base/app-icon'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
-import { Folder as FolderLine } from '@/app/components/base/icons/src/vender/line/files'
 import {
   Agent,
   Answer,
@@ -70,7 +69,6 @@ const DEFAULT_ICON_MAP: Record<BlockEnum, React.ComponentType<{ className: strin
   [BlockEnum.TemplateTransform]: TemplatingTransform,
   [BlockEnum.VariableAssigner]: VariableX,
   [BlockEnum.VariableAggregator]: VariableX,
-  [BlockEnum.Group]: FolderLine,
   [BlockEnum.Assigner]: Assigner,
   [BlockEnum.Tool]: VariableX,
   [BlockEnum.IterationStart]: VariableX,
@@ -128,7 +126,6 @@ const ICON_CONTAINER_BG_COLOR_MAP: Record<string, string> = {
   [BlockEnum.VariableAssigner]: 'bg-util-colors-blue-blue-500',
   [BlockEnum.VariableAggregator]: 'bg-util-colors-blue-blue-500',
   [BlockEnum.Tool]: 'bg-util-colors-blue-blue-500',
-  [BlockEnum.Group]: 'bg-util-colors-blue-blue-500',
   [BlockEnum.Assigner]: 'bg-util-colors-blue-blue-500',
   [BlockEnum.ParameterExtractor]: 'bg-util-colors-blue-blue-500',
   [BlockEnum.DocExtractor]: 'bg-util-colors-green-green-500',
