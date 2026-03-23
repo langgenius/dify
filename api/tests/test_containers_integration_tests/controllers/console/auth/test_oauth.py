@@ -405,7 +405,9 @@ class TestAccountGeneration:
 
     @patch("controllers.console.auth.oauth.AccountService.get_account_by_email_with_case_fallback")
     @patch("controllers.console.auth.oauth.Account")
-    def test_should_get_account_by_openid_or_email(self, mock_account_model, mock_get_account, user_info, mock_account):
+    def test_should_get_account_by_openid_or_email(
+        self, mock_account_model, mock_get_account, flask_req_ctx_with_containers, user_info, mock_account
+    ):
         # Test OpenID found
         mock_account_model.get_by_openid.return_value = mock_account
         result = _get_account_by_openid_or_email("github", user_info)
@@ -423,24 +425,26 @@ class TestAccountGeneration:
 
     def test_get_account_by_email_with_case_fallback_uses_real_db(self, db_session_with_containers):
         """Test case-insensitive email lookup against real PostgreSQL."""
+        from uuid import uuid4
+
         from models.account import Account
 
         account = Account(
-            email="Case@Test.com",
+            email=f"Case-{uuid4()}@Test.com",
             name="Test User",
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
         db_session_with_containers.add(account)
         db_session_with_containers.commit()
 
         result = AccountService.get_account_by_email_with_case_fallback(
-            "Case@Test.com", session=db_session_with_containers
+            account.email, session=db_session_with_containers
         )
         assert result is not None
 
         result_lower = AccountService.get_account_by_email_with_case_fallback(
-            "case@test.com", session=db_session_with_containers
+            account.email.lower(), session=db_session_with_containers
         )
         assert result_lower is not None
         assert result_lower.id == account.id
