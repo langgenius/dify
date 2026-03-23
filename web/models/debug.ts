@@ -18,7 +18,6 @@ export const PromptMode = {
   advanced: 'advanced',
 } as const
 
-// eslint-disable-next-line ts/no-redeclare -- value-type pair
 export type PromptMode = typeof PromptMode[keyof typeof PromptMode]
 
 export type PromptItem = {
@@ -51,7 +50,6 @@ export const PromptRole = {
   assistant: 'assistant',
 } as const
 
-// eslint-disable-next-line ts/no-redeclare -- value-type pair
 export type PromptRole = typeof PromptRole[keyof typeof PromptRole]
 
 export type PromptVariable = {

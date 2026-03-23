@@ -245,7 +245,6 @@ export const PromptRole = {
   assistant: 'assistant',
 } as const
 
-// eslint-disable-next-line ts/no-redeclare -- value-type pair
 export type PromptRole = typeof PromptRole[keyof typeof PromptRole]
 
 export enum EditionType {

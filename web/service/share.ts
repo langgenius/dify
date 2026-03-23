@@ -35,7 +35,6 @@ export const AppSourceType = {
   tryApp: 'tryApp',
 } as const
 
-// eslint-disable-next-line ts/no-redeclare -- value-type pair
 export type AppSourceType = typeof AppSourceType[keyof typeof AppSourceType]
 
 const apiPrefix = {

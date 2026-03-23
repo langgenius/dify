@@ -3,7 +3,6 @@ export const SubjectType = {
   ACCOUNT: 'account',
 } as const
 
-// eslint-disable-next-line ts/no-redeclare -- value-type pair
 export type SubjectType = typeof SubjectType[keyof typeof SubjectType]
 
 export const AccessMode = {
@@ -13,7 +12,6 @@ export const AccessMode = {
   EXTERNAL_MEMBERS: 'sso_verified',
 } as const
 
-// eslint-disable-next-line ts/no-redeclare -- value-type pair
 export type AccessMode = typeof AccessMode[keyof typeof AccessMode]
 
 export type AccessControlGroup = {
