@@ -564,33 +564,33 @@ describe('useChat – handleSend SSE callbacks', () => {
   })
 
   describe('onCompleted', () => {
-    it('should set isResponding to false', () => {
+    it('should set isResponding to false', async () => {
       const { result } = setupAndSend()
-      act(() => {
-        capturedCallbacks.onCompleted(false)
+      await act(async () => {
+        await capturedCallbacks.onCompleted(false)
       })
       expect(result.current.isResponding).toBe(false)
     })
 
-    it('should call fetchInspectVars and invalidAllLastRun when not paused', () => {
+    it('should call fetchInspectVars and invalidAllLastRun when not paused', async () => {
       setupAndSend()
-      act(() => {
-        capturedCallbacks.onCompleted(false)
+      await act(async () => {
+        await capturedCallbacks.onCompleted(false)
       })
       expect(mockFetchInspectVars).toHaveBeenCalledWith({})
       expect(mockInvalidAllLastRun).toHaveBeenCalled()
     })
 
-    it('should not call fetchInspectVars when workflow is paused', () => {
+    it('should not call fetchInspectVars when workflow is paused', async () => {
       mockWorkflowRunningData = { result: { status: 'paused' } }
       setupAndSend()
-      act(() => {
-        capturedCallbacks.onCompleted(false)
+      await act(async () => {
+        await capturedCallbacks.onCompleted(false)
       })
       expect(mockFetchInspectVars).not.toHaveBeenCalled()
     })
 
-    it('should set error content on response item when hasError with errorMessage', () => {
+    it('should set error content on response item when hasError with errorMessage', async () => {
       const { result } = setupAndSend()
 
       act(() => {
@@ -601,8 +601,8 @@ describe('useChat – handleSend SSE callbacks', () => {
         })
       })
 
-      act(() => {
-        capturedCallbacks.onCompleted(true, 'Something went wrong')
+      await act(async () => {
+        await capturedCallbacks.onCompleted(true, 'Something went wrong')
       })
 
       const answer = result.current.chatList.find(item => item.id === 'msg-err')
@@ -610,10 +610,10 @@ describe('useChat – handleSend SSE callbacks', () => {
       expect(answer!.isError).toBe(true)
     })
 
-    it('should not set error content when hasError is true but errorMessage is empty', () => {
+    it('should not set error content when hasError is true but errorMessage is empty', async () => {
       const { result } = setupAndSend()
-      act(() => {
-        capturedCallbacks.onCompleted(true)
+      await act(async () => {
+        await capturedCallbacks.onCompleted(true)
       })
       expect(result.current.isResponding).toBe(false)
     })
@@ -1530,7 +1530,7 @@ describe('useChat – handleResume', () => {
     mockSseGet.mockReset()
   })
 
-  function setupResumeWithTree() {
+  async function setupResumeWithTree() {
     let sendCallbacks: any
     mockHandleRun.mockImplementation((_params: any, callbacks: any) => {
       sendCallbacks = callbacks
@@ -1554,8 +1554,8 @@ describe('useChat – handleResume', () => {
       })
     })
 
-    act(() => {
-      sendCallbacks.onCompleted(false)
+    await act(async () => {
+      await sendCallbacks.onCompleted(false)
     })
 
     act(() => {
@@ -1630,8 +1630,8 @@ describe('useChat – handleResume', () => {
   })
 
   describe('onWorkflowStarted', () => {
-    it('should set isResponding and update workflow process', () => {
-      const { result } = setupResumeWithTree()
+    it('should set isResponding and update workflow process', async () => {
+      const { result } = await setupResumeWithTree()
 
       act(() => {
         capturedResumeOptions.onWorkflowStarted({
@@ -1643,7 +1643,7 @@ describe('useChat – handleResume', () => {
       expect(result.current.isResponding).toBe(true)
     })
 
-    it('should resume existing workflow when tracing exists', () => {
+    it('should resume existing workflow when tracing exists', async () => {
       let sendCallbacks: any
       mockHandleRun.mockImplementation((_params: any, callbacks: any) => {
         sendCallbacks = callbacks
@@ -1673,8 +1673,8 @@ describe('useChat – handleResume', () => {
         })
       })
 
-      act(() => {
-        sendCallbacks.onCompleted(false)
+      await act(async () => {
+        await sendCallbacks.onCompleted(false)
       })
 
       act(() => {
@@ -1694,8 +1694,8 @@ describe('useChat – handleResume', () => {
   })
 
   describe('onWorkflowFinished', () => {
-    it('should update workflow status', () => {
-      const { result } = setupResumeWithTree()
+    it('should update workflow status', async () => {
+      const { result } = await setupResumeWithTree()
 
       act(() => {
         capturedResumeOptions.onWorkflowStarted({
@@ -1716,8 +1716,8 @@ describe('useChat – handleResume', () => {
   })
 
   describe('onData', () => {
-    it('should append message content', () => {
-      const { result } = setupResumeWithTree()
+    it('should append message content', async () => {
+      const { result } = await setupResumeWithTree()
 
       act(() => {
         capturedResumeOptions.onData('resumed', false, {
@@ -1731,8 +1731,8 @@ describe('useChat – handleResume', () => {
       expect(answer!.content).toContain('resumed')
     })
 
-    it('should update conversationId when provided', () => {
-      const { result } = setupResumeWithTree()
+    it('should update conversationId when provided', async () => {
+      const { result } = await setupResumeWithTree()
 
       act(() => {
         capturedResumeOptions.onData('msg', false, {
@@ -1747,25 +1747,25 @@ describe('useChat – handleResume', () => {
   })
 
   describe('onCompleted', () => {
-    it('should set isResponding to false', () => {
-      const { result } = setupResumeWithTree()
-      act(() => {
-        capturedResumeOptions.onCompleted(false)
+    it('should set isResponding to false', async () => {
+      const { result } = await setupResumeWithTree()
+      await act(async () => {
+        await capturedResumeOptions.onCompleted(false)
       })
       expect(result.current.isResponding).toBe(false)
     })
 
-    it('should not call fetchInspectVars when paused', () => {
+    it('should not call fetchInspectVars when paused', async () => {
       mockWorkflowRunningData = { result: { status: 'paused' } }
-      setupResumeWithTree()
+      await setupResumeWithTree()
       mockFetchInspectVars.mockClear()
-      act(() => {
-        capturedResumeOptions.onCompleted(false)
+      await act(async () => {
+        await capturedResumeOptions.onCompleted(false)
       })
       expect(mockFetchInspectVars).not.toHaveBeenCalled()
     })
 
-    it('should still call fetchInspectVars on error but skip suggested questions', () => {
+    it('should still call fetchInspectVars on error but skip suggested questions', async () => {
       const mockGetSuggested = vi.fn().mockResolvedValue({ data: ['s1'] })
       let sendCallbacks: any
       mockHandleRun.mockImplementation((_params: any, callbacks: any) => {
@@ -1790,8 +1790,8 @@ describe('useChat – handleResume', () => {
           message_id: 'msg-resume',
         })
       })
-      act(() => {
-        sendCallbacks.onCompleted(false)
+      await act(async () => {
+        await sendCallbacks.onCompleted(false)
       })
       mockFetchInspectVars.mockClear()
       mockInvalidAllLastRun.mockClear()
@@ -1801,8 +1801,8 @@ describe('useChat – handleResume', () => {
           onGetSuggestedQuestions: mockGetSuggested,
         })
       })
-      act(() => {
-        capturedResumeOptions.onCompleted(true)
+      await act(async () => {
+        await capturedResumeOptions.onCompleted(true)
       })
 
       expect(mockFetchInspectVars).toHaveBeenCalledWith({})
@@ -1840,8 +1840,8 @@ describe('useChat – handleResume', () => {
         })
       })
 
-      act(() => {
-        sendCallbacks.onCompleted(false)
+      await act(async () => {
+        await sendCallbacks.onCompleted(false)
       })
 
       act(() => {
@@ -1884,8 +1884,8 @@ describe('useChat – handleResume', () => {
         })
       })
 
-      act(() => {
-        sendCallbacks.onCompleted(false)
+      await act(async () => {
+        await sendCallbacks.onCompleted(false)
       })
 
       act(() => {
@@ -1903,8 +1903,8 @@ describe('useChat – handleResume', () => {
   })
 
   describe('onError', () => {
-    it('should set isResponding to false', () => {
-      const { result } = setupResumeWithTree()
+    it('should set isResponding to false', async () => {
+      const { result } = await setupResumeWithTree()
       act(() => {
         capturedResumeOptions.onError()
       })
@@ -1913,8 +1913,8 @@ describe('useChat – handleResume', () => {
   })
 
   describe('onMessageEnd', () => {
-    it('should update citation and files', () => {
-      const { result } = setupResumeWithTree()
+    it('should update citation and files', async () => {
+      const { result } = await setupResumeWithTree()
 
       act(() => {
         capturedResumeOptions.onMessageEnd({
@@ -1929,8 +1929,8 @@ describe('useChat – handleResume', () => {
   })
 
   describe('onMessageReplace', () => {
-    it('should replace content', () => {
-      const { result } = setupResumeWithTree()
+    it('should replace content', async () => {
+      const { result } = await setupResumeWithTree()
 
       act(() => {
         capturedResumeOptions.onMessageReplace({ answer: 'replaced' })
@@ -1942,8 +1942,8 @@ describe('useChat – handleResume', () => {
   })
 
   describe('onIterationStart / onIterationFinish', () => {
-    it('should push and update iteration tracing entries', () => {
-      const { result } = setupResumeWithTree()
+    it('should push and update iteration tracing entries', async () => {
+      const { result } = await setupResumeWithTree()
 
       act(() => {
         capturedResumeOptions.onIterationStart({
@@ -1967,8 +1967,8 @@ describe('useChat – handleResume', () => {
       expect(answer!.workflowProcess!.tracing[0].status).toBe('succeeded')
     })
 
-    it('should handle iteration finish when no match found', () => {
-      setupResumeWithTree()
+    it('should handle iteration finish when no match found', async () => {
+      await setupResumeWithTree()
 
       act(() => {
         capturedResumeOptions.onIterationFinish({
@@ -1979,8 +1979,8 @@ describe('useChat – handleResume', () => {
   })
 
   describe('onLoopStart / onLoopFinish', () => {
-    it('should push and update loop tracing entries', () => {
-      const { result } = setupResumeWithTree()
+    it('should push and update loop tracing entries', async () => {
+      const { result } = await setupResumeWithTree()
 
       act(() => {
         capturedResumeOptions.onLoopStart({
@@ -2004,8 +2004,8 @@ describe('useChat – handleResume', () => {
       expect(answer!.workflowProcess!.tracing[0].status).toBe('succeeded')
     })
 
-    it('should handle loop finish when no match found', () => {
-      setupResumeWithTree()
+    it('should handle loop finish when no match found', async () => {
+      await setupResumeWithTree()
 
       act(() => {
         capturedResumeOptions.onLoopFinish({
@@ -2016,8 +2016,8 @@ describe('useChat – handleResume', () => {
   })
 
   describe('onNodeStarted / onNodeFinished', () => {
-    it('should add and update node tracing entries', () => {
-      const { result } = setupResumeWithTree()
+    it('should add and update node tracing entries', async () => {
+      const { result } = await setupResumeWithTree()
 
       act(() => {
         capturedResumeOptions.onWorkflowStarted({
@@ -2050,8 +2050,8 @@ describe('useChat – handleResume', () => {
       expect((finishedTrace as any).status).toBe('succeeded')
     })
 
-    it('should skip onNodeStarted when iteration_id is present', () => {
-      const { result } = setupResumeWithTree()
+    it('should skip onNodeStarted when iteration_id is present', async () => {
+      const { result } = await setupResumeWithTree()
 
       act(() => {
         capturedResumeOptions.onWorkflowStarted({
@@ -2070,8 +2070,8 @@ describe('useChat – handleResume', () => {
       expect(answer!.workflowProcess!.tracing.some((t: any) => t.node_id === 'rn-child')).toBe(false)
     })
 
-    it('should skip onNodeFinished when iteration_id is present', () => {
-      setupResumeWithTree()
+    it('should skip onNodeFinished when iteration_id is present', async () => {
+      await setupResumeWithTree()
 
       act(() => {
         capturedResumeOptions.onWorkflowStarted({
@@ -2087,8 +2087,8 @@ describe('useChat – handleResume', () => {
       })
     })
 
-    it('should update existing node in tracing on onNodeStarted', () => {
-      const { result } = setupResumeWithTree()
+    it('should update existing node in tracing on onNodeStarted', async () => {
+      const { result } = await setupResumeWithTree()
 
       act(() => {
         capturedResumeOptions.onWorkflowStarted({
@@ -2116,8 +2116,8 @@ describe('useChat – handleResume', () => {
       expect(matchingTraces[0].status).toBe('running')
     })
 
-    it('should match nodeFinished with parallel_id', () => {
-      const { result } = setupResumeWithTree()
+    it('should match nodeFinished with parallel_id', async () => {
+      const { result } = await setupResumeWithTree()
 
       act(() => {
         capturedResumeOptions.onWorkflowStarted({
@@ -2152,8 +2152,8 @@ describe('useChat – handleResume', () => {
   })
 
   describe('onHumanInputRequired', () => {
-    it('should initialize humanInputFormDataList', () => {
-      const { result } = setupResumeWithTree()
+    it('should initialize humanInputFormDataList', async () => {
+      const { result } = await setupResumeWithTree()
 
       act(() => {
         capturedResumeOptions.onHumanInputRequired({
@@ -2165,8 +2165,8 @@ describe('useChat – handleResume', () => {
       expect(answer!.humanInputFormDataList).toHaveLength(1)
     })
 
-    it('should update existing form for same node and push for different node', () => {
-      const { result } = setupResumeWithTree()
+    it('should update existing form for same node and push for different node', async () => {
+      const { result } = await setupResumeWithTree()
 
       act(() => {
         capturedResumeOptions.onHumanInputRequired({
@@ -2193,8 +2193,8 @@ describe('useChat – handleResume', () => {
       expect(answer!.humanInputFormDataList).toHaveLength(2)
     })
 
-    it('should set tracing node to Paused when tracing match is found', () => {
-      const { result } = setupResumeWithTree()
+    it('should set tracing node to Paused when tracing match is found', async () => {
+      const { result } = await setupResumeWithTree()
 
       act(() => {
         capturedResumeOptions.onWorkflowStarted({
@@ -2222,8 +2222,8 @@ describe('useChat – handleResume', () => {
   })
 
   describe('onHumanInputFormFilled', () => {
-    it('should move form from pending to filled list', () => {
-      const { result } = setupResumeWithTree()
+    it('should move form from pending to filled list', async () => {
+      const { result } = await setupResumeWithTree()
 
       act(() => {
         capturedResumeOptions.onHumanInputRequired({
@@ -2242,8 +2242,8 @@ describe('useChat – handleResume', () => {
       expect(answer!.humanInputFilledFormDataList).toHaveLength(1)
     })
 
-    it('should initialize humanInputFilledFormDataList when not present', () => {
-      const { result } = setupResumeWithTree()
+    it('should initialize humanInputFilledFormDataList when not present', async () => {
+      const { result } = await setupResumeWithTree()
 
       act(() => {
         capturedResumeOptions.onHumanInputFormFilled({
@@ -2257,8 +2257,8 @@ describe('useChat – handleResume', () => {
   })
 
   describe('onHumanInputFormTimeout', () => {
-    it('should set expiration_time on the form entry', () => {
-      const { result } = setupResumeWithTree()
+    it('should set expiration_time on the form entry', async () => {
+      const { result } = await setupResumeWithTree()
 
       act(() => {
         capturedResumeOptions.onHumanInputRequired({
@@ -2279,8 +2279,8 @@ describe('useChat – handleResume', () => {
   })
 
   describe('onWorkflowPaused', () => {
-    it('should re-subscribe via sseGet and set status to Paused', () => {
-      const { result } = setupResumeWithTree()
+    it('should re-subscribe via sseGet and set status to Paused', async () => {
+      const { result } = await setupResumeWithTree()
       const sseGetCallsBefore = mockSseGet.mock.calls.length
 
       act(() => {
@@ -2304,7 +2304,7 @@ describe('useChat – handleSwitchSibling', () => {
     mockSseGet.mockReset()
   })
 
-  it('should call handleResume when target has workflow_run_id and pending humanInputFormData', () => {
+  it('should call handleResume when target has workflow_run_id and pending humanInputFormData', async () => {
     let sendCallbacks: any
     mockHandleRun.mockImplementation((_params: any, callbacks: any) => {
       sendCallbacks = callbacks
@@ -2332,8 +2332,8 @@ describe('useChat – handleSwitchSibling', () => {
       })
     })
 
-    act(() => {
-      sendCallbacks.onCompleted(false)
+    await act(async () => {
+      await sendCallbacks.onCompleted(false)
     })
 
     act(() => {
@@ -2343,7 +2343,7 @@ describe('useChat – handleSwitchSibling', () => {
     expect(mockSseGet).toHaveBeenCalled()
   })
 
-  it('should not call handleResume when target has no humanInputFormDataList', () => {
+  it('should not call handleResume when target has no humanInputFormDataList', async () => {
     let sendCallbacks: any
     mockHandleRun.mockImplementation((_params: any, callbacks: any) => {
       sendCallbacks = callbacks
@@ -2364,8 +2364,8 @@ describe('useChat – handleSwitchSibling', () => {
       })
     })
 
-    act(() => {
-      sendCallbacks.onCompleted(false)
+    await act(async () => {
+      await sendCallbacks.onCompleted(false)
     })
 
     act(() => {
@@ -2385,7 +2385,7 @@ describe('useChat – handleSwitchSibling', () => {
     expect(mockSseGet).not.toHaveBeenCalled()
   })
 
-  it('should search children recursively in findMessageInTree', () => {
+  it('should search children recursively in findMessageInTree', async () => {
     let sendCallbacks: any
     mockHandleRun.mockImplementation((_params: any, callbacks: any) => {
       sendCallbacks = callbacks
@@ -2407,8 +2407,8 @@ describe('useChat – handleSwitchSibling', () => {
       })
     })
 
-    act(() => {
-      sendCallbacks.onCompleted(false)
+    await act(async () => {
+      await sendCallbacks.onCompleted(false)
     })
 
     act(() => {
@@ -2433,8 +2433,8 @@ describe('useChat – handleSwitchSibling', () => {
       })
     })
 
-    act(() => {
-      sendCallbacks.onCompleted(false)
+    await act(async () => {
+      await sendCallbacks.onCompleted(false)
     })
 
     act(() => {
@@ -2830,7 +2830,7 @@ describe('useChat – updateCurrentQAOnTree with parent_message_id', () => {
     })
   })
 
-  it('should handle follow-up messages as children of parent', () => {
+  it('should handle follow-up messages as children of parent', async () => {
     const { result } = renderHook(() => useChat({}))
 
     act(() => {
@@ -2847,8 +2847,8 @@ describe('useChat – updateCurrentQAOnTree with parent_message_id', () => {
       })
     })
 
-    act(() => {
-      firstCallbacks.onCompleted(false)
+    await act(async () => {
+      await firstCallbacks.onCompleted(false)
     })
 
     act(() => {
