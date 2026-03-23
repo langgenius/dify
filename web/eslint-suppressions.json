@@ -4700,9 +4700,6 @@
   "app/components/header/account-setting/data-source-page-new/configure.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
     }
   },
   "app/components/header/account-setting/data-source-page-new/hooks/use-marketplace-all-plugins.ts": {
@@ -4729,9 +4726,6 @@
   "app/components/header/account-setting/data-source-page-new/operator.tsx": {
     "no-restricted-imports": {
       "count": 2
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 5
     }
   },
   "app/components/header/account-setting/data-source-page-new/types.ts": {
@@ -4815,9 +4809,6 @@
   "app/components/header/account-setting/model-provider-page/model-auth/add-custom-model.tsx": {
     "no-restricted-imports": {
       "count": 2
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
     }
   },
   "app/components/header/account-setting/model-provider-page/model-auth/authorized/authorized-item.tsx": {
@@ -4828,9 +4819,6 @@
   "app/components/header/account-setting/model-provider-page/model-auth/authorized/index.tsx": {
     "no-restricted-imports": {
       "count": 3
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
     },
     "ts/no-explicit-any": {
       "count": 2
@@ -4849,9 +4837,6 @@
   "app/components/header/account-setting/model-provider-page/model-auth/credential-selector.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 4
     }
   },
   "app/components/header/account-setting/model-provider-page/model-auth/hooks/use-auth.ts": {
