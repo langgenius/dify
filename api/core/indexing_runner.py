@@ -38,7 +38,14 @@ from extensions.ext_storage import storage
 from libs import helper
 from libs.datetime_utils import naive_utc_now
 from models import Account
-from models.dataset import AutomaticRulesConfig, ChildChunk, Dataset, DatasetProcessRule, DocumentSegment, ProcessRuleDict
+from models.dataset import (
+    AutomaticRulesConfig,
+    ChildChunk,
+    Dataset,
+    DatasetProcessRule,
+    DocumentSegment,
+    ProcessRuleDict,
+)
 from models.dataset import Document as DatasetDocument
 from models.enums import DataSourceType, IndexingStatus, ProcessRuleMode, SegmentStatus
 from models.model import UploadFile
