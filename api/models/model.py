@@ -43,6 +43,7 @@ from .enums import (
     MessageChainType,
     MessageFileBelongsTo,
     MessageStatus,
+    TagType,
 )
 from .provider_ids import GenericProviderID
 from .types import EnumText, LongText, StringUUID
@@ -2404,7 +2405,7 @@ class Tag(TypeBase):
         StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
     )
     tenant_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
-    type: Mapped[str] = mapped_column(String(16), nullable=False)
+    type: Mapped[TagType] = mapped_column(EnumText(TagType, length=16), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
