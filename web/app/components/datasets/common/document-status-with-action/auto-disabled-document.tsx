@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { useAutoDisabledDocuments, useDocumentEnable, useInvalidDisabledDocument } from '@/service/knowledge/use-document'
 import StatusWithAction from './status-with-action'
 
@@ -23,7 +23,7 @@ const AutoDisabledDocument: FC<Props> = ({
   const handleEnableDocuments = useCallback(async () => {
     await enableDocument({ datasetId, documentIds })
     invalidDisabledDocument()
-    Toast.notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+    toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
   }, [])
   if (!hasDisabledDocument || isLoading)
     return null

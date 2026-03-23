@@ -6,6 +6,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import Banner from '../banner'
 
 const mockUseGetBanners = vi.fn()
+const mockUseSelector = vi.fn()
+const mockTrackEvent = vi.fn()
 
 vi.mock('@/service/use-explore', () => ({
   useGetBanners: (...args: unknown[]) => mockUseGetBanners(...args),
@@ -13,6 +15,14 @@ vi.mock('@/service/use-explore', () => ({
 
 vi.mock('@/context/i18n', () => ({
   useLocale: () => 'en-US',
+}))
+
+vi.mock('@/context/app-context', () => ({
+  useSelector: (...args: unknown[]) => mockUseSelector(...args),
+}))
+
+vi.mock('@/app/components/base/amplitude', () => ({
+  trackEvent: (...args: unknown[]) => mockTrackEvent(...args),
 }))
 
 vi.mock('@/app/components/base/carousel', () => ({
@@ -54,9 +64,12 @@ vi.mock('@/app/components/base/carousel', () => ({
 }))
 
 vi.mock('../banner-item', () => ({
-  BannerItem: ({ banner, autoplayDelay, isPaused }: {
+  BannerItem: ({ banner, autoplayDelay, isPaused, sort, language, accountId }: {
     banner: BannerType
     autoplayDelay: number
+    sort: number
+    language: string
+    accountId?: string
     isPaused?: boolean
   }) => (
     <div
@@ -64,6 +77,9 @@ vi.mock('../banner-item', () => ({
       data-banner-id={banner.id}
       data-autoplay-delay={autoplayDelay}
       data-is-paused={isPaused}
+      data-sort={sort}
+      data-language={language}
+      data-account-id={accountId}
     >
       BannerItem:
       {' '}
@@ -87,6 +103,11 @@ const createMockBanner = (id: string, status: string = 'enabled', title: string 
 describe('Banner', () => {
   beforeEach(() => {
     vi.useFakeTimers()
+    mockUseSelector.mockImplementation(selector => selector({
+      userProfile: {
+        id: 'account-123',
+      },
+    }))
   })
 
   afterEach(() => {
@@ -234,6 +255,59 @@ describe('Banner', () => {
       render(<Banner />)
 
       expect(screen.getByTestId('carousel')).toHaveClass('rounded-2xl')
+    })
+
+    it('tracks enabled banner impressions with expected payload', () => {
+      mockUseGetBanners.mockReturnValue({
+        data: [
+          createMockBanner('1', 'enabled', 'Enabled Banner 1'),
+          createMockBanner('2', 'disabled', 'Disabled Banner'),
+          createMockBanner('3', 'enabled', 'Enabled Banner 2'),
+        ],
+        isLoading: false,
+        isError: false,
+      })
+
+      render(<Banner />)
+
+      expect(mockTrackEvent).toHaveBeenCalledTimes(2)
+      expect(mockTrackEvent).toHaveBeenNthCalledWith(1, 'explore_banner_impression', expect.objectContaining({
+        banner_id: '1',
+        title: 'Enabled Banner 1',
+        sort: 1,
+        link: 'https://example.com',
+        page: 'explore',
+        language: 'en-US',
+        account_id: 'account-123',
+        event_time: expect.any(Number),
+      }))
+      expect(mockTrackEvent).toHaveBeenNthCalledWith(2, 'explore_banner_impression', expect.objectContaining({
+        banner_id: '3',
+        title: 'Enabled Banner 2',
+        sort: 2,
+        link: 'https://example.com',
+        page: 'explore',
+        language: 'en-US',
+        account_id: 'account-123',
+        event_time: expect.any(Number),
+      }))
+    })
+
+    it('does not track impressions when account id is unavailable', () => {
+      mockUseSelector.mockImplementation(selector => selector({
+        userProfile: {
+          id: '',
+        },
+      }))
+      mockUseGetBanners.mockReturnValue({
+        data: [createMockBanner('1', 'enabled', 'Enabled Banner 1')],
+        isLoading: false,
+        isError: false,
+      })
+
+      render(<Banner />)
+
+      expect(mockTrackEvent).not.toHaveBeenCalled()
     })
   })
 
@@ -435,8 +509,25 @@ describe('Banner', () => {
 
       const bannerItems = screen.getAllByTestId('banner-item')
       expect(bannerItems[0]).toHaveAttribute('data-banner-id', '1')
+      expect(bannerItems[0]).toHaveAttribute('data-sort', '1')
       expect(bannerItems[1]).toHaveAttribute('data-banner-id', '2')
+      expect(bannerItems[1]).toHaveAttribute('data-sort', '2')
       expect(bannerItems[2]).toHaveAttribute('data-banner-id', '3')
+      expect(bannerItems[2]).toHaveAttribute('data-sort', '3')
+    })
+
+    it('passes tracking context to banner item', () => {
+      mockUseGetBanners.mockReturnValue({
+        data: [createMockBanner('1', 'enabled', 'Banner 1')],
+        isLoading: false,
+        isError: false,
+      })
+
+      render(<Banner />)
+
+      const bannerItem = screen.getByTestId('banner-item')
+      expect(bannerItem).toHaveAttribute('data-language', 'en-US')
+      expect(bannerItem).toHaveAttribute('data-account-id', 'account-123')
     })
   })
 
