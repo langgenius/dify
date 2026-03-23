@@ -56,6 +56,7 @@ const LocaleLayout = async ({
         className="h-full select-auto"
         {...datasetMap}
       >
+        <LazySentryInitializer />
         <div className="isolate h-full">
           <JotaiProvider>
             <ThemeProvider
@@ -67,20 +68,18 @@ const LocaleLayout = async ({
             >
               <NuqsAdapter>
                 <BrowserInitializer>
-                  <LazySentryInitializer>
-                    <TanstackQueryInitializer>
-                      <I18nServerProvider>
-                        <ToastHost timeout={5000} limit={3} />
-                        <ToastProvider>
-                          <GlobalPublicStoreProvider>
-                            <TooltipProvider delay={300} closeDelay={200}>
-                              {children}
-                            </TooltipProvider>
-                          </GlobalPublicStoreProvider>
-                        </ToastProvider>
-                      </I18nServerProvider>
-                    </TanstackQueryInitializer>
-                  </LazySentryInitializer>
+                  <TanstackQueryInitializer>
+                    <I18nServerProvider>
+                      <ToastHost timeout={5000} limit={3} />
+                      <ToastProvider>
+                        <GlobalPublicStoreProvider>
+                          <TooltipProvider delay={300} closeDelay={200}>
+                            {children}
+                          </TooltipProvider>
+                        </GlobalPublicStoreProvider>
+                      </ToastProvider>
+                    </I18nServerProvider>
+                  </TanstackQueryInitializer>
                 </BrowserInitializer>
               </NuqsAdapter>
             </ThemeProvider>
