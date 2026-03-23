@@ -538,7 +538,7 @@ class TestApiToolManageService:
         mock_external_service_dependencies["provider_controller"].from_db.assert_called_once()
 
     def test_delete_api_tool_provider_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, flask_req_ctx_with_containers, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """Test successful deletion of an API tool provider."""
         fake = Faker()
@@ -591,7 +591,7 @@ class TestApiToolManageService:
             ApiToolManageService.delete_api_tool_provider(account.id, tenant.id, "nonexistent")
 
     def test_update_api_tool_provider_not_found(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, flask_req_ctx_with_containers, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """Test update raises ValueError when original provider not found."""
         fake = Faker()
@@ -599,7 +599,7 @@ class TestApiToolManageService:
             db_session_with_containers, mock_external_service_dependencies
         )
 
-        with pytest.raises(ValueError, match="api tool provider"):
+        with pytest.raises(ValueError, match="does not exists"):
             ApiToolManageService.update_api_tool_provider(
                 user_id=account.id,
                 tenant_id=tenant.id,
@@ -615,7 +615,7 @@ class TestApiToolManageService:
             )
 
     def test_update_api_tool_provider_missing_auth_type(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, flask_req_ctx_with_containers, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """Test update raises ValueError when auth_type is missing from credentials."""
         fake = Faker()
@@ -686,7 +686,7 @@ class TestApiToolManageService:
             )
 
     def test_create_api_tool_provider_tool_count_exceeds_limit(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, flask_req_ctx_with_containers, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """Test creation raises ValueError when tool count exceeds limit."""
         fake = Faker()
