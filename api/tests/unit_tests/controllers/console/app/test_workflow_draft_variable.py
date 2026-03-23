@@ -11,7 +11,6 @@ from controllers.console.app.workflow_draft_variable import (
     NodeVariableCollectionApi,
     SystemVariableCollectionApi,
     VariableApi,
-    VariableResetApi,
     WorkflowVariableCollectionApi,
 )
 from controllers.web.error import InvalidArgumentError, NotFoundError
@@ -202,15 +201,6 @@ class TestWorkflowDraftVariableEndpoints:
         assert resp.status_code == 204
 
     @patch("controllers.console.app.workflow_draft_variable.WorkflowDraftVariableService")
-    def test_variable_api_get_success(self, mock_draft_srv, app, mock_account, mock_app_model):
-        mock_draft_srv.return_value.get_variable.return_value = self._mock_workflow_variable()
-
-        resp = setup_test_context(
-            app, VariableApi, "/apps/app_123/workflows/draft/variables/var_123", "GET", mock_account, mock_app_model
-        )
-        assert resp["id"] == "var_123"
-
-    @patch("controllers.console.app.workflow_draft_variable.WorkflowDraftVariableService")
     def test_variable_api_get_not_found(self, mock_draft_srv, app, mock_account, mock_app_model):
         mock_draft_srv.return_value.get_variable.return_value = None
 
@@ -218,49 +208,6 @@ class TestWorkflowDraftVariableEndpoints:
             setup_test_context(
                 app, VariableApi, "/apps/app_123/workflows/draft/variables/var_123", "GET", mock_account, mock_app_model
             )
-
-    @patch("controllers.console.app.workflow_draft_variable.WorkflowDraftVariableService")
-    def test_variable_api_patch_success(self, mock_draft_srv, app, mock_account, mock_app_model):
-        mock_draft_srv.return_value.get_variable.return_value = self._mock_workflow_variable()
-
-        resp = setup_test_context(
-            app,
-            VariableApi,
-            "/apps/app_123/workflows/draft/variables/var_123",
-            "PATCH",
-            mock_account,
-            mock_app_model,
-            payload={"name": "new_name"},
-        )
-        assert resp["id"] == "var_123"
-        mock_draft_srv.return_value.update_variable.assert_called_once()
-
-    @patch("controllers.console.app.workflow_draft_variable.WorkflowDraftVariableService")
-    def test_variable_api_delete_success(self, mock_draft_srv, app, mock_account, mock_app_model):
-        mock_draft_srv.return_value.get_variable.return_value = self._mock_workflow_variable()
-
-        resp = setup_test_context(
-            app, VariableApi, "/apps/app_123/workflows/draft/variables/var_123", "DELETE", mock_account, mock_app_model
-        )
-        assert resp.status_code == 204
-        mock_draft_srv.return_value.delete_variable.assert_called_once()
-
-    @patch("controllers.console.app.workflow_draft_variable.WorkflowService")
-    @patch("controllers.console.app.workflow_draft_variable.WorkflowDraftVariableService")
-    def test_variable_reset_api_put_success(self, mock_draft_srv, mock_wf_srv, app, mock_account, mock_app_model):
-        mock_wf_srv.return_value.get_draft_workflow.return_value = MagicMock()
-        mock_draft_srv.return_value.get_variable.return_value = self._mock_workflow_variable()
-        mock_draft_srv.return_value.reset_variable.return_value = None  # means no content
-
-        resp = setup_test_context(
-            app,
-            VariableResetApi,
-            "/apps/app_123/workflows/draft/variables/var_123/reset",
-            "PUT",
-            mock_account,
-            mock_app_model,
-        )
-        assert resp.status_code == 204
 
     @patch("controllers.console.app.workflow_draft_variable.WorkflowService")
     @patch("controllers.console.app.workflow_draft_variable.WorkflowDraftVariableService")

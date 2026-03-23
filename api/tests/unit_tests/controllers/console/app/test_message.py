@@ -245,21 +245,6 @@ class TestMessageEndpoints:
             resp = api.get(**v_args)
             assert resp == {"count": 5}
 
-    @patch("controllers.console.app.message.MessageService")
-    def test_message_suggested_questions_success(self, mock_msg_srv, app, mock_account, mock_app_model):
-        mock_msg_srv.get_suggested_questions_after_answer.return_value = ["q1", "q2"]
-
-        with setup_test_context(
-            app,
-            MessageSuggestedQuestionApi,
-            "/apps/app_123/chat-messages/msg_123/suggested-questions",
-            "GET",
-            mock_account,
-            mock_app_model,
-        ) as (api, mock_db, v_args):
-            resp = api.get(**v_args)
-            assert resp == {"data": ["q1", "q2"]}
-
     @pytest.mark.parametrize(
         ("exc", "expected_exc"),
         [

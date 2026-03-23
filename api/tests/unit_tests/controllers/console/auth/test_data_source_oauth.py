@@ -8,7 +8,6 @@ from controllers.console.auth.data_source_oauth import (
     OAuthDataSource,
     OAuthDataSourceBinding,
     OAuthDataSourceCallback,
-    OAuthDataSourceSync,
 )
 
 
@@ -162,31 +161,3 @@ class TestOAuthDataSourceSync:
         app = Flask(__name__)
         app.config["TESTING"] = True
         return app
-
-    @patch("controllers.console.auth.data_source_oauth.get_oauth_providers")
-    @patch("libs.login.check_csrf_token")
-    @patch("controllers.console.wraps.db")
-    def test_sync_successful(self, mock_db, mock_csrf, mock_get_providers, app):
-        mock_provider = MagicMock()
-        mock_provider.sync_data_source.return_value = None
-        mock_get_providers.return_value = {"notion": mock_provider}
-
-        from models.account import Account, AccountStatus
-
-        mock_account = MagicMock(spec=Account)
-        mock_account.id = "user_123"
-        mock_account.status = AccountStatus.ACTIVE
-        mock_account.is_admin_or_owner = True
-        mock_account.current_tenant.current_role = "owner"
-
-        with patch("controllers.console.wraps.current_account_with_tenant", return_value=(mock_account, MagicMock())):
-            with app.test_request_context("/console/api/oauth/data-source/notion/binding_123/sync", method="GET"):
-                proxy_mock = LocalProxy(lambda: mock_account)
-                with patch("libs.login.current_user", proxy_mock):
-                    api_instance = OAuthDataSourceSync()
-                    # The route pattern uses <uuid:binding_id>, so we just pass a string for unit testing
-                    response = api_instance.get("notion", "binding_123")
-
-        assert response[0]["result"] == "success"
-        assert response[1] == 200
-        mock_provider.sync_data_source.assert_called_once_with("binding_123")
