@@ -43,6 +43,7 @@ from .enums import (
     IndexingStatus,
     ProcessRuleMode,
     SegmentStatus,
+    SegmentType,
     SummaryStatus,
 )
 from .model import App, Tag, TagBinding, UploadFile
@@ -998,7 +999,9 @@ class ChildChunk(Base):
     # indexing fields
     index_node_id = mapped_column(String(255), nullable=True)
     index_node_hash = mapped_column(String(255), nullable=True)
-    type = mapped_column(String(255), nullable=False, server_default=sa.text("'automatic'"))
+    type: Mapped[SegmentType] = mapped_column(
+        EnumText(SegmentType, length=255), nullable=False, server_default=sa.text("'automatic'")
+    )
     created_by = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=sa.func.current_timestamp())
     updated_by = mapped_column(StringUUID, nullable=True)
