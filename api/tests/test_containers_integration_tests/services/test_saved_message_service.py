@@ -497,9 +497,7 @@ class TestSavedMessageService:
         # The message should still exist, only the saved_message should be deleted
         assert db_session_with_containers.query(Message).where(Message.id == message.id).first() is not None
 
-    def test_save_for_end_user(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_save_for_end_user(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """Test saving a message for an EndUser."""
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
         end_user = self._create_test_end_user(db_session_with_containers, app)
@@ -570,9 +568,7 @@ class TestSavedMessageService:
         # Should not raise
         SavedMessageService.delete(app_model=app, user=account, message_id="non-existent-id")
 
-    def test_delete_for_end_user(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_delete_for_end_user(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """Test deleting a saved message for an EndUser."""
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
         end_user = self._create_test_end_user(db_session_with_containers, app)
