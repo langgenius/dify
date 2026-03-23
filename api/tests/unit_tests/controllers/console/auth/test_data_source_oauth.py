@@ -2,7 +2,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
-from werkzeug.local import LocalProxy
 
 from controllers.console.auth.data_source_oauth import (
     OAuthDataSource,
@@ -21,12 +20,12 @@ class TestOAuthDataSource:
 
     @patch("controllers.console.auth.data_source_oauth.get_oauth_providers")
     @patch("flask_login.current_user")
-    @patch("libs.login.current_user")
+    @patch("libs.login._get_user")
     @patch("libs.login.check_csrf_token")
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.data_source_oauth.dify_config.NOTION_INTEGRATION_TYPE", None)
     def test_get_oauth_url_successful(
-        self, mock_db, mock_csrf, mock_libs_user, mock_flask_user, mock_get_providers, app
+        self, mock_db, mock_csrf, mock_get_user, mock_flask_user, mock_get_providers, app
     ):
         mock_oauth_provider = MagicMock()
         mock_oauth_provider.get_authorization_url.return_value = "http://oauth.provider/auth"
@@ -39,16 +38,14 @@ class TestOAuthDataSource:
         mock_account.status = AccountStatus.ACTIVE
         mock_account.is_admin_or_owner = True
         mock_account.current_tenant.current_role = "owner"
-        mock_libs_user.return_value = mock_account
+        mock_get_user.return_value = mock_account
         mock_flask_user.return_value = mock_account
 
         # also patch current_account_with_tenant
         with patch("controllers.console.wraps.current_account_with_tenant", return_value=(mock_account, MagicMock())):
             with app.test_request_context("/console/api/oauth/data-source/notion", method="GET"):
-                proxy_mock = LocalProxy(lambda: mock_account)
-                with patch("libs.login.current_user", proxy_mock):
-                    api_instance = OAuthDataSource()
-                    response = api_instance.get("notion")
+                api_instance = OAuthDataSource()
+                response = api_instance.get("notion")
 
         assert response[0]["data"] == "http://oauth.provider/auth"
         assert response[1] == 200
@@ -71,8 +68,7 @@ class TestOAuthDataSource:
 
         with patch("controllers.console.wraps.current_account_with_tenant", return_value=(mock_account, MagicMock())):
             with app.test_request_context("/console/api/oauth/data-source/unknown_provider", method="GET"):
-                proxy_mock = LocalProxy(lambda: mock_account)
-                with patch("libs.login.current_user", proxy_mock):
+                with patch("libs.login._get_user", return_value=mock_account):
                     api_instance = OAuthDataSource()
                     response = api_instance.get("unknown_provider")
 
@@ -181,8 +177,7 @@ class TestOAuthDataSourceSync:
 
         with patch("controllers.console.wraps.current_account_with_tenant", return_value=(mock_account, MagicMock())):
             with app.test_request_context("/console/api/oauth/data-source/notion/binding_123/sync", method="GET"):
-                proxy_mock = LocalProxy(lambda: mock_account)
-                with patch("libs.login.current_user", proxy_mock):
+                with patch("libs.login._get_user", return_value=mock_account):
                     api_instance = OAuthDataSourceSync()
                     # The route pattern uses <uuid:binding_id>, so we just pass a string for unit testing
                     response = api_instance.get("notion", "binding_123")

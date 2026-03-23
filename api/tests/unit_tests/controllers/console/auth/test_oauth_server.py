@@ -117,7 +117,7 @@ class TestOAuthServerUserAuthorizeApi:
         mock_sign.return_value = "auth_code_123"
 
         with app.test_request_context("/oauth/provider/authorize", method="POST", json={"client_id": "test_client_id"}):
-            with patch("libs.login.current_user", mock_account):
+            with patch("libs.login._get_user", return_value=mock_account):
                 api_instance = OAuthServerUserAuthorizeApi()
                 response = api_instance.post()
 

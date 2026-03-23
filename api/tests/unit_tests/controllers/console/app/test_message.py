@@ -3,7 +3,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask, request
 from werkzeug.exceptions import InternalServerError, NotFound
-from werkzeug.local import LocalProxy
 
 from controllers.console.app.error import (
     ProviderModelCurrentlyNotSupportError,
@@ -76,6 +75,7 @@ def setup_test_context(
         patch("extensions.ext_database.db") as mock_db,
         patch("controllers.console.app.wraps.db", mock_db),
         patch("controllers.console.wraps.db", mock_db),
+        patch("controllers.console.wraps.dify_config.EDITION", "CLOUD"),
         patch("controllers.console.app.message.db", mock_db),
         patch("controllers.console.app.wraps.current_account_with_tenant", return_value=(mock_account, "tenant_123")),
         patch("controllers.console.wraps.current_account_with_tenant", return_value=(mock_account, "tenant_123")),
@@ -99,14 +99,12 @@ def setup_test_context(
         mock_db.data_query = data_query_mock
 
         # Let the caller override the stat db query logic
-        proxy_mock = LocalProxy(lambda: mock_account)
-
         query_string = "&".join([f"{k}={v}" for k, v in (qs or {}).items()])
         full_path = f"{route_path}?{query_string}" if qs else route_path
 
         with (
-            patch("libs.login.current_user", proxy_mock),
-            patch("flask_login.current_user", proxy_mock),
+            patch("libs.login._get_user", return_value=mock_account),
+            patch("flask_login.current_user", mock_account),
             patch("controllers.console.app.message.attach_message_extra_contents", return_value=None),
         ):
             with test_app.test_request_context(full_path, method=method, json=payload):

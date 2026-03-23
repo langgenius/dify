@@ -9,9 +9,10 @@ from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
-from dify_graph.repositories.human_input_form_repository import FormCreateParams, FormNotFoundError
 
 from core.repositories.human_input_repository import (
+    FormCreateParams,
+    FormNotFoundError,
     HumanInputFormRecord,
     HumanInputFormRepositoryImpl,
     HumanInputFormSubmissionRepository,
@@ -20,16 +21,15 @@ from core.repositories.human_input_repository import (
     _InvalidTimeoutStatusError,
     _WorkspaceMemberInfo,
 )
-from dify_graph.nodes.human_input.entities import (
+from core.workflow.human_input_compat import (
     EmailDeliveryConfig,
     EmailDeliveryMethod,
     EmailRecipients,
     ExternalRecipient,
-    HumanInputNodeData,
     MemberRecipient,
-    UserAction,
     WebAppDeliveryMethod,
 )
+from dify_graph.nodes.human_input.entities import HumanInputNodeData, UserAction
 from dify_graph.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from libs.datetime_utils import naive_utc_now
 from models.human_input import HumanInputFormRecipient, RecipientType
@@ -212,7 +212,7 @@ def test_recipient_entity_id_and_token_success() -> None:
     assert entity.token == "tok"
 
 
-def test_form_entity_web_app_token_prefers_console_then_webapp_then_none() -> None:
+def test_form_entity_submission_token_prefers_console_then_webapp_then_none() -> None:
     form = _DummyForm(
         id="f1",
         workflow_run_id="run",
@@ -229,13 +229,13 @@ def test_form_entity_web_app_token_prefers_console_then_webapp_then_none() -> No
     )
 
     entity = _HumanInputFormEntityImpl(form_model=form, recipient_models=[webapp, console])  # type: ignore[arg-type]
-    assert entity.web_app_token == "ctok"
+    assert entity.submission_token == "ctok"
 
     entity = _HumanInputFormEntityImpl(form_model=form, recipient_models=[webapp])  # type: ignore[arg-type]
-    assert entity.web_app_token == "wtok"
+    assert entity.submission_token == "wtok"
 
     entity = _HumanInputFormEntityImpl(form_model=form, recipient_models=[])  # type: ignore[arg-type]
-    assert entity.web_app_token is None
+    assert entity.submission_token is None
 
 
 def test_form_entity_submitted_data_parsed() -> None:
@@ -364,8 +364,8 @@ def test_delivery_method_to_model_email_uses_build_email_recipients(monkeypatch:
     method = EmailDeliveryMethod(
         config=EmailDeliveryConfig(
             recipients=EmailRecipients(
-                whole_workspace=False,
-                items=[MemberRecipient(user_id="u1"), ExternalRecipient(email="e@example.com")],
+                include_bound_group=False,
+                items=[MemberRecipient(reference_id="u1"), ExternalRecipient(email="e@example.com")],
             ),
             subject="s",
             body="b",
@@ -388,7 +388,7 @@ def test_build_email_recipients_uses_all_members_when_whole_workspace(monkeypatc
         session=MagicMock(),
         form_id="f",
         delivery_id="d",
-        recipients_config=EmailRecipients(whole_workspace=True, items=[ExternalRecipient(email="e@example.com")]),
+        recipients_config=EmailRecipients(include_bound_group=True, items=[ExternalRecipient(email="e@example.com")]),
     )
     assert recipients == ["ok"]
 
@@ -407,8 +407,8 @@ def test_build_email_recipients_uses_selected_members_when_not_whole_workspace(m
         form_id="f",
         delivery_id="d",
         recipients_config=EmailRecipients(
-            whole_workspace=False,
-            items=[MemberRecipient(user_id="u1"), ExternalRecipient(email="e@example.com")],
+            include_bound_group=False,
+            items=[MemberRecipient(reference_id="u1"), ExternalRecipient(email="e@example.com")],
         ),
     )
     assert recipients == ["ok"]
@@ -416,8 +416,8 @@ def test_build_email_recipients_uses_selected_members_when_not_whole_workspace(m
 
 def test_get_form_returns_entity_and_none_when_missing(monkeypatch: pytest.MonkeyPatch) -> None:
     _patch_session_factory(monkeypatch, _FakeSession(scalars_results=[None]))
-    repo = HumanInputFormRepositoryImpl(tenant_id="tenant")
-    assert repo.get_form("run", "node") is None
+    repo = HumanInputFormRepositoryImpl(tenant_id="tenant", workflow_execution_id="run")
+    assert repo.get_form("node") is None
 
     form = _DummyForm(
         id="f1",
@@ -437,8 +437,8 @@ def test_get_form_returns_entity_and_none_when_missing(monkeypatch: pytest.Monke
     )
     session = _FakeSession(scalars_results=[form, [recipient]])
     _patch_session_factory(monkeypatch, session)
-    repo = HumanInputFormRepositoryImpl(tenant_id="tenant")
-    entity = repo.get_form("run", "node")
+    repo = HumanInputFormRepositoryImpl(tenant_id="tenant", workflow_execution_id="run")
+    entity = repo.get_form("node")
     assert entity is not None
     assert entity.id == "f1"
     assert entity.recipients[0].id == "r1"
@@ -454,7 +454,13 @@ def test_create_form_adds_console_and_backstage_recipients(monkeypatch: pytest.M
 
     session = _FakeSession()
     _patch_session_factory(monkeypatch, session)
-    repo = HumanInputFormRepositoryImpl(tenant_id="tenant")
+    repo = HumanInputFormRepositoryImpl(
+        tenant_id="tenant",
+        app_id="app",
+        workflow_execution_id="run",
+        invoke_source="debugger",
+        submission_actor_id="acc-1",
+    )
 
     form_config = HumanInputNodeData(
         title="Title",
@@ -464,8 +470,7 @@ def test_create_form_adds_console_and_backstage_recipients(monkeypatch: pytest.M
         user_actions=[UserAction(id="submit", title="Submit")],
     )
     params = FormCreateParams(
-        app_id="app",
-        workflow_execution_id="run",
+        workflow_execution_id=None,
         node_id="node",
         form_config=form_config,
         rendered_content="<p>hello</p>",
@@ -473,16 +478,13 @@ def test_create_form_adds_console_and_backstage_recipients(monkeypatch: pytest.M
         display_in_ui=True,
         resolved_default_values={},
         form_kind=HumanInputFormKind.RUNTIME,
-        console_recipient_required=True,
-        console_creator_account_id="acc-1",
-        backstage_recipient_required=True,
     )
 
     entity = repo.create_form(params)
     assert entity.id == "form-id"
     assert entity.expiration_time == fixed_now + timedelta(hours=form_config.timeout)
     # Console token should take precedence when console recipient is present.
-    assert entity.web_app_token == "token-console"
+    assert entity.submission_token == "token-console"
     assert len(entity.recipients) == 3
 
 

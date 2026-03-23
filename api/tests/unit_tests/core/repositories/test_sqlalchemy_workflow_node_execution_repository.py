@@ -10,12 +10,12 @@ from unittest.mock import MagicMock, Mock
 
 import psycopg2.errors
 import pytest
-from dify_graph.repositories.workflow_node_execution_repository import OrderConfig
 from sqlalchemy import Engine, create_engine
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
+from core.repositories.factory import OrderConfig
 from core.repositories.sqlalchemy_workflow_node_execution_repository import (
     SQLAlchemyWorkflowNodeExecutionRepository,
     _deterministic_json_dump,
@@ -25,7 +25,7 @@ from core.repositories.sqlalchemy_workflow_node_execution_repository import (
 )
 from dify_graph.entities import WorkflowNodeExecution
 from dify_graph.enums import (
-    NodeType,
+    BuiltinNodeTypes,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
@@ -67,7 +67,7 @@ def _execution(
         index=1,
         predecessor_node_id=None,
         node_id="node-id",
-        node_type=NodeType.LLM,
+        node_type=BuiltinNodeTypes.LLM,
         title="Title",
         inputs=inputs,
         outputs=outputs,
@@ -387,7 +387,7 @@ def test_to_domain_model_loads_offloaded_files(monkeypatch: pytest.MonkeyPatch) 
     db_model.index = 1
     db_model.predecessor_node_id = None
     db_model.node_id = "node"
-    db_model.node_type = NodeType.LLM
+    db_model.node_type = BuiltinNodeTypes.LLM
     db_model.title = "t"
     db_model.inputs = json.dumps({"trunc": "i"})
     db_model.process_data = json.dumps({"trunc": "p"})
@@ -441,7 +441,7 @@ def test_to_domain_model_returns_early_when_no_offload_data(monkeypatch: pytest.
     db_model.index = 1
     db_model.predecessor_node_id = None
     db_model.node_id = "node"
-    db_model.node_type = NodeType.LLM
+    db_model.node_type = BuiltinNodeTypes.LLM
     db_model.title = "t"
     db_model.inputs = json.dumps({"i": 1})
     db_model.process_data = json.dumps({"p": 2})
@@ -768,5 +768,5 @@ def test_get_by_workflow_run_maps_to_domain(monkeypatch: pytest.MonkeyPatch) -> 
         lambda max_workers: FakeExecutor(),
     )
 
-    result = repo.get_by_workflow_run("run", order_config=None)
+    result = repo.get_by_workflow_execution("run", order_config=None)
     assert result == ["domain:db1", "domain:db2"]

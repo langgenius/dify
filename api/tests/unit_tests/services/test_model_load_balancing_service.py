@@ -69,9 +69,10 @@ def _load_balancing_model_config(**kwargs: Any) -> LoadBalancingModelConfig:
 def service(mocker: MockerFixture) -> ModelLoadBalancingService:
     # Arrange
     provider_manager = MagicMock()
-    mocker.patch("services.model_load_balancing_service.ProviderManager", return_value=provider_manager)
+    mocker.patch("services.model_load_balancing_service.create_plugin_provider_manager", return_value=provider_manager)
     svc = ModelLoadBalancingService()
     svc.provider_manager = provider_manager
+    svc._get_provider_manager = lambda _tenant_id: provider_manager  # type: ignore[method-assign]
     return svc
 
 
@@ -708,7 +709,10 @@ def test_custom_credentials_validate_should_handle_invalid_original_json_and_val
     load_balancing_model_config = _load_balancing_model_config(encrypted_config="not-json")
     mock_factory = MagicMock()
     mock_factory.model_credentials_validate.return_value = {"api_key": "validated"}
-    mocker.patch("services.model_load_balancing_service.ModelProviderFactory", return_value=mock_factory)
+    mocker.patch(
+        "services.model_load_balancing_service.create_plugin_model_provider_factory",
+        return_value=mock_factory,
+    )
     mock_encrypt = mocker.patch(
         "services.model_load_balancing_service.encrypter.encrypt_token",
         side_effect=lambda tenant_id, value: f"enc:{value}",
@@ -740,7 +744,10 @@ def test_custom_credentials_validate_should_validate_with_provider_schema_when_m
     provider_configuration = _build_provider_configuration(provider_schema=_build_provider_credential_schema())
     mock_factory = MagicMock()
     mock_factory.provider_credentials_validate.return_value = {"api_key": "provider-validated"}
-    mocker.patch("services.model_load_balancing_service.ModelProviderFactory", return_value=mock_factory)
+    mocker.patch(
+        "services.model_load_balancing_service.create_plugin_model_provider_factory",
+        return_value=mock_factory,
+    )
     mocker.patch(
         "services.model_load_balancing_service.encrypter.encrypt_token",
         side_effect=lambda tenant_id, value: f"enc:{value}",

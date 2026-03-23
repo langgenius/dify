@@ -12,7 +12,7 @@ This test suite covers:
 import json
 import uuid
 from typing import Any, cast
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 
@@ -2053,22 +2053,37 @@ class TestSetupVariablePool:
         workflow = self._make_workflow()
 
         # Act
-        with patch("services.workflow_service.VariablePool") as MockPool:
+        with (
+            patch("services.workflow_service.VariablePool") as MockPool,
+            patch("services.workflow_service.build_system_variables") as mock_build_system_variables,
+            patch("services.workflow_service.build_bootstrap_variables") as mock_build_bootstrap_variables,
+            patch("services.workflow_service.add_variables_to_pool") as mock_add_variables_to_pool,
+            patch("services.workflow_service.add_node_inputs_to_pool") as mock_add_node_inputs_to_pool,
+        ):
             _setup_variable_pool(
                 query="hello",
                 files=[],
                 user_id="u-1",
                 user_inputs={"k": "v"},
                 workflow=workflow,
+                node_id="start-node",
                 node_type=BuiltinNodeTypes.START,
                 conversation_id="conv-1",
                 conversation_variables=[],
             )
 
-        # Assert — VariablePool should be called with a SystemVariable (non-default)
-        MockPool.assert_called_once()
-        call_kwargs = MockPool.call_args.kwargs
-        assert call_kwargs["user_inputs"] == {"k": "v"}
+        # Assert — start nodes should build bootstrap variables and attach node inputs.
+        MockPool.assert_called_once_with()
+        mock_build_system_variables.assert_called_once()
+        mock_add_variables_to_pool.assert_called_once_with(
+            MockPool.return_value,
+            mock_build_bootstrap_variables.return_value,
+        )
+        mock_add_node_inputs_to_pool.assert_called_once_with(
+            MockPool.return_value,
+            node_id="start-node",
+            inputs={"k": "v"},
+        )
 
     def test_setup_variable_pool_should_use_default_system_variables_for_non_start_node(
         self,
@@ -2079,7 +2094,10 @@ class TestSetupVariablePool:
         # Act
         with (
             patch("services.workflow_service.VariablePool") as MockPool,
-            patch("services.workflow_service.SystemVariable.default") as mock_default,
+            patch("services.workflow_service.default_system_variables") as mock_default_system_variables,
+            patch("services.workflow_service.build_bootstrap_variables") as mock_build_bootstrap_variables,
+            patch("services.workflow_service.add_variables_to_pool") as mock_add_variables_to_pool,
+            patch("services.workflow_service.add_node_inputs_to_pool") as mock_add_node_inputs_to_pool,
         ):
             _setup_variable_pool(
                 query="",
@@ -2087,14 +2105,20 @@ class TestSetupVariablePool:
                 user_id="u-1",
                 user_inputs={},
                 workflow=workflow,
+                node_id="llm-node",
                 node_type=BuiltinNodeTypes.LLM,  # not a start/trigger node
                 conversation_id="conv-1",
                 conversation_variables=[],
             )
 
-        # Assert — SystemVariable.default() should be used for non-start nodes
-        mock_default.assert_called_once()
-        MockPool.assert_called_once()
+        # Assert — default system variables should be used and node inputs should not be added.
+        mock_default_system_variables.assert_called_once()
+        MockPool.assert_called_once_with()
+        mock_add_variables_to_pool.assert_called_once_with(
+            MockPool.return_value,
+            mock_build_bootstrap_variables.return_value,
+        )
+        mock_add_node_inputs_to_pool.assert_not_called()
 
     def test_setup_variable_pool_should_set_chatflow_specifics_for_non_workflow_type(
         self,
@@ -2106,20 +2130,31 @@ class TestSetupVariablePool:
         workflow = self._make_workflow(workflow_type=WorkflowType.CHAT.value)
 
         # Act
-        with patch("services.workflow_service.VariablePool") as MockPool:
+        with (
+            patch("services.workflow_service.VariablePool") as MockPool,
+            patch("services.workflow_service.build_system_variables") as mock_build_system_variables,
+            patch("services.workflow_service.build_bootstrap_variables"),
+            patch("services.workflow_service.add_variables_to_pool"),
+            patch("services.workflow_service.add_node_inputs_to_pool"),
+        ):
             _setup_variable_pool(
                 query="what is AI?",
                 files=[],
                 user_id="u-1",
                 user_inputs={},
                 workflow=workflow,
+                node_id="start-node",
                 node_type=BuiltinNodeTypes.START,
                 conversation_id="conv-abc",
                 conversation_variables=[],
             )
 
-        # Assert — we just verify VariablePool was called (chatflow path executed)
-        MockPool.assert_called_once()
+        # Assert — chatflow system variables should include query, conversation_id and dialogue_count.
+        MockPool.assert_called_once_with()
+        system_variable_values = mock_build_system_variables.call_args.args[0]
+        assert system_variable_values["query"] == "what is AI?"
+        assert system_variable_values["conversation_id"] == "conv-abc"
+        assert system_variable_values["dialogue_count"] == 1
 
 
 class TestRebuildSingleFile:
@@ -2142,7 +2177,7 @@ class TestRebuildSingleFile:
 
         # Assert
         assert result is mock_file
-        mock_build.assert_called_once_with(mapping=value, tenant_id=tenant_id)
+        mock_build.assert_called_once_with(mapping=value, tenant_id=tenant_id, access_controller=ANY)
 
     def test_rebuild_single_file_should_raise_when_file_value_not_dict(
         self,
@@ -2165,7 +2200,7 @@ class TestRebuildSingleFile:
 
         # Assert
         assert result is mock_files
-        mock_build.assert_called_once_with(mappings=value, tenant_id=tenant_id)
+        mock_build.assert_called_once_with(mappings=value, tenant_id=tenant_id, access_controller=ANY)
 
     def test_rebuild_single_file_should_raise_when_file_list_value_not_list(
         self,
@@ -2279,13 +2314,12 @@ class TestWorkflowServiceResolveDeliveryMethod:
         # Arrange
         method_a = self._make_method("method-1")
         method_b = self._make_method("method-2")
-        node_data = MagicMock()
-        node_data.delivery_methods = [method_a, method_b]
 
         # Act
-        result = WorkflowService._resolve_human_input_delivery_method(
-            node_data=node_data, delivery_method_id="method-2"
-        )
+        with patch("services.workflow_service.parse_human_input_delivery_methods", return_value=[method_a, method_b]):
+            result = WorkflowService._resolve_human_input_delivery_method(
+                node_data=MagicMock(), delivery_method_id="method-2"
+            )
 
         # Assert
         assert result is method_b
@@ -2293,26 +2327,22 @@ class TestWorkflowServiceResolveDeliveryMethod:
     def test_resolve_delivery_method_should_return_none_when_no_match(self) -> None:
         # Arrange
         method_a = self._make_method("method-1")
-        node_data = MagicMock()
-        node_data.delivery_methods = [method_a]
 
         # Act
-        result = WorkflowService._resolve_human_input_delivery_method(
-            node_data=node_data, delivery_method_id="does-not-exist"
-        )
+        with patch("services.workflow_service.parse_human_input_delivery_methods", return_value=[method_a]):
+            result = WorkflowService._resolve_human_input_delivery_method(
+                node_data=MagicMock(), delivery_method_id="does-not-exist"
+            )
 
         # Assert
         assert result is None
 
     def test_resolve_delivery_method_should_return_none_for_empty_methods(self) -> None:
-        # Arrange
-        node_data = MagicMock()
-        node_data.delivery_methods = []
-
         # Act
-        result = WorkflowService._resolve_human_input_delivery_method(
-            node_data=node_data, delivery_method_id="method-1"
-        )
+        with patch("services.workflow_service.parse_human_input_delivery_methods", return_value=[]):
+            result = WorkflowService._resolve_human_input_delivery_method(
+                node_data=MagicMock(), delivery_method_id="method-1"
+            )
 
         # Assert
         assert result is None
@@ -2435,6 +2465,9 @@ class TestWorkflowServiceDraftExecution:
             patch("services.workflow_service.Session"),
             patch("services.workflow_service.WorkflowDraftVariableService"),
             patch("services.workflow_service.VariablePool") as mock_pool_cls,
+            patch("services.workflow_service.default_system_variables") as mock_default_system_variables,
+            patch("services.workflow_service.build_bootstrap_variables") as mock_build_bootstrap_variables,
+            patch("services.workflow_service.add_variables_to_pool") as mock_add_variables_to_pool,
             patch("services.workflow_service.DraftVarLoader"),
             patch("services.workflow_service.WorkflowEntry.single_step_run") as mock_run,
             patch("services.workflow_service.DifyCoreRepositoryFactory"),
@@ -2475,10 +2508,16 @@ class TestWorkflowServiceDraftExecution:
             )
 
             # Assert
-            # For non-start nodes, VariablePool should be initialized with environment_variables
-            mock_pool_cls.assert_called_once()
-            args, kwargs = mock_pool_cls.call_args
-            assert "environment_variables" in kwargs
+            # For non-start nodes, bootstrap variables should be loaded into an empty pool.
+            mock_pool_cls.assert_called_once_with()
+            mock_default_system_variables.assert_called_once()
+            mock_build_bootstrap_variables.assert_called_once_with(
+                system_variables=mock_default_system_variables.return_value,
+                environment_variables=draft_workflow.environment_variables,
+            )
+            mock_add_variables_to_pool.assert_called_once_with(
+                mock_pool_cls.return_value, mock_build_bootstrap_variables.return_value
+            )
 
 
 # ===========================================================================
@@ -2588,7 +2627,7 @@ class TestWorkflowServiceHumanInputOperations:
             patch("models.workflow.Workflow.get_node_type_from_node_config", return_value=BuiltinNodeTypes.HUMAN_INPUT),
             patch("services.workflow_service.HumanInputNodeData.model_validate"),
             patch.object(service, "_resolve_human_input_delivery_method") as mock_resolve,
-            patch("services.workflow_service.apply_debug_email_recipient"),
+            patch("services.workflow_service.apply_dify_debug_email_recipient"),
             patch.object(service, "_build_human_input_variable_pool"),
             patch.object(service, "_build_human_input_node"),
             patch.object(service, "_create_human_input_delivery_test_form", return_value=("form-1", [])),
@@ -2730,13 +2769,15 @@ class TestWorkflowServiceFreeNodeExecution:
         variable_pool = MagicMock()
 
         with (
-            patch("services.workflow_service.GraphInitParams"),
+            patch("services.workflow_service.GraphInitParams") as mock_graph_init_params,
             patch("services.workflow_service.GraphRuntimeState"),
+            patch("services.workflow_service.build_dify_run_context"),
+            patch("services.workflow_service.DifyHumanInputNodeRuntime") as mock_runtime_cls,
             patch("services.workflow_service.HumanInputNode") as mock_node_cls,
-            patch("services.workflow_service.HumanInputFormRepositoryImpl"),
         ):
             node = service._build_human_input_node(
                 workflow=workflow, account=account, node_config=node_config, variable_pool=variable_pool
             )
             assert node == mock_node_cls.return_value
             mock_node_cls.assert_called_once()
+            mock_runtime_cls.assert_called_once_with(mock_graph_init_params.return_value.run_context)

@@ -49,9 +49,7 @@ class TestApiKeyAuthDataSource:
             ),
         ):
             with app.test_request_context("/console/api/api-key-auth/data-source", method="GET"):
-                proxy_mock = MagicMock()
-                proxy_mock._get_current_object.return_value = mock_account
-                with patch("libs.login.current_user", proxy_mock):
+                with patch("libs.login._get_user", return_value=mock_account):
                     api_instance = ApiKeyAuthDataSource()
                     response = api_instance.get()
 
@@ -81,9 +79,7 @@ class TestApiKeyAuthDataSource:
             ),
         ):
             with app.test_request_context("/console/api/api-key-auth/data-source", method="GET"):
-                proxy_mock = MagicMock()
-                proxy_mock._get_current_object.return_value = mock_account
-                with patch("libs.login.current_user", proxy_mock):
+                with patch("libs.login._get_user", return_value=mock_account):
                     api_instance = ApiKeyAuthDataSource()
                     response = api_instance.get()
 
@@ -124,9 +120,10 @@ class TestApiKeyAuthDataSourceBinding:
                 method="POST",
                 json={"category": "api_key", "provider": "custom", "credentials": {"key": "value"}},
             ):
-                proxy_mock = MagicMock()
-                proxy_mock._get_current_object.return_value = mock_account
-                with patch("libs.login.current_user", proxy_mock), patch("flask_login.current_user", proxy_mock):
+                with (
+                    patch("libs.login._get_user", return_value=mock_account),
+                    patch("flask_login.current_user", mock_account),
+                ):
                     api_instance = ApiKeyAuthDataSourceBinding()
                     response = api_instance.post()
 
@@ -162,9 +159,10 @@ class TestApiKeyAuthDataSourceBinding:
                 method="POST",
                 json={"category": "api_key", "provider": "custom", "credentials": {"key": "value"}},
             ):
-                proxy_mock = MagicMock()
-                proxy_mock._get_current_object.return_value = mock_account
-                with patch("libs.login.current_user", proxy_mock), patch("flask_login.current_user", proxy_mock):
+                with (
+                    patch("libs.login._get_user", return_value=mock_account),
+                    patch("flask_login.current_user", mock_account),
+                ):
                     api_instance = ApiKeyAuthDataSourceBinding()
                     with pytest.raises(ApiKeyAuthFailedError, match="Invalid structure"):
                         api_instance.post()
@@ -198,9 +196,10 @@ class TestApiKeyAuthDataSourceBindingDelete:
             ),
         ):
             with app.test_request_context("/console/api/api-key-auth/data-source/binding_123", method="DELETE"):
-                proxy_mock = MagicMock()
-                proxy_mock._get_current_object.return_value = mock_account
-                with patch("libs.login.current_user", proxy_mock), patch("flask_login.current_user", proxy_mock):
+                with (
+                    patch("libs.login._get_user", return_value=mock_account),
+                    patch("flask_login.current_user", mock_account),
+                ):
                     api_instance = ApiKeyAuthDataSourceBindingDelete()
                     response = api_instance.delete("binding_123")
 
