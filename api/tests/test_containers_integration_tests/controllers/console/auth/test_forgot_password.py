@@ -162,7 +162,9 @@ def test_get_account_by_email_with_case_fallback_uses_real_db(db_session_with_co
     db_session_with_containers.add(account)
     db_session_with_containers.commit()
 
-    result = AccountService.get_account_by_email_with_case_fallback("Mixed@Test.com", session=db_session_with_containers)
+    result = AccountService.get_account_by_email_with_case_fallback(
+        "Mixed@Test.com", session=db_session_with_containers
+    )
     assert result is not None
     assert result.email == "Mixed@Test.com"
 
