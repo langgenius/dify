@@ -17,5 +17,6 @@
   "sectionEvaluation": "Evaluation",
   "sectionOrchestrate": "Orchestrate",
   "testRunButton": "Test run",
+  "usageCount": "Used {{count}} times",
   "variableInspect": "Variable Inspect"
 }

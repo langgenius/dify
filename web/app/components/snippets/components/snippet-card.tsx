@@ -1,6 +1,7 @@
 'use client'
 
 import type { SnippetListItem } from '@/types/snippet'
+import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import Link from '@/next/link'
 
@@ -9,6 +10,8 @@ type Props = {
 }
 
 const SnippetCard = ({ snippet }: Props) => {
+  const { t } = useTranslation('snippet')
+
   return (
     <Link href={`/snippets/${snippet.id}/orchestrate`} className="group col-span-1">
       <article className="relative inline-flex h-[160px] w-full flex-col rounded-xl border border-components-card-border bg-components-card-bg shadow-sm transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:shadow-lg">
@@ -43,7 +46,7 @@ const SnippetCard = ({ snippet }: Props) => {
           {!snippet.is_published && (
             <>
               <span>·</span>
-              <span className="truncate">{snippet.use_count}</span>
+              <span className="truncate">{t('usageCount', { count: snippet.use_count })}</span>
             </>
           )}
         </div>
