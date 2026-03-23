@@ -117,9 +117,10 @@ def test_variable_api_delete_success(
     )
 
     assert response.status_code == 204
-    assert db_session_with_containers.scalar(
-        select(WorkflowDraftVariable).where(WorkflowDraftVariable.id == variable.id)
-    ) is None
+    assert (
+        db_session_with_containers.scalar(select(WorkflowDraftVariable).where(WorkflowDraftVariable.id == variable.id))
+        is None
+    )
 
 
 def test_variable_reset_api_put_success_returns_no_content_without_execution(
@@ -137,6 +138,7 @@ def test_variable_reset_api_put_success_returns_no_content_without_execution(
     )
 
     assert response.status_code == 204
-    assert db_session_with_containers.scalar(
-        select(WorkflowDraftVariable).where(WorkflowDraftVariable.id == variable.id)
-    ) is None
+    assert (
+        db_session_with_containers.scalar(select(WorkflowDraftVariable).where(WorkflowDraftVariable.id == variable.id))
+        is None
+    )
