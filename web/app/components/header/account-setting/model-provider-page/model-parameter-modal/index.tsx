@@ -32,6 +32,7 @@ import Trigger from './trigger'
 
 export type ModelParameterModalProps = {
   popupClassName?: string
+  portalToFollowElemContentClassName?: string
   isAdvancedMode: boolean
   modelId: string
   provider: string

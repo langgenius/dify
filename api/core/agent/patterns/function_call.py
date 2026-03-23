@@ -71,7 +71,7 @@ class FunctionCallStrategy(AgentPattern):
             # On last iteration, remove tools to force final answer
             current_tools: list[PromptMessageTool] = [] if iteration_step == max_iterations else prompt_tools
             model_log = self._create_log(
-                label=f"{self.model_instance.model} Thought",
+                label=f"{self.model_instance.model_name} Thought",
                 log_type=AgentLog.LogType.THOUGHT,
                 status=AgentLog.LogStatus.START,
                 data={},

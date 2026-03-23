@@ -9,7 +9,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from dify_graph.enums import NodeType
+from dify_graph.enums import BuiltinNodeTypes
 from dify_graph.model_runtime.entities import LLMMode
 from services.model_provider_service import ModelProviderService
 from services.workflow.entities import NestedNodeGraphRequest, NestedNodeGraphResponse, NestedNodeParameterSchema
@@ -124,7 +124,7 @@ class NestedNodeGraphService:
             "id": node_id,
             "position": {"x": 0, "y": 0},
             "data": {
-                "type": NodeType.LLM.value,
+                "type": BuiltinNodeTypes.LLM,
                 # BaseNodeData fields
                 "title": f"NestedNode: {parameter_schema.name}",
                 "desc": f"Extract {parameter_schema.name} from conversation context",

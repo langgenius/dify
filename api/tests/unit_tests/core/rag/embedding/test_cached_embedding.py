@@ -27,7 +27,7 @@ class TestCacheEmbeddingMultimodalDocuments:
     def mock_model_instance(self):
         """Create a mock ModelInstance for testing."""
         model_instance = Mock()
-        model_instance.model = "vision-embedding-model"
+        model_instance.model_name = "vision-embedding-model"
         model_instance.provider = "openai"
         model_instance.credentials = {"api_key": "test-key"}
 
@@ -315,7 +315,7 @@ class TestCacheEmbeddingMultimodalQuery:
     def mock_model_instance(self):
         """Create a mock ModelInstance for testing."""
         model_instance = Mock()
-        model_instance.model = "vision-embedding-model"
+        model_instance.model_name = "vision-embedding-model"
         model_instance.provider = "openai"
         model_instance.credentials = {"api_key": "test-key"}
         return model_instance
@@ -466,7 +466,7 @@ class TestCacheEmbeddingQueryErrors:
     def mock_model_instance(self):
         """Create a mock ModelInstance for testing."""
         model_instance = Mock()
-        model_instance.model = "text-embedding-ada-002"
+        model_instance.model_name = "text-embedding-ada-002"
         model_instance.provider = "openai"
         model_instance.credentials = {"api_key": "test-key"}
         return model_instance
@@ -535,7 +535,7 @@ class TestCacheEmbeddingInitialization:
     def test_initialization_with_user(self):
         """Test CacheEmbedding initialization with user parameter."""
         model_instance = Mock()
-        model_instance.model = "test-model"
+        model_instance.model_name = "test-model"
         model_instance.provider = "test-provider"
 
         cache_embedding = CacheEmbedding(model_instance, user="test-user")
@@ -546,7 +546,7 @@ class TestCacheEmbeddingInitialization:
     def test_initialization_without_user(self):
         """Test CacheEmbedding initialization without user parameter."""
         model_instance = Mock()
-        model_instance.model = "test-model"
+        model_instance.model_name = "test-model"
         model_instance.provider = "test-provider"
 
         cache_embedding = CacheEmbedding(model_instance)

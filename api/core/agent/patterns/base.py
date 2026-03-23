@@ -320,7 +320,7 @@ class AgentPattern(ABC):
     def _create_text_chunk(self, text: str, prompt_messages: list[PromptMessage]) -> LLMResultChunk:
         """Create a text chunk for streaming."""
         return LLMResultChunk(
-            model=self.model_instance.model,
+            model=self.model_instance.model_name,
             prompt_messages=prompt_messages,
             delta=LLMResultChunkDelta(
                 index=0,

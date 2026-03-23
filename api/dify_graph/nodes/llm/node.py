@@ -1985,7 +1985,7 @@ class LLMNode(Node[LLMNodeData]):
         try:
             model_type_instance = model_instance.model_type_instance
             model_schema = model_type_instance.get_model_schema(
-                model_instance.model,
+                model_instance.model_name,
                 model_instance.credentials,
             )
             return model_schema.features if model_schema and model_schema.features else []

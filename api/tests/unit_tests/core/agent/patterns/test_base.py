@@ -22,7 +22,7 @@ class ConcreteAgentPattern(AgentPattern):
 def mock_model_instance():
     """Create a mock model instance."""
     model_instance = MagicMock()
-    model_instance.model = "test-model"
+    model_instance.model_name = "test-model"
     model_instance.provider = "test-provider"
     return model_instance
 

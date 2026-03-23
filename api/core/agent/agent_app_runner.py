@@ -272,7 +272,7 @@ class AgentAppRunner(BaseAgentRunner):
             self.queue_manager.publish(
                 QueueMessageEndEvent(
                     llm_result=LLMResult(
-                        model=self.model_instance.model,
+                        model=self.model_instance.model_name,
                         prompt_messages=prompt_messages,
                         message=AssistantPromptMessage(content=final_answer),
                         usage=usage,

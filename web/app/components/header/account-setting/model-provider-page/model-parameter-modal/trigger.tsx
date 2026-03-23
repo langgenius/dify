@@ -19,6 +19,7 @@ import {
 
 export type TriggerProps = {
   open?: boolean
+  disabled?: boolean
   currentProvider?: ModelProvider | Model
   currentModel?: ModelItem
   providerName?: string

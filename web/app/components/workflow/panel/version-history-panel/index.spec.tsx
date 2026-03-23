@@ -130,6 +130,7 @@ describe('VersionHistoryPanel', () => {
       render(
         <VersionHistoryPanel
           latestVersionId="published-version-id"
+          restoreVersionUrl={versionId => `/apps/app-1/workflows/${versionId}/restore`}
         />,
       )
 
@@ -144,6 +145,7 @@ describe('VersionHistoryPanel', () => {
       render(
         <VersionHistoryPanel
           latestVersionId="published-version-id"
+          restoreVersionUrl={versionId => `/apps/app-1/workflows/${versionId}/restore`}
         />,
       )
 

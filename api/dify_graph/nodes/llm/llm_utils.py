@@ -47,6 +47,20 @@ from .exc import (
 from .protocols import TemplateRenderer
 
 
+def fetch_model_config(
+    *, tenant_id: str, node_data_model: ModelConfig
+) -> tuple[ModelInstance, Any]:
+    from core.app.llm.model_access import build_dify_model_access
+    from core.app.llm.model_access import fetch_model_config as _fetch
+
+    credentials_provider, model_factory = build_dify_model_access(tenant_id)
+    return _fetch(
+        node_data_model=node_data_model,
+        credentials_provider=credentials_provider,
+        model_factory=model_factory,
+    )
+
+
 def fetch_model_schema(*, model_instance: ModelInstance) -> AIModelEntity:
     model_schema = cast(LargeLanguageModel, model_instance.model_type_instance).get_model_schema(
         model_instance.model_name,
