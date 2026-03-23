@@ -20,6 +20,12 @@ const MockIdentify = vi.hoisted(() =>
   },
 )
 
+vi.mock('@/config', () => ({
+  get isAmplitudeEnabled() {
+    return mockState.enabled
+  },
+}))
+
 vi.mock('@amplitude/analytics-browser', () => ({
   track: (...args: unknown[]) => mockTrack(...args),
   setUserId: (...args: unknown[]) => mockSetUserId(...args),
