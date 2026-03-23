@@ -63,7 +63,6 @@ export const ControlMode = {
   Hand: 'hand',
 } as const
 
-// eslint-disable-next-line ts/no-redeclare -- value-type pair
 export type ControlMode = typeof ControlMode[keyof typeof ControlMode]
 export const ErrorHandleMode = {
   Terminated: 'terminated',
@@ -71,7 +70,6 @@ export const ErrorHandleMode = {
   RemoveAbnormalOutput: 'remove-abnormal-output',
 } as const
 
-// eslint-disable-next-line ts/no-redeclare -- value-type pair
 export type ErrorHandleMode = typeof ErrorHandleMode[keyof typeof ErrorHandleMode]
 export type Branch = {
   id: string

@@ -21,7 +21,6 @@ export const DatasetPermission = {
   partialMembers: 'partial_members',
 } as const
 
-// eslint-disable-next-line ts/no-redeclare -- value-type pair
 export type DatasetPermission = typeof DatasetPermission[keyof typeof DatasetPermission]
 
 export enum ChunkingMode {
@@ -743,7 +742,6 @@ export const WeightedScoreEnum = {
   Customized: 'customized',
 } as const
 
-// eslint-disable-next-line ts/no-redeclare -- value-type pair
 export type WeightedScoreEnum = typeof WeightedScoreEnum[keyof typeof WeightedScoreEnum]
 
 export const RerankingModeEnum = {
@@ -751,7 +749,6 @@ export const RerankingModeEnum = {
   WeightedScore: 'weighted_score',
 } as const
 
-// eslint-disable-next-line ts/no-redeclare -- value-type pair
 export type RerankingModeEnum = typeof RerankingModeEnum[keyof typeof RerankingModeEnum]
 
 export const DEFAULT_WEIGHTED_SCORE = {
@@ -805,7 +802,6 @@ export const DocumentActionType = {
   summary: 'summary',
 } as const
 
-// eslint-disable-next-line ts/no-redeclare -- value-type pair
 export type DocumentActionType = typeof DocumentActionType[keyof typeof DocumentActionType]
 
 export type UpdateDocumentBatchParams = {
