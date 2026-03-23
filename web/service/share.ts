@@ -29,11 +29,12 @@ import {
 } from './base'
 import { getWebAppAccessToken } from './webapp-auth'
 
-export enum AppSourceType {
-  webApp = 'webApp',
-  installedApp = 'installedApp',
-  tryApp = 'tryApp',
-}
+export const AppSourceType = {
+  webApp: 'webApp',
+  installedApp: 'installedApp',
+  tryApp: 'tryApp',
+} as const
+export type AppSourceType = typeof AppSourceType[keyof typeof AppSourceType]
 
 const apiPrefix = {
   [AppSourceType.webApp]: '',
