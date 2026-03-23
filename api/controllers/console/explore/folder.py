@@ -133,8 +133,8 @@ class ExploreFolderApi(Resource):
         folder = _get_folder_or_404(str(folder_id), tenant_id)
 
         has_apps = db.session.query(
-            db.session.query(InstalledApp)
-            .filter_by(folder_id=str(folder_id))
+            select(InstalledApp)
+            .where(InstalledApp.folder_id == str(folder_id))
             .exists()
         ).scalar()
         if has_apps:
