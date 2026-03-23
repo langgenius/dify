@@ -4,7 +4,7 @@ import type {
   MetadataShape,
 } from '../types'
 import type { DataSet, MetadataInDoc } from '@/models/datasets'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import {
   ChunkingMode,
@@ -265,6 +265,13 @@ vi.mock('../components/metadata/metadata-panel', () => ({
 }))
 
 describe('knowledge-retrieval path', () => {
+  const getDatasetItem = () => {
+    const datasetItem = screen.getByText('Dataset Name').closest('.group\\/dataset-item')
+    if (!(datasetItem instanceof HTMLElement))
+      throw new Error('Dataset item container not found')
+    return datasetItem
+  }
+
   beforeEach(() => {
     vi.clearAllMocks()
     mockHasEditPermissionForDataset.mockReturnValue(true)
@@ -293,28 +300,46 @@ describe('knowledge-retrieval path', () => {
       ])
     })
 
-    it('should support editing and removing a dataset item', async () => {
+    it('should support editing a dataset item', async () => {
       const user = userEvent.setup()
       const onChange = vi.fn()
-      const onRemove = vi.fn()
 
       render(
         <DatasetItem
           payload={createDataset({ is_multimodal: true })}
           onChange={onChange}
-          onRemove={onRemove}
+          onRemove={vi.fn()}
         />,
       )
 
       expect(screen.getByText('Dataset Name')).toBeInTheDocument()
-      fireEvent.mouseOver(screen.getByText('Dataset Name').closest('.group\\/dataset-item')!)
+      const datasetItem = getDatasetItem()
+      fireEvent.mouseOver(datasetItem)
 
-      const buttons = screen.getAllByRole('button')
-      await user.click(buttons[0]!)
-      await user.click(screen.getByText('save-settings'))
-      await user.click(buttons[1]!)
+      await user.click(within(datasetItem).getByRole('button', { name: 'common.operation.edit' }))
+      await user.click(await screen.findByRole('button', { name: 'save-settings' }))
 
-      expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ name: 'Updated Dataset' }))
+      await waitFor(() => {
+        expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ name: 'Updated Dataset' }))
+      })
+    })
+
+    it('should support removing a dataset item', async () => {
+      const user = userEvent.setup()
+      const onRemove = vi.fn()
+
+      render(
+        <DatasetItem
+          payload={createDataset({ is_multimodal: true })}
+          onChange={vi.fn()}
+          onRemove={onRemove}
+        />,
+      )
+
+      const datasetItem = getDatasetItem()
+      fireEvent.mouseOver(datasetItem)
+
+      await user.click(within(datasetItem).getByRole('button', { name: 'common.operation.remove' }))
       expect(onRemove).toHaveBeenCalled()
     })
 
@@ -338,8 +363,9 @@ describe('knowledge-retrieval path', () => {
         />,
       )
 
-      fireEvent.mouseOver(screen.getByText('Dataset Name').closest('.group\\/dataset-item')!)
-      await user.click(screen.getAllByRole('button')[1]!)
+      const datasetItem = getDatasetItem()
+      fireEvent.mouseOver(datasetItem)
+      await user.click(within(datasetItem).getByRole('button', { name: 'common.operation.remove' }))
 
       expect(onChange).toHaveBeenCalledWith([])
     })
