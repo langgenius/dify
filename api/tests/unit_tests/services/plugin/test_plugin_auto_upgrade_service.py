@@ -1,5 +1,7 @@
 from unittest.mock import MagicMock, patch
 
+from models.account import TenantPluginAutoUpgradeStrategy
+
 MODULE = "services.plugin.plugin_auto_upgrade_service"
 
 
@@ -48,7 +50,14 @@ class TestChangeStrategy:
             strat_cls.return_value = MagicMock()
             from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
 
-            result = PluginAutoUpgradeService.change_strategy("t1", "fix_only", 3, "all", [], [])
+            result = PluginAutoUpgradeService.change_strategy(
+                "t1",
+                TenantPluginAutoUpgradeStrategy.StrategySetting.FIX_ONLY,
+                3,
+                TenantPluginAutoUpgradeStrategy.UpgradeMode.ALL,
+                [],
+                [],
+            )
 
         assert result is True
         session.add.assert_called_once()
@@ -62,12 +71,19 @@ class TestChangeStrategy:
         with p1, p2:
             from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
 
-            result = PluginAutoUpgradeService.change_strategy("t1", "all", 5, "partial", ["p1"], ["p2"])
+            result = PluginAutoUpgradeService.change_strategy(
+                "t1",
+                TenantPluginAutoUpgradeStrategy.StrategySetting.LATEST,
+                5,
+                TenantPluginAutoUpgradeStrategy.UpgradeMode.PARTIAL,
+                ["p1"],
+                ["p2"],
+            )
 
         assert result is True
-        assert existing.strategy_setting == "all"
+        assert existing.strategy_setting == TenantPluginAutoUpgradeStrategy.StrategySetting.LATEST
         assert existing.upgrade_time_of_day == 5
-        assert existing.upgrade_mode == "partial"
+        assert existing.upgrade_mode == TenantPluginAutoUpgradeStrategy.UpgradeMode.PARTIAL
         assert existing.exclude_plugins == ["p1"]
         assert existing.include_plugins == ["p2"]
         session.commit.assert_called_once()
