@@ -61,10 +61,14 @@ vi.mock('../../../store', () => ({
   useStore: () => vi.fn(),
 }))
 
+const resetMocksAndWorkflowState = () => {
+  vi.clearAllMocks()
+  mockWorkflowRunningData = null
+}
+
 describe('workflow debug useChat – opening statement stability', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    mockWorkflowRunningData = null
+    resetMocksAndWorkflowState()
   })
 
   it('should return empty chatList when config has no opening_statement', () => {
@@ -172,8 +176,7 @@ describe('workflow debug useChat – opening statement stability', () => {
 
 describe('useChat – handleStop', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    mockWorkflowRunningData = null
+    resetMocksAndWorkflowState()
   })
 
   it('should set isResponding to false', () => {
@@ -279,8 +282,7 @@ describe('useChat – handleStop', () => {
 
 describe('useChat – handleRestart', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    mockWorkflowRunningData = null
+    resetMocksAndWorkflowState()
   })
 
   it('should clear suggestedQuestions and set isResponding to false', () => {
@@ -307,8 +309,7 @@ describe('useChat – handleRestart', () => {
 
 describe('useChat – handleSend', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    mockWorkflowRunningData = null
+    resetMocksAndWorkflowState()
     mockHandleRun.mockReset()
   })
 
@@ -439,8 +440,7 @@ describe('useChat – handleSend SSE callbacks', () => {
   let capturedCallbacks: any
 
   beforeEach(() => {
-    vi.clearAllMocks()
-    mockWorkflowRunningData = null
+    resetMocksAndWorkflowState()
     mockHandleRun.mockReset()
     mockHandleRun.mockImplementation((_params: any, callbacks: any) => {
       capturedCallbacks = callbacks
@@ -1289,13 +1289,10 @@ describe('useChat – handleResume', () => {
   let capturedResumeOptions: any
 
   beforeEach(() => {
-    vi.clearAllMocks()
-    mockWorkflowRunningData = null
+    resetMocksAndWorkflowState()
     mockHandleRun.mockReset()
     mockSseGet.mockReset()
   })
-
-  async function setupResumeWithTree() {
     let sendCallbacks: any
     mockHandleRun.mockImplementation((_params: any, callbacks: any) => {
       sendCallbacks = callbacks
@@ -2063,8 +2060,7 @@ describe('useChat – handleResume', () => {
 
 describe('useChat – handleSwitchSibling', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    mockWorkflowRunningData = null
+    resetMocksAndWorkflowState()
     mockHandleRun.mockReset()
     mockSseGet.mockReset()
   })
@@ -2212,7 +2208,7 @@ describe('useChat – handleSwitchSibling', () => {
 
 describe('useChat – handleSubmitHumanInputForm', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    resetMocksAndWorkflowState()
     mockSubmitHumanInputForm.mockResolvedValue({})
   })
 
@@ -2229,8 +2225,8 @@ describe('useChat – handleSubmitHumanInputForm', () => {
 
 describe('useChat – getHumanInputNodeData', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    mockGetNodes.mockReset()
+    resetMocksAndWorkflowState()
+    mockGetNodes.mockReturnValue([])
   })
 
   it('should return the custom node matching the given nodeID', () => {
@@ -2269,8 +2265,7 @@ describe('useChat – handleResume with bare prevChatTree (no humanInputFormData
   let capturedResumeOptions: any
 
   beforeEach(() => {
-    vi.clearAllMocks()
-    mockWorkflowRunningData = null
+    resetMocksAndWorkflowState()
     mockHandleRun.mockReset()
     mockSseGet.mockReset()
     mockSseGet.mockImplementation((_url: any, _opts: any, options: any) => {
@@ -2517,8 +2512,7 @@ describe('useChat – handleResume with bare prevChatTree (no humanInputFormData
 
 describe('useChat – conversationId and setTargetMessageId', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    mockWorkflowRunningData = null
+    resetMocksAndWorkflowState()
   })
 
   it('should initially be an empty string', () => {
@@ -2587,15 +2581,12 @@ describe('useChat – updateCurrentQAOnTree with parent_message_id', () => {
   let capturedCallbacks: any
 
   beforeEach(() => {
-    vi.clearAllMocks()
-    mockWorkflowRunningData = null
+    resetMocksAndWorkflowState()
     mockHandleRun.mockReset()
     mockHandleRun.mockImplementation((_params: any, callbacks: any) => {
       capturedCallbacks = callbacks
     })
   })
-
-  it('should handle follow-up messages as children of parent', async () => {
     const { result } = renderHook(() => useChat({}))
 
     act(() => {
