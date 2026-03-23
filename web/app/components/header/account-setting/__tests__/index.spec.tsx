@@ -315,14 +315,14 @@ describe('AccountSetting', () => {
     it('should handle scroll event in panel', () => {
       // Act
       renderAccountSetting()
-      const scrollContainer = screen.getByRole('dialog').querySelector('.overflow-y-auto')
+      const scrollContainer = screen.getByRole('dialog').querySelector('.overscroll-contain')
 
       // Assert
       expect(scrollContainer).toBeInTheDocument()
       if (scrollContainer) {
         // Scroll down
         fireEvent.scroll(scrollContainer, { target: { scrollTop: 100 } })
-        expect(scrollContainer).toHaveClass('overflow-y-auto')
+        expect(scrollContainer).toHaveClass('overscroll-contain')
 
         // Scroll back up
         fireEvent.scroll(scrollContainer, { target: { scrollTop: 0 } })
