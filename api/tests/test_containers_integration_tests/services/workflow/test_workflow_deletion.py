@@ -128,9 +128,7 @@ class TestWorkflowDeletion:
 
         service = WorkflowService(sessionmaker(bind=db.engine))
         with pytest.raises(DraftWorkflowDeletionError):
-            service.delete_workflow(
-                session=db_session_with_containers, workflow_id=workflow.id, tenant_id=tenant.id
-            )
+            service.delete_workflow(session=db_session_with_containers, workflow_id=workflow.id, tenant_id=tenant.id)
 
     def test_delete_workflow_in_use_by_app_raises_error(self, db_session_with_containers):
         tenant, account = self._create_tenant_and_account(db_session_with_containers)
@@ -144,9 +142,7 @@ class TestWorkflowDeletion:
 
         service = WorkflowService(sessionmaker(bind=db.engine))
         with pytest.raises(WorkflowInUseError, match="currently in use by app"):
-            service.delete_workflow(
-                session=db_session_with_containers, workflow_id=workflow.id, tenant_id=tenant.id
-            )
+            service.delete_workflow(session=db_session_with_containers, workflow_id=workflow.id, tenant_id=tenant.id)
 
     def test_delete_workflow_published_as_tool_raises_error(self, db_session_with_containers):
         tenant, account = self._create_tenant_and_account(db_session_with_containers)
@@ -154,13 +150,9 @@ class TestWorkflowDeletion:
         workflow = self._create_workflow(
             db_session_with_containers, tenant=tenant, app=app, account=account, version="1.0"
         )
-        self._create_tool_provider(
-            db_session_with_containers, tenant=tenant, app=app, account=account, version="1.0"
-        )
+        self._create_tool_provider(db_session_with_containers, tenant=tenant, app=app, account=account, version="1.0")
         db_session_with_containers.commit()
 
         service = WorkflowService(sessionmaker(bind=db.engine))
         with pytest.raises(WorkflowInUseError, match="published as a tool"):
-            service.delete_workflow(
-                session=db_session_with_containers, workflow_id=workflow.id, tenant_id=tenant.id
-            )
+            service.delete_workflow(session=db_session_with_containers, workflow_id=workflow.id, tenant_id=tenant.id)
