@@ -23,7 +23,7 @@ dependencies = [
     "gevent~=25.9.1",
     "gmpy2~=2.3.0",
     "google-api-core>=2.19.1",
-    "google-api-python-client==2.192.0",
+    "google-api-python-client==2.193.0",
     "google-auth>=2.47.0",
     "google-auth-httplib2==0.3.0",
     "google-cloud-aiplatform>=1.123.0",
