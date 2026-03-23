@@ -5,11 +5,9 @@ import dynamic from '@/next/dynamic'
 
 const Agentation = dynamic(() => import('agentation').then(module => module.Agentation), { ssr: false })
 
-const AgentationLoader = () => {
+export function AgentationLoader() {
   if (!IS_DEV)
     return null
 
   return <Agentation />
 }
-
-export default AgentationLoader

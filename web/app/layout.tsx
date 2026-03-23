@@ -2,7 +2,6 @@ import type { Viewport } from '@/next'
 import { Provider as JotaiProvider } from 'jotai/react'
 import { ThemeProvider } from 'next-themes'
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
-import { IS_DEV } from '@/config'
 import GlobalPublicStoreProvider from '@/context/global-public-context'
 import { TanstackQueryInitializer } from '@/context/query-client'
 import { getDatasetMap } from '@/env'
@@ -11,7 +10,7 @@ import { ToastProvider } from './components/base/toast'
 import { ToastHost } from './components/base/ui/toast'
 import { TooltipProvider } from './components/base/ui/tooltip'
 import BrowserInitializer from './components/browser-initializer'
-import AgentationLoader from './components/devtools/agentation-loader'
+import { AgentationLoader } from './components/devtools/agentation-loader'
 import { ReactScanLoader } from './components/devtools/react-scan/loader'
 import { I18nServerProvider } from './components/provider/i18n-server'
 import SentryInitializer from './components/sentry-initializer'
@@ -87,7 +86,7 @@ const LocaleLayout = async ({
             </ThemeProvider>
           </JotaiProvider>
           <RoutePrefixHandle />
-          {IS_DEV && <AgentationLoader />}
+          <AgentationLoader />
         </div>
       </body>
     </html>
