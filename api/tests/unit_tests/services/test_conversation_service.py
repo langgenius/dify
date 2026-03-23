@@ -6,7 +6,7 @@ Tests are organized by functionality and include edge cases, error handling,
 and both positive and negative test scenarios.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, Mock, create_autospec, patch
 
 import pytest
@@ -122,8 +122,8 @@ class ConversationServiceTestDataFactory:
         conversation.is_deleted = kwargs.get("is_deleted", False)
         conversation.name = kwargs.get("name", "Test Conversation")
         conversation.status = kwargs.get("status", "normal")
-        conversation.created_at = kwargs.get("created_at", datetime.utcnow())
-        conversation.updated_at = kwargs.get("updated_at", datetime.utcnow())
+        conversation.created_at = kwargs.get("created_at", datetime.now(timezone.utc))
+        conversation.updated_at = kwargs.get("updated_at", datetime.now(timezone.utc))
         for key, value in kwargs.items():
             setattr(conversation, key, value)
         return conversation
@@ -152,7 +152,7 @@ class ConversationServiceTestDataFactory:
         message.conversation_id = conversation_id
         message.app_id = app_id
         message.query = kwargs.get("query", "Test message content")
-        message.created_at = kwargs.get("created_at", datetime.utcnow())
+        message.created_at = kwargs.get("created_at", datetime.now(timezone.utc))
         for key, value in kwargs.items():
             setattr(message, key, value)
         return message
@@ -181,8 +181,8 @@ class ConversationServiceTestDataFactory:
         variable.conversation_id = conversation_id
         variable.app_id = app_id
         variable.data = {"name": kwargs.get("name", "test_var"), "value": kwargs.get("value", "test_value")}
-        variable.created_at = kwargs.get("created_at", datetime.utcnow())
-        variable.updated_at = kwargs.get("updated_at", datetime.utcnow())
+        variable.created_at = kwargs.get("created_at", datetime.now(timezone.utc))
+        variable.updated_at = kwargs.get("updated_at", datetime.now(timezone.utc))
 
         # Mock to_variable method
         mock_variable = Mock()
@@ -302,7 +302,7 @@ class TestConversationServiceHelpers:
         """
         # Arrange
         mock_conversation = ConversationServiceTestDataFactory.create_conversation_mock()
-        mock_conversation.updated_at = datetime.utcnow()
+        mock_conversation.updated_at = datetime.now(timezone.utc)
 
         # Act
         condition = ConversationService._build_filter_condition(
@@ -323,7 +323,7 @@ class TestConversationServiceHelpers:
         """
         # Arrange
         mock_conversation = ConversationServiceTestDataFactory.create_conversation_mock()
-        mock_conversation.created_at = datetime.utcnow()
+        mock_conversation.created_at = datetime.now(timezone.utc)
 
         # Act
         condition = ConversationService._build_filter_condition(
@@ -668,9 +668,9 @@ class TestConversationServiceConversationalVariable:
         mock_session_factory.create_session.return_value.__enter__.return_value = mock_session
 
         last_variable = ConversationServiceTestDataFactory.create_conversation_variable_mock(
-            created_at=datetime.utcnow() - timedelta(hours=1)
+            created_at=datetime.now(timezone.utc) - timedelta(hours=1)
         )
-        variable = ConversationServiceTestDataFactory.create_conversation_variable_mock(created_at=datetime.utcnow())
+        variable = ConversationServiceTestDataFactory.create_conversation_variable_mock(created_at=datetime.now(timezone.utc))
 
         mock_session.scalar.return_value = last_variable
         mock_session.scalars.return_value.all.return_value = [variable]

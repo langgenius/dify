@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 from types import SimpleNamespace
 
 import pytest
@@ -75,7 +75,7 @@ def _make_pipeline():
     message = SimpleNamespace(
         id="message-id",
         query="hello",
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
         status=MessageStatus.NORMAL,
         answer="",
     )
@@ -256,7 +256,7 @@ class TestAdvancedChatGenerateTaskPipeline:
             node_id="node",
             node_type=BuiltinNodeTypes.LLM,
             node_title="LLM",
-            start_at=datetime.utcnow(),
+            start_at=datetime.now(timezone.utc),
             node_run_index=1,
         )
         iter_next = QueueIterationNextEvent(
@@ -272,7 +272,7 @@ class TestAdvancedChatGenerateTaskPipeline:
             node_id="node",
             node_type=BuiltinNodeTypes.LLM,
             node_title="LLM",
-            start_at=datetime.utcnow(),
+            start_at=datetime.now(timezone.utc),
             node_run_index=1,
         )
         loop_start = QueueLoopStartEvent(
@@ -280,7 +280,7 @@ class TestAdvancedChatGenerateTaskPipeline:
             node_id="node",
             node_type=BuiltinNodeTypes.LLM,
             node_title="LLM",
-            start_at=datetime.utcnow(),
+            start_at=datetime.now(timezone.utc),
             node_run_index=1,
         )
         loop_next = QueueLoopNextEvent(
@@ -296,7 +296,7 @@ class TestAdvancedChatGenerateTaskPipeline:
             node_id="node",
             node_type=BuiltinNodeTypes.LLM,
             node_title="LLM",
-            start_at=datetime.utcnow(),
+            start_at=datetime.now(timezone.utc),
             node_run_index=1,
         )
 
@@ -359,7 +359,7 @@ class TestAdvancedChatGenerateTaskPipeline:
             node_execution_id="exec",
             node_id="node",
             node_type=BuiltinNodeTypes.LLM,
-            start_at=datetime.utcnow(),
+            start_at=datetime.now(timezone.utc),
             inputs={},
             outputs={},
             process_data={},
@@ -369,7 +369,7 @@ class TestAdvancedChatGenerateTaskPipeline:
             node_execution_id="exec",
             node_id="node",
             node_type=BuiltinNodeTypes.LLM,
-            start_at=datetime.utcnow(),
+            start_at=datetime.now(timezone.utc),
             inputs={},
             outputs={},
             process_data={},
@@ -472,7 +472,7 @@ class TestAdvancedChatGenerateTaskPipeline:
             node_id="node",
             node_type=BuiltinNodeTypes.LLM,
             node_title="title",
-            expiration_time=datetime.utcnow(),
+            expiration_time=datetime.now(timezone.utc),
         )
 
         assert list(pipeline._handle_human_input_form_filled_event(filled_event)) == ["filled"]
@@ -590,7 +590,7 @@ class TestAdvancedChatGenerateTaskPipeline:
             node_execution_id="exec",
             node_id="node",
             node_type=BuiltinNodeTypes.LLM,
-            start_at=datetime.utcnow(),
+            start_at=datetime.now(timezone.utc),
             inputs={},
             outputs={},
             process_data={},
