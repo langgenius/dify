@@ -1,6 +1,6 @@
 /* eslint-disable ts/no-explicit-any */
 import type { ScheduleTriggerNodeType } from '../../types'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import FrequencySelector from '../frequency-selector'
 import ModeSwitcher from '../mode-switcher'
@@ -43,10 +43,19 @@ describe('trigger-schedule components', () => {
         />,
       )
 
-      await user.click(screen.getByRole('button', { name: 'workflow.nodes.triggerSchedule.frequency.daily' }))
-      await user.click(screen.getByText('workflow.nodes.triggerSchedule.frequency.weekly'))
+      const trigger = screen.getByRole('button', { name: 'workflow.nodes.triggerSchedule.frequency.daily' })
+      fireEvent.click(trigger)
 
-      expect(onChange).toHaveBeenCalledWith('weekly')
+      await waitFor(() => {
+        expect(trigger).toHaveAttribute('aria-expanded', 'true')
+      })
+
+      const listbox = await screen.findByRole('listbox')
+      await user.click(within(listbox).getByText('workflow.nodes.triggerSchedule.frequency.weekly'))
+
+      await waitFor(() => {
+        expect(onChange).toHaveBeenCalledWith('weekly')
+      })
     })
 
     it('should switch between visual and cron modes', async () => {

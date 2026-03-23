@@ -151,4 +151,26 @@ describe('ChatRecord integration', () => {
 
     expect(container.firstChild).toBeNull()
   })
+
+  it('should render provided user-input variables and toggle the panel body', async () => {
+    const user = userEvent.setup()
+    const { container } = render(
+      <UserInput
+        variables={[
+          { variable: 'query' },
+          { variable: 'locale' },
+        ]}
+        initialExpanded={false}
+      />,
+    )
+
+    const header = screen.getByText('WORKFLOW.PANEL.USERINPUTFIELD')
+    expect(container.querySelectorAll('.mb-2')).toHaveLength(0)
+
+    await user.click(header)
+    expect(container.querySelectorAll('.mb-2')).toHaveLength(2)
+
+    await user.click(header)
+    expect(container.querySelectorAll('.mb-2')).toHaveLength(0)
+  })
 })

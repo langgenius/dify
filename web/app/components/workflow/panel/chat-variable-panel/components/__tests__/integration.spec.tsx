@@ -1,8 +1,10 @@
 /* eslint-disable ts/no-explicit-any */
 import type { ConversationVariable } from '@/app/components/workflow/types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import * as React from 'react'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
+import ArrayBoolList from '../array-bool-list'
 import ArrayValueList from '../array-value-list'
 import VariableItem from '../variable-item'
 import VariableModalTrigger from '../variable-modal-trigger'
@@ -114,6 +116,27 @@ describe('chat-variable-panel components', () => {
       expect(onSelect).toHaveBeenCalledWith('number')
     })
 
+    it('should dismiss the type selector through the real portal close flow', async () => {
+      const user = userEvent.setup()
+
+      render(
+        <VariableTypeSelector
+          value="string"
+          list={['string', 'number']}
+          onSelect={vi.fn()}
+        />,
+      )
+
+      await user.click(screen.getByText('string'))
+      expect(screen.getByText('number')).toBeInTheDocument()
+
+      await user.keyboard('{Escape}')
+
+      await waitFor(() => {
+        expect(screen.queryByText('number')).not.toBeInTheDocument()
+      })
+    })
+
     it('should open the in-cell selector from its trigger and keep the popup class', async () => {
       const user = userEvent.setup()
       const onSelect = vi.fn()
@@ -132,6 +155,27 @@ describe('chat-variable-panel components', () => {
       expect(screen.getByText('number').closest('.custom-popup')).not.toBeNull()
       await user.click(screen.getAllByText('string')[1]!)
       expect(onSelect).toHaveBeenCalledWith('string')
+    })
+
+    it('should update, add, and remove boolean array values', async () => {
+      const user = userEvent.setup()
+      const onChange = vi.fn()
+      const { container } = render(
+        <ArrayBoolList
+          list={[true]}
+          onChange={onChange}
+        />,
+      )
+
+      await user.click(screen.getByText('False'))
+      expect(onChange).toHaveBeenNthCalledWith(1, [false])
+
+      await user.click(screen.getByText('workflow.chatVariable.modal.addArrayValue'))
+      expect(onChange).toHaveBeenNthCalledWith(2, [true, false])
+
+      const buttons = container.querySelectorAll('button')
+      await user.click(buttons[0] as HTMLButtonElement)
+      expect(onChange).toHaveBeenNthCalledWith(3, [])
     })
 
     it('should toggle the modal trigger without closing when it starts closed', async () => {
@@ -180,6 +224,59 @@ describe('chat-variable-panel components', () => {
       expect(onSave).toHaveBeenCalledWith({ id: 'saved' })
       expect(onClose).toHaveBeenCalled()
       expect(setOpen).toHaveBeenCalledWith(false)
+    })
+
+    it('should close the modal trigger when clicking the trigger while already open', async () => {
+      const user = userEvent.setup()
+      const setOpen = vi.fn()
+      const onClose = vi.fn()
+
+      render(
+        <VariableModalTrigger
+          open
+          setOpen={setOpen}
+          showTip={false}
+          chatVar={createVariable()}
+          onClose={onClose}
+          onSave={vi.fn()}
+        />,
+      )
+
+      await user.click(screen.getByRole('button', { name: 'workflow.chatVariable.button' }))
+
+      expect(onClose).toHaveBeenCalledTimes(1)
+      expect(setOpen).toHaveBeenCalled()
+    })
+
+    it('should close the modal trigger when the portal dismisses', async () => {
+      const user = userEvent.setup()
+      const onClose = vi.fn()
+
+      const TriggerHarness = () => {
+        const [open, setOpen] = React.useState(true)
+
+        return (
+          <VariableModalTrigger
+            open={open}
+            setOpen={setOpen}
+            showTip={false}
+            chatVar={createVariable()}
+            onClose={onClose}
+            onSave={vi.fn()}
+          />
+        )
+      }
+
+      render(<TriggerHarness />)
+
+      expect(screen.getByText('save-modal')).toBeInTheDocument()
+
+      await user.keyboard('{Escape}')
+
+      await waitFor(() => {
+        expect(screen.queryByText('save-modal')).not.toBeInTheDocument()
+      })
+      expect(onClose).toHaveBeenCalledTimes(1)
     })
   })
 })

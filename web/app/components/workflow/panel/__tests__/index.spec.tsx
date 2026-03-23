@@ -24,12 +24,51 @@ type MockPanelStoreState = {
   setOtherPanelWidth: (value: number) => void
 }
 
+type MockResizeMode = 'borderBox' | 'contentRect' | 'fallback'
+
+let mockResizeModes: MockResizeMode[] = []
+let mockResizeObservers: MockResizeObserver[] = []
+
+const createResizeEntry = (mode: MockResizeMode): ResizeObserverEntry => ({
+  borderBoxSize: mode === 'borderBox'
+    ? [{ inlineSize: 720, blockSize: 0 }] as ResizeObserverSize[]
+    : [],
+  contentBoxSize: [],
+  devicePixelContentBoxSize: [],
+  contentRect: {
+    width: mode === 'contentRect' ? 530 : 0,
+    height: 0,
+    x: 0,
+    y: 0,
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    toJSON: () => ({}),
+  } as DOMRectReadOnly,
+  target: document.createElement('div'),
+} as unknown as ResizeObserverEntry)
+
 class MockResizeObserver {
-  observe = vi.fn()
+  callback: ResizeObserverCallback
+
+  observe = vi.fn(() => {
+    if (!mockResizeModes.length)
+      return
+
+    this.callback(
+      mockResizeModes.map(createResizeEntry),
+      this as unknown as ResizeObserver,
+    )
+  })
+
   disconnect = vi.fn()
   unobserve = vi.fn()
 
-  constructor(_callback: ResizeObserverCallback) {}
+  constructor(callback: ResizeObserverCallback) {
+    this.callback = callback
+    mockResizeObservers.push(this)
+  }
 }
 
 let mockNodes: MockNode[] = []
@@ -104,6 +143,8 @@ describe('Panel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockNodes = []
+    mockResizeModes = []
+    mockResizeObservers = []
     mockPanelStoreState = {
       showEnvPanel: false,
       isRestoring: false,
@@ -158,7 +199,10 @@ describe('Panel', () => {
           left: <div>left-slot</div>,
           right: <div>right-slot</div>,
         }}
-        versionHistoryPanelProps={{ latestVersionId: 'version-1' }}
+        versionHistoryPanelProps={{
+          latestVersionId: 'version-1',
+          restoreVersionUrl: versionId => `/apps/app-1/workflows/${versionId}/restore`,
+        }}
       />,
     )
 
@@ -186,5 +230,23 @@ describe('Panel', () => {
     expect(screen.queryByTestId('env-panel')).not.toBeInTheDocument()
     expect(screen.queryByTestId('version-history-panel')).not.toBeInTheDocument()
     expect(mockPanelStoreState.setPreviewPanelWidth).not.toHaveBeenCalled()
+  })
+
+  it('should derive observer widths from border-box, content-rect, and fallback values and disconnect on unmount', () => {
+    mockResizeModes = ['borderBox', 'contentRect', 'fallback']
+
+    const { unmount } = render(<Panel />)
+
+    expect(mockPanelStoreState.setRightPanelWidth).toHaveBeenCalledWith(720)
+    expect(mockPanelStoreState.setRightPanelWidth).toHaveBeenCalledWith(530)
+    expect(mockPanelStoreState.setRightPanelWidth).toHaveBeenCalledWith(640)
+    expect(mockPanelStoreState.setOtherPanelWidth).toHaveBeenCalledWith(720)
+    expect(mockPanelStoreState.setOtherPanelWidth).toHaveBeenCalledWith(530)
+    expect(mockPanelStoreState.setOtherPanelWidth).toHaveBeenCalledWith(640)
+
+    unmount()
+
+    expect(mockResizeObservers).toHaveLength(2)
+    mockResizeObservers.forEach(observer => expect(observer.disconnect).toHaveBeenCalledTimes(1))
   })
 })

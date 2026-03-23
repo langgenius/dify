@@ -35,7 +35,6 @@ describe('plugin-dependency', () => {
     vi.clearAllMocks()
     useStore.setState({
       dependencies: [],
-      setDependencies: dependencies => useStore.setState({ dependencies }),
     })
   })
 
@@ -57,5 +56,13 @@ describe('plugin-dependency', () => {
     await user.click(screen.getByRole('button', { name: 'close-bundle' }))
 
     expect(useStore.getState().dependencies).toEqual([])
+  })
+
+  it('should update dependencies through the store setter', () => {
+    const dependency = createDependency()
+
+    useStore.getState().setDependencies([dependency])
+
+    expect(useStore.getState().dependencies).toEqual([dependency])
   })
 })

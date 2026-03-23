@@ -3,7 +3,7 @@ import type { ToolValue } from '../types'
 import type { Plugin } from '@/app/components/plugins/types'
 import type { Tool } from '@/app/components/tools/types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useTags } from '@/app/components/plugins/hooks'
 import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/hooks'
@@ -164,6 +164,21 @@ vi.mock('@/app/components/plugins/install-plugin/base/check-task-status', () => 
     check: vi.fn().mockResolvedValue({ status: 'success' }),
     stop: vi.fn(),
   }),
+}))
+
+vi.mock('@/app/components/plugins/install-plugin/install-from-marketplace', () => ({
+  default: ({
+    onSuccess,
+    onClose,
+  }: {
+    onSuccess: () => void | Promise<void>
+    onClose: () => void
+  }) => (
+    <div data-testid="install-from-marketplace">
+      <button type="button" onClick={() => onSuccess()}>complete-featured-install</button>
+      <button type="button" onClick={onClose}>cancel-featured-install</button>
+    </div>
+  ),
 }))
 
 vi.mock('@/utils/var', async (importOriginal) => {
@@ -504,13 +519,8 @@ describe('ToolPicker', () => {
     const featuredPluginItem = await screen.findByText('Plugin One')
     await user.hover(featuredPluginItem)
     await user.click(screen.getByRole('button', { name: 'plugin.installAction' }))
-    expect(screen.getByText('plugin.installModal.installPlugin')).toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: 'plugin.installModal.install' }))
-    await waitFor(() => {
-      expect(mockInstallPackageFromMarketPlace).toHaveBeenCalledWith('featured-1@1.0.0')
-    })
-    await user.click(await screen.findByRole('button', { name: 'common.operation.close' }))
+    expect(await screen.findByTestId('install-from-marketplace')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'complete-featured-install' }))
 
     await waitFor(() => {
       expect(mockInvalidateBuiltInTools).toHaveBeenCalledTimes(1)

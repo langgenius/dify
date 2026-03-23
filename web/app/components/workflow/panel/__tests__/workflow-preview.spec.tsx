@@ -18,7 +18,7 @@ vi.mock('copy-to-clipboard', () => ({
 
 vi.mock('@/app/components/base/ui/toast', () => ({
   toast: {
-    add: vi.fn(),
+    success: vi.fn(),
   },
 }))
 
@@ -91,7 +91,7 @@ vi.mock('@/app/components/workflow/panel/human-input-filled-form-list', () => ({
 }))
 
 const mockCopy = vi.mocked(copy)
-const mockToastAdd = vi.mocked(toast.add)
+const mockToastSuccess = vi.mocked(toast.success)
 const mockSubmitHumanInputForm = vi.mocked(submitHumanInputForm)
 
 type WorkflowResult = NonNullable<ReturnType<typeof createWorkflowRunningData>['result']>
@@ -252,10 +252,7 @@ describe('WorkflowPreview', () => {
     await user.click(screen.getByRole('button', { name: 'common.operation.copy' }))
 
     expect(mockCopy).toHaveBeenCalledWith('final answer')
-    expect(mockToastAdd).toHaveBeenCalledWith({
-      type: 'success',
-      title: 'common.actionMsg.copySuccessfully',
-    })
+    expect(mockToastSuccess).toHaveBeenCalledWith('common.actionMsg.copySuccessfully')
   })
 
   it('should show a loading state for an empty detail panel', () => {

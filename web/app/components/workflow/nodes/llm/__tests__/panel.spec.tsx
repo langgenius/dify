@@ -1,7 +1,7 @@
 import type { LLMNodeType } from '../types'
 import type { ModelProvider } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { PanelProps } from '@/types/workflow'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import { createMockProviderContextValue } from '@/__mocks__/provider-context'
 import {
   ConfigurationMethodEnum,
@@ -10,6 +10,7 @@ import {
   ModelTypeEnum,
   PreferredProviderTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { ProviderContext } from '@/context/provider-context'
 import { AppModeEnum } from '@/types/app'
 import { BlockEnum } from '../../../types'
@@ -68,7 +69,7 @@ const baseNodeData: LLMNodeType = {
   desc: '',
   model: {
     provider: 'openai',
-    name: '',
+    name: 'gpt-4o',
     mode: AppModeEnum.CHAT,
     completion_params: {},
   },
@@ -121,7 +122,7 @@ const buildUseConfigResult = (overrides?: Partial<MockUseConfigReturn>) => ({
 })
 
 const renderPanel = (data?: Partial<LLMNodeType>) => {
-  return render(
+  return renderWorkflowFlowComponent(
     <ProviderContext.Provider value={createMockProviderContextValue({
       modelProviders: [createMockModelProvider('openai')],
       isFetchedPlan: true,
@@ -133,6 +134,9 @@ const renderPanel = (data?: Partial<LLMNodeType>) => {
         panelProps={panelProps}
       />
     </ProviderContext.Provider>,
+    {
+      hooksStoreProps: {},
+    },
   )
 }
 

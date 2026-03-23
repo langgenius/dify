@@ -1,7 +1,7 @@
 /* eslint-disable ts/no-explicit-any, style/jsx-one-expression-per-line */
 import type { ListFilterNodeType } from '../types'
 import type { PanelProps } from '@/types/workflow'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
@@ -169,10 +169,19 @@ describe('list-operator path', () => {
         />,
       )
 
-      await user.click(screen.getByText('size'))
-      await user.click(screen.getByText('name'))
+      const trigger = screen.getByRole('button', { name: 'size' })
+      fireEvent.click(trigger)
 
-      expect(onChange).toHaveBeenCalledWith('name')
+      await waitFor(() => {
+        expect(trigger).toHaveAttribute('aria-expanded', 'true')
+      })
+
+      const listbox = await screen.findByRole('listbox')
+      await user.click(within(listbox).getByText('name'))
+
+      await waitFor(() => {
+        expect(onChange).toHaveBeenCalledWith('name')
+      })
 
       unmount()
       render(

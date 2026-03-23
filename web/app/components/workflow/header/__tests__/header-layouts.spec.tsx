@@ -1,5 +1,5 @@
 import type { Shape } from '../../store/workflow'
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { FlowType } from '@/types/common'
 import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
 import { WorkflowVersion } from '../../types'
@@ -11,9 +11,10 @@ const mockUseNodes = vi.fn()
 const mockHandleBackupDraft = vi.fn()
 const mockHandleLoadBackupDraft = vi.fn()
 const mockHandleNodeSelect = vi.fn()
-const mockHandleSyncWorkflowDraft = vi.fn()
+const mockHandleRefreshWorkflowDraft = vi.fn()
 const mockCloseAllInputFieldPanels = vi.fn()
 const mockInvalidAllLastRun = vi.fn()
+const mockRestoreWorkflow = vi.fn()
 const mockNotify = vi.fn()
 const mockRunAndHistory = vi.fn()
 const mockViewHistory = vi.fn()
@@ -33,7 +34,10 @@ vi.mock('../../hooks', () => ({
     handleLoadBackupDraft: mockHandleLoadBackupDraft,
   }),
   useNodesSyncDraft: () => ({
-    handleSyncWorkflowDraft: mockHandleSyncWorkflowDraft,
+    handleSyncWorkflowDraft: vi.fn(),
+  }),
+  useWorkflowRefreshDraft: () => ({
+    handleRefreshWorkflowDraft: mockHandleRefreshWorkflowDraft,
   }),
 }))
 
@@ -51,6 +55,9 @@ vi.mock('@/hooks/use-theme', () => ({
 
 vi.mock('@/service/use-workflow', () => ({
   useInvalidAllLastRun: () => mockInvalidAllLastRun,
+  useRestoreWorkflow: () => ({
+    mutateAsync: mockRestoreWorkflow,
+  }),
 }))
 
 vi.mock('../../../base/toast', () => ({
@@ -152,6 +159,7 @@ describe('Header layout components', () => {
     mockNodesReadOnly = false
     mockTheme = 'light'
     mockUseNodes.mockReturnValue([])
+    mockRestoreWorkflow.mockResolvedValue(undefined)
   })
 
   describe('HeaderInNormal', () => {
@@ -228,7 +236,7 @@ describe('Header layout components', () => {
       expect(store.getState().showWorkflowVersionHistoryPanel).toBe(false)
     })
 
-    it('should restore the selected version, clear backup state, and forward lifecycle callbacks', () => {
+    it('should restore the selected version, clear backup state, and forward lifecycle callbacks', async () => {
       const onRestoreSettled = vi.fn()
       const deleteAllInspectVars = vi.fn()
       const currentVersion = createCurrentVersion()
@@ -255,38 +263,18 @@ describe('Header layout components', () => {
 
       fireEvent.click(screen.getByRole('button', { name: 'workflow.common.restore' }))
 
-      expect(mockHandleSyncWorkflowDraft).toHaveBeenCalledWith(
-        true,
-        false,
-        expect.objectContaining({
-          onSuccess: expect.any(Function),
-          onError: expect.any(Function),
-          onSettled: expect.any(Function),
-        }),
-      )
-      expect(store.getState().showWorkflowVersionHistoryPanel).toBe(false)
-      expect(store.getState().isRestoring).toBe(false)
-      expect(store.getState().backupDraft).toBeUndefined()
-      expect(deleteAllInspectVars).toHaveBeenCalledTimes(1)
-      expect(mockInvalidAllLastRun).toHaveBeenCalledTimes(1)
-
-      const lifecycle = mockHandleSyncWorkflowDraft.mock.calls[0][2] as {
-        onSuccess: () => void
-        onError: () => void
-        onSettled: () => void
-      }
-
-      lifecycle.onSuccess()
-      lifecycle.onError()
-      lifecycle.onSettled()
-
-      expect(mockNotify).toHaveBeenNthCalledWith(1, {
-        type: 'success',
-        message: 'workflow.versionHistory.action.restoreSuccess',
-      })
-      expect(mockNotify).toHaveBeenNthCalledWith(2, {
-        type: 'error',
-        message: 'workflow.versionHistory.action.restoreFailure',
+      await waitFor(() => {
+        expect(mockRestoreWorkflow).toHaveBeenCalledWith('/apps/flow-1/workflows/version-1/restore')
+        expect(store.getState().showWorkflowVersionHistoryPanel).toBe(false)
+        expect(store.getState().isRestoring).toBe(false)
+        expect(store.getState().backupDraft).toBeUndefined()
+        expect(mockHandleRefreshWorkflowDraft).toHaveBeenCalledTimes(1)
+        expect(deleteAllInspectVars).toHaveBeenCalledTimes(1)
+        expect(mockInvalidAllLastRun).toHaveBeenCalledTimes(1)
+        expect(mockNotify).toHaveBeenCalledWith({
+          type: 'success',
+          message: 'workflow.versionHistory.action.restoreSuccess',
+        })
       })
       expect(onRestoreSettled).toHaveBeenCalledTimes(1)
     })

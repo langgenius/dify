@@ -34,6 +34,7 @@ let mockBuiltInTools: MockToolCollection[] = []
 let mockCustomTools: MockToolCollection[] = []
 let mockWorkflowTools: MockToolCollection[] = []
 let mockSelectedToolInfo: ToolDefaultValue | undefined
+let mockBlockSelectorOpen = false
 
 vi.mock('@/app/components/workflow/block-selector', () => ({
   __esModule: true,
@@ -48,7 +49,7 @@ vi.mock('@/app/components/workflow/block-selector', () => ({
       type="button"
       onClick={() => onSelect?.(BlockEnum.Tool, mockSelectedToolInfo)}
     >
-      {trigger ? trigger(false) : 'select-tool'}
+      {trigger ? trigger(mockBlockSelectorOpen) : 'select-tool'}
     </button>
   ),
 }))
@@ -95,6 +96,26 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-param
       </button>
     </div>
   ),
+}))
+
+vi.mock('@/app/components/base/modal', () => ({
+  __esModule: true,
+  default: ({
+    children,
+    isShow,
+    title,
+  }: {
+    children: ReactNode
+    isShow?: boolean
+    title?: ReactNode
+  }) => isShow
+    ? (
+        <div data-testid="base-modal">
+          <div>{title}</div>
+          {children}
+        </div>
+      )
+    : null,
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/collapse', () => ({
@@ -340,6 +361,7 @@ describe('parameter-extractor path', () => {
     mockCustomTools = []
     mockWorkflowTools = []
     mockSelectedToolInfo = createToolInfo()
+    mockBlockSelectorOpen = false
     mockUseTextGeneration.mockReturnValue({
       currentProvider: undefined,
       currentModel: undefined,
@@ -398,6 +420,94 @@ describe('parameter-extractor path', () => {
       await user.click(screen.getByRole('button', { name: /workflow.nodes.parameterExtractor.importFromTool/i }))
 
       expect(onImport).not.toHaveBeenCalled()
+    })
+
+    it('should import llm parameters from custom and workflow tool collections', async () => {
+      const user = userEvent.setup()
+      const onImport = vi.fn()
+
+      mockSelectedToolInfo = createToolInfo({
+        provider_id: 'custom-1',
+        provider_type: CollectionType.custom,
+      })
+      mockCustomTools = [
+        {
+          id: 'custom-1',
+          tools: [
+            {
+              name: 'search',
+              parameters: [createToolParameter({ name: 'custom_city', llm_description: 'Custom city' })],
+            },
+          ],
+        },
+      ]
+
+      render(<ImportFromTool onImport={onImport} />)
+
+      await user.click(screen.getByRole('button', { name: /workflow.nodes.parameterExtractor.importFromTool/i }))
+
+      expect(onImport).toHaveBeenLastCalledWith([
+        {
+          name: 'custom_city',
+          type: ParamType.string,
+          required: true,
+          description: 'Custom city',
+          options: ['Draft'],
+        },
+      ])
+    })
+
+    it('should import llm parameters from workflow tool collections', async () => {
+      const user = userEvent.setup()
+      const onImport = vi.fn()
+
+      mockSelectedToolInfo = createToolInfo({
+        provider_id: 'workflow-1',
+        provider_type: CollectionType.workflow,
+        tool_name: 'transform',
+      })
+      mockWorkflowTools = [
+        {
+          id: 'workflow-1',
+          tools: [
+            {
+              name: 'transform',
+              parameters: [createToolParameter({ name: 'workflow_city', llm_description: 'Workflow city' })],
+            },
+          ],
+        },
+      ]
+
+      render(<ImportFromTool onImport={onImport} />)
+      await user.click(screen.getByRole('button', { name: /workflow.nodes.parameterExtractor.importFromTool/i }))
+
+      expect(onImport).toHaveBeenLastCalledWith([
+        {
+          name: 'workflow_city',
+          type: ParamType.string,
+          required: true,
+          description: 'Workflow city',
+          options: ['Draft'],
+        },
+      ])
+    })
+
+    it('should highlight the trigger when open and return an empty import for unknown providers', async () => {
+      const user = userEvent.setup()
+      const onImport = vi.fn()
+
+      mockBlockSelectorOpen = true
+      mockSelectedToolInfo = createToolInfo({
+        provider_type: 'unknown' as CollectionType,
+      })
+
+      render(<ImportFromTool onImport={onImport} />)
+
+      expect(screen.getByText('workflow.nodes.parameterExtractor.importFromTool')).toHaveClass('bg-state-base-hover')
+
+      await user.click(screen.getByRole('button', { name: /workflow.nodes.parameterExtractor.importFromTool/i }))
+
+      expect(onImport).toHaveBeenCalledWith([])
     })
 
     it('should show the empty state for an empty parameter list', () => {
@@ -486,6 +596,62 @@ describe('parameter-extractor path', () => {
       expect(screen.getByTestId('add-button')).toBeInTheDocument()
     })
 
+    it('should reject invalid names and reset add modal fields after canceling', async () => {
+      const user = userEvent.setup()
+      const onCancel = vi.fn()
+
+      render(
+        <AddExtractParameter
+          type="add"
+          onSave={vi.fn()}
+          onCancel={onCancel}
+        />,
+      )
+
+      await user.click(screen.getByTestId('add-button'))
+
+      const nameInput = screen.getByPlaceholderText('workflow.nodes.parameterExtractor.addExtractParameterContent.namePlaceholder')
+      const descriptionInput = screen.getByPlaceholderText('workflow.nodes.parameterExtractor.addExtractParameterContent.descriptionPlaceholder')
+
+      fireEvent.change(nameInput, { target: { value: '1bad' } })
+      expect(mockToastNotify).toHaveBeenCalled()
+      expect(nameInput).toHaveValue('')
+
+      fireEvent.change(nameInput, { target: { value: 'temporary_name' } })
+      fireEvent.change(descriptionInput, { target: { value: 'Temporary description' } })
+
+      await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+      expect(onCancel).toHaveBeenCalledTimes(1)
+      expect(screen.queryByTestId('base-modal')).not.toBeInTheDocument()
+
+      await user.click(screen.getByTestId('add-button'))
+      expect(screen.getByPlaceholderText('workflow.nodes.parameterExtractor.addExtractParameterContent.namePlaceholder')).toHaveValue('')
+      expect(screen.getByPlaceholderText('workflow.nodes.parameterExtractor.addExtractParameterContent.descriptionPlaceholder')).toHaveValue('')
+    })
+
+    it('should require select options before saving a select parameter', async () => {
+      const user = userEvent.setup()
+      const onSave = vi.fn()
+
+      render(
+        <AddExtractParameter
+          type="edit"
+          payload={createParam({
+            name: 'status',
+            type: ParamType.select,
+            description: 'Status field',
+            options: [],
+          })}
+          onSave={onSave}
+        />,
+      )
+
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+      expect(onSave).not.toHaveBeenCalled()
+      expect(mockToastNotify).toHaveBeenCalled()
+    })
+
     it('should keep rename metadata and updated options when editing a select parameter', async () => {
       const user = userEvent.setup()
       const onSave = vi.fn()
@@ -507,7 +673,7 @@ describe('parameter-extractor path', () => {
         target: { value: 'approval_status' },
       })
       await user.click(screen.getByRole('button', { name: 'set-options' }))
-      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+      await user.click(await screen.findByRole('button', { name: 'common.operation.save' }))
 
       expect(onSave).toHaveBeenCalledWith({
         name: 'approval_status',
@@ -515,6 +681,35 @@ describe('parameter-extractor path', () => {
         description: 'Status',
         options: ['draft', 'published'],
         required: false,
+      }, undefined)
+    })
+
+    it('should persist rename metadata and required state for edited parameters', async () => {
+      const user = userEvent.setup()
+      const onSave = vi.fn()
+
+      render(
+        <AddExtractParameter
+          type="edit"
+          payload={createParam({
+            name: 'status',
+            description: 'Status description',
+          })}
+          onSave={onSave}
+        />,
+      )
+
+      fireEvent.change(screen.getByDisplayValue('status'), {
+        target: { value: 'approval_status' },
+      })
+      await user.click(screen.getByRole('switch'))
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+      expect(onSave).toHaveBeenCalledWith({
+        name: 'approval_status',
+        type: ParamType.string,
+        description: 'Status description',
+        required: true,
       }, undefined)
     })
   })

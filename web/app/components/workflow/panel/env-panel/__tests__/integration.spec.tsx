@@ -95,6 +95,31 @@ describe('EnvPanel integration', () => {
     expect(onDelete).toHaveBeenCalledWith(env)
   })
 
+  it('should render non-secret env values and clear destructive styling on mouse out', () => {
+    const env = createEnv({
+      id: 'env-plain',
+      name: 'public_value',
+      value: 'plain-text',
+      value_type: 'string',
+      description: '',
+    })
+
+    const { container } = renderWithProviders(
+      <EnvItem env={env} onEdit={vi.fn()} onDelete={vi.fn()} />,
+    )
+
+    expect(screen.getByText('public_value')).toBeInTheDocument()
+    expect(screen.getByText('String')).toBeInTheDocument()
+    expect(screen.getByText('plain-text')).toBeInTheDocument()
+    expect(screen.queryByText('secret description')).not.toBeInTheDocument()
+
+    const deleteWrapper = container.querySelectorAll('.cursor-pointer')[1] as HTMLElement
+    fireEvent.mouseOver(deleteWrapper)
+    expect(container.firstElementChild).toHaveClass('border-state-destructive-border')
+    fireEvent.mouseOut(deleteWrapper)
+    expect(container.firstElementChild).not.toHaveClass('border-state-destructive-border')
+  })
+
   it('should create a secret environment variable and normalize spaces in its name', async () => {
     const user = userEvent.setup()
     const onSave = vi.fn()

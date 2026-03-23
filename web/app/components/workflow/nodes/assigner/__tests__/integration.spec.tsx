@@ -414,6 +414,76 @@ describe('assigner path', () => {
       expect(screen.getByText('workflow.nodes.assigner.operations.append')).toBeInTheDocument()
     })
 
+    it('should skip empty version 2 items and resolve system variables without an operation badge', () => {
+      renderWorkflowFlowComponent(
+        <Node
+          id="assigner-node"
+          data={createData({
+            items: [
+              createOperation({ variable_selector: [] }),
+              createOperation({
+                variable_selector: ['sys', 'query'],
+                operation: undefined,
+              }),
+            ],
+          })}
+        />,
+        {
+          nodes: [
+            { id: 'node-1', position: { x: 0, y: 0 }, data: { title: 'Answer', type: BlockEnum.Answer } as any },
+            { id: 'start', position: { x: 0, y: 0 }, data: { title: 'Start', type: BlockEnum.Start } as any },
+          ],
+          edges: [],
+        },
+      )
+
+      expect(screen.getByText('Start')).toBeInTheDocument()
+      expect(screen.getByText('sys.query')).toBeInTheDocument()
+      expect(screen.queryByText('workflow.nodes.assigner.operations.over-write')).not.toBeInTheDocument()
+    })
+
+    it('should return null for legacy nodes without assigned variables and resolve non-system legacy vars', () => {
+      const { rerender } = renderWorkflowFlowComponent(
+        <Node
+          id="assigner-node"
+          data={{
+            title: 'Legacy Assigner',
+            desc: '',
+            type: BlockEnum.VariableAssigner,
+            assigned_variable_selector: [],
+            write_mode: WriteMode.append,
+          } as any}
+        />,
+        {
+          nodes: [
+            { id: 'node-1', position: { x: 0, y: 0 }, data: { title: 'Answer', type: BlockEnum.Answer } as any },
+            { id: 'start', position: { x: 0, y: 0 }, data: { title: 'Start', type: BlockEnum.Start } as any },
+          ],
+          edges: [],
+        },
+      )
+
+      expect(screen.queryByText('workflow.nodes.assigner.operations.append')).not.toBeInTheDocument()
+      expect(screen.queryByText('node-1.count')).not.toBeInTheDocument()
+
+      rerender(
+        <Node
+          id="assigner-node"
+          data={{
+            title: 'Legacy Assigner',
+            desc: '',
+            type: BlockEnum.VariableAssigner,
+            assigned_variable_selector: ['node-1', 'count'],
+            write_mode: WriteMode.append,
+          } as any}
+        />,
+      )
+
+      expect(screen.getByText('Answer')).toBeInTheDocument()
+      expect(screen.getByText('node-1.count')).toBeInTheDocument()
+      expect(screen.getByText('workflow.nodes.assigner.operations.append')).toBeInTheDocument()
+    })
+
     it('should add panel operations with the real variable list inside the panel', async () => {
       const user = userEvent.setup()
       const config = createConfigResult({
