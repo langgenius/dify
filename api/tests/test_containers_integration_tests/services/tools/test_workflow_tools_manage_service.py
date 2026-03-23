@@ -1075,9 +1075,9 @@ class TestWorkflowToolManageService:
         result = WorkflowToolManageService.delete_workflow_tool(account.id, account.current_tenant.id, tool.id)
 
         assert result == {"result": "success"}
-        deleted = db_session_with_containers.query(WorkflowToolProvider).where(
-            WorkflowToolProvider.id == tool.id
-        ).first()
+        deleted = (
+            db_session_with_containers.query(WorkflowToolProvider).where(WorkflowToolProvider.id == tool.id).first()
+        )
         assert deleted is None
 
     def test_list_tenant_workflow_tools_empty(
@@ -1103,9 +1103,7 @@ class TestWorkflowToolManageService:
         )
 
         with pytest.raises(ValueError, match="Tool not found"):
-            WorkflowToolManageService.get_workflow_tool_by_tool_id(
-                account.id, account.current_tenant.id, fake.uuid4()
-            )
+            WorkflowToolManageService.get_workflow_tool_by_tool_id(account.id, account.current_tenant.id, fake.uuid4())
 
     def test_get_workflow_tool_by_app_id_not_found(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -1117,9 +1115,7 @@ class TestWorkflowToolManageService:
         )
 
         with pytest.raises(ValueError, match="Tool not found"):
-            WorkflowToolManageService.get_workflow_tool_by_app_id(
-                account.id, account.current_tenant.id, fake.uuid4()
-            )
+            WorkflowToolManageService.get_workflow_tool_by_app_id(account.id, account.current_tenant.id, fake.uuid4())
 
     def test_list_single_workflow_tools_not_found(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -1131,9 +1127,7 @@ class TestWorkflowToolManageService:
         )
 
         with pytest.raises(ValueError, match="not found"):
-            WorkflowToolManageService.list_single_workflow_tools(
-                account.id, account.current_tenant.id, fake.uuid4()
-            )
+            WorkflowToolManageService.list_single_workflow_tools(account.id, account.current_tenant.id, fake.uuid4())
 
     def test_create_workflow_tool_with_labels(
         self, db_session_with_containers: Session, mock_external_service_dependencies
