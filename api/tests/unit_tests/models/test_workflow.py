@@ -5,6 +5,7 @@ from uuid import uuid4
 
 from constants import HIDDEN_VALUE
 from core.helper import encrypter
+from dify_graph.enums import BuiltinNodeTypes
 from dify_graph.file.enums import FileTransferMethod, FileType
 from dify_graph.file.models import File
 from dify_graph.variables import FloatVariable, IntegerVariable, SecretVariable, StringVariable
@@ -189,6 +190,42 @@ class TestWorkflowNodeExecution:
         original = {"a": 1, "b": ["2"]}
         node_exec.execution_metadata = json.dumps(original)
         assert node_exec.execution_metadata_dict == original
+
+    def test_extras_tool_node_skips_icon_when_fetch_fails(self):
+        node_exec = WorkflowNodeExecutionModel()
+        node_exec.tenant_id = "tenant-1"
+        node_exec.node_type = BuiltinNodeTypes.TOOL
+        node_exec.execution_metadata = json.dumps(
+            {
+                "tool_info": {
+                    "provider_type": "plugin",
+                    "provider_id": "missing-provider",
+                }
+            }
+        )
+        with mock.patch(
+            "core.tools.tool_manager.ToolManager.get_tool_icon",
+            side_effect=ValueError("provider not found"),
+        ):
+            assert node_exec.extras == {}
+
+    def test_extras_tool_node_includes_icon_when_fetch_succeeds(self):
+        node_exec = WorkflowNodeExecutionModel()
+        node_exec.tenant_id = "tenant-1"
+        node_exec.node_type = BuiltinNodeTypes.TOOL
+        node_exec.execution_metadata = json.dumps(
+            {
+                "tool_info": {
+                    "provider_type": "plugin",
+                    "provider_id": "p1",
+                }
+            }
+        )
+        with mock.patch(
+            "core.tools.tool_manager.ToolManager.get_tool_icon",
+            return_value="https://example.com/icon.png",
+        ):
+            assert node_exec.extras == {"icon": "https://example.com/icon.png"}
 
 
 class TestIsSystemVariableEditable:

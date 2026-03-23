@@ -222,6 +222,37 @@ class TestAgentServiceGetAgentLogs:
             assert tool_calls[1]["tool_icon"] == ""
             mock_convert.assert_called_once()
 
+    def test_get_agent_logs_should_omit_tool_icon_when_fetch_raises(self) -> None:
+        """Uninstalled plugin or daemon down must not break agent log API."""
+        agent_thought = _make_agent_thought()
+        message = _make_message([agent_thought])
+        conversation = _make_conversation(from_end_user_id="end-user-1", from_account_id=None)
+        executor = MagicMock(spec=EndUser)
+        executor.name = "End User"
+        app_model_config = MagicMock()
+        app_model_config.agent_mode_dict = {"strategy": "react"}
+        app_model_config.to_dict.return_value = {"tools": []}
+        app_model = _make_app_model(app_model_config)
+        current_user = _make_current_user_account()
+        agent_config = MagicMock()
+        agent_config.tools = []
+
+        with (
+            patch("services.agent_service.db") as mock_db,
+            patch("services.agent_service.AgentConfigManager.convert", return_value=agent_config),
+            patch(
+                "services.agent_service.ToolManager.get_tool_icon",
+                side_effect=RuntimeError("plugin daemon unavailable"),
+            ),
+            patch("services.agent_service.current_user", current_user),
+        ):
+            mock_db.session.query.side_effect = _build_query_side_effect(conversation, message, executor)
+            result = AgentService.get_agent_logs(app_model, conversation.id, message.id)
+
+        tool_calls = result["iterations"][0]["tool_calls"]
+        assert tool_calls[0]["tool_icon"] == ""
+        assert tool_calls[1]["tool_icon"] == ""
+
     def test_get_agent_logs_should_return_account_executor_when_no_end_user(self) -> None:
         """Test agent logs fall back to account executor when end user is missing."""
         # Arrange
