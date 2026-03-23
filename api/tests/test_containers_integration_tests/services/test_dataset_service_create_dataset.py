@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 from uuid import uuid4
 
 import pytest
@@ -51,7 +51,7 @@ class TestDatasetServiceCreateRagPipelineDataset:
     def test_create_rag_pipeline_dataset_raises_when_current_user_id_is_none(self, db_session_with_containers):
         tenant, _ = self._create_tenant_and_account(db_session_with_containers)
 
-        mock_user = type("FakeUser", (), {"id": None})()
+        mock_user = Mock(id=None)
         with patch("services.dataset_service.current_user", mock_user):
             with pytest.raises(ValueError, match="Current user or current user id not found"):
                 DatasetService.create_empty_rag_pipeline_dataset(
