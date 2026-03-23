@@ -335,7 +335,11 @@ class BillingService:
                         # Redis returns bytes, decode to string and parse JSON
                         json_str = cached_value.decode("utf-8") if isinstance(cached_value, bytes) else cached_value
                         plan_dict = json.loads(json_str)
+                        # NOTE (hj24): New billing versions may return timestamp as str, and validate_python
+                        # in non-strict mode will coerce it to the expected int type.
+                        # To preserve compatibility, always keep non-strict mode here and avoid strict mode.
                         subscription_plan = subscription_adapter.validate_python(plan_dict)
+                        # NOTE END
                         tenant_plans[tenant_id] = subscription_plan
                     except Exception:
                         logger.exception(
