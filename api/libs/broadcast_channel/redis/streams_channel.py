@@ -91,9 +91,7 @@ class _StreamsSubscription(Subscription):
             if "BUSYGROUP" in str(e):
                 self._group_ready = True
             else:
-                logger.warning(
-                    "xgroup create failed for %s/%s: %s", self._key, self._group_name, e, exc_info=True
-                )
+                logger.warning("xgroup create failed for %s/%s: %s", self._key, self._group_name, e, exc_info=True)
         except Exception as e:  # pragma: no cover - safety net for different redis-py versions
             logger.warning(
                 "xgroup create unexpected error for %s/%s: %s",
@@ -207,9 +205,7 @@ class _StreamsSubscription(Subscription):
         except ResponseError as e:
             msg = str(e)
             if not ("NOGROUP" in msg or "NOKEY" in msg or "No such key" in msg):
-                logger.warning(
-                    "xgroup delconsumer failed for %s/%s: %s", self._key, self._group_name, e, exc_info=True
-                )
+                logger.warning("xgroup delconsumer failed for %s/%s: %s", self._key, self._group_name, e, exc_info=True)
         except Exception as e:
             logger.warning(
                 "xgroup delconsumer unexpected error for %s/%s: %s", self._key, self._group_name, e, exc_info=True
@@ -220,13 +216,7 @@ class _StreamsSubscription(Subscription):
         except ResponseError as e:
             msg = str(e)
             if not ("NOGROUP" in msg or "NOKEY" in msg or "No such key" in msg):
-                logger.warning(
-                    "xgroup_destroy failed for %s/%s: %s",
-                    self._key,
-                    self._group_name,
-                    e,
-                    exc_info=True
-                )
+                logger.warning("xgroup_destroy failed for %s/%s: %s", self._key, self._group_name, e, exc_info=True)
         except Exception as e:
             logger.warning(
                 "xgroup_destroy unexpected error for %s/%s: %s",
