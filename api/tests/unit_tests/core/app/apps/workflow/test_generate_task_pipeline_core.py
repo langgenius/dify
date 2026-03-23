@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import pytest
@@ -191,7 +191,7 @@ class TestWorkflowGenerateTaskPipeline:
             node_execution_id="exec",
             node_id="node",
             node_type=BuiltinNodeTypes.START,
-            start_at=datetime.now(timezone.utc),
+            start_at=datetime.now(UTC),
             inputs={},
             outputs={},
             process_data={},
@@ -244,7 +244,7 @@ class TestWorkflowGenerateTaskPipeline:
             node_execution_id="exec",
             node_id="node",
             node_type=BuiltinNodeTypes.START,
-            start_at=datetime.now(timezone.utc),
+            start_at=datetime.now(UTC),
             inputs={},
             outputs={},
             process_data={},
@@ -302,7 +302,7 @@ class TestWorkflowGenerateTaskPipeline:
             node_id="node",
             node_type=BuiltinNodeTypes.LLM,
             node_title="LLM",
-            start_at=datetime.now(timezone.utc),
+            start_at=datetime.now(UTC),
             node_run_index=1,
         )
         iter_next = QueueIterationNextEvent(
@@ -318,7 +318,7 @@ class TestWorkflowGenerateTaskPipeline:
             node_id="node",
             node_type=BuiltinNodeTypes.LLM,
             node_title="LLM",
-            start_at=datetime.now(timezone.utc),
+            start_at=datetime.now(UTC),
             node_run_index=1,
         )
         loop_start = QueueLoopStartEvent(
@@ -326,7 +326,7 @@ class TestWorkflowGenerateTaskPipeline:
             node_id="node",
             node_type=BuiltinNodeTypes.LLM,
             node_title="LLM",
-            start_at=datetime.now(timezone.utc),
+            start_at=datetime.now(UTC),
             node_run_index=1,
         )
         loop_next = QueueLoopNextEvent(
@@ -342,7 +342,7 @@ class TestWorkflowGenerateTaskPipeline:
             node_id="node",
             node_type=BuiltinNodeTypes.LLM,
             node_title="LLM",
-            start_at=datetime.now(timezone.utc),
+            start_at=datetime.now(UTC),
             node_run_index=1,
         )
         filled_event = QueueHumanInputFormFilledEvent(
@@ -358,7 +358,7 @@ class TestWorkflowGenerateTaskPipeline:
             node_id="node",
             node_type=BuiltinNodeTypes.LLM,
             node_title="title",
-            expiration_time=datetime.now(timezone.utc),
+            expiration_time=datetime.now(UTC),
         )
         agent_event = QueueAgentLogEvent(
             id="log",
@@ -647,7 +647,7 @@ class TestWorkflowGenerateTaskPipeline:
             node_title="title",
             node_type=BuiltinNodeTypes.LLM,
             node_run_index=1,
-            start_at=datetime.now(timezone.utc),
+            start_at=datetime.now(UTC),
             provider_type="provider",
             provider_id="provider-id",
             error="error",
@@ -659,7 +659,7 @@ class TestWorkflowGenerateTaskPipeline:
             node_title="title",
             node_type=BuiltinNodeTypes.LLM,
             node_run_index=1,
-            start_at=datetime.now(timezone.utc),
+            start_at=datetime.now(UTC),
             provider_type="provider",
             provider_id="provider-id",
         )
@@ -684,7 +684,7 @@ class TestWorkflowGenerateTaskPipeline:
             node_execution_id="exec-id",
             node_id="node",
             node_type=BuiltinNodeTypes.START,
-            start_at=datetime.now(timezone.utc),
+            start_at=datetime.now(UTC),
             inputs={},
             outputs={},
             process_data={},
@@ -857,7 +857,7 @@ class TestWorkflowGenerateTaskPipeline:
             node_id="node-id",
             node_type=BuiltinNodeTypes.START,
             in_loop_id="loop-id",
-            start_at=datetime.now(timezone.utc),
+            start_at=datetime.now(UTC),
             process_data={"k": "v"},
             outputs={"out": 1},
         )

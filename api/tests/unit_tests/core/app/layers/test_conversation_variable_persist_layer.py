@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import Mock
 
 from core.app.layers.conversation_variable_persist_layer import ConversationVariablePersistenceLayer
@@ -51,7 +51,7 @@ def _build_node_run_succeeded_event(
         id="node-exec-id",
         node_id="assigner",
         node_type=node_type,
-        start_at=datetime.now(timezone.utc),
+        start_at=datetime.now(UTC),
         node_run_result=NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
             outputs=outputs or {},
