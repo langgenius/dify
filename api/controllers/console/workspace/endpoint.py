@@ -4,7 +4,6 @@ from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 
-from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, is_admin_or_owner_required, setup_required
 from core.plugin.impl.exc import PluginPermissionDeniedError
@@ -71,8 +70,7 @@ def reg(cls: type[BaseModel]):
     console_ns.schema_model(cls.__name__, cls.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
 
 
-register_schema_models(
-    console_ns,
+for cls in [
     EndpointCreatePayload,
     EndpointIdPayload,
     EndpointUpdatePayload,
@@ -85,7 +83,8 @@ register_schema_models(
     EndpointUpdateResponse,
     EndpointEnableResponse,
     EndpointDisableResponse,
-)
+]:
+    reg(cls)
 
 
 @console_ns.route("/workspaces/current/endpoints/create")
