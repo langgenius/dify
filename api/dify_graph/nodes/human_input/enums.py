@@ -25,6 +25,11 @@ class HumanInputFormKind(enum.StrEnum):
     DELIVERY_TEST = enum.auto()  # Form created for delivery tests.
 
 
+class DeliveryMethodType(enum.StrEnum):
+    WEBAPP = enum.auto()
+    EMAIL = enum.auto()
+
+
 class ButtonStyle(enum.StrEnum):
     """Button styles for user actions."""
 

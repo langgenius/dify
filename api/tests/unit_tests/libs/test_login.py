@@ -52,6 +52,20 @@ def ensure_sync_spy(login_app: Flask, mocker: MockerFixture) -> MagicMock:
     return mocker.patch.object(login_app, "ensure_sync", side_effect=_ensure_sync)
 
 
+def _assert_ensure_sync_called_once_with_view(ensure_sync_spy: MagicMock) -> None:
+    ensure_sync_spy.assert_called_once()
+    called_view = ensure_sync_spy.call_args.args[0]
+    assert callable(called_view)
+    assert called_view.__name__ == "protected_view"
+
+
+def _patch_current_user(mocker: MockerFixture, resolved_user: MockUser | Account | None) -> MagicMock:
+    current_user_proxy = MagicMock()
+    current_user_proxy._get_current_object.return_value = resolved_user
+    mocker.patch.object(login_module, "current_user", new=current_user_proxy)
+    return current_user_proxy
+
+
 class TestLoginRequired:
     """Test cases for login_required decorator."""
 
@@ -65,7 +79,7 @@ class TestLoginRequired:
             return "Protected content"
 
         mock_user = MockUser("test_user", is_authenticated=True)
-        get_user = mocker.patch.object(login_module, "_get_user", return_value=mock_user)
+        current_user_proxy = _patch_current_user(mocker, mock_user)
 
         with login_app.test_request_context():
             result = protected_view()
@@ -74,8 +88,8 @@ class TestLoginRequired:
             assert csrf_check.call_args.args[1] == "test_user"
 
         assert result == "Protected content"
-        get_user.assert_called_once_with()
-        ensure_sync_spy.assert_called_once_with(protected_view.__wrapped__)
+        current_user_proxy._get_current_object.assert_called_once_with()
+        _assert_ensure_sync_called_once_with_view(ensure_sync_spy)
         login_app.login_manager.unauthorized.assert_not_called()
 
     @pytest.mark.parametrize(
@@ -100,13 +114,13 @@ class TestLoginRequired:
         def protected_view():
             return "Protected content"
 
-        get_user = mocker.patch.object(login_module, "_get_user", return_value=resolved_user)
+        current_user_proxy = _patch_current_user(mocker, resolved_user)
 
         with login_app.test_request_context():
             result = protected_view()
 
         assert result == "Unauthorized", description
-        get_user.assert_called_once_with()
+        current_user_proxy._get_current_object.assert_called_once_with()
         login_app.login_manager.unauthorized.assert_called_once_with()
         csrf_check.assert_not_called()
         ensure_sync_spy.assert_not_called()
@@ -134,14 +148,14 @@ class TestLoginRequired:
         def protected_view():
             return "Protected content"
 
-        get_user = mocker.patch.object(login_module, "_get_user")
+        current_user_proxy = _patch_current_user(mocker, MockUser("test_user"))
         monkeypatch.setattr(login_module.dify_config, "LOGIN_DISABLED", login_disabled)
 
         with login_app.test_request_context(method=method):
             result = protected_view()
         assert result == "Protected content"
-        get_user.assert_not_called()
-        ensure_sync_spy.assert_called_once_with(protected_view.__wrapped__)
+        current_user_proxy._get_current_object.assert_not_called()
+        _assert_ensure_sync_called_once_with_view(ensure_sync_spy)
         csrf_check.assert_not_called()
         login_app.login_manager.unauthorized.assert_not_called()
 
