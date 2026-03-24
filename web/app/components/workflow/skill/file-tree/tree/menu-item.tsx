@@ -19,7 +19,7 @@ import { cn } from '@/utils/classnames'
 
 const menuItemVariants = cva(
   [
-    'flex w-full items-center gap-2 rounded-lg px-3 py-2',
+    'flex min-w-0 items-center gap-2 rounded-lg px-3 py-2',
     'disabled:cursor-not-allowed disabled:opacity-50',
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-components-input-border-active',
   ],

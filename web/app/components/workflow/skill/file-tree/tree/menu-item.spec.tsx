@@ -62,7 +62,9 @@ describe('MenuItem', () => {
       const item = screen.getByRole('menuitem', { name: /rename/i })
       expect(item).toBeInTheDocument()
       expect(item).toHaveClass('mx-1')
+      expect(item).toHaveClass('min-w-0')
       expect(item).toHaveClass('px-3')
+      expect(item).not.toHaveClass('w-full')
     })
 
     it('should apply destructive variant styles when variant is destructive', () => {
