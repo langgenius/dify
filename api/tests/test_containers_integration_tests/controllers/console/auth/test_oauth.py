@@ -442,9 +442,7 @@ class TestAccountGeneration:
         db_session_with_containers.commit()
         db_session_with_containers.expire_all()
 
-        result = AccountService.get_account_by_email_with_case_fallback(
-            test_email, session=db_session_with_containers
-        )
+        result = AccountService.get_account_by_email_with_case_fallback(test_email, session=db_session_with_containers)
         assert result is not None
 
         result_lower = AccountService.get_account_by_email_with_case_fallback(
