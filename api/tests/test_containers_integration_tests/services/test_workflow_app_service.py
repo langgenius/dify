@@ -11,7 +11,7 @@ from faker import Faker
 from sqlalchemy.orm import Session
 
 from dify_graph.entities.workflow_execution import WorkflowExecutionStatus
-from models import Account, EndUser, Workflow, WorkflowAppLog, WorkflowArchiveLog, WorkflowRun
+from models import EndUser, Workflow, WorkflowAppLog, WorkflowArchiveLog, WorkflowRun
 from models.enums import AppTriggerType, CreatorUserRole
 from models.workflow import WorkflowAppLogCreatedFrom
 from services.account_service import AccountService, TenantService
@@ -1532,9 +1532,7 @@ class TestWorkflowAppService:
     def test_get_paginate_workflow_app_logs_raises_when_account_filter_email_not_found(
         self, db_session_with_containers, mock_external_service_dependencies
     ):
-        app, account = self._create_test_app_and_account(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
         service = WorkflowAppService()
 
         with pytest.raises(ValueError, match="Account not found: nonexistent@example.com"):
@@ -1547,13 +1545,9 @@ class TestWorkflowAppService:
     def test_get_paginate_workflow_app_logs_filters_by_account(
         self, db_session_with_containers, mock_external_service_dependencies
     ):
-        app, account = self._create_test_app_and_account(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
         service = WorkflowAppService()
-        workflow, workflow_run = self._create_test_workflow_data(
-            db_session_with_containers, app, account
-        )
+        workflow, workflow_run = self._create_test_workflow_data(db_session_with_containers, app, account)
 
         result = service.get_paginate_workflow_app_logs(
             session=db_session_with_containers,
@@ -1564,12 +1558,8 @@ class TestWorkflowAppService:
         assert result["total"] >= 0
         assert isinstance(result["data"], list)
 
-    def test_get_paginate_workflow_archive_logs(
-        self, db_session_with_containers, mock_external_service_dependencies
-    ):
-        app, account = self._create_test_app_and_account(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+    def test_get_paginate_workflow_archive_logs(self, db_session_with_containers, mock_external_service_dependencies):
+        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
         service = WorkflowAppService()
 
         end_user = EndUser(
@@ -1610,7 +1600,10 @@ class TestWorkflowAppService:
         db_session_with_containers.commit()
 
         result = service.get_paginate_workflow_archive_logs(
-            session=db_session_with_containers, app_model=app, page=1, limit=20,
+            session=db_session_with_containers,
+            app_model=app,
+            page=1,
+            limit=20,
         )
 
         assert result["total"] == 2
@@ -1655,9 +1648,7 @@ class TestHandleTriggerMetadata:
     def test_non_plugin_metadata_without_icon_lookup(self):
         service = WorkflowAppService()
         meta = {"type": AppTriggerType.TRIGGER_WEBHOOK.value}
-        with patch(
-            "services.workflow_app_service.PluginService.get_plugin_icon_url"
-        ) as mock_icon:
+        with patch("services.workflow_app_service.PluginService.get_plugin_icon_url") as mock_icon:
             result = service.handle_trigger_metadata("tenant-1", json.dumps(meta))
 
         assert result["type"] == AppTriggerType.TRIGGER_WEBHOOK.value
