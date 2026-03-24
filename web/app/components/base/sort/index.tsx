@@ -81,7 +81,7 @@ const Sort: FC<Props> = ({
           </PortalToFollowElemContent>
         </div>
       </PortalToFollowElem>
-      <div className="ml-px cursor-pointer rounded-r-lg bg-components-button-tertiary-bg p-2 hover:bg-components-button-tertiary-bg-hover" onClick={() => onSelect(`${order ? '' : '-'}${value}`)}>
+      <div className="ml-px cursor-pointer rounded-r-lg bg-components-input-bg-normal p-2 hover:bg-state-base-hover-alt" onClick={() => onSelect(`${order ? '' : '-'}${value}`)}>
         {!order && <RiSortAsc className="h-4 w-4 text-components-button-tertiary-text" />}
         {order && <RiSortDesc className="h-4 w-4 text-components-button-tertiary-text" />}
       </div>
