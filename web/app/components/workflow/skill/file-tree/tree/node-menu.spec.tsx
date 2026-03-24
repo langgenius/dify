@@ -1,4 +1,4 @@
-import type { ReactElement, RefObject } from 'react'
+import type { RefObject } from 'react'
 import type { NodeApi, TreeApi } from 'react-arborist'
 import type { TreeNodeData } from '../../type'
 import { fireEvent, render, screen } from '@testing-library/react'
@@ -42,6 +42,7 @@ type RenderNodeMenuProps = {
   menuType?: 'dropdown' | 'context'
   nodeId?: string
   onClose?: () => void
+  onImportSkills?: () => void
   treeRef?: RefObject<TreeApi<TreeNodeData> | null>
   node?: NodeApi<TreeNodeData>
 }
@@ -74,23 +75,6 @@ const mocks = vi.hoisted(() => ({
   fileOperations: createFileOperationsMock(),
 }))
 
-vi.mock('next/dynamic', () => ({
-  default: () => {
-    const MockImportSkillModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }): ReactElement | null => {
-      if (!isOpen)
-        return null
-
-      return (
-        <div data-testid="import-skill-modal">
-          <button type="button" onClick={onClose}>close-import-modal</button>
-        </div>
-      )
-    }
-
-    return MockImportSkillModal
-  },
-}))
-
 vi.mock('@/app/components/workflow/store', () => ({
   useStore: (selector: (state: MockWorkflowState) => unknown) => selector(mocks.storeState),
   useWorkflowStore: () => ({
@@ -109,6 +93,7 @@ const renderNodeMenu = ({
   menuType = 'dropdown',
   nodeId = 'node-1',
   onClose = vi.fn(),
+  onImportSkills,
   treeRef,
   node,
 }: RenderNodeMenuProps = {}) => {
@@ -122,6 +107,7 @@ const renderNodeMenu = ({
               menuType={menuType}
               nodeId={nodeId}
               onClose={onClose}
+              onImportSkills={onImportSkills}
               treeRef={treeRef}
               node={node}
             />
@@ -137,6 +123,7 @@ const renderNodeMenu = ({
               menuType={menuType}
               nodeId={nodeId}
               onClose={onClose}
+              onImportSkills={onImportSkills}
               treeRef={treeRef}
               node={node}
             />
@@ -263,14 +250,12 @@ describe('NodeMenu', () => {
   })
 
   describe('Dialogs', () => {
-    it('should open and close import modal from root menu', () => {
-      renderNodeMenu({ type: NODE_MENU_TYPE.ROOT })
+    it('should call import handler from root menu', () => {
+      const onImportSkills = vi.fn()
+      renderNodeMenu({ type: NODE_MENU_TYPE.ROOT, onImportSkills })
 
       fireEvent.click(screen.getByRole('menuitem', { name: /workflow\.skillSidebar\.menu\.importSkills/i }))
-      expect(screen.getByTestId('import-skill-modal')).toBeInTheDocument()
-
-      fireEvent.click(screen.getByRole('button', { name: /close-import-modal/i }))
-      expect(screen.queryByTestId('import-skill-modal')).not.toBeInTheDocument()
+      expect(onImportSkills).toHaveBeenCalledTimes(1)
     })
 
     it('should render delete confirmation content for files and forward confirm callbacks', () => {

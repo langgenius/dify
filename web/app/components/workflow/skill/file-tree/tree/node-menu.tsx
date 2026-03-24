@@ -4,7 +4,7 @@ import type { NodeApi, TreeApi } from 'react-arborist'
 import type { NodeMenuType } from '../../constants'
 import type { TreeNodeData } from '../../type'
 import * as React from 'react'
-import { useCallback, useState } from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FileAdd, FolderAdd } from '@/app/components/base/icons/src/vender/line/files'
 import { UploadCloud02 } from '@/app/components/base/icons/src/vender/line/general'
@@ -25,14 +25,9 @@ import {
   DropdownMenuSeparator,
 } from '@/app/components/base/ui/dropdown-menu'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
-import dynamic from '@/next/dynamic'
 import { NODE_MENU_TYPE } from '../../constants'
 import { useFileOperations } from '../../hooks/file-tree/operations/use-file-operations'
 import MenuItem from './menu-item'
-
-const ImportSkillModal = dynamic(() => import('../../start-tab/import-skill-modal'), {
-  ssr: false,
-})
 
 const KBD_CUT = ['ctrl', 'x'] as const
 const KBD_PASTE = ['ctrl', 'v'] as const
@@ -44,6 +39,7 @@ type NodeMenuProps = {
   onClose: () => void
   treeRef?: React.RefObject<TreeApi<TreeNodeData> | null>
   node?: NodeApi<TreeNodeData>
+  onImportSkills?: () => void
 }
 
 const NodeMenu = ({
@@ -53,6 +49,7 @@ const NodeMenu = ({
   onClose,
   treeRef,
   node,
+  onImportSkills,
 }: NodeMenuProps) => {
   const { t } = useTranslation('workflow')
   const storeApi = useWorkflowStore()
@@ -60,7 +57,6 @@ const NodeMenu = ({
   const hasClipboard = useStore(s => s.hasClipboard())
   const isRoot = type === NODE_MENU_TYPE.ROOT
   const isFolder = type === NODE_MENU_TYPE.FOLDER || isRoot
-  const [isImportModalOpen, setIsImportModalOpen] = useState(false)
 
   const {
     fileInputRef,
@@ -164,7 +160,7 @@ const NodeMenu = ({
                 menuType={menuType}
                 icon="i-ri-upload-line"
                 label={t('skillSidebar.menu.importSkills')}
-                onClick={() => setIsImportModalOpen(true)}
+                onClick={() => onImportSkills?.()}
                 disabled={isLoading}
                 tooltip={t('skill.startTab.importSkillDesc')}
               />
@@ -264,10 +260,6 @@ const NodeMenu = ({
           </AlertDialogActions>
         </AlertDialogContent>
       </AlertDialog>
-      <ImportSkillModal
-        isOpen={isImportModalOpen}
-        onClose={() => setIsImportModalOpen(false)}
-      />
     </>
   )
 }
