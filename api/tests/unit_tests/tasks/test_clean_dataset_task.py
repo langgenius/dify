@@ -16,6 +16,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from models.enums import DataSourceType
 from tasks.clean_dataset_task import clean_dataset_task
 
@@ -186,7 +187,7 @@ class TestErrorHandling:
             indexing_technique="high_quality",
             index_struct='{"type": "paragraph"}',
             collection_binding_id=collection_binding_id,
-            doc_form="paragraph_index",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
         )
 
         # Assert
@@ -231,7 +232,7 @@ class TestPipelineAndWorkflowDeletion:
             indexing_technique="high_quality",
             index_struct='{"type": "paragraph"}',
             collection_binding_id=collection_binding_id,
-            doc_form="paragraph_index",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
             pipeline_id=pipeline_id,
         )
 
@@ -267,7 +268,7 @@ class TestPipelineAndWorkflowDeletion:
             indexing_technique="high_quality",
             index_struct='{"type": "paragraph"}',
             collection_binding_id=collection_binding_id,
-            doc_form="paragraph_index",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
             pipeline_id=None,
         )
 
@@ -323,7 +324,7 @@ class TestSegmentAttachmentCleanup:
             indexing_technique="high_quality",
             index_struct='{"type": "paragraph"}',
             collection_binding_id=collection_binding_id,
-            doc_form="paragraph_index",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
         )
 
         # Assert
@@ -368,7 +369,7 @@ class TestSegmentAttachmentCleanup:
             indexing_technique="high_quality",
             index_struct='{"type": "paragraph"}',
             collection_binding_id=collection_binding_id,
-            doc_form="paragraph_index",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
         )
 
         # Assert - storage delete was attempted
@@ -410,7 +411,7 @@ class TestEdgeCases:
             indexing_technique="high_quality",
             index_struct='{"type": "paragraph"}',
             collection_binding_id=collection_binding_id,
-            doc_form="paragraph_index",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
         )
 
         # Assert
@@ -454,7 +455,7 @@ class TestIndexProcessorParameters:
             indexing_technique=indexing_technique,
             index_struct=index_struct,
             collection_binding_id=collection_binding_id,
-            doc_form="paragraph_index",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
         )
 
         # Assert

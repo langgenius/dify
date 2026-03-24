@@ -2,6 +2,8 @@ from collections.abc import Callable
 from functools import wraps
 from typing import ParamSpec, TypeVar, Union
 
+from sqlalchemy import select
+
 from controllers.console.app.error import AppNotFoundError
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant
@@ -15,16 +17,14 @@ R1 = TypeVar("R1")
 
 def _load_app_model(app_id: str) -> App | None:
     _, current_tenant_id = current_account_with_tenant()
-    app_model = (
-        db.session.query(App)
-        .where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal")
-        .first()
+    app_model = db.session.scalar(
+        select(App).where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal").limit(1)
     )
     return app_model
 
 
 def _load_app_model_with_trial(app_id: str) -> App | None:
-    app_model = db.session.query(App).where(App.id == app_id, App.status == "normal").first()
+    app_model = db.session.scalar(select(App).where(App.id == app_id, App.status == "normal").limit(1))
     return app_model
 
 

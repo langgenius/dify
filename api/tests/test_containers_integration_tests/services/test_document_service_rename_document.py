@@ -7,6 +7,7 @@ from uuid import uuid4
 
 import pytest
 
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from extensions.storage.storage_type import StorageType
 from models import Account
 from models.dataset import Dataset, Document
@@ -69,7 +70,7 @@ def make_document(
         name=name,
         created_from=DocumentCreatedFrom.WEB,
         created_by=str(uuid4()),
-        doc_form="text_model",
+        doc_form=IndexStructureType.PARAGRAPH_INDEX,
     )
     doc.id = document_id
     doc.indexing_status = "completed"

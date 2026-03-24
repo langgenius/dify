@@ -11,6 +11,7 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.orm import Session
 
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from dify_graph.model_runtime.entities.model_entities import ModelType
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
@@ -106,7 +107,7 @@ class DatasetServiceIntegrationDataFactory:
             created_from=DocumentCreatedFrom.WEB,
             created_by=created_by,
             indexing_status=IndexingStatus.COMPLETED,
-            doc_form="text_model",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
         )
         db_session_with_containers.add(document)
         db_session_with_containers.flush()

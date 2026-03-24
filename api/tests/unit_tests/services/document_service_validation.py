@@ -111,6 +111,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from dify_graph.model_runtime.entities.model_entities import ModelType
 from models.dataset import Dataset, DatasetProcessRule, Document
 from services.dataset_service import DatasetService, DocumentService
@@ -188,7 +189,7 @@ class DocumentValidationTestDataFactory:
     def create_knowledge_config_mock(
         data_source: DataSource | None = None,
         process_rule: ProcessRule | None = None,
-        doc_form: str = "text_model",
+        doc_form: str = IndexStructureType.PARAGRAPH_INDEX,
         indexing_technique: str = "high_quality",
         **kwargs,
     ) -> Mock:
@@ -326,8 +327,8 @@ class TestDatasetServiceCheckDocForm:
         - Validation logic works correctly
         """
         # Arrange
-        dataset = DocumentValidationTestDataFactory.create_dataset_mock(doc_form="text_model")
-        doc_form = "text_model"
+        dataset = DocumentValidationTestDataFactory.create_dataset_mock(doc_form=IndexStructureType.PARAGRAPH_INDEX)
+        doc_form = IndexStructureType.PARAGRAPH_INDEX
 
         # Act (should not raise)
         DatasetService.check_doc_form(dataset, doc_form)
@@ -349,7 +350,7 @@ class TestDatasetServiceCheckDocForm:
         """
         # Arrange
         dataset = DocumentValidationTestDataFactory.create_dataset_mock(doc_form=None)
-        doc_form = "text_model"
+        doc_form = IndexStructureType.PARAGRAPH_INDEX
 
         # Act (should not raise)
         DatasetService.check_doc_form(dataset, doc_form)
@@ -370,8 +371,8 @@ class TestDatasetServiceCheckDocForm:
         - Error type is correct
         """
         # Arrange
-        dataset = DocumentValidationTestDataFactory.create_dataset_mock(doc_form="text_model")
-        doc_form = "table_model"  # Different form
+        dataset = DocumentValidationTestDataFactory.create_dataset_mock(doc_form=IndexStructureType.PARAGRAPH_INDEX)
+        doc_form = IndexStructureType.PARENT_CHILD_INDEX  # Different form
 
         # Act & Assert
         with pytest.raises(ValueError, match="doc_form is different from the dataset doc_form"):
@@ -390,7 +391,7 @@ class TestDatasetServiceCheckDocForm:
         """
         # Arrange
         dataset = DocumentValidationTestDataFactory.create_dataset_mock(doc_form="knowledge_card")
-        doc_form = "text_model"  # Different form
+        doc_form = IndexStructureType.PARAGRAPH_INDEX  # Different form
 
         # Act & Assert
         with pytest.raises(ValueError, match="doc_form is different from the dataset doc_form"):

@@ -179,7 +179,7 @@ def _record_trigger_failure_log(
         app_id=workflow.app_id,
         workflow_id=workflow.id,
         workflow_run_id=workflow_run.id,
-        created_from=WorkflowAppLogCreatedFrom.SERVICE_API.value,
+        created_from=WorkflowAppLogCreatedFrom.SERVICE_API,
         created_by_role=created_by_role,
         created_by=created_by,
     )
