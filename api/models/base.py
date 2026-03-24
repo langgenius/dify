@@ -27,24 +27,29 @@ class DefaultFieldsMixin:
     id: Mapped[str] = mapped_column(
         StringUUID,
         primary_key=True,
-        # NOTE: The default serve as fallback mechanisms.
+        # NOTE: The insert_default serves as a fallback mechanism for INSERT.
         # The application can generate the `id` before saving to optimize
         # the insertion process (especially for interdependent models)
         # and reduce database roundtrips.
-        default=lambda: str(uuidv7()),
+        # Use insert_default + default_factory to avoid SADeprecationWarning
+        # when used in MappedAsDataclass (TypeBase) contexts.
+        insert_default=lambda: str(uuidv7()),
+        default_factory=lambda: str(uuidv7()),
     )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
-        default=naive_utc_now,
+        insert_default=naive_utc_now,
+        default_factory=naive_utc_now,
         server_default=func.current_timestamp(),
     )
 
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
-        default=naive_utc_now,
+        insert_default=naive_utc_now,
+        default_factory=naive_utc_now,
         server_default=func.current_timestamp(),
         onupdate=func.current_timestamp(),
     )
