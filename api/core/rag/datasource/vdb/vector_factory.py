@@ -183,10 +183,6 @@ class Vector:
                 from core.rag.datasource.vdb.matrixone.matrixone_vector import MatrixoneVectorFactory
 
                 return MatrixoneVectorFactory
-            case VectorType.CLICKZETTA:
-                from core.rag.datasource.vdb.clickzetta.clickzetta_vector import ClickzettaVectorFactory
-
-                return ClickzettaVectorFactory
             case VectorType.IRIS:
                 from core.rag.datasource.vdb.iris.iris_vector import IrisVectorFactory
 

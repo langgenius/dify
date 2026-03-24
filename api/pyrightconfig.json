@@ -28,7 +28,6 @@
     "baidubce.auth.bce_credentials",
     "baidubce.bce_client_configuration",
     "baidubce.services.bos.bos_client",
-    "clickzetta",
     "google.cloud",
     "obs",
     "qcloud_cos",

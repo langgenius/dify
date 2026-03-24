@@ -259,7 +259,6 @@ def _get_retrieval_methods_by_vector_type(vector_type: str | None, is_mock: bool
         VectorType.HUAWEI_CLOUD,
         VectorType.TENCENT,
         VectorType.MATRIXONE,
-        VectorType.CLICKZETTA,
         VectorType.BAIDU,
         VectorType.ALIBABACLOUD_MYSQL,
         VectorType.IRIS,

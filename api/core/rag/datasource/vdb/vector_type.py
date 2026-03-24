@@ -32,6 +32,5 @@ class VectorType(StrEnum):
     TABLESTORE = "tablestore"
     HUAWEI_CLOUD = "huawei_cloud"
     MATRIXONE = "matrixone"
-    CLICKZETTA = "clickzetta"
     IRIS = "iris"
     HOLOGRES = "hologres"

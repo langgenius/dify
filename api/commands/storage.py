@@ -608,7 +608,7 @@ def migrate_oss(
             click.style(
                 "Target STORAGE_TYPE must be a cloud OSS (not 'local' or 'opendal').\n"
                 "Please set STORAGE_TYPE to one of: s3, aliyun-oss, azure-blob, google-storage, tencent-cos, \n"
-                "volcengine-tos, supabase, oci-storage, huawei-obs, baidu-obs, clickzetta-volume.",
+                "volcengine-tos, supabase, oci-storage, huawei-obs, baidu-obs.",
                 fg="red",
             )
         )
