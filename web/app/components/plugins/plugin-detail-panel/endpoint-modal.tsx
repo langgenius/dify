@@ -8,8 +8,8 @@ import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Button from '@/app/components/base/button'
 import Drawer from '@/app/components/base/drawer'
-import Toast from '@/app/components/base/toast'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
+import { toast } from '@/app/components/base/ui/toast'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { cn } from '@/utils/classnames'
 import { ReadmeEntrance } from '../readme-panel/entrance'
@@ -48,7 +48,7 @@ const EndpointModal: FC<Props> = ({
   const handleSave = () => {
     for (const field of formSchemas) {
       if (field.required && !tempCredential[field.name]) {
-        Toast.notify({ type: 'error', message: t('errorMsg.fieldRequired', { ns: 'common', field: typeof field.label === 'string' ? field.label : getValueFromI18nObject(field.label as Record<string, string>) }) })
+        toast.error(t('errorMsg.fieldRequired', { ns: 'common', field: typeof field.label === 'string' ? field.label : getValueFromI18nObject(field.label as Record<string, string>)) })
         return
       }
     }

@@ -77,7 +77,7 @@ vi.mock('@/hooks/use-oauth', () => ({
 }))
 
 const mockToastNotify = vi.fn()
-vi.mock('@/app/components/base/toast', () => ({
+vi.mock('@/app/components/base/ui/toast', () => ({
   default: {
     notify: (params: unknown) => mockToastNotify(params),
   },

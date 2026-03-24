@@ -1,7 +1,7 @@
 import type { EndpointListItem, PluginDetail } from '../../types'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import EndpointCard from '../endpoint-card'
 
 const mockHandleChange = vi.fn()
@@ -127,7 +127,7 @@ describe('EndpointCard', () => {
     failureFlags.disable = false
     failureFlags.delete = false
     failureFlags.update = false
-    // Mock Toast.notify to prevent toast elements from accumulating in DOM
+    // Mock notifyToast to prevent toast elements from accumulating in DOM
     vi.spyOn(Toast, 'notify').mockImplementation(() => ({ clear: vi.fn() }))
     // Polyfill document.execCommand for copy-to-clipboard in jsdom
     if (typeof document.execCommand !== 'function') {

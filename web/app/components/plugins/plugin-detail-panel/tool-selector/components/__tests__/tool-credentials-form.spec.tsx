@@ -10,7 +10,7 @@ vi.mock('@/utils/classnames', () => ({
   cn: (...args: unknown[]) => args.filter(Boolean).join(' '),
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
+vi.mock('@/app/components/base/ui/toast', () => ({
   default: { notify: vi.fn() },
 }))
 

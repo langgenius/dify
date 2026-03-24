@@ -3,7 +3,7 @@ import type { ModalStates, VersionTarget } from '../use-detail-header-state'
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import * as amplitude from '@/app/components/base/amplitude'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { PluginSource } from '../../../../types'
 import { usePluginOperations } from '../use-plugin-operations'
 
@@ -233,7 +233,7 @@ describe('usePluginOperations', () => {
       })
 
       expect(mockCheckForUpdates).toHaveBeenCalled()
-      expect(Toast.notify).toHaveBeenCalled()
+      expect(notifyToast).toHaveBeenCalled()
     })
 
     it('should show update plugin modal when update is needed', async () => {

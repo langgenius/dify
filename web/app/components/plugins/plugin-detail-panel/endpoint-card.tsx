@@ -9,9 +9,9 @@ import ActionButton from '@/app/components/base/action-button'
 import Confirm from '@/app/components/base/confirm'
 import { CopyCheck } from '@/app/components/base/icons/src/vender/line/files'
 import Switch from '@/app/components/base/switch'
-import Toast from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
 import Indicator from '@/app/components/header/indicator'
+import { toast } from '@/app/components/base/ui/toast'
 import { addDefaultValue, toolCredentialToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import {
   useDeleteEndpoint,
@@ -47,7 +47,7 @@ const EndpointCard = ({
       await handleChange()
     },
     onError: () => {
-      Toast.notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common') })
       setActive(false)
     },
   })
@@ -57,7 +57,7 @@ const EndpointCard = ({
       hideDisableConfirm()
     },
     onError: () => {
-      Toast.notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common') })
       setActive(false)
     },
   })
@@ -83,7 +83,7 @@ const EndpointCard = ({
       hideDeleteConfirm()
     },
     onError: () => {
-      Toast.notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common') })
     },
   })
 
@@ -108,7 +108,7 @@ const EndpointCard = ({
       hideEndpointModalConfirm()
     },
     onError: () => {
-      Toast.notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common') })
     },
   })
   const handleUpdate = (state: Record<string, any>) => updateEndpoint({

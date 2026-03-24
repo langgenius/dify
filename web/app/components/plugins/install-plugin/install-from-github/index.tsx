@@ -7,8 +7,8 @@ import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Modal from '@/app/components/base/modal'
-import Toast from '@/app/components/base/toast'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
+import { toast } from '@/app/components/base/ui/toast'
 import { cn } from '@/utils/classnames'
 import { InstallStepFromGitHub } from '../../types'
 import Installed from '../base/installed'
@@ -81,10 +81,7 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
   const handleUrlSubmit = async () => {
     const { isValid, owner, repo } = parseGitHubUrl(state.repoUrl)
     if (!isValid || !owner || !repo) {
-      Toast.notify({
-        type: 'error',
-        message: t('error.inValidGitHubUrl', { ns: 'plugin' }),
-      })
+      toast.error(t('error.inValidGitHubUrl', { ns: 'plugin' }))
       return
     }
     try {
@@ -97,17 +94,11 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
         }))
       }
       else {
-        Toast.notify({
-          type: 'error',
-          message: t('error.noReleasesFound', { ns: 'plugin' }),
-        })
+        toast.error(t('error.noReleasesFound', { ns: 'plugin' }))
       }
     }
     catch {
-      Toast.notify({
-        type: 'error',
-        message: t('error.fetchReleasesError', { ns: 'plugin' }),
-      })
+      toast.error(t('error.fetchReleasesError', { ns: 'plugin' }))
     }
   }
 

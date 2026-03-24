@@ -10,7 +10,6 @@ import type {
 import type { TriggerProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/trigger'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Toast from '@/app/components/base/toast'
 import {
   Popover,
   PopoverContent,
@@ -23,6 +22,7 @@ import {
 import AgentModelTrigger from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/agent-model-trigger'
 import Trigger from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/trigger'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { toast } from '@/app/components/base/ui/toast'
 import { useProviderContext } from '@/context/provider-context'
 import { cn } from '@/utils/classnames'
 import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
@@ -134,14 +134,12 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
 
         const keys = Object.keys(removedDetails || {})
         if (keys.length) {
-          Toast.notify({
-            type: 'warning',
-            message: `${t('modelProvider.parametersInvalidRemoved', { ns: 'common' })}: ${keys.map(k => `${k} (${removedDetails[k]})`).join(', ')}`,
+          toast.warning(`${t('modelProvider.parametersInvalidRemoved', { ns: 'common')}: ${keys.map(k => `${k} (${removedDetails[k]})`).join(', ')}`,
           })
         }
       }
       catch {
-        Toast.notify({ type: 'error', message: t('error', { ns: 'common' }) })
+        toast.error(t('error', { ns: 'common') })
       }
     }
 
@@ -154,8 +152,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
             mode: targetModelItem?.model_properties.mode as string,
             completion_params: nextCompletionParams,
           }
-        : {}),
-    })
+        : {}))
   }
 
   const handleLLMParamsChange = (newParams: FormValue) => {

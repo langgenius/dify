@@ -57,10 +57,16 @@ const createUpdatePayload = (overrides: Partial<UpdateFromGitHubPayload> = {}): 
 
 // Mock external dependencies
 const mockNotify = vi.fn()
-vi.mock('@/app/components/base/toast', () => ({
-  default: {
-    notify: (props: { type: string, message: string }) => mockNotify(props),
-  },
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: Object.assign((props: { type: string, message: string }) => mockNotify(props), {
+    success: (message: string) => mockNotify({ type: 'success', message }),
+    error: (message: string) => mockNotify({ type: 'error', message }),
+    warning: (message: string) => mockNotify({ type: 'warning', message }),
+    info: (message: string) => mockNotify({ type: 'info', message }),
+    dismiss: vi.fn(),
+    update: vi.fn(),
+    promise: vi.fn(),
+  }),
 }))
 
 const mockGetIconUrl = vi.fn()

@@ -298,8 +298,16 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-modal
 
 // Mock Toast - need to track notify calls for assertions
 const mockToastNotify = vi.fn()
-vi.mock('@/app/components/base/toast', () => ({
-  default: { notify: (...args: unknown[]) => mockToastNotify(...args) },
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: Object.assign((...args: unknown[]) => mockToastNotify(...args), {
+    success: (...args: unknown[]) => mockToastNotify(...args),
+    error: (...args: unknown[]) => mockToastNotify(...args),
+    warning: (...args: unknown[]) => mockToastNotify(...args),
+    info: (...args: unknown[]) => mockToastNotify(...args),
+    dismiss: vi.fn(),
+    update: vi.fn(),
+    promise: vi.fn(),
+  }),
 }))
 
 // ==================== Test Utilities ====================
@@ -1943,7 +1951,7 @@ describe('ToolCredentialsForm Component', () => {
       const saveBtn = screen.getByText(/save/i)
       fireEvent.click(saveBtn)
 
-      // Toast.notify should have been called with error (lines 49-50)
+      // notifyToast should have been called with error (lines 49-50)
       expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
       // onSaved should not be called because validation fails
       expect(onSaved).not.toHaveBeenCalled()

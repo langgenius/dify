@@ -13,8 +13,16 @@ import { OAuthEditModal } from '../oauth-edit-modal'
 // ==================== Mock Setup ====================
 
 const mockToastNotify = vi.fn()
-vi.mock('@/app/components/base/toast', () => ({
-  default: { notify: (params: unknown) => mockToastNotify(params) },
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: Object.assign((params: unknown) => mockToastNotify(params), {
+    success: (params: unknown) => mockToastNotify(params),
+    error: (params: unknown) => mockToastNotify(params),
+    warning: (params: unknown) => mockToastNotify(params),
+    info: (params: unknown) => mockToastNotify(params),
+    dismiss: vi.fn(),
+    update: vi.fn(),
+    promise: vi.fn(),
+  }),
 }))
 
 const mockParsePluginErrorMessage = vi.fn()
