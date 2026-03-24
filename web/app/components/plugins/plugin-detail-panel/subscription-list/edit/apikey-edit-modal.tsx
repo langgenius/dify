@@ -9,8 +9,8 @@ import { EncryptedBottom } from '@/app/components/base/encrypted-bottom'
 import { BaseForm } from '@/app/components/base/form/components/base'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import Modal from '@/app/components/base/modal/modal'
-import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
 import { toast } from '@/app/components/base/ui/toast'
+import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
 import { useUpdateTriggerSubscription, useVerifyTriggerSubscription } from '@/service/use-triggers'
 import { parsePluginErrorMessage } from '@/utils/error-parser'
 import { ReadmeShowType } from '../../../readme-panel/store'
@@ -65,7 +65,7 @@ const StatusStep = ({ isActive, text, onClick, clickable }: {
 }) => {
   return (
     <div
-      className={`system-2xs-semibold-uppercase flex items-center gap-1 ${isActive
+      className={`flex items-center gap-1 system-2xs-semibold-uppercase ${isActive
         ? 'text-state-accent-solid'
         : 'text-text-tertiary'} ${clickable ? 'cursor-pointer hover:text-text-secondary' : ''}`}
       onClick={clickable ? onClick : undefined}
@@ -150,7 +150,7 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
         },
         onError: async (error: unknown) => {
           const errorMessage = await parsePluginErrorMessage(error) || t('modal.apiKey.verify.error', { ns: 'pluginTrigger' })
-          toast.error(errorMessage,)
+          toast.error(errorMessage)
         },
       },
     )
@@ -192,7 +192,7 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
         },
         onError: async (error: unknown) => {
           const errorMessage = await parsePluginErrorMessage(error) || t('subscription.list.item.actions.edit.error', { ns: 'pluginTrigger' })
-          toast.error(errorMessage,)
+          toast.error(errorMessage)
         },
       },
     )

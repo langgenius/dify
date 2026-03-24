@@ -2,7 +2,6 @@ import type { PluginDetail } from '../../types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import * as amplitude from '@/app/components/base/amplitude'
-import { toast } from '@/app/components/base/ui/toast'
 import { PluginSource } from '../../types'
 import DetailHeader from '../detail-header'
 

@@ -11,11 +11,15 @@ vi.mock('@/utils/classnames', () => ({
 }))
 
 vi.mock('@/app/components/base/ui/toast', () => ({
-  default: { notify: vi.fn() },
-}))
-
-vi.mock('@/app/components/base/toast/context', () => ({
-  useToastContext: () => ({ notify: vi.fn() }),
+  toast: Object.assign(vi.fn(), {
+    success: vi.fn(),
+    error: vi.fn(),
+    warning: vi.fn(),
+    info: vi.fn(),
+    dismiss: vi.fn(),
+    update: vi.fn(),
+    promise: vi.fn(),
+  }),
 }))
 
 const mockFormSchemas = [

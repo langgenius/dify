@@ -36,10 +36,10 @@ export const useGitHubReleases = () => {
     }
     catch (error) {
       if (error instanceof Error) {
-        toast.error(error.message,)
+        toast.error(error.message)
       }
       else {
-        toast.error('Failed to fetch repository releases',)
+        toast.error('Failed to fetch repository releases')
       }
       return []
     }
@@ -92,7 +92,7 @@ export const useGitHubUpload = () => {
       return GitHubPackage
     }
     catch (error) {
-      toast.error('Error uploading package',)
+      toast.error('Error uploading package')
       throw error
     }
   }

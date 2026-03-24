@@ -10,8 +10,8 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
-import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
 import { toast } from '@/app/components/base/ui/toast'
+import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
 import { addDefaultValue, toolCredentialToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { fetchBuiltInToolCredential, fetchBuiltInToolCredentialSchema } from '@/service/tools'
@@ -49,7 +49,10 @@ const ToolCredentialForm: FC<Props> = ({
       return
     for (const field of credentialSchema) {
       if (field.required && !tempCredential[field.name]) {
-        toast.error(t('errorMsg.fieldRequired', { ns: 'common', field: getValueFromI18nObject(field.label)) })
+        toast.error(t('errorMsg.fieldRequired', {
+          ns: 'common',
+          field: getValueFromI18nObject(field.label),
+        }))
         return
       }
     }

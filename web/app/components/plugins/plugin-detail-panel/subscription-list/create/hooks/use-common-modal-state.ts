@@ -7,8 +7,8 @@ import type { BuildTriggerSubscriptionPayload } from '@/service/use-triggers'
 import { debounce } from 'es-toolkit/compat'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { SupportedCreationMethods } from '@/app/components/plugins/types'
 import { toast } from '@/app/components/base/ui/toast'
+import { SupportedCreationMethods } from '@/app/components/plugins/types'
 import { TriggerCredentialTypeEnum } from '@/app/components/workflow/block-selector/types'
 import {
   useBuildTriggerSubscription,
@@ -154,7 +154,7 @@ export const useCommonModalState = ({
           onError: async (error: unknown) => {
             const errorMessage = await parsePluginErrorMessage(error) || t('modal.errors.updateFailed', { ns: 'pluginTrigger' })
             console.error('Failed to update subscription builder:', error)
-            toast.error(errorMessage,)
+            toast.error(errorMessage)
           },
         },
       )
@@ -233,7 +233,7 @@ export const useCommonModalState = ({
   const handleVerify = useCallback(() => {
     // Guard against uninitialized state
     if (!detail?.provider || !subscriptionBuilder?.id) {
-      toast.error('Subscription builder not initialized',)
+      toast.error('Subscription builder not initialized')
       return
     }
 
@@ -241,7 +241,7 @@ export const useCommonModalState = ({
     const credentials = apiKeyCredentialsFormValues.values
 
     if (!Object.keys(credentials).length) {
-      toast.error('Please fill in all required credentials',)
+      toast.error('Please fill in all required credentials')
       return
     }
 
@@ -275,7 +275,7 @@ export const useCommonModalState = ({
   // Handle create
   const handleCreate = useCallback(() => {
     if (!subscriptionBuilder) {
-      toast.error('Subscription builder not found',)
+      toast.error('Subscription builder not found')
       return
     }
 
@@ -315,7 +315,7 @@ export const useCommonModalState = ({
         },
         onError: async (error: unknown) => {
           const errorMessage = await parsePluginErrorMessage(error) || t('subscription.createFailed', { ns: 'pluginTrigger' })
-          toast.error(errorMessage,)
+          toast.error(errorMessage)
         },
       },
     )

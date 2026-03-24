@@ -138,8 +138,7 @@ export const useOAuthClientState = ({
         toast.success(t('modal.oauth.remove.success', { ns: 'pluginTrigger' }))
       },
       onError: (error: unknown) => {
-        toast.error(getErrorMessage(error, t('modal.oauth.remove.failed', { ns: 'pluginTrigger' })),
-        })
+        toast.error(getErrorMessage(error, t('modal.oauth.remove.failed', { ns: 'pluginTrigger' })))
       },
     })
   }, [providerName, deleteOAuth, onClose, t])

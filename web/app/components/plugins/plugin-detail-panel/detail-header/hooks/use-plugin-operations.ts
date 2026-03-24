@@ -60,7 +60,7 @@ export const usePluginOperations = ({
     }
 
     if (!meta?.repo || !meta?.version || !meta?.package) {
-      toast.error('Missing plugin metadata for GitHub update',)
+      toast.error('Missing plugin metadata for GitHub update')
       return
     }
 
