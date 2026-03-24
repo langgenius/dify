@@ -1307,7 +1307,9 @@ class TestAppService:
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
 
-        args = {"tag_ids": [], "page": 1, "limit": 10}
+        assert tenant is not None
+
+        args = {"tag_ids": [], "mode": "chat", "page": 1, "limit": 10}
         result = AppService().get_paginate_apps(account.id, tenant.id, args)
         assert result is None
 
@@ -1324,6 +1326,7 @@ class TestAppService:
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
+        assert tenant is not None
         app_service = AppService()
         app = app_service.create_app(
             tenant.id,
@@ -1368,6 +1371,7 @@ class TestAppService:
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
+        assert tenant is not None
         app_service = AppService()
         app = app_service.create_app(
             tenant.id,
