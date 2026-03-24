@@ -7,7 +7,6 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import exists, func, select
 from werkzeug.exceptions import InternalServerError, NotFound
 
-from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
     CompletionRequestError,
@@ -99,14 +98,18 @@ class SuggestedQuestionsResponse(BaseModel):
     data: list[str] = Field(description="Suggested question")
 
 
-register_schema_models(
-    console_ns,
+def reg(cls: type[BaseModel]):
+    console_ns.schema_model(cls.__name__, cls.model_json_schema(ref_template="#/definitions/{model}"))
+
+
+for cls in [
     ChatMessagesQuery,
     MessageFeedbackPayload,
     FeedbackExportQuery,
     AnnotationCountResponse,
     SuggestedQuestionsResponse,
-)
+]:
+    reg(cls)
 
 # Register models for flask_restx to avoid dict type issues in Swagger
 # Register in dependency order: base models first, then dependent models

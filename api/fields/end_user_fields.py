@@ -2,28 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from flask_restx import fields
 from pydantic import BaseModel, ConfigDict, Field
-
-simple_end_user_fields = {
-    "id": fields.String,
-    "type": fields.String,
-    "is_anonymous": fields.Boolean,
-    "session_id": fields.String,
-}
-
-end_user_detail_fields = {
-    "id": fields.String,
-    "tenant_id": fields.String,
-    "app_id": fields.String,
-    "type": fields.String,
-    "external_user_id": fields.String,
-    "name": fields.String,
-    "is_anonymous": fields.Boolean,
-    "session_id": fields.String,
-    "created_at": fields.DateTime,
-    "updated_at": fields.DateTime,
-}
 
 
 class ResponseModel(BaseModel):

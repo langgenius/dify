@@ -6,7 +6,6 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import sessionmaker
 
-from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.auth.error import (
     EmailCodeError,
@@ -65,15 +64,19 @@ class ForgotPasswordResetResponse(BaseModel):
     result: str = Field(description="Operation result")
 
 
-register_schema_models(
-    console_ns,
+def reg(cls: type[BaseModel]):
+    console_ns.schema_model(cls.__name__, cls.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
+
+
+for cls in [
     ForgotPasswordSendPayload,
     ForgotPasswordCheckPayload,
     ForgotPasswordResetPayload,
     ForgotPasswordEmailResponse,
     ForgotPasswordCheckResponse,
     ForgotPasswordResetResponse,
-)
+]:
+    reg(cls)
 
 
 @console_ns.route("/forgot-password")
