@@ -12,6 +12,7 @@ from uuid import uuid4
 import pytest
 from faker import Faker
 
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from extensions.ext_redis import redis_client
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
@@ -141,7 +142,7 @@ class TestCreateSegmentToIndexTask:
             enabled=True,
             archived=False,
             indexing_status=IndexingStatus.COMPLETED,
-            doc_form="qa_model",
+            doc_form=IndexStructureType.QA_INDEX,
         )
         db_session_with_containers.add(document)
         db_session_with_containers.commit()
@@ -301,7 +302,7 @@ class TestCreateSegmentToIndexTask:
             enabled=True,
             archived=False,
             indexing_status=IndexingStatus.COMPLETED,
-            doc_form="text_model",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
         )
         db_session_with_containers.add(document)
         db_session_with_containers.commit()
@@ -552,7 +553,11 @@ class TestCreateSegmentToIndexTask:
         - Processing completes successfully for different forms
         """
         # Arrange: Test different doc_forms
-        doc_forms = ["qa_model", "text_model", "web_model"]
+        doc_forms = [
+            IndexStructureType.QA_INDEX,
+            IndexStructureType.PARAGRAPH_INDEX,
+            IndexStructureType.PARAGRAPH_INDEX,
+        ]
 
         for doc_form in doc_forms:
             # Create fresh test data for each form

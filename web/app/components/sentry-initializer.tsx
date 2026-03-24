@@ -2,13 +2,10 @@
 
 import * as Sentry from '@sentry/react'
 import { useEffect } from 'react'
-
 import { IS_DEV } from '@/config'
 import { env } from '@/env'
 
-const SentryInitializer = ({
-  children,
-}: { children: React.ReactElement }) => {
+const SentryInitializer = () => {
   useEffect(() => {
     const SENTRY_DSN = env.NEXT_PUBLIC_SENTRY_DSN
     if (!IS_DEV && SENTRY_DSN) {
@@ -24,7 +21,7 @@ const SentryInitializer = ({
       })
     }
   }, [])
-  return children
+  return null
 }
 
 export default SentryInitializer

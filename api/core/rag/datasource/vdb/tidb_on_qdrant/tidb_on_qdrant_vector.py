@@ -33,6 +33,7 @@ from core.rag.models.document import Document
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset, TidbAuthBinding
+from models.enums import TidbAuthBindingStatus
 
 if TYPE_CHECKING:
     from qdrant_client import grpc  # noqa
@@ -452,7 +453,7 @@ class TidbOnQdrantVectorFactory(AbstractVectorFactory):
                             password=new_cluster["password"],
                             tenant_id=dataset.tenant_id,
                             active=True,
-                            status="ACTIVE",
+                            status=TidbAuthBindingStatus.ACTIVE,
                         )
                         db.session.add(new_tidb_auth_binding)
                         db.session.commit()
