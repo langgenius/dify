@@ -87,7 +87,7 @@ const MenuItem = ({
       onClick={onClick}
       disabled={disabled}
       destructive={variant === 'destructive'}
-      className={cn(menuItemVariants({ variant }), 'mx-0 h-auto w-full px-3 py-2')}
+      className={cn(menuItemVariants({ variant }), 'h-auto')}
     >
       {typeof Icon === 'string'
         ? <span className={cn(Icon, iconVariants({ variant }))} aria-hidden="true" />

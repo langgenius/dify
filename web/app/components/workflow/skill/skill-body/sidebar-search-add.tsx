@@ -1,19 +1,21 @@
 'use client'
 
 import * as React from 'react'
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import { buttonVariants } from '@/app/components/base/button'
 import { FileAdd, FolderAdd } from '@/app/components/base/icons/src/vender/line/files'
 import { UploadCloud02 } from '@/app/components/base/icons/src/vender/line/general'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem-plus'
 import SearchInput from '@/app/components/base/search-input'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/app/components/base/ui/dropdown-menu'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import dynamic from '@/next/dynamic'
+import { cn } from '@/utils/classnames'
 import { ROOT_ID } from '../constants'
 import MenuItem from '../file-tree/tree/menu-item'
 import { useSkillAssetTreeData } from '../hooks/file-tree/data/use-skill-asset-tree'
@@ -28,7 +30,6 @@ const SidebarSearchAdd = () => {
   const { t } = useTranslation('workflow')
   const searchValue = useStore(s => s.fileTreeSearchTerm)
   const storeApi = useWorkflowStore()
-  const [showMenu, setShowMenu] = useState(false)
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
 
   const { data: treeData } = useSkillAssetTreeData()
@@ -40,7 +41,7 @@ const SidebarSearchAdd = () => {
       return ROOT_ID
     return getTargetFolderIdFromSelection(selectedTreeNodeId, treeChildren)
   }, [selectedTreeNodeId, treeChildren])
-  const menuOffset = useMemo(() => ({ mainAxis: 4 }), [])
+  const handleMenuClose = useCallback(() => {}, [])
 
   const {
     fileInputRef,
@@ -52,7 +53,7 @@ const SidebarSearchAdd = () => {
     handleFolderChange,
   } = useFileOperations({
     nodeId: targetFolderId,
-    onClose: () => setShowMenu(false),
+    onClose: handleMenuClose,
   })
 
   return (
@@ -63,85 +64,82 @@ const SidebarSearchAdd = () => {
         className="!h-6 flex-1 !rounded-md"
         placeholder={t('skillSidebar.searchPlaceholder')}
       />
-      <PortalToFollowElem
-        open={showMenu}
-        onOpenChange={setShowMenu}
-        placement="bottom-end"
-        offset={menuOffset}
-      >
-        <PortalToFollowElemTrigger onClick={() => setShowMenu(!showMenu)}>
-          <Button
-            variant="primary"
-            size="small"
-            className="!size-6 shrink-0 !p-1"
-            aria-label={t('operation.add', { ns: 'common' })}
-          >
-            <span className="i-ri-add-line size-4" aria-hidden="true" />
-          </Button>
-        </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className="z-[30]">
-          <div className="flex min-w-[180px] flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]">
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              className="hidden"
-              onChange={handleFileChange}
-            />
-            <input
-              ref={folderInputRef}
-              type="file"
-              // @ts-expect-error webkitdirectory is a non-standard attribute
-              webkitdirectory=""
-              className="hidden"
-              onChange={handleFolderChange}
-            />
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          type="button"
+          aria-label={t('operation.add', { ns: 'common' })}
+          className={cn(
+            buttonVariants({ variant: 'primary', size: 'small' }),
+            '!size-6 shrink-0 !p-1',
+          )}
+        >
+          <span className="i-ri-add-line size-4" aria-hidden="true" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          placement="bottom-end"
+          sideOffset={4}
+          popupClassName="min-w-[180px]"
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            className="hidden"
+            onChange={handleFileChange}
+          />
+          <input
+            ref={folderInputRef}
+            type="file"
+            // @ts-expect-error webkitdirectory is a non-standard attribute
+            webkitdirectory=""
+            className="hidden"
+            onChange={handleFolderChange}
+          />
 
-            <MenuItem
-              menuType="dropdown"
-              icon={FileAdd}
-              label={t('skillSidebar.menu.newFile')}
-              onClick={handleNewFile}
-              disabled={isLoading}
-            />
-            <MenuItem
-              menuType="dropdown"
-              icon={FolderAdd}
-              label={t('skillSidebar.menu.newFolder')}
-              onClick={handleNewFolder}
-              disabled={isLoading}
-            />
+          <MenuItem
+            menuType="dropdown"
+            icon={FileAdd}
+            label={t('skillSidebar.menu.newFile')}
+            onClick={handleNewFile}
+            disabled={isLoading}
+          />
+          <MenuItem
+            menuType="dropdown"
+            icon={FolderAdd}
+            label={t('skillSidebar.menu.newFolder')}
+            onClick={handleNewFolder}
+            disabled={isLoading}
+          />
 
-            <div className="my-1 h-px bg-divider-subtle" />
+          <DropdownMenuSeparator />
 
-            <MenuItem
-              menuType="dropdown"
-              icon={UploadCloud02}
-              label={t('skillSidebar.menu.uploadFile')}
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isLoading}
-            />
-            <MenuItem
-              menuType="dropdown"
-              icon="i-ri-folder-upload-line"
-              label={t('skillSidebar.menu.uploadFolder')}
-              onClick={() => folderInputRef.current?.click()}
-              disabled={isLoading}
-            />
+          <MenuItem
+            menuType="dropdown"
+            icon={UploadCloud02}
+            label={t('skillSidebar.menu.uploadFile')}
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isLoading}
+          />
+          <MenuItem
+            menuType="dropdown"
+            icon="i-ri-folder-upload-line"
+            label={t('skillSidebar.menu.uploadFolder')}
+            onClick={() => folderInputRef.current?.click()}
+            disabled={isLoading}
+          />
 
-            <div className="my-1 h-px bg-divider-subtle" />
+          <DropdownMenuSeparator />
 
-            <MenuItem
-              menuType="dropdown"
-              icon="i-ri-upload-line"
-              label={t('skillSidebar.menu.importSkills')}
-              onClick={() => setIsImportModalOpen(true)}
-              disabled={isLoading}
-              tooltip={t('skill.startTab.importSkillDesc')}
-            />
-          </div>
-        </PortalToFollowElemContent>
-      </PortalToFollowElem>
+          <MenuItem
+            menuType="dropdown"
+            icon="i-ri-upload-line"
+            label={t('skillSidebar.menu.importSkills')}
+            onClick={() => setIsImportModalOpen(true)}
+            disabled={isLoading}
+            tooltip={t('skill.startTab.importSkillDesc')}
+          />
+        </DropdownMenuContent>
+      </DropdownMenu>
       <ImportSkillModal
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}

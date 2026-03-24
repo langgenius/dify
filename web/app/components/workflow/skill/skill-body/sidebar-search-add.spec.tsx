@@ -137,8 +137,8 @@ describe('SidebarSearchAdd', () => {
       fireEvent.click(screen.getByRole('button', { name: /common\.operation\.add/i }))
 
       // Act
-      fireEvent.click(screen.getByRole('button', { name: /workflow\.skillSidebar\.menu\.newFile/i }))
-      fireEvent.click(screen.getByRole('button', { name: /workflow\.skillSidebar\.menu\.newFolder/i }))
+      fireEvent.click(screen.getByRole('menuitem', { name: /workflow\.skillSidebar\.menu\.newFile/i }))
+      fireEvent.click(screen.getByRole('menuitem', { name: /workflow\.skillSidebar\.menu\.newFolder/i }))
 
       // Assert
       expect(mocks.fileOperations.handleNewFile).toHaveBeenCalledTimes(1)
@@ -152,8 +152,8 @@ describe('SidebarSearchAdd', () => {
       fireEvent.click(screen.getByRole('button', { name: /common\.operation\.add/i }))
 
       // Act
-      fireEvent.click(screen.getByRole('button', { name: /workflow\.skillSidebar\.menu\.uploadFile/i }))
-      fireEvent.click(screen.getByRole('button', { name: /workflow\.skillSidebar\.menu\.uploadFolder/i }))
+      fireEvent.click(screen.getByRole('menuitem', { name: /workflow\.skillSidebar\.menu\.uploadFile/i }))
+      fireEvent.click(screen.getByRole('menuitem', { name: /workflow\.skillSidebar\.menu\.uploadFolder/i }))
 
       // Assert
       expect(clickSpy).toHaveBeenCalledTimes(2)
@@ -165,7 +165,7 @@ describe('SidebarSearchAdd', () => {
       fireEvent.click(screen.getByRole('button', { name: /common\.operation\.add/i }))
 
       // Act
-      fireEvent.click(screen.getByRole('button', { name: /workflow\.skillSidebar\.menu\.importSkills/i }))
+      fireEvent.click(screen.getByRole('menuitem', { name: /workflow\.skillSidebar\.menu\.importSkills/i }))
 
       // Assert
       expect(screen.getByTestId('import-skill-modal')).toBeInTheDocument()
@@ -228,11 +228,11 @@ describe('SidebarSearchAdd', () => {
       fireEvent.click(screen.getByRole('button', { name: /common\.operation\.add/i }))
 
       // Assert
-      expect(screen.getByRole('button', { name: /workflow\.skillSidebar\.menu\.newFile/i })).toBeDisabled()
-      expect(screen.getByRole('button', { name: /workflow\.skillSidebar\.menu\.newFolder/i })).toBeDisabled()
-      expect(screen.getByRole('button', { name: /workflow\.skillSidebar\.menu\.uploadFile/i })).toBeDisabled()
-      expect(screen.getByRole('button', { name: /workflow\.skillSidebar\.menu\.uploadFolder/i })).toBeDisabled()
-      expect(screen.getByRole('button', { name: /workflow\.skillSidebar\.menu\.importSkills/i })).toBeDisabled()
+      expect(screen.getByRole('menuitem', { name: /workflow\.skillSidebar\.menu\.newFile/i })).toHaveAttribute('aria-disabled', 'true')
+      expect(screen.getByRole('menuitem', { name: /workflow\.skillSidebar\.menu\.newFolder/i })).toHaveAttribute('aria-disabled', 'true')
+      expect(screen.getByRole('menuitem', { name: /workflow\.skillSidebar\.menu\.uploadFile/i })).toHaveAttribute('aria-disabled', 'true')
+      expect(screen.getByRole('menuitem', { name: /workflow\.skillSidebar\.menu\.uploadFolder/i })).toHaveAttribute('aria-disabled', 'true')
+      expect(screen.getByRole('menuitem', { name: /workflow\.skillSidebar\.menu\.importSkills/i })).toHaveAttribute('aria-disabled', 'true')
     })
   })
 })

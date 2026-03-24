@@ -59,7 +59,10 @@ describe('MenuItem', () => {
       renderMenuItem()
 
       // Assert
-      expect(screen.getByRole('menuitem', { name: /rename/i })).toBeInTheDocument()
+      const item = screen.getByRole('menuitem', { name: /rename/i })
+      expect(item).toBeInTheDocument()
+      expect(item).toHaveClass('mx-1')
+      expect(item).toHaveClass('px-3')
     })
 
     it('should apply destructive variant styles when variant is destructive', () => {
