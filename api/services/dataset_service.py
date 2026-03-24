@@ -58,6 +58,7 @@ from models.enums import (
     IndexingStatus,
     ProcessRuleMode,
     SegmentStatus,
+    SegmentType,
 )
 from models.model import UploadFile
 from models.provider_ids import ModelProviderID
@@ -3786,7 +3787,7 @@ class SegmentService:
                         child_chunk.word_count = len(child_chunk.content)
                         child_chunk.updated_by = current_user.id
                         child_chunk.updated_at = naive_utc_now()
-                        child_chunk.type = "customized"
+                        child_chunk.type = SegmentType.CUSTOMIZED
                         update_child_chunks.append(child_chunk)
             else:
                 new_child_chunks_args.append(child_chunk_update_args)
@@ -3845,7 +3846,7 @@ class SegmentService:
             child_chunk.word_count = len(content)
             child_chunk.updated_by = current_user.id
             child_chunk.updated_at = naive_utc_now()
-            child_chunk.type = "customized"
+            child_chunk.type = SegmentType.CUSTOMIZED
             db.session.add(child_chunk)
             VectorService.update_child_chunk_vector([], [child_chunk], [], dataset)
             db.session.commit()

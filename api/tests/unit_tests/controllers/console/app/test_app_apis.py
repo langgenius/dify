@@ -281,12 +281,10 @@ class TestSiteEndpoints:
         method = _unwrap(api.post)
 
         site = MagicMock()
-        query = MagicMock()
-        query.where.return_value.first.return_value = site
         monkeypatch.setattr(
             site_module.db,
             "session",
-            MagicMock(query=lambda *_args, **_kwargs: query, commit=lambda: None),
+            MagicMock(scalar=lambda *_args, **_kwargs: site, commit=lambda: None),
         )
         monkeypatch.setattr(
             site_module,
@@ -305,12 +303,10 @@ class TestSiteEndpoints:
         method = _unwrap(api.post)
 
         site = MagicMock()
-        query = MagicMock()
-        query.where.return_value.first.return_value = site
         monkeypatch.setattr(
             site_module.db,
             "session",
-            MagicMock(query=lambda *_args, **_kwargs: query, commit=lambda: None),
+            MagicMock(scalar=lambda *_args, **_kwargs: site, commit=lambda: None),
         )
         monkeypatch.setattr(site_module.Site, "generate_code", lambda *_args, **_kwargs: "code")
         monkeypatch.setattr(

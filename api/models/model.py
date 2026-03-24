@@ -21,7 +21,7 @@ from configs import dify_config
 from constants import DEFAULT_FILE_NUMBER_LIMITS
 from core.tools.signature import sign_tool_file
 from dify_graph.enums import WorkflowExecutionStatus
-from dify_graph.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
+from dify_graph.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
 from dify_graph.file import helpers as file_helpers
 from extensions.storage.storage_type import StorageType
 from libs.helper import generate_string  # type: ignore[import-not-found]
@@ -1785,7 +1785,7 @@ class MessageFile(TypeBase):
         StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
     )
     message_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    type: Mapped[str] = mapped_column(String(255), nullable=False)
+    type: Mapped[FileType] = mapped_column(EnumText(FileType, length=255), nullable=False)
     transfer_method: Mapped[FileTransferMethod] = mapped_column(
         EnumText(FileTransferMethod, length=255), nullable=False
     )
