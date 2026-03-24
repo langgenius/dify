@@ -15,6 +15,7 @@ from controllers.service_api.wraps import (
     cloud_edition_billing_rate_limit_check,
 )
 from core.provider_manager import ProviderManager
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from dify_graph.model_runtime.entities.model_entities import ModelType
 from fields.dataset_fields import dataset_detail_fields
 from fields.tag_fields import DataSetTag
@@ -153,7 +154,7 @@ class DatasetListApi(DatasetApiResource):
 
         data = marshal(datasets, dataset_detail_fields)
         for item in data:
-            if item["indexing_technique"] == "high_quality" and item["embedding_model_provider"]:
+            if item["indexing_technique"] == IndexTechniqueType.HIGH_QUALITY and item["embedding_model_provider"]:
                 item["embedding_model_provider"] = str(ModelProviderID(item["embedding_model_provider"]))
                 item_model = f"{item['embedding_model']}:{item['embedding_model_provider']}"
                 if item_model in model_names:
@@ -265,7 +266,7 @@ class DatasetApi(DatasetApiResource):
         for embedding_model in embedding_models:
             model_names.append(f"{embedding_model.model}:{embedding_model.provider.provider}")
 
-        if data.get("indexing_technique") == "high_quality":
+        if data.get("indexing_technique") == IndexTechniqueType.HIGH_QUALITY:
             item_model = f"{data.get('embedding_model')}:{data.get('embedding_model_provider')}"
             if item_model in model_names:
                 data["embedding_available"] = True
@@ -315,7 +316,7 @@ class DatasetApi(DatasetApiResource):
         # check embedding model setting
         embedding_model_provider = payload.embedding_model_provider
         embedding_model = payload.embedding_model
-        if payload.indexing_technique == "high_quality" or embedding_model_provider:
+        if payload.indexing_technique == IndexTechniqueType.HIGH_QUALITY or embedding_model_provider:
             if embedding_model_provider and embedding_model:
                 DatasetService.check_embedding_model_setting(
                     dataset.tenant_id, embedding_model_provider, embedding_model

@@ -17,6 +17,7 @@ from controllers.service_api.wraps import (
 )
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from dify_graph.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
 from fields.segment_fields import child_chunk_fields, segment_fields
@@ -103,7 +104,7 @@ class SegmentApi(DatasetApiResource):
         if not document.enabled:
             raise NotFound("Document is disabled.")
         # check embedding model setting
-        if dataset.indexing_technique == "high_quality":
+        if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             try:
                 model_manager = ModelManager()
                 model_manager.get_model_instance(
@@ -157,7 +158,7 @@ class SegmentApi(DatasetApiResource):
         if not document:
             raise NotFound("Document not found.")
         # check embedding model setting
-        if dataset.indexing_technique == "high_quality":
+        if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             try:
                 model_manager = ModelManager()
                 model_manager.get_model_instance(
@@ -262,7 +263,7 @@ class DatasetSegmentApi(DatasetApiResource):
         document = DocumentService.get_document(dataset_id, document_id)
         if not document:
             raise NotFound("Document not found.")
-        if dataset.indexing_technique == "high_quality":
+        if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             # check embedding model setting
             try:
                 model_manager = ModelManager()
@@ -358,7 +359,7 @@ class ChildChunkApi(DatasetApiResource):
             raise NotFound("Segment not found.")
 
         # check embedding model setting
-        if dataset.indexing_technique == "high_quality":
+        if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             try:
                 model_manager = ModelManager()
                 model_manager.get_model_instance(

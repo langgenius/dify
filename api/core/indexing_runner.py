@@ -21,7 +21,7 @@ from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.docstore.dataset_docstore import DatasetDocumentStore
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo, WebsiteInfo
-from core.rag.index_processor.constant.index_type import IndexStructureType
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.rag.models.document import ChildDocument, Document
@@ -271,7 +271,7 @@ class IndexingRunner:
         doc_form: str | None = None,
         doc_language: str = "English",
         dataset_id: str | None = None,
-        indexing_technique: str = "economy",
+        indexing_technique: str = IndexTechniqueType.ECONOMY,
     ) -> IndexingEstimate:
         """
         Estimate the indexing for the document.
@@ -289,7 +289,7 @@ class IndexingRunner:
             dataset = db.session.query(Dataset).filter_by(id=dataset_id).first()
             if not dataset:
                 raise ValueError("Dataset not found.")
-            if dataset.indexing_technique == "high_quality" or indexing_technique == "high_quality":
+            if IndexTechniqueType.HIGH_QUALITY in {dataset.indexing_technique, indexing_technique}:
                 if dataset.embedding_model_provider:
                     embedding_model_instance = self.model_manager.get_model_instance(
                         tenant_id=tenant_id,
@@ -303,7 +303,7 @@ class IndexingRunner:
                         model_type=ModelType.TEXT_EMBEDDING,
                     )
         else:
-            if indexing_technique == "high_quality":
+            if indexing_technique == IndexTechniqueType.HIGH_QUALITY:
                 embedding_model_instance = self.model_manager.get_default_model_instance(
                     tenant_id=tenant_id,
                     model_type=ModelType.TEXT_EMBEDDING,
@@ -573,7 +573,7 @@ class IndexingRunner:
         """
 
         embedding_model_instance = None
-        if dataset.indexing_technique == "high_quality":
+        if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             embedding_model_instance = self.model_manager.get_model_instance(
                 tenant_id=dataset.tenant_id,
                 provider=dataset.embedding_model_provider,
@@ -587,7 +587,7 @@ class IndexingRunner:
         create_keyword_thread = None
         if (
             dataset_document.doc_form != IndexStructureType.PARENT_CHILD_INDEX
-            and dataset.indexing_technique == "economy"
+            and dataset.indexing_technique == IndexTechniqueType.ECONOMY
         ):
             # create keyword index
             create_keyword_thread = threading.Thread(
@@ -597,7 +597,7 @@ class IndexingRunner:
             create_keyword_thread.start()
 
         max_workers = 10
-        if dataset.indexing_technique == "high_quality":
+        if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
                 futures = []
 
@@ -628,7 +628,7 @@ class IndexingRunner:
                     tokens += future.result()
         if (
             dataset_document.doc_form != IndexStructureType.PARENT_CHILD_INDEX
-            and dataset.indexing_technique == "economy"
+            and dataset.indexing_technique == IndexTechniqueType.ECONOMY
             and create_keyword_thread is not None
         ):
             create_keyword_thread.join()
@@ -654,7 +654,7 @@ class IndexingRunner:
                 raise ValueError("no dataset found")
             keyword = Keyword(dataset)
             keyword.create(documents)
-            if dataset.indexing_technique != "high_quality":
+            if dataset.indexing_technique != IndexTechniqueType.HIGH_QUALITY:
                 document_ids = [document.metadata["doc_id"] for document in documents]
                 db.session.query(DocumentSegment).where(
                     DocumentSegment.document_id == document_id,
@@ -764,7 +764,7 @@ class IndexingRunner:
     ) -> list[Document]:
         # get embedding model instance
         embedding_model_instance = None
-        if dataset.indexing_technique == "high_quality":
+        if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             if dataset.embedding_model_provider:
                 embedding_model_instance = self.model_manager.get_model_instance(
                     tenant_id=dataset.tenant_id,
