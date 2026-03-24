@@ -706,3 +706,86 @@ class TestDatasetServiceRetrievalConfiguration:
         db_session_with_containers.refresh(dataset)
         assert result.id == dataset.id
         assert dataset.retrieval_model == update_data["retrieval_model"]
+
+
+class TestDocumentServicePauseRecoverRetry:
+    """Tests for pause/recover/retry orchestration with mocked non-DB collaborators."""
+
+    @pytest.fixture
+    def mock_deps(self):
+        with (
+            patch("services.dataset_service.redis_client") as mock_redis,
+            patch("services.dataset_service.db.session") as mock_db,
+            patch("services.dataset_service.current_user") as mock_current_user,
+        ):
+            mock_current_user.id = "user-123"
+            yield {
+                "redis_client": mock_redis,
+                "db_session": mock_db,
+                "current_user": mock_current_user,
+            }
+
+    @staticmethod
+    def _make_document(document_id="doc-123", dataset_id="dataset-123", indexing_status="completed", is_paused=False):
+        doc = Mock(spec=Document)
+        doc.id = document_id
+        doc.dataset_id = dataset_id
+        doc.indexing_status = indexing_status
+        doc.is_paused = is_paused
+        doc.paused_by = None
+        doc.paused_at = None
+        return doc
+
+    def test_pause_document_success(self, mock_deps):
+        from services.dataset_service import DocumentService
+
+        document = self._make_document(indexing_status="indexing")
+        DocumentService.pause_document(document)
+
+        assert document.is_paused is True
+        assert document.paused_by == "user-123"
+        mock_deps["db_session"].add.assert_called_once_with(document)
+        mock_deps["db_session"].commit.assert_called_once()
+        mock_deps["redis_client"].setnx.assert_called_once_with(f"document_{document.id}_is_paused", "True")
+
+    def test_pause_document_invalid_status_error(self, mock_deps):
+        from services.dataset_service import DocumentService
+        from services.errors.document import DocumentIndexingError
+
+        document = self._make_document(indexing_status="completed")
+        with pytest.raises(DocumentIndexingError):
+            DocumentService.pause_document(document)
+
+    def test_recover_document_success(self, mock_deps):
+        from services.dataset_service import DocumentService
+
+        document = self._make_document(indexing_status="indexing", is_paused=True)
+        with patch("services.dataset_service.recover_document_indexing_task") as recover_task:
+            DocumentService.recover_document(document)
+
+        assert document.is_paused is False
+        assert document.paused_by is None
+        assert document.paused_at is None
+        mock_deps["db_session"].add.assert_called_once_with(document)
+        mock_deps["db_session"].commit.assert_called_once()
+        mock_deps["redis_client"].delete.assert_called_once_with(f"document_{document.id}_is_paused")
+        recover_task.delay.assert_called_once_with(document.dataset_id, document.id)
+
+    def test_retry_document_indexing_success(self, mock_deps):
+        from services.dataset_service import DocumentService
+
+        dataset_id = "dataset-123"
+        documents = [
+            self._make_document(document_id="doc-1", indexing_status="error"),
+            self._make_document(document_id="doc-2", indexing_status="error"),
+        ]
+        mock_deps["redis_client"].get.return_value = None
+
+        with patch("services.dataset_service.retry_document_indexing_task") as retry_task:
+            DocumentService.retry_document(dataset_id, documents)
+
+        assert all(doc.indexing_status == "waiting" for doc in documents)
+        assert mock_deps["db_session"].add.call_count == 2
+        assert mock_deps["db_session"].commit.call_count == 2
+        assert mock_deps["redis_client"].setex.call_count == 2
+        retry_task.delay.assert_called_once_with(dataset_id, ["doc-1", "doc-2"], "user-123")
