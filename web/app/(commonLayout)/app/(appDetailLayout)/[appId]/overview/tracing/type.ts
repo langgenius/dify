@@ -8,6 +8,7 @@ export enum TracingProvider {
   aliyun = 'aliyun',
   mlflow = 'mlflow',
   databricks = 'databricks',
+  datadog = 'datadog',
   tencent = 'tencent',
 }
 
@@ -70,6 +71,12 @@ export type DatabricksConfig = {
   client_id: string
   client_secret: string
   personal_access_token: string
+}
+
+export type DatadogConfig = {
+  api_key: string
+  site: string
+  service_name: string
 }
 
 export type TencentConfig = {

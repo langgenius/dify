@@ -330,6 +330,17 @@ class OpsTraceProviderConfigMap(collections.UserDict[str, TracingProviderConfigE
                         "trace_instance": TencentDataTrace,
                     }
 
+                case TracingProviderEnum.DATADOG:
+                    from dify_trace_datadog.config import DatadogConfig
+                    from dify_trace_datadog.datadog_trace import DatadogDataTrace
+
+                    return {
+                        "config_class": DatadogConfig,
+                        "secret_keys": ["api_key"],
+                        "other_keys": ["site", "service_name"],
+                        "trace_instance": DatadogDataTrace,
+                    }
+
                 case _:
                     raise KeyError(f"Unsupported tracing provider: {key}")
         except ImportError:
