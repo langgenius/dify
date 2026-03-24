@@ -140,6 +140,7 @@ class BaseAgentRunner(AppRunner):
             tenant_id=self.tenant_id,
             app_id=self.app_config.app_id,
             agent_tool=tool,
+            user_id=self.user_id,
             invoke_from=self.application_generate_entity.invoke_from,
         )
         assert tool_entity.entity.description

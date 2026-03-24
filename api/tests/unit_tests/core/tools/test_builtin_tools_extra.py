@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import calendar
 import math
+from datetime import date
 from types import SimpleNamespace
 
 import pytest
@@ -98,7 +100,13 @@ def test_timezone_conversion_tool():
 def test_weekday_tool():
     weekday_tool = _build_builtin_tool(WeekdayTool)
     valid = list(weekday_tool.invoke(user_id="u", tool_parameters={"year": 2024, "month": 1, "day": 1}))[0].message.text
-    assert "January 1, 2024" in valid
+    expected_date = date(2024, 1, 1)
+    expected_message = (
+        f"{calendar.month_name[expected_date.month]} "
+        f"{expected_date.day}, {expected_date.year} "
+        f"is {calendar.day_name[expected_date.weekday()]}."
+    )
+    assert valid == expected_message
     invalid = list(weekday_tool.invoke(user_id="u", tool_parameters={"year": 2024, "month": 2, "day": 31}))[
         0
     ].message.text

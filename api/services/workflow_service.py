@@ -13,7 +13,7 @@ from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfig
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
 from core.app.file_access import DatabaseFileAccessController
-from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
+from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly, create_plugin_provider_manager
 from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.human_input_repository import FormCreateParams, HumanInputFormRepositoryImpl
 from core.trigger.constants import is_trigger_node_type
@@ -491,12 +491,15 @@ class WorkflowService:
         :raises ValueError: If the model configuration is invalid or credentials fail policy checks
         """
         try:
-            from core.model_manager import ModelManager
             from dify_graph.model_runtime.entities.model_entities import ModelType
 
+            # Model instance resolution and provider status lookup must reuse the
+            # same request-scoped runtime so validation does not silently split
+            # provider discovery and credential reads across different caches.
+            assembly = create_plugin_model_assembly(tenant_id=tenant_id)
+
             # Get model instance to validate provider+model combination
-            model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
-            model_manager.get_model_instance(
+            assembly.model_manager.get_model_instance(
                 tenant_id=tenant_id, provider=provider, model_type=ModelType.LLM, model=model_name
             )
 
@@ -505,8 +508,7 @@ class WorkflowService:
             # If it fails, an exception will be raised
 
             # Additionally, check the model status to ensure it's ACTIVE
-            provider_manager = create_plugin_provider_manager(tenant_id=tenant_id)
-            provider_configurations = provider_manager.get_configurations(tenant_id)
+            provider_configurations = assembly.provider_manager.get_configurations(tenant_id)
             models = provider_configurations.get_models(provider=provider, model_type=ModelType.LLM)
 
             target_model = None

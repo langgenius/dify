@@ -277,18 +277,22 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
         }
 
     @classmethod
-    def get_system_model_max_tokens(cls, tenant_id: str) -> int:
+    def get_system_model_max_tokens(cls, tenant_id: str, user_id: str | None = None) -> int:
         """
         get system model max tokens
         """
-        return ModelInvocationUtils.get_max_llm_context_tokens(tenant_id=tenant_id)
+        return ModelInvocationUtils.get_max_llm_context_tokens(tenant_id=tenant_id, user_id=user_id)
 
     @classmethod
-    def get_prompt_tokens(cls, tenant_id: str, prompt_messages: list[PromptMessage]) -> int:
+    def get_prompt_tokens(cls, tenant_id: str, prompt_messages: list[PromptMessage], user_id: str | None = None) -> int:
         """
         get prompt tokens
         """
-        return ModelInvocationUtils.calculate_tokens(tenant_id=tenant_id, prompt_messages=prompt_messages)
+        return ModelInvocationUtils.calculate_tokens(
+            tenant_id=tenant_id,
+            prompt_messages=prompt_messages,
+            user_id=user_id,
+        )
 
     @classmethod
     def invoke_system_model(
@@ -306,6 +310,7 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
             tool_type=ToolProviderType.PLUGIN,
             tool_name="plugin",
             prompt_messages=prompt_messages,
+            caller_user_id=user_id,
         )
 
     @classmethod
@@ -313,7 +318,7 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
         """
         invoke summary
         """
-        max_tokens = cls.get_system_model_max_tokens(tenant_id=tenant.id)
+        max_tokens = cls.get_system_model_max_tokens(tenant_id=tenant.id, user_id=user_id)
         content = payload.text
 
         SUMMARY_PROMPT = """You are a professional language researcher, you are interested in the language
@@ -332,6 +337,7 @@ Here is the extra instruction you need to follow:
             cls.get_prompt_tokens(
                 tenant_id=tenant.id,
                 prompt_messages=[UserPromptMessage(content=content)],
+                user_id=user_id,
             )
             < max_tokens * 0.6
         ):
@@ -344,6 +350,7 @@ Here is the extra instruction you need to follow:
                     SystemPromptMessage(content=SUMMARY_PROMPT.replace("{payload.instruction}", payload.instruction)),
                     UserPromptMessage(content=content),
                 ],
+                user_id=user_id,
             )
 
         def summarize(content: str) -> str:
@@ -401,6 +408,7 @@ Here is the extra instruction you need to follow:
             cls.get_prompt_tokens(
                 tenant_id=tenant.id,
                 prompt_messages=[UserPromptMessage(content=result)],
+                user_id=user_id,
             )
             > max_tokens * 0.7
         ):

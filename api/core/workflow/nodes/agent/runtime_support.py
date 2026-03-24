@@ -12,9 +12,9 @@ from sqlalchemy.orm import Session
 from core.agent.entities import AgentToolEntity
 from core.agent.plugin_entities import AgentStrategyParameter
 from core.memory.token_buffer_memory import TokenBufferMemory
-from core.model_manager import ModelInstance, ModelManager
+from core.model_manager import ModelInstance
 from core.plugin.entities.request import InvokeCredentials
-from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
+from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly
 from core.tools.entities.tool_entities import ToolIdentity, ToolParameter, ToolProviderType
 from core.tools.tool_manager import ToolManager
 from core.workflow.system_variables import SystemVariableKey, get_system_text
@@ -141,6 +141,7 @@ class AgentRuntimeSupport:
                             tenant_id,
                             app_id,
                             entity,
+                            user_id,
                             invoke_from,
                             runtime_variable_pool,
                         )
@@ -242,8 +243,8 @@ class AgentRuntimeSupport:
         user_id: str,
         value: dict[str, Any],
     ) -> tuple[ModelInstance, AIModelEntity | None]:
-        provider_manager = create_plugin_provider_manager(tenant_id=tenant_id, user_id=user_id)
-        provider_model_bundle = provider_manager.get_provider_model_bundle(
+        assembly = create_plugin_model_assembly(tenant_id=tenant_id, user_id=user_id)
+        provider_model_bundle = assembly.provider_manager.get_provider_model_bundle(
             tenant_id=tenant_id,
             provider=value.get("provider", ""),
             model_type=ModelType.LLM,
@@ -255,7 +256,7 @@ class AgentRuntimeSupport:
         )
         provider_name = provider_model_bundle.configuration.provider.provider
         model_type_instance = provider_model_bundle.model_type_instance
-        model_instance = ModelManager.for_tenant(tenant_id=tenant_id, user_id=user_id).get_model_instance(
+        model_instance = assembly.model_manager.get_model_instance(
             tenant_id=tenant_id,
             provider=provider_name,
             model_type=ModelType(value.get("model_type", "")),

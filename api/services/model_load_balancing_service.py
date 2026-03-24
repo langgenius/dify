@@ -10,13 +10,14 @@ from core.entities.provider_configuration import ProviderConfiguration
 from core.helper import encrypter
 from core.helper.model_provider_cache import ProviderCredentialsCache, ProviderCredentialsCacheType
 from core.model_manager import LBModelManager
-from core.plugin.impl.model_runtime_factory import create_plugin_model_provider_factory, create_plugin_provider_manager
+from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly, create_plugin_provider_manager
 from core.provider_manager import ProviderManager
 from dify_graph.model_runtime.entities.model_entities import ModelType
 from dify_graph.model_runtime.entities.provider_entities import (
     ModelCredentialSchema,
     ProviderCredentialSchema,
 )
+from dify_graph.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models.enums import CredentialSourceType
@@ -223,8 +224,8 @@ class ModelLoadBalancingService:
         :param config_id: load balancing config id
         :return:
         """
-        # Get all provider configurations of the current workspace
-        provider_configurations = self._get_provider_manager(tenant_id).get_configurations(tenant_id)
+        provider_manager = create_plugin_provider_manager(tenant_id=tenant_id)
+        provider_configurations = provider_manager.get_configurations(tenant_id)
 
         # Get provider configuration
         provider_configuration = provider_configurations.get(provider)
@@ -496,8 +497,8 @@ class ModelLoadBalancingService:
         :param config_id: load balancing config id
         :return:
         """
-        # Get all provider configurations of the current workspace
-        provider_configurations = self._get_provider_manager(tenant_id).get_configurations(tenant_id)
+        assembly = create_plugin_model_assembly(tenant_id=tenant_id)
+        provider_configurations = assembly.provider_manager.get_configurations(tenant_id)
 
         # Get provider configuration
         provider_configuration = provider_configurations.get(provider)
@@ -533,6 +534,7 @@ class ModelLoadBalancingService:
             model=model,
             credentials=credentials,
             load_balancing_model_config=load_balancing_model_config,
+            model_provider_factory=assembly.model_provider_factory,
         )
 
     def _custom_credentials_validate(
@@ -543,6 +545,7 @@ class ModelLoadBalancingService:
         model: str,
         credentials: dict,
         load_balancing_model_config: LoadBalancingModelConfig | None = None,
+        model_provider_factory: ModelProviderFactory | None = None,
         validate: bool = True,
     ):
         """
@@ -553,6 +556,7 @@ class ModelLoadBalancingService:
         :param model: model name
         :param credentials: credentials
         :param load_balancing_model_config: load balancing model config
+        :param model_provider_factory: model provider factory sharing the active runtime
         :param validate: validate credentials
         :return:
         """
@@ -582,7 +586,8 @@ class ModelLoadBalancingService:
                         credentials[key] = encrypter.decrypt_token(tenant_id, original_credentials[key])
 
         if validate:
-            model_provider_factory = create_plugin_model_provider_factory(tenant_id=tenant_id)
+            if model_provider_factory is None:
+                model_provider_factory = provider_configuration.get_model_provider_factory()
             if isinstance(credential_schemas, ModelCredentialSchema):
                 credentials = model_provider_factory.model_credentials_validate(
                     provider=provider_configuration.provider.provider,

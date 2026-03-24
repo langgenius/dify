@@ -337,6 +337,7 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
                 self._run_context.app_id,
                 node_id,
                 self._build_tool_runtime_spec(node_data),
+                self._run_context.user_id,
                 self._run_context.invoke_from,
                 variable_pool,
             )

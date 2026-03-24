@@ -25,6 +25,7 @@ from dify_graph.enums import (
 )
 from dify_graph.errors import WorkflowNodeRunFailedError
 from dify_graph.graph_events import NodeRunFailedEvent, NodeRunSucceededEvent
+from dify_graph.model_runtime.entities.model_entities import ModelType
 from dify_graph.node_events import NodeRunResult
 from dify_graph.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, HttpRequestNode, HttpRequestNodeConfig
 from dify_graph.variables.input_entities import VariableEntityType
@@ -1545,7 +1546,10 @@ class TestWorkflowServiceCredentialValidation:
     def test_validate_llm_model_config_should_raise_value_error_on_failure(self, service: WorkflowService) -> None:
         """If ModelManager raises any exception it must be wrapped into ValueError."""
         # Arrange
-        with patch("core.model_manager.ModelManager.get_model_instance", side_effect=RuntimeError("no key")):
+        assembly = MagicMock()
+        assembly.model_manager.get_model_instance.side_effect = RuntimeError("no key")
+
+        with patch("services.workflow_service.create_plugin_model_assembly", return_value=assembly):
             # Act + Assert
             with pytest.raises(ValueError, match="Failed to validate LLM model configuration"):
                 service._validate_llm_model_config("tenant-1", "openai", "gpt-4")
@@ -1558,30 +1562,30 @@ class TestWorkflowServiceCredentialValidation:
 
         mock_configs = MagicMock()
         mock_configs.get_models.return_value = [mock_model]
+        assembly = MagicMock()
+        assembly.provider_manager.get_configurations.return_value = mock_configs
 
-        with (
-            patch("core.model_manager.ModelManager.get_model_instance"),
-            patch("core.provider_manager.ProviderManager") as mock_pm_cls,
-        ):
-            mock_pm_cls.return_value.get_configurations.return_value = mock_configs
-
+        with patch("services.workflow_service.create_plugin_model_assembly", return_value=assembly):
             # Act
             service._validate_llm_model_config("tenant-1", "openai", "gpt-4")
 
             # Assert
             mock_model.raise_for_status.assert_called_once()
+            assembly.model_manager.get_model_instance.assert_called_once_with(
+                tenant_id="tenant-1",
+                provider="openai",
+                model_type=ModelType.LLM,
+                model="gpt-4",
+            )
 
     def test_validate_llm_model_config_model_not_found(self, service: WorkflowService) -> None:
         """Test ValueError when model is not found in provider configurations."""
         mock_configs = MagicMock()
         mock_configs.get_models.return_value = []  # No models
+        assembly = MagicMock()
+        assembly.provider_manager.get_configurations.return_value = mock_configs
 
-        with (
-            patch("core.model_manager.ModelManager.get_model_instance"),
-            patch("core.provider_manager.ProviderManager") as mock_pm_cls,
-        ):
-            mock_pm_cls.return_value.get_configurations.return_value = mock_configs
-
+        with patch("services.workflow_service.create_plugin_model_assembly", return_value=assembly):
             # Act + Assert
             with pytest.raises(ValueError, match="Model gpt-4 not found for provider openai"):
                 service._validate_llm_model_config("tenant-1", "openai", "gpt-4")

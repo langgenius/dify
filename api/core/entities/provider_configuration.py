@@ -105,8 +105,8 @@ class ProviderConfiguration(BaseModel):
         """Attach the already-composed runtime for request-bound call chains."""
         self._bound_model_runtime = model_runtime
 
-    def _get_model_provider_factory(self) -> ModelProviderFactory:
-        """Reuse a bound runtime when available, else fall back to tenant scope."""
+    def get_model_provider_factory(self) -> ModelProviderFactory:
+        """Return a provider factory that preserves any request-bound runtime."""
         if self._bound_model_runtime is not None:
             return ModelProviderFactory(model_runtime=self._bound_model_runtime)
         return create_plugin_model_provider_factory(tenant_id=self.tenant_id)
@@ -362,7 +362,7 @@ class ProviderConfiguration(BaseModel):
                                 tenant_id=self.tenant_id, token=original_credentials[key]
                             )
 
-            model_provider_factory = self._get_model_provider_factory()
+            model_provider_factory = self.get_model_provider_factory()
             validated_credentials = model_provider_factory.provider_credentials_validate(
                 provider=self.provider.provider, credentials=credentials
             )
@@ -921,7 +921,7 @@ class ProviderConfiguration(BaseModel):
                                 tenant_id=self.tenant_id, token=original_credentials[key]
                             )
 
-            model_provider_factory = self._get_model_provider_factory()
+            model_provider_factory = self.get_model_provider_factory()
             validated_credentials = model_provider_factory.model_credentials_validate(
                 provider=self.provider.provider, model_type=model_type, model=model, credentials=credentials
             )
@@ -1407,7 +1407,7 @@ class ProviderConfiguration(BaseModel):
         :param model_type: model type
         :return:
         """
-        model_provider_factory = self._get_model_provider_factory()
+        model_provider_factory = self.get_model_provider_factory()
 
         # Get model instance of LLM
         return model_provider_factory.get_model_type_instance(provider=self.provider.provider, model_type=model_type)
@@ -1416,7 +1416,7 @@ class ProviderConfiguration(BaseModel):
         """
         Get model schema
         """
-        model_provider_factory = self._get_model_provider_factory()
+        model_provider_factory = self.get_model_provider_factory()
         return model_provider_factory.get_model_schema(
             provider=self.provider.provider, model_type=model_type, model=model, credentials=credentials
         )
@@ -1518,7 +1518,7 @@ class ProviderConfiguration(BaseModel):
         :param model: model name
         :return:
         """
-        model_provider_factory = self._get_model_provider_factory()
+        model_provider_factory = self.get_model_provider_factory()
         provider_schema = model_provider_factory.get_provider_schema(self.provider.provider)
 
         model_types: list[ModelType] = []

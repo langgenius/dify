@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from functools import wraps
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar
 
 from flask import current_app, g, has_request_context, request
 from flask_login.config import EXEMPT_METHODS
@@ -33,8 +33,6 @@ def current_account_with_tenant():
     assert user.current_tenant_id is not None, "The tenant information should be loaded."
     return user, user.current_tenant_id
 
-
-from typing import ParamSpec, TypeVar
 
 P = ParamSpec("P")
 R = TypeVar("R")
