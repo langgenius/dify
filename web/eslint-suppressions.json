@@ -5062,9 +5062,6 @@
     }
   },
   "app/components/plugins/install-plugin/hooks.ts": {
-    "no-restricted-imports": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 4
     }
@@ -5100,7 +5097,7 @@
   },
   "app/components/plugins/install-plugin/install-from-github/index.tsx": {
     "no-restricted-imports": {
-      "count": 3
+      "count": 2
     },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
@@ -5367,14 +5364,9 @@
       "count": 1
     }
   },
-  "app/components/plugins/plugin-detail-panel/detail-header/hooks/use-plugin-operations.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "app/components/plugins/plugin-detail-panel/endpoint-card.tsx": {
     "no-restricted-imports": {
-      "count": 3
+      "count": 2
     },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 5
@@ -5385,7 +5377,7 @@
   },
   "app/components/plugins/plugin-detail-panel/endpoint-list.tsx": {
     "no-restricted-imports": {
-      "count": 2
+      "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 4
@@ -5395,9 +5387,6 @@
     }
   },
   "app/components/plugins/plugin-detail-panel/endpoint-modal.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 3
     },
@@ -5414,9 +5403,6 @@
     }
   },
   "app/components/plugins/plugin-detail-panel/model-selector/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 3
     }
@@ -5471,27 +5457,21 @@
   "app/components/plugins/plugin-detail-panel/subscription-list/create/hooks/use-common-modal-state.ts": {
     "erasable-syntax-only/enums": {
       "count": 1
-    },
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "app/components/plugins/plugin-detail-panel/subscription-list/create/hooks/use-oauth-client-state.ts": {
     "erasable-syntax-only/enums": {
       "count": 2
-    },
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "app/components/plugins/plugin-detail-panel/subscription-list/create/index.tsx": {
     "no-restricted-imports": {
-      "count": 4
+      "count": 3
     }
   },
   "app/components/plugins/plugin-detail-panel/subscription-list/create/oauth-client.tsx": {
     "no-restricted-imports": {
-      "count": 2
+      "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 3
@@ -5507,7 +5487,7 @@
       "count": 1
     },
     "no-restricted-imports": {
-      "count": 2
+      "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
@@ -5515,12 +5495,12 @@
   },
   "app/components/plugins/plugin-detail-panel/subscription-list/edit/manual-edit-modal.tsx": {
     "no-restricted-imports": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/plugins/plugin-detail-panel/subscription-list/edit/oauth-edit-modal.tsx": {
     "no-restricted-imports": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/plugins/plugin-detail-panel/subscription-list/index.tsx": {
@@ -5538,9 +5518,6 @@
   },
   "app/components/plugins/plugin-detail-panel/subscription-list/log-viewer.tsx": {
     "erasable-syntax-only/enums": {
-      "count": 1
-    },
-    "no-restricted-imports": {
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -5600,11 +5577,6 @@
       "count": 2
     }
   },
-  "app/components/plugins/plugin-detail-panel/tool-selector/components/tool-credentials-form.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "app/components/plugins/plugin-detail-panel/tool-selector/components/tool-item.tsx": {
     "no-restricted-imports": {
       "count": 2
@@ -5643,7 +5615,7 @@
   },
   "app/components/plugins/plugin-item/action.tsx": {
     "no-restricted-imports": {
-      "count": 3
+      "count": 2
     }
   },
   "app/components/plugins/plugin-item/index.tsx": {
