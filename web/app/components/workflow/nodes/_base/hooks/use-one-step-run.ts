@@ -633,7 +633,8 @@ const useOneStepRun = <T>({
           _isSingleRun: false,
         },
       })
-      toast.error(res.errorMessage || '')
+      if (res.errorMessage)
+        toast.error(res.errorMessage)
     }
     return res
   }
