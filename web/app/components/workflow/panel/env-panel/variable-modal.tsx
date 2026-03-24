@@ -3,12 +3,11 @@ import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import { v4 as uuid4 } from 'uuid'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
-import { ToastContext } from '@/app/components/base/toast/context'
 import Tooltip from '@/app/components/base/tooltip'
+import { toast } from '@/app/components/base/ui/toast'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { cn } from '@/utils/classnames'
 import { checkKeys, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
@@ -24,7 +23,6 @@ const VariableModal = ({
   onSave,
 }: ModalPropsType) => {
   const { t } = useTranslation()
-  const { notify } = useContext(ToastContext)
   const workflowStore = useWorkflowStore()
   const [type, setType] = React.useState<'string' | 'number' | 'secret'>('string')
   const [name, setName] = React.useState('')
@@ -34,10 +32,7 @@ const VariableModal = ({
   const checkVariableName = (value: string) => {
     const { isValid, errorMessageKey } = checkKeys([value], false)
     if (!isValid) {
-      notify({
-        type: 'error',
-        message: t(`varKeyError.${errorMessageKey}`, { ns: 'appDebug', key: t('env.modal.name', { ns: 'workflow' }) }),
-      })
+      toast.error(t(`varKeyError.${errorMessageKey}`, { ns: 'appDebug', key: t('env.modal.name', { ns: 'workflow' }) }))
       return false
     }
     return true
@@ -54,15 +49,15 @@ const VariableModal = ({
     if (!checkVariableName(name))
       return
     if (!value)
-      return notify({ type: 'error', message: 'value can not be empty' })
+      return toast.error('value can not be empty')
 
     // Add check for duplicate name when editing
     const envList = workflowStore.getState().environmentVariables
     if (env && env.name !== name && envList.some(e => e.name === name))
-      return notify({ type: 'error', message: 'name is existed' })
+      return toast.error('name is existed')
     // Original check for create new variable
     if (!env && envList.some(e => e.name === name))
-      return notify({ type: 'error', message: 'name is existed' })
+      return toast.error('name is existed')
 
     onSave({
       id: env ? env.id : uuid4(),

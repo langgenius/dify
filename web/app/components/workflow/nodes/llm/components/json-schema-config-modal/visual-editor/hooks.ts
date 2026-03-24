@@ -3,7 +3,7 @@ import type { Field } from '../../../types'
 import type { EditData } from './edit-card'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { ArrayType, Type } from '../../../types'
 import { findPropertyWithPath } from '../../../utils'
 import { useMittContext } from './context'
@@ -65,10 +65,7 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
       if (schema.type === Type.object) {
         const properties = schema.properties || {}
         if (properties[newName]) {
-          Toast.notify({
-            type: 'error',
-            message: 'Property name already exists',
-          })
+          toast.error('Property name already exists')
           emit('restorePropertyName')
           return
         }
@@ -92,10 +89,7 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
       if (schema.type === Type.array && schema.items && schema.items.type === Type.object) {
         const properties = schema.items.properties || {}
         if (properties[newName]) {
-          Toast.notify({
-            type: 'error',
-            message: 'Property name already exists',
-          })
+          toast.error('Property name already exists')
           emit('restorePropertyName')
           return
         }
@@ -267,10 +261,7 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
         if (oldName !== newName) {
           const properties = parentSchema.properties
           if (properties[newName]) {
-            Toast.notify({
-              type: 'error',
-              message: 'Property name already exists',
-            })
+            toast.error('Property name already exists')
             samePropertyNameError = true
           }
 
@@ -358,10 +349,7 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
         if (oldName !== newName) {
           const properties = parentSchema.items.properties || {}
           if (properties[newName]) {
-            Toast.notify({
-              type: 'error',
-              message: 'Property name already exists',
-            })
+            toast.error('Property name already exists')
             samePropertyNameError = true
           }
 

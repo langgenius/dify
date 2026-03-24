@@ -12,7 +12,7 @@ import Divider from '@/app/components/base/divider'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
 import Switch from '@/app/components/base/switch'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import MailBodyInput from './mail-body-input'
 import Recipient from './recipient'
@@ -45,31 +45,19 @@ const EmailConfigureModal = ({
 
   const checkValidConfig = useCallback(() => {
     if (!subject.trim()) {
-      Toast.notify({
-        type: 'error',
-        message: 'subject is required',
-      })
+      toast.error('subject is required')
       return false
     }
     if (!body.trim()) {
-      Toast.notify({
-        type: 'error',
-        message: 'body is required',
-      })
+      toast.error('body is required')
       return false
     }
     if (!/\{\{#url#\}\}/.test(body.trim())) {
-      Toast.notify({
-        type: 'error',
-        message: `body must contain one ${t('promptEditor.requestURL.item.title', { ns: 'common' })}`,
-      })
+      toast.error(`body must contain one ${t('promptEditor.requestURL.item.title', { ns: 'common' })}`)
       return false
     }
     if (!recipients || (recipients.items.length === 0 && !recipients.whole_workspace)) {
-      Toast.notify({
-        type: 'error',
-        message: 'recipients is required',
-      })
+      toast.error('recipients is required')
       return false
     }
     return true

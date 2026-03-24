@@ -4,8 +4,7 @@ import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
-import { ToastContext } from '@/app/components/base/toast/context'
+import { toast } from '@/app/components/base/ui/toast'
 import RemoveButton from '@/app/components/workflow/nodes/_base/components/remove-button'
 import VariableTypeSelector from '@/app/components/workflow/panel/chat-variable-panel/components/variable-type-select'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
@@ -33,19 +32,21 @@ const ObjectValueItem: FC<Props> = ({
   onChange,
 }) => {
   const { t } = useTranslation()
-  const { notify } = useContext(ToastContext)
   const [isFocus, setIsFocus] = useState(false)
 
   const handleKeyChange = useCallback((index: number) => {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (!/^\w+$/.test(e.target.value)) {
+        toast.error('key is can only contain letters, numbers and underscores')
+        return
+      }
+
       const newList = produce(list, (draft: any[]) => {
-        if (!/^\w+$/.test(e.target.value))
-          return notify({ type: 'error', message: 'key is can only contain letters, numbers and underscores' })
         draft[index].key = e.target.value
       })
       onChange(newList)
     }
-  }, [list, notify, onChange])
+  }, [list, onChange])
 
   const handleTypeChange = useCallback((index: number) => {
     return (type: ChatVarType) => {

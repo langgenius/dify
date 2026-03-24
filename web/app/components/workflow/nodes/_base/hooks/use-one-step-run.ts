@@ -12,7 +12,7 @@ import {
 } from 'reactflow'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { getInputVars as doGetInputVars } from '@/app/components/base/prompt-editor/constants'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import {
   useIsChatMode,
   useNodeDataUpdate,
@@ -411,13 +411,13 @@ const useOneStepRun = <T>({
 
       if (!response) {
         const message = 'Schedule trigger run failed'
-        Toast.notify({ type: 'error', message })
+        toast.error(message)
         throw new Error(message)
       }
 
       if (response?.status === 'error') {
         const message = response?.message || 'Schedule trigger run failed'
-        Toast.notify({ type: 'error', message })
+        toast.error(message)
         throw new Error(message)
       }
 
@@ -442,7 +442,7 @@ const useOneStepRun = <T>({
           _singleRunningStatus: NodeRunningStatus.Failed,
         },
       })
-      Toast.notify({ type: 'error', message: 'Schedule trigger run failed' })
+      toast.error('Schedule trigger run failed')
       throw error
     }
   }, [flowId, id, handleNodeDataUpdate, data])
@@ -468,7 +468,7 @@ const useOneStepRun = <T>({
 
         if (!response) {
           const message = response?.message || 'Webhook debug failed'
-          Toast.notify({ type: 'error', message })
+          toast.error(message)
           cancelWebhookSingleRun()
           throw new Error(message)
         }
@@ -496,7 +496,7 @@ const useOneStepRun = <T>({
 
         if (response?.status === 'error') {
           const message = response.message || 'Webhook debug failed'
-          Toast.notify({ type: 'error', message })
+          toast.error(message)
           cancelWebhookSingleRun()
           throw new Error(message)
         }
@@ -519,7 +519,7 @@ const useOneStepRun = <T>({
         if (controller.signal.aborted)
           return null
 
-        Toast.notify({ type: 'error', message: 'Webhook debug request failed' })
+        toast.error('Webhook debug request failed')
         cancelWebhookSingleRun()
         if (error instanceof Error)
           throw error
@@ -566,14 +566,14 @@ const useOneStepRun = <T>({
         if (controller.signal.aborted)
           return null
 
-        Toast.notify({ type: 'error', message: requestError.message })
+        toast.error(requestError.message)
         cancelPluginSingleRun()
         throw requestError
       }
 
       if (!response) {
         const message = 'Plugin debug failed'
-        Toast.notify({ type: 'error', message })
+        toast.error(message)
         cancelPluginSingleRun()
         throw new Error(message)
       }
@@ -600,7 +600,7 @@ const useOneStepRun = <T>({
 
       if (response?.status === 'error') {
         const message = response.message || 'Plugin debug failed'
-        Toast.notify({ type: 'error', message })
+        toast.error(message)
         cancelPluginSingleRun()
         throw new Error(message)
       }
@@ -633,10 +633,7 @@ const useOneStepRun = <T>({
           _isSingleRun: false,
         },
       })
-      Toast.notify({
-        type: 'error',
-        message: res.errorMessage || '',
-      })
+      toast.error(res.errorMessage || '')
     }
     return res
   }

@@ -5,7 +5,7 @@ import { useCallback } from 'react'
 
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { useNodesReadOnly, useWorkflow } from '@/app/components/workflow/hooks'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { VarType } from '@/app/components/workflow/types'
@@ -67,13 +67,10 @@ export const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
 
     const hasReservedConflict = sanitizedEntries.some(entry => entry.sanitizedName === WEBHOOK_RAW_VARIABLE_NAME)
     if (hasReservedConflict) {
-      Toast.notify({
-        type: 'error',
-        message: t('varKeyError.keyAlreadyExists', {
-          ns: 'appDebug',
-          key: t('variableConfig.varName', { ns: 'appDebug' }),
-        }),
-      })
+      toast.error(t('varKeyError.keyAlreadyExists', {
+        ns: 'appDebug',
+        key: t('variableConfig.varName', { ns: 'appDebug' }),
+      }))
       return false
     }
     const existingOtherVarNames = new Set(
@@ -84,37 +81,28 @@ export const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
 
     const crossScopeConflict = sanitizedEntries.find(entry => existingOtherVarNames.has(entry.sanitizedName))
     if (crossScopeConflict) {
-      Toast.notify({
-        type: 'error',
-        message: t('varKeyError.keyAlreadyExists', {
-          ns: 'appDebug',
-          key: crossScopeConflict.sanitizedName,
-        }),
-      })
+      toast.error(t('varKeyError.keyAlreadyExists', {
+        ns: 'appDebug',
+        key: crossScopeConflict.sanitizedName,
+      }))
       return false
     }
 
     if (hasDuplicateStr(sanitizedEntries.map(entry => entry.sanitizedName))) {
-      Toast.notify({
-        type: 'error',
-        message: t('varKeyError.keyAlreadyExists', {
-          ns: 'appDebug',
-          key: t('variableConfig.varName', { ns: 'appDebug' }),
-        }),
-      })
+      toast.error(t('varKeyError.keyAlreadyExists', {
+        ns: 'appDebug',
+        key: t('variableConfig.varName', { ns: 'appDebug' }),
+      }))
       return false
     }
 
     for (const { sanitizedName } of sanitizedEntries) {
       const { isValid, errorMessageKey } = checkKeys([sanitizedName], false)
       if (!isValid) {
-        Toast.notify({
-          type: 'error',
-          message: t(`varKeyError.${errorMessageKey}`, {
-            ns: 'appDebug',
-            key: t('variableConfig.varName', { ns: 'appDebug' }),
-          }),
-        })
+        toast.error(t(`varKeyError.${errorMessageKey}`, {
+          ns: 'appDebug',
+          key: t('variableConfig.varName', { ns: 'appDebug' }),
+        }))
         return false
       }
     }

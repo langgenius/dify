@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
 import Textarea from '@/app/components/base/textarea'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { useNodesInteractions } from '@/app/components/workflow/hooks'
 import { BodyPayloadValueType, BodyType, Method } from '../types'
 
@@ -124,10 +124,7 @@ const CurlPanel: FC<Props> = ({ nodeId, isShow, onHide, handleCurlImport }) => {
   const handleSave = useCallback(() => {
     const { node, error } = parseCurl(inputString)
     if (error) {
-      Toast.notify({
-        type: 'error',
-        message: error,
-      })
+      toast.error(error)
       return
     }
     if (!node)

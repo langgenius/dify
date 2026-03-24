@@ -1,11 +1,10 @@
 import type { ReactElement } from 'react'
-import type { IToastProps } from '@/app/components/base/toast/context'
 import type { Shape } from '@/app/components/workflow/store/workflow'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { ToastContext } from '@/app/components/base/toast/context'
+import { toast } from '@/app/components/base/ui/toast'
 import { WorkflowContext } from '@/app/components/workflow/context'
 import { createWorkflowStore } from '@/app/components/workflow/store/workflow'
 import EnvItem from '../env-item'
@@ -15,6 +14,17 @@ import VariableTrigger from '../variable-trigger'
 vi.mock('uuid', () => ({
   v4: () => 'env-created',
 }))
+
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
+    warning: vi.fn(),
+    info: vi.fn(),
+  },
+}))
+
+const mockToastError = vi.mocked(toast.error)
 
 const createEnv = (overrides: Partial<EnvironmentVariable> = {}): EnvironmentVariable => ({
   id: 'env-1',
@@ -29,27 +39,22 @@ const renderWithProviders = (
   ui: ReactElement,
   options: {
     storeState?: Partial<Shape>
-    notify?: (props: IToastProps) => void
   } = {},
 ) => {
   const store = createWorkflowStore({})
-  const notify = options.notify ?? vi.fn<(props: IToastProps) => void>()
 
   if (options.storeState)
     store.setState(options.storeState)
 
   const result = render(
-    <ToastContext.Provider value={{ notify, close: vi.fn() }}>
-      <WorkflowContext.Provider value={store}>
-        {ui}
-      </WorkflowContext.Provider>
-    </ToastContext.Provider>,
+    <WorkflowContext.Provider value={store}>
+      {ui}
+    </WorkflowContext.Provider>,
   )
 
   return {
     ...result,
     store,
-    notify,
   }
 }
 
@@ -153,33 +158,27 @@ describe('EnvPanel integration', () => {
 
   it('should reject invalid and duplicate variable names', async () => {
     const user = userEvent.setup()
-    const notify = vi.fn()
-
     renderWithProviders(
       <VariableModal onClose={vi.fn()} onSave={vi.fn()} />,
       {
         storeState: {
           environmentVariables: [createEnv({ id: 'env-existing', name: 'duplicated', value_type: 'string', value: '1' })],
         },
-        notify,
       },
     )
 
     fireEvent.change(screen.getByPlaceholderText('workflow.env.modal.namePlaceholder'), {
       target: { value: '1bad' },
     })
-    expect(notify).toHaveBeenCalled()
+    expect(mockToastError).toHaveBeenCalled()
 
-    notify.mockClear()
+    mockToastError.mockClear()
     await user.clear(screen.getByPlaceholderText('workflow.env.modal.namePlaceholder'))
     await user.type(screen.getByPlaceholderText('workflow.env.modal.namePlaceholder'), 'duplicated')
     await user.type(screen.getByPlaceholderText('workflow.env.modal.valuePlaceholder'), '42')
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
-    expect(notify).toHaveBeenCalledWith({
-      type: 'error',
-      message: 'name is existed',
-    })
+    expect(mockToastError).toHaveBeenCalledWith('name is existed')
   })
 
   it('should load existing secret values and convert them to numbers when editing', async () => {
