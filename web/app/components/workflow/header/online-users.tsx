@@ -9,7 +9,7 @@ import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem-plus'
+} from '@/app/components/base/portal-to-follow-elem'
 
 import Tooltip from '@/app/components/base/tooltip-plus'
 import { useAppContext } from '@/context/app-context'

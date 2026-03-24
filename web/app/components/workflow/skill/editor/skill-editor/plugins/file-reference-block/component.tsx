@@ -13,7 +13,7 @@ import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem-plus'
+} from '@/app/components/base/portal-to-follow-elem'
 import { useSelectOrDelete } from '@/app/components/base/prompt-editor/hooks'
 import Tooltip from '@/app/components/base/tooltip-plus'
 import { START_TAB_ID } from '@/app/components/workflow/skill/constants'

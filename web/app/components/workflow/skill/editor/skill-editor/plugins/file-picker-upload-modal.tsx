@@ -12,7 +12,7 @@ import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem-plus'
+} from '@/app/components/base/portal-to-follow-elem'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@/app/components/base/ui/dialog'
 import { toast } from '@/app/components/base/ui/toast'
 import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'

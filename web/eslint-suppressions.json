@@ -6160,6 +6160,11 @@
       "count": 2
     }
   },
+  "app/components/sub-graph/components/config-panel.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "app/components/tools/edit-custom-collection-modal/config-credentials.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -6662,6 +6667,11 @@
       "count": 2
     }
   },
+  "app/components/workflow/comment/thread.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "app/components/workflow/context.tsx": {
     "react-refresh/only-export-components": {
       "count": 1
@@ -6690,6 +6700,11 @@
       "count": 1
     },
     "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/header/online-users.tsx": {
+    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -7044,11 +7059,6 @@
   },
   "app/components/workflow/nodes/_base/components/list-no-data-placeholder.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/nodes/_base/components/mcp-tool-availability.tsx": {
-    "react-refresh/only-export-components": {
       "count": 1
     }
   },
@@ -8152,6 +8162,11 @@
       "count": 1
     }
   },
+  "app/components/workflow/nodes/llm/components/config-context-item.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "app/components/workflow/nodes/llm/components/config-prompt-item.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -8161,6 +8176,9 @@
     }
   },
   "app/components/workflow/nodes/llm/components/config-prompt.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "react/unsupported-syntax": {
       "count": 1
     },
@@ -8575,6 +8593,11 @@
       "count": 5
     }
   },
+  "app/components/workflow/nodes/tool/components/context-generate-modal/components/right-panel.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "app/components/workflow/nodes/tool/components/copy-id.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -8595,14 +8618,6 @@
     }
   },
   "app/components/workflow/nodes/tool/components/mixed-variable-text-input/index.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/nodes/tool/components/mixed-variable-text-input/placeholder.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -9296,6 +9311,26 @@
   },
   "app/components/workflow/simple-node/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/skill/editor/skill-editor/plugins/file-picker-block.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/skill/editor/skill-editor/plugins/file-picker-upload-modal.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/skill/editor/skill-editor/plugins/file-reference-block/component.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/skill/viewer/sqlite-file-preview/table-selector.tsx": {
+    "no-restricted-imports": {
       "count": 1
     }
   },

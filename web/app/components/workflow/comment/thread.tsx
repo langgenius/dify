@@ -9,7 +9,7 @@ import { useReactFlow, useViewport } from 'reactflow'
 import { Avatar } from '@/app/components/base/avatar'
 import Divider from '@/app/components/base/divider'
 import InlineDeleteConfirm from '@/app/components/base/inline-delete-confirm'
-import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem-plus'
+import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
 
 import Tooltip from '@/app/components/base/tooltip-plus'
 import { getUserColor } from '@/app/components/workflow/collaboration/utils/user-color'
