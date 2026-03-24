@@ -1245,3 +1245,143 @@ class TestAppService:
         assert paginated_apps is not None
         assert paginated_apps.total == 1
         assert all("50%" in app.name for app in paginated_apps.items)
+
+    def test_get_app_code_by_id_not_found(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """Test get_app_code_by_id raises ValueError when site is missing."""
+        from uuid import uuid4
+
+        from services.app_service import AppService
+
+        with pytest.raises(ValueError, match="not found"):
+            AppService.get_app_code_by_id(str(uuid4()))
+
+    def test_get_app_id_by_code_not_found(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """Test get_app_id_by_code raises ValueError when code does not exist."""
+        from services.app_service import AppService
+
+        with pytest.raises(ValueError, match="not found"):
+            AppService.get_app_id_by_code("nonexistent-code")
+
+    def test_get_app_meta_returns_empty_when_workflow_missing(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """Test get_app_meta returns empty tool_icons when workflow is None."""
+        from types import SimpleNamespace
+
+        from services.app_service import AppService
+
+        app_service = AppService()
+        workflow_app = SimpleNamespace(mode="workflow", workflow=None)
+
+        meta = app_service.get_app_meta(workflow_app)
+        assert meta == {"tool_icons": {}}
+
+    def test_get_app_meta_returns_empty_when_model_config_missing(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """Test get_app_meta returns empty tool_icons when app_model_config is None."""
+        from types import SimpleNamespace
+
+        from services.app_service import AppService
+
+        app_service = AppService()
+        chat_app = SimpleNamespace(mode="chat", app_model_config=None)
+
+        meta = app_service.get_app_meta(chat_app)
+        assert meta == {"tool_icons": {}}
+
+    def test_get_paginate_apps_returns_none_when_tag_filter_empty(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """Test get_paginate_apps returns None when tag_ids filter yields no matches."""
+        from services.app_service import AppService
+
+        account, tenant = self._create_test_app_and_account(
+            db_session_with_containers, mock_external_service_dependencies
+        )
+
+        args = {"tag_ids": [], "page": 1, "limit": 10}
+        result = AppService().get_paginate_apps(account.id, tenant.id, args)
+        assert result is None
+
+    def test_update_app_preserves_icon_type_when_not_provided(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """Test update_app keeps the existing icon_type when the payload omits it."""
+        from models.model import IconType
+
+        account, tenant = self._create_test_app_and_account(
+            db_session_with_containers, mock_external_service_dependencies
+        )
+        app_service = AppService()
+        app = app_service.create_app(
+            tenant.id,
+            {
+                "name": "Icon Test App",
+                "description": "test",
+                "mode": "chat",
+                "icon_type": "emoji",
+                "icon": "🤖",
+                "icon_background": "#FF6B6B",
+                "api_rph": 100,
+                "api_rpm": 10,
+            },
+            account,
+        )
+
+        updated = app_service.update_app(
+            app,
+            {
+                "name": "Updated Name",
+                "description": "updated",
+                "icon_type": None,
+                "icon": "new-icon",
+                "icon_background": "#222",
+                "use_icon_as_answer_icon": True,
+                "max_active_requests": 5,
+            },
+        )
+
+        assert updated.name == "Updated Name"
+        assert updated.icon_type == IconType.EMOJI
+
+    def test_update_app_rejects_empty_icon_type(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """Test update_app rejects an explicit empty icon_type."""
+        account, tenant = self._create_test_app_and_account(
+            db_session_with_containers, mock_external_service_dependencies
+        )
+        app_service = AppService()
+        app = app_service.create_app(
+            tenant.id,
+            {
+                "name": "Icon Reject App",
+                "description": "test",
+                "mode": "chat",
+                "icon_type": "emoji",
+                "icon": "🤖",
+                "icon_background": "#FF6B6B",
+                "api_rph": 100,
+                "api_rpm": 10,
+            },
+            account,
+        )
+
+        with pytest.raises(ValueError):
+            app_service.update_app(
+                app,
+                {
+                    "name": "new",
+                    "description": "new-desc",
+                    "icon_type": "",
+                    "icon": "new-icon",
+                    "icon_background": "#222",
+                    "use_icon_as_answer_icon": True,
+                    "max_active_requests": 5,
+                },
+            )
