@@ -80,6 +80,7 @@ def _build_fake_pymochow_modules():
     pymochow_model_enum.TableState = TableState
 
     for cls_name in [
+        "AutoBuildRowCountIncrement",
         "Field",
         "FilteringIndex",
         "HNSWParams",
@@ -218,19 +219,20 @@ def test_init_database_uses_existing_or_creates_when_missing(baidu_module):
     assert vector._init_database() == "created_db"
 
 
-def test_table_existed_checks_table_names(baidu_module):
+def test_table_existed_checks_table_access(baidu_module):
     vector = baidu_module.BaiduVector.__new__(baidu_module.BaiduVector)
     vector._collection_name = "collection_1"
     vector._db = MagicMock()
-    vector._db.list_table.return_value = [
-        SimpleNamespace(table_name="other"),
-        SimpleNamespace(table_name="collection_1"),
-    ]
+    vector._db.table.return_value = MagicMock()
 
     assert vector._table_existed() is True
 
-    vector._db.list_table.return_value = [SimpleNamespace(table_name="other")]
+    vector._db.table.side_effect = baidu_module.ServerError(baidu_module.ServerErrCode.TABLE_NOT_EXIST)
     assert vector._table_existed() is False
+
+    vector._db.table.side_effect = baidu_module.ServerError(9999)
+    with pytest.raises(baidu_module.ServerError):
+        vector._table_existed()
 
 
 def test_search_methods_delegate_to_database_table(baidu_module):
@@ -265,6 +267,9 @@ def test_factory_initializes_collection_name_and_index_struct(baidu_module, monk
     monkeypatch.setattr(baidu_module.dify_config, "BAIDU_VECTOR_DB_REPLICAS", 1)
     monkeypatch.setattr(baidu_module.dify_config, "BAIDU_VECTOR_DB_INVERTED_INDEX_ANALYZER", "DEFAULT_ANALYZER")
     monkeypatch.setattr(baidu_module.dify_config, "BAIDU_VECTOR_DB_INVERTED_INDEX_PARSER_MODE", "COARSE_MODE")
+    monkeypatch.setattr(baidu_module.dify_config, "BAIDU_VECTOR_DB_AUTO_BUILD_ROW_COUNT_INCREMENT", 500)
+    monkeypatch.setattr(baidu_module.dify_config, "BAIDU_VECTOR_DB_AUTO_BUILD_ROW_COUNT_INCREMENT_RATIO", 0.05)
+    monkeypatch.setattr(baidu_module.dify_config, "BAIDU_VECTOR_DB_REBUILD_INDEX_TIMEOUT_IN_SECONDS", 300)
 
     with patch.object(baidu_module, "BaiduVector", return_value="vector") as vector_cls:
         result = factory.init_vector(dataset, attributes=[], embeddings=MagicMock())
@@ -301,18 +306,12 @@ def test_init_get_type_to_index_struct_and_create_delegate(baidu_module, monkeyp
     vector.add_texts.assert_called_once_with(docs, [[0.1, 0.2]])
 
 
-def test_add_texts_batches_rows_and_waits_for_index_ready(baidu_module, monkeypatch):
+def test_add_texts_batches_rows(baidu_module):
     vector = baidu_module.BaiduVector.__new__(baidu_module.BaiduVector)
     vector._collection_name = "collection_1"
     table = MagicMock()
-    table.describe_index.side_effect = [
-        SimpleNamespace(state="BUILDING"),
-        SimpleNamespace(state=baidu_module.IndexState.NORMAL),
-    ]
     vector._db = MagicMock()
     vector._db.table.return_value = table
-
-    monkeypatch.setattr(baidu_module.time, "sleep", lambda _s: None)
 
     docs = [
         Document(page_content="doc-1", metadata={"doc_id": "id-1", "document_id": "doc-1"}),
@@ -323,23 +322,26 @@ def test_add_texts_batches_rows_and_waits_for_index_ready(baidu_module, monkeypa
     assert table.upsert.call_count == 1
     inserted_rows = table.upsert.call_args.kwargs["rows"]
     assert len(inserted_rows) == 2
-    table.rebuild_index.assert_called_once_with(vector.vector_index)
 
 
-def test_add_texts_raises_timeout_when_index_never_normal(baidu_module, monkeypatch):
+def test_add_texts_batches_more_than_batch_size(baidu_module):
     vector = baidu_module.BaiduVector.__new__(baidu_module.BaiduVector)
     vector._collection_name = "collection_1"
     table = MagicMock()
-    table.describe_index.return_value = SimpleNamespace(state="BUILDING")
     vector._db = MagicMock()
     vector._db.table.return_value = table
 
-    monkeypatch.setattr(baidu_module.time, "sleep", lambda _s: None)
-    monkeypatch.setattr(baidu_module.time, "time", MagicMock(side_effect=[0, 3601]))
+    docs = [
+        Document(page_content=f"doc-{idx}", metadata={"doc_id": f"id-{idx}", "document_id": f"doc-{idx}"})
+        for idx in range(1001)
+    ]
+    embeddings = [[0.1, 0.2] for _ in range(1001)]
 
-    docs = [Document(page_content="doc-1", metadata={"doc_id": "id-1"})]
-    with pytest.raises(TimeoutError, match="Index rebuild timeout"):
-        vector.add_texts(docs, [[0.1, 0.2]])
+    vector.add_texts(docs, embeddings)
+
+    assert table.upsert.call_count == 2
+    assert len(table.upsert.call_args_list[0].kwargs["rows"]) == 1000
+    assert len(table.upsert.call_args_list[1].kwargs["rows"]) == 1
 
 
 def test_text_exists_returns_false_when_query_code_is_not_success(baidu_module):
@@ -408,11 +410,16 @@ def test_create_table_handles_cache_and_validation_paths(baidu_module, monkeypat
         metric_type="IP",
         inverted_index_analyzer="DEFAULT_ANALYZER",
         inverted_index_parser_mode="COARSE_MODE",
+        auto_build_row_count_increment=500,
+        auto_build_row_count_increment_ratio=0.05,
+        rebuild_index_timeout_in_seconds=300,
         replicas=1,
         shard=1,
     )
     vector._db = MagicMock()
-    vector._db.describe_table.return_value = SimpleNamespace(state=baidu_module.TableState.NORMAL)
+    table = MagicMock()
+    table.state = baidu_module.TableState.NORMAL
+    vector._db.describe_table.return_value = table
     vector._table_existed = MagicMock(return_value=False)
     vector.delete = MagicMock()
 
@@ -422,6 +429,7 @@ def test_create_table_handles_cache_and_validation_paths(baidu_module, monkeypat
     monkeypatch.setattr(baidu_module.redis_client, "lock", MagicMock(return_value=lock))
     monkeypatch.setattr(baidu_module.redis_client, "set", MagicMock())
     monkeypatch.setattr(baidu_module.time, "sleep", lambda _s: None)
+    monkeypatch.setattr(vector, "_wait_for_index_ready", MagicMock())
 
     # Cached table skips all work.
     monkeypatch.setattr(baidu_module.redis_client, "get", MagicMock(return_value=1))
@@ -438,7 +446,9 @@ def test_create_table_handles_cache_and_validation_paths(baidu_module, monkeypat
     vector._table_existed.return_value = False
     vector._create_table(3)
     vector._db.create_table.assert_called_once()
-    baidu_module.redis_client.set.assert_called_once()
+    baidu_module.redis_client.set.assert_called_once_with("vector_indexing_collection_1", 1, ex=3600)
+    table.rebuild_index.assert_called_once_with(vector.vector_index)
+    vector._wait_for_index_ready.assert_called_once_with(table, 3600)
 
 
 def test_create_table_raises_for_invalid_index_or_metric(baidu_module, monkeypatch):
@@ -452,6 +462,9 @@ def test_create_table_raises_for_invalid_index_or_metric(baidu_module, monkeypat
         metric_type="IP",
         inverted_index_analyzer="DEFAULT_ANALYZER",
         inverted_index_parser_mode="COARSE_MODE",
+        auto_build_row_count_increment=500,
+        auto_build_row_count_increment_ratio=0.05,
+        rebuild_index_timeout_in_seconds=300,
         replicas=1,
         shard=1,
     )
@@ -479,6 +492,9 @@ def test_create_table_raises_timeout_if_table_never_becomes_normal(baidu_module,
         metric_type="IP",
         inverted_index_analyzer="DEFAULT_ANALYZER",
         inverted_index_parser_mode="COARSE_MODE",
+        auto_build_row_count_increment=500,
+        auto_build_row_count_increment_ratio=0.05,
+        rebuild_index_timeout_in_seconds=300,
         replicas=1,
         shard=1,
     )
@@ -515,6 +531,9 @@ def test_factory_uses_existing_collection_prefix_when_index_struct_exists(baidu_
     monkeypatch.setattr(baidu_module.dify_config, "BAIDU_VECTOR_DB_REPLICAS", 1)
     monkeypatch.setattr(baidu_module.dify_config, "BAIDU_VECTOR_DB_INVERTED_INDEX_ANALYZER", "DEFAULT_ANALYZER")
     monkeypatch.setattr(baidu_module.dify_config, "BAIDU_VECTOR_DB_INVERTED_INDEX_PARSER_MODE", "COARSE_MODE")
+    monkeypatch.setattr(baidu_module.dify_config, "BAIDU_VECTOR_DB_AUTO_BUILD_ROW_COUNT_INCREMENT", 500)
+    monkeypatch.setattr(baidu_module.dify_config, "BAIDU_VECTOR_DB_AUTO_BUILD_ROW_COUNT_INCREMENT_RATIO", 0.05)
+    monkeypatch.setattr(baidu_module.dify_config, "BAIDU_VECTOR_DB_REBUILD_INDEX_TIMEOUT_IN_SECONDS", 300)
 
     with patch.object(baidu_module, "BaiduVector", return_value="vector") as vector_cls:
         result = factory.init_vector(dataset, attributes=[], embeddings=MagicMock())
