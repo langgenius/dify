@@ -2,11 +2,11 @@
 
 import uuid
 
+from dify_graph.constants import CONVERSATION_VARIABLE_NODE_ID, ENVIRONMENT_VARIABLE_NODE_ID
 from flask.testing import FlaskClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from dify_graph.constants import CONVERSATION_VARIABLE_NODE_ID, ENVIRONMENT_VARIABLE_NODE_ID
 from dify_graph.variables.segments import StringSegment
 from factories.variable_factory import segment_to_variable
 from models import Workflow
