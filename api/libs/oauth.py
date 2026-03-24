@@ -28,6 +28,7 @@ class AccessTokenResponse(TypedDict, total=False):
 class GitHubEmailRecord(TypedDict, total=False):
     email: str
     primary: bool
+    verified: bool
 
 
 class GitHubRawUserInfo(TypedDict):
@@ -130,25 +131,49 @@ class GitHubOAuth(OAuth):
         response.raise_for_status()
         user_info = GITHUB_RAW_USER_INFO_ADAPTER.validate_python(_json_object(response))
 
+        # The profile email may be null when the user has "Keep my email addresses private" enabled.
+        # Fall back to the /user/emails endpoint to find a usable email address.
+        email_from_api = self._get_email_from_emails_endpoint(headers)
+        resolved_email = email_from_api or user_info.get("email") or ""
+
+        return {**user_info, "email": resolved_email}
+
+    @staticmethod
+    def _get_email_from_emails_endpoint(headers: dict[str, str]) -> str:
+        """Fetch the best available email from GitHub's /user/emails endpoint.
+
+        Prefers the primary email, then falls back to any verified email.
+        Returns an empty string when no usable email is found.
+        """
         try:
-            email_response = httpx.get(self._EMAIL_INFO_URL, headers=headers)
+            email_response = httpx.get(GitHubOAuth._EMAIL_INFO_URL, headers=headers)
             email_response.raise_for_status()
-            email_info = GITHUB_EMAIL_RECORDS_ADAPTER.validate_python(_json_list(email_response))
-            primary_email = next((email for email in email_info if email.get("primary") is True), None)
+            email_records = GITHUB_EMAIL_RECORDS_ADAPTER.validate_python(_json_list(email_response))
         except (httpx.HTTPStatusError, ValidationError):
             logger.warning("Failed to retrieve email from GitHub /user/emails endpoint", exc_info=True)
-            primary_email = None
+            return ""
 
-        return {**user_info, "email": primary_email.get("email", "") if primary_email else ""}
+        primary = next((r for r in email_records if r.get("primary") is True), None)
+        if primary:
+            return primary.get("email", "")
+
+        # No primary email; try any verified email as a fallback.
+        verified = next((r for r in email_records if r.get("verified") is True), None)
+        if verified:
+            return verified.get("email", "")
+
+        return ""
 
     def _transform_user_info(self, raw_info: JsonObject) -> OAuthUserInfo:
         payload = GITHUB_RAW_USER_INFO_ADAPTER.validate_python(raw_info)
-        email = payload.get("email")
+        email = payload.get("email") or ""
         if not email:
-            raise ValueError(
-                'Dify currently not supports the "Keep my email addresses private" feature,'
-                " please disable it and login again"
-            )
+            # When no email is available from the profile or /user/emails endpoint,
+            # fall back to GitHub's noreply address so sign-in can still proceed.
+            github_id = payload["id"]
+            github_login = payload["login"]
+            email = f"{github_id}+{github_login}@users.noreply.github.com"
+            logger.info("GitHub user %s has no public email; using noreply address", github_login)
         return OAuthUserInfo(id=str(payload["id"]), name=str(payload.get("name") or ""), email=email)
 
 

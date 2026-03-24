@@ -101,6 +101,12 @@ class TestGitHubOAuth(BaseOAuthTest):
                 [{"email": "primary@example.com", "primary": True}],
                 "primary@example.com",
             ),
+            # User with only verified (non-primary) email
+            (
+                {"id": 12345, "login": "testuser", "name": "Test User"},
+                [{"email": "verified@example.com", "primary": False, "verified": True}],
+                "verified@example.com",
+            ),
         ],
     )
     @patch("httpx.get", autospec=True)
@@ -122,14 +128,14 @@ class TestGitHubOAuth(BaseOAuthTest):
     @pytest.mark.parametrize(
         ("user_data", "email_data"),
         [
-            # User with no emails
+            # User with no emails at all
             ({"id": 12345, "login": "testuser", "name": "Test User"}, []),
-            # User with only secondary email
+            # User with only unverified secondary email
             (
                 {"id": 12345, "login": "testuser", "name": "Test User"},
-                [{"email": "secondary@example.com", "primary": False}],
+                [{"email": "secondary@example.com", "primary": False, "verified": False}],
             ),
-            # User with private email and no primary in emails endpoint
+            # User with private email and no entries in emails endpoint
             (
                 {"id": 12345, "login": "testuser", "name": None, "email": None},
                 [],
@@ -137,7 +143,7 @@ class TestGitHubOAuth(BaseOAuthTest):
         ],
     )
     @patch("httpx.get", autospec=True)
-    def test_should_raise_error_when_no_primary_email(self, mock_get, oauth, user_data, email_data):
+    def test_should_use_noreply_email_when_no_usable_email(self, mock_get, oauth, user_data, email_data):
         user_response = MagicMock()
         user_response.json.return_value = user_data
 
@@ -146,11 +152,13 @@ class TestGitHubOAuth(BaseOAuthTest):
 
         mock_get.side_effect = [user_response, email_response]
 
-        with pytest.raises(ValueError, match="Keep my email addresses private"):
-            oauth.get_user_info("test_token")
+        user_info = oauth.get_user_info("test_token")
+
+        assert user_info.id == str(user_data["id"])
+        assert user_info.email == "12345+testuser@users.noreply.github.com"
 
     @patch("httpx.get", autospec=True)
-    def test_should_raise_error_when_email_endpoint_fails(self, mock_get, oauth):
+    def test_should_use_noreply_email_when_email_endpoint_fails(self, mock_get, oauth):
         user_response = MagicMock()
         user_response.json.return_value = {"id": 12345, "login": "testuser", "name": "Test User"}
 
@@ -161,8 +169,10 @@ class TestGitHubOAuth(BaseOAuthTest):
 
         mock_get.side_effect = [user_response, email_response]
 
-        with pytest.raises(ValueError, match="Keep my email addresses private"):
-            oauth.get_user_info("test_token")
+        user_info = oauth.get_user_info("test_token")
+
+        assert user_info.id == "12345"
+        assert user_info.email == "12345+testuser@users.noreply.github.com"
 
     @patch("httpx.get", autospec=True)
     def test_should_handle_network_errors(self, mock_get, oauth):
