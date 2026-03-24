@@ -328,19 +328,25 @@ class DatasetDocumentListApi(Resource):
 
         if fetch:
             for document in documents:
-                completed_segments = db.session.scalar(
-                    select(func.count(DocumentSegment.id)).where(
-                        DocumentSegment.completed_at.isnot(None),
-                        DocumentSegment.document_id == str(document.id),
-                        DocumentSegment.status != SegmentStatus.RE_SEGMENT,
+                completed_segments = (
+                    db.session.scalar(
+                        select(func.count(DocumentSegment.id)).where(
+                            DocumentSegment.completed_at.isnot(None),
+                            DocumentSegment.document_id == str(document.id),
+                            DocumentSegment.status != SegmentStatus.RE_SEGMENT,
+                        )
                     )
-                ) or 0
-                total_segments = db.session.scalar(
-                    select(func.count(DocumentSegment.id)).where(
-                        DocumentSegment.document_id == str(document.id),
-                        DocumentSegment.status != SegmentStatus.RE_SEGMENT,
+                    or 0
+                )
+                total_segments = (
+                    db.session.scalar(
+                        select(func.count(DocumentSegment.id)).where(
+                            DocumentSegment.document_id == str(document.id),
+                            DocumentSegment.status != SegmentStatus.RE_SEGMENT,
+                        )
                     )
-                ) or 0
+                    or 0
+                )
                 document.completed_segments = completed_segments
                 document.total_segments = total_segments
             data = marshal(documents, document_with_segments_fields)
@@ -666,19 +672,25 @@ class DocumentBatchIndexingStatusApi(DocumentResource):
         documents = self.get_batch_documents(dataset_id, batch)
         documents_status = []
         for document in documents:
-            completed_segments = db.session.scalar(
-                select(func.count(DocumentSegment.id)).where(
-                    DocumentSegment.completed_at.isnot(None),
-                    DocumentSegment.document_id == str(document.id),
-                    DocumentSegment.status != SegmentStatus.RE_SEGMENT,
+            completed_segments = (
+                db.session.scalar(
+                    select(func.count(DocumentSegment.id)).where(
+                        DocumentSegment.completed_at.isnot(None),
+                        DocumentSegment.document_id == str(document.id),
+                        DocumentSegment.status != SegmentStatus.RE_SEGMENT,
+                    )
                 )
-            ) or 0
-            total_segments = db.session.scalar(
-                select(func.count(DocumentSegment.id)).where(
-                    DocumentSegment.document_id == str(document.id),
-                    DocumentSegment.status != SegmentStatus.RE_SEGMENT,
+                or 0
+            )
+            total_segments = (
+                db.session.scalar(
+                    select(func.count(DocumentSegment.id)).where(
+                        DocumentSegment.document_id == str(document.id),
+                        DocumentSegment.status != SegmentStatus.RE_SEGMENT,
+                    )
                 )
-            ) or 0
+                or 0
+            )
             # Create a dictionary with document attributes and additional fields
             document_dict = {
                 "id": document.id,
@@ -714,19 +726,25 @@ class DocumentIndexingStatusApi(DocumentResource):
         document_id = str(document_id)
         document = self.get_document(dataset_id, document_id)
 
-        completed_segments = db.session.scalar(
-            select(func.count(DocumentSegment.id)).where(
-                DocumentSegment.completed_at.isnot(None),
-                DocumentSegment.document_id == str(document_id),
-                DocumentSegment.status != SegmentStatus.RE_SEGMENT,
+        completed_segments = (
+            db.session.scalar(
+                select(func.count(DocumentSegment.id)).where(
+                    DocumentSegment.completed_at.isnot(None),
+                    DocumentSegment.document_id == str(document_id),
+                    DocumentSegment.status != SegmentStatus.RE_SEGMENT,
+                )
             )
-        ) or 0
-        total_segments = db.session.scalar(
-            select(func.count(DocumentSegment.id)).where(
-                DocumentSegment.document_id == str(document_id),
-                DocumentSegment.status != SegmentStatus.RE_SEGMENT,
+            or 0
+        )
+        total_segments = (
+            db.session.scalar(
+                select(func.count(DocumentSegment.id)).where(
+                    DocumentSegment.document_id == str(document_id),
+                    DocumentSegment.status != SegmentStatus.RE_SEGMENT,
+                )
             )
-        ) or 0
+            or 0
+        )
 
         # Create a dictionary with document attributes and additional fields
         document_dict = {
