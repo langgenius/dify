@@ -2,22 +2,6 @@ import { IS_DEV } from '@/config'
 import { env } from '@/env'
 
 async function main() {
-  const SENTRY_DSN = env.NEXT_PUBLIC_SENTRY_DSN
-
-  if (!IS_DEV && SENTRY_DSN) {
-    const Sentry = await import('@sentry/react')
-    Sentry.init({
-      dsn: SENTRY_DSN,
-      integrations: [
-        Sentry.browserTracingIntegration(),
-        Sentry.replayIntegration(),
-      ],
-      tracesSampleRate: 0.1,
-      replaysSessionSampleRate: 0.1,
-      replaysOnErrorSampleRate: 1.0,
-    })
-  }
-
   // Polyfill for Array.prototype.toSpliced (ES2023, Chrome 110+)
   if (!Array.prototype.toSpliced) {
   // eslint-disable-next-line no-extend-native
@@ -74,6 +58,22 @@ async function main() {
 
     Object.defineProperty(globalThis, 'sessionStorage', {
       value: sessionStorage,
+    })
+  }
+
+  const SENTRY_DSN = env.NEXT_PUBLIC_SENTRY_DSN
+
+  if (!IS_DEV && SENTRY_DSN) {
+    const Sentry = await import('@sentry/react')
+    Sentry.init({
+      dsn: SENTRY_DSN,
+      integrations: [
+        Sentry.browserTracingIntegration(),
+        Sentry.replayIntegration(),
+      ],
+      tracesSampleRate: 0.1,
+      replaysSessionSampleRate: 0.1,
+      replaysOnErrorSampleRate: 1.0,
     })
   }
 }
