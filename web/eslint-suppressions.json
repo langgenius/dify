@@ -8913,12 +8913,6 @@
   "app/components/workflow/panel/chat-variable-panel/components/variable-modal.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "react/set-state-in-effect": {
-      "count": 8
-    },
-    "ts/no-explicit-any": {
-      "count": 3
     }
   },
   "app/components/workflow/panel/chat-variable-panel/components/variable-type-select.tsx": {

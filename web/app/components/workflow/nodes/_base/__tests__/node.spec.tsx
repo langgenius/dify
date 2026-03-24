@@ -7,6 +7,9 @@ import BaseNode from '../node'
 
 const mockHasNodeInspectVars = vi.fn()
 const mockUseNodePluginInstallation = vi.fn()
+const mockHandleNodeIterationChildSizeChange = vi.fn()
+const mockHandleNodeLoopChildSizeChange = vi.fn()
+const mockUseNodeResizeObserver = vi.fn()
 
 vi.mock('@/app/components/workflow/hooks', () => ({
   useNodesReadOnly: () => ({ nodesReadOnly: false }),
@@ -25,14 +28,22 @@ vi.mock('@/app/components/workflow/hooks/use-node-plugin-installation', () => ({
 
 vi.mock('@/app/components/workflow/nodes/iteration/use-interactions', () => ({
   useNodeIterationInteractions: () => ({
-    handleNodeIterationChildSizeChange: vi.fn(),
+    handleNodeIterationChildSizeChange: mockHandleNodeIterationChildSizeChange,
   }),
 }))
 
 vi.mock('@/app/components/workflow/nodes/loop/use-interactions', () => ({
   useNodeLoopInteractions: () => ({
-    handleNodeLoopChildSizeChange: vi.fn(),
+    handleNodeLoopChildSizeChange: mockHandleNodeLoopChildSizeChange,
   }),
+}))
+
+vi.mock('../use-node-resize-observer', () => ({
+  default: (options: { enabled: boolean, onResize: () => void }) => {
+    mockUseNodeResizeObserver(options)
+    if (options.enabled)
+      options.onResize()
+  },
 }))
 
 vi.mock('../components/add-variable-popup-with-position', () => ({
@@ -86,6 +97,7 @@ describe('BaseNode', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockHasNodeInspectVars.mockReturnValue(false)
+    mockUseNodeResizeObserver.mockReset()
     mockUseNodePluginInstallation.mockReturnValue({
       shouldDim: false,
       isChecking: false,
@@ -183,5 +195,24 @@ describe('BaseNode', () => {
 
     expect(screen.getByTestId('node-resizer')).toBeInTheDocument()
     expect(screen.getByTestId('workflow-node-install-overlay')).toBeInTheDocument()
+    expect(mockHandleNodeIterationChildSizeChange).toHaveBeenCalledWith('node-1')
+  })
+
+  it('should trigger loop resize updates when the selected node is inside a loop', () => {
+    renderWorkflowComponent(
+      <BaseNode
+        id="node-2"
+        data={toNodeData(createData({
+          type: BlockEnum.Loop,
+          selected: true,
+          isInLoop: true,
+        }))}
+      >
+        <div>Loop body</div>
+      </BaseNode>,
+    )
+
+    expect(mockHandleNodeLoopChildSizeChange).toHaveBeenCalledWith('node-2')
+    expect(mockUseNodeResizeObserver).toHaveBeenCalledTimes(2)
   })
 })

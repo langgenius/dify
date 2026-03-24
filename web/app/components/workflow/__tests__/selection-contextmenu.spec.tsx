@@ -3,12 +3,49 @@ import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { useEffect } from 'react'
 import { useNodes } from 'reactflow'
 import SelectionContextmenu from '../selection-contextmenu'
+import { AlignType } from '../selection-contextmenu.helpers'
 import { useWorkflowHistoryStore } from '../workflow-history-store'
 import { createEdge, createNode } from './fixtures'
 import { renderWorkflowFlowComponent } from './workflow-test-env'
 
 let latestNodes: Node[] = []
 let latestHistoryEvent: string | undefined
+const mockGetAlignBounds = vi.fn()
+const mockAlignNodePosition = vi.fn()
+const mockGetAlignableNodes = vi.fn()
+const mockGetNodesReadOnly = vi.fn()
+
+vi.mock('../hooks', async () => {
+  const actual = await vi.importActual<typeof import('../hooks')>('../hooks')
+  return {
+    ...actual,
+    useNodesReadOnly: () => ({
+      getNodesReadOnly: mockGetNodesReadOnly,
+    }),
+  }
+})
+
+vi.mock('../selection-contextmenu.helpers', async () => {
+  const actual = await vi.importActual<typeof import('../selection-contextmenu.helpers')>('../selection-contextmenu.helpers')
+  return {
+    ...actual,
+    alignNodePosition: (...args: Parameters<typeof actual.alignNodePosition>) => {
+      if (mockAlignNodePosition.getMockImplementation())
+        return mockAlignNodePosition(...args)
+      return actual.alignNodePosition(...args)
+    },
+    getAlignableNodes: (...args: Parameters<typeof actual.getAlignableNodes>) => {
+      if (mockGetAlignableNodes.getMockImplementation())
+        return mockGetAlignableNodes(...args)
+      return actual.getAlignableNodes(...args)
+    },
+    getAlignBounds: (...args: Parameters<typeof actual.getAlignBounds>) => {
+      if (mockGetAlignBounds.getMockImplementation())
+        return mockGetAlignBounds(...args)
+      return actual.getAlignBounds(...args)
+    },
+  }
+})
 
 const RuntimeProbe = () => {
   latestNodes = useNodes() as Node[]
@@ -60,6 +97,11 @@ describe('SelectionContextmenu', () => {
     vi.clearAllMocks()
     latestNodes = []
     latestHistoryEvent = undefined
+    mockGetAlignBounds.mockReset()
+    mockAlignNodePosition.mockReset()
+    mockGetAlignableNodes.mockReset()
+    mockGetNodesReadOnly.mockReset()
+    mockGetNodesReadOnly.mockReturnValue(false)
   })
 
   it('should not render when selectionMenu is absent', () => {
@@ -196,5 +238,85 @@ describe('SelectionContextmenu', () => {
     expect(latestNodes.find(node => node.id === 'container')?.position.x).toBe(40)
     expect(latestNodes.find(node => node.id === 'other')?.position.x).toBe(40)
     expect(latestNodes.find(node => node.id === 'child')?.position.x).toBe(210)
+  })
+
+  it('should cancel when align bounds cannot be resolved', () => {
+    mockGetAlignBounds.mockReturnValue(null)
+    const nodes = [
+      createNode({ id: 'n1', selected: true, width: 40, height: 20 }),
+      createNode({ id: 'n2', selected: true, position: { x: 80, y: 20 }, width: 40, height: 20 }),
+    ]
+
+    const { store } = renderSelectionMenu({ nodes })
+
+    act(() => {
+      store.setState({ selectionMenu: { left: 100, top: 100 } })
+    })
+
+    fireEvent.click(screen.getByTestId('selection-contextmenu-item-left'))
+
+    expect(store.getState().selectionMenu).toBeUndefined()
+  })
+
+  it('should cancel without aligning when nodes are read only', () => {
+    mockGetNodesReadOnly.mockReturnValue(true)
+    const nodes = [
+      createNode({ id: 'n1', selected: true, width: 40, height: 20 }),
+      createNode({ id: 'n2', selected: true, position: { x: 80, y: 20 }, width: 40, height: 20 }),
+    ]
+
+    const { store } = renderSelectionMenu({ nodes })
+
+    act(() => {
+      store.setState({ selectionMenu: { left: 100, top: 100 } })
+    })
+
+    fireEvent.click(screen.getByTestId('selection-contextmenu-item-left'))
+
+    expect(store.getState().selectionMenu).toBeUndefined()
+    expect(latestNodes.find(node => node.id === 'n1')?.position.x).toBe(0)
+    expect(latestNodes.find(node => node.id === 'n2')?.position.x).toBe(80)
+  })
+
+  it('should cancel when alignable nodes shrink to one item', () => {
+    const nodes = [
+      createNode({ id: 'n1', selected: true, width: 40, height: 20 }),
+      createNode({ id: 'n2', selected: true, position: { x: 80, y: 20 }, width: 40, height: 20 }),
+    ]
+    mockGetAlignableNodes.mockImplementation((allNodes: Node[]) => [allNodes[0]])
+
+    const { store } = renderSelectionMenu({ nodes })
+
+    act(() => {
+      store.setState({ selectionMenu: { left: 100, top: 100 } })
+    })
+
+    fireEvent.click(screen.getByTestId('selection-contextmenu-item-left'))
+
+    expect(store.getState().selectionMenu).toBeUndefined()
+    expect(latestNodes.find(node => node.id === 'n1')?.position.x).toBe(0)
+    expect(latestNodes.find(node => node.id === 'n2')?.position.x).toBe(80)
+  })
+
+  it('should skip align updates when a selected node is not found in the draft', () => {
+    const nodes = [
+      createNode({ id: 'n1', selected: true, position: { x: 20, y: 40 }, width: 40, height: 20 }),
+      createNode({ id: 'n2', selected: true, position: { x: 140, y: 90 }, width: 60, height: 30 }),
+    ]
+    mockGetAlignableNodes.mockImplementation((allNodes: Node[]) => [
+      allNodes[0],
+      { ...allNodes[1], id: 'missing-node' },
+    ])
+
+    const { store } = renderSelectionMenu({ nodes })
+
+    act(() => {
+      store.setState({ selectionMenu: { left: 100, top: 100 } })
+    })
+
+    fireEvent.click(screen.getByTestId(`selection-contextmenu-item-${AlignType.Right}`))
+
+    expect(latestNodes.find(node => node.id === 'n1')?.position.x).toBe(160)
+    expect(latestNodes.find(node => node.id === 'n2')?.position.x).toBe(140)
   })
 })
