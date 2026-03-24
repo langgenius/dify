@@ -22,6 +22,7 @@ from dify_graph.model_runtime.entities import (
     TextPromptMessageContent,
     ToolPromptMessage,
 )
+from dify_graph.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     PromptMessageContentUnionTypes,
@@ -37,7 +38,7 @@ from dify_graph.runtime import VariablePool
 from dify_graph.variables import ArrayFileSegment, FileSegment
 from dify_graph.variables.segments import ArrayAnySegment, NoneSegment, StringSegment
 
-from .entities import LLMNodeChatModelMessage, LLMNodeCompletionModelPromptTemplate
+from .entities import LLMNodeChatModelMessage, LLMNodeCompletionModelPromptTemplate, ModelConfig
 from .exc import (
     InvalidVariableTypeError,
     MemoryRolePrefixRequiredError,
@@ -47,9 +48,7 @@ from .exc import (
 from .protocols import TemplateRenderer
 
 
-def fetch_model_config(
-    *, tenant_id: str, node_data_model: ModelConfig
-) -> tuple[ModelInstance, Any]:
+def fetch_model_config(*, tenant_id: str, node_data_model: ModelConfig) -> tuple[ModelInstance, Any]:
     from core.app.llm.model_access import build_dify_model_access
     from core.app.llm.model_access import fetch_model_config as _fetch
 
@@ -59,6 +58,12 @@ def fetch_model_config(
         credentials_provider=credentials_provider,
         model_factory=model_factory,
     )
+
+
+def deduct_llm_quota(*, tenant_id: str, model_instance: ModelInstance, usage: LLMUsage) -> None:
+    from core.app.llm.quota import deduct_llm_quota as _deduct
+
+    _deduct(tenant_id=tenant_id, model_instance=model_instance, usage=usage)
 
 
 def fetch_model_schema(*, model_instance: ModelInstance) -> AIModelEntity:

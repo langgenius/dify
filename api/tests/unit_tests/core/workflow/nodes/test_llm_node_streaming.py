@@ -35,7 +35,14 @@ def patch_deduct_llm_quota(monkeypatch):
 def _make_llm_node(reasoning_format: str) -> LLMNode:
     node = LLMNode.__new__(LLMNode)
     object.__setattr__(node, "_node_data", types.SimpleNamespace(reasoning_format=reasoning_format, tools=[]))
-    object.__setattr__(node, "tenant_id", "tenant")
+    object.__setattr__(
+        node,
+        "_run_context",
+        {"_dify": types.SimpleNamespace(
+            tenant_id="tenant", app_id="app", user_id="user",
+            user_from="account", invoke_from="debugger",
+        )},
+    )
     return node
 
 
