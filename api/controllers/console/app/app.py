@@ -95,54 +95,27 @@ class CreateAppPayload(BaseModel):
     name: str = Field(..., min_length=1, description="App name")
     description: str | None = Field(default=None, description="App description (max 400 chars)", max_length=400)
     mode: Literal["chat", "agent-chat", "advanced-chat", "workflow", "completion"] = Field(..., description="App mode")
-    icon_type: str | None = Field(default=None, description="Icon type")
+    icon_type: IconType | None = Field(default=None, description="Icon type")
     icon: str | None = Field(default=None, description="Icon")
     icon_background: str | None = Field(default=None, description="Icon background color")
-
-    @field_validator("icon_type")
-    @classmethod
-    def validate_icon_type(cls, value: str | None) -> str | None:
-        if value is None:
-            return None
-
-        IconType(value)
-        return value
 
 
 class UpdateAppPayload(BaseModel):
     name: str = Field(..., min_length=1, description="App name")
     description: str | None = Field(default=None, description="App description (max 400 chars)", max_length=400)
-    icon_type: str | None = Field(default=None, description="Icon type")
+    icon_type: IconType | None = Field(default=None, description="Icon type")
     icon: str | None = Field(default=None, description="Icon")
     icon_background: str | None = Field(default=None, description="Icon background color")
     use_icon_as_answer_icon: bool | None = Field(default=None, description="Use icon as answer icon")
     max_active_requests: int | None = Field(default=None, description="Maximum active requests")
 
-    @field_validator("icon_type")
-    @classmethod
-    def validate_icon_type(cls, value: str | None) -> str | None:
-        if value is None:
-            return None
-
-        IconType(value)
-        return value
-
 
 class CopyAppPayload(BaseModel):
     name: str | None = Field(default=None, description="Name for the copied app")
     description: str | None = Field(default=None, description="Description for the copied app", max_length=400)
-    icon_type: str | None = Field(default=None, description="Icon type")
+    icon_type: IconType | None = Field(default=None, description="Icon type")
     icon: str | None = Field(default=None, description="Icon")
     icon_background: str | None = Field(default=None, description="Icon background color")
-
-    @field_validator("icon_type")
-    @classmethod
-    def validate_icon_type(cls, value: str | None) -> str | None:
-        if value is None:
-            return None
-
-        IconType(value)
-        return value
 
 
 class AppExportQuery(BaseModel):

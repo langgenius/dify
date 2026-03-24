@@ -228,9 +228,8 @@ class TestAppEndpoints:
         monkeypatch.setattr(app_module, "AppService", lambda: app_service)
         monkeypatch.setattr(app_module.AppDetailWithSite, "model_validate", MagicMock(return_value=response_model))
 
-        with (
-            app.test_request_context("/console/api/apps/app-1", method="PUT", json=payload),
-            patch.object(type(console_ns), "payload", payload),
+        with app.test_request_context("/console/api/apps/app-1", method="PUT", json=payload), patch.object(
+            type(console_ns), "payload", payload
         ):
             response = method(app_model=SimpleNamespace(icon_type=app_module.IconType.EMOJI))
 
