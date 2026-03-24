@@ -102,17 +102,17 @@ jobs:
       - name: Web tsslint
         if: steps.changed-files.outputs.any_changed == 'true'
         working-directory: ./web
-        run: vp run lint:tss --cache
+        run: vp run lint:tss
 
       - name: Web type check
         if: steps.changed-files.outputs.any_changed == 'true'
         working-directory: ./web
-        run: vp run type-check --cache
+        run: vp run type-check
 
       - name: Web dead code check
         if: steps.changed-files.outputs.any_changed == 'true'
         working-directory: ./web
-        run: vp run knip --cache
+        run: vp run knip
 
       - name: Save ESLint cache
         if: steps.changed-files.outputs.any_changed == 'true' && success() && steps.eslint-cache-restore.outputs.cache-hit != 'true'
