@@ -22,7 +22,8 @@ const mocks = vi.hoisted(() => ({
   movePending: false,
   moveMutateAsync: vi.fn<(payload: MoveMutationPayload) => Promise<void>>(),
   emitTreeUpdate: vi.fn<() => void>(),
-  toastNotify: vi.fn<(payload: { type: string, message: string }) => void>(),
+  toastSuccess: vi.fn<(message: string) => void>(),
+  toastError: vi.fn<(message: string) => void>(),
   toApiParentId: vi.fn<(folderId: string | null | undefined) => string | null>(),
 }))
 
@@ -45,9 +46,10 @@ vi.mock('../../../utils/tree-utils', () => ({
   toApiParentId: mocks.toApiParentId,
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
-  default: {
-    notify: mocks.toastNotify,
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    success: mocks.toastSuccess,
+    error: mocks.toastError,
   },
 }))
 
@@ -90,10 +92,7 @@ describe('useNodeMove', () => {
         },
       })
       expect(mocks.emitTreeUpdate).toHaveBeenCalledTimes(1)
-      expect(mocks.toastNotify).toHaveBeenCalledWith({
-        type: 'success',
-        message: 'workflow.skillSidebar.menu.moved',
-      })
+      expect(mocks.toastSuccess).toHaveBeenCalledWith('workflow.skillSidebar.menu.moved')
     })
 
     it('should use empty appId when app detail is unavailable', async () => {
@@ -126,10 +125,7 @@ describe('useNodeMove', () => {
       })
 
       expect(mocks.emitTreeUpdate).not.toHaveBeenCalled()
-      expect(mocks.toastNotify).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'workflow.skillSidebar.menu.moveError',
-      })
+      expect(mocks.toastError).toHaveBeenCalledWith('workflow.skillSidebar.menu.moveError')
     })
   })
 })

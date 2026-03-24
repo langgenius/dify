@@ -5,12 +5,12 @@ import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { usePathname } from '@/next/navigation'
 import { cn } from '@/utils/classnames'
 import Divider from '../base/divider'
-import Tooltip from '../base/tooltip'
 import { getKeyboardKeyCodeBySystem } from '../workflow/utils'
 import AppInfo from './app-info'
 import AppSidebarDropdown from './app-sidebar-dropdown'
@@ -63,9 +63,9 @@ const AppDetailNav = ({
   const [hideHeader, setHideHeader] = useState(workflowCanvasMaximize)
   const { eventEmitter } = useEventEmitterContextContext()
 
-  eventEmitter?.useSubscription((v: { type: string; payload?: boolean }) => {
-    if (v?.type === 'workflow-canvas-maximize')
-      setHideHeader(v.payload ?? false)
+  eventEmitter?.useSubscription((v) => {
+    if (typeof v === 'object' && v?.type === 'workflow-canvas-maximize')
+      setHideHeader((v.payload as boolean) ?? false)
   })
 
   useEffect(() => {
@@ -158,9 +158,8 @@ const AppDetailNav = ({
       {iconType !== 'app' && extraInfo && extraInfo(appSidebarExpand)}
       {iconType === 'app' && showUpgradeButton && (
         <div className={cn('shrink-0 border-t border-divider-subtle', expand ? 'p-3' : 'p-2')}>
-          <Tooltip popupContent={!expand ? t('sandboxMigrationModal.title', { ns: 'workflow' }) : undefined}>
-            <button
-              type="button"
+          <Tooltip>
+            <TooltipTrigger
               className={cn(
                 'flex w-full cursor-pointer items-center gap-2 rounded-lg text-components-menu-item-text',
                 'hover:bg-components-menu-item-bg-hover hover:text-components-menu-item-text-hover',
@@ -174,7 +173,12 @@ const AppDetailNav = ({
               {expand && (
                 <span className="system-xs-medium">{t('sandboxMigrationModal.title', { ns: 'workflow' })}</span>
               )}
-            </button>
+            </TooltipTrigger>
+            {!expand && (
+              <TooltipContent>
+                {t('sandboxMigrationModal.title', { ns: 'workflow' })}
+              </TooltipContent>
+            )}
           </Tooltip>
         </div>
       )}

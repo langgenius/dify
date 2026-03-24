@@ -255,7 +255,7 @@ const NodePanel: FC<Props> = ({
                 </StatusContainer>
               )}
             </div>
-            {nodeInfo.inputs && (
+            {!!nodeInfo.inputs && (
               <div className={cn('mb-1')}>
                 <CodeEditor
                   readOnly
@@ -267,7 +267,7 @@ const NodePanel: FC<Props> = ({
                 />
               </div>
             )}
-            {nodeInfo.process_data && (
+            {!!nodeInfo.process_data && (
               <div className={cn('mb-1')}>
                 <CodeEditor
                   readOnly

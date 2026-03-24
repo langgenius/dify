@@ -1,3 +1,5 @@
+activate/
+app_factory.py
 controllers/console/app/annotation.py
 controllers/console/app/app.py
 controllers/console/app/app_import.py
@@ -10,6 +12,7 @@ controllers/console/ping.py
 controllers/console/setup.py
 controllers/console/version.py
 controllers/console/workspace/trigger_providers.py
+controllers/console/socketio/workflow.py
 controllers/service_api/app/annotation.py
 controllers/web/workflow_events.py
 core/agent/fc_agent_runner.py

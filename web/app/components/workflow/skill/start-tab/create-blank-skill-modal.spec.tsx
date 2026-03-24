@@ -13,7 +13,8 @@ const mocks = vi.hoisted(() => ({
   mutateAsync: vi.fn(),
   emitTreeUpdate: vi.fn(),
   prepareSkillUploadFile: vi.fn(),
-  toastNotify: vi.fn(),
+  toastSuccess: vi.fn(),
+  toastError: vi.fn(),
   existingNames: new Set<string>(),
   workflowState: {
     setUploadStatus: vi.fn(),
@@ -48,9 +49,10 @@ vi.mock('@/app/components/workflow/store', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
-  default: {
-    notify: (...args: unknown[]) => mocks.toastNotify(...args),
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    success: (...args: unknown[]) => mocks.toastSuccess(...args),
+    error: (...args: unknown[]) => mocks.toastError(...args),
   },
 }))
 
@@ -121,10 +123,8 @@ describe('CreateBlankSkillModal', () => {
       expect(mocks.workflowState.setUploadProgress).toHaveBeenCalledWith({ uploaded: 1, total: 1, failed: 0 })
       expect(mocks.emitTreeUpdate).toHaveBeenCalledTimes(1)
       expect(mocks.workflowState.openTab).toHaveBeenCalledWith('skill-md-id', { pinned: true })
-      expect(mocks.toastNotify).toHaveBeenCalledWith({
-        type: 'success',
-        message: 'workflow.skill.startTab.createSuccess:{"name":"new-skill"}',
-      })
+      expect(mocks.toastSuccess).toHaveBeenCalledWith('workflow.skill.startTab.createSuccess:{"name":"new-skill"}')
+      expect(mocks.toastError).not.toHaveBeenCalled()
       expect(onClose).toHaveBeenCalledTimes(1)
       expect(screen.getByRole('textbox')).toHaveValue('')
     })
@@ -141,10 +141,8 @@ describe('CreateBlankSkillModal', () => {
         expect(mocks.workflowState.setUploadStatus).toHaveBeenCalledWith('partial_error')
       })
 
-      expect(mocks.toastNotify).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'workflow.skill.startTab.createError',
-      })
+      expect(mocks.toastError).toHaveBeenCalledWith('workflow.skill.startTab.createError')
+      expect(mocks.toastSuccess).not.toHaveBeenCalled()
       expect(onClose).not.toHaveBeenCalled()
       expect(screen.getByRole('textbox')).toHaveValue('')
     })

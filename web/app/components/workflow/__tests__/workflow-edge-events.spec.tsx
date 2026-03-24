@@ -261,6 +261,32 @@ vi.mock('../hooks/use-workflow-search', () => ({
   useWorkflowSearch: workflowHookMocks.useWorkflowSearch,
 }))
 
+vi.mock('../hooks/use-workflow-comment', () => ({
+  useWorkflowComment: () => ({
+    comments: [],
+    loading: false,
+    pendingComment: null,
+    activeComment: null,
+    activeCommentLoading: false,
+    replySubmitting: false,
+    replyUpdating: false,
+    handleCommentSubmit: vi.fn(),
+    handleCommentCancel: vi.fn(),
+    handleCommentIconClick: vi.fn(),
+    handleActiveCommentClose: vi.fn(),
+    handleCommentResolve: vi.fn(),
+    handleCommentDelete: vi.fn(),
+    handleCommentNavigate: vi.fn(),
+    handleCommentReply: vi.fn(),
+    handleCommentReplyUpdate: vi.fn(),
+    handleCommentReplyDelete: vi.fn(),
+    handleCommentPositionUpdate: vi.fn(),
+    refreshActiveComment: vi.fn(),
+    handleCreateComment: vi.fn(),
+    loadComments: vi.fn(),
+  }),
+}))
+
 vi.mock('../nodes/_base/components/variable/use-match-schema-type', () => ({
   default: () => ({
     schemaTypeDefinitions: undefined,

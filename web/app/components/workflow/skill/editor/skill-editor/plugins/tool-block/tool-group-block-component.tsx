@@ -368,7 +368,7 @@ const ToolGroupBlockComponent = ({
     if (!configuredToolValue)
       return
     if (!toolValue || toolValue.tool_name !== configuredToolValue.tool_name || toolValue.provider_name !== configuredToolValue.provider_name)
-      // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
+      // eslint-disable-next-line react/set-state-in-effect
       setToolValue(configuredToolValue)
   }, [configuredToolValue, toolValue])
 
@@ -376,14 +376,14 @@ const ToolGroupBlockComponent = ({
     if (expandedToolId)
       return
     if (toolValue)
-      // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
+      // eslint-disable-next-line react/set-state-in-effect
       setToolValue(null)
   }, [expandedToolId, toolValue])
 
   useEffect(() => {
     if (!isSettingOpen || !configuredToolValue)
       return
-    // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
+    // eslint-disable-next-line react/set-state-in-effect
     setToolValue(configuredToolValue)
   }, [configuredToolValue, isSettingOpen])
 
@@ -394,7 +394,7 @@ const ToolGroupBlockComponent = ({
     const fallbackContainer = document.querySelector('[data-skill-editor-root="true"]') as HTMLElement | null
     const container = containerFromRef || fallbackContainer
     if (container)
-      // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
+      // eslint-disable-next-line react/set-state-in-effect
       setPortalContainer(container)
   }, [ref, useModalValue])
 

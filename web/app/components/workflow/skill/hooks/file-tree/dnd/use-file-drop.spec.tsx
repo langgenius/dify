@@ -11,12 +11,14 @@ const {
   mockUploadMutateAsync,
   mockPrepareSkillUploadFile,
   mockEmitTreeUpdate,
-  mockToastNotify,
+  mockToastSuccess,
+  mockToastError,
 } = vi.hoisted(() => ({
   mockUploadMutateAsync: vi.fn(),
   mockPrepareSkillUploadFile: vi.fn(),
   mockEmitTreeUpdate: vi.fn(),
-  mockToastNotify: vi.fn(),
+  mockToastSuccess: vi.fn(),
+  mockToastError: vi.fn(),
 }))
 
 vi.mock('@/service/use-app-asset', () => ({
@@ -34,9 +36,10 @@ vi.mock('../data/use-skill-tree-collaboration', () => ({
   useSkillTreeUpdateEmitter: () => mockEmitTreeUpdate,
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
-  default: {
-    notify: mockToastNotify,
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    success: mockToastSuccess,
+    error: mockToastError,
   },
 }))
 
@@ -169,10 +172,7 @@ describe('useFileDrop', () => {
 
       expect(mockPrepareSkillUploadFile).not.toHaveBeenCalled()
       expect(mockUploadMutateAsync).not.toHaveBeenCalled()
-      expect(mockToastNotify).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'workflow.skillSidebar.menu.folderDropNotSupported',
-      })
+      expect(mockToastError).toHaveBeenCalledWith('workflow.skillSidebar.menu.folderDropNotSupported')
       expect(store.getState().currentDragType).toBeNull()
       expect(store.getState().dragOverFolderId).toBeNull()
     })
@@ -201,14 +201,8 @@ describe('useFileDrop', () => {
         parentId: 'folder-mixed',
       })
       expect(mockEmitTreeUpdate).toHaveBeenCalledTimes(1)
-      expect(mockToastNotify).toHaveBeenNthCalledWith(1, {
-        type: 'error',
-        message: 'workflow.skillSidebar.menu.folderDropNotSupported',
-      })
-      expect(mockToastNotify).toHaveBeenNthCalledWith(2, {
-        type: 'success',
-        message: 'workflow.skillSidebar.menu.filesUploaded:{"count":1}',
-      })
+      expect(mockToastError).toHaveBeenCalledWith('workflow.skillSidebar.menu.folderDropNotSupported')
+      expect(mockToastSuccess).toHaveBeenCalledWith('workflow.skillSidebar.menu.filesUploaded:{"count":1}')
     })
   })
 
@@ -245,10 +239,7 @@ describe('useFileDrop', () => {
         parentId: 'folder-9',
       })
       expect(mockEmitTreeUpdate).toHaveBeenCalledTimes(1)
-      expect(mockToastNotify).toHaveBeenCalledWith({
-        type: 'success',
-        message: 'workflow.skillSidebar.menu.filesUploaded:{"count":2}',
-      })
+      expect(mockToastSuccess).toHaveBeenCalledWith('workflow.skillSidebar.menu.filesUploaded:{"count":2}')
     })
   })
 
@@ -269,10 +260,7 @@ describe('useFileDrop', () => {
 
       expect(mockUploadMutateAsync).toHaveBeenCalledTimes(1)
       expect(mockEmitTreeUpdate).not.toHaveBeenCalled()
-      expect(mockToastNotify).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'workflow.skillSidebar.menu.uploadError',
-      })
+      expect(mockToastError).toHaveBeenCalledWith('workflow.skillSidebar.menu.uploadError')
     })
   })
 })

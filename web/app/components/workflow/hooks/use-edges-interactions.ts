@@ -172,9 +172,10 @@ export const useEdgesInteractions = () => {
       }
     })
     setEdges(newEdges)
+    workflowStore.setState({ edgeMenu: undefined })
     handleSyncWorkflowDraft()
     saveStateToHistory(WorkflowHistoryEvent.EdgeDelete)
-  }, [getNodesReadOnly, collaborativeWorkflow, handleSyncWorkflowDraft, saveStateToHistory])
+  }, [getNodesReadOnly, collaborativeWorkflow, workflowStore, handleSyncWorkflowDraft, saveStateToHistory])
 
   const handleEdgeDeleteById = useCallback((edgeId: string) => {
     if (getNodesReadOnly())

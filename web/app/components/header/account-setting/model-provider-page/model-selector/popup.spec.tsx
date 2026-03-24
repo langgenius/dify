@@ -1,4 +1,5 @@
 import type { Model, ModelItem } from '../declarations'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { tooltipManager } from '@/app/components/base/tooltip/TooltipManager'
 import {
@@ -8,6 +9,11 @@ import {
   ModelTypeEnum,
 } from '../declarations'
 import Popup from './popup'
+
+const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+function renderWithProviders(ui: React.ReactElement) {
+  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
+}
 
 let mockLanguage = 'en_US'
 
@@ -28,6 +34,7 @@ vi.mock('../hooks', async () => {
   return {
     ...actual,
     useLanguage: () => mockLanguage,
+    useMarketplaceAllPlugins: () => [],
   }
 })
 
@@ -66,7 +73,7 @@ describe('Popup', () => {
   })
 
   it('should filter models by search and allow clearing search', () => {
-    render(
+    renderWithProviders(
       <Popup
         modelList={[makeModel()]}
         onSelect={vi.fn()}
@@ -92,7 +99,7 @@ describe('Popup', () => {
 
     // When tool-call support is missing, it should be filtered out.
     mockSupportFunctionCall.mockReturnValue(false)
-    const { unmount } = render(
+    const { unmount } = renderWithProviders(
       <Popup
         modelList={modelList}
         onSelect={vi.fn()}
@@ -105,7 +112,7 @@ describe('Popup', () => {
     // When tool-call support exists, the non-toolCall feature check should also pass.
     unmount()
     mockSupportFunctionCall.mockReturnValue(true)
-    const { unmount: unmount2 } = render(
+    const { unmount: unmount2 } = renderWithProviders(
       <Popup
         modelList={modelList}
         onSelect={vi.fn()}
@@ -116,7 +123,7 @@ describe('Popup', () => {
     expect(screen.getByText('openai')).toBeInTheDocument()
 
     unmount2()
-    const { unmount: unmount3 } = render(
+    const { unmount: unmount3 } = renderWithProviders(
       <Popup
         modelList={modelList}
         onSelect={vi.fn()}
@@ -128,7 +135,7 @@ describe('Popup', () => {
 
     // When features are missing, non-toolCall feature checks should fail.
     unmount3()
-    render(
+    renderWithProviders(
       <Popup
         modelList={[makeModel({ models: [makeModelItem({ features: undefined })] })]}
         onSelect={vi.fn()}
@@ -142,7 +149,7 @@ describe('Popup', () => {
   it('should match labels from other languages when current language key is missing', () => {
     mockLanguage = 'fr_FR'
 
-    render(
+    renderWithProviders(
       <Popup
         modelList={[makeModel()]}
         onSelect={vi.fn()}
@@ -163,7 +170,7 @@ describe('Popup', () => {
       models: [makeModelItem({ features: [ModelFeatureEnum.toolCall] })],
     })
 
-    render(
+    renderWithProviders(
       <Popup
         modelList={[modelWithToolCallOnly]}
         onSelect={vi.fn()}
@@ -177,7 +184,7 @@ describe('Popup', () => {
   })
 
   it('should close tooltip on scroll', () => {
-    const { container } = render(
+    const { container } = renderWithProviders(
       <Popup
         modelList={[makeModel()]}
         onSelect={vi.fn()}
@@ -190,7 +197,7 @@ describe('Popup', () => {
   })
 
   it('should open provider settings when clicking footer link', () => {
-    render(
+    renderWithProviders(
       <Popup
         modelList={[makeModel()]}
         onSelect={vi.fn()}
@@ -207,7 +214,7 @@ describe('Popup', () => {
 
   it('should call onHide when footer settings link is clicked', () => {
     const mockOnHide = vi.fn()
-    render(
+    renderWithProviders(
       <Popup
         modelList={[makeModel()]}
         onSelect={vi.fn()}
@@ -221,7 +228,7 @@ describe('Popup', () => {
   })
 
   it('should match model label when searchText is non-empty and label key exists for current language', () => {
-    render(
+    renderWithProviders(
       <Popup
         modelList={[makeModel()]}
         onSelect={vi.fn()}

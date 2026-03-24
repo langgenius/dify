@@ -48,7 +48,7 @@ const UpgradeModalBase: FC<Props> = ({
           </div>
         </div>
 
-        {footer && (
+        {!!footer && (
           <div className="mb-8 mt-10 flex justify-end space-x-2 px-8">
             {footer}
           </div>

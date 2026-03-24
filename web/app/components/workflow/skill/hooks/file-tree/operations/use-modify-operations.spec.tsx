@@ -16,7 +16,8 @@ const mocks = vi.hoisted(() => ({
   deletePending: false,
   deleteMutateAsync: vi.fn<(payload: DeleteMutationPayload) => Promise<void>>(),
   emitTreeUpdate: vi.fn<() => void>(),
-  toastNotify: vi.fn<(payload: { type: string, message: string }) => void>(),
+  toastSuccess: vi.fn<(message: string) => void>(),
+  toastError: vi.fn<(message: string) => void>(),
   getAllDescendantFileIds: vi.fn<(nodeId: string, nodes: TreeNodeData[]) => string[]>(),
 }))
 
@@ -35,9 +36,10 @@ vi.mock('../../../utils/tree-utils', () => ({
   getAllDescendantFileIds: mocks.getAllDescendantFileIds,
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
-  default: {
-    notify: mocks.toastNotify,
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    success: mocks.toastSuccess,
+    error: mocks.toastError,
   },
 }))
 
@@ -234,10 +236,7 @@ describe('useModifyOperations', () => {
       expect(clearDraftContent).toHaveBeenNthCalledWith(2, 'desc-2')
       expect(clearDraftContent).toHaveBeenNthCalledWith(3, 'file-7')
 
-      expect(mocks.toastNotify).toHaveBeenCalledWith({
-        type: 'success',
-        message: 'workflow.skillSidebar.menu.fileDeleted',
-      })
+      expect(mocks.toastSuccess).toHaveBeenCalledWith('workflow.skillSidebar.menu.fileDeleted')
       expect(result.current.showDeleteConfirm).toBe(false)
       expect(onClose).toHaveBeenCalledTimes(1)
     })
@@ -269,10 +268,7 @@ describe('useModifyOperations', () => {
       expect(clearDraftContent).toHaveBeenCalledWith('file-in-folder')
       expect(closeTab).not.toHaveBeenCalledWith('folder-9')
       expect(clearDraftContent).not.toHaveBeenCalledWith('folder-9')
-      expect(mocks.toastNotify).toHaveBeenCalledWith({
-        type: 'success',
-        message: 'workflow.skillSidebar.menu.deleted',
-      })
+      expect(mocks.toastSuccess).toHaveBeenCalledWith('workflow.skillSidebar.menu.deleted')
     })
   })
 
@@ -303,10 +299,7 @@ describe('useModifyOperations', () => {
       expect(mocks.emitTreeUpdate).not.toHaveBeenCalled()
       expect(closeTab).not.toHaveBeenCalled()
       expect(clearDraftContent).not.toHaveBeenCalled()
-      expect(mocks.toastNotify).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'workflow.skillSidebar.menu.deleteError',
-      })
+      expect(mocks.toastError).toHaveBeenCalledWith('workflow.skillSidebar.menu.deleteError')
       expect(result.current.showDeleteConfirm).toBe(false)
       expect(onClose).toHaveBeenCalledTimes(1)
     })
@@ -329,10 +322,7 @@ describe('useModifyOperations', () => {
       })
 
       expect(mocks.getAllDescendantFileIds).not.toHaveBeenCalled()
-      expect(mocks.toastNotify).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'workflow.skillSidebar.menu.fileDeleteError',
-      })
+      expect(mocks.toastError).toHaveBeenCalledWith('workflow.skillSidebar.menu.fileDeleteError')
     })
   })
 })

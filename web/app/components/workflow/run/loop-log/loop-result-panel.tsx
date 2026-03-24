@@ -129,7 +129,7 @@ const LoopResultPanel: FC<Props> = ({
             )}
             >
               {
-                loopVariableMap?.[index] && (
+                !!loopVariableMap?.[index] && (
                   <div className="p-2 pb-0">
                     <CodeEditor
                       readOnly

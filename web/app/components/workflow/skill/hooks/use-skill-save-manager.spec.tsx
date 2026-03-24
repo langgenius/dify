@@ -8,9 +8,10 @@ import { START_TAB_ID } from '../constants'
 import { useSkillSaveManager } from './skill-save-context'
 import { SkillSaveProvider } from './use-skill-save-manager'
 
-const { mockMutateAsync, mockToastNotify } = vi.hoisted(() => ({
+const { mockMutateAsync, mockToastSuccess, mockToastError } = vi.hoisted(() => ({
   mockMutateAsync: vi.fn(),
-  mockToastNotify: vi.fn(),
+  mockToastSuccess: vi.fn(),
+  mockToastError: vi.fn(),
 }))
 
 vi.mock('@/service/use-app-asset', () => ({
@@ -19,9 +20,10 @@ vi.mock('@/service/use-app-asset', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
-  default: {
-    notify: mockToastNotify,
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    success: mockToastSuccess,
+    error: mockToastError,
   },
 }))
 
@@ -507,11 +509,9 @@ describe('useSkillSaveManager', () => {
 
       // Assert
       await waitFor(() => {
-        expect(mockToastNotify).toHaveBeenCalledWith({
-          type: 'success',
-          message: 'common.api.saved',
-        })
+        expect(mockToastSuccess).toHaveBeenCalledWith('common.api.saved')
       })
+      expect(mockToastError).not.toHaveBeenCalled()
     })
 
     it('should show error toast when save fails', async () => {
@@ -531,11 +531,9 @@ describe('useSkillSaveManager', () => {
 
       // Assert
       await waitFor(() => {
-        expect(mockToastNotify).toHaveBeenCalledWith({
-          type: 'error',
-          message: 'Network error',
-        })
+        expect(mockToastError).toHaveBeenCalledWith('Network error')
       })
+      expect(mockToastSuccess).not.toHaveBeenCalled()
     })
 
     it('should use registered fallback content for keyboard save', async () => {

@@ -22,7 +22,8 @@ const mocks = vi.hoisted(() => ({
   reorderPending: false,
   reorderMutateAsync: vi.fn<(payload: ReorderMutationPayload) => Promise<void>>(),
   emitTreeUpdate: vi.fn<() => void>(),
-  toastNotify: vi.fn<(payload: { type: string, message: string }) => void>(),
+  toastSuccess: vi.fn<(message: string) => void>(),
+  toastError: vi.fn<(message: string) => void>(),
 }))
 
 vi.mock('@/app/components/app/store', () => ({
@@ -40,9 +41,10 @@ vi.mock('../data/use-skill-tree-collaboration', () => ({
   useSkillTreeUpdateEmitter: () => mocks.emitTreeUpdate,
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
-  default: {
-    notify: mocks.toastNotify,
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    success: mocks.toastSuccess,
+    error: mocks.toastError,
   },
 }))
 
@@ -82,10 +84,7 @@ describe('useNodeReorder', () => {
         },
       })
       expect(mocks.emitTreeUpdate).toHaveBeenCalledTimes(1)
-      expect(mocks.toastNotify).toHaveBeenCalledWith({
-        type: 'success',
-        message: 'workflow.skillSidebar.menu.moved',
-      })
+      expect(mocks.toastSuccess).toHaveBeenCalledWith('workflow.skillSidebar.menu.moved')
     })
 
     it('should use empty appId when app detail is missing', async () => {
@@ -117,10 +116,7 @@ describe('useNodeReorder', () => {
       })
 
       expect(mocks.emitTreeUpdate).not.toHaveBeenCalled()
-      expect(mocks.toastNotify).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'workflow.skillSidebar.menu.moveError',
-      })
+      expect(mocks.toastError).toHaveBeenCalledWith('workflow.skillSidebar.menu.moveError')
     })
   })
 })

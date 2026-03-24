@@ -56,7 +56,8 @@ const mocks = vi.hoisted(() => ({
   movePending: false,
   moveMutateAsync: vi.fn<(payload: MoveMutationPayload) => Promise<void>>(),
   emitTreeUpdate: vi.fn<() => void>(),
-  toastNotify: vi.fn<(payload: { type: string, message: string }) => void>(),
+  toastSuccess: vi.fn<(message: string) => void>(),
+  toastError: vi.fn<(message: string) => void>(),
   getTargetFolderIdFromSelection: vi.fn<(selectedId: string | null, nodes: TreeNodeData[]) => string>(),
   toApiParentId: vi.fn<(folderId: string | null | undefined) => string | null>(),
   findNodeById: vi.fn<(nodes: TreeNodeData[], nodeId: string) => TreeNodeData | null>(),
@@ -89,9 +90,10 @@ vi.mock('../../../utils/tree-utils', () => ({
   findNodeById: mocks.findNodeById,
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
-  default: {
-    notify: mocks.toastNotify,
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    success: mocks.toastSuccess,
+    error: mocks.toastError,
   },
 }))
 
@@ -151,7 +153,8 @@ describe('usePasteOperation', () => {
 
       expect(mocks.getTargetFolderIdFromSelection).not.toHaveBeenCalled()
       expect(mocks.moveMutateAsync).not.toHaveBeenCalled()
-      expect(mocks.toastNotify).not.toHaveBeenCalled()
+      expect(mocks.toastSuccess).not.toHaveBeenCalled()
+      expect(mocks.toastError).not.toHaveBeenCalled()
     })
 
     it('should no-op when clipboard has no node ids', async () => {
@@ -188,10 +191,7 @@ describe('usePasteOperation', () => {
       })
 
       expect(mocks.moveMutateAsync).not.toHaveBeenCalled()
-      expect(mocks.toastNotify).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'workflow.skillSidebar.menu.cannotMoveToSelf',
-      })
+      expect(mocks.toastError).toHaveBeenCalledWith('workflow.skillSidebar.menu.cannotMoveToSelf')
     })
   })
 
@@ -232,10 +232,7 @@ describe('usePasteOperation', () => {
       })
       expect(mocks.workflowState.clearClipboard).toHaveBeenCalledTimes(1)
       expect(mocks.emitTreeUpdate).toHaveBeenCalledTimes(1)
-      expect(mocks.toastNotify).toHaveBeenCalledWith({
-        type: 'success',
-        message: 'workflow.skillSidebar.menu.moved',
-      })
+      expect(mocks.toastSuccess).toHaveBeenCalledWith('workflow.skillSidebar.menu.moved')
     })
 
     it('should fallback to selectedTreeNodeId when tree has no selected node', async () => {
@@ -280,10 +277,7 @@ describe('usePasteOperation', () => {
 
       expect(mocks.workflowState.clearClipboard).not.toHaveBeenCalled()
       expect(mocks.emitTreeUpdate).not.toHaveBeenCalled()
-      expect(mocks.toastNotify).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'workflow.skillSidebar.menu.moveError',
-      })
+      expect(mocks.toastError).toHaveBeenCalledWith('workflow.skillSidebar.menu.moveError')
     })
 
     it('should prevent re-entrant paste while a paste is in progress', async () => {

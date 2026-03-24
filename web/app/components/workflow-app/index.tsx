@@ -195,8 +195,8 @@ const WorkflowAppWithAdditionalContext = () => {
   }, [appId])
 
   const { eventEmitter } = useEventEmitterContextContext()
-  eventEmitter?.useSubscription((v: { type: string }) => {
-    if (v?.type === 'upgrade-runtime-click')
+  eventEmitter?.useSubscription((v) => {
+    if (typeof v === 'object' && v?.type === 'upgrade-runtime-click')
       setShowMigrationModal(true)
   })
 
@@ -204,7 +204,7 @@ const WorkflowAppWithAdditionalContext = () => {
   const setShowUpgradeRuntimeModal = useStore(s => s.setShowUpgradeRuntimeModal)
   useEffect(() => {
     if (showUpgradeRuntimeModal) {
-      // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
+      // eslint-disable-next-line react/set-state-in-effect
       setShowMigrationModal(true)
       setShowUpgradeRuntimeModal(false)
     }
@@ -375,7 +375,7 @@ const WorkflowAppWithAdditionalContext = () => {
     if (lastCheckedAppIdRef.current !== appId) {
       lastCheckedAppIdRef.current = appId
       const dismissed = getSandboxMigrationDismissed(appId)
-      // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
+      // eslint-disable-next-line react/set-state-in-effect
       setShowMigrationModal(!sandboxEnabled && !dismissed)
     }
   }, [appId, isDataReady, sandboxEnabled, setNeedsRuntimeUpgrade])

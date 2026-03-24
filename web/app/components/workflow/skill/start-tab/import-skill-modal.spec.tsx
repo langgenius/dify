@@ -15,7 +15,8 @@ const mocks = vi.hoisted(() => ({
   buildUploadDataFromZip: vi.fn(),
   mutateAsync: vi.fn(),
   emitTreeUpdate: vi.fn(),
-  toastNotify: vi.fn(),
+  toastSuccess: vi.fn(),
+  toastError: vi.fn(),
   existingNames: new Set<string>(),
   workflowState: {
     setUploadStatus: vi.fn(),
@@ -67,9 +68,10 @@ vi.mock('@/app/components/workflow/store', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
-  default: {
-    notify: (...args: unknown[]) => mocks.toastNotify(...args),
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    success: (...args: unknown[]) => mocks.toastSuccess(...args),
+    error: (...args: unknown[]) => mocks.toastError(...args),
   },
 }))
 
@@ -116,10 +118,8 @@ describe('ImportSkillModal', () => {
 
       selectFile(new File(['readme'], 'README.md', { type: 'text/markdown' }))
 
-      expect(mocks.toastNotify).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'workflow.skill.startTab.importModal.invalidFileType',
-      })
+      expect(mocks.toastError).toHaveBeenCalledWith('workflow.skill.startTab.importModal.invalidFileType')
+      expect(mocks.toastSuccess).not.toHaveBeenCalled()
       expect(screen.getByRole('button', { name: /workflow\.skill\.startTab\.importModal\.importButton/i })).toBeDisabled()
     })
 
@@ -210,10 +210,8 @@ describe('ImportSkillModal', () => {
       expect(mocks.workflowState.setUploadProgress).toHaveBeenCalledWith({ uploaded: 1, total: 1, failed: 0 })
       expect(mocks.emitTreeUpdate).toHaveBeenCalledTimes(1)
       expect(mocks.workflowState.openTab).toHaveBeenCalledWith('skill-md-id', { pinned: true })
-      expect(mocks.toastNotify).toHaveBeenCalledWith({
-        type: 'success',
-        message: 'workflow.skill.startTab.importModal.importSuccess:{"name":"new-skill"}',
-      })
+      expect(mocks.toastSuccess).toHaveBeenCalledWith('workflow.skill.startTab.importModal.importSuccess:{"name":"new-skill"}')
+      expect(mocks.toastError).not.toHaveBeenCalled()
       expect(onClose).toHaveBeenCalledTimes(1)
     })
 
@@ -232,10 +230,8 @@ describe('ImportSkillModal', () => {
         expect(mocks.workflowState.setUploadStatus).toHaveBeenCalledWith('partial_error')
       })
 
-      expect(mocks.toastNotify).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'workflow.skill.startTab.importModal.nameDuplicate',
-      })
+      expect(mocks.toastError).toHaveBeenCalledWith('workflow.skill.startTab.importModal.nameDuplicate')
+      expect(mocks.toastSuccess).not.toHaveBeenCalled()
       expect(mocks.buildUploadDataFromZip).not.toHaveBeenCalled()
       expect(mocks.mutateAsync).not.toHaveBeenCalled()
     })
@@ -264,10 +260,8 @@ describe('ImportSkillModal', () => {
         expect(mocks.workflowState.setUploadStatus).toHaveBeenCalledWith('partial_error')
       })
 
-      expect(mocks.toastNotify).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'workflow.skill.startTab.importModal.errorEmptyZip',
-      })
+      expect(mocks.toastError).toHaveBeenCalledWith('workflow.skill.startTab.importModal.errorEmptyZip')
+      expect(mocks.toastSuccess).not.toHaveBeenCalled()
     })
 
     it('should fallback to raw error message when zip validation code is unknown', async () => {
@@ -283,10 +277,8 @@ describe('ImportSkillModal', () => {
         expect(mocks.workflowState.setUploadStatus).toHaveBeenCalledWith('partial_error')
       })
 
-      expect(mocks.toastNotify).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'custom zip error',
-      })
+      expect(mocks.toastError).toHaveBeenCalledWith('custom zip error')
+      expect(mocks.toastSuccess).not.toHaveBeenCalled()
     })
 
     it('should fallback to invalid zip error when import fails with non-validation error', async () => {
@@ -300,10 +292,8 @@ describe('ImportSkillModal', () => {
         expect(mocks.workflowState.setUploadStatus).toHaveBeenCalledWith('partial_error')
       })
 
-      expect(mocks.toastNotify).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'workflow.skill.startTab.importModal.errorInvalidZip',
-      })
+      expect(mocks.toastError).toHaveBeenCalledWith('workflow.skill.startTab.importModal.errorInvalidZip')
+      expect(mocks.toastSuccess).not.toHaveBeenCalled()
     })
   })
 })

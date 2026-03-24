@@ -36,7 +36,7 @@ vi.mock('@/context/app-context', () => ({
 }))
 
 vi.mock('@/app/components/base/avatar', () => ({
-  default: ({ name }: { name: string }) => <div data-testid="avatar">{name}</div>,
+  Avatar: ({ name }: { name: string }) => <div data-testid="avatar">{name}</div>,
 }))
 
 vi.mock('./mention-input', () => ({

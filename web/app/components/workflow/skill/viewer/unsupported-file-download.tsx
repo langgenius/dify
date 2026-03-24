@@ -30,7 +30,7 @@ const UnsupportedFileDownload = ({ name, size, downloadUrl }: UnsupportedFileDow
           <FileTypeIcon type={FileAppearanceTypeEnum.custom} size="xl" className="size-16 text-text-tertiary" />
           <div className="flex flex-col items-center gap-1 text-center">
             <p className="text-text-secondary system-md-medium">{name}</p>
-            {fileSize && (
+            {!!fileSize && (
               <p className="text-text-tertiary system-xs-regular">{fileSize}</p>
             )}
           </div>

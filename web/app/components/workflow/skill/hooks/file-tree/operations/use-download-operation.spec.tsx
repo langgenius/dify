@@ -31,11 +31,13 @@ const createDeferred = <T,>(): Deferred<T> => {
 const {
   mockGetFileDownloadUrl,
   mockDownloadUrl,
-  mockToastNotify,
+  mockToastSuccess,
+  mockToastError,
 } = vi.hoisted(() => ({
   mockGetFileDownloadUrl: vi.fn<(request: DownloadRequest) => Promise<DownloadResponse>>(),
   mockDownloadUrl: vi.fn<(payload: { url: string, fileName?: string }) => void>(),
-  mockToastNotify: vi.fn<(payload: { type: string, message: string }) => void>(),
+  mockToastSuccess: vi.fn(),
+  mockToastError: vi.fn(),
 }))
 
 vi.mock('@/service/client', () => ({
@@ -50,9 +52,10 @@ vi.mock('@/utils/download', () => ({
   downloadUrl: mockDownloadUrl,
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
-  default: {
-    notify: mockToastNotify,
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    success: mockToastSuccess,
+    error: mockToastError,
   },
 }))
 
@@ -109,7 +112,8 @@ describe('useDownloadOperation', () => {
         url: 'https://example.com/file.txt',
         fileName: 'notes.md',
       })
-      expect(mockToastNotify).not.toHaveBeenCalled()
+      expect(mockToastSuccess).not.toHaveBeenCalled()
+      expect(mockToastError).not.toHaveBeenCalled()
       expect(result.current.isDownloading).toBe(false)
     })
 
@@ -163,10 +167,8 @@ describe('useDownloadOperation', () => {
 
       expect(onClose).toHaveBeenCalledTimes(1)
       expect(mockDownloadUrl).not.toHaveBeenCalled()
-      expect(mockToastNotify).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'workflow.skillSidebar.menu.downloadError',
-      })
+      expect(mockToastError).toHaveBeenCalledWith('workflow.skillSidebar.menu.downloadError')
+      expect(mockToastSuccess).not.toHaveBeenCalled()
       expect(result.current.isDownloading).toBe(false)
     })
   })

@@ -141,7 +141,7 @@ const Answer: FC<AnswerProps> = ({
   }, [switchSibling, item.prevSibling, item.nextSibling])
 
   const contentIsEmpty = typeof content === 'string' && content.trim() === ''
-  const generationContentRenderIsUsed = llmGenerationItems?.length && llmGenerationItems.some((item) => {
+  const generationContentRenderIsUsed = !!llmGenerationItems?.length && llmGenerationItems.some((item) => {
     return item.type === 'tool' || item.type === 'thought'
   })
 

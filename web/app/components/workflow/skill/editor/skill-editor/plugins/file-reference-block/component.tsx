@@ -134,7 +134,7 @@ const FileReferenceBlock = ({ nodeKey, resourceId }: FileReferenceBlockProps) =>
     const width = 400
     const gap = 4
     const left = Math.max(8, rect.left - gap - width)
-    // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
+    // eslint-disable-next-line react/set-state-in-effect
     setPreviewStyle(_prev => ({
       position: 'fixed',
       top: rect.top,

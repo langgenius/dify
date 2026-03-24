@@ -17,7 +17,7 @@ const ComputerUseTip: FC<Props> = ({
 
   React.useEffect(() => {
     if (!visible)
-      // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
+      // eslint-disable-next-line react/set-state-in-effect
       setDismissed(false)
   }, [visible])
 
