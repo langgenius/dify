@@ -737,20 +737,25 @@ class DatasetIndexingStatusApi(Resource):
         ).all()
         documents_status = []
         for document in documents:
-            completed_segments = db.session.scalar(
-                select(func.count(DocumentSegment.id))
-                .where(
-                    DocumentSegment.completed_at.isnot(None),
-                    DocumentSegment.document_id == str(document.id),
-                    DocumentSegment.status != SegmentStatus.RE_SEGMENT,
+            completed_segments = (
+                db.session.scalar(
+                    select(func.count(DocumentSegment.id)).where(
+                        DocumentSegment.completed_at.isnot(None),
+                        DocumentSegment.document_id == str(document.id),
+                        DocumentSegment.status != SegmentStatus.RE_SEGMENT,
+                    )
                 )
-            ) or 0
-            total_segments = db.session.scalar(
-                select(func.count(DocumentSegment.id))
-                .where(
-                    DocumentSegment.document_id == str(document.id), DocumentSegment.status != SegmentStatus.RE_SEGMENT
+                or 0
+            )
+            total_segments = (
+                db.session.scalar(
+                    select(func.count(DocumentSegment.id)).where(
+                        DocumentSegment.document_id == str(document.id),
+                        DocumentSegment.status != SegmentStatus.RE_SEGMENT,
+                    )
                 )
-            ) or 0
+                or 0
+            )
             # Create a dictionary with document attributes and additional fields
             document_dict = {
                 "id": document.id,
@@ -799,10 +804,14 @@ class DatasetApiKeyApi(Resource):
     def post(self):
         _, current_tenant_id = current_account_with_tenant()
 
-        current_key_count = db.session.scalar(
-            select(func.count(ApiToken.id))
-            .where(ApiToken.type == self.resource_type, ApiToken.tenant_id == current_tenant_id)
-        ) or 0
+        current_key_count = (
+            db.session.scalar(
+                select(func.count(ApiToken.id)).where(
+                    ApiToken.type == self.resource_type, ApiToken.tenant_id == current_tenant_id
+                )
+            )
+            or 0
+        )
 
         if current_key_count >= self.max_keys:
             console_ns.abort(
