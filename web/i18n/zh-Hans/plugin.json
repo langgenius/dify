@@ -116,7 +116,7 @@
   "detailPanel.operation.remove": "移除",
   "detailPanel.operation.update": "更新",
   "detailPanel.operation.updateTooltip": "更新以获取最新模型。",
-  "detailPanel.operation.viewDetail": "在 Marketplace 查看",
+  "detailPanel.operation.viewDetail": "查看详情",
   "detailPanel.serviceOk": "服务正常",
   "detailPanel.strategyNum": "包含 {{num}} 个 {{strategy}}",
   "detailPanel.switchVersion": "切换版本",
