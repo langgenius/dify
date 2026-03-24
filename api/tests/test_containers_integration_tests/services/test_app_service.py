@@ -1293,4 +1293,3 @@ class TestAppService:
 
         meta = app_service.get_app_meta(chat_app)
         assert meta == {"tool_icons": {}}
-
