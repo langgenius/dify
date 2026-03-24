@@ -9,7 +9,7 @@ from werkzeug.exceptions import NotFound
 
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset
-from models.enums import DataSourceType
+from models.enums import DataSourceType, TagType
 from models.model import App, Tag, TagBinding
 from services.tag_service import TagService
 
@@ -547,7 +547,7 @@ class TestTagService:
         assert result is not None
         assert len(result) == 1
         assert result[0].name == "python_tag"
-        assert result[0].type == "app"
+        assert result[0].type == TagType.APP
         assert result[0].tenant_id == tenant.id
 
     def test_get_tag_by_tag_name_no_matches(
@@ -638,7 +638,7 @@ class TestTagService:
 
         # Verify all tags are returned
         for tag in result:
-            assert tag.type == "app"
+            assert tag.type == TagType.APP
             assert tag.tenant_id == tenant.id
             assert tag.id in [t.id for t in tags]
 

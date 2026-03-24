@@ -176,6 +176,7 @@
   "serviceApi.enabled": "V storitvi",
   "serviceApi.title": "Storitveni API",
   "unavailable": "Ni na voljo",
+  "unknownError": "Neznana napaka",
   "updated": "Posodobljene",
   "weightedScore.customized": "Prilagojeno",
   "weightedScore.description": "Z nastavljanjem dodeljenih uteži ta strategija za ponovno razvrščanje določa, ali naj se daje prednost semantičnemu ali ključnemu ujemanju.",
