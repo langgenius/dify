@@ -108,8 +108,8 @@ class LLMQuotaLayer(GraphEngineLayer):
     def _extract_model_instance(node: Node) -> ModelInstance | None:
         match node.node_type:
             case BuiltinNodeTypes.LLM | BuiltinNodeTypes.PARAMETER_EXTRACTOR | BuiltinNodeTypes.QUESTION_CLASSIFIER:
-                instance = getattr(node, "model_instance", None)
-                if isinstance(instance, ModelInstance):
+                instance: ModelInstance | None = getattr(node, "model_instance", None)
+                if instance is not None:
                     return instance
                 logger.warning(
                     "LLMQuotaLayer skipped quota deduction because node does not expose a model instance,"
