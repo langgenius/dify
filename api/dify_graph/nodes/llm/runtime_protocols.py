@@ -27,6 +27,9 @@ class PreparedLLMProtocol(Protocol):
     @property
     def parameters(self) -> Mapping[str, Any]: ...
 
+    @parameters.setter
+    def parameters(self, value: Mapping[str, Any]) -> None: ...
+
     @property
     def stop(self) -> Sequence[str] | None: ...
 

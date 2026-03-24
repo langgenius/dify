@@ -153,6 +153,10 @@ class DifyPreparedLLM(PreparedLLMProtocol):
     def parameters(self) -> Mapping[str, Any]:
         return self._model_instance.parameters
 
+    @parameters.setter
+    def parameters(self, value: Mapping[str, Any]) -> None:
+        self._model_instance.parameters = value
+
     @property
     def stop(self) -> Sequence[str] | None:
         return self._model_instance.stop
