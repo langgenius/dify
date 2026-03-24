@@ -78,6 +78,7 @@ const ApiBasedExtensionModal: FC<ApiBasedExtensionModalProps> = ({
     <Modal
       isShow
       onClose={noop}
+      wrapperClassName="z-[1002]"
       className="!w-[640px] !max-w-none !p-8 !pb-6"
     >
       <div className="mb-2 text-xl font-semibold text-text-primary">

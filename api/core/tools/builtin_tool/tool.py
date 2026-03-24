@@ -50,7 +50,7 @@ class BuiltinTool(Tool):
         return ModelInvocationUtils.invoke(
             user_id=user_id,
             tenant_id=self.runtime.tenant_id or "",
-            tool_type="builtin",
+            tool_type=ToolProviderType.BUILT_IN,
             tool_name=self.entity.identity.name,
             prompt_messages=prompt_messages,
         )

@@ -66,10 +66,7 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
       return
 
     if (!isCurrentWorkspaceManager) {
-      toast.add({
-        type: 'error',
-        title: t('buyPermissionDeniedTip', { ns: 'billing' }),
-      })
+      toast.error(t('buyPermissionDeniedTip', { ns: 'billing' }))
       return
     }
     setLoading(true)
@@ -82,7 +79,7 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
           throw new Error('Failed to open billing page')
         }, {
           onError: (err) => {
-            toast.add({ type: 'error', title: err.message || String(err) })
+            toast.error(err.message || String(err))
           },
         })
         return

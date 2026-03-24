@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from core.tools.entities.api_entities import ToolProviderApiEntity
 from core.tools.entities.common_entities import I18nObject
-from core.tools.entities.tool_entities import ToolProviderType
+from core.tools.entities.tool_entities import ApiProviderSchemaType, ToolProviderType
 from models.tools import ApiToolProvider, BuiltinToolProvider, MCPToolProvider, WorkflowToolProvider
 from services.plugin.plugin_service import PluginService
 from services.tools.tools_transform_service import ToolTransformService
@@ -48,41 +48,42 @@ class TestToolTransformService:
                 name=fake.company(),
                 description=fake.text(max_nb_chars=100),
                 icon='{"background": "#FF6B6B", "content": "🔧"}',
-                icon_dark='{"background": "#252525", "content": "🔧"}',
                 tenant_id="test_tenant_id",
                 user_id="test_user_id",
-                credentials={"auth_type": "api_key_header", "api_key": "test_key"},
-                provider_type="api",
+                credentials_str='{"auth_type": "api_key_header", "api_key": "test_key"}',
+                schema="{}",
+                schema_type_str=ApiProviderSchemaType.OPENAPI,
+                tools_str="[]",
             )
         elif provider_type == "builtin":
             provider = BuiltinToolProvider(
                 name=fake.company(),
-                description=fake.text(max_nb_chars=100),
-                icon="🔧",
-                icon_dark="🔧",
                 tenant_id="test_tenant_id",
+                user_id="test_user_id",
                 provider="test_provider",
                 credential_type="api_key",
-                credentials={"api_key": "test_key"},
+                encrypted_credentials='{"api_key": "test_key"}',
             )
         elif provider_type == "workflow":
             provider = WorkflowToolProvider(
                 name=fake.company(),
                 description=fake.text(max_nb_chars=100),
                 icon='{"background": "#FF6B6B", "content": "🔧"}',
-                icon_dark='{"background": "#252525", "content": "🔧"}',
                 tenant_id="test_tenant_id",
                 user_id="test_user_id",
-                workflow_id="test_workflow_id",
+                app_id="test_workflow_id",
+                label="Test Workflow",
+                version="1.0.0",
+                parameter_configuration="[]",
             )
         elif provider_type == "mcp":
             provider = MCPToolProvider(
                 name=fake.company(),
-                description=fake.text(max_nb_chars=100),
-                provider_icon='{"background": "#FF6B6B", "content": "🔧"}',
+                icon='{"background": "#FF6B6B", "content": "🔧"}',
                 tenant_id="test_tenant_id",
                 user_id="test_user_id",
                 server_url="https://mcp.example.com",
+                server_url_hash="test_server_url_hash",
                 server_identifier="test_server",
                 tools='[{"name": "test_tool", "description": "Test tool"}]',
                 authed=True,
@@ -658,7 +659,7 @@ class TestToolTransformService:
             user_id=fake.uuid4(),
             credentials_str='{"auth_type": "api_key_header", "api_key": "test_key"}',
             schema="{}",
-            schema_type_str="openapi",
+            schema_type_str=ApiProviderSchemaType.OPENAPI,
             tools_str="[]",
         )
 
@@ -694,7 +695,7 @@ class TestToolTransformService:
             user_id=fake.uuid4(),
             credentials_str='{"auth_type": "api_key_query", "api_key": "test_key"}',
             schema="{}",
-            schema_type_str="openapi",
+            schema_type_str=ApiProviderSchemaType.OPENAPI,
             tools_str="[]",
         )
 
@@ -730,7 +731,7 @@ class TestToolTransformService:
             user_id=fake.uuid4(),
             credentials_str='{"auth_type": "api_key", "api_key": "test_key"}',
             schema="{}",
-            schema_type_str="openapi",
+            schema_type_str=ApiProviderSchemaType.OPENAPI,
             tools_str="[]",
         )
 

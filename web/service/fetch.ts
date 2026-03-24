@@ -48,7 +48,7 @@ const afterResponseErrorCode = (otherOptions: IOtherOptions): AfterResponseHook 
       const shouldNotifyError = response.status !== 401 && errorData && !otherOptions.silent
 
       if (shouldNotifyError)
-        toast.add({ type: 'error', title: errorData.message })
+        toast.error(errorData.message)
 
       if (response.status === 403 && errorData?.code === 'already_setup')
         globalThis.location.href = `${globalThis.location.origin}/signin`

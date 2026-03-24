@@ -18,6 +18,8 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
+from core.rag.index_processor.constant.index_type import IndexStructureType
+from extensions.storage.storage_type import StorageType
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import (
     AppDatasetJoin,
@@ -191,7 +193,7 @@ class TestCleanDatasetTask:
             indexing_status=IndexingStatus.COMPLETED,
             enabled=True,
             archived=False,
-            doc_form="paragraph_index",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
             word_count=100,
             created_at=datetime.now(),
             updated_at=datetime.now(),
@@ -254,7 +256,7 @@ class TestCleanDatasetTask:
 
         upload_file = UploadFile(
             tenant_id=tenant.id,
-            storage_type="local",
+            storage_type=StorageType.LOCAL,
             key=f"test_files/{fake.file_name()}",
             name=fake.file_name(),
             size=1024,
@@ -925,7 +927,7 @@ class TestCleanDatasetTask:
         special_filename = f"test_file_{special_content}.txt"
         upload_file = UploadFile(
             tenant_id=tenant.id,
-            storage_type="local",
+            storage_type=StorageType.LOCAL,
             key=f"test_files/{special_filename}",
             name=special_filename,
             size=1024,

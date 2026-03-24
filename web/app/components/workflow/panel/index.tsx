@@ -140,7 +140,7 @@ const Panel: FC<PanelProps> = ({
           components?.right
         }
         {
-          showWorkflowVersionHistoryPanel && (
+          showWorkflowVersionHistoryPanel && versionHistoryPanelProps && (
             <VersionHistoryPanel {...versionHistoryPanelProps} />
           )
         }

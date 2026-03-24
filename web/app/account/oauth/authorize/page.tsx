@@ -91,10 +91,7 @@ export default function OAuthAuthorize() {
       globalThis.location.href = url.toString()
     }
     catch (err: any) {
-      toast.add({
-        type: 'error',
-        title: `${t('error.authorizeFailed', { ns: 'oauth' })}: ${err.message}`,
-      })
+      toast.error(`${t('error.authorizeFailed', { ns: 'oauth' })}: ${err.message}`)
     }
   }
 
@@ -102,11 +99,10 @@ export default function OAuthAuthorize() {
     const invalidParams = !client_id || !redirect_uri
     if ((invalidParams || isError) && !hasNotifiedRef.current) {
       hasNotifiedRef.current = true
-      toast.add({
-        type: 'error',
-        title: invalidParams ? t('error.invalidParams', { ns: 'oauth' }) : t('error.authAppInfoFetchFailed', { ns: 'oauth' }),
-        timeout: 0,
-      })
+      toast.error(
+        invalidParams ? t('error.invalidParams', { ns: 'oauth' }) : t('error.authAppInfoFetchFailed', { ns: 'oauth' }),
+        { timeout: 0 },
+      )
     }
   }, [client_id, redirect_uri, isError])
 
