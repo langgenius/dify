@@ -2,6 +2,16 @@ import type { ReactElement, RefObject } from 'react'
 import type { NodeApi, TreeApi } from 'react-arborist'
 import type { TreeNodeData } from '../../type'
 import { fireEvent, render, screen } from '@testing-library/react'
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuTrigger,
+} from '@/app/components/base/ui/context-menu'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@/app/components/base/ui/dropdown-menu'
 import { NODE_MENU_TYPE } from '../../constants'
 import NodeMenu from './node-menu'
 
@@ -102,15 +112,40 @@ const renderNodeMenu = ({
   treeRef,
   node,
 }: RenderNodeMenuProps = {}) => {
+  const ui = menuType === 'dropdown'
+    ? (
+        <DropdownMenu open>
+          <DropdownMenuTrigger aria-label="menu trigger">Open</DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <NodeMenu
+              type={type}
+              menuType={menuType}
+              nodeId={nodeId}
+              onClose={onClose}
+              treeRef={treeRef}
+              node={node}
+            />
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )
+    : (
+        <ContextMenu open>
+          <ContextMenuTrigger aria-label="context trigger">Open</ContextMenuTrigger>
+          <ContextMenuContent>
+            <NodeMenu
+              type={type}
+              menuType={menuType}
+              nodeId={nodeId}
+              onClose={onClose}
+              treeRef={treeRef}
+              node={node}
+            />
+          </ContextMenuContent>
+        </ContextMenu>
+      )
+
   render(
-    <NodeMenu
-      type={type}
-      menuType={menuType}
-      nodeId={nodeId}
-      onClose={onClose}
-      treeRef={treeRef}
-      node={node}
-    />,
+    ui,
   )
 
   return { onClose }
@@ -128,35 +163,35 @@ describe('NodeMenu', () => {
     it('should render root folder actions and hide file-only actions', () => {
       renderNodeMenu({ type: NODE_MENU_TYPE.ROOT })
 
-      expect(screen.getByRole('button', { name: /workflow\.skillSidebar\.menu\.newFile/i })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /workflow\.skillSidebar\.menu\.newFolder/i })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /workflow\.skillSidebar\.menu\.uploadFile/i })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /workflow\.skillSidebar\.menu\.uploadFolder/i })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /workflow\.skillSidebar\.menu\.importSkills/i })).toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: /workflow\.skillSidebar\.menu\.cut/i })).not.toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: /workflow\.skillSidebar\.menu\.rename/i })).not.toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: /workflow\.skillSidebar\.menu\.delete/i })).not.toBeInTheDocument()
+      expect(screen.getByRole('menuitem', { name: /workflow\.skillSidebar\.menu\.newFile/i })).toBeInTheDocument()
+      expect(screen.getByRole('menuitem', { name: /workflow\.skillSidebar\.menu\.newFolder/i })).toBeInTheDocument()
+      expect(screen.getByRole('menuitem', { name: /workflow\.skillSidebar\.menu\.uploadFile/i })).toBeInTheDocument()
+      expect(screen.getByRole('menuitem', { name: /workflow\.skillSidebar\.menu\.uploadFolder/i })).toBeInTheDocument()
+      expect(screen.getByRole('menuitem', { name: /workflow\.skillSidebar\.menu\.importSkills/i })).toBeInTheDocument()
+      expect(screen.queryByRole('menuitem', { name: /workflow\.skillSidebar\.menu\.cut/i })).not.toBeInTheDocument()
+      expect(screen.queryByRole('menuitem', { name: /workflow\.skillSidebar\.menu\.rename/i })).not.toBeInTheDocument()
+      expect(screen.queryByRole('menuitem', { name: /workflow\.skillSidebar\.menu\.delete/i })).not.toBeInTheDocument()
     })
 
     it('should render file actions and hide folder-only actions', () => {
       renderNodeMenu({ type: NODE_MENU_TYPE.FILE })
 
-      expect(screen.getByRole('button', { name: /workflow\.skillSidebar\.menu\.download/i })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /workflow\.skillSidebar\.menu\.cut/i })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /workflow\.skillSidebar\.menu\.rename/i })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /workflow\.skillSidebar\.menu\.delete/i })).toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: /workflow\.skillSidebar\.menu\.newFile/i })).not.toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: /workflow\.skillSidebar\.menu\.newFolder/i })).not.toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: /workflow\.skillSidebar\.menu\.paste/i })).not.toBeInTheDocument()
+      expect(screen.getByRole('menuitem', { name: /workflow\.skillSidebar\.menu\.download/i })).toBeInTheDocument()
+      expect(screen.getByRole('menuitem', { name: /workflow\.skillSidebar\.menu\.cut/i })).toBeInTheDocument()
+      expect(screen.getByRole('menuitem', { name: /workflow\.skillSidebar\.menu\.rename/i })).toBeInTheDocument()
+      expect(screen.getByRole('menuitem', { name: /workflow\.skillSidebar\.menu\.delete/i })).toBeInTheDocument()
+      expect(screen.queryByRole('menuitem', { name: /workflow\.skillSidebar\.menu\.newFile/i })).not.toBeInTheDocument()
+      expect(screen.queryByRole('menuitem', { name: /workflow\.skillSidebar\.menu\.newFolder/i })).not.toBeInTheDocument()
+      expect(screen.queryByRole('menuitem', { name: /workflow\.skillSidebar\.menu\.paste/i })).not.toBeInTheDocument()
     })
 
     it('should disable menu actions when file operations are loading', () => {
       mocks.fileOperations.isLoading = true
       renderNodeMenu({ type: NODE_MENU_TYPE.FOLDER })
 
-      expect(screen.getByRole('button', { name: /workflow\.skillSidebar\.menu\.newFile/i })).toBeDisabled()
-      expect(screen.getByRole('button', { name: /workflow\.skillSidebar\.menu\.newFolder/i })).toBeDisabled()
-      expect(screen.getByRole('button', { name: /workflow\.skillSidebar\.menu\.uploadFile/i })).toBeDisabled()
+      expect(screen.getByRole('menuitem', { name: /workflow\.skillSidebar\.menu\.newFile/i })).toHaveAttribute('aria-disabled', 'true')
+      expect(screen.getByRole('menuitem', { name: /workflow\.skillSidebar\.menu\.newFolder/i })).toHaveAttribute('aria-disabled', 'true')
+      expect(screen.getByRole('menuitem', { name: /workflow\.skillSidebar\.menu\.uploadFile/i })).toHaveAttribute('aria-disabled', 'true')
     })
   })
 
@@ -164,8 +199,8 @@ describe('NodeMenu', () => {
     it('should trigger create operations when clicking new file and new folder', () => {
       renderNodeMenu({ type: NODE_MENU_TYPE.FOLDER })
 
-      fireEvent.click(screen.getByRole('button', { name: /workflow\.skillSidebar\.menu\.newFile/i }))
-      fireEvent.click(screen.getByRole('button', { name: /workflow\.skillSidebar\.menu\.newFolder/i }))
+      fireEvent.click(screen.getByRole('menuitem', { name: /workflow\.skillSidebar\.menu\.newFile/i }))
+      fireEvent.click(screen.getByRole('menuitem', { name: /workflow\.skillSidebar\.menu\.newFolder/i }))
 
       expect(mocks.fileOperations.handleNewFile).toHaveBeenCalledTimes(1)
       expect(mocks.fileOperations.handleNewFolder).toHaveBeenCalledTimes(1)
@@ -175,8 +210,8 @@ describe('NodeMenu', () => {
       const clickSpy = vi.spyOn(HTMLInputElement.prototype, 'click')
       renderNodeMenu({ type: NODE_MENU_TYPE.FOLDER })
 
-      fireEvent.click(screen.getByRole('button', { name: /workflow\.skillSidebar\.menu\.uploadFile/i }))
-      fireEvent.click(screen.getByRole('button', { name: /workflow\.skillSidebar\.menu\.uploadFolder/i }))
+      fireEvent.click(screen.getByRole('menuitem', { name: /workflow\.skillSidebar\.menu\.uploadFile/i }))
+      fireEvent.click(screen.getByRole('menuitem', { name: /workflow\.skillSidebar\.menu\.uploadFolder/i }))
 
       expect(clickSpy).toHaveBeenCalledTimes(2)
     })
@@ -185,7 +220,7 @@ describe('NodeMenu', () => {
       mocks.storeState.selectedNodeIds = new Set(['file-1', 'file-2'])
       const { onClose } = renderNodeMenu({ type: NODE_MENU_TYPE.FILE, nodeId: 'fallback-id' })
 
-      fireEvent.click(screen.getByRole('button', { name: /workflow\.skillSidebar\.menu\.cut/i }))
+      fireEvent.click(screen.getByRole('menuitem', { name: /workflow\.skillSidebar\.menu\.cut/i }))
 
       expect(mocks.cutNodes).toHaveBeenCalledTimes(1)
       expect(mocks.cutNodes).toHaveBeenCalledWith(['file-1', 'file-2'])
@@ -195,7 +230,7 @@ describe('NodeMenu', () => {
     it('should cut current node id when no multi-selection exists', () => {
       const { onClose } = renderNodeMenu({ type: NODE_MENU_TYPE.FILE, nodeId: 'file-3' })
 
-      fireEvent.click(screen.getByRole('button', { name: /workflow\.skillSidebar\.menu\.cut/i }))
+      fireEvent.click(screen.getByRole('menuitem', { name: /workflow\.skillSidebar\.menu\.cut/i }))
 
       expect(mocks.cutNodes).toHaveBeenCalledWith(['file-3'])
       expect(onClose).toHaveBeenCalledTimes(1)
@@ -207,7 +242,7 @@ describe('NodeMenu', () => {
       window.addEventListener('skill:paste', pasteListener)
       const { onClose } = renderNodeMenu({ type: NODE_MENU_TYPE.FOLDER })
 
-      fireEvent.click(screen.getByRole('button', { name: /workflow\.skillSidebar\.menu\.paste/i }))
+      fireEvent.click(screen.getByRole('menuitem', { name: /workflow\.skillSidebar\.menu\.paste/i }))
 
       expect(pasteListener).toHaveBeenCalledTimes(1)
       expect(onClose).toHaveBeenCalledTimes(1)
@@ -217,9 +252,9 @@ describe('NodeMenu', () => {
     it('should call download, rename, and delete handlers for file menu actions', () => {
       renderNodeMenu({ type: NODE_MENU_TYPE.FILE })
 
-      fireEvent.click(screen.getByRole('button', { name: /workflow\.skillSidebar\.menu\.download/i }))
-      fireEvent.click(screen.getByRole('button', { name: /workflow\.skillSidebar\.menu\.rename/i }))
-      fireEvent.click(screen.getByRole('button', { name: /workflow\.skillSidebar\.menu\.delete/i }))
+      fireEvent.click(screen.getByRole('menuitem', { name: /workflow\.skillSidebar\.menu\.download/i }))
+      fireEvent.click(screen.getByRole('menuitem', { name: /workflow\.skillSidebar\.menu\.rename/i }))
+      fireEvent.click(screen.getByRole('menuitem', { name: /workflow\.skillSidebar\.menu\.delete/i }))
 
       expect(mocks.fileOperations.handleDownload).toHaveBeenCalledTimes(1)
       expect(mocks.fileOperations.handleRename).toHaveBeenCalledTimes(1)
@@ -231,7 +266,7 @@ describe('NodeMenu', () => {
     it('should open and close import modal from root menu', () => {
       renderNodeMenu({ type: NODE_MENU_TYPE.ROOT })
 
-      fireEvent.click(screen.getByRole('button', { name: /workflow\.skillSidebar\.menu\.importSkills/i }))
+      fireEvent.click(screen.getByRole('menuitem', { name: /workflow\.skillSidebar\.menu\.importSkills/i }))
       expect(screen.getByTestId('import-skill-modal')).toBeInTheDocument()
 
       fireEvent.click(screen.getByRole('button', { name: /close-import-modal/i }))

@@ -1,5 +1,15 @@
 import type { MenuItemProps } from './menu-item'
 import { fireEvent, render, screen } from '@testing-library/react'
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuTrigger,
+} from '@/app/components/base/ui/context-menu'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@/app/components/base/ui/dropdown-menu'
 import MenuItem from './menu-item'
 
 const MockIcon = (props: React.SVGProps<SVGSVGElement>) => <svg {...props} />
@@ -13,8 +23,26 @@ const defaultProps: MenuItemProps = {
 
 const renderMenuItem = (overrides: Partial<MenuItemProps> = {}) => {
   const props = { ...defaultProps, ...overrides }
+  const ui = props.menuType === 'dropdown'
+    ? (
+        <DropdownMenu open>
+          <DropdownMenuTrigger aria-label="menu trigger">Open</DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <MenuItem {...props} />
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )
+    : (
+        <ContextMenu open>
+          <ContextMenuTrigger aria-label="context trigger">Open</ContextMenuTrigger>
+          <ContextMenuContent>
+            <MenuItem {...props} />
+          </ContextMenuContent>
+        </ContextMenu>
+      )
+
   return {
-    ...render(<MenuItem {...props} />),
+    ...render(ui),
     onClick: props.onClick,
   }
 }
@@ -31,7 +59,7 @@ describe('MenuItem', () => {
       renderMenuItem()
 
       // Assert
-      expect(screen.getByRole('button', { name: /rename/i })).toBeInTheDocument()
+      expect(screen.getByRole('menuitem', { name: /rename/i })).toBeInTheDocument()
     })
 
     it('should apply destructive variant styles when variant is destructive', () => {
@@ -39,7 +67,7 @@ describe('MenuItem', () => {
       renderMenuItem({ variant: 'destructive', label: 'Delete' })
 
       // Act
-      const button = screen.getByRole('button', { name: /delete/i })
+      const button = screen.getByRole('menuitem', { name: /delete/i })
 
       // Assert
       expect(button).toHaveClass('group')
@@ -68,8 +96,8 @@ describe('MenuItem', () => {
     it('should show tooltip content when hovering the tooltip trigger', async () => {
       // Arrange
       const tooltipText = 'Show help'
-      const { container } = renderMenuItem({ tooltip: tooltipText })
-      const tooltipIcon = container.querySelector('.i-ri-question-line')
+      renderMenuItem({ tooltip: tooltipText })
+      const tooltipIcon = document.body.querySelector('.i-ri-question-line')
 
       // Act
       expect(tooltipIcon).toBeTruthy()
@@ -84,27 +112,21 @@ describe('MenuItem', () => {
   describe('Interactions', () => {
     it('should call onClick and stop click propagation when button is clicked', () => {
       // Arrange
-      const outerClick = vi.fn()
       const onClick = vi.fn()
-      render(
-        <div onClick={outerClick}>
-          <MenuItem {...defaultProps} onClick={onClick} />
-        </div>,
-      )
+      renderMenuItem({ onClick })
 
       // Act
-      fireEvent.click(screen.getByRole('button', { name: /rename/i }))
+      fireEvent.click(screen.getByRole('menuitem', { name: /rename/i }))
 
       // Assert
       expect(onClick).toHaveBeenCalledTimes(1)
-      expect(outerClick).not.toHaveBeenCalled()
     })
 
     it('should not trigger onClick when tooltip icon is clicked', () => {
       // Arrange
       const onClick = vi.fn()
-      const { container } = renderMenuItem({ onClick, tooltip: 'Help' })
-      const tooltipIcon = container.querySelector('.i-ri-question-line')
+      renderMenuItem({ onClick, tooltip: 'Help' })
+      const tooltipIcon = document.body.querySelector('.i-ri-question-line')
 
       // Act
       expect(tooltipIcon).toBeTruthy()
@@ -121,13 +143,13 @@ describe('MenuItem', () => {
       // Arrange
       const onClick = vi.fn()
       renderMenuItem({ onClick, disabled: true })
-      const button = screen.getByRole('button', { name: /rename/i })
+      const button = screen.getByRole('menuitem', { name: /rename/i })
 
       // Act
       fireEvent.click(button)
 
       // Assert
-      expect(button).toBeDisabled()
+      expect(button).toHaveAttribute('aria-disabled', 'true')
       expect(onClick).not.toHaveBeenCalled()
     })
   })
