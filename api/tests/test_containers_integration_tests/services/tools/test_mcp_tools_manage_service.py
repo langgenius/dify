@@ -1392,7 +1392,6 @@ class TestMCPToolManageService:
                     sse_read_timeout=mcp_provider.sse_read_timeout,
                 )
 
-
     def test_prepare_icon_returns_json_for_emoji(self):
         """Emoji icon type should be serialized to JSON string."""
         import json
@@ -1407,9 +1406,7 @@ class TestMCPToolManageService:
         result = MCPToolManageService._prepare_icon(icon)
         assert result == icon
 
-    def test_list_providers_empty(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_list_providers_empty(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """Listing providers when none exist should return empty list."""
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
