@@ -1,22 +1,8 @@
-import type { MouseEvent, MouseEventHandler, ReactElement } from 'react'
-import {
-  cloneElement,
-  forwardRef,
-  isValidElement,
-
-  useCallback,
-  useEffect,
-  useImperativeHandle,
-  useMemo,
-  useState,
-} from 'react'
+import type { ShortcutMapping } from './test-run-menu-helpers'
+import { forwardRef, useCallback, useImperativeHandle, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
-import ShortcutsName from '../shortcuts-name'
+import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
+import { OptionRow, SingleOptionTrigger, useShortcutMenu } from './test-run-menu-helpers'
 
 export enum TriggerType {
   UserInput = 'user_input',
@@ -52,9 +38,24 @@ export type TestRunMenuRef = {
   toggle: () => void
 }
 
-type ShortcutMapping = {
-  option: TriggerOption
-  shortcutKey: string
+const getEnabledOptions = (options: TestRunOptions) => {
+  const flattened: TriggerOption[] = []
+
+  if (options.userInput)
+    flattened.push(options.userInput)
+  if (options.runAll)
+    flattened.push(options.runAll)
+  flattened.push(...options.triggers)
+
+  return flattened.filter(option => option.enabled !== false)
+}
+
+const getMenuVisibility = (options: TestRunOptions) => {
+  return {
+    hasUserInput: Boolean(options.userInput?.enabled !== false && options.userInput),
+    hasTriggers: options.triggers.some(trigger => trigger.enabled !== false),
+    hasRunAll: Boolean(options.runAll?.enabled !== false && options.runAll),
+  }
 }
 
 const buildShortcutMappings = (options: TestRunOptions): ShortcutMapping[] => {
@@ -76,6 +77,7 @@ const buildShortcutMappings = (options: TestRunOptions): ShortcutMapping[] => {
   return mappings
 }
 
+// eslint-disable-next-line react/no-forward-ref
 const TestRunMenu = forwardRef<TestRunMenuRef, TestRunMenuProps>(({
   options,
   onSelect,
@@ -97,17 +99,7 @@ const TestRunMenu = forwardRef<TestRunMenuRef, TestRunMenuProps>(({
     setOpen(false)
   }, [onSelect])
 
-  const enabledOptions = useMemo(() => {
-    const flattened: TriggerOption[] = []
-
-    if (options.userInput)
-      flattened.push(options.userInput)
-    if (options.runAll)
-      flattened.push(options.runAll)
-    flattened.push(...options.triggers)
-
-    return flattened.filter(option => option.enabled !== false)
-  }, [options])
+  const enabledOptions = useMemo(() => getEnabledOptions(options), [options])
 
   const hasSingleEnabledOption = enabledOptions.length === 1
   const soleEnabledOption = hasSingleEnabledOption ? enabledOptions[0] : undefined
@@ -116,6 +108,12 @@ const TestRunMenu = forwardRef<TestRunMenuRef, TestRunMenuProps>(({
     if (soleEnabledOption)
       handleSelect(soleEnabledOption)
   }, [handleSelect, soleEnabledOption])
+
+  useShortcutMenu({
+    open,
+    shortcutMappings,
+    handleSelect,
+  })
 
   useImperativeHandle(ref, () => ({
     toggle: () => {
@@ -128,84 +126,17 @@ const TestRunMenu = forwardRef<TestRunMenuRef, TestRunMenuProps>(({
     },
   }), [hasSingleEnabledOption, runSoleOption])
 
-  useEffect(() => {
-    if (!open)
-      return
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.defaultPrevented || event.repeat || event.altKey || event.ctrlKey || event.metaKey)
-        return
-
-      const normalizedKey = event.key === '`' ? '~' : event.key
-      const mapping = shortcutMappings.find(({ shortcutKey }) => shortcutKey === normalizedKey)
-
-      if (mapping) {
-        event.preventDefault()
-        handleSelect(mapping.option)
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [handleSelect, open, shortcutMappings])
-
   const renderOption = (option: TriggerOption) => {
-    const shortcutKey = shortcutKeyById.get(option.id)
-
-    return (
-      <div
-        key={option.id}
-        className="system-md-regular flex cursor-pointer items-center rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover"
-        onClick={() => handleSelect(option)}
-      >
-        <div className="flex min-w-0 flex-1 items-center">
-          <div className="flex h-6 w-6 shrink-0 items-center justify-center">
-            {option.icon}
-          </div>
-          <span className="ml-2 truncate">{option.name}</span>
-        </div>
-        {shortcutKey && (
-          <ShortcutsName keys={[shortcutKey]} className="ml-2" textColor="secondary" />
-        )}
-      </div>
-    )
+    return <OptionRow option={option} shortcutKey={shortcutKeyById.get(option.id)} onSelect={handleSelect} />
   }
 
-  const hasUserInput = !!options.userInput && options.userInput.enabled !== false
-  const hasTriggers = options.triggers.some(trigger => trigger.enabled !== false)
-  const hasRunAll = !!options.runAll && options.runAll.enabled !== false
+  const { hasUserInput, hasTriggers, hasRunAll } = useMemo(() => getMenuVisibility(options), [options])
 
   if (hasSingleEnabledOption && soleEnabledOption) {
-    const handleRunClick = (event?: MouseEvent<HTMLElement>) => {
-      if (event?.defaultPrevented)
-        return
-
-      runSoleOption()
-    }
-
-    if (isValidElement(children)) {
-      const childElement = children as ReactElement<{ onClick?: MouseEventHandler<HTMLElement> }>
-      const originalOnClick = childElement.props?.onClick
-
-      return cloneElement(childElement, {
-        onClick: (event: MouseEvent<HTMLElement>) => {
-          if (typeof originalOnClick === 'function')
-            originalOnClick(event)
-
-          if (event?.defaultPrevented)
-            return
-
-          runSoleOption()
-        },
-      })
-    }
-
     return (
-      <span onClick={handleRunClick}>
+      <SingleOptionTrigger runSoleOption={runSoleOption}>
         {children}
-      </span>
+      </SingleOptionTrigger>
     )
   }
 
