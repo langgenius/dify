@@ -1501,11 +1501,6 @@
       "count": 2
     }
   },
-  "app/components/base/amplitude/AmplitudeProvider.tsx": {
-    "react-refresh/only-export-components": {
-      "count": 1
-    }
-  },
   "app/components/base/amplitude/utils.ts": {
     "ts/no-explicit-any": {
       "count": 2
