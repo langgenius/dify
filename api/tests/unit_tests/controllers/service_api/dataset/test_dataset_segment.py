@@ -31,6 +31,7 @@ from controllers.service_api.dataset.segment import (
     SegmentCreatePayload,
     SegmentListQuery,
 )
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from models.dataset import ChildChunk, Dataset, Document, DocumentSegment
 from models.enums import IndexingStatus
 from services.dataset_service import DocumentService, SegmentService
@@ -788,7 +789,7 @@ class TestSegmentApiGet:
         # Arrange
         mock_account_fn.return_value = (Mock(), mock_tenant.id)
         mock_db.session.query.return_value.where.return_value.first.return_value = mock_dataset
-        mock_doc_svc.get_document.return_value = Mock(doc_form="text_model")
+        mock_doc_svc.get_document.return_value = Mock(doc_form=IndexStructureType.PARAGRAPH_INDEX)
         mock_seg_svc.get_segments.return_value = ([mock_segment], 1)
         mock_marshal.return_value = [{"id": mock_segment.id}]
 
@@ -903,7 +904,7 @@ class TestSegmentApiPost:
         mock_doc = Mock()
         mock_doc.indexing_status = "completed"
         mock_doc.enabled = True
-        mock_doc.doc_form = "text_model"
+        mock_doc.doc_form = IndexStructureType.PARAGRAPH_INDEX
         mock_doc_svc.get_document.return_value = mock_doc
 
         mock_seg_svc.segment_create_args_validate.return_value = None
@@ -1091,7 +1092,7 @@ class TestDatasetSegmentApiDelete:
         mock_doc = Mock()
         mock_doc.indexing_status = "completed"
         mock_doc.enabled = True
-        mock_doc.doc_form = "text_model"
+        mock_doc.doc_form = IndexStructureType.PARAGRAPH_INDEX
         mock_doc_svc.get_document.return_value = mock_doc
 
         mock_seg_svc.get_segment_by_id.return_value = None  # Segment not found
@@ -1371,7 +1372,7 @@ class TestDatasetSegmentApiGetSingle:
         mock_account_fn.return_value = (Mock(), mock_tenant.id)
         mock_db.session.query.return_value.where.return_value.first.return_value = mock_dataset
         mock_dataset_svc.check_dataset_model_setting.return_value = None
-        mock_doc = Mock(doc_form="text_model")
+        mock_doc = Mock(doc_form=IndexStructureType.PARAGRAPH_INDEX)
         mock_doc_svc.get_document.return_value = mock_doc
         mock_seg_svc.get_segment_by_id.return_value = mock_segment
         mock_marshal.return_value = {"id": mock_segment.id}
@@ -1390,7 +1391,7 @@ class TestDatasetSegmentApiGetSingle:
 
         assert status == 200
         assert "data" in response
-        assert response["doc_form"] == "text_model"
+        assert response["doc_form"] == IndexStructureType.PARAGRAPH_INDEX
 
     @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
     @patch("controllers.service_api.dataset.segment.db")

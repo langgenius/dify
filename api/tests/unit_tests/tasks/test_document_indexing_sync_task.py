@@ -11,6 +11,7 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from models.dataset import Dataset, Document
 from tasks.document_indexing_sync_task import document_indexing_sync_task
 
@@ -62,7 +63,7 @@ def mock_document(document_id, dataset_id, notion_workspace_id, notion_page_id, 
     document.tenant_id = str(uuid.uuid4())
     document.data_source_type = "notion_import"
     document.indexing_status = "completed"
-    document.doc_form = "text_model"
+    document.doc_form = IndexStructureType.PARAGRAPH_INDEX
     document.data_source_info_dict = {
         "notion_workspace_id": notion_workspace_id,
         "notion_page_id": notion_page_id,

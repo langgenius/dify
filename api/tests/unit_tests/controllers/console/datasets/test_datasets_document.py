@@ -30,6 +30,7 @@ from controllers.console.datasets.error import (
     InvalidActionError,
     InvalidMetadataError,
 )
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from models.enums import DataSourceType, IndexingStatus
 
 
@@ -66,7 +67,7 @@ def document():
         indexing_status=IndexingStatus.INDEXING,
         data_source_type=DataSourceType.UPLOAD_FILE,
         data_source_info_dict={"upload_file_id": "file-1"},
-        doc_form="text",
+        doc_form=IndexStructureType.PARAGRAPH_INDEX,
         archived=False,
         is_paused=False,
         dataset_process_rule=None,
@@ -765,8 +766,8 @@ class TestDocumentGenerateSummaryApi:
             summary_index_setting={"enable": True},
         )
 
-        doc1 = MagicMock(id="doc-1", doc_form="qa_model")
-        doc2 = MagicMock(id="doc-2", doc_form="text")
+        doc1 = MagicMock(id="doc-1", doc_form=IndexStructureType.QA_INDEX)
+        doc2 = MagicMock(id="doc-2", doc_form=IndexStructureType.PARAGRAPH_INDEX)
 
         payload = {"document_list": ["doc-1", "doc-2"]}
 
@@ -822,7 +823,7 @@ class TestDocumentIndexingEstimateApi:
             data_source_type=DataSourceType.UPLOAD_FILE,
             data_source_info_dict={"upload_file_id": "file-1"},
             tenant_id="tenant-1",
-            doc_form="text",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
             dataset_process_rule=None,
         )
 
@@ -849,7 +850,7 @@ class TestDocumentIndexingEstimateApi:
             data_source_type=DataSourceType.UPLOAD_FILE,
             data_source_info_dict={"upload_file_id": "file-1"},
             tenant_id="tenant-1",
-            doc_form="text",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
             dataset_process_rule=None,
         )
 
@@ -973,7 +974,7 @@ class TestDocumentBatchIndexingEstimateApi:
                 "mode": "single",
                 "only_main_content": True,
             },
-            doc_form="text",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
         )
 
         with (
@@ -1001,7 +1002,7 @@ class TestDocumentBatchIndexingEstimateApi:
                 "notion_page_id": "p1",
                 "type": "page",
             },
-            doc_form="text",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
         )
 
         with (
@@ -1024,7 +1025,7 @@ class TestDocumentBatchIndexingEstimateApi:
             indexing_status=IndexingStatus.INDEXING,
             data_source_type="unknown",
             data_source_info_dict={},
-            doc_form="text",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
         )
 
         with app.test_request_context("/"), patch.object(api, "get_batch_documents", return_value=[document]):
@@ -1353,7 +1354,7 @@ class TestDocumentIndexingEdgeCases:
             data_source_type=DataSourceType.UPLOAD_FILE,
             data_source_info_dict={"upload_file_id": "file-1"},
             tenant_id="tenant-1",
-            doc_form="text",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
             dataset_process_rule=None,
         )
 
