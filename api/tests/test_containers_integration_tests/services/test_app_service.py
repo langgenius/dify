@@ -1300,9 +1300,12 @@ class TestAppService:
         """Test get_paginate_apps returns None when tag_ids filter yields no matches."""
         from services.app_service import AppService
 
-        account, tenant = self._create_test_app_and_account(
-            db_session_with_containers, mock_external_service_dependencies
+        fake = Faker()
+        account = AccountService.create_account(
+            email=fake.email(), name=fake.name(), interface_language="en-US", password=generate_valid_password(fake)
         )
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        tenant = account.current_tenant
 
         args = {"tag_ids": [], "page": 1, "limit": 10}
         result = AppService().get_paginate_apps(account.id, tenant.id, args)
@@ -1313,10 +1316,14 @@ class TestAppService:
     ):
         """Test update_app keeps the existing icon_type when the payload omits it."""
         from models.model import IconType
+        from services.app_service import AppService
 
-        account, tenant = self._create_test_app_and_account(
-            db_session_with_containers, mock_external_service_dependencies
+        fake = Faker()
+        account = AccountService.create_account(
+            email=fake.email(), name=fake.name(), interface_language="en-US", password=generate_valid_password(fake)
         )
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        tenant = account.current_tenant
         app_service = AppService()
         app = app_service.create_app(
             tenant.id,
@@ -1353,9 +1360,14 @@ class TestAppService:
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """Test update_app rejects an explicit empty icon_type."""
-        account, tenant = self._create_test_app_and_account(
-            db_session_with_containers, mock_external_service_dependencies
+        from services.app_service import AppService
+
+        fake = Faker()
+        account = AccountService.create_account(
+            email=fake.email(), name=fake.name(), interface_language="en-US", password=generate_valid_password(fake)
         )
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        tenant = account.current_tenant
         app_service = AppService()
         app = app_service.create_app(
             tenant.id,
