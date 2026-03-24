@@ -54,6 +54,9 @@ export default defineConfig(({ mode }) => {
             // }),
           ],
     resolve: {
+      alias: {
+        'loro-crdt': path.resolve(projectRoot, 'node_modules/loro-crdt/web/index.js'),
+      },
       tsconfigPaths: true,
     },
 

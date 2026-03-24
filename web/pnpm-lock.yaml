@@ -67,6 +67,9 @@ importers:
       '@amplitude/plugin-session-replay-browser':
         specifier: 1.27.1
         version: 1.27.1(@amplitude/rrweb@2.0.0-alpha.36)(rollup@4.59.0)
+      '@babel/runtime':
+        specifier: 7.29.2
+        version: 7.29.2
       '@base-ui/react':
         specifier: 1.3.0
         version: 1.3.0(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)

@@ -60,6 +60,7 @@
   "dependencies": {
     "@amplitude/analytics-browser": "2.37.0",
     "@amplitude/plugin-session-replay-browser": "1.27.1",
+    "@babel/runtime": "7.29.2",
     "@base-ui/react": "1.3.0",
     "@emoji-mart/data": "1.2.1",
     "@floating-ui/react": "0.27.19",
