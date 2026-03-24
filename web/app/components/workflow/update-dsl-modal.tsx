@@ -1,16 +1,11 @@
 'use client'
 
 import type { MouseEventHandler } from 'react'
-import type {
-  CommonNodeType,
-  Node,
-} from './types'
 import {
   RiAlertFill,
   RiCloseLine,
   RiFileDownloadLine,
 } from '@remixicon/react'
-import { load as yamlLoad } from 'js-yaml'
 import {
   memo,
   useCallback,
@@ -23,7 +18,6 @@ import Uploader from '@/app/components/app/create-from-dsl-modal/uploader'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
-import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { ToastContext } from '@/app/components/base/toast/context'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
@@ -36,12 +30,13 @@ import {
   importDSLConfirm,
 } from '@/service/apps'
 import { fetchWorkflowDraft } from '@/service/workflow'
-import { AppModeEnum } from '@/types/app'
 import { WORKFLOW_DATA_UPDATE } from './constants'
 import {
-  BlockEnum,
-  SupportUploadFileTypes,
-} from './types'
+  getImportNotificationPayload,
+  isImportCompleted,
+  normalizeWorkflowFeatures,
+  validateDSLContent,
+} from './update-dsl-modal.helpers'
 import {
   initialEdges,
   initialNodes,
@@ -98,38 +93,13 @@ const UpdateDSLModal = ({
     } = await fetchWorkflowDraft(`/apps/${app_id}/workflows/draft`)
 
     const { nodes, edges, viewport } = graph
-    const newFeatures = {
-      file: {
-        image: {
-          enabled: !!features.file_upload?.image?.enabled,
-          number_limits: features.file_upload?.image?.number_limits || 3,
-          transfer_methods: features.file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
-        },
-        enabled: !!(features.file_upload?.enabled || features.file_upload?.image?.enabled),
-        allowed_file_types: features.file_upload?.allowed_file_types || [SupportUploadFileTypes.image],
-        allowed_file_extensions: features.file_upload?.allowed_file_extensions || FILE_EXTS[SupportUploadFileTypes.image].map(ext => `.${ext}`),
-        allowed_file_upload_methods: features.file_upload?.allowed_file_upload_methods || features.file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
-        number_limits: features.file_upload?.number_limits || features.file_upload?.image?.number_limits || 3,
-      },
-      opening: {
-        enabled: !!features.opening_statement,
-        opening_statement: features.opening_statement,
-        suggested_questions: features.suggested_questions,
-      },
-      suggested: features.suggested_questions_after_answer || { enabled: false },
-      speech2text: features.speech_to_text || { enabled: false },
-      text2speech: features.text_to_speech || { enabled: false },
-      citation: features.retriever_resource || { enabled: false },
-      moderation: features.sensitive_word_avoidance || { enabled: false },
-    }
-
     eventEmitter?.emit({
       type: WORKFLOW_DATA_UPDATE,
       payload: {
         nodes: initialNodes(nodes, edges),
         edges: initialEdges(edges, nodes),
         viewport,
-        features: newFeatures,
+        features: normalizeWorkflowFeatures(features),
         hash,
         conversation_variables: conversation_variables || [],
         environment_variables: environment_variables || [],
@@ -137,34 +107,33 @@ const UpdateDSLModal = ({
     } as any)
   }, [eventEmitter])
 
-  const validateDSLContent = (content: string): boolean => {
-    try {
-      const data = yamlLoad(content) as any
-      const nodes = data?.workflow?.graph?.nodes ?? []
-      const invalidNodes = appDetail?.mode === AppModeEnum.ADVANCED_CHAT
-        ? [
-            BlockEnum.End,
-            BlockEnum.TriggerWebhook,
-            BlockEnum.TriggerSchedule,
-            BlockEnum.TriggerPlugin,
-          ]
-        : [BlockEnum.Answer]
-      const hasInvalidNode = nodes.some((node: Node<CommonNodeType>) => {
-        return invalidNodes.includes(node?.data?.type)
-      })
-      if (hasInvalidNode) {
-        notify({ type: 'error', message: t('common.importFailure', { ns: 'workflow' }) })
-        return false
-      }
-      return true
-    }
-    catch {
-      notify({ type: 'error', message: t('common.importFailure', { ns: 'workflow' }) })
-      return false
-    }
-  }
-
   const isCreatingRef = useRef(false)
+  const handleCompletedImport = useCallback(async (status: DSLImportStatus, appId?: string) => {
+    if (!appId) {
+      notify({ type: 'error', message: t('common.importFailure', { ns: 'workflow' }) })
+      return
+    }
+
+    handleWorkflowUpdate(appId)
+    onImport?.()
+    notify(getImportNotificationPayload(status, t))
+    await handleCheckPluginDependencies(appId)
+    setLoading(false)
+    onCancel()
+  }, [handleCheckPluginDependencies, handleWorkflowUpdate, notify, onCancel, onImport, t])
+
+  const handlePendingImport = useCallback((id: string, importedVersion?: string | null, currentVersion?: string | null) => {
+    setShow(false)
+    setTimeout(() => {
+      setShowErrorModal(true)
+    }, 300)
+    setVersions({
+      importedVersion: importedVersion ?? '',
+      systemVersion: currentVersion ?? '',
+    })
+    setImportId(id)
+  }, [])
+
   const handleImport: MouseEventHandler = useCallback(async () => {
     if (isCreatingRef.current)
       return
@@ -172,43 +141,24 @@ const UpdateDSLModal = ({
     if (!currentFile)
       return
     try {
-      if (appDetail && fileContent && validateDSLContent(fileContent)) {
+      if (appDetail && fileContent && validateDSLContent(fileContent, appDetail.mode)) {
         setLoading(true)
         const response = await importDSL({ mode: DSLImportMode.YAML_CONTENT, yaml_content: fileContent, app_id: appDetail.id })
         const { id, status, app_id, imported_dsl_version, current_dsl_version } = response
 
-        if (status === DSLImportStatus.COMPLETED || status === DSLImportStatus.COMPLETED_WITH_WARNINGS) {
-          if (!app_id) {
-            notify({ type: 'error', message: t('common.importFailure', { ns: 'workflow' }) })
-            return
-          }
-          handleWorkflowUpdate(app_id)
-          if (onImport)
-            onImport()
-          notify({
-            type: status === DSLImportStatus.COMPLETED ? 'success' : 'warning',
-            message: t(status === DSLImportStatus.COMPLETED ? 'common.importSuccess' : 'common.importWarning', { ns: 'workflow' }),
-            children: status === DSLImportStatus.COMPLETED_WITH_WARNINGS && t('common.importWarningDetails', { ns: 'workflow' }),
-          })
-          await handleCheckPluginDependencies(app_id)
-          setLoading(false)
-          onCancel()
+        if (isImportCompleted(status)) {
+          await handleCompletedImport(status, app_id)
         }
         else if (status === DSLImportStatus.PENDING) {
-          setShow(false)
-          setTimeout(() => {
-            setShowErrorModal(true)
-          }, 300)
-          setVersions({
-            importedVersion: imported_dsl_version ?? '',
-            systemVersion: current_dsl_version ?? '',
-          })
-          setImportId(id)
+          handlePendingImport(id, imported_dsl_version, current_dsl_version)
         }
         else {
           setLoading(false)
           notify({ type: 'error', message: t('common.importFailure', { ns: 'workflow' }) })
         }
+      }
+      else if (fileContent) {
+        notify({ type: 'error', message: t('common.importFailure', { ns: 'workflow' }) })
       }
     }
     // eslint-disable-next-line unused-imports/no-unused-vars
@@ -217,7 +167,7 @@ const UpdateDSLModal = ({
       notify({ type: 'error', message: t('common.importFailure', { ns: 'workflow' }) })
     }
     isCreatingRef.current = false
-  }, [currentFile, fileContent, onCancel, notify, t, appDetail, onImport, handleWorkflowUpdate, handleCheckPluginDependencies])
+  }, [currentFile, fileContent, notify, t, appDetail, handleCompletedImport, handlePendingImport])
 
   const onUpdateDSLConfirm: MouseEventHandler = async () => {
     try {

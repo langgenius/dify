@@ -1,146 +1,620 @@
-/**
- * Workflow Panel Width Persistence Tests
- * Tests for GitHub issue #22745: Panel width persistence bug fix
- */
+import type { PropsWithChildren } from 'react'
+import type { ToolWithProvider } from '@/app/components/workflow/types'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import * as React from 'react'
+import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 
-export {}
+const mockHandleNodeSelect = vi.fn()
+const mockHandleNodeDataUpdate = vi.fn()
+const mockHandleNodeDataUpdateWithSyncDraft = vi.fn()
+const mockSaveStateToHistory = vi.fn()
+const mockSetDetail = vi.fn()
+const mockSetShowAccountSettingModal = vi.fn()
+const mockHandleSingleRun = vi.fn()
+const mockHandleStop = vi.fn()
+const mockHandleRunWithParams = vi.fn()
+let mockShowMessageLogModal = false
+let mockBuiltInTools = [{
+  id: 'provider/tool',
+  name: 'Tool',
+  type: 'builtin',
+  allow_delete: true,
+}]
+let mockTriggerPlugins: Array<Record<string, unknown>> = []
 
-type PanelWidthSource = 'user' | 'system'
-
-// Core panel width logic extracted from the component
-const createPanelWidthManager = (storageKey: string) => {
-  return {
-    updateWidth: (width: number, source: PanelWidthSource = 'user') => {
-      const newValue = Math.max(400, Math.min(width, 800))
-      if (source === 'user')
-        localStorage.setItem(storageKey, `${newValue}`)
-
-      return newValue
-    },
-    getStoredWidth: () => {
-      const stored = localStorage.getItem(storageKey)
-      return stored ? Number.parseFloat(stored) : 400
-    },
-  }
+const mockLogsState = {
+  showSpecialResultPanel: false,
 }
 
-describe('Workflow Panel Width Persistence', () => {
-  describe('Node Panel Width Management', () => {
-    const storageKey = 'workflow-node-panel-width'
+const mockLastRunState = {
+  isShowSingleRun: false,
+  hideSingleRun: vi.fn(),
+  runningStatus: NodeRunningStatus.Succeeded,
+  runInputData: {},
+  runInputDataRef: { current: {} },
+  runResult: {},
+  setRunResult: vi.fn(),
+  getInputVars: vi.fn(),
+  toVarInputs: vi.fn(),
+  tabType: 'settings',
+  isRunAfterSingleRun: false,
+  setIsRunAfterSingleRun: vi.fn(),
+  setTabType: vi.fn(),
+  handleAfterCustomSingleRun: vi.fn(),
+  singleRunParams: {
+    forms: [],
+    onStop: vi.fn(),
+    runningStatus: NodeRunningStatus.Succeeded,
+    existVarValuesInForms: [],
+    filteredExistVarForms: [],
+  },
+  nodeInfo: { id: 'node-1' },
+  setRunInputData: vi.fn(),
+  handleStop: () => mockHandleStop(),
+  handleSingleRun: () => mockHandleSingleRun(),
+  handleRunWithParams: (...args: unknown[]) => mockHandleRunWithParams(...args),
+  getExistVarValuesInForms: vi.fn(() => []),
+  getFilteredExistVarForms: vi.fn(() => []),
+}
 
-    it('should save user resize to localStorage', () => {
-      const manager = createPanelWidthManager(storageKey)
+const createDataSourceCollection = (overrides: Partial<ToolWithProvider> = {}): ToolWithProvider => ({
+  id: 'source-1',
+  name: 'Source',
+  author: 'Author',
+  description: { en_US: 'Source description', zh_Hans: 'Source description' },
+  icon: 'source-icon',
+  label: { en_US: 'Source', zh_Hans: 'Source' },
+  type: 'datasource',
+  team_credentials: {},
+  is_team_authorization: false,
+  allow_delete: false,
+  labels: [],
+  plugin_id: 'source-1',
+  tools: [],
+  meta: {} as ToolWithProvider['meta'],
+  ...overrides,
+}) as ToolWithProvider
 
-      const result = manager.updateWidth(500, 'user')
+vi.mock('@/app/components/app/store', () => ({
+  useStore: (selector: (state: { showMessageLogModal: boolean, appDetail: { id: string } }) => unknown) => selector({
+    showMessageLogModal: mockShowMessageLogModal,
+    appDetail: { id: 'app-1' },
+  }),
+}))
 
-      expect(result).toBe(500)
-      expect(localStorage.setItem).toHaveBeenCalledWith(storageKey, '500')
+vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
+  useLanguage: () => 'en_US',
+}))
+
+vi.mock('@/app/components/plugins/plugin-detail-panel/store', () => ({
+  usePluginStore: () => ({
+    setDetail: mockSetDetail,
+  }),
+}))
+
+vi.mock('@/app/components/workflow/hooks', () => ({
+  useAvailableBlocks: () => ({ availableNextBlocks: [] }),
+  useEdgesInteractions: () => ({
+    handleEdgeDeleteByDeleteBranch: vi.fn(),
+  }),
+  useNodeDataUpdate: () => ({
+    handleNodeDataUpdate: mockHandleNodeDataUpdate,
+    handleNodeDataUpdateWithSyncDraft: mockHandleNodeDataUpdateWithSyncDraft,
+  }),
+  useNodesInteractions: () => ({
+    handleNodeSelect: mockHandleNodeSelect,
+  }),
+  useNodesMetaData: () => ({
+    nodesMap: {
+      [BlockEnum.Tool]: { defaultRunInputData: {}, metaData: { helpLinkUri: '' } },
+      [BlockEnum.DataSource]: { defaultRunInputData: {}, metaData: { helpLinkUri: '' } },
+    },
+  }),
+  useNodesReadOnly: () => ({
+    nodesReadOnly: false,
+  }),
+  useToolIcon: () => undefined,
+  useWorkflowHistory: () => ({
+    saveStateToHistory: mockSaveStateToHistory,
+  }),
+  WorkflowHistoryEvent: {
+    NodeTitleChange: 'NodeTitleChange',
+    NodeDescriptionChange: 'NodeDescriptionChange',
+  },
+}))
+
+vi.mock('@/app/components/workflow/hooks-store', () => ({
+  useHooksStore: (selector: (state: { configsMap: { flowId: string, flowType: string } }) => unknown) => selector({
+    configsMap: {
+      flowId: 'flow-1',
+      flowType: 'app',
+    },
+  }),
+}))
+
+vi.mock('@/app/components/workflow/hooks/use-inspect-vars-crud', () => ({
+  default: () => ({
+    appendNodeInspectVars: vi.fn(),
+  }),
+}))
+
+vi.mock('@/app/components/workflow/run/hooks', () => ({
+  useLogs: () => mockLogsState,
+}))
+
+vi.mock('@/service/use-tools', () => ({
+  useAllBuiltInTools: () => ({
+    data: mockBuiltInTools,
+  }),
+}))
+
+vi.mock('@/service/use-triggers', () => ({
+  useAllTriggerPlugins: () => ({
+    data: mockTriggerPlugins,
+  }),
+}))
+
+vi.mock('@/context/modal-context', () => ({
+  useModalContext: () => ({
+    setShowAccountSettingModal: mockSetShowAccountSettingModal,
+  }),
+}))
+
+vi.mock('@/app/components/workflow/utils', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/components/workflow/utils')>()
+  return {
+    ...actual,
+    canRunBySingle: () => true,
+    hasErrorHandleNode: () => false,
+    hasRetryNode: () => false,
+    isSupportCustomRunForm: (type: string) => type === BlockEnum.DataSource,
+  }
+})
+
+vi.mock('../hooks/use-resize-panel', () => ({
+  useResizePanel: () => ({
+    triggerRef: { current: null },
+    containerRef: { current: null },
+  }),
+}))
+
+vi.mock('../last-run/use-last-run', () => ({
+  default: () => mockLastRunState,
+}))
+
+vi.mock('@/app/components/plugins/plugin-auth', () => ({
+  PluginAuth: ({ children }: PropsWithChildren) => <div>{children}</div>,
+  AuthorizedInNode: ({ onAuthorizationItemClick }: { onAuthorizationItemClick?: (credentialId: string) => void }) => (
+    <button onClick={() => onAuthorizationItemClick?.('credential-1')}>authorized-in-node</button>
+  ),
+  PluginAuthInDataSourceNode: ({ children, onJumpToDataSourcePage }: PropsWithChildren<{ onJumpToDataSourcePage?: () => void }>) => (
+    <div>
+      <button onClick={onJumpToDataSourcePage}>jump-to-datasource</button>
+      {children}
+    </div>
+  ),
+  AuthorizedInDataSourceNode: ({ onJumpToDataSourcePage }: { onJumpToDataSourcePage?: () => void }) => (
+    <button onClick={onJumpToDataSourcePage}>authorized-in-datasource-node</button>
+  ),
+  AuthCategory: { tool: 'tool' },
+}))
+
+vi.mock('@/app/components/plugins/readme-panel/entrance', () => ({
+  ReadmeEntrance: () => <div>readme-entrance</div>,
+}))
+
+vi.mock('@/app/components/workflow/block-icon', () => ({
+  default: () => <div>block-icon</div>,
+}))
+
+vi.mock('@/app/components/workflow/nodes/_base/components/split', () => ({
+  default: () => <div>split</div>,
+}))
+
+vi.mock('@/app/components/workflow/nodes/data-source/before-run-form', () => ({
+  default: () => <div>data-source-before-run-form</div>,
+}))
+
+vi.mock('@/app/components/workflow/run/special-result-panel', () => ({
+  default: () => <div>special-result-panel</div>,
+}))
+
+vi.mock('../before-run-form', () => ({
+  default: () => <div>before-run-form</div>,
+}))
+
+vi.mock('../before-run-form/panel-wrap', () => ({
+  default: ({ children }: PropsWithChildren<{ nodeName: string, onHide: () => void }>) => <div>{children}</div>,
+}))
+
+vi.mock('../error-handle/error-handle-on-panel', () => ({
+  default: () => <div>error-handle-panel</div>,
+}))
+
+vi.mock('../help-link', () => ({
+  default: () => <div>help-link</div>,
+}))
+
+vi.mock('../next-step', () => ({
+  default: () => <div>next-step</div>,
+}))
+
+vi.mock('../panel-operator', () => ({
+  default: () => <div>panel-operator</div>,
+}))
+
+vi.mock('../retry/retry-on-panel', () => ({
+  default: () => <div>retry-panel</div>,
+}))
+
+vi.mock('../title-description-input', () => ({
+  TitleInput: ({ value, onBlur }: { value: string, onBlur: (value: string) => void }) => (
+    <input aria-label="title-input" defaultValue={value} onBlur={event => onBlur(event.target.value)} />
+  ),
+  DescriptionInput: ({ value, onChange }: { value: string, onChange: (value: string) => void }) => (
+    <textarea aria-label="description-input" defaultValue={value} onChange={event => onChange(event.target.value)} />
+  ),
+}))
+
+vi.mock('../last-run', () => ({
+  default: ({
+    isPaused,
+    updateNodeRunningStatus,
+  }: {
+    isPaused?: boolean
+    updateNodeRunningStatus?: (status: NodeRunningStatus) => void
+  }) => (
+    <div>
+      <div>{isPaused ? 'paused' : 'active'}</div>
+      <button onClick={() => updateNodeRunningStatus?.(NodeRunningStatus.Running)}>last-run-update-status</button>
+      <div>last-run-panel</div>
+    </div>
+  ),
+}))
+
+vi.mock('../tab', () => ({
+  __esModule: true,
+  TabType: { settings: 'settings', lastRun: 'lastRun' },
+  default: ({ value, onChange }: { value: string, onChange: (value: string) => void }) => (
+    <div>
+      <button onClick={() => onChange('settings')}>settings-tab</button>
+      <button onClick={() => onChange('lastRun')}>last-run-tab</button>
+      <span>{value}</span>
+    </div>
+  ),
+}))
+
+vi.mock('../trigger-subscription', () => ({
+  TriggerSubscription: ({ children, onSubscriptionChange }: PropsWithChildren<{ onSubscriptionChange?: (value: { id: string }, callback?: () => void) => void }>) => (
+    <div>
+      <button onClick={() => onSubscriptionChange?.({ id: 'subscription-1' }, vi.fn())}>change-subscription</button>
+      {children}
+    </div>
+  ),
+}))
+
+const createData = (overrides: Record<string, unknown> = {}) => ({
+  title: 'Tool Node',
+  desc: 'Node description',
+  type: BlockEnum.Tool,
+  provider_id: 'provider/tool',
+  _singleRunningStatus: undefined,
+  ...overrides,
+})
+
+describe('workflow-panel index', () => {
+  let BasePanel: typeof import('../index').default
+
+  beforeAll(async () => {
+    BasePanel = (await import('../index')).default
+  })
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockShowMessageLogModal = false
+    mockBuiltInTools = [{
+      id: 'provider/tool',
+      name: 'Tool',
+      type: 'builtin',
+      allow_delete: true,
+    }]
+    mockTriggerPlugins = []
+    mockLogsState.showSpecialResultPanel = false
+    mockLastRunState.isShowSingleRun = false
+    mockLastRunState.tabType = 'settings'
+  })
+
+  it('should render the settings panel and wire title, description, run, and close actions', async () => {
+    const { container } = renderWorkflowComponent(
+      <BasePanel id="node-1" data={createData() as never}>
+        <div>panel-child</div>
+      </BasePanel>,
+      {
+        initialStoreState: {
+          showSingleRunPanel: false,
+          workflowCanvasWidth: 1200,
+          nodePanelWidth: 480,
+          otherPanelWidth: 200,
+          buildInTools: [],
+          dataSourceList: [],
+        },
+      },
+    )
+
+    expect(screen.getByText('panel-child')).toBeInTheDocument()
+    expect(screen.getByText('authorized-in-node')).toBeInTheDocument()
+
+    fireEvent.blur(screen.getByDisplayValue('Tool Node'), { target: { value: 'Updated title' } })
+    fireEvent.change(screen.getByDisplayValue('Node description'), { target: { value: 'Updated description' } })
+
+    await waitFor(() => {
+      expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenCalled()
     })
+    expect(mockSaveStateToHistory).toHaveBeenCalled()
+    fireEvent.click(screen.getByText('authorized-in-node'))
 
-    it('should not save system compression to localStorage', () => {
-      const manager = createPanelWidthManager(storageKey)
+    const clickableItems = container.querySelectorAll('.cursor-pointer')
+    fireEvent.click(clickableItems[0] as HTMLElement)
+    fireEvent.click(clickableItems[clickableItems.length - 1] as HTMLElement)
 
-      const result = manager.updateWidth(200, 'system')
+    expect(mockHandleSingleRun).toHaveBeenCalledTimes(1)
+    expect(mockHandleNodeSelect).toHaveBeenCalledWith('node-1', true)
+    expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ credential_id: 'credential-1' }),
+    }))
+  })
 
-      expect(result).toBe(400) // Respects minimum width
-      expect(localStorage.setItem).not.toHaveBeenCalled()
-    })
+  it('should render the special result panel when logs request it', () => {
+    mockLogsState.showSpecialResultPanel = true
 
-    it('should enforce minimum width of 400px', () => {
-      const manager = createPanelWidthManager(storageKey)
+    renderWorkflowComponent(
+      <BasePanel id="node-1" data={createData() as never}>
+        <div>panel-child</div>
+      </BasePanel>,
+      {
+        initialStoreState: {
+          nodePanelWidth: 480,
+          otherPanelWidth: 200,
+        },
+      },
+    )
 
-      // User tries to set below minimum
-      const userResult = manager.updateWidth(300, 'user')
-      expect(userResult).toBe(400)
-      expect(localStorage.setItem).toHaveBeenCalledWith(storageKey, '400')
+    expect(screen.getByText('special-result-panel')).toBeInTheDocument()
+  })
 
-      // System compression below minimum
-      const systemResult = manager.updateWidth(150, 'system')
-      expect(systemResult).toBe(400)
-      expect(localStorage.setItem).toHaveBeenCalledTimes(1) // Only user call
-    })
+  it('should render last-run content when the tab switches', () => {
+    mockLastRunState.tabType = 'lastRun'
 
-    it('should preserve user preferences during system compression', () => {
-      localStorage.setItem(storageKey, '600')
-      const manager = createPanelWidthManager(storageKey)
+    renderWorkflowComponent(
+      <BasePanel id="node-1" data={createData() as never}>
+        <div>panel-child</div>
+      </BasePanel>,
+      {
+        initialStoreState: {
+          nodePanelWidth: 480,
+          otherPanelWidth: 200,
+        },
+      },
+    )
 
-      // System compresses panel
-      manager.updateWidth(200, 'system')
+    expect(screen.getByText('last-run-panel')).toBeInTheDocument()
+  })
 
-      // User preference should remain unchanged
-      expect(localStorage.getItem(storageKey)).toBe('600')
+  it('should render the plain tab layout and allow last-run status updates', async () => {
+    mockLastRunState.tabType = 'lastRun'
+
+    renderWorkflowComponent(
+      <BasePanel id="node-plain" data={createData({ type: 'custom' }) as never}>
+        <div>panel-child</div>
+      </BasePanel>,
+      {
+        initialStoreState: {
+          nodePanelWidth: 480,
+          otherPanelWidth: 200,
+        },
+      },
+    )
+
+    expect(screen.queryByText('authorized-in-node')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('last-run-update-status'))
+
+    await waitFor(() => {
+      expect(mockHandleNodeDataUpdate).toHaveBeenCalledWith(expect.objectContaining({
+        id: 'node-plain',
+        data: expect.objectContaining({
+          _singleRunningStatus: NodeRunningStatus.Running,
+        }),
+      }))
     })
   })
 
-  describe('Bug Scenario Reproduction', () => {
-    it('should reproduce original bug behavior (for comparison)', () => {
-      const storageKey = 'workflow-node-panel-width'
+  it('should mark the last run as paused after a running single-run completes', async () => {
+    mockLastRunState.tabType = 'lastRun'
 
-      // Original buggy behavior - always saves regardless of source
-      const buggyUpdate = (width: number) => {
-        localStorage.setItem(storageKey, `${width}`)
-        return Math.max(400, width)
-      }
+    const { rerender } = renderWorkflowComponent(
+      <BasePanel id="node-pause" data={createData({ _singleRunningStatus: NodeRunningStatus.Running }) as never}>
+        <div>panel-child</div>
+      </BasePanel>,
+      {
+        initialStoreState: {
+          nodePanelWidth: 480,
+          otherPanelWidth: 200,
+        },
+      },
+    )
 
-      localStorage.setItem(storageKey, '500') // User preference
-      buggyUpdate(200) // System compression pollutes localStorage
+    expect(screen.getByText('active')).toBeInTheDocument()
 
-      expect(localStorage.getItem(storageKey)).toBe('200') // Bug: corrupted state
-    })
+    rerender(
+      <BasePanel id="node-pause" data={createData({ _isSingleRun: true, _singleRunningStatus: undefined }) as never}>
+        <div>panel-child</div>
+      </BasePanel>,
+    )
 
-    it('should verify fix prevents localStorage pollution', () => {
-      const storageKey = 'workflow-node-panel-width'
-      const manager = createPanelWidthManager(storageKey)
-
-      localStorage.setItem(storageKey, '500') // User preference
-      manager.updateWidth(200, 'system') // System compression
-
-      expect(localStorage.getItem(storageKey)).toBe('500') // Fix: preserved state
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should handle multiple rapid operations correctly', () => {
-      const manager = createPanelWidthManager('workflow-node-panel-width')
-
-      // Rapid system adjustments
-      manager.updateWidth(300, 'system')
-      manager.updateWidth(250, 'system')
-      manager.updateWidth(180, 'system')
-
-      // Single user adjustment
-      manager.updateWidth(550, 'user')
-
-      expect(localStorage.setItem).toHaveBeenCalledTimes(1)
-      expect(localStorage.setItem).toHaveBeenCalledWith('workflow-node-panel-width', '550')
-    })
-
-    it('should handle corrupted localStorage gracefully', () => {
-      localStorage.setItem('workflow-node-panel-width', '150') // Below minimum
-      const manager = createPanelWidthManager('workflow-node-panel-width')
-
-      const storedWidth = manager.getStoredWidth()
-      expect(storedWidth).toBe(150) // Returns raw value
-
-      // User can correct the preference
-      const correctedWidth = manager.updateWidth(500, 'user')
-      expect(correctedWidth).toBe(500)
-      expect(localStorage.getItem('workflow-node-panel-width')).toBe('500')
+    await waitFor(() => {
+      expect(screen.getByText('paused')).toBeInTheDocument()
     })
   })
 
-  describe('TypeScript Type Safety', () => {
-    it('should enforce source parameter type', () => {
-      const manager = createPanelWidthManager('workflow-node-panel-width')
+  it('should render custom data source single run form for supported nodes', () => {
+    mockLastRunState.isShowSingleRun = true
 
-      // Valid source values
-      manager.updateWidth(500, 'user')
-      manager.updateWidth(500, 'system')
+    renderWorkflowComponent(
+      <BasePanel id="node-1" data={createData({ type: BlockEnum.DataSource }) as never}>
+        <div>panel-child</div>
+      </BasePanel>,
+      {
+        initialStoreState: {
+          nodePanelWidth: 480,
+          otherPanelWidth: 200,
+        },
+      },
+    )
 
-      // Default to 'user'
-      manager.updateWidth(500)
+    expect(screen.getByText('data-source-before-run-form')).toBeInTheDocument()
+  })
 
-      expect(localStorage.setItem).toHaveBeenCalledTimes(2) // user + default
+  it('should render data source authorization controls and jump to the settings modal', () => {
+    renderWorkflowComponent(
+      <BasePanel id="node-1" data={createData({ type: BlockEnum.DataSource, plugin_id: 'source-1', provider_type: 'remote' }) as never}>
+        <div>panel-child</div>
+      </BasePanel>,
+      {
+        initialStoreState: {
+          nodePanelWidth: 480,
+          otherPanelWidth: 200,
+          dataSourceList: [createDataSourceCollection({ is_authorized: false })],
+        },
+      },
+    )
+
+    fireEvent.click(screen.getByText('authorized-in-datasource-node'))
+
+    expect(mockSetShowAccountSettingModal).toHaveBeenCalled()
+  })
+
+  it('should react to pending single run actions', () => {
+    renderWorkflowComponent(
+      <BasePanel id="node-1" data={createData() as never}>
+        <div>panel-child</div>
+      </BasePanel>,
+      {
+        initialStoreState: {
+          nodePanelWidth: 480,
+          otherPanelWidth: 200,
+          pendingSingleRun: {
+            nodeId: 'node-1',
+            action: 'run',
+          },
+        },
+      },
+    )
+
+    expect(mockHandleSingleRun).toHaveBeenCalledTimes(1)
+
+    renderWorkflowComponent(
+      <BasePanel id="node-1" data={createData() as never}>
+        <div>panel-child</div>
+      </BasePanel>,
+      {
+        initialStoreState: {
+          nodePanelWidth: 480,
+          otherPanelWidth: 200,
+          pendingSingleRun: {
+            nodeId: 'node-1',
+            action: 'stop',
+          },
+        },
+      },
+    )
+
+    expect(mockHandleStop).toHaveBeenCalledTimes(1)
+  })
+
+  it('should load trigger plugin details when the selected node is a trigger plugin', async () => {
+    mockTriggerPlugins = [{
+      id: 'trigger-1',
+      name: 'trigger-name',
+      plugin_id: 'plugin-id',
+      plugin_unique_identifier: 'plugin-uid',
+      label: {
+        en_US: 'Trigger Name',
+      },
+      declaration: {},
+      subscription_schema: [],
+      subscription_constructor: {},
+    }]
+
+    renderWorkflowComponent(
+      <BasePanel id="node-1" data={createData({ type: BlockEnum.TriggerPlugin, plugin_id: 'plugin-id' }) as never}>
+        <div>panel-child</div>
+      </BasePanel>,
+      {
+        initialStoreState: {
+          nodePanelWidth: 480,
+          otherPanelWidth: 200,
+        },
+      },
+    )
+
+    await waitFor(() => {
+      expect(mockSetDetail).toHaveBeenCalledWith(expect.objectContaining({
+        id: 'trigger-1',
+        name: 'Trigger Name',
+      }))
+    })
+
+    fireEvent.click(screen.getByText('change-subscription'))
+    expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenCalledWith(
+      { id: 'node-1', data: { subscription_id: 'subscription-1' } },
+      expect.objectContaining({ sync: true }),
+    )
+  })
+
+  it('should stop a running node and offset when the log modal is visible', () => {
+    mockShowMessageLogModal = true
+
+    const { container } = renderWorkflowComponent(
+      <BasePanel id="node-1" data={createData({ _singleRunningStatus: NodeRunningStatus.Running }) as never}>
+        <div>panel-child</div>
+      </BasePanel>,
+      {
+        initialStoreState: {
+          nodePanelWidth: 480,
+          otherPanelWidth: 240,
+        },
+      },
+    )
+
+    const root = container.firstElementChild as HTMLElement
+    expect(root.style.right).toBe('240px')
+    expect(root.className).toContain('absolute')
+
+    const clickableItems = container.querySelectorAll('.cursor-pointer')
+    fireEvent.click(clickableItems[0] as HTMLElement)
+
+    expect(mockHandleStop).toHaveBeenCalledTimes(1)
+  })
+
+  it('should persist user resize changes and compress oversized panel widths', async () => {
+    const { container } = renderWorkflowComponent(
+      <BasePanel id="node-resize" data={createData() as never}>
+        <div>panel-child</div>
+      </BasePanel>,
+      {
+        initialStoreState: {
+          workflowCanvasWidth: 800,
+          nodePanelWidth: 600,
+          otherPanelWidth: 200,
+        },
+      },
+    )
+
+    await waitFor(() => {
+      const panel = container.querySelector('[style*="width"]') as HTMLElement
+      expect(panel.style.width).toBe('400px')
     })
   })
 })
