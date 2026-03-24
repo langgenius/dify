@@ -84,42 +84,25 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         uses: ./.github/actions/setup-web
 
-      - name: Restore ESLint cache
-        if: steps.changed-files.outputs.any_changed == 'true'
-        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
-        with:
-          path: web/.eslintcache
-          key: ${{ runner.os }}-web-eslint-${{ hashFiles('web/package.json', 'web/pnpm-lock.yaml', 'web/eslint.config.mjs', 'web/eslint.constants.mjs', 'web/plugins/eslint/**') }}
-
       - name: Web style check
         if: steps.changed-files.outputs.any_changed == 'true'
         working-directory: ./web
-        run: |
-          vp run lint:ci
-        # pnpm run lint:report
-        # continue-on-error: true
-
-      # - name: Annotate Code
-      #   if: steps.changed-files.outputs.any_changed == 'true' && github.event_name == 'pull_request'
-      #   uses: DerLev/eslint-annotations@51347b3a0abfb503fc8734d5ae31c4b151297fae
-      #   with:
-      #     eslint-report: web/eslint_report.json
-      #     github-token: ${{ secrets.GITHUB_TOKEN }}
+        run: vp run lint:ci --cache
 
       - name: Web tsslint
         if: steps.changed-files.outputs.any_changed == 'true'
         working-directory: ./web
-        run: vp run lint:tss
+        run: vp run lint:tss --cache
 
       - name: Web type check
         if: steps.changed-files.outputs.any_changed == 'true'
         working-directory: ./web
-        run: vp run type-check
+        run: vp run type-check --cache
 
       - name: Web dead code check
         if: steps.changed-files.outputs.any_changed == 'true'
         working-directory: ./web
-        run: vp run knip
+        run: vp run knip --cache
 
   superlinter:
     name: SuperLinter
