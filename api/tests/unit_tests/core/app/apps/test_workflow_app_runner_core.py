@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import pytest
@@ -11,6 +11,10 @@ from core.app.entities.queue_entities import (
     QueueAgentLogEvent,
     QueueIterationCompletedEvent,
     QueueLoopCompletedEvent,
+    QueueNodeExceptionEvent,
+    QueueNodeFailedEvent,
+    QueueNodeRetryEvent,
+    QueueNodeSucceededEvent,
     QueueTextChunkEvent,
     QueueWorkflowPausedEvent,
     QueueWorkflowStartedEvent,
@@ -24,12 +28,18 @@ from dify_graph.graph_events import (
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
     NodeRunAgentLogEvent,
+    NodeRunExceptionEvent,
+    NodeRunFailedEvent,
     NodeRunIterationSucceededEvent,
     NodeRunLoopFailedEvent,
+    NodeRunRetryEvent,
     NodeRunStartedEvent,
     NodeRunStreamChunkEvent,
+    NodeRunSucceededEvent,
 )
+from dify_graph.node_events import NodeRunResult
 from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.variables.variables import StringVariable
 
 
 class TestWorkflowBasedAppRunner:
@@ -131,6 +141,96 @@ class TestWorkflowBasedAppRunner:
         assert graph is not None
         assert variable_pool is graph_runtime_state.variable_pool
 
+    def test_get_graph_and_variable_pool_preloads_constructor_variables_before_graph_init(self, monkeypatch):
+        variable_loader = SimpleNamespace(
+            load_variables=lambda selectors: (
+                [
+                    StringVariable(
+                        name="conversation_id",
+                        value="conv-1",
+                        selector=["sys", "conversation_id"],
+                    )
+                ]
+                if selectors
+                else []
+            )
+        )
+        runner = WorkflowBasedAppRunner(
+            queue_manager=SimpleNamespace(),
+            variable_loader=variable_loader,
+            app_id="app",
+        )
+        graph_runtime_state = GraphRuntimeState(
+            variable_pool=VariablePool(system_variables=default_system_variables()),
+            start_at=0.0,
+        )
+
+        workflow = SimpleNamespace(
+            tenant_id="tenant",
+            id="workflow",
+            graph_dict={
+                "nodes": [
+                    {"id": "loop-node", "data": {"type": "loop", "version": "1", "title": "Loop"}},
+                    {
+                        "id": "llm-child",
+                        "data": {
+                            "type": "llm",
+                            "version": "1",
+                            "loop_id": "loop-node",
+                            "memory": object(),
+                        },
+                    },
+                ],
+                "edges": [],
+            },
+        )
+
+        class _LoopNodeCls:
+            @staticmethod
+            def extract_variable_selector_to_variable_mapping(graph_config, config):
+                return {}
+
+        def _validate_node_config(value):
+            return {"id": value["id"], "data": SimpleNamespace(**value["data"])}
+
+        def _graph_init(**kwargs):
+            variable_pool = graph_runtime_state.variable_pool
+            assert variable_pool.get(["sys", "conversation_id"]) is not None
+            return SimpleNamespace()
+
+        monkeypatch.setattr(
+            "core.app.apps.workflow_app_runner.NodeConfigDictAdapter.validate_python",
+            _validate_node_config,
+        )
+        monkeypatch.setattr(
+            "core.app.apps.workflow_app_runner.Graph.init",
+            _graph_init,
+        )
+        monkeypatch.setattr(
+            "core.app.apps.workflow_app_runner.resolve_workflow_node_class",
+            lambda **_kwargs: _LoopNodeCls,
+        )
+        monkeypatch.setattr(
+            "core.app.apps.workflow_app_runner.load_into_variable_pool",
+            lambda **kwargs: None,
+        )
+        monkeypatch.setattr(
+            "core.app.apps.workflow_app_runner.WorkflowEntry.mapping_user_inputs_to_variable_pool",
+            lambda **kwargs: None,
+        )
+
+        graph, variable_pool = runner._get_graph_and_variable_pool_for_single_node_run(
+            workflow=workflow,
+            node_id="loop-node",
+            user_inputs={},
+            graph_runtime_state=graph_runtime_state,
+            node_type_filter_key="loop_id",
+            node_type_label="loop",
+        )
+
+        assert graph is not None
+        assert variable_pool.get(["sys", "conversation_id"]).value == "conv-1"
+
     def test_handle_graph_run_events_and_pause_notifications(self, monkeypatch):
         published: list[object] = []
 
@@ -195,7 +295,7 @@ class TestWorkflowBasedAppRunner:
                 node_id="node",
                 node_type=BuiltinNodeTypes.START,
                 node_title="Start",
-                start_at=datetime.utcnow(),
+                start_at=datetime.now(UTC),
             ),
         )
         runner._handle_event(
@@ -232,7 +332,7 @@ class TestWorkflowBasedAppRunner:
                 node_id="node",
                 node_type=BuiltinNodeTypes.LLM,
                 node_title="Iter",
-                start_at=datetime.utcnow(),
+                start_at=datetime.now(UTC),
                 inputs={},
                 outputs={"ok": True},
                 metadata={},
@@ -246,7 +346,7 @@ class TestWorkflowBasedAppRunner:
                 node_id="node",
                 node_type=BuiltinNodeTypes.LLM,
                 node_title="Loop",
-                start_at=datetime.utcnow(),
+                start_at=datetime.now(UTC),
                 inputs={},
                 outputs={},
                 metadata={},
@@ -259,3 +359,87 @@ class TestWorkflowBasedAppRunner:
         assert any(isinstance(event, QueueAgentLogEvent) for event in published)
         assert any(isinstance(event, QueueIterationCompletedEvent) for event in published)
         assert any(isinstance(event, QueueLoopCompletedEvent) for event in published)
+
+    @pytest.mark.parametrize(
+        ("event_factory", "queue_event_cls"),
+        [
+            (
+                lambda result, start_at, finished_at: NodeRunSucceededEvent(
+                    id="exec",
+                    node_id="node",
+                    node_type=BuiltinNodeTypes.START,
+                    start_at=start_at,
+                    finished_at=finished_at,
+                    node_run_result=result,
+                ),
+                QueueNodeSucceededEvent,
+            ),
+            (
+                lambda result, start_at, finished_at: NodeRunFailedEvent(
+                    id="exec",
+                    node_id="node",
+                    node_type=BuiltinNodeTypes.START,
+                    start_at=start_at,
+                    finished_at=finished_at,
+                    error="boom",
+                    node_run_result=result,
+                ),
+                QueueNodeFailedEvent,
+            ),
+            (
+                lambda result, start_at, finished_at: NodeRunExceptionEvent(
+                    id="exec",
+                    node_id="node",
+                    node_type=BuiltinNodeTypes.START,
+                    start_at=start_at,
+                    finished_at=finished_at,
+                    error="boom",
+                    node_run_result=result,
+                ),
+                QueueNodeExceptionEvent,
+            ),
+            (
+                lambda result, start_at, _finished_at: NodeRunRetryEvent(
+                    id="exec",
+                    node_id="node",
+                    node_type=BuiltinNodeTypes.START,
+                    node_title="Start",
+                    start_at=start_at,
+                    error="boom",
+                    retry_index=1,
+                    node_run_result=result,
+                ),
+                QueueNodeRetryEvent,
+            ),
+        ],
+    )
+    def test_handle_start_node_result_events_project_outputs(self, event_factory, queue_event_cls):
+        published: list[object] = []
+
+        class _QueueManager:
+            def publish(self, event, publish_from):
+                published.append(event)
+
+        runner = WorkflowBasedAppRunner(queue_manager=_QueueManager(), app_id="app")
+        graph_runtime_state = GraphRuntimeState(
+            variable_pool=VariablePool(system_variables=default_system_variables()),
+            start_at=0.0,
+        )
+        workflow_entry = SimpleNamespace(graph_engine=SimpleNamespace(graph_runtime_state=graph_runtime_state))
+        started_at = datetime.now(UTC)
+        finished_at = datetime.now(UTC)
+        result = NodeRunResult(
+            inputs={"question": "hello"},
+            outputs={
+                "question": "hello",
+                "sys.query": "hello",
+                "env.API_KEY": "secret",
+                "conversation.session_id": "session-1",
+            },
+        )
+
+        runner._handle_event(workflow_entry, event_factory(result, started_at, finished_at))
+
+        queue_event = published[-1]
+        assert isinstance(queue_event, queue_event_cls)
+        assert queue_event.outputs == {"question": "hello"}

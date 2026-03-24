@@ -20,6 +20,7 @@ from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.workflow.system_variables import SystemVariableKey
 from core.workflow.variable_prefixes import SYSTEM_VARIABLE_NODE_ID
+from core.workflow.workflow_run_outputs import project_node_outputs_for_workflow_run
 from dify_graph.entities import WorkflowExecution, WorkflowNodeExecution
 from dify_graph.enums import (
     WorkflowExecutionStatus,
@@ -371,10 +372,15 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
             domain_execution.error = error
 
         if update_outputs:
+            projected_outputs = project_node_outputs_for_workflow_run(
+                node_type=domain_execution.node_type,
+                inputs=node_result.inputs,
+                outputs=node_result.outputs,
+            )
             domain_execution.update_from_mapping(
                 inputs=node_result.inputs,
                 process_data=node_result.process_data,
-                outputs=node_result.outputs,
+                outputs=projected_outputs,
                 metadata=node_result.metadata,
             )
 

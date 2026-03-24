@@ -9,6 +9,7 @@ from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.model_manager import ModelInstance
 from core.workflow import workflow_entry
+from core.workflow.system_variables import default_system_variables
 from dify_graph.entities.base_node_data import BaseNodeData
 from dify_graph.entities.graph_config import NodeConfigDictAdapter
 from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
@@ -21,7 +22,8 @@ from dify_graph.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.node_events import NodeRunResult
 from dify_graph.nodes import BuiltinNodeTypes
 from dify_graph.nodes.base.node import Node
-from dify_graph.runtime import ChildGraphNotFoundError
+from dify_graph.runtime import ChildGraphNotFoundError, VariablePool
+from dify_graph.variables.variables import StringVariable
 from tests.workflow_test_utils import build_test_graph_init_params, build_test_variable_pool
 
 
@@ -323,6 +325,79 @@ class TestWorkflowEntryRun:
 
 
 class TestWorkflowEntrySingleStepRun:
+    def test_preloads_constructor_variables_before_creating_memory_node(self):
+        class FakeLLMNode:
+            id = "node-id"
+            title = "Node Title"
+            node_type = BuiltinNodeTypes.LLM
+
+            @staticmethod
+            def version():
+                return "1"
+
+            @staticmethod
+            def extract_variable_selector_to_variable_mapping(**_kwargs):
+                return {}
+
+        variable_pool = VariablePool(system_variables=default_system_variables(), user_inputs={})
+        variable_loader = MagicMock()
+        variable_loader.load_variables.return_value = [
+            StringVariable(
+                name="conversation_id",
+                value="conv-1",
+                selector=["sys", "conversation_id"],
+            )
+        ]
+
+        with (
+            patch.object(workflow_entry, "GraphInitParams", return_value=sentinel.graph_init_params),
+            patch.object(
+                workflow_entry,
+                "GraphRuntimeState",
+                return_value=SimpleNamespace(variable_pool=variable_pool),
+            ),
+            patch.object(workflow_entry, "build_dify_run_context", return_value={"_dify": "context"}),
+            patch.object(workflow_entry.time, "perf_counter", return_value=123.0),
+            patch.object(workflow_entry, "resolve_workflow_node_class", return_value=FakeLLMNode),
+            patch.object(workflow_entry, "DifyNodeFactory") as dify_node_factory,
+            patch.object(workflow_entry, "load_into_variable_pool"),
+            patch.object(workflow_entry.WorkflowEntry, "mapping_user_inputs_to_variable_pool"),
+            patch.object(
+                workflow_entry.WorkflowEntry,
+                "_traced_node_run",
+                return_value=iter(["event"]),
+            ),
+        ):
+
+            def _create_node(_node_config):
+                assert variable_pool.get(["sys", "conversation_id"]) is not None
+                return FakeLLMNode()
+
+            dify_node_factory.return_value.create_node.side_effect = _create_node
+            workflow = SimpleNamespace(
+                tenant_id="tenant-id",
+                app_id="app-id",
+                id="workflow-id",
+                graph_dict={"nodes": [], "edges": []},
+                get_node_config_by_id=lambda _node_id: {
+                    "id": "node-id",
+                    "data": SimpleNamespace(type=BuiltinNodeTypes.LLM, version="1", memory=object()),
+                },
+            )
+
+            node, generator = workflow_entry.WorkflowEntry.single_step_run(
+                workflow=workflow,
+                node_id="node-id",
+                user_id="user-id",
+                user_inputs={},
+                variable_pool=variable_pool,
+                variable_loader=variable_loader,
+            )
+
+        assert node.id == "node-id"
+        assert list(generator) == ["event"]
+        variable_loader.load_variables.assert_called_once_with([["sys", "conversation_id"]])
+
     def test_uses_empty_mapping_when_selector_extraction_is_not_implemented(self):
         class FakeNode:
             id = "node-id"
@@ -342,6 +417,7 @@ class TestWorkflowEntrySingleStepRun:
             patch.object(workflow_entry, "GraphRuntimeState", return_value=sentinel.graph_runtime_state),
             patch.object(workflow_entry, "build_dify_run_context", return_value={"_dify": "context"}),
             patch.object(workflow_entry.time, "perf_counter", return_value=123.0),
+            patch.object(workflow_entry, "resolve_workflow_node_class", return_value=FakeNode),
             patch.object(workflow_entry, "DifyNodeFactory") as dify_node_factory,
             patch.object(workflow_entry, "add_node_inputs_to_pool") as add_node_inputs_to_pool,
             patch.object(workflow_entry, "load_into_variable_pool") as load_into_variable_pool,
@@ -410,6 +486,7 @@ class TestWorkflowEntrySingleStepRun:
             patch.object(workflow_entry, "GraphRuntimeState", return_value=sentinel.graph_runtime_state),
             patch.object(workflow_entry, "build_dify_run_context", return_value={"_dify": "context"}),
             patch.object(workflow_entry.time, "perf_counter", return_value=123.0),
+            patch.object(workflow_entry, "resolve_workflow_node_class", return_value=FakeDatasourceNode),
             patch.object(workflow_entry, "DifyNodeFactory") as dify_node_factory,
             patch.object(workflow_entry, "add_node_inputs_to_pool") as add_node_inputs_to_pool,
             patch.object(workflow_entry, "load_into_variable_pool") as load_into_variable_pool,
@@ -469,6 +546,7 @@ class TestWorkflowEntrySingleStepRun:
             patch.object(workflow_entry, "GraphRuntimeState", return_value=sentinel.graph_runtime_state),
             patch.object(workflow_entry, "build_dify_run_context", return_value={"_dify": "context"}),
             patch.object(workflow_entry.time, "perf_counter", return_value=123.0),
+            patch.object(workflow_entry, "resolve_workflow_node_class", return_value=FakeNode),
             patch.object(workflow_entry, "DifyNodeFactory") as dify_node_factory,
             patch.object(workflow_entry, "add_node_inputs_to_pool"),
             patch.object(workflow_entry, "load_into_variable_pool"),

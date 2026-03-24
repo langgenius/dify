@@ -1,6 +1,14 @@
-from core.workflow.system_variables import build_system_variables, default_system_variables, system_variables_to_mapping
+from types import SimpleNamespace
+
+from core.workflow.system_variables import (
+    build_system_variables,
+    default_system_variables,
+    get_node_creation_preload_selectors,
+    system_variables_to_mapping,
+)
 from dify_graph.file.enums import FileTransferMethod, FileType
 from dify_graph.file.models import File
+from dify_graph.nodes import BuiltinNodeTypes
 
 
 def test_build_system_variables_normalizes_workflow_execution_id():
@@ -56,3 +64,21 @@ def test_default_system_variables_generates_workflow_run_id():
     assert isinstance(system_values["workflow_run_id"], str)
     assert system_values["workflow_run_id"]
     assert system_values["files"] == []
+
+
+def test_get_node_creation_preload_selectors_requires_conversation_for_memory_nodes():
+    selectors = get_node_creation_preload_selectors(
+        node_type=BuiltinNodeTypes.QUESTION_CLASSIFIER,
+        node_data=SimpleNamespace(memory=object()),
+    )
+
+    assert selectors == (("sys", "conversation_id"),)
+
+
+def test_get_node_creation_preload_selectors_skips_non_memory_nodes():
+    selectors = get_node_creation_preload_selectors(
+        node_type=BuiltinNodeTypes.START,
+        node_data=SimpleNamespace(memory=None),
+    )
+
+    assert selectors == ()

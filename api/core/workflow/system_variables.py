@@ -44,6 +44,14 @@ class _VariablePoolReader(Protocol):
     def get_by_prefix(self, prefix: str, /) -> Mapping[str, object]: ...
 
 
+class _VariablePoolWriter(_VariablePoolReader, Protocol):
+    def add(self, selector: Sequence[str], value: object, /) -> None: ...
+
+
+class _VariableLoader(Protocol):
+    def load_variables(self, selectors: list[list[str]]) -> Sequence[object]: ...
+
+
 def system_variable_name(key: str | SystemVariableKey) -> str:
     return key.value if isinstance(key, SystemVariableKey) else key
 
@@ -154,6 +162,57 @@ def get_system_text(variable_pool: _VariablePoolReader, key: str | SystemVariabl
 
 def get_all_system_variables(variable_pool: _VariablePoolReader) -> Mapping[str, object]:
     return variable_pool.get_by_prefix(SYSTEM_VARIABLE_NODE_ID)
+
+
+_MEMORY_BOOTSTRAP_NODE_TYPES = frozenset(
+    (
+        BuiltinNodeTypes.LLM,
+        BuiltinNodeTypes.QUESTION_CLASSIFIER,
+        BuiltinNodeTypes.PARAMETER_EXTRACTOR,
+    )
+)
+
+
+def get_node_creation_preload_selectors(
+    *,
+    node_type: str,
+    node_data: object,
+) -> tuple[tuple[str, str], ...]:
+    """Return selectors that must exist before node construction begins."""
+
+    if node_type not in _MEMORY_BOOTSTRAP_NODE_TYPES or getattr(node_data, "memory", None) is None:
+        return ()
+
+    return (system_variable_selector(SystemVariableKey.CONVERSATION_ID),)
+
+
+def preload_node_creation_variables(
+    *,
+    variable_loader: _VariableLoader,
+    variable_pool: _VariablePoolWriter,
+    selectors: Sequence[Sequence[str]],
+) -> None:
+    """Load constructor-time variables before node or graph creation."""
+
+    seen_selectors: set[tuple[str, ...]] = set()
+    selectors_to_load: list[list[str]] = []
+    for selector in selectors:
+        normalized_selector = tuple(selector)
+        if len(normalized_selector) < 2:
+            raise ValueError(f"Invalid preload selector: {selector}")
+        if normalized_selector in seen_selectors:
+            continue
+        seen_selectors.add(normalized_selector)
+        if variable_pool.get(normalized_selector) is None:
+            selectors_to_load.append(list(normalized_selector))
+
+    loaded_variables = variable_loader.load_variables(selectors_to_load)
+    for variable in loaded_variables:
+        raw_selector = getattr(variable, "selector", ())
+        loaded_selector = list(raw_selector)
+        if len(loaded_selector) < 2:
+            raise ValueError(f"Invalid loaded variable selector: {raw_selector}")
+        variable_pool.add(loaded_selector[:2], variable)
 
 
 def inject_default_system_variable_mappings(

@@ -13,7 +13,9 @@ from core.app.workflow.layers.observability import ObservabilityLayer
 from core.workflow.node_factory import DifyNodeFactory, is_start_node_type, resolve_workflow_node_class
 from core.workflow.system_variables import (
     default_system_variables,
+    get_node_creation_preload_selectors,
     inject_default_system_variable_mappings,
+    preload_node_creation_variables,
 )
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from core.workflow.variable_prefixes import ENVIRONMENT_VARIABLE_NODE_ID
@@ -226,6 +228,8 @@ class WorkflowEntry:
 
         # Get node type
         node_type = node_config_data.type
+        node_version = str(node_config_data.version)
+        node_cls = resolve_workflow_node_class(node_type=node_type, node_version=node_version)
 
         # init graph init params and runtime state
         graph_init_params = GraphInitParams(
@@ -249,13 +253,14 @@ class WorkflowEntry:
         if is_start_node_type(node_type):
             add_node_inputs_to_pool(variable_pool, node_id=node_id, inputs=user_inputs)
 
-        # init workflow run state
-        node_factory = DifyNodeFactory(
-            graph_init_params=graph_init_params,
-            graph_runtime_state=graph_runtime_state,
+        preload_node_creation_variables(
+            variable_loader=variable_loader,
+            variable_pool=variable_pool,
+            selectors=get_node_creation_preload_selectors(
+                node_type=node_type,
+                node_data=node_config_data,
+            ),
         )
-        node = node_factory.create_node(node_config)
-        node_cls = type(node)
 
         try:
             # variable selector to variable mapping
@@ -286,6 +291,13 @@ class WorkflowEntry:
                 variable_pool=variable_pool,
                 tenant_id=workflow.tenant_id,
             )
+
+        # init workflow run state
+        node_factory = DifyNodeFactory(
+            graph_init_params=graph_init_params,
+            graph_runtime_state=graph_runtime_state,
+        )
+        node = node_factory.create_node(node_config)
 
         try:
             generator = cls._traced_node_run(node)
