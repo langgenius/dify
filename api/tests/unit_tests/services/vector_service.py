@@ -121,6 +121,7 @@ import pytest
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.datasource.vdb.vector_type import VectorType
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.models.document import Document
 from models.dataset import ChildChunk, Dataset, DatasetDocument, DatasetProcessRule, DocumentSegment
 from services.vector_service import VectorService
@@ -151,7 +152,7 @@ class VectorServiceTestDataFactory:
     def create_dataset_mock(
         dataset_id: str = "dataset-123",
         tenant_id: str = "tenant-123",
-        doc_form: str = "text_model",
+        doc_form: str = IndexStructureType.PARAGRAPH_INDEX,
         indexing_technique: str = "high_quality",
         embedding_model_provider: str = "openai",
         embedding_model: str = "text-embedding-ada-002",
@@ -493,7 +494,7 @@ class TestVectorService:
         """
         # Arrange
         dataset = VectorServiceTestDataFactory.create_dataset_mock(
-            doc_form="text_model", indexing_technique="high_quality"
+            doc_form=IndexStructureType.PARAGRAPH_INDEX, indexing_technique="high_quality"
         )
 
         segment = VectorServiceTestDataFactory.create_document_segment_mock()
@@ -505,7 +506,7 @@ class TestVectorService:
         mock_index_processor_factory.return_value.init_index_processor.return_value = mock_index_processor
 
         # Act
-        VectorService.create_segments_vector(keywords_list, [segment], dataset, "text_model")
+        VectorService.create_segments_vector(keywords_list, [segment], dataset, IndexStructureType.PARAGRAPH_INDEX)
 
         # Assert
         mock_index_processor.load.assert_called_once()
@@ -649,7 +650,7 @@ class TestVectorService:
         mock_index_processor_factory.return_value.init_index_processor.return_value = mock_index_processor
 
         # Act
-        VectorService.create_segments_vector(None, [], dataset, "text_model")
+        VectorService.create_segments_vector(None, [], dataset, IndexStructureType.PARAGRAPH_INDEX)
 
         # Assert
         mock_index_processor.load.assert_not_called()

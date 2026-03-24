@@ -24,7 +24,7 @@ from models.human_input import (
     HumanInputForm,
     HumanInputFormRecipient,
 )
-from models.workflow import WorkflowAppLog, WorkflowPause, WorkflowPauseReason, WorkflowRun
+from models.workflow import WorkflowAppLog, WorkflowAppLogCreatedFrom, WorkflowPause, WorkflowPauseReason, WorkflowRun
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from repositories.sqlalchemy_api_workflow_run_repository import (
     DifyAPISQLAlchemyWorkflowRunRepository,
@@ -215,7 +215,7 @@ class TestDeleteRunsWithRelated:
             app_id=test_scope.app_id,
             workflow_id=test_scope.workflow_id,
             workflow_run_id=workflow_run.id,
-            created_from="service-api",
+            created_from=WorkflowAppLogCreatedFrom.SERVICE_API,
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=test_scope.user_id,
         )
@@ -275,7 +275,7 @@ class TestCountRunsWithRelated:
             app_id=test_scope.app_id,
             workflow_id=test_scope.workflow_id,
             workflow_run_id=workflow_run.id,
-            created_from="service-api",
+            created_from=WorkflowAppLogCreatedFrom.SERVICE_API,
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=test_scope.user_id,
         )

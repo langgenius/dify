@@ -181,10 +181,6 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         arize_phoenix_config: ArizeConfig | PhoenixConfig,
     ):
         super().__init__(arize_phoenix_config)
-        import logging
-
-        logging.basicConfig()
-        logging.getLogger().setLevel(logging.DEBUG)
         self.arize_phoenix_config = arize_phoenix_config
         self.tracer, self.processor = setup_tracer(arize_phoenix_config)
         self.project = arize_phoenix_config.project

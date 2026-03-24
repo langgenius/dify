@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from dify_graph.entities.workflow_execution import WorkflowExecutionStatus
 from models import EndUser, Workflow, WorkflowAppLog, WorkflowRun
 from models.enums import CreatorUserRole
+from models.workflow import WorkflowAppLogCreatedFrom
 from services.account_service import AccountService, TenantService
 
 # Delay import of AppService to avoid circular dependency
@@ -221,7 +222,7 @@ class TestWorkflowAppService:
             app_id=app.id,
             workflow_id=workflow.id,
             workflow_run_id=workflow_run.id,
-            created_from="service-api",
+            created_from=WorkflowAppLogCreatedFrom.SERVICE_API,
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=account.id,
         )
@@ -357,7 +358,7 @@ class TestWorkflowAppService:
             app_id=app.id,
             workflow_id=workflow.id,
             workflow_run_id=workflow_run_1.id,
-            created_from="service-api",
+            created_from=WorkflowAppLogCreatedFrom.SERVICE_API,
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=account.id,
         )
@@ -399,7 +400,7 @@ class TestWorkflowAppService:
             app_id=app.id,
             workflow_id=workflow.id,
             workflow_run_id=workflow_run_2.id,
-            created_from="service-api",
+            created_from=WorkflowAppLogCreatedFrom.SERVICE_API,
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=account.id,
         )
@@ -441,7 +442,7 @@ class TestWorkflowAppService:
             app_id=app.id,
             workflow_id=workflow.id,
             workflow_run_id=workflow_run_4.id,
-            created_from="service-api",
+            created_from=WorkflowAppLogCreatedFrom.SERVICE_API,
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=account.id,
         )
@@ -521,7 +522,7 @@ class TestWorkflowAppService:
                 app_id=app.id,
                 workflow_id=workflow.id,
                 workflow_run_id=workflow_run.id,
-                created_from="service-api",
+                created_from=WorkflowAppLogCreatedFrom.SERVICE_API,
                 created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=account.id,
             )
@@ -627,7 +628,7 @@ class TestWorkflowAppService:
                 app_id=app.id,
                 workflow_id=workflow.id,
                 workflow_run_id=workflow_run.id,
-                created_from="service-api",
+                created_from=WorkflowAppLogCreatedFrom.SERVICE_API,
                 created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=account.id,
             )
@@ -732,7 +733,7 @@ class TestWorkflowAppService:
                 app_id=app.id,
                 workflow_id=workflow.id,
                 workflow_run_id=workflow_run.id,
-                created_from="service-api",
+                created_from=WorkflowAppLogCreatedFrom.SERVICE_API,
                 created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=account.id,
             )
@@ -860,7 +861,7 @@ class TestWorkflowAppService:
                 app_id=app.id,
                 workflow_id=workflow.id,
                 workflow_run_id=workflow_run.id,
-                created_from="service-api",
+                created_from=WorkflowAppLogCreatedFrom.SERVICE_API,
                 created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=account.id,
             )
@@ -902,7 +903,7 @@ class TestWorkflowAppService:
                 app_id=app.id,
                 workflow_id=workflow.id,
                 workflow_run_id=workflow_run.id,
-                created_from="web-app",
+                created_from=WorkflowAppLogCreatedFrom.WEB_APP,
                 created_by_role=CreatorUserRole.END_USER,
                 created_by=end_user.id,
             )
@@ -1037,7 +1038,7 @@ class TestWorkflowAppService:
             app_id=app.id,
             workflow_id=workflow.id,
             workflow_run_id=workflow_run.id,
-            created_from="service-api",
+            created_from=WorkflowAppLogCreatedFrom.SERVICE_API,
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=account.id,
         )
@@ -1125,7 +1126,7 @@ class TestWorkflowAppService:
             app_id=app.id,
             workflow_id=workflow.id,
             workflow_run_id=workflow_run.id,
-            created_from="service-api",
+            created_from=WorkflowAppLogCreatedFrom.SERVICE_API,
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=account.id,
         )
@@ -1279,7 +1280,7 @@ class TestWorkflowAppService:
                 app_id=app.id,
                 workflow_id=workflow.id,
                 workflow_run_id=workflow_run.id,
-                created_from="service-api",
+                created_from=WorkflowAppLogCreatedFrom.SERVICE_API,
                 created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=account.id,
             )
@@ -1379,7 +1380,7 @@ class TestWorkflowAppService:
                 app_id=app.id,
                 workflow_id=workflow.id,
                 workflow_run_id=workflow_run.id,
-                created_from="service-api",
+                created_from=WorkflowAppLogCreatedFrom.SERVICE_API,
                 created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=account.id,
             )
@@ -1481,7 +1482,7 @@ class TestWorkflowAppService:
                     app_id=app.id,
                     workflow_id=workflow.id,
                     workflow_run_id=workflow_run.id,
-                    created_from="service-api",
+                    created_from=WorkflowAppLogCreatedFrom.SERVICE_API,
                     created_by_role=CreatorUserRole.ACCOUNT,
                     created_by=account.id,
                 )

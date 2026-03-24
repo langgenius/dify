@@ -1232,7 +1232,9 @@ class WorkflowAppLog(TypeBase):
     app_id: Mapped[str] = mapped_column(StringUUID)
     workflow_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     workflow_run_id: Mapped[str] = mapped_column(StringUUID)
-    created_from: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_from: Mapped[WorkflowAppLogCreatedFrom] = mapped_column(
+        EnumText(WorkflowAppLogCreatedFrom, length=255), nullable=False
+    )
     created_by_role: Mapped[CreatorUserRole] = mapped_column(EnumText(CreatorUserRole, length=255), nullable=False)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
@@ -1312,10 +1314,14 @@ class WorkflowArchiveLog(TypeBase):
 
     log_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     log_created_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    log_created_from: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    log_created_from: Mapped[WorkflowAppLogCreatedFrom | None] = mapped_column(
+        EnumText(WorkflowAppLogCreatedFrom, length=255), nullable=True
+    )
 
     run_version: Mapped[str] = mapped_column(String(255), nullable=False)
-    run_status: Mapped[str] = mapped_column(String(255), nullable=False)
+    run_status: Mapped[WorkflowExecutionStatus] = mapped_column(
+        EnumText(WorkflowExecutionStatus, length=255), nullable=False
+    )
     run_triggered_from: Mapped[WorkflowRunTriggeredFrom] = mapped_column(
         EnumText(WorkflowRunTriggeredFrom, length=255), nullable=False
     )

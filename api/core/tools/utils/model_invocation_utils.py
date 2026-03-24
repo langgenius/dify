@@ -9,6 +9,7 @@ from decimal import Decimal
 from typing import cast
 
 from core.model_manager import ModelManager
+from core.tools.entities.tool_entities import ToolProviderType
 from dify_graph.model_runtime.entities.llm_entities import LLMResult
 from dify_graph.model_runtime.entities.message_entities import PromptMessage
 from dify_graph.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
@@ -78,7 +79,7 @@ class ModelInvocationUtils:
 
     @staticmethod
     def invoke(
-        user_id: str, tenant_id: str, tool_type: str, tool_name: str, prompt_messages: list[PromptMessage]
+        user_id: str, tenant_id: str, tool_type: ToolProviderType, tool_name: str, prompt_messages: list[PromptMessage]
     ) -> LLMResult:
         """
         invoke model with parameters in user's own context

@@ -1,11 +1,25 @@
 import type { TriggerLogEntity } from '@/app/components/workflow/block-selector/types'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import Toast from '@/app/components/base/toast'
 import LogViewer from '../log-viewer'
 
 const mockToastNotify = vi.fn()
 const mockWriteText = vi.fn()
+
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: Object.assign(
+    (message: string, options?: { type?: string }) => mockToastNotify({ type: options?.type, message }),
+    {
+      success: (message: string) => mockToastNotify({ type: 'success', message }),
+      error: (message: string) => mockToastNotify({ type: 'error', message }),
+      warning: (message: string) => mockToastNotify({ type: 'warning', message }),
+      info: (message: string) => mockToastNotify({ type: 'info', message }),
+      dismiss: vi.fn(),
+      update: vi.fn(),
+      promise: vi.fn(),
+    },
+  ),
+}))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
   default: ({ value }: { value: unknown }) => (
@@ -56,10 +70,6 @@ beforeEach(() => {
       writeText: mockWriteText,
     },
     configurable: true,
-  })
-  vi.spyOn(Toast, 'notify').mockImplementation((args) => {
-    mockToastNotify(args)
-    return { clear: vi.fn() }
   })
 })
 

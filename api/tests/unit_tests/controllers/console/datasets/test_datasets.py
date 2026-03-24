@@ -28,6 +28,7 @@ from controllers.console.datasets.datasets import (
 from controllers.console.datasets.error import DatasetInUseError, DatasetNameDuplicateError, IndexingEstimateError
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.provider_manager import ProviderManager
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from extensions.storage.storage_type import StorageType
 from models.enums import CreatorUserRole
 from models.model import ApiToken, UploadFile
@@ -1146,7 +1147,7 @@ class TestDatasetIndexingEstimateApi:
             },
             "process_rule": {"chunk_size": 100},
             "indexing_technique": "high_quality",
-            "doc_form": "text_model",
+            "doc_form": IndexStructureType.PARAGRAPH_INDEX,
             "doc_language": "English",
             "dataset_id": None,
         }

@@ -705,7 +705,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             app_id=self._application_generate_entity.app_config.app_id,
             workflow_id=self._workflow.id,
             workflow_run_id=workflow_run_id,
-            created_from=created_from.value,
+            created_from=created_from,
             created_by_role=self._created_by_role,
             created_by=self._user_id,
         )
