@@ -137,9 +137,7 @@ class Dataset(Base):
         default=DatasetPermissionEnum.ONLY_ME,
     )
     data_source_type = mapped_column(EnumText(DataSourceType, length=255))
-    indexing_technique: Mapped[IndexTechniqueType | None] = mapped_column(
-        EnumText(IndexTechniqueType, length=255)
-    )
+    indexing_technique: Mapped[IndexTechniqueType | None] = mapped_column(EnumText(IndexTechniqueType, length=255))
     index_struct = mapped_column(LongText, nullable=True)
     created_by = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())

@@ -161,8 +161,8 @@ class DatasetListApi(DatasetApiResource):
                 item["embedding_model_provider"] = str(  # pyrefly: ignore[unsupported-operation]
                     ModelProviderID(item["embedding_model_provider"])  # pyrefly: ignore[bad-index]
                 )
-                item_model = (  # pyrefly: ignore[bad-index]
-                    f"{item['embedding_model']}:{item['embedding_model_provider']}"
+                item_model = (
+                    f"{item['embedding_model']}:{item['embedding_model_provider']}"  # pyrefly: ignore[bad-index]
                 )
                 if item_model in model_names:
                     item["embedding_available"] = True  # type: ignore
