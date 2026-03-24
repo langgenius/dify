@@ -451,7 +451,7 @@ class TestWorkflowPersistenceLayer:
             "aborted",
             "paused",
             "node_started",
-            "node_started",
+            "node_retry",
             "node_succeeded",
             "node_failed",
             "node_exception",
@@ -463,7 +463,7 @@ class TestWorkflowPersistenceLayer:
 
         assert called == expected_order
 
-    def test_on_event_dispatches_retry_when_started_type_check_is_bypassed(self, monkeypatch):
+    def test_on_event_dispatches_retry_before_started_for_retry_event(self):
         layer, _, _, _ = _make_layer()
         called: list[str] = []
 
@@ -475,10 +475,6 @@ class TestWorkflowPersistenceLayer:
 
         layer._handle_node_started = _record("node_started")
         layer._handle_node_retry = _record("node_retry")
-        monkeypatch.setattr(
-            "core.app.workflow.layers.persistence.NodeRunStartedEvent",
-            type("FakeNodeRunStartedEvent", (), {}),
-        )
 
         layer.on_event(
             NodeRunRetryEvent(
