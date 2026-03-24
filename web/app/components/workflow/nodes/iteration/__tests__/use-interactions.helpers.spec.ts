@@ -41,6 +41,15 @@ describe('iteration interaction helpers', () => {
       }),
       createNode({ width: 200, height: 180 }) as Node,
     )).toEqual({ x: 16, y: 120 })
+    expect(getRestrictedIterationPosition(
+      createNode({
+        position: { x: 180, y: -4 },
+        width: 40,
+        height: 30,
+        data: { isInIteration: true },
+      }),
+      createNode({ width: 200, height: 180 }) as Node,
+    )).toEqual({ x: 144, y: 65 })
   })
 
   it('filters iteration children and increments per-type counts', () => {
@@ -52,6 +61,22 @@ describe('iteration interaction helpers', () => {
       createNode({ id: 'start', parentId: 'iteration-1', type: 'custom-iteration-start' }),
       createNode({ id: 'other', parentId: 'other-iteration' }),
     ] as Node[], 'iteration-1').map(item => item.id)).toEqual(['child'])
+  })
+
+  it('keeps bounds, resize and positions empty when no container restriction applies', () => {
+    expect(getIterationContainerBounds([])).toEqual({})
+    expect(getIterationContainerResize(createNode({ width: 300, height: 240 }) as Node, {})).toEqual({
+      width: undefined,
+      height: undefined,
+    })
+    expect(getRestrictedIterationPosition(
+      createNode({ data: { isInIteration: true } }),
+      undefined,
+    )).toEqual({ x: undefined, y: undefined })
+    expect(getRestrictedIterationPosition(
+      createNode({ data: { isInIteration: false } }),
+      createNode({ width: 200, height: 180 }) as Node,
+    )).toEqual({ x: undefined, y: undefined })
   })
 
   it('builds copied iteration children with iteration metadata', () => {

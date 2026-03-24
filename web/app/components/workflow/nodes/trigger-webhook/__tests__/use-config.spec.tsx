@@ -5,11 +5,12 @@ import Toast from '@/app/components/base/toast'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import { fetchWebhookUrl } from '@/service/apps'
 import { createNodeCrudModuleMock } from '../../__tests__/use-config-test-utils'
-import { useConfig } from '../use-config'
+import { DEFAULT_STATUS_CODE, MAX_STATUS_CODE, normalizeStatusCode, useConfig } from '../use-config'
 
 const mockSetInputs = vi.hoisted(() => vi.fn())
 const mockIsVarUsedInNodes = vi.hoisted(() => vi.fn())
 const mockRemoveUsedVarInNodes = vi.hoisted(() => vi.fn())
+const mockUseNodesReadOnly = vi.hoisted(() => vi.fn())
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -25,7 +26,7 @@ vi.mock('@/app/components/base/toast', () => ({
 }))
 
 vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodesReadOnly: () => ({ nodesReadOnly: false }),
+  useNodesReadOnly: () => mockUseNodesReadOnly(),
   useWorkflow: () => ({
     isVarUsedInNodes: (...args: unknown[]) => mockIsVarUsedInNodes(...args),
     removeUsedVarInNodes: (...args: unknown[]) => mockRemoveUsedVarInNodes(...args),
@@ -65,6 +66,7 @@ describe('useConfig', () => {
     vi.spyOn(useAppStore, 'getState').mockReturnValue({
       appDetail: { id: 'app-1' },
     } as never)
+    mockUseNodesReadOnly.mockReturnValue({ nodesReadOnly: false })
     mockIsVarUsedInNodes.mockReturnValue(false)
   })
 
@@ -182,5 +184,24 @@ describe('useConfig', () => {
     })
     await result.current.generateWebhookUrl()
     expect(mockedFetchWebhookUrl).toHaveBeenCalledTimes(2)
+  })
+
+  it('should expose readonly state, clamp status codes and skip url generation without app id', async () => {
+    mockUseNodesReadOnly.mockReturnValue({ nodesReadOnly: true })
+    vi.spyOn(useAppStore, 'getState').mockReturnValue({
+      appDetail: undefined,
+    } as never)
+
+    const { result } = renderHook(() => useConfig('webhook-node', createPayload()))
+
+    expect(result.current.readOnly).toBe(true)
+    expect(normalizeStatusCode(DEFAULT_STATUS_CODE - 10)).toBe(DEFAULT_STATUS_CODE)
+    expect(normalizeStatusCode(248)).toBe(248)
+    expect(normalizeStatusCode(MAX_STATUS_CODE + 10)).toBe(MAX_STATUS_CODE)
+
+    await result.current.generateWebhookUrl()
+
+    expect(mockedFetchWebhookUrl).not.toHaveBeenCalled()
+    expect(mockSetInputs).not.toHaveBeenCalled()
   })
 })

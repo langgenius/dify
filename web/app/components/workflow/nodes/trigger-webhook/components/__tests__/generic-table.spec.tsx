@@ -18,6 +18,34 @@ const columns = [
   },
 ]
 
+const advancedColumns = [
+  {
+    key: 'method',
+    title: 'Method',
+    type: 'select' as const,
+    placeholder: 'Choose method',
+    options: [{ name: 'POST', value: 'post' }],
+    width: 'w-[120px]',
+  },
+  {
+    key: 'preview',
+    title: 'Preview',
+    type: 'custom' as const,
+    width: 'w-[120px]',
+    render: (_value: unknown, row: { method?: string }, index: number, onChange: (value: unknown) => void) => (
+      <button type="button" onClick={() => onChange(`${index}:${row.method || 'empty'}`)}>
+        custom-render
+      </button>
+    ),
+  },
+  {
+    key: 'unsupported',
+    title: 'Unsupported',
+    type: 'unsupported' as never,
+    width: 'w-[80px]',
+  },
+]
+
 describe('GenericTable', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -39,6 +67,30 @@ describe('GenericTable', () => {
     fireEvent.change(screen.getByRole('textbox'), { target: { value: 'my key' } })
 
     expect(onChange).toHaveBeenLastCalledWith([{ name: 'my_key', enabled: false }])
+  })
+
+  it('should skip intermediate empty rows and blur the current input when enter is pressed', () => {
+    render(
+      <GenericTable
+        title="Headers"
+        columns={columns}
+        data={[
+          { name: 'alpha', enabled: false },
+          { name: '', enabled: false },
+          { name: 'beta', enabled: true },
+        ]}
+        emptyRowData={{ name: '', enabled: false }}
+        onChange={vi.fn()}
+      />,
+    )
+
+    const inputs = screen.getAllByRole('textbox')
+    expect(inputs).toHaveLength(3)
+    expect(screen.getAllByRole('button', { name: 'Delete row' })).toHaveLength(2)
+
+    const blurSpy = vi.spyOn(inputs[0], 'blur')
+    fireEvent.keyDown(inputs[0], { key: 'Enter' })
+    expect(blurSpy).toHaveBeenCalledTimes(1)
   })
 
   it('should update existing rows, show delete action, and remove rows by primary key', async () => {
@@ -63,6 +115,49 @@ describe('GenericTable', () => {
 
     await user.click(screen.getByRole('button', { name: 'Delete row' }))
     expect(onChange).toHaveBeenLastCalledWith([])
+  })
+
+  it('should update select and custom cells for existing rows', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+
+    render(
+      <GenericTable
+        title="Advanced"
+        columns={advancedColumns}
+        data={[{ method: '', preview: '' }]}
+        emptyRowData={{ method: '', preview: '' }}
+        onChange={onChange}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Choose method' }))
+    await user.click(screen.getByText('POST'))
+
+    expect(onChange).toHaveBeenCalledWith([{ method: 'post', preview: '' }])
+
+    await user.click(screen.getByRole('button', { name: 'custom-render' }))
+    expect(onChange).toHaveBeenCalledWith([{ method: '', preview: '0:empty' }])
+  })
+
+  it('should ignore custom-cell updates when readonly rows are rendered', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+
+    render(
+      <GenericTable
+        title="Advanced"
+        columns={advancedColumns}
+        data={[{ method: 'post', preview: '' }]}
+        emptyRowData={{ method: '', preview: '' }}
+        onChange={onChange}
+        readonly
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'custom-render' }))
+
+    expect(onChange).not.toHaveBeenCalled()
   })
 
   it('should show readonly placeholder without rendering editable rows', () => {

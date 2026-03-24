@@ -50,6 +50,15 @@ describe('loop interaction helpers', () => {
       }),
       parent as Node,
     )).toEqual({ x: 16, y: 120 })
+    expect(getRestrictedLoopPosition(
+      createNode({
+        position: { x: 180, y: -4 },
+        width: 40,
+        height: 30,
+        data: { isInLoop: true },
+      }),
+      parent as Node,
+    )).toEqual({ x: 144, y: 65 })
     expect(getLoopChildren([
       createNode({ id: 'child', parentId: 'loop-1' }),
       createNode({ id: 'start', parentId: 'loop-1', type: 'custom-loop-start' }),
