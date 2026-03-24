@@ -1,6 +1,8 @@
 import { renderHook } from '@testing-library/react'
 import { useCommand, useFontSize } from '../hooks'
 
+type MockSelectionParent = { isLink: boolean } | null
+
 const {
   mockDispatchCommand,
   mockEditorUpdate,
@@ -13,6 +15,9 @@ const {
   mockPatchStyleText,
   mockSetSelection,
   mockSelectionFontSize,
+  mockIsRangeSelection,
+  mockSelectedIsBullet,
+  mockSetBlocksType,
 } = vi.hoisted(() => ({
   mockDispatchCommand: vi.fn(),
   mockEditorUpdate: vi.fn(),
@@ -21,7 +26,7 @@ const {
   mockRead: vi.fn(),
   mockSetLinkAnchorElement: vi.fn(),
   mockSelectionNode: {
-    getParent: () => null,
+    getParent: vi.fn<() => MockSelectionParent>(() => null),
   },
   mockSelection: {
     anchor: {
@@ -36,6 +41,9 @@ const {
   mockPatchStyleText: vi.fn(),
   mockSetSelection: vi.fn(),
   mockSelectionFontSize: vi.fn(),
+  mockIsRangeSelection: vi.fn(() => true),
+  mockSelectedIsBullet: vi.fn(() => false),
+  mockSetBlocksType: vi.fn(),
 }))
 
 vi.mock('@lexical/react/LexicalComposerContext', () => ({
@@ -63,7 +71,7 @@ vi.mock('@lexical/selection', () => ({
   $getSelectionStyleValueForProperty: () => mockSelectionFontSize(),
   $isAtNodeEnd: () => false,
   $patchStyleText: mockPatchStyleText,
-  $setBlocksType: vi.fn(),
+  $setBlocksType: mockSetBlocksType,
 }))
 
 vi.mock('@lexical/utils', () => ({
@@ -73,7 +81,7 @@ vi.mock('@lexical/utils', () => ({
 vi.mock('lexical', () => ({
   $createParagraphNode: () => ({ type: 'paragraph' }),
   $getSelection: () => mockSelection,
-  $isRangeSelection: () => true,
+  $isRangeSelection: () => mockIsRangeSelection(),
   $setSelection: mockSetSelection,
   COMMAND_PRIORITY_CRITICAL: 4,
   FORMAT_TEXT_COMMAND: 'format-text-command',
@@ -83,7 +91,7 @@ vi.mock('lexical', () => ({
 vi.mock('../../store', () => ({
   useNoteEditorStore: () => ({
     getState: () => ({
-      selectedIsBullet: false,
+      selectedIsBullet: mockSelectedIsBullet(),
       setLinkAnchorElement: mockSetLinkAnchorElement,
     }),
   }),
@@ -107,8 +115,11 @@ describe('note toolbar hooks', () => {
       callback()
     })
     mockSelectionFontSize.mockReturnValue('16px')
+    mockIsRangeSelection.mockReturnValue(true)
+    mockSelectedIsBullet.mockReturnValue(false)
     mockSelection.anchor.getNode.mockReturnValue(mockSelectionNode)
     mockSelection.focus.getNode.mockReturnValue(mockSelectionNode)
+    mockSelectionNode.getParent.mockReturnValue(null)
   })
 
   describe('useCommand', () => {
@@ -132,6 +143,39 @@ describe('note toolbar hooks', () => {
       expect(mockDispatchCommand).toHaveBeenCalledWith('toggle-link-command', '')
       expect(mockSetLinkAnchorElement).toHaveBeenCalledWith(true)
     })
+
+    it('should remove the link when the current selection is already within a link node', () => {
+      mockSelectionNode.getParent.mockReturnValue({ isLink: true })
+      const { result } = renderHook(() => useCommand())
+
+      result.current.handleCommand('link')
+
+      expect(mockDispatchCommand).toHaveBeenCalledWith('toggle-link-command', null)
+      expect(mockSetLinkAnchorElement).toHaveBeenCalledWith()
+    })
+
+    it('should ignore link commands when the selection is not a range', () => {
+      mockIsRangeSelection.mockReturnValue(false)
+      const { result } = renderHook(() => useCommand())
+
+      result.current.handleCommand('link')
+
+      expect(mockDispatchCommand).not.toHaveBeenCalled()
+      expect(mockSetLinkAnchorElement).not.toHaveBeenCalled()
+    })
+
+    it('should toggle bullet formatting on and off', () => {
+      const { result, rerender } = renderHook(() => useCommand())
+
+      result.current.handleCommand('bullet')
+      expect(mockDispatchCommand).toHaveBeenCalledWith('insert-unordered-list-command', undefined)
+
+      mockSelectedIsBullet.mockReturnValue(true)
+      rerender()
+
+      result.current.handleCommand('bullet')
+      expect(mockSetBlocksType).toHaveBeenCalledWith(mockSelection, expect.any(Function))
+    })
   })
 
   describe('useFontSize', () => {
@@ -150,6 +194,16 @@ describe('note toolbar hooks', () => {
       result.current.handleOpenFontSizeSelector(true)
 
       expect(mockSetSelection).toHaveBeenCalledWith('cloned-selection')
+    })
+
+    it('should keep the default font size and avoid patching styles when the selection is not a range', () => {
+      mockIsRangeSelection.mockReturnValue(false)
+      const { result } = renderHook(() => useFontSize())
+
+      expect(result.current.fontSize).toBe('12px')
+
+      result.current.handleFontSize('20px')
+      expect(mockPatchStyleText).not.toHaveBeenCalled()
     })
   })
 })

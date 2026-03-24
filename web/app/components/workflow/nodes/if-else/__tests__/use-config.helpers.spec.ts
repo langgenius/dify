@@ -128,4 +128,45 @@ describe('if-else use-config helpers', () => {
     const removedCondition = removeCondition(removedSub, 'case-1', 'condition-1')
     expect(removedCondition.cases?.[0]?.conditions.some(item => item.id === 'condition-1')).toBe(false)
   })
+
+  it('keeps inputs unchanged when guard branches short-circuit helper updates', () => {
+    const unchangedWithoutCases = addCase({
+      ...createInputs(),
+      cases: undefined,
+    } as unknown as IfElseNodeType)
+    expect(unchangedWithoutCases.cases).toBeUndefined()
+
+    const withoutTargetBranches = addCase({
+      ...createInputs(),
+      _targetBranches: undefined,
+    })
+    expect(withoutTargetBranches._targetBranches).toBeUndefined()
+
+    const withoutElseBranch = addCase({
+      ...createInputs(),
+      _targetBranches: [{ id: 'case-1', name: 'Case 1' }],
+    })
+    expect(withoutElseBranch._targetBranches).toEqual([{ id: 'case-1', name: 'Case 1' }])
+
+    const unchangedWhenConditionMissing = addSubVariableCondition(createInputs(), 'case-1', 'missing-condition', 'name')
+    expect(unchangedWhenConditionMissing).toEqual(createInputs())
+
+    const unchangedWhenSubConditionMissing = removeSubVariableCondition(createInputs(), 'case-1', 'condition-1', 'missing-sub')
+    expect(unchangedWhenSubConditionMissing).toEqual(createInputs())
+
+    const unchangedWhenCaseIsMissingForCondition = addCondition({
+      inputs: createInputs(),
+      caseId: 'missing-case',
+      valueSelector: ['node', 'value'],
+      variable: { type: VarType.string } as never,
+      isVarFileAttribute: false,
+    })
+    expect(unchangedWhenCaseIsMissingForCondition).toEqual(createInputs())
+
+    const unchangedWhenCaseMissing = toggleConditionLogicalOperator(createInputs(), 'missing-case')
+    expect(unchangedWhenCaseMissing).toEqual(createInputs())
+
+    const unchangedWhenSubVariableGroupMissing = toggleSubVariableConditionLogicalOperator(createInputs(), 'case-1', 'condition-1')
+    expect(unchangedWhenSubVariableGroupMissing).toEqual(createInputs())
+  })
 })

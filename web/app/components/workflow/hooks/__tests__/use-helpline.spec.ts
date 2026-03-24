@@ -225,4 +225,26 @@ describe('useHelpline', () => {
       height: 420,
     })
   })
+
+  it('should extend horizontal helpline using entry node width when a start node is after the aligned nodes', () => {
+    rfState.nodes = [
+      { id: 'aligned', position: { x: 100, y: 100 }, width: 240, height: 100, data: { type: BlockEnum.LLM } },
+    ]
+
+    const { result, store } = renderWorkflowHook(() => useHelpline())
+
+    result.current.handleSetHelpline(makeNode({
+      id: 'start-node',
+      position: { x: 500, y: 79 },
+      width: 240,
+      height: 100,
+      data: { type: BlockEnum.Start },
+    }))
+
+    expect(store.getState().helpLineHorizontal).toEqual({
+      top: 100,
+      left: 100,
+      width: 640,
+    })
+  })
 })

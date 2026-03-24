@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { BodyPayloadValueType, BodyType } from '../../types'
 import CurlPanel from '../curl-panel'
 import { parseCurl } from '../curl-parser'
 
@@ -43,6 +44,49 @@ describe('curl-panel', () => {
 
     it('should return an error for invalid curl input', () => {
       expect(parseCurl('fetch https://example.com').error).toContain('Invalid cURL command')
+    })
+
+    it('should parse form data and attach typed content headers', () => {
+      const { node, error } = parseCurl('curl --request POST --form "file=@report.txt;type=text/plain" --form "name=openai" https://example.com/upload')
+
+      expect(error).toBeNull()
+      expect(node).toMatchObject({
+        method: 'post',
+        url: 'https://example.com/upload',
+        headers: 'Content-Type: text/plain',
+        body: {
+          type: BodyType.formData,
+          data: 'file:@report.txt\nname:openai',
+        },
+      })
+    })
+
+    it('should parse raw payloads and preserve equals signs in the body value', () => {
+      const { node, error } = parseCurl('curl --data-binary "token=abc=123" https://example.com/raw')
+
+      expect(error).toBeNull()
+      expect(node?.body).toEqual({
+        type: BodyType.rawText,
+        data: [{
+          type: BodyPayloadValueType.text,
+          value: 'token=abc=123',
+        }],
+      })
+    })
+
+    it.each([
+      ['curl -X', 'Missing HTTP method after -X or --request.'],
+      ['curl --header', 'Missing header value after -H or --header.'],
+      ['curl --data-raw', 'Missing data value after -d, --data, --data-raw, or --data-binary.'],
+      ['curl --form', 'Missing form data after -F or --form.'],
+      ['curl --json', 'Missing JSON data after --json.'],
+      ['curl --form "=broken" https://example.com/upload', 'Invalid form data format.'],
+      ['curl -H "Accept: application/json"', 'Missing URL or url not start with http.'],
+    ])('should return a descriptive error for %s', (command, expectedError) => {
+      expect(parseCurl(command)).toEqual({
+        node: null,
+        error: expectedError,
+      })
     })
   })
 

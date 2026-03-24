@@ -8,6 +8,7 @@ import {
   updateSourceFields,
   updateWebhookUrls,
 } from '../use-config.helpers'
+import { WEBHOOK_RAW_VARIABLE_NAME } from '../utils/raw-variable'
 
 const createInputs = (): WebhookTriggerNodeType => ({
   title: 'Webhook',
@@ -65,6 +66,62 @@ describe('trigger webhook config helpers', () => {
       removeUsedVarInNodes,
     })).toBe(false)
     expect(notifyError).toHaveBeenCalledWith('varKeyError.notStartWithNumber')
+
+    expect(syncVariables({
+      draft: createInputs(),
+      id: 'node-1',
+      newData: [
+        { name: 'x-request-id', type: VarType.string, required: true },
+        { name: 'x-request-id', type: VarType.string, required: false },
+      ],
+      sourceType: 'header',
+      notifyError,
+      isVarUsedInNodes,
+      removeUsedVarInNodes,
+    })).toBe(false)
+    expect(notifyError).toHaveBeenCalledWith('variableConfig.varName')
+
+    expect(syncVariables({
+      draft: {
+        ...createInputs(),
+        variables: undefined,
+      } as unknown as WebhookTriggerNodeType,
+      id: 'node-1',
+      newData: [{ name: WEBHOOK_RAW_VARIABLE_NAME, type: VarType.string, required: true }],
+      sourceType: 'body',
+      notifyError,
+      isVarUsedInNodes,
+      removeUsedVarInNodes,
+    })).toBe(false)
+    expect(notifyError).toHaveBeenCalledWith('variableConfig.varName')
+
+    expect(syncVariables({
+      draft: createInputs(),
+      id: 'node-1',
+      newData: [{ name: 'existing_header', type: VarType.string, required: true }],
+      sourceType: 'param',
+      notifyError,
+      isVarUsedInNodes,
+      removeUsedVarInNodes,
+    })).toBe(false)
+    expect(notifyError).toHaveBeenCalledWith('existing_header')
+
+    const removableDraft = {
+      ...createInputs(),
+      variables: [
+        { variable: 'old_param', label: 'param', required: true, value_selector: [], value_type: VarType.number },
+      ],
+    }
+    expect(syncVariables({
+      draft: removableDraft,
+      id: 'node-1',
+      newData: [],
+      sourceType: 'param',
+      notifyError,
+      isVarUsedInNodes,
+      removeUsedVarInNodes,
+    })).toBe(true)
+    expect(removeUsedVarInNodes).toHaveBeenCalledWith(['node-1', 'old_param'])
   })
 
   it('updates content, source fields and webhook urls', () => {
@@ -88,6 +145,17 @@ describe('trigger webhook config helpers', () => {
       removeUsedVarInNodes,
     }).body).toEqual([])
 
+    expect(updateContentType({
+      inputs: {
+        ...createInputs(),
+        variables: undefined,
+      } as unknown as WebhookTriggerNodeType,
+      id: 'node-1',
+      contentType: 'multipart/form-data',
+      isVarUsedInNodes: () => false,
+      removeUsedVarInNodes,
+    }).body).toEqual([])
+
     expect(updateSourceFields({
       inputs: createInputs(),
       id: 'node-1',
@@ -107,6 +175,16 @@ describe('trigger webhook config helpers', () => {
       isVarUsedInNodes: () => false,
       removeUsedVarInNodes: vi.fn(),
     }).body).toEqual([{ name: 'payload', type: VarType.string, required: true }])
+
+    expect(updateSourceFields({
+      inputs: createInputs(),
+      id: 'node-1',
+      sourceType: 'header',
+      nextData: [{ name: 'x-request-id', required: true }],
+      notifyError: vi.fn(),
+      isVarUsedInNodes: () => false,
+      removeUsedVarInNodes: vi.fn(),
+    }).headers).toEqual([{ name: 'x-request-id', required: true }])
 
     expect(updateMethod(createInputs(), 'GET').method).toBe('GET')
     expect(updateSimpleField(createInputs(), 'status_code', 204).status_code).toBe(204)
