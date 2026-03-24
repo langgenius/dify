@@ -1,11 +1,11 @@
 """Inner API endpoints for app DSL import/export.
 
-Called by the Go admin-api service (dify-enterprise) to import and export
+Called by the enterprise admin-api service to import and export
 app definitions as YAML DSL files. These endpoints delegate to
 :class:`~services.app_dsl_service.AppDslService` for the actual work.
 
-Import requires an ``account_email`` identifying the workspace member who
-will own the imported app. The caller (admin-api) is responsible for
+Import requires a ``creator_email`` identifying the workspace member who
+will create the imported app. The caller (admin-api) is responsible for
 deciding which user to attribute the operation to.
 """
 
@@ -19,13 +19,12 @@ from controllers.inner_api import inner_api_ns
 from controllers.inner_api.wraps import enterprise_inner_api_only
 from extensions.ext_database import db
 from models import Account, App
-from models.account import TenantAccountJoin
 from services.app_dsl_service import AppDslService, ImportMode, ImportStatus
 
 
 class InnerAppDSLImportPayload(BaseModel):
     yaml_content: str
-    account_email: str
+    creator_email: str
     name: str | None = None
     description: str | None = None
 
@@ -35,21 +34,20 @@ class EnterpriseAppDSLImport(Resource):
     @setup_required
     @enterprise_inner_api_only
     def post(self, workspace_id: str):
-        """Import a DSL into a workspace on behalf of a specified account.
+        """Import a DSL into a workspace on behalf of a specified creator.
 
-        Requires ``account_email`` to identify the workspace member who will
-        own the imported app. The account must be active and belong to the
-        target workspace. Returns 202 when a DSL version mismatch requires
-        confirmation, 400 on business failure, and 200 on success.
+        Requires ``creator_email`` to identify the account that will own the
+        imported app. The account must be active. Workspace existence and
+        membership are validated by the Go admin-api caller.
+
+        Returns 200 on success, 202 when a DSL version mismatch requires
+        confirmation, and 400 on business failure.
         """
         args = InnerAppDSLImportPayload.model_validate(inner_api_ns.payload or {})
 
-        account = _resolve_workspace_account(workspace_id, args.account_email)
+        account = _get_active_account(args.creator_email)
         if account is None:
-            return {
-                "message": f"account '{args.account_email}' not found, inactive, "
-                f"or not a member of workspace '{workspace_id}'"
-            }, 404
+            return {"message": f"account '{args.creator_email}' not found or inactive"}, 404
 
         account.set_tenant_id(workspace_id)
 
@@ -64,11 +62,11 @@ class EnterpriseAppDSLImport(Resource):
             )
             session.commit()
 
-        if result.status == ImportStatus.FAILED:
-            return result.model_dump(mode="json"), 400
-        elif result.status == ImportStatus.PENDING:
-            return result.model_dump(mode="json"), 202
-        return result.model_dump(mode="json"), 200
+        status_code_map = {
+            ImportStatus.FAILED: 400,
+            ImportStatus.PENDING: 202,
+        }
+        return result.model_dump(mode="json"), status_code_map.get(result.status, 200)
 
 
 @inner_api_ns.route("/enterprise/apps/<string:app_id>/dsl")
@@ -95,22 +93,13 @@ class EnterpriseAppDSLExport(Resource):
         return {"data": data}, 200
 
 
-def _resolve_workspace_account(workspace_id: str, email: str) -> Account | None:
-    """Look up an active account by email and verify it belongs to the workspace.
+def _get_active_account(email: str) -> Account | None:
+    """Look up an active account by email.
 
-    Returns the account with its tenant set, or None if the account doesn't
-    exist, is inactive, or is not a member of the given workspace.
+    Workspace membership is already validated by the Go admin-api caller;
+    this function only needs to retrieve the Account object for AppDslService.
     """
     account = db.session.query(Account).filter_by(email=email).first()
     if account is None or account.status != "active":
         return None
-
-    membership = (
-        db.session.query(TenantAccountJoin)
-        .filter_by(tenant_id=workspace_id, account_id=account.id)
-        .first()
-    )
-    if membership is None:
-        return None
-
     return account
