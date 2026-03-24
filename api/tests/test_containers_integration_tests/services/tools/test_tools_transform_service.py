@@ -1,12 +1,15 @@
+from __future__ import annotations
+
 from unittest.mock import Mock, patch
 
 import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
-from core.tools.entities.api_entities import ToolProviderApiEntity
+from core.tools.__base.tool import Tool
+from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
 from core.tools.entities.common_entities import I18nObject
-from core.tools.entities.tool_entities import ApiProviderSchemaType, ToolProviderType
+from core.tools.entities.tool_entities import ApiProviderSchemaType, ToolParameter, ToolProviderType
 from models.tools import ApiToolProvider, BuiltinToolProvider, MCPToolProvider, WorkflowToolProvider
 from services.plugin.plugin_service import PluginService
 from services.tools.tools_transform_service import ToolTransformService
@@ -786,3 +789,170 @@ class TestToolTransformService:
             assert result is not None
             assert result == mock_controller
             mock_from_db.assert_called_once_with(provider)
+
+
+def _mock_tool(*, base_params, runtime_params):
+    """Helper to build a Mock tool with the given base and runtime parameters."""
+    mock_tool = Mock(spec=Tool)
+    mock_tool.entity = Mock()
+    mock_tool.entity.parameters = base_params
+    mock_tool.entity.identity = Mock()
+    mock_tool.entity.identity.author = "test_author"
+    mock_tool.entity.identity.name = "test_tool"
+    mock_tool.entity.identity.label = I18nObject(en_US="Test Tool")
+    mock_tool.entity.description = Mock()
+    mock_tool.entity.description.human = I18nObject(en_US="Test description")
+    mock_tool.entity.output_schema = {}
+    mock_tool.get_runtime_parameters.return_value = runtime_params
+    mock_tool.fork_tool_runtime.return_value = mock_tool
+    return mock_tool
+
+
+def _param(name, *, form=ToolParameter.ToolParameterForm.FORM, label=None):
+    p = Mock(spec=ToolParameter)
+    p.name = name
+    p.form = form
+    p.type = "string"
+    p.label = label or name
+    return p
+
+
+class TestConvertToolEntityToApiEntity:
+    """Tests for ToolTransformService.convert_tool_entity_to_api_entity."""
+
+    def test_parameter_override(self):
+        base = [_param("param1", label="Base 1"), _param("param2", label="Base 2")]
+        runtime = [_param("param1", label="Runtime 1")]
+        tool = _mock_tool(base_params=base, runtime_params=runtime)
+
+        result = ToolTransformService.convert_tool_entity_to_api_entity(tool, "t", None)
+
+        assert isinstance(result, ToolApiEntity)
+        assert len(result.parameters) == 2
+        assert next(p for p in result.parameters if p.name == "param1").label == "Runtime 1"
+        assert next(p for p in result.parameters if p.name == "param2").label == "Base 2"
+
+    def test_additional_runtime_parameters(self):
+        base = [_param("param1", label="Base 1")]
+        runtime = [_param("param1", label="Runtime 1"), _param("runtime_only", label="Runtime Only")]
+        tool = _mock_tool(base_params=base, runtime_params=runtime)
+
+        result = ToolTransformService.convert_tool_entity_to_api_entity(tool, "t", None)
+
+        assert len(result.parameters) == 2
+        names = [p.name for p in result.parameters]
+        assert "param1" in names
+        assert "runtime_only" in names
+
+    def test_non_form_runtime_parameters_excluded(self):
+        base = [_param("param1")]
+        runtime = [
+            _param("param1", label="Runtime 1"),
+            _param("llm_param", form=ToolParameter.ToolParameterForm.LLM),
+        ]
+        tool = _mock_tool(base_params=base, runtime_params=runtime)
+
+        result = ToolTransformService.convert_tool_entity_to_api_entity(tool, "t", None)
+
+        assert len(result.parameters) == 1
+        assert result.parameters[0].name == "param1"
+
+    def test_empty_parameters(self):
+        tool = _mock_tool(base_params=[], runtime_params=[])
+
+        result = ToolTransformService.convert_tool_entity_to_api_entity(tool, "t", None)
+
+        assert isinstance(result, ToolApiEntity)
+        assert len(result.parameters) == 0
+
+    def test_none_parameters(self):
+        tool = _mock_tool(base_params=None, runtime_params=[])
+
+        result = ToolTransformService.convert_tool_entity_to_api_entity(tool, "t", None)
+
+        assert isinstance(result, ToolApiEntity)
+        assert len(result.parameters) == 0
+
+    def test_parameter_order_preserved(self):
+        base = [_param("p1", label="B1"), _param("p2", label="B2"), _param("p3", label="B3")]
+        runtime = [_param("p2", label="R2"), _param("p4", label="R4")]
+        tool = _mock_tool(base_params=base, runtime_params=runtime)
+
+        result = ToolTransformService.convert_tool_entity_to_api_entity(tool, "t", None)
+
+        assert [p.name for p in result.parameters] == ["p1", "p2", "p3", "p4"]
+        assert result.parameters[1].label == "R2"
+
+
+class TestWorkflowProviderToUserProvider:
+    """Tests for ToolTransformService.workflow_provider_to_user_provider."""
+
+    @staticmethod
+    def _mock_controller(provider_id="provider_123"):
+        from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
+
+        ctrl = Mock(spec=WorkflowToolProviderController)
+        ctrl.provider_id = provider_id
+        ctrl.entity = Mock()
+        ctrl.entity.identity = Mock()
+        ctrl.entity.identity.author = "test_author"
+        ctrl.entity.identity.name = "test_workflow_tool"
+        ctrl.entity.identity.description = I18nObject(en_US="Test description")
+        ctrl.entity.identity.icon = {"type": "emoji", "content": "\U0001f527"}
+        ctrl.entity.identity.icon_dark = None
+        ctrl.entity.identity.label = I18nObject(en_US="Test Workflow Tool")
+        return ctrl
+
+    def test_with_workflow_app_id(self):
+        ctrl = self._mock_controller()
+
+        result = ToolTransformService.workflow_provider_to_user_provider(
+            provider_controller=ctrl, labels=["l1", "l2"], workflow_app_id="app_123",
+        )
+
+        assert isinstance(result, ToolProviderApiEntity)
+        assert result.id == "provider_123"
+        assert result.type == ToolProviderType.WORKFLOW
+        assert result.workflow_app_id == "app_123"
+        assert result.labels == ["l1", "l2"]
+        assert result.is_team_authorization is True
+
+    def test_without_workflow_app_id(self):
+        ctrl = self._mock_controller()
+
+        result = ToolTransformService.workflow_provider_to_user_provider(
+            provider_controller=ctrl, labels=["l1"],
+        )
+
+        assert result.workflow_app_id is None
+
+    def test_workflow_app_id_none_explicit(self):
+        ctrl = self._mock_controller()
+
+        result = ToolTransformService.workflow_provider_to_user_provider(
+            provider_controller=ctrl, labels=None, workflow_app_id=None,
+        )
+
+        assert result.workflow_app_id is None
+        assert result.labels == []
+
+    def test_preserves_other_fields(self):
+        ctrl = self._mock_controller("provider_456")
+        ctrl.entity.identity.author = "another_author"
+        ctrl.entity.identity.name = "another_workflow_tool"
+        ctrl.entity.identity.description = I18nObject(en_US="Another desc", zh_Hans="Another desc")
+        ctrl.entity.identity.icon = {"type": "emoji", "content": "\u2699\ufe0f"}
+        ctrl.entity.identity.icon_dark = {"type": "emoji", "content": "\U0001f527"}
+        ctrl.entity.identity.label = I18nObject(en_US="Another Tool", zh_Hans="Another Tool")
+
+        result = ToolTransformService.workflow_provider_to_user_provider(
+            provider_controller=ctrl, labels=["automation"], workflow_app_id="app_456",
+        )
+
+        assert result.id == "provider_456"
+        assert result.author == "another_author"
+        assert result.name == "another_workflow_tool"
+        assert result.type == ToolProviderType.WORKFLOW
+        assert result.workflow_app_id == "app_456"
+        assert result.is_team_authorization is True
+        assert result.allow_delete is True
