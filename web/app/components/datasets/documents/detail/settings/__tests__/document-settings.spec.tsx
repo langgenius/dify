@@ -224,6 +224,20 @@ describe('DocumentSettings', () => {
 
   // Data source types
   describe('Data Source Types', () => {
+    it('should handle upload_file_id data source format', () => {
+      mockDocumentDetail = {
+        name: 'test-document',
+        data_source_type: 'upload_file',
+        data_source_info: {
+          upload_file_id: '4a807f05-45d6-4fc4-b7a8-b009a4568b36',
+        },
+      }
+
+      render(<DocumentSettings {...defaultProps} />)
+
+      expect(screen.getByTestId('files-count')).toHaveTextContent('1')
+    })
+
     it('should handle legacy upload_file data source', () => {
       mockDocumentDetail = {
         name: 'test-document',
@@ -307,6 +321,18 @@ describe('DocumentSettings', () => {
       expect(screen.getByTestId('files-count')).toHaveTextContent('0')
     })
 
+    it('should handle empty data_source_info object', () => {
+      mockDocumentDetail = {
+        name: 'test-document',
+        data_source_type: 'upload_file',
+        data_source_info: {},
+      }
+
+      render(<DocumentSettings {...defaultProps} />)
+
+      expect(screen.getByTestId('files-count')).toHaveTextContent('0')
+    })
+
     it('should maintain structure when rerendered', () => {
       const { rerender } = render(
         <DocumentSettings datasetId="dataset-1" documentId="doc-1" />,
@@ -315,6 +341,39 @@ describe('DocumentSettings', () => {
       rerender(<DocumentSettings datasetId="dataset-2" documentId="doc-2" />)
 
       expect(screen.getByTestId('step-two')).toBeInTheDocument()
+    })
+  })
+
+  describe('Files Extraction Regression Tests', () => {
+    it('should correctly extract file ID from upload_file_id format', () => {
+      const fileId = '4a807f05-45d6-4fc4-b7a8-b009a4568b36'
+      mockDocumentDetail = {
+        name: 'test-document.pdf',
+        data_source_type: 'upload_file',
+        data_source_info: {
+          upload_file_id: fileId,
+        },
+      }
+
+      render(<DocumentSettings {...defaultProps} />)
+
+      // Verify files array is populated with correct file ID
+      expect(screen.getByTestId('files-count')).toHaveTextContent('1')
+    })
+
+    it('should preserve document name when using upload_file_id format', () => {
+      const documentName = 'my-uploaded-document.txt'
+      mockDocumentDetail = {
+        name: documentName,
+        data_source_type: 'upload_file',
+        data_source_info: {
+          upload_file_id: 'some-file-id',
+        },
+      }
+
+      render(<DocumentSettings {...defaultProps} />)
+
+      expect(screen.getByTestId('files-count')).toHaveTextContent('1')
     })
   })
 })

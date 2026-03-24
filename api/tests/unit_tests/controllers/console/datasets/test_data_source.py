@@ -11,6 +11,7 @@ from controllers.console.datasets.data_source import (
     DataSourceNotionDocumentSyncApi,
     DataSourceNotionListApi,
 )
+from core.rag.index_processor.constant.index_type import IndexStructureType
 
 
 def unwrap(func):
@@ -343,7 +344,7 @@ class TestDataSourceNotionApi:
                 }
             ],
             "process_rule": {"rules": {}},
-            "doc_form": "text_model",
+            "doc_form": IndexStructureType.PARAGRAPH_INDEX,
             "doc_language": "English",
         }
 
