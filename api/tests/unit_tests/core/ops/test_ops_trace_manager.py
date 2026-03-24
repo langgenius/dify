@@ -86,6 +86,7 @@ def make_message_data(**overrides):
     created_at = datetime(2025, 2, 20, 12, 0, 0)
     base = {
         "id": "msg-id",
+        "app_id": "app-id",
         "conversation_id": "conv-id",
         "created_at": created_at,
         "updated_at": created_at + timedelta(seconds=3),
@@ -188,6 +189,12 @@ class DummySessionContext:
         value = self._values[self._index]
         self._index += 1
         return value
+
+    def scalars(self, *args, **kwargs):
+        return self
+
+    def all(self):
+        return []
 
 
 @pytest.fixture(autouse=True)

@@ -143,6 +143,7 @@ def initialize_extensions(app: DifyApp):
         ext_commands,
         ext_compress,
         ext_database,
+        ext_enterprise_telemetry,
         ext_fastopenapi,
         ext_forward_refs,
         ext_hosting_provider,
@@ -193,6 +194,7 @@ def initialize_extensions(app: DifyApp):
         ext_commands,
         ext_fastopenapi,
         ext_otel,
+        ext_enterprise_telemetry,
         ext_request_logging,
         ext_session_factory,
     ]
