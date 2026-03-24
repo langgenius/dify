@@ -1,7 +1,7 @@
 import type { TriggerLogEntity } from '@/app/components/workflow/block-selector/types'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import Toast from '@/app/components/base/toast'
+import Toast from '@/app/components/plugins/utils/toast'
 import LogViewer from '../log-viewer'
 
 const mockToastNotify = vi.fn()

@@ -13,7 +13,7 @@ import { OAuthEditModal } from '../oauth-edit-modal'
 // ==================== Mock Setup ====================
 
 const mockToastNotify = vi.fn()
-vi.mock('@/app/components/base/toast', () => ({
+vi.mock('@/app/components/plugins/utils/toast', () => ({
   default: { notify: (params: unknown) => mockToastNotify(params) },
 }))
 

@@ -1,10 +1,10 @@
 import type { Model, ModelItem } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-// Import component after mocks
-import Toast from '@/app/components/base/toast'
-
 import { ConfigurationMethodEnum, ModelStatusEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+
+// Import component after mocks
+import Toast from '@/app/components/plugins/utils/toast'
 import ModelParameterModal from '../index'
 
 // ==================== Mock Setup ====================
@@ -865,7 +865,7 @@ describe('ModelParameterModal', () => {
 
         // Assert
         await waitFor(() => {
-          expect(Toast.notify).toHaveBeenCalledWith(
+          expect(notifyToast).toHaveBeenCalledWith(
             expect.objectContaining({ type: 'warning' }),
           )
         })
@@ -892,7 +892,7 @@ describe('ModelParameterModal', () => {
 
         // Assert
         await waitFor(() => {
-          expect(Toast.notify).toHaveBeenCalledWith(
+          expect(notifyToast).toHaveBeenCalledWith(
             expect.objectContaining({ type: 'error' }),
           )
         })

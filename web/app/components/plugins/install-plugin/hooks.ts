@@ -1,6 +1,6 @@
 import type { GitHubRepoReleaseResponse } from '../types'
-import type { IToastProps } from '@/app/components/base/toast'
-import Toast from '@/app/components/base/toast'
+import type { LegacyToastOptions } from '@/app/components/plugins/utils/toast'
+import Toast from '@/app/components/plugins/utils/toast'
 import { GITHUB_ACCESS_TOKEN } from '@/config'
 import { uploadGitHub } from '@/service/plugins'
 import { compareVersion, getLatestVersion } from '@/utils/semver'
@@ -54,7 +54,7 @@ export const useGitHubReleases = () => {
 
   const checkForUpdates = (fetchedReleases: GitHubRepoReleaseResponse[], currentVersion: string) => {
     let needUpdate = false
-    const toastProps: IToastProps = {
+    const toastProps: LegacyToastOptions = {
       type: 'info',
       message: 'No new version available',
     }

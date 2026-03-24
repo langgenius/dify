@@ -1,7 +1,7 @@
 import type { MetaData, PluginCategoryEnum } from '../../types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import Toast from '@/app/components/base/toast'
+import Toast from '@/app/components/plugins/utils/toast'
 
 // ==================== Imports (after mocks) ====================
 
@@ -140,12 +140,12 @@ const getActionButtons = () => screen.getAllByRole('button')
 const queryActionButtons = () => screen.queryAllByRole('button')
 
 describe('Action Component', () => {
-  // Spy on Toast.notify - real component but we track calls
+  // Spy on notifyToast - real component but we track calls
   let toastNotifySpy: ReturnType<typeof vi.spyOn>
 
   beforeEach(() => {
     vi.clearAllMocks()
-    // Spy on Toast.notify and mock implementation to avoid DOM side effects
+    // Spy on notifyToast and mock implementation to avoid DOM side effects
     toastNotifySpy = vi.spyOn(Toast, 'notify').mockImplementation(() => ({ clear: vi.fn() }))
     mockUninstallPlugin.mockResolvedValue({ success: true })
     mockFetchReleases.mockResolvedValue([])
@@ -563,7 +563,7 @@ describe('Action Component', () => {
       render(<Action {...props} />)
       fireEvent.click(getActionButtons()[0])
 
-      // Assert - Toast.notify is called with the toast props
+      // Assert - notifyToast is called with the toast props
       await waitFor(() => {
         expect(toastNotifySpy).toHaveBeenCalledWith({ type: 'success', message: 'Already up to date' })
       })

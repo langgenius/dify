@@ -26,7 +26,7 @@ vi.mock('@/service/use-triggers', () => ({
   useDeleteTriggerSubscription: () => ({ mutate: vi.fn(), isPending: false }),
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
+vi.mock('@/app/components/plugins/utils/toast', () => ({
   default: {
     notify: vi.fn(),
   },

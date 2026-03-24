@@ -4,7 +4,7 @@ import type { TriggerOAuthClientParams, TriggerOAuthConfig, TriggerSubscriptionB
 import type { ConfigureTriggerOAuthPayload } from '@/service/use-triggers'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Toast from '@/app/components/base/toast'
+import Toast from '@/app/components/plugins/utils/toast'
 import { openOAuthPopup } from '@/hooks/use-oauth'
 import {
   useConfigureTriggerOAuth,

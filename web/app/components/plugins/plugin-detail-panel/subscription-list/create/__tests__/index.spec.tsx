@@ -3,6 +3,7 @@ import type { TriggerOAuthConfig, TriggerProviderApiEntity, TriggerSubscription,
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { SupportedCreationMethods } from '@/app/components/plugins/types'
+import Toast from '@/app/components/plugins/utils/toast'
 import { TriggerCredentialTypeEnum } from '@/app/components/workflow/block-selector/types'
 import { CreateButtonType, CreateSubscriptionButton, DEFAULT_METHOD } from '../index'
 
@@ -33,7 +34,7 @@ vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
   },
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
+vi.mock('@/app/components/plugins/utils/toast', () => ({
   default: {
     notify: vi.fn(),
   },
@@ -908,8 +909,6 @@ describe('CreateSubscriptionButton', () => {
 
     it('should handle OAuth initiation error', async () => {
       // Arrange
-      const Toast = await import('@/app/components/base/toast')
-
       mockInitiateOAuth.mockImplementation((_provider: string, callbacks: { onError: () => void }) => {
         callbacks.onError()
       })
@@ -932,7 +931,7 @@ describe('CreateSubscriptionButton', () => {
 
       // Assert
       await waitFor(() => {
-        expect(Toast.default.notify).toHaveBeenCalledWith(
+        expect(Toast.notify).toHaveBeenCalledWith(
           expect.objectContaining({ type: 'error' }),
         )
       })

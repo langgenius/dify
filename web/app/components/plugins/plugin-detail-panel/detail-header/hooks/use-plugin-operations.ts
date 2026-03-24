@@ -5,7 +5,8 @@ import type { ModalStates, VersionTarget } from './use-detail-header-state'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
+import Toast from '@/app/components/plugins/utils/toast'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { uninstallPlugin } from '@/service/plugins'
@@ -74,7 +75,7 @@ export const usePluginOperations = ({
       return
 
     const { needUpdate, toastProps } = checkForUpdates(fetchedReleases, meta.version)
-    Toast.notify(toastProps)
+    toast(toastProps)
 
     if (needUpdate) {
       setShowUpdatePluginModal({

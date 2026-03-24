@@ -2,7 +2,7 @@ import type { FormSchema } from '../../../base/form/types'
 import type { PluginDetail } from '../../types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import Toast from '@/app/components/base/toast'
+import Toast from '@/app/components/plugins/utils/toast'
 import EndpointModal from '../endpoint-modal'
 
 vi.mock('@/hooks/use-i18n', () => ({

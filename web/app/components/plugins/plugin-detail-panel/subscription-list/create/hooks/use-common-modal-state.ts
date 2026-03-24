@@ -7,8 +7,8 @@ import type { BuildTriggerSubscriptionPayload } from '@/service/use-triggers'
 import { debounce } from 'es-toolkit/compat'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Toast from '@/app/components/base/toast'
 import { SupportedCreationMethods } from '@/app/components/plugins/types'
+import Toast from '@/app/components/plugins/utils/toast'
 import { TriggerCredentialTypeEnum } from '@/app/components/workflow/block-selector/types'
 import {
   useBuildTriggerSubscription,

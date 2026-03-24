@@ -1,7 +1,7 @@
 import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import Toast from '@/app/components/base/toast'
+import Toast from '@/app/components/plugins/utils/toast'
 import { TriggerCredentialTypeEnum } from '@/app/components/workflow/block-selector/types'
 import { SubscriptionSelectorView } from '../selector-view'
 

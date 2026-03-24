@@ -10,11 +10,11 @@ vi.mock('@/utils/classnames', () => ({
   cn: (...args: unknown[]) => args.filter(Boolean).join(' '),
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
+vi.mock('@/app/components/plugins/utils/toast', () => ({
   default: { notify: vi.fn() },
 }))
 
-vi.mock('@/app/components/base/toast/context', () => ({
+vi.mock('@/app/components/plugins/utils/toast/context', () => ({
   useToastContext: () => ({ notify: vi.fn() }),
 }))
 

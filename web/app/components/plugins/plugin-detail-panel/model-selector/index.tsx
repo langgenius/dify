@@ -10,7 +10,6 @@ import type {
 import type { TriggerProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/trigger'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Toast from '@/app/components/base/toast'
 import {
   Popover,
   PopoverContent,
@@ -23,6 +22,7 @@ import {
 import AgentModelTrigger from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/agent-model-trigger'
 import Trigger from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/trigger'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import Toast from '@/app/components/plugins/utils/toast'
 import { useProviderContext } from '@/context/provider-context'
 import { cn } from '@/utils/classnames'
 import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'

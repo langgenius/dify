@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useGitHubReleases, useGitHubUpload } from '../hooks'
 
 const mockNotify = vi.fn()
-vi.mock('@/app/components/base/toast', () => ({
+vi.mock('@/app/components/plugins/utils/toast', () => ({
   default: { notify: (...args: unknown[]) => mockNotify(...args) },
 }))
 

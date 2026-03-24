@@ -30,8 +30,8 @@ vi.mock('@/service/use-triggers', () => ({
   useTriggerPluginDynamicOptions: () => ({ data: [], isLoading: false }),
 }))
 
-vi.mock('@/app/components/base/toast', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/app/components/base/toast')>()
+vi.mock('@/app/components/plugins/utils/toast', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/components/plugins/utils/toast')>()
   return {
     ...actual,
     default: {
@@ -40,7 +40,7 @@ vi.mock('@/app/components/base/toast', async (importOriginal) => {
   }
 })
 
-vi.mock('@/app/components/base/toast/context', () => ({
+vi.mock('@/app/components/plugins/utils/toast/context', () => ({
   useToastContext: () => ({
     notify: (args: { type: string, message: string }) => mockToast(args),
     close: vi.fn(),
