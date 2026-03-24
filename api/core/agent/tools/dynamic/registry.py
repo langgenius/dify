@@ -1,12 +1,15 @@
-from typing import Dict, Any, Callable
+from collections.abc import Callable
+from typing import Any
+
 
 class DynamicToolRegistry:
     """
     Registry for dynamic tool injection in Dify agents.
     Allows injecting custom tool logic at runtime without service restarts.
     """
+
     def __init__(self):
-        self._tools: Dict[str, Callable] = {}
+        self._tools: dict[str, Callable] = {}
 
     def register_tool(self, name: str, func: Callable):
         self._tools[name] = func
