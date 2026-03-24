@@ -31,7 +31,7 @@ const pricingScrollAreaClassNames = {
   root: 'relative h-full w-full overflow-hidden [--scroll-area-edge-hint-bg:var(--color-saas-background)]',
   viewport: 'overscroll-contain',
   content: 'min-h-full min-w-[1200px]',
-  verticalScrollbar: 'data-[orientation=vertical]:my-2 data-[orientation=vertical]:[margin-inline-end:0.25rem]',
+  verticalScrollbar: 'data-[orientation=vertical]:my-2 data-[orientation=vertical]:me-1',
   horizontalScrollbar: 'data-[orientation=horizontal]:mx-2 data-[orientation=horizontal]:mb-0.5',
   corner: 'bg-saas-background',
 } as const
