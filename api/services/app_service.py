@@ -60,7 +60,6 @@ class AppService:
             name = args["name"][:30]
             escaped_name = escape_like_pattern(name)
             filters.append(App.name.ilike(f"%{escaped_name}%", escape="\\"))
-        # Check if tag_ids is not empty to avoid WHERE false condition
         if args.get("tag_ids") and len(args["tag_ids"]) > 0:
             target_ids = TagService.get_target_ids_by_tag_ids("app", tenant_id, args["tag_ids"])
             if target_ids and len(target_ids) > 0:
@@ -68,8 +67,19 @@ class AppService:
             else:
                 return None
 
+        sort_by = args.get("sort_by", "-created_at")
+        order_by_map = {
+            "created_at": App.created_at.asc(),
+            "-created_at": App.created_at.desc(),
+            "updated_at": App.updated_at.asc(),
+            "-updated_at": App.updated_at.desc(),
+            "name": App.name.asc(),
+            "-name": App.name.desc(),
+        }
+        order_by = order_by_map.get(sort_by, App.created_at.desc())
+
         app_models = db.paginate(
-            sa.select(App).where(*filters).order_by(App.created_at.desc()),
+            sa.select(App).where(*filters).order_by(order_by),
             page=args["page"],
             per_page=args["limit"],
             error_out=False,

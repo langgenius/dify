@@ -1,12 +1,14 @@
 'use client'
 
 import type { FC } from 'react'
+import type { AppSortBy, AppSortField } from '@/app/components/apps/hooks/use-apps-query-state'
 import { useDebounceFn } from 'ahooks'
 import { parseAsStringLiteral, useQueryState } from 'nuqs'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Checkbox from '@/app/components/base/checkbox'
 import Input from '@/app/components/base/input'
+import Sort from '@/app/components/base/sort'
 import TabSliderNew from '@/app/components/base/tab-slider-new'
 import TagFilter from '@/app/components/base/tag-management/filter'
 import { useStore as useTagStore } from '@/app/components/base/tag-management/store'
@@ -60,8 +62,9 @@ const List: FC<Props> = ({
     parseAsAppListCategory,
   )
 
-  const { query: { tagIDs = [], keywords = '', isCreatedByMe: queryIsCreatedByMe = false }, setQuery } = useAppsQueryState()
+  const { query: { tagIDs = [], keywords = '', isCreatedByMe: queryIsCreatedByMe = false, sortBy: querySortBy = '-created_at' }, setQuery } = useAppsQueryState()
   const [isCreatedByMe, setIsCreatedByMe] = useState(queryIsCreatedByMe)
+  const [sortBy, setSortBy] = useState<AppSortBy>(querySortBy)
   const [tagFilterValue, setTagFilterValue] = useState<string[]>(tagIDs)
   const [searchKeywords, setSearchKeywords] = useState(keywords)
   const newAppCardRef = useRef<HTMLDivElement>(null)
@@ -73,6 +76,11 @@ const List: FC<Props> = ({
   }, [setQuery])
   const setTagIDs = useCallback((tagIDs: string[]) => {
     setQuery(prev => ({ ...prev, tagIDs }))
+  }, [setQuery])
+  const handleSortChange = useCallback((value: string) => {
+    const newSortBy = value as AppSortBy
+    setSortBy(newSortBy)
+    setQuery(prev => ({ ...prev, sortBy: newSortBy }))
   }, [setQuery])
 
   const handleDSLFileDropped = useCallback((file: File) => {
@@ -92,6 +100,7 @@ const List: FC<Props> = ({
     name: searchKeywords,
     tag_ids: tagIDs,
     is_created_by_me: isCreatedByMe,
+    sort_by: sortBy,
     ...(activeTab !== 'all' ? { mode: activeTab } : {}),
   }
 
@@ -212,6 +221,16 @@ const List: FC<Props> = ({
               </div>
             </label>
             <TagFilter type="app" value={tagFilterValue} onChange={handleTagsChange} />
+            <Sort
+              order={sortBy.startsWith('-') ? '-' : ''}
+              value={sortBy.replace('-', '') as AppSortField}
+              items={[
+                { value: 'created_at', name: t('sortBy.createdAt', { ns: 'app' }) },
+                { value: 'updated_at', name: t('sortBy.updatedAt', { ns: 'app' }) },
+                { value: 'name', name: t('sortBy.name', { ns: 'app' }) },
+              ]}
+              onSelect={handleSortChange}
+            />
             <Input
               showLeftIcon
               showClearIcon
