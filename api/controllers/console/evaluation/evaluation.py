@@ -21,7 +21,7 @@ from controllers.console.wraps import (
     setup_required,
 )
 from core.evaluation.entities.evaluation_entity import EvaluationCategory, EvaluationConfigData, EvaluationRunRequest
-from core.workflow.file import helpers as file_helpers
+from dify_graph.file import helpers as file_helpers
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from libs.helper import TimestampField
@@ -161,7 +161,9 @@ def get_evaluation_target(view_func: Callable[P, R]):
                 .first()
             )
         elif target_type == "knowledge":
-            target = db.session.query(Dataset).where(Dataset.id == target_id, Dataset.tenant_id == current_tenant_id).first()
+            target = (db.session.query(Dataset)
+                      .where(Dataset.id == target_id, Dataset.tenant_id == current_tenant_id)
+                      .first())
 
         if not target:
             raise NotFound(f"{str(target_type)} not found")

@@ -22,7 +22,7 @@ from core.evaluation.entities.evaluation_entity import (
     EvaluationItemResult,
 )
 from core.evaluation.runners.base_evaluation_runner import BaseEvaluationRunner
-from core.workflow.node_events import NodeRunResult
+from dify_graph.node_events import NodeRunResult
 from models.snippet import CustomizedSnippet
 from models.workflow import WorkflowNodeExecutionModel
 

@@ -7,15 +7,15 @@ from enum import StrEnum
 from urllib.parse import urlparse
 
 import yaml  # type: ignore
+from core.model_runtime.utils.encoders import jsonable_encoder
 from packaging import version
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.helper import ssrf_proxy
-from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.entities.plugin import PluginDependency
-from core.workflow.enums import NodeType
+from dify_graph.enums import NodeType
 from extensions.ext_redis import redis_client
 from factories import variable_factory
 from models import Account

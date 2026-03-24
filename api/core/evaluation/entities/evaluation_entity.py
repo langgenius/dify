@@ -103,7 +103,7 @@ LLM_METRIC_NAMES: list[EvaluationMetricName] = [
     EvaluationMetricName.FAITHFULNESS,        # Every claim is grounded in context; no hallucinations
     EvaluationMetricName.ANSWER_RELEVANCY,    # Response stays on-topic and addresses the question
     EvaluationMetricName.ANSWER_CORRECTNESS,  # Factual accuracy and completeness vs. reference
-    EvaluationMetricName.SEMANTIC_SIMILARITY, # Semantic closeness to the reference answer
+    EvaluationMetricName.SEMANTIC_SIMILARITY,  # Semantic closeness to the reference answer
 ]
 
 RETRIEVAL_METRIC_NAMES: list[EvaluationMetricName] = [

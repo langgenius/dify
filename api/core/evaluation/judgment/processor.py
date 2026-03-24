@@ -23,8 +23,8 @@ from core.evaluation.entities.judgment_entity import (
     JudgmentConfig,
     JudgmentResult,
 )
-from core.workflow.utils.condition.entities import SupportedComparisonOperator
-from core.workflow.utils.condition.processor import _evaluate_condition  # pyright: ignore[reportPrivateUsage]
+from dify_graph.utils.condition.entities import SupportedComparisonOperator
+from dify_graph.utils.condition.processor import _evaluate_condition  # pyright: ignore[reportPrivateUsage]
 
 logger = logging.getLogger(__name__)
 

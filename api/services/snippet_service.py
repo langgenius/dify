@@ -7,9 +7,9 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.workflow.enums import NodeType
-from core.workflow.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
-from core.workflow.variables.variables import VariableBase
+from core.workflow.node_factory import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
+from dify_graph.enums import NodeType
+from dify_graph.variables.variables import VariableBase
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account

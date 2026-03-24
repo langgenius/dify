@@ -26,7 +26,7 @@ from core.evaluation.entities.evaluation_entity import (
 )
 from core.evaluation.entities.judgment_entity import JudgmentConfig
 from core.evaluation.judgment.processor import JudgmentProcessor
-from core.workflow.node_events import NodeRunResult
+from dify_graph.node_events import NodeRunResult
 from libs.datetime_utils import naive_utc_now
 from models.evaluation import EvaluationRun, EvaluationRunItem, EvaluationRunStatus
 

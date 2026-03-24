@@ -10,7 +10,7 @@ from core.evaluation.entities.evaluation_entity import (
     EvaluationItemResult,
     EvaluationMetric,
 )
-from core.workflow.node_events import NodeRunResult
+from dify_graph.node_events.base import NodeRunResult
 
 logger = logging.getLogger(__name__)
 
@@ -162,7 +162,7 @@ class BaseEvaluationInstance(ABC):
             ``node_run_result_mapping``.
 
         """
-        from core.workflow.nodes.base.variable_template_parser import REGEX as VARIABLE_REGEX
+        from dify_graph.nodes.base.variable_template_parser import REGEX as VARIABLE_REGEX
 
         workflow_inputs: dict[str, Any] = {}
 
