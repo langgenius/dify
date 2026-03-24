@@ -139,7 +139,6 @@ class TestLoginRequired:
 
         with login_app.test_request_context(method=method):
             result = protected_view()
-
         assert result == "Protected content"
         get_user.assert_not_called()
         ensure_sync_spy.assert_called_once_with(protected_view.__wrapped__)

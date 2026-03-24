@@ -159,6 +159,10 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         )
 
         model_instance = self._model_instance
+        # Resolve variable references in string-typed completion params
+        model_instance.parameters = llm_utils.resolve_completion_params_variables(
+            model_instance.parameters, variable_pool
+        )
         try:
             model_schema = llm_utils.fetch_model_schema(model_instance=model_instance)
         except ValueError as exc:
