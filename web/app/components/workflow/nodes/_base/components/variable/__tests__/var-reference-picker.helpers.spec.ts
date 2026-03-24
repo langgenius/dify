@@ -1,5 +1,5 @@
 import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { ValueSelector } from '@/app/components/workflow/types'
+import type { CommonNodeType, Node, ValueSelector } from '@/app/components/workflow/types'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { createLoopNode, createNode, createStartNode } from '@/app/components/workflow/__tests__/fixtures'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
@@ -35,8 +35,8 @@ describe('var-reference-picker.helpers', () => {
   it('should resolve output variable nodes for normal, system, iteration, and loop variables', () => {
     const startNode = createStartNode({ id: 'start-1', data: { title: 'Start Node' } })
     const normalNode = createNode({ id: 'node-a', data: { type: BlockEnum.Code, title: 'Answer Node' } })
-    const iterationNode = createNode({ id: 'iter-parent', data: { type: BlockEnum.Iteration, title: 'Iteration Parent' } })
-    const loopNode = createLoopNode({ id: 'loop-parent', data: { title: 'Loop Parent' } })
+    const iterationNode = createNode({ id: 'iter-parent', data: { type: BlockEnum.Iteration, title: 'Iteration Parent' } }) as Node<CommonNodeType>
+    const loopNode = createLoopNode({ id: 'loop-parent', data: { title: 'Loop Parent' } }) as Node<CommonNodeType>
 
     expect(getOutputVarNode({
       availableNodes: [normalNode],
