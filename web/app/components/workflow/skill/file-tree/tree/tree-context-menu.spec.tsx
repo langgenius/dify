@@ -5,6 +5,8 @@ import TreeContextMenu from './tree-context-menu'
 const mocks = vi.hoisted(() => ({
   clearSelection: vi.fn(),
   deselectAll: vi.fn(),
+  getNode: vi.fn(),
+  selectNode: vi.fn(),
   fileOperations: {
     fileInputRef: { current: null },
     folderInputRef: { current: null },
@@ -73,6 +75,7 @@ vi.mock('./node-menu', () => ({
 describe('TreeContextMenu', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.fileOperations.showDeleteConfirm = false
   })
 
   describe('Rendering', () => {
@@ -90,8 +93,13 @@ describe('TreeContextMenu', () => {
   describe('Interactions', () => {
     it('should clear selection and open root menu when blank area is right clicked', () => {
       render(
-        <TreeContextMenu treeRef={{ current: { deselectAll: mocks.deselectAll } as never }}>
-          <div>blank area</div>
+        <TreeContextMenu treeRef={{ current: { deselectAll: mocks.deselectAll, get: mocks.getNode } as never }}>
+          <div>
+            <div data-skill-tree-node-id="file-1" data-skill-tree-node-type="file" role="treeitem">
+              readme.md
+            </div>
+            <div>blank area</div>
+          </div>
         </TreeContextMenu>,
       )
 
@@ -101,6 +109,30 @@ describe('TreeContextMenu', () => {
       expect(mocks.clearSelection).toHaveBeenCalledTimes(1)
       expect(screen.getByTestId('node-menu-context')).toHaveAttribute('data-type', 'root')
       expect(screen.getByTestId('node-menu-context')).toHaveAttribute('data-node-id', ROOT_ID)
+    })
+
+    it('should switch to item menu when a tree node is right clicked', () => {
+      mocks.getNode.mockReturnValue({ select: mocks.selectNode })
+
+      render(
+        <TreeContextMenu treeRef={{ current: { deselectAll: mocks.deselectAll, get: mocks.getNode } as never }}>
+          <div>
+            <div data-skill-tree-node-id="file-1" data-skill-tree-node-type="file" role="treeitem">
+              readme.md
+            </div>
+            <div>blank area</div>
+          </div>
+        </TreeContextMenu>,
+      )
+
+      fireEvent.contextMenu(screen.getByRole('treeitem'))
+
+      expect(mocks.getNode).toHaveBeenCalledWith('file-1')
+      expect(mocks.selectNode).toHaveBeenCalledTimes(1)
+      expect(mocks.clearSelection).not.toHaveBeenCalled()
+      expect(mocks.deselectAll).not.toHaveBeenCalled()
+      expect(screen.getByTestId('node-menu-context')).toHaveAttribute('data-type', 'file')
+      expect(screen.getByTestId('node-menu-context')).toHaveAttribute('data-node-id', 'file-1')
     })
 
     it('should keep import modal mounted after root menu requests it', () => {
@@ -117,6 +149,23 @@ describe('TreeContextMenu', () => {
 
       fireEvent.click(screen.getByText(/close-import-modal/i))
       expect(screen.queryByTestId('import-skill-modal')).not.toBeInTheDocument()
+    })
+
+    it('should keep delete confirmation dialog mounted for item context actions', () => {
+      mocks.fileOperations.showDeleteConfirm = true
+
+      render(
+        <TreeContextMenu treeRef={{ current: { get: mocks.getNode } as never }}>
+          <div data-skill-tree-node-id="file-1" data-skill-tree-node-type="file" role="treeitem">
+            readme.md
+          </div>
+        </TreeContextMenu>,
+      )
+
+      fireEvent.contextMenu(screen.getByRole('treeitem'))
+
+      expect(screen.getByText('workflow.skillSidebar.menu.fileDeleteConfirmTitle')).toBeInTheDocument()
+      expect(screen.getByText('workflow.skillSidebar.menu.fileDeleteConfirmContent')).toBeInTheDocument()
     })
   })
 })

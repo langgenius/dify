@@ -241,17 +241,17 @@ describe('TreeNode', () => {
       expect(handlerMocks.handleDoubleClick).toHaveBeenCalled()
     })
 
-    it('should call keyboard handler and open context menu on tree item right click', () => {
+    it('should call keyboard handler and expose node metadata for the shared context menu host', () => {
       const props = buildProps({ id: 'file-1', name: 'readme.md', nodeType: 'file' })
 
       render(<TreeNode {...props} />)
 
       const treeItem = screen.getByRole('treeitem')
       fireEvent.keyDown(treeItem, { key: 'Enter' })
-      fireEvent.contextMenu(treeItem)
 
       expect(handlerMocks.handleKeyDown).toHaveBeenCalledTimes(1)
-      expect(screen.getByTestId('node-menu-context')).toHaveAttribute('data-type', 'file')
+      expect(treeItem).toHaveAttribute('data-skill-tree-node-id', 'file-1')
+      expect(treeItem).toHaveAttribute('data-skill-tree-node-type', 'file')
     })
 
     it('should attach folder drag handlers only when node is a folder', () => {
@@ -342,24 +342,6 @@ describe('TreeNode', () => {
       rerender(<TreeNode {...stopReceiveDropProps} />)
 
       expect(storeActions.setDragOverFolderId).toHaveBeenCalledWith(null)
-    })
-  })
-
-  describe('Dialogs', () => {
-    it('should keep delete confirmation dialog mounted when requested by menu actions', () => {
-      fileOperationMocks.showDeleteConfirm = true
-      const props = buildProps({ id: 'file-1', name: 'readme.md', nodeType: 'file' })
-
-      render(<TreeNode {...props} />)
-
-      expect(screen.getByText('workflow.skillSidebar.menu.fileDeleteConfirmTitle')).toBeInTheDocument()
-      expect(screen.getByText('workflow.skillSidebar.menu.fileDeleteConfirmContent')).toBeInTheDocument()
-
-      fireEvent.click(screen.getByRole('button', { name: /common\.operation\.confirm/i }))
-      fireEvent.click(screen.getByRole('button', { name: /common\.operation\.cancel/i }))
-
-      expect(fileOperationMocks.handleDeleteConfirm).toHaveBeenCalledTimes(1)
-      expect(fileOperationMocks.handleDeleteCancel).toHaveBeenCalledTimes(1)
     })
   })
 })

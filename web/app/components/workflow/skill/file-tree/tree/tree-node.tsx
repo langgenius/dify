@@ -6,26 +6,13 @@ import * as React from 'react'
 import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  AlertDialog,
-  AlertDialogActions,
-  AlertDialogCancelButton,
-  AlertDialogConfirmButton,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogTitle,
-} from '@/app/components/base/ui/alert-dialog'
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuTrigger,
-} from '@/app/components/base/ui/context-menu'
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@/app/components/base/ui/dropdown-menu'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { cn } from '@/utils/classnames'
+import { NODE_MENU_TYPE } from '../../constants'
 import { useFolderFileDrop } from '../../hooks/file-tree/dnd/use-folder-file-drop'
 import { useTreeNodeHandlers } from '../../hooks/file-tree/interaction/use-tree-node-handlers'
 import { useFileOperations } from '../../hooks/file-tree/operations/use-file-operations'
@@ -95,129 +82,97 @@ const TreeNode = ({ node, style, dragHandle, treeChildren }: TreeNodeProps) => {
     e.stopPropagation()
   }, [])
 
-  const handleContextMenu = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation()
-    node.select()
-  }, [node])
-
   const handleMenuClose = useCallback(() => {}, [])
   const fileOperations = useFileOperations({
     nodeId: node.data.id,
     node,
     onClose: handleMenuClose,
   })
-  const deleteConfirmTitle = isFolder
-    ? t('skillSidebar.menu.deleteConfirmTitle')
-    : t('skillSidebar.menu.fileDeleteConfirmTitle')
-  const deleteConfirmContent = isFolder
-    ? t('skillSidebar.menu.deleteConfirmContent')
-    : t('skillSidebar.menu.fileDeleteConfirmContent')
 
   return (
-    <>
-      <ContextMenu>
-        <ContextMenuTrigger
-          ref={dragHandle}
-          style={style}
-          role="treeitem"
-          tabIndex={0}
-          aria-selected={isSelected}
-          aria-expanded={isFolder ? node.isOpen : undefined}
-          className={cn(
-            'group relative flex h-6 cursor-pointer items-center rounded-md px-2',
-            'hover:bg-state-base-hover data-[popup-open]:bg-state-base-hover',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-components-input-border-active',
-            isSelected && 'bg-state-base-active',
-            isDragOver && 'bg-state-accent-hover ring-1 ring-inset ring-state-accent-solid',
-            isBlinking && 'animate-drag-blink',
-            (isCut || node.isDragging) && 'opacity-50',
-          )}
-          onKeyDown={handleKeyDown}
-          onContextMenu={handleContextMenu}
-          {...(isFolder && {
-            onDragEnter: dragHandlers.onDragEnter,
-            onDragOver: dragHandlers.onDragOver,
-            onDrop: dragHandlers.onDrop,
-            onDragLeave: dragHandlers.onDragLeave,
-          })}
-        >
-          <TreeGuideLines level={node.level} />
-          <div
-            className="flex min-w-0 flex-1 items-center gap-2"
-            onClick={handleClick}
-            onDoubleClick={handleDoubleClick}
-          >
-            <div className="flex size-5 shrink-0 items-center justify-center">
-              <TreeNodeIcon
-                isFolder={isFolder}
-                isOpen={node.isOpen}
-                fileName={node.data.name}
-                extension={node.data.extension}
-                isDirty={isDirty}
-                onToggle={handleToggle}
-              />
-            </div>
+    <div
+      ref={dragHandle}
+      style={style}
+      role="treeitem"
+      tabIndex={0}
+      aria-selected={isSelected}
+      aria-expanded={isFolder ? node.isOpen : undefined}
+      data-skill-tree-node-id={node.data.id}
+      data-skill-tree-node-type={isFolder ? NODE_MENU_TYPE.FOLDER : NODE_MENU_TYPE.FILE}
+      className={cn(
+        'group relative flex h-6 cursor-pointer items-center rounded-md px-2',
+        'hover:bg-state-base-hover',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-components-input-border-active',
+        isSelected && 'bg-state-base-active',
+        isDragOver && 'bg-state-accent-hover ring-1 ring-inset ring-state-accent-solid',
+        isBlinking && 'animate-drag-blink',
+        (isCut || node.isDragging) && 'opacity-50',
+      )}
+      onKeyDown={handleKeyDown}
+      {...(isFolder && {
+        onDragEnter: dragHandlers.onDragEnter,
+        onDragOver: dragHandlers.onDragOver,
+        onDrop: dragHandlers.onDrop,
+        onDragLeave: dragHandlers.onDragLeave,
+      })}
+    >
+      <TreeGuideLines level={node.level} />
+      <div
+        className="flex min-w-0 flex-1 items-center gap-2"
+        onClick={handleClick}
+        onDoubleClick={handleDoubleClick}
+      >
+        <div className="flex size-5 shrink-0 items-center justify-center">
+          <TreeNodeIcon
+            isFolder={isFolder}
+            isOpen={node.isOpen}
+            fileName={node.data.name}
+            extension={node.data.extension}
+            isDirty={isDirty}
+            onToggle={handleToggle}
+          />
+        </div>
 
-            {node.isEditing
-              ? (
-                  <TreeEditInput node={node} />
-                )
-              : (
-                  <span
-                    className={cn(
-                      'min-w-0 flex-1 truncate text-[13px] font-normal leading-4',
-                      isSelected
-                        ? 'text-text-primary'
-                        : 'text-text-secondary',
-                    )}
-                  >
-                    {node.data.name}
-                  </span>
+        {node.isEditing
+          ? (
+              <TreeEditInput node={node} />
+            )
+          : (
+              <span
+                className={cn(
+                  'min-w-0 flex-1 truncate text-[13px] font-normal leading-4',
+                  isSelected
+                    ? 'text-text-primary'
+                    : 'text-text-secondary',
                 )}
-          </div>
+              >
+                {node.data.name}
+              </span>
+            )}
+      </div>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              type="button"
-              aria-label={t('skillSidebar.menu.moreActions')}
-              tabIndex={-1}
-              onClick={handleMoreClick}
-              className={cn(
-                'flex size-5 shrink-0 items-center justify-center rounded',
-                'invisible focus-visible:visible group-hover:visible data-[popup-open]:visible',
-                'hover:bg-state-base-hover-alt data-[popup-open]:bg-state-base-hover-alt',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-components-input-border-active',
-              )}
-            >
-              <span className="i-ri-more-fill size-4 text-text-tertiary" aria-hidden="true" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              placement="bottom-start"
-              sideOffset={4}
-              popupClassName="min-w-[180px]"
-            >
-              <NodeMenu
-                menuType="dropdown"
-                type={isFolder ? 'folder' : 'file'}
-                nodeId={node.data.id}
-                onClose={handleMenuClose}
-                fileInputRef={fileOperations.fileInputRef}
-                folderInputRef={fileOperations.folderInputRef}
-                isLoading={fileOperations.isLoading}
-                onDownload={fileOperations.handleDownload}
-                onNewFile={fileOperations.handleNewFile}
-                onNewFolder={fileOperations.handleNewFolder}
-                onFileChange={fileOperations.handleFileChange}
-                onFolderChange={fileOperations.handleFolderChange}
-                onRename={fileOperations.handleRename}
-                onDeleteClick={fileOperations.handleDeleteClick}
-              />
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </ContextMenuTrigger>
-        <ContextMenuContent popupClassName="min-w-[180px]">
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          type="button"
+          aria-label={t('skillSidebar.menu.moreActions')}
+          tabIndex={-1}
+          onClick={handleMoreClick}
+          className={cn(
+            'flex size-5 shrink-0 items-center justify-center rounded',
+            'invisible focus-visible:visible group-hover:visible data-[popup-open]:visible',
+            'hover:bg-state-base-hover-alt data-[popup-open]:bg-state-base-hover-alt',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-components-input-border-active',
+          )}
+        >
+          <span className="i-ri-more-fill size-4 text-text-tertiary" aria-hidden="true" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          placement="bottom-start"
+          sideOffset={4}
+          popupClassName="min-w-[180px]"
+        >
           <NodeMenu
-            menuType="context"
+            menuType="dropdown"
             type={isFolder ? 'folder' : 'file'}
             nodeId={node.data.id}
             onClose={handleMenuClose}
@@ -232,40 +187,9 @@ const TreeNode = ({ node, style, dragHandle, treeChildren }: TreeNodeProps) => {
             onRename={fileOperations.handleRename}
             onDeleteClick={fileOperations.handleDeleteClick}
           />
-        </ContextMenuContent>
-      </ContextMenu>
-      <AlertDialog
-        open={fileOperations.showDeleteConfirm}
-        onOpenChange={(open) => {
-          if (!open)
-            fileOperations.handleDeleteCancel()
-        }}
-      >
-        <AlertDialogContent>
-          <div className="flex flex-col gap-2 p-6 pb-4">
-            <AlertDialogTitle className="text-text-primary title-2xl-semi-bold">
-              {deleteConfirmTitle}
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-text-secondary system-sm-regular">
-              {deleteConfirmContent}
-            </AlertDialogDescription>
-          </div>
-          <AlertDialogActions>
-            <AlertDialogCancelButton>
-              {t('operation.cancel', { ns: 'common' })}
-            </AlertDialogCancelButton>
-            <AlertDialogConfirmButton
-              disabled={fileOperations.isDeleting}
-              onClick={() => {
-                void fileOperations.handleDeleteConfirm()
-              }}
-            >
-              {t('operation.confirm', { ns: 'common' })}
-            </AlertDialogConfirmButton>
-          </AlertDialogActions>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
   )
 }
 
