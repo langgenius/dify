@@ -594,7 +594,7 @@ class AppApi(Resource):
         args_dict: AppService.ArgsDict = {
             "name": args.name,
             "description": args.description or "",
-            "icon_type": args.icon_type or "",
+            "icon_type": args.icon_type,
             "icon": args.icon or "",
             "icon_background": args.icon_background or "",
             "use_icon_as_answer_icon": args.use_icon_as_answer_icon or False,

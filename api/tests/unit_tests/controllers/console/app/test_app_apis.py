@@ -7,13 +7,17 @@ from __future__ import annotations
 
 import uuid
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from werkzeug.exceptions import BadRequest, NotFound
 
+from controllers.console import console_ns
 from controllers.console.app import (
     annotation as annotation_module,
+)
+from controllers.console.app import (
+    app as app_module,
 )
 from controllers.console.app import (
     completion as completion_module,
@@ -201,6 +205,35 @@ class TestCompletionEndpoints:
         ):
             with pytest.raises(completion_module.ProviderQuotaExceededError):
                 method(app_model=MagicMock(id="app-1"))
+
+
+class TestAppEndpoints:
+    """Tests for app endpoints."""
+
+    def test_app_put_should_preserve_icon_type_when_payload_omits_it(self, app, monkeypatch):
+        api = app_module.AppApi()
+        method = _unwrap(api.put)
+        payload = {
+            "name": "Updated App",
+            "description": "Updated description",
+            "icon": "🤖",
+            "icon_background": "#FFFFFF",
+        }
+        app_service = MagicMock()
+        app_service.update_app.return_value = SimpleNamespace()
+        response_model = MagicMock()
+        response_model.model_dump.return_value = {"id": "app-1"}
+
+        monkeypatch.setattr(app_module, "AppService", lambda: app_service)
+        monkeypatch.setattr(app_module.AppDetailWithSite, "model_validate", MagicMock(return_value=response_model))
+
+        with app.test_request_context("/console/api/apps/app-1", method="PUT", json=payload), patch.object(
+            type(console_ns), "payload", payload
+        ):
+            response = method(app_model=SimpleNamespace(icon_type=app_module.IconType.EMOJI))
+
+        assert response == {"id": "app-1"}
+        assert app_service.update_app.call_args.args[1]["icon_type"] is None
 
 
 # ========== OpsTrace Tests ==========

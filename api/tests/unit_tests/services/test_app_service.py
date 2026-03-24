@@ -9,7 +9,7 @@ import pytest
 
 from core.errors.error import ProviderTokenNotInitError
 from models import Account, Tenant
-from models.model import App, AppMode
+from models.model import App, AppMode, IconType
 from services.app_service import AppService
 
 
@@ -411,6 +411,7 @@ class TestAppServiceGetAndUpdate:
 
             # Assert
             assert updated is app
+            assert updated.icon_type == IconType.IMAGE
             assert renamed is app
             assert iconed is app
             assert site_same is app
@@ -418,6 +419,45 @@ class TestAppServiceGetAndUpdate:
             assert site_changed is app
             assert api_changed is app
             assert mock_db.session.commit.call_count >= 5
+
+    def test_update_app_should_preserve_icon_type_when_not_provided(self, service: AppService) -> None:
+        """Test update_app keeps the existing icon_type when the payload omits it."""
+        # Arrange
+        app = cast(
+            App,
+            SimpleNamespace(
+                name="old",
+                description="old",
+                icon_type=IconType.EMOJI,
+                icon="a",
+                icon_background="#111",
+                use_icon_as_answer_icon=False,
+                max_active_requests=1,
+            ),
+        )
+        args = {
+            "name": "new",
+            "description": "new-desc",
+            "icon_type": None,
+            "icon": "new-icon",
+            "icon_background": "#222",
+            "use_icon_as_answer_icon": True,
+            "max_active_requests": 5,
+        }
+        user = SimpleNamespace(id="user-1")
+
+        with (
+            patch("services.app_service.current_user", user),
+            patch("services.app_service.db") as mock_db,
+            patch("services.app_service.naive_utc_now", return_value="now"),
+        ):
+            # Act
+            updated = service.update_app(app, args)
+
+            # Assert
+            assert updated is app
+            assert updated.icon_type == IconType.EMOJI
+            mock_db.session.commit.assert_called_once()
 
 
 class TestAppServiceDeleteAndMeta:

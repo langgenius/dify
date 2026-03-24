@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from constants.model_template import default_app_templates
 from models import Account
-from models.model import App, Site
+from models.model import App, IconType, Site
 from services.account_service import AccountService, TenantService
 from tests.test_containers_integration_tests.helpers import generate_valid_password
 
@@ -462,6 +462,58 @@ class TestAppService:
         assert updated_app.mode == app.mode
         assert updated_app.tenant_id == app.tenant_id
         assert updated_app.created_by == app.created_by
+
+    def test_update_app_should_preserve_icon_type_when_omitted(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """
+        Test update_app keeps the persisted icon_type when the update payload omits it.
+        """
+        fake = Faker()
+
+        account = AccountService.create_account(
+            email=fake.email(),
+            name=fake.name(),
+            interface_language="en-US",
+            password=generate_valid_password(fake),
+        )
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        tenant = account.current_tenant
+
+        from services.app_service import AppService
+
+        app_service = AppService()
+        app = app_service.create_app(
+            tenant.id,
+            {
+                "name": fake.company(),
+                "description": fake.text(max_nb_chars=100),
+                "mode": "chat",
+                "icon_type": "emoji",
+                "icon": "🎯",
+                "icon_background": "#45B7D1",
+            },
+            account,
+        )
+
+        mock_current_user = create_autospec(Account, instance=True)
+        mock_current_user.id = account.id
+        mock_current_user.current_tenant_id = account.current_tenant_id
+
+        with patch("services.app_service.current_user", mock_current_user):
+            updated_app = app_service.update_app(
+                app,
+                {
+                    "name": "Updated App Name",
+                    "description": "Updated app description",
+                    "icon_type": None,
+                    "icon": "🔄",
+                    "icon_background": "#FF8C42",
+                    "use_icon_as_answer_icon": True,
+                },
+            )
+
+        assert updated_app.icon_type == IconType.EMOJI
 
     def test_update_app_name_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
