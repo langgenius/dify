@@ -191,4 +191,38 @@ describe('useHelpline', () => {
 
     expect(store.getState().helpLineHorizontal).toBeUndefined()
   })
+
+  it('should extend horizontal helpline when dragging node is before the first aligned node', () => {
+    rfState.nodes = [
+      { id: 'a', position: { x: 300, y: 100 }, width: 240, height: 100, data: { type: BlockEnum.LLM } },
+      { id: 'b', position: { x: 600, y: 100 }, width: 240, height: 100, data: { type: BlockEnum.LLM } },
+    ]
+
+    const { result, store } = renderWorkflowHook(() => useHelpline())
+
+    result.current.handleSetHelpline(makeNode({ id: 'dragging', position: { x: 100, y: 100 } }))
+
+    expect(store.getState().helpLineHorizontal).toEqual({
+      top: 100,
+      left: 100,
+      width: 440,
+    })
+  })
+
+  it('should extend vertical helpline when dragging node is below the aligned nodes', () => {
+    rfState.nodes = [
+      { id: 'a', position: { x: 120, y: 100 }, width: 240, height: 100, data: { type: BlockEnum.LLM } },
+      { id: 'b', position: { x: 120, y: 260 }, width: 240, height: 100, data: { type: BlockEnum.LLM } },
+    ]
+
+    const { result, store } = renderWorkflowHook(() => useHelpline())
+
+    result.current.handleSetHelpline(makeNode({ id: 'dragging', position: { x: 120, y: 420 } }))
+
+    expect(store.getState().helpLineVertical).toEqual({
+      top: 100,
+      left: 120,
+      height: 420,
+    })
+  })
 })
