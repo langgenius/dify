@@ -1,15 +1,18 @@
+import logging
 import sys
 import urllib.parse
 from dataclasses import dataclass
 from typing import NotRequired
 
 import httpx
-from pydantic import TypeAdapter
+from pydantic import TypeAdapter, ValidationError
 
 if sys.version_info >= (3, 12):
     from typing import TypedDict
 else:
     from typing_extensions import TypedDict
+
+logger = logging.getLogger(__name__)
 
 JsonObject = dict[str, object]
 JsonObjectList = list[JsonObject]
@@ -30,8 +33,8 @@ class GitHubEmailRecord(TypedDict, total=False):
 class GitHubRawUserInfo(TypedDict):
     id: int | str
     login: str
-    name: NotRequired[str]
-    email: NotRequired[str]
+    name: NotRequired[str | None]
+    email: NotRequired[str | None]
 
 
 class GoogleRawUserInfo(TypedDict):
@@ -127,9 +130,14 @@ class GitHubOAuth(OAuth):
         response.raise_for_status()
         user_info = GITHUB_RAW_USER_INFO_ADAPTER.validate_python(_json_object(response))
 
-        email_response = httpx.get(self._EMAIL_INFO_URL, headers=headers)
-        email_info = GITHUB_EMAIL_RECORDS_ADAPTER.validate_python(_json_list(email_response))
-        primary_email = next((email for email in email_info if email.get("primary") is True), None)
+        try:
+            email_response = httpx.get(self._EMAIL_INFO_URL, headers=headers)
+            email_response.raise_for_status()
+            email_info = GITHUB_EMAIL_RECORDS_ADAPTER.validate_python(_json_list(email_response))
+            primary_email = next((email for email in email_info if email.get("primary") is True), None)
+        except (httpx.HTTPStatusError, ValidationError):
+            logger.warning("Failed to retrieve email from GitHub /user/emails endpoint", exc_info=True)
+            primary_email = None
 
         return {**user_info, "email": primary_email.get("email", "") if primary_email else ""}
 
@@ -137,8 +145,11 @@ class GitHubOAuth(OAuth):
         payload = GITHUB_RAW_USER_INFO_ADAPTER.validate_python(raw_info)
         email = payload.get("email")
         if not email:
-            email = f"{payload['id']}+{payload['login']}@users.noreply.github.com"
-        return OAuthUserInfo(id=str(payload["id"]), name=str(payload.get("name", "")), email=email)
+            raise ValueError(
+                'Dify currently not supports the "Keep my email addresses private" feature,'
+                " please disable it and login again"
+            )
+        return OAuthUserInfo(id=str(payload["id"]), name=str(payload.get("name") or ""), email=email)
 
 
 class GoogleOAuth(OAuth):

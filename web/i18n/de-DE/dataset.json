@@ -176,6 +176,7 @@
   "serviceApi.enabled": "Im Dienst",
   "serviceApi.title": "Service-API",
   "unavailable": "Nicht verfügbar",
+  "unknownError": "Unbekannter Fehler",
   "updated": "Aktualisierte",
   "weightedScore.customized": "Angepasst",
   "weightedScore.description": "Durch Anpassung der zugewiesenen Gewichte bestimmt diese Rerank-Strategie, ob semantische oder Schlüsselwort-Übereinstimmung priorisiert werden soll.",

@@ -291,6 +291,17 @@ describe('useEdgesInteractions', () => {
     expect(mockSaveStateToHistory).toHaveBeenCalledWith('EdgeDelete')
   })
 
+  it('handleEdgeDeleteById should ignore unknown edge ids', () => {
+    const { result } = renderEdgesInteractions()
+
+    act(() => {
+      result.current.handleEdgeDeleteById('missing-edge')
+    })
+
+    expect(result.current.edges).toHaveLength(2)
+    expect(mockSaveStateToHistory).not.toHaveBeenCalled()
+  })
+
   it('handleEdgeDeleteByDeleteBranch should remove edges for the given branch', async () => {
     const { result, store } = renderEdgesInteractions({
       initialStoreState: {
@@ -333,6 +344,46 @@ describe('useEdgesInteractions', () => {
       expect(result.current.edges[0]?.sourceHandle).toBe('new-handle')
       expect(result.current.edges[0]?.id).toBe('n1-new-handle-n2-target')
     })
+  })
+
+  it('handleEdgeSourceHandleChange should clear edgeMenu and save history for affected edges', async () => {
+    const { result, store } = renderEdgesInteractions({
+      edges: [
+        createEdge({
+          id: 'n1-old-handle-n2-target',
+          source: 'n1',
+          target: 'n2',
+          sourceHandle: 'old-handle',
+          targetHandle: 'target',
+          data: {},
+        }),
+      ],
+      initialStoreState: {
+        edgeMenu: { clientX: 120, clientY: 60, edgeId: 'n1-old-handle-n2-target' },
+      },
+    })
+
+    act(() => {
+      result.current.handleEdgeSourceHandleChange('n1', 'old-handle', 'new-handle')
+    })
+
+    await waitFor(() => {
+      expect(result.current.edges[0]?.sourceHandle).toBe('new-handle')
+    })
+
+    expect(store.getState().edgeMenu).toBeUndefined()
+    expect(mockSaveStateToHistory).toHaveBeenCalledWith('EdgeSourceHandleChange')
+  })
+
+  it('handleEdgeSourceHandleChange should do nothing when no edges use the old handle', () => {
+    const { result } = renderEdgesInteractions()
+
+    act(() => {
+      result.current.handleEdgeSourceHandleChange('n1', 'missing-handle', 'new-handle')
+    })
+
+    expect(result.current.edges.map(edge => edge.id)).toEqual(['e1', 'e2'])
+    expect(mockSaveStateToHistory).not.toHaveBeenCalled()
   })
 
   describe('read-only mode', () => {
@@ -411,6 +462,28 @@ describe('useEdgesInteractions', () => {
       })
 
       expect(result.current.edges).toHaveLength(2)
+    })
+
+    it('handleEdgeSourceHandleChange should do nothing', () => {
+      const { result } = renderEdgesInteractions({
+        edges: [
+          createEdge({
+            id: 'n1-old-handle-n2-target',
+            source: 'n1',
+            target: 'n2',
+            sourceHandle: 'old-handle',
+            targetHandle: 'target',
+            data: {},
+          }),
+        ],
+      })
+
+      act(() => {
+        result.current.handleEdgeSourceHandleChange('n1', 'old-handle', 'new-handle')
+      })
+
+      expect(result.current.edges[0]?.sourceHandle).toBe('old-handle')
+      expect(mockSaveStateToHistory).not.toHaveBeenCalled()
     })
   })
 })

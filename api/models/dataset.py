@@ -43,7 +43,9 @@ from .enums import (
     IndexingStatus,
     ProcessRuleMode,
     SegmentStatus,
+    SegmentType,
     SummaryStatus,
+    TidbAuthBindingStatus,
 )
 from .model import App, Tag, TagBinding, UploadFile
 from .types import AdjustedJSON, BinaryData, EnumText, LongText, StringUUID, adjusted_json_index
@@ -494,7 +496,9 @@ class Document(Base):
     )
     doc_type = mapped_column(EnumText(DocumentDocType, length=40), nullable=True)
     doc_metadata = mapped_column(AdjustedJSON, nullable=True)
-    doc_form = mapped_column(String(255), nullable=False, server_default=sa.text("'text_model'"))
+    doc_form: Mapped[IndexStructureType] = mapped_column(
+        EnumText(IndexStructureType, length=255), nullable=False, server_default=sa.text("'text_model'")
+    )
     doc_language = mapped_column(String(255), nullable=True)
     need_summary: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
 
@@ -998,7 +1002,9 @@ class ChildChunk(Base):
     # indexing fields
     index_node_id = mapped_column(String(255), nullable=True)
     index_node_hash = mapped_column(String(255), nullable=True)
-    type = mapped_column(String(255), nullable=False, server_default=sa.text("'automatic'"))
+    type: Mapped[SegmentType] = mapped_column(
+        EnumText(SegmentType, length=255), nullable=False, server_default=sa.text("'automatic'")
+    )
     created_by = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=sa.func.current_timestamp())
     updated_by = mapped_column(StringUUID, nullable=True)
@@ -1239,7 +1245,9 @@ class TidbAuthBinding(TypeBase):
     cluster_id: Mapped[str] = mapped_column(String(255), nullable=False)
     cluster_name: Mapped[str] = mapped_column(String(255), nullable=False)
     active: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
-    status: Mapped[str] = mapped_column(sa.String(255), nullable=False, server_default=sa.text("'CREATING'"))
+    status: Mapped[TidbAuthBindingStatus] = mapped_column(
+        EnumText(TidbAuthBindingStatus, length=255), nullable=False, server_default=sa.text("'CREATING'")
+    )
     account: Mapped[str] = mapped_column(String(255), nullable=False)
     password: Mapped[str] = mapped_column(String(255), nullable=False)
     created_at: Mapped[datetime] = mapped_column(

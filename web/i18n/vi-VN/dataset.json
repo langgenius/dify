@@ -176,6 +176,7 @@
   "serviceApi.enabled": "Đang phục vụ",
   "serviceApi.title": "Giao diện lập trình dịch vụ",
   "unavailable": "Không khả dụng",
+  "unknownError": "Lỗi không xác định",
   "updated": "Cập nhật",
   "weightedScore.customized": "Tùy chỉnh",
   "weightedScore.description": "Bằng cách điều chỉnh trọng số được gán, chiến lược xếp hạng lại này xác định liệu ưu tiên khớp ngữ nghĩa hay từ khóa.",
