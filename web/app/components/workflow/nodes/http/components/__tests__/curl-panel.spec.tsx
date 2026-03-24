@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BodyPayloadValueType, BodyType } from '../../types'
 import CurlPanel from '../curl-panel'
-import { parseCurl } from '../curl-parser'
+import * as curlParser from '../curl-parser'
 
 const {
   mockHandleNodeSelect,
@@ -31,7 +31,7 @@ describe('curl-panel', () => {
 
   describe('parseCurl', () => {
     it('should parse method, headers, json body, and query params from a valid curl command', () => {
-      const { node, error } = parseCurl('curl -X POST -H \"Authorization: Bearer token\" --json \"{\"name\":\"openai\"}\" https://example.com/users?page=1&size=2')
+      const { node, error } = curlParser.parseCurl('curl -X POST -H \"Authorization: Bearer token\" --json \"{\"name\":\"openai\"}\" https://example.com/users?page=1&size=2')
 
       expect(error).toBeNull()
       expect(node).toMatchObject({
@@ -43,11 +43,11 @@ describe('curl-panel', () => {
     })
 
     it('should return an error for invalid curl input', () => {
-      expect(parseCurl('fetch https://example.com').error).toContain('Invalid cURL command')
+      expect(curlParser.parseCurl('fetch https://example.com').error).toContain('Invalid cURL command')
     })
 
     it('should parse form data and attach typed content headers', () => {
-      const { node, error } = parseCurl('curl --request POST --form "file=@report.txt;type=text/plain" --form "name=openai" https://example.com/upload')
+      const { node, error } = curlParser.parseCurl('curl --request POST --form "file=@report.txt;type=text/plain" --form "name=openai" https://example.com/upload')
 
       expect(error).toBeNull()
       expect(node).toMatchObject({
@@ -62,7 +62,7 @@ describe('curl-panel', () => {
     })
 
     it('should parse raw payloads and preserve equals signs in the body value', () => {
-      const { node, error } = parseCurl('curl --data-binary "token=abc=123" https://example.com/raw')
+      const { node, error } = curlParser.parseCurl('curl --data-binary "token=abc=123" https://example.com/raw')
 
       expect(error).toBeNull()
       expect(node?.body).toEqual({
@@ -83,7 +83,7 @@ describe('curl-panel', () => {
       ['curl --form "=broken" https://example.com/upload', 'Invalid form data format.'],
       ['curl -H "Accept: application/json"', 'Missing URL or url not start with http.'],
     ])('should return a descriptive error for %s', (command, expectedError) => {
-      expect(parseCurl(command)).toEqual({
+      expect(curlParser.parseCurl(command)).toEqual({
         node: null,
         error: expectedError,
       })
@@ -134,6 +134,32 @@ describe('curl-panel', () => {
       expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
         type: 'error',
       }))
+    })
+
+    it('should keep the panel open when parsing returns no node and no error', async () => {
+      const user = userEvent.setup()
+      const onHide = vi.fn()
+      const handleCurlImport = vi.fn()
+      vi.spyOn(curlParser, 'parseCurl').mockReturnValueOnce({
+        node: null,
+        error: null,
+      })
+
+      render(
+        <CurlPanel
+          nodeId="node-1"
+          isShow
+          onHide={onHide}
+          handleCurlImport={handleCurlImport}
+        />,
+      )
+
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+      expect(onHide).not.toHaveBeenCalled()
+      expect(handleCurlImport).not.toHaveBeenCalled()
+      expect(mockHandleNodeSelect).not.toHaveBeenCalled()
+      expect(mockNotify).not.toHaveBeenCalled()
     })
   })
 })

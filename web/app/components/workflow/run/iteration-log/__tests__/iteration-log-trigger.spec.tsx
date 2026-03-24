@@ -129,5 +129,61 @@ describe('IterationLogTrigger', () => {
 
       expect(onShowIterationResultList).toHaveBeenCalledWith(detailList, {})
     })
+
+    it('should return an empty structured list when duration map exists without executions', async () => {
+      const user = userEvent.setup()
+      const onShowIterationResultList = vi.fn()
+      const iterationDurationMap: IterationDurationMap = { orphaned: 1.5 }
+
+      render(
+        <IterationLogTrigger
+          nodeInfo={createNodeTracing({
+            execution_metadata: createExecutionMetadata({
+              iteration_duration_map: iterationDurationMap,
+            }),
+          })}
+          onShowIterationResultList={onShowIterationResultList}
+        />,
+      )
+
+      await user.click(screen.getByRole('button'))
+
+      expect(onShowIterationResultList).toHaveBeenCalledWith([], iterationDurationMap)
+    })
+
+    it('should count failed iterations from allExecutions and ignore unmatched duration map keys', async () => {
+      const user = userEvent.setup()
+      const onShowIterationResultList = vi.fn()
+      const iterationDurationMap: IterationDurationMap = { orphaned: 0.6, 1: 1.1 }
+      const allExecutions = [
+        createNodeTracing({
+          id: 'failed-serial-step',
+          status: NodeRunningStatus.Failed,
+          execution_metadata: createExecutionMetadata({
+            iteration_id: 'iteration-node',
+            iteration_index: 1,
+          }),
+        }),
+      ]
+
+      render(
+        <IterationLogTrigger
+          nodeInfo={createNodeTracing({
+            details: [[createNodeTracing({ id: 'detail-success' })]],
+            execution_metadata: createExecutionMetadata({
+              iteration_duration_map: iterationDurationMap,
+            }),
+          })}
+          allExecutions={allExecutions}
+          onShowIterationResultList={onShowIterationResultList}
+        />,
+      )
+
+      expect(screen.getByRole('button', { name: /workflow\.nodes\.iteration\.error/i })).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button'))
+
+      expect(onShowIterationResultList).toHaveBeenCalledWith([[allExecutions[0]]], iterationDurationMap)
+    })
   })
 })

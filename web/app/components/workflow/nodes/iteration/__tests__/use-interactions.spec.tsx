@@ -107,6 +107,43 @@ describe('useNodeIterationInteractions', () => {
     })
   })
 
+  it('should rerender the parent iteration node when a child size changes', () => {
+    mockGetNodes.mockReturnValue([
+      createIterationNode({
+        id: 'iteration-node',
+        width: 120,
+        height: 80,
+        data: { width: 120, height: 80 },
+      }),
+      createNode({
+        id: 'child-node',
+        parentId: 'iteration-node',
+        position: { x: 100, y: 90 },
+        width: 60,
+        height: 40,
+      }),
+    ])
+
+    const { result } = renderHook(() => useNodeIterationInteractions())
+    result.current.handleNodeIterationChildSizeChange('child-node')
+
+    expect(mockSetNodes).toHaveBeenCalledTimes(1)
+  })
+
+  it('should skip iteration rerender when the resized node has no parent', () => {
+    mockGetNodes.mockReturnValue([
+      createNode({
+        id: 'standalone-node',
+        data: { type: BlockEnum.Code, title: 'Standalone', desc: '' },
+      }),
+    ])
+
+    const { result } = renderHook(() => useNodeIterationInteractions())
+    result.current.handleNodeIterationChildSizeChange('standalone-node')
+
+    expect(mockSetNodes).not.toHaveBeenCalled()
+  })
+
   it('should copy iteration children and remap ids', () => {
     mockGetNodes.mockReturnValue([
       createIterationNode({ id: 'iteration-node' }),

@@ -100,6 +100,43 @@ describe('useNodeLoopInteractions', () => {
     })
   })
 
+  it('should rerender the parent loop node when a child size changes', () => {
+    mockGetNodes.mockReturnValue([
+      createLoopNode({
+        id: 'loop-node',
+        width: 120,
+        height: 80,
+        data: { width: 120, height: 80 },
+      }),
+      createNode({
+        id: 'child-node',
+        parentId: 'loop-node',
+        position: { x: 100, y: 90 },
+        width: 60,
+        height: 40,
+      }),
+    ])
+
+    const { result } = renderHook(() => useNodeLoopInteractions())
+    result.current.handleNodeLoopChildSizeChange('child-node')
+
+    expect(mockSetNodes).toHaveBeenCalledTimes(1)
+  })
+
+  it('should skip loop rerender when the resized node has no parent', () => {
+    mockGetNodes.mockReturnValue([
+      createNode({
+        id: 'standalone-node',
+        data: { type: BlockEnum.Code, title: 'Standalone', desc: '' },
+      }),
+    ])
+
+    const { result } = renderHook(() => useNodeLoopInteractions())
+    result.current.handleNodeLoopChildSizeChange('standalone-node')
+
+    expect(mockSetNodes).not.toHaveBeenCalled()
+  })
+
   it('should copy loop children and remap ids', () => {
     mockGetNodes.mockReturnValue([
       createLoopNode({ id: 'loop-node' }),
