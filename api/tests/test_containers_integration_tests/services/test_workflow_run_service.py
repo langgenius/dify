@@ -16,6 +16,7 @@ from services.account_service import AccountService, TenantService
 from services.app_service import AppService
 from services.workflow_run_service import WorkflowRunService
 from tests.test_containers_integration_tests.helpers import generate_valid_password
+from models.account import TenantStatus
 
 
 class TestWorkflowRunService:
@@ -163,7 +164,7 @@ class TestWorkflowRunService:
             app_id=app.id,
             name=fake.sentence(),
             inputs={},
-            status="normal",
+            status=ConversationStatus.NORMAL,
             mode="chat",
             from_source=ConversationFromSource.CONSOLE,
             from_account_id=account.id,

@@ -12,8 +12,8 @@ from controllers.console.app import message as message_api
 from controllers.console.app import wraps
 from libs.datetime_utils import naive_utc_now
 from models import App, Tenant
-from models.account import Account, TenantAccountJoin, TenantAccountRole
-from models.enums import ConversationFromSource
+from models.account import Account, TenantAccountJoin, TenantAccountRole, TenantStatus
+from models.enums import ConversationFromSource, MessageStatus
 from models.model import AppMode
 from services.app_generate_service import AppGenerateService
 
@@ -166,7 +166,7 @@ class TestChatMessageApiPermissions:
             agent_thoughts=[],
             message_files=[],
             message_metadata_dict={},
-            status="normal",
+            status=MessageStatus.NORMAL,
             error="",
             parent_message_id=None,
         )

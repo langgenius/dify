@@ -12,6 +12,7 @@ from models.dataset import Dataset
 from models.enums import DataSourceType, TagType
 from models.model import App, Tag, TagBinding
 from services.tag_service import TagService
+from models.account import AccountStatus, TenantStatus
 
 
 class TestTagService:
@@ -49,7 +50,7 @@ class TestTagService:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
 
         db_session_with_containers.add(account)
@@ -58,7 +59,7 @@ class TestTagService:
         # Create tenant for the account
         tenant = Tenant(
             name=fake.company(),
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()

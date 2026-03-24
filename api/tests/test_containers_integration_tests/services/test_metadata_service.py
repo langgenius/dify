@@ -11,6 +11,7 @@ from models.dataset import Dataset, DatasetMetadata, DatasetMetadataBinding, Doc
 from models.enums import DatasetMetadataType, DataSourceType, DocumentCreatedFrom
 from services.entities.knowledge_entities.knowledge_entities import MetadataArgs
 from services.metadata_service import MetadataService
+from models.account import AccountStatus, TenantStatus
 
 
 class TestMetadataService:
@@ -53,7 +54,7 @@ class TestMetadataService:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
 
         db_session_with_containers.add(account)
@@ -62,7 +63,7 @@ class TestMetadataService:
         # Create tenant for the account
         tenant = Tenant(
             name=fake.company(),
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()

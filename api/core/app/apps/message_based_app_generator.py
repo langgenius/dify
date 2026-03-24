@@ -38,6 +38,7 @@ from models.model import App, AppMode, AppModelConfig, Conversation, EndUser, Me
 from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError
+from models.enums import ConversationStatus
 
 logger = logging.getLogger(__name__)
 
@@ -175,7 +176,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
                     introduction=introduction,
                     system_instruction="",
                     system_instruction_tokens=0,
-                    status="normal",
+                    status=ConversationStatus.NORMAL,
                     invoke_from=application_generate_entity.invoke_from.value,
                     from_source=from_source,
                     from_end_user_id=end_user_id,

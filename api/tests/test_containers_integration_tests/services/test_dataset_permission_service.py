@@ -19,6 +19,7 @@ from models.dataset import (
 from models.enums import DataSourceType
 from services.dataset_service import DatasetPermissionService, DatasetService
 from services.errors.account import NoPermissionError
+from models.account import AccountStatus, TenantStatus
 
 
 class DatasetPermissionTestDataFactory:
@@ -34,10 +35,10 @@ class DatasetPermissionTestDataFactory:
             email=f"{uuid4()}@example.com",
             name=f"user-{uuid4()}",
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
         if tenant is None:
-            tenant = Tenant(name=f"tenant-{uuid4()}", status="normal")
+            tenant = Tenant(name=f"tenant-{uuid4()}", status=TenantStatus.NORMAL)
             db.session.add_all([account, tenant])
         else:
             db.session.add(account)

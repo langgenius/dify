@@ -9,6 +9,7 @@ from dify_graph.model_runtime.entities.model_entities import FetchFrom, ModelTyp
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.provider import Provider, ProviderModel, ProviderModelSetting, ProviderType
 from services.model_provider_service import ModelProviderService
+from models.account import AccountStatus, TenantStatus
 
 
 class TestModelProviderService:
@@ -48,7 +49,7 @@ class TestModelProviderService:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
 
         db_session_with_containers.add(account)
@@ -57,7 +58,7 @@ class TestModelProviderService:
         # Create tenant for the account
         tenant = Tenant(
             name=fake.company(),
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()
@@ -437,7 +438,7 @@ class TestModelProviderService:
             model_properties={},
             deprecated=False,
             provider=provider_entity_1,
-            status="active",
+            status=AccountStatus.ACTIVE,
             load_balancing_enabled=False,
         )
 
@@ -450,7 +451,7 @@ class TestModelProviderService:
             model_properties={},
             deprecated=False,
             provider=provider_entity_2,
-            status="active",
+            status=AccountStatus.ACTIVE,
             load_balancing_enabled=False,
         )
 

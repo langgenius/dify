@@ -41,6 +41,7 @@ from models.enums import (
 )
 from models.model import UploadFile
 from tasks.clean_dataset_task import clean_dataset_task
+from models.account import AccountStatus, TenantStatus
 
 
 class TestCleanDatasetTask:
@@ -109,7 +110,7 @@ class TestCleanDatasetTask:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
 
         db_session_with_containers.add(account)
@@ -119,7 +120,7 @@ class TestCleanDatasetTask:
         tenant = Tenant(
             name=fake.company(),
             plan="basic",
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
 
         db_session_with_containers.add(tenant)

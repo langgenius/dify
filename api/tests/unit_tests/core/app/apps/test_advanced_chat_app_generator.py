@@ -13,6 +13,8 @@ from core.app.task_pipeline import message_cycle_manager
 from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
 from models.enums import ConversationFromSource
 from models.model import AppMode, Conversation, Message
+from models.account import TenantStatus
+from models.enums import ConversationStatus
 
 
 def _make_app_config() -> WorkflowUIBasedAppConfig:
@@ -91,7 +93,7 @@ def test_init_generate_records_marks_existing_conversation():
         introduction="",
         system_instruction="",
         system_instruction_tokens=0,
-        status="normal",
+        status=ConversationStatus.NORMAL,
         invoke_from=InvokeFrom.WEB_APP.value,
         from_source=ConversationFromSource.API,
         from_end_user_id="user-id",

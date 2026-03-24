@@ -59,6 +59,7 @@ from controllers.console.app.workflow_app_log import WorkflowAppLogQuery
 from controllers.console.app.workflow_draft_variable import WorkflowDraftVariableUpdatePayload
 from controllers.console.app.workflow_statistic import WorkflowStatisticQuery
 from controllers.console.app.workflow_trigger import Parser, ParserEnable
+from models.account import AccountStatus
 
 
 def _unwrap(func):
@@ -598,7 +599,7 @@ class TestMCPServerEndpoints:
         assert payload.parameters["url"] == "http://localhost:3000"
 
     def test_mcp_server_update_payload(self):
-        payload = MCPServerUpdatePayload(id="server-1", parameters={"timeout": 30}, status="active")
+        payload = MCPServerUpdatePayload(id="server-1", parameters={"timeout": 30}, status=AccountStatus.ACTIVE)
         assert payload.status == "active"
 
 

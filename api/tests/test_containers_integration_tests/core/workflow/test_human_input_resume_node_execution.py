@@ -28,7 +28,7 @@ from dify_graph.runtime import GraphRuntimeState, VariablePool
 from dify_graph.system_variable import SystemVariable
 from libs.datetime_utils import naive_utc_now
 from models import Account
-from models.account import Tenant, TenantAccountJoin, TenantAccountRole
+from models.account import Tenant, TenantAccountJoin, TenantAccountRole, AccountStatus, TenantStatus
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, IconType
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
@@ -173,7 +173,7 @@ class TestHumanInputResumeNodeExecutionIntegration:
     def setup_test_data(self, db_session_with_containers: Session):
         tenant = Tenant(
             name="Test Tenant",
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()
@@ -182,7 +182,7 @@ class TestHumanInputResumeNodeExecutionIntegration:
             email="test@example.com",
             name="Test User",
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
         db_session_with_containers.add(account)
         db_session_with_containers.commit()

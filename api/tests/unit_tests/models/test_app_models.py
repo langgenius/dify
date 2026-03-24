@@ -16,7 +16,8 @@ from uuid import uuid4
 
 import pytest
 
-from models.enums import ConversationFromSource
+from models.account import TenantStatus
+from models.enums import ConversationFromSource, ConversationStatus, MessageStatus
 from models.model import (
     App,
     AppAnnotationHitHistory,
@@ -324,7 +325,7 @@ class TestConversationModel:
             app_id=app_id,
             mode=AppMode.CHAT,
             name="Test Conversation",
-            status="normal",
+            status=ConversationStatus.NORMAL,
             from_source=ConversationFromSource.API,
             from_end_user_id=from_end_user_id,
         )
@@ -345,7 +346,7 @@ class TestConversationModel:
             app_id=str(uuid4()),
             mode=AppMode.CHAT,
             name="Test Conversation",
-            status="normal",
+            status=ConversationStatus.NORMAL,
             from_source=ConversationFromSource.API,
             from_end_user_id=str(uuid4()),
         )
@@ -364,7 +365,7 @@ class TestConversationModel:
             app_id=str(uuid4()),
             mode=AppMode.CHAT,
             name="Test Conversation",
-            status="normal",
+            status=ConversationStatus.NORMAL,
             from_source=ConversationFromSource.API,
             from_end_user_id=str(uuid4()),
         )
@@ -383,7 +384,7 @@ class TestConversationModel:
             app_id=str(uuid4()),
             mode=AppMode.CHAT,
             name="Test Conversation",
-            status="normal",
+            status=ConversationStatus.NORMAL,
             from_source=ConversationFromSource.API,
             from_end_user_id=str(uuid4()),
             summary="Test summary",
@@ -402,7 +403,7 @@ class TestConversationModel:
             app_id=str(uuid4()),
             mode=AppMode.CHAT,
             name="Test Conversation",
-            status="normal",
+            status=ConversationStatus.NORMAL,
             from_source=ConversationFromSource.API,
             from_end_user_id=str(uuid4()),
             summary=None,
@@ -425,7 +426,7 @@ class TestConversationModel:
             app_id=str(uuid4()),
             mode=AppMode.CHAT,
             name="Test Conversation",
-            status="normal",
+            status=ConversationStatus.NORMAL,
             from_source=ConversationFromSource.API,
             from_end_user_id=str(uuid4()),
             override_model_configs='{"model": "gpt-4"}',
@@ -446,7 +447,7 @@ class TestConversationModel:
             app_id=app_id,
             mode=AppMode.CHAT,
             name="Test Conversation",
-            status="normal",
+            status=ConversationStatus.NORMAL,
             from_source=ConversationFromSource.API,
             from_end_user_id=from_end_user_id,
             dialogue_count=5,
@@ -629,7 +630,7 @@ class TestMessageModel:
             total_price=Decimal("0.0003"),
             currency="USD",
             from_source=ConversationFromSource.API,
-            status="normal",
+            status=MessageStatus.NORMAL,
         )
         message.id = str(uuid4())
         message._inputs = {"query": "test"}
@@ -988,7 +989,7 @@ class TestModelIntegration:
             app_id=app_id,
             mode=AppMode.CHAT,
             name="Test Conversation",
-            status="normal",
+            status=ConversationStatus.NORMAL,
             from_source=ConversationFromSource.API,
             from_end_user_id=str(uuid4()),
         )
@@ -1158,7 +1159,7 @@ class TestConversationStatusCount:
             app_id=str(uuid4()),
             mode=AppMode.CHAT,
             name="Test Conversation",
-            status="normal",
+            status=ConversationStatus.NORMAL,
             from_source=ConversationFromSource.API,
         )
         conversation.id = str(uuid4())
@@ -1183,7 +1184,7 @@ class TestConversationStatusCount:
             app_id=app_id,
             mode=AppMode.CHAT,
             name="Test Conversation",
-            status="normal",
+            status=ConversationStatus.NORMAL,
             from_source=ConversationFromSource.API,
         )
         conversation.id = conversation_id
@@ -1215,7 +1216,7 @@ class TestConversationStatusCount:
             app_id=app_id,
             mode=AppMode.CHAT,
             name="Test Conversation",
-            status="normal",
+            status=ConversationStatus.NORMAL,
             from_source=ConversationFromSource.API,
         )
         conversation.id = conversation_id
@@ -1307,7 +1308,7 @@ class TestConversationStatusCount:
             app_id=app_id,
             mode=AppMode.CHAT,
             name="Test Conversation",
-            status="normal",
+            status=ConversationStatus.NORMAL,
             from_source=ConversationFromSource.API,
         )
         conversation.id = conversation_id
@@ -1361,7 +1362,7 @@ class TestConversationStatusCount:
             app_id=app_id,
             mode=AppMode.CHAT,
             name="Test Conversation",
-            status="normal",
+            status=ConversationStatus.NORMAL,
             from_source=ConversationFromSource.API,
         )
         conversation.id = conversation_id
@@ -1418,7 +1419,7 @@ class TestConversationStatusCount:
             app_id=app_id,
             mode=AppMode.CHAT,
             name="Test Conversation",
-            status="normal",
+            status=ConversationStatus.NORMAL,
             from_source=ConversationFromSource.API,
         )
         conversation.id = conversation_id

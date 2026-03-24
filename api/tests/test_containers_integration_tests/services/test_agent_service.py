@@ -13,6 +13,7 @@ from services.account_service import AccountService, TenantService
 from services.agent_service import AgentService
 from services.app_service import AppService
 from tests.test_containers_integration_tests.helpers import generate_valid_password
+from models.account import TenantStatus
 
 
 class TestAgentService:
@@ -163,7 +164,7 @@ class TestAgentService:
             from_end_user_id=None,
             name=fake.sentence(),
             inputs={},
-            status="normal",
+            status=ConversationStatus.NORMAL,
             mode="chat",
             from_source=ConversationFromSource.API,
         )
@@ -404,7 +405,7 @@ class TestAgentService:
             from_end_user_id=end_user.id,
             name=fake.sentence(),
             inputs={},
-            status="normal",
+            status=ConversationStatus.NORMAL,
             mode="chat",
             from_source=ConversationFromSource.API,
         )
@@ -476,7 +477,7 @@ class TestAgentService:
             from_end_user_id=None,
             name=fake.sentence(),
             inputs={},
-            status="normal",
+            status=ConversationStatus.NORMAL,
             mode="chat",
             from_source=ConversationFromSource.API,
         )
@@ -622,7 +623,7 @@ class TestAgentService:
             from_end_user_id=None,
             name=fake.sentence(),
             inputs={},
-            status="normal",
+            status=ConversationStatus.NORMAL,
             mode="chat",
             from_source=ConversationFromSource.API,
             app_model_config_id=None,  # Explicitly set to None

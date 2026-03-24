@@ -17,6 +17,7 @@ from tasks.rag_pipeline.priority_rag_pipeline_run_task import (
     run_single_rag_pipeline_task,
 )
 from tasks.rag_pipeline.rag_pipeline_run_task import rag_pipeline_run_task
+from models.account import AccountStatus, TenantStatus
 
 
 class TestRagPipelineRunTasks:
@@ -69,14 +70,14 @@ class TestRagPipelineRunTasks:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
         db_session_with_containers.add(account)
         db_session_with_containers.commit()
 
         tenant = Tenant(
             name=fake.company(),
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()

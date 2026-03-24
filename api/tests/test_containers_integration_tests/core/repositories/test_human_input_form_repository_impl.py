@@ -21,7 +21,7 @@ from dify_graph.nodes.human_input.entities import (
     WebAppDeliveryMethod,
 )
 from dify_graph.repositories.human_input_form_repository import FormCreateParams
-from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole, AccountStatus, TenantStatus
 from models.human_input import (
     EmailExternalRecipientPayload,
     EmailMemberRecipientPayload,
@@ -32,7 +32,7 @@ from models.human_input import (
 
 
 def _create_tenant_with_members(session: Session, member_emails: list[str]) -> tuple[Tenant, list[Account]]:
-    tenant = Tenant(name="Test Tenant", status="normal")
+    tenant = Tenant(name="Test Tenant", status=TenantStatus.NORMAL)
     session.add(tenant)
     session.flush()
 
@@ -42,7 +42,7 @@ def _create_tenant_with_members(session: Session, member_emails: list[str]) -> t
             email=email,
             name=f"Member {index}",
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
         session.add(account)
         session.flush()
