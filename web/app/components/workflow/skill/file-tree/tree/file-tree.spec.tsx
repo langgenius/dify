@@ -1,7 +1,7 @@
-import type { ReactNode, Ref } from 'react'
+import type { HTMLAttributes, ReactNode, Ref } from 'react'
 import type { AppAssetTreeView } from '@/types/app-asset'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { CONTEXT_MENU_TYPE, ROOT_ID } from '../../constants'
+import { ROOT_ID } from '../../constants'
 import FileTree from './file-tree'
 
 type MockWorkflowState = {
@@ -17,7 +17,6 @@ type MockWorkflowActions = {
   openTab: (id: string, options: { pinned: boolean }) => void
   setSelectedNodeIds: (ids: string[]) => void
   clearSelection: () => void
-  setContextMenu: (menu: { top: number, left: number, type: string } | null) => void
   setDragInsertTarget: (target: { parentId: string | null, index: number } | null) => void
   setFileTreeSearchTerm: (term: string) => void
 }
@@ -142,7 +141,6 @@ const mocks = vi.hoisted(() => ({
     openTab: vi.fn(),
     setSelectedNodeIds: vi.fn(),
     clearSelection: vi.fn(),
-    setContextMenu: vi.fn(),
     setDragInsertTarget: vi.fn(),
     setFileTreeSearchTerm: vi.fn(),
   } as MockWorkflowActions,
@@ -168,14 +166,14 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('react-arborist', async () => {
-  const React = await vi.importActual<typeof import('react')>('react')
-
   type MockTreeComponentProps = {
     children?: ReactNode
+    ref?: Ref<unknown>
   } & Record<string, unknown>
 
-  const Tree = React.forwardRef((props: MockTreeComponentProps, ref: Ref<unknown>) => {
-    mocks.treeProps = props as unknown as CapturedTreeProps
+  const Tree = (props: MockTreeComponentProps) => {
+    const { ref, ...rest } = props
+    mocks.treeProps = rest as unknown as CapturedTreeProps
 
     if (typeof ref === 'function')
       ref(mocks.treeApi)
@@ -183,7 +181,7 @@ vi.mock('react-arborist', async () => {
       (ref as { current: unknown }).current = mocks.treeApi
 
     return <div data-testid="arborist-tree" />
-  })
+  }
 
   return { Tree }
 })
@@ -267,7 +265,27 @@ vi.mock('./upload-status-tooltip', () => ({
 }))
 
 vi.mock('./tree-context-menu', () => ({
-  default: () => <div data-testid="tree-context-menu" />,
+  default: ({
+    children,
+    treeRef,
+    onContextMenu,
+    ...props
+  }: HTMLAttributes<HTMLDivElement> & {
+    children?: ReactNode
+    treeRef?: { current: { deselectAll: () => void } | null }
+  }) => (
+    <div
+      data-testid="tree-context-menu"
+      onContextMenu={(event) => {
+        treeRef?.current?.deselectAll()
+        mocks.actions.clearSelection()
+        onContextMenu?.(event)
+      }}
+      {...props}
+    >
+      {children}
+    </div>
+  ),
 }))
 
 function getCapturedTreeProps(): CapturedTreeProps {
@@ -399,18 +417,13 @@ describe('FileTree', () => {
       expect(mocks.actions.clearSelection).toHaveBeenCalledTimes(1)
     })
 
-    it('should open blank context menu with pointer position on right click', () => {
+    it('should clear selection when blank area is right clicked', () => {
       render(<FileTree />)
 
       fireEvent.contextMenu(getTreeDropZone(), { clientX: 64, clientY: 128 })
 
       expect(mocks.treeApi.deselectAll).toHaveBeenCalledTimes(1)
       expect(mocks.actions.clearSelection).toHaveBeenCalledTimes(1)
-      expect(mocks.actions.setContextMenu).toHaveBeenCalledWith({
-        top: 128,
-        left: 64,
-        type: CONTEXT_MENU_TYPE.BLANK,
-      })
     })
 
     it('should forward root drag events to root file drop handlers', () => {

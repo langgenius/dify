@@ -5,6 +5,7 @@ import MenuItem from './menu-item'
 const MockIcon = (props: React.SVGProps<SVGSVGElement>) => <svg {...props} />
 
 const defaultProps: MenuItemProps = {
+  menuType: 'dropdown',
   icon: MockIcon,
   label: 'Rename',
   onClick: vi.fn(),

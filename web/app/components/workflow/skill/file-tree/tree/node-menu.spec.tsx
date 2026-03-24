@@ -29,6 +29,7 @@ type MockFileOperations = {
 
 type RenderNodeMenuProps = {
   type?: 'root' | 'folder' | 'file'
+  menuType?: 'dropdown' | 'context'
   nodeId?: string
   onClose?: () => void
   treeRef?: RefObject<TreeApi<TreeNodeData> | null>
@@ -95,6 +96,7 @@ vi.mock('../../hooks/file-tree/operations/use-file-operations', () => ({
 
 const renderNodeMenu = ({
   type = NODE_MENU_TYPE.FOLDER,
+  menuType = 'dropdown',
   nodeId = 'node-1',
   onClose = vi.fn(),
   treeRef,
@@ -103,6 +105,7 @@ const renderNodeMenu = ({
   render(
     <NodeMenu
       type={type}
+      menuType={menuType}
       nodeId={nodeId}
       onClose={onClose}
       treeRef={treeRef}

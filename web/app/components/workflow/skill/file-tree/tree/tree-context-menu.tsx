@@ -2,62 +2,63 @@
 
 import type { TreeApi } from 'react-arborist'
 import type { TreeNodeData } from '../../type'
-import { FloatingPortal } from '@floating-ui/react'
 import * as React from 'react'
-import { useCallback, useMemo } from 'react'
-import { useContextMenuFloating } from '@/app/components/base/portal-to-follow-elem-plus/use-context-menu-floating'
-import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
-import { getMenuNodeId, getNodeMenuType } from '../../utils/tree-utils'
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuTrigger,
+} from '@/app/components/base/ui/context-menu'
+import { useWorkflowStore } from '@/app/components/workflow/store'
+import { NODE_MENU_TYPE, ROOT_ID } from '../../constants'
 import NodeMenu from './node-menu'
 
-type TreeContextMenuProps = {
+type TreeContextMenuProps = Omit<
+  React.ComponentPropsWithoutRef<typeof ContextMenuTrigger>,
+  'children' | 'onContextMenu'
+> & {
   treeRef: React.RefObject<TreeApi<TreeNodeData> | null>
+  triggerRef?: React.Ref<HTMLDivElement>
+  children: React.ReactNode
 }
 
-const TreeContextMenu = ({ treeRef }: TreeContextMenuProps) => {
-  const contextMenu = useStore(s => s.contextMenu)
+const TreeContextMenu = ({
+  treeRef,
+  triggerRef,
+  children,
+  ...props
+}: TreeContextMenuProps) => {
   const storeApi = useWorkflowStore()
 
-  const handleClose = useCallback(() => {
-    storeApi.getState().setContextMenu(null)
-  }, [storeApi])
+  const handleContextMenu = React.useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement
+    if (target.closest('[role="treeitem"]'))
+      return
 
-  const position = useMemo(() => ({
-    x: contextMenu?.left ?? 0,
-    y: contextMenu?.top ?? 0,
-  }), [contextMenu?.left, contextMenu?.top])
+    treeRef.current?.deselectAll()
+    storeApi.getState().clearSelection()
+  }, [storeApi, treeRef])
 
-  const { refs, floatingStyles, getFloatingProps, isPositioned } = useContextMenuFloating({
-    open: !!contextMenu,
-    onOpenChange: (open) => {
-      if (!open)
-        handleClose()
-    },
-    position,
-  })
-
-  if (!contextMenu)
-    return null
+  const handleMenuClose = React.useCallback(() => {}, [])
 
   return (
-    <FloatingPortal>
-      <div
-        ref={refs.setFloating}
-        className="z-[100]"
-        style={{
-          ...floatingStyles,
-          visibility: isPositioned ? 'visible' : 'hidden',
-        }}
-        {...getFloatingProps()}
+    <ContextMenu>
+      <ContextMenuTrigger
+        ref={triggerRef}
+        onContextMenu={handleContextMenu}
+        {...props}
       >
+        {children}
+      </ContextMenuTrigger>
+      <ContextMenuContent popupClassName="min-w-[180px]">
         <NodeMenu
-          type={getNodeMenuType(contextMenu.type, contextMenu.isFolder)}
-          nodeId={getMenuNodeId(contextMenu.type, contextMenu.nodeId)}
-          onClose={handleClose}
+          menuType="context"
+          type={NODE_MENU_TYPE.ROOT}
+          nodeId={ROOT_ID}
+          onClose={handleMenuClose}
           treeRef={treeRef}
         />
-      </div>
-    </FloatingPortal>
+      </ContextMenuContent>
+    </ContextMenu>
   )
 }
 

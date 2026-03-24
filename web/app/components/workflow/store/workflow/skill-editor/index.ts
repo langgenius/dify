@@ -4,7 +4,6 @@ import { START_TAB_ID } from '@/app/components/workflow/skill/constants'
 import { createArtifactSlice } from './artifact-slice'
 import { createClipboardSlice } from './clipboard-slice'
 import { createDirtySlice } from './dirty-slice'
-import { createFileOperationsMenuSlice } from './file-operations-menu-slice'
 import { createFileTreeSlice } from './file-tree-slice'
 import { createMetadataSlice } from './metadata-slice'
 import { createTabSlice } from './tab-slice'
@@ -13,7 +12,6 @@ import { createUploadSlice } from './upload-slice'
 export type { ArtifactSliceShape } from './artifact-slice'
 export type { ClipboardSliceShape } from './clipboard-slice'
 export type { DirtySliceShape } from './dirty-slice'
-export type { FileOperationsMenuSliceShape } from './file-operations-menu-slice'
 export type { FileTreeSliceShape } from './file-tree-slice'
 export type { MetadataSliceShape } from './metadata-slice'
 export type { OpenTabOptions, TabSliceShape } from './tab-slice'
@@ -26,7 +24,6 @@ export const createSkillEditorSlice: StateCreator<SkillEditorSliceShape> = (...a
   ...createClipboardSlice(...args),
   ...createDirtySlice(...args),
   ...createMetadataSlice(...args),
-  ...createFileOperationsMenuSlice(...args),
   ...createUploadSlice(...args),
   ...createArtifactSlice(...args),
 
@@ -48,7 +45,6 @@ export const createSkillEditorSlice: StateCreator<SkillEditorSliceShape> = (...a
       dirtyContents: new Map<string, string>(),
       fileMetadata: new Map<string, Record<string, unknown>>(),
       dirtyMetadataIds: new Set<string>(),
-      contextMenu: null,
       fileTreeSearchTerm: '',
       uploadStatus: 'idle',
       uploadProgress: { uploaded: 0, total: 0, failed: 0 },

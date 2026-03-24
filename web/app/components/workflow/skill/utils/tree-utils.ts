@@ -1,6 +1,5 @@
-import type { ContextMenuType, NodeMenuType } from '../constants'
 import type { AppAssetTreeView } from '@/types/app-asset'
-import { CONTEXT_MENU_TYPE, NODE_MENU_TYPE, ROOT_ID } from '../constants'
+import { ROOT_ID } from '../constants'
 
 // Root utilities
 
@@ -10,24 +9,6 @@ export function isRootId(id: string | null | undefined): boolean {
 
 export function toApiParentId(folderId: string | null | undefined): string | null {
   return isRootId(folderId) ? null : folderId!
-}
-
-export function getNodeMenuType(
-  contextType: ContextMenuType,
-  isFolder?: boolean,
-): NodeMenuType {
-  if (contextType === CONTEXT_MENU_TYPE.BLANK)
-    return NODE_MENU_TYPE.ROOT
-  return isFolder ? NODE_MENU_TYPE.FOLDER : NODE_MENU_TYPE.FILE
-}
-
-export function getMenuNodeId(
-  contextType: ContextMenuType,
-  nodeId?: string,
-): string {
-  return contextType === CONTEXT_MENU_TYPE.BLANK
-    ? ROOT_ID
-    : (nodeId ?? ROOT_ID)
 }
 
 // Tree utilities

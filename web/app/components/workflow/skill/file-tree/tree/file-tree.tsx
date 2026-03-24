@@ -15,7 +15,7 @@ import SearchMenu from '@/app/components/base/icons/src/vender/knowledge/SearchM
 import Loading from '@/app/components/base/loading'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { cn } from '@/utils/classnames'
-import { CONTEXT_MENU_TYPE, ROOT_ID } from '../../constants'
+import { ROOT_ID } from '../../constants'
 import { useSkillAssetTreeData } from '../../hooks/file-tree/data/use-skill-asset-tree'
 import { useSkillTreeCollaboration } from '../../hooks/file-tree/data/use-skill-tree-collaboration'
 import { useRootFileDrop } from '../../hooks/file-tree/dnd/use-root-file-drop'
@@ -179,17 +179,6 @@ const FileTree = ({ className }: FileTreeProps) => {
   const handleBlankAreaClick = useCallback(() => {
     treeRef.current?.deselectAll()
     storeApi.getState().clearSelection()
-  }, [storeApi, treeRef])
-
-  const handleBlankAreaContextMenu = useCallback((e: React.MouseEvent) => {
-    e.preventDefault()
-    treeRef.current?.deselectAll()
-    storeApi.getState().clearSelection()
-    storeApi.getState().setContextMenu({
-      top: e.clientY,
-      left: e.clientX,
-      type: CONTEXT_MENU_TYPE.BLANK,
-    })
   }, [storeApi, treeRef])
 
   // Node move API (for internal drag-drop)
@@ -387,14 +376,14 @@ const FileTree = ({ className }: FileTreeProps) => {
           className,
         )}
       >
-        <div
-          ref={containerRef}
+        <TreeContextMenu
+          treeRef={treeRef}
+          triggerRef={containerRef}
           className={cn(
             'flex min-h-0 flex-1 flex-col overflow-hidden px-1 pt-1',
             isRootDropzone && 'relative rounded-lg bg-state-accent-hover after:pointer-events-none after:absolute after:inset-0 after:rounded-lg after:border-[1.5px] after:border-dashed after:border-state-accent-solid after:content-[""]',
           )}
           onClick={handleBlankAreaClick}
-          onContextMenu={handleBlankAreaContextMenu}
           onDragEnter={handleRootDragEnter}
           onDragOver={handleRootDragOver}
           onDragLeave={handleRootDragLeave}
@@ -424,12 +413,11 @@ const FileTree = ({ className }: FileTreeProps) => {
           >
             {renderTreeNode}
           </Tree>
-        </div>
+        </TreeContextMenu>
         {dragOverFolderId
           ? <DragActionTooltip action={currentDragType ?? 'upload'} />
           : <UploadStatusTooltip fallback={<DropTip />} />}
       </div>
-      <TreeContextMenu treeRef={treeRef} />
     </>
   )
 }

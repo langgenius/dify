@@ -3,7 +3,17 @@
 import type { VariantProps } from 'class-variance-authority'
 import { cva } from 'class-variance-authority'
 import * as React from 'react'
-import Tooltip from '@/app/components/base/tooltip-plus'
+import {
+  ContextMenuItem,
+} from '@/app/components/base/ui/context-menu'
+import {
+  DropdownMenuItem,
+} from '@/app/components/base/ui/dropdown-menu'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/app/components/base/ui/tooltip'
 import ShortcutsName from '@/app/components/workflow/shortcuts-name'
 import { cn } from '@/utils/classnames'
 
@@ -51,26 +61,33 @@ const labelVariants = cva('text-text-secondary system-sm-regular', {
 })
 
 export type MenuItemProps = {
+  menuType: 'dropdown' | 'context'
   icon: React.ElementType | string
   label: string
   kbd?: readonly string[]
-  onClick: React.MouseEventHandler<HTMLButtonElement>
+  onClick: () => void
   disabled?: boolean
   tooltip?: string
 } & VariantProps<typeof menuItemVariants>
 
-const MenuItem = ({ icon: Icon, label, kbd, onClick, disabled, variant, tooltip }: MenuItemProps) => {
-  const handleClick = React.useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
-    event.stopPropagation()
-    onClick(event)
-  }, [onClick])
+const MenuItem = ({
+  menuType,
+  icon: Icon,
+  label,
+  kbd,
+  onClick,
+  disabled,
+  variant,
+  tooltip,
+}: MenuItemProps) => {
+  const ItemComponent = menuType === 'dropdown' ? DropdownMenuItem : ContextMenuItem
 
   return (
-    <button
-      type="button"
-      onClick={handleClick}
+    <ItemComponent
+      onClick={onClick}
       disabled={disabled}
-      className={cn(menuItemVariants({ variant }))}
+      destructive={variant === 'destructive'}
+      className={cn(menuItemVariants({ variant }), 'mx-0 h-auto w-full px-3 py-2')}
     >
       {typeof Icon === 'string'
         ? <span className={cn(Icon, iconVariants({ variant }))} aria-hidden="true" />
@@ -78,22 +95,24 @@ const MenuItem = ({ icon: Icon, label, kbd, onClick, disabled, variant, tooltip 
       <span className={cn(labelVariants({ variant }), 'flex-1 text-left')}>{label}</span>
       {kbd && kbd.length > 0 && <ShortcutsName keys={kbd} textColor="secondary" />}
       {tooltip && (
-        <Tooltip
-          popupContent={tooltip}
-          position="right"
-        >
-          <span
-            className="flex shrink-0 items-center justify-center"
+        <Tooltip>
+          <TooltipTrigger
+            type="button"
+            aria-label={tooltip}
+            className="flex shrink-0 items-center justify-center rounded text-text-quaternary hover:text-text-tertiary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-components-input-border-active"
             onClick={(event) => {
               event.preventDefault()
               event.stopPropagation()
             }}
           >
-            <span className="i-ri-question-line size-4 text-text-quaternary hover:text-text-tertiary" />
-          </span>
+            <span className="i-ri-question-line size-4" aria-hidden="true" />
+          </TooltipTrigger>
+          <TooltipContent placement="right">
+            {tooltip}
+          </TooltipContent>
         </Tooltip>
       )}
-    </button>
+    </ItemComponent>
   )
 }
 

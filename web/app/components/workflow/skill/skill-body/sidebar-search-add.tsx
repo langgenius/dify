@@ -98,12 +98,14 @@ const SidebarSearchAdd = () => {
             />
 
             <MenuItem
+              menuType="dropdown"
               icon={FileAdd}
               label={t('skillSidebar.menu.newFile')}
               onClick={handleNewFile}
               disabled={isLoading}
             />
             <MenuItem
+              menuType="dropdown"
               icon={FolderAdd}
               label={t('skillSidebar.menu.newFolder')}
               onClick={handleNewFolder}
@@ -113,12 +115,14 @@ const SidebarSearchAdd = () => {
             <div className="my-1 h-px bg-divider-subtle" />
 
             <MenuItem
+              menuType="dropdown"
               icon={UploadCloud02}
               label={t('skillSidebar.menu.uploadFile')}
               onClick={() => fileInputRef.current?.click()}
               disabled={isLoading}
             />
             <MenuItem
+              menuType="dropdown"
               icon="i-ri-folder-upload-line"
               label={t('skillSidebar.menu.uploadFolder')}
               onClick={() => folderInputRef.current?.click()}
@@ -128,6 +132,7 @@ const SidebarSearchAdd = () => {
             <div className="my-1 h-px bg-divider-subtle" />
 
             <MenuItem
+              menuType="dropdown"
               icon="i-ri-upload-line"
               label={t('skillSidebar.menu.importSkills')}
               onClick={() => setIsImportModalOpen(true)}

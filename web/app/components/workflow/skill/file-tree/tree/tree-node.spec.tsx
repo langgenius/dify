@@ -5,9 +5,6 @@ import TreeNode from './tree-node'
 
 type MockWorkflowSelectorState = {
   dirtyContents: Set<string>
-  contextMenu: {
-    nodeId?: string
-  } | null
   isCutNode: (nodeId: string) => boolean
 }
 
@@ -27,7 +24,6 @@ type NodeState = {
 const workflowState = vi.hoisted(() => ({
   dirtyContents: new Set<string>(),
   cutNodeIds: new Set<string>(),
-  contextMenuNodeId: null as string | null,
   dragOverFolderId: null as string | null,
 }))
 
@@ -40,7 +36,6 @@ const handlerMocks = vi.hoisted(() => ({
   handleClick: vi.fn(),
   handleDoubleClick: vi.fn(),
   handleToggle: vi.fn(),
-  handleContextMenu: vi.fn(),
   handleKeyDown: vi.fn(),
 }))
 
@@ -56,9 +51,6 @@ const dndMocks = vi.hoisted(() => ({
 vi.mock('@/app/components/workflow/store', () => ({
   useStore: (selector: (state: MockWorkflowSelectorState) => unknown) => selector({
     dirtyContents: workflowState.dirtyContents,
-    contextMenu: workflowState.contextMenuNodeId
-      ? { nodeId: workflowState.contextMenuNodeId }
-      : null,
     isCutNode: (nodeId: string) => workflowState.cutNodeIds.has(nodeId),
   }),
   useWorkflowStore: () => ({
@@ -80,7 +72,6 @@ vi.mock('../../hooks/file-tree/interaction/use-tree-node-handlers', () => ({
     handleClick: handlerMocks.handleClick,
     handleDoubleClick: handlerMocks.handleDoubleClick,
     handleToggle: handlerMocks.handleToggle,
-    handleContextMenu: handlerMocks.handleContextMenu,
     handleKeyDown: handlerMocks.handleKeyDown,
   }),
 }))
@@ -99,8 +90,8 @@ vi.mock('../../hooks/file-tree/dnd/use-folder-file-drop', () => ({
 }))
 
 vi.mock('./node-menu', () => ({
-  default: ({ type, onClose }: { type: string, onClose: () => void }) => (
-    <div data-testid="node-menu" data-type={type}>
+  default: ({ type, menuType, onClose }: { type: string, menuType: string, onClose: () => void }) => (
+    <div data-testid={`node-menu-${menuType}`} data-type={type}>
       <button type="button" onClick={onClose}>close-menu</button>
     </div>
   ),
@@ -136,6 +127,7 @@ const createNode = (overrides: Partial<NodeState> = {}): NodeApi<TreeNodeData> =
     willReceiveDrop: resolved.willReceiveDrop,
     isEditing: resolved.isEditing,
     level: resolved.level,
+    select: vi.fn(),
   } as unknown as NodeApi<TreeNodeData>
 }
 
@@ -155,7 +147,6 @@ describe('TreeNode', () => {
 
     workflowState.dirtyContents.clear()
     workflowState.cutNodeIds.clear()
-    workflowState.contextMenuNodeId = null
     workflowState.dragOverFolderId = null
 
     dndMocks.isDragOver = false
@@ -164,8 +155,7 @@ describe('TreeNode', () => {
 
   // Core rendering should reflect selection, folder expansion, and store-driven visual states.
   describe('Rendering', () => {
-    it('should render file node with context-menu highlight and action button label', () => {
-      workflowState.contextMenuNodeId = 'file-1'
+    it('should render file node with action button label', () => {
       const props = buildProps({ id: 'file-1', name: 'readme.md', nodeType: 'file' })
 
       render(<TreeNode {...props} />)
@@ -173,7 +163,6 @@ describe('TreeNode', () => {
       const treeItem = screen.getByRole('treeitem')
       expect(treeItem).toHaveAttribute('aria-selected', 'false')
       expect(treeItem).not.toHaveAttribute('aria-expanded')
-      expect(treeItem).toHaveClass('bg-state-base-hover')
       expect(screen.getByText('readme.md')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: /workflow\.skillSidebar\.menu\.moreActions/i })).toBeInTheDocument()
     })
@@ -229,7 +218,7 @@ describe('TreeNode', () => {
       expect(handlerMocks.handleDoubleClick).toHaveBeenCalled()
     })
 
-    it('should call keyboard and context-menu handlers on tree item', () => {
+    it('should call keyboard handler and open context menu on tree item right click', () => {
       const props = buildProps({ id: 'file-1', name: 'readme.md', nodeType: 'file' })
 
       render(<TreeNode {...props} />)
@@ -239,7 +228,7 @@ describe('TreeNode', () => {
       fireEvent.contextMenu(treeItem)
 
       expect(handlerMocks.handleKeyDown).toHaveBeenCalledTimes(1)
-      expect(handlerMocks.handleContextMenu).toHaveBeenCalledTimes(1)
+      expect(screen.getByTestId('node-menu-context')).toHaveAttribute('data-type', 'file')
     })
 
     it('should attach folder drag handlers only when node is a folder', () => {
@@ -274,20 +263,16 @@ describe('TreeNode', () => {
       expect(dndMocks.onDragLeave).not.toHaveBeenCalled()
     })
 
-    it('should open and close dropdown menu when more actions button is toggled', () => {
+    it('should open dropdown menu when more actions button is clicked', () => {
       const props = buildProps({ id: 'file-1', name: 'readme.md', nodeType: 'file' })
 
       render(<TreeNode {...props} />)
 
-      expect(screen.queryByTestId('node-menu')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('node-menu-dropdown')).not.toBeInTheDocument()
 
       fireEvent.click(screen.getByRole('button', { name: /workflow\.skillSidebar\.menu\.moreActions/i }))
 
-      expect(screen.getByTestId('node-menu')).toHaveAttribute('data-type', 'file')
-
-      fireEvent.click(screen.getByRole('button', { name: 'close-menu' }))
-
-      expect(screen.queryByTestId('node-menu')).not.toBeInTheDocument()
+      expect(screen.getByTestId('node-menu-dropdown')).toHaveAttribute('data-type', 'file')
     })
   })
 

@@ -1,5 +1,3 @@
-import type { ContextMenuType } from '@/app/components/workflow/skill/constants'
-
 export type OpenTabOptions = {
   pinned?: boolean
   autoFocusEditor?: boolean
@@ -92,19 +90,6 @@ export type MetadataSliceShape = {
   getFileMetadata: (fileId: string) => Record<string, unknown> | undefined
 }
 
-export type ContextMenuState = {
-  top: number
-  left: number
-  type: ContextMenuType
-  nodeId?: string
-  isFolder?: boolean
-}
-
-export type FileOperationsMenuSliceShape = {
-  contextMenu: ContextMenuState | null
-  setContextMenu: (menu: ContextMenuState | null) => void
-}
-
 export type UploadStatus = 'idle' | 'uploading' | 'success' | 'partial_error'
 
 export type UploadProgress = {
@@ -133,7 +118,6 @@ export type SkillEditorSliceShape
     & ClipboardSliceShape
     & DirtySliceShape
     & MetadataSliceShape
-    & FileOperationsMenuSliceShape
     & UploadSliceShape
     & ArtifactSliceShape
     & {

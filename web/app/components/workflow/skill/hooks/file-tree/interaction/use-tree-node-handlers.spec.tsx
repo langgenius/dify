@@ -6,11 +6,9 @@ import { useTreeNodeHandlers } from './use-tree-node-handlers'
 const {
   mockClearArtifactSelection,
   mockOpenTab,
-  mockSetContextMenu,
 } = vi.hoisted(() => ({
   mockClearArtifactSelection: vi.fn(),
   mockOpenTab: vi.fn(),
-  mockSetContextMenu: vi.fn(),
 }))
 
 vi.mock('es-toolkit/function', () => ({
@@ -22,7 +20,6 @@ vi.mock('@/app/components/workflow/store', () => ({
     getState: () => ({
       clearArtifactSelection: mockClearArtifactSelection,
       openTab: mockOpenTab,
-      setContextMenu: mockSetContextMenu,
     }),
   }),
 }))
@@ -54,8 +51,6 @@ const createMouseEvent = (params: {
   shiftKey?: boolean
   ctrlKey?: boolean
   metaKey?: boolean
-  clientX?: number
-  clientY?: number
 } = {}) => {
   return {
     stopPropagation: vi.fn(),
@@ -63,8 +58,6 @@ const createMouseEvent = (params: {
     shiftKey: params.shiftKey ?? false,
     ctrlKey: params.ctrlKey ?? false,
     metaKey: params.metaKey ?? false,
-    clientX: params.clientX ?? 0,
-    clientY: params.clientY ?? 0,
   } as unknown as React.MouseEvent
 }
 
@@ -183,29 +176,8 @@ describe('useTreeNodeHandlers', () => {
     })
   })
 
-  // Scenario: context menu and keyboard handlers update menu state and open/toggle actions.
-  describe('context menu and keyboard', () => {
-    it('should select node and set context menu payload on right click', () => {
-      const node = createNode({ id: 'folder-1', nodeType: 'folder' })
-      const { result } = renderHook(() => useTreeNodeHandlers({ node }))
-      const event = createMouseEvent({ clientX: 120, clientY: 45 })
-
-      act(() => {
-        result.current.handleContextMenu(event)
-      })
-
-      expect(event.preventDefault).toHaveBeenCalledTimes(1)
-      expect(event.stopPropagation).toHaveBeenCalledTimes(1)
-      expect(node.select).toHaveBeenCalledTimes(1)
-      expect(mockSetContextMenu).toHaveBeenCalledWith({
-        top: 45,
-        left: 120,
-        type: 'node',
-        nodeId: 'folder-1',
-        isFolder: true,
-      })
-    })
-
+  // Scenario: keyboard handlers should toggle folders and open files without relying on overlay state.
+  describe('keyboard', () => {
     it('should toggle folder on Enter key', () => {
       const node = createNode({ nodeType: 'folder' })
       const { result } = renderHook(() => useTreeNodeHandlers({ node }))

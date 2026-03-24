@@ -18,9 +18,14 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@/app/components/base/ui/alert-dialog'
+import {
+  ContextMenuSeparator,
+} from '@/app/components/base/ui/context-menu'
+import {
+  DropdownMenuSeparator,
+} from '@/app/components/base/ui/dropdown-menu'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import dynamic from '@/next/dynamic'
-import { cn } from '@/utils/classnames'
 import { NODE_MENU_TYPE } from '../../constants'
 import { useFileOperations } from '../../hooks/file-tree/operations/use-file-operations'
 import MenuItem from './menu-item'
@@ -29,28 +34,23 @@ const ImportSkillModal = dynamic(() => import('../../start-tab/import-skill-moda
   ssr: false,
 })
 
-const MENU_CONTAINER_STYLES = [
-  'min-w-[180px] rounded-xl border-[0.5px] border-components-panel-border',
-  'bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]',
-] as const
-
 const KBD_CUT = ['ctrl', 'x'] as const
 const KBD_PASTE = ['ctrl', 'v'] as const
 
 type NodeMenuProps = {
   type: NodeMenuType
+  menuType: 'dropdown' | 'context'
   nodeId?: string
   onClose: () => void
-  className?: string
   treeRef?: React.RefObject<TreeApi<TreeNodeData> | null>
   node?: NodeApi<TreeNodeData>
 }
 
 const NodeMenu = ({
   type,
+  menuType,
   nodeId,
   onClose,
-  className,
   treeRef,
   node,
 }: NodeMenuProps) => {
@@ -101,9 +101,10 @@ const NodeMenu = ({
   const deleteConfirmContent = isFolder
     ? t('skillSidebar.menu.deleteConfirmContent')
     : t('skillSidebar.menu.fileDeleteConfirmContent')
+  const Separator = menuType === 'dropdown' ? DropdownMenuSeparator : ContextMenuSeparator
 
   return (
-    <div className={cn(MENU_CONTAINER_STYLES, className)}>
+    <>
       {isFolder && (
         <>
           <input
@@ -125,27 +126,31 @@ const NodeMenu = ({
           />
 
           <MenuItem
+            menuType={menuType}
             icon={FileAdd}
             label={t('skillSidebar.menu.newFile')}
-            onClick={handleNewFile}
+            onClick={() => handleNewFile()}
             disabled={isLoading}
           />
           <MenuItem
+            menuType={menuType}
             icon={FolderAdd}
             label={t('skillSidebar.menu.newFolder')}
-            onClick={handleNewFolder}
+            onClick={() => handleNewFolder()}
             disabled={isLoading}
           />
 
-          <div className="my-1 h-px bg-divider-subtle" />
+          <Separator />
 
           <MenuItem
+            menuType={menuType}
             icon={UploadCloud02}
             label={t('skillSidebar.menu.uploadFile')}
             onClick={() => fileInputRef.current?.click()}
             disabled={isLoading}
           />
           <MenuItem
+            menuType={menuType}
             icon="i-ri-folder-upload-line"
             label={t('skillSidebar.menu.uploadFolder')}
             onClick={() => folderInputRef.current?.click()}
@@ -154,8 +159,9 @@ const NodeMenu = ({
 
           {isRoot && (
             <>
-              <div className="my-1 h-px bg-divider-subtle" />
+              <Separator />
               <MenuItem
+                menuType={menuType}
                 icon="i-ri-upload-line"
                 label={t('skillSidebar.menu.importSkills')}
                 onClick={() => setIsImportModalOpen(true)}
@@ -165,25 +171,27 @@ const NodeMenu = ({
             </>
           )}
 
-          {(showRenameDelete || hasClipboard) && <div className="my-1 h-px bg-divider-subtle" />}
+          {(showRenameDelete || hasClipboard) && <Separator />}
         </>
       )}
 
       {!isFolder && (
         <>
           <MenuItem
+            menuType={menuType}
             icon={Download02}
             label={t('skillSidebar.menu.download')}
             onClick={handleDownload}
             disabled={isLoading}
           />
-          <div className="my-1 h-px bg-divider-subtle" />
+          <Separator />
         </>
       )}
 
       {!isRoot && (
         <>
           <MenuItem
+            menuType={menuType}
             icon="i-ri-scissors-line"
             label={t('skillSidebar.menu.cut')}
             kbd={KBD_CUT}
@@ -195,6 +203,7 @@ const NodeMenu = ({
 
       {isFolder && hasClipboard && (
         <MenuItem
+          menuType={menuType}
           icon="i-ri-clipboard-line"
           label={t('skillSidebar.menu.paste')}
           kbd={KBD_PASTE}
@@ -205,17 +214,19 @@ const NodeMenu = ({
 
       {showRenameDelete && (
         <>
-          <div className="my-1 h-px bg-divider-subtle" />
+          <Separator />
           <MenuItem
+            menuType={menuType}
             icon="i-ri-edit-2-line"
             label={t('skillSidebar.menu.rename')}
-            onClick={handleRename}
+            onClick={() => handleRename()}
             disabled={isLoading}
           />
           <MenuItem
+            menuType={menuType}
             icon="i-ri-delete-bin-line"
             label={t('skillSidebar.menu.delete')}
-            onClick={handleDeleteClick}
+            onClick={() => handleDeleteClick()}
             disabled={isLoading}
             variant="destructive"
           />
@@ -257,7 +268,7 @@ const NodeMenu = ({
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
       />
-    </div>
+    </>
   )
 }
 
