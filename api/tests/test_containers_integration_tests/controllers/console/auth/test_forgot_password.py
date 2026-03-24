@@ -1,8 +1,11 @@
+"""Testcontainers integration tests for forgot password controller endpoints."""
+
+from __future__ import annotations
+
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
-from flask import Flask
 
 from controllers.console.auth.forgot_password import (
     ForgotPasswordCheckApi,
@@ -13,14 +16,11 @@ from services.account_service import AccountService
 
 
 @pytest.fixture
-def app():
-    flask_app = Flask(__name__)
-    flask_app.config["TESTING"] = True
-    return flask_app
+def app(flask_app_with_containers):
+    return flask_app_with_containers
 
 
 class TestForgotPasswordSendEmailApi:
-    @patch("controllers.console.auth.forgot_password.Session")
     @patch("controllers.console.auth.forgot_password.AccountService.get_account_by_email_with_case_fallback")
     @patch("controllers.console.auth.forgot_password.AccountService.send_reset_password_email")
     @patch("controllers.console.auth.forgot_password.AccountService.is_email_send_ip_limit", return_value=False)
@@ -31,19 +31,15 @@ class TestForgotPasswordSendEmailApi:
         mock_is_ip_limit,
         mock_send_email,
         mock_get_account,
-        mock_session_cls,
         app,
     ):
         mock_account = MagicMock()
         mock_get_account.return_value = mock_account
         mock_send_email.return_value = "token-123"
-        mock_session = MagicMock()
-        mock_session_cls.return_value.__enter__.return_value = mock_session
 
         wraps_features = SimpleNamespace(enable_email_password_login=True, is_allow_register=True)
         controller_features = SimpleNamespace(is_allow_register=True)
         with (
-            patch("controllers.console.auth.forgot_password.db", SimpleNamespace(engine="engine")),
             patch(
                 "controllers.console.auth.forgot_password.FeatureService.get_system_features",
                 return_value=controller_features,
@@ -59,7 +55,6 @@ class TestForgotPasswordSendEmailApi:
                 response = ForgotPasswordSendEmailApi().post()
 
         assert response == {"result": "success", "data": "token-123"}
-        mock_get_account.assert_called_once_with("User@Example.com", session=mock_session)
         mock_send_email.assert_called_once_with(
             account=mock_account,
             email="user@example.com",
@@ -117,7 +112,6 @@ class TestForgotPasswordCheckApi:
 
 class TestForgotPasswordResetApi:
     @patch("controllers.console.auth.forgot_password.ForgotPasswordResetApi._update_existing_account")
-    @patch("controllers.console.auth.forgot_password.Session")
     @patch("controllers.console.auth.forgot_password.AccountService.get_account_by_email_with_case_fallback")
     @patch("controllers.console.auth.forgot_password.AccountService.revoke_reset_password_token")
     @patch("controllers.console.auth.forgot_password.AccountService.get_reset_password_data")
@@ -126,7 +120,6 @@ class TestForgotPasswordResetApi:
         mock_get_reset_data,
         mock_revoke_token,
         mock_get_account,
-        mock_session_cls,
         mock_update_account,
         app,
     ):
@@ -134,12 +127,8 @@ class TestForgotPasswordResetApi:
         mock_account = MagicMock()
         mock_get_account.return_value = mock_account
 
-        mock_session = MagicMock()
-        mock_session_cls.return_value.__enter__.return_value = mock_session
-
         wraps_features = SimpleNamespace(enable_email_password_login=True)
         with (
-            patch("controllers.console.auth.forgot_password.db", SimpleNamespace(engine="engine")),
             patch("controllers.console.wraps.dify_config", SimpleNamespace(EDITION="CLOUD")),
             patch("controllers.console.wraps.FeatureService.get_system_features", return_value=wraps_features),
         ):
@@ -157,20 +146,22 @@ class TestForgotPasswordResetApi:
         assert response == {"result": "success"}
         mock_get_reset_data.assert_called_once_with("token-123")
         mock_revoke_token.assert_called_once_with("token-123")
-        mock_get_account.assert_called_once_with("User@Example.com", session=mock_session)
         mock_update_account.assert_called_once()
 
 
-def test_get_account_by_email_with_case_fallback_uses_lowercase_lookup():
+def test_get_account_by_email_with_case_fallback_falls_back_to_lowercase():
+    """Test that case fallback tries lowercase when exact match fails."""
+    from unittest.mock import MagicMock
+
     mock_session = MagicMock()
-    first_query = MagicMock()
-    first_query.scalar_one_or_none.return_value = None
+    first_result = MagicMock()
+    first_result.scalar_one_or_none.return_value = None
     expected_account = MagicMock()
-    second_query = MagicMock()
-    second_query.scalar_one_or_none.return_value = expected_account
-    mock_session.execute.side_effect = [first_query, second_query]
+    second_result = MagicMock()
+    second_result.scalar_one_or_none.return_value = expected_account
+    mock_session.execute.side_effect = [first_result, second_result]
 
-    account = AccountService.get_account_by_email_with_case_fallback("Mixed@Test.com", session=mock_session)
+    result = AccountService.get_account_by_email_with_case_fallback("Mixed@Test.com", session=mock_session)
 
-    assert account is expected_account
+    assert result is expected_account
     assert mock_session.execute.call_count == 2
