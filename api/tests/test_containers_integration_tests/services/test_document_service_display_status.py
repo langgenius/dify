@@ -142,3 +142,11 @@ def test_apply_display_status_filter_returns_same_when_invalid(db_session_with_c
 
     rows = db_session_with_containers.scalars(filtered).all()
     assert {row.id for row in rows} == {doc1.id, doc2.id}
+
+
+def test_normalize_display_status_alias_mapping():
+    """Test that normalize_display_status maps aliases correctly."""
+    assert DocumentService.normalize_display_status("ACTIVE") == "available"
+    assert DocumentService.normalize_display_status("enabled") == "available"
+    assert DocumentService.normalize_display_status("archived") == "archived"
+    assert DocumentService.normalize_display_status("unknown") is None

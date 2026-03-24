@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session
 
 from core.app.entities.task_entities import MessageEndStreamResponse
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
-from dify_graph.file.enums import FileTransferMethod
+from dify_graph.file.enums import FileTransferMethod, FileType
 from models.model import MessageFile, UploadFile
 
 
@@ -51,7 +51,7 @@ class TestMessageEndStreamResponseFiles:
         message_file.transfer_method = FileTransferMethod.LOCAL_FILE
         message_file.upload_file_id = str(uuid.uuid4())
         message_file.url = None
-        message_file.type = "image"
+        message_file.type = FileType.IMAGE
         return message_file
 
     @pytest.fixture
@@ -63,7 +63,7 @@ class TestMessageEndStreamResponseFiles:
         message_file.transfer_method = FileTransferMethod.REMOTE_URL
         message_file.upload_file_id = None
         message_file.url = "https://example.com/image.jpg"
-        message_file.type = "image"
+        message_file.type = FileType.IMAGE
         return message_file
 
     @pytest.fixture
@@ -75,7 +75,7 @@ class TestMessageEndStreamResponseFiles:
         message_file.transfer_method = FileTransferMethod.TOOL_FILE
         message_file.upload_file_id = None
         message_file.url = "tool_file_123.png"
-        message_file.type = "image"
+        message_file.type = FileType.IMAGE
         return message_file
 
     @pytest.fixture

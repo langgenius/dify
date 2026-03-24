@@ -28,7 +28,7 @@ const AgentLogNavMore = ({
       open={open}
       onOpenChange={setOpen}
     >
-      <PortalToFollowElemTrigger>
+      <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
         <Button
           className="h-6 w-6"
           variant="ghost-accent"

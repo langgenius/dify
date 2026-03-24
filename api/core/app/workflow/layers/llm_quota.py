@@ -112,8 +112,7 @@ class LLMQuotaLayer(GraphEngineLayer):
                 if instance is not None:
                     return instance
                 logger.warning(
-                    "LLMQuotaLayer skipped quota deduction because node does not expose a model instance,"
-                    " node_id=%s",
+                    "LLMQuotaLayer skipped quota deduction because node does not expose a model instance, node_id=%s",
                     node.id,
                 )
                 return None

@@ -7,6 +7,7 @@ from werkzeug.exceptions import NotFound
 
 from extensions.ext_database import db
 from models.dataset import Dataset
+from models.enums import TagType
 from models.model import App, Tag, TagBinding
 
 
@@ -83,7 +84,7 @@ class TagService:
             raise ValueError("Tag name already exists")
         tag = Tag(
             name=args["name"],
-            type=args["type"],
+            type=TagType(args["type"]),
             created_by=current_user.id,
             tenant_id=current_user.current_tenant_id,
         )

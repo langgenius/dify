@@ -84,7 +84,7 @@ const Configure = ({
             {t('dataSource.configure', { ns: 'common' })}
           </Button>
         </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className="z-[61]">
+        <PortalToFollowElemContent className="z-[1002]">
           <div className="w-[240px] space-y-1.5 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-lg">
             {
               !!canOAuth && (

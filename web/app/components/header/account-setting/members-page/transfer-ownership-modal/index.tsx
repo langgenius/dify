@@ -141,6 +141,7 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
     <Modal
       isShow={show}
       onClose={noop}
+      wrapperClassName="z-[1002]"
       className="!w-[420px] !p-6"
     >
       <div

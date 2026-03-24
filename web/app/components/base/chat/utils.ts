@@ -160,7 +160,7 @@ function buildChatItemTree(allMessages: IChatItem[]): ChatItemInTree[] {
         rootNodes.push(questionNode)
       }
       else {
-        map[parentMessageId]?.children!.push(questionNode)
+        map[parentMessageId].children!.push(questionNode)
       }
     }
   }

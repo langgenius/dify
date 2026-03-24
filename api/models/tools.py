@@ -13,12 +13,16 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
-from core.tools.entities.tool_entities import ApiProviderSchemaType, WorkflowToolParameterConfiguration
+from core.tools.entities.tool_entities import (
+    ApiProviderSchemaType,
+    ToolProviderType,
+    WorkflowToolParameterConfiguration,
+)
 
 from .base import TypeBase
 from .engine import db
 from .model import Account, App, Tenant
-from .types import LongText, StringUUID
+from .types import EnumText, LongText, StringUUID
 
 if TYPE_CHECKING:
     from core.entities.mcp_provider import MCPProviderEntity
@@ -208,7 +212,7 @@ class ToolLabelBinding(TypeBase):
     # tool id
     tool_id: Mapped[str] = mapped_column(String(64), nullable=False)
     # tool type
-    tool_type: Mapped[str] = mapped_column(String(40), nullable=False)
+    tool_type: Mapped[ToolProviderType] = mapped_column(EnumText(ToolProviderType, length=40), nullable=False)
     # label name
     label_name: Mapped[str] = mapped_column(String(40), nullable=False)
 
@@ -386,7 +390,7 @@ class ToolModelInvoke(TypeBase):
     # provider
     provider: Mapped[str] = mapped_column(String(255), nullable=False)
     # type
-    tool_type: Mapped[str] = mapped_column(String(40), nullable=False)
+    tool_type: Mapped[ToolProviderType] = mapped_column(EnumText(ToolProviderType, length=40), nullable=False)
     # tool name
     tool_name: Mapped[str] = mapped_column(String(128), nullable=False)
     # invoke parameters
