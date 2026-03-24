@@ -8,6 +8,7 @@ import type {
   LegacyDataSourceInfo,
   LocalFileInfo,
   OnlineDocumentInfo,
+  UploadFileIdInfo,
   WebsiteCrawlInfo,
 } from '@/models/datasets'
 import { useBoolean } from 'ahooks'
@@ -61,6 +62,7 @@ const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
 
   const dataSourceInfo = documentDetail?.data_source_info
 
+  // Type guards for DataSourceInfo union
   const isLegacyDataSourceInfo = (info: DataSourceInfo | undefined): info is LegacyDataSourceInfo => {
     return !!info && 'upload_file' in info
   }
@@ -73,10 +75,15 @@ const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
   const isLocalFileInfo = (info: DataSourceInfo | undefined): info is LocalFileInfo => {
     return !!info && 'related_id' in info && 'transfer_method' in info
   }
+  const isUploadFileIdInfo = (info: DataSourceInfo | undefined): info is UploadFileIdInfo => {
+    return !!info && 'upload_file_id' in info
+  }
+
   const legacyInfo = isLegacyDataSourceInfo(dataSourceInfo) ? dataSourceInfo : undefined
   const websiteInfo = isWebsiteCrawlInfo(dataSourceInfo) ? dataSourceInfo : undefined
   const onlineDocumentInfo = isOnlineDocumentInfo(dataSourceInfo) ? dataSourceInfo : undefined
   const localFileInfo = isLocalFileInfo(dataSourceInfo) ? dataSourceInfo : undefined
+  const uploadFileIdInfo = isUploadFileIdInfo(dataSourceInfo) ? dataSourceInfo : undefined
 
   const currentPage = useMemo(() => {
     if (legacyInfo) {
@@ -101,8 +108,20 @@ const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
   }, [documentDetail?.data_source_type, documentDetail?.name, legacyInfo, onlineDocumentInfo])
 
   const files = useMemo<CustomFile[]>(() => {
-    if (legacyInfo?.upload_file)
-      return [legacyInfo.upload_file as CustomFile]
+    // Handle upload_file_id format
+    if (uploadFileIdInfo) {
+      return [{
+        id: uploadFileIdInfo.upload_file_id,
+        name: documentDetail?.name || '',
+      } as unknown as CustomFile]
+    }
+
+    // Handle legacy upload_file format
+    if (legacyInfo?.upload_file) {
+      return [legacyInfo.upload_file as unknown as CustomFile]
+    }
+
+    // Handle local file info format
     if (localFileInfo) {
       const { related_id, name, extension } = localFileInfo
       return [{
@@ -111,8 +130,9 @@ const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
         extension,
       } as unknown as CustomFile]
     }
+
     return []
-  }, [legacyInfo?.upload_file, localFileInfo])
+  }, [uploadFileIdInfo, legacyInfo?.upload_file, localFileInfo, documentDetail?.name])
 
   const websitePages = useMemo(() => {
     if (!websiteInfo)

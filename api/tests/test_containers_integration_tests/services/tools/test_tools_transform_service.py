@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from core.tools.entities.api_entities import ToolProviderApiEntity
 from core.tools.entities.common_entities import I18nObject
-from core.tools.entities.tool_entities import ToolProviderType
+from core.tools.entities.tool_entities import ApiProviderSchemaType, ToolProviderType
 from models.tools import ApiToolProvider, BuiltinToolProvider, MCPToolProvider, WorkflowToolProvider
 from services.plugin.plugin_service import PluginService
 from services.tools.tools_transform_service import ToolTransformService
@@ -52,7 +52,7 @@ class TestToolTransformService:
                 user_id="test_user_id",
                 credentials_str='{"auth_type": "api_key_header", "api_key": "test_key"}',
                 schema="{}",
-                schema_type_str="openapi",
+                schema_type_str=ApiProviderSchemaType.OPENAPI,
                 tools_str="[]",
             )
         elif provider_type == "builtin":
@@ -659,7 +659,7 @@ class TestToolTransformService:
             user_id=fake.uuid4(),
             credentials_str='{"auth_type": "api_key_header", "api_key": "test_key"}',
             schema="{}",
-            schema_type_str="openapi",
+            schema_type_str=ApiProviderSchemaType.OPENAPI,
             tools_str="[]",
         )
 
@@ -695,7 +695,7 @@ class TestToolTransformService:
             user_id=fake.uuid4(),
             credentials_str='{"auth_type": "api_key_query", "api_key": "test_key"}',
             schema="{}",
-            schema_type_str="openapi",
+            schema_type_str=ApiProviderSchemaType.OPENAPI,
             tools_str="[]",
         )
 
@@ -731,7 +731,7 @@ class TestToolTransformService:
             user_id=fake.uuid4(),
             credentials_str='{"auth_type": "api_key", "api_key": "test_key"}',
             schema="{}",
-            schema_type_str="openapi",
+            schema_type_str=ApiProviderSchemaType.OPENAPI,
             tools_str="[]",
         )
 

@@ -1,8 +1,9 @@
 'use client'
 import type { AccountSettingTab } from '@/app/components/header/account-setting/constants'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SearchInput from '@/app/components/base/search-input'
+import { ScrollArea } from '@/app/components/base/ui/scroll-area'
 import BillingPage from '@/app/components/billing/billing-page'
 import CustomPage from '@/app/components/custom/custom-page'
 import {
@@ -129,20 +130,6 @@ export default function AccountSetting({
       ],
     },
   ]
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const [scrolled, setScrolled] = useState(false)
-  useEffect(() => {
-    const targetElement = scrollRef.current
-    const scrollHandle = (e: Event) => {
-      const userScrolled = (e.target as HTMLDivElement).scrollTop > 0
-      setScrolled(userScrolled)
-    }
-    targetElement?.addEventListener('scroll', scrollHandle)
-    return () => {
-      targetElement?.removeEventListener('scroll', scrollHandle)
-    }
-  }, [])
-
   const activeItem = [...menuItems[0].items, ...menuItems[1].items].find(item => item.key === activeMenu)
 
   const [searchValue, setSearchValue] = useState<string>('')
@@ -201,7 +188,7 @@ export default function AccountSetting({
             }
           </div>
         </div>
-        <div className="relative flex w-[824px]">
+        <div className="relative flex min-h-0 w-[824px]">
           <div className="fixed right-6 top-6 z-[9999] flex flex-col items-center">
             <Button
               variant="tertiary"
@@ -214,8 +201,14 @@ export default function AccountSetting({
             </Button>
             <div className="mt-1 text-text-tertiary system-2xs-medium-uppercase">ESC</div>
           </div>
-          <div ref={scrollRef} className="w-full overflow-y-auto bg-components-panel-bg pb-4">
-            <div className={cn('sticky top-0 z-20 mx-8 mb-[18px] flex items-center bg-components-panel-bg pb-2 pt-[27px]', scrolled && 'border-b border-divider-regular')}>
+          <ScrollArea
+            className="h-full min-h-0 flex-1 bg-components-panel-bg"
+            slotClassNames={{
+              viewport: 'overscroll-contain',
+              content: 'min-h-full pb-4',
+            }}
+          >
+            <div className="sticky top-0 z-20 mx-8 mb-[18px] flex items-center bg-components-panel-bg pb-2 pt-[27px]">
               <div className="shrink-0 text-text-primary title-2xl-semi-bold">
                 {activeItem?.name}
                 {activeItem?.description && (
@@ -241,7 +234,7 @@ export default function AccountSetting({
               {activeMenu === ACCOUNT_SETTING_TAB.CUSTOM && <CustomPage />}
               {activeMenu === ACCOUNT_SETTING_TAB.LANGUAGE && <LanguagePage />}
             </div>
-          </div>
+          </ScrollArea>
         </div>
       </div>
     </MenuDialog>

@@ -918,11 +918,11 @@ class ProviderManager:
 
             trail_pool = CreditPoolService.get_pool(
                 tenant_id=tenant_id,
-                pool_type=ProviderQuotaType.TRIAL.value,
+                pool_type=ProviderQuotaType.TRIAL,
             )
             paid_pool = CreditPoolService.get_pool(
                 tenant_id=tenant_id,
-                pool_type=ProviderQuotaType.PAID.value,
+                pool_type=ProviderQuotaType.PAID,
             )
         else:
             trail_pool = None
