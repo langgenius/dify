@@ -7,6 +7,7 @@ from configs import dify_config
 from core.errors.error import QuotaExceededError
 from extensions.ext_database import db
 from models import TenantCreditPool
+from models.enums import ProviderQuotaType
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +17,10 @@ class CreditPoolService:
     def create_default_pool(cls, tenant_id: str) -> TenantCreditPool:
         """create default credit pool for new tenant"""
         credit_pool = TenantCreditPool(
-            tenant_id=tenant_id, quota_limit=dify_config.HOSTED_POOL_CREDITS, quota_used=0, pool_type="trial"
+            tenant_id=tenant_id,
+            quota_limit=dify_config.HOSTED_POOL_CREDITS,
+            quota_used=0,
+            pool_type=ProviderQuotaType.TRIAL,
         )
         db.session.add(credit_pool)
         db.session.commit()

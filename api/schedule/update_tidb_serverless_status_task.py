@@ -9,6 +9,7 @@ from configs import dify_config
 from core.rag.datasource.vdb.tidb_on_qdrant.tidb_service import TidbService
 from extensions.ext_database import db
 from models.dataset import TidbAuthBinding
+from models.enums import TidbAuthBindingStatus
 
 
 @app.celery.task(queue="dataset")
@@ -18,7 +19,10 @@ def update_tidb_serverless_status_task():
     try:
         # check the number of idle tidb serverless
         tidb_serverless_list = db.session.scalars(
-            select(TidbAuthBinding).where(TidbAuthBinding.active == False, TidbAuthBinding.status == "CREATING")
+            select(TidbAuthBinding).where(
+                TidbAuthBinding.active == False,
+                TidbAuthBinding.status == TidbAuthBindingStatus.CREATING,
+            )
         ).all()
         if len(tidb_serverless_list) == 0:
             return
