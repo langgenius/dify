@@ -6635,9 +6635,6 @@
   "app/components/workflow/block-selector/tabs.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
     }
   },
   "app/components/workflow/block-selector/tool-picker.tsx": {
