@@ -46,7 +46,8 @@ const LastRun: FC<Props> = ({
   const [pageHasHide, setPageHasHide] = useState(false)
   const [pageShowed, setPageShowed] = useState(false)
 
-  const hidePageOneStepRunFinished = [NodeRunningStatus.Succeeded, NodeRunningStatus.Failed].includes(hidePageOneStepFinishedStatus!)
+  const hidePageOneStepRunFinished = hidePageOneStepFinishedStatus != null
+    && ([NodeRunningStatus.Succeeded, NodeRunningStatus.Failed] as NodeRunningStatus[]).includes(hidePageOneStepFinishedStatus)
   const canRunLastRun = !isRunAfterSingleRun || isOneStepRunSucceed || isOneStepRunFailed || (pageHasHide && hidePageOneStepRunFinished)
   const { data: lastRunResult, isFetching, error } = useLastRun(configsMap?.flowType || FlowType.appFlow, configsMap?.flowId || '', nodeId, canRunLastRun)
   const isRunning = useMemo(() => {
@@ -55,7 +56,7 @@ const LastRun: FC<Props> = ({
 
     if (!isRunAfterSingleRun)
       return isFetching
-    return [NodeRunningStatus.Running, NodeRunningStatus.NotStart].includes(oneStepRunRunningStatus!)
+    return ([NodeRunningStatus.Running, NodeRunningStatus.NotStart] as NodeRunningStatus[]).includes(oneStepRunRunningStatus!)
   }, [isFetching, isPaused, isRunAfterSingleRun, oneStepRunRunningStatus])
 
   const noLastRun = (error as any)?.status === 404
@@ -87,7 +88,7 @@ const LastRun: FC<Props> = ({
   }, [isOneStepRunSucceed, isOneStepRunFailed, oneStepRunRunningStatus])
 
   useEffect(() => {
-    if ([NodeRunningStatus.Succeeded, NodeRunningStatus.Failed].includes(oneStepRunRunningStatus!))
+    if (([NodeRunningStatus.Succeeded, NodeRunningStatus.Failed] as NodeRunningStatus[]).includes(oneStepRunRunningStatus!))
       setHidePageOneStepFinishedStatus(oneStepRunRunningStatus!)
   }, [oneStepRunRunningStatus])
 

@@ -9,7 +9,7 @@ import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
+} from '@/app/components/base/portal-to-follow-elem-plus'
 import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
 import VariableLabelInSelect from '@/app/components/workflow/nodes/_base/components/variable/variable-label/variable-label-in-select'
 import { BlockEnum } from '@/app/components/workflow/types'

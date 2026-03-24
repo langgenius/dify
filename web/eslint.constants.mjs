@@ -92,6 +92,8 @@ export const OVERLAY_RESTRICTED_IMPORT_PATTERNS = [
 ]
 
 export const OVERLAY_MIGRATION_LEGACY_BASE_FILES = [
+  'app/components/base/portal-to-follow-elem-plus/index.tsx',
+  'app/components/base/portal-to-follow-elem-plus/use-context-menu-floating.ts',
   'app/components/base/chat/chat-with-history/header/mobile-operation-dropdown.tsx',
   'app/components/base/chat/chat-with-history/header/operation.tsx',
   'app/components/base/chat/chat-with-history/inputs-form/view-form-dropdown.tsx',

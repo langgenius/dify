@@ -1,6 +1,6 @@
 import type { VarInspectValue } from './value-types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
-import type { VarInInspect } from '@/types/workflow'
+import type { FileResponse, VarInInspect } from '@/types/workflow'
 import { useDebounceFn } from 'ahooks'
 import * as React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -54,10 +54,14 @@ type EditorState = {
 }
 
 const formatFileValue = (value: VarInInspect, isSysFiles: boolean): FileEntity[] => {
-  if (value.value_type === VarType.file)
-    return value.value ? getProcessedFilesFromResponse([value.value]) : []
-  if (value.value_type === VarType.arrayFile || (value.type === VarInInspectType.system && isSysFiles))
-    return value.value && value.value.length > 0 ? getProcessedFilesFromResponse(value.value) : []
+  if (value.value_type === VarType.file) {
+    const v = value.value
+    return v != null ? getProcessedFilesFromResponse([v as unknown as FileResponse]) : []
+  }
+  if (value.value_type === VarType.arrayFile || (value.type === VarInInspectType.system && isSysFiles)) {
+    const v = value.value
+    return Array.isArray(v) && v.length > 0 ? getProcessedFilesFromResponse(v as unknown as FileResponse[]) : []
+  }
   return []
 }
 
@@ -89,8 +93,8 @@ const ValueContent = ({
     const textValue = showTextEditor
       ? (
           currentVar.value_type === VarType.number
-            ? JSON.stringify(currentVar.value)
-            : (currentVar.value || '')
+            ? JSON.stringify(currentVar.value ?? '')
+            : (typeof currentVar.value === 'string' || typeof currentVar.value === 'number' ? currentVar.value : String(currentVar.value ?? ''))
         )
       : ''
     const jsonValue = showJSONEditor
@@ -261,7 +265,7 @@ const ValueContent = ({
         {
           showBoolArrayEditor && (
             <div className="w-[295px] space-y-1">
-              {currentVar.value.map((v: boolean, i: number) => (
+              {(currentVar.value as boolean[]).map((v: boolean, i: number) => (
                 <BoolValue
                   key={i}
                   value={v}

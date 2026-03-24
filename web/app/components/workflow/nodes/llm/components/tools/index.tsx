@@ -1,7 +1,8 @@
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Tooltip from '@/app/components/base/tooltip'
+
+import Tooltip from '@/app/components/base/tooltip-plus'
 import MultipleToolSelector from '@/app/components/plugins/plugin-detail-panel/multiple-tool-selector'
 import { BoxGroup } from '@/app/components/workflow/nodes/_base/components/layout'
 import { cn } from '@/utils/classnames'

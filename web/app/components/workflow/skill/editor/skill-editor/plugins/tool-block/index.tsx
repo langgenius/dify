@@ -4,13 +4,10 @@ import { mergeRegister } from '@lexical/utils'
 import {
   $insertNodes,
   COMMAND_PRIORITY_EDITOR,
-  createCommand,
 } from 'lexical'
 import { memo, useEffect } from 'react'
+import { DELETE_TOOL_BLOCK_COMMAND, INSERT_TOOL_BLOCK_COMMAND } from './commands'
 import { $createToolBlockNode, ToolBlockNode } from './node'
-
-export const INSERT_TOOL_BLOCK_COMMAND = createCommand<ToolBlockPayload>('INSERT_TOOL_BLOCK_COMMAND')
-export const DELETE_TOOL_BLOCK_COMMAND = createCommand('DELETE_TOOL_BLOCK_COMMAND')
 
 const ToolBlock = memo(() => {
   const [editor] = useLexicalComposerContext()

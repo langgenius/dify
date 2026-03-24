@@ -128,7 +128,7 @@ const varTypeToInputVarType = (type: VarType, {
     return InputVarType.number
   if (type === VarType.boolean)
     return InputVarType.checkbox
-  if ([VarType.object, VarType.array, VarType.arrayNumber, VarType.arrayString, VarType.arrayObject].includes(type))
+  if (([VarType.object, VarType.array, VarType.arrayNumber, VarType.arrayString, VarType.arrayObject] as VarType[]).includes(type))
     return InputVarType.json
   if (type === VarType.file)
     return InputVarType.singleFile

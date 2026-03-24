@@ -1,5 +1,6 @@
 import { memo } from 'react'
-import Tooltip from '@/app/components/base/tooltip'
+
+import Tooltip from '@/app/components/base/tooltip-plus'
 import {
   NumberField,
   NumberFieldControls,

@@ -61,10 +61,12 @@ const Form: FC<Props> = ({
       onChange(newValues)
     }
   }, [valuesRef, onChange, mapKeysWithSameValueSelector])
-  const isArrayLikeType = [InputVarType.contexts, InputVarType.iterator].includes(inputs[0]?.type)
-  const isIteratorItemFile = inputs[0]?.type === InputVarType.iterator && inputs[0]?.isFileItem
+  const firstInputType = inputs[0]?.type
+  const isArrayLikeType = firstInputType !== undefined
+    && ([InputVarType.contexts, InputVarType.iterator] as InputVarType[]).includes(firstInputType)
+  const isIteratorItemFile = firstInputType === InputVarType.iterator && inputs[0]?.isFileItem
 
-  const isContext = inputs[0]?.type === InputVarType.contexts
+  const isContext = firstInputType === InputVarType.contexts
   const handleAddContext = useCallback(() => {
     const newValues = produce(values, (draft: any) => {
       const key = inputs[0].variable

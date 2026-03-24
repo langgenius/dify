@@ -129,7 +129,7 @@ def create_app() -> tuple[socketio.WSGIApp, DifyApp]:
     app = create_flask_app_with_configs()
     initialize_extensions(app)
 
-    sio.app = app
+    setattr(sio, "app", app)
     socketio_app = socketio.WSGIApp(sio, app)
 
     end_time = time.perf_counter()

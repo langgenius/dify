@@ -42,7 +42,7 @@ def socket_connect(sid, environ, auth):
             logging.warning("Socket connect rejected: missing user_id (sid=%s)", sid)
             return False
 
-        with sio.app.app_context():
+        with getattr(sio, "app").app_context():
             user = AccountService.load_logged_in_account(account_id=user_id)
             if not user:
                 logging.warning("Socket connect rejected: user not found (user_id=%s, sid=%s)", user_id, sid)

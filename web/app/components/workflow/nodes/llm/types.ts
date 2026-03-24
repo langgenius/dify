@@ -8,9 +8,9 @@ export type Tool = {
   tool_name: string
   plugin_unique_identifier?: string
   credential_id?: string
-  parameters?: Record<string, any>
-  settings?: Record<string, any>
-  extra?: Record<string, any>
+  parameters?: Record<string, unknown>
+  settings?: Record<string, unknown>
+  extra?: Record<string, unknown>
 }
 
 export type ToolSetting = {

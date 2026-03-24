@@ -136,7 +136,7 @@ const LoopResultPanel: FC<Props> = ({
                       title={<div>{t('nodes.loop.loopVariables', { ns: 'workflow' }).toLocaleUpperCase()}</div>}
                       language={CodeLanguage.json}
                       height={112}
-                      value={loopVariableMap[index]}
+                      value={loopVariableMap[String(index)] as string | object}
                       isJSONStringifyBeauty
                     />
                   </div>

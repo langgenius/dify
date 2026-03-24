@@ -11,22 +11,22 @@ import {
   RiFileDownloadLine,
   RiFileUploadLine,
 } from '@remixicon/react'
-import dynamic from 'next/dynamic'
-import { useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import CardView from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/card-view'
 import { useStore as useAppStore } from '@/app/components/app/store'
+
 import Button from '@/app/components/base/button'
 import ContentDialog from '@/app/components/base/content-dialog'
-import { ToastContext } from '@/app/components/base/toast/context'
+import { toast } from '@/app/components/base/ui/toast'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
+import dynamic from '@/next/dynamic'
+import { useRouter } from '@/next/navigation'
 import { copyApp, deleteApp, exportAppBundle, exportAppConfig, fetchAppDetail, updateAppInfo } from '@/service/apps'
 import { useInvalidateAppList } from '@/service/use-apps'
 import { fetchWorkflowDraft } from '@/service/workflow'
@@ -65,7 +65,7 @@ export type IAppInfoProps = {
 
 const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailExpand }: IAppInfoProps) => {
   const { t } = useTranslation()
-  const { notify } = useContext(ToastContext)
+
   const { replace } = useRouter()
   const { onPlanInfoChanged } = useProviderContext()
   const appDetail = useAppStore(state => state.appDetail)
@@ -117,17 +117,14 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
         max_active_requests,
       })
       setShowEditModal(false)
-      notify({
-        type: 'success',
-        message: t('editDone', { ns: 'app' }),
-      })
+      toast.success(t('editDone', { ns: 'app' }))
       setAppDetail(app)
       emitAppMetaUpdate()
     }
     catch {
-      notify({ type: 'error', message: t('editFailed', { ns: 'app' }) })
+      toast.error(t('editFailed', { ns: 'app' }))
     }
-  }, [appDetail, notify, setAppDetail, t, emitAppMetaUpdate])
+  }, [appDetail, setAppDetail, t, emitAppMetaUpdate])
 
   const onCopy: DuplicateAppModalProps['onConfirm'] = async ({ name, icon_type, icon, icon_background }) => {
     if (!appDetail)
@@ -142,16 +139,13 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
         mode: appDetail.mode,
       })
       setShowDuplicateModal(false)
-      notify({
-        type: 'success',
-        message: t('newApp.appCreated', { ns: 'app' }),
-      })
+      toast.success(t('newApp.appCreated', { ns: 'app' }))
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
       onPlanInfoChanged()
       getRedirection(true, newApp, replace)
     }
     catch {
-      notify({ type: 'error', message: t('newApp.appCreateFailed', { ns: 'app' }) })
+      toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
     }
   }
 
@@ -174,7 +168,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
       downloadBlob({ data: file, fileName: `${appDetail.name}.yaml` })
     }
     catch {
-      notify({ type: 'error', message: t('exportFailed', { ns: 'app' }) })
+      toast.error(t('exportFailed', { ns: 'app' }))
     }
   }
 
@@ -205,7 +199,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
       setExportSandboxed(sandboxed)
     }
     catch {
-      notify({ type: 'error', message: t('exportFailed', { ns: 'app' }) })
+      toast.error(t('exportFailed', { ns: 'app' }))
     }
   }
 
@@ -214,20 +208,20 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
       return
     try {
       await deleteApp(appDetail.id)
-      notify({ type: 'success', message: t('appDeleted', { ns: 'app' }) })
+      toast.success(t('appDeleted', { ns: 'app' }))
       invalidateAppList()
       onPlanInfoChanged()
       setAppDetail()
       replace('/apps')
     }
-    catch (e: any) {
-      notify({
-        type: 'error',
-        message: `${t('appDeleteFailed', { ns: 'app' })}${'message' in e ? `: ${e.message}` : ''}`,
-      })
+    catch (e: unknown) {
+      const suffix = typeof e === 'object' && e !== null && 'message' in e
+        ? `: ${String((e as { message: unknown }).message)}`
+        : ''
+      toast.error(`${t('appDeleteFailed', { ns: 'app' })}${suffix}`)
     }
     setShowConfirmDelete(false)
-  }, [appDetail, invalidateAppList, notify, onPlanInfoChanged, replace, setAppDetail, t])
+  }, [appDetail, invalidateAppList, onPlanInfoChanged, replace, setAppDetail, t])
 
   useEffect(() => {
     if (!appDetail?.id)

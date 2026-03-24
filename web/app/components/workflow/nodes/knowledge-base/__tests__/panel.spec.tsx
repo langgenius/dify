@@ -131,7 +131,7 @@ const panelProps: PanelProps = {
   runInputData: {},
   runInputDataRef: { current: {} },
   setRunInputData: vi.fn(),
-  runResult: undefined,
+  runResult: null,
 }
 
 describe('KnowledgeBasePanel', () => {

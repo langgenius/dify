@@ -189,7 +189,9 @@ const ConfigModal: FC<IConfigModalProps> = ({
       draft.type = type
       if (type === InputVarType.select)
         draft.default = undefined
-      if ([InputVarType.singleFile, InputVarType.multiFiles].includes(type)) {
+      if (([InputVarType.singleFile, InputVarType.multiFiles] as const).includes(
+        type as typeof InputVarType.singleFile | typeof InputVarType.multiFiles,
+      )) {
         (Object.keys(DEFAULT_FILE_UPLOAD_SETTING)).forEach((key) => {
           if (key !== 'max_length')
             (draft as any)[key] = (DEFAULT_FILE_UPLOAD_SETTING as any)[key]
@@ -290,7 +292,9 @@ const ConfigModal: FC<IConfigModalProps> = ({
       }
       onConfirm(payloadToSave, moreInfo)
     }
-    else if ([InputVarType.singleFile, InputVarType.multiFiles].includes(type)) {
+    else if (([InputVarType.singleFile, InputVarType.multiFiles] as const).includes(
+      type as typeof InputVarType.singleFile | typeof InputVarType.multiFiles,
+    )) {
       if (tempPayload.allowed_file_types?.length === 0) {
         const errorMessages = t('errorMsg.fieldRequired', { ns: 'workflow', field: t('variableConfig.file.supportFileTypes', { ns: 'appDebug' }) })
         Toast.notify({ type: 'error', message: errorMessages })
@@ -438,7 +442,9 @@ const ConfigModal: FC<IConfigModalProps> = ({
             </>
           )}
 
-          {[InputVarType.singleFile, InputVarType.multiFiles].includes(type) && (
+          {([InputVarType.singleFile, InputVarType.multiFiles] as const).includes(
+            type as typeof InputVarType.singleFile | typeof InputVarType.multiFiles,
+          ) && (
             <>
               <FileUploadSetting
                 payload={tempPayload as UploadFileSetting}

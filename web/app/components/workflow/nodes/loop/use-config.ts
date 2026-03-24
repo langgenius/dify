@@ -51,7 +51,7 @@ const useConfig = (id: string, payload: LoopNodeType) => {
   }, [setInputs])
 
   const filterInputVar = useCallback((varPayload: Var) => {
-    return [VarType.array, VarType.arrayString, VarType.arrayNumber, VarType.arrayObject, VarType.arrayFile].includes(varPayload.type)
+    return ([VarType.array, VarType.arrayString, VarType.arrayNumber, VarType.arrayObject, VarType.arrayFile] as VarType[]).includes(varPayload.type)
   }, [])
 
   // output

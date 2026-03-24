@@ -13,7 +13,7 @@ import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
+} from '@/app/components/base/portal-to-follow-elem-plus'
 import AddButton from '@/app/components/workflow/nodes/_base/components/add-button'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'

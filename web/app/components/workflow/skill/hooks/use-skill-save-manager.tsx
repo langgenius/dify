@@ -5,7 +5,7 @@ import isDeepEqual from 'fast-deep-equal'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { extractToolConfigIds } from '@/app/components/workflow/utils'
 import { useGlobalPublicStore } from '@/context/global-public-context'
@@ -287,10 +287,10 @@ export const SkillSaveProvider = ({
           const errorMessage = result.error instanceof Error
             ? result.error.message
             : String(result.error)
-          Toast.notify({ type: 'error', message: errorMessage })
+          toast.error(errorMessage)
         }
         else if (result.saved) {
-          Toast.notify({ type: 'success', message: t('api.saved', { ns: 'common' }) })
+          toast.success(t('api.saved', { ns: 'common' }))
         }
       })
     }

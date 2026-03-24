@@ -20,7 +20,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { useStore as useReactFlowStore } from 'reactflow'
 import { shallow } from 'zustand/shallow'
-import Tooltip from '@/app/components/base/tooltip'
+import Tooltip from '@/app/components/base/tooltip-plus'
 import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
 import { useNodesInteractions, useNodesReadOnly, useNodesSyncDraft } from './hooks'
 import { useSelectionInteractions } from './hooks/use-selection-interactions'

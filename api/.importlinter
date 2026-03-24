@@ -33,6 +33,12 @@ ignore_imports =
     # TODO(QuantumGhost): fix the import violation later
     dify_graph.entities.pause_reason -> dify_graph.nodes.human_input.entities
 
+    dify_graph.nodes.base.node -> core.workflow.node_factory
+    dify_graph.nodes.tool.tool_node -> core.workflow.node_factory
+    dify_graph.file.file_manager -> models.model
+    dify_graph.file.file_manager -> models.tools
+    dify_graph.file.file_manager -> extensions.ext_database
+
 [importlinter:contract:workflow-infrastructure-dependencies]
 name = Workflow Infrastructure Dependencies
 type = forbidden
@@ -46,6 +52,8 @@ ignore_imports =
     dify_graph.nodes.llm.node -> extensions.ext_database
     dify_graph.model_runtime.model_providers.__base.ai_model -> extensions.ext_redis
     dify_graph.model_runtime.model_providers.model_provider_factory -> extensions.ext_redis
+    dify_graph.file.file_manager -> extensions.ext_database
+    dify_graph.nodes.llm.llm_utils -> extensions.ext_database
 
 [importlinter:contract:workflow-external-imports]
 name = Workflow External Imports
@@ -104,6 +112,7 @@ ignore_imports =
     dify_graph.nodes.question_classifier.question_classifier_node -> core.model_manager
     dify_graph.nodes.tool.tool_node -> core.tools.utils.message_transformer
     dify_graph.nodes.llm.node -> core.llm_generator.output_parser.errors
+    dify_graph.nodes.llm.node -> core.llm_generator.output_parser.file_ref
     dify_graph.nodes.llm.node -> core.llm_generator.output_parser.structured_output
     dify_graph.nodes.llm.node -> core.model_manager
     dify_graph.nodes.llm.entities -> core.prompt.entities.advanced_prompt_entities
@@ -120,6 +129,23 @@ ignore_imports =
     dify_graph.nodes.tool.tool_node -> core.tools.errors
     dify_graph.nodes.llm.node -> extensions.ext_database
     dify_graph.nodes.llm.node -> models.model
+    dify_graph.nodes.llm.node -> configs
+    dify_graph.nodes.llm.node -> core.agent.entities
+    dify_graph.nodes.llm.node -> core.agent.patterns
+    dify_graph.nodes.llm.node -> core.app.entities.app_invoke_entities
+    dify_graph.nodes.llm.node -> core.helper.code_executor
+    dify_graph.nodes.llm.node -> core.memory.base
+    dify_graph.nodes.llm.node -> core.sandbox
+    dify_graph.nodes.llm.node -> core.sandbox.bash.session
+    dify_graph.nodes.llm.node -> core.sandbox.entities.config
+    dify_graph.nodes.llm.node -> core.skill.assembler
+    dify_graph.nodes.llm.node -> core.skill.constants
+    dify_graph.nodes.llm.node -> core.skill.entities.skill_bundle
+    dify_graph.nodes.llm.node -> core.skill.entities.skill_document
+    dify_graph.nodes.llm.node -> core.skill.entities.skill_metadata
+    dify_graph.nodes.llm.node -> core.skill.entities.tool_dependencies
+    dify_graph.nodes.llm.node -> core.tools.tool_file_manager
+    dify_graph.nodes.llm.node -> core.tools.tool_manager
     dify_graph.nodes.tool.tool_node -> services
     dify_graph.model_runtime.model_providers.__base.ai_model -> configs
     dify_graph.model_runtime.model_providers.__base.ai_model -> extensions.ext_redis
@@ -128,6 +154,20 @@ ignore_imports =
     dify_graph.model_runtime.model_providers.model_provider_factory -> configs
     dify_graph.model_runtime.model_providers.model_provider_factory -> extensions.ext_redis
     dify_graph.model_runtime.model_providers.model_provider_factory -> models.provider_ids
+    dify_graph.file.file_manager -> configs
+    dify_graph.file.file_manager -> extensions.ext_database
+    dify_graph.file.file_manager -> models.model
+    dify_graph.file.file_manager -> models.tools
+    dify_graph.nodes.llm.llm_utils -> core.app.llm.model_access
+    dify_graph.nodes.llm.llm_utils -> core.app.llm.quota
+    dify_graph.nodes.llm.llm_utils -> core.memory
+    dify_graph.nodes.llm.llm_utils -> core.memory.base
+    dify_graph.nodes.llm.llm_utils -> extensions.ext_database
+    dify_graph.nodes.llm.llm_utils -> models.model
+    dify_graph.nodes.llm.llm_utils -> core.prompt.entities.advanced_prompt_entities
+    dify_graph.nodes.llm.entities -> core.agent.entities
+    dify_graph.nodes.base.node -> core.workflow.node_factory
+    dify_graph.nodes.tool.tool_node -> core.workflow.node_factory
 
 [importlinter:contract:rsc]
 name = RSC

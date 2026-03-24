@@ -64,7 +64,7 @@ const DSLExportConfirmModal = ({
                   </div>
                 </td>
                 <td className={cn('h-7 pl-3', index + 1 !== envList.length && 'border-b')}>
-                  <div className="truncate text-text-secondary system-xs-regular">{env.value}</div>
+                  <div className="truncate text-text-secondary system-xs-regular">{String(env.value ?? '')}</div>
                 </td>
               </tr>
             ))}

@@ -1,4 +1,4 @@
-import type { Node } from '@/app/components/workflow/types'
+import type { JsonValue, Node } from '@/app/components/workflow/types'
 import type { NodeWithVar, VarInInspect } from '@/types/workflow'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import { AGENT_CONTEXT_VAR_PATTERN, getAgentNodeIdFromContextVar } from '@/app/components/workflow/utils/agent-context'
@@ -248,7 +248,7 @@ export const applyAgentSubgraphInspectVars = (nodesWithInspectVars: NodeWithVar[
       id: aliasId,
       name: mapping.aliasName,
       selector: [mapping.parentNodeId, mapping.aliasName],
-      value: resolvedValue,
+      value: resolvedValue as JsonValue,
       visible: true,
       aliasMeta: {
         extractorNodeId: mapping.extractorNodeId,

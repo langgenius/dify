@@ -170,7 +170,9 @@ const ViewHistory = ({
                         }}
                       >
                         {
-                          !isChatMode && [WorkflowRunningStatus.Stopped, WorkflowRunningStatus.Paused].includes(item.status) && (
+                          !isChatMode && ([WorkflowRunningStatus.Stopped, WorkflowRunningStatus.Paused] as const).includes(
+                            item.status as typeof WorkflowRunningStatus.Stopped | typeof WorkflowRunningStatus.Paused,
+                          ) && (
                             <span className="i-custom-vender-line-alertsAndFeedback-alert-triangle mr-1.5 mt-0.5 h-3.5 w-3.5 text-[#F79009]" />
                           )
                         }

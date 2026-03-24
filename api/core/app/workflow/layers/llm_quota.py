@@ -5,7 +5,7 @@ This layer centralizes model-quota deduction outside node implementations.
 """
 
 import logging
-from typing import TYPE_CHECKING, cast, final
+from typing import final
 
 from typing_extensions import override
 
@@ -18,11 +18,6 @@ from dify_graph.graph_engine.layers.base import GraphEngineLayer
 from dify_graph.graph_events import GraphEngineEvent, GraphNodeEventBase
 from dify_graph.graph_events.node import NodeRunSucceededEvent
 from dify_graph.nodes.base.node import Node
-
-if TYPE_CHECKING:
-    from dify_graph.nodes.llm.node import LLMNode
-    from dify_graph.nodes.parameter_extractor.parameter_extractor_node import ParameterExtractorNode
-    from dify_graph.nodes.question_classifier.question_classifier_node import QuestionClassifierNode
 
 logger = logging.getLogger(__name__)
 
@@ -111,19 +106,16 @@ class LLMQuotaLayer(GraphEngineLayer):
 
     @staticmethod
     def _extract_model_instance(node: Node) -> ModelInstance | None:
-        try:
-            match node.node_type:
-                case BuiltinNodeTypes.LLM:
-                    return cast("LLMNode", node).model_instance
-                case BuiltinNodeTypes.PARAMETER_EXTRACTOR:
-                    return cast("ParameterExtractorNode", node).model_instance
-                case BuiltinNodeTypes.QUESTION_CLASSIFIER:
-                    return cast("QuestionClassifierNode", node).model_instance
-                case _:
-                    return None
-        except AttributeError:
-            logger.warning(
-                "LLMQuotaLayer skipped quota deduction because node does not expose a model instance, node_id=%s",
-                node.id,
-            )
-            return None
+        match node.node_type:
+            case BuiltinNodeTypes.LLM | BuiltinNodeTypes.PARAMETER_EXTRACTOR | BuiltinNodeTypes.QUESTION_CLASSIFIER:
+                instance = getattr(node, "model_instance", None)
+                if isinstance(instance, ModelInstance):
+                    return instance
+                logger.warning(
+                    "LLMQuotaLayer skipped quota deduction because node does not expose a model instance,"
+                    " node_id=%s",
+                    node.id,
+                )
+                return None
+            case _:
+                return None

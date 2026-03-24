@@ -133,8 +133,11 @@ const markNodesStopped = (traces?: WorkflowProcess['tracing']) => {
     return
 
   const markTrace = (trace: WorkflowProcess['tracing'][number]) => {
-    if ([NodeRunningStatus.Running, NodeRunningStatus.Waiting].includes(trace.status as NodeRunningStatus))
+    if (([NodeRunningStatus.Running, NodeRunningStatus.Waiting] as const).includes(
+      trace.status as typeof NodeRunningStatus.Running | typeof NodeRunningStatus.Waiting,
+    )) {
       trace.status = NodeRunningStatus.Stopped
+    }
 
     trace.details?.forEach(detailGroup => detailGroup.forEach(markTrace))
     trace.retryDetail?.forEach(markTrace)
@@ -150,8 +153,11 @@ const applyWorkflowFinishedState = (
 ) => {
   return updateWorkflowProcess(current, (draft) => {
     draft.status = status
-    if ([WorkflowRunningStatus.Stopped, WorkflowRunningStatus.Failed].includes(status))
+    if (([WorkflowRunningStatus.Stopped, WorkflowRunningStatus.Failed] as const).includes(
+      status as typeof WorkflowRunningStatus.Stopped | typeof WorkflowRunningStatus.Failed,
+    )) {
       markNodesStopped(draft.tracing)
+    }
   })
 }
 
@@ -353,12 +359,22 @@ export const createWorkflowStreamHandlers = ({
       const serializedOutputs = serializeWorkflowOutputs(data.outputs)
       setCompletionRes(serializedOutputs)
       if (data.outputs) {
-        const outputKeys = Object.keys(data.outputs)
-        const isStringOutput = outputKeys.length === 1 && typeof data.outputs[outputKeys[0]] === 'string'
-        if (isStringOutput) {
+        const out = data.outputs
+        if (typeof out === 'string') {
           setWorkflowProcessData(updateWorkflowProcess(getWorkflowProcessData(), (draft) => {
-            draft.resultText = data.outputs[outputKeys[0]]
+            draft.resultText = out
           }))
+        }
+        else {
+          const outputKeys = Object.keys(out)
+          const firstKey = outputKeys[0]
+          const firstVal = firstKey !== undefined ? out[firstKey] : undefined
+          const isStringOutput = outputKeys.length === 1 && typeof firstVal === 'string'
+          if (isStringOutput && typeof firstVal === 'string') {
+            setWorkflowProcessData(updateWorkflowProcess(getWorkflowProcessData(), (draft) => {
+              draft.resultText = firstVal
+            }))
+          }
         }
       }
 

@@ -15,10 +15,6 @@ from typing import TYPE_CHECKING, Any, Literal, cast
 
 from sqlalchemy import select
 
-from core.agent.entities import AgentEntity, AgentLog, AgentResult, AgentToolEntity, ExecutionContext
-from core.agent.patterns import StrategyFactory
-from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
-from core.helper.code_executor import CodeExecutor, CodeLanguage
 from core.llm_generator.output_parser.errors import OutputParserError
 from core.llm_generator.output_parser.file_ref import (
     adapt_schema_for_sandbox_file_paths,
@@ -28,24 +24,10 @@ from core.llm_generator.output_parser.file_ref import (
 from core.llm_generator.output_parser.structured_output import (
     invoke_llm_with_structured_output,
 )
-from core.memory.base import BaseMemory
 from core.model_manager import ModelInstance, ModelManager
 from core.prompt.entities.advanced_prompt_entities import CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
-from core.rag.entities.citation_metadata import RetrievalSourceMetadata
-from core.sandbox import Sandbox
-from core.sandbox.bash.session import MAX_OUTPUT_FILE_SIZE, MAX_OUTPUT_FILES, SandboxBashSession
-from core.sandbox.entities.config import AppAssets
-from core.skill.assembler import SkillDocumentAssembler
-from core.skill.constants import SkillAttrs
-from core.skill.entities.skill_bundle import SkillBundle
-from core.skill.entities.skill_document import SkillDocument
-from core.skill.entities.skill_metadata import SkillMetadata
-from core.skill.entities.tool_dependencies import ToolDependencies, ToolDependency
-from core.tools.__base.tool import Tool
 from core.tools.signature import sign_tool_file, sign_upload_file
-from core.tools.tool_file_manager import ToolFileManager
-from core.tools.tool_manager import ToolManager
 from dify_graph.constants import SYSTEM_VARIABLE_NODE_ID
 from dify_graph.entities import GraphInitParams, ToolCall, ToolResult, ToolResultStatus
 from dify_graph.entities.graph_config import NodeConfigDict
@@ -148,6 +130,15 @@ from .exc import (
 from .file_saver import FileSaverImpl, LLMFileSaver
 
 if TYPE_CHECKING:
+    from core.agent.entities import AgentLog, AgentResult
+    from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
+    from core.memory.base import BaseMemory
+    from core.rag.entities.citation_metadata import RetrievalSourceMetadata
+    from core.sandbox import Sandbox
+    from core.skill.entities.skill_bundle import SkillBundle
+    from core.skill.entities.tool_dependencies import ToolDependencies, ToolDependency
+    from core.tools.__base.tool import Tool
+
     from dify_graph.file.models import File
     from dify_graph.runtime import GraphRuntimeState
 
@@ -199,6 +190,8 @@ class LLMNode(Node[LLMNodeData]):
         return "1"
 
     def _run(self) -> Generator:
+        from core.sandbox.bash.session import MAX_OUTPUT_FILES
+
         node_inputs: dict[str, Any] = {}
         process_data: dict[str, Any] = {}
         clean_text = ""
@@ -1162,6 +1155,8 @@ class LLMNode(Node[LLMNodeData]):
                 )
 
     def _convert_to_original_retriever_resource(self, context_dict: dict) -> RetrievalSourceMetadata | None:
+        from core.rag.entities.citation_metadata import RetrievalSourceMetadata
+
         if (
             "metadata" in context_dict
             and "_source" in context_dict["metadata"]
@@ -1512,6 +1507,12 @@ class LLMNode(Node[LLMNodeData]):
         vision_detail_config: ImagePromptMessageContent.DETAIL,
         sandbox: Sandbox | None = None,
     ) -> Sequence[PromptMessage]:
+        from core.sandbox.entities.config import AppAssets
+        from core.skill.assembler import SkillDocumentAssembler
+        from core.skill.constants import SkillAttrs
+        from core.skill.entities.skill_document import SkillDocument
+        from core.skill.entities.skill_metadata import SkillMetadata
+
         prompt_messages: list[PromptMessage] = []
 
         bundle: SkillBundle | None = None
@@ -1659,6 +1660,9 @@ class LLMNode(Node[LLMNodeData]):
         return normalized
 
     def _resolve_sandbox_file_path(self, *, sandbox: Sandbox, path: str) -> File:
+        from core.sandbox.bash.session import MAX_OUTPUT_FILE_SIZE
+        from core.tools.tool_file_manager import ToolFileManager
+
         normalized_path = self._normalize_sandbox_file_path(path)
         filename = os.path.basename(normalized_path)
         if not filename:
@@ -1868,6 +1872,8 @@ class LLMNode(Node[LLMNodeData]):
         )
 
     def _extract_disabled_tools(self) -> dict[str, ToolDependency]:
+        from core.skill.entities.tool_dependencies import ToolDependency
+
         tools = [
             ToolDependency(type=tool.type, provider=tool.provider, tool_name=tool.tool_name)
             for tool in self.node_data.tool_settings
@@ -1876,6 +1882,12 @@ class LLMNode(Node[LLMNodeData]):
         return {tool.tool_id(): tool for tool in tools}
 
     def _extract_tool_dependencies(self) -> ToolDependencies | None:
+        from core.sandbox.entities.config import AppAssets
+        from core.skill.assembler import SkillDocumentAssembler
+        from core.skill.constants import SkillAttrs
+        from core.skill.entities.skill_document import SkillDocument
+        from core.skill.entities.skill_metadata import SkillMetadata
+
         sandbox = self.graph_runtime_state.sandbox
         if not sandbox:
             raise LLMNodeError("Sandbox not found")
@@ -1914,6 +1926,9 @@ class LLMNode(Node[LLMNodeData]):
         node_inputs: dict[str, Any],
         process_data: dict[str, Any],
     ) -> Generator[NodeEventBase, None, LLMGenerationData]:
+        from core.agent.entities import ExecutionContext
+        from core.agent.patterns import StrategyFactory
+
         model_features = self._get_model_features(model_instance)
         tool_instances = self._prepare_tool_instances(variable_pool)
         prompt_files = self._extract_prompt_files(variable_pool)
@@ -1946,6 +1961,10 @@ class LLMNode(Node[LLMNodeData]):
         variable_pool: VariablePool,
         tool_dependencies: ToolDependencies | None,
     ) -> Generator[NodeEventBase, None, LLMGenerationData]:
+        from core.agent.entities import AgentEntity, ExecutionContext
+        from core.agent.patterns import StrategyFactory
+        from core.sandbox.bash.session import SandboxBashSession
+
         result: LLMGenerationData | None = None
 
         with SandboxBashSession(sandbox=sandbox, node_id=self.id, tools=tool_dependencies) as session:
@@ -1994,6 +2013,9 @@ class LLMNode(Node[LLMNodeData]):
             return []
 
     def _prepare_tool_instances(self, variable_pool: VariablePool) -> list[Tool]:
+        from core.agent.entities import AgentToolEntity
+        from core.tools.tool_manager import ToolManager
+
         tool_instances = []
 
         if self._node_data.tools:
@@ -2177,6 +2199,8 @@ class LLMNode(Node[LLMNodeData]):
     def _handle_agent_log_output(
         self, output: AgentLog, buffers: StreamBuffers, trace_state: TraceState, agent_context: AgentContext
     ) -> Generator[NodeEventBase, None, None]:
+        from core.agent.entities import AgentLog
+
         payload = ToolLogPayload.from_log(output)
         agent_log_event = AgentLogEvent(
             message_id=output.id,
@@ -2472,6 +2496,8 @@ class LLMNode(Node[LLMNodeData]):
         aggregate: AggregatedResult,
         buffers: StreamBuffers,
     ) -> LLMGenerationData:
+        from core.agent.entities import AgentLog
+
         sequence: list[dict[str, Any]] = []
         reasoning_index = 0
         content_position = 0
@@ -2534,6 +2560,8 @@ class LLMNode(Node[LLMNodeData]):
         self,
         outputs: Generator[LLMResultChunk | AgentLog, None, AgentResult],
     ) -> Generator[NodeEventBase, None, LLMGenerationData]:
+        from core.agent.entities import AgentLog, AgentResult
+
         state = ToolOutputState()
 
         try:
@@ -2588,6 +2616,8 @@ def _render_jinja2_message(
     jinja2_variables: Sequence[VariableSelector],
     variable_pool: VariablePool,
 ):
+    from core.helper.code_executor import CodeExecutor, CodeLanguage
+
     if not template:
         return ""
 

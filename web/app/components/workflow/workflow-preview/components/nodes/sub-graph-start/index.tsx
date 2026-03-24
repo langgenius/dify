@@ -4,7 +4,7 @@ import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AssembleVariablesAlt } from '@/app/components/base/icons/src/vender/line/general'
 import { Agent } from '@/app/components/base/icons/src/vender/workflow'
-import Tooltip from '@/app/components/base/tooltip'
+import Tooltip from '@/app/components/base/tooltip-plus'
 import { cn } from '@/utils/classnames'
 import { NodeSourceHandle } from '../../node-handle'
 

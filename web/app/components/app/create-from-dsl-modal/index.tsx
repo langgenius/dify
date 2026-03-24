@@ -295,7 +295,8 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
                   <div className="absolute bottom-0 h-[2px] w-full bg-util-colors-blue-brand-blue-brand-600"></div>
                 )}
               </div>
-            ))}
+            ))
+          }
         </div>
         <div className="px-6 py-4">
           {currentTab === CreateFromDSLModalTab.FROM_FILE && (

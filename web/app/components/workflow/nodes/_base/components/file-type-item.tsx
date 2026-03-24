@@ -12,7 +12,12 @@ import { cn } from '@/utils/classnames'
 import { SupportUploadFileTypes } from '../../../types'
 
 type Props = {
-  type: SupportUploadFileTypes.image | SupportUploadFileTypes.document | SupportUploadFileTypes.audio | SupportUploadFileTypes.video | SupportUploadFileTypes.custom
+  type:
+    | typeof SupportUploadFileTypes.image
+    | typeof SupportUploadFileTypes.document
+    | typeof SupportUploadFileTypes.audio
+    | typeof SupportUploadFileTypes.video
+    | typeof SupportUploadFileTypes.custom
   selected: boolean
   onToggle: (type: SupportUploadFileTypes) => void
   onCustomFileTypesChange?: (customFileTypes: string[]) => void

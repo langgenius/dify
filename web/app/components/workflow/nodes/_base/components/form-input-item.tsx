@@ -1,7 +1,8 @@
 'use client'
 import type { FC } from 'react'
 import type { NestedNodeConfig, ResourceVarInputs } from '../types'
-import type { CredentialFormSchema, FormOption } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { FormOption as BaseSelectFormOption } from '@/app/components/base/form/types'
+import type { CredentialFormSchema, FormOption, FormShowOnObject, TypeWithI18N } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Event, Tool } from '@/app/components/tools/types'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import type { ToolWithProvider, ValueSelector, Var } from '@/app/components/workflow/types'
@@ -34,18 +35,44 @@ import { VarKindType } from '../types'
 import FormInputBoolean from './form-input-boolean'
 import FormInputTypeSwitch from './form-input-type-switch'
 
+type SelectOptionRow = FormOption | BaseSelectFormOption
+
+function credentialInputMatchesShowOn(value: ResourceVarInputs, showOnItem: FormShowOnObject): boolean {
+  const entry = value[showOnItem.variable]
+  const comparable = entry !== undefined && entry !== null && typeof entry === 'object' && 'value' in entry
+    ? (entry as { value: unknown }).value
+    : entry
+  return comparable === showOnItem.value
+}
+
+function selectOptionDisplayLabel(opt: SelectOptionRow, language: string): string {
+  const { label } = opt
+  if (typeof label === 'string')
+    return label
+  if (label && typeof label === 'object')
+    return (label as Record<string, string | undefined>)[language] || (label as { en_US?: string }).en_US || opt.value
+  return opt.value
+}
+
+type CredentialFormSchemaRuntime = CredentialFormSchema & {
+  _type?: FormTypeEnum
+  multiple?: boolean
+  options?: FormOption[]
+  placeholder?: TypeWithI18N
+}
+
 type Props = {
   readOnly: boolean
   nodeId: string
   schema: CredentialFormSchema
   value: ResourceVarInputs
-  onChange: (value: any) => void
+  onChange: (value: ResourceVarInputs) => void
   inPanel?: boolean
   currentTool?: Tool | Event
   currentProvider?: ToolWithProvider | TriggerWithProvider
   showManageInputField?: boolean
   onManageInputField?: () => void
-  extraParams?: Record<string, any>
+  extraParams?: Record<string, unknown>
   providerType?: string
   disableVariableInsertion?: boolean
 }
@@ -59,7 +86,7 @@ type VariableReferenceFieldsProps = {
   varInput: ResourceVarInputs[string]
   targetVarType: string
   filterVar?: (payload: Var, selector: ValueSelector) => boolean
-  onValueChange: (newValue: any) => void
+  onValueChange: (newValue: unknown) => void
   onVariableSelectorChange: (newValue: ValueSelector | string) => void
   showManageInputField?: boolean
   onManageInputField?: () => void
@@ -156,7 +183,7 @@ const FormInputItem: FC<Props> = ({
   const hooksStore = useContext(HooksStoreContext)
   const workflowStore = useContext(WorkflowContext)
   const canUseWorkflowHooks = !!hooksStore && !!workflowStore
-  const [toolsOptions, setToolsOptions] = useState<FormOption[] | null>(null)
+  const [toolsOptions, setToolsOptions] = useState<SelectOptionRow[] | null>(null)
   const [isLoadingToolsOptions, setIsLoadingToolsOptions] = useState(false)
 
   const {
@@ -165,10 +192,10 @@ const FormInputItem: FC<Props> = ({
     type,
     _type,
     default: defaultValue,
-    options,
+    options = [],
     multiple,
     scope,
-  } = schema as any
+  } = schema as CredentialFormSchemaRuntime
   const varInput = value[variable]
   const isString = type === FormTypeEnum.textInput || type === FormTypeEnum.secretInput
   const isNumber = type === FormTypeEnum.textNumber
@@ -215,17 +242,17 @@ const FormInputItem: FC<Props> = ({
 
   const getFilterVar = () => {
     if (isNumber)
-      return (varPayload: any) => varPayload.type === VarType.number
+      return (varPayload: Var) => varPayload.type === VarType.number
     else if (isString)
-      return (varPayload: any) => [VarType.string, VarType.number, VarType.secret].includes(varPayload.type)
+      return (varPayload: Var) => ([VarType.string, VarType.number, VarType.secret] as VarType[]).includes(varPayload.type)
     else if (isFile)
-      return (varPayload: any) => [VarType.file, VarType.arrayFile].includes(varPayload.type)
+      return (varPayload: Var) => ([VarType.file, VarType.arrayFile] as VarType[]).includes(varPayload.type)
     else if (isBoolean)
-      return (varPayload: any) => varPayload.type === VarType.boolean
+      return (varPayload: Var) => varPayload.type === VarType.boolean
     else if (isObject)
-      return (varPayload: any) => varPayload.type === VarType.object
+      return (varPayload: Var) => varPayload.type === VarType.object
     else if (isArray)
-      return (varPayload: any) => [VarType.array, VarType.arrayString, VarType.arrayNumber, VarType.arrayObject, VarType.arrayMessage].includes(varPayload.type)
+      return (varPayload: Var) => ([VarType.array, VarType.arrayString, VarType.arrayNumber, VarType.arrayObject, VarType.arrayMessage] as VarType[]).includes(varPayload.type)
     return undefined
   }
 
@@ -320,17 +347,17 @@ const FormInputItem: FC<Props> = ({
     }
   }
 
-  const handleValueChange = (newValue: any, newType?: VarKindType, nestedNodeConfig?: NestedNodeConfig | null) => {
-    const normalizedValue = isNumber ? Number.parseFloat(newValue) : newValue
+  const handleValueChange = (newValue: unknown, newType?: VarKindType, nestedNodeConfig?: NestedNodeConfig | null) => {
+    const normalizedValue = isNumber ? Number.parseFloat(String(newValue)) : newValue
     const assemblePlaceholder = nodeId && variable
       ? `{{#${nodeId}_ext_${variable}.result#}}`
       : ''
     const isAssembleValue = typeof normalizedValue === 'string'
       && assemblePlaceholder
       && normalizedValue.includes(assemblePlaceholder)
-    const resolvedType = isAssembleValue
+    const resolvedType: VarKindType = isAssembleValue
       ? VarKindType.nested_node
-      : newType ?? (varInput?.type === VarKindType.nested_node ? VarKindType.nested_node : getVarKindType())
+      : newType ?? (varInput?.type === VarKindType.nested_node ? VarKindType.nested_node : getVarKindType() ?? VarKindType.constant)
     const resolvedNestedNodeConfig = resolvedType === VarKindType.nested_node
       ? (nestedNodeConfig ?? varInput?.nested_node_config ?? {
           extractor_node_id: nodeId && variable ? `${nodeId}_ext_${variable}` : '',
@@ -351,25 +378,26 @@ const FormInputItem: FC<Props> = ({
     })
   }
 
-  const getSelectedLabels = (selectedValues: any[]) => {
-    if (!selectedValues || selectedValues.length === 0)
+  const getSelectedLabels = (selectedValues: unknown) => {
+    if (!Array.isArray(selectedValues) || selectedValues.length === 0)
       return ''
 
-    const optionsList = isDynamicSelect ? (dynamicOptions || options || []) : (options || [])
-    const selectedOptions = optionsList.filter((opt: any) =>
-      selectedValues.includes(opt.value),
+    const values = selectedValues as string[]
+    const optionsList: SelectOptionRow[] = isDynamicSelect ? (dynamicOptions || options || []) : (options || [])
+    const selectedOptions = optionsList.filter((opt: SelectOptionRow) =>
+      values.includes(opt.value),
     )
 
     if (selectedOptions.length <= 2) {
       return selectedOptions
-        .map((opt: any) => opt.label?.[language] || opt.label?.en_US || opt.value)
+        .map((opt: SelectOptionRow) => selectOptionDisplayLabel(opt, language))
         .join(', ')
     }
 
     return `${selectedOptions.length} selected`
   }
 
-  const handleAppOrModelSelect = (newValue: any) => {
+  const handleAppOrModelSelect = (newValue: unknown) => {
     onChange({
       ...value,
       [variable]: {
@@ -391,9 +419,9 @@ const FormInputItem: FC<Props> = ({
   }
 
   const availableCheckboxOptions = useMemo(() => (
-    (options || []).filter((option: { show_on?: Array<{ variable: string, value: any }> }) => {
+    (options || []).filter((option: { show_on?: FormShowOnObject[] }) => {
       if (option.show_on?.length)
-        return option.show_on.every(showOnItem => value[showOnItem.variable]?.value === showOnItem.value || value[showOnItem.variable] === showOnItem.value)
+        return option.show_on.every(showOnItem => credentialInputMatchesShowOn(value, showOnItem))
       return true
     })
   ), [options, value])
@@ -496,19 +524,19 @@ const FormInputItem: FC<Props> = ({
           wrapperClassName="h-8 grow"
           disabled={readOnly}
           defaultValue={varInput?.value}
-          items={options.filter((option: { show_on: any[] }) => {
+          items={options.filter((option: FormOption) => {
             if (option.show_on.length)
-              return option.show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value)
+              return option.show_on.every(showOnItem => credentialInputMatchesShowOn(value, showOnItem))
 
             return true
-          }).map((option: { value: any, label: { [x: string]: any, en_US: any }, icon?: string }) => ({
+          }).map((option: FormOption) => ({
             value: option.value,
-            name: option.label[language] || option.label.en_US,
+            name: selectOptionDisplayLabel(option, language),
             icon: option.icon,
           }))}
           onSelect={item => handleValueChange(item.value as string)}
           placeholder={placeholder?.[language] || placeholder?.en_US}
-          renderOption={options.some((opt: any) => opt.icon)
+          renderOption={options.some((opt: FormOption) => opt.icon)
             ? ({ item }) => (
                 <div className="flex items-center">
                   {item.icon && (
@@ -540,11 +568,11 @@ const FormInputItem: FC<Props> = ({
               </span>
             </ListboxButton>
             <ListboxOptions className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-1 py-1 text-base shadow-lg backdrop-blur-sm focus:outline-none sm:text-sm">
-              {options.filter((option: { show_on: any[] }) => {
+              {options.filter((option: FormOption) => {
                 if (option.show_on?.length)
-                  return option.show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value)
+                  return option.show_on.every(showOnItem => credentialInputMatchesShowOn(value, showOnItem))
                 return true
-              }).map((option: { value: any, label: { [x: string]: any, en_US: any }, icon?: string }) => (
+              }).map((option: FormOption) => (
                 <ListboxOption
                   key={option.value}
                   value={option.value}
@@ -558,7 +586,7 @@ const FormInputItem: FC<Props> = ({
                           <img src={option.icon} alt="" className="mr-2 h-4 w-4" />
                         )}
                         <span className={cn('block truncate', selected && 'font-normal')}>
-                          {option.label[language] || option.label.en_US}
+                          {selectOptionDisplayLabel(option, language)}
                         </span>
                       </div>
                       {selected && (
@@ -579,14 +607,14 @@ const FormInputItem: FC<Props> = ({
           wrapperClassName="h-8 grow"
           disabled={readOnly || isLoadingOptions}
           defaultValue={varInput?.value}
-          items={(dynamicOptions || options || []).filter((option: { show_on?: any[] }) => {
+          items={(dynamicOptions || options || []).filter((option: SelectOptionRow) => {
             if (option.show_on?.length)
-              return option.show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value)
+              return option.show_on.every(showOnItem => credentialInputMatchesShowOn(value, showOnItem))
 
             return true
-          }).map((option: { value: any, label: { [x: string]: any, en_US: any }, icon?: string }) => ({
+          }).map((option: SelectOptionRow) => ({
             value: option.value,
-            name: option.label[language] || option.label.en_US,
+            name: selectOptionDisplayLabel(option, language),
             icon: option.icon,
           }))}
           onSelect={item => handleValueChange(item.value as string)}
@@ -632,11 +660,11 @@ const FormInputItem: FC<Props> = ({
               </span>
             </ListboxButton>
             <ListboxOptions className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-1 py-1 text-base shadow-lg backdrop-blur-sm focus:outline-none sm:text-sm">
-              {(dynamicOptions || options || []).filter((option: { show_on?: any[] }) => {
+              {(dynamicOptions || options || []).filter((option: SelectOptionRow) => {
                 if (option.show_on?.length)
-                  return option.show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value)
+                  return option.show_on.every(showOnItem => credentialInputMatchesShowOn(value, showOnItem))
                 return true
-              }).map((option: { value: any, label: { [x: string]: any, en_US: any }, icon?: string }) => (
+              }).map((option: SelectOptionRow) => (
                 <ListboxOption
                   key={option.value}
                   value={option.value}
@@ -650,7 +678,7 @@ const FormInputItem: FC<Props> = ({
                           <img src={option.icon} alt="" className="mr-2 h-4 w-4" />
                         )}
                         <span className={cn('block truncate', selected && 'font-normal')}>
-                          {option.label[language] || option.label.en_US}
+                          {selectOptionDisplayLabel(option, language)}
                         </span>
                       </div>
                       {selected && (
@@ -670,7 +698,14 @@ const FormInputItem: FC<Props> = ({
         <div className="mt-1 w-full">
           <CodeEditor
             title="JSON"
-            value={varInput?.value as any}
+            value={(() => {
+              const v = varInput?.value
+              if (v === undefined || v === null)
+                return undefined
+              if (typeof v === 'string' || typeof v === 'object')
+                return v as string | object
+              return undefined
+            })()}
             isExpand
             isInNode
             language={CodeLanguage.json}

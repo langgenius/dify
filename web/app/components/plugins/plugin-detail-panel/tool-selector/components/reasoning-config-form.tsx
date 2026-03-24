@@ -216,18 +216,30 @@ const ReasoningConfigForm: React.FC<Props> = ({
         return VarType.string
     }
     const getFilterVar = () => {
-      if (isNumber)
+      if (isNumber) {
         return (varPayload: Var) => varPayload.type === VarType.number
-      else if (isString)
-        return (varPayload: Var) => [VarType.string, VarType.number, VarType.secret].includes(varPayload.type)
-      else if (isFile)
-        return (varPayload: Var) => [VarType.file, VarType.arrayFile].includes(varPayload.type)
-      else if (isBoolean)
+      }
+      else if (isString) {
+        return (varPayload: Var) => ([VarType.string, VarType.number, VarType.secret] as const).includes(
+          varPayload.type as typeof VarType.string | typeof VarType.number | typeof VarType.secret,
+        )
+      }
+      else if (isFile) {
+        return (varPayload: Var) => ([VarType.file, VarType.arrayFile] as const).includes(
+          varPayload.type as typeof VarType.file | typeof VarType.arrayFile,
+        )
+      }
+      else if (isBoolean) {
         return (varPayload: Var) => varPayload.type === VarType.boolean
-      else if (isObject)
+      }
+      else if (isObject) {
         return (varPayload: Var) => varPayload.type === VarType.object
-      else if (isArray)
-        return (varPayload: Var) => [VarType.array, VarType.arrayString, VarType.arrayNumber, VarType.arrayObject].includes(varPayload.type)
+      }
+      else if (isArray) {
+        return (varPayload: Var) => ([VarType.array, VarType.arrayString, VarType.arrayNumber, VarType.arrayObject] as const).includes(
+          varPayload.type as typeof VarType.array | typeof VarType.arrayString | typeof VarType.arrayNumber | typeof VarType.arrayObject,
+        )
+      }
       return undefined
     }
 

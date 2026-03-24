@@ -10,8 +10,8 @@ import Divider from '@/app/components/base/divider'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { toast } from '@/app/components/base/ui/toast'
 import { useSelector as useAppContextSelector } from '@/context/app-context'
-import { useDeleteWorkflow, useInvalidAllLastRun, useResetWorkflowVersionHistory, useRestoreWorkflow, useUpdateWorkflow, useWorkflowVersionHistory } from '@/service/use-workflow'
-import { useDSL, useLeaderRestore, useWorkflowRefreshDraft, useWorkflowRun } from '../../hooks'
+import { useDeleteWorkflow, useInvalidAllLastRun, useResetWorkflowVersionHistory, useUpdateWorkflow, useWorkflowVersionHistory } from '@/service/use-workflow'
+import { useDSL, useLeaderRestore, useWorkflowRun } from '../../hooks'
 import { useHooksStore } from '../../hooks-store'
 import { useStore, useWorkflowStore } from '../../store'
 import { VersionHistoryContextMenuOptions, WorkflowVersion, WorkflowVersionFilterOptions } from '../../types'
@@ -35,11 +35,11 @@ export type VersionHistoryPanelProps = {
 export const VersionHistoryPanel = ({
   getVersionListUrl,
   deleteVersionUrl,
-  restoreVersionUrl,
+  restoreVersionUrl: _restoreVersionUrl,
   updateVersionUrl,
   latestVersionId,
 }: VersionHistoryPanelProps) => {
-  const [filterValue, setFilterValue] = useState(WorkflowVersionFilterOptions.all)
+  const [filterValue, setFilterValue] = useState<WorkflowVersionFilterOptions>(WorkflowVersionFilterOptions.all)
   const [isOnlyShowNamedVersions, setIsOnlyShowNamedVersions] = useState(false)
   const [operatedItem, setOperatedItem] = useState<VersionHistory>()
   const [restoreConfirmOpen, setRestoreConfirmOpen] = useState(false)
@@ -49,7 +49,6 @@ export const VersionHistoryPanel = ({
   const { handleRestoreFromPublishedWorkflow, handleLoadBackupDraft } = useWorkflowRun()
   const { requestRestore } = useLeaderRestore()
   const featuresStore = useFeaturesStore()
-  const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
   const { handleExportDSL } = useDSL()
   const setShowWorkflowVersionHistoryPanel = useStore(s => s.setShowWorkflowVersionHistoryPanel)
   const currentVersion = useStore(s => s.currentVersion)
@@ -146,7 +145,6 @@ export const VersionHistoryPanel = ({
   }, [])
 
   const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
-  const { mutateAsync: restoreWorkflow } = useRestoreWorkflow()
 
   const handleRestore = useCallback(async (item: VersionHistory) => {
     setShowWorkflowVersionHistoryPanel(false)

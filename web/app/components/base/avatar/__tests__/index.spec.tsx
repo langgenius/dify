@@ -19,7 +19,6 @@ describe('Avatar', () => {
     it('should render the fallback when avatar is provided', () => {
       render(<Avatar name="John" avatar="https://example.com/avatar.jpg" />)
 
-
       expect(screen.getByText('J')).toBeInTheDocument()
     })
   })

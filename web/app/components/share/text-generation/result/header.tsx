@@ -6,8 +6,9 @@ import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
-import Toast from '@/app/components/base/toast'
-import Tooltip from '@/app/components/base/tooltip'
+
+import Tooltip from '@/app/components/base/tooltip-plus'
+import { toast } from '@/app/components/base/ui/toast'
 
 type IResultHeaderProps = {
   result: string
@@ -31,7 +32,7 @@ const Header: FC<IResultHeaderProps> = ({
           className="h-7 p-[2px] pr-2"
           onClick={() => {
             copy(result)
-            Toast.notify({ type: 'success', message: 'copied' })
+            toast.success('copied')
           }}
         >
           <>

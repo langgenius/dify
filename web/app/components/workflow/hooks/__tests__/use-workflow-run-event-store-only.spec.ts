@@ -83,7 +83,7 @@ describe('useWorkflowFinished', () => {
 
     result.current.handleWorkflowFinished({
       data: { status: 'succeeded', outputs: { answer: 'hello' } },
-    } as WorkflowFinishedResponse)
+    } as unknown as WorkflowFinishedResponse)
 
     const state = store.getState().workflowRunningData!
     expect(state.result.status).toBe('succeeded')
@@ -98,7 +98,7 @@ describe('useWorkflowFinished', () => {
 
     result.current.handleWorkflowFinished({
       data: { status: 'succeeded', outputs: { a: 'hello', b: 'world' } },
-    } as WorkflowFinishedResponse)
+    } as unknown as WorkflowFinishedResponse)
 
     expect(store.getState().workflowRunningData!.resultTabActive).toBeFalsy()
   })

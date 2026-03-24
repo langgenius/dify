@@ -105,7 +105,7 @@ class AgentAppRunner(BaseAgentRunner):
         )
 
         # Initialize state variables
-        current_agent_thought_id = None
+        current_agent_thought_id: str | None = None
         has_published_thought = False
         current_tool_name: str | None = None
         self._current_message_file_ids: list[str] = []

@@ -194,7 +194,7 @@ class FunctionCallStrategy(AgentPattern):
         tool_calls: list[tuple[str, str, dict[str, Any]]] = []
         response_content: str = ""
         finish_reason: str | None = None
-        if isinstance(chunks, Generator):
+        if not isinstance(chunks, LLMResult):
             # Streaming response
             for chunk in chunks:
                 # Extract tool calls

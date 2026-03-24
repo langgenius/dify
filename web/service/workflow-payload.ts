@@ -40,7 +40,7 @@ const sanitizeTriggerPluginNode = (node: Node<TriggerPluginNodePayload>): Node<T
   if (!data || data.type !== BlockEnum.TriggerPlugin)
     return node
 
-  const sanitizedData: TriggerPluginNodePayload & { type: BlockEnum.TriggerPlugin } = {
+  const sanitizedData: TriggerPluginNodePayload & { type: typeof BlockEnum.TriggerPlugin } = {
     type: BlockEnum.TriggerPlugin,
     title: data.title ?? '',
     desc: data.desc ?? '',

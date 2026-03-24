@@ -266,18 +266,19 @@ class ReActStrategy(AgentPattern):
 
         # Convert non-streaming to streaming format if needed
         if isinstance(chunks, LLMResult):
-            # Create a generator from the LLMResult
+            result = chunks
+
             def result_to_chunks() -> Generator[LLMResultChunk, None, None]:
                 yield LLMResultChunk(
-                    model=chunks.model,
-                    prompt_messages=chunks.prompt_messages,
+                    model=result.model,
+                    prompt_messages=result.prompt_messages,
                     delta=LLMResultChunkDelta(
                         index=0,
-                        message=chunks.message,
-                        usage=chunks.usage,
-                        finish_reason=None,  # LLMResult doesn't have finish_reason, only streaming chunks do
+                        message=result.message,
+                        usage=result.usage,
+                        finish_reason=None,
                     ),
-                    system_fingerprint=chunks.system_fingerprint or "",
+                    system_fingerprint=result.system_fingerprint or "",
                 )
 
             streaming_chunks = result_to_chunks()

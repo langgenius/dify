@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react'
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
 import type { InjectWorkflowStoreSliceFn } from '@/app/components/workflow/store'
-import dynamic from 'next/dynamic'
+import type { TransferMethod } from '@/types/app'
 import { useQueryState } from 'nuqs'
 import {
   useCallback,
@@ -36,8 +36,9 @@ import {
   initialNodes,
 } from '@/app/components/workflow/utils'
 import { useAppContext } from '@/context/app-context'
-import { upgradeAppRuntime } from '@/service/apps'
+import dynamic from '@/next/dynamic'
 import { useSearchParams } from '@/next/navigation'
+import { upgradeAppRuntime } from '@/service/apps'
 import { fetchRunDetail } from '@/service/log'
 import { useAppTriggers } from '@/service/use-tools'
 import { AppModeEnum } from '@/types/app'
@@ -397,17 +398,18 @@ const WorkflowAppWithAdditionalContext = () => {
   }
 
   const features = data.features || {}
-  const initialFeatures: FeaturesData = {
+  const defaultTransferMethods = ['local_file', 'remote_url'] as TransferMethod[]
+  const initialFeatures = {
     file: {
       image: {
         enabled: !!features.file_upload?.image?.enabled,
         number_limits: features.file_upload?.image?.number_limits || 3,
-        transfer_methods: features.file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
+        transfer_methods: (features.file_upload?.image?.transfer_methods || defaultTransferMethods) as TransferMethod[],
       },
       enabled: !!(features.file_upload?.enabled || features.file_upload?.image?.enabled),
       allowed_file_types: features.file_upload?.allowed_file_types || [SupportUploadFileTypes.image],
       allowed_file_extensions: features.file_upload?.allowed_file_extensions || FILE_EXTS[SupportUploadFileTypes.image].map(ext => `.${ext}`),
-      allowed_file_upload_methods: features.file_upload?.allowed_file_upload_methods || features.file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
+      allowed_file_upload_methods: (features.file_upload?.allowed_file_upload_methods || features.file_upload?.image?.transfer_methods || defaultTransferMethods) as TransferMethod[],
       number_limits: features.file_upload?.number_limits || features.file_upload?.image?.number_limits || 3,
       fileUploadConfig: fileUploadConfigResponse,
     },
@@ -421,8 +423,9 @@ const WorkflowAppWithAdditionalContext = () => {
     text2speech: features.text_to_speech || { enabled: false },
     citation: features.retriever_resource || { enabled: false },
     moderation: features.sensitive_word_avoidance || { enabled: false },
+    annotationReply: features.annotation_reply || { enabled: false },
     sandbox: features.sandbox || { enabled: false },
-  }
+  } as FeaturesData
 
   return (
     <>

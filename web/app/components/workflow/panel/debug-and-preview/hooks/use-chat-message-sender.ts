@@ -26,7 +26,7 @@ import {
   getProcessedFiles,
   getProcessedFilesFromResponse,
 } from '@/app/components/base/file-uploader/utils'
-import { useToastContext } from '@/app/components/base/toast/context'
+import { toast } from '@/app/components/base/ui/toast'
 import {
   sseGet,
 } from '@/service/base'
@@ -90,7 +90,6 @@ export function useChatMessageSender({
   updateCurrentQAOnTree,
 }: UseChatMessageSenderParams) {
   const { t } = useTranslation()
-  const { notify } = useToastContext()
   const { handleRun } = useWorkflowRun()
   const workflowStore = useWorkflowStore()
 
@@ -132,7 +131,7 @@ export function useChatMessageSender({
     { onGetSuggestedQuestions }: SendCallback,
   ) => {
     if (workflowStore.getState().isResponding) {
-      notify({ type: 'info', message: t('errorMessage.waitForResponse', { ns: 'appDebug' }) })
+      toast.info(t('errorMessage.waitForResponse', { ns: 'appDebug' }))
       return false
     }
 
@@ -559,7 +558,6 @@ export function useChatMessageSender({
     return true
   }, [
     workflowStore,
-    notify,
     t,
     setSuggestedQuestionsAbortController,
     setWorkflowEventsAbortController,

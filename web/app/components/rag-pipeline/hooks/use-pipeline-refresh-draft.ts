@@ -31,7 +31,7 @@ export const usePipelineRefreshDraft = () => {
       } as WorkflowDataUpdater)
       setSyncWorkflowDraftHash(response.hash)
       setEnvSecrets((response.environment_variables || []).filter(env => env.value_type === 'secret').reduce((acc, env) => {
-        acc[env.id] = env.value
+        acc[env.id] = typeof env.value === 'string' ? env.value : JSON.stringify(env.value)
         return acc
       }, {} as Record<string, string>))
       setEnvironmentVariables(response.environment_variables?.map(env => env.value_type === 'secret' ? { ...env, value: '[__HIDDEN__]' } : env) || [])

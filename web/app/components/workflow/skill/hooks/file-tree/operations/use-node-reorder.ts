@@ -5,7 +5,7 @@
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { useReorderAppAssetNode } from '@/service/use-app-asset'
 import { useSkillTreeUpdateEmitter } from '../data/use-skill-tree-collaboration'
 
@@ -25,16 +25,10 @@ export function useNodeReorder() {
       })
 
       emitTreeUpdate()
-      Toast.notify({
-        type: 'success',
-        message: t('skillSidebar.menu.moved'),
-      })
+      toast.success(t('skillSidebar.menu.moved'))
     }
     catch {
-      Toast.notify({
-        type: 'error',
-        message: t('skillSidebar.menu.moveError'),
-      })
+      toast.error(t('skillSidebar.menu.moveError'))
     }
   }, [appId, reorderNodeAsync, t, emitTreeUpdate])
 

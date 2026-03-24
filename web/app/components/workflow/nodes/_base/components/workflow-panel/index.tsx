@@ -326,7 +326,7 @@ const BasePanel: FC<BasePanelProps> = ({
   }, [pendingSingleRun, id, handleSingleRun, handleStop, setPendingSingleRun])
 
   const logParams = useLogs()
-  const passedLogParams = useMemo(() => [BlockEnum.Tool, BlockEnum.Agent, BlockEnum.Iteration, BlockEnum.Loop].includes(data.type) ? logParams : {}, [data.type, logParams])
+  const passedLogParams = useMemo(() => ([BlockEnum.Tool, BlockEnum.Agent, BlockEnum.Iteration, BlockEnum.Loop] as BlockEnum[]).includes(data.type) ? logParams : {}, [data.type, logParams])
 
   const storeBuildInTools = useStore(s => s.buildInTools)
   const { data: buildInTools } = useAllBuiltInTools()

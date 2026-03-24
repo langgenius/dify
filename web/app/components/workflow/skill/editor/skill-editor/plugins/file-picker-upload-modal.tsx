@@ -8,13 +8,13 @@ import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
-import Modal from '@/app/components/base/modal'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
-import Toast from '@/app/components/base/toast'
+} from '@/app/components/base/portal-to-follow-elem-plus'
+import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@/app/components/base/ui/dialog'
+import { toast } from '@/app/components/base/ui/toast'
 import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
 import { ROOT_ID } from '@/app/components/workflow/skill/constants'
 import TreeGuideLines from '@/app/components/workflow/skill/file-tree/tree/tree-guide-lines'
@@ -261,187 +261,190 @@ const FilePickerUploadModal = ({
       onClose()
     }
     catch {
-      Toast.notify({
-        type: 'error',
-        message: t('skillSidebar.menu.createError'),
-      })
+      toast.error(t('skillSidebar.menu.createError'))
     }
   }, [appId, canCreate, effectiveUploadFolderId, emitTreeUpdate, onClose, t, trimmedFileName, uploadFile])
   const modeLabel = t('skillEditor.uploadIn')
 
   return (
-    <Modal
-      isShow={isOpen}
-      onClose={handleClose}
-      title={t('skillEditor.addFiles')}
-      className="max-w-[360px]"
-      closable={!isBusy}
-      clickOutsideNotClose={isBusy}
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open)
+          handleClose()
+      }}
+      disablePointerDismissal={isBusy}
     >
-      <div className="-mx-6 mt-4 h-px bg-divider-subtle" />
-      <div className="mt-4 space-y-4">
-        <div className="flex items-center gap-2">
-          <OptionCard
-            className="flex-1"
-            title={`${t('operation.create', { ns: 'common' })} ${t('skillSidebar.menu.newFile')}`}
-            onSelect={() => setMode('create')}
-            selected={mode === 'create'}
-            disabled={isBusy}
-          />
-          <OptionCard
-            className="flex-1"
-            title={t('skillEditor.uploadFiles')}
-            onSelect={() => setMode('upload')}
-            selected={mode === 'upload'}
-            disabled={isBusy}
-          />
-        </div>
-        <div className="space-y-1">
-          <div className="text-text-secondary system-sm-medium">{modeLabel}</div>
-          <PortalToFollowElem
-            open={isFolderPickerOpen}
-            onOpenChange={handleFolderPickerOpenChange}
-            placement="bottom-start"
-            offset={{ mainAxis: 4 }}
-            triggerPopupSameWidth
-          >
-            <PortalToFollowElemTrigger asChild>
-              <button
-                type="button"
-                disabled={isBusy}
-                onClick={handleToggleFolderPicker}
-                className={cn(
-                  'relative flex h-8 w-full items-center rounded-lg bg-components-input-bg-normal pl-3 pr-10 hover:bg-state-base-hover-alt',
-                  isBusy && 'cursor-not-allowed opacity-60',
-                )}
-              >
-                <span className="i-ri-folder-line mr-2 size-4 shrink-0 text-text-secondary" aria-hidden="true" />
-                <span className="min-w-0 truncate text-left text-components-input-text-filled system-sm-regular">{selectedFolderPath}</span>
-                <span className={cn(
-                  'i-ri-arrow-down-s-line absolute right-3 top-1/2 size-4 -translate-y-1/2 text-text-quaternary transition-transform',
-                  isFolderPickerOpen && 'rotate-180',
-                )}
-                />
-              </button>
-            </PortalToFollowElemTrigger>
-            <PortalToFollowElemContent className="z-[1200]">
-              <div
-                className="max-h-[260px] overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-lg backdrop-blur-sm"
-                onMouseDown={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                }}
-              >
-                <Tree<TreeNodeData>
-                  key={folderPickerVersion}
-                  data={uploadInTreeData}
-                  idAccessor="id"
-                  childrenAccessor="children"
-                  width="100%"
-                  className="pb-1"
-                  height={240}
-                  rowHeight={24}
-                  indent={20}
-                  overscanCount={5}
-                  openByDefault={false}
-                  initialOpenState={folderPickerOpenState}
-                  disableDrag
-                  disableDrop
-                >
-                  {(props: NodeRendererProps<TreeNodeData>) => (
-                    <FolderPickerTreeNode
-                      {...props}
-                      onSelectNode={handleSelectUploadFolder}
-                    />
-                  )}
-                </Tree>
-              </div>
-            </PortalToFollowElemContent>
-          </PortalToFollowElem>
-        </div>
-        {mode === 'create' && (
-          <div className="space-y-1">
-            <div className="text-text-secondary system-sm-medium">{t('skillSidebar.fileNamePlaceholder')}</div>
-            <Input
-              value={fileName}
-              onChange={e => setFileName(e.target.value)}
-              placeholder={t('skillSidebar.fileNamePlaceholder') || ''}
+      <DialogContent className="max-w-[360px]">
+        {!isBusy && <DialogCloseButton />}
+        <DialogTitle className="text-text-primary title-2xl-semi-bold">
+          {t('skillEditor.addFiles')}
+        </DialogTitle>
+        <div className="mt-4 h-px bg-divider-subtle" />
+        <div className="mt-4 space-y-4">
+          <div className="flex items-center gap-2">
+            <OptionCard
+              className="flex-1"
+              title={`${t('operation.create', { ns: 'common' })} ${t('skillSidebar.menu.newFile')}`}
+              onSelect={() => setMode('create')}
+              selected={mode === 'create'}
               disabled={isBusy}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter')
-                  void handleCreateFile()
-              }}
+            />
+            <OptionCard
+              className="flex-1"
+              title={t('skillEditor.uploadFiles')}
+              onSelect={() => setMode('upload')}
+              selected={mode === 'upload'}
+              disabled={isBusy}
             />
           </div>
-        )}
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          className="hidden"
-          onChange={handleUploadFilesChange}
-        />
-        {mode === 'upload' && (
-          <div
-            role="button"
-            tabIndex={0}
-            className={cn(
-              'flex h-12 cursor-pointer items-center justify-center gap-1 rounded-xl border border-dashed text-text-secondary',
-              isDragOver ? 'border-components-button-primary-border bg-state-accent-hover' : 'border-divider-subtle bg-components-panel-bg',
-              isBusy && 'cursor-not-allowed opacity-60',
-            )}
-            onClick={() => {
-              if (!isBusy && appId)
-                fileInputRef.current?.click()
-            }}
-            onDragOver={(e) => {
-              e.preventDefault()
-              if (!isBusy)
-                setIsDragOver(true)
-            }}
-            onDragLeave={(e) => {
-              e.preventDefault()
-              setIsDragOver(false)
-            }}
-            onDrop={handleDrop}
-            onKeyDown={(e) => {
-              if ((e.key === 'Enter' || e.key === ' ') && !isBusy && appId)
-                fileInputRef.current?.click()
-            }}
-          >
-            <span className="i-ri-upload-cloud-line size-4 text-text-tertiary" aria-hidden="true" />
-            <span className="system-sm-regular">{t('skillSidebar.dropTip')}</span>
-            <span className="text-text-accent system-sm-medium">{t('skill.startTab.importModal.browseFiles')}</span>
+          <div className="space-y-1">
+            <div className="text-text-secondary system-sm-medium">{modeLabel}</div>
+            <PortalToFollowElem
+              open={isFolderPickerOpen}
+              onOpenChange={handleFolderPickerOpenChange}
+              placement="bottom-start"
+              offset={{ mainAxis: 4 }}
+              triggerPopupSameWidth
+            >
+              <PortalToFollowElemTrigger asChild>
+                <button
+                  type="button"
+                  disabled={isBusy}
+                  onClick={handleToggleFolderPicker}
+                  className={cn(
+                    'relative flex h-8 w-full items-center rounded-lg bg-components-input-bg-normal pl-3 pr-10 hover:bg-state-base-hover-alt',
+                    isBusy && 'cursor-not-allowed opacity-60',
+                  )}
+                >
+                  <span className="i-ri-folder-line mr-2 size-4 shrink-0 text-text-secondary" aria-hidden="true" />
+                  <span className="min-w-0 truncate text-left text-components-input-text-filled system-sm-regular">{selectedFolderPath}</span>
+                  <span className={cn(
+                    'i-ri-arrow-down-s-line absolute right-3 top-1/2 size-4 -translate-y-1/2 text-text-quaternary transition-transform',
+                    isFolderPickerOpen && 'rotate-180',
+                  )}
+                  />
+                </button>
+              </PortalToFollowElemTrigger>
+              <PortalToFollowElemContent className="z-[1200]">
+                <div
+                  className="max-h-[260px] overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-lg backdrop-blur-sm"
+                  onMouseDown={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                  }}
+                >
+                  <Tree<TreeNodeData>
+                    key={folderPickerVersion}
+                    data={uploadInTreeData}
+                    idAccessor="id"
+                    childrenAccessor="children"
+                    width="100%"
+                    className="pb-1"
+                    height={240}
+                    rowHeight={24}
+                    indent={20}
+                    overscanCount={5}
+                    openByDefault={false}
+                    initialOpenState={folderPickerOpenState}
+                    disableDrag
+                    disableDrop
+                  >
+                    {(props: NodeRendererProps<TreeNodeData>) => (
+                      <FolderPickerTreeNode
+                        {...props}
+                        onSelectNode={handleSelectUploadFolder}
+                      />
+                    )}
+                  </Tree>
+                </div>
+              </PortalToFollowElemContent>
+            </PortalToFollowElem>
           </div>
-        )}
-        <div className="flex justify-end gap-2">
-          <Button onClick={handleClose} disabled={isBusy}>
-            {t('operation.cancel', { ns: 'common' })}
-          </Button>
-          {mode === 'create'
-            ? (
-                <Button
-                  variant="primary"
-                  onClick={handleCreateFile}
-                  disabled={!canCreate}
-                  loading={isCreatingFile}
-                >
-                  {t('operation.create', { ns: 'common' })}
-                </Button>
-              )
-            : (
-                <Button
-                  variant="primary"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={!appId || isBusy}
-                  loading={isCreating}
-                >
-                  {t('skillEditor.uploadFiles')}
-                </Button>
+          {mode === 'create' && (
+            <div className="space-y-1">
+              <div className="text-text-secondary system-sm-medium">{t('skillSidebar.fileNamePlaceholder')}</div>
+              <Input
+                value={fileName}
+                onChange={e => setFileName(e.target.value)}
+                placeholder={t('skillSidebar.fileNamePlaceholder') || ''}
+                disabled={isBusy}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter')
+                    void handleCreateFile()
+                }}
+              />
+            </div>
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            className="hidden"
+            onChange={handleUploadFilesChange}
+          />
+          {mode === 'upload' && (
+            <div
+              role="button"
+              tabIndex={0}
+              className={cn(
+                'flex h-12 cursor-pointer items-center justify-center gap-1 rounded-xl border border-dashed text-text-secondary',
+                isDragOver ? 'border-components-button-primary-border bg-state-accent-hover' : 'border-divider-subtle bg-components-panel-bg',
+                isBusy && 'cursor-not-allowed opacity-60',
               )}
+              onClick={() => {
+                if (!isBusy && appId)
+                  fileInputRef.current?.click()
+              }}
+              onDragOver={(e) => {
+                e.preventDefault()
+                if (!isBusy)
+                  setIsDragOver(true)
+              }}
+              onDragLeave={(e) => {
+                e.preventDefault()
+                setIsDragOver(false)
+              }}
+              onDrop={handleDrop}
+              onKeyDown={(e) => {
+                if ((e.key === 'Enter' || e.key === ' ') && !isBusy && appId)
+                  fileInputRef.current?.click()
+              }}
+            >
+              <span className="i-ri-upload-cloud-line size-4 text-text-tertiary" aria-hidden="true" />
+              <span className="system-sm-regular">{t('skillSidebar.dropTip')}</span>
+              <span className="text-text-accent system-sm-medium">{t('skill.startTab.importModal.browseFiles')}</span>
+            </div>
+          )}
+          <div className="flex justify-end gap-2">
+            <Button onClick={handleClose} disabled={isBusy}>
+              {t('operation.cancel', { ns: 'common' })}
+            </Button>
+            {mode === 'create'
+              ? (
+                  <Button
+                    variant="primary"
+                    onClick={handleCreateFile}
+                    disabled={!canCreate}
+                    loading={isCreatingFile}
+                  >
+                    {t('operation.create', { ns: 'common' })}
+                  </Button>
+                )
+              : (
+                  <Button
+                    variant="primary"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={!appId || isBusy}
+                    loading={isCreating}
+                  >
+                    {t('skillEditor.uploadFiles')}
+                  </Button>
+                )}
+          </div>
         </div>
-      </div>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   )
 }
 

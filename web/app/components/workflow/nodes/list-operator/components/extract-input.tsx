@@ -28,7 +28,7 @@ const ExtractInput: FC<Props> = ({
   const { availableVars, availableNodesWithParent } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
     filterVar: (varPayload: Var) => {
-      return [VarType.number].includes(varPayload.type)
+      return ([VarType.number] as VarType[]).includes(varPayload.type)
     },
   })
 

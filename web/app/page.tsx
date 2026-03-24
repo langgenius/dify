@@ -1,4 +1,4 @@
-import { redirect } from 'next/navigation'
+import { redirect } from '@/next/navigation'
 
 type HomePageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>

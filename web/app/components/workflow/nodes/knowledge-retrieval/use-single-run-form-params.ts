@@ -48,7 +48,7 @@ const useSingleRunFormParams = ({
   }, [runInputDataRef, setRunInputData])
 
   const filterFileVar = useCallback((varPayload: Var) => {
-    return [VarType.file, VarType.arrayFile].includes(varPayload.type)
+    return ([VarType.file, VarType.arrayFile] as VarType[]).includes(varPayload.type)
   }, [])
 
   // Get all variables from previous nodes that are file or array of file

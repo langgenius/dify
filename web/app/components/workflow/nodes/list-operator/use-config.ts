@@ -76,7 +76,7 @@ const useConfig = (id: string, payload: ListFilterNodeType) => {
     return [(itemVarType || VarType.string).substring(0, 1).toUpperCase(), (itemVarType || VarType.string).substring(1)].join('')
   }, [inputs.variable, itemVarType])
 
-  const hasSubVariable = [VarType.arrayFile].includes(varType)
+  const hasSubVariable = ([VarType.arrayFile] as VarType[]).includes(varType)
 
   const handleVarChanges = useCallback((variable: ValueSelector | string) => {
     const newInputs = produce(inputs, (draft) => {
@@ -99,7 +99,7 @@ const useConfig = (id: string, payload: ListFilterNodeType) => {
 
   const filterVar = useCallback((varPayload: Var) => {
     // Don't know the item struct of VarType.arrayObject, so not support it
-    return [VarType.arrayNumber, VarType.arrayString, VarType.arrayBoolean, VarType.arrayFile].includes(varPayload.type)
+    return ([VarType.arrayNumber, VarType.arrayString, VarType.arrayBoolean, VarType.arrayFile] as VarType[]).includes(varPayload.type)
   }, [])
 
   const handleFilterEnabledChange = useCallback((enabled: boolean) => {

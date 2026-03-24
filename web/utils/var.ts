@@ -30,7 +30,7 @@ export const getNewVar = (key: string, type: string) => {
   }
 }
 
-export const getNewVarInWorkflow = (key: string, type = InputVarType.textInput): InputVar => {
+export const getNewVarInWorkflow = (key: string, type: InputVarType = InputVarType.textInput): InputVar => {
   const { ...rest } = VAR_ITEM_TEMPLATE_IN_WORKFLOW
   if (type !== InputVarType.textInput) {
     return {

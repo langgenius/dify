@@ -58,7 +58,7 @@ const EditBody: FC<Props> = ({
   const { availableVars, availableNodes } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
     filterVar: (varPayload: Var) => {
-      return [VarType.string, VarType.number, VarType.secret, VarType.arrayNumber, VarType.arrayString].includes(varPayload.type)
+      return ([VarType.string, VarType.number, VarType.secret, VarType.arrayNumber, VarType.arrayString] as VarType[]).includes(varPayload.type)
     },
   })
 
@@ -100,7 +100,7 @@ const EditBody: FC<Props> = ({
   }, [onChange, payload])
 
   const filterOnlyFileVariable = (varPayload: Var) => {
-    return [VarType.file, VarType.arrayFile].includes(varPayload.type)
+    return ([VarType.file, VarType.arrayFile] as VarType[]).includes(varPayload.type)
   }
 
   const handleBodyValueChange = useCallback((value: string) => {

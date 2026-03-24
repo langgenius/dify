@@ -40,7 +40,7 @@ const ConfigVision: FC<Props> = ({
   const { t } = useTranslation()
 
   const filterVar = useCallback((payload: Var) => {
-    return [VarType.file, VarType.arrayFile].includes(payload.type)
+    return ([VarType.file, VarType.arrayFile] as VarType[]).includes(payload.type)
   }, [])
   const handleVisionResolutionChange = useCallback((resolution: Resolution) => {
     const newConfig = produce(config, (draft) => {

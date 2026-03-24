@@ -76,7 +76,7 @@ export const mergeNodeDefaultData = <T extends CommonNodeType<Record<string, unk
   return merged
 }
 
-export function generateNewNode<T = {}>({ data, position, id, zIndex, type, ...rest }: Omit<Node<T>, 'id'> & { id?: string }): {
+export function generateNewNode<T = Record<string, unknown>>({ data, position, id, zIndex, type, ...rest }: Omit<Node<T>, 'id'> & { id?: string }): {
   newNode: Node
   newIterationStartNode?: Node
   newLoopStartNode?: Node

@@ -84,14 +84,18 @@ const ChatVariableModal = ({
     return objectPlaceholder
   }, [type])
   const getObjectValue = useCallback(() => {
-    if (!chatVar || Object.keys(chatVar.value).length === 0)
+    const raw = chatVar?.value
+    if (!chatVar || raw === null || typeof raw !== 'object' || Array.isArray(raw) || Object.keys(raw).length === 0)
       return [DEFAULT_OBJECT_VALUE]
 
-    return Object.keys(chatVar.value).map((key) => {
+    return Object.keys(raw).map((key) => {
+      const v = raw[key]
+      const isStr = typeof v === 'string'
+      const isNum = typeof v === 'number'
       return {
         key,
-        type: typeof chatVar.value[key] === 'string' ? ChatVarType.String : ChatVarType.Number,
-        value: chatVar.value[key],
+        type: isStr ? ChatVarType.String : ChatVarType.Number,
+        value: isStr || isNum ? v : undefined,
       }
     })
   }, [chatVar])

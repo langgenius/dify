@@ -5,6 +5,12 @@ const mockHandleRestoreFromPublishedWorkflow = vi.fn()
 const mockHandleLoadBackupDraft = vi.fn()
 const mockSetCurrentVersion = vi.fn()
 
+type VersionHistoryMockState = {
+  setShowWorkflowVersionHistoryPanel: ReturnType<typeof vi.fn>
+  currentVersion: null
+  setCurrentVersion: typeof mockSetCurrentVersion
+}
+
 vi.mock('@/context/app-context', () => ({
   useSelector: () => ({ id: 'test-user-id' }),
 }))
@@ -88,8 +94,8 @@ vi.mock('../../hooks-store', () => ({
 }))
 
 vi.mock('../../store', () => ({
-  useStore: (selector: (state: any) => any) => {
-    const state = {
+  useStore: <T, >(selector: (state: VersionHistoryMockState) => T) => {
+    const state: VersionHistoryMockState = {
       setShowWorkflowVersionHistoryPanel: vi.fn(),
       currentVersion: null,
       setCurrentVersion: mockSetCurrentVersion,

@@ -84,9 +84,12 @@ export function createLLMTraceBuilder() {
     if (chunkType === 'tool_call') {
       const lastModel = trace.findLast(item => item.type === 'model')
       if (lastModel) {
-        if (!lastModel.output.tool_calls)
-          lastModel.output.tool_calls = []
-        lastModel.output.tool_calls.push({
+        const modelOut = lastModel.output as Record<string, unknown> & {
+          tool_calls?: { id: string, name: string, arguments: string }[]
+        }
+        if (!modelOut.tool_calls)
+          modelOut.tool_calls = []
+        modelOut.tool_calls.push({
           id: meta.tool_call_id || '',
           name: meta.tool_name || '',
           arguments: meta.tool_arguments || '',

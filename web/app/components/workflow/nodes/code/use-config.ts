@@ -197,7 +197,7 @@ const useConfig = (id: string, payload: CodeNodeType) => {
   })
 
   const filterVar = useCallback((varPayload: Var) => {
-    return [VarType.string, VarType.number, VarType.boolean, VarType.secret, VarType.object, VarType.array, VarType.arrayNumber, VarType.arrayString, VarType.arrayObject, VarType.arrayBoolean, VarType.file, VarType.arrayFile].includes(varPayload.type)
+    return ([VarType.string, VarType.number, VarType.boolean, VarType.secret, VarType.object, VarType.array, VarType.arrayNumber, VarType.arrayString, VarType.arrayObject, VarType.arrayBoolean, VarType.file, VarType.arrayFile] as VarType[]).includes(varPayload.type)
   }, [])
 
   const handleCodeAndVarsChange = useCallback((code: string, inputVariables: Variable[], outputVariables: OutputVar) => {

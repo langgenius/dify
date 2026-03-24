@@ -1,3 +1,4 @@
+import type { InteractionModeType } from '@/app/components/workflow/interaction-mode'
 import type { Node, ValueSelector } from '@/app/components/workflow/types'
 import type { SchemaTypeDefinition } from '@/service/use-common'
 import type { FlowType } from '@/types/common'
@@ -5,9 +6,9 @@ import type { VarInInspect } from '@/types/workflow'
 import { produce } from 'immer'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
-import { InteractionMode } from '@/app/components/workflow'
 import { useEdgesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-edges-interactions-without-sync'
 import { useNodesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-nodes-interactions-without-sync'
+import { InteractionMode } from '@/app/components/workflow/interaction-mode'
 import {
   isConversationVar,
   isENV,
@@ -31,7 +32,7 @@ import { applyAgentSubgraphInspectVars } from './inspect-vars-agent-alias'
 type Params = {
   flowId: string
   flowType: FlowType
-  interactionMode?: InteractionMode
+  interactionMode?: InteractionModeType
 }
 export const useInspectVarsCrudCommon = ({
   flowId,

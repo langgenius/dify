@@ -26,7 +26,7 @@ const NODE_HELP_LINK_OVERRIDES: Partial<Record<BlockEnum, string>> = {
   [BlockEnum.FileUpload]: 'upload-file-to-sandbox',
 }
 
-type WorkflowAppScene = NodeSelectorScene.Workflow | NodeSelectorScene.Chatflow
+type WorkflowAppScene = typeof NodeSelectorScene.Workflow | typeof NodeSelectorScene.Chatflow
 
 const WORKFLOW_APP_SCENE_NODES = {
   [NodeSelectorScene.Workflow]: [

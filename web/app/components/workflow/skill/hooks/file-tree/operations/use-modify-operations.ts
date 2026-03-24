@@ -9,7 +9,7 @@ import type { SkillEditorSliceShape } from '@/app/components/workflow/store/work
 import type { AppAssetTreeResponse } from '@/types/app-asset'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { useDeleteAppAssetNode } from '@/service/use-app-asset'
 import { getAllDescendantFileIds } from '../../../utils/tree-utils'
 import { useSkillTreeUpdateEmitter } from '../data/use-skill-tree-collaboration'
@@ -74,20 +74,18 @@ export function useModifyOperations({
         storeApi.getState().clearDraftContent(nodeId)
       }
 
-      Toast.notify({
-        type: 'success',
-        message: isFolder
+      toast.success(
+        isFolder
           ? t('skillSidebar.menu.deleted')
           : t('skillSidebar.menu.fileDeleted'),
-      })
+      )
     }
     catch {
-      Toast.notify({
-        type: 'error',
-        message: isFolder
+      toast.error(
+        isFolder
           ? t('skillSidebar.menu.deleteError')
           : t('skillSidebar.menu.fileDeleteError'),
-      })
+      )
     }
     finally {
       setShowDeleteConfirm(false)

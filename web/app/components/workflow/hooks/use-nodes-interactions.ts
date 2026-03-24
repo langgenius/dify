@@ -1965,7 +1965,7 @@ export const useNodesInteractions = () => {
             ]
 
             // handle disallow paste node
-            if (commonNestedDisallowPasteNodes.includes(nodeToPaste.data.type))
+            if ((commonNestedDisallowPasteNodes as BlockEnum[]).includes(nodeToPaste.data.type))
               return
 
             // handle paste to nested block

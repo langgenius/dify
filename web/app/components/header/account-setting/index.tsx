@@ -20,8 +20,8 @@ import DataSourcePage from './data-source-page-new'
 import LanguagePage from './language-page'
 import MembersPage from './members-page'
 import ModelProviderPage from './model-provider-page'
-import SandboxProviderPage from './sandbox-provider-page'
 import { useResetModelProviderListExpanded } from './model-provider-page/atoms'
+import SandboxProviderPage from './sandbox-provider-page'
 
 const iconClassName = `
   w-5 h-5 mr-2

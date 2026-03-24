@@ -33,7 +33,6 @@ const SandboxMigrationModal: FC<Props> = ({
   return (
     <UpgradeModalBase
       show={show}
-      onClose={onClose}
       Icon={Thinking}
       title={t('sandboxMigrationModal.title', { ns: 'workflow' })}
       description={t('sandboxMigrationModal.description', { ns: 'workflow' })}

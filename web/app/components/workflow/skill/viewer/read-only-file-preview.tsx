@@ -1,8 +1,8 @@
 'use client'
 
-import dynamic from 'next/dynamic'
 import * as React from 'react'
 import Loading from '@/app/components/base/loading'
+import dynamic from '@/next/dynamic'
 import { useFetchTextContent } from '../hooks/use-fetch-text-content'
 import { useFileTypeInfo } from '../hooks/use-file-type-info'
 import { getFileLanguage } from '../utils/file-utils'

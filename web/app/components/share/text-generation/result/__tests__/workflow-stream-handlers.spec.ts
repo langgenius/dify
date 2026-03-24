@@ -1,4 +1,5 @@
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
+import type { JsonValue } from '@/app/components/workflow/types'
 import type { IOtherOptions } from '@/service/base'
 import type { HumanInputFormData, HumanInputFormTimeoutData, NodeTracing } from '@/types/workflow'
 import { act } from '@testing-library/react'
@@ -872,10 +873,10 @@ describe('createWorkflowStreamHandlers', () => {
 
     const circularOutputSetup = setupHandlers()
     const circularOutputHandlers = circularOutputSetup.handlers as Required<Pick<IOtherOptions, 'onWorkflowFinished'>>
-    const circularOutputs: Record<string, unknown> = {
+    const circularOutputs: Record<string, JsonValue> = {
       answer: 'Hello',
     }
-    circularOutputs.self = circularOutputs
+    Object.assign(circularOutputs, { self: circularOutputs as JsonValue })
 
     act(() => {
       circularOutputHandlers.onWorkflowFinished({

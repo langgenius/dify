@@ -4,7 +4,8 @@ import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import type { ContextGenerateResponse } from '@/service/debug'
 import * as React from 'react'
 import { forwardRef, useCallback, useImperativeHandle, useMemo } from 'react'
-import Modal from '@/app/components/base/modal'
+import { useTranslation } from 'react-i18next'
+import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@/app/components/base/ui/dialog'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { useNodeDataUpdate } from '@/app/components/workflow/hooks/use-node-data-update'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
@@ -63,6 +64,7 @@ const ContextGenerateModal = forwardRef<ContextGenerateModalHandle, Props>(({
   availableNodes,
   onOpenInternalViewAndRun,
 }, ref) => {
+  const { t } = useTranslation('workflow')
   const configsMap = useHooksStore(s => s.configsMap)
   const nodes = useStore(s => s.nodes)
   const workflowStore = useWorkflowStore()
@@ -217,57 +219,67 @@ const ContextGenerateModal = forwardRef<ContextGenerateModalHandle, Props>(({
   const canApply = !!current
 
   return (
-    <Modal
-      isShow={isShow}
-      onClose={handleCloseModal}
-      className={cn(
-        'max-w-[calc(100vw-32px)] border-[0.5px] border-components-panel-border bg-background-body !p-0 shadow-xl shadow-shadow-shadow-5',
-        isInitView ? 'w-[1280px]' : 'w-[1200px]',
-      )}
+    <Dialog
+      open={isShow}
+      onOpenChange={(open) => {
+        if (!open)
+          handleCloseModal()
+      }}
     >
-      <div className="relative flex h-[720px] max-h-[calc(100vh-32px)] flex-wrap">
-        <LeftPanel
-          isInitView={isInitView}
-          isGenerating={isGenerating}
-          inputValue={inputValue}
-          onInputChange={setInputValue}
-          onGenerate={handleGenerate}
-          onReset={handleResetWithSuggestions}
-          suggestedQuestions={suggestedQuestions}
-          hasFetchedSuggestions={hasFetchedSuggestions}
-          model={model}
-          onModelChange={handleModelChange}
-          onCompletionParamsChange={handleCompletionParamsChange}
-          promptMessages={promptMessages}
-          versionOptions={versionOptions}
-          currentVersionIndex={currentVersionIndex}
-          onSelectVersion={setCurrentVersionIndex}
-          defaultAssistantMessage={defaultAssistantMessage}
-          availableVars={resolvedAvailableVars}
-          availableNodes={resolvedAvailableNodes}
-        />
-        <RightPanel
-          isInitView={isInitView}
-          isGenerating={isGenerating}
-          displayVersion={displayVersion}
-          displayCodeLanguage={displayCodeLanguage}
-          displayOutputData={displayOutputData}
-          rightContainerRef={rightContainerRef}
-          resolvedCodePanelHeight={resolvedCodePanelHeight}
-          onResizeStart={handleResizeStart}
-          versionOptions={versionOptions}
-          currentVersionIndex={currentVersionIndex}
-          currentVersionLabel={currentVersionLabel}
-          onSelectVersion={setCurrentVersionIndex}
-          onRun={handleRun}
-          onApply={() => applyToNode(true)}
-          canRun={canRun}
-          canApply={canApply}
-          isRunning={isRunning}
-          onClose={handleCloseModal}
-        />
-      </div>
-    </Modal>
+      <DialogContent
+        className={cn(
+          'max-w-[calc(100vw-32px)] border-[0.5px] border-components-panel-border bg-background-body !p-0 shadow-xl shadow-shadow-shadow-5',
+          isInitView ? 'w-[1280px]' : 'w-[1200px]',
+        )}
+      >
+        <DialogCloseButton className="right-5 top-5 z-20" />
+        <DialogTitle className="sr-only">
+          {t('nodes.tool.contextGenerate.title')}
+        </DialogTitle>
+        <div className="relative flex h-[720px] max-h-[calc(100vh-32px)] flex-wrap">
+          <LeftPanel
+            isInitView={isInitView}
+            isGenerating={isGenerating}
+            inputValue={inputValue}
+            onInputChange={setInputValue}
+            onGenerate={handleGenerate}
+            onReset={handleResetWithSuggestions}
+            suggestedQuestions={suggestedQuestions}
+            hasFetchedSuggestions={hasFetchedSuggestions}
+            model={model}
+            onModelChange={handleModelChange}
+            onCompletionParamsChange={handleCompletionParamsChange}
+            promptMessages={promptMessages}
+            versionOptions={versionOptions}
+            currentVersionIndex={currentVersionIndex}
+            onSelectVersion={setCurrentVersionIndex}
+            defaultAssistantMessage={defaultAssistantMessage}
+            availableVars={resolvedAvailableVars}
+            availableNodes={resolvedAvailableNodes}
+          />
+          <RightPanel
+            isInitView={isInitView}
+            isGenerating={isGenerating}
+            displayVersion={displayVersion}
+            displayCodeLanguage={displayCodeLanguage}
+            displayOutputData={displayOutputData}
+            rightContainerRef={rightContainerRef}
+            resolvedCodePanelHeight={resolvedCodePanelHeight}
+            onResizeStart={handleResizeStart}
+            versionOptions={versionOptions}
+            currentVersionIndex={currentVersionIndex}
+            currentVersionLabel={currentVersionLabel}
+            onSelectVersion={setCurrentVersionIndex}
+            onRun={handleRun}
+            onApply={() => applyToNode(true)}
+            canRun={canRun}
+            canApply={canApply}
+            isRunning={isRunning}
+            onClose={handleCloseModal}
+          />
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 })
 

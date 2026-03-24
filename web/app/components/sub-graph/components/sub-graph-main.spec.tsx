@@ -11,9 +11,6 @@ const mockUseInspectVarsCrudCommon = vi.fn()
 const mockSetPendingSingleRun = vi.fn()
 
 vi.mock('@/app/components/workflow', () => ({
-  InteractionMode: {
-    Subgraph: 'subgraph',
-  },
   WorkflowWithInnerContext: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="workflow-with-inner-context">{children}</div>
   ),

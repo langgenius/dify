@@ -152,7 +152,11 @@ export default antfu(
   },
   {
     name: 'dify/base-ui-primitives',
-    files: ['app/components/base/ui/**/*.tsx', 'app/components/base/avatar/**/*.tsx'],
+    files: [
+      'app/components/base/ui/**/*.tsx',
+      'app/components/base/avatar/**/*.tsx',
+      'app/components/base/portal-to-follow-elem-plus/**/*.tsx',
+    ],
     rules: {
       'react-refresh/only-export-components': 'off',
     },
