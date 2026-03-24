@@ -176,6 +176,7 @@
   "serviceApi.enabled": "W serwisie",
   "serviceApi.title": "Interfejs API usługi",
   "unavailable": "Niedostępny",
+  "unknownError": "Nieznany błąd",
   "updated": "Aktualizowano",
   "weightedScore.customized": "Dostosowane",
   "weightedScore.description": "Poprzez dostosowanie przypisanych wag, ta strategia ponownego rankingu określa, czy priorytetowo traktować dopasowanie semantyczne czy słów kluczowych.",

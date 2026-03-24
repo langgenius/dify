@@ -1,7 +1,6 @@
 import type { MetaData, PluginCategoryEnum } from '../../types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import Toast from '@/app/components/base/toast'
 
 // ==================== Imports (after mocks) ====================
 
@@ -17,12 +16,29 @@ const {
   mockCheckForUpdates,
   mockSetShowUpdatePluginModal,
   mockInvalidateInstalledPluginList,
+  mockToastNotify,
 } = vi.hoisted(() => ({
   mockUninstallPlugin: vi.fn(),
   mockFetchReleases: vi.fn(),
   mockCheckForUpdates: vi.fn(),
   mockSetShowUpdatePluginModal: vi.fn(),
   mockInvalidateInstalledPluginList: vi.fn(),
+  mockToastNotify: vi.fn(),
+}))
+
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: Object.assign(
+    (message: string, options?: { type?: string }) => mockToastNotify({ type: options?.type, message }),
+    {
+      success: (message: string) => mockToastNotify({ type: 'success', message }),
+      error: (message: string) => mockToastNotify({ type: 'error', message }),
+      warning: (message: string) => mockToastNotify({ type: 'warning', message }),
+      info: (message: string) => mockToastNotify({ type: 'info', message }),
+      dismiss: vi.fn(),
+      update: vi.fn(),
+      promise: vi.fn(),
+    },
+  ),
 }))
 
 // Mock uninstall plugin service
@@ -140,23 +156,14 @@ const getActionButtons = () => screen.getAllByRole('button')
 const queryActionButtons = () => screen.queryAllByRole('button')
 
 describe('Action Component', () => {
-  // Spy on Toast.notify - real component but we track calls
-  let toastNotifySpy: ReturnType<typeof vi.spyOn>
-
   beforeEach(() => {
     vi.clearAllMocks()
-    // Spy on Toast.notify and mock implementation to avoid DOM side effects
-    toastNotifySpy = vi.spyOn(Toast, 'notify').mockImplementation(() => ({ clear: vi.fn() }))
     mockUninstallPlugin.mockResolvedValue({ success: true })
     mockFetchReleases.mockResolvedValue([])
     mockCheckForUpdates.mockReturnValue({
       needUpdate: false,
       toastProps: { type: 'info', message: 'Up to date' },
     })
-  })
-
-  afterEach(() => {
-    toastNotifySpy.mockRestore()
   })
 
   // ==================== Rendering Tests ====================
@@ -563,9 +570,9 @@ describe('Action Component', () => {
       render(<Action {...props} />)
       fireEvent.click(getActionButtons()[0])
 
-      // Assert - Toast.notify is called with the toast props
+      // Assert - toast is called with the translated payload
       await waitFor(() => {
-        expect(toastNotifySpy).toHaveBeenCalledWith({ type: 'success', message: 'Already up to date' })
+        expect(mockToastNotify).toHaveBeenCalledWith({ type: 'success', message: 'Already up to date' })
       })
     })
 

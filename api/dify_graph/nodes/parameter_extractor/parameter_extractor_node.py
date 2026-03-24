@@ -164,6 +164,10 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         )
 
         model_instance = self._model_instance
+        # Resolve variable references in string-typed completion params
+        model_instance.parameters = llm_utils.resolve_completion_params_variables(
+            model_instance.parameters, variable_pool
+        )
         if not isinstance(model_instance.model_type_instance, LargeLanguageModel):
             raise InvalidModelTypeError("Model is not a Large Language Model")
 

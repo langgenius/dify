@@ -11,6 +11,7 @@ from controllers.console.tag.tags import (
     TagListApi,
     TagUpdateDeleteApi,
 )
+from models.enums import TagType
 
 
 def unwrap(func):
@@ -52,7 +53,7 @@ def tag():
     tag = MagicMock()
     tag.id = "tag-1"
     tag.name = "test-tag"
-    tag.type = "knowledge"
+    tag.type = TagType.KNOWLEDGE
     return tag
 
 

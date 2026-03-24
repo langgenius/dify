@@ -75,6 +75,7 @@ import pytest
 from werkzeug.exceptions import NotFound
 
 from models.dataset import Dataset
+from models.enums import TagType
 from models.model import App, Tag, TagBinding
 from services.tag_service import TagService
 
@@ -102,7 +103,7 @@ class TagServiceTestDataFactory:
     def create_tag_mock(
         tag_id: str = "tag-123",
         name: str = "Test Tag",
-        tag_type: str = "app",
+        tag_type: TagType = TagType.APP,
         tenant_id: str = "tenant-123",
         **kwargs,
     ) -> Mock:
@@ -705,7 +706,7 @@ class TestTagServiceCRUD:
         # Verify tag attributes
         added_tag = mock_db_session.add.call_args[0][0]
         assert added_tag.name == "New Tag", "Tag name should match"
-        assert added_tag.type == "app", "Tag type should match"
+        assert added_tag.type == TagType.APP, "Tag type should match"
         assert added_tag.created_by == "user-123", "Created by should match current user"
         assert added_tag.tenant_id == "tenant-123", "Tenant ID should match current tenant"
 

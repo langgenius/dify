@@ -9,6 +9,7 @@ from extensions.ext_database import db
 from libs.helper import TimestampField
 from libs.login import current_account_with_tenant, login_required
 from models.dataset import Dataset
+from models.enums import ApiTokenType
 from models.model import ApiToken, App
 from services.api_token_service import ApiTokenCache
 
@@ -47,7 +48,7 @@ def _get_resource(resource_id, tenant_id, resource_model):
 class BaseApiKeyListResource(Resource):
     method_decorators = [account_initialization_required, login_required, setup_required]
 
-    resource_type: str | None = None
+    resource_type: ApiTokenType | None = None
     resource_model: type | None = None
     resource_id_field: str | None = None
     token_prefix: str | None = None
@@ -91,6 +92,7 @@ class BaseApiKeyListResource(Resource):
             )
 
         key = ApiToken.generate_api_key(self.token_prefix or "", 24)
+        assert self.resource_type is not None, "resource_type must be set"
         api_token = ApiToken()
         setattr(api_token, self.resource_id_field, resource_id)
         api_token.tenant_id = current_tenant_id
@@ -104,7 +106,7 @@ class BaseApiKeyListResource(Resource):
 class BaseApiKeyResource(Resource):
     method_decorators = [account_initialization_required, login_required, setup_required]
 
-    resource_type: str | None = None
+    resource_type: ApiTokenType | None = None
     resource_model: type | None = None
     resource_id_field: str | None = None
 
@@ -159,7 +161,7 @@ class AppApiKeyListResource(BaseApiKeyListResource):
         """Create a new API key for an app"""
         return super().post(resource_id)
 
-    resource_type = "app"
+    resource_type = ApiTokenType.APP
     resource_model = App
     resource_id_field = "app_id"
     token_prefix = "app-"
@@ -175,7 +177,7 @@ class AppApiKeyResource(BaseApiKeyResource):
         """Delete an API key for an app"""
         return super().delete(resource_id, api_key_id)
 
-    resource_type = "app"
+    resource_type = ApiTokenType.APP
     resource_model = App
     resource_id_field = "app_id"
 
@@ -199,7 +201,7 @@ class DatasetApiKeyListResource(BaseApiKeyListResource):
         """Create a new API key for a dataset"""
         return super().post(resource_id)
 
-    resource_type = "dataset"
+    resource_type = ApiTokenType.DATASET
     resource_model = Dataset
     resource_id_field = "dataset_id"
     token_prefix = "ds-"
@@ -215,6 +217,6 @@ class DatasetApiKeyResource(BaseApiKeyResource):
         """Delete an API key for a dataset"""
         return super().delete(resource_id, api_key_id)
 
-    resource_type = "dataset"
+    resource_type = ApiTokenType.DATASET
     resource_model = Dataset
     resource_id_field = "dataset_id"

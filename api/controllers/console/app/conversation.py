@@ -458,9 +458,7 @@ class ChatConversationApi(Resource):
         args = ChatConversationQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         subquery = (
-            db.session.query(
-                Conversation.id.label("conversation_id"), EndUser.session_id.label("from_end_user_session_id")
-            )
+            sa.select(Conversation.id.label("conversation_id"), EndUser.session_id.label("from_end_user_session_id"))
             .outerjoin(EndUser, Conversation.from_end_user_id == EndUser.id)
             .subquery()
         )
@@ -595,10 +593,8 @@ class ChatConversationDetailApi(Resource):
 
 def _get_conversation(app_model, conversation_id):
     current_user, _ = current_account_with_tenant()
-    conversation = (
-        db.session.query(Conversation)
-        .where(Conversation.id == conversation_id, Conversation.app_id == app_model.id)
-        .first()
+    conversation = db.session.scalar(
+        sa.select(Conversation).where(Conversation.id == conversation_id, Conversation.app_id == app_model.id).limit(1)
     )
 
     if not conversation:
