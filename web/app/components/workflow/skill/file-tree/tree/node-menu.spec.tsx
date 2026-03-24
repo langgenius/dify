@@ -1,6 +1,4 @@
 import type { RefObject } from 'react'
-import type { NodeApi, TreeApi } from 'react-arborist'
-import type { TreeNodeData } from '../../type'
 import { fireEvent, render, screen } from '@testing-library/react'
 import {
   ContextMenu,
@@ -43,8 +41,6 @@ type RenderNodeMenuProps = {
   nodeId?: string
   onClose?: () => void
   onImportSkills?: () => void
-  treeRef?: RefObject<TreeApi<TreeNodeData> | null>
-  node?: NodeApi<TreeNodeData>
 }
 
 function createFileOperationsMock(): MockFileOperations {
@@ -84,18 +80,12 @@ vi.mock('@/app/components/workflow/store', () => ({
   }),
 }))
 
-vi.mock('../../hooks/file-tree/operations/use-file-operations', () => ({
-  useFileOperations: () => mocks.fileOperations,
-}))
-
 const renderNodeMenu = ({
   type = NODE_MENU_TYPE.FOLDER,
   menuType = 'dropdown',
   nodeId = 'node-1',
   onClose = vi.fn(),
   onImportSkills,
-  treeRef,
-  node,
 }: RenderNodeMenuProps = {}) => {
   const ui = menuType === 'dropdown'
     ? (
@@ -107,9 +97,17 @@ const renderNodeMenu = ({
               menuType={menuType}
               nodeId={nodeId}
               onClose={onClose}
+              fileInputRef={mocks.fileOperations.fileInputRef}
+              folderInputRef={mocks.fileOperations.folderInputRef}
+              isLoading={mocks.fileOperations.isLoading}
+              onDownload={mocks.fileOperations.handleDownload}
+              onNewFile={mocks.fileOperations.handleNewFile}
+              onNewFolder={mocks.fileOperations.handleNewFolder}
+              onFileChange={mocks.fileOperations.handleFileChange}
+              onFolderChange={mocks.fileOperations.handleFolderChange}
+              onRename={mocks.fileOperations.handleRename}
+              onDeleteClick={mocks.fileOperations.handleDeleteClick}
               onImportSkills={onImportSkills}
-              treeRef={treeRef}
-              node={node}
             />
           </DropdownMenuContent>
         </DropdownMenu>
@@ -123,9 +121,17 @@ const renderNodeMenu = ({
               menuType={menuType}
               nodeId={nodeId}
               onClose={onClose}
+              fileInputRef={mocks.fileOperations.fileInputRef}
+              folderInputRef={mocks.fileOperations.folderInputRef}
+              isLoading={mocks.fileOperations.isLoading}
+              onDownload={mocks.fileOperations.handleDownload}
+              onNewFile={mocks.fileOperations.handleNewFile}
+              onNewFolder={mocks.fileOperations.handleNewFolder}
+              onFileChange={mocks.fileOperations.handleFileChange}
+              onFolderChange={mocks.fileOperations.handleFolderChange}
+              onRename={mocks.fileOperations.handleRename}
+              onDeleteClick={mocks.fileOperations.handleDeleteClick}
               onImportSkills={onImportSkills}
-              treeRef={treeRef}
-              node={node}
             />
           </ContextMenuContent>
         </ContextMenu>
@@ -256,20 +262,6 @@ describe('NodeMenu', () => {
 
       fireEvent.click(screen.getByRole('menuitem', { name: /workflow\.skillSidebar\.menu\.importSkills/i }))
       expect(onImportSkills).toHaveBeenCalledTimes(1)
-    })
-
-    it('should render delete confirmation content for files and forward confirm callbacks', () => {
-      mocks.fileOperations.showDeleteConfirm = true
-      renderNodeMenu({ type: NODE_MENU_TYPE.FILE })
-
-      expect(screen.getByText('workflow.skillSidebar.menu.fileDeleteConfirmTitle')).toBeInTheDocument()
-      expect(screen.getByText('workflow.skillSidebar.menu.fileDeleteConfirmContent')).toBeInTheDocument()
-
-      fireEvent.click(screen.getByRole('button', { name: /common\.operation\.confirm/i }))
-      fireEvent.click(screen.getByRole('button', { name: /common\.operation\.cancel/i }))
-
-      expect(mocks.fileOperations.handleDeleteConfirm).toHaveBeenCalledTimes(1)
-      expect(mocks.fileOperations.handleDeleteCancel).toHaveBeenCalledTimes(1)
     })
   })
 })

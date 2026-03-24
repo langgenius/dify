@@ -5,6 +5,22 @@ import TreeContextMenu from './tree-context-menu'
 const mocks = vi.hoisted(() => ({
   clearSelection: vi.fn(),
   deselectAll: vi.fn(),
+  fileOperations: {
+    fileInputRef: { current: null },
+    folderInputRef: { current: null },
+    showDeleteConfirm: false,
+    isLoading: false,
+    isDeleting: false,
+    handleDownload: vi.fn(),
+    handleNewFile: vi.fn(),
+    handleNewFolder: vi.fn(),
+    handleFileChange: vi.fn(),
+    handleFolderChange: vi.fn(),
+    handleRename: vi.fn(),
+    handleDeleteClick: vi.fn(),
+    handleDeleteConfirm: vi.fn(),
+    handleDeleteCancel: vi.fn(),
+  },
 }))
 
 vi.mock('@/app/components/workflow/store', () => ({
@@ -32,6 +48,10 @@ vi.mock('next/dynamic', () => ({
 
     return MockImportSkillModal
   },
+}))
+
+vi.mock('../../hooks/file-tree/operations/use-file-operations', () => ({
+  useFileOperations: () => mocks.fileOperations,
 }))
 
 vi.mock('./node-menu', () => ({

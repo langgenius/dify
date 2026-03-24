@@ -48,6 +48,23 @@ const dndMocks = vi.hoisted(() => ({
   onDragLeave: vi.fn(),
 }))
 
+const fileOperationMocks = vi.hoisted(() => ({
+  fileInputRef: { current: null },
+  folderInputRef: { current: null },
+  showDeleteConfirm: false,
+  isLoading: false,
+  isDeleting: false,
+  handleDownload: vi.fn(),
+  handleNewFile: vi.fn(),
+  handleNewFolder: vi.fn(),
+  handleFileChange: vi.fn(),
+  handleFolderChange: vi.fn(),
+  handleRename: vi.fn(),
+  handleDeleteClick: vi.fn(),
+  handleDeleteConfirm: vi.fn(async () => undefined),
+  handleDeleteCancel: vi.fn(),
+}))
+
 vi.mock('@/app/components/workflow/store', () => ({
   useStore: (selector: (state: MockWorkflowSelectorState) => unknown) => selector({
     dirtyContents: workflowState.dirtyContents,
@@ -87,6 +104,10 @@ vi.mock('../../hooks/file-tree/dnd/use-folder-file-drop', () => ({
       onDragLeave: dndMocks.onDragLeave,
     },
   }),
+}))
+
+vi.mock('../../hooks/file-tree/operations/use-file-operations', () => ({
+  useFileOperations: () => fileOperationMocks,
 }))
 
 vi.mock('./node-menu', () => ({
@@ -151,6 +172,8 @@ describe('TreeNode', () => {
 
     dndMocks.isDragOver = false
     dndMocks.isBlinking = false
+    fileOperationMocks.showDeleteConfirm = false
+    fileOperationMocks.isDeleting = false
   })
 
   // Core rendering should reflect selection, folder expansion, and store-driven visual states.
@@ -319,6 +342,24 @@ describe('TreeNode', () => {
       rerender(<TreeNode {...stopReceiveDropProps} />)
 
       expect(storeActions.setDragOverFolderId).toHaveBeenCalledWith(null)
+    })
+  })
+
+  describe('Dialogs', () => {
+    it('should keep delete confirmation dialog mounted when requested by menu actions', () => {
+      fileOperationMocks.showDeleteConfirm = true
+      const props = buildProps({ id: 'file-1', name: 'readme.md', nodeType: 'file' })
+
+      render(<TreeNode {...props} />)
+
+      expect(screen.getByText('workflow.skillSidebar.menu.fileDeleteConfirmTitle')).toBeInTheDocument()
+      expect(screen.getByText('workflow.skillSidebar.menu.fileDeleteConfirmContent')).toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole('button', { name: /common\.operation\.confirm/i }))
+      fireEvent.click(screen.getByRole('button', { name: /common\.operation\.cancel/i }))
+
+      expect(fileOperationMocks.handleDeleteConfirm).toHaveBeenCalledTimes(1)
+      expect(fileOperationMocks.handleDeleteCancel).toHaveBeenCalledTimes(1)
     })
   })
 })

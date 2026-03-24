@@ -1,23 +1,12 @@
 'use client'
 
-import type { NodeApi, TreeApi } from 'react-arborist'
 import type { NodeMenuType } from '../../constants'
-import type { TreeNodeData } from '../../type'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FileAdd, FolderAdd } from '@/app/components/base/icons/src/vender/line/files'
 import { UploadCloud02 } from '@/app/components/base/icons/src/vender/line/general'
 import { Download02 } from '@/app/components/base/icons/src/vender/solid/general'
-import {
-  AlertDialog,
-  AlertDialogActions,
-  AlertDialogCancelButton,
-  AlertDialogConfirmButton,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogTitle,
-} from '@/app/components/base/ui/alert-dialog'
 import {
   ContextMenuSeparator,
 } from '@/app/components/base/ui/context-menu'
@@ -26,7 +15,6 @@ import {
 } from '@/app/components/base/ui/dropdown-menu'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { NODE_MENU_TYPE } from '../../constants'
-import { useFileOperations } from '../../hooks/file-tree/operations/use-file-operations'
 import MenuItem from './menu-item'
 
 const KBD_CUT = ['ctrl', 'x'] as const
@@ -37,8 +25,16 @@ type NodeMenuProps = {
   menuType: 'dropdown' | 'context'
   nodeId?: string
   onClose: () => void
-  treeRef?: React.RefObject<TreeApi<TreeNodeData> | null>
-  node?: NodeApi<TreeNodeData>
+  fileInputRef: React.RefObject<HTMLInputElement | null>
+  folderInputRef: React.RefObject<HTMLInputElement | null>
+  isLoading: boolean
+  onDownload: () => void
+  onNewFile: () => void
+  onNewFolder: () => void
+  onFileChange: React.ChangeEventHandler<HTMLInputElement>
+  onFolderChange: React.ChangeEventHandler<HTMLInputElement>
+  onRename: () => void
+  onDeleteClick: () => void
   onImportSkills?: () => void
 }
 
@@ -47,8 +43,16 @@ const NodeMenu = ({
   menuType,
   nodeId,
   onClose,
-  treeRef,
-  node,
+  fileInputRef,
+  folderInputRef,
+  isLoading,
+  onDownload,
+  onNewFile,
+  onNewFolder,
+  onFileChange,
+  onFolderChange,
+  onRename,
+  onDeleteClick,
   onImportSkills,
 }: NodeMenuProps) => {
   const { t } = useTranslation('workflow')
@@ -58,24 +62,7 @@ const NodeMenu = ({
   const isRoot = type === NODE_MENU_TYPE.ROOT
   const isFolder = type === NODE_MENU_TYPE.FOLDER || isRoot
 
-  const {
-    fileInputRef,
-    folderInputRef,
-    showDeleteConfirm,
-    isLoading,
-    isDeleting,
-    handleDownload,
-    handleNewFile,
-    handleNewFolder,
-    handleFileChange,
-    handleFolderChange,
-    handleRename,
-    handleDeleteClick,
-    handleDeleteConfirm,
-    handleDeleteCancel,
-  } = useFileOperations({ nodeId, onClose, treeRef, node })
-
-  const currentNodeId = node?.data.id ?? nodeId
+  const currentNodeId = nodeId
 
   const handleCut = useCallback(() => {
     const ids = selectedNodeIds.size > 0 ? [...selectedNodeIds] : (currentNodeId ? [currentNodeId] : [])
@@ -91,12 +78,6 @@ const NodeMenu = ({
   }, [onClose])
 
   const showRenameDelete = isFolder ? !isRoot : true
-  const deleteConfirmTitle = isFolder
-    ? t('skillSidebar.menu.deleteConfirmTitle')
-    : t('skillSidebar.menu.fileDeleteConfirmTitle')
-  const deleteConfirmContent = isFolder
-    ? t('skillSidebar.menu.deleteConfirmContent')
-    : t('skillSidebar.menu.fileDeleteConfirmContent')
   const Separator = menuType === 'dropdown' ? DropdownMenuSeparator : ContextMenuSeparator
 
   return (
@@ -109,7 +90,7 @@ const NodeMenu = ({
             multiple
             className="hidden"
             aria-label={t('skillSidebar.menu.uploadFile')}
-            onChange={handleFileChange}
+            onChange={onFileChange}
           />
           <input
             ref={folderInputRef}
@@ -118,21 +99,21 @@ const NodeMenu = ({
             webkitdirectory=""
             className="hidden"
             aria-label={t('skillSidebar.menu.uploadFolder')}
-            onChange={handleFolderChange}
+            onChange={onFolderChange}
           />
 
           <MenuItem
             menuType={menuType}
             icon={FileAdd}
             label={t('skillSidebar.menu.newFile')}
-            onClick={() => handleNewFile()}
+            onClick={onNewFile}
             disabled={isLoading}
           />
           <MenuItem
             menuType={menuType}
             icon={FolderAdd}
             label={t('skillSidebar.menu.newFolder')}
-            onClick={() => handleNewFolder()}
+            onClick={onNewFolder}
             disabled={isLoading}
           />
 
@@ -177,7 +158,7 @@ const NodeMenu = ({
             menuType={menuType}
             icon={Download02}
             label={t('skillSidebar.menu.download')}
-            onClick={handleDownload}
+            onClick={onDownload}
             disabled={isLoading}
           />
           <Separator />
@@ -215,51 +196,19 @@ const NodeMenu = ({
             menuType={menuType}
             icon="i-ri-edit-2-line"
             label={t('skillSidebar.menu.rename')}
-            onClick={() => handleRename()}
+            onClick={onRename}
             disabled={isLoading}
           />
           <MenuItem
             menuType={menuType}
             icon="i-ri-delete-bin-line"
             label={t('skillSidebar.menu.delete')}
-            onClick={() => handleDeleteClick()}
+            onClick={onDeleteClick}
             disabled={isLoading}
             variant="destructive"
           />
         </>
       )}
-
-      <AlertDialog
-        open={showDeleteConfirm}
-        onOpenChange={(open) => {
-          if (!open)
-            handleDeleteCancel()
-        }}
-      >
-        <AlertDialogContent>
-          <div className="flex flex-col gap-2 p-6 pb-4">
-            <AlertDialogTitle className="text-text-primary title-2xl-semi-bold">
-              {deleteConfirmTitle}
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-text-secondary system-sm-regular">
-              {deleteConfirmContent}
-            </AlertDialogDescription>
-          </div>
-          <AlertDialogActions>
-            <AlertDialogCancelButton>
-              {t('operation.cancel', { ns: 'common' })}
-            </AlertDialogCancelButton>
-            <AlertDialogConfirmButton
-              disabled={isDeleting}
-              onClick={() => {
-                void handleDeleteConfirm()
-              }}
-            >
-              {t('operation.confirm', { ns: 'common' })}
-            </AlertDialogConfirmButton>
-          </AlertDialogActions>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   )
 }

@@ -12,6 +12,7 @@ import {
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import dynamic from '@/next/dynamic'
 import { NODE_MENU_TYPE, ROOT_ID } from '../../constants'
+import { useFileOperations } from '../../hooks/file-tree/operations/use-file-operations'
 import NodeMenu from './node-menu'
 
 const ImportSkillModal = dynamic(() => import('../../start-tab/import-skill-modal'), {
@@ -46,6 +47,11 @@ const TreeContextMenu = ({
   }, [storeApi, treeRef])
 
   const handleMenuClose = React.useCallback(() => {}, [])
+  const fileOperations = useFileOperations({
+    nodeId: ROOT_ID,
+    treeRef,
+    onClose: handleMenuClose,
+  })
   const handleOpenImportSkills = React.useCallback(() => {
     setIsImportModalOpen(true)
   }, [])
@@ -66,7 +72,16 @@ const TreeContextMenu = ({
             type={NODE_MENU_TYPE.ROOT}
             nodeId={ROOT_ID}
             onClose={handleMenuClose}
-            treeRef={treeRef}
+            fileInputRef={fileOperations.fileInputRef}
+            folderInputRef={fileOperations.folderInputRef}
+            isLoading={fileOperations.isLoading}
+            onDownload={fileOperations.handleDownload}
+            onNewFile={fileOperations.handleNewFile}
+            onNewFolder={fileOperations.handleNewFolder}
+            onFileChange={fileOperations.handleFileChange}
+            onFolderChange={fileOperations.handleFolderChange}
+            onRename={fileOperations.handleRename}
+            onDeleteClick={fileOperations.handleDeleteClick}
             onImportSkills={handleOpenImportSkills}
           />
         </ContextMenuContent>
