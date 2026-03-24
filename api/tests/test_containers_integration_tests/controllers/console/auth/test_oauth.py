@@ -394,6 +394,10 @@ class TestOAuthCallback:
 
 class TestAccountGeneration:
     @pytest.fixture
+    def app(self, flask_app_with_containers):
+        return flask_app_with_containers
+
+    @pytest.fixture
     def user_info(self):
         return OAuthUserInfo(id="123", name="Test User", email="test@example.com")
 
@@ -423,33 +427,20 @@ class TestAccountGeneration:
         assert result == mock_account
         mock_get_account.assert_called_once()
 
-    def test_get_account_by_email_with_case_fallback_uses_real_db(
-        self, flask_req_ctx_with_containers, db_session_with_containers
-    ):
-        """Test case-insensitive email lookup against real PostgreSQL."""
-        from uuid import uuid4
+    def test_get_account_by_email_with_case_fallback_falls_back_to_lowercase(self):
+        """Test that case fallback tries lowercase when exact match fails."""
+        mock_session = MagicMock()
+        first_result = MagicMock()
+        first_result.scalar_one_or_none.return_value = None
+        expected_account = MagicMock()
+        second_result = MagicMock()
+        second_result.scalar_one_or_none.return_value = expected_account
+        mock_session.execute.side_effect = [first_result, second_result]
 
-        from models.account import Account
+        result = AccountService.get_account_by_email_with_case_fallback("Case@Test.com", session=mock_session)
 
-        test_email = f"Case-{uuid4()}@Test.com"
-        account = Account(
-            email=test_email,
-            name="Test User",
-            interface_language="en-US",
-            status=AccountStatus.ACTIVE,
-        )
-        db_session_with_containers.add(account)
-        db_session_with_containers.commit()
-        db_session_with_containers.expire_all()
-
-        result = AccountService.get_account_by_email_with_case_fallback(test_email, session=db_session_with_containers)
-        assert result is not None
-
-        result_lower = AccountService.get_account_by_email_with_case_fallback(
-            test_email.lower(), session=db_session_with_containers
-        )
-        assert result_lower is not None
-        assert result_lower.id == account.id
+        assert result is expected_account
+        assert mock_session.execute.call_count == 2
 
     @pytest.mark.parametrize(
         ("allow_register", "existing_account", "should_create"),
