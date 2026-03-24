@@ -1,6 +1,6 @@
 'use client'
 import type { FC, JSX } from 'react'
-import type { AliyunConfig, ArizeConfig, DatabricksConfig, LangFuseConfig, LangSmithConfig, MLflowConfig, OpikConfig, PhoenixConfig, TencentConfig, WeaveConfig } from './type'
+import type { AliyunConfig, ArizeConfig, DatabricksConfig, DatadogConfig, LangFuseConfig, LangSmithConfig, MLflowConfig, OpikConfig, PhoenixConfig, TencentConfig, WeaveConfig } from './type'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
@@ -33,8 +33,9 @@ export type PopupProps = {
   aliyunConfig: AliyunConfig | null
   mlflowConfig: MLflowConfig | null
   databricksConfig: DatabricksConfig | null
+  datadogConfig: DatadogConfig | null
   tencentConfig: TencentConfig | null
-  onConfigUpdated: (provider: TracingProvider, payload: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig | TencentConfig | MLflowConfig | DatabricksConfig) => void
+  onConfigUpdated: (provider: TracingProvider, payload: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig | MLflowConfig | DatabricksConfig | DatadogConfig | TencentConfig) => void
   onConfigRemoved: (provider: TracingProvider) => void
 }
 
@@ -54,6 +55,7 @@ const ConfigPopup: FC<PopupProps> = ({
   aliyunConfig,
   mlflowConfig,
   databricksConfig,
+  datadogConfig,
   tencentConfig,
   onConfigUpdated,
   onConfigRemoved,
@@ -78,7 +80,7 @@ const ConfigPopup: FC<PopupProps> = ({
     }
   }, [onChooseProvider])
 
-  const handleConfigUpdated = useCallback((payload: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig | MLflowConfig | DatabricksConfig | TencentConfig) => {
+  const handleConfigUpdated = useCallback((payload: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig | MLflowConfig | DatabricksConfig | DatadogConfig | TencentConfig) => {
     onConfigUpdated(currentProvider!, payload)
     hideConfigModal()
   }, [currentProvider, hideConfigModal, onConfigUpdated])
@@ -88,8 +90,8 @@ const ConfigPopup: FC<PopupProps> = ({
     hideConfigModal()
   }, [currentProvider, hideConfigModal, onConfigRemoved])
 
-  const providerAllConfigured = arizeConfig && phoenixConfig && langSmithConfig && langFuseConfig && opikConfig && weaveConfig && aliyunConfig && mlflowConfig && databricksConfig && tencentConfig
-  const providerAllNotConfigured = !arizeConfig && !phoenixConfig && !langSmithConfig && !langFuseConfig && !opikConfig && !weaveConfig && !aliyunConfig && !mlflowConfig && !databricksConfig && !tencentConfig
+  const providerAllConfigured = arizeConfig && phoenixConfig && langSmithConfig && langFuseConfig && opikConfig && weaveConfig && aliyunConfig && mlflowConfig && databricksConfig && datadogConfig && tencentConfig
+  const providerAllNotConfigured = !arizeConfig && !phoenixConfig && !langSmithConfig && !langFuseConfig && !opikConfig && !weaveConfig && !aliyunConfig && !mlflowConfig && !databricksConfig && !datadogConfig && !tencentConfig
 
   const switchContent = (
     <Switch
@@ -216,6 +218,19 @@ const ConfigPopup: FC<PopupProps> = ({
     />
   )
 
+  const datadogPanel = (
+    <ProviderPanel
+      type={TracingProvider.datadog}
+      readOnly={readOnly}
+      config={datadogConfig}
+      hasConfigured={!!datadogConfig}
+      onConfig={handleOnConfig(TracingProvider.datadog)}
+      isChosen={chosenProvider === TracingProvider.datadog}
+      onChoose={handleOnChoose(TracingProvider.datadog)}
+      key="datadog-provider-panel"
+    />
+  )
+
   const tencentPanel = (
     <ProviderPanel
       type={TracingProvider.tencent}
@@ -258,6 +273,9 @@ const ConfigPopup: FC<PopupProps> = ({
     if (databricksConfig)
       configuredPanels.push(databricksPanel)
 
+    if (datadogConfig)
+      configuredPanels.push(datadogPanel)
+
     if (tencentConfig)
       configuredPanels.push(tencentPanel)
 
@@ -294,6 +312,9 @@ const ConfigPopup: FC<PopupProps> = ({
     if (!databricksConfig)
       notConfiguredPanels.push(databricksPanel)
 
+    if (!datadogConfig)
+      notConfiguredPanels.push(datadogPanel)
+
     if (!tencentConfig)
       notConfiguredPanels.push(tencentPanel)
 
@@ -305,6 +326,8 @@ const ConfigPopup: FC<PopupProps> = ({
       return mlflowConfig
     if (currentProvider === TracingProvider.databricks)
       return databricksConfig
+    if (currentProvider === TracingProvider.datadog)
+      return datadogConfig
     if (currentProvider === TracingProvider.arize)
       return arizeConfig
     if (currentProvider === TracingProvider.phoenix)
@@ -365,6 +388,7 @@ const ConfigPopup: FC<PopupProps> = ({
                   {opikPanel}
                   {mlflowPanel}
                   {databricksPanel}
+                  {datadogPanel}
                   {weavePanel}
                   {arizePanel}
                   {phoenixPanel}
