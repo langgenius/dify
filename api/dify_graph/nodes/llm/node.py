@@ -246,6 +246,13 @@ class LLMNode(Node[LLMNodeData]):
                 node_data_model=self.node_data.model,
                 tenant_id=self.tenant_id,
             )
+            resolved_completion_params = llm_utils.resolve_completion_params_variables(
+                model_config.parameters,
+                variable_pool,
+            )
+            model_instance.parameters = resolved_completion_params
+            model_config.parameters = resolved_completion_params
+            self.node_data.model.completion_params = resolved_completion_params
 
             # fetch memory
             memory = llm_utils.fetch_memory(

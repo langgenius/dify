@@ -9,13 +9,17 @@ import { useTranslation } from 'react-i18next'
 import { useNodesMetaData } from '@/app/components/workflow/hooks'
 import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
 import {
-  ITERATION_PADDING,
-} from '../../constants'
-import {
   generateNewNode,
   getNodeCustomTypeByNodeDataType,
 } from '../../utils'
-import { CUSTOM_ITERATION_START_NODE } from '../iteration-start/constants'
+import {
+  buildIterationChildCopy,
+  getIterationChildren,
+  getIterationContainerBounds,
+  getIterationContainerResize,
+  getNextChildNodeTypeCount,
+  getRestrictedIterationPosition,
+} from './use-interactions.helpers'
 
 export const useNodeIterationInteractions = () => {
   const { t } = useTranslation()
@@ -24,45 +28,21 @@ export const useNodeIterationInteractions = () => {
 
   const handleNodeIterationRerender = useCallback((nodeId: string) => {
     const { nodes, setNodes } = collaborativeWorkflow.getState()
-
     const currentNode = nodes.find(n => n.id === nodeId)!
-    const childrenNodes = nodes.filter(n => n.parentId === nodeId && n.type !== CUSTOM_ITERATION_START_NODE)
-    if (!childrenNodes.length)
-      return
-    let rightNode: Node
-    let bottomNode: Node
+    const childrenNodes = getIterationChildren(nodes, nodeId)
+    const resize = getIterationContainerResize(currentNode, getIterationContainerBounds(childrenNodes))
 
-    childrenNodes.forEach((n) => {
-      if (rightNode) {
-        if (n.position.x + n.width! > rightNode.position.x + rightNode.width!)
-          rightNode = n
-      }
-      else {
-        rightNode = n
-      }
-      if (bottomNode) {
-        if (n.position.y + n.height! > bottomNode.position.y + bottomNode.height!)
-          bottomNode = n
-      }
-      else {
-        bottomNode = n
-      }
-    })
-
-    const widthShouldExtend = rightNode! && currentNode.width! < rightNode.position.x + rightNode.width!
-    const heightShouldExtend = bottomNode! && currentNode.height! < bottomNode.position.y + bottomNode.height!
-
-    if (widthShouldExtend || heightShouldExtend) {
+    if (resize.width || resize.height) {
       const newNodes = produce(nodes, (draft) => {
         draft.forEach((n) => {
           if (n.id === nodeId) {
-            if (widthShouldExtend) {
-              n.data.width = rightNode.position.x + rightNode.width! + ITERATION_PADDING.right
-              n.width = rightNode.position.x + rightNode.width! + ITERATION_PADDING.right
+            if (resize.width) {
+              n.data.width = resize.width
+              n.width = resize.width
             }
-            if (heightShouldExtend) {
-              n.data.height = bottomNode.position.y + bottomNode.height! + ITERATION_PADDING.bottom
-              n.height = bottomNode.position.y + bottomNode.height! + ITERATION_PADDING.bottom
+            if (resize.height) {
+              n.data.height = resize.height
+              n.height = resize.height
             }
           }
         })
@@ -75,25 +55,8 @@ export const useNodeIterationInteractions = () => {
   const handleNodeIterationChildDrag = useCallback((node: Node) => {
     const { nodes } = collaborativeWorkflow.getState()
 
-    const restrictPosition: { x?: number, y?: number } = { x: undefined, y: undefined }
-
-    if (node.data.isInIteration) {
-      const parentNode = nodes.find(n => n.id === node.parentId)
-
-      if (parentNode) {
-        if (node.position.y < ITERATION_PADDING.top)
-          restrictPosition.y = ITERATION_PADDING.top
-        if (node.position.x < ITERATION_PADDING.left)
-          restrictPosition.x = ITERATION_PADDING.left
-        if (node.position.x + node.width! > parentNode!.width! - ITERATION_PADDING.right)
-          restrictPosition.x = parentNode!.width! - ITERATION_PADDING.right - node.width!
-        if (node.position.y + node.height! > parentNode!.height! - ITERATION_PADDING.bottom)
-          restrictPosition.y = parentNode!.height! - ITERATION_PADDING.bottom - node.height!
-      }
-    }
-
     return {
-      restrictPosition,
+      restrictPosition: getRestrictedIterationPosition(node, nodes.find(n => n.id === node.parentId)),
     }
   }, [collaborativeWorkflow])
 
@@ -108,38 +71,27 @@ export const useNodeIterationInteractions = () => {
 
   const handleNodeIterationChildrenCopy = useCallback((nodeId: string, newNodeId: string, idMapping: Record<string, string>) => {
     const { nodes } = collaborativeWorkflow.getState()
-    const childrenNodes = nodes.filter(n => n.parentId === nodeId && n.type !== CUSTOM_ITERATION_START_NODE)
+    const childrenNodes = getIterationChildren(nodes, nodeId)
     const newIdMapping = { ...idMapping }
     const childNodeTypeCount: ChildNodeTypeCount = {}
 
     const copyChildren = childrenNodes.map((child, index) => {
       const childNodeType = child.data.type as BlockEnum
       const nodesWithSameType = nodes.filter(node => node.data.type === childNodeType)
-      const defaultValue = nodesMetaDataMap?.[childNodeType]?.defaultValue ?? {}
-
-      if (!childNodeTypeCount[childNodeType])
-        childNodeTypeCount[childNodeType] = nodesWithSameType.length + 1
-      else
-        childNodeTypeCount[childNodeType] = childNodeTypeCount[childNodeType] + 1
-
+      const nextCount = getNextChildNodeTypeCount(childNodeTypeCount, childNodeType, nodesWithSameType.length)
+      const title = nodesWithSameType.length > 0
+        ? `${t(`blocks.${childNodeType}`, { ns: 'workflow' })} ${nextCount}`
+        : t(`blocks.${childNodeType}`, { ns: 'workflow' })
+      const childCopy = buildIterationChildCopy({
+        child,
+        childNodeType,
+        defaultValue: nodesMetaDataMap?.[childNodeType]?.defaultValue as Node['data'],
+        title,
+        newNodeId,
+      })
       const { newNode } = generateNewNode({
+        ...childCopy,
         type: getNodeCustomTypeByNodeDataType(childNodeType),
-        data: {
-          ...defaultValue,
-          ...child.data,
-          selected: false,
-          _isBundled: false,
-          _connectedSourceHandleIds: [],
-          _connectedTargetHandleIds: [],
-          title: nodesWithSameType.length > 0 ? `${t(`blocks.${childNodeType}`, { ns: 'workflow' })} ${childNodeTypeCount[childNodeType]}` : t(`blocks.${childNodeType}`, { ns: 'workflow' }),
-          iteration_id: newNodeId,
-          type: childNodeType,
-        },
-        position: child.position,
-        positionAbsolute: child.positionAbsolute,
-        parentId: newNodeId,
-        extent: child.extent,
-        zIndex: child.zIndex,
       })
       newNode.id = `${newNodeId}${newNode.id + index}`
       newIdMapping[child.id] = newNode.id
@@ -150,7 +102,7 @@ export const useNodeIterationInteractions = () => {
       copyChildren,
       newIdMapping,
     }
-  }, [collaborativeWorkflow, t])
+  }, [collaborativeWorkflow, nodesMetaDataMap, t])
 
   return {
     handleNodeIterationRerender,
