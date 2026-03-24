@@ -1,5 +1,6 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import GenericTable from '../generic-table'
 
 const columns = [
@@ -121,23 +122,40 @@ describe('GenericTable', () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
 
+    const ControlledTable = () => {
+      const [data, setData] = useState([{ method: '', preview: '' }])
+
+      return (
+        <GenericTable
+          title="Advanced"
+          columns={advancedColumns}
+          data={data}
+          emptyRowData={{ method: '', preview: '' }}
+          onChange={(nextData) => {
+            onChange(nextData)
+            setData(nextData as { method: string, preview: string }[])
+          }}
+        />
+      )
+    }
+
     render(
-      <GenericTable
-        title="Advanced"
-        columns={advancedColumns}
-        data={[{ method: '', preview: '' }]}
-        emptyRowData={{ method: '', preview: '' }}
-        onChange={onChange}
-      />,
+      <ControlledTable />,
     )
 
     await user.click(screen.getByRole('button', { name: 'Choose method' }))
-    await user.click(screen.getByText('POST'))
+    await user.click(await screen.findByText('POST'))
 
-    expect(onChange).toHaveBeenCalledWith([{ method: 'post', preview: '' }])
+    await waitFor(() => {
+      expect(onChange).toHaveBeenCalledWith([{ method: 'post', preview: '' }])
+    })
 
-    await user.click(screen.getByRole('button', { name: 'custom-render' }))
-    expect(onChange).toHaveBeenCalledWith([{ method: '', preview: '0:empty' }])
+    onChange.mockClear()
+    await user.click(screen.getAllByRole('button', { name: 'custom-render' })[0])
+
+    await waitFor(() => {
+      expect(onChange).toHaveBeenCalledWith([{ method: 'post', preview: '0:post' }])
+    })
   })
 
   it('should ignore custom-cell updates when readonly rows are rendered', async () => {
