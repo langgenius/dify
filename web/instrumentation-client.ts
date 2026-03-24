@@ -4,7 +4,7 @@ import { env } from '@/env'
 async function main() {
   // Polyfill for Array.prototype.toSpliced (ES2023, Chrome 110+)
   if (!Array.prototype.toSpliced) {
-  // eslint-disable-next-line no-extend-native
+    // eslint-disable-next-line no-extend-native
     Array.prototype.toSpliced = function <T>(this: T[], start: number, deleteCount?: number, ...items: T[]): T[] {
       const copy = this.slice()
       // When deleteCount is undefined (omitted), delete to end; otherwise let splice handle coercion
