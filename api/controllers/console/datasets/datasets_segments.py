@@ -45,7 +45,7 @@ def _get_segment_with_summary(segment, dataset_id):
     """Helper function to marshal segment and add summary information."""
     from services.summary_index_service import SummaryIndexService
 
-    segment_dict = dict(marshal(segment, segment_fields))
+    segment_dict = dict(marshal(segment, segment_fields))  # type: ignore
     # Query summary for this segment (only enabled summaries)
     summary = SummaryIndexService.get_segment_summary(segment_id=segment.id, dataset_id=dataset_id)
     segment_dict["summary"] = summary.summary_content if summary else None
@@ -206,7 +206,7 @@ class DatasetDocumentSegmentListApi(Resource):
         # Add summary to each segment
         segments_with_summary = []
         for segment in segments.items:
-            segment_dict = dict(marshal(segment, segment_fields))
+            segment_dict = dict(marshal(segment, segment_fields))  # type: ignore
             segment_dict["summary"] = summaries.get(segment.id)
             segments_with_summary.append(segment_dict)
 
