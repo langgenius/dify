@@ -26,6 +26,15 @@ type RenamePayload = {
   name: string
 }
 
+type MutationWithCallbacks<TData, TVariables> = {
+  mutate: (variables: TVariables, options?: {
+    onSuccess?: (data: TData) => void
+    onError?: () => void
+  }) => void
+}
+
+type MutationResult<TData> = { ok: true, data: TData } | { ok: false }
+
 export function useInlineCreateNode({
   treeRef,
   treeChildren,
@@ -56,6 +65,18 @@ export function useInlineCreateNode({
     return insertDraftTreeNode(treeChildren, pendingCreateNode.parentId, draftNode)
   }, [pendingCreateNode, treeChildren])
 
+  const runMutation = useCallback(<TData, TVariables>(
+    mutation: MutationWithCallbacks<TData, TVariables>,
+    variables: TVariables,
+  ) => {
+    return new Promise<MutationResult<TData>>((resolve) => {
+      mutation.mutate(variables, {
+        onSuccess: data => resolve({ ok: true, data }),
+        onError: () => resolve({ ok: false }),
+      })
+    })
+  }, [])
+
   const handleRename = useCallback(async ({ id, name }: RenamePayload) => {
     if (pendingCreateId && id === pendingCreateId) {
       const trimmedName = name.trim()
@@ -66,33 +87,38 @@ export function useInlineCreateNode({
 
       try {
         if (pendingCreateType === 'folder') {
-          await createFolder.mutateAsync({
+          const createFolderResult = await runMutation(createFolder, {
             appId,
             payload: {
               name: trimmedName,
               parent_id: pendingCreateParentId,
             },
           })
+          if (!createFolderResult.ok) {
+            toast.error(t('skillSidebar.menu.createError'))
+            return
+          }
           emitTreeUpdate()
           toast.success(t('skillSidebar.menu.folderCreated'))
         }
         else {
           const emptyBlob = new Blob([''], { type: 'text/plain' })
           const file = new File([emptyBlob], trimmedName)
-          const createdFile = await uploadFile.mutateAsync({
+          const createFileResult = await runMutation(uploadFile, {
             appId,
             file,
             parentId: pendingCreateParentId,
           })
+          if (!createFileResult.ok) {
+            toast.error(t('skillSidebar.menu.createError'))
+            return
+          }
           emitTreeUpdate()
-          const extension = getFileExtension(trimmedName, createdFile.extension)
+          const extension = getFileExtension(trimmedName, createFileResult.data.extension)
           if (isTextLikeFile(extension))
-            storeApi.getState().openTab(createdFile.id, { pinned: true, autoFocusEditor: true })
+            storeApi.getState().openTab(createFileResult.data.id, { pinned: true, autoFocusEditor: true })
           toast.success(t('skillSidebar.menu.fileCreated'))
         }
-      }
-      catch {
-        toast.error(t('skillSidebar.menu.createError'))
       }
       finally {
         storeApi.getState().clearCreateNode()
@@ -100,16 +126,19 @@ export function useInlineCreateNode({
       return
     }
 
-    renameNode.mutateAsync({
+    const renameResult = await runMutation(renameNode, {
       appId,
       nodeId: id,
       payload: { name },
-    }).then(() => {
+    })
+
+    if (renameResult.ok) {
       emitTreeUpdate()
       toast.success(t('skillSidebar.menu.renamed'))
-    }).catch(() => {
+    }
+    else {
       toast.error(t('skillSidebar.menu.renameError'))
-    })
+    }
   }, [
     appId,
     uploadFile,
@@ -118,6 +147,7 @@ export function useInlineCreateNode({
     pendingCreateParentId,
     pendingCreateType,
     renameNode,
+    runMutation,
     storeApi,
     t,
     emitTreeUpdate,

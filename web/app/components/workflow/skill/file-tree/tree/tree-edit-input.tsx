@@ -3,7 +3,7 @@
 import type { NodeApi } from 'react-arborist'
 import type { TreeNodeData } from '../../type'
 import * as React from 'react'
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 type TreeEditInputProps = {
@@ -13,6 +13,9 @@ type TreeEditInputProps = {
 const TreeEditInput = ({ node }: TreeEditInputProps) => {
   const { t } = useTranslation('workflow')
   const inputRef = useRef<HTMLInputElement>(null)
+  const isMountedRef = useRef(true)
+  const submitLockRef = useRef(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const isFolder = node.data.node_type === 'folder'
   const placeholder = isFolder
     ? t('skillSidebar.folderNamePlaceholder')
@@ -29,20 +32,47 @@ const TreeEditInput = ({ node }: TreeEditInputProps) => {
       input.setSelectionRange(0, dotIndex)
     else
       input.select()
+  }, [isFolder])
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false
+    }
   }, [])
+
+  const handleSubmit = useCallback(async () => {
+    if (submitLockRef.current)
+      return
+
+    submitLockRef.current = true
+    setIsSubmitting(true)
+
+    try {
+      await node.tree.submit(node, inputRef.current?.value || '')
+    }
+    finally {
+      submitLockRef.current = false
+      if (isMountedRef.current)
+        setIsSubmitting(false)
+    }
+  }, [node])
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     e.stopPropagation()
     if (e.key === 'Escape') {
+      if (submitLockRef.current)
+        return
       node.reset()
     }
     else if (e.key === 'Enter') {
       e.preventDefault()
-      node.submit(inputRef.current?.value || '')
+      void handleSubmit()
     }
   }
 
   const handleBlur = () => {
+    if (submitLockRef.current)
+      return
     node.reset()
   }
 
@@ -57,6 +87,7 @@ const TreeEditInput = ({ node }: TreeEditInputProps) => {
       defaultValue={node.data.name}
       placeholder={placeholder}
       aria-label={ariaLabel}
+      disabled={isSubmitting}
       onKeyDown={handleKeyDown}
       onBlur={handleBlur}
       onClick={e => e.stopPropagation()}

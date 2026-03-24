@@ -1,9 +1,9 @@
 import type { NodeApi } from 'react-arborist'
 import type { TreeNodeData } from '../../type'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import TreeEditInput from './tree-edit-input'
 
-type MockNodeApi = Pick<NodeApi<TreeNodeData>, 'data' | 'reset' | 'submit'>
+type MockNodeApi = Pick<NodeApi<TreeNodeData>, 'data' | 'reset' | 'tree'>
 
 function createMockNode(overrides: Partial<Pick<TreeNodeData, 'name' | 'node_type'>> = {}): MockNodeApi {
   const nodeType = overrides.node_type ?? 'file'
@@ -18,7 +18,9 @@ function createMockNode(overrides: Partial<Pick<TreeNodeData, 'name' | 'node_typ
       children: [],
     },
     reset: vi.fn(),
-    submit: vi.fn(),
+    tree: {
+      submit: vi.fn().mockResolvedValue(undefined),
+    } as unknown as NodeApi<TreeNodeData>['tree'],
   }
 }
 
@@ -125,7 +127,7 @@ describe('TreeEditInput', () => {
   })
 
   describe('Keyboard interactions', () => {
-    it('should call node.submit with input value on Enter', () => {
+    it('should call tree.submit with input value on Enter', async () => {
       const node = createMockNode({ name: 'old.txt' })
       renderInput(node)
 
@@ -133,10 +135,12 @@ describe('TreeEditInput', () => {
       fireEvent.change(input, { target: { value: 'new.txt' } })
       fireEvent.keyDown(input, { key: 'Enter' })
 
-      expect(node.submit).toHaveBeenCalledWith('new.txt')
+      await waitFor(() => {
+        expect(node.tree.submit).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ id: 'node-1' }) }), 'new.txt')
+      })
     })
 
-    it('should call node.submit with empty string when input is cleared', () => {
+    it('should call tree.submit with empty string when input is cleared', async () => {
       const node = createMockNode({ name: 'old.txt' })
       renderInput(node)
 
@@ -144,7 +148,32 @@ describe('TreeEditInput', () => {
       fireEvent.change(input, { target: { value: '' } })
       fireEvent.keyDown(input, { key: 'Enter' })
 
-      expect(node.submit).toHaveBeenCalledWith('')
+      await waitFor(() => {
+        expect(node.tree.submit).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ id: 'node-1' }) }), '')
+      })
+    })
+
+    it('should submit only once when Enter is pressed repeatedly during submission', async () => {
+      let resolveSubmit: (() => void) | undefined
+      const node = createMockNode({ name: 'old.txt' })
+      node.tree.submit = vi.fn().mockImplementation(() => new Promise<void>((resolve) => {
+        resolveSubmit = resolve
+      }))
+      renderInput(node)
+
+      const input = screen.getByRole('textbox')
+      fireEvent.change(input, { target: { value: 'new.txt' } })
+      fireEvent.keyDown(input, { key: 'Enter' })
+      fireEvent.keyDown(input, { key: 'Enter' })
+
+      expect(node.tree.submit).toHaveBeenCalledTimes(1)
+      expect(input).toBeDisabled()
+
+      resolveSubmit?.()
+
+      await waitFor(() => {
+        expect(input).not.toBeDisabled()
+      })
     })
 
     it('should call node.reset on Escape', () => {
@@ -154,7 +183,7 @@ describe('TreeEditInput', () => {
       fireEvent.keyDown(screen.getByRole('textbox'), { key: 'Escape' })
 
       expect(node.reset).toHaveBeenCalledTimes(1)
-      expect(node.submit).not.toHaveBeenCalled()
+      expect(node.tree.submit).not.toHaveBeenCalled()
     })
 
     it('should stop propagation for all key events', () => {
@@ -180,6 +209,18 @@ describe('TreeEditInput', () => {
       fireEvent.blur(screen.getByRole('textbox'))
 
       expect(node.reset).toHaveBeenCalledTimes(1)
+    })
+
+    it('should ignore blur while submission is in progress', () => {
+      const node = createMockNode()
+      node.tree.submit = vi.fn().mockImplementation(() => new Promise(() => {}))
+      renderInput(node)
+
+      const input = screen.getByRole('textbox')
+      fireEvent.keyDown(input, { key: 'Enter' })
+      fireEvent.blur(input)
+
+      expect(node.reset).not.toHaveBeenCalled()
     })
   })
 
