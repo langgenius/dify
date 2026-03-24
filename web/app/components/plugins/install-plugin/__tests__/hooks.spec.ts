@@ -3,8 +3,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useGitHubReleases, useGitHubUpload } from '../hooks'
 
 const mockNotify = vi.fn()
-vi.mock('@/app/components/base/toast', () => ({
-  default: { notify: (...args: unknown[]) => mockNotify(...args) },
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: Object.assign((...args: unknown[]) => mockNotify(...args), {
+    success: (...args: unknown[]) => mockNotify(...args),
+    error: (...args: unknown[]) => mockNotify(...args),
+    warning: (...args: unknown[]) => mockNotify(...args),
+    info: (...args: unknown[]) => mockNotify(...args),
+    dismiss: vi.fn(),
+    update: vi.fn(),
+    promise: vi.fn(),
+  }),
 }))
 
 vi.mock('@/config', () => ({
@@ -56,9 +64,7 @@ describe('install-plugin/hooks', () => {
         const releases = await result.current.fetchReleases('owner', 'repo')
 
         expect(releases).toEqual([])
-        expect(mockNotify).toHaveBeenCalledWith(
-          expect.objectContaining({ type: 'error' }),
-        )
+        expect(mockNotify).toHaveBeenCalledWith('Failed to fetch repository releases')
       })
     })
 
@@ -130,9 +136,7 @@ describe('install-plugin/hooks', () => {
       await expect(
         result.current.handleUpload('url', 'v1', 'pkg'),
       ).rejects.toThrow('Upload failed')
-      expect(mockNotify).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'error', message: 'Error uploading package' }),
-      )
+      expect(mockNotify).toHaveBeenCalledWith('Error uploading package')
     })
   })
 })
