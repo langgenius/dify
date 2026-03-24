@@ -5,7 +5,7 @@ import type { ModalStates, VersionTarget } from './use-detail-header-state'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { uninstallPlugin } from '@/service/plugins'
@@ -60,10 +60,7 @@ export const usePluginOperations = ({
     }
 
     if (!meta?.repo || !meta?.version || !meta?.package) {
-      Toast.notify({
-        type: 'error',
-        message: 'Missing plugin metadata for GitHub update',
-      })
+      toast.error('Missing plugin metadata for GitHub update')
       return
     }
 
@@ -74,7 +71,7 @@ export const usePluginOperations = ({
       return
 
     const { needUpdate, toastProps } = checkForUpdates(fetchedReleases, meta.version)
-    Toast.notify(toastProps)
+    toast(toastProps.message, { type: toastProps.type })
 
     if (needUpdate) {
       setShowUpdatePluginModal({
@@ -122,10 +119,7 @@ export const usePluginOperations = ({
 
     if (res.success) {
       modalStates.hideDeleteConfirm()
-      Toast.notify({
-        type: 'success',
-        message: t('action.deleteSuccess', { ns: 'plugin' }),
-      })
+      toast.success(t('action.deleteSuccess', { ns: 'plugin' }))
       handlePluginUpdated(true)
 
       if (PluginCategoryEnum.model.includes(category))

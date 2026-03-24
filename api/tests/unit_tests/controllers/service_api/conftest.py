@@ -12,6 +12,7 @@ from unittest.mock import Mock
 import pytest
 from flask import Flask
 
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from models.account import TenantStatus
 from models.model import App, AppMode, EndUser
 from tests.unit_tests.conftest import setup_mock_tenant_account_query
@@ -175,7 +176,7 @@ def mock_document():
     document.name = "test_document.txt"
     document.indexing_status = "completed"
     document.enabled = True
-    document.doc_form = "text_model"
+    document.doc_form = IndexStructureType.PARAGRAPH_INDEX
     return document
 
 

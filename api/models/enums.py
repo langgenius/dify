@@ -222,6 +222,13 @@ class DatasetMetadataType(StrEnum):
     TIME = "time"
 
 
+class SegmentType(StrEnum):
+    """Document segment type"""
+
+    AUTOMATIC = "automatic"
+    CUSTOMIZED = "customized"
+
+
 class SegmentStatus(StrEnum):
     """Document segment status"""
 
@@ -323,3 +330,10 @@ class ProviderQuotaType(StrEnum):
             if member.value == value:
                 return member
         raise ValueError(f"No matching enum found for value '{value}'")
+
+
+class ApiTokenType(StrEnum):
+    """API Token type"""
+
+    APP = "app"
+    DATASET = "dataset"
