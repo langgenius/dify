@@ -264,7 +264,7 @@ const VarReferencePickerTrigger: FC<Props> = ({
                                 </div>
                               )}
                             />
-                            {tooltipPopup && (
+                            {tooltipPopup !== null && tooltipPopup !== undefined && (
                               <TooltipContent variant="plain">
                                 {tooltipPopup}
                               </TooltipContent>

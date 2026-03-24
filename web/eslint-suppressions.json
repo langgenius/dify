@@ -9260,11 +9260,6 @@
       "count": 2
     }
   },
-  "app/components/workflow/selection-contextmenu.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
   "app/components/workflow/shortcuts-name.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
