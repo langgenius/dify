@@ -12,15 +12,15 @@ import { DSLImportMode } from '@/models/app'
 import dynamic from '@/next/dynamic'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { fetchAppDetail } from '@/service/explore'
-import DSLConfirmModal from '../app/create-from-dsl-modal/dsl-confirm-modal'
-import CreateAppModal from '../explore/create-app-modal'
-import TryApp from '../explore/try-app'
 import List from './list'
 
 const ImportFromMarketplaceTemplateModal = dynamic(
   () => import('./import-from-marketplace-template-modal'),
   { ssr: false },
 )
+const DSLConfirmModal = dynamic(() => import('../app/create-from-dsl-modal/dsl-confirm-modal'), { ssr: false })
+const CreateAppModal = dynamic(() => import('../explore/create-app-modal'), { ssr: false })
+const TryApp = dynamic(() => import('../explore/try-app'), { ssr: false })
 
 const Apps = () => {
   const { t } = useTranslation()

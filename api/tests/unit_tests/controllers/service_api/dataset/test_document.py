@@ -35,6 +35,7 @@ from controllers.service_api.dataset.document import (
     InvalidMetadataError,
 )
 from controllers.service_api.dataset.error import ArchivedDocumentImmutableError
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from models.enums import IndexingStatus
 from services.dataset_service import DocumentService
 from services.entities.knowledge_entities.knowledge_entities import ProcessRule, RetrievalModel
@@ -52,7 +53,7 @@ class TestDocumentTextCreatePayload:
     def test_payload_with_defaults(self):
         """Test payload default values."""
         payload = DocumentTextCreatePayload(name="Doc", text="Content")
-        assert payload.doc_form == "text_model"
+        assert payload.doc_form == IndexStructureType.PARAGRAPH_INDEX
         assert payload.doc_language == "English"
         assert payload.process_rule is None
         assert payload.indexing_technique is None
@@ -62,14 +63,14 @@ class TestDocumentTextCreatePayload:
         payload = DocumentTextCreatePayload(
             name="Full Document",
             text="Complete document content here",
-            doc_form="qa_model",
+            doc_form=IndexStructureType.QA_INDEX,
             doc_language="Chinese",
             indexing_technique="high_quality",
             embedding_model="text-embedding-ada-002",
             embedding_model_provider="openai",
         )
         assert payload.name == "Full Document"
-        assert payload.doc_form == "qa_model"
+        assert payload.doc_form == IndexStructureType.QA_INDEX
         assert payload.doc_language == "Chinese"
         assert payload.indexing_technique == "high_quality"
         assert payload.embedding_model == "text-embedding-ada-002"
@@ -147,8 +148,8 @@ class TestDocumentTextUpdate:
 
     def test_payload_with_doc_form_update(self):
         """Test payload with doc_form update."""
-        payload = DocumentTextUpdate(doc_form="qa_model")
-        assert payload.doc_form == "qa_model"
+        payload = DocumentTextUpdate(doc_form=IndexStructureType.QA_INDEX)
+        assert payload.doc_form == IndexStructureType.QA_INDEX
 
     def test_payload_with_language_update(self):
         """Test payload with doc_language update."""
@@ -158,7 +159,7 @@ class TestDocumentTextUpdate:
     def test_payload_default_values(self):
         """Test payload default values."""
         payload = DocumentTextUpdate()
-        assert payload.doc_form == "text_model"
+        assert payload.doc_form == IndexStructureType.PARAGRAPH_INDEX
         assert payload.doc_language == "English"
 
 
@@ -272,14 +273,24 @@ class TestDocumentDocForm:
 
     def test_text_model_form(self):
         """Test text_model form."""
-        doc_form = "text_model"
-        valid_forms = ["text_model", "qa_model", "hierarchical_model", "parent_child_model"]
+        doc_form = IndexStructureType.PARAGRAPH_INDEX
+        valid_forms = [
+            IndexStructureType.PARAGRAPH_INDEX,
+            IndexStructureType.QA_INDEX,
+            IndexStructureType.PARENT_CHILD_INDEX,
+            "parent_child_model",
+        ]
         assert doc_form in valid_forms
 
     def test_qa_model_form(self):
         """Test qa_model form."""
-        doc_form = "qa_model"
-        valid_forms = ["text_model", "qa_model", "hierarchical_model", "parent_child_model"]
+        doc_form = IndexStructureType.QA_INDEX
+        valid_forms = [
+            IndexStructureType.PARAGRAPH_INDEX,
+            IndexStructureType.QA_INDEX,
+            IndexStructureType.PARENT_CHILD_INDEX,
+            "parent_child_model",
+        ]
         assert doc_form in valid_forms
 
 
@@ -504,7 +515,7 @@ class TestDocumentApiGet:
         doc.name = "test_document.txt"
         doc.indexing_status = "completed"
         doc.enabled = True
-        doc.doc_form = "text_model"
+        doc.doc_form = IndexStructureType.PARAGRAPH_INDEX
         doc.doc_language = "English"
         doc.doc_type = "book"
         doc.doc_metadata_details = {"source": "upload"}

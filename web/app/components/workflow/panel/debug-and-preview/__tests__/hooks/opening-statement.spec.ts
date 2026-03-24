@@ -1,50 +1,73 @@
+/* eslint-disable ts/no-explicit-any */
 import type { ChatItemInTree } from '@/app/components/base/chat/types'
 import { renderHook } from '@testing-library/react'
-import { useChat } from '../hooks'
+import { useChat } from '../../hooks'
+
+const mockHandleRun = vi.fn()
+const mockNotify = vi.fn()
+const mockFetchInspectVars = vi.fn()
+const mockInvalidAllLastRun = vi.fn()
+const mockSetIterTimes = vi.fn()
+const mockSetLoopTimes = vi.fn()
+const mockSubmitHumanInputForm = vi.fn()
+const mockSseGet = vi.fn()
+const mockGetNodes = vi.fn((): any[] => [])
+
+let mockWorkflowRunningData: any = null
 
 vi.mock('@/service/base', () => ({
-  sseGet: vi.fn(),
+  sseGet: (...args: any[]) => mockSseGet(...args),
 }))
 
 vi.mock('@/service/use-workflow', () => ({
-  useInvalidAllLastRun: () => vi.fn(),
+  useInvalidAllLastRun: () => mockInvalidAllLastRun,
 }))
 
 vi.mock('@/service/workflow', () => ({
-  submitHumanInputForm: vi.fn(),
+  submitHumanInputForm: (...args: any[]) => mockSubmitHumanInputForm(...args),
 }))
 
 vi.mock('@/app/components/base/toast/context', () => ({
-  useToastContext: () => ({ notify: vi.fn() }),
+  useToastContext: () => ({ notify: mockNotify }),
 }))
 
 vi.mock('reactflow', () => ({
-  useStoreApi: () => ({ getState: () => ({}) }),
+  useStoreApi: () => ({
+    getState: () => ({
+      getNodes: mockGetNodes,
+    }),
+  }),
 }))
 
-vi.mock('../../../hooks', () => ({
-  useWorkflowRun: () => ({ handleRun: vi.fn() }),
-  useSetWorkflowVarsWithValue: () => ({ fetchInspectVars: vi.fn() }),
+vi.mock('../../../../hooks', () => ({
+  useWorkflowRun: () => ({ handleRun: mockHandleRun }),
+  useSetWorkflowVarsWithValue: () => ({ fetchInspectVars: mockFetchInspectVars }),
 }))
 
-vi.mock('../../../hooks-store', () => ({
+vi.mock('../../../../hooks-store', () => ({
   useHooksStore: () => null,
 }))
 
-vi.mock('../../../store', () => ({
+vi.mock('../../../../store', () => ({
   useWorkflowStore: () => ({
     getState: () => ({
-      setIterTimes: vi.fn(),
-      setLoopTimes: vi.fn(),
+      setIterTimes: mockSetIterTimes,
+      setLoopTimes: mockSetLoopTimes,
       inputs: {},
+      workflowRunningData: mockWorkflowRunningData,
     }),
   }),
   useStore: () => vi.fn(),
 }))
 
+const resetMocksAndWorkflowState = () => {
+  vi.clearAllMocks()
+  mockWorkflowRunningData = null
+}
+
 describe('workflow debug useChat – opening statement stability', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    resetMocksAndWorkflowState()
   })
 
   it('should return empty chatList when config has no opening_statement', () => {
@@ -59,7 +82,6 @@ describe('workflow debug useChat – opening statement stability', () => {
 
   it('should use stable id "opening-statement" instead of Date.now()', () => {
     const config = { opening_statement: 'Welcome!' }
-
     const { result } = renderHook(() => useChat(config))
     expect(result.current.chatList[0].id).toBe('opening-statement')
   })
@@ -131,5 +153,22 @@ describe('workflow debug useChat – opening statement stability', () => {
 
     const openerAfter = result.current.chatList[0]
     expect(openerAfter).toBe(openerBefore)
+  })
+
+  it('should include suggestedQuestions in opening statement when config has them', () => {
+    const config = {
+      opening_statement: 'Welcome!',
+      suggested_questions: ['How are you?', 'What can you do?'],
+    }
+    const { result } = renderHook(() => useChat(config))
+    const opener = result.current.chatList[0]
+    expect(opener.suggestedQuestions).toEqual(['How are you?', 'What can you do?'])
+  })
+
+  it('should not include suggestedQuestions when config has none', () => {
+    const config = { opening_statement: 'Welcome!' }
+    const { result } = renderHook(() => useChat(config))
+    const opener = result.current.chatList[0]
+    expect(opener.suggestedQuestions).toBeUndefined()
   })
 })
