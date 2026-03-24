@@ -241,7 +241,7 @@ class AppService:
     class ArgsDict(TypedDict):
         name: str
         description: str
-        icon_type: str
+        icon_type: IconType | str | None
         icon: str
         icon_background: str
         use_icon_as_answer_icon: bool
@@ -257,7 +257,13 @@ class AppService:
         assert current_user is not None
         app.name = args["name"]
         app.description = args["description"]
-        app.icon_type = IconType(args["icon_type"]) if args["icon_type"] else None
+        icon_type = args.get("icon_type")
+        if icon_type is None:
+            resolved_icon_type = app.icon_type
+        else:
+            resolved_icon_type = IconType(icon_type)
+
+        app.icon_type = resolved_icon_type
         app.icon = args["icon"]
         app.icon_background = args["icon_background"]
         app.use_icon_as_answer_icon = args.get("use_icon_as_answer_icon", False)
