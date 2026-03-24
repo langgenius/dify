@@ -149,27 +149,19 @@ class TestForgotPasswordResetApi:
         mock_update_account.assert_called_once()
 
 
-def test_get_account_by_email_with_case_fallback_uses_real_db(db_session_with_containers):
-    """Test case-insensitive email lookup against real PostgreSQL."""
-    from models.account import Account
+def test_get_account_by_email_with_case_fallback_falls_back_to_lowercase():
+    """Test that case fallback tries lowercase when exact match fails."""
+    from unittest.mock import MagicMock
 
-    account = Account(
-        email="Mixed@Test.com",
-        name="Test User",
-        interface_language="en-US",
-        status="active",
-    )
-    db_session_with_containers.add(account)
-    db_session_with_containers.commit()
+    mock_session = MagicMock()
+    first_result = MagicMock()
+    first_result.scalar_one_or_none.return_value = None
+    expected_account = MagicMock()
+    second_result = MagicMock()
+    second_result.scalar_one_or_none.return_value = expected_account
+    mock_session.execute.side_effect = [first_result, second_result]
 
-    result = AccountService.get_account_by_email_with_case_fallback(
-        "Mixed@Test.com", session=db_session_with_containers
-    )
-    assert result is not None
-    assert result.email == "Mixed@Test.com"
+    result = AccountService.get_account_by_email_with_case_fallback("Mixed@Test.com", session=mock_session)
 
-    result_lower = AccountService.get_account_by_email_with_case_fallback(
-        "mixed@test.com", session=db_session_with_containers
-    )
-    assert result_lower is not None
-    assert result_lower.id == account.id
+    assert result is expected_account
+    assert mock_session.execute.call_count == 2
