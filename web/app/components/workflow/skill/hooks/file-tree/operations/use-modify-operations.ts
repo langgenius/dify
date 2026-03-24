@@ -18,6 +18,7 @@ type UseModifyOperationsOptions = {
   nodeId: string
   node?: NodeApi<TreeNodeData>
   treeRef?: React.RefObject<TreeApi<TreeNodeData> | null>
+  nodeType?: TreeNodeData['node_type']
   appId: string
   storeApi: StoreApi<SkillEditorSliceShape>
   treeData?: AppAssetTreeResponse
@@ -28,6 +29,7 @@ export function useModifyOperations({
   nodeId,
   node,
   treeRef,
+  nodeType,
   appId,
   storeApi,
   treeData,
@@ -54,7 +56,7 @@ export function useModifyOperations({
   }, [])
 
   const handleDeleteConfirm = useCallback(async () => {
-    const isFolder = node?.data?.node_type === 'folder'
+    const isFolder = (node?.data?.node_type ?? nodeType) === 'folder'
     try {
       const descendantFileIds = treeData?.children
         ? getAllDescendantFileIds(nodeId, treeData.children)
@@ -91,7 +93,7 @@ export function useModifyOperations({
       setShowDeleteConfirm(false)
       onClose()
     }
-  }, [appId, nodeId, node?.data?.node_type, deleteNodeAsync, storeApi, treeData?.children, onClose, t, emitTreeUpdate])
+  }, [appId, nodeId, node?.data?.node_type, nodeType, deleteNodeAsync, storeApi, treeData?.children, onClose, t, emitTreeUpdate])
 
   const handleDeleteCancel = useCallback(() => {
     setShowDeleteConfirm(false)

@@ -344,4 +344,22 @@ describe('TreeNode', () => {
       expect(storeActions.setDragOverFolderId).toHaveBeenCalledWith(null)
     })
   })
+
+  describe('Dialogs', () => {
+    it('should keep delete confirmation dialog mounted when requested by dropdown actions', () => {
+      fileOperationMocks.showDeleteConfirm = true
+      const props = buildProps({ id: 'file-1', name: 'readme.md', nodeType: 'file' })
+
+      render(<TreeNode {...props} />)
+
+      expect(screen.getByText('workflow.skillSidebar.menu.fileDeleteConfirmTitle')).toBeInTheDocument()
+      expect(screen.getByText('workflow.skillSidebar.menu.fileDeleteConfirmContent')).toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole('button', { name: /common\.operation\.confirm/i }))
+      fireEvent.click(screen.getByRole('button', { name: /common\.operation\.cancel/i }))
+
+      expect(fileOperationMocks.handleDeleteConfirm).toHaveBeenCalledTimes(1)
+      expect(fileOperationMocks.handleDeleteCancel).toHaveBeenCalledTimes(1)
+    })
+  })
 })

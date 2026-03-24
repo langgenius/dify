@@ -10,7 +10,7 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import { toast } from '@/app/components/base/ui/toast'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useMoveAppAssetNode } from '@/service/use-app-asset'
-import { findNodeById, getTargetFolderIdFromSelection, toApiParentId } from '../../../utils/tree-utils'
+import { findNodeById, getTargetFolderIdFromSelection, isDescendantOf, toApiParentId } from '../../../utils/tree-utils'
 import { useSkillTreeUpdateEmitter } from '../data/use-skill-tree-collaboration'
 
 type UsePasteOperationOptions = {
@@ -64,8 +64,20 @@ export function usePasteOperation({
         return false
       })
 
+      const isMovingToDescendant = nodeIdsArray.some((nodeId) => {
+        const node = findNodeById(treeChildren, nodeId)
+        if (!node || node.node_type !== 'folder')
+          return false
+        return isDescendantOf(targetFolderId, nodeId, treeChildren)
+      })
+
       if (isMovingToSelf) {
         toast.error(t('skillSidebar.menu.cannotMoveToSelf'))
+        return
+      }
+
+      if (isMovingToDescendant) {
+        toast.error(t('skillSidebar.menu.cannotMoveToDescendant'))
         return
       }
 

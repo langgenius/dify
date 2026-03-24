@@ -41,6 +41,7 @@ const SidebarSearchAdd = () => {
       return ROOT_ID
     return getTargetFolderIdFromSelection(selectedTreeNodeId, treeChildren)
   }, [selectedTreeNodeId, treeChildren])
+  const isRootTarget = targetFolderId === ROOT_ID
   const handleMenuClose = useCallback(() => {}, [])
 
   const {
@@ -128,16 +129,22 @@ const SidebarSearchAdd = () => {
             disabled={isLoading}
           />
 
-          <DropdownMenuSeparator />
+          {isRootTarget
+            ? (
+                <>
+                  <DropdownMenuSeparator />
 
-          <MenuItem
-            menuType="dropdown"
-            icon="i-ri-upload-line"
-            label={t('skillSidebar.menu.importSkills')}
-            onClick={() => setIsImportModalOpen(true)}
-            disabled={isLoading}
-            tooltip={t('skill.startTab.importSkillDesc')}
-          />
+                  <MenuItem
+                    menuType="dropdown"
+                    icon="i-ri-upload-line"
+                    label={t('skillSidebar.menu.importSkills')}
+                    onClick={() => setIsImportModalOpen(true)}
+                    disabled={isLoading}
+                    tooltip={t('skill.startTab.importSkillDesc')}
+                  />
+                </>
+              )
+            : null}
         </DropdownMenuContent>
       </DropdownMenu>
       <ImportSkillModal

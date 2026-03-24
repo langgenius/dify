@@ -61,6 +61,7 @@ const mocks = vi.hoisted(() => ({
   getTargetFolderIdFromSelection: vi.fn<(selectedId: string | null, nodes: TreeNodeData[]) => string>(),
   toApiParentId: vi.fn<(folderId: string | null | undefined) => string | null>(),
   findNodeById: vi.fn<(nodes: TreeNodeData[], nodeId: string) => TreeNodeData | null>(),
+  isDescendantOf: vi.fn<(potentialDescendantId: string | null | undefined, ancestorId: string | null | undefined, nodes: TreeNodeData[]) => boolean>(),
 }))
 
 vi.mock('@/app/components/workflow/store', () => ({
@@ -88,6 +89,7 @@ vi.mock('../../../utils/tree-utils', () => ({
   getTargetFolderIdFromSelection: mocks.getTargetFolderIdFromSelection,
   toApiParentId: mocks.toApiParentId,
   findNodeById: mocks.findNodeById,
+  isDescendantOf: mocks.isDescendantOf,
 }))
 
 vi.mock('@/app/components/base/ui/toast', () => ({
@@ -127,6 +129,7 @@ describe('usePasteOperation', () => {
     mocks.getTargetFolderIdFromSelection.mockReturnValue('target-folder')
     mocks.toApiParentId.mockReturnValue('target-parent')
     mocks.findNodeById.mockReturnValue(null)
+    mocks.isDescendantOf.mockReturnValue(false)
   })
 
   // Scenario: isPasting output should reflect mutation pending state.
@@ -192,6 +195,30 @@ describe('usePasteOperation', () => {
 
       expect(mocks.moveMutateAsync).not.toHaveBeenCalled()
       expect(mocks.toastError).toHaveBeenCalledWith('workflow.skillSidebar.menu.cannotMoveToSelf')
+    })
+
+    it('should reject moving folder into its descendant and show error toast', async () => {
+      mocks.workflowState.clipboard = {
+        operation: 'cut',
+        nodeIds: new Set(['folder-1']),
+      }
+      mocks.getTargetFolderIdFromSelection.mockReturnValueOnce('child-folder')
+      mocks.findNodeById
+        .mockReturnValueOnce(createTreeNode('folder-1', 'folder'))
+        .mockReturnValueOnce(createTreeNode('folder-1', 'folder'))
+      mocks.isDescendantOf.mockReturnValueOnce(true)
+      const treeRef = createTreeRef('child-folder')
+      const treeData: AppAssetTreeResponse = {
+        children: [createTreeNode('folder-1', 'folder')],
+      }
+      const { result } = renderHook(() => usePasteOperation({ treeRef, treeData }))
+
+      await act(async () => {
+        await result.current.handlePaste()
+      })
+
+      expect(mocks.moveMutateAsync).not.toHaveBeenCalled()
+      expect(mocks.toastError).toHaveBeenCalledWith('workflow.skillSidebar.menu.cannotMoveToDescendant')
     })
   })
 

@@ -18,6 +18,8 @@ type UseFileOperationsOptions = {
   onClose: () => void
   treeRef?: React.RefObject<TreeApi<TreeNodeData> | null>
   node?: NodeApi<TreeNodeData>
+  nodeType?: TreeNodeData['node_type']
+  fileName?: string
 }
 
 export function useFileOperations({
@@ -25,8 +27,12 @@ export function useFileOperations({
   onClose,
   treeRef,
   node,
+  nodeType: explicitNodeType,
+  fileName: explicitFileName,
 }: UseFileOperationsOptions) {
   const nodeId = node?.data.id ?? explicitNodeId ?? ''
+  const nodeType = node?.data.node_type ?? explicitNodeType
+  const fileName = node?.data.name ?? explicitFileName
 
   const appDetail = useAppStore(s => s.appDetail)
   const appId = appDetail?.id || ''
@@ -46,6 +52,7 @@ export function useFileOperations({
     nodeId,
     node,
     treeRef,
+    nodeType,
     appId,
     storeApi,
     treeData,
@@ -55,7 +62,7 @@ export function useFileOperations({
   const downloadOps = useDownloadOperation({
     appId,
     nodeId,
-    fileName: node?.data.name,
+    fileName,
     onClose,
   })
 

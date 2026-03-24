@@ -176,6 +176,22 @@ describe('SidebarSearchAdd', () => {
       // Assert
       expect(screen.queryByTestId('import-skill-modal')).not.toBeInTheDocument()
     })
+
+    it('should hide import skills action when target folder is not root', () => {
+      mocks.storeState.selectedTreeNodeId = 'folder-1'
+      mocks.treeData = {
+        children: [
+          createNode({
+            id: 'folder-1',
+          }),
+        ],
+      }
+
+      render(<SidebarSearchAdd />)
+      fireEvent.click(screen.getByRole('button', { name: /common\.operation\.add/i }))
+
+      expect(screen.queryByRole('menuitem', { name: /workflow\.skillSidebar\.menu\.importSkills/i })).not.toBeInTheDocument()
+    })
   })
 
   describe('Data flow', () => {

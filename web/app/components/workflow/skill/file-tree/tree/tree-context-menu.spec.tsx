@@ -4,9 +4,11 @@ import TreeContextMenu from './tree-context-menu'
 
 const mocks = vi.hoisted(() => ({
   clearSelection: vi.fn(),
+  setSelectedNodeIds: vi.fn(),
   deselectAll: vi.fn(),
   getNode: vi.fn(),
   selectNode: vi.fn(),
+  useFileOperations: vi.fn(),
   fileOperations: {
     fileInputRef: { current: null },
     folderInputRef: { current: null },
@@ -29,6 +31,7 @@ vi.mock('@/app/components/workflow/store', () => ({
   useWorkflowStore: () => ({
     getState: () => ({
       clearSelection: mocks.clearSelection,
+      setSelectedNodeIds: mocks.setSelectedNodeIds,
     }),
   }),
 }))
@@ -53,7 +56,10 @@ vi.mock('next/dynamic', () => ({
 }))
 
 vi.mock('../../hooks/file-tree/operations/use-file-operations', () => ({
-  useFileOperations: () => mocks.fileOperations,
+  useFileOperations: (...args: unknown[]) => {
+    mocks.useFileOperations(...args)
+    return mocks.fileOperations
+  },
 }))
 
 vi.mock('./node-menu', () => ({
@@ -112,7 +118,10 @@ describe('TreeContextMenu', () => {
     })
 
     it('should switch to item menu when a tree node is right clicked', () => {
-      mocks.getNode.mockReturnValue({ select: mocks.selectNode })
+      mocks.getNode.mockReturnValue({
+        select: mocks.selectNode,
+        data: { name: 'readme.md' },
+      })
 
       render(
         <TreeContextMenu treeRef={{ current: { deselectAll: mocks.deselectAll, get: mocks.getNode } as never }}>
@@ -128,11 +137,17 @@ describe('TreeContextMenu', () => {
       fireEvent.contextMenu(screen.getByRole('treeitem'))
 
       expect(mocks.getNode).toHaveBeenCalledWith('file-1')
+      expect(mocks.deselectAll).toHaveBeenCalledTimes(1)
       expect(mocks.selectNode).toHaveBeenCalledTimes(1)
+      expect(mocks.setSelectedNodeIds).toHaveBeenCalledWith(['file-1'])
       expect(mocks.clearSelection).not.toHaveBeenCalled()
-      expect(mocks.deselectAll).not.toHaveBeenCalled()
       expect(screen.getByTestId('node-menu-context')).toHaveAttribute('data-type', 'file')
       expect(screen.getByTestId('node-menu-context')).toHaveAttribute('data-node-id', 'file-1')
+      expect(mocks.useFileOperations).toHaveBeenLastCalledWith(expect.objectContaining({
+        nodeId: 'file-1',
+        nodeType: 'file',
+        fileName: 'readme.md',
+      }))
     })
 
     it('should keep import modal mounted after root menu requests it', () => {
