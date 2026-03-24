@@ -82,6 +82,9 @@ const TreeNode = ({ node, style, dragHandle, treeChildren }: TreeNodeProps) => {
   const handleMoreClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
   }, [])
+  const handleDropdownContentClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation()
+  }, [])
 
   const handleMenuClose = useCallback(() => {}, [])
   const fileOperations = useFileOperations({
@@ -172,6 +175,7 @@ const TreeNode = ({ node, style, dragHandle, treeChildren }: TreeNodeProps) => {
             placement="bottom-start"
             sideOffset={4}
             popupClassName="min-w-[180px]"
+            popupProps={{ onClick: handleDropdownContentClick }}
           >
             <NodeMenu
               menuType="dropdown"

@@ -111,9 +111,20 @@ vi.mock('../../hooks/file-tree/operations/use-file-operations', () => ({
 }))
 
 vi.mock('./node-menu', () => ({
-  default: ({ type, menuType, onClose }: { type: string, menuType: string, onClose: () => void }) => (
+  default: ({
+    type,
+    menuType,
+    onClose,
+    onDeleteClick,
+  }: {
+    type: string
+    menuType: string
+    onClose: () => void
+    onDeleteClick?: () => void
+  }) => (
     <div data-testid={`node-menu-${menuType}`} data-type={type}>
       <button type="button" onClick={onClose}>close-menu</button>
+      <button type="button" onClick={onDeleteClick}>delete-item</button>
     </div>
   ),
 }))
@@ -297,6 +308,23 @@ describe('TreeNode', () => {
 
       expect(screen.getByTestId('node-menu-dropdown')).toHaveAttribute('data-type', 'file')
     })
+
+    it('should stop dropdown item clicks from bubbling to the parent row host', () => {
+      const props = buildProps({ id: 'file-1', name: 'readme.md', nodeType: 'file' })
+      const rowHostClick = vi.fn()
+
+      render(
+        <div onClick={rowHostClick}>
+          <TreeNode {...props} />
+        </div>,
+      )
+
+      fireEvent.click(screen.getByRole('button', { name: /workflow\.skillSidebar\.menu\.moreActions/i }))
+      fireEvent.click(screen.getByRole('button', { name: 'delete-item' }))
+
+      expect(fileOperationMocks.handleDeleteClick).toHaveBeenCalledTimes(1)
+      expect(rowHostClick).not.toHaveBeenCalled()
+    })
   })
 
   // Effects should synchronize external drag status transitions into workflow store state.
@@ -360,6 +388,23 @@ describe('TreeNode', () => {
 
       expect(fileOperationMocks.handleDeleteConfirm).toHaveBeenCalledTimes(1)
       expect(fileOperationMocks.handleDeleteCancel).toHaveBeenCalledTimes(1)
+    })
+
+    it('should stop cancel clicks in delete confirmation from bubbling to the parent row host', () => {
+      fileOperationMocks.showDeleteConfirm = true
+      const props = buildProps({ id: 'file-1', name: 'readme.md', nodeType: 'file' })
+      const rowHostClick = vi.fn()
+
+      render(
+        <div onClick={rowHostClick}>
+          <TreeNode {...props} />
+        </div>,
+      )
+
+      fireEvent.click(screen.getByRole('button', { name: /common\.operation\.cancel/i }))
+
+      expect(fileOperationMocks.handleDeleteCancel).toHaveBeenCalledTimes(1)
+      expect(rowHostClick).not.toHaveBeenCalled()
     })
   })
 })

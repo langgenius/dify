@@ -29,6 +29,9 @@ const NodeDeleteConfirmDialog = ({
 }: NodeDeleteConfirmDialogProps) => {
   const { t } = useTranslation('workflow')
   const isFolder = nodeType === 'folder'
+  const handleDialogClick = React.useCallback((e: React.MouseEvent) => {
+    e.stopPropagation()
+  }, [])
 
   return (
     <AlertDialog
@@ -38,7 +41,10 @@ const NodeDeleteConfirmDialog = ({
           onCancel()
       }}
     >
-      <AlertDialogContent>
+      <AlertDialogContent
+        popupProps={{ onClick: handleDialogClick }}
+        backdropProps={{ onClick: handleDialogClick }}
+      >
         <div className="flex flex-col gap-2 p-6 pb-4">
           <AlertDialogTitle className="text-text-primary title-2xl-semi-bold">
             {isFolder
