@@ -2,14 +2,24 @@ import * as amplitude from '@amplitude/analytics-browser'
 import { sessionReplayPlugin } from '@amplitude/plugin-session-replay-browser'
 import { render } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import AmplitudeProvider, { isAmplitudeEnabled } from '../AmplitudeProvider'
+import AmplitudeProvider from '../AmplitudeProvider'
 
 const mockConfig = vi.hoisted(() => ({
   AMPLITUDE_API_KEY: 'test-api-key',
   IS_CLOUD_EDITION: true,
 }))
 
-vi.mock('@/config', () => mockConfig)
+vi.mock('@/config', () => ({
+  get AMPLITUDE_API_KEY() {
+    return mockConfig.AMPLITUDE_API_KEY
+  },
+  get IS_CLOUD_EDITION() {
+    return mockConfig.IS_CLOUD_EDITION
+  },
+  get isAmplitudeEnabled() {
+    return mockConfig.IS_CLOUD_EDITION && !!mockConfig.AMPLITUDE_API_KEY
+  },
+}))
 
 vi.mock('@amplitude/analytics-browser', () => ({
   init: vi.fn(),
@@ -25,22 +35,6 @@ describe('AmplitudeProvider', () => {
     vi.clearAllMocks()
     mockConfig.AMPLITUDE_API_KEY = 'test-api-key'
     mockConfig.IS_CLOUD_EDITION = true
-  })
-
-  describe('isAmplitudeEnabled', () => {
-    it('returns true when cloud edition and api key present', () => {
-      expect(isAmplitudeEnabled()).toBe(true)
-    })
-
-    it('returns false when cloud edition but no api key', () => {
-      mockConfig.AMPLITUDE_API_KEY = ''
-      expect(isAmplitudeEnabled()).toBe(false)
-    })
-
-    it('returns false when not cloud edition', () => {
-      mockConfig.IS_CLOUD_EDITION = false
-      expect(isAmplitudeEnabled()).toBe(false)
-    })
   })
 
   describe('Component', () => {
