@@ -19,9 +19,13 @@ from pydantic import AliasChoices, BaseModel, ConfigDict, Field, TypeAdapter
 
 from dify_graph.enums import BuiltinNodeTypes
 from dify_graph.nodes.base.variable_template_parser import VariableTemplateParser
-from dify_graph.nodes.human_input.enums import DeliveryMethodType
 from dify_graph.runtime import VariablePool
 from dify_graph.variables.consts import SELECTORS_LENGTH
+
+
+class DeliveryMethodType(enum.StrEnum):
+    WEBAPP = enum.auto()
+    EMAIL = enum.auto()
 
 
 class EmailRecipientType(enum.StrEnum):
