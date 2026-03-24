@@ -138,7 +138,6 @@ if TYPE_CHECKING:
     from core.skill.entities.skill_bundle import SkillBundle
     from core.skill.entities.tool_dependencies import ToolDependencies, ToolDependency
     from core.tools.__base.tool import Tool
-
     from dify_graph.file.models import File
     from dify_graph.runtime import GraphRuntimeState
 
