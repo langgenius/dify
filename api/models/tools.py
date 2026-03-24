@@ -145,7 +145,9 @@ class ApiToolProvider(TypeBase):
     icon: Mapped[str] = mapped_column(String(255), nullable=False)
     # original schema
     schema: Mapped[str] = mapped_column(LongText, nullable=False)
-    schema_type_str: Mapped[str] = mapped_column(String(40), nullable=False)
+    schema_type_str: Mapped[ApiProviderSchemaType] = mapped_column(
+        EnumText(ApiProviderSchemaType, length=40), nullable=False
+    )
     # who created this tool
     user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # tenant id

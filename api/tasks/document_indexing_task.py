@@ -10,6 +10,7 @@ from configs import dify_config
 from core.db.session_factory import session_factory
 from core.entities.document_task import DocumentTask
 from core.indexing_runner import DocumentIsPausedError, IndexingRunner
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
 from enums.cloud_plan import CloudPlan
 from libs.datetime_utils import naive_utc_now
@@ -150,7 +151,7 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
                             )
                             if (
                                 document.indexing_status == IndexingStatus.COMPLETED
-                                and document.doc_form != "qa_model"
+                                and document.doc_form != IndexStructureType.QA_INDEX
                                 and document.need_summary is True
                             ):
                                 try:

@@ -8,6 +8,7 @@ from controllers.console.apikey import (
     BaseApiKeyResource,
     _get_resource,
 )
+from models.enums import ApiTokenType
 
 
 @pytest.fixture
@@ -45,14 +46,14 @@ def bypass_permissions():
 
 
 class DummyApiKeyListResource(BaseApiKeyListResource):
-    resource_type = "app"
+    resource_type = ApiTokenType.APP
     resource_model = MagicMock()
     resource_id_field = "app_id"
     token_prefix = "app-"
 
 
 class DummyApiKeyResource(BaseApiKeyResource):
-    resource_type = "app"
+    resource_type = ApiTokenType.APP
     resource_model = MagicMock()
     resource_id_field = "app_id"
 
