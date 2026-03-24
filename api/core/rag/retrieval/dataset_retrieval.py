@@ -70,6 +70,7 @@ from dify_graph.model_runtime.entities.model_entities import ModelFeature, Model
 from dify_graph.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from libs.helper import parse_uuid_str_or_none
 from libs.json_in_md_parser import parse_and_check_json_markdown
 from models import UploadFile
 from models.dataset import (
@@ -1000,6 +1001,14 @@ class DatasetRetrieval:
         """
         if not query and not attachment_ids:
             return
+        created_by = parse_uuid_str_or_none(user_id)
+        if created_by is None:
+            logger.debug(
+                "Skipping dataset query log: invalid or empty created_by user_id (user_from=%s, app_id=%s)",
+                user_from,
+                app_id,
+            )
+            return
         dataset_queries = []
         for dataset_id in dataset_ids:
             contents = []
@@ -1015,7 +1024,7 @@ class DatasetRetrieval:
                     source=DatasetQuerySource.APP,
                     source_app_id=app_id,
                     created_by_role=CreatorUserRole(user_from),
-                    created_by=user_id,
+                    created_by=created_by,
                 )
                 dataset_queries.append(dataset_query)
             if dataset_queries:

@@ -174,6 +174,21 @@ def normalize_uuid(value: str | UUID) -> str:
         raise ValueError("must be a valid UUID") from exc
 
 
+def parse_uuid_str_or_none(value: str | None) -> str | None:
+    """
+    Parse a UUID string for DB columns typed as UUID.
+
+    Returns None when the value is missing, whitespace-only, or not a valid UUID
+    (e.g. empty string from workflow context), so callers can skip invalid writes.
+    """
+    if value is None or not str(value).strip():
+        return None
+    try:
+        return str(uuid.UUID(str(value)))
+    except (ValueError, TypeError):
+        return None
+
+
 UUIDStrOrEmpty = Annotated[str, AfterValidator(normalize_uuid)]
 
 

@@ -10,6 +10,7 @@ from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.models.document import Document
 from extensions.ext_database import db
+from libs.helper import parse_uuid_str_or_none
 from models.dataset import ChildChunk, DatasetQuery, DocumentSegment
 from models.dataset import Document as DatasetDocument
 from models.enums import CreatorUserRole, DatasetQuerySource
@@ -33,6 +34,13 @@ class DatasetIndexToolCallbackHandler:
         """
         Handle query.
         """
+        created_by = parse_uuid_str_or_none(self._user_id)
+        if created_by is None:
+            _logger.debug(
+                "Skipping dataset query log: invalid or empty created_by user_id (invoke_from=%s)",
+                self._invoke_from,
+            )
+            return
         dataset_query = DatasetQuery(
             dataset_id=dataset_id,
             content=query,
@@ -43,7 +51,7 @@ class DatasetIndexToolCallbackHandler:
                 if self._invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER}
                 else CreatorUserRole.END_USER
             ),
-            created_by=self._user_id,
+            created_by=created_by,
         )
 
         db.session.add(dataset_query)

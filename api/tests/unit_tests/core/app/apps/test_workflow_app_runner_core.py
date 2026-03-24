@@ -78,7 +78,7 @@ class TestWorkflowBasedAppRunner:
         workflow = SimpleNamespace(environment_variables=[], graph_dict={})
 
         with pytest.raises(ValueError, match="Neither single_iteration_run nor single_loop_run"):
-            runner._prepare_single_node_execution(workflow, None, None)
+            runner._prepare_single_node_execution(workflow, None, None, user_id="00000000-0000-0000-0000-000000000001")
 
     def test_get_graph_and_variable_pool_for_single_node_run(self, monkeypatch):
         runner = WorkflowBasedAppRunner(queue_manager=SimpleNamespace(), app_id="app")
@@ -126,6 +126,7 @@ class TestWorkflowBasedAppRunner:
             graph_runtime_state=graph_runtime_state,
             node_type_filter_key="iteration_id",
             node_type_label="iteration",
+            user_id="00000000-0000-0000-0000-000000000001",
         )
 
         assert graph is not None
