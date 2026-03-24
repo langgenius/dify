@@ -423,28 +423,32 @@ class TestAccountGeneration:
         assert result == mock_account
         mock_get_account.assert_called_once()
 
-    def test_get_account_by_email_with_case_fallback_uses_real_db(self, db_session_with_containers):
+    def test_get_account_by_email_with_case_fallback_uses_real_db(
+        self, flask_req_ctx_with_containers, db_session_with_containers
+    ):
         """Test case-insensitive email lookup against real PostgreSQL."""
         from uuid import uuid4
 
         from models.account import Account
 
+        test_email = f"Case-{uuid4()}@Test.com"
         account = Account(
-            email=f"Case-{uuid4()}@Test.com",
+            email=test_email,
             name="Test User",
             interface_language="en-US",
             status=AccountStatus.ACTIVE,
         )
         db_session_with_containers.add(account)
         db_session_with_containers.commit()
+        db_session_with_containers.expire_all()
 
         result = AccountService.get_account_by_email_with_case_fallback(
-            account.email, session=db_session_with_containers
+            test_email, session=db_session_with_containers
         )
         assert result is not None
 
         result_lower = AccountService.get_account_by_email_with_case_fallback(
-            account.email.lower(), session=db_session_with_containers
+            test_email.lower(), session=db_session_with_containers
         )
         assert result_lower is not None
         assert result_lower.id == account.id
