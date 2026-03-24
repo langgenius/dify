@@ -4800,8 +4800,8 @@ class TestInternalHooksCoverage:
         dataset_docs = [
             SimpleNamespace(id="doc-a", doc_form=IndexStructureType.PARENT_CHILD_INDEX),
             SimpleNamespace(id="doc-b", doc_form=IndexStructureType.PARENT_CHILD_INDEX),
-            SimpleNamespace(id="doc-c", doc_form="qa_model"),
-            SimpleNamespace(id="doc-d", doc_form="qa_model"),
+            SimpleNamespace(id="doc-c", doc_form=IndexStructureType.QA_INDEX),
+            SimpleNamespace(id="doc-d", doc_form=IndexStructureType.QA_INDEX),
         ]
         child_chunks = [SimpleNamespace(index_node_id="idx-a", segment_id="seg-a")]
         segments = [SimpleNamespace(index_node_id="idx-c", id="seg-c")]

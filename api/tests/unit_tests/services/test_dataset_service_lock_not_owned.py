@@ -4,6 +4,7 @@ from unittest.mock import Mock, create_autospec
 import pytest
 from redis.exceptions import LockNotOwnedError
 
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from models.account import Account
 from models.dataset import Dataset, Document
 from services.dataset_service import DocumentService, SegmentService
@@ -76,7 +77,7 @@ def test_save_document_with_dataset_id_ignores_lock_not_owned(
     info_list = types.SimpleNamespace(data_source_type="upload_file")
     data_source = types.SimpleNamespace(info_list=info_list)
     knowledge_config = types.SimpleNamespace(
-        doc_form="qa_model",
+        doc_form=IndexStructureType.QA_INDEX,
         original_document_id=None,  # go into "new document" branch
         data_source=data_source,
         indexing_technique="high_quality",
@@ -131,7 +132,7 @@ def test_add_segment_ignores_lock_not_owned(
     document.id = "doc-1"
     document.dataset_id = dataset.id
     document.word_count = 0
-    document.doc_form = "qa_model"
+    document.doc_form = IndexStructureType.QA_INDEX
 
     # Minimal args required by add_segment
     args = {
@@ -174,4 +175,4 @@ def test_multi_create_segment_ignores_lock_not_owned(
     document.id = "doc-1"
     document.dataset_id = dataset.id
     document.word_count = 0
-    document.doc_form = "qa_model"
+    document.doc_form = IndexStructureType.QA_INDEX

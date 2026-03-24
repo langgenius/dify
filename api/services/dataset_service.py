@@ -1440,7 +1440,7 @@ class DocumentService:
                 .filter(
                     Document.id.in_(document_id_list),
                     Document.dataset_id == dataset_id,
-                    Document.doc_form != "qa_model",  # Skip qa_model documents
+                    Document.doc_form != IndexStructureType.QA_INDEX,  # Skip qa_model documents
                 )
                 .update({Document.need_summary: need_summary}, synchronize_session=False)
             )
@@ -2040,7 +2040,7 @@ class DocumentService:
                                 document.dataset_process_rule_id = dataset_process_rule.id
                                 document.updated_at = naive_utc_now()
                                 document.created_from = created_from
-                                document.doc_form = knowledge_config.doc_form
+                                document.doc_form = IndexStructureType(knowledge_config.doc_form)
                                 document.doc_language = knowledge_config.doc_language
                                 document.data_source_info = json.dumps(data_source_info)
                                 document.batch = batch
@@ -2640,7 +2640,7 @@ class DocumentService:
         document.splitting_completed_at = None
         document.updated_at = naive_utc_now()
         document.created_from = created_from
-        document.doc_form = document_data.doc_form
+        document.doc_form = IndexStructureType(document_data.doc_form)
         db.session.add(document)
         db.session.commit()
         # update document segment
@@ -3101,7 +3101,7 @@ class DocumentService:
 class SegmentService:
     @classmethod
     def segment_create_args_validate(cls, args: dict, document: Document):
-        if document.doc_form == "qa_model":
+        if document.doc_form == IndexStructureType.QA_INDEX:
             if "answer" not in args or not args["answer"]:
                 raise ValueError("Answer is required")
             if not args["answer"].strip():
@@ -3158,7 +3158,7 @@ class SegmentService:
                     completed_at=naive_utc_now(),
                     created_by=current_user.id,
                 )
-                if document.doc_form == "qa_model":
+                if document.doc_form == IndexStructureType.QA_INDEX:
                     segment_document.word_count += len(args["answer"])
                     segment_document.answer = args["answer"]
 
@@ -3232,7 +3232,7 @@ class SegmentService:
                     tokens = 0
                     if dataset.indexing_technique == "high_quality" and embedding_model:
                         # calc embedding use tokens
-                        if document.doc_form == "qa_model":
+                        if document.doc_form == IndexStructureType.QA_INDEX:
                             tokens = embedding_model.get_text_embedding_num_tokens(
                                 texts=[content + segment_item["answer"]]
                             )[0]
@@ -3255,7 +3255,7 @@ class SegmentService:
                         completed_at=naive_utc_now(),
                         created_by=current_user.id,
                     )
-                    if document.doc_form == "qa_model":
+                    if document.doc_form == IndexStructureType.QA_INDEX:
                         segment_document.answer = segment_item["answer"]
                         segment_document.word_count += len(segment_item["answer"])
                     increment_word_count += segment_document.word_count
@@ -3322,7 +3322,7 @@ class SegmentService:
             content = args.content or segment.content
             if segment.content == content:
                 segment.word_count = len(content)
-                if document.doc_form == "qa_model":
+                if document.doc_form == IndexStructureType.QA_INDEX:
                     segment.answer = args.answer
                     segment.word_count += len(args.answer) if args.answer else 0
                 word_count_change = segment.word_count - word_count_change
@@ -3419,7 +3419,7 @@ class SegmentService:
                     )
 
                     # calc embedding use tokens
-                    if document.doc_form == "qa_model":
+                    if document.doc_form == IndexStructureType.QA_INDEX:
                         segment.answer = args.answer
                         tokens = embedding_model.get_text_embedding_num_tokens(texts=[content + segment.answer])[0]  # type: ignore
                     else:
@@ -3436,7 +3436,7 @@ class SegmentService:
                 segment.enabled = True
                 segment.disabled_at = None
                 segment.disabled_by = None
-                if document.doc_form == "qa_model":
+                if document.doc_form == IndexStructureType.QA_INDEX:
                     segment.answer = args.answer
                     segment.word_count += len(args.answer) if args.answer else 0
                 word_count_change = segment.word_count - word_count_change
