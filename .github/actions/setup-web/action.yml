@@ -4,7 +4,7 @@ runs:
   using: composite
   steps:
     - name: Setup Vite+
-      uses: hyoban/setup-vp@f9d7995abfba8d826a79ba2496ff603a503af04b # v1.3.0
+      uses: hyoban/setup-vp@15a67061a2ce13eec98ee6881731921529848076 # v1.3.0
       with:
         working-directory: web
         node-version-file: .nvmrc
