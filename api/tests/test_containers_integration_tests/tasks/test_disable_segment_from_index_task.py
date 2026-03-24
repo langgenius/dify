@@ -15,6 +15,7 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from extensions.ext_redis import redis_client
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
@@ -113,7 +114,7 @@ class TestDisableSegmentFromIndexTask:
         dataset: Dataset,
         tenant: Tenant,
         account: Account,
-        doc_form: str = "text_model",
+        doc_form: str = IndexStructureType.PARAGRAPH_INDEX,
     ) -> Document:
         """
         Helper method to create a test document.
@@ -476,7 +477,11 @@ class TestDisableSegmentFromIndexTask:
         - Index processor clean method is called correctly
         """
         # Test different document forms
-        doc_forms = ["text_model", "qa_model", "table_model"]
+        doc_forms = [
+            IndexStructureType.PARAGRAPH_INDEX,
+            IndexStructureType.QA_INDEX,
+            IndexStructureType.PARENT_CHILD_INDEX,
+        ]
 
         for doc_form in doc_forms:
             # Arrange: Create test data for each form

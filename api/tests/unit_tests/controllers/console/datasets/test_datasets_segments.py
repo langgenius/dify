@@ -24,6 +24,7 @@ from controllers.console.datasets.error import (
     InvalidActionError,
 )
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from models.dataset import ChildChunk, DocumentSegment
 from models.model import UploadFile
 
@@ -366,7 +367,7 @@ class TestDatasetDocumentSegmentAddApi:
         dataset.indexing_technique = "economy"
 
         document = MagicMock()
-        document.doc_form = "text"
+        document.doc_form = IndexStructureType.PARAGRAPH_INDEX
 
         segment = MagicMock()
         segment.id = "seg-1"
@@ -505,7 +506,7 @@ class TestDatasetDocumentSegmentUpdateApi:
         dataset.indexing_technique = "economy"
 
         document = MagicMock()
-        document.doc_form = "text"
+        document.doc_form = IndexStructureType.PARAGRAPH_INDEX
 
         segment = MagicMock()
 

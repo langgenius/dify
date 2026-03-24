@@ -2,8 +2,24 @@ import type { FormSchema } from '../../../base/form/types'
 import type { PluginDetail } from '../../types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import Toast from '@/app/components/base/toast'
 import EndpointModal from '../endpoint-modal'
+
+const mockToastNotify = vi.fn()
+
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: Object.assign(
+    (message: string, options?: { type?: string }) => mockToastNotify({ type: options?.type, message }),
+    {
+      success: (message: string) => mockToastNotify({ type: 'success', message }),
+      error: (message: string) => mockToastNotify({ type: 'error', message }),
+      warning: (message: string) => mockToastNotify({ type: 'warning', message }),
+      info: (message: string) => mockToastNotify({ type: 'info', message }),
+      dismiss: vi.fn(),
+      update: vi.fn(),
+      promise: vi.fn(),
+    },
+  ),
+}))
 
 vi.mock('@/hooks/use-i18n', () => ({
   useRenderI18nObject: () => (obj: Record<string, string> | string) =>
@@ -69,11 +85,9 @@ const mockPluginDetail: PluginDetail = {
 describe('EndpointModal', () => {
   const mockOnCancel = vi.fn()
   const mockOnSaved = vi.fn()
-  let mockToastNotify: ReturnType<typeof vi.spyOn>
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockToastNotify = vi.spyOn(Toast, 'notify').mockImplementation(() => ({ clear: vi.fn() }))
   })
 
   describe('Rendering', () => {

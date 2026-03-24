@@ -13,6 +13,7 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.orm import Session
 
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from models.dataset import Dataset, Document
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from services.dataset_service import DocumentService
@@ -79,7 +80,7 @@ class DocumentBatchUpdateIntegrationDataFactory:
             name=name,
             created_from=DocumentCreatedFrom.WEB,
             created_by=created_by or str(uuid4()),
-            doc_form="text_model",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
         )
         document.id = document_id or str(uuid4())
         document.enabled = enabled
