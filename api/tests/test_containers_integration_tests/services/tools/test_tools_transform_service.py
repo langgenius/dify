@@ -907,7 +907,9 @@ class TestWorkflowProviderToUserProvider:
         ctrl = self._mock_controller()
 
         result = ToolTransformService.workflow_provider_to_user_provider(
-            provider_controller=ctrl, labels=["l1", "l2"], workflow_app_id="app_123",
+            provider_controller=ctrl,
+            labels=["l1", "l2"],
+            workflow_app_id="app_123",
         )
 
         assert isinstance(result, ToolProviderApiEntity)
@@ -921,7 +923,8 @@ class TestWorkflowProviderToUserProvider:
         ctrl = self._mock_controller()
 
         result = ToolTransformService.workflow_provider_to_user_provider(
-            provider_controller=ctrl, labels=["l1"],
+            provider_controller=ctrl,
+            labels=["l1"],
         )
 
         assert result.workflow_app_id is None
@@ -930,7 +933,9 @@ class TestWorkflowProviderToUserProvider:
         ctrl = self._mock_controller()
 
         result = ToolTransformService.workflow_provider_to_user_provider(
-            provider_controller=ctrl, labels=None, workflow_app_id=None,
+            provider_controller=ctrl,
+            labels=None,
+            workflow_app_id=None,
         )
 
         assert result.workflow_app_id is None
@@ -946,7 +951,9 @@ class TestWorkflowProviderToUserProvider:
         ctrl.entity.identity.label = I18nObject(en_US="Another Tool", zh_Hans="Another Tool")
 
         result = ToolTransformService.workflow_provider_to_user_provider(
-            provider_controller=ctrl, labels=["automation"], workflow_app_id="app_456",
+            provider_controller=ctrl,
+            labels=["automation"],
+            workflow_app_id="app_456",
         )
 
         assert result.id == "provider_456"
