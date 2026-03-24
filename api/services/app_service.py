@@ -260,8 +260,6 @@ class AppService:
         icon_type = args.get("icon_type")
         if icon_type is None:
             resolved_icon_type = app.icon_type
-        elif icon_type == "":
-            resolved_icon_type = app.icon_type or IconType.EMOJI
         else:
             resolved_icon_type = IconType(icon_type)
 

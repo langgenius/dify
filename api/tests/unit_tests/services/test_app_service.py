@@ -459,6 +459,40 @@ class TestAppServiceGetAndUpdate:
             assert updated.icon_type == IconType.EMOJI
             mock_db.session.commit.assert_called_once()
 
+    def test_update_app_should_reject_empty_icon_type(self, service: AppService) -> None:
+        """Test update_app rejects an explicit empty icon_type."""
+        app = cast(
+            App,
+            SimpleNamespace(
+                name="old",
+                description="old",
+                icon_type=IconType.EMOJI,
+                icon="a",
+                icon_background="#111",
+                use_icon_as_answer_icon=False,
+                max_active_requests=1,
+            ),
+        )
+        args = {
+            "name": "new",
+            "description": "new-desc",
+            "icon_type": "",
+            "icon": "new-icon",
+            "icon_background": "#222",
+            "use_icon_as_answer_icon": True,
+            "max_active_requests": 5,
+        }
+        user = SimpleNamespace(id="user-1")
+
+        with (
+            patch("services.app_service.current_user", user),
+            patch("services.app_service.db") as mock_db,
+        ):
+            with pytest.raises(ValueError):
+                service.update_app(app, args)
+
+        mock_db.session.commit.assert_not_called()
+
 
 class TestAppServiceDeleteAndMeta:
     """Test suite for delete and metadata methods."""

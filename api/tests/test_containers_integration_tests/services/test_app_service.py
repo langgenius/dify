@@ -515,6 +515,57 @@ class TestAppService:
 
         assert updated_app.icon_type == IconType.EMOJI
 
+    def test_update_app_should_reject_empty_icon_type(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """
+        Test update_app rejects an explicit empty icon_type.
+        """
+        fake = Faker()
+
+        account = AccountService.create_account(
+            email=fake.email(),
+            name=fake.name(),
+            interface_language="en-US",
+            password=generate_valid_password(fake),
+        )
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        tenant = account.current_tenant
+
+        from services.app_service import AppService
+
+        app_service = AppService()
+        app = app_service.create_app(
+            tenant.id,
+            {
+                "name": fake.company(),
+                "description": fake.text(max_nb_chars=100),
+                "mode": "chat",
+                "icon_type": "emoji",
+                "icon": "🎯",
+                "icon_background": "#45B7D1",
+            },
+            account,
+        )
+
+        mock_current_user = create_autospec(Account, instance=True)
+        mock_current_user.id = account.id
+        mock_current_user.current_tenant_id = account.current_tenant_id
+
+        with patch("services.app_service.current_user", mock_current_user):
+            with pytest.raises(ValueError):
+                app_service.update_app(
+                    app,
+                    {
+                        "name": "Updated App Name",
+                        "description": "Updated app description",
+                        "icon_type": "",
+                        "icon": "🔄",
+                        "icon_background": "#FF8C42",
+                        "use_icon_as_answer_icon": True,
+                    },
+                )
+
     def test_update_app_name_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test successful app name update.
