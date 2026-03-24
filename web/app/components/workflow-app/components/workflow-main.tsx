@@ -4,6 +4,7 @@ import type { WorkflowProps } from '@/app/components/workflow'
 import type { CollaborationUpdate } from '@/app/components/workflow/collaboration/types/collaboration'
 import type { Shape as HooksStoreShape } from '@/app/components/workflow/hooks-store/store'
 import type { Edge, Node } from '@/app/components/workflow/types'
+import type { TransferMethod } from '@/types/app'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import {
   useCallback,
@@ -98,17 +99,18 @@ const WorkflowMain = ({
     if (features && featuresStore) {
       const { setFeatures } = featuresStore.getState()
 
-      const transformedFeatures: FeaturesData = {
+      const defaultTransferMethods = ['local_file', 'remote_url'] as TransferMethod[]
+      const transformedFeatures = {
         file: {
           image: {
             enabled: !!features.file_upload?.image?.enabled,
             number_limits: features.file_upload?.image?.number_limits || 3,
-            transfer_methods: features.file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
+            transfer_methods: (features.file_upload?.image?.transfer_methods || defaultTransferMethods) as TransferMethod[],
           },
           enabled: !!(features.file_upload?.enabled || features.file_upload?.image?.enabled),
           allowed_file_types: features.file_upload?.allowed_file_types || [SupportUploadFileTypes.image],
           allowed_file_extensions: features.file_upload?.allowed_file_extensions || FILE_EXTS[SupportUploadFileTypes.image].map(ext => `.${ext}`),
-          allowed_file_upload_methods: features.file_upload?.allowed_file_upload_methods || features.file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
+          allowed_file_upload_methods: (features.file_upload?.allowed_file_upload_methods || features.file_upload?.image?.transfer_methods || defaultTransferMethods) as TransferMethod[],
           number_limits: features.file_upload?.number_limits || features.file_upload?.image?.number_limits || 3,
         },
         opening: {
@@ -123,7 +125,7 @@ const WorkflowMain = ({
         moderation: features.sensitive_word_avoidance || { enabled: false },
         annotationReply: features.annotation_reply || { enabled: false },
         sandbox: features.sandbox || { enabled: false },
-      }
+      } as FeaturesData
 
       setFeatures(transformedFeatures)
     }

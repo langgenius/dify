@@ -3,7 +3,7 @@
 import type { VariantProps } from 'class-variance-authority'
 import { cva } from 'class-variance-authority'
 import * as React from 'react'
-import Tooltip from '@/app/components/base/tooltip'
+import Tooltip from '@/app/components/base/tooltip-plus'
 import ShortcutsName from '@/app/components/workflow/shortcuts-name'
 import { cn } from '@/utils/classnames'
 

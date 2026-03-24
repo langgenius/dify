@@ -6,8 +6,8 @@ from unittest.mock import MagicMock
 import pytest
 
 from core.agent.entities import AgentLog, ExecutionContext
-from core.model_runtime.entities.llm_entities import LLMUsage
-from core.model_runtime.entities.message_entities import (
+from dify_graph.model_runtime.entities.llm_entities import LLMUsage
+from dify_graph.model_runtime.entities.message_entities import (
     PromptMessageTool,
     SystemPromptMessage,
     UserPromptMessage,
@@ -18,7 +18,7 @@ from core.model_runtime.entities.message_entities import (
 def mock_model_instance():
     """Create a mock model instance."""
     model_instance = MagicMock()
-    model_instance.model = "test-model"
+    model_instance.model_name = "test-model"
     model_instance.provider = "test-provider"
     return model_instance
 
@@ -312,7 +312,7 @@ class TestPromptMessageHandling:
 
     def test_assistant_message_with_tool_calls(self, mock_model_instance, mock_context, mock_tool):
         """Test that assistant messages can contain tool calls."""
-        from core.model_runtime.entities.message_entities import AssistantPromptMessage
+        from dify_graph.model_runtime.entities.message_entities import AssistantPromptMessage
 
         tool_call = AssistantPromptMessage.ToolCall(
             id="call_123",

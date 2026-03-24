@@ -267,7 +267,7 @@ const ConfigContent: FC<Props> = ({
                     canManuallyToggleRerank && (
                       <Switch
                         size="md"
-                        defaultValue={showRerankModel}
+                        value={showRerankModel ?? false}
                         onChange={handleManuallyToggleRerank}
                       />
                     )
@@ -370,7 +370,6 @@ const ConfigContent: FC<Props> = ({
           <ModelParameterModal
             isInWorkflow={isInWorkflow}
             popupClassName="!w-[387px]"
-            portalToFollowElemContentClassName="!z-[1002]"
             isAdvancedMode={true}
             provider={model?.provider}
             completionParams={model?.completion_params}

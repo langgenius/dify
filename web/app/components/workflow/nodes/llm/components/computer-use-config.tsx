@@ -4,7 +4,8 @@ import type { ToolSetting } from '../types'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Switch from '@/app/components/base/switch'
-import Tooltip from '@/app/components/base/tooltip'
+
+import Tooltip from '@/app/components/base/tooltip-plus'
 import FieldCollapse from '@/app/components/workflow/nodes/_base/components/collapse/field-collapse'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import ReferenceToolConfig from './reference-tool-config'
@@ -58,7 +59,7 @@ const ComputerUseConfig: FC<Props> = ({
               <Switch
                 size="md"
                 disabled={isDisabled}
-                defaultValue={enabled}
+                value={enabled}
                 onChange={onChange}
               />
             </Tooltip>

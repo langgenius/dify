@@ -103,7 +103,7 @@ class AwsS3Storage(BaseStorage):
         except:
             return False
 
-    def delete(self, filename):
+    def delete(self, filename: str):
         self.client.delete_object(Bucket=self.bucket_name, Key=filename)
 
     def get_download_url(

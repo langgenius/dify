@@ -5,11 +5,11 @@ import { RiLoader2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { gte } from 'semver'
 import Button from '@/app/components/base/button'
 import useCheckInstalled from '@/app/components/plugins/install-plugin/hooks/use-check-installed'
 import { useAppContext } from '@/context/app-context'
 import { useInstallPackageFromMarketPlace, usePluginDeclarationFromMarketPlace, usePluginTaskList, useUpdatePackageFromMarketPlace } from '@/service/use-plugins'
+import { isEqualOrLaterThanVersion } from '@/utils/semver'
 import Card from '../../../card'
 // import { RiInformation2Line } from '@remixicon/react'
 import { TaskStatus } from '../../../types'
@@ -126,7 +126,7 @@ const Installed: FC<Props> = ({
   const isDifyVersionCompatible = useMemo(() => {
     if (!pluginDeclaration || !langGeniusVersionInfo.current_version)
       return true
-    return gte(langGeniusVersionInfo.current_version, pluginDeclaration?.manifest.meta.minimum_dify_version ?? '0.0.0')
+    return isEqualOrLaterThanVersion(langGeniusVersionInfo.current_version, pluginDeclaration?.manifest.meta.minimum_dify_version ?? '0.0.0')
   }, [langGeniusVersionInfo.current_version, pluginDeclaration])
 
   const { canInstall } = useInstallPluginLimit({ ...payload, from: 'marketplace' })

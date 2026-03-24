@@ -1,5 +1,6 @@
 import { act, cleanup } from '@testing-library/react'
 import { mockAnimationsApi, mockResizeObserver } from 'jsdom-testing-mocks'
+import * as React from 'react'
 import '@testing-library/jest-dom/vitest'
 import 'vitest-canvas-mock'
 
@@ -66,10 +67,11 @@ if (typeof globalThis.IntersectionObserver === 'undefined') {
   globalThis.IntersectionObserver = class {
     readonly root: Element | Document | null = null
     readonly rootMargin: string = ''
+    readonly scrollMargin: string = ''
     readonly thresholds: ReadonlyArray<number> = []
     constructor(_callback: IntersectionObserverCallback, _options?: IntersectionObserverInit) { /* noop */ }
-    observe() { /* noop */ }
-    unobserve() { /* noop */ }
+    observe(_target: Element) { /* noop */ }
+    unobserve(_target: Element) { /* noop */ }
     disconnect() { /* noop */ }
     takeRecords(): IntersectionObserverEntry[] { return [] }
   }
@@ -79,6 +81,16 @@ if (typeof globalThis.IntersectionObserver === 'undefined') {
 if (typeof Element !== 'undefined' && !Element.prototype.scrollIntoView)
   Element.prototype.scrollIntoView = function () { /* noop */ }
 
+// Mock DOMRect.fromRect for tests (not available in jsdom)
+if (typeof DOMRect !== 'undefined' && typeof (DOMRect as typeof DOMRect & { fromRect?: unknown }).fromRect !== 'function') {
+  (DOMRect as typeof DOMRect & { fromRect: (rect?: DOMRectInit) => DOMRect }).fromRect = (rect = {}) => new DOMRect(
+    rect.x ?? 0,
+    rect.y ?? 0,
+    rect.width ?? 0,
+    rect.height ?? 0,
+  )
+}
+
 afterEach(async () => {
   // Wrap cleanup in act() to flush pending React scheduler work
   // This prevents "window is not defined" errors from React 19's scheduler
@@ -87,9 +99,6 @@ afterEach(async () => {
     cleanup()
   })
 })
-
-// mock next/image to avoid width/height requirements for data URLs
-vi.mock('next/image')
 
 // mock foxact/use-clipboard - not available in test environment
 vi.mock('foxact/use-clipboard', () => ({
@@ -110,6 +119,15 @@ vi.mock('react-i18next', async () => {
   return {
     ...actual,
     ...createReactI18nextMock(),
+  }
+})
+
+// Mock FloatingPortal to render children in the normal DOM flow
+vi.mock('@floating-ui/react', async () => {
+  const actual = await vi.importActual('@floating-ui/react')
+  return {
+    ...actual,
+    FloatingPortal: ({ children }: { children: React.ReactNode }) => React.createElement('div', { 'data-floating-ui-portal': true }, children),
   }
 })
 

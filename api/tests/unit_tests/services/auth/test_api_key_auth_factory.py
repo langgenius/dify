@@ -19,7 +19,7 @@ class TestApiKeyAuthFactory:
     )
     def test_get_apikey_auth_factory_valid_providers(self, provider, auth_class_path):
         """Test getting auth factory for all valid providers"""
-        with patch(auth_class_path) as mock_auth:
+        with patch(auth_class_path, autospec=True) as mock_auth:
             auth_class = ApiKeyAuthFactory.get_apikey_auth_factory(provider)
             assert auth_class == mock_auth
 
@@ -46,7 +46,7 @@ class TestApiKeyAuthFactory:
             (False, False),
         ],
     )
-    @patch("services.auth.api_key_auth_factory.ApiKeyAuthFactory.get_apikey_auth_factory")
+    @patch("services.auth.api_key_auth_factory.ApiKeyAuthFactory.get_apikey_auth_factory", autospec=True)
     def test_validate_credentials_delegates_to_auth_instance(
         self, mock_get_factory, credentials_return_value, expected_result
     ):
@@ -65,7 +65,7 @@ class TestApiKeyAuthFactory:
         assert result is expected_result
         mock_auth_instance.validate_credentials.assert_called_once()
 
-    @patch("services.auth.api_key_auth_factory.ApiKeyAuthFactory.get_apikey_auth_factory")
+    @patch("services.auth.api_key_auth_factory.ApiKeyAuthFactory.get_apikey_auth_factory", autospec=True)
     def test_validate_credentials_propagates_exceptions(self, mock_get_factory):
         """Test that exceptions from auth instance are propagated"""
         # Arrange

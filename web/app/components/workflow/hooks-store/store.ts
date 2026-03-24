@@ -1,5 +1,6 @@
 import type { FileUpload } from '../../base/features/types'
 import type { TriggerType } from '@/app/components/workflow/header/test-run-menu'
+import type { InteractionModeType } from '@/app/components/workflow/interaction-mode'
 import type {
   BlockEnum,
   Node,
@@ -17,7 +18,7 @@ import {
   useStore as useZustandStore,
 } from 'zustand'
 import { createStore } from 'zustand/vanilla'
-import { InteractionMode } from '@/app/components/workflow'
+import { InteractionMode } from '@/app/components/workflow/interaction-mode'
 import { HooksStoreContext } from './provider'
 
 export type WorkflowRunOptions = {
@@ -33,15 +34,16 @@ export type AvailableNodesMetaData = {
 }
 
 export type HooksStore = ReturnType<typeof createHooksStore>
+export type SyncDraftCallback = {
+  onSuccess?: () => void
+  onError?: () => void
+  onSettled?: () => void
+}
 export type CommonHooksFnMap = {
-  interactionMode?: InteractionMode
+  interactionMode?: InteractionModeType
   doSyncWorkflowDraft: (
     notRefreshWhenSyncError?: boolean,
-    callback?: {
-      onSuccess?: () => void
-      onError?: () => void
-      onSettled?: () => void
-    },
+    callback?: SyncDraftCallback,
   ) => Promise<void>
   syncWorkflowDraftWhenPageClose: () => void
   handleRefreshWorkflowDraft: () => void

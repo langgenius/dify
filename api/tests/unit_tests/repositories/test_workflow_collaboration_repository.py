@@ -45,6 +45,8 @@ class TestWorkflowCollaborationRepository:
                 "avatar": None,
                 "sid": "sid-1",
                 "connected_at": 2,
+                "graph_active": False,
+                "active_skill_file_id": None,
             }
         ]
 

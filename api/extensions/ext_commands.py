@@ -13,6 +13,7 @@ def init_app(app: DifyApp):
         convert_to_agent_apps,
         create_tenant,
         delete_archived_workflow_runs,
+        export_app_messages,
         extract_plugins,
         extract_unique_plugins,
         file_usage,
@@ -28,7 +29,6 @@ def init_app(app: DifyApp):
         reset_password,
         restore_workflow_runs,
         setup_datasource_oauth_client,
-        setup_sandbox_system_config,
         setup_system_tool_oauth_client,
         setup_system_trigger_oauth_client,
         transform_datasource_credentials,
@@ -55,7 +55,6 @@ def init_app(app: DifyApp):
         clear_orphaned_file_records,
         remove_orphaned_files_on_storage,
         file_usage,
-        setup_sandbox_system_config,
         setup_system_tool_oauth_client,
         setup_system_trigger_oauth_client,
         cleanup_orphaned_draft_variables,
@@ -68,6 +67,7 @@ def init_app(app: DifyApp):
         restore_workflow_runs,
         clean_workflow_runs,
         clean_expired_messages,
+        export_app_messages,
     ]
     for cmd in cmds_to_register:
         app.cli.add_command(cmd)

@@ -1,13 +1,12 @@
 import json
 import logging
-from collections.abc import Mapping
 from typing import Any, cast
 
 from httpx import get
 from sqlalchemy import select
+from typing_extensions import TypedDict
 
 from core.entities.provider_entities import ProviderConfig
-from core.model_runtime.utils.encoders import jsonable_encoder
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.custom_tool.provider import ApiToolProviderController
 from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
@@ -21,6 +20,7 @@ from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.encryption import create_tool_provider_encrypter
 from core.tools.utils.parser import ApiBasedToolSchemaParser
+from dify_graph.model_runtime.utils.encoders import jsonable_encoder
 from extensions.ext_database import db
 from models.tools import ApiToolProvider
 from services.tools.tools_transform_service import ToolTransformService
@@ -28,9 +28,16 @@ from services.tools.tools_transform_service import ToolTransformService
 logger = logging.getLogger(__name__)
 
 
+class ApiSchemaParseResult(TypedDict):
+    schema_type: str
+    parameters_schema: list[dict[str, Any]]
+    credentials_schema: list[dict[str, Any]]
+    warning: dict[str, str]
+
+
 class ApiToolManageService:
     @staticmethod
-    def parser_api_schema(schema: str) -> Mapping[str, Any]:
+    def parser_api_schema(schema: str) -> ApiSchemaParseResult:
         """
         parse api schema to tool bundle
         """
@@ -71,7 +78,7 @@ class ApiToolManageService:
             ]
 
             return cast(
-                Mapping,
+                ApiSchemaParseResult,
                 jsonable_encoder(
                     {
                         "schema_type": schema_type,

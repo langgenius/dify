@@ -116,7 +116,7 @@ const AddCustomModel = ({
       >
         {renderTrigger(open)}
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-[100]">
+      <PortalToFollowElemContent className="z-[1002]">
         <div className="w-[320px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg">
           <div className="max-h-[304px] overflow-y-auto p-1">
             {

@@ -8,9 +8,9 @@ from typing import TYPE_CHECKING, Any, Union
 
 from core.agent.entities import AgentLog, AgentResult, AgentScratchpadUnit, ExecutionContext
 from core.agent.output_parser.cot_output_parser import CotAgentOutputParser
-from core.file import File
 from core.model_manager import ModelInstance
-from core.model_runtime.entities import (
+from dify_graph.file import File
+from dify_graph.model_runtime.entities import (
     AssistantPromptMessage,
     LLMResult,
     LLMResultChunk,
@@ -91,7 +91,7 @@ class ReActStrategy(AgentPattern):
             )
 
             model_log = self._create_log(
-                label=f"{self.model_instance.model} Thought",
+                label=f"{self.model_instance.model_name} Thought",
                 log_type=AgentLog.LogType.THOUGHT,
                 status=AgentLog.LogStatus.START,
                 data={},
@@ -204,7 +204,7 @@ class ReActStrategy(AgentPattern):
                     tool_names = [tool.name for tool in prompt_tools]
 
                     # Format tools as JSON for comprehensive information
-                    from core.model_runtime.utils.encoders import jsonable_encoder
+                    from dify_graph.model_runtime.utils.encoders import jsonable_encoder
 
                     tools_str = json.dumps(jsonable_encoder(prompt_tools), indent=2)
                     tool_names_str = ", ".join(f'"{name}"' for name in tool_names)
@@ -266,18 +266,19 @@ class ReActStrategy(AgentPattern):
 
         # Convert non-streaming to streaming format if needed
         if isinstance(chunks, LLMResult):
-            # Create a generator from the LLMResult
+            result = chunks
+
             def result_to_chunks() -> Generator[LLMResultChunk, None, None]:
                 yield LLMResultChunk(
-                    model=chunks.model,
-                    prompt_messages=chunks.prompt_messages,
+                    model=result.model,
+                    prompt_messages=result.prompt_messages,
                     delta=LLMResultChunkDelta(
                         index=0,
-                        message=chunks.message,
-                        usage=chunks.usage,
-                        finish_reason=None,  # LLMResult doesn't have finish_reason, only streaming chunks do
+                        message=result.message,
+                        usage=result.usage,
+                        finish_reason=None,
                     ),
-                    system_fingerprint=chunks.system_fingerprint or "",
+                    system_fingerprint=result.system_fingerprint or "",
                 )
 
             streaming_chunks = result_to_chunks()

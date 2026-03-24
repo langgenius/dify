@@ -1,5 +1,9 @@
+/**
+ * @deprecated Use `@/app/components/base/ui/dialog` instead.
+ * This component will be removed after migration is complete.
+ * See: https://github.com/langgenius/dify/issues/32767
+ */
 import type { ButtonProps } from '@/app/components/base/button'
-import { RiCloseLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -83,7 +87,7 @@ const Modal = ({
               className="absolute right-5 top-5 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg"
               onClick={onClose}
             >
-              <RiCloseLine className="h-5 w-5 text-text-tertiary" />
+              <span className="i-ri-close-line h-5 w-5 text-text-tertiary" data-testid="close-icon" />
             </div>
           </div>
           {

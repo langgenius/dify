@@ -224,6 +224,7 @@ mise.toml
 # AI Assistant
 .sisyphus/
 .roo/
+/.claude/worktrees/
 api/.env.backup
 /clickzetta
 
@@ -238,3 +239,6 @@ scripts/stress-test/reports/
 # settings
 *.local.json
 *.local.md
+
+# Code Agent Folder
+.qoder/*

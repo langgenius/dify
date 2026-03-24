@@ -64,7 +64,7 @@ export const useWorkflowInit = () => {
       setData(res)
       workflowStore.setState({
         envSecrets: (res.environment_variables || []).filter(env => env.value_type === 'secret').reduce((acc, env) => {
-          acc[env.id] = env.value
+          acc[env.id] = typeof env.value === 'string' ? env.value : JSON.stringify(env.value)
           return acc
         }, {} as Record<string, string>),
         environmentVariables: res.environment_variables?.map(env => env.value_type === 'secret' ? { ...env, value: '[__HIDDEN__]' } : env) || [],
@@ -112,6 +112,7 @@ export const useWorkflowInit = () => {
               },
             }).then((res) => {
               workflowStore.getState().setDraftUpdatedAt(res.updated_at)
+              setSyncWorkflowDraftHash(res.hash)
               handleGetInitialWorkflowData()
             })
           }
@@ -131,10 +132,12 @@ export const useWorkflowInit = () => {
       const publishedWorkflow = await fetchPublishedWorkflow(`/apps/${appDetail?.id}/workflows/publish`)
       workflowStore.setState({
         nodesDefaultConfigs: nodesDefaultConfigsData.reduce((acc, block) => {
-          if (!acc[block.type])
-            acc[block.type] = { ...block.config }
+          if (!acc[block.type]) {
+            const cfg = block.config
+            acc[block.type] = (cfg && typeof cfg === 'object' && !Array.isArray(cfg) ? { ...cfg } : {}) as Record<string, unknown>
+          }
           return acc
-        }, {} as Record<string, any>),
+        }, {} as Record<string, Record<string, unknown>>),
       })
       workflowStore.getState().setPublishedAt(publishedWorkflow?.created_at)
       const graph = publishedWorkflow?.graph

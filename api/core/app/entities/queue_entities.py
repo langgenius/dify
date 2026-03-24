@@ -5,13 +5,13 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
+from core.app.entities.agent_strategy import AgentStrategyInfo
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
-from core.workflow.entities import AgentNodeStrategyInit, ToolCall, ToolResult
-from core.workflow.entities.pause_reason import PauseReason
-from core.workflow.entities.workflow_start_reason import WorkflowStartReason
-from core.workflow.enums import WorkflowNodeExecutionMetadataKey
-from core.workflow.nodes import NodeType
+from dify_graph.entities import ToolCall, ToolResult
+from dify_graph.entities.pause_reason import PauseReason
+from dify_graph.entities.workflow_start_reason import WorkflowStartReason
+from dify_graph.enums import NodeType, WorkflowNodeExecutionMetadataKey
+from dify_graph.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
 
 
 class QueueEvent(StrEnum):
@@ -354,7 +354,7 @@ class QueueNodeStartedEvent(AppQueueEvent):
     in_parent_node_id: str | None = None
     """parent node id if this is an extractor node event"""
     start_at: datetime
-    agent_strategy: AgentNodeStrategyInit | None = None
+    agent_strategy: AgentStrategyInfo | None = None
 
     # FIXME(-LAN-): only for ToolNode, need to refactor
     provider_type: str  # should be a core.tools.entities.tool_entities.ToolProviderType
@@ -378,6 +378,7 @@ class QueueNodeSucceededEvent(AppQueueEvent):
     in_parent_node_id: str | None = None
     """parent node id if this is an extractor node event"""
     start_at: datetime
+    finished_at: datetime | None = None
 
     inputs: Mapping[str, object] = Field(default_factory=dict)
     process_data: Mapping[str, object] = Field(default_factory=dict)
@@ -435,6 +436,7 @@ class QueueNodeExceptionEvent(AppQueueEvent):
     in_parent_node_id: str | None = None
     """parent node id if this is an extractor node event"""
     start_at: datetime
+    finished_at: datetime | None = None
 
     inputs: Mapping[str, object] = Field(default_factory=dict)
     process_data: Mapping[str, object] = Field(default_factory=dict)
@@ -461,6 +463,7 @@ class QueueNodeFailedEvent(AppQueueEvent):
     in_parent_node_id: str | None = None
     """parent node id if this is an extractor node event"""
     start_at: datetime
+    finished_at: datetime | None = None
 
     inputs: Mapping[str, object] = Field(default_factory=dict)
     process_data: Mapping[str, object] = Field(default_factory=dict)

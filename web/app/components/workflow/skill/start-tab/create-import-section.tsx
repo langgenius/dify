@@ -1,8 +1,8 @@
 'use client'
 
-import dynamic from 'next/dynamic'
 import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import dynamic from '@/next/dynamic'
 import ActionCard from './action-card'
 import CreateBlankSkillModal from './create-blank-skill-modal'
 

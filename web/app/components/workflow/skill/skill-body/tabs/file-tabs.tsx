@@ -3,7 +3,15 @@
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Confirm from '@/app/components/base/confirm'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@/app/components/base/ui/alert-dialog'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { cn } from '@/utils/classnames'
 import { getArtifactPath, isArtifactTab, START_TAB_ID } from '../../constants'
@@ -66,6 +74,11 @@ const FileTabs = () => {
     setPendingCloseId(null)
   }, [])
 
+  const handleUnsavedDialogOpenChange = useCallback((open: boolean) => {
+    if (!open)
+      handleCancelClose()
+  }, [handleCancelClose])
+
   return (
     <>
       <div
@@ -107,15 +120,26 @@ const FileTabs = () => {
           )
         })}
       </div>
-      <Confirm
-        isShow={pendingCloseId !== null}
-        type="warning"
-        title={t('skillSidebar.unsavedChanges.title')}
-        content={t('skillSidebar.unsavedChanges.content')}
-        confirmText={t('skillSidebar.unsavedChanges.confirmClose')}
-        onConfirm={handleConfirmClose}
-        onCancel={handleCancelClose}
-      />
+      <AlertDialog open={pendingCloseId !== null} onOpenChange={handleUnsavedDialogOpenChange}>
+        <AlertDialogContent backdropProps={{ forceRender: true }}>
+          <div className="flex flex-col gap-2 px-6 pb-4 pt-6">
+            <AlertDialogTitle title={t('skillSidebar.unsavedChanges.title')} className="w-full text-text-primary title-2xl-semi-bold">
+              {t('skillSidebar.unsavedChanges.title')}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="w-full whitespace-pre-wrap text-text-tertiary system-md-regular">
+              {t('skillSidebar.unsavedChanges.content')}
+            </AlertDialogDescription>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton>
+              {t('operation.cancel', { ns: 'common' })}
+            </AlertDialogCancelButton>
+            <AlertDialogConfirmButton destructive={false} onClick={handleConfirmClose}>
+              {t('skillSidebar.unsavedChanges.confirmClose')}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }

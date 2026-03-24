@@ -3,15 +3,23 @@
 import type { NodeApi, TreeApi } from 'react-arborist'
 import type { NodeMenuType } from '../../constants'
 import type { TreeNodeData } from '../../type'
-import dynamic from 'next/dynamic'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Confirm from '@/app/components/base/confirm'
 import { FileAdd, FolderAdd } from '@/app/components/base/icons/src/vender/line/files'
 import { UploadCloud02 } from '@/app/components/base/icons/src/vender/line/general'
 import { Download02 } from '@/app/components/base/icons/src/vender/solid/general'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@/app/components/base/ui/alert-dialog'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
+import dynamic from '@/next/dynamic'
 import { cn } from '@/utils/classnames'
 import { NODE_MENU_TYPE } from '../../constants'
 import { useFileOperations } from '../../hooks/file-tree/operations/use-file-operations'
@@ -214,15 +222,37 @@ const NodeMenu = ({
         </>
       )}
 
-      <Confirm
-        isShow={showDeleteConfirm}
-        type="danger"
-        title={deleteConfirmTitle}
-        content={deleteConfirmContent}
-        onConfirm={handleDeleteConfirm}
-        onCancel={handleDeleteCancel}
-        isLoading={isDeleting}
-      />
+      <AlertDialog
+        open={showDeleteConfirm}
+        onOpenChange={(open) => {
+          if (!open)
+            handleDeleteCancel()
+        }}
+      >
+        <AlertDialogContent>
+          <div className="flex flex-col gap-2 p-6 pb-4">
+            <AlertDialogTitle className="text-text-primary title-2xl-semi-bold">
+              {deleteConfirmTitle}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-text-secondary system-sm-regular">
+              {deleteConfirmContent}
+            </AlertDialogDescription>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton>
+              {t('operation.cancel', { ns: 'common' })}
+            </AlertDialogCancelButton>
+            <AlertDialogConfirmButton
+              disabled={isDeleting}
+              onClick={() => {
+                void handleDeleteConfirm()
+              }}
+            >
+              {t('operation.confirm', { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
       <ImportSkillModal
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}

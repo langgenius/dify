@@ -36,6 +36,8 @@
   "createApp": "アプリを作成する",
   "createFromConfigFile": "DSL ファイルから作成する",
   "deleteAppConfirmContent": "アプリを削除すると、元に戻すことはできません。他のユーザーはもはやこのアプリにアクセスできず、すべてのプロンプトの設定とログが永久に削除されます。",
+  "deleteAppConfirmInputLabel": "確認するには、下のボックスに「{{appName}}」と入力してください：",
+  "deleteAppConfirmInputPlaceholder": "アプリ名を入力",
   "deleteAppConfirmTitle": "このアプリを削除しますか？",
   "dslUploader.browse": "参照",
   "dslUploader.button": "ファイルをドラッグ＆ドロップするか、",

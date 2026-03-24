@@ -57,8 +57,8 @@ const CodeEditor: FC<Props> = ({
   value = '',
   placeholder = '',
   onChange = noop,
-  onBlur,
-  onFocus,
+  onBlur: _onBlur,
+  onFocus: _onFocus,
   title = '',
   headerRight,
   language,
@@ -113,11 +113,9 @@ const CodeEditor: FC<Props> = ({
 
     editor.onDidFocusEditorText(() => {
       setIsFocus(true)
-      onFocus?.()
     })
     editor.onDidBlurEditorText(() => {
       setIsFocus(false)
-      onBlur?.()
     })
 
     monaco.editor.setTheme(appTheme === Theme.light ? 'light' : 'vs-dark') // Fix: sometimes not load the default theme
@@ -173,7 +171,7 @@ const CodeEditor: FC<Props> = ({
         }}
         onMount={handleEditorDidMount}
       />
-      {!outPutValue && !isFocus && <div className="pointer-events-none absolute left-[36px] top-0 text-[13px] font-normal leading-[18px] text-gray-300">{placeholder}</div>}
+      {!outPutValue && !isFocus && <div className="pointer-events-none absolute left-[36px] top-0 text-[13px] font-normal leading-[18px] text-components-input-text-placeholder">{placeholder}</div>}
     </>
   )
 

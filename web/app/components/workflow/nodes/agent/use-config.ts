@@ -157,7 +157,7 @@ const useConfig = (id: string, payload: AgentNodeType) => {
   // vars
 
   const filterMemoryPromptVar = useCallback((varPayload: Var) => {
-    return [
+    return ([
       VarKindType.arrayObject,
       VarKindType.array,
       VarKindType.number,
@@ -167,7 +167,7 @@ const useConfig = (id: string, payload: AgentNodeType) => {
       VarKindType.arrayNumber,
       VarKindType.file,
       VarKindType.arrayFile,
-    ].includes(varPayload.type)
+    ] as VarKindType[]).includes(varPayload.type)
   }, [])
 
   const {

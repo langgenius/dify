@@ -36,6 +36,8 @@
   "createApp": "USTVARI APLIKACIJO",
   "createFromConfigFile": "Ustvari iz datoteke DSL",
   "deleteAppConfirmContent": "Brisanje aplikacije je nepopravljivo. Uporabniki ne bodo več imeli dostopa do vaše aplikacije, vse konfiguracije in dnevniki pa bodo trajno izbrisani.",
+  "deleteAppConfirmInputLabel": "Za potrditev vnesite \"{{appName}}\" v polje spodaj:",
+  "deleteAppConfirmInputPlaceholder": "Vnesite ime aplikacije",
   "deleteAppConfirmTitle": "Izbrišem to aplikacijo?",
   "dslUploader.browse": "Prebrskaj",
   "dslUploader.button": "Povlecite in spustite datoteko, ali",

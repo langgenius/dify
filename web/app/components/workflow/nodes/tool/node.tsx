@@ -18,6 +18,8 @@ import { AGENT_CONTEXT_VAR_PATTERN, getAgentNodeIdFromContextVar } from '@/app/c
 import { useGetLanguage } from '@/context/i18n'
 import { useStrategyProviders } from '@/service/use-strategy'
 import { cn } from '@/utils/classnames'
+import { isToolAuthorizationRequired } from './auth'
+import useCurrentToolCollection from './hooks/use-current-tool-collection'
 import { VarType } from './types'
 
 type AgentCheckValidContext = {
@@ -46,6 +48,7 @@ const Node: FC<NodeProps<ToolNodeType>> = ({
     onInstallSuccess,
     shouldDim,
   } = useNodePluginInstallation(data)
+  const { currCollection } = useCurrentToolCollection(data.provider_type, data.provider_id)
   const showInstallButton = !isChecking && isMissing && canInstall && uniqueIdentifier
   const nodesById = useMemo(() => {
     return nodes.reduce((acc, node) => {
@@ -126,11 +129,12 @@ const Node: FC<NodeProps<ToolNodeType>> = ({
       }
     })
   }, [nestedNodeEntries, nodesById, nodesMetaDataMap, strategyProviders, language, t])
+  const showAuthorizationWarning = isToolAuthorizationRequired(data.provider_type, currCollection)
 
   const hasConfigs = toolConfigs.length > 0
   const hasReferences = referenceItems.length > 0
 
-  if (!showInstallButton && !hasConfigs && !hasReferences)
+  if (!showInstallButton && !hasConfigs && !hasReferences && !showAuthorizationWarning)
     return null
 
   return (
@@ -150,10 +154,10 @@ const Node: FC<NodeProps<ToolNodeType>> = ({
           />
         </div>
       )}
-      {hasConfigs && (
+      {(hasConfigs || showAuthorizationWarning) && (
         <div className="space-y-0.5" aria-disabled={shouldDim}>
-          {toolConfigs.map((key, index) => (
-            <div key={index} className="flex h-6 items-center justify-between space-x-1 rounded-md bg-workflow-block-parma-bg px-1 text-xs font-normal text-text-secondary">
+          {hasConfigs && toolConfigs.map(key => (
+            <div key={key} className="flex h-6 items-center justify-between space-x-1 rounded-md bg-workflow-block-parma-bg px-1 text-xs font-normal text-text-secondary">
               <div title={key} className="max-w-[100px] shrink-0 truncate text-xs font-medium uppercase text-text-tertiary">
                 {key}
               </div>
@@ -174,6 +178,14 @@ const Node: FC<NodeProps<ToolNodeType>> = ({
               )}
             </div>
           ))}
+          {showAuthorizationWarning && (
+            <div className="flex h-6 items-center rounded-md border-[0.5px] border-state-warning-active bg-state-warning-hover px-1.5">
+              <span className="mr-1 size-[4px] shrink-0 rounded-[2px] bg-text-warning-secondary" />
+              <div className="grow truncate text-text-warning system-xs-medium" title={t('nodes.tool.authorizationRequired', { ns: 'workflow' })}>
+                {t('nodes.tool.authorizationRequired', { ns: 'workflow' })}
+              </div>
+            </div>
+          )}
         </div>
       )}
       {hasReferences && (

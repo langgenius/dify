@@ -12,8 +12,6 @@ from yarl import URL
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
-from core.file import FileType
-from core.file.models import FileTransferMethod
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.tools.__base.tool import Tool
 from core.tools.entities.tool_entities import (
@@ -33,8 +31,10 @@ from core.tools.errors import (
 )
 from core.tools.utils.message_transformer import ToolFileMessageTransformer, safe_json_value
 from core.tools.workflow_as_tool.tool import WorkflowTool
+from dify_graph.file import FileType
+from dify_graph.file.models import FileTransferMethod
 from extensions.ext_database import db
-from models.enums import CreatorUserRole
+from models.enums import CreatorUserRole, MessageFileBelongsTo
 from models.model import Message, MessageFile
 
 logger = logging.getLogger(__name__)
@@ -352,7 +352,7 @@ class ToolEngine:
                 message_id=agent_message.id,
                 type=file_type,
                 transfer_method=FileTransferMethod.TOOL_FILE,
-                belongs_to="assistant",
+                belongs_to=MessageFileBelongsTo.ASSISTANT,
                 url=message.url,
                 upload_file_id=tool_file_id,
                 created_by_role=(

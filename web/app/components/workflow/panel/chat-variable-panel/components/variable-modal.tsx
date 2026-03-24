@@ -7,7 +7,7 @@ import { useContext } from 'use-context-selector'
 import { v4 as uuid4 } from 'uuid'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
-import { ToastContext } from '@/app/components/base/toast'
+import { ToastContext } from '@/app/components/base/toast/context'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import ArrayValueList from '@/app/components/workflow/panel/chat-variable-panel/components/array-value-list'
@@ -84,14 +84,18 @@ const ChatVariableModal = ({
     return objectPlaceholder
   }, [type])
   const getObjectValue = useCallback(() => {
-    if (!chatVar || Object.keys(chatVar.value).length === 0)
+    const raw = chatVar?.value
+    if (!chatVar || raw === null || typeof raw !== 'object' || Array.isArray(raw) || Object.keys(raw).length === 0)
       return [DEFAULT_OBJECT_VALUE]
 
-    return Object.keys(chatVar.value).map((key) => {
+    return Object.keys(raw).map((key) => {
+      const v = raw[key]
+      const isStr = typeof v === 'string'
+      const isNum = typeof v === 'number'
       return {
         key,
-        type: typeof chatVar.value[key] === 'string' ? ChatVarType.String : ChatVarType.Number,
-        value: chatVar.value[key],
+        type: isStr ? ChatVarType.String : ChatVarType.Number,
+        value: isStr || isNum ? v : undefined,
       }
     })
   }, [chatVar])

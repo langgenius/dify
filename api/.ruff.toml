@@ -100,7 +100,7 @@ ignore = [
 "configs/*" = [
     "N802", # invalid-function-name
 ]
-"core/model_runtime/callbacks/base_callback.py" = ["T201"]
+"dify_graph/model_runtime/callbacks/base_callback.py" = ["T201"]
 "core/workflow/callbacks/workflow_logging_callback.py" = ["T201"]
 "libs/gmpy2_pkcs10aep_cipher.py" = [
     "N803", # invalid-argument-name

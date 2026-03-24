@@ -3,18 +3,19 @@
 import type { FC, ReactNode } from 'react'
 import type { WorkflowCommentDetail, WorkflowCommentDetailReply } from '@/service/workflow-comment'
 import { RiArrowDownSLine, RiArrowUpSLine, RiCheckboxCircleFill, RiCheckboxCircleLine, RiCloseLine, RiDeleteBinLine, RiMoreFill } from '@remixicon/react'
-import { useParams } from 'next/navigation'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactFlow, useViewport } from 'reactflow'
-import Avatar from '@/app/components/base/avatar'
+import { Avatar } from '@/app/components/base/avatar'
 import Divider from '@/app/components/base/divider'
 import InlineDeleteConfirm from '@/app/components/base/inline-delete-confirm'
-import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
-import Tooltip from '@/app/components/base/tooltip'
+import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem-plus'
+
+import Tooltip from '@/app/components/base/tooltip-plus'
 import { getUserColor } from '@/app/components/workflow/collaboration/utils/user-color'
 import { useAppContext } from '@/context/app-context'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
+import { useParams } from '@/next/navigation'
 import { cn } from '@/utils/classnames'
 import { useStore } from '../store'
 import { MentionInput } from './mention-input'
@@ -123,7 +124,7 @@ const ThreadMessage: FC<{
         <Avatar
           name={authorName}
           avatar={avatarUrl || null}
-          size={24}
+          size="sm"
           className={cn('h-8 w-8 rounded-full')}
           backgroundColor={userColor}
         />
@@ -560,7 +561,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                               <Avatar
                                 name={reply.created_by_account?.name || t('comments.fallback.user', { ns: 'workflow' })}
                                 avatar={reply.created_by_account?.avatar_url || null}
-                                size={24}
+                                size="sm"
                                 className="h-8 w-8 rounded-full"
                               />
                             </div>
@@ -609,7 +610,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
               <Avatar
                 avatar={userProfile?.avatar_url || null}
                 name={userProfile?.name || t('you', { ns: 'common' })}
-                size={24}
+                size="sm"
                 className="h-8 w-8"
               />
               <div className="flex-1 rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur p-[2px] shadow-sm">

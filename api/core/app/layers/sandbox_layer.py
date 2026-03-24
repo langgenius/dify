@@ -1,8 +1,8 @@
 import logging
 
 from core.sandbox import Sandbox
-from core.workflow.graph_engine.layers.base import GraphEngineLayer
-from core.workflow.graph_events.base import GraphEngineEvent
+from dify_graph.graph_engine.layers.base import GraphEngineLayer
+from dify_graph.graph_events.base import GraphEngineEvent
 
 logger = logging.getLogger(__name__)
 

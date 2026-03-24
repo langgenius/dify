@@ -1,6 +1,5 @@
 'use client'
 
-import dynamic from 'next/dynamic'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -11,9 +10,10 @@ import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
+} from '@/app/components/base/portal-to-follow-elem-plus'
 import SearchInput from '@/app/components/base/search-input'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
+import dynamic from '@/next/dynamic'
 import { ROOT_ID } from '../constants'
 import MenuItem from '../file-tree/tree/menu-item'
 import { useSkillAssetTreeData } from '../hooks/file-tree/data/use-skill-asset-tree'

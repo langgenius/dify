@@ -5,7 +5,7 @@ import type { TreeNodeData } from '../../../type'
 import { useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import {
   useCreateAppAssetFolder,
@@ -74,10 +74,7 @@ export function useInlineCreateNode({
             },
           })
           emitTreeUpdate()
-          Toast.notify({
-            type: 'success',
-            message: t('skillSidebar.menu.folderCreated'),
-          })
+          toast.success(t('skillSidebar.menu.folderCreated'))
         }
         else {
           const emptyBlob = new Blob([''], { type: 'text/plain' })
@@ -91,17 +88,11 @@ export function useInlineCreateNode({
           const extension = getFileExtension(trimmedName, createdFile.extension)
           if (isTextLikeFile(extension))
             storeApi.getState().openTab(createdFile.id, { pinned: true, autoFocusEditor: true })
-          Toast.notify({
-            type: 'success',
-            message: t('skillSidebar.menu.fileCreated'),
-          })
+          toast.success(t('skillSidebar.menu.fileCreated'))
         }
       }
       catch {
-        Toast.notify({
-          type: 'error',
-          message: t('skillSidebar.menu.createError'),
-        })
+        toast.error(t('skillSidebar.menu.createError'))
       }
       finally {
         storeApi.getState().clearCreateNode()
@@ -115,15 +106,9 @@ export function useInlineCreateNode({
       payload: { name },
     }).then(() => {
       emitTreeUpdate()
-      Toast.notify({
-        type: 'success',
-        message: t('skillSidebar.menu.renamed'),
-      })
+      toast.success(t('skillSidebar.menu.renamed'))
     }).catch(() => {
-      Toast.notify({
-        type: 'error',
-        message: t('skillSidebar.menu.renameError'),
-      })
+      toast.error(t('skillSidebar.menu.renameError'))
     })
   }, [
     appId,

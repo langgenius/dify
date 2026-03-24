@@ -14,8 +14,22 @@ import {
   treeContract,
   updateFileContentContract,
 } from './console/app-asset'
-import { workflowOnlineUsersContract } from './console/apps'
+import { appDeleteContract, workflowOnlineUsersContract } from './console/apps'
 import { bindPartnerStackContract, invoicesContract } from './console/billing'
+import {
+  exploreAppDetailContract,
+  exploreAppsContract,
+  exploreBannersContract,
+  exploreInstalledAppAccessModeContract,
+  exploreInstalledAppMetaContract,
+  exploreInstalledAppParametersContract,
+  exploreInstalledAppPinContract,
+  exploreInstalledAppsContract,
+  exploreInstalledAppUninstallContract,
+} from './console/explore'
+import { changePreferredProviderTypeContract, modelProvidersModelsContract } from './console/model-providers'
+import { notificationContract, notificationDismissContract } from './console/notification'
+import { pluginCheckInstalledContract, pluginLatestVersionsContract } from './console/plugins'
 import {
   downloadFileContract,
   listFilesContract,
@@ -69,16 +83,41 @@ export const consoleRouterContract = {
     avatar: accountAvatarContract,
   },
   systemFeatures: systemFeaturesContract,
+  apps: {
+    deleteApp: appDeleteContract,
+    workflowOnlineUsers: workflowOnlineUsersContract,
+  },
+  explore: {
+    apps: exploreAppsContract,
+    appDetail: exploreAppDetailContract,
+    installedApps: exploreInstalledAppsContract,
+    uninstallInstalledApp: exploreInstalledAppUninstallContract,
+    updateInstalledApp: exploreInstalledAppPinContract,
+    appAccessMode: exploreInstalledAppAccessModeContract,
+    installedAppParameters: exploreInstalledAppParametersContract,
+    installedAppMeta: exploreInstalledAppMetaContract,
+    banners: exploreBannersContract,
+  },
   trialApps: {
     info: trialAppInfoContract,
     datasets: trialAppDatasetsContract,
     parameters: trialAppParametersContract,
     workflows: trialAppWorkflowsContract,
   },
+  modelProviders: {
+    models: modelProvidersModelsContract,
+    changePreferredProviderType: changePreferredProviderTypeContract,
+  },
+  plugins: {
+    checkInstalled: pluginCheckInstalledContract,
+    latestVersions: pluginLatestVersionsContract,
+  },
   billing: {
     invoices: invoicesContract,
     bindPartnerStack: bindPartnerStackContract,
   },
+  notification: notificationContract,
+  notificationDismiss: notificationDismissContract,
   sandboxProvider: {
     getSandboxProviderList: getSandboxProviderListContract,
     saveSandboxProviderConfig: saveSandboxProviderConfigContract,
@@ -102,9 +141,6 @@ export const consoleRouterContract = {
     publish: publishContract,
     getFileUploadUrl: getFileUploadUrlContract,
     batchUpload: batchUploadContract,
-  },
-  apps: {
-    workflowOnlineUsers: workflowOnlineUsersContract,
   },
   workflowDraft: {
     environmentVariables: workflowDraftEnvironmentVariablesContract,

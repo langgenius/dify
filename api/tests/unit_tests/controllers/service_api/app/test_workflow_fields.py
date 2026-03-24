@@ -1,7 +1,7 @@
 from types import SimpleNamespace
 
 from controllers.service_api.app.workflow import WorkflowRunOutputsField, WorkflowRunStatusField
-from core.workflow.enums import WorkflowExecutionStatus
+from dify_graph.enums import WorkflowExecutionStatus
 
 
 def test_workflow_run_status_field_with_enum() -> None:

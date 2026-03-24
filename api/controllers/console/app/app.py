@@ -24,10 +24,11 @@ from controllers.console.wraps import (
     is_admin_or_owner_required,
     setup_required,
 )
-from core.file import helpers as file_helpers
 from core.ops.ops_trace_manager import OpsTraceManager
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from core.workflow.enums import NodeType, WorkflowExecutionStatus
+from core.trigger.constants import TRIGGER_NODE_TYPES
+from dify_graph.enums import WorkflowExecutionStatus
+from dify_graph.file import helpers as file_helpers
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant, login_required
 from models import App, DatasetPermissionEnum, Workflow
@@ -522,11 +523,7 @@ class AppListApi(Resource):
                 .scalars()
                 .all()
             )
-            trigger_node_types = {
-                NodeType.TRIGGER_WEBHOOK,
-                NodeType.TRIGGER_SCHEDULE,
-                NodeType.TRIGGER_PLUGIN,
-            }
+            trigger_node_types = TRIGGER_NODE_TYPES
             for workflow in draft_workflows:
                 # Check sandbox feature
                 if workflow.get_feature(WorkflowFeatures.SANDBOX).enabled:
@@ -678,6 +675,19 @@ class AppCopyApi(Resource):
                 icon_background=args.icon_background,
             )
             session.commit()
+
+            # Inherit web app permission from original app
+            if result.app_id and FeatureService.get_system_features().webapp_auth.enabled:
+                try:
+                    # Get the original app's access mode
+                    original_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_model.id)
+                    access_mode = original_settings.access_mode
+                except Exception:
+                    # If original app has no settings (old app), default to public to match fallback behavior
+                    access_mode = "public"
+
+                # Apply the same access mode to the copied app
+                EnterpriseService.WebAppAuth.update_app_access_mode(result.app_id, access_mode)
 
             stmt = select(App).where(App.id == result.app_id)
             app = session.scalar(stmt)

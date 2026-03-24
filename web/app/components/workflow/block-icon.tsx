@@ -36,6 +36,7 @@ import {
   VariableX,
   WebhookLine,
 } from '@/app/components/base/icons/src/vender/workflow'
+import { API_PREFIX } from '@/config'
 import { STORAGE_KEYS } from '@/config/storage-keys'
 import { cn } from '@/utils/classnames'
 import { storage } from '@/utils/storage'
@@ -95,6 +96,17 @@ const getIcon = (type: BlockEnum, className: string) => {
 
   return <DefaultIcon className={className} />
 }
+
+const normalizeToolIconUrl = (toolIcon: string) => {
+  const protectedPluginIconPath = '/workspaces/current/plugin/icon'
+  const pathIndex = toolIcon.indexOf(protectedPluginIconPath)
+
+  if (pathIndex < 0)
+    return toolIcon
+
+  return `${API_PREFIX}${toolIcon.slice(pathIndex)}`
+}
+
 const ICON_CONTAINER_BG_COLOR_MAP: Record<string, string> = {
   [BlockEnum.Start]: 'bg-util-colors-blue-brand-blue-brand-500',
   [BlockEnum.LLM]: 'bg-util-colors-indigo-indigo-500',
@@ -166,6 +178,9 @@ const BlockIcon: FC<BlockIconProps> = ({
   const displayType = useDisplayBlockType(type)
   const isToolOrDataSourceOrTriggerPlugin = displayType === BlockEnum.Tool || displayType === BlockEnum.DataSource || displayType === BlockEnum.TriggerPlugin
   const showDefaultIcon = !isToolOrDataSourceOrTriggerPlugin || !toolIcon
+  const resolvedToolIcon = typeof toolIcon === 'string'
+    ? normalizeToolIconUrl(toolIcon)
+    : toolIcon
 
   return (
     <div className={
@@ -189,12 +204,12 @@ const BlockIcon: FC<BlockIconProps> = ({
         !showDefaultIcon && (
           <>
             {
-              typeof toolIcon === 'string'
+              typeof resolvedToolIcon === 'string'
                 ? (
                     <div
                       className="h-full w-full shrink-0 rounded-md bg-cover bg-center"
                       style={{
-                        backgroundImage: `url(${toolIcon})`,
+                        backgroundImage: `url(${resolvedToolIcon})`,
                       }}
                     >
                     </div>
@@ -203,8 +218,8 @@ const BlockIcon: FC<BlockIconProps> = ({
                     <AppIcon
                       className="!h-full !w-full shrink-0"
                       size="tiny"
-                      icon={toolIcon?.content}
-                      background={toolIcon?.background}
+                      icon={resolvedToolIcon?.content}
+                      background={resolvedToolIcon?.background}
                     />
                   )
             }

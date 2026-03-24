@@ -2,7 +2,7 @@ import logging
 import queue
 import threading
 import time
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from enum import IntEnum, auto
 from typing import Any
 
@@ -20,7 +20,7 @@ from core.app.entities.queue_entities import (
     QueueStopEvent,
     WorkflowQueueMessage,
 )
-from core.workflow.runtime import GraphRuntimeState
+from dify_graph.runtime import GraphRuntimeState
 from extensions.ext_redis import redis_client
 
 logger = logging.getLogger(__name__)
@@ -31,7 +31,7 @@ class PublishFrom(IntEnum):
     TASK_PIPELINE = auto()
 
 
-class AppQueueManager:
+class AppQueueManager(ABC):
     def __init__(self, task_id: str, user_id: str, invoke_from: InvokeFrom):
         if not user_id:
             raise ValueError("user is required")
@@ -122,7 +122,7 @@ class AppQueueManager:
         """Attach the live graph runtime state reference for downstream consumers."""
         self._graph_runtime_state = graph_runtime_state
 
-    def publish(self, event: AppQueueEvent, pub_from: PublishFrom):
+    def publish(self, event: AppQueueEvent, pub_from: PublishFrom) -> None:
         """
         Publish event to queue
         :param event:
@@ -133,7 +133,7 @@ class AppQueueManager:
         self._publish(event, pub_from)
 
     @abstractmethod
-    def _publish(self, event: AppQueueEvent, pub_from: PublishFrom):
+    def _publish(self, event: AppQueueEvent, pub_from: PublishFrom) -> None:
         """
         Publish event to queue
         :param event:

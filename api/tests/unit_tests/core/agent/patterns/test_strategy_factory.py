@@ -8,14 +8,14 @@ from core.agent.entities import AgentEntity, ExecutionContext
 from core.agent.patterns.function_call import FunctionCallStrategy
 from core.agent.patterns.react import ReActStrategy
 from core.agent.patterns.strategy_factory import StrategyFactory
-from core.model_runtime.entities.model_entities import ModelFeature
+from dify_graph.model_runtime.entities.model_entities import ModelFeature
 
 
 @pytest.fixture
 def mock_model_instance():
     """Create a mock model instance."""
     model_instance = MagicMock()
-    model_instance.model = "test-model"
+    model_instance.model_name = "test-model"
     model_instance.provider = "test-provider"
     return model_instance
 

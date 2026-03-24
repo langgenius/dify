@@ -8,7 +8,7 @@ class TestGetSpanIdFromOtelContext:
     def test_returns_none_without_span(self):
         from core.helper.trace_id_helper import get_span_id_from_otel_context
 
-        with mock.patch("opentelemetry.trace.get_current_span", return_value=None):
+        with mock.patch("opentelemetry.trace.get_current_span", return_value=None, autospec=True):
             result = get_span_id_from_otel_context()
             assert result is None
 
@@ -20,7 +20,7 @@ class TestGetSpanIdFromOtelContext:
         mock_context.span_id = 0x051581BF3BB55C45
         mock_span.get_span_context.return_value = mock_context
 
-        with mock.patch("opentelemetry.trace.get_current_span", return_value=mock_span):
+        with mock.patch("opentelemetry.trace.get_current_span", return_value=mock_span, autospec=True):
             with mock.patch("opentelemetry.trace.span.INVALID_SPAN_ID", 0):
                 result = get_span_id_from_otel_context()
                 assert result == "051581bf3bb55c45"
@@ -28,7 +28,7 @@ class TestGetSpanIdFromOtelContext:
     def test_returns_none_on_exception(self):
         from core.helper.trace_id_helper import get_span_id_from_otel_context
 
-        with mock.patch("opentelemetry.trace.get_current_span", side_effect=Exception("Test error")):
+        with mock.patch("opentelemetry.trace.get_current_span", side_effect=Exception("Test error"), autospec=True):
             result = get_span_id_from_otel_context()
             assert result is None
 
@@ -37,7 +37,7 @@ class TestGenerateTraceparentHeader:
     def test_generates_valid_format(self):
         from core.helper.trace_id_helper import generate_traceparent_header
 
-        with mock.patch("opentelemetry.trace.get_current_span", return_value=None):
+        with mock.patch("opentelemetry.trace.get_current_span", return_value=None, autospec=True):
             result = generate_traceparent_header()
 
             assert result is not None
@@ -58,7 +58,7 @@ class TestGenerateTraceparentHeader:
         mock_context.span_id = 0x051581BF3BB55C45
         mock_span.get_span_context.return_value = mock_context
 
-        with mock.patch("opentelemetry.trace.get_current_span", return_value=mock_span):
+        with mock.patch("opentelemetry.trace.get_current_span", return_value=mock_span, autospec=True):
             with (
                 mock.patch("opentelemetry.trace.span.INVALID_TRACE_ID", 0),
                 mock.patch("opentelemetry.trace.span.INVALID_SPAN_ID", 0),
@@ -70,7 +70,7 @@ class TestGenerateTraceparentHeader:
     def test_generates_hex_only_values(self):
         from core.helper.trace_id_helper import generate_traceparent_header
 
-        with mock.patch("opentelemetry.trace.get_current_span", return_value=None):
+        with mock.patch("opentelemetry.trace.get_current_span", return_value=None, autospec=True):
             result = generate_traceparent_header()
 
             parts = result.split("-")

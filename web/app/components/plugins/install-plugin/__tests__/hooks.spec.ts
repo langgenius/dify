@@ -16,34 +16,6 @@ vi.mock('@/service/plugins', () => ({
   uploadGitHub: (...args: unknown[]) => mockUploadGitHub(...args),
 }))
 
-vi.mock('@/utils/semver', () => ({
-  compareVersion: (a: string, b: string) => {
-    const parseVersion = (v: string) => v.replace(/^v/, '').split('.').map(Number)
-    const va = parseVersion(a)
-    const vb = parseVersion(b)
-    for (let i = 0; i < Math.max(va.length, vb.length); i++) {
-      const diff = (va[i] || 0) - (vb[i] || 0)
-      if (diff > 0)
-        return 1
-      if (diff < 0)
-        return -1
-    }
-    return 0
-  },
-  getLatestVersion: (versions: string[]) => {
-    return versions.sort((a, b) => {
-      const pa = a.replace(/^v/, '').split('.').map(Number)
-      const pb = b.replace(/^v/, '').split('.').map(Number)
-      for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
-        const diff = (pa[i] || 0) - (pb[i] || 0)
-        if (diff !== 0)
-          return diff
-      }
-      return 0
-    }).pop()!
-  },
-}))
-
 const mockFetch = vi.fn()
 globalThis.fetch = mockFetch
 

@@ -1,4 +1,4 @@
-import type { NavIcon } from './navLink'
+import type { NavIcon } from './nav-link'
 import type { DataSet } from '@/models/datasets'
 import {
   RiMenuLine,
@@ -21,7 +21,7 @@ import Divider from '../base/divider'
 import Effect from '../base/effect'
 import ExtraInfo from '../datasets/extra-info'
 import Dropdown from './dataset-info/dropdown'
-import NavLink from './navLink'
+import NavLink from './nav-link'
 
 type DatasetSidebarDropdownProps = {
   navigation: Array<{

@@ -51,7 +51,7 @@ const Authorization: FC<Props> = ({
   const { availableVars, availableNodesWithParent } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
     filterVar: (varPayload: Var) => {
-      return [VarType.string, VarType.number, VarType.secret].includes(varPayload.type)
+      return ([VarType.string, VarType.number, VarType.secret] as VarType[]).includes(varPayload.type)
     },
   })
 

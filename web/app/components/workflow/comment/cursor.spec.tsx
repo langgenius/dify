@@ -3,7 +3,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ControlMode } from '../types'
 import { CommentCursor } from './cursor'
 
-const mockState = {
+const mockState: {
+  controlMode: ControlMode
+  isCommentPlacing: boolean
+  mousePosition: { elementX: number, elementY: number }
+} = {
   controlMode: ControlMode.Pointer,
   isCommentPlacing: false,
   mousePosition: {

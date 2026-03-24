@@ -109,7 +109,7 @@ export const RETRIEVAL_OUTPUT_STRUCT = `{
   }
 }`
 
-export const SUPPORT_OUTPUT_VARS_NODE = [
+export const SUPPORT_OUTPUT_VARS_NODE: BlockEnum[] = [
   BlockEnum.Start,
   BlockEnum.TriggerWebhook,
   BlockEnum.TriggerPlugin,

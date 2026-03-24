@@ -11,7 +11,7 @@ import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
+} from '@/app/components/base/portal-to-follow-elem-plus'
 import { useBasicTypeaheadTriggerMatch } from '@/app/components/base/prompt-editor/hooks'
 import { $splitNodeContainingQuery } from '@/app/components/base/prompt-editor/utils'
 import { FilePickerPanel } from './file-picker-panel'

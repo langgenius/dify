@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
-import { useStoreApi } from 'reactflow'
+import { useStore as useReactFlowStore, useStoreApi } from 'reactflow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { consoleClient, consoleQuery } from '@/service/client'
 
@@ -21,6 +21,7 @@ type UseNodeSkillsParams = {
 export function useNodeSkills({ nodeId, promptTemplateKey, enabled = true }: UseNodeSkillsParams) {
   const appId = useAppStore(s => s.appDetail?.id)
   const store = useStoreApi()
+  const nodeData = useReactFlowStore(s => s.getNodes().find(n => n.id === nodeId)?.data)
   const isQueryEnabled = enabled && !!appId && !!nodeId
 
   const queryKey = useMemo(() => {
@@ -33,8 +34,10 @@ export function useNodeSkills({ nodeId, promptTemplateKey, enabled = true }: Use
       }),
       nodeId,
       promptTemplateKey,
+      nodeData,
+      store,
     ]
-  }, [appId, nodeId, promptTemplateKey])
+  }, [appId, nodeId, promptTemplateKey, nodeData, store])
 
   const { data, isLoading } = useQuery({
     queryKey,

@@ -4,17 +4,18 @@ import type { ToolParameter } from '@/app/components/tools/types'
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import Link from 'next/link'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Trans, useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import AppIcon from '@/app/components/base/app-icon'
+// eslint-disable-next-line no-restricted-imports
 import Modal from '@/app/components/base/modal'
 import { useSelectOrDelete } from '@/app/components/base/prompt-editor/hooks'
 import Switch from '@/app/components/base/switch'
-import Tooltip from '@/app/components/base/tooltip'
+
+import Tooltip from '@/app/components/base/tooltip-plus'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import ToolAuthorizationSection from '@/app/components/plugins/plugin-detail-panel/tool-selector/sections/tool-authorization-section'
 import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
@@ -27,6 +28,7 @@ import ToolSettingsSection from '@/app/components/workflow/skill/editor/skill-ed
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { useGetLanguage } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
+import Link from '@/next/link'
 import {
   useAllBuiltInTools,
   useAllCustomTools,
@@ -37,7 +39,7 @@ import { Theme } from '@/types/app'
 import { canFindTool } from '@/utils'
 import { cn } from '@/utils/classnames'
 import { basePath } from '@/utils/var'
-import { DELETE_TOOL_BLOCK_COMMAND } from './index'
+import { DELETE_TOOL_BLOCK_COMMAND } from './commands'
 import { useToolBlockContext } from './tool-block-context'
 import ToolHeader from './tool-header'
 
@@ -848,7 +850,7 @@ const ToolGroupBlockComponent = ({
                   <div className="pl-1">
                     <Switch
                       size="md"
-                      defaultValue={resolvedEnabledByConfigId[item.configId] !== false}
+                      value={resolvedEnabledByConfigId[item.configId] !== false}
                       onChange={(value) => {
                         handleToggleTool(item.configId, value)
                       }}

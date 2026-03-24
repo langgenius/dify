@@ -5,7 +5,7 @@ import {
 } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
 import { useAppContext } from '@/context/app-context'
 import { createCustomCollection } from '@/service/tools'
@@ -21,10 +21,7 @@ const Contribute = ({ onRefreshData }: Props) => {
   const [isShowEditCollectionToolModal, setIsShowEditCustomCollectionModal] = useState(false)
   const doCreateCustomToolCollection = async (data: CustomCollectionBackend) => {
     await createCustomCollection(data)
-    Toast.notify({
-      type: 'success',
-      message: t('api.actionSuccess', { ns: 'common' }),
-    })
+    toast.success(t('api.actionSuccess', { ns: 'common' }))
     setIsShowEditCustomCollectionModal(false)
     onRefreshData()
   }

@@ -219,7 +219,7 @@ const Editor: FC<Props> = ({
                       <Jinja className="h-3 w-6 text-text-quaternary" />
                       <Switch
                         size="sm"
-                        defaultValue={editionType === EditionType.jinja2}
+                        value={editionType === EditionType.jinja2}
                         onChange={(checked) => {
                           onEditionTypeChange?.(checked ? EditionType.jinja2 : EditionType.basic)
                         }}
@@ -302,6 +302,9 @@ const Editor: FC<Props> = ({
                             width: node.width,
                             height: node.height,
                             position: node.position,
+                            ...(node.data.type === BlockEnum.LLM && {
+                              modelProvider: (node.data as { model?: ModelConfig }).model?.provider,
+                            }),
                           }
                           if (node.data.type === BlockEnum.Start) {
                             acc.sys = {

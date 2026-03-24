@@ -4,11 +4,11 @@ from typing import Any
 
 import pytest
 
-from core.model_runtime.entities.llm_entities import LLMUsage
-from core.workflow.entities import ToolCallResult
-from core.workflow.entities.tool_entities import ToolResultStatus
-from core.workflow.node_events import ModelInvokeCompletedEvent, NodeEventBase
-from core.workflow.nodes.llm.node import LLMNode
+from dify_graph.entities import ToolCallResult
+from dify_graph.entities.tool_entities import ToolResultStatus
+from dify_graph.model_runtime.entities.llm_entities import LLMUsage
+from dify_graph.node_events import ModelInvokeCompletedEvent, NodeEventBase
+from dify_graph.nodes.llm.node import LLMNode
 
 
 class _StubModelInstance:
@@ -29,13 +29,20 @@ def _drain(generator: Generator[NodeEventBase, None, Any]):
 @pytest.fixture(autouse=True)
 def patch_deduct_llm_quota(monkeypatch):
     # Avoid touching real quota logic during unit tests
-    monkeypatch.setattr("core.workflow.nodes.llm.node.llm_utils.deduct_llm_quota", lambda **_: None)
+    monkeypatch.setattr("core.app.llm.quota.deduct_llm_quota", lambda **_: None)
 
 
 def _make_llm_node(reasoning_format: str) -> LLMNode:
     node = LLMNode.__new__(LLMNode)
     object.__setattr__(node, "_node_data", types.SimpleNamespace(reasoning_format=reasoning_format, tools=[]))
-    object.__setattr__(node, "tenant_id", "tenant")
+    object.__setattr__(
+        node,
+        "_run_context",
+        {"_dify": types.SimpleNamespace(
+            tenant_id="tenant", app_id="app", user_id="user",
+            user_from="account", invoke_from="debugger",
+        )},
+    )
     return node
 
 
@@ -109,9 +116,9 @@ def test_stream_llm_events_no_reasoning_results_in_empty_sequence():
 
 
 def test_serialize_tool_call_strips_files_to_ids():
-    file_cls = pytest.importorskip("core.file").File
-    file_type = pytest.importorskip("core.file.enums").FileType
-    transfer_method = pytest.importorskip("core.file.enums").FileTransferMethod
+    file_cls = pytest.importorskip("dify_graph.file").File
+    file_type = pytest.importorskip("dify_graph.file.enums").FileType
+    transfer_method = pytest.importorskip("dify_graph.file.enums").FileTransferMethod
 
     file_with_id = file_cls(
         id="f1",

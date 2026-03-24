@@ -1,6 +1,5 @@
 import type { ListChildComponentProps } from 'react-window'
 import type { DataSourceNotionPage, DataSourceNotionPageMap } from '@/models/common'
-import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
 import { memo, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { areEqual, FixedSizeList as List } from 'react-window'
@@ -110,11 +109,12 @@ const ItemComponent = ({ index, style, data }: ListChildComponentProps<{
           className="mr-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-md hover:bg-components-button-ghost-bg-hover"
           style={{ marginLeft: current.depth * 8 }}
           onClick={() => handleToggle(index)}
+          data-testid={`notion-page-toggle-${current.page_id}`}
         >
           {
             current.expand
-              ? <RiArrowDownSLine className="h-4 w-4 text-text-tertiary" />
-              : <RiArrowRightSLine className="h-4 w-4 text-text-tertiary" />
+              ? <div className="i-ri-arrow-down-s-line h-4 w-4 text-text-tertiary" />
+              : <div className="i-ri-arrow-right-s-line h-4 w-4 text-text-tertiary" />
           }
         </div>
       )
@@ -133,6 +133,7 @@ const ItemComponent = ({ index, style, data }: ListChildComponentProps<{
     <div
       className={cn('group flex cursor-pointer items-center rounded-md pl-2 pr-[2px] hover:bg-state-base-hover', previewPageId === current.page_id && 'bg-state-base-hover')}
       style={{ ...style, top: style.top as number + 8, left: 8, right: 8, width: 'calc(100% - 16px)' }}
+      data-testid={`notion-page-row-${current.page_id}`}
     >
       <Checkbox
         className="mr-2 shrink-0"
@@ -141,6 +142,7 @@ const ItemComponent = ({ index, style, data }: ListChildComponentProps<{
         onCheck={() => {
           handleCheck(index)
         }}
+        id={`notion-page-checkbox-${current.page_id}`}
       />
       {!searchValue && renderArrow()}
       <NotionIcon
@@ -151,6 +153,7 @@ const ItemComponent = ({ index, style, data }: ListChildComponentProps<{
       <div
         className="grow truncate text-[13px] font-medium leading-4 text-text-secondary"
         title={current.page_name}
+        data-testid={`notion-page-name-${current.page_id}`}
       >
         {current.page_name}
       </div>
@@ -161,6 +164,7 @@ const ItemComponent = ({ index, style, data }: ListChildComponentProps<{
             font-medium leading-4 text-components-button-secondary-text shadow-xs shadow-shadow-shadow-3 backdrop-blur-[10px]
             hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover group-hover:flex"
             onClick={() => handlePreview(index)}
+            data-testid={`notion-page-preview-${current.page_id}`}
           >
             {t('dataSource.notion.selector.preview', { ns: 'common' })}
           </div>

@@ -15,9 +15,15 @@ import { produce } from 'immer'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import { SimpleSelect } from '@/app/components/base/select'
 import Switch from '@/app/components/base/switch'
-import Tooltip from '@/app/components/base/tooltip'
+import Tooltip from '@/app/components/base/tooltip-plus'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/app/components/base/ui/select'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import AppSelector from '@/app/components/plugins/plugin-detail-panel/app-selector'
@@ -250,7 +256,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
               <span className="text-text-secondary system-xs-medium">{t('detailPanel.toolSelector.auto', { ns: 'plugin' })}</span>
               <Switch
                 size="xs"
-                defaultValue={!!auto}
+                value={!!auto}
                 onChange={val => handleAutomatic(variable, val, type)}
               />
             </div>
@@ -293,18 +299,26 @@ const ReasoningConfigForm: React.FC<Props> = ({
               />
             )}
             {isSelect && (
-              <SimpleSelect
-                wrapperClassName="h-8 grow"
-                defaultValue={varInput?.value}
-                items={options.filter((option: { show_on: any[] }) => {
-                  if (option.show_on.length)
-                    return option.show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value)
+              <Select
+                value={varInput?.value === undefined || varInput?.value === null ? '' : String(varInput.value)}
+                onValueChange={v => handleValueChange(variable, type)(v)}
+              >
+                <SelectTrigger className="h-8 grow">
+                  <SelectValue placeholder={placeholder?.[language] || placeholder?.en_US} />
+                </SelectTrigger>
+                <SelectContent>
+                  {options.filter((option: { show_on: any[] }) => {
+                    if (option.show_on.length)
+                      return option.show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value)
 
-                  return true
-                }).map((option: { value: any, label: { [x: string]: any, en_US: any } }) => ({ value: option.value, name: option.label[language] || option.label.en_US }))}
-                onSelect={item => handleValueChange(variable, type)(item.value as string)}
-                placeholder={placeholder?.[language] || placeholder?.en_US}
-              />
+                    return true
+                  }).map((option: { value: any, label: { [x: string]: any, en_US: any } }) => (
+                    <SelectItem key={String(option.value)} value={String(option.value)}>
+                      {option.label[language] || option.label.en_US}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             )}
             {isShowJSONEditor && isConstant && (
               <div className="mt-1 w-full">

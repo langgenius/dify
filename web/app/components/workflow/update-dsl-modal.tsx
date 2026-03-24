@@ -23,8 +23,7 @@ import Uploader from '@/app/components/app/create-from-dsl-modal/uploader'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
-import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
-import { ToastContext } from '@/app/components/base/toast'
+import { ToastContext } from '@/app/components/base/toast/context'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import {
@@ -39,10 +38,7 @@ import { fetchWorkflowDraft } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 import { collaborationManager } from './collaboration/core/collaboration-manager'
 import { WORKFLOW_DATA_UPDATE } from './constants'
-import {
-  BlockEnum,
-  SupportUploadFileTypes,
-} from './types'
+import { BlockEnum } from './types'
 import {
   initialEdges,
   initialNodes,
@@ -99,31 +95,7 @@ const UpdateDSLModal = ({
     } = await fetchWorkflowDraft(`/apps/${app_id}/workflows/draft`)
 
     const { nodes, edges, viewport } = graph
-    const newFeatures = {
-      file: {
-        image: {
-          enabled: !!features.file_upload?.image?.enabled,
-          number_limits: features.file_upload?.image?.number_limits || 3,
-          transfer_methods: features.file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
-        },
-        enabled: !!(features.file_upload?.enabled || features.file_upload?.image?.enabled),
-        allowed_file_types: features.file_upload?.allowed_file_types || [SupportUploadFileTypes.image],
-        allowed_file_extensions: features.file_upload?.allowed_file_extensions || FILE_EXTS[SupportUploadFileTypes.image].map(ext => `.${ext}`),
-        allowed_file_upload_methods: features.file_upload?.allowed_file_upload_methods || features.file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
-        number_limits: features.file_upload?.number_limits || features.file_upload?.image?.number_limits || 3,
-      },
-      opening: {
-        enabled: !!features.opening_statement,
-        opening_statement: features.opening_statement,
-        suggested_questions: features.suggested_questions,
-      },
-      suggested: features.suggested_questions_after_answer || { enabled: false },
-      speech2text: features.speech_to_text || { enabled: false },
-      text2speech: features.text_to_speech || { enabled: false },
-      citation: features.retriever_resource || { enabled: false },
-      moderation: features.sensitive_word_avoidance || { enabled: false },
-      sandbox: features.sandbox || { enabled: false },
-    }
+    const draftFeatures = features ?? {}
 
     eventEmitter?.emit({
       type: WORKFLOW_DATA_UPDATE,
@@ -131,7 +103,7 @@ const UpdateDSLModal = ({
         nodes: initialNodes(nodes, edges),
         edges: initialEdges(edges, nodes),
         viewport,
-        features: newFeatures,
+        features: draftFeatures,
         hash,
         conversation_variables: conversation_variables || [],
         environment_variables: environment_variables || [],
@@ -143,7 +115,7 @@ const UpdateDSLModal = ({
     try {
       const data = yamlLoad(content) as any
       const nodes = data?.workflow?.graph?.nodes ?? []
-      const invalidNodes = appDetail?.mode === AppModeEnum.ADVANCED_CHAT
+      const invalidNodes: BlockEnum[] = appDetail?.mode === AppModeEnum.ADVANCED_CHAT
         ? [
             BlockEnum.End,
             BlockEnum.TriggerWebhook,
@@ -152,7 +124,8 @@ const UpdateDSLModal = ({
           ]
         : [BlockEnum.Answer]
       const hasInvalidNode = nodes.some((node: Node<CommonNodeType>) => {
-        return invalidNodes.includes(node?.data?.type)
+        const nodeType = node?.data?.type
+        return nodeType !== undefined && invalidNodes.includes(nodeType)
       })
       if (hasInvalidNode) {
         notify({ type: 'error', message: t('common.importFailure', { ns: 'workflow' }) })
@@ -266,7 +239,7 @@ const UpdateDSLModal = ({
         onClose={onCancel}
       >
         <div className="mb-3 flex items-center justify-between">
-          <div className="text-text-primary title-2xl-semi-bold">{t('importApp', { ns: 'app' })}</div>
+          <div className="text-text-primary title-2xl-semi-bold">{t('common.importDSL', { ns: 'workflow' })}</div>
           <div className="flex h-[22px] w-[22px] cursor-pointer items-center justify-center" onClick={onCancel}>
             <RiCloseLine className="h-[18px] w-[18px] text-text-tertiary" />
           </div>

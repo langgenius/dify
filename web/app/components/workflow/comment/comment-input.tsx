@@ -1,7 +1,7 @@
 import type { FC, PointerEvent as ReactPointerEvent } from 'react'
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Avatar from '@/app/components/base/avatar'
+import { Avatar } from '@/app/components/base/avatar'
 import { useAppContext } from '@/context/app-context'
 import { cn } from '@/utils/classnames'
 import { MentionInput } from './mention-input'
@@ -153,9 +153,9 @@ export const CommentInput: FC<CommentInputProps> = memo(({
               <div className="flex h-full w-full items-center justify-center">
                 <div className="h-6 w-6 overflow-hidden rounded-full">
                   <Avatar
-                    avatar={userProfile.avatar_url}
+                    avatar={userProfile.avatar_url ?? null}
                     name={userProfile.name}
-                    size={24}
+                    size="sm"
                     className="h-full w-full"
                   />
                 </div>

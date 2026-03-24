@@ -96,7 +96,7 @@ describe('Workflow Onboarding Integration Logic', () => {
      * This ensures trigger nodes are recognized as valid start nodes
      */
     it('should validate Start node as valid start node', () => {
-      const mockNode = {
+      const mockNode: { data: { type: BlockEnum }, id: string } = {
         data: { type: BlockEnum.Start },
         id: 'start-1',
       }
@@ -111,7 +111,7 @@ describe('Workflow Onboarding Integration Logic', () => {
     })
 
     it('should validate TriggerSchedule as valid start node', () => {
-      const mockNode = {
+      const mockNode: { data: { type: BlockEnum }, id: string } = {
         data: { type: BlockEnum.TriggerSchedule },
         id: 'trigger-schedule-1',
       }
@@ -125,7 +125,7 @@ describe('Workflow Onboarding Integration Logic', () => {
     })
 
     it('should validate TriggerWebhook as valid start node', () => {
-      const mockNode = {
+      const mockNode: { data: { type: BlockEnum }, id: string } = {
         data: { type: BlockEnum.TriggerWebhook },
         id: 'trigger-webhook-1',
       }
@@ -139,7 +139,7 @@ describe('Workflow Onboarding Integration Logic', () => {
     })
 
     it('should validate TriggerPlugin as valid start node', () => {
-      const mockNode = {
+      const mockNode: { data: { type: BlockEnum }, id: string } = {
         data: { type: BlockEnum.TriggerPlugin },
         id: 'trigger-plugin-1',
       }
@@ -153,7 +153,7 @@ describe('Workflow Onboarding Integration Logic', () => {
     })
 
     it('should reject non-trigger nodes as invalid start nodes', () => {
-      const mockNode = {
+      const mockNode: { data: { type: BlockEnum }, id: string } = {
         data: { type: BlockEnum.LLM },
         id: 'llm-1',
       }
@@ -167,7 +167,7 @@ describe('Workflow Onboarding Integration Logic', () => {
     })
 
     it('should handle array of nodes with mixed types', () => {
-      const mockNodes = [
+      const mockNodes: { data: { type: BlockEnum }, id: string }[] = [
         { data: { type: BlockEnum.LLM }, id: 'llm-1' },
         { data: { type: BlockEnum.TriggerWebhook }, id: 'webhook-1' },
         { data: { type: BlockEnum.Answer }, id: 'answer-1' },
@@ -186,7 +186,7 @@ describe('Workflow Onboarding Integration Logic', () => {
     })
 
     it('should return undefined when no valid start nodes exist', () => {
-      const mockNodes = [
+      const mockNodes: { data: { type: BlockEnum }, id: string }[] = [
         { data: { type: BlockEnum.LLM }, id: 'llm-1' },
         { data: { type: BlockEnum.Answer }, id: 'answer-1' },
       ]
@@ -248,7 +248,7 @@ describe('Workflow Onboarding Integration Logic', () => {
       const shouldAutoOpenStartNodeSelector = true
       const nodeType: BlockEnum = BlockEnum.TriggerPlugin
       const isChatMode = false
-      const validStartTypes = [BlockEnum.Start, BlockEnum.TriggerSchedule, BlockEnum.TriggerWebhook, BlockEnum.TriggerPlugin]
+      const validStartTypes: BlockEnum[] = [BlockEnum.Start, BlockEnum.TriggerSchedule, BlockEnum.TriggerWebhook, BlockEnum.TriggerPlugin]
 
       const shouldAutoExpand = shouldAutoOpenStartNodeSelector && validStartTypes.includes(nodeType) && !isChatMode
 
@@ -259,7 +259,7 @@ describe('Workflow Onboarding Integration Logic', () => {
       const shouldAutoOpenStartNodeSelector = true
       const nodeType: BlockEnum = BlockEnum.LLM
       const isChatMode = false
-      const validStartTypes = [BlockEnum.Start, BlockEnum.TriggerSchedule, BlockEnum.TriggerWebhook, BlockEnum.TriggerPlugin]
+      const validStartTypes: BlockEnum[] = [BlockEnum.Start, BlockEnum.TriggerSchedule, BlockEnum.TriggerWebhook, BlockEnum.TriggerPlugin]
 
       const shouldAutoExpand = shouldAutoOpenStartNodeSelector && validStartTypes.includes(nodeType) && !isChatMode
 
@@ -492,13 +492,13 @@ describe('Workflow Onboarding Integration Logic', () => {
 
       // Simulate empty canvas check logic
       const nodes = mockGetNodes()
-      const startNodeTypes = [
+      const startNodeTypes: BlockEnum[] = [
         BlockEnum.Start,
         BlockEnum.TriggerSchedule,
         BlockEnum.TriggerWebhook,
         BlockEnum.TriggerPlugin,
       ]
-      const hasStartNode = nodes.some((node: MockNode) => startNodeTypes.includes(node.data?.type as BlockEnum))
+      const hasStartNode = nodes.some((node: MockNode) => node.data?.type !== undefined && startNodeTypes.includes(node.data.type))
       const isEmpty = nodes.length === 0 || !hasStartNode
 
       expect(isEmpty).toBe(true)
@@ -513,13 +513,13 @@ describe('Workflow Onboarding Integration Logic', () => {
       ])
 
       const nodes = mockGetNodes()
-      const startNodeTypes = [
+      const startNodeTypes: BlockEnum[] = [
         BlockEnum.Start,
         BlockEnum.TriggerSchedule,
         BlockEnum.TriggerWebhook,
         BlockEnum.TriggerPlugin,
       ]
-      const hasStartNode = nodes.some((node: MockNode) => startNodeTypes.includes(node.data.type as BlockEnum))
+      const hasStartNode = nodes.some((node: MockNode) => node.data.type !== undefined && startNodeTypes.includes(node.data.type))
       const isEmpty = nodes.length === 0 || !hasStartNode
 
       expect(isEmpty).toBe(true)
@@ -533,13 +533,13 @@ describe('Workflow Onboarding Integration Logic', () => {
       ])
 
       const nodes = mockGetNodes()
-      const startNodeTypes = [
+      const startNodeTypes: BlockEnum[] = [
         BlockEnum.Start,
         BlockEnum.TriggerSchedule,
         BlockEnum.TriggerWebhook,
         BlockEnum.TriggerPlugin,
       ]
-      const hasStartNode = nodes.some((node: MockNode) => startNodeTypes.includes(node.data.type as BlockEnum))
+      const hasStartNode = nodes.some((node: MockNode) => node.data.type !== undefined && startNodeTypes.includes(node.data.type))
       const isEmpty = nodes.length === 0 || !hasStartNode
 
       expect(isEmpty).toBe(false)

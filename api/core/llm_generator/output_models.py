@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from core.variables.types import SegmentType
+from dify_graph.variables.types import SegmentType
 
 
 class SuggestedQuestionsOutput(BaseModel):

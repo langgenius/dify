@@ -1,6 +1,7 @@
 'use client'
 
 import type { FC } from 'react'
+import type { PluginDetail } from '@/app/components/plugins/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import * as React from 'react'
 import Divider from '@/app/components/base/divider'
@@ -36,7 +37,7 @@ const ToolAuthorizationSection: FC<ToolAuthorizationSectionProps> = ({
             provider: currentProvider.name,
             category: AuthCategory.tool,
             providerType: currentProvider.type,
-            detail: currentProvider as any,
+            detail: currentProvider as unknown as PluginDetail,
           }}
           credentialId={credentialId}
           onAuthorizationItemClick={onAuthorizationItemClick}

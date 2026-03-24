@@ -16,7 +16,7 @@ import { useSessionStorageState } from 'ahooks'
 import useBoolean from 'ahooks/lib/useBoolean'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
@@ -394,10 +394,7 @@ const useContextGenerate = ({
 
       if (response.error) {
         shouldMarkFetched = false
-        Toast.notify({
-          type: 'error',
-          message: t('modal.errors.networkError', { ns: 'pluginTrigger' }),
-        })
+        toast.error(t('modal.errors.networkError', { ns: 'pluginTrigger' }))
         setSuggestedQuestions([])
         return
       }
@@ -411,10 +408,7 @@ const useContextGenerate = ({
         return
       }
       shouldMarkFetched = false
-      Toast.notify({
-        type: 'error',
-        message: t('modal.errors.networkError', { ns: 'pluginTrigger' }),
-      })
+      toast.error(t('modal.errors.networkError', { ns: 'pluginTrigger' }))
       setSuggestedQuestions([])
     }
     finally {
@@ -477,10 +471,7 @@ const useContextGenerate = ({
       })
 
       if (response.error) {
-        Toast.notify({
-          type: 'error',
-          message: response.error,
-        })
+        toast.error(response.error)
         return
       }
 

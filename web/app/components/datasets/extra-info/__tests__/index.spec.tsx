@@ -13,7 +13,7 @@ import Statistics from '../statistics'
 
 // Mock Setup
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: vi.fn(),
     replace: vi.fn(),
@@ -23,7 +23,7 @@ vi.mock('next/navigation', () => ({
 }))
 
 // Mock next/link
-vi.mock('next/link', () => ({
+vi.mock('@/next/link', () => ({
   default: ({ children, href, ...props }: { children: React.ReactNode, href: string, [key: string]: unknown }) => (
     <a href={href} {...props}>{children}</a>
   ),
@@ -674,9 +674,7 @@ describe('ApiAccessCard', () => {
       )
 
       const switchButton = screen.getByRole('switch')
-      // Headless UI Switch uses CSS classes for disabled state
-      expect(switchButton).toHaveClass('!cursor-not-allowed')
-      expect(switchButton).toHaveClass('!opacity-50')
+      expect(switchButton).toHaveAttribute('aria-disabled', 'true')
     })
 
     it('should enable switch when user is workspace manager', () => {
@@ -689,8 +687,7 @@ describe('ApiAccessCard', () => {
       )
 
       const switchButton = screen.getByRole('switch')
-      expect(switchButton).not.toHaveClass('!cursor-not-allowed')
-      expect(switchButton).not.toHaveClass('!opacity-50')
+      expect(switchButton).not.toHaveAttribute('aria-disabled', 'true')
     })
   })
 

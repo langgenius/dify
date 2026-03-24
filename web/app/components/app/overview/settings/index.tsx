@@ -4,9 +4,8 @@ import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import type { AppDetailResponse } from '@/models/app'
 import type { AppIconType, AppSSO, Language } from '@/types/app'
 import { RiArrowRightSLine, RiCloseLine } from '@remixicon/react'
-import Link from 'next/link'
 import * as React from 'react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import AppIcon from '@/app/components/base/app-icon'
@@ -20,12 +19,13 @@ import PremiumBadge from '@/app/components/base/premium-badge'
 import { SimpleSelect } from '@/app/components/base/select'
 import Switch from '@/app/components/base/switch'
 import Textarea from '@/app/components/base/textarea'
-import { useToastContext } from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import Tooltip from '@/app/components/base/tooltip'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { languages } from '@/i18n-config/language'
+import Link from '@/next/link'
 import { AppModeEnum } from '@/types/app'
 import { cn } from '@/utils/classnames'
 
@@ -99,6 +99,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   const [language, setLanguage] = useState(default_language)
   const [saveLoading, setSaveLoading] = useState(false)
   const { t } = useTranslation()
+  const hideMoreTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
   const [appIcon, setAppIcon] = useState<AppIconSelection>(
@@ -137,10 +138,22 @@ const SettingsModal: FC<ISettingsModalProps> = ({
       : { type: 'emoji', icon, background: icon_background! })
   }, [appInfo, chat_color_theme, chat_color_theme_inverted, copyright, custom_disclaimer, default_language, description, icon, icon_background, icon_type, icon_url, privacy_policy, show_workflow_steps, title, use_icon_as_answer_icon])
 
+  useEffect(() => {
+    return () => {
+      if (hideMoreTimerRef.current) {
+        clearTimeout(hideMoreTimerRef.current)
+        hideMoreTimerRef.current = null
+      }
+    }
+  }, [])
+
   const onHide = () => {
     onClose()
-    setTimeout(() => {
+    if (hideMoreTimerRef.current)
+      clearTimeout(hideMoreTimerRef.current)
+    hideMoreTimerRef.current = setTimeout(() => {
       setIsShowMore(false)
+      hideMoreTimerRef.current = null
     }, 200)
   }
 
@@ -281,7 +294,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
               <div className="flex items-center justify-between">
                 <div className={cn('py-1 text-text-secondary system-sm-semibold')}>{t('answerIcon.title', { ns: 'app' })}</div>
                 <Switch
-                  defaultValue={inputInfo.use_icon_as_answer_icon}
+                  value={inputInfo.use_icon_as_answer_icon}
                   onChange={v => setInputInfo({ ...inputInfo, use_icon_as_answer_icon: v })}
                 />
               </div>
@@ -315,7 +328,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                 />
                 <div className="flex items-center justify-between">
                   <p className={cn('text-text-tertiary body-xs-regular')}>{t(`${prefixSettings}.chatColorThemeInverted`, { ns: 'appOverview' })}</p>
-                  <Switch defaultValue={inputInfo.chatColorThemeInverted} onChange={v => setInputInfo({ ...inputInfo, chatColorThemeInverted: v })}></Switch>
+                  <Switch value={inputInfo.chatColorThemeInverted} onChange={v => setInputInfo({ ...inputInfo, chatColorThemeInverted: v })}></Switch>
                 </div>
               </div>
             </div>
@@ -326,7 +339,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
               <div className={cn('py-1 text-text-secondary system-sm-semibold')}>{t(`${prefixSettings}.workflow.subTitle`, { ns: 'appOverview' })}</div>
               <Switch
                 disabled={!(appInfo.mode === AppModeEnum.WORKFLOW || appInfo.mode === AppModeEnum.ADVANCED_CHAT)}
-                defaultValue={inputInfo.show_workflow_steps}
+                value={inputInfo.show_workflow_steps}
                 onChange={v => setInputInfo({ ...inputInfo, show_workflow_steps: v })}
               />
             </div>
@@ -380,7 +393,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                   >
                     <Switch
                       disabled={!webappCopyrightEnabled}
-                      defaultValue={inputInfo.copyrightSwitchValue}
+                      value={inputInfo.copyrightSwitchValue}
                       onChange={v => setInputInfo({ ...inputInfo, copyrightSwitchValue: v })}
                     />
                   </Tooltip>

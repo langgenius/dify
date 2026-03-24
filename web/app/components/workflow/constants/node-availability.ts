@@ -1,17 +1,20 @@
 import { BlockEnum } from '@/app/components/workflow/types'
 
-export enum NodeSelectorScene {
-  Workflow = 'workflow',
-  Chatflow = 'chatflow',
-  RagPipeline = 'rag-pipeline',
-  Subgraph = 'subgraph',
-}
+/* eslint-disable ts/no-redeclare -- const + type share names (erasable enum replacement) */
+export const NodeSelectorScene = {
+  Workflow: 'workflow',
+  Chatflow: 'chatflow',
+  RagPipeline: 'rag-pipeline',
+  Subgraph: 'subgraph',
+} as const
+export type NodeSelectorScene = typeof NodeSelectorScene[keyof typeof NodeSelectorScene]
 
-export enum NodeSelectorSandboxMode {
-  Enabled = 'enabled',
-  Disabled = 'disabled',
-  Unsupported = 'unsupported',
-}
+export const NodeSelectorSandboxMode = {
+  Enabled: 'enabled',
+  Disabled: 'disabled',
+  Unsupported: 'unsupported',
+} as const
+export type NodeSelectorSandboxMode = typeof NodeSelectorSandboxMode[keyof typeof NodeSelectorSandboxMode]
 
 export const NODE_SELECTOR_SCENE_SUPPORTS_SANDBOX: Record<NodeSelectorScene, boolean> = {
   [NodeSelectorScene.Workflow]: true,

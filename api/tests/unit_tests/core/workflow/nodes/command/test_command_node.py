@@ -16,11 +16,12 @@ from core.virtual_environment.__base.entities import (
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
 from core.virtual_environment.channel.queue_transport import QueueTransportReadCloser
 from core.virtual_environment.channel.transport import NopTransportWriteCloser
-from core.workflow.entities import GraphInitParams
-from core.workflow.enums import WorkflowNodeExecutionStatus
 from core.workflow.nodes.command.node import CommandNode
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
+from dify_graph.entities import GraphInitParams
+from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY
+from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
+from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
 
 
 class FakeVirtualEnvironment(VirtualEnvironment):
@@ -137,14 +138,18 @@ def _make_node(
     variable_pool = VariablePool(system_variables=system_variables, user_inputs={})
     runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
     init_params = GraphInitParams(
-        tenant_id="t",
-        app_id="a",
         workflow_id="w",
         graph_config={},
-        user_id="u",
-        user_from="account",
-        invoke_from="debugger",
         call_depth=0,
+        run_context={
+            DIFY_RUN_CONTEXT_KEY: {
+                "tenant_id": "t",
+                "app_id": "a",
+                "user_id": "u",
+                "user_from": "account",
+                "invoke_from": "debugger",
+            }
+        },
     )
 
     if vm is not None:
@@ -156,6 +161,7 @@ def _make_node(
         config={
             "id": "node-config-id",
             "data": {
+                "type": BuiltinNodeTypes.COMMAND,
                 "title": "Command",
                 "command": command,
                 "working_directory": working_directory,

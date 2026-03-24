@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import Loading from '@/app/components/base/loading'
 import SearchInput from '@/app/components/base/notion-page-selector/search-input'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useDocLink } from '@/context/i18n'
@@ -96,10 +96,7 @@ const OnlineDocuments = ({
           setDocumentsData(documentsData.data as DataSourceNotionWorkspace[])
         },
         onDataSourceNodeError: (error: DataSourceNodeErrorResponse) => {
-          Toast.notify({
-            type: 'error',
-            message: error.error,
-          })
+          toast.error(error.error)
         },
       },
     )

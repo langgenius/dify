@@ -27,10 +27,11 @@ from core.errors.error import (
     QuotaExceededError,
 )
 from core.helper.trace_id_helper import get_external_trace_id
-from core.model_runtime.errors.invoke import InvokeError
-from core.workflow.enums import WorkflowExecutionStatus
-from core.workflow.graph_engine.manager import GraphEngineManager
+from dify_graph.enums import WorkflowExecutionStatus
+from dify_graph.graph_engine.manager import GraphEngineManager
+from dify_graph.model_runtime.errors.invoke import InvokeError
 from extensions.ext_database import db
+from extensions.ext_redis import redis_client
 from fields.workflow_app_log_fields import build_workflow_app_log_pagination_model
 from libs import helper
 from libs.helper import OptionalTimestampField, TimestampField
@@ -131,6 +132,8 @@ class WorkflowRunDetailApi(Resource):
             app_id=app_model.id,
             run_id=workflow_run_id,
         )
+        if not workflow_run:
+            raise NotFound("Workflow run not found.")
         return workflow_run
 
 
@@ -280,7 +283,7 @@ class WorkflowTaskStopApi(Resource):
         AppQueueManager.set_stop_flag_no_user_check(task_id)
 
         # New graph engine command channel mechanism
-        GraphEngineManager.send_stop_command(task_id)
+        GraphEngineManager(redis_client).send_stop_command(task_id)
 
         return {"result": "success"}
 

@@ -136,7 +136,12 @@ const NodePanel: FC<Props> = ({
               )}
             />
           )}
-          <BlockIcon size={inMessage ? 'xs' : 'sm'} className={cn('mr-2 shrink-0', inMessage && '!mr-1')} type={nodeInfo.node_type} toolIcon={nodeInfo.extras?.icon || nodeInfo.extras} />
+          <BlockIcon
+            size={inMessage ? 'xs' : 'sm'}
+            className={cn('mr-2 shrink-0', inMessage && '!mr-1')}
+            type={nodeInfo.node_type}
+            toolIcon={((nodeInfo.extras as { icon?: string } | undefined)?.icon || nodeInfo.extras) as string | { content: string, background: string } | undefined}
+          />
           <Tooltip
             popupContent={
               <div className="max-w-xs">{nodeInfo.title}</div>
@@ -256,7 +261,7 @@ const NodePanel: FC<Props> = ({
                   readOnly
                   title={<div>{inputsTitle}</div>}
                   language={CodeLanguage.json}
-                  value={nodeInfo.inputs}
+                  value={nodeInfo.inputs as string | object}
                   isJSONStringifyBeauty
                   footer={nodeInfo.inputs_truncated && <LargeDataAlert textHasNoExport className="mx-1 mb-1 mt-2 h-7" />}
                 />
@@ -268,7 +273,7 @@ const NodePanel: FC<Props> = ({
                   readOnly
                   title={<div>{processDataTitle}</div>}
                   language={CodeLanguage.json}
-                  value={nodeInfo.process_data}
+                  value={nodeInfo.process_data as string | object}
                   isJSONStringifyBeauty
                 />
               </div>
@@ -279,7 +284,7 @@ const NodePanel: FC<Props> = ({
                   readOnly
                   title={<div>{outputTitle}</div>}
                   language={CodeLanguage.json}
-                  value={nodeInfo.outputs}
+                  value={nodeInfo.outputs as string | object}
                   isJSONStringifyBeauty
                   tip={<ErrorHandleTip type={nodeInfo.execution_metadata?.error_strategy} />}
                   footer={nodeInfo.outputs_truncated && <LargeDataAlert textHasNoExport downloadUrl={nodeInfo.outputs_full_content?.download_url} className="mx-1 mb-1 mt-2 h-7" />}

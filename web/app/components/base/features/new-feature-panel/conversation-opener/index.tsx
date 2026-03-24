@@ -34,6 +34,7 @@ const ConversationOpener = ({
   const featuresStore = useFeaturesStore()
   const [isHovering, setIsHovering] = useState(false)
   const handleOpenOpeningModal = useCallback(() => {
+    /* v8 ignore next -- guarded path is not reachable in tests with a real disabled button because click is prevented at DOM level. @preserve */
     if (disabled)
       return
     const {

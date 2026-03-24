@@ -53,6 +53,10 @@ vi.mock('@/hooks/use-theme', () => ({
 
 vi.mock('@/i18n-config/language', () => ({
   LanguagesSupported: ['en-US', 'zh-Hans', 'zh-Hant', 'pt-BR', 'es-ES', 'fr-FR', 'de-DE', 'ja-JP'],
+  getDocLanguage: (locale: string) => {
+    const map: Record<string, string> = { 'zh-Hans': 'zh', 'ja-JP': 'ja' }
+    return map[locale] || 'en'
+  },
 }))
 
 describe('Doc', () => {
@@ -63,7 +67,7 @@ describe('Doc', () => {
         prompt_variables: variables,
       },
     },
-  })
+  }) as unknown as Parameters<typeof Doc>[0]['appDetail']
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -123,13 +127,13 @@ describe('Doc', () => {
 
   describe('null/undefined appDetail', () => {
     it('should render nothing when appDetail has no mode', () => {
-      render(<Doc appDetail={{}} />)
+      render(<Doc appDetail={{} as unknown as Parameters<typeof Doc>[0]['appDetail']} />)
       expect(screen.queryByTestId('template-completion-en')).not.toBeInTheDocument()
       expect(screen.queryByTestId('template-chat-en')).not.toBeInTheDocument()
     })
 
     it('should render nothing when appDetail is null', () => {
-      render(<Doc appDetail={null} />)
+      render(<Doc appDetail={null as unknown as Parameters<typeof Doc>[0]['appDetail']} />)
       expect(screen.queryByTestId('template-completion-en')).not.toBeInTheDocument()
     })
   })

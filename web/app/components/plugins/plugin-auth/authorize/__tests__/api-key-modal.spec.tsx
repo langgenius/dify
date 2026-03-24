@@ -9,7 +9,7 @@ const mockAddPluginCredential = vi.fn().mockResolvedValue({})
 const mockUpdatePluginCredential = vi.fn().mockResolvedValue({})
 const mockFormValues = { isCheckValidated: true, values: { __name__: 'My Key', api_key: 'sk-123' } }
 
-vi.mock('@/app/components/base/toast', () => ({
+vi.mock('@/app/components/base/toast/context', () => ({
   useToastContext: () => ({
     notify: mockNotify,
   }),

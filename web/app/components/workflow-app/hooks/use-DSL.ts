@@ -4,7 +4,7 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { useToastContext } from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import {
   DSL_EXPORT_CHECK,
 } from '@/app/components/workflow/constants'

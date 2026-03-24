@@ -36,6 +36,8 @@
   "createApp": "สร้างโปรเจกต์ใหม่",
   "createFromConfigFile": "สร้างจากไฟล์ DSL",
   "deleteAppConfirmContent": "การลบโปรเจกนั้นไม่สามารถย้อนกลับได้ ผู้ใช้จะไม่สามารถเข้าถึงโปรเจกต์ของคุณอีกต่อไป และการกําหนดค่าต่างๆและบันทึกทั้งหมดจะถูกลบอย่างถาวร",
+  "deleteAppConfirmInputLabel": "หากต้องการยืนยัน พิมพ์ \"{{appName}}\" ในช่องด้านล่าง:",
+  "deleteAppConfirmInputPlaceholder": "ใส่ชื่อแอป",
   "deleteAppConfirmTitle": "ลบโปรเจกต์นี้?",
   "dslUploader.browse": "เรียกดู",
   "dslUploader.button": "ลากและวางไฟล์ หรือ",

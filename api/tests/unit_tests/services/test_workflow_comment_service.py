@@ -17,6 +17,10 @@ def mock_session(monkeypatch: pytest.MonkeyPatch) -> Mock:
     mock_db.engine = Mock()
     monkeypatch.setattr(service_module, "Session", Mock(return_value=context_manager))
     monkeypatch.setattr(service_module, "db", mock_db)
+    monkeypatch.setattr(service_module, "send_workflow_comment_mention_email_task", Mock())
+    scalars_default = Mock()
+    scalars_default.all.return_value = []
+    session.scalars.return_value = scalars_default
     return session
 
 

@@ -7,7 +7,8 @@ from flask import Response
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from core.entities.provider_entities import BasicProviderConfig
-from core.model_runtime.entities.message_entities import (
+from core.plugin.utils.http_parser import deserialize_response
+from dify_graph.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     PromptMessage,
     PromptMessageRole,
@@ -16,18 +17,17 @@ from core.model_runtime.entities.message_entities import (
     ToolPromptMessage,
     UserPromptMessage,
 )
-from core.model_runtime.entities.model_entities import ModelType
-from core.plugin.utils.http_parser import deserialize_response
-from core.workflow.nodes.parameter_extractor.entities import (
+from dify_graph.model_runtime.entities.model_entities import ModelType
+from dify_graph.nodes.parameter_extractor.entities import (
     ModelConfig as ParameterExtractorModelConfig,
 )
-from core.workflow.nodes.parameter_extractor.entities import (
+from dify_graph.nodes.parameter_extractor.entities import (
     ParameterConfig,
 )
-from core.workflow.nodes.question_classifier.entities import (
+from dify_graph.nodes.question_classifier.entities import (
     ClassConfig,
 )
-from core.workflow.nodes.question_classifier.entities import (
+from dify_graph.nodes.question_classifier.entities import (
     ModelConfig as QuestionClassifierModelConfig,
 )
 

@@ -14,7 +14,13 @@ export const useWorkflowFinished = () => {
       setWorkflowRunningData,
     } = workflowStore.getState()
 
-    const isStringOutput = data.outputs && Object.keys(data.outputs).length === 1 && typeof data.outputs[Object.keys(data.outputs)[0]] === 'string'
+    const out = data.outputs
+    const outputKeys = out && typeof out === 'object' && !Array.isArray(out) ? Object.keys(out) : []
+    const firstOutputKey = outputKeys[0]
+    const firstOutputVal = firstOutputKey !== undefined && out && typeof out === 'object' && !Array.isArray(out)
+      ? (out as Record<string, unknown>)[firstOutputKey]
+      : undefined
+    const isSingleKeyedString = outputKeys.length === 1 && typeof firstOutputVal === 'string'
 
     setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
       draft.result = {
@@ -22,9 +28,13 @@ export const useWorkflowFinished = () => {
         ...data,
         files: getFilesInLogs(data.outputs),
       } as any
-      if (isStringOutput) {
+      if (typeof out === 'string') {
         draft.resultTabActive = true
-        draft.resultText = data.outputs[Object.keys(data.outputs)[0]]
+        draft.resultText = out
+      }
+      else if (isSingleKeyedString && typeof firstOutputVal === 'string') {
+        draft.resultTabActive = true
+        draft.resultText = firstOutputVal
       }
     }))
   }, [workflowStore])

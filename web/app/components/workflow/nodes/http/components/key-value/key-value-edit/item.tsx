@@ -58,7 +58,7 @@ const KeyValueItem: FC<Props> = ({
   }, [onChange, payload])
 
   const filterOnlyFileVariable = (varPayload: Var) => {
-    return [VarType.file, VarType.arrayFile].includes(varPayload.type)
+    return ([VarType.file, VarType.arrayFile] as VarType[]).includes(varPayload.type)
   }
 
   return (

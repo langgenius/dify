@@ -2,13 +2,14 @@ import io
 import logging
 import uuid
 from collections.abc import Generator
+from typing import cast
 
 from flask import Response, stream_with_context
 from werkzeug.datastructures import FileStorage
 
 from constants import AUDIO_EXTENSIONS
 from core.model_manager import ModelManager
-from core.model_runtime.entities.model_entities import ModelType
+from dify_graph.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
 from models.enums import MessageStatus
 from models.model import App, AppMode, Message
@@ -106,7 +107,7 @@ class AudioService:
                         if not text_to_speech_dict.get("enabled"):
                             raise ValueError("TTS is not enabled")
 
-                        voice = text_to_speech_dict.get("voice")
+                        voice = cast(str | None, text_to_speech_dict.get("voice"))
 
             model_manager = ModelManager()
             model_instance = model_manager.get_default_model_instance(

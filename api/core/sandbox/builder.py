@@ -161,6 +161,8 @@ class SandboxBuilder:
         # Capture the Flask app before starting the thread for database access.
         flask_app: Flask | None = cast(Any, current_app)._get_current_object() if has_app_context() else None
 
+        _sandbox: Sandbox = sandbox
+
         def initialize() -> None:
             try:
                 app_context = flask_app.app_context() if flask_app is not None else nullcontext()
@@ -169,25 +171,21 @@ class SandboxBuilder:
                         if not isinstance(init, AsyncSandboxInitializer):
                             continue
 
-                        if sandbox.is_cancelled():
+                        if _sandbox.is_cancelled():
                             return
-                        init.initialize(sandbox, ctx)
+                        init.initialize(_sandbox, ctx)
 
-                    if sandbox.is_cancelled():
+                    if _sandbox.is_cancelled():
                         return
-                    # Attempt to restore prior workspace state.  mount() returns
-                    # False when no archive exists yet (first run for this
-                    # sandbox_id), which is a normal case — not an error.
-                    # Actual failures (download/extract) surface as exceptions.
-                    sandbox.mount()
-                    sandbox.mark_ready()
+                    _sandbox.mount()
+                    _sandbox.mark_ready()
             except Exception as exc:
                 try:
                     logger.exception(
                         "Failed to initialize sandbox: tenant_id=%s, app_id=%s", self._tenant_id, self._app_id
                     )
-                    sandbox.release()
-                    sandbox.mark_failed(exc)
+                    _sandbox.release()
+                    _sandbox.mark_failed(exc)
                 except Exception:
                     logger.exception(
                         "Failed to mark sandbox initialization failure: tenant_id=%s, app_id=%s",

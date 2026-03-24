@@ -24,11 +24,11 @@ from core.errors.error import (
 )
 from core.indexing_runner import IndexingRunner
 from core.model_manager import ModelManager
-from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo, WebsiteInfo
+from dify_graph.model_runtime.entities.model_entities import ModelType
+from dify_graph.model_runtime.errors.invoke import InvokeAuthorizationError
 from extensions.ext_database import db
 from fields.dataset_fields import dataset_fields
 from fields.document_fields import (
@@ -42,6 +42,7 @@ from libs.datetime_utils import naive_utc_now
 from libs.login import current_account_with_tenant, login_required
 from models import DatasetProcessRule, Document, DocumentSegment, UploadFile
 from models.dataset import DocumentPipelineExecutionLog
+from models.enums import IndexingStatus, SegmentStatus
 from services.dataset_service import DatasetService, DocumentService
 from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig, ProcessRule, RetrievalModel
 from services.file_service import FileService
@@ -297,6 +298,7 @@ class DatasetDocumentListApi(Resource):
         if sort == "hit_count":
             sub_query = (
                 sa.select(DocumentSegment.document_id, sa.func.sum(DocumentSegment.hit_count).label("total_hit_count"))
+                .where(DocumentSegment.dataset_id == str(dataset_id))
                 .group_by(DocumentSegment.document_id)
                 .subquery()
             )
@@ -332,13 +334,16 @@ class DatasetDocumentListApi(Resource):
                     .where(
                         DocumentSegment.completed_at.isnot(None),
                         DocumentSegment.document_id == str(document.id),
-                        DocumentSegment.status != "re_segment",
+                        DocumentSegment.status != SegmentStatus.RE_SEGMENT,
                     )
                     .count()
                 )
                 total_segments = (
                     db.session.query(DocumentSegment)
-                    .where(DocumentSegment.document_id == str(document.id), DocumentSegment.status != "re_segment")
+                    .where(
+                        DocumentSegment.document_id == str(document.id),
+                        DocumentSegment.status != SegmentStatus.RE_SEGMENT,
+                    )
                     .count()
                 )
                 document.completed_segments = completed_segments
@@ -503,7 +508,7 @@ class DocumentIndexingEstimateApi(DocumentResource):
         document_id = str(document_id)
         document = self.get_document(dataset_id, document_id)
 
-        if document.indexing_status in {"completed", "error"}:
+        if document.indexing_status in {IndexingStatus.COMPLETED, IndexingStatus.ERROR}:
             raise DocumentAlreadyFinishedError()
 
         data_process_rule = document.dataset_process_rule
@@ -573,7 +578,7 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
         data_process_rule_dict = data_process_rule.to_dict() if data_process_rule else {}
         extract_settings = []
         for document in documents:
-            if document.indexing_status in {"completed", "error"}:
+            if document.indexing_status in {IndexingStatus.COMPLETED, IndexingStatus.ERROR}:
                 raise DocumentAlreadyFinishedError()
             data_source_info = document.data_source_info_dict
             match document.data_source_type:
@@ -671,19 +676,21 @@ class DocumentBatchIndexingStatusApi(DocumentResource):
                 .where(
                     DocumentSegment.completed_at.isnot(None),
                     DocumentSegment.document_id == str(document.id),
-                    DocumentSegment.status != "re_segment",
+                    DocumentSegment.status != SegmentStatus.RE_SEGMENT,
                 )
                 .count()
             )
             total_segments = (
                 db.session.query(DocumentSegment)
-                .where(DocumentSegment.document_id == str(document.id), DocumentSegment.status != "re_segment")
+                .where(
+                    DocumentSegment.document_id == str(document.id), DocumentSegment.status != SegmentStatus.RE_SEGMENT
+                )
                 .count()
             )
             # Create a dictionary with document attributes and additional fields
             document_dict = {
                 "id": document.id,
-                "indexing_status": "paused" if document.is_paused else document.indexing_status,
+                "indexing_status": IndexingStatus.PAUSED if document.is_paused else document.indexing_status,
                 "processing_started_at": document.processing_started_at,
                 "parsing_completed_at": document.parsing_completed_at,
                 "cleaning_completed_at": document.cleaning_completed_at,
@@ -720,20 +727,20 @@ class DocumentIndexingStatusApi(DocumentResource):
             .where(
                 DocumentSegment.completed_at.isnot(None),
                 DocumentSegment.document_id == str(document_id),
-                DocumentSegment.status != "re_segment",
+                DocumentSegment.status != SegmentStatus.RE_SEGMENT,
             )
             .count()
         )
         total_segments = (
             db.session.query(DocumentSegment)
-            .where(DocumentSegment.document_id == str(document_id), DocumentSegment.status != "re_segment")
+            .where(DocumentSegment.document_id == str(document_id), DocumentSegment.status != SegmentStatus.RE_SEGMENT)
             .count()
         )
 
         # Create a dictionary with document attributes and additional fields
         document_dict = {
             "id": document.id,
-            "indexing_status": "paused" if document.is_paused else document.indexing_status,
+            "indexing_status": IndexingStatus.PAUSED if document.is_paused else document.indexing_status,
             "processing_started_at": document.processing_started_at,
             "parsing_completed_at": document.parsing_completed_at,
             "cleaning_completed_at": document.cleaning_completed_at,
@@ -955,7 +962,7 @@ class DocumentProcessingApi(DocumentResource):
 
         match action:
             case "pause":
-                if document.indexing_status != "indexing":
+                if document.indexing_status != IndexingStatus.INDEXING:
                     raise InvalidActionError("Document not in indexing state.")
 
                 document.paused_by = current_user.id
@@ -964,7 +971,7 @@ class DocumentProcessingApi(DocumentResource):
                 db.session.commit()
 
             case "resume":
-                if document.indexing_status not in {"paused", "error"}:
+                if document.indexing_status not in {IndexingStatus.PAUSED, IndexingStatus.ERROR}:
                     raise InvalidActionError("Document not in paused or error state.")
 
                 document.paused_by = None
@@ -1169,7 +1176,7 @@ class DocumentRetryApi(DocumentResource):
                     raise ArchivedDocumentImmutableError()
 
                 # 400 if document is completed
-                if document.indexing_status == "completed":
+                if document.indexing_status == IndexingStatus.COMPLETED:
                     raise DocumentAlreadyFinishedError()
                 retry_documents.append(document)
             except Exception:

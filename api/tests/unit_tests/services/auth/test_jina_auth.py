@@ -35,7 +35,7 @@ class TestJinaAuth:
             JinaAuth(credentials)
         assert str(exc_info.value) == "No API key provided"
 
-    @patch("services.auth.jina.jina.httpx.post")
+    @patch("services.auth.jina.jina.httpx.post", autospec=True)
     def test_should_validate_valid_credentials_successfully(self, mock_post):
         """Test successful credential validation"""
         mock_response = MagicMock()
@@ -53,7 +53,7 @@ class TestJinaAuth:
             json={"url": "https://example.com"},
         )
 
-    @patch("services.auth.jina.jina.httpx.post")
+    @patch("services.auth.jina.jina.httpx.post", autospec=True)
     def test_should_handle_http_402_error(self, mock_post):
         """Test handling of 402 Payment Required error"""
         mock_response = MagicMock()
@@ -68,7 +68,7 @@ class TestJinaAuth:
             auth.validate_credentials()
         assert str(exc_info.value) == "Failed to authorize. Status code: 402. Error: Payment required"
 
-    @patch("services.auth.jina.jina.httpx.post")
+    @patch("services.auth.jina.jina.httpx.post", autospec=True)
     def test_should_handle_http_409_error(self, mock_post):
         """Test handling of 409 Conflict error"""
         mock_response = MagicMock()
@@ -83,7 +83,7 @@ class TestJinaAuth:
             auth.validate_credentials()
         assert str(exc_info.value) == "Failed to authorize. Status code: 409. Error: Conflict error"
 
-    @patch("services.auth.jina.jina.httpx.post")
+    @patch("services.auth.jina.jina.httpx.post", autospec=True)
     def test_should_handle_http_500_error(self, mock_post):
         """Test handling of 500 Internal Server Error"""
         mock_response = MagicMock()
@@ -98,7 +98,7 @@ class TestJinaAuth:
             auth.validate_credentials()
         assert str(exc_info.value) == "Failed to authorize. Status code: 500. Error: Internal server error"
 
-    @patch("services.auth.jina.jina.httpx.post")
+    @patch("services.auth.jina.jina.httpx.post", autospec=True)
     def test_should_handle_unexpected_error_with_text_response(self, mock_post):
         """Test handling of unexpected errors with text response"""
         mock_response = MagicMock()
@@ -114,7 +114,7 @@ class TestJinaAuth:
             auth.validate_credentials()
         assert str(exc_info.value) == "Failed to authorize. Status code: 403. Error: Forbidden"
 
-    @patch("services.auth.jina.jina.httpx.post")
+    @patch("services.auth.jina.jina.httpx.post", autospec=True)
     def test_should_handle_unexpected_error_without_text(self, mock_post):
         """Test handling of unexpected errors without text response"""
         mock_response = MagicMock()
@@ -130,7 +130,7 @@ class TestJinaAuth:
             auth.validate_credentials()
         assert str(exc_info.value) == "Unexpected error occurred while trying to authorize. Status code: 404"
 
-    @patch("services.auth.jina.jina.httpx.post")
+    @patch("services.auth.jina.jina.httpx.post", autospec=True)
     def test_should_handle_network_errors(self, mock_post):
         """Test handling of network connection errors"""
         mock_post.side_effect = httpx.ConnectError("Network error")

@@ -12,7 +12,7 @@ import Button from '@/app/components/base/button'
 import Confirm from '@/app/components/base/confirm'
 import Loading from '@/app/components/base/loading'
 import Modal from '@/app/components/base/modal'
-import { useToastContext } from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import { SwitchCredentialInLoadBalancing } from '@/app/components/header/account-setting/model-provider-page/model-auth'
 import {
   useGetModelCredential,
@@ -163,6 +163,18 @@ const ModelLoadBalancingModal = ({
         onSave?.(provider.provider)
         onClose?.()
       }
+      else {
+        notify({
+          type: 'error',
+          message: (res as { error?: string })?.error || t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }),
+        })
+      }
+    }
+    catch (error) {
+      notify({
+        type: 'error',
+        message: error instanceof Error ? error.message : t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }),
+      })
     }
     finally {
       setLoading(false)
@@ -218,7 +230,7 @@ const ModelLoadBalancingModal = ({
         }
       })
     }
-  }, [refetch, credential])
+  }, [refetch, onClose])
 
   const handleUpdateWhenSwitchCredential = useCallback(async () => {
     const result = await refetch()
@@ -232,6 +244,7 @@ const ModelLoadBalancingModal = ({
       <Modal
         isShow={Boolean(model) && open}
         onClose={onClose}
+        wrapperClassName="z-[1002]"
         className="w-[640px] max-w-none px-8 pt-8"
         title={(
           <div className="pb-3 font-semibold">

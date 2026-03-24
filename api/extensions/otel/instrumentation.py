@@ -7,7 +7,10 @@ from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 from opentelemetry.instrumentation.redis import RedisInstrumentor
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 from opentelemetry.metrics import get_meter, get_meter_provider
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv.attributes.http_attributes import (  # type: ignore[import-untyped]
+    HTTP_REQUEST_METHOD,
+    HTTP_ROUTE,
+)
 from opentelemetry.trace import Span, get_tracer_provider
 from opentelemetry.trace.status import StatusCode
 
@@ -85,9 +88,9 @@ def init_flask_instrumentor(app: DifyApp) -> None:
                 attributes: dict[str, str | int] = {"status_code": status_code, "status_class": status_class}
                 request = flask.request
                 if request and request.url_rule:
-                    attributes[SpanAttributes.HTTP_TARGET] = str(request.url_rule.rule)
+                    attributes[HTTP_ROUTE] = str(request.url_rule.rule)
                 if request and request.method:
-                    attributes[SpanAttributes.HTTP_METHOD] = str(request.method)
+                    attributes[HTTP_REQUEST_METHOD] = str(request.method)
                 _http_response_counter.add(1, attributes)
             except Exception:
                 logger.exception("Error setting status and attributes")

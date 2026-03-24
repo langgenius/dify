@@ -1,26 +1,27 @@
 import time
 from collections.abc import Mapping
 
-from core.model_runtime.entities.llm_entities import LLMMode
-from core.model_runtime.entities.message_entities import PromptMessageRole
-from core.workflow.entities import GraphInitParams
-from core.workflow.enums import NodeState
-from core.workflow.graph import Graph
-from core.workflow.graph_engine.graph_state_manager import GraphStateManager
-from core.workflow.graph_engine.ready_queue import InMemoryReadyQueue
-from core.workflow.nodes.end.end_node import EndNode
-from core.workflow.nodes.end.entities import EndNodeData
-from core.workflow.nodes.llm.entities import (
+from dify_graph.entities import GraphInitParams
+from dify_graph.enums import NodeState
+from dify_graph.graph import Graph
+from dify_graph.graph_engine.graph_state_manager import GraphStateManager
+from dify_graph.graph_engine.ready_queue import InMemoryReadyQueue
+from dify_graph.model_runtime.entities.llm_entities import LLMMode
+from dify_graph.model_runtime.entities.message_entities import PromptMessageRole
+from dify_graph.nodes.end.end_node import EndNode
+from dify_graph.nodes.end.entities import EndNodeData
+from dify_graph.nodes.llm.entities import (
     ContextConfig,
     LLMNodeChatModelMessage,
     LLMNodeData,
     ModelConfig,
     VisionConfig,
 )
-from core.workflow.nodes.start.entities import StartNodeData
-from core.workflow.nodes.start.start_node import StartNode
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
+from dify_graph.nodes.start.entities import StartNodeData
+from dify_graph.nodes.start.start_node import StartNode
+from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
+from tests.workflow_test_utils import build_test_graph_init_params
 
 from .test_mock_config import MockConfig
 from .test_mock_nodes import MockLLMNode
@@ -73,11 +74,11 @@ def _build_llm_node(
 
 def _build_graph(runtime_state: GraphRuntimeState) -> Graph:
     graph_config: dict[str, object] = {"nodes": [], "edges": []}
-    graph_init_params = GraphInitParams(
-        tenant_id="tenant",
-        app_id="app",
+    graph_init_params = build_test_graph_init_params(
         workflow_id="workflow",
         graph_config=graph_config,
+        tenant_id="tenant",
+        app_id="app",
         user_id="user",
         user_from="account",
         invoke_from="debugger",

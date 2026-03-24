@@ -61,8 +61,8 @@ vi.mock('@/context/global-public-context', () => ({
   useGlobalPublicStore: () => ({}),
 }))
 
-// Mock pluginInstallLimit
-vi.mock('../../../hooks/use-install-plugin-limit', () => ({
+// Mock pluginInstallLimit (imported by the useInstallMultiState hook via @/ path)
+vi.mock('@/app/components/plugins/install-plugin/hooks/use-install-plugin-limit', () => ({
   pluginInstallLimit: () => ({ canInstall: true }),
 }))
 

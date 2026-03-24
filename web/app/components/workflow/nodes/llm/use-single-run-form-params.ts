@@ -73,7 +73,7 @@ const useSingleRunFormParams = ({
   })()
 
   const filterMemoryPromptVar = useCallback((varPayload: Var) => {
-    return [VarType.arrayObject, VarType.array, VarType.number, VarType.string, VarType.secret, VarType.arrayString, VarType.arrayNumber, VarType.file, VarType.arrayFile].includes(varPayload.type)
+    return ([VarType.arrayObject, VarType.array, VarType.number, VarType.string, VarType.secret, VarType.arrayString, VarType.arrayNumber, VarType.file, VarType.arrayFile] as VarType[]).includes(varPayload.type)
   }, [])
 
   const {

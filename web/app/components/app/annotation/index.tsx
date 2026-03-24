@@ -155,7 +155,7 @@ const Annotation: FC<Props> = (props) => {
                   <div className="text-text-primary system-sm-medium">{t('name', { ns: 'appAnnotation' })}</div>
                   <Switch
                     key={controlRefreshSwitch}
-                    defaultValue={annotationConfig?.enabled}
+                    value={annotationConfig?.enabled ?? false}
                     size="md"
                     onChange={async (value) => {
                       if (value) {

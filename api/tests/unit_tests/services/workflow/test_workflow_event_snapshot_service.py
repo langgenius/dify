@@ -12,9 +12,9 @@ import pytest
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
-from core.workflow.entities.pause_reason import HumanInputRequired
-from core.workflow.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
-from core.workflow.runtime import GraphRuntimeState, VariablePool
+from dify_graph.entities.pause_reason import HumanInputRequired
+from dify_graph.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
+from dify_graph.runtime import GraphRuntimeState, VariablePool
 from models.enums import CreatorUserRole
 from models.model import AppMode
 from models.workflow import WorkflowRun

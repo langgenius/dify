@@ -2,7 +2,7 @@ import type { AgentLogItem, AgentLogItemWithChildren, NodeTracing } from '@/type
 import { cloneDeep } from 'es-toolkit/object'
 import { BlockEnum } from '@/app/components/workflow/types'
 
-const supportedAgentLogNodes = [BlockEnum.Agent, BlockEnum.Tool]
+const supportedAgentLogNodes: BlockEnum[] = [BlockEnum.Agent, BlockEnum.Tool]
 
 const remove = (node: AgentLogItemWithChildren, removeId: string) => {
   let { children } = node

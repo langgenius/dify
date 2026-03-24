@@ -18,12 +18,13 @@ const nodeDefault: NodeDefault<CommandNodeType> = {
     working_directory: '',
     command: '',
   },
-  checkValid(payload: CommandNodeType, t: any) {
+  checkValid(payload: CommandNodeType, t: Parameters<NodeDefault<CommandNodeType>['checkValid']>[1]) {
     let errorMessages = ''
     const { command } = payload
+    const translate = t as (key: string, options?: Record<string, unknown>) => string
 
     if (!errorMessages && !command)
-      errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}.fields.command`, { ns: 'workflow' }) })
+      errorMessages = translate(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: translate(`${i18nPrefix}.fields.command`, { ns: 'workflow' }) })
 
     return {
       isValid: !errorMessages,

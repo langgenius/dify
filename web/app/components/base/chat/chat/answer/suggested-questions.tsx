@@ -30,6 +30,7 @@ const SuggestedQuestions: FC<SuggestedQuestionsProps> = ({
             readonly && 'pointer-events-none opacity-50',
           )}
           onClick={() => !readonly && onSend?.(question)}
+          data-testid="suggested-question"
         >
           {question}
         </div>

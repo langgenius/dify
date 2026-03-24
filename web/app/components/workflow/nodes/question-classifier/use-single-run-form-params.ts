@@ -71,7 +71,7 @@ const useSingleRunFormParams = ({
   }, [runInputDataRef, setRunInputData])
 
   const filterVisionInputVar = useCallback((varPayload: Var) => {
-    return [VarType.file, VarType.arrayFile].includes(varPayload.type)
+    return ([VarType.file, VarType.arrayFile] as VarType[]).includes(varPayload.type)
   }, [])
   const {
     availableVars: availableVisionVars,

@@ -106,7 +106,7 @@ const FileUploadSetting: FC<Props> = ({
               [SupportUploadFileTypes.document, SupportUploadFileTypes.image, SupportUploadFileTypes.audio, SupportUploadFileTypes.video].map((type: SupportUploadFileTypes) => (
                 <FileTypeItem
                   key={type}
-                  type={type as SupportUploadFileTypes.image | SupportUploadFileTypes.document | SupportUploadFileTypes.audio | SupportUploadFileTypes.video}
+                  type={type as typeof SupportUploadFileTypes.image | typeof SupportUploadFileTypes.document | typeof SupportUploadFileTypes.audio | typeof SupportUploadFileTypes.video}
                   selected={allowed_file_types.includes(type)}
                   onToggle={handleSupportFileTypeChange}
                 />
@@ -179,7 +179,7 @@ const FileUploadSetting: FC<Props> = ({
               [SupportUploadFileTypes.document, SupportUploadFileTypes.image, SupportUploadFileTypes.audio, SupportUploadFileTypes.video].map((type: SupportUploadFileTypes) => (
                 <FileTypeItem
                   key={type}
-                  type={type as SupportUploadFileTypes.image | SupportUploadFileTypes.document | SupportUploadFileTypes.audio | SupportUploadFileTypes.video}
+                  type={type as typeof SupportUploadFileTypes.image | typeof SupportUploadFileTypes.document | typeof SupportUploadFileTypes.audio | typeof SupportUploadFileTypes.video}
                   selected={allowed_file_types.includes(type)}
                   onToggle={handleSupportFileTypeChange}
                 />

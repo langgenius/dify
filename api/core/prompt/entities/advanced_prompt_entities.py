@@ -3,7 +3,7 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-from core.model_runtime.entities.message_entities import PromptMessageRole
+from dify_graph.model_runtime.entities.message_entities import PromptMessageRole
 
 
 class MemoryMode(StrEnum):

@@ -15,7 +15,6 @@ import type {
 import { uniqBy } from 'es-toolkit/compat'
 import { noop } from 'es-toolkit/function'
 import { produce, setAutoFreeze } from 'immer'
-import { useParams, usePathname } from 'next/navigation'
 import {
   useCallback,
   useEffect,
@@ -30,9 +29,10 @@ import {
   getProcessedFiles,
   getProcessedFilesFromResponse,
 } from '@/app/components/base/file-uploader/utils'
-import { useToastContext } from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import useTimestamp from '@/hooks/use-timestamp'
+import { useParams, usePathname } from '@/next/navigation'
 import {
   sseGet,
   ssePost,
@@ -66,13 +66,13 @@ export const useChat = (
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
   const { notify } = useToastContext()
-  const conversationId = useRef('')
-  const hasStopResponded = useRef(false)
+  const conversationIdRef = useRef('')
+  const hasStopRespondedRef = useRef(false)
   const [isResponding, setIsResponding] = useState(false)
   const isRespondingRef = useRef(false)
   const taskIdRef = useRef('')
   const pausedStateRef = useRef(false)
-  const [suggestedQuestions, setSuggestQuestions] = useState<string[]>([])
+  const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([])
   const conversationMessagesAbortControllerRef = useRef<AbortController | null>(null)
   const suggestedQuestionsAbortControllerRef = useRef<AbortController | null>(null)
   const workflowEventsAbortControllerRef = useRef<AbortController | null>(null)
@@ -88,30 +88,54 @@ export const useChat = (
     return processOpeningStatement(str, formSettings?.inputs || {}, formSettings?.inputsForm || [])
   }, [formSettings?.inputs, formSettings?.inputsForm])
 
+  const processedOpeningContent = config?.opening_statement
+    ? getIntroduction(config.opening_statement)
+    : undefined
+  const processedSuggestionsKey = config?.suggested_questions
+    ? JSON.stringify(config.suggested_questions.map(q => getIntroduction(q)))
+    : undefined
+
+  const openingStatementItem = useMemo<ChatItemInTree | null>(() => {
+    if (!processedOpeningContent)
+      return null
+    return {
+      id: 'opening-statement',
+      content: processedOpeningContent,
+      isAnswer: true,
+      isOpeningStatement: true,
+      suggestedQuestions: processedSuggestionsKey
+        ? JSON.parse(processedSuggestionsKey) as string[]
+        : undefined,
+    }
+  }, [processedOpeningContent, processedSuggestionsKey])
+
+  const threadOpener = useMemo(
+    () => threadMessages.find(item => item.isOpeningStatement) ?? null,
+    [threadMessages],
+  )
+
+  const mergedOpeningItem = useMemo<ChatItemInTree | null>(() => {
+    if (!threadOpener || !openingStatementItem)
+      return null
+    return {
+      ...threadOpener,
+      content: openingStatementItem.content,
+      suggestedQuestions: openingStatementItem.suggestedQuestions,
+    }
+  }, [threadOpener, openingStatementItem])
+
   /** Final chat list that will be rendered */
   const chatList = useMemo(() => {
     const ret = [...threadMessages]
-    if (config?.opening_statement) {
+    if (openingStatementItem) {
       const index = threadMessages.findIndex(item => item.isOpeningStatement)
-      if (index > -1) {
-        ret[index] = {
-          ...ret[index],
-          content: getIntroduction(config.opening_statement),
-          suggestedQuestions: config.suggested_questions?.map(item => getIntroduction(item)),
-        }
-      }
-      else {
-        ret.unshift({
-          id: 'opening-statement',
-          content: getIntroduction(config.opening_statement),
-          isAnswer: true,
-          isOpeningStatement: true,
-          suggestedQuestions: config.suggested_questions?.map(item => getIntroduction(item)),
-        })
-      }
+      if (index > -1 && mergedOpeningItem)
+        ret[index] = mergedOpeningItem
+      else if (index === -1)
+        ret.unshift(openingStatementItem)
     }
     return ret
-  }, [threadMessages, config, getIntroduction])
+  }, [threadMessages, openingStatementItem, mergedOpeningItem])
 
   useEffect(() => {
     setAutoFreeze(false)
@@ -165,7 +189,7 @@ export const useChat = (
   }, [])
 
   const handleStop = useCallback(() => {
-    hasStopResponded.current = true
+    hasStopRespondedRef.current = true
     handleResponding(false)
     if (stopChat && taskIdRef.current && !pausedStateRef.current)
       stopChat(taskIdRef.current)
@@ -178,11 +202,11 @@ export const useChat = (
   }, [stopChat, handleResponding])
 
   const handleRestart = useCallback((cb?: any) => {
-    conversationId.current = ''
+    conversationIdRef.current = ''
     taskIdRef.current = ''
     handleStop()
     setChatTree([])
-    setSuggestQuestions([])
+    setSuggestedQuestions([])
     cb?.()
   }, [handleStop])
 
@@ -245,7 +269,7 @@ export const useChat = (
         })
 
         if (isFirstMessage && newConversationId)
-          conversationId.current = newConversationId
+          conversationIdRef.current = newConversationId
 
         if (taskId)
           taskIdRef.current = taskId
@@ -257,19 +281,19 @@ export const useChat = (
           return
 
         if (onConversationComplete)
-          onConversationComplete(conversationId.current)
+          onConversationComplete(conversationIdRef.current)
 
-        if (config?.suggested_questions_after_answer?.enabled && !hasStopResponded.current && onGetSuggestedQuestions) {
+        if (config?.suggested_questions_after_answer?.enabled && !hasStopRespondedRef.current && onGetSuggestedQuestions) {
           try {
             const { data }: any = await onGetSuggestedQuestions(
               messageId,
               newAbortController => suggestedQuestionsAbortControllerRef.current = newAbortController,
             )
-            setSuggestQuestions(data)
+            setSuggestedQuestions(data)
           }
           // eslint-disable-next-line unused-imports/no-unused-vars
           catch (e) {
-            setSuggestQuestions([])
+            setSuggestedQuestions([])
           }
         }
       },
@@ -299,7 +323,7 @@ export const useChat = (
         updateChatTreeNode(messageId, (responseItem) => {
           const lastThought = responseItem.agent_thoughts?.[responseItem.agent_thoughts?.length - 1]
           if (lastThought) {
-            responseItem.agent_thoughts![responseItem.agent_thoughts!.length - 1].message_files = [...(lastThought as any).message_files, convertedFile]
+            responseItem.agent_thoughts!.at(-1)!.message_files = [...(lastThought as any).message_files, convertedFile]
           }
           else {
             const currentFiles = (responseItem.message_files as FileEntity[] | undefined) ?? []
@@ -321,8 +345,8 @@ export const useChat = (
             responseItem.agent_thoughts.push(thought)
           }
           else {
-            const lastThought = responseItem.agent_thoughts[responseItem.agent_thoughts.length - 1]
-            if (lastThought.id === thought.id) {
+            const lastThought = responseItem.agent_thoughts.at(-1)
+            if (lastThought?.id === thought.id) {
               thought.thought = lastThought.thought
               thought.message_files = lastThought.message_files
               responseItem.agent_thoughts[responseItem.agent_thoughts.length - 1] = thought
@@ -357,7 +381,7 @@ export const useChat = (
       },
       onWorkflowStarted: ({ workflow_run_id, task_id }) => {
         handleResponding(true)
-        hasStopResponded.current = false
+        hasStopRespondedRef.current = false
         updateChatTreeNode(messageId, (responseItem) => {
           if (responseItem.workflowProcess && responseItem.workflowProcess.tracing.length > 0) {
             responseItem.workflowProcess.status = WorkflowRunningStatus.Running
@@ -610,7 +634,7 @@ export const useChat = (
       isPublicAPI,
     }: SendCallback,
   ) => {
-    setSuggestQuestions([])
+    setSuggestedQuestions([])
 
     if (isRespondingRef.current) {
       notify({ type: 'info', message: t('errorMessage.waitForResponse', { ns: 'appDebug' }) })
@@ -657,12 +681,12 @@ export const useChat = (
     }
 
     handleResponding(true)
-    hasStopResponded.current = false
+    hasStopRespondedRef.current = false
 
     const { query, files, inputs, ...restData } = data
     const bodyParams = {
       response_mode: 'streaming',
-      conversation_id: conversationId.current,
+      conversation_id: conversationIdRef.current,
       files: getProcessedFiles(files || []),
       query,
       inputs: getProcessedInputs(inputs || {}, formSettings?.inputsForm || []),
@@ -799,7 +823,7 @@ export const useChat = (
         }
 
         if (isFirstMessage && newConversationId)
-          conversationId.current = newConversationId
+          conversationIdRef.current = newConversationId
 
         taskIdRef.current = taskId
         if (messageId)
@@ -819,11 +843,11 @@ export const useChat = (
           return
 
         if (onConversationComplete)
-          onConversationComplete(conversationId.current)
+          onConversationComplete(conversationIdRef.current)
 
-        if (conversationId.current && !hasStopResponded.current && onGetConversationMessages) {
+        if (conversationIdRef.current && !hasStopRespondedRef.current && onGetConversationMessages) {
           const { data }: any = await onGetConversationMessages(
-            conversationId.current,
+            conversationIdRef.current,
             newAbortController => conversationMessagesAbortControllerRef.current = newAbortController,
           )
           const newResponseItem = data.find((item: any) => item.id === responseItem.id)
@@ -835,7 +859,7 @@ export const useChat = (
             content: isUseAgentThought ? '' : newResponseItem.answer,
             log: [
               ...newResponseItem.message,
-              ...(newResponseItem.message[newResponseItem.message.length - 1].role !== 'assistant'
+              ...(newResponseItem.message.at(-1).role !== 'assistant'
                 ? [
                     {
                       role: 'assistant',
@@ -852,24 +876,24 @@ export const useChat = (
               tokens_per_second: newResponseItem.provider_response_latency > 0 ? (newResponseItem.answer_tokens / newResponseItem.provider_response_latency).toFixed(2) : undefined,
             },
             // for agent log
-            conversationId: conversationId.current,
+            conversationId: conversationIdRef.current,
             input: {
               inputs: newResponseItem.inputs,
               query: newResponseItem.query,
             },
           })
         }
-        if (config?.suggested_questions_after_answer?.enabled && !hasStopResponded.current && onGetSuggestedQuestions) {
+        if (config?.suggested_questions_after_answer?.enabled && !hasStopRespondedRef.current && onGetSuggestedQuestions) {
           try {
             const { data }: any = await onGetSuggestedQuestions(
               responseItem.id,
               newAbortController => suggestedQuestionsAbortControllerRef.current = newAbortController,
             )
-            setSuggestQuestions(data)
+            setSuggestedQuestions(data)
           }
           // eslint-disable-next-line unused-imports/no-unused-vars
           catch (e) {
-            setSuggestQuestions([])
+            setSuggestedQuestions([])
           }
         }
       },
@@ -901,7 +925,7 @@ export const useChat = (
         const lastThought = responseItem.agent_thoughts?.[responseItem.agent_thoughts?.length - 1]
         if (lastThought) {
           const thought = lastThought as { message_files?: FileEntity[] }
-          responseItem.agent_thoughts![responseItem.agent_thoughts!.length - 1].message_files = [...(thought.message_files ?? []), convertedFile]
+          responseItem.agent_thoughts!.at(-1)!.message_files = [...(thought.message_files ?? []), convertedFile]
         }
         // For non-agent mode, add files directly to responseItem.message_files
         else {
@@ -928,7 +952,7 @@ export const useChat = (
           response.agent_thoughts.push(thought)
         }
         else {
-          const lastThought = response.agent_thoughts[response.agent_thoughts.length - 1]
+          const lastThought = response.agent_thoughts.at(-1)
           // thought changed but still the same thought, so update.
           if (lastThought.id === thought.id) {
             thought.thought = lastThought.thought
@@ -959,6 +983,7 @@ export const useChat = (
             responseItem,
             parentId: data.parent_message_id,
           })
+          handleResponding(false)
           return
         }
         responseItem.citation = messageEnd.metadata?.retriever_resources || []
@@ -987,7 +1012,7 @@ export const useChat = (
       onWorkflowStarted: ({ workflow_run_id, task_id, conversation_id, message_id }) => {
         // If there are no streaming messages, we still need to set the conversation_id to avoid create a new conversation when regeneration in chat-flow.
         if (conversation_id) {
-          conversationId.current = conversation_id
+          conversationIdRef.current = conversation_id
         }
         if (message_id && !hasSetResponseId) {
           questionItem.id = `question-${message_id}`

@@ -1,4 +1,4 @@
-from core.workflow.nodes.base import BaseNodeData
+from dify_graph.entities.base_node_data import BaseNodeData
 
 
 class CommandNodeData(BaseNodeData):

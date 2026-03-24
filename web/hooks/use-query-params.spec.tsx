@@ -1,8 +1,6 @@
-import type { UrlUpdateEvent } from 'nuqs/adapters/testing'
-import type { ReactNode } from 'react'
-import { act, renderHook, waitFor } from '@testing-library/react'
-import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { act, waitFor } from '@testing-library/react'
 import { ACCOUNT_SETTING_MODAL_ACTION } from '@/app/components/header/account-setting/constants'
+import { renderHookWithNuqs } from '@/test/nuqs-testing'
 import {
   clearQueryParams,
   PRICING_MODAL_QUERY_PARAM,
@@ -20,14 +18,7 @@ vi.mock('@/utils/client', () => ({
 }))
 
 const renderWithAdapter = <T,>(hook: () => T, searchParams = '') => {
-  const onUrlUpdate = vi.fn<(event: UrlUpdateEvent) => void>()
-  const wrapper = ({ children }: { children: ReactNode }) => (
-    <NuqsTestingAdapter searchParams={searchParams} onUrlUpdate={onUrlUpdate}>
-      {children}
-    </NuqsTestingAdapter>
-  )
-  const { result } = renderHook(hook, { wrapper })
-  return { result, onUrlUpdate }
+  return renderHookWithNuqs(hook, { searchParams })
 }
 
 // Query param hooks: defaults, parsing, and URL sync behavior.
@@ -243,13 +234,13 @@ describe('useQueryParams hooks', () => {
 
       // Act
       act(() => {
-        result.current[1]({ payload: 'provider' })
+        result.current[1]({ payload: 'model-provider' })
       })
 
       // Assert
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
       const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
-      expect(update.searchParams.get('tab')).toBe('provider')
+      expect(update.searchParams.get('tab')).toBe('model-provider')
     })
 
     it('should use replace history when switching tabs while open', async () => {
@@ -261,7 +252,7 @@ describe('useQueryParams hooks', () => {
 
       // Act
       act(() => {
-        result.current[1]({ payload: 'provider' })
+        result.current[1]({ payload: 'model-provider' })
       })
 
       // Assert

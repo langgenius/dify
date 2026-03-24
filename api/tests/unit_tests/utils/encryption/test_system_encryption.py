@@ -29,7 +29,7 @@ class TestSystemOAuthEncrypter:
 
     def test_init_with_none_secret_key(self):
         """Test initialization with None secret key falls back to config"""
-        with patch("core.tools.utils.system_oauth_encryption.dify_config") as mock_config:
+        with patch("core.tools.utils.system_encryption.dify_config") as mock_config:
             mock_config.SECRET_KEY = "config_secret"
             encrypter = SystemEncrypter(secret_key=None)
             expected_key = hashlib.sha256(b"config_secret").digest()
@@ -43,7 +43,7 @@ class TestSystemOAuthEncrypter:
 
     def test_init_without_secret_key_uses_config(self):
         """Test initialization without secret key uses config"""
-        with patch("core.tools.utils.system_oauth_encryption.dify_config") as mock_config:
+        with patch("core.tools.utils.system_encryption.dify_config") as mock_config:
             mock_config.SECRET_KEY = "default_secret"
             encrypter = SystemEncrypter()
             expected_key = hashlib.sha256(b"default_secret").digest()
@@ -302,7 +302,7 @@ class TestSystemOAuthEncrypter:
         decrypted2 = encrypter2.decrypt_params(encrypted2)
         assert decrypted1 == decrypted2 == oauth_params
 
-    @patch("core.tools.utils.system_oauth_encryption.get_random_bytes")
+    @patch("core.tools.utils.system_encryption.get_random_bytes")
     def test_encrypt_oauth_params_crypto_error(self, mock_get_random_bytes):
         """Test encryption when crypto operation fails"""
         mock_get_random_bytes.side_effect = Exception("Crypto error")
@@ -315,7 +315,7 @@ class TestSystemOAuthEncrypter:
 
         assert "Encryption failed" in str(exc_info.value)
 
-    @patch("core.tools.utils.system_oauth_encryption.TypeAdapter")
+    @patch("core.tools.utils.system_encryption.TypeAdapter")
     def test_encrypt_oauth_params_serialization_error(self, mock_type_adapter):
         """Test encryption when JSON serialization fails"""
         mock_type_adapter.return_value.dump_json.side_effect = Exception("Serialization error")
@@ -370,7 +370,7 @@ class TestFactoryFunctions:
 
     def test_create_system_oauth_encrypter_without_secret(self):
         """Test factory function without secret key"""
-        with patch("core.tools.utils.system_oauth_encryption.dify_config") as mock_config:
+        with patch("core.tools.utils.system_encryption.dify_config") as mock_config:
             mock_config.SECRET_KEY = "config_secret"
             encrypter = create_system_encrypter()
 
@@ -380,7 +380,7 @@ class TestFactoryFunctions:
 
     def test_create_system_oauth_encrypter_with_none_secret(self):
         """Test factory function with None secret key"""
-        with patch("core.tools.utils.system_oauth_encryption.dify_config") as mock_config:
+        with patch("core.tools.utils.system_encryption.dify_config") as mock_config:
             mock_config.SECRET_KEY = "config_secret"
             encrypter = create_system_encrypter(None)
 
@@ -412,7 +412,7 @@ class TestGlobalEncrypterInstance:
 
         core.tools.utils.system_encryption._encrypter = None
 
-        with patch("core.tools.utils.system_oauth_encryption.dify_config") as mock_config:
+        with patch("core.tools.utils.system_encryption.dify_config") as mock_config:
             mock_config.SECRET_KEY = "global_secret"
             encrypter = get_system_encrypter()
 

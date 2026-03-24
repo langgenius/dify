@@ -1,7 +1,6 @@
 import { useClickAway } from 'ahooks'
 import {
   memo,
-  useEffect,
   useRef,
 } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -32,17 +31,12 @@ const PanelContextmenu = () => {
   const setCommentQuickAdd = useStore(s => s.setCommentQuickAdd)
   const sandboxEnabled = !!useFeatures(s => s.features.sandbox?.enabled)
   const { handleNodesPaste } = useNodesInteractions()
-  const { handlePaneContextmenuCancel, handleNodeContextmenuCancel } = usePanelInteractions()
+  const { handlePaneContextmenuCancel } = usePanelInteractions()
   const { handleStartWorkflowRun } = useWorkflowStartRun()
   const { handleAddNote } = useOperator()
   const { isCommentModeAvailable } = useWorkflowMoveMode()
   const { exportCheck } = useDSL()
   const pipelineId = useStore(s => s.pipelineId)
-
-  useEffect(() => {
-    if (panelMenu)
-      handleNodeContextmenuCancel()
-  }, [panelMenu, handleNodeContextmenuCancel])
 
   useClickAway(() => {
     handlePaneContextmenuCancel()

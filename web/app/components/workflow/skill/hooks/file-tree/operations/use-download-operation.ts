@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { consoleClient } from '@/service/client'
 import { downloadUrl } from '@/utils/download'
 
@@ -37,10 +37,7 @@ export function useDownloadOperation({
       downloadUrl({ url: download_url, fileName })
     }
     catch {
-      Toast.notify({
-        type: 'error',
-        message: t('skillSidebar.menu.downloadError'),
-      })
+      toast.error(t('skillSidebar.menu.downloadError'))
     }
     finally {
       setIsDownloading(false)

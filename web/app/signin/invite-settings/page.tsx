@@ -2,8 +2,6 @@
 import type { Locale } from '@/i18n-config'
 import { RiAccountCircleLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
-import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -15,6 +13,8 @@ import { LICENSE_LINK } from '@/constants/link'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { setLocaleOnClient } from '@/i18n-config'
 import { languages, LanguagesSupported } from '@/i18n-config/language'
+import Link from '@/next/link'
+import { useRouter, useSearchParams } from '@/next/navigation'
 import { activateMember } from '@/service/common'
 import { useInvitationCheck } from '@/service/use-common'
 import { timezones } from '@/utils/timezone'
@@ -56,7 +56,7 @@ export default function InviteSettingsPage() {
       if (res.result === 'success') {
         // Tokens are now stored in cookies by the backend
         await setLocaleOnClient(language, false)
-        const redirectUrl = resolvePostLoginRedirect(searchParams)
+        const redirectUrl = resolvePostLoginRedirect()
         router.replace(redirectUrl || '/apps')
       }
     }

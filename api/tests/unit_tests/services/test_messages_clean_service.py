@@ -402,7 +402,7 @@ class TestBillingDisabledPolicyFilterMessageIds:
 class TestCreateMessageCleanPolicy:
     """Unit tests for create_message_clean_policy factory function."""
 
-    @patch("services.retention.conversation.messages_clean_policy.dify_config")
+    @patch("services.retention.conversation.messages_clean_policy.dify_config", autospec=True)
     def test_billing_disabled_returns_billing_disabled_policy(self, mock_config):
         """Test that BILLING_ENABLED=False returns BillingDisabledPolicy."""
         # Arrange
@@ -414,8 +414,8 @@ class TestCreateMessageCleanPolicy:
         # Assert
         assert isinstance(policy, BillingDisabledPolicy)
 
-    @patch("services.retention.conversation.messages_clean_policy.BillingService")
-    @patch("services.retention.conversation.messages_clean_policy.dify_config")
+    @patch("services.retention.conversation.messages_clean_policy.BillingService", autospec=True)
+    @patch("services.retention.conversation.messages_clean_policy.dify_config", autospec=True)
     def test_billing_enabled_policy_has_correct_internals(self, mock_config, mock_billing_service):
         """Test that BillingSandboxPolicy is created with correct internal values."""
         # Arrange
@@ -540,6 +540,20 @@ class TestMessagesCleanServiceFromTimeRange:
         assert service._batch_size == 1000  # default
         assert service._dry_run is False  # default
 
+    def test_explicit_task_label(self):
+        start_from = datetime.datetime(2024, 1, 1)
+        end_before = datetime.datetime(2024, 1, 2)
+        policy = BillingDisabledPolicy()
+
+        service = MessagesCleanService.from_time_range(
+            policy=policy,
+            start_from=start_from,
+            end_before=end_before,
+            task_label="60to30",
+        )
+
+        assert service._metrics._base_attributes["task_label"] == "60to30"
+
 
 class TestMessagesCleanServiceFromDays:
     """Unit tests for MessagesCleanService.from_days factory method."""
@@ -554,11 +568,9 @@ class TestMessagesCleanServiceFromDays:
             MessagesCleanService.from_days(policy=policy, days=-1)
 
         # Act
-        with patch("services.retention.conversation.messages_clean_service.datetime") as mock_datetime:
+        with patch("services.retention.conversation.messages_clean_service.naive_utc_now") as mock_now:
             fixed_now = datetime.datetime(2024, 6, 15, 14, 0, 0)
-            mock_datetime.datetime.now.return_value = fixed_now
-            mock_datetime.timedelta = datetime.timedelta
-
+            mock_now.return_value = fixed_now
             service = MessagesCleanService.from_days(policy=policy, days=0)
 
         # Assert
@@ -586,11 +598,9 @@ class TestMessagesCleanServiceFromDays:
         dry_run = True
 
         # Act
-        with patch("services.retention.conversation.messages_clean_service.datetime") as mock_datetime:
+        with patch("services.retention.conversation.messages_clean_service.naive_utc_now") as mock_now:
             fixed_now = datetime.datetime(2024, 6, 15, 10, 30, 0)
-            mock_datetime.datetime.now.return_value = fixed_now
-            mock_datetime.timedelta = datetime.timedelta
-
+            mock_now.return_value = fixed_now
             service = MessagesCleanService.from_days(
                 policy=policy,
                 days=days,
@@ -613,11 +623,9 @@ class TestMessagesCleanServiceFromDays:
         policy = BillingDisabledPolicy()
 
         # Act
-        with patch("services.retention.conversation.messages_clean_service.datetime") as mock_datetime:
+        with patch("services.retention.conversation.messages_clean_service.naive_utc_now") as mock_now:
             fixed_now = datetime.datetime(2024, 6, 15, 10, 30, 0)
-            mock_datetime.datetime.now.return_value = fixed_now
-            mock_datetime.timedelta = datetime.timedelta
-
+            mock_now.return_value = fixed_now
             service = MessagesCleanService.from_days(policy=policy)
 
         # Assert
@@ -625,3 +633,54 @@ class TestMessagesCleanServiceFromDays:
         assert service._end_before == expected_end_before
         assert service._batch_size == 1000  # default
         assert service._dry_run is False  # default
+        assert service._metrics._base_attributes["task_label"] == "custom"
+
+
+class TestMessagesCleanServiceRun:
+    """Unit tests for MessagesCleanService.run instrumentation behavior."""
+
+    def test_run_records_completion_metrics_on_success(self):
+        # Arrange
+        service = MessagesCleanService(
+            policy=BillingDisabledPolicy(),
+            start_from=datetime.datetime(2024, 1, 1),
+            end_before=datetime.datetime(2024, 1, 2),
+            batch_size=100,
+            dry_run=False,
+        )
+        expected_stats = {
+            "batches": 1,
+            "total_messages": 10,
+            "filtered_messages": 5,
+            "total_deleted": 5,
+        }
+        service._clean_messages_by_time_range = MagicMock(return_value=expected_stats)  # type: ignore[method-assign]
+        completion_calls: list[dict[str, object]] = []
+        service._metrics.record_completion = lambda **kwargs: completion_calls.append(kwargs)  # type: ignore[method-assign]
+
+        # Act
+        result = service.run()
+
+        # Assert
+        assert result == expected_stats
+        assert len(completion_calls) == 1
+        assert completion_calls[0]["status"] == "success"
+
+    def test_run_records_completion_metrics_on_failure(self):
+        # Arrange
+        service = MessagesCleanService(
+            policy=BillingDisabledPolicy(),
+            start_from=datetime.datetime(2024, 1, 1),
+            end_before=datetime.datetime(2024, 1, 2),
+            batch_size=100,
+            dry_run=False,
+        )
+        service._clean_messages_by_time_range = MagicMock(side_effect=RuntimeError("clean failed"))  # type: ignore[method-assign]
+        completion_calls: list[dict[str, object]] = []
+        service._metrics.record_completion = lambda **kwargs: completion_calls.append(kwargs)  # type: ignore[method-assign]
+
+        # Act & Assert
+        with pytest.raises(RuntimeError, match="clean failed"):
+            service.run()
+        assert len(completion_calls) == 1
+        assert completion_calls[0]["status"] == "failed"

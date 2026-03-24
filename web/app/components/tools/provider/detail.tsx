@@ -13,7 +13,7 @@ import Confirm from '@/app/components/base/confirm'
 import Drawer from '@/app/components/base/drawer'
 import { LinkExternal02, Settings01 } from '@/app/components/base/icons/src/vender/line/general'
 import Loading from '@/app/components/base/loading'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { ConfigurationMethodEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import Indicator from '@/app/components/header/indicator'
 import Icon from '@/app/components/plugins/card/base/card-icon'
@@ -122,19 +122,13 @@ const ProviderDetail = ({
     await getCustomProvider()
     // Use fresh data from form submission to avoid race condition with collection.labels
     setCustomCollection(prev => prev ? { ...prev, labels: data.labels } : null)
-    Toast.notify({
-      type: 'success',
-      message: t('api.actionSuccess', { ns: 'common' }),
-    })
+    toast.success(t('api.actionSuccess', { ns: 'common' }))
     setIsShowEditCustomCollectionModal(false)
   }
   const doRemoveCustomToolCollection = async () => {
     await removeCustomCollection(collection?.name as string)
     onRefreshData()
-    Toast.notify({
-      type: 'success',
-      message: t('api.actionSuccess', { ns: 'common' }),
-    })
+    toast.success(t('api.actionSuccess', { ns: 'common' }))
     setIsShowEditCustomCollectionModal(false)
   }
   // workflow provider
@@ -161,10 +155,7 @@ const ProviderDetail = ({
   const removeWorkflowToolProvider = async () => {
     await deleteWorkflowTool(collection.id)
     onRefreshData()
-    Toast.notify({
-      type: 'success',
-      message: t('api.actionSuccess', { ns: 'common' }),
-    })
+    toast.success(t('api.actionSuccess', { ns: 'common' }))
     setIsShowEditWorkflowToolModal(false)
   }
   const updateWorkflowToolProvider = async (data: WorkflowToolProviderRequest & Partial<{
@@ -175,10 +166,7 @@ const ProviderDetail = ({
     invalidateAllWorkflowTools()
     onRefreshData()
     getWorkflowToolProvider()
-    Toast.notify({
-      type: 'success',
-      message: t('api.actionSuccess', { ns: 'common' }),
-    })
+    toast.success(t('api.actionSuccess', { ns: 'common' }))
     setIsShowEditWorkflowToolModal(false)
   }
   const onClickCustomToolDelete = () => {
@@ -385,19 +373,13 @@ const ProviderDetail = ({
             onCancel={() => setShowSettingAuth(false)}
             onSaved={async (value) => {
               await updateBuiltInToolCredential(collection.name, value)
-              Toast.notify({
-                type: 'success',
-                message: t('api.actionSuccess', { ns: 'common' }),
-              })
+              toast.success(t('api.actionSuccess', { ns: 'common' }))
               await onRefreshData()
               setShowSettingAuth(false)
             }}
             onRemove={async () => {
               await removeBuiltInToolCredential(collection.name)
-              Toast.notify({
-                type: 'success',
-                message: t('api.actionSuccess', { ns: 'common' }),
-              })
+              toast.success(t('api.actionSuccess', { ns: 'common' }))
               await onRefreshData()
               setShowSettingAuth(false)
             }}

@@ -42,7 +42,6 @@ const PlanUpgradeModal: FC<Props> = ({
   return (
     <UpgradeModalBase
       show={show}
-      onClose={onClose}
       // eslint-disable-next-line ts/no-explicit-any
       Icon={Icon as any}
       title={title}

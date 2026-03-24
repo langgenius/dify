@@ -6,7 +6,7 @@
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useUploadFileWithPresignedUrl } from '@/service/use-app-asset'
 import { ROOT_ID } from '../../../constants'
@@ -65,10 +65,7 @@ export function useFileDrop() {
         const entry = item.webkitGetAsEntry?.()
         // Skip directories - they have isDirectory = true
         if (entry?.isDirectory) {
-          Toast.notify({
-            type: 'error',
-            message: t('skillSidebar.menu.folderDropNotSupported'),
-          })
+          toast.error(t('skillSidebar.menu.folderDropNotSupported'))
           continue
         }
         const file = item.getAsFile()
@@ -93,16 +90,10 @@ export function useFileDrop() {
       )
 
       emitTreeUpdate()
-      Toast.notify({
-        type: 'success',
-        message: t('skillSidebar.menu.filesUploaded', { count: files.length }),
-      })
+      toast.success(t('skillSidebar.menu.filesUploaded', { count: files.length }))
     }
     catch {
-      Toast.notify({
-        type: 'error',
-        message: t('skillSidebar.menu.uploadError'),
-      })
+      toast.error(t('skillSidebar.menu.uploadError'))
     }
   }, [appId, uploadFile, t, storeApi, emitTreeUpdate])
 

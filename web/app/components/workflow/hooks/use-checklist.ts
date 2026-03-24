@@ -8,26 +8,33 @@ import type {
   CommonEdgeType,
   CommonNodeType,
   Edge,
+  ModelConfig,
   Node,
   ValueSelector,
 } from '../types'
+import type { ModelItem } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Emoji } from '@/app/components/tools/types'
 import type { DataSet } from '@/models/datasets'
 import type { I18nKeysWithPrefix } from '@/types/i18n'
+import { useQueries, useQueryClient } from '@tanstack/react-query'
+import isDeepEqual from 'fast-deep-equal'
 import {
   useCallback,
+  useEffect,
   useMemo,
   useRef,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEdges, useStoreApi } from 'reactflow'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { useToastContext } from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { MAX_TREE_DEPTH } from '@/config'
 import { useGetLanguage } from '@/context/i18n'
+import { useProviderContextSelector } from '@/context/provider-context'
+import { consoleQuery } from '@/service/client'
 import { fetchDatasets } from '@/service/datasets'
 import { useStrategyProviders } from '@/service/use-strategy'
 import {
@@ -46,7 +53,9 @@ import {
   useGetToolIcon,
   useNodesMetaData,
 } from '../hooks'
-import { getNodeUsedVars, isValueSelectorInNodeOutputVars } from '../nodes/_base/components/variable/utils'
+import { getNodeUsedVars, isSpecialVar, isValueSelectorInNodeOutputVars } from '../nodes/_base/components/variable/utils'
+import { IndexMethodEnum } from '../nodes/knowledge-base/types'
+import { getLLMModelIssue, isLLMModelProviderInstalled, LLMModelIssueCode } from '../nodes/llm/utils'
 import {
   useStore,
   useWorkflowStore,
@@ -57,6 +66,7 @@ import {
   getToolCheckParams,
   getValidTreeNodes,
 } from '../utils'
+import { extractPluginId } from '../utils/plugin'
 import { isNodePluginMissing, PLUGIN_DEPENDENT_TYPES } from '../utils/plugin-install-check'
 import { getTriggerCheckParams } from '../utils/trigger'
 import useNodesAvailableVarList, { useGetNodesAvailableVarList } from './use-nodes-available-var-list'
@@ -67,9 +77,11 @@ export type ChecklistItem = {
   title: string
   toolIcon?: string | Emoji
   unConnected?: boolean
-  errorMessage?: string
+  errorMessages: string[]
   canNavigate: boolean
   disableGoTo?: boolean
+  isPluginMissing?: boolean
+  pluginUniqueIdentifier?: string
 }
 
 const START_NODE_TYPES: BlockEnum[] = [
@@ -94,10 +106,49 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
   const getToolIcon = useGetToolIcon()
   const appMode = useAppStore.getState().appDetail?.mode
   const shouldCheckStartNode = appMode === AppModeEnum.WORKFLOW || appMode === AppModeEnum.ADVANCED_CHAT
+  const modelProviders = useProviderContextSelector(s => s.modelProviders)
+  const workflowStore = useWorkflowStore()
 
   const map = useNodesAvailableVarList(nodes)
   const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
   const { data: rerankModelList } = useModelList(ModelTypeEnum.rerank)
+  const knowledgeBaseEmbeddingProviders = useMemo(() => {
+    const providers = new Set<string>()
+
+    nodes.forEach((node) => {
+      if (node.type !== CUSTOM_NODE || node.data.type !== BlockEnum.KnowledgeBase)
+        return
+
+      const knowledgeBaseData = node.data as CommonNodeType<KnowledgeBaseNodeType>
+      if (knowledgeBaseData.indexing_technique !== IndexMethodEnum.QUALIFIED)
+        return
+
+      const provider = knowledgeBaseData.embedding_model_provider
+      if (provider)
+        providers.add(provider)
+    })
+
+    return [...providers]
+  }, [nodes])
+  const knowledgeBaseProviderModelMap = useQueries({
+    queries: knowledgeBaseEmbeddingProviders.map(provider =>
+      consoleQuery.modelProviders.models.queryOptions({
+        input: { params: { provider } },
+        enabled: !!provider,
+        refetchOnWindowFocus: false,
+        select: response => response.data,
+      }),
+    ),
+    combine: (results) => {
+      const modelMap: Partial<Record<string, ModelItem[]>> = {}
+      knowledgeBaseEmbeddingProviders.forEach((provider, index) => {
+        const models = results[index]?.data
+        if (models)
+          modelMap[provider] = models
+      })
+      return modelMap
+    },
+  })
 
   const getCheckData = useCallback((data: CommonNodeType<{}>) => {
     let checkData = data
@@ -114,19 +165,22 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
       } as CommonNodeType<KnowledgeRetrievalNodeType>
     }
     else if (data.type === BlockEnum.KnowledgeBase) {
+      const modelProviderName = (data as CommonNodeType<KnowledgeBaseNodeType>).embedding_model_provider
       checkData = {
         ...data,
         _embeddingModelList: embeddingModelList,
+        _embeddingProviderModelList: modelProviderName ? knowledgeBaseProviderModelMap[modelProviderName] : undefined,
         _rerankModelList: rerankModelList,
       } as CommonNodeType<KnowledgeBaseNodeType>
     }
     return checkData
-  }, [datasetsDetail, embeddingModelList, rerankModelList])
+  }, [datasetsDetail, embeddingModelList, knowledgeBaseProviderModelMap, rerankModelList])
 
   const needWarningNodes = useMemo<ChecklistItem[]>(() => {
     const list: ChecklistItem[] = []
     const filteredNodes = nodes.filter(node => node.type === CUSTOM_NODE)
     const { validNodes } = getValidTreeNodes(filteredNodes, edges)
+    const installedPluginIds = new Set(modelProviders.map(p => extractPluginId(p.provider)))
 
     for (let i = 0; i < filteredNodes.length; i++) {
       const node = filteredNodes[i]
@@ -175,30 +229,49 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
           dataSourceList,
         })
 
-        // Check if plugin is installed for plugin-dependent nodes first
-        let errorMessage: string | undefined
-        if (isPluginMissing)
-          errorMessage = t('nodes.common.pluginNotInstalled', { ns: 'workflow' })
-        else if (validator)
-          errorMessage = validator(checkData, t, moreDataForCheckValid).errorMessage
+        const errorMessages: string[] = []
 
-        if (!errorMessage) {
-          const availableVars = map[node.id].availableVars
-
-          for (const variable of usedVars) {
-            if (!isValueSelectorInNodeOutputVars(variable, availableVars))
-              errorMessage = t('errorMsg.invalidVariable', { ns: 'workflow' })
+        if (isPluginMissing) {
+          errorMessages.push(t('nodes.common.pluginNotInstalled', { ns: 'workflow' }))
+        }
+        else {
+          if (node.data.type === BlockEnum.LLM) {
+            const modelProvider = (node.data as CommonNodeType<{ model?: ModelConfig }>).model?.provider
+            const modelIssue = getLLMModelIssue({
+              modelProvider,
+              isModelProviderInstalled: isLLMModelProviderInstalled(modelProvider, installedPluginIds),
+            })
+            if (modelIssue === LLMModelIssueCode.providerPluginUnavailable)
+              errorMessages.push(t('errorMsg.configureModel', { ns: 'workflow' }))
           }
+
+          if (validator) {
+            const validationError = validator(checkData, t, moreDataForCheckValid).errorMessage
+            if (validationError)
+              errorMessages.push(validationError)
+          }
+
+          const availableVars = map[node.id].availableVars
+          let hasInvalidVar = false
+          for (const variable of usedVars) {
+            if (hasInvalidVar)
+              break
+            if (isSpecialVar(variable[0]))
+              continue
+            const usedNode = availableVars.find(v => v.nodeId === variable?.[0])
+            if (!usedNode || !usedNode.vars.some(v => v.variable === variable?.[1]))
+              hasInvalidVar = true
+          }
+          if (hasInvalidVar)
+            errorMessages.push(t('errorMsg.invalidVariable', { ns: 'workflow' }))
         }
 
-        // Start nodes and Trigger nodes should not show unConnected error if they have validation errors
-        // or if they are valid start nodes (even without incoming connections)
         const isStartNodeMeta = nodesExtraData?.[node.data.type as BlockEnum]?.metaData.isStart ?? false
         const isSubGraphNode = Boolean((node.data as { parent_node_id?: string }).parent_node_id)
         const canSkipConnectionCheck = isSubGraphNode || (shouldCheckStartNode ? isStartNodeMeta : true)
 
-        const isUnconnected = !validNodes.find(n => n.id === node.id)
-        const shouldShowError = errorMessage || (isUnconnected && !canSkipConnectionCheck)
+        const isUnconnected = !validNodes.some(n => n.id === node.id)
+        const shouldShowError = errorMessages.length > 0 || (isUnconnected && !canSkipConnectionCheck)
 
         if (shouldShowError) {
           list.push({
@@ -207,9 +280,13 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
             title: node.data.title,
             toolIcon,
             unConnected: isUnconnected && !canSkipConnectionCheck,
-            errorMessage,
+            errorMessages,
             canNavigate: !isPluginMissing,
             disableGoTo: isPluginMissing,
+            isPluginMissing,
+            pluginUniqueIdentifier: isPluginMissing
+              ? (node.data as { plugin_unique_identifier?: string }).plugin_unique_identifier
+              : undefined,
           })
         }
       }
@@ -223,7 +300,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
           id: 'start-node-required',
           type: BlockEnum.Start,
           title: t('panel.startNode', { ns: 'workflow' }),
-          errorMessage: t('common.needStartNode', { ns: 'workflow' }),
+          errorMessages: [t('common.needStartNode', { ns: 'workflow' })],
           canNavigate: false,
         })
       }
@@ -232,22 +309,27 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
     const isRequiredNodesType = Object.keys(nodesExtraData!).filter((key: any) => (nodesExtraData as any)[key].metaData.isRequired)
 
     isRequiredNodesType.forEach((type: string) => {
-      if (!filteredNodes.find(node => node.data.type === type)) {
+      if (!filteredNodes.some(node => node.data.type === type)) {
         list.push({
           id: `${type}-need-added`,
           type,
-          // We don't have enough type info for t() here
-
           title: t(`blocks.${type}` as I18nKeysWithPrefix<'workflow', 'blocks.'>, { ns: 'workflow' }),
-
-          errorMessage: t('common.needAdd', { ns: 'workflow', node: t(`blocks.${type}` as I18nKeysWithPrefix<'workflow', 'blocks.'>, { ns: 'workflow' }) }),
+          errorMessages: [t('common.needAdd', { ns: 'workflow', node: t(`blocks.${type}` as I18nKeysWithPrefix<'workflow', 'blocks.'>, { ns: 'workflow' }) })],
           canNavigate: false,
         })
       }
     })
 
     return list
-  }, [nodes, nodesExtraData, edges, buildInTools, customTools, workflowTools, mcpTools, language, dataSourceList, getToolIcon, strategyProviders, triggerPlugins, getCheckData, t, map, shouldCheckStartNode])
+  }, [nodes, edges, shouldCheckStartNode, nodesExtraData, buildInTools, customTools, workflowTools, mcpTools, language, dataSourceList, triggerPlugins, getToolIcon, strategyProviders, getCheckData, t, map, modelProviders])
+
+  useEffect(() => {
+    const currentChecklistItems = workflowStore.getState().checklistItems
+    if (isDeepEqual(currentChecklistItems, needWarningNodes))
+      return
+
+    workflowStore.setState({ checklistItems: needWarningNodes })
+  }, [needWarningNodes, workflowStore])
 
   return needWarningNodes
 }
@@ -256,11 +338,13 @@ export const useChecklistBeforePublish = () => {
   const { t } = useTranslation()
   const language = useGetLanguage()
   const { notify } = useToastContext()
+  const queryClient = useQueryClient()
   const store = useStoreApi()
   const { nodesMap: nodesExtraData } = useNodesMetaData()
   const { data: strategyProviders } = useStrategyProviders()
+  const modelProviders = useProviderContextSelector(s => s.modelProviders)
   const updateDatasetsDetail = useDatasetsDetailStore(s => s.updateDatasetsDetail)
-  const updateTime = useRef(0)
+  const updateTimeRef = useRef(0)
   const workflowStore = useWorkflowStore()
   const { getNodesAvailableVarList } = useGetNodesAvailableVarList()
   const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
@@ -271,7 +355,11 @@ export const useChecklistBeforePublish = () => {
   const appMode = useAppStore.getState().appDetail?.mode
   const shouldCheckStartNode = appMode === AppModeEnum.WORKFLOW || appMode === AppModeEnum.ADVANCED_CHAT
 
-  const getCheckData = useCallback((data: CommonNodeType<{}>, datasets: DataSet[]) => {
+  const getCheckData = useCallback((
+    data: CommonNodeType<object>,
+    datasets: DataSet[],
+    embeddingProviderModelMap?: Partial<Record<string, ModelItem[]>>,
+  ) => {
     let checkData = data
     if (data.type === BlockEnum.KnowledgeRetrieval) {
       const datasetIds = (data as CommonNodeType<KnowledgeRetrievalNodeType>).dataset_ids
@@ -290,9 +378,11 @@ export const useChecklistBeforePublish = () => {
       } as CommonNodeType<KnowledgeRetrievalNodeType>
     }
     else if (data.type === BlockEnum.KnowledgeBase) {
+      const modelProviderName = (data as CommonNodeType<KnowledgeBaseNodeType>).embedding_model_provider
       checkData = {
         ...data,
         _embeddingModelList: embeddingModelList,
+        _embeddingProviderModelList: modelProviderName ? embeddingProviderModelMap?.[modelProviderName] : undefined,
         _rerankModelList: rerankModelList,
       } as CommonNodeType<KnowledgeBaseNodeType>
     }
@@ -315,24 +405,67 @@ export const useChecklistBeforePublish = () => {
       notify({ type: 'error', message: t('common.maxTreeDepth', { ns: 'workflow', depth: MAX_TREE_DEPTH }) })
       return false
     }
-    // Before publish, we need to fetch datasets detail, in case of the settings of datasets have been changed
-    const knowledgeRetrievalNodes = filteredNodes.filter(node => node.data.type === BlockEnum.KnowledgeRetrieval)
-    const allDatasetIds = knowledgeRetrievalNodes.reduce<string[]>((acc, node) => {
-      return Array.from(new Set([...acc, ...(node.data as CommonNodeType<KnowledgeRetrievalNodeType>).dataset_ids]))
-    }, [])
-    let datasets: DataSet[] = []
-    if (allDatasetIds.length > 0) {
-      updateTime.current = updateTime.current + 1
-      const currUpdateTime = updateTime.current
-      const { data: datasetsDetail } = await fetchDatasets({ url: '/datasets', params: { page: 1, ids: allDatasetIds } })
-      if (datasetsDetail && datasetsDetail.length > 0) {
-        // avoid old data to overwrite the new data
-        if (currUpdateTime < updateTime.current)
-          return false
-        datasets = datasetsDetail
-        updateDatasetsDetail(datasetsDetail)
-      }
+
+    const knowledgeBaseEmbeddingProviders = [...new Set(
+      filteredNodes
+        .filter(node => node.data.type === BlockEnum.KnowledgeBase)
+        .map(node => node.data as CommonNodeType<KnowledgeBaseNodeType>)
+        .filter(node => node.indexing_technique === IndexMethodEnum.QUALIFIED)
+        .map(node => node.embedding_model_provider)
+        .filter((provider): provider is string => !!provider),
+    )]
+
+    const fetchKnowledgeBaseProviderModelMap = async () => {
+      const modelMap: Partial<Record<string, ModelItem[]>> = {}
+      await Promise.all(knowledgeBaseEmbeddingProviders.map(async (provider) => {
+        try {
+          const modelList = await queryClient.fetchQuery(
+            consoleQuery.modelProviders.models.queryOptions({
+              input: { params: { provider } },
+            }),
+          )
+
+          if (modelList.data)
+            modelMap[provider] = modelList.data
+        }
+        catch {
+        }
+      }))
+      return modelMap
     }
+
+    const fetchLatestDatasets = async (): Promise<DataSet[] | null> => {
+      const allDatasetIds = new Set<string>()
+      filteredNodes.forEach((node) => {
+        if (node.data.type !== BlockEnum.KnowledgeRetrieval)
+          return
+
+        const datasetIds = (node.data as CommonNodeType<KnowledgeRetrievalNodeType>).dataset_ids
+        datasetIds.forEach(id => allDatasetIds.add(id))
+      })
+
+      if (allDatasetIds.size === 0)
+        return []
+
+      updateTimeRef.current = updateTimeRef.current + 1
+      const currUpdateTime = updateTimeRef.current
+      const { data: datasetsDetail } = await fetchDatasets({ url: '/datasets', params: { page: 1, ids: [...allDatasetIds] } })
+      if (currUpdateTime < updateTimeRef.current)
+        return null
+      if (datasetsDetail?.length)
+        updateDatasetsDetail(datasetsDetail)
+      return datasetsDetail || []
+    }
+
+    const [embeddingProviderModelMap, datasets] = await Promise.all([
+      fetchKnowledgeBaseProviderModelMap(),
+      fetchLatestDatasets(),
+    ])
+
+    if (datasets === null)
+      return false
+
+    const installedPluginIds = new Set(modelProviders.map(p => extractPluginId(p.provider)))
     const map = getNodesAvailableVarList(nodes)
     for (let i = 0; i < filteredNodes.length; i++) {
       const node = filteredNodes[i]
@@ -359,7 +492,20 @@ export const useChecklistBeforePublish = () => {
       else {
         usedVars = getNodeUsedVars(node).filter(v => v.length > 0)
       }
-      const checkData = getCheckData(node.data, datasets)
+
+      if (node.data.type === BlockEnum.LLM) {
+        const modelProvider = (node.data as CommonNodeType<{ model?: ModelConfig }>).model?.provider
+        const modelIssue = getLLMModelIssue({
+          modelProvider,
+          isModelProviderInstalled: isLLMModelProviderInstalled(modelProvider, installedPluginIds),
+        })
+        if (modelIssue === LLMModelIssueCode.providerPluginUnavailable) {
+          notify({ type: 'error', message: `[${node.data.title}] ${t('errorMsg.configureModel', { ns: 'workflow' })}` })
+          return false
+        }
+      }
+
+      const checkData = getCheckData(node.data, datasets, embeddingProviderModelMap)
       const nodeMetaData = nodesExtraData?.[node.data.type as BlockEnum]
       if (!nodeMetaData)
         continue
@@ -382,7 +528,7 @@ export const useChecklistBeforePublish = () => {
       const isStartNodeMeta = nodesExtraData?.[node.data.type as BlockEnum]?.metaData.isStart ?? false
       const isSubGraphNode = Boolean((node.data as { parent_node_id?: string }).parent_node_id)
       const canSkipConnectionCheck = isSubGraphNode || (shouldCheckStartNode ? isStartNodeMeta : true)
-      const isUnconnected = !validNodes.find(n => n.id === node.id)
+      const isUnconnected = !validNodes.some(n => n.id === node.id)
 
       if (isUnconnected && !canSkipConnectionCheck) {
         notify({ type: 'error', message: `[${node.data.title}] ${t('common.needConnectTip', { ns: 'workflow' })}` })
@@ -403,14 +549,14 @@ export const useChecklistBeforePublish = () => {
     for (let i = 0; i < isRequiredNodesType.length; i++) {
       const type = isRequiredNodesType[i]
 
-      if (!filteredNodes.find(node => node.data.type === type)) {
+      if (!filteredNodes.some(node => node.data.type === type)) {
         notify({ type: 'error', message: t('common.needAdd', { ns: 'workflow', node: t(`blocks.${type}` as I18nKeysWithPrefix<'workflow', 'blocks.'>, { ns: 'workflow' }) }) })
         return false
       }
     }
 
     return true
-  }, [store, workflowStore, getNodesAvailableVarList, shouldCheckStartNode, nodesExtraData, notify, t, updateDatasetsDetail, buildInTools, customTools, workflowTools, language, getCheckData, strategyProviders])
+  }, [store, workflowStore, getNodesAvailableVarList, shouldCheckStartNode, nodesExtraData, notify, t, updateDatasetsDetail, buildInTools, customTools, workflowTools, language, getCheckData, queryClient, strategyProviders, modelProviders])
 
   return {
     handleCheckBeforePublish,

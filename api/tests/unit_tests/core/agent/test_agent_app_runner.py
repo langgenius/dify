@@ -6,8 +6,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from core.agent.entities import AgentEntity, AgentLog, AgentPromptEntity, AgentResult
-from core.model_runtime.entities import SystemPromptMessage, UserPromptMessage
-from core.model_runtime.entities.llm_entities import LLMUsage
+from dify_graph.model_runtime.entities import SystemPromptMessage, UserPromptMessage
+from dify_graph.model_runtime.entities.llm_entities import LLMUsage
 
 
 class TestOrganizePromptMessages:
@@ -134,8 +134,8 @@ class TestInitSystemMessage:
 
         assert result == []
 
-    def test_existing_system_message_not_duplicated(self, mock_runner):
-        """Test that system message is not duplicated if already present."""
+    def test_existing_system_message_replaced_with_template(self, mock_runner):
+        """Test that existing system message is replaced with the new template."""
         existing_messages = [
             SystemPromptMessage(content="Existing system"),
             UserPromptMessage(content="User message"),
@@ -143,9 +143,8 @@ class TestInitSystemMessage:
 
         result = mock_runner._init_system_message("New template", existing_messages)
 
-        # Should not insert new system message
         assert len(result) == 2
-        assert result[0].content == "Existing system"
+        assert result[0].content == "New template"
 
     def test_system_message_inserted_when_missing(self, mock_runner):
         """Test that system message is inserted when first message is not system."""
@@ -185,7 +184,7 @@ class TestClearUserPromptImageMessages:
 
     def test_original_messages_not_modified(self, mock_runner):
         """Test that original messages are not modified (deep copy)."""
-        from core.model_runtime.entities.message_entities import (
+        from dify_graph.model_runtime.entities.message_entities import (
             ImagePromptMessageContent,
             TextPromptMessageContent,
         )
@@ -366,13 +365,13 @@ class TestOrganizeUserQuery:
 
     def test_query_with_files(self, mock_runner):
         """Test organizing a query with files."""
-        from core.file.models import File
+        from dify_graph.file.models import File
 
         mock_file = MagicMock(spec=File)
         mock_runner.files = [mock_file]
 
         with patch("core.agent.agent_app_runner.file_manager") as mock_fm:
-            from core.model_runtime.entities.message_entities import ImagePromptMessageContent
+            from dify_graph.model_runtime.entities.message_entities import ImagePromptMessageContent
 
             mock_fm.to_prompt_message_content.return_value = ImagePromptMessageContent(
                 data="http://example.com/image.jpg",

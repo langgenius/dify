@@ -19,7 +19,7 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { useToastContext } from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import Indicator from '@/app/components/header/indicator'
 import { cn } from '@/utils/classnames'
 import Authorize from '../authorize'

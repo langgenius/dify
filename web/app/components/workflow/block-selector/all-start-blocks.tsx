@@ -6,7 +6,6 @@ import type { BlockEnum, OnSelectBlock } from '../types'
 import type { ListRef } from './market-place-plugin/list'
 import type { TriggerDefaultValue, TriggerWithProvider } from './types'
 import { RiArrowRightUpLine } from '@remixicon/react'
-import Link from 'next/link'
 import {
   useCallback,
   useEffect,
@@ -19,6 +18,7 @@ import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import { SearchMenu } from '@/app/components/base/icons/src/vender/line/general'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import Link from '@/next/link'
 import { useFeaturedTriggersRecommendations } from '@/service/use-plugins'
 import { useAllTriggerPlugins, useInvalidateAllTriggerPlugins } from '@/service/use-triggers'
 import { cn } from '@/utils/classnames'

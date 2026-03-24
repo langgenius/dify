@@ -4,7 +4,7 @@ import * as React from 'react'
 import CreateAppCard from '../new-app-card'
 
 const mockReplace = vi.fn()
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     replace: mockReplace,
   }),
@@ -18,7 +18,7 @@ vi.mock('@/context/provider-context', () => ({
   }),
 }))
 
-vi.mock('next/dynamic', () => ({
+vi.mock('@/next/dynamic', () => ({
   default: (importFn: () => Promise<{ default: React.ComponentType }>) => {
     const fnString = importFn.toString()
 
@@ -71,7 +71,7 @@ describe('CreateAppCard', () => {
 
       expect(screen.getByText('app.newApp.startFromBlank')).toBeInTheDocument()
       expect(screen.getByText('app.newApp.startFromTemplate')).toBeInTheDocument()
-      expect(screen.getByText('app.importDSL')).toBeInTheDocument()
+      expect(screen.getByText('app.importApp')).toBeInTheDocument()
     })
 
     it('should render all buttons as clickable', () => {
@@ -190,7 +190,7 @@ describe('CreateAppCard', () => {
     it('should open DSL modal when clicking Import DSL', () => {
       render(<CreateAppCard ref={defaultRef} />)
 
-      fireEvent.click(screen.getByText('app.importDSL'))
+      fireEvent.click(screen.getByText('app.importApp'))
 
       expect(screen.getByTestId('create-dsl-modal')).toBeInTheDocument()
     })
@@ -198,7 +198,7 @@ describe('CreateAppCard', () => {
     it('should close DSL modal when clicking close button', () => {
       render(<CreateAppCard ref={defaultRef} />)
 
-      fireEvent.click(screen.getByText('app.importDSL'))
+      fireEvent.click(screen.getByText('app.importApp'))
       expect(screen.getByTestId('create-dsl-modal')).toBeInTheDocument()
 
       fireEvent.click(screen.getByTestId('close-dsl-modal'))
@@ -209,7 +209,7 @@ describe('CreateAppCard', () => {
       const mockOnSuccess = vi.fn()
       render(<CreateAppCard ref={defaultRef} onSuccess={mockOnSuccess} />)
 
-      fireEvent.click(screen.getByText('app.importDSL'))
+      fireEvent.click(screen.getByText('app.importApp'))
       fireEvent.click(screen.getByTestId('success-dsl-modal'))
 
       expect(mockOnPlanInfoChanged).toHaveBeenCalled()
@@ -245,7 +245,7 @@ describe('CreateAppCard', () => {
       fireEvent.click(screen.getByText('app.newApp.startFromTemplate'))
       fireEvent.click(screen.getByTestId('close-template-dialog'))
 
-      fireEvent.click(screen.getByText('app.importDSL'))
+      fireEvent.click(screen.getByText('app.importApp'))
       fireEvent.click(screen.getByTestId('close-dsl-modal'))
 
       expect(screen.queryByTestId('create-app-modal')).not.toBeInTheDocument()

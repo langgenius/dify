@@ -1,11 +1,12 @@
+import type { InteractionModeType } from '@/app/components/workflow/interaction-mode'
 import type { Node, ToolWithProvider } from '@/app/components/workflow/types'
 import type { SchemaTypeDefinition } from '@/service/use-common'
 import type { FlowType } from '@/types/common'
 import type { NodeWithVar, VarInInspect } from '@/types/workflow'
 import { useCallback, useMemo } from 'react'
 import { useStoreApi } from 'reactflow'
-import { InteractionMode } from '@/app/components/workflow'
 import { useNodesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-nodes-interactions-without-sync'
+import { InteractionMode } from '@/app/components/workflow/interaction-mode'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import {
   useAllBuiltInTools,
@@ -22,7 +23,7 @@ import { applyAgentSubgraphInspectVars } from './inspect-vars-agent-alias'
 type Params = {
   flowType: FlowType
   flowId: string
-  interactionMode?: InteractionMode
+  interactionMode?: InteractionModeType
 }
 
 export const useSetWorkflowVarsWithValue = ({

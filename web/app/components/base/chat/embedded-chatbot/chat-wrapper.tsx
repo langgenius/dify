@@ -23,7 +23,7 @@ import {
 import { submitHumanInputForm as submitHumanInputFormService } from '@/service/workflow'
 import { TransferMethod } from '@/types/app'
 import { cn } from '@/utils/classnames'
-import Avatar from '../../avatar'
+import { Avatar } from '../../avatar'
 import Chat from '../chat'
 import { useChat } from '../chat/hooks'
 import { getLastAnswer, isValidGeneratedAnswer } from '../utils'
@@ -57,6 +57,15 @@ const ChatWrapper = () => {
     initUserVariables,
     appSourceType,
   } = useEmbeddedChatbotContext()
+
+  // Read sendOnEnter from URL params (e.g., ?sendOnEnter=false)
+  const sendOnEnter = useMemo(() => {
+    if (typeof window === 'undefined')
+      return true
+    const urlParams = new URLSearchParams(window.location.search)
+    const param = urlParams.get('sendOnEnter')
+    return param !== 'false'
+  }, [])
 
   const appConfig = useMemo(() => {
     const config = appParams || {}
@@ -321,13 +330,14 @@ const ChatWrapper = () => {
       themeBuilder={themeBuilder}
       switchSibling={doSwitchSibling}
       inputDisabled={inputDisabled}
+      sendOnEnter={sendOnEnter}
       questionIcon={
         initUserVariables?.avatar_url
           ? (
               <Avatar
                 avatar={initUserVariables.avatar_url}
                 name={initUserVariables.name || 'user'}
-                size={40}
+                size="xl"
               />
             )
           : undefined

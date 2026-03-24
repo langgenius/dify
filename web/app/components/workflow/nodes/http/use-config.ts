@@ -121,7 +121,7 @@ const useConfig = (id: string, payload: HttpNodeType) => {
   }, [inputs, setInputs])
 
   const filterVar = useCallback((varPayload: Var) => {
-    return [VarType.string, VarType.number, VarType.secret].includes(varPayload.type)
+    return ([VarType.string, VarType.number, VarType.secret] as VarType[]).includes(varPayload.type)
   }, [])
 
   // curl import panel

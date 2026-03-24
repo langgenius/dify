@@ -7,6 +7,7 @@ import type {
 } from 'reactflow'
 import type { CursorPosition, OnlineUser } from './collaboration/types'
 import type { Shape as HooksStoreShape } from './hooks-store'
+import type { InteractionModeType } from './interaction-mode'
 import type { WorkflowSliceShape } from './store/workflow/workflow-slice'
 import type {
   ConversationVariable,
@@ -14,13 +15,12 @@ import type {
   EnvironmentVariable,
   Node,
 } from './types'
-import type { VarInInspect } from '@/types/workflow'
+import type { VarInInspect, WorkflowDraftFeatures } from '@/types/workflow'
 import {
   useEventListener,
 } from 'ahooks'
 import { isEqual } from 'es-toolkit/predicate'
 import { setAutoFreeze } from 'immer'
-import dynamic from 'next/dynamic'
 import {
   Fragment,
   memo,
@@ -42,7 +42,16 @@ import ReactFlow, {
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
-import Toast from '@/app/components/base/toast'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@/app/components/base/ui/alert-dialog'
+import { toast } from '@/app/components/base/ui/toast'
 import { IS_DEV } from '@/config'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import {
@@ -67,6 +76,7 @@ import {
 import CustomConnectionLine from './custom-connection-line'
 import CustomEdge from './custom-edge'
 import DatasetsDetailProvider from './datasets-detail-store/provider'
+import EdgeContextmenu from './edge-contextmenu'
 import HelpLine from './help-line'
 import {
   useEdgesInteractions,
@@ -85,6 +95,7 @@ import {
 import { HooksStoreContextProvider, useHooksStore } from './hooks-store'
 import { useWorkflowComment } from './hooks/use-workflow-comment'
 import { useWorkflowSearch } from './hooks/use-workflow-search'
+import { InteractionMode } from './interaction-mode'
 import NodeContextmenu from './node-contextmenu'
 import CustomNode from './nodes'
 import useMatchSchemaType from './nodes/_base/components/variable/use-match-schema-type'
@@ -119,10 +130,6 @@ import { WorkflowHistoryProvider } from './workflow-history-store'
 import 'reactflow/dist/style.css'
 import './style.css'
 
-const Confirm = dynamic(() => import('@/app/components/base/confirm'), {
-  ssr: false,
-})
-
 const nodeTypes = {
   [CUSTOM_NODE]: CustomNode,
   [CUSTOM_NOTE_NODE]: CustomNoteNode,
@@ -136,17 +143,12 @@ const edgeTypes = {
   [CUSTOM_EDGE]: CustomEdge,
 }
 
-export enum InteractionMode {
-  Default = 'default',
-  Subgraph = 'subgraph',
-}
-
 type WorkflowDataUpdatePayload = {
   nodes: Node[]
   edges: Edge[]
   viewport?: Viewport
   hash?: string
-  features?: unknown
+  features?: WorkflowDraftFeatures
   conversation_variables?: ConversationVariable[]
   environment_variables?: EnvironmentVariable[]
 }
@@ -159,7 +161,7 @@ export type WorkflowProps = {
   onWorkflowDataUpdate?: (v: WorkflowDataUpdatePayload) => void
   allowSelectionWhenReadOnly?: boolean
   canvasReadOnly?: boolean
-  interactionMode?: InteractionMode
+  interactionMode?: InteractionModeType
   cursors?: Record<string, CursorPosition>
   myUserId?: string | null
   onlineUsers?: OnlineUser[]
@@ -284,10 +286,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
 
   useEffect(() => {
     return collaborationManager.onHistoryAction((_) => {
-      Toast.notify({
-        type: 'info',
-        message: t('collaboration.historyAction.generic', { ns: 'workflow' }),
-      })
+      toast.info(t('collaboration.historyAction.generic', { ns: 'workflow' }))
     })
   }, [t])
   const {
@@ -347,6 +346,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
       setNodes(v.payload.nodes)
       store.getState().setNodes(v.payload.nodes)
       setEdges(v.payload.edges)
+      workflowStore.setState({ edgeMenu: undefined })
 
       if (v.payload.viewport)
         reactflow.setViewport(v.payload.viewport)
@@ -521,6 +521,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
     handleEdgeEnter,
     handleEdgeLeave,
     handleEdgesChange,
+    handleEdgeContextMenu,
   } = useEdgesInteractions()
   const {
     handleSelectionStart,
@@ -636,16 +637,42 @@ export const Workflow: FC<WorkflowProps> = memo(({
       <Operator handleRedo={handleHistoryForward} handleUndo={handleHistoryBack} />
       {!isSubGraph && <PanelContextmenu />}
       {!isSubGraph && <NodeContextmenu />}
+      {!isSubGraph && <EdgeContextmenu />}
       {!isSubGraph && <SelectionContextmenu />}
       {!isSubGraph && <HelpLine />}
-      {!!showConfirm && (
-        <Confirm
-          isShow
-          onCancel={() => setShowConfirm(undefined)}
-          onConfirm={showConfirm.onConfirm}
-          title={showConfirm.title}
-          content={showConfirm.desc}
-        />
+      {showConfirm && (
+        <AlertDialog
+          open
+          onOpenChange={(open) => {
+            if (!open)
+              setShowConfirm(undefined)
+          }}
+        >
+          <AlertDialogContent>
+            <div className="flex flex-col gap-2 p-6 pb-4">
+              <AlertDialogTitle className="text-text-primary title-2xl-semi-bold">
+                {showConfirm.title}
+              </AlertDialogTitle>
+              {showConfirm.desc && (
+                <AlertDialogDescription className="text-text-secondary system-sm-regular">
+                  {showConfirm.desc}
+                </AlertDialogDescription>
+              )}
+            </div>
+            <AlertDialogActions>
+              <AlertDialogCancelButton>
+                {t('operation.cancel', { ns: 'common' })}
+              </AlertDialogCancelButton>
+              <AlertDialogConfirmButton
+                onClick={() => {
+                  void showConfirm.onConfirm()
+                }}
+              >
+                {t('operation.confirm', { ns: 'common' })}
+              </AlertDialogConfirmButton>
+            </AlertDialogActions>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
       {controlMode === ControlMode.Comment && isMouseOverCanvas && (
         <CommentCursor />
@@ -733,6 +760,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
         onEdgeMouseEnter={handleEdgeEnter}
         onEdgeMouseLeave={handleEdgeLeave}
         onEdgesChange={handleEdgesChange}
+        onEdgeContextMenu={isSubGraph ? undefined : handleEdgeContextMenu}
         onSelectionStart={isSubGraph ? undefined : handleSelectionStart}
         onSelectionChange={isSubGraph ? undefined : handleSelectionChange}
         onSelectionDrag={isSubGraph ? undefined : handleSelectionDrag}

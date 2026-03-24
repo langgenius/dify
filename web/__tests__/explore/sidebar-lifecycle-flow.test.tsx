@@ -1,4 +1,3 @@
-import type { IExplore } from '@/context/explore-context'
 /**
  * Integration test: Sidebar Lifecycle Flow
  *
@@ -8,21 +7,23 @@ import type { IExplore } from '@/context/explore-context'
  */
 import type { InstalledApp } from '@/models/explore'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import Toast from '@/app/components/base/toast'
 import SideBar from '@/app/components/explore/sidebar'
-import ExploreContext from '@/context/explore-context'
 import { MediaType } from '@/hooks/use-breakpoints'
 import { AppModeEnum } from '@/types/app'
+
+const { mockToastSuccess } = vi.hoisted(() => ({
+  mockToastSuccess: vi.fn(),
+}))
 
 let mockMediaType: string = MediaType.pc
 const mockSegments = ['apps']
 const mockPush = vi.fn()
-const mockRefetch = vi.fn()
 const mockUninstall = vi.fn()
 const mockUpdatePinStatus = vi.fn()
 let mockInstalledApps: InstalledApp[] = []
+let mockIsUninstallPending = false
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useSelectedLayoutSegments: () => mockSegments,
   useRouter: () => ({
     push: mockPush,
@@ -40,17 +41,28 @@ vi.mock('@/hooks/use-breakpoints', () => ({
 
 vi.mock('@/service/use-explore', () => ({
   useGetInstalledApps: () => ({
-    isFetching: false,
+    isPending: false,
     data: { installed_apps: mockInstalledApps },
-    refetch: mockRefetch,
   }),
   useUninstallApp: () => ({
     mutateAsync: mockUninstall,
+    isPending: mockIsUninstallPending,
   }),
   useUpdateAppPinStatus: () => ({
     mutateAsync: mockUpdatePinStatus,
   }),
 }))
+
+vi.mock('@/app/components/base/ui/toast', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/components/base/ui/toast')>()
+  return {
+    ...actual,
+    toast: {
+      ...actual.toast,
+      success: mockToastSuccess,
+    },
+  }
+})
 
 const createInstalledApp = (overrides: Partial<InstalledApp> = {}): InstalledApp => ({
   id: overrides.id ?? 'app-1',
@@ -69,24 +81,8 @@ const createInstalledApp = (overrides: Partial<InstalledApp> = {}): InstalledApp
   },
 })
 
-const createContextValue = (installedApps: InstalledApp[] = []): IExplore => ({
-  controlUpdateInstalledApps: 0,
-  setControlUpdateInstalledApps: vi.fn(),
-  hasEditPermission: true,
-  installedApps,
-  setInstalledApps: vi.fn(),
-  isFetchingInstalledApps: false,
-  setIsFetchingInstalledApps: vi.fn(),
-  isShowTryAppPanel: false,
-  setShowTryAppPanel: vi.fn(),
-})
-
-const renderSidebar = (installedApps: InstalledApp[] = []) => {
-  return render(
-    <ExploreContext.Provider value={createContextValue(installedApps)}>
-      <SideBar controlUpdateInstalledApps={0} />
-    </ExploreContext.Provider>,
-  )
+const renderSidebar = () => {
+  return render(<SideBar />)
 }
 
 describe('Sidebar Lifecycle Flow', () => {
@@ -94,7 +90,7 @@ describe('Sidebar Lifecycle Flow', () => {
     vi.clearAllMocks()
     mockMediaType = MediaType.pc
     mockInstalledApps = []
-    vi.spyOn(Toast, 'notify').mockImplementation(() => ({ clear: vi.fn() }))
+    mockIsUninstallPending = false
   })
 
   describe('Pin / Unpin / Delete Flow', () => {
@@ -104,16 +100,14 @@ describe('Sidebar Lifecycle Flow', () => {
       // Step 1: Start with an unpinned app and pin it
       const unpinnedApp = createInstalledApp({ is_pinned: false })
       mockInstalledApps = [unpinnedApp]
-      const { unmount } = renderSidebar(mockInstalledApps)
+      const { unmount } = renderSidebar()
 
       fireEvent.click(screen.getByTestId('item-operation-trigger'))
       fireEvent.click(await screen.findByText('explore.sidebar.action.pin'))
 
       await waitFor(() => {
         expect(mockUpdatePinStatus).toHaveBeenCalledWith({ appId: 'app-1', isPinned: true })
-        expect(Toast.notify).toHaveBeenCalledWith(expect.objectContaining({
-          type: 'success',
-        }))
+        expect(mockToastSuccess).toHaveBeenCalled()
       })
 
       // Step 2: Simulate refetch returning pinned state, then unpin
@@ -123,16 +117,14 @@ describe('Sidebar Lifecycle Flow', () => {
 
       const pinnedApp = createInstalledApp({ is_pinned: true })
       mockInstalledApps = [pinnedApp]
-      renderSidebar(mockInstalledApps)
+      renderSidebar()
 
       fireEvent.click(screen.getByTestId('item-operation-trigger'))
       fireEvent.click(await screen.findByText('explore.sidebar.action.unpin'))
 
       await waitFor(() => {
         expect(mockUpdatePinStatus).toHaveBeenCalledWith({ appId: 'app-1', isPinned: false })
-        expect(Toast.notify).toHaveBeenCalledWith(expect.objectContaining({
-          type: 'success',
-        }))
+        expect(mockToastSuccess).toHaveBeenCalled()
       })
     })
 
@@ -141,7 +133,7 @@ describe('Sidebar Lifecycle Flow', () => {
       mockInstalledApps = [app]
       mockUninstall.mockResolvedValue(undefined)
 
-      renderSidebar(mockInstalledApps)
+      renderSidebar()
 
       // Step 1: Open operation menu and click delete
       fireEvent.click(screen.getByTestId('item-operation-trigger'))
@@ -156,10 +148,7 @@ describe('Sidebar Lifecycle Flow', () => {
       // Step 4: Uninstall API called and success toast shown
       await waitFor(() => {
         expect(mockUninstall).toHaveBeenCalledWith('app-1')
-        expect(Toast.notify).toHaveBeenCalledWith(expect.objectContaining({
-          type: 'success',
-          message: 'common.api.remove',
-        }))
+        expect(mockToastSuccess).toHaveBeenCalledWith('common.api.remove')
       })
     })
 
@@ -167,7 +156,7 @@ describe('Sidebar Lifecycle Flow', () => {
       const app = createInstalledApp()
       mockInstalledApps = [app]
 
-      renderSidebar(mockInstalledApps)
+      renderSidebar()
 
       // Open delete flow
       fireEvent.click(screen.getByTestId('item-operation-trigger'))
@@ -188,7 +177,7 @@ describe('Sidebar Lifecycle Flow', () => {
         createInstalledApp({ id: 'unpinned-1', is_pinned: false, app: { ...createInstalledApp().app, name: 'Regular App' } }),
       ]
 
-      const { container } = renderSidebar(mockInstalledApps)
+      const { container } = renderSidebar()
 
       // Both apps are rendered
       const pinnedApp = screen.getByText('Pinned App')
@@ -210,14 +199,14 @@ describe('Sidebar Lifecycle Flow', () => {
   describe('Empty State', () => {
     it('should show NoApps component when no apps are installed on desktop', () => {
       mockMediaType = MediaType.pc
-      renderSidebar([])
+      renderSidebar()
 
       expect(screen.getByText('explore.sidebar.noApps.title')).toBeInTheDocument()
     })
 
     it('should hide NoApps on mobile', () => {
       mockMediaType = MediaType.mobile
-      renderSidebar([])
+      renderSidebar()
 
       expect(screen.queryByText('explore.sidebar.noApps.title')).not.toBeInTheDocument()
     })

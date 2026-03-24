@@ -93,8 +93,8 @@ describe('Header', () => {
 
       const { container } = render(<Header {...props} />)
 
-      // Assert - Input should have search icon (RiSearchLine is rendered as svg)
-      const searchIcon = container.querySelector('svg.h-4.w-4')
+      // Assert - Input should have search icon class
+      const searchIcon = container.querySelector('.i-ri-search-line.h-4.w-4')
       expect(searchIcon).toBeInTheDocument()
     })
 
@@ -313,10 +313,10 @@ describe('Header', () => {
           inputValue: 'to-clear',
           handleResetKeywords: mockHandleResetKeywords,
         })
-        const { container } = render(<Header {...props} />)
+        render(<Header {...props} />)
 
         // Act - Find and click the clear icon container
-        const clearButton = container.querySelector('[class*="cursor-pointer"] svg[class*="h-3.5"]')?.parentElement
+        const clearButton = screen.getByTestId('input-clear')
         expect(clearButton).toBeInTheDocument()
         fireEvent.click(clearButton!)
 
@@ -325,19 +325,19 @@ describe('Header', () => {
 
       it('should not show clear icon when inputValue is empty', () => {
         const props = createDefaultProps({ inputValue: '' })
-        const { container } = render(<Header {...props} />)
+        render(<Header {...props} />)
 
         // Act & Assert - Clear icon should not be visible
-        const clearIcon = container.querySelector('[class*="cursor-pointer"] svg[class*="h-3.5"]')
+        const clearIcon = screen.queryByTestId('input-clear')
         expect(clearIcon).not.toBeInTheDocument()
       })
 
       it('should show clear icon when inputValue is not empty', () => {
         const props = createDefaultProps({ inputValue: 'some-value' })
-        const { container } = render(<Header {...props} />)
+        render(<Header {...props} />)
 
         // Act & Assert - Clear icon should be visible
-        const clearIcon = container.querySelector('[class*="cursor-pointer"] svg[class*="h-3.5"]')
+        const clearIcon = screen.getByTestId('input-clear')
         expect(clearIcon).toBeInTheDocument()
       })
     })
@@ -570,13 +570,12 @@ describe('Header', () => {
         inputValue: 'to-clear',
         handleResetKeywords: mockHandleResetKeywords,
       })
-      const { container, rerender } = render(<Header {...props} />)
+      const { rerender } = render(<Header {...props} />)
 
       // Act - Click clear, rerender, click again
-      const clearButton = container.querySelector('[class*="cursor-pointer"] svg[class*="h-3.5"]')?.parentElement
-      fireEvent.click(clearButton!)
+      fireEvent.click(screen.getByTestId('input-clear'))
       rerender(<Header {...props} />)
-      fireEvent.click(clearButton!)
+      fireEvent.click(screen.getByTestId('input-clear'))
 
       expect(mockHandleResetKeywords).toHaveBeenCalledTimes(2)
     })

@@ -1,4 +1,4 @@
-/* eslint-disable ts/no-explicit-any */
+/* eslint-disable ts/no-redeclare -- const objects + matching type aliases replace enums under erasableSyntaxOnly */
 import type {
   Edge as ReactFlowEdge,
   Node as ReactFlowNode,
@@ -26,51 +26,58 @@ import type {
   PanelProps,
 } from '@/types/workflow'
 
-export enum BlockEnum {
-  Start = 'start',
-  End = 'end',
-  Answer = 'answer',
-  LLM = 'llm',
-  KnowledgeRetrieval = 'knowledge-retrieval',
-  QuestionClassifier = 'question-classifier',
-  IfElse = 'if-else',
-  Code = 'code',
-  TemplateTransform = 'template-transform',
-  HttpRequest = 'http-request',
-  VariableAssigner = 'variable-assigner',
-  VariableAggregator = 'variable-aggregator',
-  Tool = 'tool',
-  ParameterExtractor = 'parameter-extractor',
-  Iteration = 'iteration',
-  DocExtractor = 'document-extractor',
-  ListFilter = 'list-operator',
-  IterationStart = 'iteration-start',
-  Assigner = 'assigner', // is now named as VariableAssigner
-  Agent = 'agent',
-  Loop = 'loop',
-  LoopStart = 'loop-start',
-  LoopEnd = 'loop-end',
-  HumanInput = 'human-input',
-  DataSource = 'datasource',
-  DataSourceEmpty = 'datasource-empty',
-  KnowledgeBase = 'knowledge-index',
-  TriggerSchedule = 'trigger-schedule',
-  TriggerWebhook = 'trigger-webhook',
-  TriggerPlugin = 'trigger-plugin',
-  Command = 'command',
-  FileUpload = 'file-upload',
-}
+export type JsonPrimitive = string | number | boolean | null
+export type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue }
 
-export enum ControlMode {
-  Pointer = 'pointer',
-  Hand = 'hand',
-  Comment = 'comment',
-}
-export enum ErrorHandleMode {
-  Terminated = 'terminated',
-  ContinueOnError = 'continue-on-error',
-  RemoveAbnormalOutput = 'remove-abnormal-output',
-}
+export const BlockEnum = {
+  Start: 'start',
+  End: 'end',
+  Answer: 'answer',
+  LLM: 'llm',
+  KnowledgeRetrieval: 'knowledge-retrieval',
+  QuestionClassifier: 'question-classifier',
+  IfElse: 'if-else',
+  Code: 'code',
+  TemplateTransform: 'template-transform',
+  HttpRequest: 'http-request',
+  VariableAssigner: 'variable-assigner',
+  VariableAggregator: 'variable-aggregator',
+  Tool: 'tool',
+  ParameterExtractor: 'parameter-extractor',
+  Iteration: 'iteration',
+  DocExtractor: 'document-extractor',
+  ListFilter: 'list-operator',
+  IterationStart: 'iteration-start',
+  Assigner: 'assigner', // is now named as VariableAssigner
+  Agent: 'agent',
+  Loop: 'loop',
+  LoopStart: 'loop-start',
+  LoopEnd: 'loop-end',
+  HumanInput: 'human-input',
+  DataSource: 'datasource',
+  DataSourceEmpty: 'datasource-empty',
+  KnowledgeBase: 'knowledge-index',
+  TriggerSchedule: 'trigger-schedule',
+  TriggerWebhook: 'trigger-webhook',
+  TriggerPlugin: 'trigger-plugin',
+  Command: 'command',
+  FileUpload: 'file-upload',
+} as const
+export type BlockEnum = typeof BlockEnum[keyof typeof BlockEnum]
+
+export const ControlMode = {
+  Pointer: 'pointer',
+  Hand: 'hand',
+  Comment: 'comment',
+} as const
+export type ControlMode = typeof ControlMode[keyof typeof ControlMode]
+
+export const ErrorHandleMode = {
+  Terminated: 'terminated',
+  ContinueOnError: 'continue-on-error',
+  RemoveAbnormalOutput: 'remove-abnormal-output',
+} as const
+export type ErrorHandleMode = typeof ErrorHandleMode[keyof typeof ErrorHandleMode]
 export type Branch = {
   id: string
   name: string
@@ -175,7 +182,7 @@ export type Variable = {
 export type EnvironmentVariable = {
   id: string
   name: string
-  value: any
+  value: JsonValue
   value_type: 'string' | 'number' | 'secret'
   description: string
 }
@@ -184,7 +191,7 @@ export type ConversationVariable = {
   id: string
   name: string
   value_type: ChatVarType
-  value: any
+  value: JsonValue
   description: string
 }
 
@@ -199,22 +206,23 @@ export type VariableWithValue = {
   value: string
 }
 
-export enum InputVarType {
-  textInput = 'text-input',
-  paragraph = 'paragraph',
-  select = 'select',
-  number = 'number',
-  url = 'url',
-  files = 'files',
-  json = 'json', // obj, array
-  jsonObject = 'json_object', // only object support define json schema
-  contexts = 'contexts', // knowledge retrieval
-  iterator = 'iterator', // iteration input
-  singleFile = 'file',
-  multiFiles = 'file-list',
-  loop = 'loop', // loop input
-  checkbox = 'checkbox',
-}
+export const InputVarType = {
+  textInput: 'text-input',
+  paragraph: 'paragraph',
+  select: 'select',
+  number: 'number',
+  url: 'url',
+  files: 'files',
+  json: 'json', // obj, array
+  jsonObject: 'json_object', // only object support define json schema
+  contexts: 'contexts', // knowledge retrieval
+  iterator: 'iterator', // iteration input
+  singleFile: 'file',
+  multiFiles: 'file-list',
+  loop: 'loop', // loop input
+  checkbox: 'checkbox',
+} as const
+export type InputVarType = typeof InputVarType[keyof typeof InputVarType]
 
 export type InputVar = {
   type: InputVarType
@@ -236,26 +244,28 @@ export type InputVar = {
   getVarValueFromDependent?: boolean
   hide?: boolean
   isFileItem?: boolean
-  json_schema?: string | Record<string, any> // for jsonObject type
+  json_schema?: string | Record<string, unknown> // for jsonObject type
 } & Partial<UploadFileSetting>
 
 export type ModelConfig = {
   provider: string
   name: string
   mode: string
-  completion_params: Record<string, any>
+  completion_params: Record<string, unknown>
 }
 
-export enum PromptRole {
-  system = 'system',
-  user = 'user',
-  assistant = 'assistant',
-}
+export const PromptRole = {
+  system: 'system',
+  user: 'user',
+  assistant: 'assistant',
+} as const
+export type PromptRole = typeof PromptRole[keyof typeof PromptRole]
 
-export enum EditionType {
-  basic = 'basic',
-  jinja2 = 'jinja2',
-}
+export const EditionType = {
+  basic: 'basic',
+  jinja2: 'jinja2',
+} as const
+export type EditionType = typeof EditionType[keyof typeof EditionType]
 
 export type PromptItem = {
   id?: string
@@ -264,14 +274,14 @@ export type PromptItem = {
   edition_type?: EditionType
   jinja2_text?: string
   skill?: boolean
-  metadata?: Record<string, any>
+  metadata?: Record<string, unknown>
 }
 
 export type PromptMessageContext = {
   id?: string
   $context: ValueSelector
   skill?: boolean
-  metadata?: Record<string, any>
+  metadata?: Record<string, unknown>
 }
 
 export type PromptTemplateItem = PromptItem | PromptMessageContext
@@ -280,10 +290,11 @@ export const isPromptMessageContext = (item: PromptTemplateItem): item is Prompt
   return '$context' in item
 }
 
-export enum MemoryRole {
-  user = 'user',
-  assistant = 'assistant',
-}
+export const MemoryRole = {
+  user: 'user',
+  assistant: 'assistant',
+} as const
+export type MemoryRole = typeof MemoryRole[keyof typeof MemoryRole]
 
 export type RolePrefix = {
   user: string
@@ -299,29 +310,31 @@ export type Memory = {
   query_prompt_template: string
 }
 
-export enum VarType {
-  string = 'string',
-  number = 'number',
-  integer = 'integer',
-  secret = 'secret',
-  boolean = 'boolean',
-  object = 'object',
-  file = 'file',
-  array = 'array',
-  arrayString = 'array[string]',
-  arrayNumber = 'array[number]',
-  arrayObject = 'array[object]',
-  arrayBoolean = 'array[boolean]',
-  arrayFile = 'array[file]',
-  arrayMessage = 'array[message]',
-  any = 'any',
-  arrayAny = 'array[any]',
-}
+export const VarType = {
+  string: 'string',
+  number: 'number',
+  integer: 'integer',
+  secret: 'secret',
+  boolean: 'boolean',
+  object: 'object',
+  file: 'file',
+  array: 'array',
+  arrayString: 'array[string]',
+  arrayNumber: 'array[number]',
+  arrayObject: 'array[object]',
+  arrayBoolean: 'array[boolean]',
+  arrayFile: 'array[file]',
+  arrayMessage: 'array[message]',
+  any: 'any',
+  arrayAny: 'array[any]',
+} as const
+export type VarType = typeof VarType[keyof typeof VarType]
 
-export enum ValueType {
-  variable = 'variable',
-  constant = 'constant',
-}
+export const ValueType = {
+  variable: 'variable',
+  constant: 'constant',
+} as const
+export type ValueType = typeof ValueType[keyof typeof ValueType]
 
 export type VarSchemaContainer = {
   schema?: StructuredOutput['schema'] | Record<string, unknown> | string
@@ -357,6 +370,7 @@ export type NodeOutPutVar = {
 
 // allow node default validators with narrower payload types to be stored in shared collections.
 type CheckValidFn<T> = {
+  // eslint-disable-next-line ts/no-explicit-any -- bivariant node validators; implementations use narrower `t` / moreData shapes
   bivarianceHack: (payload: T, t: any, moreDataForCheckValid?: any) => { isValid: boolean, errorMessage?: string }
 }['bivarianceHack']
 
@@ -389,7 +403,7 @@ export type NodeDefaultBase = {
     isTypeFixed?: boolean
   }
   defaultValue: Partial<CommonNodeType>
-  defaultRunInputData?: Record<string, any>
+  defaultRunInputData?: Record<string, unknown>
   checkValid: CheckValidFn<CommonNodeType>
   getOutputVars?: GetOutputVarsFn<CommonNodeType>
 }
@@ -402,32 +416,35 @@ export type NodeDefault<T extends CommonNodeType = CommonNodeType> = Omit<NodeDe
 
 export type OnSelectBlock = (type: BlockEnum, pluginDefaultValue?: PluginDefaultValue) => void
 
-export enum WorkflowRunningStatus {
-  Waiting = 'waiting',
-  Running = 'running',
-  Succeeded = 'succeeded',
-  Failed = 'failed',
-  Stopped = 'stopped',
-  Paused = 'paused',
-}
+export const WorkflowRunningStatus = {
+  Waiting: 'waiting',
+  Running: 'running',
+  Succeeded: 'succeeded',
+  Failed: 'failed',
+  Stopped: 'stopped',
+  Paused: 'paused',
+} as const
+export type WorkflowRunningStatus = typeof WorkflowRunningStatus[keyof typeof WorkflowRunningStatus]
 
-export enum WorkflowVersion {
-  Draft = 'draft',
-  Latest = 'latest',
-}
+export const WorkflowVersion = {
+  Draft: 'draft',
+  Latest: 'latest',
+} as const
+export type WorkflowVersion = typeof WorkflowVersion[keyof typeof WorkflowVersion]
 
-export enum NodeRunningStatus {
-  NotStart = 'not-start',
-  Waiting = 'waiting',
-  Listening = 'listening',
-  Running = 'running',
-  Succeeded = 'succeeded',
-  Failed = 'failed',
-  Exception = 'exception',
-  Retry = 'retry',
-  Stopped = 'stopped',
-  Paused = 'paused',
-}
+export const NodeRunningStatus = {
+  NotStart: 'not-start',
+  Waiting: 'waiting',
+  Listening: 'listening',
+  Running: 'running',
+  Succeeded: 'succeeded',
+  Failed: 'failed',
+  Exception: 'exception',
+  Retry: 'retry',
+  Stopped: 'stopped',
+  Paused: 'paused',
+} as const
+export type NodeRunningStatus = typeof NodeRunningStatus[keyof typeof NodeRunningStatus]
 
 export type OnNodeAdd = (
   newNodePayload: {
@@ -501,10 +518,11 @@ export type HistoryWorkflowData = {
   finished_at?: number
 }
 
-export enum ChangeType {
-  changeVarName = 'changeVarName',
-  remove = 'remove',
-}
+export const ChangeType = {
+  changeVarName: 'changeVarName',
+  remove: 'remove',
+} as const
+export type ChangeType = typeof ChangeType[keyof typeof ChangeType]
 
 export type MoreInfo = {
   type: ChangeType
@@ -525,13 +543,14 @@ export type RAGRecommendedPlugins = {
   uninstalled_recommended_plugins: Plugin[]
 }
 
-export enum SupportUploadFileTypes {
-  image = 'image',
-  document = 'document',
-  audio = 'audio',
-  video = 'video',
-  custom = 'custom',
-}
+export const SupportUploadFileTypes = {
+  image: 'image',
+  document: 'document',
+  audio: 'audio',
+  video: 'video',
+  custom: 'custom',
+} as const
+export type SupportUploadFileTypes = typeof SupportUploadFileTypes[keyof typeof SupportUploadFileTypes]
 
 export type UploadFileSetting = {
   allowed_file_upload_methods: TransferMethod[]
@@ -547,34 +566,35 @@ export type VisionSetting = {
   detail: Resolution
 }
 
-export enum WorkflowVersionFilterOptions {
-  all = 'all',
-  onlyYours = 'onlyYours',
-}
+export const WorkflowVersionFilterOptions = {
+  all: 'all',
+  onlyYours: 'onlyYours',
+} as const
+export type WorkflowVersionFilterOptions = typeof WorkflowVersionFilterOptions[keyof typeof WorkflowVersionFilterOptions]
 
-export enum VersionHistoryContextMenuOptions {
-  restore = 'restore',
-  edit = 'edit',
-  delete = 'delete',
-  exportDSL = 'exportDSL',
-  copyId = 'copyId',
-}
+export const VersionHistoryContextMenuOptions = {
+  restore: 'restore',
+  edit: 'edit',
+  delete: 'delete',
+  exportDSL: 'exportDSL',
+  copyId: 'copyId',
+} as const
+export type VersionHistoryContextMenuOptions = typeof VersionHistoryContextMenuOptions[keyof typeof VersionHistoryContextMenuOptions]
 
 export type ChildNodeTypeCount = {
   [key: string]: number
 }
 
-export const TRIGGER_NODE_TYPES = [
+export const TRIGGER_NODE_TYPES: BlockEnum[] = [
   BlockEnum.TriggerSchedule,
   BlockEnum.TriggerWebhook,
   BlockEnum.TriggerPlugin,
-] as const
+]
 
-// Type-safe trigger node type extracted from TRIGGER_NODE_TYPES array
-export type TriggerNodeType = typeof TRIGGER_NODE_TYPES[number]
+export type TriggerNodeType = typeof BlockEnum.TriggerSchedule | typeof BlockEnum.TriggerWebhook | typeof BlockEnum.TriggerPlugin
 
 export function isTriggerNode(nodeType: BlockEnum): boolean {
-  return TRIGGER_NODE_TYPES.includes(nodeType as any)
+  return TRIGGER_NODE_TYPES.includes(nodeType)
 }
 
 export type Block = {
@@ -584,7 +604,8 @@ export type Block = {
   description?: string
 }
 
-export enum ViewType {
-  graph = 'graph',
-  skill = 'skill',
-}
+export const ViewType = {
+  graph: 'graph',
+  skill: 'skill',
+} as const
+export type ViewType = typeof ViewType[keyof typeof ViewType]

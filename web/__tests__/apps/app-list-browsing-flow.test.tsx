@@ -8,11 +8,12 @@
  */
 import type { AppListResponse } from '@/models/app'
 import type { App } from '@/types/app'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import List from '@/app/components/apps/list'
 import { AccessMode } from '@/models/access-control'
+import { renderWithNuqs } from '@/test/nuqs-testing'
 import { AppModeEnum } from '@/types/app'
 
 let mockIsCurrentWorkspaceEditor = true
@@ -38,7 +39,7 @@ let mockShowTagManagementModal = false
 const mockRouterPush = vi.fn()
 const mockRouterReplace = vi.fn()
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: mockRouterPush,
     replace: mockRouterReplace,
@@ -46,7 +47,7 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
-vi.mock('next/dynamic', () => ({
+vi.mock('@/next/dynamic', () => ({
   default: (_loader: () => Promise<{ default: React.ComponentType }>) => {
     const LazyComponent = (props: Record<string, unknown>) => {
       return <div data-testid="dynamic-component" {...props} />
@@ -103,6 +104,10 @@ vi.mock('@/service/use-apps', () => ({
     hasNextPage: mockHasNextPage,
     error: mockError,
     refetch: mockRefetch,
+  }),
+  useDeleteAppMutation: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
   }),
 }))
 
@@ -161,11 +166,16 @@ const createPage = (apps: App[], hasMore = false, page = 1): AppListResponse => 
   total: apps.length,
 })
 
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: false } },
+})
+
 const renderList = (searchParams?: Record<string, string>) => {
-  return render(
-    <NuqsTestingAdapter searchParams={searchParams}>
+  return renderWithNuqs(
+    <QueryClientProvider client={queryClient}>
       <List controlRefreshList={0} />
-    </NuqsTestingAdapter>,
+    </QueryClientProvider>,
+    { searchParams },
   )
 }
 
@@ -188,7 +198,10 @@ describe('App List Browsing Flow', () => {
     mockShowTagManagementModal = false
   })
 
-  // -- Loading and Empty states --
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   describe('Loading and Empty States', () => {
     it('should show skeleton cards during initial loading', () => {
       mockIsLoading = true
@@ -207,10 +220,8 @@ describe('App List Browsing Flow', () => {
 
     it('should transition from loading to content when data loads', () => {
       mockIsLoading = true
-      const { rerender } = render(
-        <NuqsTestingAdapter>
-          <List controlRefreshList={0} />
-        </NuqsTestingAdapter>,
+      const { rerender } = renderWithNuqs(
+        <QueryClientProvider client={queryClient}><List controlRefreshList={0} /></QueryClientProvider>,
       )
 
       const skeletonCards = document.querySelectorAll('.animate-pulse')
@@ -223,9 +234,7 @@ describe('App List Browsing Flow', () => {
       ])]
 
       rerender(
-        <NuqsTestingAdapter>
-          <List controlRefreshList={0} />
-        </NuqsTestingAdapter>,
+        <QueryClientProvider client={queryClient}><List controlRefreshList={0} /></QueryClientProvider>,
       )
 
       expect(screen.getByText('Loaded App')).toBeInTheDocument()
@@ -388,13 +397,13 @@ describe('App List Browsing Flow', () => {
     })
   })
 
-  // -- Dataset operator redirect --
-  describe('Dataset Operator Redirect', () => {
-    it('should redirect dataset operators to /datasets', () => {
+  // -- Dataset operator behavior --
+  describe('Dataset Operator Behavior', () => {
+    it('should not redirect at list component level for dataset operators', () => {
       mockIsCurrentWorkspaceDatasetOperator = true
       renderList()
 
-      expect(mockRouterReplace).toHaveBeenCalledWith('/datasets')
+      expect(mockRouterReplace).not.toHaveBeenCalled()
     })
   })
 
@@ -422,16 +431,12 @@ describe('App List Browsing Flow', () => {
     it('should call refetch when controlRefreshList increments', () => {
       mockPages = [createPage([createMockApp()])]
 
-      const { rerender } = render(
-        <NuqsTestingAdapter>
-          <List controlRefreshList={0} />
-        </NuqsTestingAdapter>,
+      const { rerender } = renderWithNuqs(
+        <QueryClientProvider client={queryClient}><List controlRefreshList={0} /></QueryClientProvider>,
       )
 
       rerender(
-        <NuqsTestingAdapter>
-          <List controlRefreshList={1} />
-        </NuqsTestingAdapter>,
+        <QueryClientProvider client={queryClient}><List controlRefreshList={1} /></QueryClientProvider>,
       )
 
       expect(mockRefetch).toHaveBeenCalled()

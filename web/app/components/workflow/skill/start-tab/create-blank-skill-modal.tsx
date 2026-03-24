@@ -1,13 +1,13 @@
 'use client'
 
 import type { BatchUploadNodeInput } from '@/types/app-asset'
-import { memo, useCallback, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
-import Modal from '@/app/components/base/modal'
-import Toast from '@/app/components/base/toast'
+import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@/app/components/base/ui/dialog'
+import { toast } from '@/app/components/base/ui/toast'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useBatchUpload } from '@/service/use-app-asset'
 import { useExistingSkillNames } from '../hooks/file-tree/data/use-skill-asset-tree'
@@ -47,6 +47,11 @@ const CreateBlankSkillModal = ({ isOpen, onClose }: CreateBlankSkillModalProps) 
   const { data: existingNames } = useExistingSkillNames()
 
   const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (isOpen)
+      queueMicrotask(() => inputRef.current?.focus())
+  }, [isOpen])
 
   const trimmedName = skillName.trim()
   const isDuplicate = !!trimmedName && (existingNames?.has(trimmedName) ?? false)
@@ -98,12 +103,12 @@ const CreateBlankSkillModal = ({ isOpen, onClose }: CreateBlankSkillModalProps) 
       if (skillMdId)
         storeApi.getState().openTab(skillMdId, { pinned: true })
 
-      Toast.notify({ type: 'success', message: t('skill.startTab.createSuccess', { ns: 'workflow', name: trimmedName }) })
+      toast.success(t('skill.startTab.createSuccess', { ns: 'workflow', name: trimmedName }))
       onClose()
     }
     catch {
       storeApi.getState().setUploadStatus('partial_error')
-      Toast.notify({ type: 'error', message: t('skill.startTab.createError', { ns: 'workflow' }) })
+      toast.error(t('skill.startTab.createError', { ns: 'workflow' }))
     }
     finally {
       setIsCreating(false)
@@ -112,53 +117,59 @@ const CreateBlankSkillModal = ({ isOpen, onClose }: CreateBlankSkillModalProps) 
   }, [canCreate, appId, trimmedName, storeApi, onClose, t])
 
   return (
-    <Modal
-      isShow={isOpen}
-      onClose={handleClose}
-      title={t('skill.startTab.createModal.title', { ns: 'workflow' })}
-      closable={!isCreating}
-      clickOutsideNotClose={isCreating}
-      initialFocus={inputRef}
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open)
+          handleClose()
+      }}
+      disablePointerDismissal={isCreating}
     >
-      <div className="mt-6 flex flex-col gap-1">
-        <label className="text-text-secondary system-sm-semibold">
-          {t('skill.startTab.createModal.nameLabel', { ns: 'workflow' })}
-        </label>
-        <Input
-          ref={inputRef}
-          value={skillName}
-          onChange={e => setSkillName(e.target.value)}
-          placeholder={t('skill.startTab.createModal.namePlaceholder', { ns: 'workflow' }) || ''}
-          destructive={isDuplicate}
-          disabled={isCreating}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && canCreate)
-              handleCreate()
-          }}
-        />
-        {isDuplicate && (
-          <p className="text-text-destructive system-xs-regular">
-            {t('skill.startTab.createModal.nameDuplicate', { ns: 'workflow' })}
-          </p>
-        )}
-      </div>
-      <div className="mt-6 flex justify-end gap-2">
-        <Button
-          onClick={handleClose}
-          disabled={isCreating}
-        >
-          {t('operation.cancel', { ns: 'common' })}
-        </Button>
-        <Button
-          variant="primary"
-          onClick={handleCreate}
-          disabled={!canCreate}
-          loading={isCreating}
-        >
-          {t('operation.create', { ns: 'common' })}
-        </Button>
-      </div>
-    </Modal>
+      <DialogContent>
+        {!isCreating && <DialogCloseButton />}
+        <DialogTitle className="text-text-primary title-2xl-semi-bold">
+          {t('skill.startTab.createModal.title', { ns: 'workflow' })}
+        </DialogTitle>
+        <div className="mt-6 flex flex-col gap-1">
+          <label className="text-text-secondary system-sm-semibold">
+            {t('skill.startTab.createModal.nameLabel', { ns: 'workflow' })}
+          </label>
+          <Input
+            ref={inputRef}
+            value={skillName}
+            onChange={e => setSkillName(e.target.value)}
+            placeholder={t('skill.startTab.createModal.namePlaceholder', { ns: 'workflow' }) || ''}
+            destructive={isDuplicate}
+            disabled={isCreating}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && canCreate)
+                handleCreate()
+            }}
+          />
+          {isDuplicate && (
+            <p className="text-text-destructive system-xs-regular">
+              {t('skill.startTab.createModal.nameDuplicate', { ns: 'workflow' })}
+            </p>
+          )}
+        </div>
+        <div className="mt-6 flex justify-end gap-2">
+          <Button
+            onClick={handleClose}
+            disabled={isCreating}
+          >
+            {t('operation.cancel', { ns: 'common' })}
+          </Button>
+          <Button
+            variant="primary"
+            onClick={handleCreate}
+            disabled={!canCreate}
+            loading={isCreating}
+          >
+            {t('operation.create', { ns: 'common' })}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 

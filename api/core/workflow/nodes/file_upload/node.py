@@ -5,16 +5,16 @@ from collections.abc import Mapping, Sequence
 from pathlib import PurePosixPath
 from typing import Any, cast
 
-from core.file import File, FileTransferMethod
 from core.sandbox.bash.session import SANDBOX_READY_TIMEOUT
-from core.variables import ArrayFileSegment
-from core.variables.segments import ArrayStringSegment, FileSegment
 from core.virtual_environment.__base.command_future import CommandCancelledError, CommandTimeoutError
 from core.virtual_environment.__base.helpers import pipeline
-from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
-from core.workflow.node_events import NodeRunResult
-from core.workflow.nodes.base.node import Node
 from core.zip_sandbox import SandboxDownloadItem
+from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
+from dify_graph.file import File, FileTransferMethod
+from dify_graph.node_events import NodeRunResult
+from dify_graph.nodes.base.node import Node
+from dify_graph.variables import ArrayFileSegment
+from dify_graph.variables.segments import ArrayStringSegment, FileSegment
 
 from .entities import FileUploadNodeData
 from .exc import FileUploadDownloadError, FileUploadNodeError
@@ -29,7 +29,7 @@ class FileUploadNode(Node[FileUploadNodeData]):
     files, it generates storage-backed presigned URLs and lets sandbox download directly.
     """
 
-    node_type = NodeType.FILE_UPLOAD
+    node_type = BuiltinNodeTypes.FILE_UPLOAD
 
     @classmethod
     def version(cls) -> str:
@@ -157,10 +157,10 @@ class FileUploadNode(Node[FileUploadNodeData]):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: Mapping[str, Any],
+        node_data: FileUploadNodeData,
     ) -> Mapping[str, Sequence[str]]:
         _ = graph_config
-        typed_node_data = FileUploadNodeData.model_validate(node_data)
+        typed_node_data = node_data
         return {node_id + ".files": typed_node_data.variable_selector}
 
     @staticmethod

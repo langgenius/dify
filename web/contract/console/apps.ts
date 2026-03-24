@@ -13,3 +13,15 @@ export const workflowOnlineUsersContract = base
     }
   }>())
   .output(type<WorkflowOnlineUsersResponse>())
+
+export const appDeleteContract = base
+  .route({
+    path: '/apps/{appId}',
+    method: 'DELETE',
+  })
+  .input(type<{
+    params: {
+      appId: string
+    }
+  }>())
+  .output(type<unknown>())

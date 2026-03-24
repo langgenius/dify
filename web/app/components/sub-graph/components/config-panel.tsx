@@ -10,7 +10,7 @@ import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
+} from '@/app/components/base/portal-to-follow-elem-plus'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'

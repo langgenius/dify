@@ -11,7 +11,7 @@ const mockSetPluginDefaultCredential = vi.fn().mockResolvedValue({})
 const mockUpdatePluginCredential = vi.fn().mockResolvedValue({})
 const mockNotify = vi.fn()
 
-vi.mock('@/app/components/base/toast', () => ({
+vi.mock('@/app/components/base/toast/context', () => ({
   useToastContext: () => ({
     notify: mockNotify,
   }),

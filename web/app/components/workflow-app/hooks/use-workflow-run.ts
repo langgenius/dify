@@ -1,10 +1,10 @@
 import type AudioPlayer from '@/app/components/base/audio-btn/audio'
+import type { Features as FeaturesData } from '@/app/components/base/features/types'
 import type { Node } from '@/app/components/workflow/types'
 import type { IOtherOptions } from '@/service/base'
 import type { VersionHistory } from '@/types/workflow'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
-import { usePathname } from 'next/navigation'
 import { useCallback, useRef } from 'react'
 import {
   useReactFlow,
@@ -21,6 +21,7 @@ import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-
 import { useWorkflowRunEvent } from '@/app/components/workflow/hooks/use-workflow-run-event/use-workflow-run-event'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { usePathname } from '@/next/navigation'
 import { handleStream, post, sseGet, ssePost } from '@/service/base'
 import { ContentType } from '@/service/fetch'
 import { useInvalidateSandboxFiles } from '@/service/use-sandbox-file'
@@ -932,20 +933,22 @@ export const useWorkflowRun = () => {
       edges,
       viewport,
     })
+    const f = publishedWorkflow.features ?? {}
     const mappedFeatures = {
       opening: {
-        enabled: !!publishedWorkflow.features.opening_statement || !!publishedWorkflow.features.suggested_questions.length,
-        opening_statement: publishedWorkflow.features.opening_statement,
-        suggested_questions: publishedWorkflow.features.suggested_questions,
+        enabled: !!f.opening_statement || !!f.suggested_questions?.length,
+        opening_statement: f.opening_statement,
+        suggested_questions: f.suggested_questions,
       },
-      suggested: publishedWorkflow.features.suggested_questions_after_answer,
-      text2speech: publishedWorkflow.features.text_to_speech,
-      speech2text: publishedWorkflow.features.speech_to_text,
-      citation: publishedWorkflow.features.retriever_resource,
-      moderation: publishedWorkflow.features.sensitive_word_avoidance,
-      file: publishedWorkflow.features.file_upload,
-      sandbox: publishedWorkflow.features.sandbox || { enabled: false },
-    }
+      suggested: f.suggested_questions_after_answer || { enabled: false },
+      text2speech: f.text_to_speech,
+      speech2text: f.speech_to_text,
+      citation: f.retriever_resource,
+      moderation: f.sensitive_word_avoidance,
+      file: f.file_upload,
+      annotationReply: f.annotation_reply || { enabled: false },
+      sandbox: f.sandbox || { enabled: false },
+    } as FeaturesData
 
     featuresStore?.setState({ features: mappedFeatures })
     workflowStore.getState().setEnvironmentVariables(publishedWorkflow.environment_variables || [])

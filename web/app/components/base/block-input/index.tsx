@@ -70,7 +70,7 @@ const BlockInput: FC<IBlockInputProps> = ({
   const renderSafeContent = (value: string) => {
     const parts = value.split(/(\{\{[^}]+\}\}|\n)/g)
     return parts.map((part, index) => {
-      const variableMatch = part.match(/^\{\{([^}]+)\}\}$/)
+      const variableMatch = /^\{\{([^}]+)\}\}$/.exec(part)
       if (variableMatch) {
         return (
           <VarHighlight
@@ -111,7 +111,7 @@ const BlockInput: FC<IBlockInputProps> = ({
   // Prevent rerendering caused cursor to jump to the start of the contentEditable element
   const TextAreaContentView = () => {
     return (
-      <div className={cn(style, className)}>
+      <div className={cn(style, className)} data-testid="block-input-content">
         {renderSafeContent(currentValue || '')}
       </div>
     )
@@ -134,10 +134,10 @@ const BlockInput: FC<IBlockInputProps> = ({
                 onBlur={() => {
                   blur()
                   setIsEditing(false)
-                  // click confirm also make blur. Then outer value is change. So below code has problem.
-                  // setTimeout(() => {
-                  //   handleCancel()
-                  // }, 1000)
+                // click confirm also make blur. Then outer value is change. So below code has problem.
+                // setTimeout(() => {
+                //   handleCancel()
+                // }, 1000)
                 }}
               />
             </div>
@@ -147,7 +147,7 @@ const BlockInput: FC<IBlockInputProps> = ({
   )
 
   return (
-    <div className={cn('block-input w-full overflow-y-auto rounded-xl border-none bg-white')}>
+    <div className={cn('block-input w-full overflow-y-auto rounded-xl border-none bg-white')} data-testid="block-input">
       {textAreaContent}
       {/* footer */}
       {!readonly && (

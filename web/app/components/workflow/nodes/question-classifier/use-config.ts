@@ -122,11 +122,11 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
   }, [inputs, setInputs])
 
   const filterInputVar = useCallback((varPayload: Var) => {
-    return [VarType.number, VarType.string].includes(varPayload.type)
+    return ([VarType.number, VarType.string] as VarType[]).includes(varPayload.type)
   }, [])
 
   const filterVisionInputVar = useCallback((varPayload: Var) => {
-    return [VarType.file, VarType.arrayFile].includes(varPayload.type)
+    return ([VarType.file, VarType.arrayFile] as VarType[]).includes(varPayload.type)
   }, [])
 
   const {

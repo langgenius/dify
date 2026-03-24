@@ -120,7 +120,7 @@ const ToolItem = ({
         <div className="mr-1" onClick={e => e.stopPropagation()}>
           <Switch
             size="md"
-            defaultValue={switchValue}
+            value={switchValue ?? false}
             onChange={onSwitchChange}
           />
         </div>

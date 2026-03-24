@@ -1,5 +1,6 @@
 import type { ChangeEvent, FC, FormEvent } from 'react'
 import type { InputValueTypes } from '../types'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { PromptConfig } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
 import type { VisionFile, VisionSettings } from '@/types/app'
@@ -169,7 +170,9 @@ const RunOnce: FC<IRunOnceProps> = ({
                     )}
                     {item.type === 'file' && (
                       <FileUploaderInAttachmentWrapper
-                        value={(inputs[item.key] && typeof inputs[item.key] === 'object') ? [inputs[item.key]] : []}
+                        value={inputs[item.key] && typeof inputs[item.key] === 'object' && !Array.isArray(inputs[item.key])
+                          ? [inputs[item.key] as FileEntity]
+                          : []}
                         onChange={(files) => { handleInputsChange({ ...inputsRef.current, [item.key]: files[0] }) }}
                         fileConfig={{
                           ...item.config,
@@ -179,7 +182,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                     )}
                     {item.type === 'file-list' && (
                       <FileUploaderInAttachmentWrapper
-                        value={Array.isArray(inputs[item.key]) ? inputs[item.key] : []}
+                        value={Array.isArray(inputs[item.key]) ? inputs[item.key] as FileEntity[] : []}
                         onChange={(files) => { handleInputsChange({ ...inputsRef.current, [item.key]: files }) }}
                         fileConfig={{
                           ...item.config,

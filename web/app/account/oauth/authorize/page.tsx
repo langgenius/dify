@@ -7,32 +7,18 @@ import {
   RiMailLine,
   RiTranslate2,
 } from '@remixicon/react'
-import { useRouter, useSearchParams } from 'next/navigation'
 import * as React from 'react'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import Avatar from '@/app/components/base/avatar'
+import { Avatar } from '@/app/components/base/avatar'
 import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { useAppContext } from '@/context/app-context'
-import { useIsLogin } from '@/service/use-common'
+import { setPostLoginRedirect } from '@/app/signin/utils/post-login-redirect'
+import { useRouter, useSearchParams } from '@/next/navigation'
+import { useIsLogin, useUserProfile } from '@/service/use-common'
 import { useAuthorizeOAuthApp, useOAuthAppInfo } from '@/service/use-oauth'
-import { storage } from '@/utils/storage'
-import {
-  OAUTH_AUTHORIZE_PENDING_KEY,
-  OAUTH_AUTHORIZE_PENDING_TTL,
-  REDIRECT_URL_KEY,
-} from './constants'
-
-function setItemWithExpiry(key: string, value: string, ttl: number) {
-  const item = {
-    value,
-    expiry: Math.floor((Date.now() + ttl * 1000) / 1000),
-  }
-  storage.set(key, item)
-}
 
 function buildReturnUrl(pathname: string, search: string) {
   try {
@@ -75,7 +61,8 @@ export default function OAuthAuthorize() {
   const searchParams = useSearchParams()
   const client_id = decodeURIComponent(searchParams.get('client_id') || '')
   const redirect_uri = decodeURIComponent(searchParams.get('redirect_uri') || '')
-  const { userProfile } = useAppContext()
+  const { data: userProfileResp } = useUserProfile()
+  const userProfile = userProfileResp?.profile
   const { data: authAppInfo, isLoading: isOAuthLoading, isError } = useOAuthAppInfo(client_id, redirect_uri)
   const { mutateAsync: authorize, isPending: authorizing } = useAuthorizeOAuthApp()
   const hasNotifiedRef = useRef(false)
@@ -85,10 +72,9 @@ export default function OAuthAuthorize() {
   const isLoading = isOAuthLoading || isIsLoginLoading
   const onLoginSwitchClick = () => {
     try {
-      const authorizeQuery = searchParams.toString()
-      const returnUrl = buildReturnUrl('/account/oauth/authorize', authorizeQuery ? `?${authorizeQuery}` : '')
-      setItemWithExpiry(OAUTH_AUTHORIZE_PENDING_KEY, returnUrl, OAUTH_AUTHORIZE_PENDING_TTL)
-      router.push(`/signin?${REDIRECT_URL_KEY}=${encodeURIComponent(returnUrl)}`)
+      const returnUrl = buildReturnUrl('/account/oauth/authorize', `?client_id=${encodeURIComponent(client_id)}&redirect_uri=${encodeURIComponent(redirect_uri)}`)
+      setPostLoginRedirect(returnUrl)
+      router.push('/signin')
     }
     catch {
       router.push('/signin')
@@ -105,10 +91,7 @@ export default function OAuthAuthorize() {
       globalThis.location.href = url.toString()
     }
     catch (err: any) {
-      Toast.notify({
-        type: 'error',
-        message: `${t('error.authorizeFailed', { ns: 'oauth' })}: ${err.message}`,
-      })
+      toast.error(`${t('error.authorizeFailed', { ns: 'oauth' })}: ${err.message}`)
     }
   }
 
@@ -116,11 +99,10 @@ export default function OAuthAuthorize() {
     const invalidParams = !client_id || !redirect_uri
     if ((invalidParams || isError) && !hasNotifiedRef.current) {
       hasNotifiedRef.current = true
-      Toast.notify({
-        type: 'error',
-        message: invalidParams ? t('error.invalidParams', { ns: 'oauth' }) : t('error.authAppInfoFetchFailed', { ns: 'oauth' }),
-        duration: 0,
-      })
+      toast.error(
+        invalidParams ? t('error.invalidParams', { ns: 'oauth' }) : t('error.authAppInfoFetchFailed', { ns: 'oauth' }),
+        { timeout: 0 },
+      )
     }
   }, [client_id, redirect_uri, isError])
 
@@ -152,7 +134,7 @@ export default function OAuthAuthorize() {
       {isLoggedIn && userProfile && (
         <div className="flex items-center justify-between rounded-xl bg-background-section-burn-inverted p-3">
           <div className="flex items-center gap-2.5">
-            <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size={36} />
+            <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size="lg" />
             <div>
               <div className="system-md-semi-bold text-text-secondary">{userProfile.name}</div>
               <div className="text-text-tertiary system-xs-regular">{userProfile.email}</div>

@@ -1,6 +1,6 @@
 """Utility functions for LLM generator."""
 
-from core.model_runtime.entities.message_entities import (
+from dify_graph.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     PromptMessage,
     PromptMessageRole,

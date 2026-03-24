@@ -1,6 +1,6 @@
 """Tests for workflow pause related enums and constants."""
 
-from core.workflow.enums import (
+from dify_graph.enums import (
     WorkflowExecutionStatus,
 )
 

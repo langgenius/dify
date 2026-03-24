@@ -10,8 +10,6 @@ import {
   useBoolean,
   useKeyPress,
 } from 'ahooks'
-import Link from 'next/link'
-import { useParams, useRouter } from 'next/navigation'
 import {
   memo,
   useCallback,
@@ -24,7 +22,7 @@ import Confirm from '@/app/components/base/confirm'
 import Divider from '@/app/components/base/divider'
 import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
 import PremiumBadge from '@/app/components/base/premium-badge'
-import { useToastContext } from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import {
   useChecklistBeforePublish,
 } from '@/app/components/workflow/hooks'
@@ -40,6 +38,8 @@ import { useModalContextSelector } from '@/context/modal-context'
 import { useProviderContextSelector } from '@/context/provider-context'
 import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
+import Link from '@/next/link'
+import { useParams, useRouter } from '@/next/navigation'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import { useInvalid } from '@/service/use-base'
 import {

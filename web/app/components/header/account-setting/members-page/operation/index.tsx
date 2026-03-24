@@ -9,7 +9,7 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { ToastContext } from '@/app/components/base/toast'
+import { ToastContext } from '@/app/components/base/toast/context'
 import { useProviderContext } from '@/context/provider-context'
 import { deleteMemberOrCancelInvitation, updateMemberRole } from '@/service/common'
 import { cn } from '@/utils/classnames'
@@ -102,7 +102,7 @@ const Operation = ({
           <ChevronDownIcon className={cn('h-4 w-4 shrink-0 group-hover:block', open ? 'block' : 'hidden')} />
         </div>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-[999]">
+      <PortalToFollowElemContent className="z-[1002]">
         <div className={cn('inline-flex flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm')}>
           <div className="p-1">
             {

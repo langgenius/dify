@@ -12,7 +12,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import DevelopMain from '@/app/components/develop'
 import { AppModeEnum, Theme } from '@/types/app'
 
-// ---------- fake timers ----------
 beforeEach(() => {
   vi.useFakeTimers({ shouldAdvanceTime: true })
 })
@@ -28,8 +27,6 @@ async function flushUI() {
   })
 }
 
-// ---------- store mock ----------
-
 let storeAppDetail: unknown
 
 vi.mock('@/app/components/app/store', () => ({
@@ -37,8 +34,6 @@ vi.mock('@/app/components/app/store', () => ({
     return selector({ appDetail: storeAppDetail })
   },
 }))
-
-// ---------- Doc dependencies ----------
 
 vi.mock('@/context/i18n', () => ({
   useLocale: () => 'en-US',
@@ -48,11 +43,12 @@ vi.mock('@/hooks/use-theme', () => ({
   default: () => ({ theme: Theme.light }),
 }))
 
-vi.mock('@/i18n-config/language', () => ({
-  LanguagesSupported: ['en-US', 'zh-Hans', 'zh-Hant', 'pt-BR', 'es-ES', 'fr-FR', 'de-DE', 'ja-JP'],
-}))
-
-// ---------- SecretKeyModal dependencies ----------
+vi.mock('@/i18n-config/language', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/i18n-config/language')>()
+  return {
+    ...actual,
+  }
+})
 
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({

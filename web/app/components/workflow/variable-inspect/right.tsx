@@ -168,7 +168,9 @@ const Right: FC<Props> = ({
             {currentVar && (
               <>
                 {currentNodeType
-                  && [VarInInspectType.environment, VarInInspectType.conversation, VarInInspectType.system].includes(currentNodeType as VarInInspectType) && (
+                  && ([VarInInspectType.environment, VarInInspectType.conversation, VarInInspectType.system] as const).includes(
+                    currentNodeType as typeof VarInInspectType.environment | typeof VarInInspectType.conversation | typeof VarInInspectType.system,
+                  ) && (
                   <VariableIconWithColor
                     variableCategory={currentNodeType as VarInInspectType}
                     className="size-4"

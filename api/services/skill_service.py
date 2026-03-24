@@ -26,7 +26,7 @@ from core.skill.entities.skill_document import SkillDocument
 from core.skill.entities.skill_metadata import SkillMetadata
 from core.skill.entities.tool_dependencies import ToolDependencies, ToolDependency
 from core.skill.skill_manager import SkillManager
-from core.workflow.enums import NodeType
+from dify_graph.enums import BuiltinNodeTypes
 from models.model import App
 from services.app_asset_service import AppAssetService
 
@@ -55,7 +55,7 @@ class SkillService:
         Returns an empty list when the node has no skill prompts or when
         no draft assets exist.
         """
-        if node_data.get("type", "") != NodeType.LLM.value:
+        if node_data.get("type", "") != BuiltinNodeTypes.LLM:
             return []
 
         if not SkillService._has_skill(node_data):

@@ -21,10 +21,10 @@ export function matchToolInCollection(
   collection: ToolWithProvider[],
   data: { plugin_id?: string, provider_id?: string, provider_name?: string },
 ): ToolWithProvider | undefined {
-  return collection.find(t =>
-    (data.plugin_id && t.plugin_id === data.plugin_id)
-    || canFindTool(t.id, data.provider_id)
-    || t.name === data.provider_name,
+  return collection.find(tool =>
+    (data.plugin_id && tool.plugin_id === data.plugin_id)
+    || canFindTool(tool.id, data.provider_id)
+    || tool.name === data.provider_name,
   )
 }
 
@@ -32,10 +32,10 @@ export function matchTriggerProvider(
   providers: TriggerWithProvider[],
   data: { provider_name?: string, provider_id?: string, plugin_id?: string },
 ): TriggerWithProvider | undefined {
-  return providers.find(p =>
-    p.name === data.provider_name
-    || p.id === data.provider_id
-    || (data.plugin_id && p.plugin_id === data.plugin_id),
+  return providers.find(provider =>
+    provider.name === data.provider_name
+    || provider.id === data.provider_id
+    || (data.plugin_id && provider.plugin_id === data.plugin_id),
   )
 }
 
@@ -84,10 +84,10 @@ export function isNodePluginMissing(
       return !matchTriggerProvider(context.triggerPlugins, triggerData) && Boolean(triggerData.plugin_unique_identifier)
     }
     case BlockEnum.DataSource: {
-      const dsData = data as DataSourceNodeType
+      const dataSourceData = data as DataSourceNodeType
       if (!context.dataSourceList)
         return false
-      return !matchDataSource(context.dataSourceList, dsData) && Boolean(dsData.plugin_unique_identifier)
+      return !matchDataSource(context.dataSourceList, dataSourceData) && Boolean(dataSourceData.plugin_unique_identifier)
     }
     default:
       return false

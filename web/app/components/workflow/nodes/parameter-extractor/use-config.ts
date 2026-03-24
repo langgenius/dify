@@ -48,7 +48,7 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
   }, [doSetInputs, defaultRolePrefix])
 
   const filterVar = useCallback((varPayload: Var) => {
-    return [VarType.string].includes(varPayload.type)
+    return ([VarType.string] as VarType[]).includes(varPayload.type)
   }, [])
 
   const handleInputVarChange = useCallback((newInputVar: ValueSelector | string) => {
@@ -170,7 +170,7 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
   const isSupportFunctionCall = supportFunctionCall(currModel?.features)
 
   const filterInputVar = useCallback((varPayload: Var) => {
-    return [VarType.number, VarType.string].includes(varPayload.type)
+    return ([VarType.number, VarType.string] as VarType[]).includes(varPayload.type)
   }, [])
 
   const {

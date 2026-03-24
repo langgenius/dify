@@ -42,7 +42,7 @@ describe('ReadmeEntrance', () => {
     const button = screen.getByRole('button')
     fireEvent.click(button)
 
-    expect(mockSetCurrentPluginDetail).toHaveBeenCalledWith(pluginDetail, 'drawer')
+    expect(mockSetCurrentPluginDetail).toHaveBeenCalledWith(pluginDetail, 'drawer', 'left')
   })
 
   it('should return null for builtin tools', () => {

@@ -1,4 +1,4 @@
-import { redirect } from 'next/navigation'
+import { redirect } from '@/next/navigation'
 import Home from './page'
 
 vi.mock('next/navigation', () => ({

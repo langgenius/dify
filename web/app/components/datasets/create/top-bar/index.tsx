@@ -1,9 +1,9 @@
 import type { FC } from 'react'
 import type { StepperProps } from '../stepper'
 import { RiArrowLeftLine } from '@remixicon/react'
-import Link from 'next/link'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import Link from '@/next/link'
 import { cn } from '@/utils/classnames'
 import { Stepper } from '../stepper'
 

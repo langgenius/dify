@@ -6,14 +6,14 @@ from core.sandbox import sandbox_debug
 from core.sandbox.bash.session import SANDBOX_READY_TIMEOUT
 from core.virtual_environment.__base.command_future import CommandCancelledError, CommandTimeoutError
 from core.virtual_environment.__base.helpers import submit_command, with_connection
-from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
-from core.workflow.node_events import NodeRunResult
-from core.workflow.nodes.base import variable_template_parser
-from core.workflow.nodes.base.entities import VariableSelector
-from core.workflow.nodes.base.node import Node
-from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
 from core.workflow.nodes.command.entities import CommandNodeData
 from core.workflow.nodes.command.exc import CommandExecutionError
+from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
+from dify_graph.node_events import NodeRunResult
+from dify_graph.nodes.base import variable_template_parser
+from dify_graph.nodes.base.entities import VariableSelector
+from dify_graph.nodes.base.node import Node
+from dify_graph.nodes.base.variable_template_parser import VariableTemplateParser
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ COMMAND_NODE_TIMEOUT_SECONDS = 60 * 10
 
 
 class CommandNode(Node[CommandNodeData]):
-    node_type = NodeType.COMMAND
+    node_type = BuiltinNodeTypes.COMMAND
 
     def _render_template(self, template: str) -> str:
         parser = VariableTemplateParser(template=template)
@@ -135,11 +135,11 @@ class CommandNode(Node[CommandNodeData]):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: Mapping[str, Any],
+        node_data: CommandNodeData,
     ) -> Mapping[str, Sequence[str]]:
         _ = graph_config
 
-        typed_node_data = CommandNodeData.model_validate(node_data)
+        typed_node_data = node_data
 
         selectors: list[VariableSelector] = []
         selectors += list(variable_template_parser.extract_selectors_from_template(typed_node_data.command))

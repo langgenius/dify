@@ -36,11 +36,11 @@ const RagPipeline = () => {
     return []
   }, [data])
 
-  const initialFeatures: FeaturesData = useMemo(() => {
+  const initialFeatures = useMemo(() => {
     const features = data?.features || {}
     return {
       sandbox: features.sandbox || { enabled: false },
-    }
+    } as FeaturesData
   }, [data?.features])
 
   if (!data || isLoading) {

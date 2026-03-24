@@ -2,20 +2,20 @@
 
 from unittest.mock import MagicMock
 
-from core.workflow.entities.tool_entities import ToolResultStatus
-from core.workflow.enums import NodeType
-from core.workflow.graph.graph import Graph
-from core.workflow.graph_engine.response_coordinator.coordinator import ResponseStreamCoordinator
-from core.workflow.graph_engine.response_coordinator.session import ResponseSession
-from core.workflow.graph_events import (
+from dify_graph.entities.tool_entities import ToolResultStatus
+from dify_graph.enums import BuiltinNodeTypes
+from dify_graph.graph.graph import Graph
+from dify_graph.graph_engine.response_coordinator.coordinator import ResponseStreamCoordinator
+from dify_graph.graph_engine.response_coordinator.session import ResponseSession
+from dify_graph.graph_events import (
     ChunkType,
     NodeRunStreamChunkEvent,
     ToolCall,
     ToolResult,
 )
-from core.workflow.nodes.base.entities import BaseNodeData
-from core.workflow.nodes.base.template import Template, VariableSegment
-from core.workflow.runtime import VariablePool
+from dify_graph.nodes.base.entities import BaseNodeData
+from dify_graph.nodes.base.template import Template, VariableSegment
+from dify_graph.runtime import VariablePool
 
 
 class TestResponseCoordinatorObjectStreaming:
@@ -30,13 +30,13 @@ class TestResponseCoordinatorObjectStreaming:
         # Mock nodes
         llm_node = MagicMock()
         llm_node.id = "llm_node"
-        llm_node.node_type = NodeType.LLM
+        llm_node.node_type = BuiltinNodeTypes.LLM
         llm_node.execution_type = MagicMock()
         llm_node.blocks_variable_output = MagicMock(return_value=False)
 
         response_node = MagicMock()
         response_node.id = "response_node"
-        response_node.node_type = NodeType.ANSWER
+        response_node.node_type = BuiltinNodeTypes.ANSWER
         response_node.execution_type = MagicMock()
         response_node.blocks_variable_output = MagicMock(return_value=False)
 
@@ -63,7 +63,7 @@ class TestResponseCoordinatorObjectStreaming:
         content_event_1 = NodeRunStreamChunkEvent(
             id="exec_123",
             node_id="llm_node",
-            node_type=NodeType.LLM,
+            node_type=BuiltinNodeTypes.LLM,
             selector=["llm_node", "generation", "content"],
             chunk="Hello",
             is_final=False,
@@ -72,7 +72,7 @@ class TestResponseCoordinatorObjectStreaming:
         content_event_2 = NodeRunStreamChunkEvent(
             id="exec_123",
             node_id="llm_node",
-            node_type=NodeType.LLM,
+            node_type=BuiltinNodeTypes.LLM,
             selector=["llm_node", "generation", "content"],
             chunk=" world",
             is_final=True,
@@ -83,7 +83,7 @@ class TestResponseCoordinatorObjectStreaming:
         tool_call_event = NodeRunStreamChunkEvent(
             id="exec_123",
             node_id="llm_node",
-            node_type=NodeType.LLM,
+            node_type=BuiltinNodeTypes.LLM,
             selector=["llm_node", "generation", "tool_calls"],
             chunk='{"query": "test"}',
             is_final=True,
@@ -99,7 +99,7 @@ class TestResponseCoordinatorObjectStreaming:
         tool_result_event = NodeRunStreamChunkEvent(
             id="exec_123",
             node_id="llm_node",
-            node_type=NodeType.LLM,
+            node_type=BuiltinNodeTypes.LLM,
             selector=["llm_node", "generation", "tool_results"],
             chunk="Found 10 results",
             is_final=True,
@@ -196,7 +196,7 @@ class TestResponseCoordinatorObjectStreaming:
 
         response_node = MagicMock()
         response_node.id = "response_node"
-        response_node.node_type = NodeType.ANSWER
+        response_node.node_type = BuiltinNodeTypes.ANSWER
         graph.nodes = {"response_node": response_node}
         graph.root_node = response_node
 
@@ -211,7 +211,7 @@ class TestResponseCoordinatorObjectStreaming:
         event = NodeRunStreamChunkEvent(
             id="stream_1",
             node_id="llm_node",
-            node_type=NodeType.LLM,
+            node_type=BuiltinNodeTypes.LLM,
             selector=["sys", "foo"],
             chunk="hi",
             is_final=True,

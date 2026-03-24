@@ -204,7 +204,7 @@ class SandboxProviderService:
                 )
 
         # fallback to system default config
-        system_configed: SandboxProviderSystemConfig | None = session.query(SandboxProviderSystemConfig).first()
+        system_configed = session.query(SandboxProviderSystemConfig).first()
         if system_configed:
             return SandboxProviderEntity(
                 id=system_configed.id,

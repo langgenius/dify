@@ -21,7 +21,7 @@ const FilterSwitch: FC<FilterSwitchProps> = ({
           {t('versionHistory.filter.onlyShowNamedVersions', { ns: 'workflow' })}
         </div>
         <Switch
-          defaultValue={enabled}
+          value={enabled}
           onChange={v => handleSwitch(v)}
           size="md"
           className="shrink-0"

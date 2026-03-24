@@ -13,8 +13,8 @@ from flask import Flask
 from flask.views import MethodView
 from werkzeug.exceptions import Forbidden
 
-from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.errors.validate import CredentialsValidateFailedError
+from dify_graph.model_runtime.entities.model_entities import ModelType
+from dify_graph.model_runtime.errors.validate import CredentialsValidateFailedError
 
 if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]

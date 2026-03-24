@@ -11,6 +11,7 @@ import type {
   Edge,
   EnvironmentVariable,
   InputVar,
+  JsonValue,
   Node,
   ValueSelector,
   Variable,
@@ -19,6 +20,34 @@ import type {
 } from '@/app/components/workflow/types'
 import type { RAGPipelineVariables } from '@/models/pipeline'
 import type { TransferMethod } from '@/types/app'
+
+export type WorkflowDraftFileUploadImage = {
+  enabled?: boolean
+  number_limits?: number
+  transfer_methods?: TransferMethod[]
+}
+
+export type WorkflowDraftFileUpload = {
+  enabled?: boolean
+  image?: WorkflowDraftFileUploadImage
+  allowed_file_types?: string[]
+  allowed_file_extensions?: string[]
+  allowed_file_upload_methods?: TransferMethod[]
+  number_limits?: number
+}
+
+export type WorkflowDraftFeatures = {
+  sandbox?: { enabled?: boolean }
+  file_upload?: WorkflowDraftFileUpload
+  opening_statement?: string
+  suggested_questions?: string[]
+  suggested_questions_after_answer?: boolean | { enabled?: boolean }
+  speech_to_text?: Record<string, unknown>
+  text_to_speech?: Record<string, unknown>
+  retriever_resource?: Record<string, unknown>
+  sensitive_word_avoidance?: Record<string, unknown>
+  annotation_reply?: Record<string, unknown>
+}
 
 export type AgentLogItem = {
   node_execution_id: string
@@ -57,14 +86,14 @@ export type LLMGenerationItem = {
   toolIcon?: string | IconObject
   toolIconDark?: string | IconObject
   toolArguments?: string
-  toolOutput?: Record<string, any> | string
+  toolOutput?: Record<string, JsonValue> | string
   toolFiles?: string[]
   toolError?: string
   toolDuration?: number
 
   modelName?: string
   modelProvider?: string
-  modelOutput?: Record<string, any> | string
+  modelOutput?: Record<string, JsonValue> | string
   modelDuration?: number
   modelIcon?: string | IconObject
   modelIconDark?: string | IconObject
@@ -98,7 +127,7 @@ export type LLMLogItem = {
 export type LLMTraceItem = {
   type: 'model' | 'tool'
   duration: number
-  output: Record<string, any>
+  output: Record<string, JsonValue>
   provider?: string
   name: string
   icon?: string | IconObject
@@ -117,11 +146,11 @@ export type NodeTracing = {
   loop_id?: string
   node_type: BlockEnum
   title: string
-  inputs: any
+  inputs: JsonValue
   inputs_truncated: boolean
-  process_data: any
+  process_data: JsonValue
   process_data_truncated: boolean
-  outputs?: Record<string, any>
+  outputs?: Record<string, JsonValue> | string
   outputs_truncated: boolean
   outputs_full_content?: {
     download_url: string
@@ -151,7 +180,7 @@ export type NodeTracing = {
       agent_strategy?: string
       icon?: string
     }
-    loop_variable_map?: Record<string, any>
+    loop_variable_map?: Record<string, JsonValue>
     llm_trace?: LLMTraceItem[]
   }
   metadata: {
@@ -169,7 +198,7 @@ export type NodeTracing = {
   iterDurationMap?: IterationDurationMap
   loopDurationMap?: LoopDurationMap
   finished_at: number
-  extras?: any
+  extras?: JsonValue
   expand?: boolean // for UI
   details?: NodeTracing[][] // iteration or loop detail
   retryDetail?: NodeTracing[] // retry detail
@@ -195,7 +224,7 @@ export type FetchWorkflowDraftResponse = {
     edges: Edge[]
     viewport?: Viewport
   }
-  features?: any
+  features?: WorkflowDraftFeatures
   created_at: number
   created_by: {
     id: string
@@ -277,9 +306,9 @@ export type WorkflowPausedResponse = {
   workflow_run_id: string
   event: string
   data: {
-    outputs: any // todo: remove any
+    outputs: Record<string, JsonValue> | null
     paused_nodes: string[]
-    reasons: any[] // todo: remove any
+    reasons: JsonValue[]
     workflow_run_id: string
   }
 }
@@ -292,7 +321,7 @@ export type WorkflowFinishedResponse = {
     id: string
     workflow_id: string
     status: string
-    outputs: any
+    outputs: Record<string, JsonValue> | string | null
     error: string
     elapsed_time: number
     total_tokens: number
@@ -485,7 +514,7 @@ export type WorkflowRunHistory = {
   }
   inputs: Record<string, string>
   status: WorkflowRunningStatus
-  outputs: Record<string, any>
+  outputs: Record<string, JsonValue>
   error?: string
   elapsed_time: number
   total_tokens: number
@@ -508,7 +537,7 @@ export type ChatRunHistoryResponse = {
 
 export type NodesDefaultConfigsResponse = {
   type: string
-  config: any
+  config: unknown
 }[]
 
 export type ConversationVariableResponse = {
@@ -521,7 +550,7 @@ export type ConversationVariableResponse = {
 
 export type IterationDurationMap = Record<string, number>
 export type LoopDurationMap = Record<string, number>
-export type LoopVariableMap = Record<string, any>
+export type LoopVariableMap = Record<string, JsonValue>
 
 export type WorkflowConfigResponse = {
   parallel_depth_limit: number
@@ -546,21 +575,24 @@ export type PanelExposedType = {
 export type PanelProps = {
   getInputVars: (textList: string[]) => InputVar[]
   toVarInputs: (variables: Variable[]) => InputVar[]
-  runInputData: Record<string, any>
-  runInputDataRef: RefObject<Record<string, any>>
-  setRunInputData: (data: Record<string, any>) => void
-  runResult: any
+  runInputData: Record<string, JsonValue>
+  runInputDataRef: RefObject<Record<string, JsonValue>>
+  setRunInputData: (data: Record<string, JsonValue>) => void
+  runResult: NodeTracing | null
 }
 
 export type NodeRunResult = NodeTracing
 
 // Var Inspect
-export enum VarInInspectType {
-  conversation = 'conversation',
-  environment = 'env',
-  node = 'node',
-  system = 'sys',
-}
+/* eslint-disable ts/no-redeclare -- const + type share names (erasable enum replacement) */
+export const VarInInspectType = {
+  conversation: 'conversation',
+  environment: 'env',
+  node: 'node',
+  system: 'sys',
+} as const
+export type VarInInspectType = typeof VarInInspectType[keyof typeof VarInInspectType]
+/* eslint-enable ts/no-redeclare */
 
 export type FullContent = {
   size_bytes: number
@@ -580,7 +612,7 @@ export type VarInInspect = {
   description: string
   selector: ValueSelector // can get node id from selector[0]
   value_type: VarType
-  value: any
+  value?: JsonValue
   edited: boolean
   visible: boolean
   is_truncated: boolean

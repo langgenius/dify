@@ -87,7 +87,9 @@ const PrePopulate: FC<Props> = ({
     readonly: false,
     zIndex: 1000000, // bigger than shortcut plugin popup
     filterVar: (varPayload: Var) => {
-      return [VarType.string, VarType.number, VarType.secret].includes(varPayload.type)
+      return ([VarType.string, VarType.number, VarType.secret] as const).includes(
+        varPayload.type as typeof VarType.string | typeof VarType.number | typeof VarType.secret,
+      )
     },
   }
 

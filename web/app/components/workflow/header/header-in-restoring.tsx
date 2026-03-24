@@ -47,6 +47,7 @@ const HeaderInRestoring = ({
     handleLoadBackupDraft,
   } = useWorkflowRun()
   const { requestRestore } = useLeaderRestore()
+  const canRestore = !!currentVersion?.id && !!configsMap?.flowId && currentVersion.version !== WorkflowVersion.Draft
 
   const handleCancelRestore = useCallback(() => {
     handleLoadBackupDraft()
@@ -55,7 +56,7 @@ const HeaderInRestoring = ({
   }, [workflowStore, handleLoadBackupDraft, setShowWorkflowVersionHistoryPanel])
 
   const handleRestore = useCallback(() => {
-    if (!currentVersion)
+    if (!currentVersion || !canRestore)
       return
 
     setShowWorkflowVersionHistoryPanel(false)
@@ -99,7 +100,7 @@ const HeaderInRestoring = ({
     })
     deleteAllInspectVars()
     invalidAllLastRun()
-  }, [currentVersion, featuresStore, setShowWorkflowVersionHistoryPanel, workflowStore, requestRestore, userProfile, deleteAllInspectVars, invalidAllLastRun, t, onRestoreSettled])
+  }, [canRestore, currentVersion, featuresStore, setShowWorkflowVersionHistoryPanel, workflowStore, requestRestore, userProfile, deleteAllInspectVars, invalidAllLastRun, t, onRestoreSettled])
 
   return (
     <>
@@ -109,7 +110,7 @@ const HeaderInRestoring = ({
       <div className="flex items-center justify-end gap-x-2">
         <Button
           onClick={handleRestore}
-          disabled={!currentVersion || currentVersion.version === WorkflowVersion.Draft}
+          disabled={!canRestore}
           variant="primary"
           className={cn(
             'rounded-lg border border-transparent',

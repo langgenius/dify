@@ -24,7 +24,7 @@ from core.llm_generator.context_models import (
 )
 from core.llm_generator.entities import RuleCodeGeneratePayload, RuleGeneratePayload, RuleStructuredOutputPayload
 from core.llm_generator.llm_generator import LLMGenerator
-from core.model_runtime.errors.invoke import InvokeError
+from dify_graph.model_runtime.errors.invoke import InvokeError
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant, login_required
 from models import App
@@ -204,7 +204,7 @@ class InstructionGenerateApi(Resource):
         try:
             # Generate from nothing for a workflow node
             if (args.current in (code_template, "")) and args.node_id != "":
-                app = db.session.query(App).where(App.id == args.flow_id).first()
+                app = db.session.get(App, args.flow_id)
                 if not app:
                     return {"error": f"app {args.flow_id} not found"}, 400
                 workflow = WorkflowService().get_draft_workflow(app_model=app)

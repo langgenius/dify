@@ -41,7 +41,7 @@ vi.mock('@floating-ui/react', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/portal-to-follow-elem/use-context-menu-floating', () => ({
+vi.mock('@/app/components/base/portal-to-follow-elem-plus/use-context-menu-floating', () => ({
   useContextMenuFloating: (options: FloatingOptions) => {
     mocks.floatingOptions = options
     return {

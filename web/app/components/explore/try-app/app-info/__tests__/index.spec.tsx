@@ -1,5 +1,6 @@
 import type { TryAppInfo } from '@/service/try-app'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import * as React from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import AppInfo from '../index'
 
@@ -312,7 +313,7 @@ describe('AppInfo', () => {
       expect(screen.queryByText('explore.tryApp.requirements')).not.toBeInTheDocument()
     })
 
-    it('renders requirement icons with correct background image', () => {
+    it('renders requirement icons with correct image src', () => {
       mockUseGetRequirements.mockReturnValue({
         requirements: [
           { name: 'Test Tool', iconUrl: 'https://example.com/test-icon.png' },
@@ -330,9 +331,36 @@ describe('AppInfo', () => {
         />,
       )
 
-      const iconElement = container.querySelector('[style*="background-image"]')
+      const iconElement = container.querySelector('img[src="https://example.com/test-icon.png"]')
       expect(iconElement).toBeInTheDocument()
-      expect(iconElement).toHaveStyle({ backgroundImage: 'url(https://example.com/test-icon.png)' })
+    })
+
+    it('falls back to default icon when requirement image fails to load', () => {
+      mockUseGetRequirements.mockReturnValue({
+        requirements: [
+          { name: 'Broken Tool', iconUrl: 'https://example.com/broken-icon.png' },
+        ],
+      })
+
+      const appDetail = createMockAppDetail('chat')
+      const mockOnCreate = vi.fn()
+
+      render(
+        <AppInfo
+          appId="test-app-id"
+          appDetail={appDetail}
+          onCreate={mockOnCreate}
+        />,
+      )
+
+      const requirementRow = screen.getByText('Broken Tool').parentElement as HTMLElement
+      const iconImage = requirementRow.querySelector('img') as HTMLImageElement
+      expect(iconImage).toBeInTheDocument()
+
+      fireEvent.error(iconImage)
+
+      expect(requirementRow.querySelector('img')).not.toBeInTheDocument()
+      expect(requirementRow.querySelector('.i-custom-public-other-default-tool-icon')).toBeInTheDocument()
     })
   })
 

@@ -13,9 +13,9 @@ import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
+} from '@/app/components/base/portal-to-follow-elem-plus'
 import { useSelectOrDelete } from '@/app/components/base/prompt-editor/hooks'
-import Tooltip from '@/app/components/base/tooltip'
+import Tooltip from '@/app/components/base/tooltip-plus'
 import { START_TAB_ID } from '@/app/components/workflow/skill/constants'
 import { useSkillAssetNodeMap } from '@/app/components/workflow/skill/hooks/file-tree/data/use-skill-asset-tree'
 import { getFileIconType } from '@/app/components/workflow/skill/utils/file-utils'

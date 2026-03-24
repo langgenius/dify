@@ -23,8 +23,6 @@ const BASIC_INPUT_TYPE_MAP: Record<string, string> = {
 
 const FILE_INPUT_TYPES = new Set(['file-list', 'file'])
 
-const WORKFLOW_FILE_VAR_TYPES = new Set([InputVarType.multiFiles, InputVarType.singleFile])
-
 type InputSchemaItem = {
   label?: string
   variable?: string
@@ -95,7 +93,8 @@ function mapWorkflowVariable(
   variable: Record<string, unknown>,
   fileUploadConfig?: FileUploadConfigResponse,
 ): InputSchemaItem {
-  const needsFileConfig = WORKFLOW_FILE_VAR_TYPES.has(variable.type as InputVarType)
+  const varType = variable.type
+  const needsFileConfig = varType === InputVarType.multiFiles || varType === InputVarType.singleFile
 
   return {
     ...variable,

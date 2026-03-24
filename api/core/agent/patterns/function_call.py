@@ -12,8 +12,9 @@ from collections.abc import Generator
 from typing import Any, Union
 
 from core.agent.entities import AgentLog, AgentResult
-from core.file import File
-from core.model_runtime.entities import (
+from core.tools.entities.tool_entities import ToolInvokeMeta
+from dify_graph.file import File
+from dify_graph.model_runtime.entities import (
     AssistantPromptMessage,
     LLMResult,
     LLMResultChunk,
@@ -23,7 +24,6 @@ from core.model_runtime.entities import (
     PromptMessageTool,
     ToolPromptMessage,
 )
-from core.tools.entities.tool_entities import ToolInvokeMeta
 
 from .base import AgentPattern
 
@@ -71,7 +71,7 @@ class FunctionCallStrategy(AgentPattern):
             # On last iteration, remove tools to force final answer
             current_tools: list[PromptMessageTool] = [] if iteration_step == max_iterations else prompt_tools
             model_log = self._create_log(
-                label=f"{self.model_instance.model} Thought",
+                label=f"{self.model_instance.model_name} Thought",
                 log_type=AgentLog.LogType.THOUGHT,
                 status=AgentLog.LogStatus.START,
                 data={},
@@ -194,7 +194,7 @@ class FunctionCallStrategy(AgentPattern):
         tool_calls: list[tuple[str, str, dict[str, Any]]] = []
         response_content: str = ""
         finish_reason: str | None = None
-        if isinstance(chunks, Generator):
+        if not isinstance(chunks, LLMResult):
             # Streaming response
             for chunk in chunks:
                 # Extract tool calls

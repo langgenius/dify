@@ -1,4 +1,9 @@
 'use client'
+/**
+ * @deprecated Use `@/app/components/base/ui/tooltip` instead.
+ * This component will be removed after migration is complete.
+ * See: https://github.com/langgenius/dify/issues/32767
+ */
 import type { OffsetOptions, Placement } from '@floating-ui/react'
 import type { FC } from 'react'
 import { RiQuestionLine } from '@remixicon/react'

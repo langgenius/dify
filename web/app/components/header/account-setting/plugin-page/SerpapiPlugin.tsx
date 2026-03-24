@@ -1,8 +1,7 @@
 import type { Form, ValidateValue } from '../key-validator/declarations'
 import type { PluginProvider } from '@/models/common'
-import Image from 'next/image'
 import { useTranslation } from 'react-i18next'
-import { useToastContext } from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import { useAppContext } from '@/context/app-context'
 import SerpapiLogo from '../../assets/serpapi.png'
 import KeyValidator from '../key-validator'
@@ -64,7 +63,7 @@ const SerpapiPlugin = ({
   return (
     <KeyValidator
       type="serpapi"
-      title={<Image alt="serpapi logo" src={SerpapiLogo} width={64} />}
+      title={<img alt="serpapi logo" src={SerpapiLogo.src} width={64} />}
       status={plugin.credentials?.api_key ? 'success' : 'add'}
       forms={forms}
       keyFrom={{

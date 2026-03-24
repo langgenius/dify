@@ -4,11 +4,11 @@ import type { BasicPlan } from '../../../type'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/components/base/ui/toast'
 import { useAppContext } from '@/context/app-context'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { fetchSubscriptionUrls } from '@/service/billing'
 import { consoleClient } from '@/service/client'
-import Toast from '../../../../base/toast'
 import { ALL_PLANS } from '../../../config'
 import { Plan } from '../../../type'
 import { Professional, Sandbox, Team } from '../../assets'
@@ -66,11 +66,7 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
       return
 
     if (!isCurrentWorkspaceManager) {
-      Toast.notify({
-        type: 'error',
-        message: t('buyPermissionDeniedTip', { ns: 'billing' }),
-        className: 'z-[1001]',
-      })
+      toast.error(t('buyPermissionDeniedTip', { ns: 'billing' }))
       return
     }
     setLoading(true)
@@ -83,7 +79,7 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
           throw new Error('Failed to open billing page')
         }, {
           onError: (err) => {
-            Toast.notify({ type: 'error', message: err.message || String(err) })
+            toast.error(err.message || String(err))
           },
         })
         return

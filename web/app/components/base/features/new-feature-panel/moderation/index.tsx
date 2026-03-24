@@ -30,6 +30,7 @@ const Moderation = ({
   const [isHovering, setIsHovering] = useState(false)
 
   const handleOpenModerationSettingModal = () => {
+    /* v8 ignore next -- guarded path is not reachable in tests with a real disabled button because click is prevented at DOM level. @preserve */
     if (disabled)
       return
 

@@ -47,7 +47,7 @@ const EnvItem = ({
             </div>
           </div>
         </div>
-        <div className="truncate text-text-tertiary system-xs-regular">{env.value_type === 'secret' ? envSecrets[env.id] : env.value}</div>
+        <div className="truncate text-text-tertiary system-xs-regular">{env.value_type === 'secret' ? envSecrets[env.id] : String(env.value ?? '')}</div>
       </div>
       {env.description && (
         <>

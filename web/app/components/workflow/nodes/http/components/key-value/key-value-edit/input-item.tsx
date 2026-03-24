@@ -45,9 +45,10 @@ const InputItem: FC<Props> = ({
   const { availableVars, availableNodesWithParent } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
     filterVar: (varPayload: Var) => {
-      const supportVarTypes = [VarType.string, VarType.number, VarType.secret]
-      if (isSupportFile)
+      const supportVarTypes: VarType[] = [VarType.string, VarType.number, VarType.secret]
+      if (isSupportFile) {
         supportVarTypes.push(VarType.file, VarType.arrayFile)
+      }
 
       return supportVarTypes.includes(varPayload.type)
     },
@@ -59,12 +60,12 @@ const InputItem: FC<Props> = ({
   }, [onRemove])
 
   return (
-    <div className={cn(className, 'hover:cursor-text hover:bg-state-base-hover', 'relative flex !h-[30px] items-center')}>
+    <div className={cn(className, 'hover:cursor-text hover:bg-state-base-hover', 'relative flex')}>
       {(!readOnly)
         ? (
             <Input
               instanceId={instanceId}
-              className={cn(isFocus ? 'bg-components-input-bg-active' : 'bg-width', 'h-full w-0 grow px-3 py-1')}
+              className={cn(isFocus ? 'bg-components-input-bg-active' : '', 'clamp group w-0 grow px-3 py-1')}
               value={value}
               onChange={onChange}
               readOnly={readOnly}
@@ -73,7 +74,6 @@ const InputItem: FC<Props> = ({
               onFocusChange={setIsFocus}
               placeholder={t('nodes.http.insertVarPlaceholder', { ns: 'workflow' })!}
               placeholderClassName="!leading-[21px]"
-              promptMinHeightClassName="h-full"
               insertVarTipToLeft={insertVarTipToLeft}
             />
           )
@@ -85,7 +85,7 @@ const InputItem: FC<Props> = ({
               {hasValue && (
                 <Input
                   instanceId={instanceId}
-                  className={cn(isFocus ? 'border-components-input-border-active bg-components-input-bg-active shadow-xs' : 'border-components-input-border-hover bg-components-input-bg-normal', 'h-full w-0 grow rounded-lg border px-3 py-[6px]')}
+                  className={cn(isFocus ? 'border-components-input-border-active bg-components-input-bg-active shadow-xs' : 'border-components-input-border-hover bg-components-input-bg-normal', 'clamp group h-full w-0 grow rounded-lg border px-3 py-[6px]')}
                   value={value}
                   onChange={onChange}
                   readOnly={readOnly}

@@ -7,7 +7,7 @@ import type { AppAssetTreeResponse } from '@/types/app-asset'
 import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useMoveAppAssetNode } from '@/service/use-app-asset'
 import { findNodeById, getTargetFolderIdFromSelection, toApiParentId } from '../../../utils/tree-utils'
@@ -65,10 +65,7 @@ export function usePasteOperation({
       })
 
       if (isMovingToSelf) {
-        Toast.notify({
-          type: 'error',
-          message: t('skillSidebar.menu.cannotMoveToSelf'),
-        })
+        toast.error(t('skillSidebar.menu.cannotMoveToSelf'))
         return
       }
 
@@ -88,16 +85,10 @@ export function usePasteOperation({
         storeApi.getState().clearClipboard()
         emitTreeUpdate()
 
-        Toast.notify({
-          type: 'success',
-          message: t('skillSidebar.menu.moved'),
-        })
+        toast.success(t('skillSidebar.menu.moved'))
       }
       catch {
-        Toast.notify({
-          type: 'error',
-          message: t('skillSidebar.menu.moveError'),
-        })
+        toast.error(t('skillSidebar.menu.moveError'))
       }
       finally {
         isPastingRef.current = false

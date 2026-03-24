@@ -1,7 +1,8 @@
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
-import Tooltip from '@/app/components/base/tooltip'
+
+import Tooltip from '@/app/components/base/tooltip-plus'
 import { useProviderContext } from '@/context/provider-context'
 import { cn } from '@/utils/classnames'
 import ModelIcon from '../model-icon'

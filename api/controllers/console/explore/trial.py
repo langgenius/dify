@@ -4,13 +4,14 @@ from typing import Any, Literal, cast
 from flask import request
 from flask_restx import Resource, fields, marshal, marshal_with
 from pydantic import BaseModel
+from sqlalchemy import select
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
 from controllers.common.fields import Parameters as ParametersResponse
 from controllers.common.fields import Site as SiteResponse
 from controllers.common.schema import get_or_create_model
-from controllers.console import api, console_ns
+from controllers.console import console_ns
 from controllers.console.app.error import (
     AppUnavailableError,
     AudioTooLargeError,
@@ -41,9 +42,10 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
-from core.model_runtime.errors.invoke import InvokeError
-from core.workflow.graph_engine.manager import GraphEngineManager
+from dify_graph.graph_engine.manager import GraphEngineManager
+from dify_graph.model_runtime.errors.invoke import InvokeError
 from extensions.ext_database import db
+from extensions.ext_redis import redis_client
 from fields.app_fields import (
     app_detail_fields_with_site,
     deleted_tool_fields,
@@ -225,7 +227,7 @@ class TrialAppWorkflowTaskStopApi(TrialAppResource):
         AppQueueManager.set_stop_flag_no_user_check(task_id)
 
         # New graph engine command channel mechanism
-        GraphEngineManager.send_stop_command(task_id)
+        GraphEngineManager(redis_client).send_stop_command(task_id)
 
         return {"result": "success"}
 
@@ -469,13 +471,13 @@ class TrialSitApi(Resource):
     """Resource for trial app sites."""
 
     @trial_feature_enable
-    @get_app_model_with_trial
+    @get_app_model_with_trial(None)
     def get(self, app_model):
         """Retrieve app site info.
 
         Returns the site configuration for the application including theme, icons, and text.
         """
-        site = db.session.query(Site).where(Site.app_id == app_model.id).first()
+        site = db.session.scalar(select(Site).where(Site.app_id == app_model.id).limit(1))
 
         if not site:
             raise Forbidden()
@@ -491,7 +493,7 @@ class TrialAppParameterApi(Resource):
     """Resource for app variables."""
 
     @trial_feature_enable
-    @get_app_model_with_trial
+    @get_app_model_with_trial(None)
     def get(self, app_model):
         """Retrieve app parameters."""
 
@@ -520,7 +522,7 @@ class TrialAppParameterApi(Resource):
 
 class AppApi(Resource):
     @trial_feature_enable
-    @get_app_model_with_trial
+    @get_app_model_with_trial(None)
     @marshal_with(app_detail_with_site_model)
     def get(self, app_model):
         """Get app detail"""
@@ -533,26 +535,20 @@ class AppApi(Resource):
 
 class AppWorkflowApi(Resource):
     @trial_feature_enable
-    @get_app_model_with_trial
+    @get_app_model_with_trial(None)
     @marshal_with(workflow_model)
     def get(self, app_model):
         """Get workflow detail"""
         if not app_model.workflow_id:
             raise AppUnavailableError()
 
-        workflow = (
-            db.session.query(Workflow)
-            .where(
-                Workflow.id == app_model.workflow_id,
-            )
-            .first()
-        )
+        workflow = db.session.get(Workflow, app_model.workflow_id)
         return workflow
 
 
 class DatasetListApi(Resource):
     @trial_feature_enable
-    @get_app_model_with_trial
+    @get_app_model_with_trial(None)
     def get(self, app_model):
         page = request.args.get("page", default=1, type=int)
         limit = request.args.get("limit", default=20, type=int)
@@ -570,27 +566,31 @@ class DatasetListApi(Resource):
         return response
 
 
-api.add_resource(TrialChatApi, "/trial-apps/<uuid:app_id>/chat-messages", endpoint="trial_app_chat_completion")
+console_ns.add_resource(TrialChatApi, "/trial-apps/<uuid:app_id>/chat-messages", endpoint="trial_app_chat_completion")
 
-api.add_resource(
+console_ns.add_resource(
     TrialMessageSuggestedQuestionApi,
     "/trial-apps/<uuid:app_id>/messages/<uuid:message_id>/suggested-questions",
     endpoint="trial_app_suggested_question",
 )
 
-api.add_resource(TrialChatAudioApi, "/trial-apps/<uuid:app_id>/audio-to-text", endpoint="trial_app_audio")
-api.add_resource(TrialChatTextApi, "/trial-apps/<uuid:app_id>/text-to-audio", endpoint="trial_app_text")
+console_ns.add_resource(TrialChatAudioApi, "/trial-apps/<uuid:app_id>/audio-to-text", endpoint="trial_app_audio")
+console_ns.add_resource(TrialChatTextApi, "/trial-apps/<uuid:app_id>/text-to-audio", endpoint="trial_app_text")
 
-api.add_resource(TrialCompletionApi, "/trial-apps/<uuid:app_id>/completion-messages", endpoint="trial_app_completion")
+console_ns.add_resource(
+    TrialCompletionApi, "/trial-apps/<uuid:app_id>/completion-messages", endpoint="trial_app_completion"
+)
 
-api.add_resource(TrialSitApi, "/trial-apps/<uuid:app_id>/site")
+console_ns.add_resource(TrialSitApi, "/trial-apps/<uuid:app_id>/site")
 
-api.add_resource(TrialAppParameterApi, "/trial-apps/<uuid:app_id>/parameters", endpoint="trial_app_parameters")
+console_ns.add_resource(TrialAppParameterApi, "/trial-apps/<uuid:app_id>/parameters", endpoint="trial_app_parameters")
 
-api.add_resource(AppApi, "/trial-apps/<uuid:app_id>", endpoint="trial_app")
+console_ns.add_resource(AppApi, "/trial-apps/<uuid:app_id>", endpoint="trial_app")
 
-api.add_resource(TrialAppWorkflowRunApi, "/trial-apps/<uuid:app_id>/workflows/run", endpoint="trial_app_workflow_run")
-api.add_resource(TrialAppWorkflowTaskStopApi, "/trial-apps/<uuid:app_id>/workflows/tasks/<string:task_id>/stop")
+console_ns.add_resource(
+    TrialAppWorkflowRunApi, "/trial-apps/<uuid:app_id>/workflows/run", endpoint="trial_app_workflow_run"
+)
+console_ns.add_resource(TrialAppWorkflowTaskStopApi, "/trial-apps/<uuid:app_id>/workflows/tasks/<string:task_id>/stop")
 
-api.add_resource(AppWorkflowApi, "/trial-apps/<uuid:app_id>/workflows", endpoint="trial_app_workflow")
-api.add_resource(DatasetListApi, "/trial-apps/<uuid:app_id>/datasets", endpoint="trial_app_datasets")
+console_ns.add_resource(AppWorkflowApi, "/trial-apps/<uuid:app_id>/workflows", endpoint="trial_app_workflow")
+console_ns.add_resource(DatasetListApi, "/trial-apps/<uuid:app_id>/datasets", endpoint="trial_app_datasets")

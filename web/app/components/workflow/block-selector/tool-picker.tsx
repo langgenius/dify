@@ -194,7 +194,7 @@ const ToolPicker: FC<Props> = ({
         {trigger}
       </PortalToFollowElemTrigger>
 
-      <PortalToFollowElemContent className="z-[1000]">
+      <PortalToFollowElemContent className="z-[1002]">
         <div
           className={cn('relative min-h-20 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm', panelClassName)}
           onMouseDown={(e) => {

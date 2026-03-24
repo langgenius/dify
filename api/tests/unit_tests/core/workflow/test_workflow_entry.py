@@ -3,19 +3,20 @@ from types import SimpleNamespace
 import pytest
 
 from configs import dify_config
-from core.file.enums import FileType
-from core.file.models import File, FileTransferMethod
 from core.helper.code_executor.code_executor import CodeLanguage
-from core.variables.variables import StringVariable
-from core.workflow.constants import (
+from core.workflow.workflow_entry import WorkflowEntry
+from dify_graph.constants import (
     CONVERSATION_VARIABLE_NODE_ID,
     ENVIRONMENT_VARIABLE_NODE_ID,
 )
-from core.workflow.nodes.code.code_node import CodeNode
-from core.workflow.nodes.code.limits import CodeNodeLimits
-from core.workflow.runtime import VariablePool
-from core.workflow.system_variable import SystemVariable
-from core.workflow.workflow_entry import WorkflowEntry
+from dify_graph.entities.graph_config import NodeConfigDictAdapter
+from dify_graph.file.enums import FileType
+from dify_graph.file.models import File, FileTransferMethod
+from dify_graph.nodes.code.code_node import CodeNode
+from dify_graph.nodes.code.limits import CodeNodeLimits
+from dify_graph.runtime import VariablePool
+from dify_graph.system_variable import SystemVariable
+from dify_graph.variables.variables import StringVariable
 
 
 @pytest.fixture(autouse=True)
@@ -124,7 +125,7 @@ class TestWorkflowEntry:
 
             def get_node_config_by_id(self, target_id: str):
                 assert target_id == node_id
-                return node_config
+                return NodeConfigDictAdapter.validate_python(node_config)
 
         workflow = StubWorkflow()
         variable_pool = VariablePool(system_variables=SystemVariable.default(), user_inputs={})

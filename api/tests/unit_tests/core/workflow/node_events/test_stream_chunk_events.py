@@ -1,7 +1,7 @@
 """Tests for StreamChunkEvent and its subclasses."""
 
-from core.workflow.entities import ToolCall, ToolResult, ToolResultStatus
-from core.workflow.node_events import (
+from dify_graph.entities import ToolCall, ToolResult, ToolResultStatus
+from dify_graph.node_events import (
     ChunkType,
     StreamChunkEvent,
     ThoughtChunkEvent,

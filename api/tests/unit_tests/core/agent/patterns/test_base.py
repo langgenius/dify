@@ -7,7 +7,7 @@ import pytest
 
 from core.agent.entities import AgentLog, ExecutionContext
 from core.agent.patterns.base import AgentPattern
-from core.model_runtime.entities.llm_entities import LLMUsage
+from dify_graph.model_runtime.entities.llm_entities import LLMUsage
 
 
 class ConcreteAgentPattern(AgentPattern):
@@ -22,7 +22,7 @@ class ConcreteAgentPattern(AgentPattern):
 def mock_model_instance():
     """Create a mock model instance."""
     model_instance = MagicMock()
-    model_instance.model = "test-model"
+    model_instance.model_name = "test-model"
     model_instance.provider = "test-provider"
     return model_instance
 

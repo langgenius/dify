@@ -25,6 +25,7 @@ const Item: FC<ItemProps> = ({
   return (
     <div
       key={option.value}
+      data-testid={`tab-slider-item-${option.value}`}
       className={cn(
         'relative pb-2.5',
         !isActive && 'cursor-pointer',
@@ -33,9 +34,18 @@ const Item: FC<ItemProps> = ({
       )}
       onClick={() => !isActive && onClick(option.value)}
     >
-      <div className={cn(isActive ? 'text-text-primary' : 'text-text-tertiary')}>{option.text}</div>
+      <div
+        data-testid="tab-slider-item-text"
+        className={cn(isActive ? 'text-text-primary' : 'text-text-tertiary')}
+      >
+        {option.text}
+      </div>
       {isActive && (
-        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-util-colors-blue-brand-blue-brand-600"></div>
+        <div
+          data-testid="tab-active-indicator"
+          className="absolute bottom-0 left-0 right-0 h-0.5 bg-util-colors-blue-brand-blue-brand-600"
+        >
+        </div>
       )}
     </div>
   )
@@ -61,7 +71,10 @@ const TabSlider: FC<Props> = ({
   smallItem,
 }) => {
   return (
-    <div className={cn(className, !noBorderBottom && 'border-b border-divider-subtle', 'flex space-x-6')}>
+    <div
+      data-testid="tab-slider"
+      className={cn(className, !noBorderBottom && 'border-b border-divider-subtle', 'flex space-x-6')}
+    >
       {options.map(option => (
         <Item
           isActive={option.value === value}

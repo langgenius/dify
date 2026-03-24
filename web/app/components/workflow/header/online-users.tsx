@@ -3,14 +3,15 @@ import type { OnlineUser } from '../collaboration/types'
 import { ChevronDownIcon } from '@heroicons/react/20/solid'
 import { useEffect, useState } from 'react'
 import { useReactFlow } from 'reactflow'
-import Avatar from '@/app/components/base/avatar'
+import { Avatar } from '@/app/components/base/avatar'
 import Divider from '@/app/components/base/divider'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
-import Tooltip from '@/app/components/base/tooltip'
+} from '@/app/components/base/portal-to-follow-elem-plus'
+
+import Tooltip from '@/app/components/base/tooltip-plus'
 import { useAppContext } from '@/context/app-context'
 import { getAvatar } from '@/service/common'
 import { cn } from '@/utils/classnames'
@@ -147,8 +148,8 @@ const OnlineUsers = () => {
                   >
                     <Avatar
                       name={user.username || 'User'}
-                      avatar={getAvatarUrl(user)}
-                      size={24}
+                      avatar={getAvatarUrl(user) ?? null}
+                      size="sm"
                       className="ring-1 ring-components-panel-bg"
                       backgroundColor={userColor}
                     />
@@ -217,8 +218,8 @@ const OnlineUsers = () => {
                           <div className="relative">
                             <Avatar
                               name={user.username || 'User'}
-                              avatar={getAvatarUrl(user)}
-                              size={24}
+                              avatar={getAvatarUrl(user) ?? null}
+                              size="sm"
                               backgroundColor={userColor}
                             />
                           </div>

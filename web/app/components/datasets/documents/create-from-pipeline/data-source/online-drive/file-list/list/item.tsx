@@ -42,7 +42,7 @@ const Item = ({
       }
     : {}
 
-  const handleSelect = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+  const handleSelect = useCallback((e: React.MouseEvent<HTMLDivElement> | React.KeyboardEvent<HTMLDivElement>) => {
     e.stopPropagation()
     onSelect(file)
   }, [file, onSelect])

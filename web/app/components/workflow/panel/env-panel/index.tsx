@@ -120,7 +120,7 @@ const EnvPanel = () => {
       if (env.value_type === 'secret') {
         setEnvSecrets({
           ...envSecrets,
-          [env.id]: formatSecret(env.value),
+          [env.id]: formatSecret(typeof env.value === 'string' ? env.value : JSON.stringify(env.value)),
         })
       }
       newList = [env, ...envList]
@@ -158,7 +158,7 @@ const EnvPanel = () => {
           newEnv = env
           setEnvSecrets({
             ...envSecrets,
-            [env.id]: formatSecret(env.value),
+            [env.id]: formatSecret(typeof env.value === 'string' ? env.value : JSON.stringify(env.value)),
           })
         }
         else {
@@ -171,7 +171,7 @@ const EnvPanel = () => {
         newEnv = env
         setEnvSecrets({
           ...envSecrets,
-          [env.id]: formatSecret(env.value),
+          [env.id]: formatSecret(typeof env.value === 'string' ? env.value : JSON.stringify(env.value)),
         })
       }
     }

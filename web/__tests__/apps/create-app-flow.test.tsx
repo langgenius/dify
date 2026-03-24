@@ -9,11 +9,12 @@
  */
 import type { AppListResponse } from '@/models/app'
 import type { App } from '@/types/app'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import List from '@/app/components/apps/list'
 import { AccessMode } from '@/models/access-control'
+import { renderWithNuqs } from '@/test/nuqs-testing'
 import { AppModeEnum } from '@/types/app'
 
 let mockIsCurrentWorkspaceEditor = true
@@ -35,7 +36,7 @@ const mockRouterPush = vi.fn()
 const mockRouterReplace = vi.fn()
 const mockOnPlanInfoChanged = vi.fn()
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: mockRouterPush,
     replace: mockRouterReplace,
@@ -91,6 +92,10 @@ vi.mock('@/service/use-apps', () => ({
     error: null,
     refetch: mockRefetch,
   }),
+  useDeleteAppMutation: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
 }))
 
 vi.mock('@/hooks/use-pay', () => ({
@@ -113,7 +118,7 @@ vi.mock('ahooks', async () => {
 })
 
 // Mock dynamically loaded modals with test stubs
-vi.mock('next/dynamic', () => ({
+vi.mock('@/next/dynamic', () => ({
   default: (loader: () => Promise<{ default: React.ComponentType }>) => {
     let Component: React.ComponentType<Record<string, unknown>> | null = null
     loader().then((mod) => {
@@ -214,11 +219,15 @@ const createPage = (apps: App[]): AppListResponse => ({
   total: apps.length,
 })
 
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: false } },
+})
+
 const renderList = () => {
-  return render(
-    <NuqsTestingAdapter>
+  return renderWithNuqs(
+    <QueryClientProvider client={queryClient}>
       <List controlRefreshList={0} />
-    </NuqsTestingAdapter>,
+    </QueryClientProvider>,
   )
 }
 
@@ -238,7 +247,6 @@ describe('Create App Flow', () => {
     mockShowTagManagementModal = false
   })
 
-  // -- NewAppCard rendering --
   describe('NewAppCard Rendering', () => {
     it('should render the "Create App" card with all options', () => {
       renderList()
@@ -246,7 +254,7 @@ describe('Create App Flow', () => {
       expect(screen.getByText('app.createApp')).toBeInTheDocument()
       expect(screen.getByText('app.newApp.startFromBlank')).toBeInTheDocument()
       expect(screen.getByText('app.newApp.startFromTemplate')).toBeInTheDocument()
-      expect(screen.getByText('app.importDSL')).toBeInTheDocument()
+      expect(screen.getByText('app.importApp')).toBeInTheDocument()
     })
 
     it('should not render NewAppCard when user is not an editor', () => {
@@ -355,7 +363,7 @@ describe('Create App Flow', () => {
     it('should open DSL import modal when "Import DSL" is clicked', async () => {
       renderList()
 
-      fireEvent.click(screen.getByText('app.importDSL'))
+      fireEvent.click(screen.getByText('app.importApp'))
 
       await waitFor(() => {
         expect(screen.getByTestId('create-from-dsl-modal')).toBeInTheDocument()
@@ -365,7 +373,7 @@ describe('Create App Flow', () => {
     it('should close DSL import modal on cancel', async () => {
       renderList()
 
-      fireEvent.click(screen.getByText('app.importDSL'))
+      fireEvent.click(screen.getByText('app.importApp'))
       await waitFor(() => {
         expect(screen.getByTestId('create-from-dsl-modal')).toBeInTheDocument()
       })
@@ -379,7 +387,7 @@ describe('Create App Flow', () => {
     it('should call onPlanInfoChanged and refetch on successful DSL import', async () => {
       renderList()
 
-      fireEvent.click(screen.getByText('app.importDSL'))
+      fireEvent.click(screen.getByText('app.importApp'))
       await waitFor(() => {
         expect(screen.getByTestId('create-from-dsl-modal')).toBeInTheDocument()
       })
@@ -452,7 +460,7 @@ describe('Create App Flow', () => {
       // Rapidly click different create options
       fireEvent.click(screen.getByText('app.newApp.startFromBlank'))
       fireEvent.click(screen.getByText('app.newApp.startFromTemplate'))
-      fireEvent.click(screen.getByText('app.importDSL'))
+      fireEvent.click(screen.getByText('app.importApp'))
 
       // Should not crash, and some modal should be present
       await waitFor(() => {

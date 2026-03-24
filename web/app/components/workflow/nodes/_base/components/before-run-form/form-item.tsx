@@ -102,7 +102,7 @@ const FormItem: FC<Props> = ({
   })()
 
   const isBooleanType = type === InputVarType.checkbox
-  const isArrayLikeType = [InputVarType.contexts, InputVarType.iterator].includes(type)
+  const isArrayLikeType = ([InputVarType.contexts, InputVarType.iterator] as InputVarType[]).includes(type)
   const isContext = type === InputVarType.contexts
   const isIterator = type === InputVarType.iterator
   const isIteratorItemFile = isIterator && payload.isFileItem

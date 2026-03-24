@@ -4,8 +4,8 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any
 
-from core.workflow.nodes.human_input.entities import FormInput
-from core.workflow.nodes.human_input.enums import TimeoutUnit
+from dify_graph.nodes.human_input.entities import FormInput
+from dify_graph.nodes.human_input.enums import TimeoutUnit
 
 
 # Exceptions

@@ -6,7 +6,6 @@ import {
   RiAlertFill,
   RiSearchEyeLine,
 } from '@remixicon/react'
-import Image from 'next/image'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Checkbox from '@/app/components/base/checkbox'
@@ -97,7 +96,7 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
     <OptionCard
       className="mb-2 bg-background-section"
       title={t('stepTwo.general', { ns: 'datasetCreation' })}
-      icon={<Image width={20} height={20} src={SettingCog} alt={t('stepTwo.general', { ns: 'datasetCreation' })} />}
+      icon={<img width={20} height={20} src={SettingCog.src} alt={t('stepTwo.general', { ns: 'datasetCreation' })} />}
       activeHeaderClassName="bg-dataset-option-card-blue-gradient"
       description={t('stepTwo.generalTip', { ns: 'datasetCreation' })}
       isActive={isActive}

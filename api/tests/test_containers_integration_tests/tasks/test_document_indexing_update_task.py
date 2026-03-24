@@ -5,6 +5,7 @@ from faker import Faker
 
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
+from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
 from tasks.document_indexing_update_task import document_indexing_update_task
 
 
@@ -16,15 +17,13 @@ class TestDocumentIndexingUpdateTask:
         - IndexingRunner.run([...])
         """
         with (
-            patch("tasks.document_indexing_update_task.IndexProcessorFactory") as mock_factory,
-            patch("tasks.document_indexing_update_task.IndexingRunner") as mock_runner,
+            patch("tasks.document_indexing_update_task.IndexProcessorFactory", autospec=True) as mock_factory,
+            patch("tasks.document_indexing_update_task.IndexingRunner", autospec=True) as mock_runner,
         ):
             processor_instance = MagicMock()
             mock_factory.return_value.init_index_processor.return_value = processor_instance
 
-            runner_instance = MagicMock()
-            mock_runner.return_value = runner_instance
-
+            runner_instance = mock_runner.return_value
             yield {
                 "factory": mock_factory,
                 "processor": processor_instance,
@@ -63,7 +62,7 @@ class TestDocumentIndexingUpdateTask:
             tenant_id=tenant.id,
             name=fake.company(),
             description=fake.text(max_nb_chars=64),
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             indexing_technique="high_quality",
             created_by=account.id,
         )
@@ -74,12 +73,12 @@ class TestDocumentIndexingUpdateTask:
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             position=0,
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             batch="test_batch",
             name=fake.file_name(),
-            created_from="upload_file",
+            created_from=DocumentCreatedFrom.WEB,
             created_by=account.id,
-            indexing_status="waiting",
+            indexing_status=IndexingStatus.WAITING,
             enabled=True,
             doc_form="text_model",
         )
@@ -100,7 +99,7 @@ class TestDocumentIndexingUpdateTask:
                 word_count=10,
                 tokens=5,
                 index_node_id=node_id,
-                status="completed",
+                status=SegmentStatus.COMPLETED,
                 created_by=account.id,
             )
             db_session_with_containers.add(seg)
@@ -124,7 +123,7 @@ class TestDocumentIndexingUpdateTask:
 
         # Assert document status updated before reindex
         updated = db_session_with_containers.query(Document).where(Document.id == document.id).first()
-        assert updated.indexing_status == "parsing"
+        assert updated.indexing_status == IndexingStatus.PARSING
         assert updated.processing_started_at is not None
 
         # Segments should be deleted

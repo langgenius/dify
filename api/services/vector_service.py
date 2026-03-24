@@ -1,7 +1,6 @@
 import logging
 
 from core.model_manager import ModelInstance, ModelManager
-from core.model_runtime.entities.model_entities import ModelType
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.index_processor.constant.doc_type import DocType
@@ -9,6 +8,7 @@ from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.rag.models.document import AttachmentDocument, Document
+from dify_graph.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
 from models import UploadFile
 from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentSegment, SegmentAttachmentBinding
@@ -156,7 +156,8 @@ class VectorService:
         )
         # use full doc mode to generate segment's child chunk
         processing_rule_dict = processing_rule.to_dict()
-        processing_rule_dict["rules"]["parent_mode"] = ParentMode.FULL_DOC
+        if processing_rule_dict["rules"] is not None:
+            processing_rule_dict["rules"]["parent_mode"] = ParentMode.FULL_DOC
         documents = index_processor.transform(
             [document],
             embedding_model_instance=embedding_model_instance,

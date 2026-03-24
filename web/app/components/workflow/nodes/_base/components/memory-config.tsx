@@ -136,7 +136,7 @@ const MemoryConfig: FC<Props> = ({
         tooltip={t(`${i18nPrefix}.memoryTip`, { ns: 'workflow' })!}
         operations={(
           <Switch
-            defaultValue={!!payload}
+            value={!!payload}
             onChange={handleMemoryEnabledChange}
             size="md"
             disabled={readonly}
@@ -149,7 +149,7 @@ const MemoryConfig: FC<Props> = ({
             <div className="flex justify-between">
               <div className="flex h-8 items-center space-x-2">
                 <Switch
-                  defaultValue={payload?.window?.enabled}
+                  value={payload?.window?.enabled}
                   onChange={handleWindowEnabledChange}
                   size="md"
                   disabled={readonly}

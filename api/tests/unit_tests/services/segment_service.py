@@ -4,6 +4,7 @@ import pytest
 
 from models.account import Account
 from models.dataset import ChildChunk, Dataset, Document, DocumentSegment
+from models.enums import SegmentType
 from services.dataset_service import SegmentService
 from services.entities.knowledge_entities.knowledge_entities import SegmentUpdateArgs
 from services.errors.chunk import ChildChunkDeleteIndexError, ChildChunkIndexingError
@@ -77,7 +78,7 @@ class SegmentTestDataFactory:
         chunk.word_count = word_count
         chunk.index_node_id = f"node-{chunk_id}"
         chunk.index_node_hash = "hash-123"
-        chunk.type = "automatic"
+        chunk.type = SegmentType.AUTOMATIC
         chunk.created_by = "user-123"
         chunk.updated_by = None
         chunk.updated_at = None
@@ -147,7 +148,7 @@ class TestSegmentServiceCreateSegment:
     @pytest.fixture
     def mock_db_session(self):
         """Mock database session."""
-        with patch("services.dataset_service.db.session") as mock_db:
+        with patch("services.dataset_service.db.session", autospec=True) as mock_db:
             yield mock_db
 
     @pytest.fixture
@@ -172,10 +173,12 @@ class TestSegmentServiceCreateSegment:
         mock_db_session.query.return_value.where.return_value.first.return_value = mock_segment
 
         with (
-            patch("services.dataset_service.redis_client.lock") as mock_lock,
-            patch("services.dataset_service.VectorService.create_segments_vector") as mock_vector_service,
-            patch("services.dataset_service.helper.generate_text_hash") as mock_hash,
-            patch("services.dataset_service.naive_utc_now") as mock_now,
+            patch("services.dataset_service.redis_client.lock", autospec=True) as mock_lock,
+            patch(
+                "services.dataset_service.VectorService.create_segments_vector", autospec=True
+            ) as mock_vector_service,
+            patch("services.dataset_service.helper.generate_text_hash", autospec=True) as mock_hash,
+            patch("services.dataset_service.naive_utc_now", autospec=True) as mock_now,
         ):
             mock_lock.return_value.__enter__ = Mock()
             mock_lock.return_value.__exit__ = Mock(return_value=None)
@@ -219,10 +222,12 @@ class TestSegmentServiceCreateSegment:
         mock_db_session.query.return_value.where.return_value.first.return_value = mock_segment
 
         with (
-            patch("services.dataset_service.redis_client.lock") as mock_lock,
-            patch("services.dataset_service.VectorService.create_segments_vector") as mock_vector_service,
-            patch("services.dataset_service.helper.generate_text_hash") as mock_hash,
-            patch("services.dataset_service.naive_utc_now") as mock_now,
+            patch("services.dataset_service.redis_client.lock", autospec=True) as mock_lock,
+            patch(
+                "services.dataset_service.VectorService.create_segments_vector", autospec=True
+            ) as mock_vector_service,
+            patch("services.dataset_service.helper.generate_text_hash", autospec=True) as mock_hash,
+            patch("services.dataset_service.naive_utc_now", autospec=True) as mock_now,
         ):
             mock_lock.return_value.__enter__ = Mock()
             mock_lock.return_value.__exit__ = Mock(return_value=None)
@@ -257,11 +262,13 @@ class TestSegmentServiceCreateSegment:
         mock_db_session.query.return_value.where.return_value.first.return_value = mock_segment
 
         with (
-            patch("services.dataset_service.redis_client.lock") as mock_lock,
-            patch("services.dataset_service.VectorService.create_segments_vector") as mock_vector_service,
-            patch("services.dataset_service.ModelManager") as mock_model_manager_class,
-            patch("services.dataset_service.helper.generate_text_hash") as mock_hash,
-            patch("services.dataset_service.naive_utc_now") as mock_now,
+            patch("services.dataset_service.redis_client.lock", autospec=True) as mock_lock,
+            patch(
+                "services.dataset_service.VectorService.create_segments_vector", autospec=True
+            ) as mock_vector_service,
+            patch("services.dataset_service.ModelManager", autospec=True) as mock_model_manager_class,
+            patch("services.dataset_service.helper.generate_text_hash", autospec=True) as mock_hash,
+            patch("services.dataset_service.naive_utc_now", autospec=True) as mock_now,
         ):
             mock_lock.return_value.__enter__ = Mock()
             mock_lock.return_value.__exit__ = Mock(return_value=None)
@@ -292,10 +299,12 @@ class TestSegmentServiceCreateSegment:
         mock_db_session.query.return_value.where.return_value.first.return_value = mock_segment
 
         with (
-            patch("services.dataset_service.redis_client.lock") as mock_lock,
-            patch("services.dataset_service.VectorService.create_segments_vector") as mock_vector_service,
-            patch("services.dataset_service.helper.generate_text_hash") as mock_hash,
-            patch("services.dataset_service.naive_utc_now") as mock_now,
+            patch("services.dataset_service.redis_client.lock", autospec=True) as mock_lock,
+            patch(
+                "services.dataset_service.VectorService.create_segments_vector", autospec=True
+            ) as mock_vector_service,
+            patch("services.dataset_service.helper.generate_text_hash", autospec=True) as mock_hash,
+            patch("services.dataset_service.naive_utc_now", autospec=True) as mock_now,
         ):
             mock_lock.return_value.__enter__ = Mock()
             mock_lock.return_value.__exit__ = Mock(return_value=None)
@@ -317,7 +326,7 @@ class TestSegmentServiceUpdateSegment:
     @pytest.fixture
     def mock_db_session(self):
         """Mock database session."""
-        with patch("services.dataset_service.db.session") as mock_db:
+        with patch("services.dataset_service.db.session", autospec=True) as mock_db:
             yield mock_db
 
     @pytest.fixture
@@ -338,10 +347,10 @@ class TestSegmentServiceUpdateSegment:
         mock_db_session.query.return_value.where.return_value.first.return_value = segment
 
         with (
-            patch("services.dataset_service.redis_client.get") as mock_redis_get,
-            patch("services.dataset_service.VectorService.update_segment_vector") as mock_vector_service,
-            patch("services.dataset_service.helper.generate_text_hash") as mock_hash,
-            patch("services.dataset_service.naive_utc_now") as mock_now,
+            patch("services.dataset_service.redis_client.get", autospec=True) as mock_redis_get,
+            patch("services.dataset_service.VectorService.update_segment_vector", autospec=True) as mock_vector_service,
+            patch("services.dataset_service.helper.generate_text_hash", autospec=True) as mock_hash,
+            patch("services.dataset_service.naive_utc_now", autospec=True) as mock_now,
         ):
             mock_redis_get.return_value = None  # Not indexing
             mock_hash.return_value = "new-hash"
@@ -368,10 +377,10 @@ class TestSegmentServiceUpdateSegment:
         args = SegmentUpdateArgs(enabled=False)
 
         with (
-            patch("services.dataset_service.redis_client.get") as mock_redis_get,
-            patch("services.dataset_service.redis_client.setex") as mock_redis_setex,
-            patch("services.dataset_service.disable_segment_from_index_task") as mock_task,
-            patch("services.dataset_service.naive_utc_now") as mock_now,
+            patch("services.dataset_service.redis_client.get", autospec=True) as mock_redis_get,
+            patch("services.dataset_service.redis_client.setex", autospec=True) as mock_redis_setex,
+            patch("services.dataset_service.disable_segment_from_index_task", autospec=True) as mock_task,
+            patch("services.dataset_service.naive_utc_now", autospec=True) as mock_now,
         ):
             mock_redis_get.return_value = None
             mock_now.return_value = "2024-01-01T00:00:00"
@@ -394,7 +403,7 @@ class TestSegmentServiceUpdateSegment:
         dataset = SegmentTestDataFactory.create_dataset_mock()
         args = SegmentUpdateArgs(content="Updated content")
 
-        with patch("services.dataset_service.redis_client.get") as mock_redis_get:
+        with patch("services.dataset_service.redis_client.get", autospec=True) as mock_redis_get:
             mock_redis_get.return_value = "1"  # Indexing in progress
 
             # Act & Assert
@@ -409,7 +418,7 @@ class TestSegmentServiceUpdateSegment:
         dataset = SegmentTestDataFactory.create_dataset_mock()
         args = SegmentUpdateArgs(content="Updated content")
 
-        with patch("services.dataset_service.redis_client.get") as mock_redis_get:
+        with patch("services.dataset_service.redis_client.get", autospec=True) as mock_redis_get:
             mock_redis_get.return_value = None
 
             # Act & Assert
@@ -427,10 +436,10 @@ class TestSegmentServiceUpdateSegment:
         mock_db_session.query.return_value.where.return_value.first.return_value = segment
 
         with (
-            patch("services.dataset_service.redis_client.get") as mock_redis_get,
-            patch("services.dataset_service.VectorService.update_segment_vector") as mock_vector_service,
-            patch("services.dataset_service.helper.generate_text_hash") as mock_hash,
-            patch("services.dataset_service.naive_utc_now") as mock_now,
+            patch("services.dataset_service.redis_client.get", autospec=True) as mock_redis_get,
+            patch("services.dataset_service.VectorService.update_segment_vector", autospec=True) as mock_vector_service,
+            patch("services.dataset_service.helper.generate_text_hash", autospec=True) as mock_hash,
+            patch("services.dataset_service.naive_utc_now", autospec=True) as mock_now,
         ):
             mock_redis_get.return_value = None
             mock_hash.return_value = "new-hash"
@@ -456,7 +465,7 @@ class TestSegmentServiceDeleteSegment:
     @pytest.fixture
     def mock_db_session(self):
         """Mock database session."""
-        with patch("services.dataset_service.db.session") as mock_db:
+        with patch("services.dataset_service.db.session", autospec=True) as mock_db:
             yield mock_db
 
     def test_delete_segment_success(self, mock_db_session):
@@ -471,10 +480,10 @@ class TestSegmentServiceDeleteSegment:
         mock_db_session.scalars.return_value = mock_scalars
 
         with (
-            patch("services.dataset_service.redis_client.get") as mock_redis_get,
-            patch("services.dataset_service.redis_client.setex") as mock_redis_setex,
-            patch("services.dataset_service.delete_segment_from_index_task") as mock_task,
-            patch("services.dataset_service.select") as mock_select,
+            patch("services.dataset_service.redis_client.get", autospec=True) as mock_redis_get,
+            patch("services.dataset_service.redis_client.setex", autospec=True) as mock_redis_setex,
+            patch("services.dataset_service.delete_segment_from_index_task", autospec=True) as mock_task,
+            patch("services.dataset_service.select", autospec=True) as mock_select,
         ):
             mock_redis_get.return_value = None
             mock_select.return_value.where.return_value = mock_select
@@ -495,8 +504,8 @@ class TestSegmentServiceDeleteSegment:
         dataset = SegmentTestDataFactory.create_dataset_mock()
 
         with (
-            patch("services.dataset_service.redis_client.get") as mock_redis_get,
-            patch("services.dataset_service.delete_segment_from_index_task") as mock_task,
+            patch("services.dataset_service.redis_client.get", autospec=True) as mock_redis_get,
+            patch("services.dataset_service.delete_segment_from_index_task", autospec=True) as mock_task,
         ):
             mock_redis_get.return_value = None
 
@@ -515,7 +524,7 @@ class TestSegmentServiceDeleteSegment:
         document = SegmentTestDataFactory.create_document_mock()
         dataset = SegmentTestDataFactory.create_dataset_mock()
 
-        with patch("services.dataset_service.redis_client.get") as mock_redis_get:
+        with patch("services.dataset_service.redis_client.get", autospec=True) as mock_redis_get:
             mock_redis_get.return_value = "1"  # Deletion in progress
 
             # Act & Assert
@@ -529,7 +538,7 @@ class TestSegmentServiceDeleteSegments:
     @pytest.fixture
     def mock_db_session(self):
         """Mock database session."""
-        with patch("services.dataset_service.db.session") as mock_db:
+        with patch("services.dataset_service.db.session", autospec=True) as mock_db:
             yield mock_db
 
     @pytest.fixture
@@ -562,8 +571,8 @@ class TestSegmentServiceDeleteSegments:
         mock_db_session.scalars.return_value = mock_scalars
 
         with (
-            patch("services.dataset_service.delete_segment_from_index_task") as mock_task,
-            patch("services.dataset_service.select") as mock_select_func,
+            patch("services.dataset_service.delete_segment_from_index_task", autospec=True) as mock_task,
+            patch("services.dataset_service.select", autospec=True) as mock_select_func,
         ):
             mock_select_func.return_value = mock_select
 
@@ -594,7 +603,7 @@ class TestSegmentServiceUpdateSegmentsStatus:
     @pytest.fixture
     def mock_db_session(self):
         """Mock database session."""
-        with patch("services.dataset_service.db.session") as mock_db:
+        with patch("services.dataset_service.db.session", autospec=True) as mock_db:
             yield mock_db
 
     @pytest.fixture
@@ -623,9 +632,9 @@ class TestSegmentServiceUpdateSegmentsStatus:
         mock_db_session.scalars.return_value = mock_scalars
 
         with (
-            patch("services.dataset_service.redis_client.get") as mock_redis_get,
-            patch("services.dataset_service.enable_segments_to_index_task") as mock_task,
-            patch("services.dataset_service.select") as mock_select_func,
+            patch("services.dataset_service.redis_client.get", autospec=True) as mock_redis_get,
+            patch("services.dataset_service.enable_segments_to_index_task", autospec=True) as mock_task,
+            patch("services.dataset_service.select", autospec=True) as mock_select_func,
         ):
             mock_redis_get.return_value = None
             mock_select_func.return_value = mock_select
@@ -657,10 +666,10 @@ class TestSegmentServiceUpdateSegmentsStatus:
         mock_db_session.scalars.return_value = mock_scalars
 
         with (
-            patch("services.dataset_service.redis_client.get") as mock_redis_get,
-            patch("services.dataset_service.disable_segments_from_index_task") as mock_task,
-            patch("services.dataset_service.naive_utc_now") as mock_now,
-            patch("services.dataset_service.select") as mock_select_func,
+            patch("services.dataset_service.redis_client.get", autospec=True) as mock_redis_get,
+            patch("services.dataset_service.disable_segments_from_index_task", autospec=True) as mock_task,
+            patch("services.dataset_service.naive_utc_now", autospec=True) as mock_now,
+            patch("services.dataset_service.select", autospec=True) as mock_select_func,
         ):
             mock_redis_get.return_value = None
             mock_now.return_value = "2024-01-01T00:00:00"
@@ -693,7 +702,7 @@ class TestSegmentServiceGetSegments:
     @pytest.fixture
     def mock_db_session(self):
         """Mock database session."""
-        with patch("services.dataset_service.db.session") as mock_db:
+        with patch("services.dataset_service.db.session", autospec=True) as mock_db:
             yield mock_db
 
     @pytest.fixture
@@ -771,7 +780,7 @@ class TestSegmentServiceGetSegmentById:
     @pytest.fixture
     def mock_db_session(self):
         """Mock database session."""
-        with patch("services.dataset_service.db.session") as mock_db:
+        with patch("services.dataset_service.db.session", autospec=True) as mock_db:
             yield mock_db
 
     def test_get_segment_by_id_success(self, mock_db_session):
@@ -814,7 +823,7 @@ class TestSegmentServiceGetChildChunks:
     @pytest.fixture
     def mock_db_session(self):
         """Mock database session."""
-        with patch("services.dataset_service.db.session") as mock_db:
+        with patch("services.dataset_service.db.session", autospec=True) as mock_db:
             yield mock_db
 
     @pytest.fixture
@@ -876,7 +885,7 @@ class TestSegmentServiceGetChildChunkById:
     @pytest.fixture
     def mock_db_session(self):
         """Mock database session."""
-        with patch("services.dataset_service.db.session") as mock_db:
+        with patch("services.dataset_service.db.session", autospec=True) as mock_db:
             yield mock_db
 
     def test_get_child_chunk_by_id_success(self, mock_db_session):
@@ -919,7 +928,7 @@ class TestSegmentServiceCreateChildChunk:
     @pytest.fixture
     def mock_db_session(self):
         """Mock database session."""
-        with patch("services.dataset_service.db.session") as mock_db:
+        with patch("services.dataset_service.db.session", autospec=True) as mock_db:
             yield mock_db
 
     @pytest.fixture
@@ -942,9 +951,11 @@ class TestSegmentServiceCreateChildChunk:
         mock_db_session.query.return_value = mock_query
 
         with (
-            patch("services.dataset_service.redis_client.lock") as mock_lock,
-            patch("services.dataset_service.VectorService.create_child_chunk_vector") as mock_vector_service,
-            patch("services.dataset_service.helper.generate_text_hash") as mock_hash,
+            patch("services.dataset_service.redis_client.lock", autospec=True) as mock_lock,
+            patch(
+                "services.dataset_service.VectorService.create_child_chunk_vector", autospec=True
+            ) as mock_vector_service,
+            patch("services.dataset_service.helper.generate_text_hash", autospec=True) as mock_hash,
         ):
             mock_lock.return_value.__enter__ = Mock()
             mock_lock.return_value.__exit__ = Mock(return_value=None)
@@ -972,9 +983,11 @@ class TestSegmentServiceCreateChildChunk:
         mock_db_session.query.return_value = mock_query
 
         with (
-            patch("services.dataset_service.redis_client.lock") as mock_lock,
-            patch("services.dataset_service.VectorService.create_child_chunk_vector") as mock_vector_service,
-            patch("services.dataset_service.helper.generate_text_hash") as mock_hash,
+            patch("services.dataset_service.redis_client.lock", autospec=True) as mock_lock,
+            patch(
+                "services.dataset_service.VectorService.create_child_chunk_vector", autospec=True
+            ) as mock_vector_service,
+            patch("services.dataset_service.helper.generate_text_hash", autospec=True) as mock_hash,
         ):
             mock_lock.return_value.__enter__ = Mock()
             mock_lock.return_value.__exit__ = Mock(return_value=None)
@@ -994,7 +1007,7 @@ class TestSegmentServiceUpdateChildChunk:
     @pytest.fixture
     def mock_db_session(self):
         """Mock database session."""
-        with patch("services.dataset_service.db.session") as mock_db:
+        with patch("services.dataset_service.db.session", autospec=True) as mock_db:
             yield mock_db
 
     @pytest.fixture
@@ -1014,8 +1027,10 @@ class TestSegmentServiceUpdateChildChunk:
         dataset = SegmentTestDataFactory.create_dataset_mock()
 
         with (
-            patch("services.dataset_service.VectorService.update_child_chunk_vector") as mock_vector_service,
-            patch("services.dataset_service.naive_utc_now") as mock_now,
+            patch(
+                "services.dataset_service.VectorService.update_child_chunk_vector", autospec=True
+            ) as mock_vector_service,
+            patch("services.dataset_service.naive_utc_now", autospec=True) as mock_now,
         ):
             mock_now.return_value = "2024-01-01T00:00:00"
 
@@ -1040,8 +1055,10 @@ class TestSegmentServiceUpdateChildChunk:
         dataset = SegmentTestDataFactory.create_dataset_mock()
 
         with (
-            patch("services.dataset_service.VectorService.update_child_chunk_vector") as mock_vector_service,
-            patch("services.dataset_service.naive_utc_now") as mock_now,
+            patch(
+                "services.dataset_service.VectorService.update_child_chunk_vector", autospec=True
+            ) as mock_vector_service,
+            patch("services.dataset_service.naive_utc_now", autospec=True) as mock_now,
         ):
             mock_vector_service.side_effect = Exception("Vector indexing failed")
             mock_now.return_value = "2024-01-01T00:00:00"
@@ -1059,7 +1076,7 @@ class TestSegmentServiceDeleteChildChunk:
     @pytest.fixture
     def mock_db_session(self):
         """Mock database session."""
-        with patch("services.dataset_service.db.session") as mock_db:
+        with patch("services.dataset_service.db.session", autospec=True) as mock_db:
             yield mock_db
 
     def test_delete_child_chunk_success(self, mock_db_session):
@@ -1068,7 +1085,9 @@ class TestSegmentServiceDeleteChildChunk:
         chunk = SegmentTestDataFactory.create_child_chunk_mock()
         dataset = SegmentTestDataFactory.create_dataset_mock()
 
-        with patch("services.dataset_service.VectorService.delete_child_chunk_vector") as mock_vector_service:
+        with patch(
+            "services.dataset_service.VectorService.delete_child_chunk_vector", autospec=True
+        ) as mock_vector_service:
             # Act
             SegmentService.delete_child_chunk(chunk, dataset)
 
@@ -1083,7 +1102,9 @@ class TestSegmentServiceDeleteChildChunk:
         chunk = SegmentTestDataFactory.create_child_chunk_mock()
         dataset = SegmentTestDataFactory.create_dataset_mock()
 
-        with patch("services.dataset_service.VectorService.delete_child_chunk_vector") as mock_vector_service:
+        with patch(
+            "services.dataset_service.VectorService.delete_child_chunk_vector", autospec=True
+        ) as mock_vector_service:
             mock_vector_service.side_effect = Exception("Vector deletion failed")
 
             # Act & Assert

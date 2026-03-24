@@ -10,10 +10,10 @@ from typing import Any
 
 import pytest
 
-from core.file.enums import FileTransferMethod, FileType
-from core.file.models import File
-from core.variables.segment_group import SegmentGroup
-from core.variables.segments import (
+from dify_graph.file.enums import FileTransferMethod, FileType
+from dify_graph.file.models import File
+from dify_graph.variables.segment_group import SegmentGroup
+from dify_graph.variables.segments import (
     ArrayFileSegment,
     BooleanSegment,
     FileSegment,
@@ -22,7 +22,7 @@ from core.variables.segments import (
     ObjectSegment,
     StringSegment,
 )
-from core.variables.types import ArrayValidation, SegmentType
+from dify_graph.variables.types import ArrayValidation, SegmentType
 
 
 def create_test_file(
@@ -581,11 +581,11 @@ class TestSegmentTypeIsValid:
                 test_value = None
             elif segment_type == SegmentType.GROUP:
                 test_value = SegmentGroup(value=[StringSegment(value="test")])
+            elif segment_type == SegmentType.ARRAY_PROMPT_MESSAGE:
+                continue  # Internal type, not validated via is_valid
             elif segment_type.is_array_type():
                 test_value = []  # Empty array is valid for all array types
             else:
-                # If we get here, there's a segment type we don't know how to test
-                # This should prompt us to add validation logic
                 pytest.fail(f"Unknown segment type {segment_type} needs validation logic and test case")
 
             # This should NOT raise AssertionError
@@ -788,6 +788,7 @@ class TestSegmentTypeValidationIntegration:
         unhandled_types = {
             SegmentType.INTEGER,  # Handled by NUMBER validation logic
             SegmentType.FLOAT,  # Handled by NUMBER validation logic
+            SegmentType.ARRAY_PROMPT_MESSAGE,  # Internal type, not user-facing
         }
 
         # Verify all types are accounted for
