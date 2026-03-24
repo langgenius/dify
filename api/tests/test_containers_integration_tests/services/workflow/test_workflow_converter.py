@@ -582,13 +582,18 @@ class TestConvertToHttpRequestNodeVariants:
         converter._get_api_based_extension = MagicMock(return_value=ext)
 
         from core.helper import encrypter
+
         encrypter.decrypt_token = MagicMock(return_value="api_key")
 
         ext_vars = [
-            ExternalDataVariableEntity(variable="external_variable", type="api", config={"api_based_extension_id": "ext_id"})
+            ExternalDataVariableEntity(
+                variable="external_variable", type="api", config={"api_based_extension_id": "ext_id"}
+            )
         ]
         nodes, _ = converter._convert_to_http_request_node(
-            app_model=app_model, variables=default_variables, external_data_variables=ext_vars,
+            app_model=app_model,
+            variables=default_variables,
+            external_data_variables=ext_vars,
         )
         return nodes
 
@@ -630,7 +635,9 @@ class TestConvertToKnowledgeRetrievalNodeVariants:
 
     def test_chatbot_uses_sys_query(self):
         node = WorkflowConverter()._convert_to_knowledge_retrieval_node(
-            new_app_mode=AppMode.ADVANCED_CHAT, dataset_config=self._dataset_config(), model_config=self._model_config(),
+            new_app_mode=AppMode.ADVANCED_CHAT,
+            dataset_config=self._dataset_config(),
+            model_config=self._model_config(),
         )
         assert node["data"]["query_variable_selector"] == ["sys", "query"]
 
@@ -667,9 +674,11 @@ class TestConvertToLlmNode:
             simple_prompt_template="You are helpful {{text_input}}, {{paragraph}}, {{select}}.",
         )
         node = WorkflowConverter()._convert_to_llm_node(
-            original_app_mode=AppMode.CHAT, new_app_mode=AppMode.ADVANCED_CHAT,
+            original_app_mode=AppMode.CHAT,
+            new_app_mode=AppMode.ADVANCED_CHAT,
             model_config=self._model_config("gpt-4", LLMMode.CHAT),
-            graph=self._graph(default_variables), prompt_template=prompt,
+            graph=self._graph(default_variables),
+            prompt_template=prompt,
         )
         assert node["data"]["type"] == "llm"
         assert node["data"]["model"]["mode"] == LLMMode.CHAT.value
@@ -683,9 +692,11 @@ class TestConvertToLlmNode:
             simple_prompt_template="You are helpful {{text_input}}, {{paragraph}}, {{select}}.",
         )
         node = WorkflowConverter()._convert_to_llm_node(
-            original_app_mode=AppMode.CHAT, new_app_mode=AppMode.ADVANCED_CHAT,
+            original_app_mode=AppMode.CHAT,
+            new_app_mode=AppMode.ADVANCED_CHAT,
             model_config=self._model_config("gpt-3.5-turbo-instruct", LLMMode.COMPLETION),
-            graph=self._graph(default_variables), prompt_template=prompt,
+            graph=self._graph(default_variables),
+            prompt_template=prompt,
         )
         assert node["data"]["model"]["mode"] == LLMMode.COMPLETION.value
         expected = "You are helpful {{#start.text_input#}}, {{#start.paragraph#}}, {{#start.select#}}.\n"
@@ -706,9 +717,11 @@ class TestConvertToLlmNode:
             ),
         )
         node = WorkflowConverter()._convert_to_llm_node(
-            original_app_mode=AppMode.CHAT, new_app_mode=AppMode.ADVANCED_CHAT,
+            original_app_mode=AppMode.CHAT,
+            new_app_mode=AppMode.ADVANCED_CHAT,
             model_config=self._model_config("gpt-4", LLMMode.CHAT),
-            graph=self._graph(default_variables), prompt_template=prompt,
+            graph=self._graph(default_variables),
+            prompt_template=prompt,
         )
         assert isinstance(node["data"]["prompt_template"], list)
         assert len(node["data"]["prompt_template"]) == 3
@@ -718,13 +731,17 @@ class TestConvertToLlmNode:
             prompt_type=PromptTemplateEntity.PromptType.ADVANCED,
             advanced_completion_prompt_template=AdvancedCompletionPromptTemplateEntity(
                 prompt="You are helpful named {{name}}.\n\nContext:\n{{#context#}}\n\nHuman: hi\nAssistant: ",
-                role_prefix=AdvancedCompletionPromptTemplateEntity.RolePrefixEntity(user="Human", assistant="Assistant"),
+                role_prefix=AdvancedCompletionPromptTemplateEntity.RolePrefixEntity(
+                    user="Human", assistant="Assistant"
+                ),
             ),
         )
         node = WorkflowConverter()._convert_to_llm_node(
-            original_app_mode=AppMode.CHAT, new_app_mode=AppMode.ADVANCED_CHAT,
+            original_app_mode=AppMode.CHAT,
+            new_app_mode=AppMode.ADVANCED_CHAT,
             model_config=self._model_config("gpt-3.5-turbo-instruct", LLMMode.COMPLETION),
-            graph=self._graph(default_variables), prompt_template=prompt,
+            graph=self._graph(default_variables),
+            prompt_template=prompt,
         )
         assert isinstance(node["data"]["prompt_template"], dict)
         assert "text" in node["data"]["prompt_template"]
