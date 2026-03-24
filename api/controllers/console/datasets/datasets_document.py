@@ -10,7 +10,7 @@ import sqlalchemy as sa
 from flask import request, send_file
 from flask_restx import Resource, fields, marshal, marshal_with
 from pydantic import BaseModel, Field
-from sqlalchemy import asc, desc, select
+from sqlalchemy import asc, desc, func, select
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
@@ -212,12 +212,11 @@ class GetProcessRuleApi(Resource):
                 raise Forbidden(str(e))
 
             # get the latest process rule
-            dataset_process_rule = (
-                db.session.query(DatasetProcessRule)
+            dataset_process_rule = db.session.scalar(
+                select(DatasetProcessRule)
                 .where(DatasetProcessRule.dataset_id == document.dataset_id)
                 .order_by(DatasetProcessRule.created_at.desc())
                 .limit(1)
-                .one_or_none()
             )
             if dataset_process_rule:
                 mode = dataset_process_rule.mode
@@ -331,21 +330,23 @@ class DatasetDocumentListApi(Resource):
         if fetch:
             for document in documents:
                 completed_segments = (
-                    db.session.query(DocumentSegment)
-                    .where(
-                        DocumentSegment.completed_at.isnot(None),
-                        DocumentSegment.document_id == str(document.id),
-                        DocumentSegment.status != SegmentStatus.RE_SEGMENT,
+                    db.session.scalar(
+                        select(func.count(DocumentSegment.id)).where(
+                            DocumentSegment.completed_at.isnot(None),
+                            DocumentSegment.document_id == str(document.id),
+                            DocumentSegment.status != SegmentStatus.RE_SEGMENT,
+                        )
                     )
-                    .count()
+                    or 0
                 )
                 total_segments = (
-                    db.session.query(DocumentSegment)
-                    .where(
-                        DocumentSegment.document_id == str(document.id),
-                        DocumentSegment.status != SegmentStatus.RE_SEGMENT,
+                    db.session.scalar(
+                        select(func.count(DocumentSegment.id)).where(
+                            DocumentSegment.document_id == str(document.id),
+                            DocumentSegment.status != SegmentStatus.RE_SEGMENT,
+                        )
                     )
-                    .count()
+                    or 0
                 )
                 document.completed_segments = completed_segments
                 document.total_segments = total_segments
@@ -522,10 +523,10 @@ class DocumentIndexingEstimateApi(DocumentResource):
             if data_source_info and "upload_file_id" in data_source_info:
                 file_id = data_source_info["upload_file_id"]
 
-                file = (
-                    db.session.query(UploadFile)
+                file = db.session.scalar(
+                    select(UploadFile)
                     .where(UploadFile.tenant_id == document.tenant_id, UploadFile.id == file_id)
-                    .first()
+                    .limit(1)
                 )
 
                 # raise error if file not found
@@ -587,10 +588,10 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                     if not data_source_info:
                         continue
                     file_id = data_source_info["upload_file_id"]
-                    file_detail = (
-                        db.session.query(UploadFile)
+                    file_detail = db.session.scalar(
+                        select(UploadFile)
                         .where(UploadFile.tenant_id == current_tenant_id, UploadFile.id == file_id)
-                        .first()
+                        .limit(1)
                     )
 
                     if file_detail is None:
@@ -673,20 +674,23 @@ class DocumentBatchIndexingStatusApi(DocumentResource):
         documents_status = []
         for document in documents:
             completed_segments = (
-                db.session.query(DocumentSegment)
-                .where(
-                    DocumentSegment.completed_at.isnot(None),
-                    DocumentSegment.document_id == str(document.id),
-                    DocumentSegment.status != SegmentStatus.RE_SEGMENT,
+                db.session.scalar(
+                    select(func.count(DocumentSegment.id)).where(
+                        DocumentSegment.completed_at.isnot(None),
+                        DocumentSegment.document_id == str(document.id),
+                        DocumentSegment.status != SegmentStatus.RE_SEGMENT,
+                    )
                 )
-                .count()
+                or 0
             )
             total_segments = (
-                db.session.query(DocumentSegment)
-                .where(
-                    DocumentSegment.document_id == str(document.id), DocumentSegment.status != SegmentStatus.RE_SEGMENT
+                db.session.scalar(
+                    select(func.count(DocumentSegment.id)).where(
+                        DocumentSegment.document_id == str(document.id),
+                        DocumentSegment.status != SegmentStatus.RE_SEGMENT,
+                    )
                 )
-                .count()
+                or 0
             )
             # Create a dictionary with document attributes and additional fields
             document_dict = {
@@ -724,18 +728,23 @@ class DocumentIndexingStatusApi(DocumentResource):
         document = self.get_document(dataset_id, document_id)
 
         completed_segments = (
-            db.session.query(DocumentSegment)
-            .where(
-                DocumentSegment.completed_at.isnot(None),
-                DocumentSegment.document_id == str(document_id),
-                DocumentSegment.status != SegmentStatus.RE_SEGMENT,
+            db.session.scalar(
+                select(func.count(DocumentSegment.id)).where(
+                    DocumentSegment.completed_at.isnot(None),
+                    DocumentSegment.document_id == str(document_id),
+                    DocumentSegment.status != SegmentStatus.RE_SEGMENT,
+                )
             )
-            .count()
+            or 0
         )
         total_segments = (
-            db.session.query(DocumentSegment)
-            .where(DocumentSegment.document_id == str(document_id), DocumentSegment.status != SegmentStatus.RE_SEGMENT)
-            .count()
+            db.session.scalar(
+                select(func.count(DocumentSegment.id)).where(
+                    DocumentSegment.document_id == str(document_id),
+                    DocumentSegment.status != SegmentStatus.RE_SEGMENT,
+                )
+            )
+            or 0
         )
 
         # Create a dictionary with document attributes and additional fields
@@ -1259,11 +1268,11 @@ class DocumentPipelineExecutionLogApi(DocumentResource):
         document = DocumentService.get_document(dataset.id, document_id)
         if not document:
             raise NotFound("Document not found.")
-        log = (
-            db.session.query(DocumentPipelineExecutionLog)
-            .filter_by(document_id=document_id)
+        log = db.session.scalar(
+            select(DocumentPipelineExecutionLog)
+            .where(DocumentPipelineExecutionLog.document_id == document_id)
             .order_by(DocumentPipelineExecutionLog.created_at.desc())
-            .first()
+            .limit(1)
         )
         if not log:
             return {

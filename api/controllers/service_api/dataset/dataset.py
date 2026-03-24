@@ -154,15 +154,22 @@ class DatasetListApi(DatasetApiResource):
 
         data = marshal(datasets, dataset_detail_fields)
         for item in data:
-            if item["indexing_technique"] == IndexTechniqueType.HIGH_QUALITY and item["embedding_model_provider"]:
-                item["embedding_model_provider"] = str(ModelProviderID(item["embedding_model_provider"]))
-                item_model = f"{item['embedding_model']}:{item['embedding_model_provider']}"
+            if (
+                item["indexing_technique"] == IndexTechniqueType.HIGH_QUALITY  # pyrefly: ignore[bad-index]
+                and item["embedding_model_provider"]  # pyrefly: ignore[bad-index]
+            ):
+                item["embedding_model_provider"] = str(  # pyrefly: ignore[unsupported-operation]
+                    ModelProviderID(item["embedding_model_provider"])  # pyrefly: ignore[bad-index]
+                )
+                item_model = (  # pyrefly: ignore[bad-index]
+                    f"{item['embedding_model']}:{item['embedding_model_provider']}"
+                )
                 if item_model in model_names:
-                    item["embedding_available"] = True
+                    item["embedding_available"] = True  # type: ignore
                 else:
-                    item["embedding_available"] = False
+                    item["embedding_available"] = False  # type: ignore
             else:
-                item["embedding_available"] = True
+                item["embedding_available"] = True  # type: ignore
         response = {
             "data": data,
             "has_more": len(datasets) == query.limit,
