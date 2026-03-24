@@ -241,7 +241,7 @@
     "tsx": "4.21.0",
     "typescript": "5.9.3",
     "uglify-js": "3.19.3",
-    "vinext": "https://pkg.pr.new/vinext@6859019",
+    "vinext": "https://pkg.pr.new/vinext@6a8f80e",
     "vite": "npm:@voidzero-dev/vite-plus-core@0.1.13",
     "vite-plugin-inspect": "11.3.3",
     "vite-plus": "0.1.13",
