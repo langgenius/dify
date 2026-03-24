@@ -21,6 +21,12 @@ from dify_graph.nodes.base.node import Node
 
 logger = logging.getLogger(__name__)
 
+_LLM_LIKE_NODE_TYPES = {
+    BuiltinNodeTypes.LLM,
+    BuiltinNodeTypes.PARAMETER_EXTRACTOR,
+    BuiltinNodeTypes.QUESTION_CLASSIFIER,
+}
+
 
 @final
 class LLMQuotaLayer(GraphEngineLayer):
@@ -47,7 +53,7 @@ class LLMQuotaLayer(GraphEngineLayer):
         if self._abort_sent:
             return
 
-        model_instance = self._extract_model_instance(node)
+        model_instance = self._build_model_instance(node)
         if model_instance is None:
             return
 
@@ -65,7 +71,7 @@ class LLMQuotaLayer(GraphEngineLayer):
         if error is not None or not isinstance(result_event, NodeRunSucceededEvent):
             return
 
-        model_instance = self._extract_model_instance(node)
+        model_instance = self._build_model_instance(node)
         if model_instance is None:
             return
 
@@ -105,16 +111,22 @@ class LLMQuotaLayer(GraphEngineLayer):
             logger.exception("Failed to send quota abort command")
 
     @staticmethod
-    def _extract_model_instance(node: Node) -> ModelInstance | None:
-        match node.node_type:
-            case BuiltinNodeTypes.LLM | BuiltinNodeTypes.PARAMETER_EXTRACTOR | BuiltinNodeTypes.QUESTION_CLASSIFIER:
-                instance: ModelInstance | None = getattr(node, "model_instance", None)
-                if instance is not None:
-                    return instance
-                logger.warning(
-                    "LLMQuotaLayer skipped quota deduction because node does not expose a model instance, node_id=%s",
-                    node.id,
-                )
-                return None
-            case _:
-                return None
+    def _build_model_instance(node: Node) -> ModelInstance | None:
+        if node.node_type not in _LLM_LIKE_NODE_TYPES:
+            return None
+
+        model_config = getattr(node.node_data, "model", None)
+        if model_config is None:
+            return None
+
+        try:
+            from dify_graph.nodes.llm.llm_utils import fetch_model_config
+
+            model_instance, _ = fetch_model_config(
+                tenant_id=node.tenant_id,
+                node_data_model=model_config,
+            )
+            return model_instance
+        except Exception:
+            logger.warning("Failed to build ModelInstance for quota check, node_id=%s", node.id, exc_info=True)
+            return None

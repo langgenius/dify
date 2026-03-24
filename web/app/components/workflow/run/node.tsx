@@ -140,7 +140,7 @@ const NodePanel: FC<Props> = ({
             size={inMessage ? 'xs' : 'sm'}
             className={cn('mr-2 shrink-0', inMessage && '!mr-1')}
             type={nodeInfo.node_type}
-            toolIcon={nodeInfo.extras as string | { content: string, background: string } | undefined}
+            toolIcon={((nodeInfo.extras as { icon?: string } | undefined)?.icon || nodeInfo.extras) as string | { content: string, background: string } | undefined}
           />
           <Tooltip
             popupContent={
