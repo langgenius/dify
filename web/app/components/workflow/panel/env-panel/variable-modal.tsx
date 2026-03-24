@@ -49,15 +49,15 @@ const VariableModal = ({
     if (!checkVariableName(name))
       return
     if (!value)
-      return toast.error('value can not be empty')
+      return toast.error(t('env.modal.valueRequired', { ns: 'workflow' }))
 
     // Add check for duplicate name when editing
     const envList = workflowStore.getState().environmentVariables
     if (env && env.name !== name && envList.some(e => e.name === name))
-      return toast.error('name is existed')
+      return toast.error(t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: t('env.modal.name', { ns: 'workflow' }) }))
     // Original check for create new variable
     if (!env && envList.some(e => e.name === name))
-      return toast.error('name is existed')
+      return toast.error(t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: t('env.modal.name', { ns: 'workflow' }) }))
 
     onSave({
       id: env ? env.id : uuid4(),

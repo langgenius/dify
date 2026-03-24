@@ -45,19 +45,22 @@ const EmailConfigureModal = ({
 
   const checkValidConfig = useCallback(() => {
     if (!subject.trim()) {
-      toast.error('subject is required')
+      toast.error(t(`${i18nPrefix}.deliveryMethod.emailConfigure.subjectRequired`, { ns: 'workflow' }))
       return false
     }
     if (!body.trim()) {
-      toast.error('body is required')
+      toast.error(t(`${i18nPrefix}.deliveryMethod.emailConfigure.bodyRequired`, { ns: 'workflow' }))
       return false
     }
     if (!/\{\{#url#\}\}/.test(body.trim())) {
-      toast.error(`body must contain one ${t('promptEditor.requestURL.item.title', { ns: 'common' })}`)
+      toast.error(t(`${i18nPrefix}.deliveryMethod.emailConfigure.bodyMustContainRequestURL`, {
+        ns: 'workflow',
+        field: t('promptEditor.requestURL.item.title', { ns: 'common' }),
+      }))
       return false
     }
     if (!recipients || (recipients.items.length === 0 && !recipients.whole_workspace)) {
-      toast.error('recipients is required')
+      toast.error(t(`${i18nPrefix}.deliveryMethod.emailConfigure.recipientsRequired`, { ns: 'workflow' }))
       return false
     }
     return true

@@ -178,7 +178,7 @@ describe('EnvPanel integration', () => {
     await user.type(screen.getByPlaceholderText('workflow.env.modal.valuePlaceholder'), '42')
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
-    expect(mockToastError).toHaveBeenCalledWith('name is existed')
+    expect(mockToastError).toHaveBeenCalledWith('appDebug.varKeyError.keyAlreadyExists:{"key":"workflow.env.modal.name"}')
   })
 
   it('should load existing secret values and convert them to numbers when editing', async () => {

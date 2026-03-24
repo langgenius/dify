@@ -37,7 +37,7 @@ const ObjectValueItem: FC<Props> = ({
   const handleKeyChange = useCallback((index: number) => {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
       if (!/^\w+$/.test(e.target.value)) {
-        toast.error('key is can only contain letters, numbers and underscores')
+        toast.error(t('chatVariable.modal.objectKeyPatternError', { ns: 'workflow' }))
         return
       }
 
@@ -46,7 +46,7 @@ const ObjectValueItem: FC<Props> = ({
       })
       onChange(newList)
     }
-  }, [list, onChange])
+  }, [list, onChange, t])
 
   const handleTypeChange = useCallback((index: number) => {
     return (type: ChatVarType) => {

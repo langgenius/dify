@@ -410,13 +410,13 @@ const useOneStepRun = <T>({
       })
 
       if (!response) {
-        const message = 'Schedule trigger run failed'
+        const message = t('common.scheduleTriggerRunFailed', { ns: 'workflow' })
         toast.error(message)
         throw new Error(message)
       }
 
       if (response?.status === 'error') {
-        const message = response?.message || 'Schedule trigger run failed'
+        const message = response?.message || t('common.scheduleTriggerRunFailed', { ns: 'workflow' })
         toast.error(message)
         throw new Error(message)
       }
@@ -442,10 +442,10 @@ const useOneStepRun = <T>({
           _singleRunningStatus: NodeRunningStatus.Failed,
         },
       })
-      toast.error('Schedule trigger run failed')
+      toast.error(t('common.scheduleTriggerRunFailed', { ns: 'workflow' }))
       throw error
     }
-  }, [flowId, id, handleNodeDataUpdate, data])
+  }, [flowId, id, handleNodeDataUpdate, data, t])
 
   const runWebhookSingleRun = useCallback(async (): Promise<any | null> => {
     const urlPath = `/apps/${flowId}/workflows/draft/nodes/${id}/trigger/run`
@@ -467,7 +467,7 @@ const useOneStepRun = <T>({
           return null
 
         if (!response) {
-          const message = response?.message || 'Webhook debug failed'
+          const message = response?.message || t('common.webhookDebugFailed', { ns: 'workflow' })
           toast.error(message)
           cancelWebhookSingleRun()
           throw new Error(message)
@@ -495,7 +495,7 @@ const useOneStepRun = <T>({
         }
 
         if (response?.status === 'error') {
-          const message = response.message || 'Webhook debug failed'
+          const message = response.message || t('common.webhookDebugFailed', { ns: 'workflow' })
           toast.error(message)
           cancelWebhookSingleRun()
           throw new Error(message)
@@ -519,7 +519,7 @@ const useOneStepRun = <T>({
         if (controller.signal.aborted)
           return null
 
-        toast.error('Webhook debug request failed')
+        toast.error(t('common.webhookDebugRequestFailed', { ns: 'workflow' }))
         cancelWebhookSingleRun()
         if (error instanceof Error)
           throw error
@@ -531,7 +531,7 @@ const useOneStepRun = <T>({
     }
 
     return null
-  }, [flowId, id, data, handleNodeDataUpdate, cancelWebhookSingleRun])
+  }, [flowId, id, data, handleNodeDataUpdate, cancelWebhookSingleRun, t])
 
   const runPluginSingleRun = useCallback(async (): Promise<any | null> => {
     const urlPath = `/apps/${flowId}/workflows/draft/nodes/${id}/trigger/run`

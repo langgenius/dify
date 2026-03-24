@@ -231,11 +231,9 @@ const ChatVariableModal = ({
       return
     const varList = workflowStore.getState().conversationVariables
     if (!chatVar && varList.some(chatVar => chatVar.name === name))
-      return toast.error('name is existed')
-    // if (type !== ChatVarType.Object && !value)
-    //   return toast.error('value can not be empty')
+      return toast.error(t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: t('chatVariable.modal.name', { ns: 'workflow' }) }))
     if (type === ChatVarType.Object && objectValue.some(item => !item.key && !!item.value))
-      return toast.error('object key can not be empty')
+      return toast.error(t('chatVariable.modal.objectKeyRequired', { ns: 'workflow' }))
 
     onSave({
       id: chatVar ? chatVar.id : uuid4(),
