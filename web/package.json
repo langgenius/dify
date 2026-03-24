@@ -39,7 +39,7 @@
     "i18n:check": "tsx ./scripts/check-i18n.js",
     "knip": "knip",
     "lint": "eslint --cache --concurrency=auto",
-    "lint:ci": "eslint --cache --concurrency 2",
+    "lint:ci": "eslint --cache --cache-strategy content --concurrency 2",
     "lint:fix": "pnpm lint --fix",
     "lint:quiet": "pnpm lint --quiet",
     "lint:tss": "tsslint --project tsconfig.json",
