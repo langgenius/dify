@@ -7,7 +7,6 @@ from enum import StrEnum
 from urllib.parse import urlparse
 
 import yaml  # type: ignore
-from core.model_runtime.utils.encoders import jsonable_encoder
 from packaging import version
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -15,7 +14,8 @@ from sqlalchemy.orm import Session
 
 from core.helper import ssrf_proxy
 from core.plugin.entities.plugin import PluginDependency
-from dify_graph.enums import NodeType
+from dify_graph.enums import BuiltinNodeTypes
+from dify_graph.model_runtime.utils.encoders import jsonable_encoder
 from extensions.ext_redis import redis_client
 from factories import variable_factory
 from models import Account
@@ -34,8 +34,8 @@ CURRENT_DSL_VERSION = "0.1.0"
 
 # List of node types that are not allowed in snippets
 FORBIDDEN_NODE_TYPES = [
-    NodeType.START.value,  # "start"
-    NodeType.HUMAN_INPUT.value,  # "human-input"
+    BuiltinNodeTypes.START,
+    BuiltinNodeTypes.HUMAN_INPUT,
 ]
 
 
@@ -499,17 +499,17 @@ class SnippetDslService:
             if not node_data:
                 continue
             data_type = node_data.get("type", "")
-            if data_type == NodeType.KNOWLEDGE_RETRIEVAL:
+            if data_type == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
                 dataset_ids = node_data.get("dataset_ids", [])
                 node["data"]["dataset_ids"] = [
                     self._encrypt_dataset_id(dataset_id=dataset_id, tenant_id=snippet.tenant_id)
                     for dataset_id in dataset_ids
                 ]
             # filter credential id from tool node
-            if not include_secret and data_type == NodeType.TOOL:
+            if not include_secret and data_type == BuiltinNodeTypes.TOOL:
                 node_data.pop("credential_id", None)
             # filter credential id from agent node
-            if not include_secret and data_type == NodeType.AGENT:
+            if not include_secret and data_type == BuiltinNodeTypes.AGENT:
                 for tool in node_data.get("agent_parameters", {}).get("tools", {}).get("value", []):
                     tool.pop("credential_id", None)
 
@@ -552,13 +552,13 @@ class SnippetDslService:
             if not node_data:
                 continue
             data_type = node_data.get("type", "")
-            if data_type == NodeType.TOOL:
+            if data_type == BuiltinNodeTypes.TOOL:
                 tool_config = node_data.get("tool_configurations", {})
                 provider_type = tool_config.get("provider_type")
                 provider_name = tool_config.get("provider")
                 if provider_type and provider_name:
                     dependencies.append(f"{provider_name}/{provider_name}")
-            elif data_type == NodeType.AGENT:
+            elif data_type == BuiltinNodeTypes.AGENT:
                 agent_parameters = node_data.get("agent_parameters", {})
                 tools = agent_parameters.get("tools", {}).get("value", [])
                 for tool in tools:
