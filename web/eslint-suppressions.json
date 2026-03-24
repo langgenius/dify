@@ -6879,7 +6879,7 @@
       "count": 1
     },
     "ts/no-explicit-any": {
-      "count": 11
+      "count": 5
     }
   },
   "app/components/workflow/nodes/_base/components/before-run-form/panel-wrap.tsx": {
@@ -6997,11 +6997,8 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
-      "count": 33
+      "count": 4
     }
   },
   "app/components/workflow/nodes/_base/components/form-input-type-switch.tsx": {
@@ -7238,15 +7235,9 @@
   },
   "app/components/workflow/nodes/_base/components/variable/var-reference-picker.tsx": {
     "no-restricted-imports": {
-      "count": 2
-    },
-    "react/set-state-in-effect": {
       "count": 1
     },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 4
-    },
-    "tailwindcss/no-unnecessary-whitespace": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "ts/no-explicit-any": {
@@ -7363,11 +7354,8 @@
     }
   },
   "app/components/workflow/nodes/_base/node.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
-      "count": 3
+      "count": 1
     }
   },
   "app/components/workflow/nodes/_base/types.ts": {
@@ -9279,14 +9267,8 @@
     }
   },
   "app/components/workflow/selection-contextmenu.tsx": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    },
-    "ts/no-explicit-any": {
-      "count": 4
+      "count": 1
     }
   },
   "app/components/workflow/shortcuts-name.tsx": {
@@ -9330,7 +9312,7 @@
       "count": 2
     },
     "ts/no-explicit-any": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/workflow/utils/data-source.ts": {
@@ -9467,7 +9449,7 @@
       "count": 2
     },
     "ts/no-explicit-any": {
-      "count": 8
+      "count": 5
     }
   },
   "app/components/workflow/workflow-history-store.tsx": {
