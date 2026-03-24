@@ -113,6 +113,7 @@ class TestRateLimit:
             timedelta(days=1),
             10,
         )
+
     def test_should_be_disabled_when_max_requests_is_zero_or_negative(self):
         """Test disabled state for zero or negative limits."""
         rate_limit_zero = RateLimit("client1", 0)
