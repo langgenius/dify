@@ -11,6 +11,7 @@ type State = {
   showAgentLogModal: boolean
   showMessageLogModal: boolean
   showAppConfigureFeaturesModal: boolean
+  needsRuntimeUpgrade: boolean
 }
 
 type Action = {
@@ -22,6 +23,7 @@ type Action = {
   setShowAgentLogModal: (showAgentLogModal: boolean) => void
   setShowMessageLogModal: (showMessageLogModal: boolean) => void
   setShowAppConfigureFeaturesModal: (showAppConfigureFeaturesModal: boolean) => void
+  setNeedsRuntimeUpgrade: (needsRuntimeUpgrade: boolean) => void
 }
 
 export const useStore = create<State & Action>(set => ({
@@ -51,4 +53,6 @@ export const useStore = create<State & Action>(set => ({
   }),
   showAppConfigureFeaturesModal: false,
   setShowAppConfigureFeaturesModal: showAppConfigureFeaturesModal => set(() => ({ showAppConfigureFeaturesModal })),
+  needsRuntimeUpgrade: false,
+  setNeedsRuntimeUpgrade: needsRuntimeUpgrade => set(() => ({ needsRuntimeUpgrade })),
 }))

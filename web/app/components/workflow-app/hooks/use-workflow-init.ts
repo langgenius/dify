@@ -22,6 +22,7 @@ import {
 } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 import { storage } from '@/utils/storage'
+import { setSandboxMigrationDismissed } from '../utils/sandbox-migration-storage'
 import { useWorkflowTemplate } from './use-workflow-template'
 
 const hasConnectedUserInput = (nodes: Node[] = [], edges: Edge[] = []): boolean => {
@@ -46,7 +47,7 @@ export const useWorkflowInit = () => {
   const [isLoading, setIsLoading] = useState(true)
   useEffect(() => {
     workflowStore.setState({ appId: appDetail.id, appName: appDetail.name })
-  }, [appDetail.id, workflowStore])
+  }, [appDetail.id, appDetail.name, workflowStore])
 
   const handleUpdateWorkflowFileUploadConfig = useCallback((config: FileUploadConfigResponse) => {
     const { setFileUploadConfig } = workflowStore.getState()
@@ -91,6 +92,9 @@ export const useWorkflowInit = () => {
             const enableSandboxRuntime = storage.getBoolean(runtimeStorageKey) === true
             if (enableSandboxRuntime)
               storage.remove(runtimeStorageKey)
+
+            if (!enableSandboxRuntime)
+              setSandboxMigrationDismissed(appDetail.id)
 
             syncWorkflowDraft({
               url: `/apps/${appDetail.id}/workflows/draft`,

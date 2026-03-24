@@ -37,6 +37,7 @@ import {
   initialNodes,
 } from '@/app/components/workflow/utils'
 import { useAppContext } from '@/context/app-context'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { upgradeAppRuntime } from '@/service/apps'
 import { fetchRunDetail } from '@/service/log'
 import { useAppTriggers } from '@/service/use-tools'
@@ -44,7 +45,6 @@ import { AppModeEnum } from '@/types/app'
 import { useFeatures } from '../base/features/hooks'
 import ViewPicker from '../workflow/view-picker'
 import SandboxMigrationModal from './components/sandbox-migration-modal'
-import UpgradeRuntimeBanner from './components/upgrade-runtime-banner'
 import UpgradedFromBanner from './components/upgraded-from-banner'
 import WorkflowAppMain from './components/workflow-main'
 import { useGetRunAndTraceUrl } from './hooks/use-get-run-and-trace-url'
@@ -193,9 +193,11 @@ const WorkflowAppWithAdditionalContext = () => {
     setShowMigrationModal(false)
   }, [appId])
 
-  const handleOpenMigrationModal = useCallback(() => {
-    setShowMigrationModal(true)
-  }, [])
+  const { eventEmitter } = useEventEmitterContextContext()
+  eventEmitter?.useSubscription((v: { type: string }) => {
+    if (v?.type === 'upgrade-runtime-click')
+      setShowMigrationModal(true)
+  })
 
   const showUpgradeRuntimeModal = useStore(s => s.showUpgradeRuntimeModal)
   const setShowUpgradeRuntimeModal = useStore(s => s.setShowUpgradeRuntimeModal)
@@ -255,7 +257,7 @@ const WorkflowAppWithAdditionalContext = () => {
       const { debouncedSyncWorkflowDraft } = workflowStore.getState()
       // The debounced function from lodash has a cancel method
       if (debouncedSyncWorkflowDraft && 'cancel' in debouncedSyncWorkflowDraft)
-        (debouncedSyncWorkflowDraft as any).cancel()
+        (debouncedSyncWorkflowDraft as { cancel: () => void }).cancel()
     }
   }, [workflowStore])
 
@@ -364,16 +366,18 @@ const WorkflowAppWithAdditionalContext = () => {
   const isDataReady = !(!data || isLoading || isLoadingCurrentWorkspace || !currentWorkspace.id)
   const sandboxEnabled = isSandboxFeatureEnabled
 
+  const setNeedsRuntimeUpgrade = useAppStore(s => s.setNeedsRuntimeUpgrade)
   useEffect(() => {
     if (!isDataReady || !appId)
       return
+    setNeedsRuntimeUpgrade(!sandboxEnabled)
     if (lastCheckedAppIdRef.current !== appId) {
       lastCheckedAppIdRef.current = appId
       const dismissed = getSandboxMigrationDismissed(appId)
       // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
       setShowMigrationModal(!sandboxEnabled && !dismissed)
     }
-  }, [appId, isDataReady, sandboxEnabled])
+  }, [appId, isDataReady, sandboxEnabled, setNeedsRuntimeUpgrade])
   const renderGraph = useCallback((headerLeftSlot: ReactNode) => {
     if (!isDataReady)
       return null
@@ -432,9 +436,6 @@ const WorkflowAppWithAdditionalContext = () => {
         onClose={handleCloseMigrationModal}
         onUpgrade={handleUpgradeRuntime}
       />
-      {!sandboxEnabled && !upgradedFromId && (
-        <UpgradeRuntimeBanner onUpgrade={handleOpenMigrationModal} />
-      )}
       {upgradedFromId && (
         <UpgradedFromBanner
           fromAppId={upgradedFromId}

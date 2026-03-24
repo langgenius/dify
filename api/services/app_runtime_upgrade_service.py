@@ -75,6 +75,7 @@ class AppRuntimeUpgradeService:
         nodes = graph.get("nodes", [])
 
         converted, skipped = _convert_agent_nodes(nodes)
+        _enable_computer_use_for_existing_llm_nodes(nodes)
 
         llm_node_ids = {n["id"] for n in nodes if n.get("data", {}).get("type") == "llm"}
         _rewrite_variable_references(nodes, llm_node_ids)
@@ -124,7 +125,6 @@ class AppRuntimeUpgradeService:
 def _convert_agent_nodes(nodes: list[dict[str, Any]]) -> tuple[int, int]:
     """Convert Agent nodes to LLM nodes in-place. Returns (converted_count, skipped_count)."""
     converted = 0
-    skipped = 0
 
     for node in nodes:
         data = node.get("data", {})
@@ -132,38 +132,33 @@ def _convert_agent_nodes(nodes: list[dict[str, Any]]) -> tuple[int, int]:
             continue
 
         node_id = node.get("id", "?")
-        llm_data = _agent_data_to_llm_data(data)
-        if llm_data is None:
-            logger.warning("Skipped agent node %s: cannot extract model config", node_id)
-            skipped += 1
-            continue
-
-        node["data"] = llm_data
+        node["data"] = _agent_data_to_llm_data(data)
         logger.info("Converted agent node %s to LLM", node_id)
         converted += 1
 
-    return converted, skipped
+    return converted, 0
 
 
-def _agent_data_to_llm_data(agent_data: dict[str, Any]) -> dict[str, Any] | None:
+def _agent_data_to_llm_data(agent_data: dict[str, Any]) -> dict[str, Any]:
     """Map an Agent node's data dict to an LLM node's data dict.
 
-    Returns None if the conversion cannot be performed (e.g. missing model config).
+    Always returns a valid LLM data dict. If the agent has no model selected,
+    produces an empty LLM node with agent mode (computer_use) enabled.
     """
-    params = agent_data.get("agent_parameters", {})
+    params = agent_data.get("agent_parameters") or {}
 
-    model_param = params.get("model", {})
+    model_param = params.get("model", {}) if isinstance(params, dict) else {}
     model_value = model_param.get("value") if isinstance(model_param, dict) else None
 
-    if not isinstance(model_value, dict) or not model_value.get("provider") or not model_value.get("model"):
-        return None
-
-    model_config = {
-        "provider": model_value["provider"],
-        "name": model_value["model"],
-        "mode": model_value.get("mode", "chat"),
-        "completion_params": model_value.get("completion_params", {}),
-    }
+    if isinstance(model_value, dict) and model_value.get("provider") and model_value.get("model"):
+        model_config = {
+            "provider": model_value["provider"],
+            "name": model_value["model"],
+            "mode": model_value.get("mode", "chat"),
+            "completion_params": model_value.get("completion_params", {}),
+        }
+    else:
+        model_config = {"provider": "", "name": "", "mode": "chat", "completion_params": {}}
 
     tools_param = params.get("tools", {})
     tools_value = tools_param.get("value", []) if isinstance(tools_param, dict) else []
@@ -186,6 +181,9 @@ def _agent_data_to_llm_data(agent_data: dict[str, Any]) -> dict[str, Any] | None
     max_iter_param = params.get("maximum_iterations", {})
     max_iterations = max_iter_param.get("value", 100) if isinstance(max_iter_param, dict) else 100
 
+    context_config = _extract_context(params)
+    vision_config = _extract_vision(params)
+
     llm_data: dict[str, Any] = {
         "type": "llm",
         "title": agent_data.get("title", "LLM"),
@@ -194,9 +192,9 @@ def _agent_data_to_llm_data(agent_data: dict[str, Any]) -> dict[str, Any] | None
         "prompt_template": prompt_template,
         "prompt_config": {"jinja2_variables": []},
         "memory": agent_data.get("memory"),
-        "context": {"enabled": False},
-        "vision": {"enabled": False},
-        "computer_use": bool(tools_meta),
+        "context": context_config,
+        "vision": vision_config,
+        "computer_use": True,
         "structured_output_switch_on": False,
         "reasoning_format": "separated",
         "tools": tools_meta,
@@ -209,6 +207,58 @@ def _agent_data_to_llm_data(agent_data: dict[str, Any]) -> dict[str, Any] | None
             llm_data[key] = agent_data[key]
 
     return llm_data
+
+
+def _extract_context(params: dict[str, Any]) -> dict[str, Any]:
+    """Extract context config from agent_parameters for LLM node format.
+
+    Agent stores context as a variable selector in agent_parameters.context.value,
+    e.g. ["knowledge_retrieval_node_id", "result"]. Maps to LLM ContextConfig.
+    """
+    if not isinstance(params, dict):
+        return {"enabled": False}
+
+    ctx_param = params.get("context", {})
+    ctx_value = ctx_param.get("value") if isinstance(ctx_param, dict) else None
+
+    if isinstance(ctx_value, list) and len(ctx_value) >= 2 and all(isinstance(s, str) for s in ctx_value):
+        return {"enabled": True, "variable_selector": ctx_value}
+
+    return {"enabled": False}
+
+
+def _extract_vision(params: dict[str, Any]) -> dict[str, Any]:
+    """Extract vision config from agent_parameters for LLM node format."""
+    if not isinstance(params, dict):
+        return {"enabled": False}
+
+    vision_param = params.get("vision", {})
+    vision_value = vision_param.get("value") if isinstance(vision_param, dict) else None
+
+    if isinstance(vision_value, dict) and vision_value.get("enabled"):
+        return vision_value
+
+    if isinstance(vision_value, bool) and vision_value:
+        return {"enabled": True}
+
+    return {"enabled": False}
+
+
+def _enable_computer_use_for_existing_llm_nodes(nodes: list[dict[str, Any]]) -> None:
+    """Enable computer_use for existing LLM nodes that have tools configured.
+
+    After upgrade, the sandbox runtime requires computer_use=true for tool calling.
+    Existing LLM nodes from classic mode may have tools but computer_use=false.
+    """
+    for node in nodes:
+        data = node.get("data", {})
+        if data.get("type") != "llm":
+            continue
+
+        tools = data.get("tools", [])
+        if tools and not data.get("computer_use"):
+            data["computer_use"] = True
+            logger.info("Enabled computer_use for LLM node %s with %d tools", node.get("id", "?"), len(tools))
 
 
 def _convert_tools(
