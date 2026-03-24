@@ -9,7 +9,7 @@ import httpx
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
 from dify_graph.entities.base_node_data import BaseNodeData
-from dify_graph.enums import NodeType
+from dify_graph.enums import BuiltinNodeTypes, NodeType
 
 HTTP_REQUEST_CONFIG_FILTER_KEY = "http_request_config"
 
@@ -90,7 +90,7 @@ class HttpRequestNodeData(BaseNodeData):
     Code Node Data.
     """
 
-    type: NodeType = NodeType.HTTP_REQUEST
+    type: NodeType = BuiltinNodeTypes.HTTP_REQUEST
     method: Literal[
         "get",
         "post",

@@ -22,7 +22,7 @@ from core.ops.entities.trace_entity import (
 )
 from core.ops.weave_trace.entities.weave_trace_entity import WeaveTraceModel
 from core.ops.weave_trace.weave_trace import WeaveDataTrace
-from dify_graph.enums import NodeType, WorkflowNodeExecutionMetadataKey
+from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -173,7 +173,7 @@ def _make_node(**overrides):
     defaults = {
         "id": "node-1",
         "title": "Node Title",
-        "node_type": NodeType.CODE,
+        "node_type": BuiltinNodeTypes.CODE,
         "status": "succeeded",
         "inputs": {"key": "value"},
         "outputs": {"result": "ok"},
@@ -633,7 +633,7 @@ class TestWorkflowTrace:
         """Workflow trace iterates node executions and creates node runs."""
         node = _make_node(
             id="node-1",
-            node_type=NodeType.CODE,
+            node_type=BuiltinNodeTypes.CODE,
             inputs={"k": "v"},
             outputs={"r": "ok"},
             elapsed_time=0.5,
@@ -655,7 +655,7 @@ class TestWorkflowTrace:
     def test_workflow_trace_with_llm_node(self, trace_instance, monkeypatch):
         """LLM node uses process_data prompts as inputs."""
         node = _make_node(
-            node_type=NodeType.LLM,
+            node_type=BuiltinNodeTypes.LLM,
             process_data={
                 "prompts": [{"role": "user", "content": "hi"}],
                 "model_mode": "chat",
@@ -683,7 +683,7 @@ class TestWorkflowTrace:
     def test_workflow_trace_with_non_llm_node_uses_inputs(self, trace_instance, monkeypatch):
         """Non-LLM node uses node_execution.inputs directly."""
         node = _make_node(
-            node_type=NodeType.TOOL,
+            node_type=BuiltinNodeTypes.TOOL,
             inputs={"tool_input": "val"},
             process_data=None,
         )
@@ -743,7 +743,7 @@ class TestWorkflowTrace:
     def test_workflow_trace_chat_mode_llm_node_adds_provider(self, trace_instance, monkeypatch):
         """Chat mode LLM node adds ls_provider and ls_model_name to attributes."""
         node = _make_node(
-            node_type=NodeType.LLM,
+            node_type=BuiltinNodeTypes.LLM,
             process_data={"model_mode": "chat", "model_provider": "openai", "model_name": "gpt-4", "prompts": []},
         )
         self._setup_repo(monkeypatch, nodes=[node])

@@ -3,6 +3,7 @@ import type { Plugin } from '../types'
 import { useTranslation } from '#i18n'
 import { RiAlertFill } from '@remixicon/react'
 import * as React from 'react'
+import { useSelector } from '@/context/app-context'
 import { useGetLanguage } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
 import {
@@ -14,6 +15,7 @@ import Partner from '../base/badges/partner'
 import Verified from '../base/badges/verified'
 import Icon from '../card/base/card-icon'
 import { useCategories } from '../hooks'
+import { getPluginCardIconUrl } from '../utils'
 import CornerMark from './base/corner-mark'
 import Description from './base/description'
 import OrgInfo from './base/org-info'
@@ -50,9 +52,14 @@ const Card = ({
   const locale = useGetLanguage()
   const { t } = useTranslation()
   const { categoriesMap } = useCategories(true)
-  const { category, type, name, org, label, brief, icon, icon_dark, verified, badges = [] } = payload
+  const currentWorkspaceId = useSelector(s => s.currentWorkspace.id)
+  const { category, type, name, org, label, brief, icon, icon_dark, verified, badges = [], from } = payload
   const { theme } = useTheme()
-  const iconSrc = theme === Theme.dark && icon_dark ? icon_dark : icon
+  const iconSrc = getPluginCardIconUrl(
+    { from, name, org, type },
+    theme === Theme.dark && icon_dark ? icon_dark : icon,
+    currentWorkspaceId,
+  )
   const getLocalizedText = (obj: Record<string, string> | undefined) =>
     obj ? renderI18nObject(obj, locale) : ''
   const isPartner = badges.includes('partner')
@@ -101,7 +108,7 @@ const Card = ({
         && (
           <div className="relative flex h-8 items-center gap-x-2 px-3 after:absolute after:bottom-0 after:left-0 after:right-0 after:top-0 after:bg-toast-warning-bg after:opacity-40">
             <RiAlertFill className="h-3 w-3 shrink-0 text-text-warning-secondary" />
-            <p className="system-xs-regular z-10 grow text-text-secondary">
+            <p className="z-10 grow text-text-secondary system-xs-regular">
               {t('installModal.installWarning', { ns: 'plugin' })}
             </p>
           </div>

@@ -50,8 +50,6 @@ jobs:
 
       - name: Setup web environment
         uses: ./.github/actions/setup-web
-        with:
-          install-dependencies: "false"
 
       - name: Detect changed files and generate diff
         id: detect_changes
@@ -122,7 +120,7 @@ jobs:
 
       - name: Run Claude Code for Translation Sync
         if: steps.detect_changes.outputs.CHANGED_FILES != ''
-        uses: anthropics/claude-code-action@26ec041249acb0a944c0a47b6c0c13f05dbc5b44 # v1.0.70
+        uses: anthropics/claude-code-action@ff9acae5886d41a99ed4ec14b7dc147d55834722 # v1.0.77
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}

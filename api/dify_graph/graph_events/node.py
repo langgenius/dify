@@ -4,7 +4,6 @@ from datetime import datetime
 from pydantic import Field
 
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
-from dify_graph.entities import AgentNodeStrategyInit
 from dify_graph.entities.pause_reason import PauseReason
 
 from .base import GraphNodeEventBase
@@ -13,8 +12,8 @@ from .base import GraphNodeEventBase
 class NodeRunStartedEvent(GraphNodeEventBase):
     node_title: str
     predecessor_node_id: str | None = None
-    agent_strategy: AgentNodeStrategyInit | None = None
     start_at: datetime = Field(..., description="node start time")
+    extras: dict[str, object] = Field(default_factory=dict)
 
     # FIXME(-LAN-): only for ToolNode
     provider_type: str = ""
@@ -37,16 +36,19 @@ class NodeRunRetrieverResourceEvent(GraphNodeEventBase):
 
 class NodeRunSucceededEvent(GraphNodeEventBase):
     start_at: datetime = Field(..., description="node start time")
+    finished_at: datetime | None = Field(default=None, description="node finish time")
 
 
 class NodeRunFailedEvent(GraphNodeEventBase):
     error: str = Field(..., description="error")
     start_at: datetime = Field(..., description="node start time")
+    finished_at: datetime | None = Field(default=None, description="node finish time")
 
 
 class NodeRunExceptionEvent(GraphNodeEventBase):
     error: str = Field(..., description="error")
     start_at: datetime = Field(..., description="node start time")
+    finished_at: datetime | None = Field(default=None, description="node finish time")
 
 
 class NodeRunRetryEvent(NodeRunStartedEvent):

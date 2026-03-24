@@ -5,9 +5,10 @@ import pytest
 
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
 from core.workflow import node_factory
+from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
 from dify_graph.entities.base_node_data import BaseNodeData
 from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY
-from dify_graph.enums import NodeType, SystemVariableKey
+from dify_graph.enums import BuiltinNodeTypes, NodeType, SystemVariableKey
 from dify_graph.nodes.code.entities import CodeLanguage
 from dify_graph.variables.segments import StringSegment
 
@@ -139,17 +140,40 @@ class TestDefaultWorkflowCodeExecutor:
         assert executor.is_execution_error(RuntimeError("boom")) is False
 
 
+class TestDefaultLLMTemplateRenderer:
+    def test_render_jinja2_delegates_to_code_executor(self, monkeypatch):
+        renderer = node_factory.DefaultLLMTemplateRenderer()
+        execute_workflow_code_template = MagicMock(return_value={"result": "hello world"})
+        monkeypatch.setattr(
+            node_factory.CodeExecutor,
+            "execute_workflow_code_template",
+            execute_workflow_code_template,
+        )
+
+        result = renderer.render_jinja2(
+            template="Hello {{ name }}",
+            inputs={"name": "world"},
+        )
+
+        assert result == "hello world"
+        execute_workflow_code_template.assert_called_once_with(
+            language=CodeLanguage.JINJA2,
+            code="Hello {{ name }}",
+            inputs={"name": "world"},
+        )
+
+
 class TestDifyNodeFactoryInit:
     def test_init_builds_default_dependencies(self):
         graph_init_params = SimpleNamespace(run_context={"context": "value"})
         graph_runtime_state = sentinel.graph_runtime_state
         dify_context = SimpleNamespace(tenant_id="tenant-id")
         template_renderer = sentinel.template_renderer
-        rag_retrieval = sentinel.rag_retrieval
         unstructured_api_config = sentinel.unstructured_api_config
         http_request_config = sentinel.http_request_config
         credentials_provider = sentinel.credentials_provider
         model_factory = sentinel.model_factory
+        llm_template_renderer = sentinel.llm_template_renderer
 
         with (
             patch.object(
@@ -162,7 +186,6 @@ class TestDifyNodeFactoryInit:
                 "CodeExecutorJinja2TemplateRenderer",
                 return_value=template_renderer,
             ) as renderer_factory,
-            patch.object(node_factory, "DatasetRetrieval", return_value=rag_retrieval),
             patch.object(
                 node_factory,
                 "UnstructuredApiConfig",
@@ -173,6 +196,11 @@ class TestDifyNodeFactoryInit:
                 "build_http_request_config",
                 return_value=http_request_config,
             ),
+            patch.object(
+                node_factory,
+                "DefaultLLMTemplateRenderer",
+                return_value=llm_template_renderer,
+            ) as llm_renderer_factory,
             patch.object(
                 node_factory,
                 "build_dify_model_access",
@@ -187,12 +215,14 @@ class TestDifyNodeFactoryInit:
         resolve_dify_context.assert_called_once_with(graph_init_params.run_context)
         build_dify_model_access.assert_called_once_with("tenant-id")
         renderer_factory.assert_called_once()
+        llm_renderer_factory.assert_called_once()
         assert renderer_factory.call_args.kwargs["code_executor"] is factory._code_executor
         assert factory.graph_init_params is graph_init_params
         assert factory.graph_runtime_state is graph_runtime_state
         assert factory._dify_context is dify_context
         assert factory._template_renderer is template_renderer
-        assert factory._rag_retrieval is rag_retrieval
+
+        assert factory._llm_template_renderer is llm_template_renderer
         assert factory._document_extractor_unstructured_api_config is unstructured_api_config
         assert factory._http_request_config is http_request_config
         assert factory._llm_credentials_provider is credentials_provider
@@ -244,11 +274,11 @@ class TestDifyNodeFactoryCreateNode:
         factory._code_executor = sentinel.code_executor
         factory._code_limits = sentinel.code_limits
         factory._template_renderer = sentinel.template_renderer
+        factory._llm_template_renderer = sentinel.llm_template_renderer
         factory._template_transform_max_output_length = 2048
         factory._http_request_http_client = sentinel.http_client
         factory._http_request_tool_file_manager_factory = sentinel.tool_file_manager_factory
         factory._http_request_file_manager = sentinel.file_manager
-        factory._rag_retrieval = sentinel.rag_retrieval
         factory._document_extractor_unstructured_api_config = sentinel.unstructured_api_config
         factory._http_request_config = sentinel.http_request_config
         factory._llm_credentials_provider = sentinel.credentials_provider
@@ -256,47 +286,46 @@ class TestDifyNodeFactoryCreateNode:
         return factory
 
     def test_rejects_unknown_node_type(self, factory):
-        with pytest.raises(ValueError, match="Input should be"):
+        with pytest.raises(ValueError, match="No class mapping found for node type: missing"):
             factory.create_node({"id": "node-id", "data": {"type": "missing"}})
 
     def test_rejects_missing_class_mapping(self, monkeypatch, factory):
-        monkeypatch.setattr(node_factory, "NODE_TYPE_CLASSES_MAPPING", {})
+        monkeypatch.setattr(
+            factory,
+            "_resolve_node_class",
+            MagicMock(side_effect=ValueError("No class mapping found for node type: start")),
+        )
 
         with pytest.raises(ValueError, match="No class mapping found for node type: start"):
-            factory.create_node({"id": "node-id", "data": {"type": NodeType.START.value}})
+            factory.create_node({"id": "node-id", "data": {"type": BuiltinNodeTypes.START}})
 
     def test_rejects_missing_latest_class(self, monkeypatch, factory):
         monkeypatch.setattr(
-            node_factory,
-            "NODE_TYPE_CLASSES_MAPPING",
-            {NodeType.START: {node_factory.LATEST_VERSION: None}},
+            factory,
+            "_resolve_node_class",
+            MagicMock(side_effect=ValueError("No latest version class found for node type: start")),
         )
 
         with pytest.raises(ValueError, match="No latest version class found for node type: start"):
-            factory.create_node({"id": "node-id", "data": {"type": NodeType.START.value}})
+            factory.create_node({"id": "node-id", "data": {"type": BuiltinNodeTypes.START}})
 
     def test_uses_version_specific_class_when_available(self, monkeypatch, factory):
         matched_node = sentinel.matched_node
         latest_node_class = MagicMock(return_value=sentinel.latest_node)
         matched_node_class = MagicMock(return_value=matched_node)
         monkeypatch.setattr(
-            node_factory,
-            "NODE_TYPE_CLASSES_MAPPING",
-            {
-                NodeType.START: {
-                    node_factory.LATEST_VERSION: latest_node_class,
-                    "9": matched_node_class,
-                }
-            },
+            factory,
+            "_resolve_node_class",
+            MagicMock(return_value=matched_node_class),
         )
 
-        result = factory.create_node({"id": "node-id", "data": {"type": NodeType.START.value, "version": "9"}})
+        result = factory.create_node({"id": "node-id", "data": {"type": BuiltinNodeTypes.START, "version": "9"}})
 
         assert result is matched_node
         matched_node_class.assert_called_once()
         kwargs = matched_node_class.call_args.kwargs
         assert kwargs["id"] == "node-id"
-        _assert_typed_node_config(kwargs["config"], node_id="node-id", node_type=NodeType.START, version="9")
+        _assert_typed_node_config(kwargs["config"], node_id="node-id", node_type=BuiltinNodeTypes.START, version="9")
         assert kwargs["graph_init_params"] is sentinel.graph_init_params
         assert kwargs["graph_runtime_state"] is sentinel.graph_runtime_state
         latest_node_class.assert_not_called()
@@ -305,41 +334,41 @@ class TestDifyNodeFactoryCreateNode:
         latest_node = sentinel.latest_node
         latest_node_class = MagicMock(return_value=latest_node)
         monkeypatch.setattr(
-            node_factory,
-            "NODE_TYPE_CLASSES_MAPPING",
-            {NodeType.START: {node_factory.LATEST_VERSION: latest_node_class}},
+            factory,
+            "_resolve_node_class",
+            MagicMock(return_value=latest_node_class),
         )
 
-        result = factory.create_node({"id": "node-id", "data": {"type": NodeType.START.value, "version": "9"}})
+        result = factory.create_node({"id": "node-id", "data": {"type": BuiltinNodeTypes.START, "version": "9"}})
 
         assert result is latest_node
         latest_node_class.assert_called_once()
         kwargs = latest_node_class.call_args.kwargs
         assert kwargs["id"] == "node-id"
-        _assert_typed_node_config(kwargs["config"], node_id="node-id", node_type=NodeType.START, version="9")
+        _assert_typed_node_config(kwargs["config"], node_id="node-id", node_type=BuiltinNodeTypes.START, version="9")
         assert kwargs["graph_init_params"] is sentinel.graph_init_params
         assert kwargs["graph_runtime_state"] is sentinel.graph_runtime_state
 
     @pytest.mark.parametrize(
         ("node_type", "constructor_name"),
         [
-            (NodeType.CODE, "CodeNode"),
-            (NodeType.TEMPLATE_TRANSFORM, "TemplateTransformNode"),
-            (NodeType.HTTP_REQUEST, "HttpRequestNode"),
-            (NodeType.HUMAN_INPUT, "HumanInputNode"),
-            (NodeType.KNOWLEDGE_INDEX, "KnowledgeIndexNode"),
-            (NodeType.DATASOURCE, "DatasourceNode"),
-            (NodeType.KNOWLEDGE_RETRIEVAL, "KnowledgeRetrievalNode"),
-            (NodeType.DOCUMENT_EXTRACTOR, "DocumentExtractorNode"),
+            (BuiltinNodeTypes.CODE, "CodeNode"),
+            (BuiltinNodeTypes.TEMPLATE_TRANSFORM, "TemplateTransformNode"),
+            (BuiltinNodeTypes.HTTP_REQUEST, "HttpRequestNode"),
+            (BuiltinNodeTypes.HUMAN_INPUT, "HumanInputNode"),
+            (KNOWLEDGE_INDEX_NODE_TYPE, "KnowledgeIndexNode"),
+            (BuiltinNodeTypes.DATASOURCE, "DatasourceNode"),
+            (BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL, "KnowledgeRetrievalNode"),
+            (BuiltinNodeTypes.DOCUMENT_EXTRACTOR, "DocumentExtractorNode"),
         ],
     )
     def test_creates_specialized_nodes(self, monkeypatch, factory, node_type, constructor_name):
         created_node = object()
         constructor = MagicMock(name=constructor_name, return_value=created_node)
         monkeypatch.setattr(
-            node_factory,
-            "NODE_TYPE_CLASSES_MAPPING",
-            {node_type: {node_factory.LATEST_VERSION: constructor}},
+            factory,
+            "_resolve_node_class",
+            MagicMock(return_value=constructor),
         )
 
         if constructor_name == "HumanInputNode":
@@ -350,13 +379,8 @@ class TestDifyNodeFactoryCreateNode:
                 "HumanInputFormRepositoryImpl",
                 form_repository_impl,
             )
-        elif constructor_name == "KnowledgeIndexNode":
-            index_processor = sentinel.index_processor
-            summary_index = sentinel.summary_index
-            monkeypatch.setattr(node_factory, "IndexProcessor", MagicMock(return_value=index_processor))
-            monkeypatch.setattr(node_factory, "SummaryIndex", MagicMock(return_value=summary_index))
 
-        node_config = {"id": "node-id", "data": {"type": node_type.value}}
+        node_config = {"id": "node-id", "data": {"type": node_type}}
         result = factory.create_node(node_config)
 
         assert result is created_node
@@ -380,13 +404,6 @@ class TestDifyNodeFactoryCreateNode:
         elif constructor_name == "HumanInputNode":
             assert kwargs["form_repository"] is form_repository
             form_repository_impl.assert_called_once_with(tenant_id="tenant-id")
-        elif constructor_name == "KnowledgeIndexNode":
-            assert kwargs["index_processor"] is index_processor
-            assert kwargs["summary_index_service"] is summary_index
-        elif constructor_name == "DatasourceNode":
-            assert kwargs["datasource_manager"] is node_factory.DatasourceManager
-        elif constructor_name == "KnowledgeRetrievalNode":
-            assert kwargs["rag_retrieval"] is sentinel.rag_retrieval
         elif constructor_name == "DocumentExtractorNode":
             assert kwargs["unstructured_api_config"] is sentinel.unstructured_api_config
             assert kwargs["http_client"] is sentinel.http_client
@@ -394,9 +411,23 @@ class TestDifyNodeFactoryCreateNode:
     @pytest.mark.parametrize(
         ("node_type", "constructor_name", "expected_extra_kwargs"),
         [
-            (NodeType.LLM, "LLMNode", {"http_client": sentinel.http_client}),
-            (NodeType.QUESTION_CLASSIFIER, "QuestionClassifierNode", {"http_client": sentinel.http_client}),
-            (NodeType.PARAMETER_EXTRACTOR, "ParameterExtractorNode", {}),
+            (
+                BuiltinNodeTypes.LLM,
+                "LLMNode",
+                {
+                    "http_client": sentinel.http_client,
+                    "template_renderer": sentinel.llm_template_renderer,
+                },
+            ),
+            (
+                BuiltinNodeTypes.QUESTION_CLASSIFIER,
+                "QuestionClassifierNode",
+                {
+                    "http_client": sentinel.http_client,
+                    "template_renderer": sentinel.llm_template_renderer,
+                },
+            ),
+            (BuiltinNodeTypes.PARAMETER_EXTRACTOR, "ParameterExtractorNode", {}),
         ],
     )
     def test_creates_model_backed_nodes(
@@ -410,9 +441,9 @@ class TestDifyNodeFactoryCreateNode:
         created_node = object()
         constructor = MagicMock(name=constructor_name, return_value=created_node)
         monkeypatch.setattr(
-            node_factory,
-            "NODE_TYPE_CLASSES_MAPPING",
-            {node_type: {node_factory.LATEST_VERSION: constructor}},
+            factory,
+            "_resolve_node_class",
+            MagicMock(return_value=constructor),
         )
         llm_init_kwargs = {
             "credentials_provider": sentinel.credentials_provider,
@@ -424,7 +455,7 @@ class TestDifyNodeFactoryCreateNode:
         build_llm_init_kwargs = MagicMock(return_value=llm_init_kwargs)
         factory._build_llm_compatible_node_init_kwargs = build_llm_init_kwargs
 
-        node_config = {"id": "node-id", "data": {"type": node_type.value}}
+        node_config = {"id": "node-id", "data": {"type": node_type}}
         result = factory.create_node(node_config)
 
         assert result is created_node
@@ -433,7 +464,7 @@ class TestDifyNodeFactoryCreateNode:
         assert helper_kwargs["node_class"] is constructor
         assert isinstance(helper_kwargs["node_data"], BaseNodeData)
         assert helper_kwargs["node_data"].type == node_type
-        assert helper_kwargs["include_http_client"] is (node_type != NodeType.PARAMETER_EXTRACTOR)
+        assert helper_kwargs["include_http_client"] is (node_type != BuiltinNodeTypes.PARAMETER_EXTRACTOR)
 
         constructor_kwargs = constructor.call_args.kwargs
         assert constructor_kwargs["id"] == "node-id"

@@ -8,9 +8,18 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
+from dify_graph.file.enums import FileType
 from enums.cloud_plan import CloudPlan
 from extensions.ext_redis import redis_client
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models.enums import (
+    ConversationFromSource,
+    DataSourceType,
+    FeedbackFromSource,
+    FeedbackRating,
+    MessageChainType,
+    MessageFileBelongsTo,
+)
 from models.model import (
     App,
     AppAnnotationHitHistory,
@@ -165,7 +174,7 @@ class TestMessagesCleanServiceIntegration:
             name="Test conversation",
             inputs={},
             status="normal",
-            from_source="api",
+            from_source=ConversationFromSource.API,
             from_end_user_id=str(uuid.uuid4()),
         )
         db_session_with_containers.add(conversation)
@@ -195,7 +204,7 @@ class TestMessagesCleanServiceIntegration:
             answer_unit_price=Decimal("0.002"),
             total_price=Decimal("0.003"),
             currency="USD",
-            from_source="api",
+            from_source=ConversationFromSource.API,
             from_account_id=conversation.from_end_user_id,
             created_at=created_at,
         )
@@ -215,8 +224,8 @@ class TestMessagesCleanServiceIntegration:
             app_id=message.app_id,
             conversation_id=message.conversation_id,
             message_id=message.id,
-            rating="like",
-            from_source="api",
+            rating=FeedbackRating.LIKE,
+            from_source=FeedbackFromSource.USER,
             from_end_user_id=str(uuid.uuid4()),
         )
         db_session_with_containers.add(feedback)
@@ -235,7 +244,7 @@ class TestMessagesCleanServiceIntegration:
         # MessageChain
         chain = MessageChain(
             message_id=message.id,
-            type="system",
+            type=MessageChainType.SYSTEM,
             input=json.dumps({"test": "input"}),
             output=json.dumps({"test": "output"}),
         )
@@ -245,10 +254,10 @@ class TestMessagesCleanServiceIntegration:
         # MessageFile
         file = MessageFile(
             message_id=message.id,
-            type="image",
+            type=FileType.IMAGE,
             transfer_method="local_file",
             url="http://example.com/test.jpg",
-            belongs_to="user",
+            belongs_to=MessageFileBelongsTo.USER,
             created_by_role="end_user",
             created_by=str(uuid.uuid4()),
         )
@@ -287,7 +296,7 @@ class TestMessagesCleanServiceIntegration:
             dataset_name="Test dataset",
             document_id=str(uuid.uuid4()),
             document_name="Test document",
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             segment_id=str(uuid.uuid4()),
             score=0.9,
             content="Test content",

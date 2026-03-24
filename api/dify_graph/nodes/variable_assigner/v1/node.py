@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any
 from dify_graph.constants import CONVERSATION_VARIABLE_NODE_ID
 from dify_graph.entities import GraphInitParams
 from dify_graph.entities.graph_config import NodeConfigDict
-from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
+from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from dify_graph.node_events import NodeRunResult
 from dify_graph.nodes.base.node import Node
 from dify_graph.nodes.variable_assigner.common import helpers as common_helpers
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 
 class VariableAssignerNode(Node[VariableAssignerData]):
-    node_type = NodeType.VARIABLE_ASSIGNER
+    node_type = BuiltinNodeTypes.VARIABLE_ASSIGNER
 
     def __init__(
         self,

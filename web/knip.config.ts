@@ -20,6 +20,7 @@ const config: KnipConfig = {
     '@iconify-json/*',
 
     '@storybook/addon-onboarding',
+
   ],
   rules: {
     files: 'warn',
@@ -30,7 +31,6 @@ const config: KnipConfig = {
     unresolved: 'warn',
     exports: 'warn',
     nsExports: 'warn',
-    classMembers: 'warn',
     types: 'warn',
     nsTypes: 'warn',
     enumMembers: 'warn',

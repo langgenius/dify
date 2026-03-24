@@ -18,7 +18,7 @@ from core.ops.entities.trace_entity import (
     WorkflowTraceInfo,
 )
 from core.ops.opik_trace.opik_trace import OpikDataTrace, prepare_opik_uuid, wrap_dict, wrap_metadata
-from dify_graph.enums import NodeType, WorkflowNodeExecutionMetadataKey
+from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 from models import EndUser
 from models.enums import MessageStatus
 
@@ -172,7 +172,7 @@ def test_workflow_trace_with_message_id(trace_instance, monkeypatch):
     node_llm = MagicMock()
     node_llm.id = LLM_NODE_ID
     node_llm.title = "LLM Node"
-    node_llm.node_type = NodeType.LLM
+    node_llm.node_type = BuiltinNodeTypes.LLM
     node_llm.status = "succeeded"
     node_llm.process_data = {
         "model_mode": "chat",
@@ -189,7 +189,7 @@ def test_workflow_trace_with_message_id(trace_instance, monkeypatch):
     node_other = MagicMock()
     node_other.id = CODE_NODE_ID
     node_other.title = "Other Node"
-    node_other.node_type = NodeType.CODE
+    node_other.node_type = BuiltinNodeTypes.CODE
     node_other.status = "failed"
     node_other.process_data = None
     node_other.inputs = {"code": "print"}
@@ -641,7 +641,7 @@ def test_workflow_trace_usage_extraction_error_fixed(trace_instance, monkeypatch
     node = MagicMock()
     node.id = "88e8e918-472e-4b69-8051-12502c34fc07"
     node.title = "LLM Node"
-    node.node_type = NodeType.LLM
+    node.node_type = BuiltinNodeTypes.LLM
     node.status = "succeeded"
 
     class BadDict(collections.UserDict):

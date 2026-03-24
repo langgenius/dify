@@ -1,21 +1,19 @@
-import type { Viewport } from 'next'
-import { Agentation } from 'agentation'
+import type { Viewport } from '@/next'
 import { Provider as JotaiProvider } from 'jotai/react'
 import { ThemeProvider } from 'next-themes'
-import { Instrument_Serif } from 'next/font/google'
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
-import { IS_DEV } from '@/config'
 import GlobalPublicStoreProvider from '@/context/global-public-context'
 import { TanstackQueryInitializer } from '@/context/query-client'
 import { getDatasetMap } from '@/env'
 import { getLocaleOnServer } from '@/i18n-config/server'
-import { cn } from '@/utils/classnames'
 import { ToastProvider } from './components/base/toast'
+import { ToastHost } from './components/base/ui/toast'
 import { TooltipProvider } from './components/base/ui/tooltip'
 import BrowserInitializer from './components/browser-initializer'
+import { AgentationLoader } from './components/devtools/agentation-loader'
 import { ReactScanLoader } from './components/devtools/react-scan/loader'
+import LazySentryInitializer from './components/lazy-sentry-initializer'
 import { I18nServerProvider } from './components/provider/i18n-server'
-import SentryInitializer from './components/sentry-initializer'
 import RoutePrefixHandle from './routePrefixHandle'
 import './styles/globals.css'
 import './styles/markdown.scss'
@@ -28,13 +26,6 @@ export const viewport: Viewport = {
   userScalable: false,
 }
 
-const instrumentSerif = Instrument_Serif({
-  weight: ['400'],
-  style: ['normal', 'italic'],
-  subsets: ['latin'],
-  variable: '--font-instrument-serif',
-})
-
 const LocaleLayout = async ({
   children,
 }: {
@@ -44,7 +35,7 @@ const LocaleLayout = async ({
   const datasetMap = getDatasetMap()
 
   return (
-    <html lang={locale ?? 'en'} className={cn('h-full', instrumentSerif.variable)} suppressHydrationWarning>
+    <html lang={locale ?? 'en'} className="h-full" suppressHydrationWarning>
       <head>
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#1C64F2" />
@@ -65,6 +56,7 @@ const LocaleLayout = async ({
         className="h-full select-auto"
         {...datasetMap}
       >
+        <LazySentryInitializer />
         <div className="isolate h-full">
           <JotaiProvider>
             <ThemeProvider
@@ -76,25 +68,24 @@ const LocaleLayout = async ({
             >
               <NuqsAdapter>
                 <BrowserInitializer>
-                  <SentryInitializer>
-                    <TanstackQueryInitializer>
-                      <I18nServerProvider>
-                        <ToastProvider>
-                          <GlobalPublicStoreProvider>
-                            <TooltipProvider delay={300} closeDelay={200}>
-                              {children}
-                            </TooltipProvider>
-                          </GlobalPublicStoreProvider>
-                        </ToastProvider>
-                      </I18nServerProvider>
-                    </TanstackQueryInitializer>
-                  </SentryInitializer>
+                  <TanstackQueryInitializer>
+                    <I18nServerProvider>
+                      <ToastHost timeout={5000} limit={3} />
+                      <ToastProvider>
+                        <GlobalPublicStoreProvider>
+                          <TooltipProvider delay={300} closeDelay={200}>
+                            {children}
+                          </TooltipProvider>
+                        </GlobalPublicStoreProvider>
+                      </ToastProvider>
+                    </I18nServerProvider>
+                  </TanstackQueryInitializer>
                 </BrowserInitializer>
               </NuqsAdapter>
             </ThemeProvider>
           </JotaiProvider>
           <RoutePrefixHandle />
-          {IS_DEV && <Agentation />}
+          <AgentationLoader />
         </div>
       </body>
     </html>

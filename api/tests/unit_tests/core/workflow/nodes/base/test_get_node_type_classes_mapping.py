@@ -1,8 +1,9 @@
 import types
 from collections.abc import Mapping
 
+from core.workflow.node_factory import get_node_type_classes_mapping
 from dify_graph.entities.base_node_data import BaseNodeData
-from dify_graph.enums import NodeType
+from dify_graph.enums import BuiltinNodeTypes, NodeType
 from dify_graph.nodes.base.node import Node
 
 # Import concrete nodes we will assert on (numeric version path)
@@ -16,11 +17,11 @@ from dify_graph.nodes.variable_assigner.v2.node import (
 
 def test_variable_assigner_latest_prefers_highest_numeric_version():
     # Act
-    mapping: Mapping[NodeType, Mapping[str, type[Node]]] = Node.get_node_type_classes_mapping()
+    mapping: Mapping[NodeType, Mapping[str, type[Node]]] = get_node_type_classes_mapping()
 
     # Assert basic presence
-    assert NodeType.VARIABLE_ASSIGNER in mapping
-    va_versions = mapping[NodeType.VARIABLE_ASSIGNER]
+    assert BuiltinNodeTypes.VARIABLE_ASSIGNER in mapping
+    va_versions = mapping[BuiltinNodeTypes.VARIABLE_ASSIGNER]
 
     # Both concrete versions must be present
     assert va_versions.get("1") is VariableAssignerV1
@@ -34,7 +35,7 @@ def test_latest_prefers_highest_numeric_version():
     # Arrange: define two ephemeral subclasses with numeric versions under a NodeType
     # that has no concrete implementations in production to avoid interference.
     class _Version1(Node[BaseNodeData]):  # type: ignore[misc]
-        node_type = NodeType.LEGACY_VARIABLE_AGGREGATOR
+        node_type = BuiltinNodeTypes.LEGACY_VARIABLE_AGGREGATOR
 
         def init_node_data(self, data):
             pass
@@ -73,11 +74,11 @@ def test_latest_prefers_highest_numeric_version():
             return "version2"
 
     # Act: build a fresh mapping (it should now see our ephemeral subclasses)
-    mapping: Mapping[NodeType, Mapping[str, type[Node]]] = Node.get_node_type_classes_mapping()
+    mapping: Mapping[NodeType, Mapping[str, type[Node]]] = get_node_type_classes_mapping()
 
     # Assert: both numeric versions exist for this NodeType; 'latest' points to the higher numeric version
-    assert NodeType.LEGACY_VARIABLE_AGGREGATOR in mapping
-    legacy_versions = mapping[NodeType.LEGACY_VARIABLE_AGGREGATOR]
+    assert BuiltinNodeTypes.LEGACY_VARIABLE_AGGREGATOR in mapping
+    legacy_versions = mapping[BuiltinNodeTypes.LEGACY_VARIABLE_AGGREGATOR]
 
     assert legacy_versions.get("1") is _Version1
     assert legacy_versions.get("2") is _Version2

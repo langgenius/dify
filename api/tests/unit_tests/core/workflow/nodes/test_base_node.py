@@ -6,7 +6,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from dify_graph.entities import GraphInitParams
 from dify_graph.entities.base_node_data import BaseNodeData
 from dify_graph.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
-from dify_graph.enums import NodeType
+from dify_graph.enums import BuiltinNodeTypes
 from dify_graph.nodes.base.node import Node
 from dify_graph.runtime import GraphRuntimeState, VariablePool
 from dify_graph.system_variable import SystemVariable
@@ -18,7 +18,7 @@ class _SampleNodeData(BaseNodeData):
 
 
 class _SampleNode(Node[_SampleNodeData]):
-    node_type = NodeType.ANSWER
+    node_type = BuiltinNodeTypes.ANSWER
 
     @classmethod
     def version(cls) -> str:
@@ -46,7 +46,7 @@ def _build_node_config() -> NodeConfigDict:
         {
             "id": "node-1",
             "data": {
-                "type": NodeType.ANSWER.value,
+                "type": BuiltinNodeTypes.ANSWER,
                 "title": "Sample",
                 "foo": "bar",
             },
@@ -105,7 +105,7 @@ def test_missing_generic_argument_raises_type_error():
     with pytest.raises(TypeError):
 
         class _InvalidNode(Node):  # type: ignore[type-abstract]
-            node_type = NodeType.ANSWER
+            node_type = BuiltinNodeTypes.ANSWER
 
             @classmethod
             def version(cls) -> str:
@@ -118,7 +118,7 @@ def test_missing_generic_argument_raises_type_error():
 def test_base_node_data_keeps_dict_style_access_compatibility():
     node_data = _SampleNodeData.model_validate(
         {
-            "type": NodeType.ANSWER.value,
+            "type": BuiltinNodeTypes.ANSWER,
             "title": "Sample",
             "foo": "bar",
         }

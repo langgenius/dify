@@ -28,8 +28,8 @@ import useQuestionClassifierSingleRunFormParams from '@/app/components/workflow/
 import useStartSingleRunFormParams from '@/app/components/workflow/nodes/start/use-single-run-form-params'
 import useTemplateTransformSingleRunFormParams from '@/app/components/workflow/nodes/template-transform/use-single-run-form-params'
 
-import useToolGetDataForCheckMore from '@/app/components/workflow/nodes/tool/use-get-data-for-check-more'
-import useToolSingleRunFormParams from '@/app/components/workflow/nodes/tool/use-single-run-form-params'
+import useToolGetDataForCheckMore from '@/app/components/workflow/nodes/tool/hooks/use-get-data-for-check-more'
+import useToolSingleRunFormParams from '@/app/components/workflow/nodes/tool/hooks/use-single-run-form-params'
 import useTriggerPluginGetDataForCheckMore from '@/app/components/workflow/nodes/trigger-plugin/use-check-params'
 import useVariableAggregatorSingleRunFormParams from '@/app/components/workflow/nodes/variable-assigner/use-single-run-form-params'
 
@@ -159,10 +159,10 @@ const useLastRun = <T>({
     if (!warningForNode)
       return false
 
-    if (warningForNode.unConnected && !warningForNode.errorMessage)
+    if (warningForNode.unConnected && warningForNode.errorMessages.length === 0)
       return false
 
-    const message = warningForNode.errorMessage || 'This node has unresolved checklist issues'
+    const message = warningForNode.errorMessages[0] || 'This node has unresolved checklist issues'
     Toast.notify({ type: 'error', message })
     return true
   }, [warningNodes, id])

@@ -7,8 +7,6 @@ import type { CreateAppModalProps } from '@/app/components/explore/create-app-mo
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import type { App } from '@/types/app'
 import { RiBuildingLine, RiGlobalLine, RiLockLine, RiMoreFill, RiVerifiedBadgeLine } from '@remixicon/react'
-import dynamic from 'next/dynamic'
-import { useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -36,6 +34,8 @@ import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { AccessMode } from '@/models/access-control'
+import dynamic from '@/next/dynamic'
+import { useRouter } from '@/next/navigation'
 import { useGetUserCanAccessApp } from '@/service/access-control'
 import { copyApp, exportAppConfig, updateAppInfo } from '@/service/apps'
 import { fetchInstalledAppList } from '@/service/explore'
@@ -82,6 +82,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
   const [showDuplicateModal, setShowDuplicateModal] = useState(false)
   const [showSwitchModal, setShowSwitchModal] = useState<boolean>(false)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
+  const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
   const [showAccessControl, setShowAccessControl] = useState(false)
   const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariable[]>([])
   const { mutateAsync: mutateDeleteApp, isPending: isDeleting } = useDeleteAppMutation()
@@ -100,6 +101,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
     }
     finally {
       setShowConfirmDelete(false)
+      setConfirmDeleteInput('')
     }
   }, [app.id, mutateDeleteApp, notify, onPlanInfoChanged, t])
 
@@ -108,6 +110,8 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       return
 
     setShowConfirmDelete(open)
+    if (!open)
+      setConfirmDeleteInput('')
   }, [isDeleting])
 
   const onEdit: CreateAppModalProps['onConfirm'] = useCallback(async ({
@@ -521,12 +525,28 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
             <AlertDialogDescription className="w-full whitespace-pre-wrap break-words text-text-tertiary system-md-regular">
               {t('deleteAppConfirmContent', { ns: 'app' })}
             </AlertDialogDescription>
+            <div className="mt-2">
+              <label className="mb-1 block text-text-secondary system-sm-regular">
+                {t('deleteAppConfirmInputLabel', { ns: 'app', appName: app.name })}
+              </label>
+              <input
+                type="text"
+                className="border-components-input-border bg-components-input-bg focus:border-components-input-border-focus focus:ring-components-input-border-focus h-9 w-full rounded-lg border px-3 text-sm text-text-primary placeholder:text-text-quaternary focus:outline-none focus:ring-1"
+                placeholder={t('deleteAppConfirmInputPlaceholder', { ns: 'app' })}
+                value={confirmDeleteInput}
+                onChange={e => setConfirmDeleteInput(e.target.value)}
+              />
+            </div>
           </div>
           <AlertDialogActions>
             <AlertDialogCancelButton disabled={isDeleting}>
               {t('operation.cancel', { ns: 'common' })}
             </AlertDialogCancelButton>
-            <AlertDialogConfirmButton loading={isDeleting} disabled={isDeleting} onClick={onConfirmDelete}>
+            <AlertDialogConfirmButton
+              loading={isDeleting}
+              disabled={isDeleting || confirmDeleteInput !== app.name}
+              onClick={onConfirmDelete}
+            >
               {t('operation.confirm', { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>

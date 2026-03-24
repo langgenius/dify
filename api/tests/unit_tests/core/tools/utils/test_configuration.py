@@ -5,6 +5,7 @@ from typing import Any
 from unittest.mock import patch
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.helper.tool_parameter_cache import ToolParameterCache
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.common_entities import I18nObject
@@ -112,37 +113,38 @@ def test_encrypt_tool_parameters():
 def test_decrypt_tool_parameters_cache_hit_and_miss():
     manager = _build_manager()
 
-    with patch("core.tools.utils.configuration.ToolParameterCache") as cache_cls:
-        cache = cache_cls.return_value
-        cache.get.return_value = {"secret": "cached"}
+    with (
+        patch.object(ToolParameterCache, "get", return_value={"secret": "cached"}),
+        patch.object(ToolParameterCache, "set") as mock_set,
+    ):
         assert manager.decrypt_tool_parameters({"secret": "enc"}) == {"secret": "cached"}
-        cache.set.assert_not_called()
+        mock_set.assert_not_called()
 
-    with patch("core.tools.utils.configuration.ToolParameterCache") as cache_cls:
-        cache = cache_cls.return_value
-        cache.get.return_value = None
-        with patch("core.tools.utils.configuration.encrypter.decrypt_token", return_value="dec"):
-            decrypted = manager.decrypt_tool_parameters({"secret": "enc", "plain": "x"})
-
-    assert decrypted["secret"] == "dec"
-    cache.set.assert_called_once()
+    with (
+        patch.object(ToolParameterCache, "get", return_value=None),
+        patch.object(ToolParameterCache, "set") as mock_set,
+        patch("core.tools.utils.configuration.encrypter.decrypt_token", return_value="dec"),
+    ):
+        decrypted = manager.decrypt_tool_parameters({"secret": "enc", "plain": "x"})
+        assert decrypted["secret"] == "dec"
+        mock_set.assert_called_once()
 
 
 def test_delete_tool_parameters_cache():
     manager = _build_manager()
 
-    with patch("core.tools.utils.configuration.ToolParameterCache") as cache_cls:
+    with patch.object(ToolParameterCache, "delete") as mock_delete:
         manager.delete_tool_parameters_cache()
 
-    cache_cls.return_value.delete.assert_called_once()
+    mock_delete.assert_called_once()
 
 
 def test_configuration_manager_decrypt_suppresses_errors():
     manager = _build_manager()
-    with patch("core.tools.utils.configuration.ToolParameterCache") as cache_cls:
-        cache = cache_cls.return_value
-        cache.get.return_value = None
-        with patch("core.tools.utils.configuration.encrypter.decrypt_token", side_effect=RuntimeError("boom")):
-            decrypted = manager.decrypt_tool_parameters({"secret": "enc"})
+    with (
+        patch.object(ToolParameterCache, "get", return_value=None),
+        patch("core.tools.utils.configuration.encrypter.decrypt_token", side_effect=RuntimeError("boom")),
+    ):
+        decrypted = manager.decrypt_tool_parameters({"secret": "enc"})
     # decryption failure is suppressed, original value is retained.
     assert decrypted["secret"] == "enc"

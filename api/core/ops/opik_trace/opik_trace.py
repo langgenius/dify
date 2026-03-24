@@ -23,7 +23,7 @@ from core.ops.entities.trace_entity import (
     WorkflowTraceInfo,
 )
 from core.repositories import DifyCoreRepositoryFactory
-from dify_graph.enums import NodeType, WorkflowNodeExecutionMetadataKey
+from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 from extensions.ext_database import db
 from models import EndUser, MessageFile, WorkflowNodeExecutionTriggeredFrom
 
@@ -187,7 +187,7 @@ class OpikDataTrace(BaseTraceInstance):
             node_name = node_execution.title
             node_type = node_execution.node_type
             status = node_execution.status
-            if node_type == NodeType.LLM:
+            if node_type == BuiltinNodeTypes.LLM:
                 inputs = node_execution.process_data.get("prompts", {}) if node_execution.process_data else {}
             else:
                 inputs = node_execution.inputs or {}

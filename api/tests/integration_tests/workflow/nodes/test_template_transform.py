@@ -82,7 +82,7 @@ def test_execute_template_transform():
         graph_runtime_state=graph_runtime_state,
     )
 
-    graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
+    graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
     assert graph is not None
 
     node = TemplateTransformNode(

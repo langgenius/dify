@@ -1,12 +1,12 @@
 import { RiContractLine, RiDoorLockLine, RiErrorWarningFill } from '@remixicon/react'
-import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { IS_CE_EDITION } from '@/config'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import Link from '@/next/link'
+import { useRouter, useSearchParams } from '@/next/navigation'
 import { invitationCheck } from '@/service/common'
 import { useIsLogin } from '@/service/use-common'
 import { LicenseStatus } from '@/types/feature'
@@ -48,10 +48,7 @@ const NormalForm = () => {
       }
 
       if (message) {
-        Toast.notify({
-          type: 'error',
-          message,
-        })
+        toast.error(message)
       }
       setAllMethodsAreDisabled(!systemFeatures.enable_social_oauth_login && !systemFeatures.enable_email_code_login && !systemFeatures.enable_email_password_login && !systemFeatures.sso_enforced_for_signin)
       setShowORLine((systemFeatures.enable_social_oauth_login || systemFeatures.sso_enforced_for_signin) && (systemFeatures.enable_email_code_login || systemFeatures.enable_email_password_login))

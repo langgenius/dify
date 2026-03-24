@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dify_graph.entities.base_node_data import RetryConfig
-from dify_graph.enums import NodeExecutionType, NodeState, NodeType, WorkflowNodeExecutionStatus
+from dify_graph.enums import BuiltinNodeTypes, NodeExecutionType, NodeState, WorkflowNodeExecutionStatus
 from dify_graph.graph import Graph
 from dify_graph.graph_engine.domain.graph_execution import GraphExecution
 from dify_graph.graph_engine.event_management.event_handlers import EventHandler
@@ -73,7 +73,7 @@ def test_retry_does_not_emit_additional_start_event() -> None:
     handler, event_manager, graph_execution = _build_event_handler(node_id)
 
     execution_id = "exec-1"
-    node_type = NodeType.CODE
+    node_type = BuiltinNodeTypes.CODE
     start_time = naive_utc_now()
 
     start_event = NodeRunStartedEvent(

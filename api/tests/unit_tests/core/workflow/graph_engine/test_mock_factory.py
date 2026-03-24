@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any
 
 from core.workflow.node_factory import DifyNodeFactory
 from dify_graph.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
-from dify_graph.enums import NodeType
+from dify_graph.enums import BuiltinNodeTypes, NodeType
 from dify_graph.nodes.base.node import Node
 
 from .test_mock_nodes import (
@@ -61,18 +61,18 @@ class MockNodeFactory(DifyNodeFactory):
 
         # Map of node types that should be mocked
         self._mock_node_types = {
-            NodeType.LLM: MockLLMNode,
-            NodeType.AGENT: MockAgentNode,
-            NodeType.TOOL: MockToolNode,
-            NodeType.KNOWLEDGE_RETRIEVAL: MockKnowledgeRetrievalNode,
-            NodeType.HTTP_REQUEST: MockHttpRequestNode,
-            NodeType.QUESTION_CLASSIFIER: MockQuestionClassifierNode,
-            NodeType.PARAMETER_EXTRACTOR: MockParameterExtractorNode,
-            NodeType.DOCUMENT_EXTRACTOR: MockDocumentExtractorNode,
-            NodeType.ITERATION: MockIterationNode,
-            NodeType.LOOP: MockLoopNode,
-            NodeType.TEMPLATE_TRANSFORM: MockTemplateTransformNode,
-            NodeType.CODE: MockCodeNode,
+            BuiltinNodeTypes.LLM: MockLLMNode,
+            BuiltinNodeTypes.AGENT: MockAgentNode,
+            BuiltinNodeTypes.TOOL: MockToolNode,
+            BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL: MockKnowledgeRetrievalNode,
+            BuiltinNodeTypes.HTTP_REQUEST: MockHttpRequestNode,
+            BuiltinNodeTypes.QUESTION_CLASSIFIER: MockQuestionClassifierNode,
+            BuiltinNodeTypes.PARAMETER_EXTRACTOR: MockParameterExtractorNode,
+            BuiltinNodeTypes.DOCUMENT_EXTRACTOR: MockDocumentExtractorNode,
+            BuiltinNodeTypes.ITERATION: MockIterationNode,
+            BuiltinNodeTypes.LOOP: MockLoopNode,
+            BuiltinNodeTypes.TEMPLATE_TRANSFORM: MockTemplateTransformNode,
+            BuiltinNodeTypes.CODE: MockCodeNode,
         }
 
     def create_node(self, node_config: dict[str, Any] | NodeConfigDict) -> Node:
@@ -92,7 +92,7 @@ class MockNodeFactory(DifyNodeFactory):
 
             # Create mock node instance
             mock_class = self._mock_node_types[node_type]
-            if node_type == NodeType.CODE:
+            if node_type == BuiltinNodeTypes.CODE:
                 mock_instance = mock_class(
                     id=node_id,
                     config=typed_node_config,
@@ -102,7 +102,7 @@ class MockNodeFactory(DifyNodeFactory):
                     code_executor=self._code_executor,
                     code_limits=self._code_limits,
                 )
-            elif node_type == NodeType.HTTP_REQUEST:
+            elif node_type == BuiltinNodeTypes.HTTP_REQUEST:
                 mock_instance = mock_class(
                     id=node_id,
                     config=typed_node_config,
@@ -114,7 +114,11 @@ class MockNodeFactory(DifyNodeFactory):
                     tool_file_manager_factory=self._http_request_tool_file_manager_factory,
                     file_manager=self._http_request_file_manager,
                 )
-            elif node_type in {NodeType.LLM, NodeType.QUESTION_CLASSIFIER, NodeType.PARAMETER_EXTRACTOR}:
+            elif node_type in {
+                BuiltinNodeTypes.LLM,
+                BuiltinNodeTypes.QUESTION_CLASSIFIER,
+                BuiltinNodeTypes.PARAMETER_EXTRACTOR,
+            }:
                 mock_instance = mock_class(
                     id=node_id,
                     config=typed_node_config,

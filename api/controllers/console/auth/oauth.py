@@ -1,4 +1,5 @@
 import logging
+import urllib.parse
 
 import httpx
 from flask import current_app, redirect, request
@@ -112,6 +113,9 @@ class OAuthCallback(Resource):
                 error_text = e.response.text
             logger.exception("An error occurred during the OAuth process with %s: %s", provider, error_text)
             return {"error": "OAuth process failed"}, 400
+        except ValueError as e:
+            logger.warning("OAuth error with %s", provider, exc_info=True)
+            return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message={urllib.parse.quote(str(e))}")
 
         if invite_token and RegisterService.is_valid_invite_token(invite_token):
             invitation = RegisterService.get_invitation_by_token(token=invite_token)

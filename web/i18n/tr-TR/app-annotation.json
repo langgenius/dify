@@ -25,7 +25,7 @@
   "batchModal.tip": "CSV dosyası aşağıdaki yapıya uygun olmalıdır:",
   "batchModal.title": "Toplu İçe Aktarma",
   "editBy": "{{author}} tarafından düzenlendi",
-  "editModal.answerName": "Storyteller Bot",
+  "editModal.answerName": "Hikaye Anlatıcı Bot",
   "editModal.answerPlaceholder": "Cevabınızı buraya yazın",
   "editModal.createdAt": "Oluşturulma Tarihi",
   "editModal.queryName": "Kullanıcı Sorgusu",

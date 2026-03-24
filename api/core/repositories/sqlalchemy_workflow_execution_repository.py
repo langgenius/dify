@@ -146,7 +146,9 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
 
         # No sequence number generation needed anymore
 
-        db_model.type = domain_model.workflow_type
+        from models.workflow import WorkflowType as ModelWorkflowType
+
+        db_model.type = ModelWorkflowType(domain_model.workflow_type.value)
         db_model.version = domain_model.workflow_version
         db_model.graph = json.dumps(domain_model.graph) if domain_model.graph else None
         db_model.inputs = json.dumps(domain_model.inputs) if domain_model.inputs else None

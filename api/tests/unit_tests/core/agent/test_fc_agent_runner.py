@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from core.agent.errors import AgentMaxIterationError
 from core.agent.fc_agent_runner import FunctionCallAgentRunner
 from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.entities.queue_entities import QueueMessageFileEvent
@@ -14,7 +15,6 @@ from dify_graph.model_runtime.entities.message_entities import (
     TextPromptMessageContent,
     UserPromptMessage,
 )
-from dify_graph.nodes.agent.exc import AgentMaxIterationError
 
 # ==============================
 # Dummy Helper Classes

@@ -5,9 +5,7 @@ from unittest.mock import Mock
 import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from dify_graph.enums import WorkflowNodeExecutionStatus
-from dify_graph.model_runtime.entities.llm_entities import LLMUsage
-from dify_graph.nodes.knowledge_retrieval.entities import (
+from core.workflow.nodes.knowledge_retrieval.entities import (
     Condition,
     KnowledgeRetrievalNodeData,
     MetadataFilteringCondition,
@@ -15,9 +13,11 @@ from dify_graph.nodes.knowledge_retrieval.entities import (
     RerankingModelConfig,
     SingleRetrievalConfig,
 )
-from dify_graph.nodes.knowledge_retrieval.exc import RateLimitExceededError
-from dify_graph.nodes.knowledge_retrieval.knowledge_retrieval_node import KnowledgeRetrievalNode
-from dify_graph.repositories.rag_retrieval_protocol import RAGRetrievalProtocol, Source
+from core.workflow.nodes.knowledge_retrieval.exc import RateLimitExceededError
+from core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node import KnowledgeRetrievalNode
+from core.workflow.nodes.knowledge_retrieval.retrieval import RAGRetrievalProtocol, Source
+from dify_graph.enums import WorkflowNodeExecutionStatus
+from dify_graph.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.runtime import GraphRuntimeState, VariablePool
 from dify_graph.system_variable import SystemVariable
 from dify_graph.variables import StringSegment
@@ -52,11 +52,15 @@ def mock_graph_runtime_state():
 
 
 @pytest.fixture
-def mock_rag_retrieval():
+def mock_rag_retrieval(mocker):
     """Create mock RAGRetrievalProtocol."""
     mock_retrieval = Mock(spec=RAGRetrievalProtocol)
     mock_retrieval.knowledge_retrieval.return_value = []
     mock_retrieval.llm_usage = LLMUsage.empty_usage()
+    mocker.patch(
+        "core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node.DatasetRetrieval",
+        return_value=mock_retrieval,
+    )
     return mock_retrieval
 
 
@@ -106,7 +110,6 @@ class TestKnowledgeRetrievalNode:
             config=config,
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
-            rag_retrieval=mock_rag_retrieval,
         )
 
         # Assert
@@ -136,7 +139,6 @@ class TestKnowledgeRetrievalNode:
             config=config,
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
-            rag_retrieval=mock_rag_retrieval,
         )
 
         # Act
@@ -196,7 +198,6 @@ class TestKnowledgeRetrievalNode:
             config=config,
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
-            rag_retrieval=mock_rag_retrieval,
         )
 
         # Act
@@ -241,7 +242,6 @@ class TestKnowledgeRetrievalNode:
             config=config,
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
-            rag_retrieval=mock_rag_retrieval,
         )
 
         # Act
@@ -278,7 +278,6 @@ class TestKnowledgeRetrievalNode:
             config=config,
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
-            rag_retrieval=mock_rag_retrieval,
         )
 
         # Act
@@ -314,7 +313,6 @@ class TestKnowledgeRetrievalNode:
             config=config,
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
-            rag_retrieval=mock_rag_retrieval,
         )
 
         # Act
@@ -356,7 +354,6 @@ class TestKnowledgeRetrievalNode:
             config=config,
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
-            rag_retrieval=mock_rag_retrieval,
         )
 
         # Act
@@ -396,7 +393,6 @@ class TestKnowledgeRetrievalNode:
             config=config,
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
-            rag_retrieval=mock_rag_retrieval,
         )
 
         # Act
@@ -478,7 +474,6 @@ class TestFetchDatasetRetriever:
             config=config,
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
-            rag_retrieval=mock_rag_retrieval,
         )
 
         # Act
@@ -516,7 +511,6 @@ class TestFetchDatasetRetriever:
             config=config,
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
-            rag_retrieval=mock_rag_retrieval,
         )
 
         # Act
@@ -572,7 +566,6 @@ class TestFetchDatasetRetriever:
             config=config,
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
-            rag_retrieval=mock_rag_retrieval,
         )
 
         # Act
@@ -621,7 +614,6 @@ class TestFetchDatasetRetriever:
             config=config,
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
-            rag_retrieval=mock_rag_retrieval,
         )
 
         conditions = MetadataFilteringCondition(
@@ -683,7 +675,6 @@ class TestFetchDatasetRetriever:
             config=config,
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
-            rag_retrieval=mock_rag_retrieval,
         )
 
         mock_rag_retrieval.knowledge_retrieval.return_value = []

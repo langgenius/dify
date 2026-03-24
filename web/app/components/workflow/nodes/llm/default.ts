@@ -4,6 +4,7 @@ import { genNodeMetaData } from '@/app/components/workflow/utils'
 // import { RETRIEVAL_OUTPUT_STRUCT } from '../../constants'
 import { AppModeEnum } from '@/types/app'
 import { BlockEnum, EditionType, PromptRole } from '../../types'
+import { getLLMModelIssue, LLMModelIssueCode } from './utils'
 
 const RETRIEVAL_OUTPUT_STRUCT = `{
   "content": "",
@@ -60,7 +61,8 @@ const nodeDefault: NodeDefault<LLMNodeType> = {
   },
   checkValid(payload: LLMNodeType, t: any) {
     let errorMessages = ''
-    if (!errorMessages && !payload.model.provider)
+    const modelIssue = getLLMModelIssue({ modelProvider: payload.model.provider })
+    if (!errorMessages && modelIssue === LLMModelIssueCode.providerRequired)
       errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}.fields.model`, { ns: 'workflow' }) })
 
     if (!errorMessages && !payload.memory) {

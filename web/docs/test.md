@@ -9,7 +9,8 @@ When I ask you to write/refactor/fix tests, follow these rules by default.
 - **Framework**: Next.js 15 + React 19 + TypeScript
 - **Testing Tools**: Vitest 4.0.16 + React Testing Library 16.0
 - **Test Environment**: jsdom
-- **File Naming**: `ComponentName.spec.tsx` (same directory as component)
+- **File Naming**: `ComponentName.spec.tsx` inside a same-level `__tests__/` directory
+- **Placement Rule**: Component, hook, and utility tests must live in a sibling `__tests__/` folder at the same level as the source under test. For example, `foo/index.tsx` maps to `foo/__tests__/index.spec.tsx`, and `foo/bar.ts` maps to `foo/__tests__/bar.spec.ts`.
 
 ## Running Tests
 
@@ -30,7 +31,7 @@ pnpm test path/to/file.spec.tsx
 ## Project Test Setup
 
 - **Configuration**: `vitest.config.ts` sets the `jsdom` environment, loads the Testing Library presets, and respects our path aliases (`@/...`). Check this file before adding new transformers or module name mappers.
-- **Global setup**: `vitest.setup.ts` already imports `@testing-library/jest-dom`, runs `cleanup()` after every test, and defines shared mocks (for example `react-i18next`, `next/image`). Add any environment-level mocks (for example `ResizeObserver`, `matchMedia`, `IntersectionObserver`, `TextEncoder`, `crypto`) here so they are shared consistently.
+- **Global setup**: `vitest.setup.ts` already imports `@testing-library/jest-dom`, runs `cleanup()` after every test, and defines shared mocks (for example `react-i18next`). Add any environment-level mocks (for example `ResizeObserver`, `matchMedia`, `IntersectionObserver`, `TextEncoder`, `crypto`) here so they are shared consistently.
 - **Reusable mocks**: Place shared mock factories inside `web/__mocks__/` and use `vi.mock('module-name')` to point to them rather than redefining mocks in every spec.
 - **Mocking behavior**: Modules are not mocked automatically. Use `vi.mock(...)` in tests, or place global mocks in `vitest.setup.ts`.
 - **Script utilities**: `web/scripts/analyze-component.js` analyzes component complexity and generates test prompts for AI assistants. Commands:
@@ -118,13 +119,11 @@ When assigned to test a **directory/path** (not just a single file), follow thes
 Choose based on directory complexity:
 
 1. **Single spec file (Integration approach)** - Preferred for related components
-
    - Minimize mocking - use real project components
    - Test actual integration between components
    - Only mock: API calls, complex context providers, third-party libs
 
 1. **Multiple spec files (Unit approach)** - For complex directories
-
    - One spec file per component/hook/utility
    - More isolated testing
    - Useful when components are independent
@@ -138,7 +137,7 @@ When using a single spec file:
 - ❌ **DO NOT mock** base components (`@/app/components/base/*`)
 - ❌ **DO NOT mock** sibling/child components in the same directory
 
-> See [Example Structure](#example-structure) for correct import/mock patterns.
+> See [Example Structure] for correct import/mock patterns.
 
 ## Testing Components with Dedicated Dependencies
 
@@ -184,8 +183,8 @@ Treat component state as part of the public behavior: confirm the initial render
 - ✅ When creating lightweight provider stubs, mirror the real default values and surface helper builders (for example `createMockWorkflowContext`).
 - ✅ Reset shared stores (React context, Zustand, TanStack Query cache) between tests to avoid leaking state. Prefer helper factory functions over module-level singletons in specs.
 - ✅ For hooks that read from context, use `renderHook` with a custom wrapper that supplies required providers.
-- ✅ **Use factory functions for mock data**: Import actual types and create factory functions with complete defaults (see [Test Data Builders](#9-test-data-builders-anti-hardcoding) section).
-- ✅ If it's need to mock some common context provider used across many components (for example, `ProviderContext`), put it in __mocks__/context(for example, `__mocks__/context/provider-context`). To dynamically control the mock behavior (for example, toggling plan type), use module-level variables to track state and change them(for example, `context/provider-context-mock.spec.tsx`).
+- ✅ **Use factory functions for mock data**: Import actual types and create factory functions with complete defaults (see [Test Data Builders] section).
+- ✅ If it's need to mock some common context provider used across many components (for example, `ProviderContext`), put it in **mocks**/context(for example, `__mocks__/context/provider-context`). To dynamically control the mock behavior (for example, toggling plan type), use module-level variables to track state and change them(for example, `context/provider-context-mock.spec.tsx`).
 - ✅ Use factory functions to create mock data with TypeScript types. This ensures type safety and makes tests more maintainable.
 
 **Rules**:
@@ -362,7 +361,6 @@ describe('ComponentName', () => {
 1. **i18n**: Uses global mock in `web/vitest.setup.ts` (auto-loaded by Vitest setup)
 
    The global mock provides:
-
    - `useTranslation` - returns translation keys with namespace prefix
    - `Trans` component - renders i18nKey and components
    - `useMixedTranslation` (from `@/app/components/plugins/marketplace/hooks`)
@@ -532,16 +530,25 @@ const element = await screen.findByText('Async Content')
 
 Test examples in the project:
 
-- [classnames.spec.ts](../utils/classnames.spec.ts) - Utility function tests
-- [index.spec.tsx](../app/components/base/button/index.spec.tsx) - Component tests
+- [classnames.spec.ts] - Utility function tests
+- [index.spec.tsx] - Component tests
 
 ## Resources
 
-- [Vitest Documentation](https://vitest.dev/guide/)
-- [React Testing Library Documentation](https://testing-library.com/docs/react-testing-library/intro/)
-- [Testing Library Best Practices](https://kentcdodds.com/blog/common-mistakes-with-react-testing-library)
-- [Vitest Mocking Guide](https://vitest.dev/guide/mocking.html)
+- [Vitest Documentation]
+- [React Testing Library Documentation]
+- [Testing Library Best Practices]
+- [Vitest Mocking Guide]
 
-______________________________________________________________________
+---
 
 **Remember**: Writing tests is not just about coverage, but ensuring code quality and maintainability. Good tests should be clear, concise, and meaningful.
+
+[Example Structure]: #example-structure
+[React Testing Library Documentation]: https://testing-library.com/docs/react-testing-library/intro
+[Test Data Builders]: #9-test-data-builders-anti-hardcoding
+[Testing Library Best Practices]: https://kentcdodds.com/blog/common-mistakes-with-react-testing-library
+[Vitest Documentation]: https://vitest.dev/guide
+[Vitest Mocking Guide]: https://vitest.dev/guide/mocking.html
+[classnames.spec.ts]: ../utils/classnames.spec.ts
+[index.spec.tsx]: ../app/components/base/button/index.spec.tsx

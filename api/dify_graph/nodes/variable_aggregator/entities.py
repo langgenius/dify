@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 
 from dify_graph.entities.base_node_data import BaseNodeData
-from dify_graph.enums import NodeType
+from dify_graph.enums import BuiltinNodeTypes, NodeType
 from dify_graph.variables.types import SegmentType
 
 
@@ -29,7 +29,7 @@ class VariableAggregatorNodeData(BaseNodeData):
     Variable Aggregator Node Data.
     """
 
-    type: NodeType = NodeType.VARIABLE_AGGREGATOR
+    type: NodeType = BuiltinNodeTypes.VARIABLE_AGGREGATOR
     output_type: str
     variables: list[list[str]]
     advanced_settings: AdvancedSettings | None = None

@@ -479,7 +479,7 @@ class TestBaseAppGeneratorExtras:
 
     def test_get_draft_var_saver_factory_debugger(self):
         from core.app.entities.app_invoke_entities import InvokeFrom
-        from dify_graph.enums import NodeType
+        from dify_graph.enums import BuiltinNodeTypes
         from models import Account
 
         base_app_generator = BaseAppGenerator()
@@ -492,7 +492,7 @@ class TestBaseAppGeneratorExtras:
             session=MagicMock(),
             app_id="app-id",
             node_id="node-id",
-            node_type=NodeType.START,
+            node_type=BuiltinNodeTypes.START,
             node_execution_id="node-exec-id",
         )
 

@@ -12,6 +12,7 @@ from core.rag.models.document import Document
 from extensions.ext_database import db
 from models.dataset import ChildChunk, DatasetQuery, DocumentSegment
 from models.dataset import Document as DatasetDocument
+from models.enums import CreatorUserRole, DatasetQuerySource
 
 _logger = logging.getLogger(__name__)
 
@@ -35,10 +36,12 @@ class DatasetIndexToolCallbackHandler:
         dataset_query = DatasetQuery(
             dataset_id=dataset_id,
             content=query,
-            source="app",
+            source=DatasetQuerySource.APP,
             source_app_id=self._app_id,
             created_by_role=(
-                "account" if self._invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER} else "end_user"
+                CreatorUserRole.ACCOUNT
+                if self._invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER}
+                else CreatorUserRole.END_USER
             ),
             created_by=self._user_id,
         )

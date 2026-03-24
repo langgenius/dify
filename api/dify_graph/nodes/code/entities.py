@@ -4,7 +4,7 @@ from typing import Annotated, Literal
 from pydantic import AfterValidator, BaseModel
 
 from dify_graph.entities.base_node_data import BaseNodeData
-from dify_graph.enums import NodeType
+from dify_graph.enums import BuiltinNodeTypes, NodeType
 from dify_graph.nodes.base.entities import VariableSelector
 from dify_graph.variables.types import SegmentType
 
@@ -40,7 +40,7 @@ class CodeNodeData(BaseNodeData):
     Code Node Data.
     """
 
-    type: NodeType = NodeType.CODE
+    type: NodeType = BuiltinNodeTypes.CODE
 
     class Output(BaseModel):
         type: Annotated[SegmentType, AfterValidator(_validate_type)]

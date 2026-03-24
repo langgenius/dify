@@ -307,7 +307,8 @@ class TestParentChildIndexProcessor:
             "core.rag.index_processor.processor.parent_child_index_processor.RetrievalService.retrieve"
         ) as mock_retrieve:
             mock_retrieve.return_value = [ok_result, low_result]
-            docs = processor.retrieve("semantic_search", "query", dataset, 3, 0.5, {})
+            reranking_model = {"reranking_provider_name": "", "reranking_model_name": ""}
+            docs = processor.retrieve("semantic_search", "query", dataset, 3, 0.5, reranking_model)
 
         assert len(docs) == 1
         assert docs[0].page_content == "keep"

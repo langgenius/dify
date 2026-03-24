@@ -1,12 +1,12 @@
 import pytest
 
-from dify_graph.entities.exc import BaseNodeError
-from dify_graph.nodes.trigger_webhook.exc import (
+from core.workflow.nodes.trigger_webhook.exc import (
     WebhookConfigError,
     WebhookNodeError,
     WebhookNotFoundError,
     WebhookTimeoutError,
 )
+from dify_graph.entities.exc import BaseNodeError
 
 
 def test_webhook_node_error_inheritance():
@@ -149,7 +149,7 @@ def test_webhook_error_attributes():
     assert WebhookConfigError.__name__ == "WebhookConfigError"
 
     # Test that all error classes have proper __module__
-    expected_module = "dify_graph.nodes.trigger_webhook.exc"
+    expected_module = "core.workflow.nodes.trigger_webhook.exc"
     assert WebhookNodeError.__module__ == expected_module
     assert WebhookTimeoutError.__module__ == expected_module
     assert WebhookNotFoundError.__module__ == expected_module

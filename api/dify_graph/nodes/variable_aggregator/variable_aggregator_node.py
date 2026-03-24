@@ -1,6 +1,6 @@
 from collections.abc import Mapping
 
-from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
+from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from dify_graph.node_events import NodeRunResult
 from dify_graph.nodes.base.node import Node
 from dify_graph.nodes.variable_aggregator.entities import VariableAggregatorNodeData
@@ -8,7 +8,7 @@ from dify_graph.variables.segments import Segment
 
 
 class VariableAggregatorNode(Node[VariableAggregatorNodeData]):
-    node_type = NodeType.VARIABLE_AGGREGATOR
+    node_type = BuiltinNodeTypes.VARIABLE_AGGREGATOR
 
     @classmethod
     def version(cls) -> str:

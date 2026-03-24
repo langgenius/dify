@@ -41,6 +41,122 @@ export type TabsProps = {
   forceShowStartContent?: boolean // Force show Start content even when noBlocks=true
   allowStartNodeSelection?: boolean // Allow user input option even when trigger node already exists (e.g. change-node flow or when no Start node yet).
 }
+
+const normalizeToolList = (list: ToolWithProvider[] | undefined, currentBasePath?: string) => {
+  if (!list || !currentBasePath)
+    return list
+
+  let changed = false
+  const normalized = list.map((provider) => {
+    if (typeof provider.icon !== 'string')
+      return provider
+
+    const shouldPrefix = provider.icon.startsWith('/')
+      && !provider.icon.startsWith(`${currentBasePath}/`)
+
+    if (!shouldPrefix)
+      return provider
+
+    changed = true
+    return {
+      ...provider,
+      icon: `${currentBasePath}${provider.icon}`,
+    }
+  })
+
+  return changed ? normalized : list
+}
+
+const getStoreToolUpdates = ({
+  state,
+  buildInTools,
+  customTools,
+  workflowTools,
+  mcpTools,
+}: {
+  state: {
+    buildInTools?: ToolWithProvider[]
+    customTools?: ToolWithProvider[]
+    workflowTools?: ToolWithProvider[]
+    mcpTools?: ToolWithProvider[]
+  }
+  buildInTools?: ToolWithProvider[]
+  customTools?: ToolWithProvider[]
+  workflowTools?: ToolWithProvider[]
+  mcpTools?: ToolWithProvider[]
+}) => {
+  const updates: Partial<typeof state> = {}
+
+  if (buildInTools !== undefined && state.buildInTools !== buildInTools)
+    updates.buildInTools = buildInTools
+  if (customTools !== undefined && state.customTools !== customTools)
+    updates.customTools = customTools
+  if (workflowTools !== undefined && state.workflowTools !== workflowTools)
+    updates.workflowTools = workflowTools
+  if (mcpTools !== undefined && state.mcpTools !== mcpTools)
+    updates.mcpTools = mcpTools
+
+  return updates
+}
+
+const TabHeaderItem = ({
+  tab,
+  activeTab,
+  onActiveTabChange,
+  disabledTip,
+}: {
+  tab: TabsProps['tabs'][number]
+  activeTab: TabsEnum
+  onActiveTabChange: (activeTab: TabsEnum) => void
+  disabledTip: string
+}) => {
+  const className = cn(
+    'relative mr-0.5 flex h-8 items-center rounded-t-lg px-3 system-sm-medium',
+    tab.disabled
+      ? 'cursor-not-allowed text-text-disabled opacity-60'
+      : activeTab === tab.key
+        // eslint-disable-next-line tailwindcss/no-unknown-classes
+        ? 'sm-no-bottom cursor-default bg-components-panel-bg text-text-accent'
+        : 'cursor-pointer text-text-tertiary',
+  )
+
+  const handleClick = () => {
+    if (tab.disabled || activeTab === tab.key)
+      return
+    onActiveTabChange(tab.key)
+  }
+
+  if (tab.disabled) {
+    return (
+      <Tooltip
+        key={tab.key}
+        position="top"
+        popupClassName="max-w-[200px]"
+        popupContent={disabledTip}
+      >
+        <div
+          className={className}
+          aria-disabled={tab.disabled}
+          onClick={handleClick}
+        >
+          {tab.name}
+        </div>
+      </Tooltip>
+    )
+  }
+
+  return (
+    <div
+      key={tab.key}
+      className={className}
+      aria-disabled={tab.disabled}
+      onClick={handleClick}
+    >
+      {tab.name}
+    </div>
+  )
+}
+
 const Tabs: FC<TabsProps> = ({
   activeTab,
   onActiveTabChange,
@@ -71,51 +187,21 @@ const Tabs: FC<TabsProps> = ({
     plugins: featuredPlugins = [],
     isLoading: isFeaturedLoading,
   } = useFeaturedToolsRecommendations(enable_marketplace && !inRAGPipeline)
-
-  const normalizeToolList = useMemo(() => {
-    return (list?: ToolWithProvider[]) => {
-      if (!list)
-        return list
-      if (!basePath)
-        return list
-      let changed = false
-      const normalized = list.map((provider) => {
-        if (typeof provider.icon === 'string') {
-          const icon = provider.icon
-          const shouldPrefix = Boolean(basePath)
-            && icon.startsWith('/')
-            && !icon.startsWith(`${basePath}/`)
-
-          if (shouldPrefix) {
-            changed = true
-            return {
-              ...provider,
-              icon: `${basePath}${icon}`,
-            }
-          }
-        }
-        return provider
-      })
-      return changed ? normalized : list
-    }
-  }, [basePath])
+  const normalizedBuiltInTools = useMemo(() => normalizeToolList(buildInTools, basePath), [buildInTools])
+  const normalizedCustomTools = useMemo(() => normalizeToolList(customTools, basePath), [customTools])
+  const normalizedWorkflowTools = useMemo(() => normalizeToolList(workflowTools, basePath), [workflowTools])
+  const normalizedMcpTools = useMemo(() => normalizeToolList(mcpTools, basePath), [mcpTools])
+  const disabledTip = t('tabs.startDisabledTip', { ns: 'workflow' })
 
   useEffect(() => {
     workflowStore.setState((state) => {
-      const updates: Partial<typeof state> = {}
-      const normalizedBuiltIn = normalizeToolList(buildInTools)
-      const normalizedCustom = normalizeToolList(customTools)
-      const normalizedWorkflow = normalizeToolList(workflowTools)
-      const normalizedMCP = normalizeToolList(mcpTools)
-
-      if (normalizedBuiltIn !== undefined && state.buildInTools !== normalizedBuiltIn)
-        updates.buildInTools = normalizedBuiltIn
-      if (normalizedCustom !== undefined && state.customTools !== normalizedCustom)
-        updates.customTools = normalizedCustom
-      if (normalizedWorkflow !== undefined && state.workflowTools !== normalizedWorkflow)
-        updates.workflowTools = normalizedWorkflow
-      if (normalizedMCP !== undefined && state.mcpTools !== normalizedMCP)
-        updates.mcpTools = normalizedMCP
+      const updates = getStoreToolUpdates({
+        state,
+        buildInTools: normalizedBuiltInTools,
+        customTools: normalizedCustomTools,
+        workflowTools: normalizedWorkflowTools,
+        mcpTools: normalizedMcpTools,
+      })
       if (!Object.keys(updates).length)
         return state
       return {
@@ -123,7 +209,7 @@ const Tabs: FC<TabsProps> = ({
         ...updates,
       }
     })
-  }, [workflowStore, normalizeToolList, buildInTools, customTools, workflowTools, mcpTools])
+  }, [normalizedBuiltInTools, normalizedCustomTools, normalizedMcpTools, normalizedWorkflowTools, workflowStore])
 
   return (
     <div onClick={e => e.stopPropagation()}>
@@ -131,46 +217,15 @@ const Tabs: FC<TabsProps> = ({
         !noBlocks && (
           <div className="relative flex bg-background-section-burn pl-1 pt-1">
             {
-              tabs.map((tab) => {
-                const commonProps = {
-                  'className': cn(
-                    'system-sm-medium relative mr-0.5 flex h-8 items-center rounded-t-lg px-3',
-                    tab.disabled
-                      ? 'cursor-not-allowed text-text-disabled opacity-60'
-                      : activeTab === tab.key
-                        ? 'sm-no-bottom cursor-default bg-components-panel-bg text-text-accent'
-                        : 'cursor-pointer text-text-tertiary',
-                  ),
-                  'aria-disabled': tab.disabled,
-                  'onClick': () => {
-                    if (tab.disabled || activeTab === tab.key)
-                      return
-                    onActiveTabChange(tab.key)
-                  },
-                } as const
-                if (tab.disabled) {
-                  return (
-                    <Tooltip
-                      key={tab.key}
-                      position="top"
-                      popupClassName="max-w-[200px]"
-                      popupContent={t('tabs.startDisabledTip', { ns: 'workflow' })}
-                    >
-                      <div {...commonProps}>
-                        {tab.name}
-                      </div>
-                    </Tooltip>
-                  )
-                }
-                return (
-                  <div
-                    key={tab.key}
-                    {...commonProps}
-                  >
-                    {tab.name}
-                  </div>
-                )
-              })
+              tabs.map(tab => (
+                <TabHeaderItem
+                  key={tab.key}
+                  tab={tab}
+                  activeTab={activeTab}
+                  onActiveTabChange={onActiveTabChange}
+                  disabledTip={disabledTip}
+                />
+              ))
             }
           </div>
         )
@@ -219,10 +274,10 @@ const Tabs: FC<TabsProps> = ({
             onSelect={onSelect}
             tags={tags}
             canNotSelectMultiple
-            buildInTools={buildInTools || []}
-            customTools={customTools || []}
-            workflowTools={workflowTools || []}
-            mcpTools={mcpTools || []}
+            buildInTools={normalizedBuiltInTools || []}
+            customTools={normalizedCustomTools || []}
+            workflowTools={normalizedWorkflowTools || []}
+            mcpTools={normalizedMcpTools || []}
             onTagsChange={onTagsChange}
             isInRAGPipeline={inRAGPipeline}
             featuredPlugins={featuredPlugins}

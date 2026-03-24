@@ -30,6 +30,15 @@ def _generate_token() -> str:
 
 class HumanInputForm(DefaultFieldsMixin, Base):
     __tablename__ = "human_input_forms"
+    __table_args__ = (
+        sa.Index(
+            "human_input_forms_workflow_run_id_node_id_idx",
+            "workflow_run_id",
+            "node_id",
+        ),
+        sa.Index("human_input_forms_status_expiration_time_idx", "status", "expiration_time"),
+        sa.Index("human_input_forms_status_created_at_idx", "status", "created_at"),
+    )
 
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -84,6 +93,12 @@ class HumanInputForm(DefaultFieldsMixin, Base):
 
 class HumanInputDelivery(DefaultFieldsMixin, Base):
     __tablename__ = "human_input_form_deliveries"
+    __table_args__ = (
+        sa.Index(
+            None,
+            "form_id",
+        ),
+    )
 
     form_id: Mapped[str] = mapped_column(
         StringUUID,
@@ -181,6 +196,10 @@ RecipientPayload = Annotated[
 
 class HumanInputFormRecipient(DefaultFieldsMixin, Base):
     __tablename__ = "human_input_form_recipients"
+    __table_args__ = (
+        sa.Index(None, "form_id"),
+        sa.Index(None, "delivery_id"),
+    )
 
     form_id: Mapped[str] = mapped_column(
         StringUUID,
