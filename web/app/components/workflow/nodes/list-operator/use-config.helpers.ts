@@ -5,6 +5,13 @@ import { VarType as WorkflowVarType } from '../../types'
 import { getOperators } from '../if-else/utils'
 import { OrderBy } from './types'
 
+const filterableVarTypes: readonly VarType[] = [
+  WorkflowVarType.arrayNumber,
+  WorkflowVarType.arrayString,
+  WorkflowVarType.arrayBoolean,
+  WorkflowVarType.arrayFile,
+]
+
 export const getItemVarType = (varType?: VarType) => {
   switch (varType) {
     case WorkflowVarType.arrayNumber:
@@ -33,12 +40,7 @@ export const getItemVarTypeShowName = (itemVarType?: VarType, hasVariable?: bool
 export const supportsSubVariable = (varType?: VarType) => varType === WorkflowVarType.arrayFile
 
 export const canFilterVariable = (varPayload: Var) => {
-  return [
-    WorkflowVarType.arrayNumber,
-    WorkflowVarType.arrayString,
-    WorkflowVarType.arrayBoolean,
-    WorkflowVarType.arrayFile,
-  ].includes(varPayload.type)
+  return filterableVarTypes.includes(varPayload.type)
 }
 
 export const buildFilterCondition = ({

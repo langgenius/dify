@@ -16,7 +16,7 @@ const Slider: React.FC<ISliderProps> = ({ className, max, min, step, value, disa
   return (
     <ReactSlider
       disabled={disabled}
-      value={isNaN(value) ? 0 : value}
+      value={Number.isNaN(value) ? 0 : value}
       min={min || 0}
       max={max || 100}
       step={step || 1}
@@ -24,8 +24,13 @@ const Slider: React.FC<ISliderProps> = ({ className, max, min, step, value, disa
       thumbClassName={cn(s['slider-thumb'], 'top-[-7px] h-[18px] w-2 cursor-pointer rounded-[36px] border !border-black/8 bg-white shadow-md')}
       trackClassName={s['slider-track']}
       onChange={onChange}
-      renderThumb={(props, state) => (
-        <div {...props}>
+      renderThumb={({ ref, ...props }, state) => (
+        <div
+          {...props}
+          ref={(node) => {
+            ref(node)
+          }}
+        >
           <div className="relative h-full w-full">
             <div className="absolute left-[50%] top-[-16px] translate-x-[-50%] text-text-primary system-sm-semibold">
               {(state.valueNow / 100).toFixed(2)}

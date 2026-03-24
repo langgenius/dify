@@ -6,14 +6,16 @@ import { ValueType, VarType } from '../../types'
 import { LogicalOperator } from './types'
 import { getOperators } from './utils'
 
+const loopInputVarTypes: readonly VarType[] = [
+  VarType.array,
+  VarType.arrayString,
+  VarType.arrayNumber,
+  VarType.arrayObject,
+  VarType.arrayFile,
+]
+
 export const canUseAsLoopInput = (variable: Var) => {
-  return [
-    VarType.array,
-    VarType.arrayString,
-    VarType.arrayNumber,
-    VarType.arrayObject,
-    VarType.arrayFile,
-  ].includes(variable.type)
+  return loopInputVarTypes.includes(variable.type)
 }
 
 export const updateErrorHandleMode = (

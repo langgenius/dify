@@ -34,12 +34,18 @@ const {
   mockVariableTriggerState: {
     savePayload: undefined as EnvironmentVariable | undefined,
   },
-  mockUpdateEnvironmentVariables: vi.fn(() => Promise.resolve()),
+  mockUpdateEnvironmentVariables: vi.fn<({
+    appId,
+    environmentVariables,
+  }: {
+    appId: string
+    environmentVariables: EnvironmentVariable[]
+  }) => Promise<void>>(() => Promise.resolve()),
   mockSocketEmit: vi.fn(),
 }))
 
 vi.mock('@/service/workflow', () => ({
-  updateEnvironmentVariables: (...args: unknown[]) => mockUpdateEnvironmentVariables(...args),
+  updateEnvironmentVariables: (payload: { appId: string, environmentVariables: EnvironmentVariable[] }) => mockUpdateEnvironmentVariables(payload),
 }))
 
 vi.mock('@/app/components/workflow/collaboration/core/websocket-manager', () => ({
