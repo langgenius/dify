@@ -116,7 +116,6 @@ export const OVERLAY_MIGRATION_LEGACY_BASE_FILES = [
   'app/components/base/select/index.tsx',
   'app/components/base/select/pure.tsx',
   'app/components/base/sort/index.tsx',
-  'app/components/base/tag-management/filter.tsx',
   'app/components/base/theme-selector.tsx',
   'app/components/base/tooltip/index.tsx',
 ]

@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
+import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Import component after mocks
@@ -17,44 +18,73 @@ vi.mock('@/i18n-config/language', () => ({
   ],
 }))
 
-// Mock PortalSelect component
-vi.mock('@/app/components/base/select', () => ({
-  PortalSelect: ({
+const MockSelectContext = React.createContext<{
+  value: string
+  onValueChange: (value: string) => void
+}>({
+  value: '',
+  onValueChange: () => {},
+})
+
+vi.mock('@/app/components/base/ui/select', () => ({
+  Select: ({
     value,
-    items,
-    onSelect,
-    triggerClassName,
-    popupClassName,
-    popupInnerClassName,
+    onValueChange,
+    children,
   }: {
     value: string
-    items: Array<{ value: string, name: string }>
-    onSelect: (item: { value: string }) => void
-    triggerClassName?: string
-    popupClassName?: string
-    popupInnerClassName?: string
+    onValueChange: (value: string) => void
+    children: React.ReactNode
   }) => (
-    <div
-      data-testid="portal-select"
-      data-value={value}
-      data-trigger-class={triggerClassName}
-      data-popup-class={popupClassName}
-      data-popup-inner-class={popupInnerClassName}
-    >
-      <span data-testid="selected-value">{value}</span>
-      <div data-testid="items-container">
-        {items.map(item => (
-          <button
-            key={item.value}
-            data-testid={`select-item-${item.value}`}
-            onClick={() => onSelect({ value: item.value })}
-          >
-            {item.name}
-          </button>
-        ))}
-      </div>
+    <MockSelectContext.Provider value={{ value, onValueChange }}>
+      <div data-testid="select-root">{children}</div>
+    </MockSelectContext.Provider>
+  ),
+  SelectTrigger: ({
+    children,
+    className,
+    'data-testid': testId,
+  }: {
+    'children': React.ReactNode
+    'className'?: string
+    'data-testid'?: string
+  }) => (
+    <button data-testid={testId ?? 'select-trigger'} data-class={className}>
+      {children}
+    </button>
+  ),
+  SelectValue: () => {
+    const { value } = React.useContext(MockSelectContext)
+    return <span data-testid="selected-value">{value}</span>
+  },
+  SelectContent: ({
+    children,
+    popupClassName,
+  }: {
+    children: React.ReactNode
+    popupClassName?: string
+  }) => (
+    <div data-testid="select-content" data-popup-class={popupClassName}>
+      {children}
     </div>
   ),
+  SelectItem: ({
+    children,
+    value,
+  }: {
+    children: React.ReactNode
+    value: string
+  }) => {
+    const { onValueChange } = React.useContext(MockSelectContext)
+    return (
+      <button
+        data-testid={`select-item-${value}`}
+        onClick={() => onValueChange(value)}
+      >
+        {children}
+      </button>
+    )
+  },
 }))
 
 // ==================== Test Utilities ====================
@@ -139,7 +169,7 @@ describe('TTSParamsPanel', () => {
       expect(screen.getByText('appDebug.voice.voiceSettings.voice')).toBeInTheDocument()
     })
 
-    it('should render two PortalSelect components', () => {
+    it('should render two Select components', () => {
       // Arrange
       const props = createDefaultProps()
 
@@ -147,7 +177,7 @@ describe('TTSParamsPanel', () => {
       render(<TTSParamsPanel {...props} />)
 
       // Assert
-      const selects = screen.getAllByTestId('portal-select')
+      const selects = screen.getAllByTestId('select-root')
       expect(selects).toHaveLength(2)
     })
 
@@ -159,8 +189,8 @@ describe('TTSParamsPanel', () => {
       render(<TTSParamsPanel {...props} />)
 
       // Assert
-      const selects = screen.getAllByTestId('portal-select')
-      expect(selects[0]).toHaveAttribute('data-value', 'zh-Hans')
+      const values = screen.getAllByTestId('selected-value')
+      expect(values[0]).toHaveTextContent('zh-Hans')
     })
 
     it('should render voice select with correct value', () => {
@@ -171,8 +201,8 @@ describe('TTSParamsPanel', () => {
       render(<TTSParamsPanel {...props} />)
 
       // Assert
-      const selects = screen.getAllByTestId('portal-select')
-      expect(selects[1]).toHaveAttribute('data-value', 'echo')
+      const values = screen.getAllByTestId('selected-value')
+      expect(values[1]).toHaveTextContent('echo')
     })
 
     it('should only show supported languages in language select', () => {
@@ -205,7 +235,7 @@ describe('TTSParamsPanel', () => {
 
   // ==================== Props Testing ====================
   describe('Props', () => {
-    it('should apply trigger className to PortalSelect', () => {
+    it('should apply trigger className to SelectTrigger', () => {
       // Arrange
       const props = createDefaultProps()
 
@@ -213,12 +243,11 @@ describe('TTSParamsPanel', () => {
       render(<TTSParamsPanel {...props} />)
 
       // Assert
-      const selects = screen.getAllByTestId('portal-select')
-      expect(selects[0]).toHaveAttribute('data-trigger-class', 'h-8')
-      expect(selects[1]).toHaveAttribute('data-trigger-class', 'h-8')
+      expect(screen.getByTestId('tts-language-select-trigger')).toHaveAttribute('data-class', 'w-full')
+      expect(screen.getByTestId('tts-voice-select-trigger')).toHaveAttribute('data-class', 'w-full')
     })
 
-    it('should apply popup className to PortalSelect', () => {
+    it('should apply popup className to SelectContent', () => {
       // Arrange
       const props = createDefaultProps()
 
@@ -226,22 +255,9 @@ describe('TTSParamsPanel', () => {
       render(<TTSParamsPanel {...props} />)
 
       // Assert
-      const selects = screen.getAllByTestId('portal-select')
-      expect(selects[0]).toHaveAttribute('data-popup-class', 'z-[1000]')
-      expect(selects[1]).toHaveAttribute('data-popup-class', 'z-[1000]')
-    })
-
-    it('should apply popup inner className to PortalSelect', () => {
-      // Arrange
-      const props = createDefaultProps()
-
-      // Act
-      render(<TTSParamsPanel {...props} />)
-
-      // Assert
-      const selects = screen.getAllByTestId('portal-select')
-      expect(selects[0]).toHaveAttribute('data-popup-inner-class', 'w-[354px]')
-      expect(selects[1]).toHaveAttribute('data-popup-inner-class', 'w-[354px]')
+      const contents = screen.getAllByTestId('select-content')
+      expect(contents[0]).toHaveAttribute('data-popup-class', 'w-[354px]')
+      expect(contents[1]).toHaveAttribute('data-popup-class', 'w-[354px]')
     })
   })
 
@@ -411,10 +427,8 @@ describe('TTSParamsPanel', () => {
       render(<TTSParamsPanel {...props} />)
 
       // Assert - no voice items (except language items)
-      const voiceSelects = screen.getAllByTestId('portal-select')
-      // Second select is voice select, should have no voice items in items-container
-      const voiceItemsContainer = voiceSelects[1].querySelector('[data-testid="items-container"]')
-      expect(voiceItemsContainer?.children).toHaveLength(0)
+      expect(screen.getAllByTestId('select-content')[1].children).toHaveLength(0)
+      expect(screen.queryByTestId('select-item-alloy')).not.toBeInTheDocument()
     })
 
     it('should handle currentModel with single voice', () => {
@@ -443,8 +457,8 @@ describe('TTSParamsPanel', () => {
       render(<TTSParamsPanel {...props} />)
 
       // Assert
-      const selects = screen.getAllByTestId('portal-select')
-      expect(selects[0]).toHaveAttribute('data-value', '')
+      const values = screen.getAllByTestId('selected-value')
+      expect(values[0]).toHaveTextContent('')
     })
 
     it('should handle empty voice value', () => {
@@ -455,8 +469,8 @@ describe('TTSParamsPanel', () => {
       render(<TTSParamsPanel {...props} />)
 
       // Assert
-      const selects = screen.getAllByTestId('portal-select')
-      expect(selects[1]).toHaveAttribute('data-value', '')
+      const values = screen.getAllByTestId('selected-value')
+      expect(values[1]).toHaveTextContent('')
     })
 
     it('should handle many voices', () => {
@@ -514,14 +528,14 @@ describe('TTSParamsPanel', () => {
 
       // Act
       const { rerender } = render(<TTSParamsPanel {...props} />)
-      const selects = screen.getAllByTestId('portal-select')
-      expect(selects[0]).toHaveAttribute('data-value', 'en-US')
+      const values = screen.getAllByTestId('selected-value')
+      expect(values[0]).toHaveTextContent('en-US')
 
       rerender(<TTSParamsPanel {...props} language="zh-Hans" />)
 
       // Assert
-      const updatedSelects = screen.getAllByTestId('portal-select')
-      expect(updatedSelects[0]).toHaveAttribute('data-value', 'zh-Hans')
+      const updatedValues = screen.getAllByTestId('selected-value')
+      expect(updatedValues[0]).toHaveTextContent('zh-Hans')
     })
 
     it('should update when voice prop changes', () => {
@@ -530,14 +544,14 @@ describe('TTSParamsPanel', () => {
 
       // Act
       const { rerender } = render(<TTSParamsPanel {...props} />)
-      const selects = screen.getAllByTestId('portal-select')
-      expect(selects[1]).toHaveAttribute('data-value', 'alloy')
+      const values = screen.getAllByTestId('selected-value')
+      expect(values[1]).toHaveTextContent('alloy')
 
       rerender(<TTSParamsPanel {...props} voice="echo" />)
 
       // Assert
-      const updatedSelects = screen.getAllByTestId('portal-select')
-      expect(updatedSelects[1]).toHaveAttribute('data-value', 'echo')
+      const updatedValues = screen.getAllByTestId('selected-value')
+      expect(updatedValues[1]).toHaveTextContent('echo')
     })
 
     it('should update voice list when currentModel changes', () => {

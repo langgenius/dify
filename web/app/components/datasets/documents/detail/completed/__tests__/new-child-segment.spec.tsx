@@ -11,7 +11,8 @@ vi.mock('@/next/navigation', () => ({
   }),
 }))
 
-const toastAddSpy = vi.spyOn(toast, 'add')
+const toastErrorSpy = vi.spyOn(toast, 'error')
+const toastSuccessSpy = vi.spyOn(toast, 'success')
 
 // Mock document context
 let mockParentMode = 'paragraph'
@@ -93,7 +94,7 @@ describe('NewChildSegmentModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useRealTimers()
-    toast.close()
+    toast.dismiss()
     mockFullScreen = false
     mockParentMode = 'paragraph'
   })
@@ -189,11 +190,7 @@ describe('NewChildSegmentModal', () => {
       fireEvent.click(screen.getByTestId('save-btn'))
 
       await waitFor(() => {
-        expect(toastAddSpy).toHaveBeenCalledWith(
-          expect.objectContaining({
-            type: 'error',
-          }),
-        )
+        expect(toastErrorSpy).toHaveBeenCalledTimes(1)
       })
     })
   })
@@ -244,11 +241,7 @@ describe('NewChildSegmentModal', () => {
       fireEvent.click(screen.getByTestId('save-btn'))
 
       await waitFor(() => {
-        expect(toastAddSpy).toHaveBeenCalledWith(
-          expect.objectContaining({
-            type: 'success',
-          }),
-        )
+        expect(toastSuccessSpy).toHaveBeenCalledTimes(1)
       })
     })
   })

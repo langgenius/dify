@@ -1,6 +1,7 @@
 from typing import cast
 
 from flask_restx import fields, marshal, marshal_with
+from sqlalchemy import select
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
@@ -72,7 +73,7 @@ class AppSiteApi(WebApiResource):
     def get(self, app_model, end_user):
         """Retrieve app site info."""
         # get site
-        site = db.session.query(Site).where(Site.app_id == app_model.id).first()
+        site = db.session.scalar(select(Site).where(Site.app_id == app_model.id).limit(1))
 
         if not site:
             raise Forbidden()

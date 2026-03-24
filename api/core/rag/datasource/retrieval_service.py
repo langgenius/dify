@@ -103,7 +103,7 @@ class RetrievalService:
         reranking_mode: str = "reranking_model",
         weights: WeightsDict | None = None,
         document_ids_filter: list[str] | None = None,
-        attachment_ids: list | None = None,
+        attachment_ids: list[str] | None = None,
     ):
         if not query and not attachment_ids:
             return []
@@ -250,8 +250,8 @@ class RetrievalService:
         dataset_id: str,
         query: str,
         top_k: int,
-        all_documents: list,
-        exceptions: list,
+        all_documents: list[Document],
+        exceptions: list[str],
         document_ids_filter: list[str] | None = None,
     ):
         with flask_app.app_context():
@@ -279,9 +279,9 @@ class RetrievalService:
         top_k: int,
         score_threshold: float | None,
         reranking_model: RerankingModelDict | None,
-        all_documents: list,
+        all_documents: list[Document],
         retrieval_method: RetrievalMethod,
-        exceptions: list,
+        exceptions: list[str],
         document_ids_filter: list[str] | None = None,
         query_type: QueryType = QueryType.TEXT_QUERY,
     ):
@@ -373,9 +373,9 @@ class RetrievalService:
         top_k: int,
         score_threshold: float | None,
         reranking_model: RerankingModelDict | None,
-        all_documents: list,
+        all_documents: list[Document],
         retrieval_method: str,
-        exceptions: list,
+        exceptions: list[str],
         document_ids_filter: list[str] | None = None,
     ):
         with flask_app.app_context():

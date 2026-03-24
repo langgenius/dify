@@ -212,13 +212,13 @@ class AccountInitApi(Resource):
                 raise ValueError("invitation_code is required")
 
             # check invitation code
-            invitation_code = (
-                db.session.query(InvitationCode)
+            invitation_code = db.session.scalar(
+                select(InvitationCode)
                 .where(
                     InvitationCode.code == args.invitation_code,
                     InvitationCode.status == InvitationCodeStatus.UNUSED,
                 )
-                .first()
+                .limit(1)
             )
 
             if not invitation_code:

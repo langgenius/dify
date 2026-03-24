@@ -12,7 +12,7 @@ This test suite covers:
 import json
 from uuid import uuid4
 
-from core.tools.entities.tool_entities import ApiProviderSchemaType
+from core.tools.entities.tool_entities import ApiProviderSchemaType, ToolProviderType
 from models.tools import (
     ApiToolProvider,
     BuiltinToolProvider,
@@ -631,7 +631,7 @@ class TestToolLabelBinding:
         """Test creating a tool label binding."""
         # Arrange
         tool_id = "google.search"
-        tool_type = "builtin"
+        tool_type = ToolProviderType.BUILT_IN
         label_name = "search"
 
         # Act
@@ -655,7 +655,7 @@ class TestToolLabelBinding:
         # Act
         label_binding = ToolLabelBinding(
             tool_id=tool_id,
-            tool_type="builtin",
+            tool_type=ToolProviderType.BUILT_IN,
             label_name=label_name,
         )
 
@@ -667,7 +667,7 @@ class TestToolLabelBinding:
         """Test multiple labels can be bound to the same tool."""
         # Arrange
         tool_id = "google.search"
-        tool_type = "builtin"
+        tool_type = ToolProviderType.BUILT_IN
 
         # Act
         binding1 = ToolLabelBinding(
@@ -688,7 +688,7 @@ class TestToolLabelBinding:
     def test_tool_label_binding_different_tool_types(self):
         """Test label bindings for different tool types."""
         # Arrange
-        tool_types = ["builtin", "api", "workflow"]
+        tool_types = [ToolProviderType.BUILT_IN, ToolProviderType.API, ToolProviderType.WORKFLOW]
 
         # Act & Assert
         for tool_type in tool_types:
@@ -951,12 +951,12 @@ class TestToolProviderRelationships:
         # Act
         binding1 = ToolLabelBinding(
             tool_id=tool_id,
-            tool_type="builtin",
+            tool_type=ToolProviderType.BUILT_IN,
             label_name="search",
         )
         binding2 = ToolLabelBinding(
             tool_id=tool_id,
-            tool_type="builtin",
+            tool_type=ToolProviderType.BUILT_IN,
             label_name="web",
         )
 

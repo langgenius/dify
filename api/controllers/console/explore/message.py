@@ -27,6 +27,7 @@ from fields.message_fields import MessageInfiniteScrollPagination, MessageListIt
 from libs import helper
 from libs.helper import UUIDStrOrEmpty
 from libs.login import current_account_with_tenant
+from models.enums import FeedbackRating
 from models.model import AppMode
 from services.app_generate_service import AppGenerateService
 from services.errors.app import MoreLikeThisDisabledError
@@ -116,7 +117,7 @@ class MessageFeedbackApi(InstalledAppResource):
                 app_model=app_model,
                 message_id=message_id,
                 user=current_user,
-                rating=payload.rating,
+                rating=FeedbackRating(payload.rating) if payload.rating else None,
                 content=payload.content,
             )
         except MessageNotExistsError:

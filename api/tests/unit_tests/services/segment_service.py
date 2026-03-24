@@ -4,6 +4,7 @@ import pytest
 
 from models.account import Account
 from models.dataset import ChildChunk, Dataset, Document, DocumentSegment
+from models.enums import SegmentType
 from services.dataset_service import SegmentService
 from services.entities.knowledge_entities.knowledge_entities import SegmentUpdateArgs
 from services.errors.chunk import ChildChunkDeleteIndexError, ChildChunkIndexingError
@@ -77,7 +78,7 @@ class SegmentTestDataFactory:
         chunk.word_count = word_count
         chunk.index_node_id = f"node-{chunk_id}"
         chunk.index_node_hash = "hash-123"
-        chunk.type = "automatic"
+        chunk.type = SegmentType.AUTOMATIC
         chunk.created_by = "user-123"
         chunk.updated_by = None
         chunk.updated_at = None

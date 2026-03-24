@@ -38,7 +38,7 @@ class ToolLabelManager:
             db.session.add(
                 ToolLabelBinding(
                     tool_id=provider_id,
-                    tool_type=controller.provider_type.value,
+                    tool_type=controller.provider_type,
                     label_name=label,
                 )
             )
@@ -58,7 +58,7 @@ class ToolLabelManager:
             raise ValueError("Unsupported tool type")
         stmt = select(ToolLabelBinding.label_name).where(
             ToolLabelBinding.tool_id == provider_id,
-            ToolLabelBinding.tool_type == controller.provider_type.value,
+            ToolLabelBinding.tool_type == controller.provider_type,
         )
         labels = db.session.scalars(stmt).all()
 
