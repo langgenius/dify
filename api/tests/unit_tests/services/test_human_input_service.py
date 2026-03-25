@@ -1,5 +1,5 @@
 import dataclasses
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock
 
 import pytest
@@ -51,11 +51,11 @@ def sample_form_record():
             inputs=[],
             user_actions=[UserAction(id="submit", title="Submit")],
             rendered_content="<p>hello</p>",
-            expiration_time=datetime.utcnow() + timedelta(hours=1),
+            expiration_time=datetime.now(tz=timezone.utc) + timedelta(hours=1),
         ),
         rendered_content="<p>hello</p>",
-        created_at=datetime.utcnow(),
-        expiration_time=datetime.utcnow() + timedelta(hours=1),
+        created_at=datetime.now(tz=timezone.utc),
+        expiration_time=datetime.now(tz=timezone.utc) + timedelta(hours=1),
         status=HumanInputFormStatus.WAITING,
         selected_action_id=None,
         submitted_data=None,
@@ -101,8 +101,8 @@ def test_ensure_form_active_respects_global_timeout(monkeypatch, sample_form_rec
     service = HumanInputService(session_factory)
     expired_record = dataclasses.replace(
         sample_form_record,
-        created_at=datetime.utcnow() - timedelta(hours=2),
-        expiration_time=datetime.utcnow() + timedelta(hours=2),
+        created_at=datetime.now(tz=timezone.utc) - timedelta(hours=2),
+        expiration_time=datetime.now(tz=timezone.utc) + timedelta(hours=2),
     )
     monkeypatch.setattr(human_input_service_module.dify_config, "HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS", 3600)
 
@@ -391,7 +391,7 @@ def test_ensure_form_active_errors(sample_form_record, mock_session_factory):
     service = HumanInputService(session_factory)
 
     # Submitted
-    submitted_record = dataclasses.replace(sample_form_record, submitted_at=datetime.utcnow())
+    submitted_record = dataclasses.replace(sample_form_record, submitted_at=datetime.now(tz=timezone.utc))
     with pytest.raises(human_input_service_module.FormSubmittedError):
         service.ensure_form_active(Form(submitted_record))
 
@@ -402,7 +402,7 @@ def test_ensure_form_active_errors(sample_form_record, mock_session_factory):
 
     # Expired time
     expired_time_record = dataclasses.replace(
-        sample_form_record, expiration_time=datetime.utcnow() - timedelta(minutes=1)
+        sample_form_record, expiration_time=datetime.now(tz=timezone.utc) - timedelta(minutes=1)
     )
     with pytest.raises(FormExpiredError):
         service.ensure_form_active(Form(expired_time_record))
@@ -411,7 +411,7 @@ def test_ensure_form_active_errors(sample_form_record, mock_session_factory):
 def test_ensure_not_submitted_raises(sample_form_record, mock_session_factory):
     session_factory, _ = mock_session_factory
     service = HumanInputService(session_factory)
-    submitted_record = dataclasses.replace(sample_form_record, submitted_at=datetime.utcnow())
+    submitted_record = dataclasses.replace(sample_form_record, submitted_at=datetime.now(tz=timezone.utc))
 
     with pytest.raises(human_input_service_module.FormSubmittedError):
         service._ensure_not_submitted(Form(submitted_record))

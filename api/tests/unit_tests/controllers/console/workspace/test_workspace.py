@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from io import BytesIO
 from unittest.mock import MagicMock, patch
 
@@ -44,13 +44,13 @@ class TestTenantListApi:
             id="t1",
             name="Tenant 1",
             status="active",
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(tz=timezone.utc),
         )
         tenant2 = MagicMock(
             id="t2",
             name="Tenant 2",
             status="active",
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(tz=timezone.utc),
         )
 
         with (
@@ -97,13 +97,13 @@ class TestTenantListApi:
             id="t1",
             name="Tenant 1",
             status="active",
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(tz=timezone.utc),
         )
         tenant2 = MagicMock(
             id="t2",
             name="Tenant 2",
             status="active",
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(tz=timezone.utc),
         )
 
         features_t2 = MagicMock()
@@ -152,13 +152,13 @@ class TestTenantListApi:
             id="t1",
             name="Tenant 1",
             status="active",
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(tz=timezone.utc),
         )
         tenant2 = MagicMock(
             id="t2",
             name="Tenant 2",
             status="active",
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(tz=timezone.utc),
         )
 
         features = MagicMock()
@@ -204,7 +204,7 @@ class TestTenantListApi:
             id="t1",
             name="Tenant",
             status="active",
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(tz=timezone.utc),
         )
 
         features = MagicMock()
@@ -243,13 +243,13 @@ class TestTenantListApi:
             id="t1",
             name="Tenant 1",
             status="active",
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(tz=timezone.utc),
         )
         tenant2 = MagicMock(
             id="t2",
             name="Tenant 2",
             status="active",
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(tz=timezone.utc),
         )
 
         with (
@@ -305,7 +305,7 @@ class TestWorkspaceListApi:
         api = WorkspaceListApi()
         method = unwrap(api.get)
 
-        tenant = MagicMock(id="t1", name="T", status="active", created_at=datetime.utcnow())
+        tenant = MagicMock(id="t1", name="T", status="active", created_at=datetime.now(tz=timezone.utc))
 
         paginate_result = MagicMock(
             items=[tenant],
@@ -331,7 +331,7 @@ class TestWorkspaceListApi:
             id="t1",
             name="T",
             status="active",
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(tz=timezone.utc),
         )
 
         paginate_result = MagicMock(

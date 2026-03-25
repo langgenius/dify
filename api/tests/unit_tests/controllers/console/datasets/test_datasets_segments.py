@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -54,8 +54,8 @@ def _segment():
         disabled_by=None,
         status="normal",
         created_by="u1",
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow(),
+        created_at=datetime.now(tz=timezone.utc),
+        updated_at=datetime.now(tz=timezone.utc),
         updated_by="u1",
         indexing_at=None,
         completed_at=None,
