@@ -100,6 +100,7 @@ packages = []
 
 [tool.uv]
 default-groups = ["storage", "tools", "vdb"]
+constraint-dependencies = ["cryptography>=46.0.5"]
 package = false
 
 [dependency-groups]
