@@ -11,9 +11,9 @@ vi.mock('../../hooks', () => ({
   useLanguage: () => 'en_US',
 }))
 
-vi.mock('@/app/components/base/slider', () => ({
-  default: ({ onChange }: { onChange: (v: number) => void }) => (
-    <button onClick={() => onChange(2)} data-testid="slider-btn">Slide 2</button>
+vi.mock('@/app/components/base/ui/slider', () => ({
+  Slider: ({ onValueChange }: { onValueChange: (v: number) => void }) => (
+    <button onClick={() => onValueChange(2)} data-testid="slider-btn">Slide 2</button>
   ),
 }))
 
