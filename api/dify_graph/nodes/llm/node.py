@@ -2104,6 +2104,7 @@ class LLMNode(Node[LLMNodeData]):
             "name": tool_call.name,
             "arguments": tool_call.arguments,
             "output": tool_call.output,
+            "result": tool_call.output,
             "files": files,
             "status": tool_call.status.value if hasattr(tool_call.status, "value") else tool_call.status,
             "elapsed_time": tool_call.elapsed_time,
@@ -2509,20 +2510,21 @@ class LLMNode(Node[LLMNodeData]):
         content_position = 0
         tool_call_seen_index: dict[str, int] = {}
         for trace_segment in trace_state.trace_segments:
-            if trace_segment.type == "thought":
-                sequence.append({"type": "reasoning", "index": reasoning_index})
-                reasoning_index += 1
-            elif trace_segment.type == "content":
-                segment_text = trace_segment.text or ""
-                start = content_position
-                end = start + len(segment_text)
-                sequence.append({"type": "content", "start": start, "end": end})
-                content_position = end
-            elif trace_segment.type == "tool_call":
-                tool_id = trace_segment.tool_call.id if trace_segment.tool_call and trace_segment.tool_call.id else ""
-                if tool_id not in tool_call_seen_index:
-                    tool_call_seen_index[tool_id] = len(tool_call_seen_index)
-                sequence.append({"type": "tool_call", "index": tool_call_seen_index[tool_id]})
+            if trace_segment.type == "model" and isinstance(trace_segment.output, ModelTraceSegment):
+                model_output = trace_segment.output
+                if model_output.reasoning:
+                    sequence.append({"type": "reasoning", "index": reasoning_index})
+                    reasoning_index += 1
+                if model_output.text:
+                    start = content_position
+                    end = start + len(model_output.text)
+                    sequence.append({"type": "content", "start": start, "end": end})
+                    content_position = end
+                for tc in model_output.tool_calls:
+                    tool_id = tc.id or ""
+                    if tool_id not in tool_call_seen_index:
+                        tool_call_seen_index[tool_id] = len(tool_call_seen_index)
+                    sequence.append({"type": "tool_call", "index": tool_call_seen_index[tool_id]})
 
         tool_calls_for_generation: list[ToolCallResult] = []
         for log in agent_context.agent_logs:

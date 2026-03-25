@@ -2,6 +2,7 @@ import type { Viewport } from 'reactflow'
 import type { Metadata } from '@/app/components/base/chat/chat/type'
 import type {
   Edge,
+  JsonValue,
   Node,
 } from '@/app/components/workflow/types'
 import type { VisionFile } from '@/types/app'
@@ -297,7 +298,8 @@ export type WorkflowRunDetailResponse = {
   inputs: string
   inputs_truncated: boolean
   status: 'running' | 'succeeded' | 'failed' | 'stopped'
-  outputs?: string
+  outputs?: Record<string, JsonValue>
+  outputs_as_generation?: boolean
   outputs_truncated: boolean
   outputs_full_content?: {
     download_url: string

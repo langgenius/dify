@@ -24,7 +24,7 @@ const mockRunDetail: WorkflowRunDetailResponse = {
   inputs: JSON.stringify({ question: 'How do I reset my password?' }, null, 2),
   inputs_truncated: false,
   status: 'succeeded',
-  outputs: JSON.stringify({ answer: 'Follow the reset link we just emailed you.' }, null, 2),
+  outputs: { answer: 'Follow the reset link we just emailed you.' },
   outputs_truncated: false,
   total_steps: 3,
   created_by_role: 'account',

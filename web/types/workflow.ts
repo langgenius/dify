@@ -124,6 +124,31 @@ export type LLMLogItem = {
   sequence: SequenceSegment[]
 }
 
+export type WorkflowGenerationToolCall = {
+  id: string
+  name: string
+  arguments: string
+  output?: string
+  result?: string
+  files?: string[]
+  status?: string
+  elapsed_time?: number
+  icon?: string | IconObject
+  icon_dark?: string | IconObject
+}
+
+export type WorkflowGenerationSequenceSegment
+  = | { type: 'content', start: number, end: number }
+    | { type: 'reasoning', index: number }
+    | { type: 'tool_call', index: number }
+
+export type WorkflowGenerationValue = {
+  content: string
+  reasoning_content: string[]
+  tool_calls: WorkflowGenerationToolCall[]
+  sequence: WorkflowGenerationSequenceSegment[]
+}
+
 export type LLMTraceItem = {
   type: 'model' | 'tool'
   duration: number

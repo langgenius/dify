@@ -153,6 +153,7 @@ const RunPanel: FC<RunProps> = ({
         {!loading && currentTab === 'RESULT' && runDetail && (
           <OutputPanel
             outputs={runDetail.outputs}
+            outputsAsGeneration={runDetail.outputs_as_generation}
             error={runDetail.error}
             height={height}
           />

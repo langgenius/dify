@@ -50,7 +50,7 @@ const createRunDetail = (overrides: Partial<WorkflowRunDetailResponse> = {}): Wo
   inputs: '{}',
   inputs_truncated: false,
   status: 'succeeded',
-  outputs: '{}',
+  outputs: {},
   outputs_truncated: false,
   total_steps: 1,
   created_by_role: 'account',

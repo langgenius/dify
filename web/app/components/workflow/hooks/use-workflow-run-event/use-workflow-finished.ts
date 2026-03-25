@@ -36,6 +36,9 @@ export const useWorkflowFinished = () => {
         draft.resultTabActive = true
         draft.resultText = firstOutputVal
       }
+      else if (out && typeof out === 'object' && Object.keys(out).length > 0) {
+        draft.resultTabActive = true
+      }
     }))
   }, [workflowStore])
 
