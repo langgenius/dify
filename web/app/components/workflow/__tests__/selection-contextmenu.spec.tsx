@@ -10,11 +10,19 @@ import { renderWorkflowFlowComponent } from './workflow-test-env'
 let latestNodes: Node[] = []
 let latestHistoryEvent: string | undefined
 const mockGetNodesReadOnly = vi.fn()
+const mockHandleNodesCopy = vi.fn()
+const mockHandleNodesDelete = vi.fn()
+const mockHandleNodesDuplicate = vi.fn()
 
 vi.mock('../hooks', async () => {
   const actual = await vi.importActual<typeof import('../hooks')>('../hooks')
   return {
     ...actual,
+    useNodesInteractions: () => ({
+      handleNodesCopy: mockHandleNodesCopy,
+      handleNodesDelete: mockHandleNodesDelete,
+      handleNodesDuplicate: mockHandleNodesDuplicate,
+    }),
     useNodesReadOnly: () => ({
       getNodesReadOnly: mockGetNodesReadOnly,
     }),
@@ -73,6 +81,9 @@ describe('SelectionContextmenu', () => {
     latestHistoryEvent = undefined
     mockGetNodesReadOnly.mockReset()
     mockGetNodesReadOnly.mockReturnValue(false)
+    mockHandleNodesCopy.mockReset()
+    mockHandleNodesDelete.mockReset()
+    mockHandleNodesDuplicate.mockReset()
   })
 
   it('should not render when selectionMenu is absent', () => {
@@ -160,6 +171,39 @@ describe('SelectionContextmenu', () => {
     expect(hooksStoreProps.doSyncWorkflowDraft).toHaveBeenCalled()
     expect(latestHistoryEvent).toBe('NodeDragStop')
     vi.useRealTimers()
+  })
+
+  it('should render selection actions and delegate copy, duplicate, and delete', () => {
+    const nodes = [
+      createNode({ id: 'n1', selected: true, width: 40, height: 20 }),
+      createNode({ id: 'n2', selected: true, position: { x: 80, y: 20 }, width: 40, height: 20 }),
+    ]
+
+    const { store } = renderSelectionMenu({ nodes })
+
+    act(() => {
+      store.setState({ selectionMenu: { left: 120, top: 120 } })
+    })
+
+    expect(screen.getByTestId('selection-contextmenu-item-copy')).toHaveTextContent('workflow.common.copy')
+    expect(screen.getByTestId('selection-contextmenu-item-duplicate')).toHaveTextContent('workflow.common.duplicate')
+    expect(screen.getByTestId('selection-contextmenu-item-delete')).toHaveTextContent('common.operation.delete')
+
+    fireEvent.click(screen.getByTestId('selection-contextmenu-item-copy'))
+
+    act(() => {
+      store.setState({ selectionMenu: { left: 120, top: 120 } })
+    })
+    fireEvent.click(screen.getByTestId('selection-contextmenu-item-duplicate'))
+
+    act(() => {
+      store.setState({ selectionMenu: { left: 120, top: 120 } })
+    })
+    fireEvent.click(screen.getByTestId('selection-contextmenu-item-delete'))
+
+    expect(mockHandleNodesCopy).toHaveBeenCalledTimes(1)
+    expect(mockHandleNodesDuplicate).toHaveBeenCalledTimes(1)
+    expect(mockHandleNodesDelete).toHaveBeenCalledTimes(1)
   })
 
   it('should distribute selected nodes horizontally', async () => {
