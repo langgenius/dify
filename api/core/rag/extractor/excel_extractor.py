@@ -63,8 +63,14 @@ class ExcelExtractor(BaseExtractor):
                                     if isinstance(value, (int, float)) and hasattr(cell, "number_format"):
                                         number_format = cell.number_format or ""
                                         if "%" in number_format:
-                                            # Convert decimal to percentage (e.g., 0.9 -> 90%)
-                                            value = f"{value * 100:.10g}%"
+                                            # Extract decimal precision from format (e.g., "0.00%" -> 2, "0%" -> 0)
+                                            precision = self._extract_percentage_precision(number_format)
+                                            if precision is not None:
+                                                # Convert decimal to percentage with proper rounding
+                                                value = f"{value * 100:.{precision}f}%"
+                                            else:
+                                                # Fallback if precision can't be determined
+                                                value = f"{value * 100:.10g}%"
                                         else:
                                             value = str(value)
                                     else:
@@ -96,6 +102,29 @@ class ExcelExtractor(BaseExtractor):
             raise ValueError(f"Unsupported file extension: {file_extension}")
 
         return documents
+
+    def _extract_percentage_precision(self, number_format: str) -> int | None:
+        """
+        Extract decimal precision from Excel percentage format string.
+        Examples:
+            "0%" -> 0
+            "0.0%" -> 1
+            "0.00%" -> 2
+        Returns None if precision cannot be determined.
+        """
+        import re
+
+        # Match patterns like "0.00%" or "0%" to extract decimal places
+        match = re.search(r"0(\.0+)?%", number_format)
+        if match:
+            decimal_part = match.group(1)
+            if decimal_part:
+                # Count the number of zeros after the decimal point
+                return len(decimal_part) - 1  # Subtract 1 for the decimal point itself
+            else:
+                # No decimal part means 0 precision
+                return 0
+        return None
 
     def _find_header_and_columns(self, sheet, scan_rows=10) -> tuple[int, dict[int, str], int]:
         """

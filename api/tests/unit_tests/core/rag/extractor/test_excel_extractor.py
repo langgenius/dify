@@ -123,8 +123,10 @@ class TestExcelExtractor:
             header_rows=[("Item", "Score")],
             data_rows=[
                 (_FakeCell("Test A"), _FakeCell(0.9, number_format="0%")),
-                (_FakeCell("Test B"), _FakeCell(0.456, number_format="0.0%")),
-                (_FakeCell("Test C"), _FakeCell(123.45, number_format="General")),
+                (_FakeCell("Test B"), _FakeCell(0.456, number_format="0%")),
+                (_FakeCell("Test C"), _FakeCell(0.456, number_format="0.0%")),
+                (_FakeCell("Test D"), _FakeCell(0.12345, number_format="0.00%")),
+                (_FakeCell("Test E"), _FakeCell(123.45, number_format="General")),
             ],
         )
 
@@ -134,12 +136,17 @@ class TestExcelExtractor:
         extractor = ExcelExtractor("/tmp/test.xlsx")
         docs = extractor.extract()
 
-        assert len(docs) == 3
+        assert len(docs) == 5
         # 0.9 with 0% format should become 90%
         assert '"Score":"90%"' in docs[0].page_content
         assert "0.9" not in docs[0].page_content
-        # 0.456 with 0.0% format should become 45.6%
-        assert '"Score":"45.6%"' in docs[1].page_content
+        # 0.456 with 0% format should round to 46% (not 45.6%)
+        assert '"Score":"46%"' in docs[1].page_content
         assert "0.456" not in docs[1].page_content
+        assert "45.6%" not in docs[1].page_content
+        # 0.456 with 0.0% format should become 45.6%
+        assert '"Score":"45.6%"' in docs[2].page_content
+        # 0.12345 with 0.00% format should become 12.35% (rounded)
+        assert '"Score":"12.35%"' in docs[3].page_content
         # Regular number without percentage format should remain as-is
-        assert '"Score":"123.45"' in docs[2].page_content
+        assert '"Score":"123.45"' in docs[4].page_content
