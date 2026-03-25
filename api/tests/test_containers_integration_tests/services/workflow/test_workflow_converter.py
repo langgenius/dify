@@ -655,13 +655,13 @@ class TestConvertToLlmNode:
 
     @staticmethod
     def _model_config(model, mode):
-        cfg = MagicMock(spec=ModelConfigEntity)
-        cfg.provider = "openai"
-        cfg.model = model
-        cfg.mode = mode.value
-        cfg.parameters = {}
-        cfg.stop = []
-        return cfg
+        return ModelConfigEntity(
+            provider="openai",
+            model=model,
+            mode=mode.value,
+            parameters={},
+            stop=[],
+        )
 
     @staticmethod
     def _graph(default_variables):
