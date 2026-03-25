@@ -4375,11 +4375,8 @@
     }
   },
   "app/components/workflow-app/hooks/use-workflow-run.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
-      "count": 13
+      "count": 5
     }
   },
   "app/components/workflow-app/hooks/use-workflow-template.ts": {

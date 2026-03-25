@@ -117,6 +117,8 @@ export const formatChatVariableValue = ({
   type: ChatVarType
   value: unknown
 }): JsonValue => {
+  const compactArrayValue = (items: unknown[]) =>
+    items.filter((item): item is JsonValue => item !== null && item !== undefined && item !== '')
   switch (type) {
     case ChatVarTypeEnum.String:
       return typeof value === 'string' ? value : ''
@@ -129,7 +131,7 @@ export const formatChatVariableValue = ({
     case ChatVarTypeEnum.ArrayString:
     case ChatVarTypeEnum.ArrayNumber:
     case ChatVarTypeEnum.ArrayObject:
-      return Array.isArray(value) ? value.filter((item): item is JsonValue => item !== undefined) : []
+      return Array.isArray(value) ? compactArrayValue(value) : []
     case ChatVarTypeEnum.ArrayBoolean:
       return Array.isArray(value) ? value.filter((item): item is JsonValue => item !== undefined) : []
   }
@@ -186,6 +188,8 @@ export const parseEditorContent = ({
   if (!Array.isArray(parsed))
     throw new Error('Invalid JSON array')
 
+  if (!Array.isArray(parsed))
+    throw new TypeError('ArrayBoolean editor content must be a JSON array')
   return parsed
     .map((item: string | boolean) => {
       if (item === 'True' || item === 'true' || item === true)

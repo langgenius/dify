@@ -149,6 +149,7 @@ const createProviderContext = ({
 
 const renderWithToast = (ui: ReactElement) => {
   return render(
+    // eslint-disable-next-line react/no-context-provider
     <ToastContext.Provider value={{ notify: mockNotify, close: vi.fn() }}>
       {ui}
     </ToastContext.Provider>,
@@ -443,6 +444,27 @@ describe('FeaturesTrigger', () => {
           releaseNotes: 'Test notes',
         })
       })
+    })
+
+    it('should skip success side effects when publish mutation returns no workflow version', async () => {
+      // Arrange
+      const user = userEvent.setup()
+      mockPublishWorkflow.mockResolvedValue(null)
+      renderWithToast(<FeaturesTrigger />)
+
+      // Act
+      await user.click(screen.getByRole('button', { name: 'publisher-publish' }))
+
+      // Assert
+      await waitFor(() => {
+        expect(mockPublishWorkflow).toHaveBeenCalled()
+      })
+      expect(mockNotify).not.toHaveBeenCalledWith({ type: 'success', message: 'common.api.actionSuccess' })
+      expect(mockUpdatePublishedWorkflow).not.toHaveBeenCalled()
+      expect(mockInvalidateAppTriggers).not.toHaveBeenCalled()
+      expect(mockSetPublishedAt).not.toHaveBeenCalled()
+      expect(mockSetLastPublishedHasUserInput).not.toHaveBeenCalled()
+      expect(mockResetWorkflowVersionHistory).not.toHaveBeenCalled()
     })
 
     it('should log error when app detail refresh fails after publish', async () => {
