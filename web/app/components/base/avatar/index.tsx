@@ -2,7 +2,7 @@ import type { ImageLoadingStatus } from '@base-ui/react/avatar'
 import { Avatar as BaseAvatar } from '@base-ui/react/avatar'
 import { cn } from '@/utils/classnames'
 
-const SIZES = {
+export const avatarSizeClasses = {
   'xxs': { root: 'size-4', text: 'text-[7px]' },
   'xs': { root: 'size-5', text: 'text-[8px]' },
   'sm': { root: 'size-6', text: 'text-[10px]' },
@@ -13,7 +13,9 @@ const SIZES = {
   '3xl': { root: 'size-16', text: 'text-2xl' },
 } as const
 
-export type AvatarSize = keyof typeof SIZES
+export type AvatarSize = keyof typeof avatarSizeClasses
+
+export const getAvatarSizeClassNames = (size: AvatarSize) => avatarSizeClasses[size]
 
 export type AvatarProps = {
   name: string
@@ -23,7 +25,13 @@ export type AvatarProps = {
   onLoadingStatusChange?: (status: ImageLoadingStatus) => void
 }
 
-const BASE_CLASS = 'relative inline-flex shrink-0 select-none items-center justify-center overflow-hidden rounded-full bg-primary-600'
+export const AvatarRoot = BaseAvatar.Root
+export const AvatarImage = BaseAvatar.Image
+export const AvatarFallback = BaseAvatar.Fallback
+
+const ROOT_CLASS_NAME = 'relative inline-flex shrink-0 select-none items-center justify-center overflow-hidden rounded-full bg-primary-600'
+const IMAGE_CLASS_NAME = 'absolute inset-0 size-full object-cover'
+const FALLBACK_CLASS_NAME = 'flex size-full items-center justify-center font-medium text-white'
 
 export const Avatar = ({
   name,
@@ -32,21 +40,21 @@ export const Avatar = ({
   className,
   onLoadingStatusChange,
 }: AvatarProps) => {
-  const sizeConfig = SIZES[size]
+  const sizeClassNames = getAvatarSizeClassNames(size)
 
   return (
-    <BaseAvatar.Root className={cn(BASE_CLASS, sizeConfig.root, className)}>
+    <AvatarRoot className={cn(ROOT_CLASS_NAME, sizeClassNames.root, className)}>
       {avatar && (
-        <BaseAvatar.Image
+        <AvatarImage
           src={avatar}
           alt={name}
-          className="absolute inset-0 size-full object-cover"
+          className={IMAGE_CLASS_NAME}
           onLoadingStatusChange={onLoadingStatusChange}
         />
       )}
-      <BaseAvatar.Fallback className={cn('font-medium text-white', sizeConfig.text)}>
+      <AvatarFallback className={cn(FALLBACK_CLASS_NAME, sizeClassNames.text)}>
         {name?.[0]?.toLocaleUpperCase()}
-      </BaseAvatar.Fallback>
-    </BaseAvatar.Root>
+      </AvatarFallback>
+    </AvatarRoot>
   )
 }
