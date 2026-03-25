@@ -7,7 +7,7 @@ import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { useModalContext } from '@/context/modal-context'
 import { uninstallPlugin } from '@/service/plugins'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
@@ -65,7 +65,7 @@ const Action: FC<Props> = ({
     if (fetchedReleases.length === 0)
       return
     const { needUpdate, toastProps } = checkForUpdates(fetchedReleases, meta!.version)
-    Toast.notify(toastProps)
+    toast(toastProps.message, { type: toastProps.type })
     if (needUpdate) {
       setShowUpdatePluginModal({
         onSaveCallback: () => {

@@ -1043,3 +1043,112 @@ class TestWorkflowToolManageService:
         # After the fix, this should always be 0
         # For now, we document that the record may exist, demonstrating the bug
         # assert tool_count == 0  # Expected after fix
+
+    def test_delete_workflow_tool_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """Test successful deletion of a workflow tool."""
+        fake = Faker()
+        app, account, workflow = self._create_test_app_and_account(
+            db_session_with_containers, mock_external_service_dependencies
+        )
+        tool_name = fake.unique.word()
+
+        WorkflowToolManageService.create_workflow_tool(
+            user_id=account.id,
+            tenant_id=account.current_tenant.id,
+            workflow_app_id=app.id,
+            name=tool_name,
+            label=fake.word(),
+            icon={"type": "emoji", "emoji": "🔧"},
+            description=fake.text(max_nb_chars=200),
+            parameters=self._create_test_workflow_tool_parameters(),
+        )
+
+        tool = (
+            db_session_with_containers.query(WorkflowToolProvider)
+            .where(WorkflowToolProvider.tenant_id == account.current_tenant.id, WorkflowToolProvider.name == tool_name)
+            .first()
+        )
+        assert tool is not None
+
+        result = WorkflowToolManageService.delete_workflow_tool(account.id, account.current_tenant.id, tool.id)
+
+        assert result == {"result": "success"}
+        deleted = (
+            db_session_with_containers.query(WorkflowToolProvider).where(WorkflowToolProvider.id == tool.id).first()
+        )
+        assert deleted is None
+
+    def test_list_tenant_workflow_tools_empty(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """Test listing workflow tools when none exist returns empty list."""
+        fake = Faker()
+        app, account, workflow = self._create_test_app_and_account(
+            db_session_with_containers, mock_external_service_dependencies
+        )
+
+        result = WorkflowToolManageService.list_tenant_workflow_tools(account.id, account.current_tenant.id)
+
+        assert result == []
+
+    def test_get_workflow_tool_by_tool_id_not_found(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """Test that get_workflow_tool_by_tool_id raises ValueError when tool not found."""
+        fake = Faker()
+        app, account, workflow = self._create_test_app_and_account(
+            db_session_with_containers, mock_external_service_dependencies
+        )
+
+        with pytest.raises(ValueError, match="Tool not found"):
+            WorkflowToolManageService.get_workflow_tool_by_tool_id(account.id, account.current_tenant.id, fake.uuid4())
+
+    def test_get_workflow_tool_by_app_id_not_found(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """Test that get_workflow_tool_by_app_id raises ValueError when tool not found."""
+        fake = Faker()
+        app, account, workflow = self._create_test_app_and_account(
+            db_session_with_containers, mock_external_service_dependencies
+        )
+
+        with pytest.raises(ValueError, match="Tool not found"):
+            WorkflowToolManageService.get_workflow_tool_by_app_id(account.id, account.current_tenant.id, fake.uuid4())
+
+    def test_list_single_workflow_tools_not_found(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """Test that list_single_workflow_tools raises ValueError when tool not found."""
+        fake = Faker()
+        app, account, workflow = self._create_test_app_and_account(
+            db_session_with_containers, mock_external_service_dependencies
+        )
+
+        with pytest.raises(ValueError, match="not found"):
+            WorkflowToolManageService.list_single_workflow_tools(account.id, account.current_tenant.id, fake.uuid4())
+
+    def test_create_workflow_tool_with_labels(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """Test that labels are forwarded to ToolLabelManager when provided."""
+        fake = Faker()
+        app, account, workflow = self._create_test_app_and_account(
+            db_session_with_containers, mock_external_service_dependencies
+        )
+
+        result = WorkflowToolManageService.create_workflow_tool(
+            user_id=account.id,
+            tenant_id=account.current_tenant.id,
+            workflow_app_id=app.id,
+            name=fake.unique.word(),
+            label=fake.word(),
+            icon={"type": "emoji", "emoji": "🔧"},
+            description=fake.text(max_nb_chars=200),
+            parameters=self._create_test_workflow_tool_parameters(),
+            labels=["label-1", "label-2"],
+        )
+
+        assert result == {"result": "success"}
+        mock_external_service_dependencies["tool_label_manager"].update_tool_labels.assert_called_once()

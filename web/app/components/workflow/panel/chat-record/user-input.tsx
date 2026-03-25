@@ -5,10 +5,21 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 
-const UserInput = () => {
+type UserInputVariable = {
+  variable: string
+}
+
+type UserInputProps = {
+  variables?: UserInputVariable[]
+  initialExpanded?: boolean
+}
+
+const UserInput = ({
+  variables = [],
+  initialExpanded = true,
+}: UserInputProps) => {
   const { t } = useTranslation()
-  const [expanded, setExpanded] = useState(true)
-  const variables: any = []
+  const [expanded, setExpanded] = useState(initialExpanded)
 
   if (!variables.length)
     return null

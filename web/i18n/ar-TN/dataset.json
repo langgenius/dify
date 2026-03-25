@@ -176,6 +176,7 @@
   "serviceApi.enabled": "في الخدمة",
   "serviceApi.title": "واجهة برمجة تطبيقات الخدمة",
   "unavailable": "غير متاح",
+  "unknownError": "خطأ غير معروف",
   "updated": "محدث",
   "weightedScore.customized": "مخصص",
   "weightedScore.description": "من خلال تعديل الأوزان المخصصة، تحدد استراتيجية إعادة الترتيب هذه ما إذا كانت الأولوية للمطابقة الدلالية أو الكلمات الرئيسية.",

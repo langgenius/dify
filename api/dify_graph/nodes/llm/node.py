@@ -202,6 +202,10 @@ class LLMNode(Node[LLMNodeData]):
 
             # fetch model config
             model_instance = self._model_instance
+            # Resolve variable references in string-typed completion params
+            model_instance.parameters = llm_utils.resolve_completion_params_variables(
+                model_instance.parameters, variable_pool
+            )
             model_name = model_instance.model_name
             model_provider = model_instance.provider
             model_stop = model_instance.stop
