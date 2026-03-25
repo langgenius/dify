@@ -133,6 +133,8 @@ class ExecutionLimitsLayer(GraphEngineLayer):
         elif limit_type == LimitType.TIME_LIMIT:
             elapsed_time = time.time() - self.start_time if self.start_time else 0
             reason = f"Maximum execution time exceeded: {elapsed_time:.2f}s > {self.max_time}s"
+        else:
+            return
 
         self.logger.warning("Execution limit exceeded: %s", reason)
 

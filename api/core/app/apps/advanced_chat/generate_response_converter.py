@@ -1,4 +1,4 @@
-from collections.abc import Generator
+from collections.abc import Generator, Iterator
 from typing import Any, cast
 
 from core.app.apps.base_app_generate_response_converter import AppGenerateResponseConverter
@@ -56,8 +56,8 @@ class AdvancedChatAppGenerateResponseConverter(AppGenerateResponseConverter):
 
     @classmethod
     def convert_stream_full_response(
-        cls, stream_response: Generator[AppStreamResponse, None, None]
-    ) -> Generator[dict | str, Any, None]:
+        cls, stream_response: Iterator[AppStreamResponse]
+    ) -> Generator[dict | str, None, None]:
         """
         Convert stream full response.
         :param stream_response: stream response
@@ -87,8 +87,8 @@ class AdvancedChatAppGenerateResponseConverter(AppGenerateResponseConverter):
 
     @classmethod
     def convert_stream_simple_response(
-        cls, stream_response: Generator[AppStreamResponse, None, None]
-    ) -> Generator[dict | str, Any, None]:
+        cls, stream_response: Iterator[AppStreamResponse]
+    ) -> Generator[dict | str, None, None]:
         """
         Convert stream simple response.
         :param stream_response: stream response

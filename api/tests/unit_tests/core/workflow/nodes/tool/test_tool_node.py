@@ -8,11 +8,13 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from core.tools.entities.tool_entities import ToolInvokeMessage
+from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
 from dify_graph.file import File, FileTransferMethod, FileType
 from dify_graph.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.node_events import StreamChunkEvent, StreamCompletedEvent
+from dify_graph.nodes.tool.entities import ToolEntity as WorkflowToolEntity
+from dify_graph.nodes.tool.entities import ToolNodeData
 from dify_graph.runtime import GraphRuntimeState, VariablePool
 from dify_graph.system_variable import SystemVariable
 from dify_graph.variables.segments import ArrayFileSegment
@@ -167,3 +169,119 @@ def test_plain_link_messages_remain_links(tool_node: ToolNode):
     files_segment = completed_events[0].node_run_result.outputs["files"]
     assert isinstance(files_segment, ArrayFileSegment)
     assert files_segment.value == []
+
+
+def test_workflow_tool_entity_accepts_primitives_and_tool_input_payloads() -> None:
+    entity = WorkflowToolEntity(
+        provider_id="provider",
+        provider_type="builtin",
+        provider_name="provider",
+        tool_name="search",
+        tool_label="Search",
+        tool_configurations={
+            "timeout": 30,
+            "query": {"type": "mixed", "value": "hello {{name}}"},
+            "selector": {"type": "variable", "value": ["start", "question"]},
+        },
+    )
+
+    assert entity.tool_configurations == {
+        "timeout": 30,
+        "query": {"type": "mixed", "value": "hello {{name}}"},
+        "selector": {"type": "variable", "value": ["start", "question"]},
+    }
+
+
+def test_workflow_tool_entity_rejects_invalid_configuration_entries() -> None:
+    with pytest.raises(TypeError, match="Tool configuration values must be primitives"):
+        WorkflowToolEntity(
+            provider_id="provider",
+            provider_type="builtin",
+            provider_name="provider",
+            tool_name="search",
+            tool_label="Search",
+            tool_configurations={"bad": [object()]},
+        )
+
+
+def test_tool_node_data_filters_missing_tool_parameter_values() -> None:
+    node_data = ToolNodeData(
+        title="Tool",
+        provider_id="provider",
+        provider_type="builtin",
+        provider_name="provider",
+        tool_name="search",
+        tool_label="Search",
+        tool_configurations={},
+        tool_parameters={
+            "query": {"type": "mixed", "value": "hello"},
+            "skip_none": None,
+            "skip_empty": {"type": "constant", "value": None},
+        },
+    )
+
+    assert set(node_data.tool_parameters.keys()) == {"query"}
+
+
+def test_generate_parameters_reads_variables_and_optional_missing_inputs(tool_node: ToolNode) -> None:
+    variable_pool = MagicMock()
+    variable_pool.get.side_effect = [MagicMock(value="from-variable"), None]
+    node_data = ToolNodeData.model_validate(
+        {
+            "title": "Tool",
+            "provider_id": "provider",
+            "provider_type": "builtin",
+            "provider_name": "provider",
+            "tool_name": "tool",
+            "tool_label": "tool",
+            "tool_configurations": {},
+            "tool_parameters": {
+                "query": {"type": "variable", "value": ["start", "query"]},
+                "optional": {"type": "variable", "value": ["start", "optional"]},
+            },
+        }
+    )
+    tool_parameters = [
+        ToolParameter.get_simple_instance("query", "query", ToolParameter.ToolParameterType.STRING, True),
+        ToolParameter.get_simple_instance("optional", "optional", ToolParameter.ToolParameterType.STRING, False),
+    ]
+
+    result = tool_node._generate_parameters(
+        tool_parameters=tool_parameters,
+        variable_pool=variable_pool,
+        node_data=node_data,
+    )
+
+    assert result == {"query": "from-variable"}
+
+
+def test_generate_parameters_formats_logs_and_unknown_parameters(tool_node: ToolNode) -> None:
+    variable_pool = MagicMock()
+    variable_pool.convert_template.return_value = MagicMock(text="rendered", log="masked")
+    node_data = ToolNodeData.model_validate(
+        {
+            "title": "Tool",
+            "provider_id": "provider",
+            "provider_type": "builtin",
+            "provider_name": "provider",
+            "tool_name": "tool",
+            "tool_label": "tool",
+            "tool_configurations": {},
+            "tool_parameters": {
+                "query": {"type": "mixed", "value": "{{ question }}"},
+                "missing": {"type": "constant", "value": "literal"},
+            },
+        }
+    )
+    tool_parameters = [
+        ToolParameter.get_simple_instance("query", "query", ToolParameter.ToolParameterType.STRING, True),
+    ]
+
+    result = tool_node._generate_parameters(
+        tool_parameters=tool_parameters,
+        variable_pool=variable_pool,
+        node_data=node_data,
+        for_log=True,
+    )
+
+    assert result == {"query": "masked", "missing": None}

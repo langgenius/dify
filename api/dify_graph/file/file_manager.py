@@ -112,6 +112,8 @@ def _get_encoded_string(f: File, /) -> str:
             data = _download_file_content(f.storage_key)
         case FileTransferMethod.DATASOURCE_FILE:
             data = _download_file_content(f.storage_key)
+        case _:
+            raise ValueError(f"Unsupported transfer method: {f.transfer_method}")
 
     return base64.b64encode(data).decode("utf-8")
 

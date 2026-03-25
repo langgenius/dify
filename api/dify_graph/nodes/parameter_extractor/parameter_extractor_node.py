@@ -5,6 +5,8 @@ import uuid
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any, cast
 
+from pydantic import TypeAdapter
+
 from core.model_manager import ModelInstance
 from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate
@@ -63,6 +65,7 @@ from .prompts import (
 )
 
 logger = logging.getLogger(__name__)
+_JSON_OBJECT_ADAPTER = TypeAdapter(dict[str, object])
 
 if TYPE_CHECKING:
     from dify_graph.entities import GraphInitParams
@@ -70,7 +73,7 @@ if TYPE_CHECKING:
     from dify_graph.runtime import GraphRuntimeState
 
 
-def extract_json(text):
+def extract_json(text: str) -> str | None:
     """
     From a given JSON started from '{' or '[' extract the complete JSON object.
     """
@@ -396,10 +399,15 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         )
 
         # generate tool
+        parameter_schema = node_data.get_parameter_json_schema()
         tool = PromptMessageTool(
             name=FUNCTION_CALLING_EXTRACTOR_NAME,
             description="Extract parameters from the natural language text",
-            parameters=node_data.get_parameter_json_schema(),
+            parameters={
+                "type": parameter_schema["type"],
+                "properties": dict(parameter_schema["properties"]),
+                "required": list(parameter_schema["required"]),
+            },
         )
 
         return prompt_messages, [tool]
@@ -606,19 +614,21 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         else:
             return None
 
-    def _transform_result(self, data: ParameterExtractorNodeData, result: dict):
+    def _transform_result(self, data: ParameterExtractorNodeData, result: Mapping[str, object]) -> dict[str, object]:
         """
         Transform result into standard format.
         """
-        transformed_result: dict[str, Any] = {}
+        transformed_result: dict[str, object] = {}
         for parameter in data.parameters:
             if parameter.name in result:
                 param_value = result[parameter.name]
                 # transform value
                 if parameter.type == SegmentType.NUMBER:
-                    transformed = self._transform_number(param_value)
-                    if transformed is not None:
-                        transformed_result[parameter.name] = transformed
+                    if isinstance(param_value, (bool, int, float, str)):
+                        numeric_value: bool | int | float | str = param_value
+                        transformed = self._transform_number(numeric_value)
+                        if transformed is not None:
+                            transformed_result[parameter.name] = transformed
                 elif parameter.type == SegmentType.BOOLEAN:
                     if isinstance(result[parameter.name], (bool, int)):
                         transformed_result[parameter.name] = bool(result[parameter.name])
@@ -665,7 +675,7 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
 
         return transformed_result
 
-    def _extract_complete_json_response(self, result: str) -> dict | None:
+    def _extract_complete_json_response(self, result: str) -> dict[str, object] | None:
         """
         Extract complete json response.
         """
@@ -676,11 +686,11 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
                 json_str = extract_json(result[idx:])
                 if json_str:
                     with contextlib.suppress(Exception):
-                        return cast(dict, json.loads(json_str))
+                        return _JSON_OBJECT_ADAPTER.validate_python(json.loads(json_str))
         logger.info("extra error: %s", result)
         return None
 
-    def _extract_json_from_tool_call(self, tool_call: AssistantPromptMessage.ToolCall) -> dict | None:
+    def _extract_json_from_tool_call(self, tool_call: AssistantPromptMessage.ToolCall) -> dict[str, object] | None:
         """
         Extract json from tool call.
         """
@@ -694,16 +704,16 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
                 json_str = extract_json(result[idx:])
                 if json_str:
                     with contextlib.suppress(Exception):
-                        return cast(dict, json.loads(json_str))
+                        return _JSON_OBJECT_ADAPTER.validate_python(json.loads(json_str))
 
         logger.info("extra error: %s", result)
         return None
 
-    def _generate_default_result(self, data: ParameterExtractorNodeData):
+    def _generate_default_result(self, data: ParameterExtractorNodeData) -> dict[str, object]:
         """
         Generate default result.
         """
-        result: dict[str, Any] = {}
+        result: dict[str, object] = {}
         for parameter in data.parameters:
             if parameter.type == "number":
                 result[parameter.name] = 0

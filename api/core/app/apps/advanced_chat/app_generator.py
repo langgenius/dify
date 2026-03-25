@@ -5,7 +5,7 @@ import logging
 import threading
 import uuid
 from collections.abc import Generator, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Literal, TypeVar, Union, overload
+from typing import TYPE_CHECKING, Any, Literal, Union, overload
 
 from flask import Flask, current_app
 from pydantic import ValidationError
@@ -47,7 +47,6 @@ from extensions.ext_database import db
 from factories import file_factory
 from libs.flask_utils import preserve_flask_contexts
 from models import Account, App, Conversation, EndUser, Message, Workflow, WorkflowNodeExecutionTriggeredFrom
-from models.base import Base
 from models.enums import WorkflowRunTriggeredFrom
 from services.conversation_service import ConversationService
 from services.workflow_draft_variable_service import (
@@ -522,8 +521,10 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
 
         # release database connection, because the following new thread operations may take a long time
         with Session(bind=db.engine, expire_on_commit=False) as session:
-            workflow = _refresh_model(session, workflow)
-            message = _refresh_model(session, message)
+            workflow = _refresh_model(session=session, model=workflow)
+            message = _refresh_model(session=session, model=message)
+        if message is None:
+            raise RuntimeError("Failed to refresh Message; _refresh_model returned None.")
         #     workflow_ = session.get(Workflow, workflow.id)
         #     assert workflow_ is not None
         #     workflow = workflow_
@@ -690,11 +691,21 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 raise e
 
 
-_T = TypeVar("_T", bound=Base)
+@overload
+def _refresh_model(*, session: Session | None = None, model: Workflow) -> Workflow: ...
 
 
-def _refresh_model(session, model: _T) -> _T:
-    with Session(bind=db.engine, expire_on_commit=False) as session:
-        detach_model = session.get(type(model), model.id)
-        assert detach_model is not None
-        return detach_model
+@overload
+def _refresh_model(*, session: Session | None = None, model: Message) -> Message: ...
+
+
+def _refresh_model(*, session: Session | None = None, model: Any) -> Any:
+    if session is not None:
+        detached_model = session.get(type(model), model.id)
+        assert detached_model is not None
+        return detached_model
+
+    with Session(bind=db.engine, expire_on_commit=False) as refresh_session:
+        detached_model = refresh_session.get(type(model), model.id)
+        assert detached_model is not None
+        return detached_model

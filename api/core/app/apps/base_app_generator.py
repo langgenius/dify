@@ -224,6 +224,7 @@ class BaseAppGenerator:
     def _get_draft_var_saver_factory(invoke_from: InvokeFrom, account: Account | EndUser) -> DraftVariableSaverFactory:
         if invoke_from == InvokeFrom.DEBUGGER:
             assert isinstance(account, Account)
+            debug_account = account
 
             def draft_var_saver_factory(
                 session: Session,
@@ -240,7 +241,7 @@ class BaseAppGenerator:
                     node_type=node_type,
                     node_execution_id=node_execution_id,
                     enclosing_node_id=enclosing_node_id,
-                    user=account,
+                    user=debug_account,
                 )
         else:
 

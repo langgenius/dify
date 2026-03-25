@@ -33,6 +33,79 @@ from dify_graph.system_variable import SystemVariable
 
 
 class TestWorkflowBasedAppRunner:
+    def test_get_graph_items_rejects_non_mapping_entries(self):
+        with pytest.raises(ValueError, match="nodes in workflow graph must be mappings"):
+            WorkflowBasedAppRunner._get_graph_items({"nodes": ["bad"], "edges": []})
+
+        with pytest.raises(ValueError, match="edges in workflow graph must be mappings"):
+            WorkflowBasedAppRunner._get_graph_items({"nodes": [], "edges": ["bad"]})
+
+    def test_extract_start_node_id_handles_missing_and_invalid_values(self):
+        assert WorkflowBasedAppRunner._extract_start_node_id(None) is None
+        assert WorkflowBasedAppRunner._extract_start_node_id({"data": "invalid"}) is None
+        assert WorkflowBasedAppRunner._extract_start_node_id({"data": {"start_node_id": 123}}) is None
+        assert WorkflowBasedAppRunner._extract_start_node_id({"data": {"start_node_id": "start-node"}}) == "start-node"
+
+    def test_build_single_node_graph_config_keeps_target_related_and_start_nodes(self):
+        graph_config, target_node_config = WorkflowBasedAppRunner._build_single_node_graph_config(
+            graph_config={
+                "nodes": [
+                    {"id": "start-node", "data": {"type": "start", "version": "1"}},
+                    {
+                        "id": "loop-node",
+                        "data": {"type": "loop", "version": "1", "start_node_id": "start-node"},
+                    },
+                    {
+                        "id": "loop-child",
+                        "data": {"type": "answer", "version": "1", "loop_id": "loop-node"},
+                    },
+                    {"id": "outside-node", "data": {"type": "answer", "version": "1"}},
+                ],
+                "edges": [
+                    {"source": "start-node", "target": "loop-node"},
+                    {"source": "loop-node", "target": "loop-child"},
+                    {"source": "loop-node", "target": "outside-node"},
+                ],
+            },
+            node_id="loop-node",
+            node_type_filter_key="loop_id",
+        )
+
+        assert [node["id"] for node in graph_config["nodes"]] == ["start-node", "loop-node", "loop-child"]
+        assert graph_config["edges"] == [
+            {"source": "start-node", "target": "loop-node"},
+            {"source": "loop-node", "target": "loop-child"},
+        ]
+        assert target_node_config["id"] == "loop-node"
+
+    def test_build_agent_strategy_info_validates_payload(self):
+        event = NodeRunStartedEvent(
+            id="exec",
+            node_id="node",
+            node_type=BuiltinNodeTypes.START,
+            node_title="Start",
+            start_at=datetime.utcnow(),
+            extras={"agent_strategy": {"name": "planner", "icon": "robot"}},
+        )
+
+        strategy = WorkflowBasedAppRunner._build_agent_strategy_info(event)
+
+        assert strategy is not None
+        assert strategy.name == "planner"
+        assert strategy.icon == "robot"
+
+    def test_build_agent_strategy_info_returns_none_for_invalid_payload(self):
+        event = NodeRunStartedEvent(
+            id="exec",
+            node_id="node",
+            node_type=BuiltinNodeTypes.START,
+            node_title="Start",
+            start_at=datetime.utcnow(),
+            extras={"agent_strategy": {"name": "planner", "extra": "ignored"}},
+        )
+
+        assert WorkflowBasedAppRunner._build_agent_strategy_info(event) is None
+
     def test_resolve_user_from(self):
         runner = WorkflowBasedAppRunner(queue_manager=SimpleNamespace(), app_id="app")
 
@@ -173,6 +246,34 @@ class TestWorkflowBasedAppRunner:
         paused_event = next(event for event, _ in published if isinstance(event, QueueWorkflowPausedEvent))
         assert paused_event.paused_nodes == ["node-1"]
         assert emails
+
+    def test_enqueue_human_input_notifications_skips_invalid_reasons_and_logs_failures(self, monkeypatch):
+        runner = WorkflowBasedAppRunner(queue_manager=SimpleNamespace(), app_id="app")
+
+        seen_calls: list[tuple[dict[str, object], str]] = []
+
+        class _Dispatch:
+            def apply_async(self, *, kwargs, queue):
+                seen_calls.append((kwargs, queue))
+                raise RuntimeError("boom")
+
+        logged: list[str] = []
+        monkeypatch.setattr("core.app.apps.workflow_app_runner.dispatch_human_input_email_task", _Dispatch())
+        monkeypatch.setattr(
+            "core.app.apps.workflow_app_runner.logger",
+            SimpleNamespace(exception=lambda message, form_id: logged.append(f"{message}:{form_id}")),
+        )
+
+        runner._enqueue_human_input_notifications(
+            [
+                object(),
+                HumanInputRequired(form_id="", form_content="content", node_id="node", node_title="Node"),
+                HumanInputRequired(form_id="form-1", form_content="content", node_id="node", node_title="Node"),
+            ]
+        )
+
+        assert seen_calls == [({"form_id": "form-1", "node_title": "Node"}, "mail")]
+        assert logged == ["Failed to enqueue human input email task for form %s:form-1"]
 
     def test_handle_node_events_publishes_queue_events(self):
         published: list[object] = []

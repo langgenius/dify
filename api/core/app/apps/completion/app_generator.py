@@ -149,6 +149,11 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
 
         # init generate records
         (conversation, message) = self._init_generate_records(application_generate_entity)
+        if conversation is None or message is None:
+            raise RuntimeError(
+                "_init_generate_records() returned None for conversation or message, "
+                "which is required to proceed with generation."
+            )
 
         # init queue manager
         queue_manager = MessageBasedAppQueueManager(
@@ -312,15 +317,19 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
 
         # init generate records
         (conversation, message) = self._init_generate_records(application_generate_entity)
+        assert conversation is not None
+        assert message is not None
+        conversation_id = str(conversation.id)
+        message_id = str(message.id)
 
         # init queue manager
         queue_manager = MessageBasedAppQueueManager(
             task_id=application_generate_entity.task_id,
             user_id=application_generate_entity.user_id,
             invoke_from=application_generate_entity.invoke_from,
-            conversation_id=conversation.id,
+            conversation_id=conversation_id,
             app_mode=conversation.mode,
-            message_id=message.id,
+            message_id=message_id,
         )
 
         # new thread with request context
@@ -330,7 +339,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
                 flask_app=current_app._get_current_object(),  # type: ignore
                 application_generate_entity=application_generate_entity,
                 queue_manager=queue_manager,
-                message_id=message.id,
+                message_id=message_id,
             )
 
         worker_thread = threading.Thread(target=worker_with_context)

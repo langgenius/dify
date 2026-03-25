@@ -225,10 +225,11 @@ class ToolNode(Node[ToolNodeData]):
                 continue
             tool_input = node_data.tool_parameters[parameter_name]
             if tool_input.type == "variable":
-                variable = variable_pool.get(tool_input.value)
+                variable_selector = tool_input.require_variable_selector()
+                variable = variable_pool.get(variable_selector)
                 if variable is None:
                     if parameter.required:
-                        raise ToolParameterError(f"Variable {tool_input.value} does not exist")
+                        raise ToolParameterError(f"Variable {variable_selector} does not exist")
                     continue
                 parameter_value = variable.value
             elif tool_input.type in {"mixed", "constant"}:
@@ -510,8 +511,9 @@ class ToolNode(Node[ToolNodeData]):
                     for selector in selectors:
                         result[selector.variable] = selector.value_selector
                 case "variable":
-                    selector_key = ".".join(input.value)
-                    result[f"#{selector_key}#"] = input.value
+                    variable_selector = input.require_variable_selector()
+                    selector_key = ".".join(variable_selector)
+                    result[f"#{selector_key}#"] = variable_selector
                 case "constant":
                     pass
 
