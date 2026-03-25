@@ -19,7 +19,6 @@ from .storage.supabase_storage_config import SupabaseStorageConfig
 from .storage.tencent_cos_storage_config import TencentCloudCOSStorageConfig
 from .storage.volcengine_tos_storage_config import VolcengineTOSStorageConfig
 from .vdb.alibabacloud_mysql_config import AlibabaCloudMySQLConfig
-from .vdb.analyticdb_config import AnalyticdbConfig
 from .vdb.baidu_vector_config import BaiduVectorDBConfig
 from .vdb.chroma_config import ChromaConfig
 from .vdb.couchbase_config import CouchbaseConfig
@@ -341,7 +340,6 @@ class MiddlewareConfig(
     VolcengineTOSStorageConfig,
     # configs of vdb and vdb providers
     VectorStoreConfig,
-    AnalyticdbConfig,
     ChromaConfig,
     HologresConfig,
     HuaweiCloudConfig,

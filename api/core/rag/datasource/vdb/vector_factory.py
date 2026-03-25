@@ -135,10 +135,6 @@ class Vector:
                 from core.rag.datasource.vdb.opensearch.opensearch_vector import OpenSearchVectorFactory
 
                 return OpenSearchVectorFactory
-            case VectorType.ANALYTICDB:
-                from core.rag.datasource.vdb.analyticdb.analyticdb_vector import AnalyticdbVectorFactory
-
-                return AnalyticdbVectorFactory
             case VectorType.COUCHBASE:
                 from core.rag.datasource.vdb.couchbase.couchbase_vector import CouchbaseVectorFactory
 

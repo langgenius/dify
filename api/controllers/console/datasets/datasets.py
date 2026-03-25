@@ -242,7 +242,6 @@ def _get_retrieval_methods_by_vector_type(vector_type: str | None, is_mock: bool
         VectorType.QDRANT,
         VectorType.WEAVIATE,
         VectorType.OPENSEARCH,
-        VectorType.ANALYTICDB,
         VectorType.MYSCALE,
         VectorType.ORACLE,
         VectorType.ELASTICSEARCH,

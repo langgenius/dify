@@ -45,8 +45,6 @@ core/plugin/backwards_invocation/model.py
 core/prompt/utils/extract_thread_messages.py
 core/rag/datasource/keyword/jieba/jieba.py
 core/rag/datasource/keyword/jieba/jieba_keyword_table_handler.py
-core/rag/datasource/vdb/analyticdb/analyticdb_vector.py
-core/rag/datasource/vdb/analyticdb/analyticdb_vector_openapi.py
 core/rag/datasource/vdb/baidu/baidu_vector.py
 core/rag/datasource/vdb/chroma/chroma_vector.py
 core/rag/datasource/vdb/couchbase/couchbase_vector.py
