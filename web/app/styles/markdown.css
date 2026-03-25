@@ -1,5 +1,5 @@
-@use '../../themes/markdown-light';
-@use '../../themes/markdown-dark';
+@import '../../themes/markdown-light.css';
+@import '../../themes/markdown-dark.css';
 
 .markdown-body {
   -ms-text-size-adjust: 100%;
