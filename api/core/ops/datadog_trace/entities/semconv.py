@@ -38,3 +38,7 @@ RESPONSE_FINISH_REASONS = "gen_ai.response.finish_reasons"
 TOOL_NAME = "gen_ai.tool.name"
 TOOL_CALL_ARGUMENTS = "gen_ai.tool.call.arguments"
 TOOL_CALL_RESULT = "gen_ai.tool.call.result"
+
+# Dify-specific attributes
+DIFY_APP_ID = "dify.app_id"
+DIFY_WORKFLOW_ID = "dify.workflow_id"

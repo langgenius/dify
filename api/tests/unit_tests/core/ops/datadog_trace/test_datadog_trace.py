@@ -18,7 +18,7 @@ from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionSta
 @pytest.fixture
 def datadog_trace(monkeypatch):
     mock_cls = MagicMock()
-    mock_cls._compute_trace_id.side_effect = DatadogTraceClient._compute_trace_id
+    mock_cls.compute_trace_id.side_effect = DatadogTraceClient.compute_trace_id
     monkeypatch.setattr("core.ops.datadog_trace.datadog_trace.DatadogTraceClient", mock_cls)
     config = DatadogConfig(api_key="test-key", site="datadoghq.com", service_name="test")
     return DatadogDataTrace(config)
@@ -101,7 +101,8 @@ class TestWorkflowNodeProcessing:
             "core.ops.datadog_trace.datadog_trace.DatadogSpanBuilder.build_workflow_node_attrs",
             mock_builder,
         )
-        datadog_trace._process_workflow_nodes(trace_info, "workflow:wf-1", "message:msg-1")
+        trace_id = DatadogTraceClient.compute_trace_id("message:msg-1")
+        datadog_trace._process_workflow_nodes(trace_info, "workflow:wf-1", trace_id)
 
         add_span_calls = datadog_trace.trace_client.add_span.call_args_list
         assert len(add_span_calls) == 2
@@ -137,7 +138,7 @@ class TestWorkflowNodeProcessing:
     def test_tool_before_message_uses_deterministic_trace_id(self, datadog_trace: DatadogDataTrace):
         tool_trace = _build_tool_trace_info(message_id="msg-99")
         message_trace = _build_message_trace_info(message_id="msg-99")
-        expected_trace_id = DatadogTraceClient._compute_trace_id("message:msg-99")
+        expected_trace_id = DatadogTraceClient.compute_trace_id("message:msg-99")
 
         datadog_trace.tool_trace(tool_trace)
         datadog_trace.message_trace(message_trace)
