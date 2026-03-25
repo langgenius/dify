@@ -72,7 +72,7 @@ export const buildObjectValueItems = (chatVar?: ConversationVariable): ObjectVal
 export const formatObjectValueFromList = (list: ObjectValueItem[]) => {
   return list.reduce<Record<string, string | number | null>>((acc, curr) => {
     if (curr.key)
-      acc[curr.key] = curr.value || null
+      acc[curr.key] = curr.value === '' || curr.value === undefined ? null : curr.value
     return acc
   }, {})
 }
@@ -88,6 +88,8 @@ export const formatChatVariableValue = ({
   type: ChatVarType
   value: unknown
 }) => {
+  const compactArrayValue = (items: unknown[]) =>
+    items.filter(item => item !== null && item !== undefined && item !== '')
   switch (type) {
     case ChatVarTypeEnum.String:
       return value || ''
@@ -100,7 +102,7 @@ export const formatChatVariableValue = ({
     case ChatVarTypeEnum.ArrayString:
     case ChatVarTypeEnum.ArrayNumber:
     case ChatVarTypeEnum.ArrayObject:
-      return Array.isArray(value) ? value.filter(Boolean) : []
+      return Array.isArray(value) ? compactArrayValue(value) : []
     case ChatVarTypeEnum.ArrayBoolean:
       return value || []
   }
@@ -151,6 +153,8 @@ export const parseEditorContent = ({
   if (type !== ChatVarTypeEnum.ArrayBoolean)
     return parsed
 
+  if (!Array.isArray(parsed))
+    throw new TypeError('ArrayBoolean editor content must be a JSON array')
   return parsed
     .map((item: string | boolean) => {
       if (item === 'True' || item === 'true' || item === true)
