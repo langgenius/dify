@@ -87,7 +87,10 @@ class TestKnowledgeService:
         mock_client.retrieve.return_value = {"ResponseMetadata": {"HTTPStatusCode": 200}, "retrievalResults": []}
 
         # Act
-        result = cast(dict[str, Any], ExternalDatasetTestService.knowledge_retrieval(BedrockRetrievalSetting(top_k=1), "query", "kb"))
+        result = cast(
+            dict[str, Any],
+            ExternalDatasetTestService.knowledge_retrieval(BedrockRetrievalSetting(top_k=1), "query", "kb"),
+        )
 
         # Assert
         assert result["records"] == []
@@ -104,7 +107,10 @@ class TestKnowledgeService:
         mock_client.retrieve.return_value = {"ResponseMetadata": {"HTTPStatusCode": 500}}
 
         # Act
-        result = cast(dict[str, Any], ExternalDatasetTestService.knowledge_retrieval(BedrockRetrievalSetting(top_k=1), "query", "kb"))
+        result = cast(
+            dict[str, Any],
+            ExternalDatasetTestService.knowledge_retrieval(BedrockRetrievalSetting(top_k=1), "query", "kb"),
+        )
 
         # Assert
         assert result["records"] == []
@@ -139,7 +145,10 @@ class TestKnowledgeService:
 
         # Act
         # retrieval_setting missing "score_threshold"
-        result = cast(dict[str, Any], ExternalDatasetTestService.knowledge_retrieval(BedrockRetrievalSetting(top_k=1), "query", "kb"))
+        result = cast(
+            dict[str, Any],
+            ExternalDatasetTestService.knowledge_retrieval(BedrockRetrievalSetting(top_k=1), "query", "kb"),
+        )
 
         # Assert
         assert len(result["records"]) == 1

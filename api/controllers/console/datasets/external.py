@@ -4,7 +4,6 @@ from pydantic import BaseModel, Field
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
-from services.knowledge_service import BedrockRetrievalSetting
 from controllers.common.schema import get_or_create_model, register_schema_models
 from controllers.console import console_ns
 from controllers.console.datasets.error import DatasetNameDuplicateError
@@ -26,7 +25,7 @@ from libs.login import current_account_with_tenant, login_required
 from services.dataset_service import DatasetService
 from services.external_knowledge_service import ExternalDatasetService
 from services.hit_testing_service import HitTestingService
-from services.knowledge_service import ExternalDatasetTestService
+from services.knowledge_service import BedrockRetrievalSetting, ExternalDatasetTestService
 
 
 def _build_dataset_detail_model():
