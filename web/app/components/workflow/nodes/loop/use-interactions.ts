@@ -7,14 +7,16 @@ import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
 import { useNodesMetaData } from '@/app/components/workflow/hooks'
 import {
-  LOOP_CHILDREN_Z_INDEX,
-  LOOP_PADDING,
-} from '../../constants'
-import {
   generateNewNode,
   getNodeCustomTypeByNodeDataType,
 } from '../../utils'
-import { CUSTOM_LOOP_START_NODE } from '../loop-start/constants'
+import {
+  buildLoopChildCopy,
+  getContainerBounds,
+  getContainerResize,
+  getLoopChildren,
+  getRestrictedLoopPosition,
+} from './use-interactions.helpers'
 
 export const useNodeLoopInteractions = () => {
   const store = useStoreApi()
@@ -29,40 +31,19 @@ export const useNodeLoopInteractions = () => {
     const nodes = getNodes()
     const currentNode = nodes.find(n => n.id === nodeId)!
     const childrenNodes = nodes.filter(n => n.parentId === nodeId)
-    let rightNode: Node
-    let bottomNode: Node
+    const resize = getContainerResize(currentNode, getContainerBounds(childrenNodes))
 
-    childrenNodes.forEach((n) => {
-      if (rightNode) {
-        if (n.position.x + n.width! > rightNode.position.x + rightNode.width!)
-          rightNode = n
-      }
-      else {
-        rightNode = n
-      }
-      if (bottomNode) {
-        if (n.position.y + n.height! > bottomNode.position.y + bottomNode.height!)
-          bottomNode = n
-      }
-      else {
-        bottomNode = n
-      }
-    })
-
-    const widthShouldExtend = rightNode! && currentNode.width! < rightNode.position.x + rightNode.width!
-    const heightShouldExtend = bottomNode! && currentNode.height! < bottomNode.position.y + bottomNode.height!
-
-    if (widthShouldExtend || heightShouldExtend) {
+    if (resize.width || resize.height) {
       const newNodes = produce(nodes, (draft) => {
         draft.forEach((n) => {
           if (n.id === nodeId) {
-            if (widthShouldExtend) {
-              n.data.width = rightNode.position.x + rightNode.width! + LOOP_PADDING.right
-              n.width = rightNode.position.x + rightNode.width! + LOOP_PADDING.right
+            if (resize.width) {
+              n.data.width = resize.width
+              n.width = resize.width
             }
-            if (heightShouldExtend) {
-              n.data.height = bottomNode.position.y + bottomNode.height! + LOOP_PADDING.bottom
-              n.height = bottomNode.position.y + bottomNode.height! + LOOP_PADDING.bottom
+            if (resize.height) {
+              n.data.height = resize.height
+              n.height = resize.height
             }
           }
         })
@@ -76,25 +57,8 @@ export const useNodeLoopInteractions = () => {
     const { getNodes } = store.getState()
     const nodes = getNodes()
 
-    const restrictPosition: { x?: number, y?: number } = { x: undefined, y: undefined }
-
-    if (node.data.isInLoop) {
-      const parentNode = nodes.find(n => n.id === node.parentId)
-
-      if (parentNode) {
-        if (node.position.y < LOOP_PADDING.top)
-          restrictPosition.y = LOOP_PADDING.top
-        if (node.position.x < LOOP_PADDING.left)
-          restrictPosition.x = LOOP_PADDING.left
-        if (node.position.x + node.width! > parentNode!.width! - LOOP_PADDING.right)
-          restrictPosition.x = parentNode!.width! - LOOP_PADDING.right - node.width!
-        if (node.position.y + node.height! > parentNode!.height! - LOOP_PADDING.bottom)
-          restrictPosition.y = parentNode!.height! - LOOP_PADDING.bottom - node.height!
-      }
-    }
-
     return {
-      restrictPosition,
+      restrictPosition: getRestrictedLoopPosition(node, nodes.find(n => n.id === node.parentId)),
     }
   }, [store])
 
@@ -111,35 +75,26 @@ export const useNodeLoopInteractions = () => {
   const handleNodeLoopChildrenCopy = useCallback((nodeId: string, newNodeId: string, idMapping: Record<string, string>) => {
     const { getNodes } = store.getState()
     const nodes = getNodes()
-    const childrenNodes = nodes.filter(n => n.parentId === nodeId && n.type !== CUSTOM_LOOP_START_NODE)
+    const childrenNodes = getLoopChildren(nodes, nodeId)
     const newIdMapping = { ...idMapping }
 
     const copyChildren = childrenNodes.map((child, index) => {
       const childNodeType = child.data.type as BlockEnum
       const { defaultValue } = nodesMetaDataMap![childNodeType]
       const nodesWithSameType = nodes.filter(node => node.data.type === childNodeType)
-      const { newNode } = generateNewNode({
-        type: getNodeCustomTypeByNodeDataType(childNodeType),
-        data: {
-          ...defaultValue,
-          ...child.data,
-          selected: false,
-          _isBundled: false,
-          _connectedSourceHandleIds: [],
-          _connectedTargetHandleIds: [],
-          _dimmed: false,
-          title: nodesWithSameType.length > 0 ? `${defaultValue.title} ${nodesWithSameType.length + 1}` : defaultValue.title,
-          isInLoop: true,
-          loop_id: newNodeId,
-          type: childNodeType,
-        },
-        position: child.position,
-        positionAbsolute: child.positionAbsolute,
-        parentId: newNodeId,
-        extent: child.extent,
-        zIndex: LOOP_CHILDREN_Z_INDEX,
+      const childCopy = buildLoopChildCopy({
+        child,
+        childNodeType,
+        defaultValue: defaultValue as Node['data'],
+        nodesWithSameTypeCount: nodesWithSameType.length,
+        newNodeId,
+        index,
       })
-      newNode.id = `${newNodeId}${newNode.id + index}`
+      const { newNode } = generateNewNode({
+        ...childCopy.params,
+        type: getNodeCustomTypeByNodeDataType(childNodeType),
+      })
+      newNode.id = `${newNodeId}${newNode.id + childCopy.newId}`
       newIdMapping[child.id] = newNode.id
       return newNode
     })
