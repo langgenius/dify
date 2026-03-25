@@ -57,6 +57,7 @@ const VariableModalTrigger = ({
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-[11]">
         <VariableModal
+          key={chatVar?.id ?? 'new'}
           chatVar={chatVar}
           onSave={onSave}
           onClose={() => {

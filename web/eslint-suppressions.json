@@ -4702,7 +4702,7 @@
   },
   "app/components/workflow/nodes/_base/components/before-run-form/index.tsx": {
     "ts/no-explicit-any": {
-      "count": 11
+      "count": 5
     }
   },
   "app/components/workflow/nodes/_base/components/config-vision.tsx": {
@@ -4764,9 +4764,6 @@
   },
   "app/components/workflow/nodes/_base/components/form-input-item.tsx": {
     "no-restricted-imports": {
-      "count": 1
-    },
-    "react/unsupported-syntax": {
       "count": 1
     }
   },
@@ -4906,13 +4903,7 @@
   },
   "app/components/workflow/nodes/_base/components/variable/var-reference-picker.tsx": {
     "no-restricted-imports": {
-      "count": 2
-    },
-    "react/set-state-in-effect": {
       "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 3
     }
   },
   "app/components/workflow/nodes/_base/components/variable/var-reference-vars.tsx": {
@@ -4984,14 +4975,6 @@
   "app/components/workflow/nodes/_base/hooks/use-var-list.ts": {
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "app/components/workflow/nodes/_base/node.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 3
     }
   },
   "app/components/workflow/nodes/_base/types.ts": {
@@ -6152,14 +6135,6 @@
       "count": 1
     }
   },
-  "app/components/workflow/panel/chat-variable-panel/components/variable-modal.tsx": {
-    "react/set-state-in-effect": {
-      "count": 8
-    },
-    "ts/no-explicit-any": {
-      "count": 3
-    }
-  },
   "app/components/workflow/panel/chat-variable-panel/components/variable-type-select.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -6280,11 +6255,6 @@
       "count": 1
     }
   },
-  "app/components/workflow/run/output-panel.tsx": {
-    "ts/no-explicit-any": {
-      "count": 3
-    }
-  },
   "app/components/workflow/run/result-panel.tsx": {
     "ts/no-explicit-any": {
       "count": 4
@@ -6326,14 +6296,6 @@
     },
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "app/components/workflow/selection-contextmenu.tsx": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 4
     }
   },
   "app/components/workflow/skill/editor/skill-editor/plugins/file-picker-block.tsx": {
@@ -6380,8 +6342,11 @@
     "no-restricted-imports": {
       "count": 1
     },
+    "perfectionist/sort-imports": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/workflow/utils/data-source.ts": {
@@ -6452,13 +6417,7 @@
   },
   "app/components/workflow/variable-inspect/value-content.tsx": {
     "react/set-state-in-effect": {
-      "count": 1
-    },
-    "regexp/no-super-linear-backtracking": {
-      "count": 1
-    },
-    "regexp/no-unused-capturing-group": {
-      "count": 2
+      "count": 5
     }
   },
   "app/components/workflow/workflow-history-store.tsx": {
