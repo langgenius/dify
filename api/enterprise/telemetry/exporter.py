@@ -14,6 +14,8 @@ from datetime import UTC, datetime
 from typing import Any, cast
 
 from opentelemetry import trace
+from opentelemetry.baggage import get_all
+from opentelemetry.baggage.propagation import W3CBaggagePropagator
 from opentelemetry.context import Context
 from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter as GRPCMetricExporter
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter as GRPCSpanExporter
@@ -46,16 +48,8 @@ def is_enterprise_telemetry_enabled() -> bool:
 
 
 def _parse_otlp_headers(raw: str) -> dict[str, str]:
-    """Parse ``key=value,key2=value2`` into a dict."""
-    if not raw:
-        return {}
-    headers: dict[str, str] = {}
-    for pair in raw.split(","):
-        if "=" not in pair:
-            continue
-        k, v = pair.split("=", 1)
-        headers[k.strip().lower()] = v.strip()
-    return headers
+    ctx = W3CBaggagePropagator().extract({"baggage": raw})
+    return dict(get_all(ctx))
 
 
 def _datetime_to_ns(dt: datetime) -> int:

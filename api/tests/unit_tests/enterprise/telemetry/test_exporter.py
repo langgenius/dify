@@ -97,7 +97,7 @@ def test_api_key_overrides_conflicting_header(
     """Test that API key overrides conflicting authorization header and logs warning."""
     mock_config = SimpleNamespace(
         ENTERPRISE_OTLP_ENDPOINT="https://collector.example.com",
-        ENTERPRISE_OTLP_HEADERS="authorization=Basic old",
+        ENTERPRISE_OTLP_HEADERS="authorization=Basic+old",
         ENTERPRISE_OTLP_PROTOCOL="grpc",
         ENTERPRISE_SERVICE_NAME="dify",
         ENTERPRISE_OTEL_SAMPLING_RATE=1.0,
@@ -272,13 +272,6 @@ def test_no_scheme_production_uses_insecure(mock_metric_exporter: MagicMock, moc
 # ---------------------------------------------------------------------------
 
 
-def test_parse_otlp_headers_skips_pair_without_equals() -> None:
-    """Pairs with no '=' sign are silently ignored (line 55)."""
-    result = _parse_otlp_headers("valid=yes,no-equals,other=ok")
-    assert result == {"valid": "yes", "other": "ok"}
-    assert "no-equals" not in result
-
-
 def test_parse_otlp_headers_empty_returns_empty_dict() -> None:
     assert _parse_otlp_headers("") == {}
 
@@ -288,9 +281,10 @@ def test_parse_otlp_headers_value_may_contain_equals() -> None:
     assert result == {"token": "abc=def=="}
 
 
-def test_parse_otlp_headers_strips_whitespace() -> None:
-    result = _parse_otlp_headers(" key = value ")
-    assert result == {"key": "value"}
+def test_parse_otlp_headers_url_encoded() -> None:
+    result = _parse_otlp_headers("key=%E4%BD%A0%E5%A5%BD")
+
+    assert result == {"key": "你好"}
 
 
 # ---------------------------------------------------------------------------
