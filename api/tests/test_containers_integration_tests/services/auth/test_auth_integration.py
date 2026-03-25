@@ -132,29 +132,27 @@ class TestAuthIntegration:
         assert "super_secret_key_do_not_log" not in factory_str
         assert "another_secret" not in factory_str
 
-    @patch("services.auth.firecrawl.firecrawl.httpx.post")
-    @patch("services.auth.api_key_auth_service.encrypter.encrypt_token")
     def test_concurrent_creation_safety(
         self,
-        mock_encrypt,
-        mock_http,
         flask_app_with_containers,
         db_session_with_containers,
         tenant_id_1,
         category,
         firecrawl_credentials,
     ):
-        mock_http.return_value = self._create_success_response()
-        mock_encrypt.return_value = "encrypted_key"
-
         args = {"category": category, "provider": AuthType.FIRECRAWL, "credentials": firecrawl_credentials}
+        success_response = self._create_success_response()
 
         results = []
         exceptions = []
 
         def create_auth():
             try:
-                ApiKeyAuthService.create_provider_auth(tenant_id_1, args)
+                with (
+                    patch("services.auth.firecrawl.firecrawl.httpx.post", return_value=success_response),
+                    patch("services.auth.api_key_auth_service.encrypter.encrypt_token", return_value="encrypted_key"),
+                ):
+                    ApiKeyAuthService.create_provider_auth(tenant_id_1, args)
                 results.append("success")
             except Exception as e:
                 exceptions.append(e)
