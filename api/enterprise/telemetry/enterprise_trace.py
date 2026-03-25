@@ -97,6 +97,8 @@ class EnterpriseOtelTrace:
             self._generate_name_trace(trace_info)
         elif isinstance(trace_info, PromptGenerationTraceInfo):
             self._prompt_generation_trace(trace_info)
+        else:
+            raise AssertionError("this statment should be unreachable")
 
     def _common_attrs(self, trace_info: BaseTraceInfo) -> dict[str, Any]:
         metadata = self._metadata(trace_info)
