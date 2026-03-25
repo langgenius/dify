@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import ScoreSlider from '../index'
 
 vi.mock('@/app/components/base/features/new-feature-panel/annotation-reply/score-slider/base-slider', () => ({
-  default: ({ value, onChange, min, max }: { value: number, onChange: (v: number) => void, min: number, max: number }) => (
+  ScoreSliderBase: ({ value, onChange, min, max }: { value: number, onChange: (v: number) => void, min: number, max: number }) => (
     <input
       type="range"
       data-testid="slider"
@@ -37,7 +37,6 @@ describe('ScoreSlider', () => {
   it('should render with custom className', () => {
     const { container } = render(<ScoreSlider className="custom-class" value={90} onChange={vi.fn()} />)
 
-    // Verifying the component renders successfully with a custom className
     expect(screen.getByTestId('slider')).toBeInTheDocument()
     expect(container.firstChild).toHaveClass('custom-class')
   })
