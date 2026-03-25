@@ -17,28 +17,13 @@ depends_on = None
 
 def upgrade():
     with op.batch_alter_table("apps", schema=None) as batch_op:
-        batch_op.create_index(
-            "apps_tenant_created_idx",
-            ["tenant_id", "created_at"],
-            unique=False,
-            postgresql_concurrently=True,
-        )
-        batch_op.create_index(
-            "apps_tenant_updated_idx",
-            ["tenant_id", "updated_at"],
-            unique=False,
-            postgresql_concurrently=True,
-        )
-        batch_op.create_index(
-            "apps_tenant_name_idx",
-            ["tenant_id", "name"],
-            unique=False,
-            postgresql_concurrently=True,
-        )
+        batch_op.create_index("apps_tenant_created_idx", ["tenant_id", "created_at"], unique=False)
+        batch_op.create_index("apps_tenant_updated_idx", ["tenant_id", "updated_at"], unique=False)
+        batch_op.create_index("apps_tenant_name_idx", ["tenant_id", "name"], unique=False)
 
 
 def downgrade():
     with op.batch_alter_table("apps", schema=None) as batch_op:
-        batch_op.drop_index("apps_tenant_name_idx")
-        batch_op.drop_index("apps_tenant_updated_idx")
         batch_op.drop_index("apps_tenant_created_idx")
+        batch_op.drop_index("apps_tenant_updated_idx")
+        batch_op.drop_index("apps_tenant_name_idx")
