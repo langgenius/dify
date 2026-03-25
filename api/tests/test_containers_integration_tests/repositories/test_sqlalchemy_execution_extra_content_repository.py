@@ -270,7 +270,7 @@ def _create_recipient(
 
 
 def _create_delivery(session: Session, *, form_id: str) -> HumanInputDelivery:
-    from dify_graph.nodes.human_input.enums import DeliveryMethodType
+    from core.workflow.human_input_compat import DeliveryMethodType
     from models.human_input import ConsoleDeliveryPayload
 
     delivery = HumanInputDelivery(

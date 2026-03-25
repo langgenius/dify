@@ -9,10 +9,9 @@ from __future__ import annotations
 
 import logging
 import queue
-from collections.abc import Generator, Mapping
+from collections.abc import Generator
 from typing import TYPE_CHECKING, cast, final
 
-from dify_graph.context import capture_current_context
 from dify_graph.entities.workflow_start_reason import WorkflowStartReason
 from dify_graph.enums import NodeExecutionType
 from dify_graph.graph import Graph
@@ -26,7 +25,7 @@ from dify_graph.graph_events import (
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
 )
-from dify_graph.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper
+from dify_graph.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper, VariablePool
 from dify_graph.runtime.graph_runtime_state import ChildGraphEngineBuilderProtocol
 
 if TYPE_CHECKING:  # pragma: no cover - used only for static analysis
@@ -86,6 +85,7 @@ class GraphEngine:
         self._graph_runtime_state.configure(graph=cast("GraphProtocol", graph))
         self._command_channel = command_channel
         self._config = config
+        self._layers: list[GraphEngineLayer] = []
         self._child_engine_builder = child_engine_builder
         if child_engine_builder is not None:
             self._graph_runtime_state.bind_child_engine_builder(child_engine_builder)
@@ -149,21 +149,14 @@ class GraphEngine:
         update_variables_handler = UpdateVariablesCommandHandler(self._graph_runtime_state.variable_pool)
         self._command_processor.register_handler(UpdateVariablesCommand, update_variables_handler)
 
-        # === Extensibility ===
-        # Layers allow plugins to extend engine functionality
-        self._layers: list[GraphEngineLayer] = []
-
         # === Worker Pool Setup ===
-        # Capture execution context for worker threads
-        execution_context = capture_current_context()
-
         # Create worker pool for parallel node execution
         self._worker_pool = WorkerPool(
             ready_queue=self._ready_queue,
             event_queue=self._event_queue,
             graph=self._graph,
             layers=self._layers,
-            execution_context=execution_context,
+            execution_context=self._graph_runtime_state.execution_context,
             config=self._config,
         )
 
@@ -220,23 +213,23 @@ class GraphEngine:
         self._bind_layer_context(layer)
         return self
 
+    def request_abort(self, reason: str | None = None) -> None:
+        """Queue an abort command for this engine."""
+        self._command_channel.send_command(AbortCommand(reason=reason or "User requested abort"))
+
     def create_child_engine(
         self,
         *,
         workflow_id: str,
         graph_init_params: GraphInitParams,
-        graph_runtime_state: GraphRuntimeState,
-        graph_config: dict[str, object] | Mapping[str, object],
         root_node_id: str,
-        layers: list[GraphEngineLayer] | tuple[GraphEngineLayer, ...] = (),
+        variable_pool: VariablePool | None = None,
     ) -> GraphEngine:
         return self._graph_runtime_state.create_child_engine(
             workflow_id=workflow_id,
             graph_init_params=graph_init_params,
-            graph_runtime_state=graph_runtime_state,
-            graph_config=graph_config,
             root_node_id=root_node_id,
-            layers=layers,
+            variable_pool=variable_pool,
         )
 
     def run(self) -> Generator[GraphEngineEvent, None, None]:

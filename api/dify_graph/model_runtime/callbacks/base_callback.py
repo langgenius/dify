@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 
 from dify_graph.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
 from dify_graph.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
@@ -34,6 +34,7 @@ class Callback(ABC):
         stop: Sequence[str] | None = None,
         stream: bool = True,
         user: str | None = None,
+        invocation_context: Mapping[str, object] | None = None,
     ):
         """
         Before invoke callback
@@ -46,7 +47,8 @@ class Callback(ABC):
         :param tools: tools for tool calling
         :param stop: stop words
         :param stream: is stream response
-        :param user: unique user id
+        :param user: optional end-user identifier for the invocation
+        :param invocation_context: opaque request metadata for the current invocation
         """
         raise NotImplementedError()
 
@@ -63,6 +65,7 @@ class Callback(ABC):
         stop: Sequence[str] | None = None,
         stream: bool = True,
         user: str | None = None,
+        invocation_context: Mapping[str, object] | None = None,
     ):
         """
         On new chunk callback
@@ -76,7 +79,8 @@ class Callback(ABC):
         :param tools: tools for tool calling
         :param stop: stop words
         :param stream: is stream response
-        :param user: unique user id
+        :param user: optional end-user identifier for the invocation
+        :param invocation_context: opaque request metadata for the current invocation
         """
         raise NotImplementedError()
 
@@ -93,6 +97,7 @@ class Callback(ABC):
         stop: Sequence[str] | None = None,
         stream: bool = True,
         user: str | None = None,
+        invocation_context: Mapping[str, object] | None = None,
     ):
         """
         After invoke callback
@@ -106,7 +111,8 @@ class Callback(ABC):
         :param tools: tools for tool calling
         :param stop: stop words
         :param stream: is stream response
-        :param user: unique user id
+        :param user: optional end-user identifier for the invocation
+        :param invocation_context: opaque request metadata for the current invocation
         """
         raise NotImplementedError()
 
@@ -123,6 +129,7 @@ class Callback(ABC):
         stop: Sequence[str] | None = None,
         stream: bool = True,
         user: str | None = None,
+        invocation_context: Mapping[str, object] | None = None,
     ):
         """
         Invoke error callback
@@ -136,7 +143,8 @@ class Callback(ABC):
         :param tools: tools for tool calling
         :param stop: stop words
         :param stream: is stream response
-        :param user: unique user id
+        :param user: optional end-user identifier for the invocation
+        :param invocation_context: opaque request metadata for the current invocation
         """
         raise NotImplementedError()
 

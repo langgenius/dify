@@ -1,5 +1,3 @@
-from unittest.mock import MagicMock
-
 import pytest
 
 from core.app.apps.base_app_generator import BaseAppGenerator
@@ -403,11 +401,11 @@ class TestBaseAppGeneratorExtras:
 
         monkeypatch.setattr(
             "core.app.apps.base_app_generator.file_factory.build_from_mapping",
-            lambda mapping, tenant_id, config, strict_type_validation=False: "file-object",
+            lambda mapping, tenant_id, config, strict_type_validation=False, access_controller=None: "file-object",
         )
         monkeypatch.setattr(
             "core.app.apps.base_app_generator.file_factory.build_from_mappings",
-            lambda mappings, tenant_id, config: ["file-1", "file-2"],
+            lambda mappings, tenant_id, config, access_controller=None: ["file-1", "file-2"],
         )
 
         user_inputs = {
@@ -489,7 +487,6 @@ class TestBaseAppGeneratorExtras:
 
         factory = base_app_generator._get_draft_var_saver_factory(InvokeFrom.DEBUGGER, account)
         saver = factory(
-            session=MagicMock(),
             app_id="app-id",
             node_id="node-id",
             node_type=BuiltinNodeTypes.START,

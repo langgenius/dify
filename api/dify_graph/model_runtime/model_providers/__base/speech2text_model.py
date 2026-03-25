@@ -1,7 +1,5 @@
 from typing import IO
 
-from pydantic import ConfigDict
-
 from dify_graph.model_runtime.entities.model_entities import ModelType
 from dify_graph.model_runtime.model_providers.__base.ai_model import AIModel
 
@@ -13,28 +11,18 @@ class Speech2TextModel(AIModel):
 
     model_type: ModelType = ModelType.SPEECH2TEXT
 
-    # pydantic configs
-    model_config = ConfigDict(protected_namespaces=())
-
-    def invoke(self, model: str, credentials: dict, file: IO[bytes], user: str | None = None) -> str:
+    def invoke(self, model: str, credentials: dict, file: IO[bytes]) -> str:
         """
         Invoke speech to text model
 
         :param model: model name
         :param credentials: model credentials
         :param file: audio file
-        :param user: unique user id
         :return: text for given audio file
         """
         try:
-            from core.plugin.impl.model import PluginModelClient
-
-            plugin_model_manager = PluginModelClient()
-            return plugin_model_manager.invoke_speech_to_text(
-                tenant_id=self.tenant_id,
-                user_id=user or "unknown",
-                plugin_id=self.plugin_id,
-                provider=self.provider_name,
+            return self.model_runtime.invoke_speech_to_text(
+                provider=self.provider,
                 model=model,
                 credentials=credentials,
                 file=file,

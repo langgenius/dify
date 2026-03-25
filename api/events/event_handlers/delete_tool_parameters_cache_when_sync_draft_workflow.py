@@ -1,5 +1,6 @@
 import logging
 
+from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
 from dify_graph.nodes import BuiltinNodeTypes
@@ -19,8 +20,9 @@ def handle(sender, **kwargs):
         if node_data.get("data", {}).get("type") == BuiltinNodeTypes.TOOL:
             try:
                 tool_entity = ToolEntity.model_validate(node_data["data"])
+                provider_type = ToolProviderType(tool_entity.provider_type.value)
                 tool_runtime = ToolManager.get_tool_runtime(
-                    provider_type=tool_entity.provider_type,
+                    provider_type=provider_type,
                     provider_id=tool_entity.provider_id,
                     tool_name=tool_entity.tool_name,
                     tenant_id=app.tenant_id,
@@ -30,7 +32,7 @@ def handle(sender, **kwargs):
                     tenant_id=app.tenant_id,
                     tool_runtime=tool_runtime,
                     provider_name=tool_entity.provider_name,
-                    provider_type=tool_entity.provider_type,
+                    provider_type=provider_type,
                     identity_id=f"WORKFLOW.{app.id}.{node_data.get('id')}",
                 )
                 manager.delete_tool_parameters_cache()

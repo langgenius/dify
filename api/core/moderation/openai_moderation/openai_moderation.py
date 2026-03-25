@@ -50,7 +50,7 @@ class OpenAIModeration(Moderation):
 
     def _is_violated(self, inputs: dict):
         text = "\n".join(str(inputs.values()))
-        model_manager = ModelManager()
+        model_manager = ModelManager.for_tenant(tenant_id=self.tenant_id)
         model_instance = model_manager.get_model_instance(
             tenant_id=self.tenant_id, provider="openai", model_type=ModelType.MODERATION, model="omni-moderation-latest"
         )

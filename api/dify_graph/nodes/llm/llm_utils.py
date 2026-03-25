@@ -4,9 +4,8 @@ import json
 import logging
 import re
 from collections.abc import Mapping, Sequence
-from typing import Any, cast
+from typing import Any
 
-from core.model_manager import ModelInstance
 from dify_graph.file import FileType, file_manager
 from dify_graph.file.models import File
 from dify_graph.model_runtime.entities import (
@@ -24,9 +23,9 @@ from dify_graph.model_runtime.entities.message_entities import (
 )
 from dify_graph.model_runtime.entities.model_entities import AIModelEntity, ModelFeature, ModelPropertyKey
 from dify_graph.model_runtime.memory import PromptMessageMemory
-from dify_graph.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from dify_graph.nodes.base.entities import VariableSelector
 from dify_graph.runtime import VariablePool
+from dify_graph.template_rendering import Jinja2TemplateRenderer
 from dify_graph.variables import ArrayFileSegment, FileSegment
 from dify_graph.variables.segments import ArrayAnySegment, NoneSegment
 
@@ -37,7 +36,9 @@ from .exc import (
     NoPromptFoundError,
     TemplateTypeNotSupportError,
 )
-from .protocols import TemplateRenderer
+from .runtime_protocols import PreparedLLMProtocol
+
+CONTEXT_PLACEHOLDER = "{{#context#}}"
 
 logger = logging.getLogger(__name__)
 
@@ -45,13 +46,10 @@ VARIABLE_PATTERN = re.compile(r"\{\{#[^#]+#\}\}")
 MAX_RESOLVED_VALUE_LENGTH = 1024
 
 
-def fetch_model_schema(*, model_instance: ModelInstance) -> AIModelEntity:
-    model_schema = cast(LargeLanguageModel, model_instance.model_type_instance).get_model_schema(
-        model_instance.model_name,
-        dict(model_instance.credentials),
-    )
+def fetch_model_schema(*, model_instance: PreparedLLMProtocol) -> AIModelEntity:
+    model_schema = model_instance.get_model_schema()
     if not model_schema:
-        raise ValueError(f"Model schema not found for {model_instance.model_name}")
+        raise ValueError(f"Model schema not found for {getattr(model_instance, 'model_name', 'unknown model')}")
     return model_schema
 
 
@@ -122,9 +120,9 @@ def fetch_prompt_messages(
     *,
     sys_query: str | None = None,
     sys_files: Sequence[File],
-    context: str | None = None,
+    context: str = "",
     memory: PromptMessageMemory | None = None,
-    model_instance: ModelInstance,
+    model_instance: PreparedLLMProtocol,
     prompt_template: Sequence[LLMNodeChatModelMessage] | LLMNodeCompletionModelPromptTemplate,
     stop: Sequence[str] | None = None,
     memory_config: MemoryConfig | None = None,
@@ -133,7 +131,7 @@ def fetch_prompt_messages(
     variable_pool: VariablePool,
     jinja2_variables: Sequence[VariableSelector],
     context_files: list[File] | None = None,
-    template_renderer: TemplateRenderer | None = None,
+    template_renderer: Jinja2TemplateRenderer | None = None,
 ) -> tuple[Sequence[PromptMessage], Sequence[str] | None]:
     prompt_messages: list[PromptMessage] = []
     model_schema = fetch_model_schema(model_instance=model_instance)
@@ -285,11 +283,11 @@ def fetch_prompt_messages(
 def handle_list_messages(
     *,
     messages: Sequence[LLMNodeChatModelMessage],
-    context: str | None,
+    context: str,
     jinja2_variables: Sequence[VariableSelector],
     variable_pool: VariablePool,
     vision_detail_config: ImagePromptMessageContent.DETAIL,
-    template_renderer: TemplateRenderer | None = None,
+    template_renderer: Jinja2TemplateRenderer | None = None,
 ) -> Sequence[PromptMessage]:
     prompt_messages: list[PromptMessage] = []
     for message in messages:
@@ -308,7 +306,7 @@ def handle_list_messages(
             )
             continue
 
-        template = message.text.replace("{#context#}", context) if context else message.text
+        template = message.text.replace(CONTEXT_PLACEHOLDER, context)
         segment_group = variable_pool.convert_template(template)
         file_contents: list[PromptMessageContentUnionTypes] = []
         for segment in segment_group.value:
@@ -343,7 +341,7 @@ def render_jinja2_message(
     template: str,
     jinja2_variables: Sequence[VariableSelector],
     variable_pool: VariablePool,
-    template_renderer: TemplateRenderer | None = None,
+    template_renderer: Jinja2TemplateRenderer | None = None,
 ) -> str:
     if not template:
         return ""
@@ -354,16 +352,16 @@ def render_jinja2_message(
     for jinja2_variable in jinja2_variables:
         variable = variable_pool.get(jinja2_variable.value_selector)
         jinja2_inputs[jinja2_variable.variable] = variable.to_object() if variable else ""
-    return template_renderer.render_jinja2(template=template, inputs=jinja2_inputs)
+    return template_renderer.render_template(template, jinja2_inputs)
 
 
 def handle_completion_template(
     *,
     template: LLMNodeCompletionModelPromptTemplate,
-    context: str | None,
+    context: str,
     jinja2_variables: Sequence[VariableSelector],
     variable_pool: VariablePool,
-    template_renderer: TemplateRenderer | None = None,
+    template_renderer: Jinja2TemplateRenderer | None = None,
 ) -> Sequence[PromptMessage]:
     if template.edition_type == "jinja2":
         result_text = render_jinja2_message(
@@ -373,7 +371,7 @@ def handle_completion_template(
             template_renderer=template_renderer,
         )
     else:
-        template_text = template.text.replace("{#context#}", context) if context else template.text
+        template_text = template.text.replace(CONTEXT_PLACEHOLDER, context)
         result_text = variable_pool.convert_template(template_text).text
     return [
         combine_message_content_with_role(
@@ -399,7 +397,11 @@ def combine_message_content_with_role(
             raise NotImplementedError(f"Role {role} is not supported")
 
 
-def calculate_rest_token(*, prompt_messages: list[PromptMessage], model_instance: ModelInstance) -> int:
+def calculate_rest_token(
+    *,
+    prompt_messages: list[PromptMessage],
+    model_instance: PreparedLLMProtocol,
+) -> int:
     rest_tokens = 2000
     runtime_model_schema = fetch_model_schema(model_instance=model_instance)
     runtime_model_parameters = model_instance.parameters
@@ -429,7 +431,7 @@ def handle_memory_chat_mode(
     *,
     memory: PromptMessageMemory | None,
     memory_config: MemoryConfig | None,
-    model_instance: ModelInstance,
+    model_instance: PreparedLLMProtocol,
 ) -> Sequence[PromptMessage]:
     if not memory or not memory_config:
         return []
@@ -444,7 +446,7 @@ def handle_memory_completion_mode(
     *,
     memory: PromptMessageMemory | None,
     memory_config: MemoryConfig | None,
-    model_instance: ModelInstance,
+    model_instance: PreparedLLMProtocol,
 ) -> str:
     if not memory or not memory_config:
         return ""

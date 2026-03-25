@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib
 import json
 from collections.abc import Mapping, Sequence
+from contextlib import AbstractContextManager, nullcontext
 from copy import deepcopy
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, ClassVar, Protocol
@@ -142,10 +143,9 @@ class ChildGraphEngineBuilderProtocol(Protocol):
         *,
         workflow_id: str,
         graph_init_params: GraphInitParams,
-        graph_runtime_state: GraphRuntimeState,
-        graph_config: Mapping[str, Any],
+        parent_graph_runtime_state: GraphRuntimeState,
         root_node_id: str,
-        layers: Sequence[object] = (),
+        variable_pool: VariablePool | None = None,
     ) -> Any: ...
 
 
@@ -211,6 +211,7 @@ class GraphRuntimeState:
         graph_execution: GraphExecutionProtocol | None = None,
         response_coordinator: ResponseStreamCoordinatorProtocol | None = None,
         graph: GraphProtocol | None = None,
+        execution_context: AbstractContextManager[object] | None = None,
     ) -> None:
         self._variable_pool = variable_pool
         self._start_at = start_at
@@ -231,6 +232,9 @@ class GraphRuntimeState:
         self._ready_queue = ready_queue
         self._graph_execution = graph_execution
         self._response_coordinator = response_coordinator
+        # Application code injects this when worker threads must restore request
+        # or framework-local state. It is intentionally excluded from snapshots.
+        self._execution_context = execution_context if execution_context is not None else nullcontext(None)
         self._pending_response_coordinator_dump: str | None = None
         self._pending_graph_execution_workflow_id: str | None = None
         self._paused_nodes: set[str] = set()
@@ -285,21 +289,19 @@ class GraphRuntimeState:
         *,
         workflow_id: str,
         graph_init_params: GraphInitParams,
-        graph_runtime_state: GraphRuntimeState,
-        graph_config: Mapping[str, Any],
         root_node_id: str,
-        layers: Sequence[object] = (),
+        variable_pool: VariablePool | None = None,
     ) -> Any:
+        """Create a child graph engine that derives its runtime state from the parent."""
         if self._child_engine_builder is None:
             raise ChildEngineBuilderNotConfiguredError("Child engine builder is not configured.")
 
         return self._child_engine_builder.build_child_engine(
             workflow_id=workflow_id,
             graph_init_params=graph_init_params,
-            graph_runtime_state=graph_runtime_state,
-            graph_config=graph_config,
+            parent_graph_runtime_state=self,
             root_node_id=root_node_id,
-            layers=layers,
+            variable_pool=variable_pool,
         )
 
     # ------------------------------------------------------------------
@@ -328,6 +330,14 @@ class GraphRuntimeState:
                 raise ValueError("Graph must be attached before accessing response coordinator")
             self._response_coordinator = self._build_response_coordinator(self._graph)
         return self._response_coordinator
+
+    @property
+    def execution_context(self) -> AbstractContextManager[object]:
+        return self._execution_context
+
+    @execution_context.setter
+    def execution_context(self, value: AbstractContextManager[object] | None) -> None:
+        self._execution_context = value if value is not None else nullcontext(None)
 
     # ------------------------------------------------------------------
     # Scalar state

@@ -384,7 +384,8 @@ def test_get_embeddings_builds_cache_embedding(vector_factory_module, monkeypatc
     model_manager = MagicMock()
     model_manager.get_model_instance.return_value = "model-instance"
 
-    monkeypatch.setattr(vector_factory_module, "ModelManager", MagicMock(return_value=model_manager))
+    for_tenant_mock = MagicMock(return_value=model_manager)
+    monkeypatch.setattr(vector_factory_module.ModelManager, "for_tenant", for_tenant_mock)
     monkeypatch.setattr(vector_factory_module, "CacheEmbedding", MagicMock(return_value="cached-embedding"))
 
     vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
@@ -397,6 +398,7 @@ def test_get_embeddings_builds_cache_embedding(vector_factory_module, monkeypatc
     result = vector._get_embeddings()
 
     assert result == "cached-embedding"
+    for_tenant_mock.assert_called_once_with(tenant_id="tenant-1")
     model_manager.get_model_instance.assert_called_once_with(
         tenant_id="tenant-1",
         provider="openai",

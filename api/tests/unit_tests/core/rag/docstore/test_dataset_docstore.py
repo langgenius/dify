@@ -163,7 +163,7 @@ class TestDatasetDocumentStoreAddDocuments:
 
         with (
             patch("core.rag.docstore.dataset_docstore.db") as mock_db,
-            patch("core.rag.docstore.dataset_docstore.ModelManager") as mock_manager_class,
+            patch("core.rag.docstore.dataset_docstore.ModelManager.for_tenant") as mock_manager_class,
         ):
             mock_session = MagicMock()
             mock_db.session = mock_session

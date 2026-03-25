@@ -5,7 +5,6 @@ from copy import deepcopy
 from typing import Any
 
 from dify_graph.model_runtime.entities.llm_entities import LLMUsage
-from dify_graph.system_variable import SystemVariableReadOnlyView
 from dify_graph.variables.segments import Segment
 
 from .graph_runtime_state import GraphRuntimeState
@@ -42,10 +41,6 @@ class ReadOnlyGraphRuntimeStateWrapper:
     def __init__(self, state: GraphRuntimeState) -> None:
         self._state = state
         self._variable_pool_wrapper = ReadOnlyVariablePoolWrapper(state.variable_pool)
-
-    @property
-    def system_variable(self) -> SystemVariableReadOnlyView:
-        return self._state.variable_pool.system_variables.as_view()
 
     @property
     def variable_pool(self) -> ReadOnlyVariablePoolWrapper:

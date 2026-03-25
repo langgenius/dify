@@ -14,6 +14,7 @@ import httpx
 import pytest
 
 from core.tools.tool_file_manager import ToolFileManager
+from dify_graph.file import FileTransferMethod
 
 
 def _setup_tool_file_signing(monkeypatch: pytest.MonkeyPatch) -> dict[str, str]:
@@ -232,7 +233,14 @@ def test_get_file_generator_returns_none_when_toolfile_missing() -> None:
 def test_get_file_generator_returns_stream_when_found() -> None:
     # Arrange
     manager = ToolFileManager()
-    tool_file = SimpleNamespace(file_key="k2", mimetype="image/png")
+    tool_file = SimpleNamespace(
+        id="tool123",
+        file_key="k2",
+        mimetype="image/png",
+        original_url=None,
+        name="image.png",
+        size=12,
+    )
     session = Mock()
     session.query.return_value.where.return_value.first.return_value = tool_file
 
@@ -240,10 +248,10 @@ def test_get_file_generator_returns_stream_when_found() -> None:
     with patch("core.tools.tool_file_manager.storage") as storage:
         stream = iter([b"a", b"b"])
         storage.load_stream.return_value = stream
-        with (
-            _patch_session_factory(session),
-            patch("core.tools.tool_file_manager.ToolFilePydanticModel.model_validate", return_value="validated-file"),
-        ):
+        with _patch_session_factory(session):
             result_stream, result_file = manager.get_file_generator_by_tool_file_id("tool123")
             assert list(result_stream) == [b"a", b"b"]
-            assert result_file == "validated-file"
+            assert result_file is not None
+            assert result_file.related_id == "tool123"
+            assert result_file.mime_type == "image/png"
+            assert result_file.transfer_method == FileTransferMethod.TOOL_FILE

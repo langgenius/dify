@@ -137,7 +137,6 @@ def test_handle_workflow_paused_event_persists_human_input_extra_content() -> No
         actions=[],
         node_id="node-1",
         node_title="Approval",
-        form_token="token-1",
         resolved_default_values={},
     )
     event = QueueWorkflowPausedEvent(reasons=[reason], outputs={}, paused_nodes=["node-1"])

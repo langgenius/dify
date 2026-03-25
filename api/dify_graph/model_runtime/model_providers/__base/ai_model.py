@@ -1,12 +1,5 @@
 import decimal
-import hashlib
-import logging
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
-from redis import RedisError
-
-from configs import dify_config
-from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
 from dify_graph.model_runtime.entities.common_entities import I18nObject
 from dify_graph.model_runtime.entities.defaults import PARAMETER_RULE_TEMPLATE
 from dify_graph.model_runtime.entities.model_entities import (
@@ -17,6 +10,7 @@ from dify_graph.model_runtime.entities.model_entities import (
     PriceInfo,
     PriceType,
 )
+from dify_graph.model_runtime.entities.provider_entities import ProviderEntity
 from dify_graph.model_runtime.errors.invoke import (
     InvokeAuthorizationError,
     InvokeBadRequestError,
@@ -25,45 +19,61 @@ from dify_graph.model_runtime.errors.invoke import (
     InvokeRateLimitError,
     InvokeServerUnavailableError,
 )
-from extensions.ext_redis import redis_client
-
-logger = logging.getLogger(__name__)
+from dify_graph.model_runtime.runtime import ModelRuntime
 
 
-class AIModel(BaseModel):
+class AIModel:
     """
-    Base class for all models.
+    Runtime-facing base class for all model providers.
+
+    This stays a regular Python class because instances hold live collaborators
+    such as the provider schema and runtime adapter rather than user input that
+    benefits from Pydantic validation. Subclasses must pin ``model_type`` via a
+    class attribute; the base class is not meant to be instantiated directly.
     """
 
-    tenant_id: str = Field(description="Tenant ID")
-    model_type: ModelType = Field(description="Model type")
-    plugin_id: str = Field(description="Plugin ID")
-    provider_name: str = Field(description="Provider")
-    plugin_model_provider: PluginModelProviderEntity = Field(description="Plugin model provider")
-    started_at: float = Field(description="Invoke start time", default=0)
+    model_type: ModelType
+    provider_schema: ProviderEntity
+    model_runtime: ModelRuntime
+    started_at: float
 
-    # pydantic configs
-    model_config = ConfigDict(protected_namespaces=())
+    def __init__(
+        self,
+        provider_schema: ProviderEntity,
+        model_runtime: ModelRuntime,
+        *,
+        started_at: float = 0,
+    ) -> None:
+        if getattr(type(self), "model_type", None) is None:
+            raise TypeError("AIModel subclasses must define model_type as a class attribute")
+
+        self.model_type = type(self).model_type
+        self.provider_schema = provider_schema
+        self.model_runtime = model_runtime
+        self.started_at = started_at
+
+    @property
+    def provider(self) -> str:
+        return self.provider_schema.provider
+
+    @property
+    def provider_display_name(self) -> str:
+        return self.provider_schema.label.en_US
 
     @property
     def _invoke_error_mapping(self) -> dict[type[Exception], list[type[Exception]]]:
         """
-        Map model invoke error to unified error
-        The key is the error type thrown to the caller
-        The value is the error type thrown by the model,
-        which needs to be converted into a unified error type for the caller.
+        Map model invoke error to unified error.
 
-        :return: Invoke error mapping
+        The key is the error type thrown to the caller, and the value contains
+        runtime-facing exception types that should be normalized to it.
         """
-        from core.plugin.entities.plugin_daemon import PluginDaemonInnerError
-
         return {
             InvokeConnectionError: [InvokeConnectionError],
             InvokeServerUnavailableError: [InvokeServerUnavailableError],
             InvokeRateLimitError: [InvokeRateLimitError],
             InvokeAuthorizationError: [InvokeAuthorizationError],
             InvokeBadRequestError: [InvokeBadRequestError],
-            PluginDaemonInnerError: [PluginDaemonInnerError],
             ValueError: [ValueError],
         }
 
@@ -79,15 +89,18 @@ class AIModel(BaseModel):
                 if invoke_error == InvokeAuthorizationError:
                     return InvokeAuthorizationError(
                         description=(
-                            f"[{self.provider_name}] Incorrect model credentials provided, please check and try again."
+                            f"[{self.provider_display_name}] Incorrect model credentials provided, "
+                            "please check and try again."
                         )
                     )
                 elif isinstance(invoke_error, InvokeError):
-                    return InvokeError(description=f"[{self.provider_name}] {invoke_error.description}, {str(error)}")
+                    return InvokeError(
+                        description=f"[{self.provider_display_name}] {invoke_error.description}, {str(error)}"
+                    )
                 else:
                     return error
 
-        return InvokeError(description=f"[{self.provider_name}] Error: {str(error)}")
+        return InvokeError(description=f"[{self.provider_display_name}] Error: {str(error)}")
 
     def get_price(self, model: str, credentials: dict, price_type: PriceType, tokens: int) -> PriceInfo:
         """
@@ -144,64 +157,12 @@ class AIModel(BaseModel):
         :param credentials: model credentials
         :return: model schema
         """
-        from core.plugin.impl.model import PluginModelClient
-
-        plugin_model_manager = PluginModelClient()
-        cache_key = f"{self.tenant_id}:{self.plugin_id}:{self.provider_name}:{self.model_type.value}:{model}"
-        sorted_credentials = sorted(credentials.items()) if credentials else []
-        cache_key += ":".join([hashlib.md5(f"{k}:{v}".encode()).hexdigest() for k, v in sorted_credentials])
-
-        cached_schema_json = None
-        try:
-            cached_schema_json = redis_client.get(cache_key)
-        except (RedisError, RuntimeError) as exc:
-            logger.warning(
-                "Failed to read plugin model schema cache for model %s: %s",
-                model,
-                str(exc),
-                exc_info=True,
-            )
-        if cached_schema_json:
-            try:
-                return AIModelEntity.model_validate_json(cached_schema_json)
-            except ValidationError:
-                logger.warning(
-                    "Failed to validate cached plugin model schema for model %s",
-                    model,
-                    exc_info=True,
-                )
-                try:
-                    redis_client.delete(cache_key)
-                except (RedisError, RuntimeError) as exc:
-                    logger.warning(
-                        "Failed to delete invalid plugin model schema cache for model %s: %s",
-                        model,
-                        str(exc),
-                        exc_info=True,
-                    )
-
-        schema = plugin_model_manager.get_model_schema(
-            tenant_id=self.tenant_id,
-            user_id="unknown",
-            plugin_id=self.plugin_id,
-            provider=self.provider_name,
-            model_type=self.model_type.value,
+        return self.model_runtime.get_model_schema(
+            provider=self.provider,
+            model_type=self.model_type,
             model=model,
             credentials=credentials or {},
         )
-
-        if schema:
-            try:
-                redis_client.setex(cache_key, dify_config.PLUGIN_MODEL_SCHEMA_CACHE_TTL, schema.model_dump_json())
-            except (RedisError, RuntimeError) as exc:
-                logger.warning(
-                    "Failed to write plugin model schema cache for model %s: %s",
-                    model,
-                    str(exc),
-                    exc_info=True,
-                )
-
-        return schema
 
     def get_customizable_model_schema_from_credentials(self, model: str, credentials: dict) -> AIModelEntity | None:
         """

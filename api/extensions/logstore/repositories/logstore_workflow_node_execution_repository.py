@@ -17,10 +17,10 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
+from core.repositories.factory import OrderConfig, WorkflowNodeExecutionRepository
 from dify_graph.entities import WorkflowNodeExecution
 from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from dify_graph.model_runtime.utils.encoders import jsonable_encoder
-from dify_graph.repositories.workflow_node_execution_repository import OrderConfig, WorkflowNodeExecutionRepository
 from dify_graph.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from extensions.logstore.aliyun_logstore import AliyunLogStore
 from extensions.logstore.repositories import safe_float, safe_int
@@ -304,35 +304,39 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
                 logger.exception("Failed to dual-write node execution data to SQL database: id=%s", execution.id)
                 # Don't raise - LogStore write succeeded, SQL is just a backup
 
-    def get_by_workflow_run(
+    def get_by_workflow_execution(
         self,
-        workflow_run_id: str,
+        workflow_execution_id: str,
         order_config: OrderConfig | None = None,
     ) -> Sequence[WorkflowNodeExecution]:
         """
-        Retrieve all NodeExecution instances for a specific workflow run.
+        Retrieve all node executions for a workflow execution.
         Uses LogStore SQL query with window function to get the latest version of each node execution.
         This ensures we only get the most recent version of each node execution record.
         Args:
-            workflow_run_id: The workflow run ID
+            workflow_execution_id: The workflow execution identifier
             order_config: Optional configuration for ordering results
                 order_config.order_by: List of fields to order by (e.g., ["index", "created_at"])
                 order_config.order_direction: Direction to order ("asc" or "desc")
 
         Returns:
-            A list of NodeExecution instances
+            A list of workflow node execution instances
 
         Note:
             This method uses ROW_NUMBER() window function partitioned by node_execution_id
             to get the latest version (highest log_version) of each node execution.
         """
-        logger.debug("get_by_workflow_run: workflow_run_id=%s, order_config=%s", workflow_run_id, order_config)
+        logger.debug(
+            "get_by_workflow_execution: workflow_execution_id=%s, order_config=%s",
+            workflow_execution_id,
+            order_config,
+        )
         # Build SQL query with deduplication using window function
         # ROW_NUMBER() OVER (PARTITION BY node_execution_id ORDER BY log_version DESC)
         # ensures we get the latest version of each node execution
 
         # Escape parameters to prevent SQL injection
-        escaped_workflow_run_id = escape_identifier(workflow_run_id)
+        escaped_workflow_execution_id = escape_identifier(workflow_execution_id)
         escaped_tenant_id = escape_identifier(self._tenant_id)
 
         # Build ORDER BY clause for outer query
@@ -360,7 +364,7 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             SELECT * FROM (
                 SELECT *, ROW_NUMBER() OVER (PARTITION BY node_execution_id ORDER BY log_version DESC) AS rn
                 FROM {AliyunLogStore.workflow_node_execution_logstore}
-                WHERE workflow_run_id='{escaped_workflow_run_id}'
+                WHERE workflow_run_id='{escaped_workflow_execution_id}'
                   AND tenant_id='{escaped_tenant_id}'
                   {app_id_filter}
             ) t
@@ -391,5 +395,8 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             return executions
 
         except Exception:
-            logger.exception("Failed to retrieve node executions from LogStore: workflow_run_id=%s", workflow_run_id)
+            logger.exception(
+                "Failed to retrieve node executions from LogStore: workflow_execution_id=%s",
+                workflow_execution_id,
+            )
             raise

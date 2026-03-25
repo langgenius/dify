@@ -5,6 +5,7 @@ from uuid import uuid4
 
 from constants import HIDDEN_VALUE
 from core.helper import encrypter
+from core.workflow.file_reference import build_file_reference
 from dify_graph.file.enums import FileTransferMethod, FileType
 from dify_graph.file.models import File
 from dify_graph.variables import FloatVariable, IntegerVariable, SecretVariable, StringVariable
@@ -219,7 +220,6 @@ class TestWorkflowDraftVariableGetValue:
         tenant_id = "test_tenant_id"
 
         test_file = File(
-            tenant_id=tenant_id,
             type=FileType.IMAGE,
             transfer_method=FileTransferMethod.REMOTE_URL,
             remote_url="https://example.com/example.jpg",
@@ -292,7 +292,6 @@ class TestWorkflowDraftVariableGetValue:
         # Create a File with specific field values
         test_file = File(
             id="test_file_id",
-            tenant_id=tenant_id,
             type=FileType.IMAGE,
             transfer_method=FileTransferMethod.REMOTE_URL,
             remote_url="https://example.com/test.jpg",
@@ -314,7 +313,6 @@ class TestWorkflowDraftVariableGetValue:
 
         # Verify all important fields are preserved
         assert retrieved_file.id == test_file.id
-        assert retrieved_file.tenant_id == test_file.tenant_id
         assert retrieved_file.type == test_file.type
         assert retrieved_file.transfer_method == test_file.transfer_method
         assert retrieved_file.remote_url == test_file.remote_url
@@ -326,6 +324,43 @@ class TestWorkflowDraftVariableGetValue:
 
         # Verify the segments have the same type and the important fields match
         assert file_segment.value_type == retrieved_segment.value_type
+
+    def test_file_variable_rebuilds_storage_backed_payloads_with_app_tenant(self):
+        persisted_file = File(
+            id="test_file_id",
+            type=FileType.DOCUMENT,
+            transfer_method=FileTransferMethod.LOCAL_FILE,
+            reference=build_file_reference(record_id="upload-1", storage_key="legacy-storage-key"),
+            filename="test.txt",
+            extension=".txt",
+            mime_type="text/plain",
+            size=12,
+        )
+        rebuilt_file = File(
+            id="test_file_id",
+            type=FileType.DOCUMENT,
+            transfer_method=FileTransferMethod.LOCAL_FILE,
+            reference=build_file_reference(record_id="upload-1"),
+            filename="test.txt",
+            extension=".txt",
+            mime_type="text/plain",
+            size=12,
+            storage_key="canonical-storage-key",
+        )
+        draft_var = WorkflowDraftVariable()
+        draft_var.app_id = "app-1"
+        draft_var.set_value(build_segment(persisted_file))
+        draft_var._WorkflowDraftVariable__value = None
+
+        with (
+            mock.patch("models.workflow._resolve_workflow_app_tenant_id", return_value="tenant-1"),
+            mock.patch("models.workflow.build_file_from_stored_mapping", return_value=rebuilt_file) as rebuild_file,
+        ):
+            retrieved_segment = draft_var.get_value()
+
+        assert retrieved_segment.value == rebuilt_file
+        rebuild_file.assert_called_once()
+        assert rebuild_file.call_args.kwargs["tenant_id"] == "tenant-1"
 
     def test_get_and_set_value(self):
         draft_var = WorkflowDraftVariable()

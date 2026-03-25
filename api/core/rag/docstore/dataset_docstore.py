@@ -73,7 +73,7 @@ class DatasetDocumentStore:
             max_position = 0
         embedding_model = None
         if self._dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
-            model_manager = ModelManager()
+            model_manager = ModelManager.for_tenant(tenant_id=self._dataset.tenant_id)
             embedding_model = model_manager.get_model_instance(
                 tenant_id=self._dataset.tenant_id,
                 provider=self._dataset.embedding_model_provider,

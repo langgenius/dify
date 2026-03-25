@@ -15,6 +15,7 @@ from werkzeug.exceptions import RequestEntityTooLarge
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.file_access import DatabaseFileAccessController
 from core.tools.tool_file_manager import ToolFileManager
 from core.trigger.constants import TRIGGER_WEBHOOK_NODE_TYPE
 from core.workflow.nodes.trigger_webhook.entities import (
@@ -46,6 +47,7 @@ except ImportError:
     magic = None  # type: ignore[assignment]
 
 logger = logging.getLogger(__name__)
+_file_access_controller = DatabaseFileAccessController()
 
 
 class WebhookService:
@@ -422,6 +424,7 @@ class WebhookService:
         return file_factory.build_from_mapping(
             mapping=mapping,
             tenant_id=webhook_trigger.tenant_id,
+            access_controller=_file_access_controller,
         )
 
     @classmethod

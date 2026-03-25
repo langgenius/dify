@@ -396,14 +396,14 @@ def test_get_workflow_node_executions_builds_repo_and_fetches(
     monkeypatch.setattr(aliyun_trace_module, "db", SimpleNamespace(engine="engine"))
 
     repo = MagicMock()
-    repo.get_by_workflow_run.return_value = ["node1"]
+    repo.get_by_workflow_execution.return_value = ["node1"]
     mock_factory = MagicMock()
     mock_factory.create_workflow_node_execution_repository.return_value = repo
     monkeypatch.setattr(aliyun_trace_module, "DifyCoreRepositoryFactory", mock_factory)
 
     result = trace_instance.get_workflow_node_executions(trace_info)
     assert result == ["node1"]
-    repo.get_by_workflow_run.assert_called_once_with(workflow_run_id=trace_info.workflow_run_id)
+    repo.get_by_workflow_execution.assert_called_once_with(workflow_execution_id=trace_info.workflow_run_id)
 
 
 def test_build_workflow_node_span_routes_llm_type(trace_instance: AliyunDataTrace, monkeypatch: pytest.MonkeyPatch):

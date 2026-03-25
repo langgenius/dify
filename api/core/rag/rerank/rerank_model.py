@@ -22,7 +22,6 @@ class RerankModelRunner(BaseRerankRunner):
         documents: list[Document],
         score_threshold: float | None = None,
         top_n: int | None = None,
-        user: str | None = None,
         query_type: QueryType = QueryType.TEXT_QUERY,
     ) -> list[Document]:
         """
@@ -31,10 +30,11 @@ class RerankModelRunner(BaseRerankRunner):
         :param documents: documents for reranking
         :param score_threshold: score threshold
         :param top_n: top n
-        :param user: unique user id if needed
         :return:
         """
-        model_manager = ModelManager()
+        model_manager = ModelManager.for_tenant(
+            tenant_id=self.rerank_model_instance.provider_model_bundle.configuration.tenant_id
+        )
         is_support_vision = model_manager.check_model_support_vision(
             tenant_id=self.rerank_model_instance.provider_model_bundle.configuration.tenant_id,
             provider=self.rerank_model_instance.provider,
@@ -43,12 +43,12 @@ class RerankModelRunner(BaseRerankRunner):
         )
         if not is_support_vision:
             if query_type == QueryType.TEXT_QUERY:
-                rerank_result, unique_documents = self.fetch_text_rerank(query, documents, score_threshold, top_n, user)
+                rerank_result, unique_documents = self.fetch_text_rerank(query, documents, score_threshold, top_n)
             else:
                 return documents
         else:
             rerank_result, unique_documents = self.fetch_multimodal_rerank(
-                query, documents, score_threshold, top_n, user, query_type
+                query, documents, score_threshold, top_n, query_type
             )
 
         rerank_documents = []
@@ -73,7 +73,6 @@ class RerankModelRunner(BaseRerankRunner):
         documents: list[Document],
         score_threshold: float | None = None,
         top_n: int | None = None,
-        user: str | None = None,
     ) -> tuple[RerankResult, list[Document]]:
         """
         Fetch text rerank
@@ -81,7 +80,6 @@ class RerankModelRunner(BaseRerankRunner):
         :param documents: documents for reranking
         :param score_threshold: score threshold
         :param top_n: top n
-        :param user: unique user id if needed
         :return:
         """
         docs = []
@@ -103,7 +101,7 @@ class RerankModelRunner(BaseRerankRunner):
                     unique_documents.append(document)
 
         rerank_result = self.rerank_model_instance.invoke_rerank(
-            query=query, docs=docs, score_threshold=score_threshold, top_n=top_n, user=user
+            query=query, docs=docs, score_threshold=score_threshold, top_n=top_n
         )
         return rerank_result, unique_documents
 
@@ -113,7 +111,6 @@ class RerankModelRunner(BaseRerankRunner):
         documents: list[Document],
         score_threshold: float | None = None,
         top_n: int | None = None,
-        user: str | None = None,
         query_type: QueryType = QueryType.TEXT_QUERY,
     ) -> tuple[RerankResult, list[Document]]:
         """
@@ -122,7 +119,6 @@ class RerankModelRunner(BaseRerankRunner):
         :param documents: documents for reranking
         :param score_threshold: score threshold
         :param top_n: top n
-        :param user: unique user id if needed
         :param query_type: query type
         :return: rerank result
         """
@@ -168,7 +164,7 @@ class RerankModelRunner(BaseRerankRunner):
 
         documents = unique_documents
         if query_type == QueryType.TEXT_QUERY:
-            rerank_result, unique_documents = self.fetch_text_rerank(query, documents, score_threshold, top_n, user)
+            rerank_result, unique_documents = self.fetch_text_rerank(query, documents, score_threshold, top_n)
             return rerank_result, unique_documents
         elif query_type == QueryType.IMAGE_QUERY:
             # Query file info within db.session context to ensure thread-safe access
@@ -181,7 +177,7 @@ class RerankModelRunner(BaseRerankRunner):
                     "content_type": DocType.IMAGE,
                 }
                 rerank_result = self.rerank_model_instance.invoke_multimodal_rerank(
-                    query=file_query_dict, docs=docs, score_threshold=score_threshold, top_n=top_n, user=user
+                    query=file_query_dict, docs=docs, score_threshold=score_threshold, top_n=top_n
                 )
                 return rerank_result, unique_documents
             else:

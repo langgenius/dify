@@ -1,12 +1,13 @@
 import logging
 from collections.abc import Generator, Mapping, Sequence
 from concurrent.futures import Future, ThreadPoolExecutor, as_completed
+from contextlib import suppress
 from datetime import UTC, datetime
+from threading import Lock
 from typing import TYPE_CHECKING, Any, NewType, cast
 
 from typing_extensions import TypeIs
 
-from dify_graph.constants import CONVERSATION_VARIABLE_NODE_ID
 from dify_graph.entities.graph_config import NodeConfigDictAdapter
 from dify_graph.enums import (
     BuiltinNodeTypes,
@@ -16,6 +17,7 @@ from dify_graph.enums import (
 )
 from dify_graph.graph_events import (
     GraphNodeEventBase,
+    GraphRunAbortedEvent,
     GraphRunFailedEvent,
     GraphRunPartialSucceededEvent,
     GraphRunSucceededEvent,
@@ -36,10 +38,9 @@ from dify_graph.nodes.iteration.entities import ErrorHandleMode, IterationNodeDa
 from dify_graph.runtime import VariablePool
 from dify_graph.variables import IntegerVariable, NoneSegment
 from dify_graph.variables.segments import ArrayAnySegment, ArraySegment
-from dify_graph.variables.variables import Variable
-from libs.datetime_utils import naive_utc_now
 
 from .exc import (
+    ChildGraphAbortedError,
     InvalidIteratorValueError,
     IterationGraphNotFoundError,
     IterationIndexNotFoundError,
@@ -49,10 +50,10 @@ from .exc import (
 )
 
 if TYPE_CHECKING:
-    from dify_graph.context import IExecutionContext
     from dify_graph.graph_engine import GraphEngine
 
 logger = logging.getLogger(__name__)
+_DEFAULT_CHILD_ABORT_REASON = "child graph aborted"
 
 EmptyArraySegment = NewType("EmptyArraySegment", ArraySegment)
 
@@ -93,7 +94,7 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
 
         self._validate_start_node()
 
-        started_at = naive_utc_now()
+        started_at = datetime.now(UTC).replace(tzinfo=None)
         iter_run_map: dict[str, float] = {}
         outputs: list[object] = []
         usage_accumulator = [LLMUsage.empty_usage()]
@@ -199,23 +200,14 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
                 graph_engine = self._create_graph_engine(index, item)
 
                 # Run the iteration
-                yield from self._run_single_iter(
-                    variable_pool=graph_engine.graph_runtime_state.variable_pool,
-                    outputs=outputs,
-                    graph_engine=graph_engine,
-                )
-
-                # Sync conversation variables after each iteration completes
-                self._sync_conversation_variables_from_snapshot(
-                    self._extract_conversation_variable_snapshot(
-                        variable_pool=graph_engine.graph_runtime_state.variable_pool
+                try:
+                    yield from self._run_single_iter(
+                        variable_pool=graph_engine.graph_runtime_state.variable_pool,
+                        outputs=outputs,
+                        graph_engine=graph_engine,
                     )
-                )
-
-                # Accumulate usage from this iteration
-                usage_accumulator[0] = self._merge_usage(
-                    usage_accumulator[0], graph_engine.graph_runtime_state.llm_usage
-                )
+                finally:
+                    self._merge_graph_engine_usage(usage_accumulator=usage_accumulator, graph_engine=graph_engine)
                 iter_run_map[str(index)] = (datetime.now(UTC).replace(tzinfo=None) - iter_start_at).total_seconds()
 
     def _execute_parallel_iterations(
@@ -233,13 +225,15 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
 
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             # Submit all iteration tasks
+            started_child_engines: dict[int, GraphEngine] = {}
+            started_child_engines_lock = Lock()
+            merged_usage_indexes: set[int] = set()
             future_to_index: dict[
                 Future[
                     tuple[
                         float,
                         list[GraphNodeEventBase],
                         object | None,
-                        dict[str, Variable],
                         LLMUsage,
                     ]
                 ],
@@ -248,10 +242,11 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
             for index, item in enumerate(iterator_list_value):
                 yield IterationNextEvent(index=index)
                 future = executor.submit(
-                    self._execute_single_iteration_parallel,
+                    self._execute_tracked_iteration_parallel,
                     index=index,
                     item=item,
-                    execution_context=self._capture_execution_context(),
+                    started_child_engines=started_child_engines,
+                    started_child_engines_lock=started_child_engines_lock,
                 )
                 future_to_index[future] = index
 
@@ -264,7 +259,6 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
                         iteration_duration,
                         events,
                         output_value,
-                        conversation_snapshot,
                         iteration_usage,
                     ) = result
 
@@ -279,11 +273,31 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
                     iter_run_map[str(index)] = iteration_duration
 
                     usage_accumulator[0] = self._merge_usage(usage_accumulator[0], iteration_usage)
-
-                    # Sync conversation variables after iteration completion
-                    self._sync_conversation_variables_from_snapshot(conversation_snapshot)
+                    merged_usage_indexes.add(index)
 
                 except Exception as e:
+                    if index not in merged_usage_indexes:
+                        self._merge_graph_engine_usage(
+                            usage_accumulator=usage_accumulator,
+                            graph_engine=started_child_engines.get(index),
+                        )
+                        merged_usage_indexes.add(index)
+                    if isinstance(e, ChildGraphAbortedError):
+                        self._abort_parallel_siblings(
+                            future_to_index=future_to_index,
+                            current_future=future,
+                            started_child_engines=started_child_engines,
+                            reason=str(e) or _DEFAULT_CHILD_ABORT_REASON,
+                        )
+                        self._drain_parallel_siblings(
+                            future_to_index=future_to_index,
+                            current_future=future,
+                            started_child_engines=started_child_engines,
+                            usage_accumulator=usage_accumulator,
+                            merged_usage_indexes=merged_usage_indexes,
+                        )
+                        raise e
+
                     # Handle errors based on error_handle_mode
                     match self.node_data.error_handle_mode:
                         case ErrorHandleMode.TERMINATED:
@@ -301,48 +315,118 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
         if self.node_data.error_handle_mode == ErrorHandleMode.REMOVE_ABNORMAL_OUTPUT:
             outputs[:] = [output for output in outputs if output is not None]
 
+    @staticmethod
+    def _merge_graph_engine_usage(
+        *,
+        usage_accumulator: list[LLMUsage],
+        graph_engine: "GraphEngine | None",
+    ) -> None:
+        if graph_engine is None:
+            return
+        usage_accumulator[0] = IterationNode._merge_usage(
+            usage_accumulator[0], graph_engine.graph_runtime_state.llm_usage
+        )
+
+    def _abort_parallel_siblings(
+        self,
+        *,
+        future_to_index: Mapping[Future[tuple[float, list[GraphNodeEventBase], object | None, LLMUsage]], int],
+        current_future: Future[tuple[float, list[GraphNodeEventBase], object | None, LLMUsage]],
+        started_child_engines: Mapping[int, "GraphEngine"],
+        reason: str,
+    ) -> None:
+        for future, index in future_to_index.items():
+            if future == current_future:
+                continue
+
+            graph_engine = started_child_engines.get(index)
+            if graph_engine is not None:
+                graph_engine.request_abort(reason)
+
+            future.cancel()
+
+    def _drain_parallel_siblings(
+        self,
+        *,
+        future_to_index: Mapping[Future[tuple[float, list[GraphNodeEventBase], object | None, LLMUsage]], int],
+        current_future: Future[tuple[float, list[GraphNodeEventBase], object | None, LLMUsage]],
+        started_child_engines: Mapping[int, "GraphEngine"],
+        usage_accumulator: list[LLMUsage],
+        merged_usage_indexes: set[int],
+    ) -> None:
+        for future, index in future_to_index.items():
+            if future == current_future:
+                continue
+            if future.cancelled():
+                continue
+
+            with suppress(Exception):
+                future.result()
+
+            if index in merged_usage_indexes:
+                continue
+
+            self._merge_graph_engine_usage(
+                usage_accumulator=usage_accumulator,
+                graph_engine=started_child_engines.get(index),
+            )
+            merged_usage_indexes.add(index)
+
+    def _execute_tracked_iteration_parallel(
+        self,
+        *,
+        index: int,
+        item: object,
+        started_child_engines: dict[int, "GraphEngine"],
+        started_child_engines_lock: Lock,
+    ) -> tuple[float, list[GraphNodeEventBase], object | None, LLMUsage]:
+        graph_engine = self._create_graph_engine(index, item)
+        with started_child_engines_lock:
+            started_child_engines[index] = graph_engine
+
+        return self._execute_parallel_iteration_with_graph_engine(
+            index=index,
+            graph_engine=graph_engine,
+        )
+
     def _execute_single_iteration_parallel(
         self,
         index: int,
         item: object,
-        execution_context: "IExecutionContext",
-    ) -> tuple[float, list[GraphNodeEventBase], object | None, dict[str, Variable], LLMUsage]:
+    ) -> tuple[float, list[GraphNodeEventBase], object | None, LLMUsage]:
         """Execute a single iteration in parallel mode and return results."""
-        with execution_context:
-            iter_start_at = datetime.now(UTC).replace(tzinfo=None)
-            events: list[GraphNodeEventBase] = []
-            outputs_temp: list[object] = []
+        graph_engine = self._create_graph_engine(index, item)
+        return self._execute_parallel_iteration_with_graph_engine(index=index, graph_engine=graph_engine)
 
-            graph_engine = self._create_graph_engine(index, item)
+    def _execute_parallel_iteration_with_graph_engine(
+        self,
+        *,
+        index: int,
+        graph_engine: "GraphEngine",
+    ) -> tuple[float, list[GraphNodeEventBase], object | None, LLMUsage]:
+        """Execute a prepared child engine in parallel mode and return results."""
+        iter_start_at = datetime.now(UTC).replace(tzinfo=None)
+        events: list[GraphNodeEventBase] = []
+        outputs_temp: list[object] = []
 
-            # Collect events instead of yielding them directly
-            for event in self._run_single_iter(
-                variable_pool=graph_engine.graph_runtime_state.variable_pool,
-                outputs=outputs_temp,
-                graph_engine=graph_engine,
-            ):
-                events.append(event)
+        # Collect events instead of yielding them directly
+        for event in self._run_single_iter(
+            variable_pool=graph_engine.graph_runtime_state.variable_pool,
+            outputs=outputs_temp,
+            graph_engine=graph_engine,
+        ):
+            events.append(event)
 
-            # Get the output value from the temporary outputs list
-            output_value = outputs_temp[0] if outputs_temp else None
-            conversation_snapshot = self._extract_conversation_variable_snapshot(
-                variable_pool=graph_engine.graph_runtime_state.variable_pool
-            )
-            iteration_duration = (datetime.now(UTC).replace(tzinfo=None) - iter_start_at).total_seconds()
+        # Get the output value from the temporary outputs list
+        output_value = outputs_temp[0] if outputs_temp else None
+        iteration_duration = (datetime.now(UTC).replace(tzinfo=None) - iter_start_at).total_seconds()
 
-            return (
-                iteration_duration,
-                events,
-                output_value,
-                conversation_snapshot,
-                graph_engine.graph_runtime_state.llm_usage,
-            )
-
-    def _capture_execution_context(self) -> "IExecutionContext":
-        """Capture current execution context for parallel iterations."""
-        from dify_graph.context import capture_current_context
-
-        return capture_current_context()
+        return (
+            iteration_duration,
+            events,
+            output_value,
+            graph_engine.graph_runtime_state.llm_usage,
+        )
 
     def _handle_iteration_success(
         self,
@@ -516,23 +600,6 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
 
         return variable_mapping
 
-    def _extract_conversation_variable_snapshot(self, *, variable_pool: VariablePool) -> dict[str, Variable]:
-        conversation_variables = variable_pool.variable_dictionary.get(CONVERSATION_VARIABLE_NODE_ID, {})
-        return {name: variable.model_copy(deep=True) for name, variable in conversation_variables.items()}
-
-    def _sync_conversation_variables_from_snapshot(self, snapshot: dict[str, Variable]) -> None:
-        parent_pool = self.graph_runtime_state.variable_pool
-        parent_conversations = parent_pool.variable_dictionary.get(CONVERSATION_VARIABLE_NODE_ID, {})
-
-        current_keys = set(parent_conversations.keys())
-        snapshot_keys = set(snapshot.keys())
-
-        for removed_key in current_keys - snapshot_keys:
-            parent_pool.remove((CONVERSATION_VARIABLE_NODE_ID, removed_key))
-
-        for name, variable in snapshot.items():
-            parent_pool.add((CONVERSATION_VARIABLE_NODE_ID, name), variable)
-
     def _append_iteration_info_to_event(
         self,
         event: GraphNodeEventBase,
@@ -575,6 +642,8 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
                 else:
                     outputs.append(result.to_object())
                 return
+            elif isinstance(event, GraphRunAbortedEvent):
+                raise ChildGraphAbortedError(event.reason or _DEFAULT_CHILD_ABORT_REASON)
             elif isinstance(event, GraphRunFailedEvent):
                 match self.node_data.error_handle_mode:
                     case ErrorHandleMode.TERMINATED:
@@ -587,7 +656,7 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
 
     def _create_graph_engine(self, index: int, item: object):
         from dify_graph.entities import GraphInitParams
-        from dify_graph.runtime import ChildGraphNotFoundError, GraphRuntimeState
+        from dify_graph.runtime import ChildGraphNotFoundError
 
         # Create GraphInitParams for child graph execution.
         graph_init_params = GraphInitParams(
@@ -602,14 +671,6 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
         # append iteration variable (item, index) to variable pool
         variable_pool_copy.add([self._node_id, "index"], index)
         variable_pool_copy.add([self._node_id, "item"], item)
-
-        # Create a new GraphRuntimeState for this iteration
-        graph_runtime_state_copy = GraphRuntimeState(
-            variable_pool=variable_pool_copy,
-            start_at=self.graph_runtime_state.start_at,
-            total_tokens=0,
-            node_run_steps=0,
-        )
         root_node_id = self.node_data.start_node_id
         if root_node_id is None:
             raise StartNodeIdNotFoundError(f"field start_node_id in iteration {self._node_id} not found")
@@ -618,9 +679,8 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
             return self.graph_runtime_state.create_child_engine(
                 workflow_id=self.workflow_id,
                 graph_init_params=graph_init_params,
-                graph_runtime_state=graph_runtime_state_copy,
-                graph_config=self.graph_config,
                 root_node_id=root_node_id,
+                variable_pool=variable_pool_copy,
             )
         except ChildGraphNotFoundError as exc:
             raise IterationGraphNotFoundError("iteration graph not found") from exc

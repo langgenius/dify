@@ -46,6 +46,7 @@ from .node import (
     NodeRunStartedEvent,
     NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
+    NodeRunVariableUpdatedEvent,
     is_node_result_event,
 )
 
@@ -78,5 +79,6 @@ __all__ = [
     "NodeRunStartedEvent",
     "NodeRunStreamChunkEvent",
     "NodeRunSucceededEvent",
+    "NodeRunVariableUpdatedEvent",
     "is_node_result_event",
 ]
