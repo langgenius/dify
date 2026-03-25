@@ -93,7 +93,7 @@ describe('ChatRecord integration', () => {
       expect(mockFetchConversationMessages).toHaveBeenCalledWith('app-1', 'conversation-1')
     })
 
-    expect(screen.getByText('Question 1:files-1')).toBeInTheDocument()
+    expect(await screen.findByText('Question 1:files-1')).toBeInTheDocument()
     expect(screen.getByText('Answer 1:files-1')).toBeInTheDocument()
     expect(screen.getByText('Question 3:files-0')).toBeInTheDocument()
     expect(screen.getByText('Answer 3:files-0')).toBeInTheDocument()
@@ -101,9 +101,11 @@ describe('ChatRecord integration', () => {
 
     await user.click(screen.getByRole('button', { name: 'switch sibling' }))
 
-    expect(screen.getByText('Question 2:files-0')).toBeInTheDocument()
+    expect(await screen.findByText('Question 2:files-0')).toBeInTheDocument()
     expect(screen.getByText('Answer 2:files-0')).toBeInTheDocument()
-    expect(screen.queryByText('Question 3:files-0')).not.toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.queryByText('Question 3:files-0')).not.toBeInTheDocument()
+    })
   })
 
   it('should close the record panel and restore the backup draft', async () => {

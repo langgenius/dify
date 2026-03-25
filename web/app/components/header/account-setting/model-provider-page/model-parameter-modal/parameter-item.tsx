@@ -7,10 +7,10 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import Radio from '@/app/components/base/radio'
-import Slider from '@/app/components/base/slider'
 import Switch from '@/app/components/base/switch'
 import TagInput from '@/app/components/base/tag-input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/base/ui/select'
+import { Slider } from '@/app/components/base/ui/slider'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { cn } from '@/utils/classnames'
@@ -78,6 +78,7 @@ function ParameterItem({
   }
 
   const renderValue = value ?? localValue ?? getDefaultValue()
+  const sliderLabel = parameterRule.label[language] || parameterRule.label.en_US
 
   const handleInputChange = (newValue: ParameterValue) => {
     setLocalValue(newValue)
@@ -170,7 +171,8 @@ function ParameterItem({
               min={parameterRule.min}
               max={parameterRule.max}
               step={step}
-              onChange={handleSlideChange}
+              onValueChange={handleSlideChange}
+              aria-label={sliderLabel}
             />
           )}
           <input
@@ -197,7 +199,8 @@ function ParameterItem({
               min={parameterRule.min}
               max={parameterRule.max}
               step={0.1}
-              onChange={handleSlideChange}
+              onValueChange={handleSlideChange}
+              aria-label={sliderLabel}
             />
           )}
           <input
@@ -337,9 +340,9 @@ function ParameterItem({
           }
           <div
             className="mr-0.5 truncate text-text-secondary system-xs-regular"
-            title={parameterRule.label[language] || parameterRule.label.en_US}
+            title={sliderLabel}
           >
-            {parameterRule.label[language] || parameterRule.label.en_US}
+            {sliderLabel}
           </div>
           {
             parameterRule.help && (
