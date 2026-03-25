@@ -97,6 +97,7 @@ from unittest.mock import Mock, create_autospec, patch
 import pytest
 from sqlalchemy.orm import Session
 
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from models import Account, TenantAccountRole
 from models.dataset import (
     AppDatasetJoin,
@@ -149,7 +150,7 @@ class DatasetUpdateDeleteTestDataFactory:
         name: str = "Test Dataset",
         description: str = "Test description",
         tenant_id: str = "tenant-123",
-        indexing_technique: str = "high_quality",
+        indexing_technique: str = IndexTechniqueType.HIGH_QUALITY,
         embedding_model_provider: str | None = "openai",
         embedding_model: str | None = "text-embedding-ada-002",
         collection_binding_id: str | None = "binding-123",
@@ -237,7 +238,7 @@ class DatasetUpdateDeleteTestDataFactory:
     @staticmethod
     def create_knowledge_configuration_mock(
         chunk_structure: str = "tree",
-        indexing_technique: str = "high_quality",
+        indexing_technique: str = IndexTechniqueType.HIGH_QUALITY,
         embedding_model_provider: str = "openai",
         embedding_model: str = "text-embedding-ada-002",
         keyword_number: int = 10,
@@ -630,12 +631,12 @@ class TestDatasetServiceUpdateRagPipelineDatasetSettings:
             dataset_id="dataset-123",
             runtime_mode="rag_pipeline",
             chunk_structure="tree",
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
         )
 
         knowledge_config = DatasetUpdateDeleteTestDataFactory.create_knowledge_configuration_mock(
             chunk_structure="list",
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             embedding_model_provider="openai",
             embedding_model="text-embedding-ada-002",
         )
@@ -671,7 +672,7 @@ class TestDatasetServiceUpdateRagPipelineDatasetSettings:
 
         # Assert
         assert dataset.chunk_structure == "list"
-        assert dataset.indexing_technique == "high_quality"
+        assert dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY
         assert dataset.embedding_model == "text-embedding-ada-002"
         assert dataset.embedding_model_provider == "openai"
         assert dataset.collection_binding_id == "binding-123"
@@ -698,12 +699,12 @@ class TestDatasetServiceUpdateRagPipelineDatasetSettings:
             dataset_id="dataset-123",
             runtime_mode="rag_pipeline",
             chunk_structure="tree",  # Existing structure
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
         )
 
         knowledge_config = DatasetUpdateDeleteTestDataFactory.create_knowledge_configuration_mock(
             chunk_structure="list",  # Different structure
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
         )
 
         mock_session.merge.return_value = dataset
@@ -735,11 +736,11 @@ class TestDatasetServiceUpdateRagPipelineDatasetSettings:
         dataset = DatasetUpdateDeleteTestDataFactory.create_dataset_mock(
             dataset_id="dataset-123",
             runtime_mode="rag_pipeline",
-            indexing_technique="high_quality",  # Current technique
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,  # Current technique
         )
 
         knowledge_config = DatasetUpdateDeleteTestDataFactory.create_knowledge_configuration_mock(
-            indexing_technique="economy",  # Trying to change to economy
+            indexing_technique=IndexTechniqueType.ECONOMY,  # Trying to change to economy
         )
 
         mock_session.merge.return_value = dataset

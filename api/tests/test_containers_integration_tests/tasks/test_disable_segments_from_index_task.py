@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, patch
 from faker import Faker
 from sqlalchemy.orm import Session
 
-from core.rag.index_processor.constant.index_type import IndexStructureType
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from models import Account, Dataset, DocumentSegment
 from models import Document as DatasetDocument
 from models.dataset import DatasetProcessRule
@@ -103,7 +103,7 @@ class TestDisableSegmentsFromIndexTask:
             provider="vendor",
             permission="only_me",
             data_source_type=DataSourceType.UPLOAD_FILE,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             created_by=account.id,
             updated_by=account.id,
             embedding_model="text-embedding-ada-002",
