@@ -15,7 +15,7 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 
 from core.indexing_runner import DocumentIsPausedError
-from core.rag.index_processor.constant.index_type import IndexStructureType
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
 from enums.cloud_plan import CloudPlan
 from extensions.ext_redis import redis_client
@@ -59,6 +59,11 @@ def mock_redis():
     # Redis is already mocked globally in conftest.py
     # Reset it for each test
     redis_client.reset_mock()
+    redis_client.get.reset_mock()
+    redis_client.setex.reset_mock()
+    redis_client.delete.reset_mock()
+    redis_client.lpush.reset_mock()
+    redis_client.rpop.reset_mock()
     redis_client.get.return_value = None
     redis_client.setex.return_value = True
     redis_client.delete.return_value = True
@@ -204,7 +209,7 @@ def mock_dataset(dataset_id, tenant_id):
     dataset = Mock(spec=Dataset)
     dataset.id = dataset_id
     dataset.tenant_id = tenant_id
-    dataset.indexing_technique = "high_quality"
+    dataset.indexing_technique = IndexTechniqueType.HIGH_QUALITY
     dataset.embedding_model_provider = "openai"
     dataset.embedding_model = "text-embedding-ada-002"
     return dataset
