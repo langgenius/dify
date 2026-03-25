@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import ScoreSlider from '../index'
 
 describe('ScoreSlider', () => {
-  const getSliderInput = () => screen.getByLabelText('feature.annotation.scoreThreshold.title')
+  const getSliderInput = () => screen.getByLabelText('appDebug.feature.annotation.scoreThreshold.title')
 
   beforeEach(() => {
     vi.clearAllMocks()
