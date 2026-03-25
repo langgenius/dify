@@ -15,18 +15,18 @@ from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchem
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.node_runtime import DifyHumanInputNodeRuntime
 from core.workflow.system_variables import build_system_variables
-from dify_graph.enums import WorkflowType
-from dify_graph.graph import Graph
-from dify_graph.graph_engine.command_channels.in_memory_channel import InMemoryChannel
-from dify_graph.graph_engine.graph_engine import GraphEngine
-from dify_graph.nodes.end.end_node import EndNode
-from dify_graph.nodes.end.entities import EndNodeData
-from dify_graph.nodes.human_input.entities import HumanInputNodeData, UserAction
-from dify_graph.nodes.human_input.enums import HumanInputFormStatus
-from dify_graph.nodes.human_input.human_input_node import HumanInputNode
-from dify_graph.nodes.start.entities import StartNodeData
-from dify_graph.nodes.start.start_node import StartNode
-from dify_graph.runtime import GraphRuntimeState, VariablePool
+from graphon.enums import WorkflowType
+from graphon.graph import Graph
+from graphon.graph_engine.command_channels.in_memory_channel import InMemoryChannel
+from graphon.graph_engine.graph_engine import GraphEngine
+from graphon.nodes.end.end_node import EndNode
+from graphon.nodes.end.entities import EndNodeData
+from graphon.nodes.human_input.entities import HumanInputNodeData, UserAction
+from graphon.nodes.human_input.enums import HumanInputFormStatus
+from graphon.nodes.human_input.human_input_node import HumanInputNode
+from graphon.nodes.start.entities import StartNodeData
+from graphon.nodes.start.start_node import StartNode
+from graphon.runtime import GraphRuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
 from models import Account
 from models.account import Tenant, TenantAccountJoin, TenantAccountRole

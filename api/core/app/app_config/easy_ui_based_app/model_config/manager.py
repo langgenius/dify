@@ -3,7 +3,7 @@ from typing import Any
 
 from core.app.app_config.entities import ModelConfigEntity
 from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly
-from dify_graph.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
+from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
 from models.model import AppModelConfigDict
 from models.provider_ids import ModelProviderID
 

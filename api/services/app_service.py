@@ -12,10 +12,10 @@ from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
-from dify_graph.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
-from dify_graph.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from events.app_event import app_was_created
 from extensions.ext_database import db
+from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
+from graphon.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_user
 from models import Account

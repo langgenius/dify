@@ -119,11 +119,8 @@ class AuthenticationMocker:
 
     @staticmethod
     def setup_db_queries(mock_db, mock_app, mock_tenant, mock_account=None):
-        """Configure mock_db to return app and tenant in sequence."""
-        mock_db.session.query.return_value.where.return_value.first.side_effect = [
-            mock_app,
-            mock_tenant,
-        ]
+        """Configure mock_db to return app and tenant via session.get()."""
+        mock_db.session.get.side_effect = [mock_app, mock_tenant]
 
         if mock_account:
             mock_ta = Mock()
@@ -136,11 +133,9 @@ class AuthenticationMocker:
         mock_ta = Mock()
         mock_ta.account_id = mock_account.id
 
-        mock_query = mock_db.session.query.return_value
-        target_mock = mock_query.where.return_value.where.return_value.where.return_value.where.return_value
-        target_mock.one_or_none.return_value = (mock_tenant, mock_ta)
+        mock_db.session.execute.return_value.one_or_none.return_value = (mock_tenant, mock_ta)
 
-        mock_db.session.query.return_value.where.return_value.first.return_value = mock_account
+        mock_db.session.get.return_value = mock_account
 
 
 @pytest.fixture

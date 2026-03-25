@@ -4,13 +4,13 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from dify_graph.enums import WorkflowNodeExecutionStatus
-from dify_graph.graph_events import GraphRunAbortedEvent
-from dify_graph.model_runtime.entities.llm_entities import LLMUsage
-from dify_graph.node_events import IterationFailedEvent, IterationStartedEvent, StreamCompletedEvent
-from dify_graph.nodes.iteration.entities import ErrorHandleMode, IterationNodeData
-from dify_graph.nodes.iteration.exc import ChildGraphAbortedError
-from dify_graph.nodes.iteration.iteration_node import IterationNode
+from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.graph_events import GraphRunAbortedEvent
+from graphon.model_runtime.entities.llm_entities import LLMUsage
+from graphon.node_events import IterationFailedEvent, IterationStartedEvent, StreamCompletedEvent
+from graphon.nodes.iteration.entities import ErrorHandleMode, IterationNodeData
+from graphon.nodes.iteration.exc import ChildGraphAbortedError
+from graphon.nodes.iteration.iteration_node import IterationNode
 from tests.workflow_test_utils import build_test_variable_pool
 
 

@@ -21,10 +21,10 @@ from typing_extensions import TypedDict
 from configs import dify_config
 from constants import DEFAULT_FILE_NUMBER_LIMITS
 from core.tools.signature import sign_tool_file
-from dify_graph.enums import WorkflowExecutionStatus
-from dify_graph.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
-from dify_graph.file import helpers as file_helpers
 from extensions.storage.storage_type import StorageType
+from graphon.enums import WorkflowExecutionStatus
+from graphon.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
+from graphon.file import helpers as file_helpers
 from libs.helper import generate_string  # type: ignore[import-not-found]
 from libs.uuid_utils import uuidv7
 from models.utils.file_input_compat import build_file_from_input_mapping
@@ -1088,7 +1088,7 @@ class Conversation(Base):
         # Compatibility bridge: stored input payloads may come from before or after the
         # graph-layer file refactor. Newer rows may omit `tenant_id`, so keep tenant
         # resolution at the SQLAlchemy model boundary instead of pushing ownership back
-        # into `dify_graph.file.File`.
+        # into `graphon.file.File`.
         tenant_resolver = _build_app_tenant_resolver(
             app_id=self.app_id,
             owner_tenant_id=cast(str | None, getattr(self, "_owner_tenant_id", None)),

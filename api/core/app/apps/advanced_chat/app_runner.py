@@ -34,15 +34,15 @@ from core.workflow.system_variables import (
 )
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
-from dify_graph.enums import WorkflowType
-from dify_graph.graph_engine.command_channels.redis_channel import RedisChannel
-from dify_graph.graph_engine.layers.base import GraphEngineLayer
-from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.variable_loader import VariableLoader
-from dify_graph.variables.variables import Variable
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.otel import WorkflowAppRunnerHandler, trace_span
+from graphon.enums import WorkflowType
+from graphon.graph_engine.command_channels.redis_channel import RedisChannel
+from graphon.graph_engine.layers.base import GraphEngineLayer
+from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.variable_loader import VariableLoader
+from graphon.variables.variables import Variable
 from models import Workflow
 from models.model import App, Conversation, Message, MessageAnnotation
 from models.workflow import ConversationVariable

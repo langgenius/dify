@@ -21,8 +21,8 @@ from core.app.entities.app_invoke_entities import (
 )
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, WorkflowResumptionContext
 from core.repositories import DifyCoreRepositoryFactory
-from dify_graph.runtime import GraphRuntimeState
 from extensions.ext_database import db
+from graphon.runtime import GraphRuntimeState
 from libs.flask_utils import set_login_user
 from models.account import Account
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom

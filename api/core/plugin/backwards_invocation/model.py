@@ -18,19 +18,19 @@ from core.plugin.entities.request import (
 )
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.utils.model_invocation_utils import ModelInvocationUtils
-from dify_graph.model_runtime.entities.llm_entities import (
+from graphon.model_runtime.entities.llm_entities import (
     LLMResult,
     LLMResultChunk,
     LLMResultChunkDelta,
     LLMResultChunkWithStructuredOutput,
     LLMResultWithStructuredOutput,
 )
-from dify_graph.model_runtime.entities.message_entities import (
+from graphon.model_runtime.entities.message_entities import (
     PromptMessage,
     SystemPromptMessage,
     UserPromptMessage,
 )
-from dify_graph.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.model_entities import ModelType
 from models.account import Tenant
 
 

@@ -8,8 +8,8 @@ from core.rag.rerank.entity.weight import KeywordSetting, VectorSetting, Weights
 from core.rag.rerank.rerank_base import BaseRerankRunner
 from core.rag.rerank.rerank_factory import RerankRunnerFactory
 from core.rag.rerank.rerank_type import RerankMode
-from dify_graph.model_runtime.entities.model_entities import ModelType
-from dify_graph.model_runtime.errors.invoke import InvokeAuthorizationError
+from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 
 
 class RerankingModelDict(TypedDict):

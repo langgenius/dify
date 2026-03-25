@@ -28,8 +28,8 @@ from core.ops.langsmith_trace.entities.langsmith_trace_entity import (
 )
 from core.ops.utils import filter_none_values, generate_dotted_order
 from core.repositories import DifyCoreRepositoryFactory
-from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 from extensions.ext_database import db
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 from models import EndUser, MessageFile, WorkflowNodeExecutionTriggeredFrom
 
 logger = logging.getLogger(__name__)

@@ -11,17 +11,17 @@ from core.app.apps.draft_variable_saver import (
 )
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.app.file_access import DatabaseFileAccessController, FileAccessScope, bind_file_access_scope
-from dify_graph.enums import NodeType
-from dify_graph.file import File, FileUploadConfig
-from dify_graph.variables.input_entities import VariableEntityType
 from extensions.ext_database import db
 from factories import file_factory
+from graphon.enums import NodeType
+from graphon.file import File, FileUploadConfig
+from graphon.variables.input_entities import VariableEntityType
 from libs.orjson import orjson_dumps
 from models import Account, EndUser
 from services.workflow_draft_variable_service import DraftVariableSaver as DraftVariableSaverImpl
 
 if TYPE_CHECKING:
-    from dify_graph.variables.input_entities import VariableEntity
+    from graphon.variables.input_entities import VariableEntity
 
 
 @final

@@ -3,10 +3,10 @@ from collections.abc import Mapping
 from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
 from core.workflow.nodes.trigger_plugin.trigger_event_node import TriggerEventNode
 from core.workflow.system_variables import build_system_variables
-from dify_graph.entities import GraphInitParams
-from dify_graph.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
-from dify_graph.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
-from dify_graph.runtime import GraphRuntimeState
+from graphon.entities import GraphInitParams
+from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
+from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from graphon.runtime import GraphRuntimeState
 from tests.workflow_test_utils import build_test_graph_init_params, build_test_variable_pool
 
 

@@ -5,7 +5,7 @@ from functools import lru_cache
 from typing import Any
 
 from core.workflow.file_reference import parse_file_reference
-from dify_graph.file import File, FileTransferMethod
+from graphon.file import File, FileTransferMethod
 
 
 @lru_cache(maxsize=1)
@@ -98,7 +98,7 @@ def build_file_from_input_mapping(
     This compatibility layer exists because model JSON rows can outlive file payload
     schema changes. Legacy rows may carry `related_id` and `tenant_id`, while newer
     rows may only carry `reference`. Keep ownership resolution here, at the model
-    boundary, instead of pushing tenant data back into `dify_graph.file.File`.
+    boundary, instead of pushing tenant data back into `graphon.file.File`.
     """
 
     transfer_method = FileTransferMethod.value_of(file_mapping["transfer_method"])

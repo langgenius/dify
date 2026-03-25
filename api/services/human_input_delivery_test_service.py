@@ -15,9 +15,9 @@ from core.workflow.human_input_compat import (
     ExternalRecipient,
     MemberRecipient,
 )
-from dify_graph.runtime import VariablePool
 from extensions.ext_database import db
 from extensions.ext_mail import mail
+from graphon.runtime import VariablePool
 from libs.email_template_renderer import render_email_template
 from models import Account, TenantAccountJoin
 from services.feature_service import FeatureService

@@ -5,11 +5,11 @@ from unittest.mock import MagicMock
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.system_variables import build_system_variables
-from dify_graph.enums import WorkflowNodeExecutionStatus
-from dify_graph.graph import Graph
-from dify_graph.nodes.answer.answer_node import AnswerNode
-from dify_graph.runtime import GraphRuntimeState, VariablePool
 from extensions.ext_database import db
+from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.graph import Graph
+from graphon.nodes.answer.answer_node import AnswerNode
+from graphon.runtime import GraphRuntimeState, VariablePool
 from tests.workflow_test_utils import build_test_graph_init_params
 
 

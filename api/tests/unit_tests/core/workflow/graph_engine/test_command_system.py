@@ -4,22 +4,22 @@ import time
 from unittest.mock import MagicMock
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
-from dify_graph.entities.graph_init_params import GraphInitParams
-from dify_graph.entities.pause_reason import SchedulingPause
-from dify_graph.graph import Graph
-from dify_graph.graph_engine import GraphEngine, GraphEngineConfig
-from dify_graph.graph_engine.command_channels import InMemoryChannel
-from dify_graph.graph_engine.entities.commands import (
+from graphon.entities.graph_init_params import GraphInitParams
+from graphon.entities.pause_reason import SchedulingPause
+from graphon.graph import Graph
+from graphon.graph_engine import GraphEngine, GraphEngineConfig
+from graphon.graph_engine.command_channels import InMemoryChannel
+from graphon.graph_engine.entities.commands import (
     AbortCommand,
     CommandType,
     PauseCommand,
     UpdateVariablesCommand,
     VariableUpdate,
 )
-from dify_graph.graph_events import GraphRunAbortedEvent, GraphRunPausedEvent, GraphRunStartedEvent
-from dify_graph.nodes.start.start_node import StartNode
-from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.variables import IntegerVariable, StringVariable
+from graphon.graph_events import GraphRunAbortedEvent, GraphRunPausedEvent, GraphRunStartedEvent
+from graphon.nodes.start.start_node import StartNode
+from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.variables import IntegerVariable, StringVariable
 
 
 def test_abort_command():
@@ -101,7 +101,7 @@ def test_redis_channel_serialization():
     mock_redis.pipeline.return_value.__enter__ = MagicMock(return_value=mock_pipeline)
     mock_redis.pipeline.return_value.__exit__ = MagicMock(return_value=None)
 
-    from dify_graph.graph_engine.command_channels.redis_channel import RedisChannel
+    from graphon.graph_engine.command_channels.redis_channel import RedisChannel
 
     # Create channel with a specific key
     channel = RedisChannel(mock_redis, channel_key="workflow:123:commands")

@@ -12,7 +12,7 @@ from core.workflow.human_input_compat import (
     ExternalRecipient,
     MemberRecipient,
 )
-from dify_graph.runtime import VariablePool
+from graphon.runtime import VariablePool
 from services import human_input_delivery_test_service as service_module
 from services.human_input_delivery_test_service import (
     DeliveryTestContext,

@@ -21,15 +21,15 @@ from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeE
 from core.workflow.system_variables import SystemVariableKey
 from core.workflow.variable_prefixes import SYSTEM_VARIABLE_NODE_ID
 from core.workflow.workflow_run_outputs import project_node_outputs_for_workflow_run
-from dify_graph.entities import WorkflowExecution, WorkflowNodeExecution
-from dify_graph.enums import (
+from graphon.entities import WorkflowExecution, WorkflowNodeExecution
+from graphon.enums import (
     WorkflowExecutionStatus,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
     WorkflowType,
 )
-from dify_graph.graph_engine.layers.base import GraphEngineLayer
-from dify_graph.graph_events import (
+from graphon.graph_engine.layers.base import GraphEngineLayer
+from graphon.graph_events import (
     GraphEngineEvent,
     GraphRunAbortedEvent,
     GraphRunFailedEvent,
@@ -44,7 +44,7 @@ from dify_graph.graph_events import (
     NodeRunStartedEvent,
     NodeRunSucceededEvent,
 )
-from dify_graph.node_events import NodeRunResult
+from graphon.node_events import NodeRunResult
 from libs.datetime_utils import naive_utc_now
 
 

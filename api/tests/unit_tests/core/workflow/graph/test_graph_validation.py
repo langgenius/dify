@@ -7,13 +7,13 @@ from dataclasses import dataclass
 import pytest
 
 from core.workflow.system_variables import build_system_variables
-from dify_graph.entities import GraphInitParams
-from dify_graph.entities.base_node_data import BaseNodeData
-from dify_graph.enums import BuiltinNodeTypes, ErrorStrategy, NodeExecutionType, NodeType
-from dify_graph.graph import Graph
-from dify_graph.graph.validation import GraphValidationError
-from dify_graph.nodes.base.node import Node
-from dify_graph.runtime import GraphRuntimeState, VariablePool
+from graphon.entities import GraphInitParams
+from graphon.entities.base_node_data import BaseNodeData
+from graphon.enums import BuiltinNodeTypes, ErrorStrategy, NodeExecutionType, NodeType
+from graphon.graph import Graph
+from graphon.graph.validation import GraphValidationError
+from graphon.nodes.base.node import Node
+from graphon.runtime import GraphRuntimeState, VariablePool
 from tests.workflow_test_utils import build_test_graph_init_params
 
 

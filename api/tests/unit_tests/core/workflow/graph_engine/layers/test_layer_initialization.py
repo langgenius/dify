@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import pytest
 
-from dify_graph.graph_engine import GraphEngine, GraphEngineConfig
-from dify_graph.graph_engine.command_channels import InMemoryChannel
-from dify_graph.graph_engine.layers.base import (
+from graphon.graph_engine import GraphEngine, GraphEngineConfig
+from graphon.graph_engine.command_channels import InMemoryChannel
+from graphon.graph_engine.layers.base import (
     GraphEngineLayer,
     GraphEngineLayerNotInitializedError,
 )
-from dify_graph.graph_events import GraphEngineEvent
+from graphon.graph_events import GraphEngineEvent
 
 from ..test_table_runner import WorkflowRunner
 

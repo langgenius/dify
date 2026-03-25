@@ -7,11 +7,11 @@ from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, Us
 from core.app.workflow.layers.llm_quota import LLMQuotaLayer
 from core.errors.error import QuotaExceededError
 from core.model_manager import ModelInstance
-from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
-from dify_graph.graph_engine.entities.commands import CommandType
-from dify_graph.graph_events.node import NodeRunSucceededEvent
-from dify_graph.model_runtime.entities.llm_entities import LLMUsage
-from dify_graph.node_events import NodeRunResult
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
+from graphon.graph_engine.entities.commands import CommandType
+from graphon.graph_events.node import NodeRunSucceededEvent
+from graphon.model_runtime.entities.llm_entities import LLMUsage
+from graphon.node_events import NodeRunResult
 
 
 def _build_dify_context() -> DifyRunContext:

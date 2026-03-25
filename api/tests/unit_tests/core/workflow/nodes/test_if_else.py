@@ -7,15 +7,15 @@ import pytest
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
 from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.system_variables import build_system_variables
-from dify_graph.enums import WorkflowNodeExecutionStatus
-from dify_graph.file import File, FileTransferMethod, FileType
-from dify_graph.graph import Graph
-from dify_graph.nodes.if_else.entities import IfElseNodeData
-from dify_graph.nodes.if_else.if_else_node import IfElseNode
-from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.utils.condition.entities import Condition, SubCondition, SubVariableCondition
-from dify_graph.variables import ArrayFileSegment
 from extensions.ext_database import db
+from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.file import File, FileTransferMethod, FileType
+from graphon.graph import Graph
+from graphon.nodes.if_else.entities import IfElseNodeData
+from graphon.nodes.if_else.if_else_node import IfElseNode
+from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.utils.condition.entities import Condition, SubCondition, SubVariableCondition
+from graphon.variables import ArrayFileSegment
 from tests.workflow_test_utils import build_test_graph_init_params
 
 

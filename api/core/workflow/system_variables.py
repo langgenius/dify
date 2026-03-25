@@ -6,10 +6,10 @@ from enum import StrEnum
 from typing import Any, Protocol, cast
 from uuid import uuid4
 
-from dify_graph.enums import BuiltinNodeTypes
-from dify_graph.variables import build_segment, segment_to_variable
-from dify_graph.variables.segments import Segment
-from dify_graph.variables.variables import RAGPipelineVariableInput, Variable
+from graphon.enums import BuiltinNodeTypes
+from graphon.variables import build_segment, segment_to_variable
+from graphon.variables.segments import Segment
+from graphon.variables.variables import RAGPipelineVariableInput, Variable
 
 from .variable_prefixes import (
     CONVERSATION_VARIABLE_NODE_ID,
@@ -222,7 +222,7 @@ def inject_default_system_variable_mappings(
     node_data: object,
     variable_mapping: Mapping[str, Sequence[str]],
 ) -> Mapping[str, Sequence[str]]:
-    """Add workflow-owned implicit sys mappings that `dify_graph` should not know about."""
+    """Add workflow-owned implicit sys mappings that `graphon` should not know about."""
 
     if node_type != BuiltinNodeTypes.LLM or getattr(node_data, "memory", None) is None:
         return variable_mapping

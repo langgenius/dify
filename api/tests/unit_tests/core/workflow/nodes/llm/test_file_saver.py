@@ -6,14 +6,14 @@ from unittest.mock import MagicMock
 import httpx
 import pytest
 
-from dify_graph.file import FileTransferMethod, FileType
-from dify_graph.nodes.llm.file_saver import (
+from graphon.file import FileTransferMethod, FileType
+from graphon.nodes.llm.file_saver import (
     FileSaverImpl,
     _extract_content_type_and_extension,
     _get_extension,
     _validate_extension_override,
 )
-from dify_graph.nodes.protocols import ToolFileManagerProtocol
+from graphon.nodes.protocols import ToolFileManagerProtocol
 
 _PNG_DATA = b"\x89PNG\r\n\x1a\n"
 

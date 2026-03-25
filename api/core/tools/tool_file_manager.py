@@ -15,8 +15,8 @@ from configs import dify_config
 from core.db.session_factory import session_factory
 from core.helper import ssrf_proxy
 from core.workflow.file_reference import build_file_reference
-from dify_graph.file import File, FileTransferMethod, get_file_type_by_mime_type
 from extensions.ext_storage import storage
+from graphon.file import File, FileTransferMethod, get_file_type_by_mime_type
 from models.model import MessageFile
 from models.tools import ToolFile
 
@@ -251,7 +251,7 @@ class ToolFileManager:
 
 
 # init tool_file_parser
-from dify_graph.file.tool_file_parser import set_tool_file_manager_factory
+from graphon.file.tool_file_parser import set_tool_file_manager_factory
 
 
 def _factory() -> ToolFileManager:

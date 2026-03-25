@@ -44,12 +44,12 @@ from core.workflow.system_variables import (
 from core.workflow.variable_pool_initializer import add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
 from core.workflow.workflow_run_outputs import project_node_outputs_for_workflow_run
-from dify_graph.entities import GraphInitParams
-from dify_graph.entities.graph_config import NodeConfigDictAdapter
-from dify_graph.entities.pause_reason import HumanInputRequired
-from dify_graph.graph import Graph
-from dify_graph.graph_engine.layers.base import GraphEngineLayer
-from dify_graph.graph_events import (
+from graphon.entities import GraphInitParams
+from graphon.entities.graph_config import NodeConfigDictAdapter
+from graphon.entities.pause_reason import HumanInputRequired
+from graphon.graph import Graph
+from graphon.graph_engine.layers.base import GraphEngineLayer
+from graphon.graph_events import (
     GraphEngineEvent,
     GraphRunFailedEvent,
     GraphRunPartialSucceededEvent,
@@ -75,9 +75,9 @@ from dify_graph.graph_events import (
     NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
 )
-from dify_graph.graph_events.graph import GraphRunAbortedEvent
-from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
+from graphon.graph_events.graph import GraphRunAbortedEvent
+from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from models.workflow import Workflow
 from tasks.mail_human_input_delivery_task import dispatch_human_input_email_task
 

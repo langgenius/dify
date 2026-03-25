@@ -7,18 +7,18 @@ from typing import Any
 
 import pytest
 
-from dify_graph.model_runtime.entities import LLMMode
-from dify_graph.nodes.llm import ModelConfig, VisionConfig
-from dify_graph.nodes.parameter_extractor.entities import ParameterConfig, ParameterExtractorNodeData
-from dify_graph.nodes.parameter_extractor.exc import (
+from factories.variable_factory import build_segment_with_type
+from graphon.model_runtime.entities import LLMMode
+from graphon.nodes.llm import ModelConfig, VisionConfig
+from graphon.nodes.parameter_extractor.entities import ParameterConfig, ParameterExtractorNodeData
+from graphon.nodes.parameter_extractor.exc import (
     InvalidNumberOfParametersError,
     InvalidSelectValueError,
     InvalidValueTypeError,
     RequiredParameterMissingError,
 )
-from dify_graph.nodes.parameter_extractor.parameter_extractor_node import ParameterExtractorNode
-from dify_graph.variables.types import SegmentType
-from factories.variable_factory import build_segment_with_type
+from graphon.nodes.parameter_extractor.parameter_extractor_node import ParameterExtractorNode
+from graphon.variables.types import SegmentType
 
 
 @dataclass

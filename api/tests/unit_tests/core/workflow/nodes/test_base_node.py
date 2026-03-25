@@ -5,12 +5,12 @@ import pytest
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.workflow.node_runtime import resolve_dify_run_context
 from core.workflow.system_variables import build_system_variables
-from dify_graph.entities import GraphInitParams
-from dify_graph.entities.base_node_data import BaseNodeData
-from dify_graph.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
-from dify_graph.enums import BuiltinNodeTypes
-from dify_graph.nodes.base.node import Node
-from dify_graph.runtime import GraphRuntimeState, VariablePool
+from graphon.entities import GraphInitParams
+from graphon.entities.base_node_data import BaseNodeData
+from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
+from graphon.enums import BuiltinNodeTypes
+from graphon.nodes.base.node import Node
+from graphon.runtime import GraphRuntimeState, VariablePool
 from tests.workflow_test_utils import build_test_graph_init_params
 
 

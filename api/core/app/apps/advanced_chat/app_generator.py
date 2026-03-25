@@ -36,12 +36,12 @@ from core.ops.ops_trace_manager import TraceQueueManager
 from core.prompt.utils.get_thread_messages_length import get_thread_messages_length
 from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
-from dify_graph.graph_engine.layers.base import GraphEngineLayer
-from dify_graph.model_runtime.errors.invoke import InvokeAuthorizationError
-from dify_graph.runtime import GraphRuntimeState
-from dify_graph.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
 from extensions.ext_database import db
 from factories import file_factory
+from graphon.graph_engine.layers.base import GraphEngineLayer
+from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
+from graphon.runtime import GraphRuntimeState
+from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
 from libs.flask_utils import preserve_flask_contexts
 from models import Account, App, Conversation, EndUser, Message, Workflow, WorkflowNodeExecutionTriggeredFrom
 from models.base import Base

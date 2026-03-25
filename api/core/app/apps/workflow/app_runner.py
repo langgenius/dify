@@ -13,13 +13,13 @@ from core.workflow.node_factory import get_default_root_node_id
 from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
-from dify_graph.enums import WorkflowType
-from dify_graph.graph_engine.command_channels.redis_channel import RedisChannel
-from dify_graph.graph_engine.layers.base import GraphEngineLayer
-from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.variable_loader import VariableLoader
 from extensions.ext_redis import redis_client
 from extensions.otel import WorkflowAppRunnerHandler, trace_span
+from graphon.enums import WorkflowType
+from graphon.graph_engine.command_channels.redis_channel import RedisChannel
+from graphon.graph_engine.layers.base import GraphEngineLayer
+from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.variable_loader import VariableLoader
 from libs.datetime_utils import naive_utc_now
 from models.workflow import Workflow
 

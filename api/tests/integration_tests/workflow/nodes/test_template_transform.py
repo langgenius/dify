@@ -4,11 +4,11 @@ import uuid
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.system_variables import build_system_variables
-from dify_graph.enums import WorkflowNodeExecutionStatus
-from dify_graph.graph import Graph
-from dify_graph.nodes.template_transform.template_transform_node import TemplateTransformNode
-from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.template_rendering import TemplateRenderError
+from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.graph import Graph
+from graphon.nodes.template_transform.template_transform_node import TemplateTransformNode
+from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.template_rendering import TemplateRenderError
 from tests.workflow_test_utils import build_test_graph_init_params
 
 

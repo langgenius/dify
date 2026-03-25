@@ -17,14 +17,14 @@ from core.workflow.node_factory import DifyNodeFactory, get_default_root_node_id
 from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
-from dify_graph.entities.graph_init_params import GraphInitParams
-from dify_graph.enums import WorkflowType
-from dify_graph.graph import Graph
-from dify_graph.graph_events import GraphEngineEvent, GraphRunFailedEvent
-from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.variable_loader import VariableLoader
-from dify_graph.variables.variables import RAGPipelineVariable, RAGPipelineVariableInput
 from extensions.ext_database import db
+from graphon.entities.graph_init_params import GraphInitParams
+from graphon.enums import WorkflowType
+from graphon.graph import Graph
+from graphon.graph_events import GraphEngineEvent, GraphRunFailedEvent
+from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.variable_loader import VariableLoader
+from graphon.variables.variables import RAGPipelineVariable, RAGPipelineVariableInput
 from models.dataset import Document, Pipeline
 from models.model import EndUser
 from models.workflow import Workflow

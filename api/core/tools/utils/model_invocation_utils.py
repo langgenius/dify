@@ -10,19 +10,19 @@ from typing import cast
 
 from core.model_manager import ModelManager
 from core.tools.entities.tool_entities import ToolProviderType
-from dify_graph.model_runtime.entities.llm_entities import LLMResult
-from dify_graph.model_runtime.entities.message_entities import PromptMessage
-from dify_graph.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
-from dify_graph.model_runtime.errors.invoke import (
+from extensions.ext_database import db
+from graphon.model_runtime.entities.llm_entities import LLMResult
+from graphon.model_runtime.entities.message_entities import PromptMessage
+from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
+from graphon.model_runtime.errors.invoke import (
     InvokeAuthorizationError,
     InvokeBadRequestError,
     InvokeConnectionError,
     InvokeRateLimitError,
     InvokeServerUnavailableError,
 )
-from dify_graph.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from dify_graph.model_runtime.utils.encoders import jsonable_encoder
-from extensions.ext_database import db
+from graphon.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 from models.tools import ToolModelInvoke
 
 

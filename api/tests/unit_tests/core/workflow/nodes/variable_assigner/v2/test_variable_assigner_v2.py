@@ -6,13 +6,13 @@ from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFr
 from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
 from core.workflow.variable_pool_initializer import add_variables_to_pool
-from dify_graph.entities import GraphInitParams
-from dify_graph.graph import Graph
-from dify_graph.graph_events import NodeRunVariableUpdatedEvent
-from dify_graph.nodes.variable_assigner.v2 import VariableAssignerNode
-from dify_graph.nodes.variable_assigner.v2.enums import InputType, Operation
-from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.variables import ArrayStringVariable
+from graphon.entities import GraphInitParams
+from graphon.graph import Graph
+from graphon.graph_events import NodeRunVariableUpdatedEvent
+from graphon.nodes.variable_assigner.v2 import VariableAssignerNode
+from graphon.nodes.variable_assigner.v2.enums import InputType, Operation
+from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.variables import ArrayStringVariable
 
 DEFAULT_NODE_ID = "node_id"
 

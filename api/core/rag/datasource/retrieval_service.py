@@ -23,8 +23,8 @@ from core.rag.models.document import Document
 from core.rag.rerank.rerank_type import RerankMode
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.signature import sign_upload_file
-from dify_graph.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
+from graphon.model_runtime.entities.model_entities import ModelType
 from models.dataset import (
     ChildChunk,
     Dataset,

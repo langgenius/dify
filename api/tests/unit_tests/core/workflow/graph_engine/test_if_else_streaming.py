@@ -2,32 +2,32 @@ import time
 from unittest import mock
 
 from core.workflow.system_variables import build_system_variables
-from dify_graph.graph import Graph
-from dify_graph.graph_events import (
+from graphon.graph import Graph
+from graphon.graph_events import (
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
     NodeRunStartedEvent,
     NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
 )
-from dify_graph.model_runtime.entities.llm_entities import LLMMode
-from dify_graph.model_runtime.entities.message_entities import PromptMessageRole
-from dify_graph.nodes.base.entities import OutputVariableEntity, OutputVariableType
-from dify_graph.nodes.end.end_node import EndNode
-from dify_graph.nodes.end.entities import EndNodeData
-from dify_graph.nodes.if_else.entities import IfElseNodeData
-from dify_graph.nodes.if_else.if_else_node import IfElseNode
-from dify_graph.nodes.llm.entities import (
+from graphon.model_runtime.entities.llm_entities import LLMMode
+from graphon.model_runtime.entities.message_entities import PromptMessageRole
+from graphon.nodes.base.entities import OutputVariableEntity, OutputVariableType
+from graphon.nodes.end.end_node import EndNode
+from graphon.nodes.end.entities import EndNodeData
+from graphon.nodes.if_else.entities import IfElseNodeData
+from graphon.nodes.if_else.if_else_node import IfElseNode
+from graphon.nodes.llm.entities import (
     ContextConfig,
     LLMNodeChatModelMessage,
     LLMNodeData,
     ModelConfig,
     VisionConfig,
 )
-from dify_graph.nodes.start.entities import StartNodeData
-from dify_graph.nodes.start.start_node import StartNode
-from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.utils.condition.entities import Condition
+from graphon.nodes.start.entities import StartNodeData
+from graphon.nodes.start.start_node import StartNode
+from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.utils.condition.entities import Condition
 from tests.workflow_test_utils import build_test_graph_init_params
 
 from .test_mock_config import MockConfig
