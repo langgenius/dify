@@ -14,8 +14,7 @@ import AppIcon from '@/app/components/base/app-icon'
 import Modal from '@/app/components/base/modal'
 import { useSelectOrDelete } from '@/app/components/base/prompt-editor/hooks'
 import Switch from '@/app/components/base/switch'
-
-import Tooltip from '@/app/components/base/tooltip-plus'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import ToolAuthorizationSection from '@/app/components/plugins/plugin-detail-panel/tool-selector/sections/tool-authorization-section'
 import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
@@ -910,35 +909,43 @@ const ToolGroupBlockComponent = ({
   return (
     <>
       <span ref={ref} className="inline-flex">
-        <Tooltip
-          disabled={!isToolMissing || isToolDisabled}
-          offset={4}
-          noDecoration
-          popupClassName="bg-transparent p-0"
-          popupContent={missingTooltipContent}
-        >
-          <span
-            className={cn(
-              'inline-flex items-center gap-[2px] rounded-[5px] border px-px py-[1px] shadow-xs',
-              isTriggerInteractive ? 'group cursor-pointer' : 'cursor-default',
-              isWarningStyle ? 'border-state-warning-active bg-state-warning-hover' : 'border-state-accent-hover-alt bg-state-accent-hover',
-              isSelected && 'border-text-accent',
+        <Tooltip>
+          <TooltipTrigger
+            disabled={!isToolMissing || isToolDisabled}
+            render={(
+              <span
+                className={cn(
+                  'inline-flex items-center gap-[2px] rounded-[5px] border px-px py-[1px] shadow-xs',
+                  isTriggerInteractive ? 'group cursor-pointer' : 'cursor-default',
+                  isWarningStyle ? 'border-state-warning-active bg-state-warning-hover' : 'border-state-accent-hover-alt bg-state-accent-hover',
+                  isSelected && 'border-text-accent',
+                )}
+                title={providerLabel}
+                onMouseDown={() => {
+                  if (!isTriggerInteractive)
+                    return
+                  if (!toolItems.length)
+                    return
+                  setIsSettingOpen(true)
+                }}
+              >
+                {renderIcon()}
+                <span className={cn('max-w-[160px] truncate system-xs-medium', isWarningStyle ? 'text-text-warning' : 'text-text-accent')}>
+                  {isToolMissing ? missingDisplayLabel : providerLabel}
+                </span>
+                {toolStatusBadge}
+              </span>
             )}
-            title={providerLabel}
-            onMouseDown={() => {
-              if (!isTriggerInteractive)
-                return
-              if (!toolItems.length)
-                return
-              setIsSettingOpen(true)
-            }}
-          >
-            {renderIcon()}
-            <span className={cn('max-w-[160px] truncate system-xs-medium', isWarningStyle ? 'text-text-warning' : 'text-text-accent')}>
-              {isToolMissing ? missingDisplayLabel : providerLabel}
-            </span>
-            {toolStatusBadge}
-          </span>
+          />
+          {isToolMissing && !isToolDisabled && (
+            <TooltipContent
+              sideOffset={4}
+              variant="plain"
+              popupClassName="bg-transparent p-0"
+            >
+              {missingTooltipContent}
+            </TooltipContent>
+          )}
         </Tooltip>
       </span>
       {useModalValue && (

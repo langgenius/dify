@@ -2,6 +2,7 @@
 import type { OnlineUser } from '../collaboration/types'
 import { ChevronDownIcon } from '@heroicons/react/20/solid'
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useReactFlow } from 'reactflow'
 import { Avatar } from '@/app/components/base/avatar'
 import Divider from '@/app/components/base/divider'
@@ -10,8 +11,7 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-
-import Tooltip from '@/app/components/base/tooltip-plus'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { useAppContext } from '@/context/app-context'
 import { getAvatar } from '@/service/common'
 import { cn } from '@/utils/classnames'
@@ -52,6 +52,7 @@ const useAvatarUrls = (users: OnlineUser[]) => {
 }
 
 const OnlineUsers = () => {
+  const { t } = useTranslation()
   const appId = useStore(s => s.appId)
   const { onlineUsers, cursors, isEnabled: isCollaborationEnabled } = useCollaboration(appId as string)
   const { userProfile } = useAppContext()
@@ -66,7 +67,7 @@ const OnlineUsers = () => {
     baseClassName: string,
     suffixClassName: string,
   ) => {
-    const baseName = user.username || 'User'
+    const baseName = user.username || t('comments.fallback.user', { ns: 'workflow' })
     const isCurrentUser = user.user_id === currentUserId
 
     return (
@@ -74,7 +75,7 @@ const OnlineUsers = () => {
         <span>{baseName}</span>
         {isCurrentUser && (
           <span className={suffixClassName}>
-            (You)
+            {t('members.you', { ns: 'common' })}
           </span>
         )}
       </span>
@@ -123,21 +124,9 @@ const OnlineUsers = () => {
               const isCurrentUser = user.user_id === currentUserId
               const userColor = isCurrentUser ? undefined : getUserColor(user.user_id)
               return (
-                <Tooltip
-                  key={`${user.sid}-${index}`}
-                  popupContent={renderDisplayName(
-                    user,
-                    'system-xs-medium text-text-secondary',
-                    'text-text-quaternary',
-                  )}
-                  position="bottom"
-                  triggerMethod="hover"
-                  needsDelay={false}
-                  asChild
-                  popupClassName="flex h-[28px] items-center justify-center gap-1 rounded-md border-[0.5px] border-components-panel-border bg-components-tooltip-bg px-3 py-[6px] shadow-lg shadow-shadow-shadow-5 backdrop-blur-[10px]"
-                  noDecoration
-                >
-                  <div
+                <Tooltip key={`${user.sid}-${index}`}>
+                  <TooltipTrigger
+                    delay={0}
                     className={cn(
                       'relative flex size-6 items-center justify-center',
                       index > 0 && '-ml-1.5',
@@ -147,13 +136,24 @@ const OnlineUsers = () => {
                     onClick={() => !isCurrentUser && jumpToUserCursor(user.user_id)}
                   >
                     <Avatar
-                      name={user.username || 'User'}
+                      name={user.username || t('comments.fallback.user', { ns: 'workflow' })}
                       avatar={getAvatarUrl(user) ?? null}
                       size="sm"
                       className="ring-1 ring-components-panel-bg"
                       backgroundColor={userColor}
                     />
-                  </div>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    placement="bottom"
+                    variant="plain"
+                    popupClassName="flex h-[28px] items-center justify-center gap-1 rounded-md border-[0.5px] border-components-panel-border bg-components-tooltip-bg px-3 py-[6px] shadow-lg shadow-shadow-shadow-5 backdrop-blur-[10px]"
+                  >
+                    {renderDisplayName(
+                      user,
+                      'system-xs-medium text-text-secondary',
+                      'text-text-quaternary',
+                    )}
+                  </TooltipContent>
                 </Tooltip>
               )
             })}
@@ -217,7 +217,7 @@ const OnlineUsers = () => {
                         >
                           <div className="relative">
                             <Avatar
-                              name={user.username || 'User'}
+                              name={user.username || t('comments.fallback.user', { ns: 'workflow' })}
                               avatar={getAvatarUrl(user) ?? null}
                               size="sm"
                               backgroundColor={userColor}

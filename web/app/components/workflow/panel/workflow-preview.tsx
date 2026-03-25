@@ -10,8 +10,8 @@ import ActionButton from '@/app/components/base/action-button'
 import Button from '@/app/components/base/button'
 import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows'
 import Loading from '@/app/components/base/loading'
-import Tooltip from '@/app/components/base/tooltip-plus'
 import { toast } from '@/app/components/base/ui/toast'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { submitHumanInputForm } from '@/service/workflow'
 import { cn } from '@/utils/classnames'
 import {
@@ -126,14 +126,19 @@ const WorkflowPreview = () => {
       <div className="flex items-center justify-between p-4 pb-1 text-base font-semibold text-text-primary">
         {`${t('singleRun.testRun', { ns: 'workflow' })}${workflowRunningData ? formatWorkflowRunIdentifier(workflowRunningData.result.finished_at, t('common.running', { ns: 'workflow' })) : ''}`}
         <div className="flex items-center gap-1">
-          <Tooltip popupContent={t('operation.refresh', { ns: 'common' })}>
-            <ActionButton onClick={() => {
-              setUserSelectedTab(null)
-              handleClearWorkflowRunHistory()
-            }}
-            >
-              <RefreshCcw01 className="h-4 w-4" />
-            </ActionButton>
+          <Tooltip>
+            <TooltipTrigger
+              render={(
+                <ActionButton onClick={() => {
+                  setUserSelectedTab(null)
+                  handleClearWorkflowRunHistory()
+                }}
+                >
+                  <RefreshCcw01 className="h-4 w-4" />
+                </ActionButton>
+              )}
+            />
+            <TooltipContent>{t('operation.refresh', { ns: 'common' })}</TooltipContent>
           </Tooltip>
           <div className="mx-3 h-3.5 w-[1px] bg-divider-regular" />
           <div className="cursor-pointer p-1" onClick={() => handleCancelDebugAndPreviewPanel()}>

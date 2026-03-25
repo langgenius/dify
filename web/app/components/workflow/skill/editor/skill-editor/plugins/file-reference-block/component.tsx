@@ -15,7 +15,7 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import { useSelectOrDelete } from '@/app/components/base/prompt-editor/hooks'
-import Tooltip from '@/app/components/base/tooltip-plus'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { START_TAB_ID } from '@/app/components/workflow/skill/constants'
 import { useSkillAssetNodeMap } from '@/app/components/workflow/skill/hooks/file-tree/data/use-skill-asset-tree'
 import { getFileIconType } from '@/app/components/workflow/skill/utils/file-utils'
@@ -169,40 +169,48 @@ const FileReferenceBlock = ({ nodeKey, resourceId }: FileReferenceBlockProps) =>
       offset={4}
     >
       <PortalToFollowElemTrigger ref={ref} className="inline-flex">
-        <Tooltip popupContent={tooltipContent} disabled={!tooltipContent}>
-          <span
-            className={cn(
-              'inline-flex min-w-[18px] select-none items-center gap-[2px] overflow-hidden rounded-[5px] border py-[1px] pl-[1px] pr-[4px] shadow-xs',
-              isInteractive ? 'cursor-pointer' : 'cursor-default',
-              isMissing ? 'border-state-warning-active bg-state-warning-hover' : 'border-state-accent-hover-alt bg-state-accent-hover',
-              isSelected && 'border-text-accent',
+        <Tooltip>
+          <TooltipTrigger
+            disabled={!tooltipContent}
+            render={(
+              <span
+                className={cn(
+                  'inline-flex min-w-[18px] select-none items-center gap-[2px] overflow-hidden rounded-[5px] border py-[1px] pl-[1px] pr-[4px] shadow-xs',
+                  isInteractive ? 'cursor-pointer' : 'cursor-default',
+                  isMissing ? 'border-state-warning-active bg-state-warning-hover' : 'border-state-accent-hover-alt bg-state-accent-hover',
+                  isSelected && 'border-text-accent',
+                )}
+                onMouseDown={() => {
+                  if (!isInteractive)
+                    return
+                  setOpen(prev => !prev)
+                }}
+              >
+                <span className="flex items-center justify-center p-px">
+                  {isFolder
+                    ? <span className={cn('i-ri-folder-line size-[14px]', isMissing ? 'text-text-warning' : 'text-text-accent')} aria-hidden="true" />
+                    : (
+                        <FileTypeIcon
+                          type={(iconType || 'document') as FileAppearanceType}
+                          size="sm"
+                          className={cn('!size-[14px]', isMissing && '!text-text-warning')}
+                        />
+                      )}
+                </span>
+                <span className={cn('max-w-[180px] truncate text-[12px] font-medium leading-4', isMissing ? 'text-text-warning' : 'text-text-accent')}>
+                  {displayName}
+                </span>
+                {
+                  isMissing && (
+                    <span className="i-ri-alert-fill size-3 text-text-warning" />
+                  )
+                }
+              </span>
             )}
-            onMouseDown={() => {
-              if (!isInteractive)
-                return
-              setOpen(prev => !prev)
-            }}
-          >
-            <span className="flex items-center justify-center p-px">
-              {isFolder
-                ? <span className={cn('i-ri-folder-line size-[14px]', isMissing ? 'text-text-warning' : 'text-text-accent')} aria-hidden="true" />
-                : (
-                    <FileTypeIcon
-                      type={(iconType || 'document') as FileAppearanceType}
-                      size="sm"
-                      className={cn('!size-[14px]', isMissing && '!text-text-warning')}
-                    />
-                  )}
-            </span>
-            <span className={cn('max-w-[180px] truncate text-[12px] font-medium leading-4', isMissing ? 'text-text-warning' : 'text-text-accent')}>
-              {displayName}
-            </span>
-            {
-              isMissing && (
-                <span className="i-ri-alert-fill size-3 text-text-warning" />
-              )
-            }
-          </span>
+          />
+          {tooltipContent && (
+            <TooltipContent>{tooltipContent}</TooltipContent>
+          )}
         </Tooltip>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-[1000]">

@@ -20,7 +20,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { useStore as useReactFlowStore } from 'reactflow'
 import { shallow } from 'zustand/shallow'
-import Tooltip from '@/app/components/base/tooltip-plus'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
 import { useNodesInteractions, useNodesReadOnly, useNodesSyncDraft } from './hooks'
 import { useSelectionInteractions } from './hooks/use-selection-interactions'
@@ -54,13 +54,14 @@ type AlignButtonProps = {
 
 const AlignButton: FC<AlignButtonProps> = ({ config, label, onClick, position = 'bottom' }) => {
   return (
-    <Tooltip position={position} popupContent={label}>
-      <div
+    <Tooltip>
+      <TooltipTrigger
         className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-text-secondary hover:bg-state-base-hover"
         onClick={() => onClick(config.type)}
       >
         {config.icon}
-      </div>
+      </TooltipTrigger>
+      <TooltipContent placement={position}>{label}</TooltipContent>
     </Tooltip>
   )
 }

@@ -4,8 +4,7 @@ import type { ToolSetting } from '../types'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Switch from '@/app/components/base/switch'
-
-import Tooltip from '@/app/components/base/tooltip-plus'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import FieldCollapse from '@/app/components/workflow/nodes/_base/components/collapse/field-collapse'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import ReferenceToolConfig from './reference-tool-config'
@@ -43,25 +42,37 @@ const ComputerUseConfig: FC<Props> = ({
         title={(
           <div className="flex items-center gap-1">
             {t(`${i18nPrefix}.title`, { ns: 'workflow' })}
-            <Tooltip
-              popupContent={t(`${i18nPrefix}.tooltip`, { ns: 'workflow' })}
-              triggerClassName="h-4 w-4"
-            />
+            <Tooltip>
+              <TooltipTrigger
+                delay={0}
+                className="flex h-4 w-4 items-center justify-center"
+              >
+                <span aria-hidden className="i-ri-question-line h-3.5 w-3.5 text-text-quaternary hover:text-text-tertiary" />
+              </TooltipTrigger>
+              <TooltipContent>{t(`${i18nPrefix}.tooltip`, { ns: 'workflow' })}</TooltipContent>
+            </Tooltip>
           </div>
         )}
         noXSpacing
         operations={(
           <div>
-            <Tooltip
-              disabled={!disabledTip}
-              popupContent={disabledTip}
-            >
-              <Switch
-                size="md"
-                disabled={isDisabled}
-                value={enabled}
-                onChange={onChange}
+            <Tooltip>
+              <TooltipTrigger
+                disabled={!disabledTip}
+                render={(
+                  <div>
+                    <Switch
+                      size="md"
+                      disabled={isDisabled}
+                      value={enabled}
+                      onChange={onChange}
+                    />
+                  </div>
+                )}
               />
+              {disabledTip && (
+                <TooltipContent>{disabledTip}</TooltipContent>
+              )}
             </Tooltip>
           </div>
         )}

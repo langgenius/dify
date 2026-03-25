@@ -223,6 +223,7 @@
   "roadmap": "See our roadmap",
   "showMyCreatedAppsOnly": "Created by me",
   "skills.comingSoon": "Workspace skills coming soon. Stay tuned.",
+  "skills.title": "Skills",
   "structOutput.LLMResponse": "LLM Response",
   "structOutput.configure": "Configure",
   "structOutput.disabledByComputerUse": "Structured Output is disabled when Agent Mode is enabled.",

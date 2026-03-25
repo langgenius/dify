@@ -1,8 +1,7 @@
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
-
-import Tooltip from '@/app/components/base/tooltip-plus'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { useProviderContext } from '@/context/provider-context'
 import { cn } from '@/utils/classnames'
 import ModelIcon from '../model-icon'
@@ -42,8 +41,11 @@ const ModelTrigger: FC<ModelTriggerProps> = ({
         </div>
         <div className="flex shrink-0 items-center justify-center">
           {showWarnIcon && (
-            <Tooltip popupContent={t('modelProvider.deprecated', { ns: 'common' })}>
-              <AlertTriangle className="h-4 w-4 text-text-warning-secondary" />
+            <Tooltip>
+              <TooltipTrigger>
+                <AlertTriangle className="h-4 w-4 text-text-warning-secondary" />
+              </TooltipTrigger>
+              <TooltipContent>{t('modelProvider.deprecated', { ns: 'common' })}</TooltipContent>
             </Tooltip>
           )}
         </div>

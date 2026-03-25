@@ -14,8 +14,7 @@ import { InfoCircle } from '@/app/components/base/icons/src/vender/line/general'
 // eslint-disable-next-line no-restricted-imports
 import Modal from '@/app/components/base/modal'
 import { useSelectOrDelete } from '@/app/components/base/prompt-editor/hooks'
-
-import Tooltip from '@/app/components/base/tooltip-plus'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import ToolAuthorizationSection from '@/app/components/plugins/plugin-detail-panel/tool-selector/sections/tool-authorization-section'
 import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
@@ -606,50 +605,56 @@ const ToolBlockComponent = ({
   return (
     <>
       <span ref={ref} className="inline-flex">
-        <Tooltip
-          disabled={!isToolMissing || isToolDisabled}
-          offset={4}
-          noDecoration
-          popupClassName="bg-transparent p-0"
-          popupContent={missingTooltipContent}
-        >
-          <span
-            className={cn(
-              'group/tool inline-flex items-center gap-[2px] rounded-[5px] border py-px pl-px pr-[3px] shadow-xs',
-              isTriggerInteractive ? 'cursor-pointer' : 'cursor-default',
-              isWarningStyle ? 'border-state-warning-active bg-state-warning-hover' : 'border-state-accent-hover-alt bg-state-accent-hover',
-              isSelected && 'border-text-accent',
-            )}
-            title={`${provider}.${tool}`}
-            data-tool-config-id={configId}
-            onMouseDown={() => {
-              if (!isTriggerInteractive)
-                return
-              if (!currentProvider || !currentTool)
-                return
-              if (configuredToolValue)
-                setToolValue(configuredToolValue)
-              setIsSettingOpen(true)
-            }}
-          >
-            {renderIcon()}
-            <span className={cn('max-w-[180px] truncate system-xs-medium', isWarningStyle ? 'text-text-warning' : 'text-text-accent')}>
-              {isToolMissing ? missingDisplayLabel : displayLabel}
-            </span>
-            {(isToolMissing || isToolDisabled) && (
-              <>
-                <span className="flex h-4 items-center justify-center p-[2px] text-text-warning">
-                  <span className="i-ri-alert-fill h-3 w-3" />
+        <Tooltip>
+          <TooltipTrigger
+            disabled={!isToolMissing || isToolDisabled}
+            render={(
+              <span
+                className={cn(
+                  'group/tool inline-flex items-center gap-[2px] rounded-[5px] border py-px pl-px pr-[3px] shadow-xs',
+                  isTriggerInteractive ? 'cursor-pointer' : 'cursor-default',
+                  isWarningStyle ? 'border-state-warning-active bg-state-warning-hover' : 'border-state-accent-hover-alt bg-state-accent-hover',
+                  isSelected && 'border-text-accent',
+                )}
+                title={`${provider}.${tool}`}
+                data-tool-config-id={configId}
+                onMouseDown={() => {
+                  if (!isTriggerInteractive)
+                    return
+                  if (!currentProvider || !currentTool)
+                    return
+                  if (configuredToolValue)
+                    setToolValue(configuredToolValue)
+                  setIsSettingOpen(true)
+                }}
+              >
+                {renderIcon()}
+                <span className={cn('max-w-[180px] truncate system-xs-medium', isWarningStyle ? 'text-text-warning' : 'text-text-accent')}>
+                  {isToolMissing ? missingDisplayLabel : displayLabel}
                 </span>
-              </>
-            )}
-            {!isToolMissing && !isToolDisabled && needAuthorization && (
-              <span className="flex h-4 items-center gap-0.5 rounded-[5px] border border-text-warning bg-components-badge-bg-dimm px-1 text-text-warning system-2xs-medium-uppercase">
-                {authBadgeLabel}
-                <span className="i-ri-alert-fill h-3 w-3" />
+                {(isToolMissing || isToolDisabled) && (
+                  <span className="flex h-4 items-center justify-center p-[2px] text-text-warning">
+                    <span className="i-ri-alert-fill h-3 w-3" />
+                  </span>
+                )}
+                {!isToolMissing && !isToolDisabled && needAuthorization && (
+                  <span className="flex h-4 items-center gap-0.5 rounded-[5px] border border-text-warning bg-components-badge-bg-dimm px-1 text-text-warning system-2xs-medium-uppercase">
+                    {authBadgeLabel}
+                    <span className="i-ri-alert-fill h-3 w-3" />
+                  </span>
+                )}
               </span>
             )}
-          </span>
+          />
+          {isToolMissing && !isToolDisabled && (
+            <TooltipContent
+              sideOffset={4}
+              variant="plain"
+              popupClassName="bg-transparent p-0"
+            >
+              {missingTooltipContent}
+            </TooltipContent>
+          )}
         </Tooltip>
       </span>
       {useModalValue && (

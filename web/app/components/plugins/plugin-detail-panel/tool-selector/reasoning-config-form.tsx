@@ -16,7 +16,6 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import Switch from '@/app/components/base/switch'
-import Tooltip from '@/app/components/base/tooltip-plus'
 import {
   Select,
   SelectContent,
@@ -24,6 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/app/components/base/ui/select'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import AppSelector from '@/app/components/plugins/plugin-detail-panel/app-selector'
@@ -163,15 +163,19 @@ const ReasoningConfigForm: React.FC<Props> = ({
     const canUseAuto = ![FormTypeEnum.modelSelector, FormTypeEnum.appSelector].includes(type)
     const auto = canUseAuto ? value[variable]?.auto : 0
     const tooltipContent = (tooltip && (
-      <Tooltip
-        popupContent={(
+      <Tooltip>
+        <TooltipTrigger
+          delay={0}
+          className="ml-0.5 flex h-4 w-4 items-center justify-center"
+        >
+          <span aria-hidden className="i-ri-question-line h-3.5 w-3.5 text-text-quaternary hover:text-text-tertiary" />
+        </TooltipTrigger>
+        <TooltipContent>
           <div className="w-[200px]">
             {tooltip[language] || tooltip.en_US}
           </div>
-        )}
-        triggerClassName="ml-0.5 w-4 h-4"
-        asChild={false}
-      />
+        </TooltipContent>
+      </Tooltip>
     ))
     const varInput = value[variable].value
     const isString = type === FormTypeEnum.textInput || type === FormTypeEnum.secretInput
@@ -233,20 +237,18 @@ const ReasoningConfigForm: React.FC<Props> = ({
             <span className="mx-1 text-text-quaternary system-xs-regular">·</span>
             <span className="text-text-tertiary system-xs-regular">{targetVarType()}</span>
             {isShowJSONEditor && (
-              <Tooltip
-                popupContent={(
-                  <div className="text-text-secondary system-xs-medium">
-                    {t('nodes.agent.clickToViewParameterSchema', { ns: 'workflow' })}
-                  </div>
-                )}
-                asChild={false}
-              >
-                <div
+              <Tooltip>
+                <TooltipTrigger
                   className="ml-0.5 cursor-pointer rounded-[4px] p-px text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
                   onClick={() => showSchema(input_schema as SchemaRoot, label[language] || label.en_US)}
                 >
                   <RiBracesLine className="size-3.5" />
-                </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <div className="text-text-secondary system-xs-medium">
+                    {t('nodes.agent.clickToViewParameterSchema', { ns: 'workflow' })}
+                  </div>
+                </TooltipContent>
               </Tooltip>
             )}
 
@@ -323,7 +325,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
             {isShowJSONEditor && isConstant && (
               <div className="mt-1 w-full">
                 <CodeEditor
-                  title="JSON"
+                  title={t('common.json', { ns: 'workflow' })}
                   value={varInput?.value as any}
                   isExpand
                   isInNode

@@ -12,7 +12,7 @@ import Input from '@/app/components/base/input'
 import TabSliderNew from '@/app/components/base/tab-slider-new'
 import TagFilter from '@/app/components/base/tag-management/filter'
 import { useStore as useTagStore } from '@/app/components/base/tag-management/store'
-import Tooltip from '@/app/components/base/tooltip-plus'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
@@ -261,13 +261,16 @@ const List: FC<Props> = ({
               onChange={e => handleKeywordsChange(e.target.value)}
               onClear={() => handleKeywordsChange('')}
             />
-            <Tooltip
-              popupContent={t('skills.comingSoon', { ns: 'app' })}
-            >
-              <Button className="cursor-not-allowed">
-                <span className="i-ri-folder-6-line mr-1 h-[14px] w-[14px]" />
-                Skills
-              </Button>
+            <Tooltip>
+              <TooltipTrigger
+                render={(
+                  <Button className="cursor-not-allowed">
+                    <span className="i-ri-folder-6-line mr-1 h-[14px] w-[14px]" />
+                    {t('skills.title', { ns: 'app' })}
+                  </Button>
+                )}
+              />
+              <TooltipContent>{t('skills.comingSoon', { ns: 'app' })}</TooltipContent>
             </Tooltip>
           </div>
         </div>

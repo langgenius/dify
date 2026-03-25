@@ -4,7 +4,7 @@ import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AssembleVariablesAlt } from '@/app/components/base/icons/src/vender/line/general'
 import { Agent } from '@/app/components/base/icons/src/vender/workflow'
-import Tooltip from '@/app/components/base/tooltip-plus'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { cn } from '@/utils/classnames'
 import { NodeSourceHandle } from '../../node-handle'
 
@@ -37,10 +37,15 @@ const SubGraphStartNode = ({ id, data }: NodeProps<SubGraphStartNodeData>) => {
         showTitle ? 'gap-1.5 px-2' : 'w-11',
       )}
     >
-      <Tooltip popupContent={tooltip} asChild={false}>
-        <div className="flex h-6 w-6 items-center justify-center rounded-full border-[0.5px] border-components-panel-border-subtle bg-util-colors-blue-brand-blue-brand-500">
-          <Icon className="h-3 w-3 text-text-primary-on-surface" />
-        </div>
+      <Tooltip>
+        <TooltipTrigger
+          render={(
+            <div className="flex h-6 w-6 items-center justify-center rounded-full border-[0.5px] border-components-panel-border-subtle bg-util-colors-blue-brand-blue-brand-500">
+              <Icon className="h-3 w-3 text-text-primary-on-surface" />
+            </div>
+          )}
+        />
+        <TooltipContent>{tooltip}</TooltipContent>
       </Tooltip>
       {showTitle && (
         <span className="max-w-[160px] truncate text-text-secondary system-xs-medium">

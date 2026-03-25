@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import FileTypeIcon from '@/app/components/base/file-uploader/file-type-icon'
 import Loading from '@/app/components/base/loading'
-import Tooltip from '@/app/components/base/tooltip-plus'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import SkillEditor from '@/app/components/workflow/skill/editor/skill-editor'
 import { useFileTypeInfo } from '@/app/components/workflow/skill/hooks/use-file-type-info'
 import { getFileIconType } from '@/app/components/workflow/skill/utils/file-utils'
@@ -121,22 +121,29 @@ const FilePreviewPanel = ({ resourceId, currentNode, className, style, onClose }
             </div>
           )}
         </div>
-        <Tooltip
-          popupContent={t('skillEditor.openInSkillEditor', { ns: 'workflow' })}
-          disabled={!canOpenInEditor}
-        >
-          <button
-            type="button"
-            onClick={handleOpenInEditor}
+        <Tooltip>
+          <TooltipTrigger
             disabled={!canOpenInEditor}
-            className={cn(
-              'inline-flex size-6 items-center justify-center rounded-md text-text-tertiary transition hover:bg-state-base-hover',
-              !canOpenInEditor && 'cursor-not-allowed opacity-40 hover:bg-transparent',
+            render={(
+              <span className="inline-flex">
+                <button
+                  type="button"
+                  onClick={handleOpenInEditor}
+                  disabled={!canOpenInEditor}
+                  className={cn(
+                    'inline-flex size-6 items-center justify-center rounded-md text-text-tertiary transition hover:bg-state-base-hover',
+                    !canOpenInEditor && 'cursor-not-allowed opacity-40 hover:bg-transparent',
+                  )}
+                  aria-label={t('skillEditor.openInSkillEditor', { ns: 'workflow' })}
+                >
+                  <span className="i-ri-external-link-line size-4" />
+                </button>
+              </span>
             )}
-            aria-label={t('skillEditor.openInSkillEditor', { ns: 'workflow' })}
-          >
-            <span className="i-ri-external-link-line size-4" />
-          </button>
+          />
+          {canOpenInEditor && (
+            <TooltipContent>{t('skillEditor.openInSkillEditor', { ns: 'workflow' })}</TooltipContent>
+          )}
         </Tooltip>
         <button
           type="button"

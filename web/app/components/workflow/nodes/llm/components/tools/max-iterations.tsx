@@ -1,6 +1,5 @@
 import { memo } from 'react'
-
-import Tooltip from '@/app/components/base/tooltip-plus'
+import { useTranslation } from 'react-i18next'
 import {
   NumberField,
   NumberFieldControls,
@@ -9,6 +8,7 @@ import {
   NumberFieldIncrement,
   NumberFieldInput,
 } from '@/app/components/base/ui/number-field'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 
 import { cn } from '@/utils/classnames'
 
@@ -19,14 +19,23 @@ type MaxIterationsProps = {
   disabled?: boolean
 }
 const MaxIterations = ({ value = 10, onChange, className, disabled }: MaxIterationsProps) => {
+  const { t } = useTranslation()
+
   return (
     <div className={cn('mt-3 flex h-10 items-center justify-between', className)}>
       <div className="flex items-center">
-        <div className="mr-0.5 truncate uppercase text-text-secondary system-sm-semibold">Max Iterations</div>
-        <Tooltip
-          popupContent="Max Iterations is the maximum number of iterations to run the tool."
-          triggerClassName="shrink-0 w-4 h-4"
-        />
+        <div className="mr-0.5 truncate uppercase text-text-secondary system-sm-semibold">
+          {t('nodes.agent.maxIterations', { ns: 'workflow' })}
+        </div>
+        <Tooltip>
+          <TooltipTrigger
+            delay={0}
+            className="flex h-4 w-4 shrink-0 items-center justify-center"
+          >
+            <span aria-hidden className="i-ri-question-line h-3.5 w-3.5 text-text-quaternary hover:text-text-tertiary" />
+          </TooltipTrigger>
+          <TooltipContent>{t('nodes.llm.tools.maxIterationsTooltip', { ns: 'workflow' })}</TooltipContent>
+        </Tooltip>
       </div>
       <NumberField
         value={value}
