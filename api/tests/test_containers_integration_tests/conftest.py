@@ -34,9 +34,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(level
 logger = logging.getLogger(__name__)
 
 SANDBOX_COMPAT_COMMAND = (
-    "mkdir -p /usr/local/bin && "
-    "ln -sf /opt/python/bin/python3 /usr/local/bin/python3 && "
-    "exec /entrypoint.sh"
+    "mkdir -p /usr/local/bin && ln -sf /opt/python/bin/python3 /usr/local/bin/python3 && exec /entrypoint.sh"
 )
 SANDBOX_COMPAT_ENTRYPOINT = [
     "/bin/sh",
