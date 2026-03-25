@@ -13,6 +13,8 @@ from core.tools.utils.message_transformer import ToolFileMessageTransformer
 from dify_graph.file import File, FileTransferMethod, FileType
 from dify_graph.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.node_events import StreamChunkEvent, StreamCompletedEvent
+from dify_graph.nodes.tool.entities import ToolEntity as WorkflowToolEntity
+from dify_graph.nodes.tool.entities import ToolNodeData
 from dify_graph.runtime import GraphRuntimeState, VariablePool
 from dify_graph.system_variable import SystemVariable
 from dify_graph.variables.segments import ArrayFileSegment
@@ -167,3 +169,55 @@ def test_plain_link_messages_remain_links(tool_node: ToolNode):
     files_segment = completed_events[0].node_run_result.outputs["files"]
     assert isinstance(files_segment, ArrayFileSegment)
     assert files_segment.value == []
+
+
+def test_workflow_tool_entity_accepts_primitives_and_tool_input_payloads() -> None:
+    entity = WorkflowToolEntity(
+        provider_id="provider",
+        provider_type="builtin",
+        provider_name="provider",
+        tool_name="search",
+        tool_label="Search",
+        tool_configurations={
+            "timeout": 30,
+            "query": {"type": "mixed", "value": "hello {{name}}"},
+            "selector": {"type": "variable", "value": ["start", "question"]},
+        },
+    )
+
+    assert entity.tool_configurations == {
+        "timeout": 30,
+        "query": {"type": "mixed", "value": "hello {{name}}"},
+        "selector": {"type": "variable", "value": ["start", "question"]},
+    }
+
+
+def test_workflow_tool_entity_rejects_invalid_configuration_entries() -> None:
+    with pytest.raises(TypeError, match="Tool configuration values must be primitives"):
+        WorkflowToolEntity(
+            provider_id="provider",
+            provider_type="builtin",
+            provider_name="provider",
+            tool_name="search",
+            tool_label="Search",
+            tool_configurations={"bad": [object()]},
+        )
+
+
+def test_tool_node_data_filters_missing_tool_parameter_values() -> None:
+    node_data = ToolNodeData(
+        title="Tool",
+        provider_id="provider",
+        provider_type="builtin",
+        provider_name="provider",
+        tool_name="search",
+        tool_label="Search",
+        tool_configurations={},
+        tool_parameters={
+            "query": {"type": "mixed", "value": "hello"},
+            "skip_none": None,
+            "skip_empty": {"type": "constant", "value": None},
+        },
+    )
+
+    assert set(node_data.tool_parameters.keys()) == {"query"}

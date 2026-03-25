@@ -13,6 +13,7 @@ from core.model_manager import ModelInstance
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from dify_graph.entities import GraphInitParams
 from dify_graph.file import File, FileTransferMethod, FileType
+from dify_graph.model_runtime.entities import LLMMode
 from dify_graph.model_runtime.entities.common_entities import I18nObject
 from dify_graph.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
@@ -53,6 +54,70 @@ class MockTokenBufferMemory:
         if message_limit is not None:
             return self.history_messages[-message_limit * 2 :]
         return self.history_messages
+
+
+def test_llm_node_data_normalizes_optional_configs_and_legacy_structured_output() -> None:
+    node_data = LLMNodeData.model_validate(
+        {
+            "title": "Test LLM",
+            "model": {"provider": "openai", "name": "gpt-4o-mini", "mode": LLMMode.CHAT, "completion_params": {}},
+            "prompt_template": [],
+            "prompt_config": None,
+            "memory": None,
+            "context": {"enabled": False},
+            "vision": {"enabled": True, "configs": None},
+            "structured_output": {
+                "schema": {"type": "object"},
+                "name": "Response",
+                "description": "Structured",
+            },
+            "structured_output_enabled": True,
+        }
+    )
+
+    assert node_data.prompt_config.jinja2_variables == []
+    assert node_data.vision.configs.variable_selector == ["sys", "files"]
+    assert node_data.structured_output == {
+        "schema": {"type": "object"},
+        "name": "Response",
+        "description": "Structured",
+    }
+    assert node_data.structured_output_enabled is True
+
+
+def test_llm_node_data_discards_legacy_structured_output_without_schema() -> None:
+    node_data = LLMNodeData.model_validate(
+        {
+            "title": "Test LLM",
+            "model": {"provider": "openai", "name": "gpt-4o-mini", "mode": LLMMode.CHAT, "completion_params": {}},
+            "prompt_template": [],
+            "memory": None,
+            "context": {"enabled": False},
+            "vision": {"enabled": False},
+            "structured_output": {"name": "Missing schema"},
+            "structured_output_enabled": True,
+        }
+    )
+
+    assert node_data.structured_output is None
+    assert node_data.structured_output_enabled is False
+
+
+def test_prompt_config_converts_none_jinja_variables() -> None:
+    prompt_config = LLMNodeData.model_validate(
+        {
+            "title": "Test LLM",
+            "model": {"provider": "openai", "name": "gpt-4o-mini", "mode": LLMMode.CHAT, "completion_params": {}},
+            "prompt_template": [],
+            "prompt_config": None,
+            "memory": None,
+            "context": {"enabled": False},
+            "vision": {"enabled": False},
+            "structured_output_enabled": False,
+        }
+    ).prompt_config
+
+    assert prompt_config.jinja2_variables == []
 
 
 @pytest.fixture
