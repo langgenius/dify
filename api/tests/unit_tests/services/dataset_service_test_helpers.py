@@ -10,13 +10,13 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, create_autospec, patch
 
 import pytest
-from dify_graph.model_runtime.entities.model_entities import ModelFeature, ModelType
 from werkzeug.exceptions import Forbidden, NotFound
 
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
+from dify_graph.model_runtime.entities.model_entities import ModelFeature, ModelType
 from enums.cloud_plan import CloudPlan
 from models import Account, TenantAccountRole
 from models.dataset import (
