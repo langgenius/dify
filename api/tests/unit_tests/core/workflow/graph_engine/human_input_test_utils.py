@@ -7,13 +7,13 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
 
-from dify_graph.nodes.human_input.enums import HumanInputFormStatus
-from dify_graph.repositories.human_input_form_repository import (
+from core.repositories.human_input_repository import (
     FormCreateParams,
     HumanInputFormEntity,
     HumanInputFormRecipientEntity,
     HumanInputFormRepository,
 )
+from dify_graph.nodes.human_input.enums import HumanInputFormStatus
 from libs.datetime_utils import naive_utc_now
 
 
@@ -49,7 +49,7 @@ class _InMemoryFormEntity(HumanInputFormEntity):
         return self.form_id
 
     @property
-    def web_app_token(self) -> str | None:
+    def submission_token(self) -> str | None:
         return self.token
 
     @property
@@ -88,24 +88,24 @@ class InMemoryHumanInputFormRepository(HumanInputFormRepository):
         self._form_counter = 0
         self.created_params: list[FormCreateParams] = []
         self.created_forms: list[_InMemoryFormEntity] = []
-        self._forms_by_key: dict[tuple[str, str], _InMemoryFormEntity] = {}
+        self._forms_by_node_id: dict[str, _InMemoryFormEntity] = {}
 
     def create_form(self, params: FormCreateParams) -> HumanInputFormEntity:
         self.created_params.append(params)
         self._form_counter += 1
         form_id = f"form-{self._form_counter}"
-        token = f"console-{form_id}" if params.console_recipient_required else f"token-{form_id}"
+        token = f"token-{form_id}"
         entity = _InMemoryFormEntity(
             form_id=form_id,
             rendered=params.rendered_content,
             token=token,
         )
         self.created_forms.append(entity)
-        self._forms_by_key[(params.workflow_execution_id, params.node_id)] = entity
+        self._forms_by_node_id[params.node_id] = entity
         return entity
 
-    def get_form(self, workflow_execution_id: str, node_id: str) -> HumanInputFormEntity | None:
-        return self._forms_by_key.get((workflow_execution_id, node_id))
+    def get_form(self, node_id: str) -> HumanInputFormEntity | None:
+        return self._forms_by_node_id.get(node_id)
 
     # Convenience helpers for tests -------------------------------------
 

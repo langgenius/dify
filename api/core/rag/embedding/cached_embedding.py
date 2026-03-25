@@ -21,9 +21,8 @@ logger = logging.getLogger(__name__)
 
 
 class CacheEmbedding(Embeddings):
-    def __init__(self, model_instance: ModelInstance, user: str | None = None):
+    def __init__(self, model_instance: ModelInstance):
         self._model_instance = model_instance
-        self._user = user
 
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
         """Embed search docs in batches of 10."""
@@ -65,7 +64,7 @@ class CacheEmbedding(Embeddings):
                     batch_texts = embedding_queue_texts[i : i + max_chunks]
 
                     embedding_result = self._model_instance.invoke_text_embedding(
-                        texts=batch_texts, user=self._user, input_type=EmbeddingInputType.DOCUMENT
+                        texts=batch_texts, input_type=EmbeddingInputType.DOCUMENT
                     )
 
                     for vector in embedding_result.embeddings:
@@ -147,7 +146,6 @@ class CacheEmbedding(Embeddings):
 
                     embedding_result = self._model_instance.invoke_multimodal_embedding(
                         multimodel_documents=batch_multimodel_documents,
-                        user=self._user,
                         input_type=EmbeddingInputType.DOCUMENT,
                     )
 
@@ -202,7 +200,7 @@ class CacheEmbedding(Embeddings):
             return [float(x) for x in decoded_embedding]
         try:
             embedding_result = self._model_instance.invoke_text_embedding(
-                texts=[text], user=self._user, input_type=EmbeddingInputType.QUERY
+                texts=[text], input_type=EmbeddingInputType.QUERY
             )
 
             embedding_results = embedding_result.embeddings[0]
@@ -245,7 +243,7 @@ class CacheEmbedding(Embeddings):
             return [float(x) for x in decoded_embedding]
         try:
             embedding_result = self._model_instance.invoke_multimodal_embedding(
-                multimodel_documents=[multimodel_document], user=self._user, input_type=EmbeddingInputType.QUERY
+                multimodel_documents=[multimodel_document], input_type=EmbeddingInputType.QUERY
             )
 
             embedding_results = embedding_result.embeddings[0]

@@ -9,19 +9,18 @@ import queue
 import threading
 import time
 from collections.abc import Sequence
-from datetime import datetime
+from contextlib import AbstractContextManager
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, final
 
 from typing_extensions import override
 
-from dify_graph.context import IExecutionContext
 from dify_graph.enums import WorkflowNodeExecutionStatus
 from dify_graph.graph import Graph
 from dify_graph.graph_engine.layers.base import GraphEngineLayer
 from dify_graph.graph_events import GraphNodeEventBase, NodeRunFailedEvent, NodeRunStartedEvent, is_node_result_event
 from dify_graph.node_events import NodeRunResult
 from dify_graph.nodes.base.node import Node
-from libs.datetime_utils import naive_utc_now
 
 from .ready_queue import ReadyQueue
 
@@ -46,7 +45,7 @@ class Worker(threading.Thread):
         graph: Graph,
         layers: Sequence[GraphEngineLayer],
         worker_id: int = 0,
-        execution_context: IExecutionContext | None = None,
+        execution_context: AbstractContextManager[object] | None = None,
     ) -> None:
         """
         Initialize worker thread.
@@ -187,7 +186,7 @@ class Worker(threading.Thread):
         self, node: Node, error: Exception, *, started_at: datetime | None = None
     ) -> NodeRunFailedEvent:
         """Build a failed event when worker-level execution aborts before a node emits its own result event."""
-        failure_time = naive_utc_now()
+        failure_time = datetime.now(UTC).replace(tzinfo=None)
         error_message = str(error)
         return NodeRunFailedEvent(
             id=node.execution_id,

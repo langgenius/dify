@@ -6,7 +6,7 @@ to ensure they work correctly with the TableTestRunner.
 """
 
 from configs import dify_config
-from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY
+from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY
 from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from dify_graph.nodes.code.limits import CodeNodeLimits
 from tests.unit_tests.core.workflow.graph_engine.test_mock_config import MockConfig, MockConfigBuilder, NodeMockConfig
@@ -60,7 +60,7 @@ class TestMockTemplateTransformNode:
         )
 
         variable_pool = VariablePool(
-            system_variables={},
+            system_variables=[],
             user_inputs={},
         )
 
@@ -123,7 +123,7 @@ class TestMockTemplateTransformNode:
         )
 
         variable_pool = VariablePool(
-            system_variables={},
+            system_variables=[],
             user_inputs={},
         )
 
@@ -187,7 +187,7 @@ class TestMockTemplateTransformNode:
         )
 
         variable_pool = VariablePool(
-            system_variables={},
+            system_variables=[],
             user_inputs={},
         )
 
@@ -249,7 +249,7 @@ class TestMockTemplateTransformNode:
         )
 
         variable_pool = VariablePool(
-            system_variables={},
+            system_variables=[],
             user_inputs={},
         )
 
@@ -318,7 +318,7 @@ class TestMockCodeNode:
         )
 
         variable_pool = VariablePool(
-            system_variables={},
+            system_variables=[],
             user_inputs={},
         )
 
@@ -384,7 +384,7 @@ class TestMockCodeNode:
         )
 
         variable_pool = VariablePool(
-            system_variables={},
+            system_variables=[],
             user_inputs={},
         )
 
@@ -458,7 +458,7 @@ class TestMockCodeNode:
         )
 
         variable_pool = VariablePool(
-            system_variables={},
+            system_variables=[],
             user_inputs={},
         )
 
@@ -534,7 +534,7 @@ class TestMockNodeFactory:
         )
 
         variable_pool = VariablePool(
-            system_variables={},
+            system_variables=[],
             user_inputs={},
         )
 
@@ -579,7 +579,7 @@ class TestMockNodeFactory:
         )
 
         variable_pool = VariablePool(
-            system_variables={},
+            system_variables=[],
             user_inputs={},
         )
 
@@ -634,7 +634,7 @@ class TestMockNodeFactory:
         )
 
         variable_pool = VariablePool(
-            system_variables={},
+            system_variables=[],
             user_inputs={},
         )
 

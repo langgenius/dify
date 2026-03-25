@@ -20,13 +20,14 @@ class TTSTool(BuiltinTool):
         app_id: str | None = None,
         message_id: str | None = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
-        provider, model = tool_parameters.get("model").split("#")  # type: ignore
-        voice = tool_parameters.get(f"voice#{provider}#{model}")
-        model_manager = ModelManager()
         if not self.runtime:
             raise ValueError("Runtime is required")
+        runtime = self.runtime
+        provider, model = tool_parameters.get("model").split("#")  # type: ignore
+        voice = tool_parameters.get(f"voice#{provider}#{model}")
+        model_manager = ModelManager.for_tenant(tenant_id=runtime.tenant_id, user_id=user_id)
         model_instance = model_manager.get_model_instance(
-            tenant_id=self.runtime.tenant_id or "",
+            tenant_id=runtime.tenant_id or "",
             provider=provider,
             model_type=ModelType.TTS,
             model=model,
@@ -39,12 +40,7 @@ class TTSTool(BuiltinTool):
                     raise ValueError("Sorry, no voice available.")
             else:
                 raise ValueError("Sorry, no voice available.")
-        tts = model_instance.invoke_tts(
-            content_text=tool_parameters.get("text"),  # type: ignore
-            user=user_id,
-            tenant_id=self.runtime.tenant_id,
-            voice=voice,
-        )
+        tts = model_instance.invoke_tts(content_text=tool_parameters.get("text"), voice=voice)  # type: ignore[arg-type]
         buffer = io.BytesIO()
         for chunk in tts:
             buffer.write(chunk)

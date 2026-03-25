@@ -131,7 +131,7 @@ class TestDifyNodeFactory:
         node = factory.create_node({"id": "node-1", "data": {"type": BuiltinNodeTypes.TEMPLATE_TRANSFORM}})
 
         assert isinstance(node, DummyTemplateTransformNode)
-        assert "template_renderer" in node.kwargs
+        assert "jinja2_template_renderer" in node.kwargs
 
     def test_create_node_http_request_branch(self, monkeypatch):
         factory = self._factory(monkeypatch)

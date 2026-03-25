@@ -21,6 +21,7 @@ from .node import (
     RunRetryEvent,
     StreamChunkEvent,
     StreamCompletedEvent,
+    VariableUpdatedEvent,
 )
 
 __all__ = [
@@ -43,4 +44,5 @@ __all__ = [
     "RunRetryEvent",
     "StreamChunkEvent",
     "StreamCompletedEvent",
+    "VariableUpdatedEvent",
 ]

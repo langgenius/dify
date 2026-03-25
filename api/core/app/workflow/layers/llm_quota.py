@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, cast, final
 
 from typing_extensions import override
 
+from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
 from core.app.llm import deduct_llm_quota, ensure_llm_quota_available
 from core.errors.error import QuotaExceededError
 from core.model_manager import ModelInstance
@@ -75,7 +76,7 @@ class LLMQuotaLayer(GraphEngineLayer):
             return
 
         try:
-            dify_ctx = node.require_dify_context()
+            dify_ctx = DifyRunContext.model_validate(node.require_run_context_value(DIFY_RUN_CONTEXT_KEY))
             deduct_llm_quota(
                 tenant_id=dify_ctx.tenant_id,
                 model_instance=model_instance,
@@ -114,11 +115,11 @@ class LLMQuotaLayer(GraphEngineLayer):
         try:
             match node.node_type:
                 case BuiltinNodeTypes.LLM:
-                    return cast("LLMNode", node).model_instance
+                    model_instance = cast("LLMNode", node).model_instance
                 case BuiltinNodeTypes.PARAMETER_EXTRACTOR:
-                    return cast("ParameterExtractorNode", node).model_instance
+                    model_instance = cast("ParameterExtractorNode", node).model_instance
                 case BuiltinNodeTypes.QUESTION_CLASSIFIER:
-                    return cast("QuestionClassifierNode", node).model_instance
+                    model_instance = cast("QuestionClassifierNode", node).model_instance
                 case _:
                     return None
         except AttributeError:
@@ -127,3 +128,12 @@ class LLMQuotaLayer(GraphEngineLayer):
                 node.id,
             )
             return None
+
+        if isinstance(model_instance, ModelInstance):
+            return model_instance
+
+        raw_model_instance = getattr(model_instance, "_model_instance", None)
+        if isinstance(raw_model_instance, ModelInstance):
+            return raw_model_instance
+
+        return None

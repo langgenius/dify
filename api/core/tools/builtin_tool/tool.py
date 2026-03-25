@@ -53,6 +53,7 @@ class BuiltinTool(Tool):
             tool_type=ToolProviderType.BUILT_IN,
             tool_name=self.entity.identity.name,
             prompt_messages=prompt_messages,
+            caller_user_id=self.runtime.user_id,
         )
 
     def tool_provider_type(self) -> ToolProviderType:
@@ -69,6 +70,7 @@ class BuiltinTool(Tool):
 
         return ModelInvocationUtils.get_max_llm_context_tokens(
             tenant_id=self.runtime.tenant_id or "",
+            user_id=self.runtime.user_id,
         )
 
     def get_prompt_tokens(self, prompt_messages: list[PromptMessage]) -> int:
@@ -82,7 +84,9 @@ class BuiltinTool(Tool):
             raise ValueError("runtime is required")
 
         return ModelInvocationUtils.calculate_tokens(
-            tenant_id=self.runtime.tenant_id or "", prompt_messages=prompt_messages
+            tenant_id=self.runtime.tenant_id or "",
+            prompt_messages=prompt_messages,
+            user_id=self.runtime.user_id,
         )
 
     def summary(self, user_id: str, content: str) -> str:

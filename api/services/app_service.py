@@ -92,7 +92,7 @@ class AppService:
         default_model_config = default_model_config.copy() if default_model_config else None
         if default_model_config and "model" in default_model_config:
             # get model provider
-            model_manager = ModelManager()
+            model_manager = ModelManager.for_tenant(tenant_id=account.current_tenant_id or "")
 
             # get default model instance
             try:
@@ -124,11 +124,19 @@ class AppService:
                         "completion_params": {},
                     }
             else:
-                provider, model = model_manager.get_default_provider_model_name(
-                    tenant_id=account.current_tenant_id or "", model_type=ModelType.LLM
-                )
-                default_model_config["model"]["provider"] = provider
-                default_model_config["model"]["name"] = model
+                try:
+                    provider, model = model_manager.get_default_provider_model_name(
+                        tenant_id=account.current_tenant_id or "", model_type=ModelType.LLM
+                    )
+                except Exception:
+                    logger.exception("Get default provider model failed, tenant_id: %s", tenant_id)
+                    provider = default_model_config["model"].get("provider")
+                    model = default_model_config["model"].get("name")
+
+                if provider:
+                    default_model_config["model"]["provider"] = provider
+                if model:
+                    default_model_config["model"]["name"] = model
                 default_model_dict = default_model_config["model"]
 
             default_model_config["model"] = json.dumps(default_model_dict)
@@ -197,6 +205,7 @@ class AppService:
                         tenant_id=current_user.current_tenant_id,
                         app_id=app.id,
                         agent_tool=agent_tool_entity,
+                        user_id=current_user.id,
                     )
                     manager = ToolParameterConfigurationManager(
                         tenant_id=current_user.current_tenant_id,

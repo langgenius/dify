@@ -1,5 +1,6 @@
 from .constants import FILE_MODEL_IDENTITY
 from .enums import ArrayFileAttribute, FileAttribute, FileBelongsTo, FileTransferMethod, FileType
+from .file_factory import get_file_type_by_mime_type, standardize_file_type
 from .models import (
     File,
     FileUploadConfig,
@@ -16,4 +17,6 @@ __all__ = [
     "FileType",
     "FileUploadConfig",
     "ImageConfig",
+    "get_file_type_by_mime_type",
+    "standardize_file_type",
 ]

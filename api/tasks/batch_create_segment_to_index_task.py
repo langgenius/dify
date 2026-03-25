@@ -121,7 +121,7 @@ def batch_create_segment_to_index_task(
     document_segments = []
     embedding_model = None
     if dataset_config["indexing_technique"] == IndexTechniqueType.HIGH_QUALITY:
-        model_manager = ModelManager()
+        model_manager = ModelManager.for_tenant(tenant_id=dataset_config["tenant_id"])
         embedding_model = model_manager.get_model_instance(
             tenant_id=dataset_config["tenant_id"],
             provider=dataset_config["embedding_model_provider"],

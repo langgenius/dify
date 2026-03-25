@@ -122,7 +122,6 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                 tools=[],
                 stop=app_generate_entity.model_conf.stop,
                 stream=True,
-                user=self.user_id,
                 callbacks=[],
             )
 

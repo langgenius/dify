@@ -239,13 +239,18 @@ def _resolve_user_for_run(session: Session, workflow_run: WorkflowRun) -> Accoun
 
 
 def _publish_streaming_response(
-    response_stream: Generator[str | Mapping[str, Any], None, None], workflow_run_id: str, app_mode: AppMode
+    response_stream: Generator[str | Mapping[str, Any] | BaseModel, None, None],
+    workflow_run_id: str,
+    app_mode: AppMode,
 ) -> None:
     topic = MessageBasedAppGenerator.get_response_topic(app_mode, workflow_run_id)
     for event in response_stream:
         try:
-            payload = json.dumps(event)
-        except TypeError:
+            if isinstance(event, BaseModel):
+                payload = json.dumps(event.model_dump(mode="json"), ensure_ascii=False)
+            else:
+                payload = json.dumps(event, ensure_ascii=False, default=str)
+        except (TypeError, ValueError):
             logger.exception("error while encoding event")
             continue
 

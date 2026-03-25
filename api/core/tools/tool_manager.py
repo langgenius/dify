@@ -5,7 +5,7 @@ import time
 from collections.abc import Generator, Mapping
 from os import listdir, path
 from threading import Lock
-from typing import TYPE_CHECKING, Any, Literal, Optional, TypedDict, Union, cast
+from typing import TYPE_CHECKING, Any, Literal, Optional, Protocol, TypedDict, Union, cast
 
 import sqlalchemy as sa
 from sqlalchemy import select
@@ -31,7 +31,7 @@ from services.enterprise.plugin_manager_service import PluginCredentialType
 from services.tools.mcp_tools_manage_service import MCPToolManageService
 
 if TYPE_CHECKING:
-    from dify_graph.nodes.tool.entities import ToolEntity
+    pass
 
 from core.agent.entities import AgentToolEntity
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -62,7 +62,7 @@ from models.tools import ApiToolProvider, BuiltinToolProvider, WorkflowToolProvi
 from services.tools.tools_transform_service import ToolTransformService
 
 if TYPE_CHECKING:
-    from dify_graph.nodes.tool.entities import ToolEntity
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -75,6 +75,23 @@ class ApiProviderControllerItem(TypedDict):
 class EmojiIconDict(TypedDict):
     background: str
     content: str
+
+
+class WorkflowToolRuntimeSpec(Protocol):
+    @property
+    def provider_type(self) -> ToolProviderType: ...
+
+    @property
+    def provider_id(self) -> str: ...
+
+    @property
+    def tool_name(self) -> str: ...
+
+    @property
+    def tool_configurations(self) -> Mapping[str, Any]: ...
+
+    @property
+    def credential_id(self) -> str | None: ...
 
 
 class ToolManager:
@@ -167,6 +184,7 @@ class ToolManager:
         provider_id: str,
         tool_name: str,
         tenant_id: str,
+        user_id: str | None = None,
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
         tool_invoke_from: ToolInvokeFrom = ToolInvokeFrom.AGENT,
         credential_id: str | None = None,
@@ -178,6 +196,7 @@ class ToolManager:
         :param provider_id: the id of the provider
         :param tool_name: the name of the tool
         :param tenant_id: the tenant id
+        :param user_id: the caller id bound to runtime-scoped model/tool lookups
         :param invoke_from: invoke from
         :param tool_invoke_from: the tool invoke from
         :param credential_id: the credential id
@@ -196,6 +215,7 @@ class ToolManager:
                 return builtin_tool.fork_tool_runtime(
                     runtime=ToolRuntime(
                         tenant_id=tenant_id,
+                        user_id=user_id,
                         credentials={},
                         invoke_from=invoke_from,
                         tool_invoke_from=tool_invoke_from,
@@ -304,6 +324,7 @@ class ToolManager:
             return builtin_tool.fork_tool_runtime(
                 runtime=ToolRuntime(
                     tenant_id=tenant_id,
+                    user_id=user_id,
                     credentials=dict(decrypted_credentials),
                     credential_type=CredentialType.of(builtin_provider.credential_type),
                     runtime_parameters={},
@@ -321,6 +342,7 @@ class ToolManager:
             return api_provider.get_tool(tool_name).fork_tool_runtime(
                 runtime=ToolRuntime(
                     tenant_id=tenant_id,
+                    user_id=user_id,
                     credentials=dict(encrypter.decrypt(credentials)),
                     invoke_from=invoke_from,
                     tool_invoke_from=tool_invoke_from,
@@ -344,6 +366,7 @@ class ToolManager:
             return controller.get_tools(tenant_id=workflow_provider.tenant_id)[0].fork_tool_runtime(
                 runtime=ToolRuntime(
                     tenant_id=tenant_id,
+                    user_id=user_id,
                     credentials={},
                     invoke_from=invoke_from,
                     tool_invoke_from=tool_invoke_from,
@@ -352,9 +375,21 @@ class ToolManager:
         elif provider_type == ToolProviderType.APP:
             raise NotImplementedError("app provider not implemented")
         elif provider_type == ToolProviderType.PLUGIN:
-            return cls.get_plugin_provider(provider_id, tenant_id).get_tool(tool_name)
+            plugin_tool = cls.get_plugin_provider(provider_id, tenant_id).get_tool(tool_name)
+            runtime = getattr(plugin_tool, "runtime", None)
+            if runtime is not None:
+                runtime.user_id = user_id
+                runtime.invoke_from = invoke_from
+                runtime.tool_invoke_from = tool_invoke_from
+            return plugin_tool
         elif provider_type == ToolProviderType.MCP:
-            return cls.get_mcp_provider_controller(tenant_id, provider_id).get_tool(tool_name)
+            mcp_tool = cls.get_mcp_provider_controller(tenant_id, provider_id).get_tool(tool_name)
+            runtime = getattr(mcp_tool, "runtime", None)
+            if runtime is not None:
+                runtime.user_id = user_id
+                runtime.invoke_from = invoke_from
+                runtime.tool_invoke_from = tool_invoke_from
+            return mcp_tool
         else:
             raise ToolProviderNotFoundError(f"provider type {provider_type.value} not found")
 
@@ -364,6 +399,7 @@ class ToolManager:
         tenant_id: str,
         app_id: str,
         agent_tool: AgentToolEntity,
+        user_id: str | None = None,
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
         variable_pool: Optional["VariablePool"] = None,
     ) -> Tool:
@@ -375,6 +411,7 @@ class ToolManager:
             provider_id=agent_tool.provider_id,
             tool_name=agent_tool.tool_name,
             tenant_id=tenant_id,
+            user_id=user_id,
             invoke_from=invoke_from,
             tool_invoke_from=ToolInvokeFrom.AGENT,
             credential_id=agent_tool.credential_id,
@@ -405,7 +442,8 @@ class ToolManager:
         tenant_id: str,
         app_id: str,
         node_id: str,
-        workflow_tool: "ToolEntity",
+        workflow_tool: WorkflowToolRuntimeSpec,
+        user_id: str | None = None,
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
         variable_pool: Optional["VariablePool"] = None,
     ) -> Tool:
@@ -418,6 +456,7 @@ class ToolManager:
             provider_id=workflow_tool.provider_id,
             tool_name=workflow_tool.tool_name,
             tenant_id=tenant_id,
+            user_id=user_id,
             invoke_from=invoke_from,
             tool_invoke_from=ToolInvokeFrom.WORKFLOW,
             credential_id=workflow_tool.credential_id,
@@ -450,6 +489,7 @@ class ToolManager:
         provider: str,
         tool_name: str,
         tool_parameters: dict[str, Any],
+        user_id: str | None = None,
         credential_id: str | None = None,
     ) -> Tool:
         """
@@ -460,6 +500,7 @@ class ToolManager:
             provider_id=provider,
             tool_name=tool_name,
             tenant_id=tenant_id,
+            user_id=user_id,
             invoke_from=InvokeFrom.SERVICE_API,
             tool_invoke_from=ToolInvokeFrom.PLUGIN,
             credential_id=credential_id,
@@ -1015,7 +1056,7 @@ class ToolManager:
         cls,
         parameters: list[ToolParameter],
         variable_pool: Optional["VariablePool"],
-        tool_configurations: dict[str, Any],
+        tool_configurations: Mapping[str, Any],
         typ: Literal["agent", "workflow", "tool"] = "workflow",
     ) -> dict[str, Any]:
         """

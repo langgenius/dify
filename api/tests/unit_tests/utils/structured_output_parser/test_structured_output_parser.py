@@ -336,7 +336,6 @@ def test_structured_output_parser():
                     json_schema=case["json_schema"],
                     stream=case["stream"],
                     model_parameters={"temperature": 0.7, "max_tokens": 100},
-                    user="test_user",
                 )
 
                 if case["expected_result_type"] == "generator":
@@ -367,7 +366,7 @@ def test_structured_output_parser():
                 call_args = model_instance.invoke_llm.call_args
 
                 assert call_args.kwargs["stream"] == case["stream"]
-                assert call_args.kwargs["user"] == "test_user"
+                assert "user" not in call_args.kwargs
                 assert "temperature" in call_args.kwargs["model_parameters"]
                 assert "max_tokens" in call_args.kwargs["model_parameters"]
 

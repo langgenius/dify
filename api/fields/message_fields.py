@@ -133,7 +133,9 @@ def to_timestamp(value: datetime | None) -> int | None:
 
 def format_files_contained(value: JSONValueType) -> JSONValueType:
     if isinstance(value, File):
-        return value.model_dump()
+        # Response payloads must preserve legacy file keys like `related_id`/`url`
+        # while still exposing the new graph-layer `reference` field.
+        return value.to_dict()
     if isinstance(value, dict):
         return {k: format_files_contained(v) for k, v in value.items()}
     if isinstance(value, list):

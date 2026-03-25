@@ -1,5 +1,5 @@
 from dify_graph.model_runtime.entities.model_entities import ModelType
-from dify_graph.model_runtime.entities.rerank_entities import RerankResult
+from dify_graph.model_runtime.entities.rerank_entities import MultimodalRerankInput, RerankResult
 from dify_graph.model_runtime.model_providers.__base.ai_model import AIModel
 
 
@@ -18,7 +18,6 @@ class RerankModel(AIModel):
         docs: list[str],
         score_threshold: float | None = None,
         top_n: int | None = None,
-        user: str | None = None,
     ) -> RerankResult:
         """
         Invoke rerank model
@@ -29,18 +28,11 @@ class RerankModel(AIModel):
         :param docs: docs for reranking
         :param score_threshold: score threshold
         :param top_n: top n
-        :param user: unique user id
         :return: rerank result
         """
         try:
-            from core.plugin.impl.model import PluginModelClient
-
-            plugin_model_manager = PluginModelClient()
-            return plugin_model_manager.invoke_rerank(
-                tenant_id=self.tenant_id,
-                user_id=user or "unknown",
-                plugin_id=self.plugin_id,
-                provider=self.provider_name,
+            return self.model_runtime.invoke_rerank(
+                provider=self.provider,
                 model=model,
                 credentials=credentials,
                 query=query,
@@ -55,11 +47,10 @@ class RerankModel(AIModel):
         self,
         model: str,
         credentials: dict,
-        query: dict,
-        docs: list[dict],
+        query: MultimodalRerankInput,
+        docs: list[MultimodalRerankInput],
         score_threshold: float | None = None,
         top_n: int | None = None,
-        user: str | None = None,
     ) -> RerankResult:
         """
         Invoke multimodal rerank model
@@ -69,18 +60,11 @@ class RerankModel(AIModel):
         :param docs: docs for reranking
         :param score_threshold: score threshold
         :param top_n: top n
-        :param user: unique user id
         :return: rerank result
         """
         try:
-            from core.plugin.impl.model import PluginModelClient
-
-            plugin_model_manager = PluginModelClient()
-            return plugin_model_manager.invoke_multimodal_rerank(
-                tenant_id=self.tenant_id,
-                user_id=user or "unknown",
-                plugin_id=self.plugin_id,
-                provider=self.provider_name,
+            return self.model_runtime.invoke_multimodal_rerank(
+                provider=self.provider,
                 model=model,
                 credentials=credentials,
                 query=query,
