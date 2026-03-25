@@ -92,8 +92,13 @@ vi.mock('@/app/components/base/confirm', () => ({
       : null,
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
-  default: { notify: vi.fn() },
+const mockToastSuccess = vi.hoisted(() => vi.fn())
+const mockToastError = vi.hoisted(() => vi.fn())
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    success: mockToastSuccess,
+    error: mockToastError,
+  },
 }))
 
 vi.mock('@/app/components/header/indicator', () => ({

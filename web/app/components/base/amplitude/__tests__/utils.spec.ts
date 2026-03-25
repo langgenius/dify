@@ -20,8 +20,10 @@ const MockIdentify = vi.hoisted(() =>
   },
 )
 
-vi.mock('../AmplitudeProvider', () => ({
-  isAmplitudeEnabled: () => mockState.enabled,
+vi.mock('@/config', () => ({
+  get isAmplitudeEnabled() {
+    return mockState.enabled
+  },
 }))
 
 vi.mock('@amplitude/analytics-browser', () => ({

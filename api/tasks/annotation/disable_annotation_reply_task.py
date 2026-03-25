@@ -7,6 +7,7 @@ from sqlalchemy import exists, select
 
 from core.db.session_factory import session_factory
 from core.rag.datasource.vdb.vector_factory import Vector
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
 from models.model import App, AppAnnotationSetting, MessageAnnotation
@@ -44,7 +45,7 @@ def disable_annotation_reply_task(job_id: str, app_id: str, tenant_id: str):
             dataset = Dataset(
                 id=app_id,
                 tenant_id=tenant_id,
-                indexing_technique="high_quality",
+                indexing_technique=IndexTechniqueType.HIGH_QUALITY,
                 collection_binding_id=app_annotation_setting.collection_binding_id,
             )
 

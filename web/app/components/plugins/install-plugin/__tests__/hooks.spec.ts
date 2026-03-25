@@ -3,8 +3,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useGitHubReleases, useGitHubUpload } from '../hooks'
 
 const mockNotify = vi.fn()
-vi.mock('@/app/components/base/toast', () => ({
-  default: { notify: (...args: unknown[]) => mockNotify(...args) },
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: Object.assign((...args: unknown[]) => mockNotify(...args), {
+    success: (...args: unknown[]) => mockNotify(...args),
+    error: (...args: unknown[]) => mockNotify(...args),
+    warning: (...args: unknown[]) => mockNotify(...args),
+    info: (...args: unknown[]) => mockNotify(...args),
+    dismiss: vi.fn(),
+    update: vi.fn(),
+    promise: vi.fn(),
+  }),
 }))
 
 vi.mock('@/config', () => ({
@@ -14,34 +22,6 @@ vi.mock('@/config', () => ({
 const mockUploadGitHub = vi.fn()
 vi.mock('@/service/plugins', () => ({
   uploadGitHub: (...args: unknown[]) => mockUploadGitHub(...args),
-}))
-
-vi.mock('@/utils/semver', () => ({
-  compareVersion: (a: string, b: string) => {
-    const parseVersion = (v: string) => v.replace(/^v/, '').split('.').map(Number)
-    const va = parseVersion(a)
-    const vb = parseVersion(b)
-    for (let i = 0; i < Math.max(va.length, vb.length); i++) {
-      const diff = (va[i] || 0) - (vb[i] || 0)
-      if (diff > 0)
-        return 1
-      if (diff < 0)
-        return -1
-    }
-    return 0
-  },
-  getLatestVersion: (versions: string[]) => {
-    return versions.sort((a, b) => {
-      const pa = a.replace(/^v/, '').split('.').map(Number)
-      const pb = b.replace(/^v/, '').split('.').map(Number)
-      for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
-        const diff = (pa[i] || 0) - (pb[i] || 0)
-        if (diff !== 0)
-          return diff
-      }
-      return 0
-    }).pop()!
-  },
 }))
 
 const mockFetch = vi.fn()
@@ -84,9 +64,7 @@ describe('install-plugin/hooks', () => {
         const releases = await result.current.fetchReleases('owner', 'repo')
 
         expect(releases).toEqual([])
-        expect(mockNotify).toHaveBeenCalledWith(
-          expect.objectContaining({ type: 'error' }),
-        )
+        expect(mockNotify).toHaveBeenCalledWith('Failed to fetch repository releases')
       })
     })
 
@@ -158,9 +136,7 @@ describe('install-plugin/hooks', () => {
       await expect(
         result.current.handleUpload('url', 'v1', 'pkg'),
       ).rejects.toThrow('Upload failed')
-      expect(mockNotify).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'error', message: 'Error uploading package' }),
-      )
+      expect(mockNotify).toHaveBeenCalledWith('Error uploading package')
     })
   })
 })

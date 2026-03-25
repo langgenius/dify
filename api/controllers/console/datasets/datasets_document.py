@@ -10,7 +10,7 @@ import sqlalchemy as sa
 from flask import request, send_file
 from flask_restx import Resource, fields, marshal, marshal_with
 from pydantic import BaseModel, Field
-from sqlalchemy import asc, desc, select
+from sqlalchemy import asc, desc, func, select
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
@@ -27,6 +27,7 @@ from core.model_manager import ModelManager
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo, WebsiteInfo
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from dify_graph.model_runtime.entities.model_entities import ModelType
 from dify_graph.model_runtime.errors.invoke import InvokeAuthorizationError
 from extensions.ext_database import db
@@ -211,12 +212,11 @@ class GetProcessRuleApi(Resource):
                 raise Forbidden(str(e))
 
             # get the latest process rule
-            dataset_process_rule = (
-                db.session.query(DatasetProcessRule)
+            dataset_process_rule = db.session.scalar(
+                select(DatasetProcessRule)
                 .where(DatasetProcessRule.dataset_id == document.dataset_id)
                 .order_by(DatasetProcessRule.created_at.desc())
                 .limit(1)
-                .one_or_none()
             )
             if dataset_process_rule:
                 mode = dataset_process_rule.mode
@@ -298,6 +298,7 @@ class DatasetDocumentListApi(Resource):
         if sort == "hit_count":
             sub_query = (
                 sa.select(DocumentSegment.document_id, sa.func.sum(DocumentSegment.hit_count).label("total_hit_count"))
+                .where(DocumentSegment.dataset_id == str(dataset_id))
                 .group_by(DocumentSegment.document_id)
                 .subquery()
             )
@@ -329,21 +330,23 @@ class DatasetDocumentListApi(Resource):
         if fetch:
             for document in documents:
                 completed_segments = (
-                    db.session.query(DocumentSegment)
-                    .where(
-                        DocumentSegment.completed_at.isnot(None),
-                        DocumentSegment.document_id == str(document.id),
-                        DocumentSegment.status != SegmentStatus.RE_SEGMENT,
+                    db.session.scalar(
+                        select(func.count(DocumentSegment.id)).where(
+                            DocumentSegment.completed_at.isnot(None),
+                            DocumentSegment.document_id == str(document.id),
+                            DocumentSegment.status != SegmentStatus.RE_SEGMENT,
+                        )
                     )
-                    .count()
+                    or 0
                 )
                 total_segments = (
-                    db.session.query(DocumentSegment)
-                    .where(
-                        DocumentSegment.document_id == str(document.id),
-                        DocumentSegment.status != SegmentStatus.RE_SEGMENT,
+                    db.session.scalar(
+                        select(func.count(DocumentSegment.id)).where(
+                            DocumentSegment.document_id == str(document.id),
+                            DocumentSegment.status != SegmentStatus.RE_SEGMENT,
+                        )
                     )
-                    .count()
+                    or 0
                 )
                 document.completed_segments = completed_segments
                 document.total_segments = total_segments
@@ -447,7 +450,7 @@ class DatasetInitApi(Resource):
             raise Forbidden()
 
         knowledge_config = KnowledgeConfig.model_validate(console_ns.payload or {})
-        if knowledge_config.indexing_technique == "high_quality":
+        if knowledge_config.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             if knowledge_config.embedding_model is None or knowledge_config.embedding_model_provider is None:
                 raise ValueError("embedding model and embedding model provider are required for high quality indexing.")
             try:
@@ -461,7 +464,7 @@ class DatasetInitApi(Resource):
                 is_multimodal = DatasetService.check_is_multimodal_model(
                     current_tenant_id, knowledge_config.embedding_model_provider, knowledge_config.embedding_model
                 )
-                knowledge_config.is_multimodal = is_multimodal
+                knowledge_config.is_multimodal = is_multimodal  # pyrefly: ignore[bad-assignment]
             except InvokeAuthorizationError:
                 raise ProviderNotInitializeError(
                     "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
@@ -520,10 +523,10 @@ class DocumentIndexingEstimateApi(DocumentResource):
             if data_source_info and "upload_file_id" in data_source_info:
                 file_id = data_source_info["upload_file_id"]
 
-                file = (
-                    db.session.query(UploadFile)
+                file = db.session.scalar(
+                    select(UploadFile)
                     .where(UploadFile.tenant_id == document.tenant_id, UploadFile.id == file_id)
-                    .first()
+                    .limit(1)
                 )
 
                 # raise error if file not found
@@ -585,10 +588,10 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                     if not data_source_info:
                         continue
                     file_id = data_source_info["upload_file_id"]
-                    file_detail = (
-                        db.session.query(UploadFile)
+                    file_detail = db.session.scalar(
+                        select(UploadFile)
                         .where(UploadFile.tenant_id == current_tenant_id, UploadFile.id == file_id)
-                        .first()
+                        .limit(1)
                     )
 
                     if file_detail is None:
@@ -671,20 +674,23 @@ class DocumentBatchIndexingStatusApi(DocumentResource):
         documents_status = []
         for document in documents:
             completed_segments = (
-                db.session.query(DocumentSegment)
-                .where(
-                    DocumentSegment.completed_at.isnot(None),
-                    DocumentSegment.document_id == str(document.id),
-                    DocumentSegment.status != SegmentStatus.RE_SEGMENT,
+                db.session.scalar(
+                    select(func.count(DocumentSegment.id)).where(
+                        DocumentSegment.completed_at.isnot(None),
+                        DocumentSegment.document_id == str(document.id),
+                        DocumentSegment.status != SegmentStatus.RE_SEGMENT,
+                    )
                 )
-                .count()
+                or 0
             )
             total_segments = (
-                db.session.query(DocumentSegment)
-                .where(
-                    DocumentSegment.document_id == str(document.id), DocumentSegment.status != SegmentStatus.RE_SEGMENT
+                db.session.scalar(
+                    select(func.count(DocumentSegment.id)).where(
+                        DocumentSegment.document_id == str(document.id),
+                        DocumentSegment.status != SegmentStatus.RE_SEGMENT,
+                    )
                 )
-                .count()
+                or 0
             )
             # Create a dictionary with document attributes and additional fields
             document_dict = {
@@ -722,18 +728,23 @@ class DocumentIndexingStatusApi(DocumentResource):
         document = self.get_document(dataset_id, document_id)
 
         completed_segments = (
-            db.session.query(DocumentSegment)
-            .where(
-                DocumentSegment.completed_at.isnot(None),
-                DocumentSegment.document_id == str(document_id),
-                DocumentSegment.status != SegmentStatus.RE_SEGMENT,
+            db.session.scalar(
+                select(func.count(DocumentSegment.id)).where(
+                    DocumentSegment.completed_at.isnot(None),
+                    DocumentSegment.document_id == str(document_id),
+                    DocumentSegment.status != SegmentStatus.RE_SEGMENT,
+                )
             )
-            .count()
+            or 0
         )
         total_segments = (
-            db.session.query(DocumentSegment)
-            .where(DocumentSegment.document_id == str(document_id), DocumentSegment.status != SegmentStatus.RE_SEGMENT)
-            .count()
+            db.session.scalar(
+                select(func.count(DocumentSegment.id)).where(
+                    DocumentSegment.document_id == str(document_id),
+                    DocumentSegment.status != SegmentStatus.RE_SEGMENT,
+                )
+            )
+            or 0
         )
 
         # Create a dictionary with document attributes and additional fields
@@ -1257,11 +1268,11 @@ class DocumentPipelineExecutionLogApi(DocumentResource):
         document = DocumentService.get_document(dataset.id, document_id)
         if not document:
             raise NotFound("Document not found.")
-        log = (
-            db.session.query(DocumentPipelineExecutionLog)
-            .filter_by(document_id=document_id)
+        log = db.session.scalar(
+            select(DocumentPipelineExecutionLog)
+            .where(DocumentPipelineExecutionLog.document_id == document_id)
             .order_by(DocumentPipelineExecutionLog.created_at.desc())
-            .first()
+            .limit(1)
         )
         if not log:
             return {
@@ -1327,7 +1338,7 @@ class DocumentGenerateSummaryApi(Resource):
             raise BadRequest("document_list cannot be empty.")
 
         # Check if dataset configuration supports summary generation
-        if dataset.indexing_technique != "high_quality":
+        if dataset.indexing_technique != IndexTechniqueType.HIGH_QUALITY:
             raise ValueError(
                 f"Summary generation is only available for 'high_quality' indexing technique. "
                 f"Current indexing technique: {dataset.indexing_technique}"

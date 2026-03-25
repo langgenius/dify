@@ -1422,12 +1422,12 @@ class ProviderConfiguration(BaseModel):
             preferred_model_provider = s.execute(stmt).scalars().first()
 
             if preferred_model_provider:
-                preferred_model_provider.preferred_provider_type = provider_type.value
+                preferred_model_provider.preferred_provider_type = provider_type
             else:
                 preferred_model_provider = TenantPreferredModelProvider(
                     tenant_id=self.tenant_id,
                     provider_name=self.provider.provider,
-                    preferred_provider_type=provider_type.value,
+                    preferred_provider_type=provider_type,
                 )
                 s.add(preferred_model_provider)
             s.commit()

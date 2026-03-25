@@ -9,6 +9,7 @@ from flask import current_app
 from sqlalchemy import delete, func, select
 
 from core.db.session_factory import session_factory
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.index_processor.index_processor_base import SummaryIndexSettingDict
 from core.workflow.nodes.knowledge_index.exc import KnowledgeIndexNodeError
 from core.workflow.nodes.knowledge_index.protocols import Preview, PreviewItem, QaPreview
@@ -169,7 +170,7 @@ class IndexProcessor:
             tenant_id = dataset.tenant_id
 
         preview_output = self.format_preview(chunk_structure, chunks)
-        if indexing_technique != "high_quality":
+        if indexing_technique != IndexTechniqueType.HIGH_QUALITY:
             return preview_output
 
         if not summary_index_setting or not summary_index_setting.get("enable"):

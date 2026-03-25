@@ -8,14 +8,14 @@ from typing_extensions import TypedDict
 from core.helper import encrypter
 from extensions.ext_database import db
 from models.source import DataSourceApiKeyAuthBinding
-from services.auth.api_key_auth_base import ApiKeyAuthCredentials
+from services.auth.api_key_auth_base import AuthCredentials
 from services.auth.api_key_auth_factory import ApiKeyAuthFactory
 
 
 class ApiKeyAuthCreateArgs(TypedDict):
     category: str
     provider: str
-    credentials: ApiKeyAuthCredentials
+    credentials: AuthCredentials
 
 
 AUTH_CREATE_ARGS_ADAPTER = TypeAdapter(ApiKeyAuthCreateArgs)

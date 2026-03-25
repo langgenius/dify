@@ -23,6 +23,7 @@ from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
 from extensions.ext_database import db
 from extensions.ext_storage import storage
+from extensions.storage.storage_type import StorageType
 from libs.datetime_utils import naive_utc_now
 from models.enums import CreatorUserRole
 from models.model import UploadFile
@@ -117,7 +118,7 @@ class WordExtractor(BaseExtractor):
                         # save file to db
                         upload_file = UploadFile(
                             tenant_id=self.tenant_id,
-                            storage_type=dify_config.STORAGE_TYPE,
+                            storage_type=StorageType(dify_config.STORAGE_TYPE),
                             key=file_key,
                             name=file_key,
                             size=0,
@@ -145,7 +146,7 @@ class WordExtractor(BaseExtractor):
                     # save file to db
                     upload_file = UploadFile(
                         tenant_id=self.tenant_id,
-                        storage_type=dify_config.STORAGE_TYPE,
+                        storage_type=StorageType(dify_config.STORAGE_TYPE),
                         key=file_key,
                         name=file_key,
                         size=0,
@@ -369,7 +370,7 @@ class WordExtractor(BaseExtractor):
 
             paragraph_content: list[str] = []
             # State for legacy HYPERLINK fields
-            hyperlink_field_url: str | None = None
+            hyperlink_field_url = None
             hyperlink_field_text_parts: list[str] = []
             is_collecting_field_text = False
             # Iterate through paragraph elements in document order

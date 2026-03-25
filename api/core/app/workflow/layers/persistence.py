@@ -128,12 +128,12 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
             self._handle_graph_run_paused(event)
             return
 
-        if isinstance(event, NodeRunStartedEvent):
-            self._handle_node_started(event)
-            return
-
         if isinstance(event, NodeRunRetryEvent):
             self._handle_node_retry(event)
+            return
+
+        if isinstance(event, NodeRunStartedEvent):
+            self._handle_node_started(event)
             return
 
         if isinstance(event, NodeRunSucceededEvent):
@@ -268,7 +268,12 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
 
     def _handle_node_succeeded(self, event: NodeRunSucceededEvent) -> None:
         domain_execution = self._get_node_execution(event.id)
-        self._update_node_execution(domain_execution, event.node_run_result, WorkflowNodeExecutionStatus.SUCCEEDED)
+        self._update_node_execution(
+            domain_execution,
+            event.node_run_result,
+            WorkflowNodeExecutionStatus.SUCCEEDED,
+            finished_at=event.finished_at,
+        )
 
     def _handle_node_failed(self, event: NodeRunFailedEvent) -> None:
         domain_execution = self._get_node_execution(event.id)
@@ -277,6 +282,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
             event.node_run_result,
             WorkflowNodeExecutionStatus.FAILED,
             error=event.error,
+            finished_at=event.finished_at,
         )
 
     def _handle_node_exception(self, event: NodeRunExceptionEvent) -> None:
@@ -286,6 +292,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
             event.node_run_result,
             WorkflowNodeExecutionStatus.EXCEPTION,
             error=event.error,
+            finished_at=event.finished_at,
         )
 
     def _handle_node_pause_requested(self, event: NodeRunPauseRequestedEvent) -> None:
@@ -352,13 +359,14 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         *,
         error: str | None = None,
         update_outputs: bool = True,
+        finished_at: datetime | None = None,
     ) -> None:
-        finished_at = naive_utc_now()
+        actual_finished_at = finished_at or naive_utc_now()
         snapshot = self._node_snapshots.get(domain_execution.id)
         start_at = snapshot.created_at if snapshot else domain_execution.created_at
         domain_execution.status = status
-        domain_execution.finished_at = finished_at
-        domain_execution.elapsed_time = max((finished_at - start_at).total_seconds(), 0.0)
+        domain_execution.finished_at = actual_finished_at
+        domain_execution.elapsed_time = max((actual_finished_at - start_at).total_seconds(), 0.0)
 
         if error:
             domain_execution.error = error

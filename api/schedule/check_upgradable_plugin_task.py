@@ -3,6 +3,7 @@ import math
 import time
 
 import click
+from sqlalchemy import select
 
 import app
 from core.helper.marketplace import fetch_global_plugin_manifest
@@ -28,17 +29,15 @@ def check_upgradable_plugin_task():
     now_seconds_of_day = time.time() % 86400 - 30  # we assume the tz is UTC
     click.echo(click.style(f"Now seconds of day: {now_seconds_of_day}", fg="green"))
 
-    strategies = (
-        db.session.query(TenantPluginAutoUpgradeStrategy)
-        .where(
+    strategies = db.session.scalars(
+        select(TenantPluginAutoUpgradeStrategy).where(
             TenantPluginAutoUpgradeStrategy.upgrade_time_of_day >= now_seconds_of_day,
             TenantPluginAutoUpgradeStrategy.upgrade_time_of_day
             < now_seconds_of_day + AUTO_UPGRADE_MINIMAL_CHECKING_INTERVAL,
             TenantPluginAutoUpgradeStrategy.strategy_setting
             != TenantPluginAutoUpgradeStrategy.StrategySetting.DISABLED,
         )
-        .all()
-    )
+    ).all()
 
     total_strategies = len(strategies)
     click.echo(click.style(f"Total strategies: {total_strategies}", fg="green"))

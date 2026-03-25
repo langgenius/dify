@@ -1,22 +1,16 @@
 from abc import ABC, abstractmethod
+from typing import Any
 
 from typing_extensions import TypedDict
 
 
-class ApiKeyAuthConfig(TypedDict, total=False):
-    api_key: str
-    base_url: str
-
-
-class ApiKeyAuthCredentials(TypedDict):
-    auth_type: object
-    config: ApiKeyAuthConfig
+class AuthCredentials(TypedDict):
+    auth_type: str
+    config: dict[str, Any]
 
 
 class ApiKeyAuthBase(ABC):
-    credentials: ApiKeyAuthCredentials
-
-    def __init__(self, credentials: ApiKeyAuthCredentials) -> None:
+    def __init__(self, credentials: AuthCredentials):
         self.credentials = credentials
 
     @abstractmethod

@@ -13,7 +13,8 @@ vi.mock('@/next/navigation', () => ({
   }),
 }))
 
-const toastAddSpy = vi.spyOn(toast, 'add')
+const toastErrorSpy = vi.spyOn(toast, 'error')
+const toastSuccessSpy = vi.spyOn(toast, 'success')
 
 // Mock dataset detail context
 let mockIndexingTechnique = IndexingType.QUALIFIED
@@ -128,7 +129,7 @@ describe('NewSegmentModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useRealTimers()
-    toast.close()
+    toast.dismiss()
     mockFullScreen = false
     mockIndexingTechnique = IndexingType.QUALIFIED
   })
@@ -248,11 +249,7 @@ describe('NewSegmentModal', () => {
       fireEvent.click(screen.getByTestId('save-btn'))
 
       await waitFor(() => {
-        expect(toastAddSpy).toHaveBeenCalledWith(
-          expect.objectContaining({
-            type: 'error',
-          }),
-        )
+        expect(toastErrorSpy).toHaveBeenCalledTimes(1)
       })
     })
 
@@ -262,11 +259,7 @@ describe('NewSegmentModal', () => {
       fireEvent.click(screen.getByTestId('save-btn'))
 
       await waitFor(() => {
-        expect(toastAddSpy).toHaveBeenCalledWith(
-          expect.objectContaining({
-            type: 'error',
-          }),
-        )
+        expect(toastErrorSpy).toHaveBeenCalledTimes(1)
       })
     })
 
@@ -277,11 +270,7 @@ describe('NewSegmentModal', () => {
       fireEvent.click(screen.getByTestId('save-btn'))
 
       await waitFor(() => {
-        expect(toastAddSpy).toHaveBeenCalledWith(
-          expect.objectContaining({
-            type: 'error',
-          }),
-        )
+        expect(toastErrorSpy).toHaveBeenCalledTimes(1)
       })
     })
   })
@@ -327,11 +316,7 @@ describe('NewSegmentModal', () => {
       fireEvent.click(screen.getByTestId('save-btn'))
 
       await waitFor(() => {
-        expect(toastAddSpy).toHaveBeenCalledWith(
-          expect.objectContaining({
-            type: 'success',
-          }),
-        )
+        expect(toastSuccessSpy).toHaveBeenCalledTimes(1)
       })
     })
   })
