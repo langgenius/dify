@@ -3,6 +3,7 @@ from copy import deepcopy
 from unittest.mock import Mock, patch
 
 import pytest
+from pydantic import ValidationError
 
 from models.source import DataSourceApiKeyAuthBinding
 from services.auth.api_key_auth_service import ApiKeyAuthService
@@ -391,10 +392,9 @@ class TestApiKeyAuthService:
             ApiKeyAuthService.validate_api_key_auth_args(None)
 
     def test_validate_api_key_auth_args_dict_credentials_with_list_auth_type(self):
-        """Test API key auth args validation - dict credentials with list auth_type"""
+        """Test API key auth args validation - list auth_type is rejected by the typed payload contract"""
         args = self.mock_args.copy()
         args["credentials"]["auth_type"] = ["api_key"]
 
-        # Current implementation checks if auth_type exists and is truthy, list ["api_key"] is truthy
-        # So this should not raise exception, this test should pass
-        ApiKeyAuthService.validate_api_key_auth_args(args)
+        with pytest.raises(ValidationError):
+            ApiKeyAuthService.validate_api_key_auth_args(args)

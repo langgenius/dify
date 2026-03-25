@@ -32,6 +32,10 @@ class _ParentDocStub:
     children: list[_ChildDocStub]
 
 
+def _identity_kwargs(**kwargs: Any) -> dict[str, Any]:
+    return kwargs
+
+
 def _make_dataset(
     *,
     indexing_technique: str = IndexTechniqueType.HIGH_QUALITY,
@@ -416,7 +420,7 @@ def test_generate_child_chunks_regenerate_cleans_then_saves_children(monkeypatch
     factory_instance.init_index_processor.return_value = index_processor
     monkeypatch.setattr(vector_service_module, "IndexProcessorFactory", MagicMock(return_value=factory_instance))
 
-    child_chunk_ctor = MagicMock(side_effect=lambda **kwargs: kwargs)
+    child_chunk_ctor = MagicMock(side_effect=_identity_kwargs)
     monkeypatch.setattr(vector_service_module, "ChildChunk", child_chunk_ctor)
 
     db_mock = MagicMock()
@@ -640,7 +644,7 @@ def test_update_multimodel_vector_adds_bindings_and_vectors_and_skips_missing_up
     db_mock = _mock_db_session_for_update_multimodel(upload_files=[_UploadFileStub(id="file-1", name="img.png")])
     monkeypatch.setattr(vector_service_module, "db", db_mock)
 
-    binding_ctor = MagicMock(side_effect=lambda **kwargs: kwargs)
+    binding_ctor = MagicMock(side_effect=_identity_kwargs)
     monkeypatch.setattr(vector_service_module, "SegmentAttachmentBinding", binding_ctor)
 
     logger_mock = MagicMock()
@@ -672,9 +676,7 @@ def test_update_multimodel_vector_updates_bindings_without_multimodal_vector_ops
     monkeypatch.setattr(vector_service_module, "Vector", MagicMock(return_value=vector_instance))
     db_mock = _mock_db_session_for_update_multimodel(upload_files=[_UploadFileStub(id="file-1", name="img.png")])
     monkeypatch.setattr(vector_service_module, "db", db_mock)
-    monkeypatch.setattr(
-        vector_service_module, "SegmentAttachmentBinding", MagicMock(side_effect=lambda **kwargs: kwargs)
-    )
+    monkeypatch.setattr(vector_service_module, "SegmentAttachmentBinding", MagicMock(side_effect=_identity_kwargs))
 
     VectorService.update_multimodel_vector(segment=segment, attachment_ids=["file-1"], dataset=dataset)
 
@@ -693,9 +695,7 @@ def test_update_multimodel_vector_rolls_back_and_reraises_on_error(monkeypatch: 
     db_mock = _mock_db_session_for_update_multimodel(upload_files=[_UploadFileStub(id="file-1", name="img.png")])
     db_mock.session.commit.side_effect = RuntimeError("boom")
     monkeypatch.setattr(vector_service_module, "db", db_mock)
-    monkeypatch.setattr(
-        vector_service_module, "SegmentAttachmentBinding", MagicMock(side_effect=lambda **kwargs: kwargs)
-    )
+    monkeypatch.setattr(vector_service_module, "SegmentAttachmentBinding", MagicMock(side_effect=_identity_kwargs))
 
     logger_mock = MagicMock()
     monkeypatch.setattr(vector_service_module, "logger", logger_mock)
@@ -733,9 +733,9 @@ def test_vector_create_normalizes_child_documents(mock_get_embeddings: Mock, moc
 @patch("core.rag.datasource.vdb.vector_factory.Vector._init_vector")
 @patch("core.rag.datasource.vdb.vector_factory.Vector._get_embeddings")
 @patch("core.rag.datasource.vdb.vector_factory.storage")
-@patch("core.rag.datasource.vdb.vector_factory.db.session")
+@patch("core.rag.datasource.vdb.vector_factory.db")
 def test_vector_create_multimodal_normalizes_attachment_documents(
-    mock_session: Mock,
+    mock_db: Mock,
     mock_storage: Mock,
     mock_get_embeddings: Mock,
     mock_init_vector: Mock,
@@ -750,7 +750,7 @@ def test_vector_create_multimodal_normalizes_attachment_documents(
 
     mock_scalars = Mock()
     mock_scalars.all.return_value = [upload_file]
-    mock_session.scalars.return_value = mock_scalars
+    mock_db.session.scalars.return_value = mock_scalars
     mock_storage.load_once.return_value = b"binary-content"
 
     mock_embeddings = Mock()
@@ -773,9 +773,9 @@ def test_vector_create_multimodal_normalizes_attachment_documents(
 @patch("core.rag.datasource.vdb.vector_factory.Vector._init_vector")
 @patch("core.rag.datasource.vdb.vector_factory.Vector._get_embeddings")
 @patch("core.rag.datasource.vdb.vector_factory.storage")
-@patch("core.rag.datasource.vdb.vector_factory.db.session")
+@patch("core.rag.datasource.vdb.vector_factory.db")
 def test_vector_create_multimodal_falls_back_to_dify_provider_when_attachment_provider_is_none(
-    mock_session: Mock,
+    mock_db: Mock,
     mock_storage: Mock,
     mock_get_embeddings: Mock,
     mock_init_vector: Mock,
@@ -790,7 +790,7 @@ def test_vector_create_multimodal_falls_back_to_dify_provider_when_attachment_pr
 
     mock_scalars = Mock()
     mock_scalars.all.return_value = [upload_file]
-    mock_session.scalars.return_value = mock_scalars
+    mock_db.session.scalars.return_value = mock_scalars
     mock_storage.load_once.return_value = b"binary-content"
 
     mock_embeddings = Mock()
