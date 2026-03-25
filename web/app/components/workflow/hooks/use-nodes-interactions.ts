@@ -1851,7 +1851,7 @@ export const useNodesInteractions = () => {
               }
               // set position base on parent node
               newNode.position = getNestedNodePosition(newNode, selectedNode)
-              
+
               // update parent children array like native add
               parentChildrenToAppend.push({ parentId: selectedNode.id, childId: newNode.id, childType: newNode.data.type })
 
