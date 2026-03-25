@@ -139,7 +139,10 @@ class DocumentIndexingTaskProxyTestDataFactory:
     """
 
     @staticmethod
-    def create_mock_features(billing_enabled: bool = False, plan: CloudPlan = CloudPlan.SANDBOX) -> Mock:
+    def create_mock_features(
+        billing_enabled: bool = False,
+        plan: CloudPlan | str | None = CloudPlan.SANDBOX,
+    ) -> Mock:
         """
         Create mock features with billing configuration.
 
