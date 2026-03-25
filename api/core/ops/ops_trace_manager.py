@@ -167,6 +167,7 @@ def _lookup_llm_credential_info(
                         provider,
                         model,
                         str(e),
+                        exc_info=True,
                     )
 
             return credential_id, credential_name
@@ -179,6 +180,7 @@ def _lookup_llm_credential_info(
             provider,
             model,
             str(e),
+            exc_info=True,
         )
         return None, ""
 
