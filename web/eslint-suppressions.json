@@ -8848,14 +8848,6 @@
       "count": 1
     }
   },
-  "app/components/workflow/panel/chat-variable-panel/components/variable-modal.tsx": {
-    "react/set-state-in-effect": {
-      "count": 8
-    },
-    "ts/no-explicit-any": {
-      "count": 3
-    }
-  },
   "app/components/workflow/panel/chat-variable-panel/components/variable-type-select.tsx": {
     "no-restricted-imports": {
       "count": 1
