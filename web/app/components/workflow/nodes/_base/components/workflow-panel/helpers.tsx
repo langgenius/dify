@@ -39,14 +39,7 @@ export const getCustomRunForm = (params: CustomRunFormProps): ReactNode => {
     case BlockEnum.DataSource:
       return <DataSourceBeforeRunForm {...params} />
     default:
-      return (
-        <div>
-          Custom Run Form:
-          {nodeType}
-          {' '}
-          not found
-        </div>
-      )
+      return null
   }
 }
 

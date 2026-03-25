@@ -80,7 +80,7 @@ describe('variable-modal', () => {
     await user.type(screen.getByPlaceholderText('workflow.chatVariable.modal.namePlaceholder'), 'existing_name')
     await user.click(screen.getByText('common.operation.save'))
 
-    expect(mockToastError.mock.calls.at(-1)?.[0]).toBe('name is existed')
+    expect(mockToastError.mock.calls.at(-1)?.[0]).toBe('appDebug.varKeyError.keyAlreadyExists:{"key":"workflow.chatVariable.modal.name"}')
     expect(onSave).not.toHaveBeenCalled()
   })
 
@@ -100,8 +100,10 @@ describe('variable-modal', () => {
     expect(screen.getByDisplayValue('secret')).toBeInTheDocument()
     expect(screen.getByDisplayValue('30')).toBeInTheDocument()
 
+    const timeoutInput = screen.getByDisplayValue('30') as HTMLInputElement
     await user.clear(screen.getByDisplayValue('secret'))
-    await user.type(screen.getByDisplayValue('30'), '5')
+    await user.clear(timeoutInput)
+    await user.type(timeoutInput, '5')
     await user.click(screen.getByText('common.operation.save'))
 
     expect(onSave).toHaveBeenCalledWith({
@@ -110,7 +112,7 @@ describe('variable-modal', () => {
       value_type: ChatVarType.Object,
       value: {
         apiKey: null,
-        timeout: 305,
+        timeout: 5,
       },
       description: 'settings',
     })
@@ -194,5 +196,23 @@ describe('variable-modal', () => {
       value: 3,
       description: '',
     })
+  })
+
+  it('should keep the number input empty while editing after the user clears it', async () => {
+    const user = userEvent.setup()
+    renderVariableModal({
+      chatVar: {
+        id: 'var-4',
+        name: 'timeout',
+        description: '',
+        value_type: ChatVarType.Number,
+        value: 3,
+      },
+    })
+
+    const input = screen.getByDisplayValue('3') as HTMLInputElement
+    await user.clear(input)
+
+    expect(input.value).toBe('')
   })
 })

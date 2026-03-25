@@ -33,6 +33,10 @@ describe('variable-modal helpers', () => {
       { key: '', type: ChatVarType.Number, value: 1 },
     ])).toEqual({ apiKey: 'secret' })
 
+    expect(formatObjectValueFromList([
+      { key: 'count', type: ChatVarType.Number, value: 0 },
+      { key: 'label', type: ChatVarType.String, value: '' },
+    ])).toEqual({ count: 0, label: null })
     expect(formatChatVariableValue({
       editInJSON: false,
       objectValue: [{ key: 'enabled', type: ChatVarType.String, value: 'true' }],
@@ -53,6 +57,13 @@ describe('variable-modal helpers', () => {
       type: ChatVarType.ArrayString,
       value: ['a', '', 'b'],
     })).toEqual(['a', 'b'])
+
+    expect(formatChatVariableValue({
+      editInJSON: false,
+      objectValue: [],
+      type: ChatVarType.ArrayNumber,
+      value: [0, 1, undefined, null, ''] as unknown as Array<number | undefined>,
+    })).toEqual([0, 1])
 
     expect(formatChatVariableValue({
       editInJSON: false,
@@ -94,6 +105,10 @@ describe('variable-modal helpers', () => {
       type: ChatVarType.ArrayBoolean,
     })).toEqual([true, false, true, false])
 
+    expect(() => parseEditorContent({
+      content: '{"enabled":true}',
+      type: ChatVarType.ArrayBoolean,
+    })).toThrow('JSON array')
     expect(parseEditorContent({
       content: '{"enabled":true}',
       type: ChatVarType.Object,
