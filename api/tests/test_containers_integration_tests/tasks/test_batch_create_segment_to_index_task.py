@@ -19,7 +19,7 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
-from core.rag.index_processor.constant.index_type import IndexStructureType
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from extensions.storage.storage_type import StorageType
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
@@ -142,7 +142,7 @@ class TestBatchCreateSegmentToIndexTask:
             name=fake.company(),
             description=fake.text(),
             data_source_type=DataSourceType.UPLOAD_FILE,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             embedding_model="text-embedding-ada-002",
             embedding_model_provider="openai",
             created_by=account.id,

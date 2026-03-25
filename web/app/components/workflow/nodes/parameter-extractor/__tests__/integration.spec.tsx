@@ -6,7 +6,7 @@ import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/
 import type { PanelProps } from '@/types/workflow'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import {
   useTextGenerationCurrentProviderAndModelAndModelList,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -35,6 +35,15 @@ let mockCustomTools: MockToolCollection[] = []
 let mockWorkflowTools: MockToolCollection[] = []
 let mockSelectedToolInfo: ToolDefaultValue | undefined
 let mockBlockSelectorOpen = false
+
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
+    warning: vi.fn(),
+    info: vi.fn(),
+  },
+}))
 
 vi.mock('@/app/components/workflow/block-selector', () => ({
   __esModule: true,
@@ -254,7 +263,7 @@ vi.mock('../use-config', () => ({
 
 const mockUseTextGeneration = vi.mocked(useTextGenerationCurrentProviderAndModelAndModelList)
 const mockUseConfig = vi.mocked(useConfig)
-const mockToastNotify = vi.spyOn(Toast, 'notify').mockImplementation(() => ({}))
+const mockToastError = vi.mocked(toast.error)
 
 const createToolParameter = (overrides: Partial<ToolParameter> = {}): ToolParameter => ({
   name: 'city',
@@ -356,7 +365,7 @@ const panelProps: PanelProps = {
 describe('parameter-extractor path', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockToastNotify.mockClear()
+    mockToastError.mockClear()
     mockBuiltInTools = []
     mockCustomTools = []
     mockWorkflowTools = []
@@ -582,7 +591,7 @@ describe('parameter-extractor path', () => {
       await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
       expect(onSave).not.toHaveBeenCalled()
-      expect(mockToastNotify).toHaveBeenCalled()
+      expect(mockToastError).toHaveBeenCalled()
     })
 
     it('should render the add trigger for new parameters', () => {
@@ -614,7 +623,7 @@ describe('parameter-extractor path', () => {
       const descriptionInput = screen.getByPlaceholderText('workflow.nodes.parameterExtractor.addExtractParameterContent.descriptionPlaceholder')
 
       fireEvent.change(nameInput, { target: { value: '1bad' } })
-      expect(mockToastNotify).toHaveBeenCalled()
+      expect(mockToastError).toHaveBeenCalled()
       expect(nameInput).toHaveValue('')
 
       fireEvent.change(nameInput, { target: { value: 'temporary_name' } })
@@ -649,7 +658,7 @@ describe('parameter-extractor path', () => {
       await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
       expect(onSave).not.toHaveBeenCalled()
-      expect(mockToastNotify).toHaveBeenCalled()
+      expect(mockToastError).toHaveBeenCalled()
     })
 
     it('should keep rename metadata and updated options when editing a select parameter', async () => {

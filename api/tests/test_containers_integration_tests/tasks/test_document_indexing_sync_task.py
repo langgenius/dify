@@ -14,7 +14,7 @@ from uuid import uuid4
 import pytest
 
 from core.indexing_runner import DocumentIsPausedError, IndexingRunner
-from core.rag.index_processor.constant.index_type import IndexStructureType
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
@@ -57,7 +57,7 @@ class DocumentIndexingSyncTaskTestDataFactory:
             name=f"dataset-{uuid4()}",
             description="sync test dataset",
             data_source_type=DataSourceType.NOTION_IMPORT,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             created_by=created_by,
         )
         db_session_with_containers.add(dataset)

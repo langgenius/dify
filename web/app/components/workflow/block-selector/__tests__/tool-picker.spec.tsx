@@ -114,9 +114,12 @@ vi.mock('@/service/use-tools', () => ({
   useInvalidateAllMCPTools: vi.fn(),
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
-  default: {
-    notify: (payload: unknown) => mockNotify(payload),
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    success: (message: string) => mockNotify({ type: 'success', message }),
+    error: (message: string) => mockNotify({ type: 'error', message }),
+    warning: (message: string) => mockNotify({ type: 'warning', message }),
+    info: (message: string) => mockNotify({ type: 'info', message }),
   },
 }))
 

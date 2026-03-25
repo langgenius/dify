@@ -1,7 +1,7 @@
 import type { EventEmitter } from 'ahooks/lib/useEventEmitter'
 import type { EventEmitterValue } from '@/context/event-emitter'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { ToastContext } from '@/app/components/base/toast/context'
+import { toast } from '@/app/components/base/ui/toast'
 import { EventEmitterContext } from '@/context/event-emitter'
 import { DSLImportStatus } from '@/models/app'
 import UpdateDSLModal from '../update-dsl-modal'
@@ -16,9 +16,16 @@ class MockFileReader {
 }
 
 vi.stubGlobal('FileReader', MockFileReader as unknown as typeof FileReader)
-
-const mockNotify = vi.fn()
 const mockEmit = vi.fn()
+
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    error: vi.fn(),
+    info: vi.fn(),
+    success: vi.fn(),
+    warning: vi.fn(),
+  },
+}))
 
 const mockImportDSL = vi.fn()
 const mockImportDSLConfirm = vi.fn()
@@ -59,6 +66,7 @@ vi.mock('@/app/components/app/create-from-dsl-modal/uploader', () => ({
 }))
 
 describe('UpdateDSLModal', () => {
+  const mockToastError = vi.mocked(toast.error)
   const defaultProps = {
     onCancel: vi.fn(),
     onBackup: vi.fn(),
@@ -91,11 +99,9 @@ describe('UpdateDSLModal', () => {
     const eventEmitter = { emit: mockEmit } as unknown as EventEmitter<EventEmitterValue>
 
     return render(
-      <ToastContext.Provider value={{ notify: mockNotify, close: vi.fn() }}>
-        <EventEmitterContext.Provider value={{ eventEmitter }}>
-          <UpdateDSLModal {...props} />
-        </EventEmitterContext.Provider>
-      </ToastContext.Provider>,
+      <EventEmitterContext.Provider value={{ eventEmitter }}>
+        <UpdateDSLModal {...props} />
+      </EventEmitterContext.Provider>,
     )
   }
 
@@ -152,9 +158,7 @@ describe('UpdateDSLModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
 
     await waitFor(() => {
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'error',
-      }))
+      expect(mockToastError).toHaveBeenCalled()
     })
   })
 
@@ -233,9 +237,7 @@ describe('UpdateDSLModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
 
     await waitFor(() => {
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'error',
-      }))
+      expect(mockToastError).toHaveBeenCalled()
     })
     expect(mockImportDSL).not.toHaveBeenCalled()
 
@@ -254,9 +256,7 @@ describe('UpdateDSLModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
 
     await waitFor(() => {
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'error',
-      }))
+      expect(mockToastError).toHaveBeenCalled()
     })
   })
 
@@ -274,9 +274,7 @@ describe('UpdateDSLModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
 
     await waitFor(() => {
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'error',
-      }))
+      expect(mockToastError).toHaveBeenCalled()
     })
   })
 
@@ -305,9 +303,7 @@ describe('UpdateDSLModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'app.newApp.Confirm' }))
 
     await waitFor(() => {
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'error',
-      }))
+      expect(mockToastError).toHaveBeenCalled()
     })
   })
 
@@ -334,9 +330,7 @@ describe('UpdateDSLModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'app.newApp.Confirm' }))
 
     await waitFor(() => {
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'error',
-      }))
+      expect(mockToastError).toHaveBeenCalled()
     })
   })
 
@@ -365,9 +359,7 @@ describe('UpdateDSLModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'app.newApp.Confirm' }))
 
     await waitFor(() => {
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'error',
-      }))
+      expect(mockToastError).toHaveBeenCalled()
     })
   })
 })

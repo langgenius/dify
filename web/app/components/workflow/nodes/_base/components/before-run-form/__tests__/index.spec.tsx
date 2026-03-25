@@ -1,9 +1,15 @@
 import type { Props as FormProps } from '../form'
 import type { BeforeRunFormProps } from '../index'
 import { fireEvent, render, screen } from '@testing-library/react'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
 import BeforeRunForm from '../index'
+
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    error: vi.fn(),
+  },
+}))
 
 vi.mock('../form', () => ({
   default: ({ values }: { values: Record<string, unknown> }) => <div>{Object.keys(values).join(',')}</div>,
@@ -29,6 +35,8 @@ vi.mock('@/app/components/workflow/nodes/human-input/components/single-run-form'
 }))
 
 describe('BeforeRunForm', () => {
+  const mockToastError = vi.mocked(toast.error)
+
   const createForm = (form: Partial<FormProps>): FormProps => ({
     inputs: [],
     values: {},
@@ -66,8 +74,6 @@ describe('BeforeRunForm', () => {
   })
 
   it('should show an error toast when required fields are missing', () => {
-    const notifySpy = vi.spyOn(Toast, 'notify').mockImplementation(vi.fn())
-
     render(
       <BeforeRunForm
         {...createProps({
@@ -86,9 +92,7 @@ describe('BeforeRunForm', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'workflow.singleRun.startRun' }))
 
-    expect(notifySpy).toHaveBeenCalledWith(expect.objectContaining({
-      type: 'error',
-    }))
+    expect(mockToastError).toHaveBeenCalled()
   })
 
   it('should generate the human input form instead of running immediately', () => {
@@ -199,8 +203,6 @@ describe('BeforeRunForm', () => {
   })
 
   it('should show an error toast when json input is invalid', () => {
-    const notifySpy = vi.spyOn(Toast, 'notify').mockImplementation(vi.fn())
-
     render(
       <BeforeRunForm
         {...createProps({
@@ -219,8 +221,6 @@ describe('BeforeRunForm', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'workflow.singleRun.startRun' }))
 
-    expect(notifySpy).toHaveBeenCalledWith(expect.objectContaining({
-      type: 'error',
-    }))
+    expect(mockToastError).toHaveBeenCalled()
   })
 })
