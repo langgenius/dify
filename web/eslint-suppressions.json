@@ -6690,11 +6690,6 @@
       "count": 1
     }
   },
-  "app/components/workflow/header/header-in-restoring.tsx": {
-    "tailwindcss/no-unnecessary-whitespace": {
-      "count": 1
-    }
-  },
   "app/components/workflow/header/online-users.tsx": {
     "no-restricted-imports": {
       "count": 1
