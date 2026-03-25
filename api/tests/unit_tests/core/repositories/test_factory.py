@@ -11,9 +11,12 @@ import pytest
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
-from core.repositories.factory import DifyCoreRepositoryFactory, RepositoryImportError
-from dify_graph.repositories.workflow_execution_repository import WorkflowExecutionRepository
-from dify_graph.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
+from core.repositories.factory import (
+    DifyCoreRepositoryFactory,
+    RepositoryImportError,
+    WorkflowExecutionRepository,
+    WorkflowNodeExecutionRepository,
+)
 from libs.module_loading import import_string
 from models import Account, EndUser
 from models.enums import WorkflowRunTriggeredFrom

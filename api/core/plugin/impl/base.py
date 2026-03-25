@@ -27,14 +27,14 @@ from core.trigger.errors import (
     TriggerPluginInvokeError,
     TriggerProviderCredentialValidationError,
 )
-from dify_graph.model_runtime.errors.invoke import (
+from graphon.model_runtime.errors.invoke import (
     InvokeAuthorizationError,
     InvokeBadRequestError,
     InvokeConnectionError,
     InvokeRateLimitError,
     InvokeServerUnavailableError,
 )
-from dify_graph.model_runtime.errors.validate import CredentialsValidateFailedError
+from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
 
 plugin_daemon_inner_api_baseurl = URL(str(dify_config.PLUGIN_DAEMON_URL))
 _plugin_daemon_timeout_config = cast(

@@ -13,9 +13,9 @@ from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCa
 from core.model_manager import ModelInstance
 from core.moderation.base import ModerationError
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
-from dify_graph.file import File
-from dify_graph.model_runtime.entities.message_entities import ImagePromptMessageContent
 from extensions.ext_database import db
+from graphon.file import File
+from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 from models.model import App, Message
 
 logger = logging.getLogger(__name__)
@@ -181,7 +181,6 @@ class CompletionAppRunner(AppRunner):
             model_parameters=application_generate_entity.model_conf.parameters,
             stop=stop,
             stream=application_generate_entity.stream,
-            user=application_generate_entity.user_id,
         )
 
         # handle invoke result

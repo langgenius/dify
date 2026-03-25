@@ -28,8 +28,6 @@ from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo, WebsiteInfo
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
-from dify_graph.model_runtime.entities.model_entities import ModelType
-from dify_graph.model_runtime.errors.invoke import InvokeAuthorizationError
 from extensions.ext_database import db
 from fields.dataset_fields import dataset_fields
 from fields.document_fields import (
@@ -39,6 +37,8 @@ from fields.document_fields import (
     document_status_fields,
     document_with_segments_fields,
 )
+from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_account_with_tenant, login_required
 from models import DatasetProcessRule, Document, DocumentSegment, UploadFile
@@ -454,7 +454,7 @@ class DatasetInitApi(Resource):
             if knowledge_config.embedding_model is None or knowledge_config.embedding_model_provider is None:
                 raise ValueError("embedding model and embedding model provider are required for high quality indexing.")
             try:
-                model_manager = ModelManager()
+                model_manager = ModelManager.for_tenant(tenant_id=current_tenant_id)
                 model_manager.get_model_instance(
                     tenant_id=current_tenant_id,
                     provider=knowledge_config.embedding_model_provider,

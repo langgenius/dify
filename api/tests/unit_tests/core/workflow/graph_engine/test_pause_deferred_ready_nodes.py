@@ -4,40 +4,41 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
 
-from dify_graph.entities.workflow_start_reason import WorkflowStartReason
-from dify_graph.graph import Graph
-from dify_graph.graph_engine.command_channels.in_memory_channel import InMemoryChannel
-from dify_graph.graph_engine.config import GraphEngineConfig
-from dify_graph.graph_engine.graph_engine import GraphEngine
-from dify_graph.graph_events import (
+from core.repositories.human_input_repository import (
+    FormCreateParams,
+    HumanInputFormEntity,
+    HumanInputFormRepository,
+)
+from core.workflow.node_runtime import DifyHumanInputNodeRuntime
+from core.workflow.system_variables import build_system_variables
+from graphon.entities.workflow_start_reason import WorkflowStartReason
+from graphon.graph import Graph
+from graphon.graph_engine.command_channels.in_memory_channel import InMemoryChannel
+from graphon.graph_engine.config import GraphEngineConfig
+from graphon.graph_engine.graph_engine import GraphEngine
+from graphon.graph_events import (
     GraphRunPausedEvent,
     GraphRunStartedEvent,
     NodeRunStartedEvent,
     NodeRunSucceededEvent,
 )
-from dify_graph.model_runtime.entities.llm_entities import LLMMode
-from dify_graph.model_runtime.entities.message_entities import PromptMessageRole
-from dify_graph.nodes.end.end_node import EndNode
-from dify_graph.nodes.end.entities import EndNodeData
-from dify_graph.nodes.human_input.entities import HumanInputNodeData, UserAction
-from dify_graph.nodes.human_input.enums import HumanInputFormStatus
-from dify_graph.nodes.human_input.human_input_node import HumanInputNode
-from dify_graph.nodes.llm.entities import (
+from graphon.model_runtime.entities.llm_entities import LLMMode
+from graphon.model_runtime.entities.message_entities import PromptMessageRole
+from graphon.nodes.end.end_node import EndNode
+from graphon.nodes.end.entities import EndNodeData
+from graphon.nodes.human_input.entities import HumanInputNodeData, UserAction
+from graphon.nodes.human_input.enums import HumanInputFormStatus
+from graphon.nodes.human_input.human_input_node import HumanInputNode
+from graphon.nodes.llm.entities import (
     ContextConfig,
     LLMNodeChatModelMessage,
     LLMNodeData,
     ModelConfig,
     VisionConfig,
 )
-from dify_graph.nodes.start.entities import StartNodeData
-from dify_graph.nodes.start.start_node import StartNode
-from dify_graph.repositories.human_input_form_repository import (
-    FormCreateParams,
-    HumanInputFormEntity,
-    HumanInputFormRepository,
-)
-from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.system_variable import SystemVariable
+from graphon.nodes.start.entities import StartNodeData
+from graphon.nodes.start.start_node import StartNode
+from graphon.runtime import GraphRuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
 from tests.workflow_test_utils import build_test_graph_init_params
 
@@ -60,7 +61,7 @@ class StaticForm(HumanInputFormEntity):
         return self.form_id
 
     @property
-    def web_app_token(self) -> str | None:
+    def submission_token(self) -> str | None:
         return "token"
 
     @property
@@ -96,7 +97,7 @@ class StaticRepo(HumanInputFormRepository):
     def __init__(self, form: HumanInputFormEntity) -> None:
         self._form = form
 
-    def get_form(self, workflow_execution_id: str, node_id: str) -> HumanInputFormEntity | None:
+    def get_form(self, node_id: str) -> HumanInputFormEntity | None:
         if node_id != "human_pause":
             return None
         return self._form
@@ -107,7 +108,7 @@ class StaticRepo(HumanInputFormRepository):
 
 def _build_runtime_state() -> GraphRuntimeState:
     variable_pool = VariablePool(
-        system_variables=SystemVariable(
+        system_variables=build_system_variables(
             user_id="user",
             app_id="app",
             workflow_id="workflow",
@@ -201,6 +202,7 @@ def _build_graph(runtime_state: GraphRuntimeState, repo: HumanInputFormRepositor
         graph_init_params=graph_init_params,
         graph_runtime_state=runtime_state,
         form_repository=repo,
+        runtime=DifyHumanInputNodeRuntime(graph_init_params.run_context),
     )
 
     end_human_data = EndNodeData(title="End Human", outputs=[], desc=None)

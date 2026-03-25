@@ -8,8 +8,8 @@ from typing import Any
 
 import pytest
 
-from dify_graph.entities.workflow_node_execution import WorkflowNodeExecution
-from dify_graph.enums import BuiltinNodeTypes
+from graphon.entities.workflow_node_execution import WorkflowNodeExecution
+from graphon.enums import BuiltinNodeTypes
 
 
 class TestWorkflowNodeExecutionProcessDataTruncation:

@@ -1,7 +1,7 @@
 from openinference.semconv.trace import OpenInferenceSpanKindValues
 
 from core.ops.arize_phoenix_trace.arize_phoenix_trace import _NODE_TYPE_TO_SPAN_KIND, _get_node_span_kind
-from dify_graph.enums import BUILT_IN_NODE_TYPES, BuiltinNodeTypes
+from graphon.enums import BUILT_IN_NODE_TYPES, BuiltinNodeTypes
 
 
 class TestGetNodeSpanKind:

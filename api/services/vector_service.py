@@ -8,8 +8,8 @@ from core.rag.index_processor.constant.index_type import IndexStructureType, Ind
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.rag.models.document import AttachmentDocument, Document
-from dify_graph.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
+from graphon.model_runtime.entities.model_entities import ModelType
 from models import UploadFile
 from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentSegment, SegmentAttachmentBinding
 from models.dataset import Document as DatasetDocument
@@ -47,7 +47,7 @@ class VectorService:
                 # get embedding model instance
                 if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
                     # check embedding model setting
-                    model_manager = ModelManager()
+                    model_manager = ModelManager.for_tenant(tenant_id=dataset.tenant_id)
 
                     if dataset.embedding_model_provider:
                         embedding_model_instance = model_manager.get_model_instance(
