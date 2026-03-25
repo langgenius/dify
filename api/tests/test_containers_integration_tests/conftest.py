@@ -33,7 +33,7 @@ from extensions.ext_database import db
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-DEFAULT_SANDBOX_TEST_IMAGE = "langgenius/dify-sandbox:0.2.12"
+DEFAULT_SANDBOX_TEST_IMAGE = "langgenius/dify-sandbox:0.2.14"
 SANDBOX_TEST_IMAGE_ENV = "DIFY_SANDBOX_TEST_IMAGE"
 
 
@@ -166,9 +166,8 @@ class DifyTestContainers:
         wait_for_logs(self.redis, "Ready to accept connections", timeout=30)
         logger.info("Redis container is ready and accepting connections")
 
-        # Start Dify Sandbox container for code execution environment
-        # Dify Sandbox provides a secure environment for executing user code
-        # Use pinned version 0.2.12 to match production docker-compose configuration
+        # Start Dify Sandbox container for code execution environment.
+        # Default to the production-pinned image while allowing local overrides for debugging.
         logger.info("Initializing Dify Sandbox container...")
         sandbox_image = os.getenv(SANDBOX_TEST_IMAGE_ENV, DEFAULT_SANDBOX_TEST_IMAGE)
         self.dify_sandbox = DockerContainer(image=sandbox_image).with_network(self.network)
@@ -196,7 +195,7 @@ class DifyTestContainers:
         # Start Dify Plugin Daemon container for plugin management
         # Dify Plugin Daemon provides plugin lifecycle management and execution
         logger.info("Initializing Dify Plugin Daemon container...")
-        self.dify_plugin_daemon = DockerContainer(image="langgenius/dify-plugin-daemon:0.5.4-local").with_network(
+        self.dify_plugin_daemon = DockerContainer(image="langgenius/dify-plugin-daemon:0.5.3-local").with_network(
             self.network
         )
         self.dify_plugin_daemon.with_exposed_ports(5002)

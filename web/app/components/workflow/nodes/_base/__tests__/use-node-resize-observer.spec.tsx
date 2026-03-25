@@ -2,6 +2,9 @@ import { renderHook } from '@testing-library/react'
 import useNodeResizeObserver from '../use-node-resize-observer'
 
 describe('useNodeResizeObserver', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
   it('should observe and disconnect when enabled with a mounted node ref', () => {
     const observe = vi.fn()
     const disconnect = vi.fn()
