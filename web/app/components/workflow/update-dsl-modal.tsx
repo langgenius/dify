@@ -13,12 +13,11 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import Uploader from '@/app/components/app/create-from-dsl-modal/uploader'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
-import { ToastContext } from '@/app/components/base/toast/context'
+import { toast } from '@/app/components/base/ui/toast'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import {
@@ -54,7 +53,6 @@ const UpdateDSLModal = ({
   onImport,
 }: UpdateDSLModalProps) => {
   const { t } = useTranslation()
-  const { notify } = useContext(ToastContext)
   const appDetail = useAppStore(s => s.appDetail)
   const [currentFile, setDSLFile] = useState<File>()
   const [fileContent, setFileContent] = useState<string>()
@@ -110,17 +108,18 @@ const UpdateDSLModal = ({
   const isCreatingRef = useRef(false)
   const handleCompletedImport = useCallback(async (status: DSLImportStatus, appId?: string) => {
     if (!appId) {
-      notify({ type: 'error', message: t('common.importFailure', { ns: 'workflow' }) })
+      toast.error(t('common.importFailure', { ns: 'workflow' }))
       return
     }
 
-    handleWorkflowUpdate(appId)
+    await handleWorkflowUpdate(appId)
     onImport?.()
-    notify(getImportNotificationPayload(status, t))
+    const payload = getImportNotificationPayload(status, t)
+    toast[payload.type](payload.message, payload.children ? { description: payload.children } : undefined)
     await handleCheckPluginDependencies(appId)
     setLoading(false)
     onCancel()
-  }, [handleCheckPluginDependencies, handleWorkflowUpdate, notify, onCancel, onImport, t])
+  }, [handleCheckPluginDependencies, handleWorkflowUpdate, onCancel, onImport, t])
 
   const handlePendingImport = useCallback((id: string, importedVersion?: string | null, currentVersion?: string | null) => {
     setShow(false)
@@ -138,8 +137,10 @@ const UpdateDSLModal = ({
     if (isCreatingRef.current)
       return
     isCreatingRef.current = true
-    if (!currentFile)
+    if (!currentFile) {
+      isCreatingRef.current = false
       return
+    }
     try {
       if (appDetail && fileContent && validateDSLContent(fileContent, appDetail.mode)) {
         setLoading(true)
@@ -154,20 +155,20 @@ const UpdateDSLModal = ({
         }
         else {
           setLoading(false)
-          notify({ type: 'error', message: t('common.importFailure', { ns: 'workflow' }) })
+          toast.error(t('common.importFailure', { ns: 'workflow' }))
         }
       }
       else if (fileContent) {
-        notify({ type: 'error', message: t('common.importFailure', { ns: 'workflow' }) })
+        toast.error(t('common.importFailure', { ns: 'workflow' }))
       }
     }
     // eslint-disable-next-line unused-imports/no-unused-vars
     catch (e) {
       setLoading(false)
-      notify({ type: 'error', message: t('common.importFailure', { ns: 'workflow' }) })
+      toast.error(t('common.importFailure', { ns: 'workflow' }))
     }
     isCreatingRef.current = false
-  }, [currentFile, fileContent, notify, t, appDetail, handleCompletedImport, handlePendingImport])
+  }, [currentFile, fileContent, t, appDetail, handleCompletedImport, handlePendingImport])
 
   const onUpdateDSLConfirm: MouseEventHandler = async () => {
     try {
@@ -179,28 +180,18 @@ const UpdateDSLModal = ({
 
       const { status, app_id } = response
 
-      if (status === DSLImportStatus.COMPLETED) {
-        if (!app_id) {
-          notify({ type: 'error', message: t('common.importFailure', { ns: 'workflow' }) })
-          return
-        }
-        handleWorkflowUpdate(app_id)
-        await handleCheckPluginDependencies(app_id)
-        if (onImport)
-          onImport()
-        notify({ type: 'success', message: t('common.importSuccess', { ns: 'workflow' }) })
-        setLoading(false)
-        onCancel()
+      if (isImportCompleted(status)) {
+        await handleCompletedImport(status, app_id)
       }
       else if (status === DSLImportStatus.FAILED) {
         setLoading(false)
-        notify({ type: 'error', message: t('common.importFailure', { ns: 'workflow' }) })
+        toast.error(t('common.importFailure', { ns: 'workflow' }))
       }
     }
     // eslint-disable-next-line unused-imports/no-unused-vars
     catch (e) {
       setLoading(false)
-      notify({ type: 'error', message: t('common.importFailure', { ns: 'workflow' }) })
+      toast.error(t('common.importFailure', { ns: 'workflow' }))
     }
   }
 

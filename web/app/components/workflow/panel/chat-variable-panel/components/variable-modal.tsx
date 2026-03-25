@@ -1,10 +1,10 @@
+import type { ToastPayload } from './variable-modal.helpers'
 import type { ConversationVariable } from '@/app/components/workflow/types'
 import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import Button from '@/app/components/base/button'
-import { ToastContext } from '@/app/components/base/toast/context'
+import { toast } from '@/app/components/base/ui/toast'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { cn } from '@/utils/classnames'
@@ -34,8 +34,10 @@ const ChatVariableModal = ({
   onSave,
 }: ModalPropsType) => {
   const { t } = useTranslation()
-  const { notify } = useContext(ToastContext)
   const workflowStore = useWorkflowStore()
+  const notify = React.useCallback(({ children, message, type = 'info' }: ToastPayload) => {
+    toast[type](message, children ? { description: children } : undefined)
+  }, [])
   const {
     description,
     editInJSON,
@@ -70,7 +72,6 @@ const ChatVariableModal = ({
       return
     handleVarNameChange(e)
   }
-
   return (
     <div
       className={cn('flex h-full w-[360px] flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl', type === ChatVarType.Object && 'w-[480px]')}
