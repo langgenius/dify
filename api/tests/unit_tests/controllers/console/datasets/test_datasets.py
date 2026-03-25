@@ -1476,8 +1476,8 @@ class TestDatasetIndexingStatusApi:
                 return_value=MagicMock(all=lambda: [document]),
             ),
             patch(
-                "controllers.console.datasets.datasets.db.session.query",
-                return_value=MagicMock(where=lambda *args, **kwargs: MagicMock(count=lambda: 3)),
+                "controllers.console.datasets.datasets.db.session.scalar",
+                return_value=3,
             ),
         ):
             response, status = method(api, "dataset-1")
@@ -1526,13 +1526,6 @@ class TestDatasetIndexingStatusApi:
         document.error = None
         document.stopped_at = None
 
-        # First count = completed segments, second = total segments
-        query_mock = MagicMock()
-        query_mock.where.side_effect = [
-            MagicMock(count=lambda: 2),
-            MagicMock(count=lambda: 5),
-        ]
-
         with (
             app.test_request_context("/"),
             patch(
@@ -1544,8 +1537,8 @@ class TestDatasetIndexingStatusApi:
                 return_value=MagicMock(all=lambda: [document]),
             ),
             patch(
-                "controllers.console.datasets.datasets.db.session.query",
-                return_value=query_mock,
+                "controllers.console.datasets.datasets.db.session.scalar",
+                side_effect=[2, 5],
             ),
         ):
             response, status = method(api, "dataset-1")
@@ -1591,8 +1584,8 @@ class TestDatasetApiKeyApi:
                 return_value=(MagicMock(), "tenant-1"),
             ),
             patch(
-                "controllers.console.datasets.datasets.db.session.query",
-                return_value=MagicMock(where=lambda *args, **kwargs: MagicMock(count=lambda: 3)),
+                "controllers.console.datasets.datasets.db.session.scalar",
+                return_value=3,
             ),
             patch(
                 "controllers.console.datasets.datasets.ApiToken.generate_api_key",
@@ -1625,8 +1618,8 @@ class TestDatasetApiKeyApi:
                 return_value=(MagicMock(), "tenant-1"),
             ),
             patch(
-                "controllers.console.datasets.datasets.db.session.query",
-                return_value=MagicMock(where=lambda *args, **kwargs: MagicMock(count=lambda: 10)),
+                "controllers.console.datasets.datasets.db.session.scalar",
+                return_value=10,
             ),
         ):
             with pytest.raises(BadRequest) as exc_info:
@@ -1653,8 +1646,8 @@ class TestDatasetApiDeleteApi:
                 return_value=(MagicMock(), "tenant-1"),
             ),
             patch(
-                "controllers.console.datasets.datasets.db.session.query",
-                return_value=MagicMock(where=lambda *args, **kwargs: MagicMock(first=lambda: mock_key)),
+                "controllers.console.datasets.datasets.db.session.scalar",
+                return_value=mock_key,
             ),
             patch(
                 "controllers.console.datasets.datasets.db.session.commit",
@@ -1681,8 +1674,8 @@ class TestDatasetApiDeleteApi:
                 return_value=(MagicMock(), "tenant-1"),
             ),
             patch(
-                "controllers.console.datasets.datasets.db.session.query",
-                return_value=MagicMock(where=lambda *args, **kwargs: MagicMock(first=lambda: None)),
+                "controllers.console.datasets.datasets.db.session.scalar",
+                return_value=None,
             ),
         ):
             with pytest.raises(NotFound):
