@@ -65,7 +65,7 @@ class ExcelExtractor(BaseExtractor):
                                         value = f"[{cell.value}]({target})"
                                 # Override for percentage formatting
                                 elif isinstance(cell.value, (int, float)) and hasattr(cell, "number_format"):
-                                    number_format = cell.number_format or ""
+                                    number_format = str(cell.number_format) if cell.number_format else ""
                                     if "%" in number_format:
                                         # Extract decimal precision from format (e.g., "0.00%" -> 2, "0%" -> 0)
                                         precision = self._extract_percentage_precision(number_format)
