@@ -93,11 +93,11 @@ describe('trigger-schedule components', () => {
       const onChange = vi.fn()
       render(<OnMinuteSelector value={15} onChange={onChange} />)
 
-      const slider = screen.getByRole('slider')
+      const slider = screen.getByLabelText('workflow.nodes.triggerSchedule.onMinute')
       slider.focus()
       await user.keyboard('{ArrowRight}')
 
-      expect(onChange).toHaveBeenCalledWith(16, 0)
+      expect(onChange).toHaveBeenCalledWith(16, expect.objectContaining({ activeThumbIndex: 0 }))
     })
 
     it('should keep at least one weekday selected', async () => {

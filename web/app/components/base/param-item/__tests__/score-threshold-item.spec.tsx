@@ -14,6 +14,8 @@ describe('ScoreThresholdItem', () => {
     vi.clearAllMocks()
   })
 
+  const getSlider = () => screen.getByLabelText('appDebug.datasetConfig.score_threshold')
+
   describe('Rendering', () => {
     it('should render the translated parameter name', () => {
       render(<ScoreThresholdItem {...defaultProps} />)
@@ -32,7 +34,7 @@ describe('ScoreThresholdItem', () => {
       render(<ScoreThresholdItem {...defaultProps} />)
 
       expect(screen.getByRole('textbox')).toBeInTheDocument()
-      expect(screen.getByRole('slider')).toBeInTheDocument()
+      expect(getSlider()).toBeInTheDocument()
     })
   })
 
@@ -63,7 +65,7 @@ describe('ScoreThresholdItem', () => {
       render(<ScoreThresholdItem {...defaultProps} enable={false} />)
 
       expect(screen.getByRole('textbox')).toBeDisabled()
-      expect(screen.getByRole('slider')).toHaveAttribute('aria-disabled', 'true')
+      expect(getSlider()).toBeDisabled()
     })
   })
 
