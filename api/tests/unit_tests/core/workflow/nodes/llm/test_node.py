@@ -17,17 +17,17 @@ from core.entities.provider_entities import CustomConfiguration, SystemConfigura
 from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.workflow.system_variables import default_system_variables
-from dify_graph.entities import GraphInitParams
-from dify_graph.file import File, FileTransferMethod, FileType
-from dify_graph.model_runtime.entities.common_entities import I18nObject
-from dify_graph.model_runtime.entities.llm_entities import (
+from graphon.entities import GraphInitParams
+from graphon.file import File, FileTransferMethod, FileType
+from graphon.model_runtime.entities.common_entities import I18nObject
+from graphon.model_runtime.entities.llm_entities import (
     LLMResultChunk,
     LLMResultChunkDelta,
     LLMResultChunkWithStructuredOutput,
     LLMResultWithStructuredOutput,
     LLMUsage,
 )
-from dify_graph.model_runtime.entities.message_entities import (
+from graphon.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     ImagePromptMessageContent,
     PromptMessage,
@@ -36,7 +36,7 @@ from dify_graph.model_runtime.entities.message_entities import (
     TextPromptMessageContent,
     UserPromptMessage,
 )
-from dify_graph.model_runtime.entities.model_entities import (
+from graphon.model_runtime.entities.model_entities import (
     AIModelEntity,
     FetchFrom,
     ModelFeature,
@@ -45,11 +45,11 @@ from dify_graph.model_runtime.entities.model_entities import (
     ParameterRule,
     ParameterType,
 )
-from dify_graph.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
-from dify_graph.node_events import ModelInvokeCompletedEvent, RunRetrieverResourceEvent, StreamChunkEvent
-from dify_graph.nodes.base.entities import VariableSelector
-from dify_graph.nodes.llm import llm_utils
-from dify_graph.nodes.llm.entities import (
+from graphon.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
+from graphon.node_events import ModelInvokeCompletedEvent, RunRetrieverResourceEvent, StreamChunkEvent
+from graphon.nodes.base.entities import VariableSelector
+from graphon.nodes.llm import llm_utils
+from graphon.nodes.llm.entities import (
     ContextConfig,
     LLMNodeChatModelMessage,
     LLMNodeCompletionModelPromptTemplate,
@@ -59,14 +59,14 @@ from dify_graph.nodes.llm.entities import (
     VisionConfig,
     VisionConfigOptions,
 )
-from dify_graph.nodes.llm.exc import (
+from graphon.nodes.llm.exc import (
     InvalidContextStructureError,
     LLMNodeError,
     NoPromptFoundError,
     VariableNotFoundError,
 )
-from dify_graph.nodes.llm.file_saver import LLMFileSaver
-from dify_graph.nodes.llm.node import (
+from graphon.nodes.llm.file_saver import LLMFileSaver
+from graphon.nodes.llm.node import (
     LLMNode,
     _calculate_rest_token,
     _handle_completion_template,
@@ -74,11 +74,11 @@ from dify_graph.nodes.llm.node import (
     _handle_memory_completion_mode,
     _render_jinja2_message,
 )
-from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory
-from dify_graph.nodes.llm.runtime_protocols import PromptMessageSerializerProtocol
-from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.template_rendering import TemplateRenderError
-from dify_graph.variables import ArrayAnySegment, ArrayFileSegment, NoneSegment
+from graphon.nodes.llm.protocols import CredentialsProvider, ModelFactory
+from graphon.nodes.llm.runtime_protocols import PromptMessageSerializerProtocol
+from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.template_rendering import TemplateRenderError
+from graphon.variables import ArrayAnySegment, ArrayFileSegment, NoneSegment
 from models.provider import ProviderType
 from tests.workflow_test_utils import build_test_graph_init_params
 
@@ -988,7 +988,7 @@ def test_fetch_prompt_messages_chat_mode_appends_memory_query_and_files():
         ),
     ]
 
-    with mock.patch("dify_graph.nodes.llm.node.file_manager.to_prompt_message_content") as mock_to_prompt:
+    with mock.patch("graphon.nodes.llm.node.file_manager.to_prompt_message_content") as mock_to_prompt:
         mock_to_prompt.side_effect = prompt_content_side_effect
         prompt_messages, stop = LLMNode.fetch_prompt_messages(
             sys_query="current question",
@@ -1079,7 +1079,7 @@ def test_fetch_prompt_messages_raises_when_only_unsupported_content_remains():
 
     with (
         mock.patch(
-            "dify_graph.nodes.llm.node.file_manager.to_prompt_message_content",
+            "graphon.nodes.llm.node.file_manager.to_prompt_message_content",
             return_value=ImagePromptMessageContent(
                 url="https://example.com/file.png",
                 format="png",
@@ -1155,7 +1155,7 @@ def test_handle_memory_completion_mode_uses_prompt_message_interface():
         window=MemoryConfig.WindowConfig(enabled=True, size=3),
     )
 
-    with mock.patch("dify_graph.nodes.llm.node._calculate_rest_token", return_value=2000) as mock_rest_token:
+    with mock.patch("graphon.nodes.llm.node._calculate_rest_token", return_value=2000) as mock_rest_token:
         memory_text = _handle_memory_completion_mode(
             memory=memory,
             memory_config=memory_config,
@@ -1435,7 +1435,7 @@ def test_invoke_llm_dispatches_to_expected_model_method(structured_output_enable
 
     with (
         mock.patch.object(LLMNode, "handle_invoke_result", return_value=iter(["handled"])) as mock_handle,
-        mock.patch("dify_graph.nodes.llm.node.time.perf_counter", return_value=10.0),
+        mock.patch("graphon.nodes.llm.node.time.perf_counter", return_value=10.0),
     ):
         result = list(
             LLMNode.invoke_llm(
@@ -1497,7 +1497,7 @@ def test_handle_invoke_result_streaming_collects_text_metrics_and_structured_out
         ),
     )
 
-    with mock.patch("dify_graph.nodes.llm.node.time.perf_counter", side_effect=[2.0, 5.0]):
+    with mock.patch("graphon.nodes.llm.node.time.perf_counter", side_effect=[2.0, 5.0]):
         events = list(
             LLMNode.handle_invoke_result(
                 invoke_result=iter([first_chunk, final_chunk]),
@@ -1686,7 +1686,7 @@ def test_handle_memory_chat_mode_uses_calculated_token_budget():
     history = [UserPromptMessage(content="question")]
     memory.get_history_prompt_messages.return_value = history
 
-    with mock.patch("dify_graph.nodes.llm.node._calculate_rest_token", return_value=321) as mock_rest_token:
+    with mock.patch("graphon.nodes.llm.node._calculate_rest_token", return_value=321) as mock_rest_token:
         result = _handle_memory_chat_mode(
             memory=memory,
             memory_config=MemoryConfig(window=MemoryConfig.WindowConfig(enabled=True, size=2)),

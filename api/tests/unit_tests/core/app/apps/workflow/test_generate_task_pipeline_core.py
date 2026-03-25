@@ -45,8 +45,8 @@ from core.app.entities.task_entities import (
 )
 from core.base.tts.app_generator_tts_publisher import AudioTrunk
 from core.workflow.system_variables import build_system_variables, system_variables_to_mapping
-from dify_graph.enums import BuiltinNodeTypes, WorkflowExecutionStatus
-from dify_graph.runtime import GraphRuntimeState, VariablePool
+from graphon.enums import BuiltinNodeTypes, WorkflowExecutionStatus
+from graphon.runtime import GraphRuntimeState, VariablePool
 from models.enums import CreatorUserRole
 from models.model import AppMode, EndUser
 from tests.workflow_test_utils import build_test_variable_pool

@@ -1,4 +1,4 @@
-from dify_graph.prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
+from graphon.prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
 
 __all__ = [
     "ChatModelMessage",

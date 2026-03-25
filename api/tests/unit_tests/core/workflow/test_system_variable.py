@@ -6,9 +6,9 @@ from core.workflow.system_variables import (
     get_node_creation_preload_selectors,
     system_variables_to_mapping,
 )
-from dify_graph.file.enums import FileTransferMethod, FileType
-from dify_graph.file.models import File
-from dify_graph.nodes import BuiltinNodeTypes
+from graphon.file.enums import FileTransferMethod, FileType
+from graphon.file.models import File
+from graphon.nodes import BuiltinNodeTypes
 
 
 def test_build_system_variables_normalizes_workflow_execution_id():

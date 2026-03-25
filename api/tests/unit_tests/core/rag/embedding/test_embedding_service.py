@@ -53,9 +53,9 @@ from sqlalchemy.exc import IntegrityError
 
 from core.entities.embedding_type import EmbeddingInputType
 from core.rag.embedding.cached_embedding import CacheEmbedding
-from dify_graph.model_runtime.entities.model_entities import ModelPropertyKey
-from dify_graph.model_runtime.entities.text_embedding_entities import EmbeddingResult, EmbeddingUsage
-from dify_graph.model_runtime.errors.invoke import (
+from graphon.model_runtime.entities.model_entities import ModelPropertyKey
+from graphon.model_runtime.entities.text_embedding_entities import EmbeddingResult, EmbeddingUsage
+from graphon.model_runtime.errors.invoke import (
     InvokeAuthorizationError,
     InvokeConnectionError,
     InvokeRateLimitError,

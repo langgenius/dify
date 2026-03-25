@@ -4,7 +4,7 @@ from core.app.app_config.entities import (
     DatasetRetrieveConfigEntity,
     PromptTemplateEntity,
 )
-from dify_graph.variables.input_entities import VariableEntity, VariableEntityType
+from graphon.variables.input_entities import VariableEntity, VariableEntityType
 
 
 class TestAppConfigEntities:

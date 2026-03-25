@@ -7,9 +7,9 @@ from core.entities.knowledge_entities import PreviewDetail
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.index_processor.processor.paragraph_index_processor import ParagraphIndexProcessor
 from core.rag.models.document import AttachmentDocument, Document
-from dify_graph.model_runtime.entities.llm_entities import LLMResult, LLMUsage
-from dify_graph.model_runtime.entities.message_entities import AssistantPromptMessage, ImagePromptMessageContent
-from dify_graph.model_runtime.entities.model_entities import ModelFeature
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, ImagePromptMessageContent
+from graphon.model_runtime.entities.model_entities import ModelFeature
 
 
 class TestParagraphIndexProcessor:

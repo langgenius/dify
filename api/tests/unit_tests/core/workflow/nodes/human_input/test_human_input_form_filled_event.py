@@ -4,16 +4,16 @@ from types import SimpleNamespace
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
 from core.workflow.node_runtime import DifyHumanInputNodeRuntime
 from core.workflow.system_variables import default_system_variables
-from dify_graph.entities.graph_init_params import GraphInitParams
-from dify_graph.enums import BuiltinNodeTypes
-from dify_graph.graph_events import (
+from graphon.entities.graph_init_params import GraphInitParams
+from graphon.enums import BuiltinNodeTypes
+from graphon.graph_events import (
     NodeRunHumanInputFormFilledEvent,
     NodeRunHumanInputFormTimeoutEvent,
     NodeRunStartedEvent,
 )
-from dify_graph.nodes.human_input.enums import HumanInputFormStatus
-from dify_graph.nodes.human_input.human_input_node import HumanInputNode
-from dify_graph.runtime import GraphRuntimeState, VariablePool
+from graphon.nodes.human_input.enums import HumanInputFormStatus
+from graphon.nodes.human_input.human_input_node import HumanInputNode
+from graphon.runtime import GraphRuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
 
 

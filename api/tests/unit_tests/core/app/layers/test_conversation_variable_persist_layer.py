@@ -5,13 +5,13 @@ from unittest.mock import Mock
 from core.app.layers.conversation_variable_persist_layer import ConversationVariablePersistenceLayer
 from core.workflow.system_variables import SystemVariableKey
 from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID
-from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
-from dify_graph.graph_engine.protocols.command_channel import CommandChannel
-from dify_graph.graph_events.node import NodeRunSucceededEvent, NodeRunVariableUpdatedEvent
-from dify_graph.node_events import NodeRunResult
-from dify_graph.runtime.graph_runtime_state_protocol import ReadOnlyGraphRuntimeState
-from dify_graph.variables import StringVariable
-from dify_graph.variables.segments import Segment, StringSegment
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
+from graphon.graph_engine.protocols.command_channel import CommandChannel
+from graphon.graph_events.node import NodeRunSucceededEvent, NodeRunVariableUpdatedEvent
+from graphon.node_events import NodeRunResult
+from graphon.runtime.graph_runtime_state_protocol import ReadOnlyGraphRuntimeState
+from graphon.variables import StringVariable
+from graphon.variables.segments import Segment, StringSegment
 
 
 class MockReadOnlyVariablePool:

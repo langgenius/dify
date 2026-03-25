@@ -6,7 +6,7 @@ field is missing from the output configuration, ensuring backward compatibility
 with older workflow definitions.
 """
 
-from dify_graph.graph_events import (
+from graphon.graph_events import (
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
     NodeRunStartedEvent,

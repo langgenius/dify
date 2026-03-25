@@ -5,8 +5,8 @@ import pytest
 from sqlalchemy import delete
 
 from core.db.session_factory import session_factory
-from dify_graph.variables.segments import StringSegment
 from extensions.storage.storage_type import StorageType
+from graphon.variables.segments import StringSegment
 from models import Tenant
 from models.enums import CreatorUserRole
 from models.model import App, UploadFile
@@ -192,7 +192,7 @@ class TestDeleteDraftVariablesWithOffloadIntegration:
     @pytest.fixture
     def setup_offload_test_data(self, app_and_tenant):
         tenant, app = app_and_tenant
-        from dify_graph.variables.types import SegmentType
+        from graphon.variables.types import SegmentType
         from libs.datetime_utils import naive_utc_now
 
         with session_factory.create_session() as session:
@@ -423,7 +423,7 @@ class TestDeleteDraftVariablesSessionCommit:
     @pytest.fixture
     def setup_offload_test_data(self, app_and_tenant):
         """Create test data with offload files for session commit tests."""
-        from dify_graph.variables.types import SegmentType
+        from graphon.variables.types import SegmentType
         from libs.datetime_utils import naive_utc_now
 
         tenant, app = app_and_tenant

@@ -9,9 +9,9 @@ import pytest
 from pytest_mock import MockerFixture
 
 from constants import HIDDEN_VALUE
-from dify_graph.model_runtime.entities.common_entities import I18nObject
-from dify_graph.model_runtime.entities.model_entities import ModelType
-from dify_graph.model_runtime.entities.provider_entities import (
+from graphon.model_runtime.entities.common_entities import I18nObject
+from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.provider_entities import (
     CredentialFormSchema,
     FieldModelSchema,
     FormType,

@@ -8,15 +8,15 @@ import pytest
 from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from core.workflow.system_variables import SystemVariableKey, build_system_variables
-from dify_graph.entities.pause_reason import SchedulingPause
-from dify_graph.entities.workflow_node_execution import WorkflowNodeExecution
-from dify_graph.enums import (
+from graphon.entities.pause_reason import SchedulingPause
+from graphon.entities.workflow_node_execution import WorkflowNodeExecution
+from graphon.enums import (
     BuiltinNodeTypes,
     WorkflowExecutionStatus,
     WorkflowNodeExecutionStatus,
     WorkflowType,
 )
-from dify_graph.graph_events.graph import (
+from graphon.graph_events.graph import (
     GraphRunAbortedEvent,
     GraphRunFailedEvent,
     GraphRunPartialSucceededEvent,
@@ -24,7 +24,7 @@ from dify_graph.graph_events.graph import (
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
 )
-from dify_graph.graph_events.node import (
+from graphon.graph_events.node import (
     NodeRunExceptionEvent,
     NodeRunFailedEvent,
     NodeRunPauseRequestedEvent,
@@ -32,8 +32,8 @@ from dify_graph.graph_events.node import (
     NodeRunStartedEvent,
     NodeRunSucceededEvent,
 )
-from dify_graph.node_events import NodeRunResult
-from dify_graph.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper, VariablePool
+from graphon.node_events import NodeRunResult
+from graphon.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper, VariablePool
 
 
 class _RepoRecorder:

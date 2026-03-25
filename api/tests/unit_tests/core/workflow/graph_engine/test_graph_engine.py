@@ -10,11 +10,11 @@ import time
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
-from dify_graph.entities.base_node_data import DefaultValue, DefaultValueType
-from dify_graph.enums import ErrorStrategy
-from dify_graph.graph_engine import GraphEngine, GraphEngineConfig
-from dify_graph.graph_engine.command_channels import InMemoryChannel
-from dify_graph.graph_events import (
+from graphon.entities.base_node_data import DefaultValue, DefaultValueType
+from graphon.enums import ErrorStrategy
+from graphon.graph_engine import GraphEngine, GraphEngineConfig
+from graphon.graph_engine.command_channels import InMemoryChannel
+from graphon.graph_events import (
     GraphRunPartialSucceededEvent,
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
@@ -455,7 +455,7 @@ def test_if_else_workflow_property_diverse_inputs(query_input):
 # Tests for the Layer system
 def test_layer_system_basic():
     """Test basic layer functionality with DebugLoggingLayer."""
-    from dify_graph.graph_engine.layers import DebugLoggingLayer
+    from graphon.graph_engine.layers import DebugLoggingLayer
 
     runner = WorkflowRunner()
 
@@ -495,7 +495,7 @@ def test_layer_system_basic():
 
 def test_layer_chaining():
     """Test chaining multiple layers."""
-    from dify_graph.graph_engine.layers import DebugLoggingLayer, GraphEngineLayer
+    from graphon.graph_engine.layers import DebugLoggingLayer, GraphEngineLayer
 
     # Create a custom test layer
     class TestLayer(GraphEngineLayer):
@@ -549,7 +549,7 @@ def test_layer_chaining():
 
 def test_layer_error_handling():
     """Test that layer errors don't crash the engine."""
-    from dify_graph.graph_engine.layers import GraphEngineLayer
+    from graphon.graph_engine.layers import GraphEngineLayer
 
     # Create a layer that throws errors
     class FaultyLayer(GraphEngineLayer):
@@ -591,7 +591,7 @@ def test_layer_error_handling():
 
 def test_event_sequence_validation():
     """Test the new event sequence validation feature."""
-    from dify_graph.graph_events import NodeRunStartedEvent, NodeRunStreamChunkEvent, NodeRunSucceededEvent
+    from graphon.graph_events import NodeRunStartedEvent, NodeRunStreamChunkEvent, NodeRunSucceededEvent
 
     runner = TableTestRunner()
 
@@ -678,7 +678,7 @@ def test_event_sequence_validation():
 
 def test_event_sequence_validation_with_table_tests():
     """Test event sequence validation with table-driven tests."""
-    from dify_graph.graph_events import NodeRunStartedEvent, NodeRunStreamChunkEvent, NodeRunSucceededEvent
+    from graphon.graph_events import NodeRunStartedEvent, NodeRunStreamChunkEvent, NodeRunSucceededEvent
 
     runner = TableTestRunner()
 

@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from core.app.file_access import FileAccessControllerProtocol
 from core.workflow.file_reference import build_file_reference, parse_file_reference
-from dify_graph.file import File, FileTransferMethod
+from graphon.file import File, FileTransferMethod
 from models import ToolFile, UploadFile
 
 

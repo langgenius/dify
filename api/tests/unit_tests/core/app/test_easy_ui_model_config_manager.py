@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 from core.app.app_config.easy_ui_based_app.model_config.manager import ModelConfigManager
 from core.app.app_config.entities import ModelConfigEntity
-from dify_graph.model_runtime.entities.model_entities import ModelPropertyKey
+from graphon.model_runtime.entities.model_entities import ModelPropertyKey
 from models.provider_ids import ModelProviderID
 
 

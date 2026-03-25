@@ -27,8 +27,10 @@ from core.tools.entities.tool_entities import (
 )
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.dataset_retriever_tool import DatasetRetrieverTool
-from dify_graph.file import file_manager
-from dify_graph.model_runtime.entities import (
+from extensions.ext_database import db
+from factories import file_factory
+from graphon.file import file_manager
+from graphon.model_runtime.entities import (
     AssistantPromptMessage,
     LLMUsage,
     PromptMessage,
@@ -38,11 +40,9 @@ from dify_graph.model_runtime.entities import (
     ToolPromptMessage,
     UserPromptMessage,
 )
-from dify_graph.model_runtime.entities.message_entities import ImagePromptMessageContent, PromptMessageContentUnionTypes
-from dify_graph.model_runtime.entities.model_entities import ModelFeature
-from dify_graph.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from extensions.ext_database import db
-from factories import file_factory
+from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent, PromptMessageContentUnionTypes
+from graphon.model_runtime.entities.model_entities import ModelFeature
+from graphon.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from models.enums import CreatorUserRole
 from models.model import Conversation, Message, MessageAgentThought, MessageFile
 

@@ -2,7 +2,7 @@
 
 Stored workflow graphs and editor payloads may still use Dify-specific human
 input recipient keys. Normalize them here before handing configs to
-`dify_graph` so graph-owned models only see graph-neutral field names.
+`graphon` so graph-owned models only see graph-neutral field names.
 """
 
 from __future__ import annotations
@@ -17,10 +17,10 @@ import markdown
 from markdown.extensions.tables import TableExtension
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, TypeAdapter
 
-from dify_graph.enums import BuiltinNodeTypes
-from dify_graph.nodes.base.variable_template_parser import VariableTemplateParser
-from dify_graph.runtime import VariablePool
-from dify_graph.variables.consts import SELECTORS_LENGTH
+from graphon.enums import BuiltinNodeTypes
+from graphon.nodes.base.variable_template_parser import VariableTemplateParser
+from graphon.runtime import VariablePool
+from graphon.variables.consts import SELECTORS_LENGTH
 
 
 class DeliveryMethodType(enum.StrEnum):

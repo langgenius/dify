@@ -65,7 +65,7 @@ class TestAppParameterApi:
         mock_tenant.status = "normal"
 
         # Mock DB queries for app and tenant
-        mock_db.session.query.return_value.where.return_value.first.side_effect = [
+        mock_db.session.get.side_effect = [
             mock_app_model,
             mock_tenant,
         ]
@@ -112,7 +112,7 @@ class TestAppParameterApi:
         mock_tenant = Mock()
         mock_tenant.status = "normal"
 
-        mock_db.session.query.return_value.where.return_value.first.side_effect = [
+        mock_db.session.get.side_effect = [
             mock_app_model,
             mock_tenant,
         ]
@@ -153,7 +153,7 @@ class TestAppParameterApi:
         mock_tenant = Mock()
         mock_tenant.status = "normal"
 
-        mock_db.session.query.return_value.where.return_value.first.side_effect = [
+        mock_db.session.get.side_effect = [
             mock_app_model,
             mock_tenant,
         ]
@@ -192,7 +192,7 @@ class TestAppParameterApi:
         mock_tenant = Mock()
         mock_tenant.status = "normal"
 
-        mock_db.session.query.return_value.where.return_value.first.side_effect = [
+        mock_db.session.get.side_effect = [
             mock_app_model,
             mock_tenant,
         ]
@@ -255,7 +255,7 @@ class TestAppMetaApi:
         mock_tenant = Mock()
         mock_tenant.status = "normal"
 
-        mock_db.session.query.return_value.where.return_value.first.side_effect = [
+        mock_db.session.get.side_effect = [
             mock_app_model,
             mock_tenant,
         ]
@@ -323,7 +323,7 @@ class TestAppInfoApi:
         mock_tenant = Mock()
         mock_tenant.status = "normal"
 
-        mock_db.session.query.return_value.where.return_value.first.side_effect = [
+        mock_db.session.get.side_effect = [
             mock_app_model,
             mock_tenant,
         ]
@@ -380,7 +380,7 @@ class TestAppInfoApi:
         mock_tenant = Mock()
         mock_tenant.status = "normal"
 
-        mock_db.session.query.return_value.where.return_value.first.side_effect = [
+        mock_db.session.get.side_effect = [
             mock_app,
             mock_tenant,
         ]
@@ -426,7 +426,7 @@ class TestAppInfoApi:
         mock_tenant = Mock()
         mock_tenant.status = "normal"
 
-        mock_db.session.query.return_value.where.return_value.first.side_effect = [
+        mock_db.session.get.side_effect = [
             mock_app,
             mock_tenant,
         ]
@@ -478,7 +478,7 @@ class TestAppInfoApi:
         mock_tenant = Mock()
         mock_tenant.status = "normal"
 
-        mock_db.session.query.return_value.where.return_value.first.side_effect = [
+        mock_db.session.get.side_effect = [
             mock_app,
             mock_tenant,
         ]

@@ -8,15 +8,15 @@ from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.llm_generator.output_parser.structured_output import _parse_structured_output
 from core.model_manager import ModelInstance
 from core.workflow.system_variables import build_system_variables
-from dify_graph.enums import WorkflowNodeExecutionStatus
-from dify_graph.node_events import StreamCompletedEvent
-from dify_graph.nodes.llm.file_saver import LLMFileSaver
-from dify_graph.nodes.llm.node import LLMNode
-from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory
-from dify_graph.nodes.llm.runtime_protocols import PromptMessageSerializerProtocol
-from dify_graph.nodes.protocols import HttpClientProtocol
-from dify_graph.runtime import GraphRuntimeState, VariablePool
 from extensions.ext_database import db
+from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.node_events import StreamCompletedEvent
+from graphon.nodes.llm.file_saver import LLMFileSaver
+from graphon.nodes.llm.node import LLMNode
+from graphon.nodes.llm.protocols import CredentialsProvider, ModelFactory
+from graphon.nodes.llm.runtime_protocols import PromptMessageSerializerProtocol
+from graphon.nodes.protocols import HttpClientProtocol
+from graphon.runtime import GraphRuntimeState, VariablePool
 from tests.workflow_test_utils import build_test_graph_init_params
 
 """FOR MOCK FIXTURES, DO NOT REMOVE"""
@@ -123,8 +123,8 @@ def test_execute_llm():
         from decimal import Decimal
         from unittest.mock import MagicMock
 
-        from dify_graph.model_runtime.entities.llm_entities import LLMResult, LLMUsage
-        from dify_graph.model_runtime.entities.message_entities import AssistantPromptMessage
+        from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+        from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 
         # Create mock model instance
         mock_model_instance = MagicMock(spec=ModelInstance)
@@ -168,7 +168,7 @@ def test_execute_llm():
 
     # Mock fetch_prompt_messages to avoid database calls
     def mock_fetch_prompt_messages_1(**_kwargs):
-        from dify_graph.model_runtime.entities.message_entities import SystemPromptMessage, UserPromptMessage
+        from graphon.model_runtime.entities.message_entities import SystemPromptMessage, UserPromptMessage
 
         return [
             SystemPromptMessage(content="you are a helpful assistant. today's weather is sunny."),
@@ -239,8 +239,8 @@ def test_execute_llm_with_jinja2():
         from decimal import Decimal
         from unittest.mock import MagicMock
 
-        from dify_graph.model_runtime.entities.llm_entities import LLMResult, LLMUsage
-        from dify_graph.model_runtime.entities.message_entities import AssistantPromptMessage
+        from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+        from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 
         # Create mock model instance
         mock_model_instance = MagicMock(spec=ModelInstance)
@@ -284,7 +284,7 @@ def test_execute_llm_with_jinja2():
 
     # Mock fetch_prompt_messages to avoid database calls
     def mock_fetch_prompt_messages_2(**_kwargs):
-        from dify_graph.model_runtime.entities.message_entities import SystemPromptMessage, UserPromptMessage
+        from graphon.model_runtime.entities.message_entities import SystemPromptMessage, UserPromptMessage
 
         return [
             SystemPromptMessage(content="you are a helpful assistant. today's weather is sunny."),

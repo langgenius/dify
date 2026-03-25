@@ -13,24 +13,24 @@ from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunC
 from core.rag.data_post_processor.data_post_processor import RerankingModelDict, WeightsDict
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.workflow.file_reference import parse_file_reference
-from dify_graph.entities import GraphInitParams
-from dify_graph.entities.graph_config import NodeConfigDict
-from dify_graph.enums import (
+from graphon.entities import GraphInitParams
+from graphon.entities.graph_config import NodeConfigDict
+from graphon.enums import (
     BuiltinNodeTypes,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
-from dify_graph.model_runtime.entities.llm_entities import LLMUsage
-from dify_graph.model_runtime.utils.encoders import jsonable_encoder
-from dify_graph.node_events import NodeRunResult
-from dify_graph.nodes.base import LLMUsageTrackingMixin
-from dify_graph.nodes.base.node import Node
-from dify_graph.variables import (
+from graphon.model_runtime.entities.llm_entities import LLMUsage
+from graphon.model_runtime.utils.encoders import jsonable_encoder
+from graphon.node_events import NodeRunResult
+from graphon.nodes.base import LLMUsageTrackingMixin
+from graphon.nodes.base.node import Node
+from graphon.variables import (
     ArrayFileSegment,
     FileSegment,
     StringSegment,
 )
-from dify_graph.variables.segments import ArrayObjectSegment
+from graphon.variables.segments import ArrayObjectSegment
 
 from .entities import (
     Condition,
@@ -44,8 +44,8 @@ from .exc import (
 from .retrieval import KnowledgeRetrievalRequest, Source
 
 if TYPE_CHECKING:
-    from dify_graph.file.models import File
-    from dify_graph.runtime import GraphRuntimeState
+    from graphon.file.models import File
+    from graphon.runtime import GraphRuntimeState
 
 logger = logging.getLogger(__name__)
 

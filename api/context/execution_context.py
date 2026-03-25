@@ -1,7 +1,7 @@
 """
 Application-layer execution context adapters.
 
-Concrete context capture lives outside `dify_graph` so the graph package only
+Concrete context capture lives outside `graphon` so the graph package only
 consumes injected context managers when it needs to preserve thread-local state.
 """
 

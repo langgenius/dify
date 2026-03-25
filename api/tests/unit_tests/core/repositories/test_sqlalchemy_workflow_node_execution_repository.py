@@ -23,8 +23,8 @@ from core.repositories.sqlalchemy_workflow_node_execution_repository import (
     _find_first,
     _replace_or_append_offload,
 )
-from dify_graph.entities import WorkflowNodeExecution
-from dify_graph.enums import (
+from graphon.entities import WorkflowNodeExecution
+from graphon.enums import (
     BuiltinNodeTypes,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,

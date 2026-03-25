@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from core.plugin.impl.model import PluginModelClient
-from dify_graph.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
+from graphon.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 
 if TYPE_CHECKING:
     from core.model_manager import ModelManager

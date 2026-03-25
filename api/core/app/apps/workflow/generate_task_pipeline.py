@@ -57,10 +57,10 @@ from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTas
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.workflow.system_variables import build_system_variables
-from dify_graph.entities.workflow_start_reason import WorkflowStartReason
-from dify_graph.enums import WorkflowExecutionStatus
-from dify_graph.runtime import GraphRuntimeState
 from extensions.ext_database import db
+from graphon.entities.workflow_start_reason import WorkflowStartReason
+from graphon.enums import WorkflowExecutionStatus
+from graphon.runtime import GraphRuntimeState
 from models import Account
 from models.enums import CreatorUserRole
 from models.model import EndUser

@@ -4,7 +4,7 @@ import types
 import pytest
 
 from core.workflow.file_reference import build_file_reference
-from dify_graph.file import FILE_MODEL_IDENTITY, FileTransferMethod
+from graphon.file import FILE_MODEL_IDENTITY, FileTransferMethod
 from models.model import Conversation, Message
 
 

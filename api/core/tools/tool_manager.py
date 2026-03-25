@@ -24,8 +24,8 @@ from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.plugin_tool.tool import PluginTool
 from core.tools.utils.uuid_utils import is_valid_uuid
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
-from dify_graph.runtime.variable_pool import VariablePool
 from extensions.ext_database import db
+from graphon.runtime.variable_pool import VariablePool
 from models.provider_ids import ToolProviderID
 from services.enterprise.plugin_manager_service import PluginCredentialType
 from services.tools.mcp_tools_manage_service import MCPToolManageService
@@ -57,7 +57,7 @@ from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
 from core.tools.utils.encryption import create_provider_encrypter, create_tool_provider_encrypter
 from core.tools.workflow_as_tool.tool import WorkflowTool
-from dify_graph.model_runtime.utils.encoders import jsonable_encoder
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 from models.tools import ApiToolProvider, BuiltinToolProvider, WorkflowToolProvider
 from services.tools.tools_transform_service import ToolTransformService
 
@@ -1062,8 +1062,8 @@ class ToolManager:
         """
         Convert tool parameters type
         """
-        from dify_graph.nodes.tool.entities import ToolNodeData
-        from dify_graph.nodes.tool.exc import ToolParameterError
+        from graphon.nodes.tool.entities import ToolNodeData
+        from graphon.nodes.tool.exc import ToolParameterError
 
         runtime_parameters = {}
         for parameter in parameters:

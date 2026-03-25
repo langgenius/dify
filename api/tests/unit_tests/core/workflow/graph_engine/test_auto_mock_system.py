@@ -7,7 +7,7 @@ for workflows containing nodes that require third-party services.
 
 import pytest
 
-from dify_graph.enums import BuiltinNodeTypes
+from graphon.enums import BuiltinNodeTypes
 from tests.workflow_test_utils import build_test_graph_init_params
 
 from .test_mock_config import MockConfig, MockConfigBuilder, NodeMockConfig
@@ -201,7 +201,7 @@ def test_mock_config_builder():
 def test_mock_factory_node_type_detection():
     """Test that MockNodeFactory correctly identifies nodes to mock."""
     from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-    from dify_graph.runtime import GraphRuntimeState, VariablePool
+    from graphon.runtime import GraphRuntimeState, VariablePool
 
     from .test_mock_factory import MockNodeFactory
 
@@ -308,8 +308,8 @@ def test_workflow_without_auto_mock():
 def test_register_custom_mock_node():
     """Test registering a custom mock implementation for a node type."""
     from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-    from dify_graph.nodes.template_transform import TemplateTransformNode
-    from dify_graph.runtime import GraphRuntimeState, VariablePool
+    from graphon.nodes.template_transform import TemplateTransformNode
+    from graphon.runtime import GraphRuntimeState, VariablePool
 
     from .test_mock_factory import MockNodeFactory
 

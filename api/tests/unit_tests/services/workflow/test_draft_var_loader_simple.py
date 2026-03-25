@@ -7,10 +7,10 @@ import pytest
 from sqlalchemy import Engine
 
 from core.workflow.file_reference import build_file_reference
-from dify_graph.file.enums import FileTransferMethod, FileType
-from dify_graph.file.models import File
-from dify_graph.variables.segments import ObjectSegment, StringSegment
-from dify_graph.variables.types import SegmentType
+from graphon.file.enums import FileTransferMethod, FileType
+from graphon.file.models import File
+from graphon.variables.segments import ObjectSegment, StringSegment
+from graphon.variables.types import SegmentType
 from models.model import UploadFile
 from models.workflow import WorkflowDraftVariable, WorkflowDraftVariableFile
 from services.workflow_draft_variable_service import DraftVarLoader
@@ -163,7 +163,7 @@ class TestDraftVarLoaderSimple:
 
         with patch("services.workflow_draft_variable_service.storage") as mock_storage:
             mock_storage.load.return_value = test_json_content.encode()
-            from dify_graph.variables.segments import FloatSegment
+            from graphon.variables.segments import FloatSegment
 
             mock_segment = FloatSegment(value=test_number)
             draft_var.build_segment_from_serialized_value.return_value = mock_segment
@@ -204,7 +204,7 @@ class TestDraftVarLoaderSimple:
 
         with patch("services.workflow_draft_variable_service.storage") as mock_storage:
             mock_storage.load.return_value = test_json_content.encode()
-            from dify_graph.variables.segments import ArrayAnySegment
+            from graphon.variables.segments import ArrayAnySegment
 
             mock_segment = ArrayAnySegment(value=test_array)
             draft_var.build_segment_from_serialized_value.return_value = mock_segment

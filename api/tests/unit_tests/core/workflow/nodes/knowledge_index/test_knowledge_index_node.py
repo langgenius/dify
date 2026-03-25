@@ -16,9 +16,9 @@ from core.workflow.nodes.knowledge_index.protocols import (
     SummaryIndexServiceProtocol,
 )
 from core.workflow.system_variables import SystemVariableKey, build_system_variables
-from dify_graph.enums import WorkflowNodeExecutionStatus
-from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.variables.segments import StringSegment
+from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.variables.segments import StringSegment
 from tests.workflow_test_utils import build_test_graph_init_params
 
 

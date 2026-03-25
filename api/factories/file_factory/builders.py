@@ -11,9 +11,9 @@ from sqlalchemy import select
 
 from core.app.file_access import FileAccessControllerProtocol
 from core.workflow.file_reference import build_file_reference
-from dify_graph.file import File, FileTransferMethod, FileType, FileUploadConfig, helpers
-from dify_graph.file.file_factory import standardize_file_type
 from extensions.ext_database import db
+from graphon.file import File, FileTransferMethod, FileType, FileUploadConfig, helpers
+from graphon.file.file_factory import standardize_file_type
 from models import ToolFile, UploadFile
 
 from .common import resolve_mapping_file_id

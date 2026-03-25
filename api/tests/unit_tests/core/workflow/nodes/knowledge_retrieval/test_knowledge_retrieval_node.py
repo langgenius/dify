@@ -17,10 +17,10 @@ from core.workflow.nodes.knowledge_retrieval.exc import RateLimitExceededError
 from core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node import KnowledgeRetrievalNode
 from core.workflow.nodes.knowledge_retrieval.retrieval import RAGRetrievalProtocol, Source
 from core.workflow.system_variables import build_system_variables
-from dify_graph.enums import WorkflowNodeExecutionStatus
-from dify_graph.model_runtime.entities.llm_entities import LLMUsage
-from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.variables import StringSegment
+from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.model_runtime.entities.llm_entities import LLMUsage
+from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.variables import StringSegment
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
@@ -157,7 +157,7 @@ class TestKnowledgeRetrievalNode:
     ):
         """Test _run with query variable in single mode."""
         # Arrange
-        from dify_graph.nodes.llm.entities import ModelConfig
+        from graphon.nodes.llm.entities import ModelConfig
 
         query = "What is Python?"
         query_selector = ["start", "query"]
@@ -441,7 +441,7 @@ class TestFetchDatasetRetriever:
     ):
         """Test _fetch_dataset_retriever in single mode."""
         # Arrange
-        from dify_graph.nodes.llm.entities import ModelConfig
+        from graphon.nodes.llm.entities import ModelConfig
 
         query = "What is Python?"
         variables = {"query": query}

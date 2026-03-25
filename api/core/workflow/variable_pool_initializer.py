@@ -1,8 +1,8 @@
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from dify_graph.runtime import VariablePool
-from dify_graph.variables.variables import Variable
+from graphon.runtime import VariablePool
+from graphon.variables.variables import Variable
 
 
 def add_variables_to_pool(variable_pool: VariablePool, variables: Sequence[Variable]) -> None:

@@ -12,11 +12,11 @@ import pytest
 
 from core.repositories.celery_workflow_node_execution_repository import CeleryWorkflowNodeExecutionRepository
 from core.repositories.factory import OrderConfig
-from dify_graph.entities.workflow_node_execution import (
+from graphon.entities.workflow_node_execution import (
     WorkflowNodeExecution,
     WorkflowNodeExecutionStatus,
 )
-from dify_graph.enums import BuiltinNodeTypes
+from graphon.enums import BuiltinNodeTypes
 from libs.datetime_utils import naive_utc_now
 from models import Account, EndUser
 from models.workflow import WorkflowNodeExecutionTriggeredFrom

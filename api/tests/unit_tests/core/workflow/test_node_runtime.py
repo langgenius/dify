@@ -26,10 +26,10 @@ from core.workflow.node_runtime import (
     build_dify_llm_file_saver,
     resolve_dify_run_context,
 )
-from dify_graph.file import FileTransferMethod, FileType
-from dify_graph.model_runtime.entities.common_entities import I18nObject
-from dify_graph.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
-from dify_graph.nodes.human_input.entities import HumanInputNodeData
+from graphon.file import FileTransferMethod, FileType
+from graphon.model_runtime.entities.common_entities import I18nObject
+from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
+from graphon.nodes.human_input.entities import HumanInputNodeData
 from tests.workflow_test_utils import build_test_run_context
 
 
@@ -401,7 +401,7 @@ def test_dify_human_input_runtime_preserves_webapp_delivery_for_web_invocations(
 
 def test_build_dify_llm_file_saver_wires_runtime_adapters(monkeypatch: pytest.MonkeyPatch) -> None:
     file_saver_cls = MagicMock(return_value=sentinel.file_saver)
-    monkeypatch.setattr("dify_graph.nodes.llm.file_saver.FileSaverImpl", file_saver_cls)
+    monkeypatch.setattr("graphon.nodes.llm.file_saver.FileSaverImpl", file_saver_cls)
     http_client = MagicMock()
 
     saver = build_dify_llm_file_saver(

@@ -6,8 +6,8 @@ from pytest_mock import MockerFixture
 
 from core.entities.provider_entities import ModelSettings
 from core.provider_manager import ProviderManager
-from dify_graph.model_runtime.entities.common_entities import I18nObject
-from dify_graph.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.common_entities import I18nObject
+from graphon.model_runtime.entities.model_entities import ModelType
 from models.provider import LoadBalancingModelConfig, ProviderModelSetting, TenantDefaultModel
 from models.provider_ids import ModelProviderID
 

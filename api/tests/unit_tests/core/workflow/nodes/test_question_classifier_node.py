@@ -1,14 +1,14 @@
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
-from dify_graph.model_runtime.entities import ImagePromptMessageContent
-from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory
-from dify_graph.nodes.protocols import HttpClientProtocol
-from dify_graph.nodes.question_classifier import (
+from graphon.model_runtime.entities import ImagePromptMessageContent
+from graphon.nodes.llm.protocols import CredentialsProvider, ModelFactory
+from graphon.nodes.protocols import HttpClientProtocol
+from graphon.nodes.question_classifier import (
     QuestionClassifierNode,
     QuestionClassifierNodeData,
 )
-from dify_graph.template_rendering import Jinja2TemplateRenderer
+from graphon.template_rendering import Jinja2TemplateRenderer
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
@@ -108,11 +108,11 @@ def test_question_classifier_calculate_rest_token_uses_shared_prompt_builder(mon
     )
     fetch_prompt_messages = MagicMock(return_value=([], None))
     monkeypatch.setattr(
-        "dify_graph.nodes.question_classifier.question_classifier_node.llm_utils.fetch_prompt_messages",
+        "graphon.nodes.question_classifier.question_classifier_node.llm_utils.fetch_prompt_messages",
         fetch_prompt_messages,
     )
     monkeypatch.setattr(
-        "dify_graph.nodes.question_classifier.question_classifier_node.llm_utils.fetch_model_schema",
+        "graphon.nodes.question_classifier.question_classifier_node.llm_utils.fetch_model_schema",
         MagicMock(return_value=SimpleNamespace(model_properties={}, parameter_rules=[])),
     )
 

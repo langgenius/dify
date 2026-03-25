@@ -1,5 +1,5 @@
-from dify_graph.runtime import VariablePool
-from dify_graph.variables.segments import (
+from graphon.runtime import VariablePool
+from graphon.variables.segments import (
     BooleanSegment,
     IntegerSegment,
     NoneSegment,

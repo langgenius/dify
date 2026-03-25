@@ -24,17 +24,17 @@ from core.tools.utils.yaml_utils import _load_yaml_file
 from core.workflow.node_factory import DifyNodeFactory, get_default_root_node_id
 from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
-from dify_graph.entities.graph_init_params import GraphInitParams
-from dify_graph.graph import Graph
-from dify_graph.graph_engine import GraphEngine, GraphEngineConfig
-from dify_graph.graph_engine.command_channels import InMemoryChannel
-from dify_graph.graph_events import (
+from graphon.entities.graph_init_params import GraphInitParams
+from graphon.graph import Graph
+from graphon.graph_engine import GraphEngine, GraphEngineConfig
+from graphon.graph_engine.command_channels import InMemoryChannel
+from graphon.graph_events import (
     GraphEngineEvent,
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
 )
-from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.variables import (
+from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.variables import (
     ArrayNumberVariable,
     ArrayObjectVariable,
     ArrayStringVariable,

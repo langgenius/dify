@@ -5,8 +5,8 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.orm import sessionmaker
 
-from dify_graph.variables import StringVariable
 from extensions.ext_database import db
+from graphon.variables import StringVariable
 from models.workflow import ConversationVariable
 from services.conversation_variable_updater import ConversationVariableNotFoundError, ConversationVariableUpdater
 

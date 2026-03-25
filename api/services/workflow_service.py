@@ -27,36 +27,36 @@ from core.workflow.node_runtime import DifyHumanInputNodeRuntime, apply_dify_deb
 from core.workflow.system_variables import build_bootstrap_variables, build_system_variables, default_system_variables
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
-from dify_graph.entities import GraphInitParams, WorkflowNodeExecution
-from dify_graph.entities.graph_config import NodeConfigDict
-from dify_graph.entities.pause_reason import HumanInputRequired
-from dify_graph.enums import (
-    ErrorStrategy,
-    NodeType,
-    WorkflowNodeExecutionMetadataKey,
-    WorkflowNodeExecutionStatus,
-)
-from dify_graph.errors import WorkflowNodeRunFailedError
-from dify_graph.file import File
-from dify_graph.graph_events import GraphNodeEventBase, NodeRunFailedEvent, NodeRunSucceededEvent
-from dify_graph.node_events import NodeRunResult
-from dify_graph.nodes import BuiltinNodeTypes
-from dify_graph.nodes.base.node import Node
-from dify_graph.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, build_http_request_config
-from dify_graph.nodes.human_input.entities import HumanInputNodeData, validate_human_input_submission
-from dify_graph.nodes.human_input.enums import HumanInputFormKind
-from dify_graph.nodes.human_input.human_input_node import HumanInputNode
-from dify_graph.nodes.start.entities import StartNodeData
-from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.variable_loader import load_into_variable_pool
-from dify_graph.variables import VariableBase
-from dify_graph.variables.input_entities import VariableEntityType
-from dify_graph.variables.variables import Variable
 from enums.cloud_plan import CloudPlan
 from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from factories.file_factory import build_from_mapping, build_from_mappings
+from graphon.entities import GraphInitParams, WorkflowNodeExecution
+from graphon.entities.graph_config import NodeConfigDict
+from graphon.entities.pause_reason import HumanInputRequired
+from graphon.enums import (
+    ErrorStrategy,
+    NodeType,
+    WorkflowNodeExecutionMetadataKey,
+    WorkflowNodeExecutionStatus,
+)
+from graphon.errors import WorkflowNodeRunFailedError
+from graphon.file import File
+from graphon.graph_events import GraphNodeEventBase, NodeRunFailedEvent, NodeRunSucceededEvent
+from graphon.node_events import NodeRunResult
+from graphon.nodes import BuiltinNodeTypes
+from graphon.nodes.base.node import Node
+from graphon.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, build_http_request_config
+from graphon.nodes.human_input.entities import HumanInputNodeData, validate_human_input_submission
+from graphon.nodes.human_input.enums import HumanInputFormKind
+from graphon.nodes.human_input.human_input_node import HumanInputNode
+from graphon.nodes.start.entities import StartNodeData
+from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.variable_loader import load_into_variable_pool
+from graphon.variables import VariableBase
+from graphon.variables.input_entities import VariableEntityType
+from graphon.variables.variables import Variable
 from libs.datetime_utils import naive_utc_now
 from models import Account
 from models.human_input import HumanInputFormRecipient, RecipientType
@@ -491,7 +491,7 @@ class WorkflowService:
         :raises ValueError: If the model configuration is invalid or credentials fail policy checks
         """
         try:
-            from dify_graph.model_runtime.entities.model_entities import ModelType
+            from graphon.model_runtime.entities.model_entities import ModelType
 
             # Model instance resolution and provider status lookup must reuse the
             # same request-scoped runtime so validation does not silently split
@@ -613,7 +613,7 @@ class WorkflowService:
         :return: True if load balancing is enabled, False otherwise
         """
         try:
-            from dify_graph.model_runtime.entities.model_entities import ModelType
+            from graphon.model_runtime.entities.model_entities import ModelType
 
             # Get provider configurations
             provider_manager = create_plugin_provider_manager(tenant_id=tenant_id)
@@ -1430,7 +1430,7 @@ class WorkflowService:
         Raises:
             ValueError: If the node data format is invalid
         """
-        from dify_graph.nodes.human_input.entities import HumanInputNodeData
+        from graphon.nodes.human_input.entities import HumanInputNodeData
 
         try:
             HumanInputNodeData.model_validate(normalize_human_input_node_data_for_graph(node_data))
