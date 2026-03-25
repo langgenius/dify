@@ -86,7 +86,7 @@ class TestGitHubOAuth(BaseOAuthTest):
     @pytest.mark.parametrize(
         ("user_data", "email_data", "expected_email"),
         [
-            # User with primary email
+            # User with primary email from /user/emails (no email in profile)
             (
                 {"id": 12345, "login": "testuser", "name": "Test User"},
                 [
@@ -124,6 +124,26 @@ class TestGitHubOAuth(BaseOAuthTest):
         assert user_info.id == str(user_data["id"])
         assert user_info.name == (user_data["name"] or "")
         assert user_info.email == expected_email
+        # The profile email is absent/null, so /user/emails should be called
+        assert mock_get.call_count == 2
+
+    @patch("httpx.get", autospec=True)
+    def test_should_skip_email_endpoint_when_profile_email_present(self, mock_get, oauth):
+        """When the /user profile already contains an email, do not call /user/emails."""
+        user_response = MagicMock()
+        user_response.json.return_value = {
+            "id": 12345,
+            "login": "testuser",
+            "name": "Test User",
+            "email": "profile@example.com",
+        }
+        mock_get.return_value = user_response
+
+        user_info = oauth.get_user_info("test_token")
+
+        assert user_info.email == "profile@example.com"
+        # Only /user should be called; /user/emails should be skipped
+        mock_get.assert_called_once()
 
     @pytest.mark.parametrize(
         ("user_data", "email_data"),
@@ -155,7 +175,7 @@ class TestGitHubOAuth(BaseOAuthTest):
         user_info = oauth.get_user_info("test_token")
 
         assert user_info.id == str(user_data["id"])
-        assert user_info.email == "12345+testuser@users.noreply.github.com"
+        assert user_info.email == "12345@users.noreply.github.com"
 
     @patch("httpx.get", autospec=True)
     def test_should_use_noreply_email_when_email_endpoint_fails(self, mock_get, oauth):
@@ -172,7 +192,7 @@ class TestGitHubOAuth(BaseOAuthTest):
         user_info = oauth.get_user_info("test_token")
 
         assert user_info.id == "12345"
-        assert user_info.email == "12345+testuser@users.noreply.github.com"
+        assert user_info.email == "12345@users.noreply.github.com"
 
     @patch("httpx.get", autospec=True)
     def test_should_handle_network_errors(self, mock_get, oauth):

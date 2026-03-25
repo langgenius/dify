@@ -131,10 +131,11 @@ class GitHubOAuth(OAuth):
         response.raise_for_status()
         user_info = GITHUB_RAW_USER_INFO_ADAPTER.validate_python(_json_object(response))
 
-        # The profile email may be null when the user has "Keep my email addresses private" enabled.
-        # Fall back to the /user/emails endpoint to find a usable email address.
-        email_from_api = self._get_email_from_emails_endpoint(headers)
-        resolved_email = email_from_api or user_info.get("email") or ""
+        # Only call the /user/emails endpoint when the profile email is absent,
+        # i.e. the user has "Keep my email addresses private" enabled.
+        resolved_email = user_info.get("email") or ""
+        if not resolved_email:
+            resolved_email = self._get_email_from_emails_endpoint(headers)
 
         return {**user_info, "email": resolved_email}
 
@@ -170,10 +171,11 @@ class GitHubOAuth(OAuth):
         if not email:
             # When no email is available from the profile or /user/emails endpoint,
             # fall back to GitHub's noreply address so sign-in can still proceed.
+            # Use only the numeric ID (not the login) so the address stays stable
+            # even if the user renames their GitHub account.
             github_id = payload["id"]
-            github_login = payload["login"]
-            email = f"{github_id}+{github_login}@users.noreply.github.com"
-            logger.info("GitHub user %s has no public email; using noreply address", github_login)
+            email = f"{github_id}@users.noreply.github.com"
+            logger.info("GitHub user %s has no public email; using noreply address", payload["login"])
         return OAuthUserInfo(id=str(payload["id"]), name=str(payload.get("name") or ""), email=email)
 
 
