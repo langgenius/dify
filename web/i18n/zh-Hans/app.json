@@ -265,8 +265,6 @@
   "tracing.tracing": "追踪",
   "tracing.tracingDescription": "捕获应用程序执行的完整上下文，包括 LLM 调用、上下文、提示、HTTP 请求等，发送到第三方跟踪平台。",
   "tracing.view": "查看",
-  "tracing.weave.description": "Weave 是一个开源平台，用于评估、测试和监控大型语言模型应用程序。",
-  "tracing.weave.title": "编织",
   "typeSelector.advanced": "Chatflow",
   "typeSelector.agent": "Agent",
   "typeSelector.all": "所有类型",

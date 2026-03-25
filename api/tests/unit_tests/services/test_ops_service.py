@@ -58,7 +58,6 @@ class TestOpsService:
             ("phoenix", "https://app.phoenix.arize.com/projects/"),
             ("langsmith", "https://smith.langchain.com/"),
             ("opik", "https://www.comet.com/opik/"),
-            ("weave", "https://wandb.ai/"),
             ("aliyun", "https://arms.console.aliyun.com/"),
             ("tencent", "https://console.cloud.tencent.com/apm"),
             ("mlflow", "http://localhost:5000/"),
@@ -88,7 +87,7 @@ class TestOpsService:
     @patch("services.ops_service.db")
     @patch("services.ops_service.OpsTraceManager")
     @pytest.mark.parametrize(
-        "provider", ["arize", "phoenix", "langsmith", "opik", "weave", "aliyun", "tencent", "mlflow", "databricks"]
+        "provider", ["arize", "phoenix", "langsmith", "opik", "aliyun", "tencent", "mlflow", "databricks"]
     )
     def test_get_tracing_app_config_providers_success(self, mock_ops_trace_manager, mock_db, provider):
         # Arrange

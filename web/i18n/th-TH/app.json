@@ -265,8 +265,6 @@
   "tracing.tracing": "ติดตาม",
   "tracing.tracingDescription": "บันทึกบริบททั้งหมดของการดําเนินการของโปรเจกต์ รวมถึงการเรียก LLM, Prompt คําขอ HTTP และอื่นๆไปยังแพลตฟอร์มของของบุคคลที่สาม",
   "tracing.view": "มุมมอง",
-  "tracing.weave.description": "Weave เป็นแพลตฟอร์มโอเพนซอร์สสำหรับการประเมินผล ทดสอบ และตรวจสอบแอปพลิเคชัน LLM",
-  "tracing.weave.title": "ทอ",
   "typeSelector.advanced": "แชทโฟลว์",
   "typeSelector.agent": "ตัวแทน",
   "typeSelector.all": "ทุกประเภท",

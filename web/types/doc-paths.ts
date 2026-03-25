@@ -54,7 +54,6 @@ export type UseDifyPath =
   | '/use-dify/monitor/integrations/integrate-langsmith'
   | '/use-dify/monitor/integrations/integrate-opik'
   | '/use-dify/monitor/integrations/integrate-phoenix'
-  | '/use-dify/monitor/integrations/integrate-weave'
   | '/use-dify/monitor/logs'
   | '/use-dify/nodes/agent'
   | '/use-dify/nodes/answer'

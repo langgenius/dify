@@ -265,8 +265,6 @@
   "tracing.tracing": "Відстеження",
   "tracing.tracingDescription": "Захоплення повного контексту виконання додатку, включаючи виклики LLM, контекст, підказки, HTTP-запити та інше, на сторонню платформу відстеження.",
   "tracing.view": "Вид",
-  "tracing.weave.description": "Weave є платформою з відкритим кодом для оцінки, тестування та моніторингу LLM додатків.",
-  "tracing.weave.title": "Ткати",
   "typeSelector.advanced": "Чат",
   "typeSelector.agent": "Агент",
   "typeSelector.all": "Усі типи",

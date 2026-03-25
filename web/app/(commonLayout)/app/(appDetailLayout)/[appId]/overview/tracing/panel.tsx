@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { AliyunConfig, ArizeConfig, DatabricksConfig, LangFuseConfig, LangSmithConfig, MLflowConfig, OpikConfig, PhoenixConfig, TencentConfig, WeaveConfig } from './type'
+import type { AliyunConfig, ArizeConfig, DatabricksConfig, LangFuseConfig, LangSmithConfig, MLflowConfig, OpikConfig, PhoenixConfig, TencentConfig } from './type'
 import type { TracingStatus } from '@/models/app'
 import {
   RiArrowDownDoubleLine,
@@ -12,7 +12,7 @@ import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
-import { AliyunIcon, ArizeIcon, DatabricksIcon, LangfuseIcon, LangsmithIcon, MlflowIcon, OpikIcon, PhoenixIcon, TencentIcon, WeaveIcon } from '@/app/components/base/icons/src/public/tracing'
+import { AliyunIcon, ArizeIcon, DatabricksIcon, LangfuseIcon, LangsmithIcon, MlflowIcon, OpikIcon, PhoenixIcon, TencentIcon } from '@/app/components/base/icons/src/public/tracing'
 import Loading from '@/app/components/base/loading'
 import Toast from '@/app/components/base/toast'
 import Indicator from '@/app/components/header/indicator'
@@ -70,7 +70,6 @@ const Panel: FC = () => {
     [TracingProvider.langSmith]: LangsmithIcon,
     [TracingProvider.langfuse]: LangfuseIcon,
     [TracingProvider.opik]: OpikIcon,
-    [TracingProvider.weave]: WeaveIcon,
     [TracingProvider.aliyun]: AliyunIcon,
     [TracingProvider.mlflow]: MlflowIcon,
     [TracingProvider.databricks]: DatabricksIcon,
@@ -83,12 +82,11 @@ const Panel: FC = () => {
   const [langSmithConfig, setLangSmithConfig] = useState<LangSmithConfig | null>(null)
   const [langFuseConfig, setLangFuseConfig] = useState<LangFuseConfig | null>(null)
   const [opikConfig, setOpikConfig] = useState<OpikConfig | null>(null)
-  const [weaveConfig, setWeaveConfig] = useState<WeaveConfig | null>(null)
   const [aliyunConfig, setAliyunConfig] = useState<AliyunConfig | null>(null)
   const [mlflowConfig, setMLflowConfig] = useState<MLflowConfig | null>(null)
   const [databricksConfig, setDatabricksConfig] = useState<DatabricksConfig | null>(null)
   const [tencentConfig, setTencentConfig] = useState<TencentConfig | null>(null)
-  const hasConfiguredTracing = !!(langSmithConfig || langFuseConfig || opikConfig || weaveConfig || arizeConfig || phoenixConfig || aliyunConfig || mlflowConfig || databricksConfig || tencentConfig)
+  const hasConfiguredTracing = !!(langSmithConfig || langFuseConfig || opikConfig || arizeConfig || phoenixConfig || aliyunConfig || mlflowConfig || databricksConfig || tencentConfig)
 
   const fetchTracingConfig = async () => {
     const getArizeConfig = async () => {
@@ -116,11 +114,6 @@ const Panel: FC = () => {
       if (!OpikHasNotConfig)
         setOpikConfig(opikConfig as OpikConfig)
     }
-    const getWeaveConfig = async () => {
-      const { tracing_config: weaveConfig, has_not_configured: weaveHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.weave })
-      if (!weaveHasNotConfig)
-        setWeaveConfig(weaveConfig as WeaveConfig)
-    }
     const getAliyunConfig = async () => {
       const { tracing_config: aliyunConfig, has_not_configured: aliyunHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.aliyun })
       if (!aliyunHasNotConfig)
@@ -147,7 +140,6 @@ const Panel: FC = () => {
       getLangSmithConfig(),
       getLangFuseConfig(),
       getOpikConfig(),
-      getWeaveConfig(),
       getAliyunConfig(),
       getMLflowConfig(),
       getDatabricksConfig(),
@@ -168,8 +160,6 @@ const Panel: FC = () => {
       setLangFuseConfig(tracing_config as LangFuseConfig)
     else if (provider === TracingProvider.opik)
       setOpikConfig(tracing_config as OpikConfig)
-    else if (provider === TracingProvider.weave)
-      setWeaveConfig(tracing_config as WeaveConfig)
     else if (provider === TracingProvider.aliyun)
       setAliyunConfig(tracing_config as AliyunConfig)
     else if (provider === TracingProvider.tencent)
@@ -187,8 +177,6 @@ const Panel: FC = () => {
       setLangFuseConfig(null)
     else if (provider === TracingProvider.opik)
       setOpikConfig(null)
-    else if (provider === TracingProvider.weave)
-      setWeaveConfig(null)
     else if (provider === TracingProvider.aliyun)
       setAliyunConfig(null)
     else if (provider === TracingProvider.mlflow)
@@ -240,7 +228,6 @@ const Panel: FC = () => {
           langSmithConfig={langSmithConfig}
           langFuseConfig={langFuseConfig}
           opikConfig={opikConfig}
-          weaveConfig={weaveConfig}
           aliyunConfig={aliyunConfig}
           mlflowConfig={mlflowConfig}
           databricksConfig={databricksConfig}
@@ -279,7 +266,6 @@ const Panel: FC = () => {
           langSmithConfig={langSmithConfig}
           langFuseConfig={langFuseConfig}
           opikConfig={opikConfig}
-          weaveConfig={weaveConfig}
           aliyunConfig={aliyunConfig}
           mlflowConfig={mlflowConfig}
           databricksConfig={databricksConfig}

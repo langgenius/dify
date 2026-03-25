@@ -9,7 +9,6 @@ import type {
   PhoenixConfig,
   TencentConfig,
   TracingProvider,
-  WeaveConfig,
 } from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/type'
 import type { Dependency } from '@/app/components/plugins/types'
 import type { App, AppModeEnum, AppTemplate, SiteConfig } from '@/types/app'
@@ -121,7 +120,7 @@ export type TracingStatus = {
 
 export type TracingConfig = {
   tracing_provider: TracingProvider
-  tracing_config: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | DatabricksConfig | MLflowConfig | OpikConfig | WeaveConfig | AliyunConfig | TencentConfig
+  tracing_config: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | DatabricksConfig | MLflowConfig | OpikConfig | AliyunConfig | TencentConfig
 }
 
 export type WebhookTriggerResponse = {

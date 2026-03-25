@@ -4,7 +4,6 @@ export enum TracingProvider {
   langSmith = 'langsmith',
   langfuse = 'langfuse',
   opik = 'opik',
-  weave = 'weave',
   aliyun = 'aliyun',
   mlflow = 'mlflow',
   databricks = 'databricks',
@@ -42,15 +41,6 @@ export type OpikConfig = {
   workspace: string
   url: string
 }
-
-export type WeaveConfig = {
-  api_key: string
-  entity: string
-  project: string
-  endpoint: string
-  host: string
-}
-
 export type AliyunConfig = {
   app_name: string
   license_key: string

@@ -265,8 +265,6 @@
   "tracing.tracing": "Theo dõi",
   "tracing.tracingDescription": "Ghi lại toàn bộ ngữ cảnh thực thi ứng dụng, bao gồm các cuộc gọi LLM, ngữ cảnh, lời nhắc, yêu cầu HTTP và nhiều hơn nữa, đến một nền tảng theo dõi của bên thứ ba.",
   "tracing.view": "Cảnh",
-  "tracing.weave.description": "Weave là một nền tảng mã nguồn mở để đánh giá, thử nghiệm và giám sát các ứng dụng LLM.",
-  "tracing.weave.title": "Dệt",
   "typeSelector.advanced": "Dòng trò chuyện",
   "typeSelector.agent": "Tác nhân",
   "typeSelector.all": "Tất cả loại",

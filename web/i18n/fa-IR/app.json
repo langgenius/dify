@@ -265,8 +265,6 @@
   "tracing.tracing": "ردیابی",
   "tracing.tracingDescription": "ثبت کامل متن اجرای برنامه، از جمله تماس‌های LLM، متن، درخواست‌های HTTP و بیشتر، به یک پلتفرم ردیابی شخص ثالث.",
   "tracing.view": "مشاهده",
-  "tracing.weave.description": "ویو یک پلتفرم متن باز برای ارزیابی، آزمایش و نظارت بر برنامه‌های LLM است.",
-  "tracing.weave.title": "بافندگی",
   "typeSelector.advanced": "چت‌فلو",
   "typeSelector.agent": "نماینده",
   "typeSelector.all": "همه انواع",

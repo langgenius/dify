@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { AliyunConfig, ArizeConfig, DatabricksConfig, LangFuseConfig, LangSmithConfig, MLflowConfig, OpikConfig, PhoenixConfig, TencentConfig, WeaveConfig } from './type'
+import type { AliyunConfig, ArizeConfig, DatabricksConfig, LangFuseConfig, LangSmithConfig, MLflowConfig, OpikConfig, PhoenixConfig, TencentConfig } from './type'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
@@ -23,10 +23,10 @@ import { TracingProvider } from './type'
 type Props = {
   appId: string
   type: TracingProvider
-  payload?: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig | MLflowConfig | DatabricksConfig | TencentConfig | null
+  payload?: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | AliyunConfig | MLflowConfig | DatabricksConfig | TencentConfig | null
   onRemoved: () => void
   onCancel: () => void
-  onSaved: (payload: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig | MLflowConfig | DatabricksConfig | TencentConfig) => void
+  onSaved: (payload: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | AliyunConfig | MLflowConfig | DatabricksConfig | TencentConfig) => void
   onChosen: (provider: TracingProvider) => void
 }
 
@@ -62,14 +62,6 @@ const opikConfigTemplate = {
   project: '',
   url: '',
   workspace: '',
-}
-
-const weaveConfigTemplate = {
-  api_key: '',
-  entity: '',
-  project: '',
-  endpoint: '',
-  host: '',
 }
 
 const aliyunConfigTemplate = {
@@ -112,7 +104,7 @@ const ProviderConfigModal: FC<Props> = ({
   const isEdit = !!payload
   const isAdd = !isEdit
   const [isSaving, setIsSaving] = useState(false)
-  const [config, setConfig] = useState<ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig | MLflowConfig | DatabricksConfig | TencentConfig>((() => {
+  const [config, setConfig] = useState<ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | AliyunConfig | MLflowConfig | DatabricksConfig | TencentConfig>((() => {
     if (isEdit)
       return payload
 
@@ -143,7 +135,7 @@ const ProviderConfigModal: FC<Props> = ({
     else if (type === TracingProvider.tencent)
       return tencentConfigTemplate
 
-    return weaveConfigTemplate
+    return opikConfigTemplate
   })())
   const [isShowRemoveConfirm, {
     setTrue: showRemoveConfirm,
@@ -213,14 +205,6 @@ const ProviderConfigModal: FC<Props> = ({
     if (type === TracingProvider.opik) {
       // todo: check field validity
       // const postData = config as OpikConfig
-    }
-
-    if (type === TracingProvider.weave) {
-      const postData = config as WeaveConfig
-      if (!errorMessage && !postData.api_key)
-        errorMessage = t('errorMsg.fieldRequired', { ns: 'common', field: 'API Key' })
-      if (!errorMessage && !postData.project)
-        errorMessage = t('errorMsg.fieldRequired', { ns: 'common', field: t(`${I18N_PREFIX}.project`, { ns: 'app' }) })
     }
 
     if (type === TracingProvider.aliyun) {
@@ -421,47 +405,6 @@ const ProviderConfigModal: FC<Props> = ({
                               value={(config as TencentConfig).service_name}
                               onChange={handleConfigChange('service_name')}
                               placeholder="dify_app"
-                            />
-                          </>
-                        )}
-                        {type === TracingProvider.weave && (
-                          <>
-                            <Field
-                              label="API Key"
-                              labelClassName="!text-sm"
-                              isRequired
-                              value={(config as WeaveConfig).api_key}
-                              onChange={handleConfigChange('api_key')}
-                              placeholder={t(`${I18N_PREFIX}.placeholder`, { ns: 'app', key: 'API Key' })!}
-                            />
-                            <Field
-                              label={t(`${I18N_PREFIX}.project`, { ns: 'app' })!}
-                              labelClassName="!text-sm"
-                              isRequired
-                              value={(config as WeaveConfig).project}
-                              onChange={handleConfigChange('project')}
-                              placeholder={t(`${I18N_PREFIX}.placeholder`, { ns: 'app', key: t(`${I18N_PREFIX}.project`, { ns: 'app' }) })!}
-                            />
-                            <Field
-                              label="Entity"
-                              labelClassName="!text-sm"
-                              value={(config as WeaveConfig).entity}
-                              onChange={handleConfigChange('entity')}
-                              placeholder={t(`${I18N_PREFIX}.placeholder`, { ns: 'app', key: 'Entity' })!}
-                            />
-                            <Field
-                              label="Endpoint"
-                              labelClassName="!text-sm"
-                              value={(config as WeaveConfig).endpoint}
-                              onChange={handleConfigChange('endpoint')}
-                              placeholder="https://trace.wandb.ai/"
-                            />
-                            <Field
-                              label="Host"
-                              labelClassName="!text-sm"
-                              value={(config as WeaveConfig).host}
-                              onChange={handleConfigChange('host')}
-                              placeholder="https://api.wandb.ai"
                             />
                           </>
                         )}

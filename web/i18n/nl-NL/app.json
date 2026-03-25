@@ -265,8 +265,6 @@
   "tracing.tracing": "Tracing",
   "tracing.tracingDescription": "Capture the full context of app execution, including LLM calls, context, prompts, HTTP requests, and more, to a third-party tracing platform.",
   "tracing.view": "View",
-  "tracing.weave.description": "Weave is an open-source platform for evaluating, testing, and monitoring LLM applications.",
-  "tracing.weave.title": "Weave",
   "typeSelector.advanced": "Chatflow",
   "typeSelector.agent": "Agent",
   "typeSelector.all": "All Types ",

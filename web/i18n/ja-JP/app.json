@@ -265,8 +265,6 @@
   "tracing.tracing": "追跡",
   "tracing.tracingDescription": "LLM の呼び出し、コンテキスト、プロンプト、HTTP リクエストなど、アプリケーション実行の全ての文脈をサードパーティのトレースプラットフォームで取り込みます。",
   "tracing.view": "見る",
-  "tracing.weave.description": "Weave は、LLM アプリケーションを評価、テスト、および監視するためのオープンソースプラットフォームです。",
-  "tracing.weave.title": "織る",
   "typeSelector.advanced": "チャットフロー",
   "typeSelector.agent": "エージェント",
   "typeSelector.all": "すべてのタイプ",

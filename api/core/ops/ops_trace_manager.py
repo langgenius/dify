@@ -76,16 +76,6 @@ class OpsTraceProviderConfigMap(collections.UserDict[str, dict[str, Any]]):
                     "trace_instance": OpikDataTrace,
                 }
 
-            case TracingProviderEnum.WEAVE:
-                from core.ops.entities.config_entity import WeaveConfig
-                from core.ops.weave_trace.weave_trace import WeaveDataTrace
-
-                return {
-                    "config_class": WeaveConfig,
-                    "secret_keys": ["api_key"],
-                    "other_keys": ["project", "entity", "endpoint", "host"],
-                    "trace_instance": WeaveDataTrace,
-                }
             case TracingProviderEnum.ARIZE:
                 from core.ops.arize_phoenix_trace.arize_phoenix_trace import ArizePhoenixDataTrace
                 from core.ops.entities.config_entity import ArizeConfig

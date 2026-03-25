@@ -265,8 +265,6 @@
   "tracing.tracing": "ट्रेसिंग",
   "tracing.tracingDescription": "एप्लिकेशन निष्पादन का पूरा संदर्भ कैप्चर करें, जिसमें LLM कॉल, संदर्भ, प्रॉम्प्ट्स, HTTP अनुरोध और अधिक शामिल हैं, एक तृतीय-पक्ष ट्रेसिंग प्लेटफ़ॉर्म पर।",
   "tracing.view": "देखना",
-  "tracing.weave.description": "वीव एक ओपन-सोर्स प्लेटफ़ॉर्म है जो LLM अनुप्रयोगों का मूल्यांकन, परीक्षण और निगरानी करने के लिए है।",
-  "tracing.weave.title": "बुनना",
   "typeSelector.advanced": "चैटफ्लो",
   "typeSelector.agent": "एजेंट",
   "typeSelector.all": "सभी प्रकार",

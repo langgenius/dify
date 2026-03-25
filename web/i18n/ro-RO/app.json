@@ -265,8 +265,6 @@
   "tracing.tracing": "Urmărire",
   "tracing.tracingDescription": "Captează contextul complet al execuției aplicației, inclusiv apelurile LLM, context, prompt-uri, cereri HTTP și altele, către o platformă de urmărire terță.",
   "tracing.view": "Vedere",
-  "tracing.weave.description": "Weave este o platformă open-source pentru evaluarea, testarea și monitorizarea aplicațiilor LLM.",
-  "tracing.weave.title": "Împletește",
   "typeSelector.advanced": "Fluxul de chat",
   "typeSelector.agent": "Agent",
   "typeSelector.all": "TOATE Tipurile",

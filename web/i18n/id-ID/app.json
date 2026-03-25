@@ -265,8 +265,6 @@
   "tracing.tracing": "Menelusuri",
   "tracing.tracingDescription": "Tangkap konteks lengkap eksekusi aplikasi, termasuk panggilan LLM, konteks, perintah, permintaan HTTP, dan lainnya, ke platform pelacakan pihak ketiga.",
   "tracing.view": "Melihat",
-  "tracing.weave.description": "Weave adalah platform sumber terbuka untuk mengevaluasi, menguji, dan memantau aplikasi LLM.",
-  "tracing.weave.title": "Weave",
   "typeSelector.advanced": "Alur obrolan",
   "typeSelector.agent": "Agen",
   "typeSelector.all": "Semua Jenis",

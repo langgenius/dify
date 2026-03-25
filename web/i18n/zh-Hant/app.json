@@ -265,8 +265,6 @@
   "tracing.tracing": "追蹤",
   "tracing.tracingDescription": "捕獲應用程式執行的完整上下文，包括 LLM 調用、上下文、提示、HTTP 請求等，到第三方追蹤平台。",
   "tracing.view": "查看",
-  "tracing.weave.description": "Weave 是一個開源平台，用於評估、測試和監控大型語言模型應用程序。",
-  "tracing.weave.title": "編織",
   "typeSelector.advanced": "聊天流",
   "typeSelector.agent": "Agent",
   "typeSelector.all": "所有類型",

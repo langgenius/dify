@@ -265,8 +265,6 @@
   "tracing.tracing": "Sledenje",
   "tracing.tracingDescription": "Zajem celotnega konteksta izvajanja aplikacije, vključno s klici LLM, kontekstom, pozivi, zahtevami HTTP in še več, na platformo za sledenje tretje osebe.",
   "tracing.view": "Ogled",
-  "tracing.weave.description": "Weave je odprtokodna platforma za vrednotenje, testiranje in spremljanje aplikacij LLM.",
-  "tracing.weave.title": "Tkanje",
   "typeSelector.advanced": "Tok klepeta",
   "typeSelector.agent": "Agent",
   "typeSelector.all": "VSE VRSTE",

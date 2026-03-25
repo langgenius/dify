@@ -265,8 +265,6 @@
   "tracing.tracing": "Nachverfolgung",
   "tracing.tracingDescription": "Erfassung des vollständigen Kontexts der Anwendungsausführung, einschließlich LLM-Aufrufe, Kontext, Prompts, HTTP-Anfragen und mehr, auf einer Nachverfolgungsplattform von Drittanbietern.",
   "tracing.view": "Ansehen",
-  "tracing.weave.description": "Weave ist eine Open-Source-Plattform zur Bewertung, Testung und Überwachung von LLM-Anwendungen.",
-  "tracing.weave.title": "Weben",
   "typeSelector.advanced": "Chatflow",
   "typeSelector.agent": "Agent",
   "typeSelector.all": "ALLE Typen",

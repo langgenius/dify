@@ -265,8 +265,6 @@
   "tracing.tracing": "تتبع",
   "tracing.tracingDescription": "التقاط السياق الكامل لتنفيذ التطبيق، بما في ذلك مكالمات LLM، والسياق، والمطالبات، وطلبات HTTP، والمزيد، إلى منصة تتبع تابعة لجهة خارجية.",
   "tracing.view": "عرض",
-  "tracing.weave.description": "Weave هي منصة مفتوحة المصدر لتقييم واختبار ومراقبة تطبيقات LLM.",
-  "tracing.weave.title": "Weave",
   "typeSelector.advanced": "Chatflow",
   "typeSelector.agent": "Agent",
   "typeSelector.all": "كل الأنواع",

@@ -11,7 +11,6 @@ class TracingProviderEnum(StrEnum):
     LANGFUSE = "langfuse"
     LANGSMITH = "langsmith"
     OPIK = "opik"
-    WEAVE = "weave"
     ALIYUN = "aliyun"
     MLFLOW = "mlflow"
     DATABRICKS = "databricks"
@@ -143,31 +142,6 @@ class OpikConfig(BaseTracingConfig):
     @classmethod
     def url_validator(cls, v, info: ValidationInfo):
         return validate_url_with_path(v, "https://www.comet.com/opik/api/", required_suffix="/api/")
-
-
-class WeaveConfig(BaseTracingConfig):
-    """
-    Model class for Weave tracing config.
-    """
-
-    api_key: str
-    entity: str | None = None
-    project: str
-    endpoint: str = "https://trace.wandb.ai"
-    host: str | None = None
-
-    @field_validator("endpoint")
-    @classmethod
-    def endpoint_validator(cls, v, info: ValidationInfo):
-        # Weave only allows HTTPS for endpoint
-        return validate_url(v, "https://trace.wandb.ai", allowed_schemes=("https",))
-
-    @field_validator("host")
-    @classmethod
-    def host_validator(cls, v, info: ValidationInfo):
-        if v is not None and v.strip() != "":
-            return validate_url(v, v, allowed_schemes=("https", "http"))
-        return v
 
 
 class AliyunConfig(BaseTracingConfig):

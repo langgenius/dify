@@ -265,8 +265,6 @@
   "tracing.tracing": "Tracciamento",
   "tracing.tracingDescription": "Cattura il contesto completo dell'esecuzione dell'app, incluse chiamate LLM, contesto, prompt, richieste HTTP e altro, su una piattaforma di tracciamento di terze parti.",
   "tracing.view": "Vista",
-  "tracing.weave.description": "Weave è una piattaforma open-source per valutare, testare e monitorare le applicazioni LLM.",
-  "tracing.weave.title": "Intrecciare",
   "typeSelector.advanced": "Flusso di chat",
   "typeSelector.agent": "Agente",
   "typeSelector.all": "TUTTI I Tipi",

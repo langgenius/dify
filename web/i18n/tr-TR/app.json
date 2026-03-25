@@ -265,8 +265,6 @@
   "tracing.tracing": "İzleme",
   "tracing.tracingDescription": "Uygulama yürütmesinin tam bağlamını, LLM çağrıları, bağlam, promptlar, HTTP istekleri ve daha fazlası dahil olmak üzere üçüncü taraf izleme platformuna yakalama.",
   "tracing.view": "Görünüm",
-  "tracing.weave.description": "Weave, LLM uygulamalarını değerlendirmek, test etmek ve izlemek için açık kaynaklı bir platformdur.",
-  "tracing.weave.title": "Dokuma",
   "typeSelector.advanced": "Sohbet akışı",
   "typeSelector.agent": "Agent",
   "typeSelector.all": "All Types",
