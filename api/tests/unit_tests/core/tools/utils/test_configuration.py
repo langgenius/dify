@@ -110,7 +110,7 @@ def test_encrypt_tool_parameters():
     assert encrypted["plain"] == "x"
 
 
-def test_decrypt_tool_parameters_cache_hit_and_miss():
+def test_decrypt_tool_parameters_cache_hit_and_miss(monkeypatch):
     manager = _build_manager()
 
     with (
@@ -139,7 +139,7 @@ def test_delete_tool_parameters_cache():
     mock_delete.assert_called_once()
 
 
-def test_configuration_manager_decrypt_suppresses_errors():
+def test_configuration_manager_decrypt_suppresses_errors(monkeypatch):
     manager = _build_manager()
     with (
         patch.object(ToolParameterCache, "get", return_value=None),

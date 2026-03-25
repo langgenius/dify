@@ -526,8 +526,8 @@ class TestDatasetDocumentSegmentUpdateApi:
                 return_value=document,
             ),
             patch(
-                "controllers.console.datasets.datasets_segments.db.session.query",
-                return_value=MagicMock(where=lambda *a, **k: MagicMock(first=lambda: segment)),
+                "controllers.console.datasets.datasets_segments.db.session.scalar",
+                return_value=segment,
             ),
             patch(
                 "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_permission",
@@ -621,8 +621,8 @@ class TestDatasetDocumentSegmentBatchImportApi:
                 return_value=MagicMock(),
             ),
             patch(
-                "controllers.console.datasets.datasets_segments.db.session.query",
-                return_value=MagicMock(where=lambda *a, **k: MagicMock(first=lambda: upload_file)),
+                "controllers.console.datasets.datasets_segments.db.session.scalar",
+                return_value=upload_file,
             ),
             patch(
                 "controllers.console.datasets.datasets_segments.redis_client.setnx",
@@ -706,8 +706,8 @@ class TestDatasetDocumentSegmentBatchImportApi:
                 return_value=MagicMock(),
             ),
             patch(
-                "controllers.console.datasets.datasets_segments.db.session.query",
-                return_value=MagicMock(where=lambda *a, **k: MagicMock(first=lambda: None)),
+                "controllers.console.datasets.datasets_segments.db.session.scalar",
+                return_value=None,
             ),
         ):
             with pytest.raises(NotFound):
@@ -738,8 +738,8 @@ class TestDatasetDocumentSegmentBatchImportApi:
                 return_value=MagicMock(),
             ),
             patch(
-                "controllers.console.datasets.datasets_segments.db.session.query",
-                return_value=MagicMock(where=lambda *a, **k: MagicMock(first=lambda: upload_file)),
+                "controllers.console.datasets.datasets_segments.db.session.scalar",
+                return_value=upload_file,
             ),
         ):
             with pytest.raises(ValueError):
@@ -770,8 +770,8 @@ class TestDatasetDocumentSegmentBatchImportApi:
                 return_value=MagicMock(),
             ),
             patch(
-                "controllers.console.datasets.datasets_segments.db.session.query",
-                return_value=MagicMock(where=lambda *a, **k: MagicMock(first=lambda: upload_file)),
+                "controllers.console.datasets.datasets_segments.db.session.scalar",
+                return_value=upload_file,
             ),
             patch(
                 "controllers.console.datasets.datasets_segments.redis_client.setnx",
@@ -831,8 +831,8 @@ class TestChildChunkAddApi:
                 return_value=document,
             ),
             patch(
-                "controllers.console.datasets.datasets_segments.db.session.query",
-                return_value=MagicMock(where=lambda *a, **k: MagicMock(first=lambda: segment)),
+                "controllers.console.datasets.datasets_segments.db.session.scalar",
+                return_value=segment,
             ),
             patch(
                 "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_permission",
@@ -880,8 +880,8 @@ class TestChildChunkAddApi:
                 return_value=document,
             ),
             patch(
-                "controllers.console.datasets.datasets_segments.db.session.query",
-                return_value=MagicMock(where=lambda *a, **k: MagicMock(first=lambda: segment)),
+                "controllers.console.datasets.datasets_segments.db.session.scalar",
+                return_value=segment,
             ),
             patch(
                 "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_permission",
@@ -924,11 +924,8 @@ class TestChildChunkUpdateApi:
                 return_value=document,
             ),
             patch(
-                "controllers.console.datasets.datasets_segments.db.session.query",
-                side_effect=[
-                    MagicMock(where=lambda *a, **k: MagicMock(first=lambda: segment)),
-                    MagicMock(where=lambda *a, **k: MagicMock(first=lambda: child_chunk)),
-                ],
+                "controllers.console.datasets.datasets_segments.db.session.scalar",
+                side_effect=[segment, child_chunk],
             ),
             patch(
                 "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_permission",
@@ -970,11 +967,8 @@ class TestChildChunkUpdateApi:
                 return_value=document,
             ),
             patch(
-                "controllers.console.datasets.datasets_segments.db.session.query",
-                side_effect=[
-                    MagicMock(where=lambda *a, **k: MagicMock(first=lambda: segment)),
-                    MagicMock(where=lambda *a, **k: MagicMock(first=lambda: child_chunk)),
-                ],
+                "controllers.console.datasets.datasets_segments.db.session.scalar",
+                side_effect=[segment, child_chunk],
             ),
             patch(
                 "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_permission",
@@ -1180,8 +1174,8 @@ class TestSegmentOperationCases:
                 return_value=document,
             ),
             patch(
-                "controllers.console.datasets.datasets_segments.db.session.query",
-                return_value=MagicMock(where=lambda *a, **k: MagicMock(first=lambda: upload_file)),
+                "controllers.console.datasets.datasets_segments.db.session.scalar",
+                return_value=upload_file,
             ),
         ):
             with pytest.raises(NotFound):
@@ -1215,8 +1209,8 @@ class TestSegmentOperationCases:
                 return_value=document,
             ),
             patch(
-                "controllers.console.datasets.datasets_segments.db.session.query",
-                return_value=MagicMock(where=lambda *a, **k: MagicMock(first=lambda: upload_file)),
+                "controllers.console.datasets.datasets_segments.db.session.scalar",
+                return_value=upload_file,
             ),
             patch(
                 "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_permission",

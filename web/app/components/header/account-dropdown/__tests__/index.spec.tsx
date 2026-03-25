@@ -69,6 +69,7 @@ vi.mock('@/context/i18n', () => ({
 const { mockConfig, mockEnv } = vi.hoisted(() => ({
   mockConfig: {
     IS_CLOUD_EDITION: false,
+    AMPLITUDE_API_KEY: '',
     ZENDESK_WIDGET_KEY: '',
     SUPPORT_EMAIL_ADDRESS: '',
   },
@@ -80,6 +81,8 @@ const { mockConfig, mockEnv } = vi.hoisted(() => ({
 }))
 vi.mock('@/config', () => ({
   get IS_CLOUD_EDITION() { return mockConfig.IS_CLOUD_EDITION },
+  get AMPLITUDE_API_KEY() { return mockConfig.AMPLITUDE_API_KEY },
+  get isAmplitudeEnabled() { return mockConfig.IS_CLOUD_EDITION && !!mockConfig.AMPLITUDE_API_KEY },
   get ZENDESK_WIDGET_KEY() { return mockConfig.ZENDESK_WIDGET_KEY },
   get SUPPORT_EMAIL_ADDRESS() { return mockConfig.SUPPORT_EMAIL_ADDRESS },
   IS_DEV: false,

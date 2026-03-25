@@ -13,6 +13,10 @@ import pytest
 from services.plugin.oauth_service import OAuthProxyService
 
 
+def _oauth_proxy_setex_calls(redis_client) -> list:
+    return [call for call in redis_client.setex.call_args_list if call.args[0].startswith("oauth_proxy_context:")]
+
+
 class TestCreateProxyContext:
     def test_stores_context_in_redis_with_ttl(self):
         context_id = OAuthProxyService.create_proxy_context(
@@ -22,8 +26,9 @@ class TestCreateProxyContext:
         assert context_id  # non-empty UUID string
         from extensions.ext_redis import redis_client
 
-        redis_client.setex.assert_called_once()
-        call_args = redis_client.setex.call_args
+        oauth_calls = _oauth_proxy_setex_calls(redis_client)
+        assert len(oauth_calls) == 1
+        call_args = oauth_calls[0]
         key = call_args[0][0]
         ttl = call_args[0][1]
         stored_data = json.loads(call_args[0][2])

@@ -1,6 +1,5 @@
 import type { GitHubRepoReleaseResponse } from '../types'
-import type { IToastProps } from '@/app/components/base/toast'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { GITHUB_ACCESS_TOKEN } from '@/config'
 import { uploadGitHub } from '@/service/plugins'
 import { compareVersion, getLatestVersion } from '@/utils/semver'
@@ -37,16 +36,10 @@ export const useGitHubReleases = () => {
     }
     catch (error) {
       if (error instanceof Error) {
-        Toast.notify({
-          type: 'error',
-          message: error.message,
-        })
+        toast.error(error.message)
       }
       else {
-        Toast.notify({
-          type: 'error',
-          message: 'Failed to fetch repository releases',
-        })
+        toast.error('Failed to fetch repository releases')
       }
       return []
     }
@@ -54,7 +47,7 @@ export const useGitHubReleases = () => {
 
   const checkForUpdates = (fetchedReleases: GitHubRepoReleaseResponse[], currentVersion: string) => {
     let needUpdate = false
-    const toastProps: IToastProps = {
+    const toastProps: { type?: 'success' | 'error' | 'info' | 'warning', message: string } = {
       type: 'info',
       message: 'No new version available',
     }
@@ -99,10 +92,7 @@ export const useGitHubUpload = () => {
       return GitHubPackage
     }
     catch (error) {
-      Toast.notify({
-        type: 'error',
-        message: 'Error uploading package',
-      })
+      toast.error('Error uploading package')
       throw error
     }
   }

@@ -10,7 +10,7 @@ import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { getProcessedFiles } from '@/app/components/base/file-uploader/utils'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import SingleRunForm from '@/app/components/workflow/nodes/human-input/components/single-run-form'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
@@ -126,10 +126,7 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
       })
     })
     if (errMsg) {
-      Toast.notify({
-        message: errMsg,
-        type: 'error',
-      })
+      toast.error(errMsg)
       return
     }
 
@@ -147,10 +144,7 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
       })
     })
     if (parseErrorJsonField) {
-      Toast.notify({
-        message: t('errorMsg.invalidJson', { ns: 'workflow', field: parseErrorJsonField }),
-        type: 'error',
-      })
+      toast.error(t('errorMsg.invalidJson', { ns: 'workflow', field: parseErrorJsonField }))
       return
     }
 

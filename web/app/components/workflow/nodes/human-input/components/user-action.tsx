@@ -7,7 +7,7 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import ButtonStyleDropdown from './button-style-dropdown'
 
 const i18nPrefix = 'nodes.humanInput'
@@ -47,14 +47,14 @@ const UserActionItem: FC<UserActionItemProps> = ({
       .join('')
 
     if (sanitized !== withUnderscores) {
-      Toast.notify({ type: 'error', message: t(`${i18nPrefix}.userActions.actionIdFormatTip`, { ns: 'workflow' }) })
+      toast.error(t(`${i18nPrefix}.userActions.actionIdFormatTip`, { ns: 'workflow' }))
       return
     }
 
     // Limit to 20 characters
     if (sanitized.length > ACTION_ID_MAX_LENGTH) {
       sanitized = sanitized.slice(0, ACTION_ID_MAX_LENGTH)
-      Toast.notify({ type: 'error', message: t(`${i18nPrefix}.userActions.actionIdTooLong`, { ns: 'workflow', maxLength: ACTION_ID_MAX_LENGTH }) })
+      toast.error(t(`${i18nPrefix}.userActions.actionIdTooLong`, { ns: 'workflow', maxLength: ACTION_ID_MAX_LENGTH }))
     }
 
     if (sanitized)
@@ -65,7 +65,7 @@ const UserActionItem: FC<UserActionItemProps> = ({
     let value = e.target.value
     if (value.length > BUTTON_TEXT_MAX_LENGTH) {
       value = value.slice(0, BUTTON_TEXT_MAX_LENGTH)
-      Toast.notify({ type: 'error', message: t(`${i18nPrefix}.userActions.buttonTextTooLong`, { ns: 'workflow', maxLength: BUTTON_TEXT_MAX_LENGTH }) })
+      toast.error(t(`${i18nPrefix}.userActions.buttonTextTooLong`, { ns: 'workflow', maxLength: BUTTON_TEXT_MAX_LENGTH }))
     }
     onChange({ ...data, title: value })
   }

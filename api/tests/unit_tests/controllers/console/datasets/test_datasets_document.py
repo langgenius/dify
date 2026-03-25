@@ -140,8 +140,8 @@ class TestDatasetDocumentListApi:
                 return_value=pagination,
             ),
             patch(
-                "controllers.console.datasets.datasets_document.db.session.query",
-                return_value=MagicMock(where=lambda *a, **k: MagicMock(count=count_mock)),
+                "controllers.console.datasets.datasets_document.db.session.scalar",
+                return_value=2,
             ),
             patch(
                 "controllers.console.datasets.datasets_document.DocumentService.enrich_documents_with_summary_index_status",
@@ -700,10 +700,8 @@ class TestDocumentPipelineExecutionLogApi:
                 return_value=MagicMock(),
             ),
             patch(
-                "controllers.console.datasets.datasets_document.db.session.query",
-                return_value=MagicMock(
-                    filter_by=lambda **k: MagicMock(order_by=lambda *a: MagicMock(first=lambda: log))
-                ),
+                "controllers.console.datasets.datasets_document.db.session.scalar",
+                return_value=log,
             ),
         ):
             response, status = method(api, "ds-1", "doc-1")
@@ -827,15 +825,12 @@ class TestDocumentIndexingEstimateApi:
             dataset_process_rule=None,
         )
 
-        query_mock = MagicMock()
-        query_mock.where.return_value.first.return_value = None
-
         with (
             app.test_request_context("/"),
             patch.object(api, "get_document", return_value=document),
             patch(
-                "controllers.console.datasets.datasets_document.db.session.query",
-                return_value=query_mock,
+                "controllers.console.datasets.datasets_document.db.session.scalar",
+                return_value=None,
             ),
         ):
             with pytest.raises(NotFound):
@@ -863,10 +858,8 @@ class TestDocumentIndexingEstimateApi:
             app.test_request_context("/"),
             patch.object(api, "get_document", return_value=document),
             patch(
-                "controllers.console.datasets.datasets_document.db.session.query",
-                return_value=MagicMock(
-                    where=MagicMock(return_value=MagicMock(first=MagicMock(return_value=upload_file)))
-                ),
+                "controllers.console.datasets.datasets_document.db.session.scalar",
+                return_value=upload_file,
             ),
             patch(
                 "controllers.console.datasets.datasets_document.ExtractSetting",
@@ -1239,12 +1232,8 @@ class TestDocumentPermissionCases:
                 return_value=None,
             ),
             patch(
-                "controllers.console.datasets.datasets_document.db.session.query",
-                return_value=MagicMock(
-                    where=lambda *a: MagicMock(
-                        order_by=lambda *b: MagicMock(limit=lambda n: MagicMock(one_or_none=lambda: process_rule))
-                    )
-                ),
+                "controllers.console.datasets.datasets_document.db.session.scalar",
+                return_value=process_rule,
             ),
         ):
             result = method(api)
@@ -1364,8 +1353,8 @@ class TestDocumentIndexingEdgeCases:
             app.test_request_context("/"),
             patch.object(api, "get_document", return_value=document),
             patch(
-                "controllers.console.datasets.datasets_document.db.session.query",
-                return_value=MagicMock(where=lambda *a: MagicMock(first=lambda: upload_file)),
+                "controllers.console.datasets.datasets_document.db.session.scalar",
+                return_value=upload_file,
             ),
             patch(
                 "controllers.console.datasets.datasets_document.ExtractSetting",
