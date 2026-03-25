@@ -246,6 +246,13 @@ services:
   # The DifySandbox
   sandbox:
     image: langgenius/dify-sandbox:0.2.13
+    # The 0.2.13 image still links runtimes into /usr/local/bin during startup,
+    # but the new base image no longer creates that directory.
+    entrypoint:
+      - /bin/sh
+      - -lc
+    command:
+      - mkdir -p /usr/local/bin && ln -sf /opt/python/bin/python3 /usr/local/bin/python3 && exec /entrypoint.sh
     restart: always
     environment:
       # The DifySandbox configurations
