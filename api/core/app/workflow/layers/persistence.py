@@ -129,12 +129,12 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
             self._handle_graph_run_paused(event)
             return
 
-        if isinstance(event, NodeRunStartedEvent):
-            self._handle_node_started(event)
-            return
-
         if isinstance(event, NodeRunRetryEvent):
             self._handle_node_retry(event)
+            return
+
+        if isinstance(event, NodeRunStartedEvent):
+            self._handle_node_started(event)
             return
 
         if isinstance(event, NodeRunSucceededEvent):
