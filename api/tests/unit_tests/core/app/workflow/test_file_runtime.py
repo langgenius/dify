@@ -4,7 +4,7 @@ import base64
 import hashlib
 import hmac
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 from urllib.parse import parse_qs, urlparse
 
 import pytest
@@ -343,6 +343,21 @@ def test_resolve_storage_key_raises_when_records_are_missing(
 
     with pytest.raises(ValueError, match=expected_message):
         runtime._resolve_storage_key(file=file)
+
+
+def test_runtime_helper_wrappers_delegate_to_config_and_io(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("core.app.workflow.file_runtime.dify_config.MULTIMODAL_SEND_FORMAT", "url")
+    runtime = _build_runtime()
+
+    assert runtime.multimodal_send_format == "url"
+
+    with patch.object(file_runtime.ssrf_proxy, "get", return_value="response") as mock_get:
+        assert runtime.http_get("http://example", follow_redirects=False) == "response"
+        mock_get.assert_called_once_with("http://example", follow_redirects=False)
+
+    with patch.object(file_runtime.storage, "load", return_value=b"data") as mock_load:
+        assert runtime.storage_load("path", stream=True) == b"data"
+        mock_load.assert_called_once_with("path", stream=True)
 
 
 def test_bind_dify_workflow_file_runtime_registers_runtime(monkeypatch: pytest.MonkeyPatch) -> None:

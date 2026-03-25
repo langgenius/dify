@@ -681,7 +681,7 @@ class DatasetRetrieval:
                     # get top k
                     top_k = retrieval_model_config["top_k"]
                     # get retrieval method
-                    if selected_dataset.indexing_technique == "economy":
+                    if selected_dataset.indexing_technique == IndexTechniqueType.ECONOMY:
                         retrieval_method = RetrievalMethod.KEYWORD_SEARCH
                     else:
                         retrieval_method = retrieval_model_config["search_method"]
@@ -758,7 +758,7 @@ class DatasetRetrieval:
                 "The configured knowledge base list have different indexing technique, please set reranking model."
             )
         index_type = available_datasets[0].indexing_technique
-        if index_type == "high_quality":
+        if index_type == IndexTechniqueType.HIGH_QUALITY:
             embedding_model_check = all(
                 item.embedding_model == available_datasets[0].embedding_model for item in available_datasets
             )
@@ -1095,7 +1095,7 @@ class DatasetRetrieval:
                     else default_retrieval_model
                 )
 
-                if dataset.indexing_technique == "economy":
+                if dataset.indexing_technique == IndexTechniqueType.ECONOMY:
                     # use keyword table query
                     documents = RetrievalService.retrieve(
                         retrieval_method=RetrievalMethod.KEYWORD_SEARCH,

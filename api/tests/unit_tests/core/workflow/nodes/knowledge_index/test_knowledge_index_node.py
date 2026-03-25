@@ -5,6 +5,7 @@ from unittest.mock import Mock
 import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.workflow.nodes.knowledge_index.entities import KnowledgeIndexNodeData
 from core.workflow.nodes.knowledge_index.exc import KnowledgeIndexNodeError
 from core.workflow.nodes.knowledge_index.knowledge_index_node import KnowledgeIndexNode
@@ -78,7 +79,7 @@ def sample_node_data():
         type="knowledge-index",
         chunk_structure="general_structure",
         index_chunk_variable_selector=["start", "chunks"],
-        indexing_technique="high_quality",
+        indexing_technique=IndexTechniqueType.HIGH_QUALITY,
         summary_index_setting=None,
     )
 

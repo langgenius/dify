@@ -12,6 +12,7 @@ from core.db.session_factory import session_factory
 from core.model_manager import ModelManager
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.index_processor.constant.doc_type import DocType
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.index_processor.index_processor_base import SummaryIndexSettingDict
 from core.rag.models.document import Document
 from dify_graph.model_runtime.entities.llm_entities import LLMUsage
@@ -140,7 +141,7 @@ class SummaryIndexService:
             session: Optional SQLAlchemy session. If provided, uses this session instead of creating a new one.
                     If not provided, creates a new session and commits automatically.
         """
-        if dataset.indexing_technique != "high_quality":
+        if dataset.indexing_technique != IndexTechniqueType.HIGH_QUALITY:
             logger.warning(
                 "Summary vectorization skipped for dataset %s: indexing_technique is not high_quality",
                 dataset.id,
@@ -725,7 +726,7 @@ class SummaryIndexService:
             List of created DocumentSegmentSummary instances
         """
         # Only generate summary index for high_quality indexing technique
-        if dataset.indexing_technique != "high_quality":
+        if dataset.indexing_technique != IndexTechniqueType.HIGH_QUALITY:
             logger.info(
                 "Skipping summary generation for dataset %s: indexing_technique is %s, not 'high_quality'",
                 dataset.id,
@@ -852,7 +853,7 @@ class SummaryIndexService:
             )
 
             # Remove from vector database (but keep records)
-            if dataset.indexing_technique == "high_quality":
+            if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
                 summary_node_ids = [s.summary_index_node_id for s in summaries if s.summary_index_node_id]
                 if summary_node_ids:
                     try:
@@ -890,7 +891,7 @@ class SummaryIndexService:
             segment_ids: List of segment IDs to enable summaries for. If None, enable all.
         """
         # Only enable summary index for high_quality indexing technique
-        if dataset.indexing_technique != "high_quality":
+        if dataset.indexing_technique != IndexTechniqueType.HIGH_QUALITY:
             return
 
         with session_factory.create_session() as session:
@@ -982,7 +983,7 @@ class SummaryIndexService:
                 return
 
             # Delete from vector database
-            if dataset.indexing_technique == "high_quality":
+            if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
                 summary_node_ids = [s.summary_index_node_id for s in summaries if s.summary_index_node_id]
                 if summary_node_ids:
                     vector = Vector(dataset)
@@ -1013,7 +1014,7 @@ class SummaryIndexService:
             Updated DocumentSegmentSummary instance, or None if indexing technique is not high_quality
         """
         # Only update summary index for high_quality indexing technique
-        if dataset.indexing_technique != "high_quality":
+        if dataset.indexing_technique != IndexTechniqueType.HIGH_QUALITY:
             return None
 
         # When user manually provides summary, allow saving even if summary_index_setting doesn't exist

@@ -547,7 +547,7 @@ class TestAudioServiceTTS:
         with pytest.raises(ValueError, match="Text is required"):
             AudioService.transcript_tts(app_model=app, text=None)
 
-    @patch("services.audio_service.db.session", autospec=True)
+    @patch("services.audio_service.db.session")
     def test_transcript_tts_returns_none_for_invalid_message_id(self, mock_db_session, factory):
         """Test that TTS returns None for invalid message ID format."""
         # Arrange
@@ -562,7 +562,7 @@ class TestAudioServiceTTS:
         # Assert
         assert result is None
 
-    @patch("services.audio_service.db.session", autospec=True)
+    @patch("services.audio_service.db.session")
     def test_transcript_tts_returns_none_for_nonexistent_message(self, mock_db_session, factory):
         """Test that TTS returns None when message doesn't exist."""
         # Arrange
@@ -583,7 +583,7 @@ class TestAudioServiceTTS:
         # Assert
         assert result is None
 
-    @patch("services.audio_service.db.session", autospec=True)
+    @patch("services.audio_service.db.session")
     def test_transcript_tts_returns_none_for_empty_message_answer(self, mock_db_session, factory):
         """Test that TTS returns None when message answer is empty."""
         # Arrange

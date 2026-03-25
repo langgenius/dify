@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset
 from models.enums import DataSourceType, TagType
@@ -102,7 +103,7 @@ class TestTagService:
             provider="vendor",
             permission="only_me",
             data_source_type=DataSourceType.UPLOAD_FILE,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             tenant_id=tenant_id,
             created_by=mock_external_service_dependencies["current_user"].id,
         )

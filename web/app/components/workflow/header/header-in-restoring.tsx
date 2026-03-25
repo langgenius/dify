@@ -4,11 +4,11 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
+import { toast } from '@/app/components/base/ui/toast'
 import useTheme from '@/hooks/use-theme'
 import { useInvalidAllLastRun, useRestoreWorkflow } from '@/service/use-workflow'
 import { getFlowPrefix } from '@/service/utils'
 import { cn } from '@/utils/classnames'
-import Toast from '../../base/toast'
 import {
   useWorkflowRefreshDraft,
   useWorkflowRun,
@@ -65,18 +65,12 @@ const HeaderInRestoring = ({
       workflowStore.setState({ isRestoring: false })
       workflowStore.setState({ backupDraft: undefined })
       handleRefreshWorkflowDraft()
-      Toast.notify({
-        type: 'success',
-        message: t('versionHistory.action.restoreSuccess', { ns: 'workflow' }),
-      })
+      toast.success(t('versionHistory.action.restoreSuccess', { ns: 'workflow' }))
       deleteAllInspectVars()
       invalidAllLastRun()
     }
     catch {
-      Toast.notify({
-        type: 'error',
-        message: t('versionHistory.action.restoreFailure', { ns: 'workflow' }),
-      })
+      toast.error(t('versionHistory.action.restoreFailure', { ns: 'workflow' }))
     }
     finally {
       onRestoreSettled?.()

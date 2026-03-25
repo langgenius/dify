@@ -11,7 +11,7 @@ from sqlalchemy import func
 
 from core.db.session_factory import session_factory
 from core.model_manager import ModelManager
-from core.rag.index_processor.constant.index_type import IndexStructureType
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from dify_graph.model_runtime.entities.model_entities import ModelType
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
@@ -120,7 +120,7 @@ def batch_create_segment_to_index_task(
 
     document_segments = []
     embedding_model = None
-    if dataset_config["indexing_technique"] == "high_quality":
+    if dataset_config["indexing_technique"] == IndexTechniqueType.HIGH_QUALITY:
         model_manager = ModelManager.for_tenant(tenant_id=dataset_config["tenant_id"])
         embedding_model = model_manager.get_model_instance(
             tenant_id=dataset_config["tenant_id"],

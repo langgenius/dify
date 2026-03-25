@@ -1,7 +1,7 @@
 import type { WebhookTriggerNodeType } from '../types'
 import { renderHook } from '@testing-library/react'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import { fetchWebhookUrl } from '@/service/apps'
 import { createNodeCrudModuleMock } from '../../__tests__/use-config-test-utils'
@@ -18,10 +18,10 @@ vi.mock('react-i18next', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
+vi.mock('@/app/components/base/ui/toast', () => ({
   __esModule: true,
-  default: {
-    notify: vi.fn(),
+  toast: {
+    error: vi.fn(),
   },
 }))
 
@@ -42,7 +42,7 @@ vi.mock('@/service/apps', () => ({
 }))
 
 const mockedFetchWebhookUrl = vi.mocked(fetchWebhookUrl)
-const mockedToastNotify = vi.mocked(Toast.notify)
+const mockedToastError = vi.mocked(toast.error)
 
 const createPayload = (overrides: Partial<WebhookTriggerNodeType> = {}): WebhookTriggerNodeType => ({
   title: 'Webhook',
@@ -148,7 +148,7 @@ describe('useConfig', () => {
         }),
       ]),
     }))
-    expect(mockedToastNotify).toHaveBeenCalledTimes(1)
+    expect(mockedToastError).toHaveBeenCalledTimes(1)
   })
 
   it('should generate webhook urls once and fall back to empty url on request failure', async () => {

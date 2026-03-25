@@ -4,7 +4,7 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
-from core.rag.index_processor.constant.index_type import IndexStructureType
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from extensions.ext_redis import redis_client
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, DatasetAutoDisableLog, Document, DocumentSegment
@@ -81,7 +81,7 @@ class TestAddDocumentToIndexTask:
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
             data_source_type=DataSourceType.UPLOAD_FILE,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             created_by=account.id,
         )
         db_session_with_containers.add(dataset)

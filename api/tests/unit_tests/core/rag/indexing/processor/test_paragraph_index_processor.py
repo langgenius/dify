@@ -4,6 +4,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 from core.entities.knowledge_entities import PreviewDetail
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.index_processor.processor.paragraph_index_processor import ParagraphIndexProcessor
 from core.rag.models.document import AttachmentDocument, Document
 from dify_graph.model_runtime.entities.llm_entities import LLMResult, LLMUsage
@@ -21,7 +22,7 @@ class TestParagraphIndexProcessor:
         dataset = Mock()
         dataset.id = "dataset-1"
         dataset.tenant_id = "tenant-1"
-        dataset.indexing_technique = "high_quality"
+        dataset.indexing_technique = IndexTechniqueType.HIGH_QUALITY
         dataset.is_multimodal = True
         return dataset
 
@@ -167,7 +168,7 @@ class TestParagraphIndexProcessor:
     def test_load_uses_keyword_add_texts_with_keywords_when_economy(
         self, processor: ParagraphIndexProcessor, dataset: Mock
     ) -> None:
-        dataset.indexing_technique = "economy"
+        dataset.indexing_technique = IndexTechniqueType.ECONOMY
         docs = [Document(page_content="chunk", metadata={})]
 
         with patch("core.rag.index_processor.processor.paragraph_index_processor.Keyword") as mock_keyword_cls:
@@ -178,7 +179,7 @@ class TestParagraphIndexProcessor:
     def test_load_uses_keyword_add_texts_without_keywords_when_economy(
         self, processor: ParagraphIndexProcessor, dataset: Mock
     ) -> None:
-        dataset.indexing_technique = "economy"
+        dataset.indexing_technique = IndexTechniqueType.ECONOMY
         docs = [Document(page_content="chunk", metadata={})]
 
         with patch("core.rag.index_processor.processor.paragraph_index_processor.Keyword") as mock_keyword_cls:
@@ -208,7 +209,7 @@ class TestParagraphIndexProcessor:
     def test_clean_economy_deletes_summaries_and_keywords(
         self, processor: ParagraphIndexProcessor, dataset: Mock
     ) -> None:
-        dataset.indexing_technique = "economy"
+        dataset.indexing_technique = IndexTechniqueType.ECONOMY
 
         with (
             patch(
@@ -222,7 +223,7 @@ class TestParagraphIndexProcessor:
         mock_keyword_cls.return_value.delete.assert_called_once()
 
     def test_clean_deletes_keywords_by_ids(self, processor: ParagraphIndexProcessor, dataset: Mock) -> None:
-        dataset.indexing_technique = "economy"
+        dataset.indexing_technique = IndexTechniqueType.ECONOMY
         with patch("core.rag.index_processor.processor.paragraph_index_processor.Keyword") as mock_keyword_cls:
             processor.clean(dataset, ["node-2"], with_keywords=True)
 
@@ -267,7 +268,7 @@ class TestParagraphIndexProcessor:
     def test_index_list_chunks_economy(
         self, processor: ParagraphIndexProcessor, dataset: Mock, dataset_document: Mock
     ) -> None:
-        dataset.indexing_technique = "economy"
+        dataset.indexing_technique = IndexTechniqueType.ECONOMY
         with (
             patch(
                 "core.rag.index_processor.processor.paragraph_index_processor.helper.generate_text_hash",

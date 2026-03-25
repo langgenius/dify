@@ -4,7 +4,7 @@ from unittest.mock import patch
 import pytest
 from faker import Faker
 
-from core.rag.index_processor.constant.index_type import IndexStructureType
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.workflow.nodes.knowledge_retrieval.retrieval import KnowledgeRetrievalRequest
 from models.dataset import Dataset, Document
@@ -39,7 +39,7 @@ class TestGetAvailableDatasetsIntegration:
             provider="dify",
             data_source_type=DataSourceType.UPLOAD_FILE,
             created_by=account.id,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
         )
         db_session_with_containers.add(dataset)
         db_session_with_containers.flush()
@@ -460,7 +460,7 @@ class TestKnowledgeRetrievalIntegration:
             provider="dify",
             data_source_type=DataSourceType.UPLOAD_FILE,
             created_by=account.id,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
         )
         db_session_with_containers.add(dataset)
 

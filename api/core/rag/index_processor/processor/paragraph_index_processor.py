@@ -23,7 +23,7 @@ from core.rag.docstore.dataset_docstore import DatasetDocumentStore
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.extractor.extract_processor import ExtractProcessor
 from core.rag.index_processor.constant.doc_type import DocType
-from core.rag.index_processor.constant.index_type import IndexStructureType
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor, SummaryIndexSettingDict
 from core.rag.models.document import AttachmentDocument, Document, MultimodalGeneralStructureChunk
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
@@ -121,7 +121,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         with_keywords: bool = True,
         **kwargs,
     ) -> None:
-        if dataset.indexing_technique == "high_quality":
+        if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             vector = Vector(dataset)
             vector.create(documents)
             if multimodal_documents and dataset.is_multimodal:
@@ -159,7 +159,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                 # Delete all summaries for the dataset
                 SummaryIndexService.delete_summaries_for_segments(dataset, None)
 
-        if dataset.indexing_technique == "high_quality":
+        if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             vector = Vector(dataset)
             if node_ids:
                 vector.delete_by_ids(node_ids)
@@ -257,12 +257,12 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             doc_store = DatasetDocumentStore(dataset=dataset, user_id=document.created_by, document_id=document.id)
             # add document segments
             doc_store.add_documents(docs=documents, save_child=False)
-            if dataset.indexing_technique == "high_quality":
+            if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
                 vector = Vector(dataset)
                 vector.create(documents)
                 if all_multimodal_documents and dataset.is_multimodal:
                     vector.create_multimodal(all_multimodal_documents)
-            elif dataset.indexing_technique == "economy":
+            elif dataset.indexing_technique == IndexTechniqueType.ECONOMY:
                 keyword = Keyword(dataset)
                 keyword.add_texts(documents)
 
