@@ -684,9 +684,9 @@ from typing import Any
 
 import pytest
 
-from dify_graph.nodes.variable_assigner.common.helpers import UpdatedVariable
-from dify_graph.variables.segments import IntegerSegment, ObjectSegment, StringSegment
-from dify_graph.variables.types import SegmentType
+from graphon.nodes.variable_assigner.common.helpers import UpdatedVariable
+from graphon.variables.segments import IntegerSegment, ObjectSegment, StringSegment
+from graphon.variables.types import SegmentType
 from services import variable_truncator as truncator_module
 from services.variable_truncator import BaseTruncator, TruncationResult, VariableTruncator
 

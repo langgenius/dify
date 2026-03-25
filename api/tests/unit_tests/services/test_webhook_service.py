@@ -579,7 +579,7 @@ from core.workflow.nodes.trigger_webhook.entities import (
     WebhookData,
     WebhookParameter,
 )
-from dify_graph.variables.types import SegmentType
+from graphon.variables.types import SegmentType
 from models.enums import AppTriggerStatus
 from models.model import App
 from models.trigger import WorkflowWebhookTrigger

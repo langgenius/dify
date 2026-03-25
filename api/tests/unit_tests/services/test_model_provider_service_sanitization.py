@@ -97,8 +97,8 @@ from unittest.mock import MagicMock
 import pytest
 
 from core.entities.model_entities import ModelStatus
-from dify_graph.model_runtime.entities.common_entities import I18nObject
-from dify_graph.model_runtime.entities.model_entities import FetchFrom, ModelType, ParameterRule, ParameterType
+from graphon.model_runtime.entities.common_entities import I18nObject
+from graphon.model_runtime.entities.model_entities import FetchFrom, ModelType, ParameterRule, ParameterType
 from models.provider import ProviderType
 from services import model_provider_service as service_module
 from services.errors.app_model_config import ProviderNotFoundError
@@ -108,7 +108,7 @@ from services.model_provider_service import ModelProviderService
 def _create_service_with_mocked_manager() -> tuple[ModelProviderService, MagicMock]:
     manager = MagicMock()
     service = ModelProviderService()
-    service.provider_manager = manager
+    service._get_provider_manager = MagicMock(return_value=manager)
     return service, manager
 
 
@@ -663,7 +663,7 @@ def test_get_model_provider_icon_should_fetch_icon_bytes_from_factory(monkeypatc
     factory_instance = MagicMock()
     factory_instance.get_provider_icon.return_value = (b"icon-bytes", "image/png")
     factory_constructor = MagicMock(return_value=factory_instance)
-    monkeypatch.setattr(service_module, "ModelProviderFactory", factory_constructor)
+    monkeypatch.setattr(service_module, "create_plugin_model_provider_factory", factory_constructor)
 
     # Act
     result = service.get_model_provider_icon(
@@ -674,7 +674,7 @@ def test_get_model_provider_icon_should_fetch_icon_bytes_from_factory(monkeypatc
     )
 
     # Assert
-    factory_constructor.assert_called_once_with("tenant-1")
+    factory_constructor.assert_called_once_with(tenant_id="tenant-1")
     factory_instance.get_provider_icon.assert_called_once_with("openai", "icon_small", "en_US")
     assert result == (b"icon-bytes", "image/png")
 

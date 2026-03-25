@@ -467,7 +467,9 @@ def test_convert_app_model_config_to_workflow_should_build_advanced_chat_graph_a
     monkeypatch.setattr(
         converter,
         "_convert_to_start_node",
-        MagicMock(return_value={"id": "start", "position": None, "data": {"type": BuiltinNodeTypes.START, "variables": []}}),
+        MagicMock(
+            return_value={"id": "start", "position": None, "data": {"type": BuiltinNodeTypes.START, "variables": []}}
+        ),
     )
     monkeypatch.setattr(
         converter,
@@ -482,7 +484,9 @@ def test_convert_app_model_config_to_workflow_should_build_advanced_chat_graph_a
     monkeypatch.setattr(
         converter,
         "_convert_to_knowledge_retrieval_node",
-        MagicMock(return_value={"id": "knowledge", "position": None, "data": {"type": BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL}}),
+        MagicMock(
+            return_value={"id": "knowledge", "position": None, "data": {"type": BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL}}
+        ),
     )
     monkeypatch.setattr(
         converter,
@@ -546,7 +550,9 @@ def test_convert_app_model_config_to_workflow_should_build_workflow_mode_with_en
     monkeypatch.setattr(
         converter,
         "_convert_to_start_node",
-        MagicMock(return_value={"id": "start", "position": None, "data": {"type": BuiltinNodeTypes.START, "variables": []}}),
+        MagicMock(
+            return_value={"id": "start", "position": None, "data": {"type": BuiltinNodeTypes.START, "variables": []}}
+        ),
     )
     monkeypatch.setattr(converter, "_convert_to_knowledge_retrieval_node", MagicMock(return_value=None))
     monkeypatch.setattr(
@@ -585,7 +591,9 @@ def test_convert_to_app_config_should_route_to_correct_manager(
     agent_result = SimpleNamespace(kind="agent")
     chat_result = SimpleNamespace(kind="chat")
     completion_result = SimpleNamespace(kind="completion")
-    monkeypatch.setattr(converter_module.AgentChatAppConfigManager, "get_app_config", MagicMock(return_value=agent_result))
+    monkeypatch.setattr(
+        converter_module.AgentChatAppConfigManager, "get_app_config", MagicMock(return_value=agent_result)
+    )
     monkeypatch.setattr(converter_module.ChatAppConfigManager, "get_app_config", MagicMock(return_value=chat_result))
     monkeypatch.setattr(
         converter_module.CompletionAppConfigManager,
