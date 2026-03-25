@@ -231,7 +231,7 @@ class DatadogConfig(BaseTracingConfig):
     Datadog LLM observability tracing config.
     """
 
-    api_key: str = ""
+    api_key: str
     site: str = "datadoghq.com"
     service_name: str = "dify_app"
 

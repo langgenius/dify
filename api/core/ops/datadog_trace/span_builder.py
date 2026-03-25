@@ -3,7 +3,6 @@ Datadog span attribute builder for Dify ops tracing.
 """
 
 import json
-import logging
 from typing import Any
 
 from core.ops.datadog_trace.entities import semconv
@@ -15,8 +14,6 @@ from core.ops.entities.trace_entity import (
 )
 from dify_graph.entities.workflow_node_execution import WorkflowNodeExecution
 from dify_graph.nodes import BuiltinNodeTypes
-
-logger = logging.getLogger(__name__)
 
 
 class DatadogSpanBuilder:
@@ -112,6 +109,38 @@ class DatadogSpanBuilder:
         return [DatadogSpanBuilder._to_otel_output_message("assistant", str(value) if value else "")]
 
     @staticmethod
+    def _build_llm_like_attrs(
+        *,
+        operation_name: str,
+        provider: str,
+        model: str,
+        input_tokens: int,
+        output_tokens: int,
+        input_messages: list[dict[str, Any]],
+        output_messages: list[dict[str, Any]],
+        conversation_id: str | None = None,
+        finish_reason: str | None = None,
+    ) -> dict[str, Any]:
+        attrs: dict[str, Any] = {
+            semconv.OPERATION_NAME: operation_name,
+            semconv.SYSTEM: provider,
+            semconv.PROVIDER_NAME: provider,
+            semconv.REQUEST_MODEL: model,
+            semconv.RESPONSE_MODEL: model,
+            semconv.USAGE_INPUT_TOKENS: input_tokens,
+            semconv.USAGE_OUTPUT_TOKENS: output_tokens,
+            semconv.INPUT_MESSAGES: json.dumps(input_messages, ensure_ascii=False),
+            semconv.OUTPUT_MESSAGES: json.dumps(output_messages, ensure_ascii=False),
+        }
+
+        if finish_reason is not None:
+            attrs[semconv.RESPONSE_FINISH_REASONS] = json.dumps([finish_reason], ensure_ascii=False)
+        if conversation_id:
+            attrs[semconv.CONVERSATION_ID] = conversation_id
+
+        return attrs
+
+    @staticmethod
     def build_message_attrs(trace_info: MessageTraceInfo) -> dict[str, Any]:
         """
         Build Datadog attributes for a message span.
@@ -126,26 +155,16 @@ class DatadogSpanBuilder:
             provider = metadata.get("ls_provider", "")
             model = metadata.get("ls_model_name", "")
 
-        provider = DatadogSpanBuilder._clean_provider_name(str(provider))
-        input_messages = DatadogSpanBuilder._normalize_input_messages(trace_info.inputs)
-        output_messages = DatadogSpanBuilder._normalize_output_messages(trace_info.outputs)
-
-        attrs: dict[str, Any] = {
-            semconv.OPERATION_NAME: "chat",
-            semconv.SYSTEM: provider,
-            semconv.PROVIDER_NAME: provider,
-            semconv.REQUEST_MODEL: model,
-            semconv.RESPONSE_MODEL: model,
-            semconv.USAGE_INPUT_TOKENS: trace_info.message_tokens,
-            semconv.USAGE_OUTPUT_TOKENS: trace_info.answer_tokens,
-            semconv.INPUT_MESSAGES: json.dumps(input_messages, ensure_ascii=False),
-            semconv.OUTPUT_MESSAGES: json.dumps(output_messages, ensure_ascii=False),
-        }
-
-        if conversation_id := metadata.get("conversation_id"):
-            attrs[semconv.CONVERSATION_ID] = conversation_id
-
-        return attrs
+        return DatadogSpanBuilder._build_llm_like_attrs(
+            operation_name="chat",
+            provider=DatadogSpanBuilder._clean_provider_name(str(provider)),
+            model=str(model),
+            input_tokens=trace_info.message_tokens,
+            output_tokens=trace_info.answer_tokens,
+            input_messages=DatadogSpanBuilder._normalize_input_messages(trace_info.inputs),
+            output_messages=DatadogSpanBuilder._normalize_output_messages(trace_info.outputs),
+            conversation_id=metadata.get("conversation_id"),
+        )
 
     @staticmethod
     def build_workflow_attrs(trace_info: WorkflowTraceInfo) -> dict[str, Any]:
@@ -227,23 +246,17 @@ class DatadogSpanBuilder:
             DatadogSpanBuilder._to_otel_output_message("assistant", output_text, finish_reason)
         ]
 
-        attrs: dict[str, Any] = {
-            semconv.OPERATION_NAME: mode if mode in ("chat", "completion") else "chat",
-            semconv.SYSTEM: provider,
-            semconv.PROVIDER_NAME: provider,
-            semconv.REQUEST_MODEL: model,
-            semconv.RESPONSE_MODEL: model,
-            semconv.USAGE_INPUT_TOKENS: usage.get("prompt_tokens", 0),
-            semconv.USAGE_OUTPUT_TOKENS: usage.get("completion_tokens", 0),
-            semconv.RESPONSE_FINISH_REASONS: json.dumps([finish_reason], ensure_ascii=False),
-            semconv.INPUT_MESSAGES: json.dumps(input_messages, ensure_ascii=False),
-            semconv.OUTPUT_MESSAGES: json.dumps(output_messages, ensure_ascii=False),
-        }
-
-        if conversation_id := trace_info.metadata.get("conversation_id"):
-            attrs[semconv.CONVERSATION_ID] = conversation_id
-
-        return attrs
+        return DatadogSpanBuilder._build_llm_like_attrs(
+            operation_name=mode if mode in ("chat", "completion") else "chat",
+            provider=provider,
+            model=model,
+            input_tokens=usage.get("prompt_tokens", 0) if isinstance(usage, dict) else 0,
+            output_tokens=usage.get("completion_tokens", 0) if isinstance(usage, dict) else 0,
+            input_messages=input_messages,
+            output_messages=output_messages,
+            conversation_id=trace_info.metadata.get("conversation_id"),
+            finish_reason=finish_reason,
+        )
 
     @staticmethod
     def _build_classifier_node_attrs(
@@ -268,23 +281,17 @@ class DatadogSpanBuilder:
             DatadogSpanBuilder._to_otel_output_message("assistant", str(output_text), finish_reason)
         ]
 
-        attrs: dict[str, Any] = {
-            semconv.OPERATION_NAME: "chat",
-            semconv.SYSTEM: provider,
-            semconv.PROVIDER_NAME: provider,
-            semconv.REQUEST_MODEL: model,
-            semconv.RESPONSE_MODEL: model,
-            semconv.USAGE_INPUT_TOKENS: usage.get("prompt_tokens", 0) if isinstance(usage, dict) else 0,
-            semconv.USAGE_OUTPUT_TOKENS: usage.get("completion_tokens", 0) if isinstance(usage, dict) else 0,
-            semconv.RESPONSE_FINISH_REASONS: json.dumps([finish_reason], ensure_ascii=False),
-            semconv.INPUT_MESSAGES: json.dumps(input_messages, ensure_ascii=False),
-            semconv.OUTPUT_MESSAGES: json.dumps(output_messages, ensure_ascii=False),
-        }
-
-        if conversation_id := trace_info.metadata.get("conversation_id"):
-            attrs[semconv.CONVERSATION_ID] = conversation_id
-
-        return attrs
+        return DatadogSpanBuilder._build_llm_like_attrs(
+            operation_name="chat",
+            provider=provider,
+            model=model,
+            input_tokens=usage.get("prompt_tokens", 0) if isinstance(usage, dict) else 0,
+            output_tokens=usage.get("completion_tokens", 0) if isinstance(usage, dict) else 0,
+            input_messages=input_messages,
+            output_messages=output_messages,
+            conversation_id=trace_info.metadata.get("conversation_id"),
+            finish_reason=finish_reason,
+        )
 
     @staticmethod
     def _build_extractor_node_attrs(
@@ -309,23 +316,17 @@ class DatadogSpanBuilder:
             DatadogSpanBuilder._to_otel_output_message("assistant", str(output_text), finish_reason)
         ]
 
-        attrs: dict[str, Any] = {
-            semconv.OPERATION_NAME: "chat",
-            semconv.SYSTEM: provider,
-            semconv.PROVIDER_NAME: provider,
-            semconv.REQUEST_MODEL: model,
-            semconv.RESPONSE_MODEL: model,
-            semconv.USAGE_INPUT_TOKENS: usage.get("prompt_tokens", 0) if isinstance(usage, dict) else 0,
-            semconv.USAGE_OUTPUT_TOKENS: usage.get("completion_tokens", 0) if isinstance(usage, dict) else 0,
-            semconv.RESPONSE_FINISH_REASONS: json.dumps([finish_reason], ensure_ascii=False),
-            semconv.INPUT_MESSAGES: json.dumps(input_messages, ensure_ascii=False),
-            semconv.OUTPUT_MESSAGES: json.dumps(output_messages, ensure_ascii=False),
-        }
-
-        if conversation_id := trace_info.metadata.get("conversation_id"):
-            attrs[semconv.CONVERSATION_ID] = conversation_id
-
-        return attrs
+        return DatadogSpanBuilder._build_llm_like_attrs(
+            operation_name="chat",
+            provider=provider,
+            model=model,
+            input_tokens=usage.get("prompt_tokens", 0) if isinstance(usage, dict) else 0,
+            output_tokens=usage.get("completion_tokens", 0) if isinstance(usage, dict) else 0,
+            input_messages=input_messages,
+            output_messages=output_messages,
+            conversation_id=trace_info.metadata.get("conversation_id"),
+            finish_reason=finish_reason,
+        )
 
     @staticmethod
     def _build_tool_node_attrs(node_execution: WorkflowNodeExecution) -> dict[str, Any]:

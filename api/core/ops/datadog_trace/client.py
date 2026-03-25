@@ -5,6 +5,7 @@ Datadog trace client for OTLP HTTP span export.
 import hashlib
 import logging
 import socket
+from collections import OrderedDict
 
 import httpx
 from opentelemetry import trace as trace_api
@@ -19,6 +20,7 @@ from opentelemetry.util.types import AttributeValue
 from configs import dify_config
 
 logger = logging.getLogger(__name__)
+MAX_SPAN_CONTEXTS = 1024
 
 
 class DatadogTraceClient:
@@ -30,10 +32,21 @@ class DatadogTraceClient:
         self.api_key = api_key
         self.site = site
         self.endpoint = f"https://otlp.{site}/v1/traces"
+        self.service_name = service_name
+        self.resource: Resource | None = None
+        self.exporter: OTLPSpanExporter | None = None
+        self.tracer_provider: TracerProvider | None = None
+        self.span_processor: BatchSpanProcessor | None = None
+        self.tracer: trace_api.Tracer | None = None
+        self.span_contexts: OrderedDict[str, trace_api.SpanContext] = OrderedDict()
+
+    def _ensure_tracer(self) -> None:
+        if self.tracer is not None:
+            return
 
         self.resource = Resource(
             attributes={
-                ResourceAttributes.SERVICE_NAME: service_name,
+                ResourceAttributes.SERVICE_NAME: self.service_name,
                 ResourceAttributes.SERVICE_VERSION: f"dify-{dify_config.project.version}-{dify_config.COMMIT_SHA}",
                 ResourceAttributes.DEPLOYMENT_ENVIRONMENT: f"{dify_config.DEPLOY_ENV}-{dify_config.EDITION}",
                 ResourceAttributes.HOST_NAME: socket.gethostname(),
@@ -41,13 +54,11 @@ class DatadogTraceClient:
                 ResourceAttributes.TELEMETRY_SDK_NAME: "opentelemetry",
             }
         )
-
         self.exporter = OTLPSpanExporter(
             endpoint=self.endpoint,
-            headers={"dd-api-key": api_key},
+            headers={"dd-api-key": self.api_key},
             timeout=30,
         )
-
         self.tracer_provider = TracerProvider(resource=self.resource)
         self.span_processor = BatchSpanProcessor(
             span_exporter=self.exporter,
@@ -58,8 +69,11 @@ class DatadogTraceClient:
         self.tracer_provider.add_span_processor(self.span_processor)
         self.tracer = self.tracer_provider.get_tracer("dify-sdk", dify_config.project.version)
 
-        # Stores OTel span contexts by logical entity key for in-process parent-child linking.
-        self.span_contexts: dict[str, trace_api.SpanContext] = {}
+    def _remember_span_context(self, key: str, span_context: trace_api.SpanContext) -> None:
+        self.span_contexts[key] = span_context
+        self.span_contexts.move_to_end(key)
+        if len(self.span_contexts) > MAX_SPAN_CONTEXTS:
+            self.span_contexts.popitem(last=False)
 
     @staticmethod
     def _compute_trace_id(key: str) -> int:
@@ -84,8 +98,11 @@ class DatadogTraceClient:
         Create a span with explicit timing and optional trace correlation hints.
         """
         try:
+            self._ensure_tracer()
+
             parent_context = None
             if parent_key and parent_key in self.span_contexts:
+                self.span_contexts.move_to_end(parent_key)
                 parent_context = trace_api.set_span_in_context(
                     trace_api.NonRecordingSpan(self.span_contexts[parent_key])
                 )
@@ -101,6 +118,9 @@ class DatadogTraceClient:
                     )
                 )
 
+            if self.tracer is None:
+                raise ValueError("Datadog tracer is not initialized")
+
             span = self.tracer.start_span(
                 name=name,
                 context=parent_context,
@@ -110,7 +130,7 @@ class DatadogTraceClient:
             )
 
             if store_key:
-                self.span_contexts[store_key] = span.get_span_context()
+                self._remember_span_context(store_key, span.get_span_context())
 
             if status:
                 span.set_status(status)
@@ -131,6 +151,7 @@ class DatadogTraceClient:
             )
             return response.status_code in (200, 429)
         except Exception:
+            logger.info("[Datadog] API check failed", exc_info=True)
             return False
 
     def get_project_url(self) -> str:
@@ -138,8 +159,17 @@ class DatadogTraceClient:
 
     def shutdown(self) -> None:
         try:
-            self.span_processor.force_flush()
-            self.span_processor.shutdown()
-            self.tracer_provider.shutdown()
+            if self.span_processor is not None:
+                self.span_processor.force_flush()
+                self.span_processor.shutdown()
+            if self.tracer_provider is not None:
+                self.tracer_provider.shutdown()
         except Exception:
             logger.exception("[Datadog] Error during client shutdown")
+        finally:
+            self.resource = None
+            self.exporter = None
+            self.tracer_provider = None
+            self.span_processor = None
+            self.tracer = None
+            self.span_contexts.clear()
