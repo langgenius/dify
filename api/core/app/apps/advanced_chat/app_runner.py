@@ -25,14 +25,19 @@ from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, Workfl
 from core.db.session_factory import session_factory
 from core.moderation.base import ModerationError
 from core.moderation.input_moderation import InputModeration
+from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
+from core.workflow.node_factory import get_default_root_node_id
+from core.workflow.system_variables import (
+    build_bootstrap_variables,
+    build_system_variables,
+    system_variables_to_mapping,
+)
+from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
 from dify_graph.enums import WorkflowType
 from dify_graph.graph_engine.command_channels.redis_channel import RedisChannel
 from dify_graph.graph_engine.layers.base import GraphEngineLayer
-from dify_graph.repositories.workflow_execution_repository import WorkflowExecutionRepository
-from dify_graph.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.system_variable import SystemVariable
 from dify_graph.variable_loader import VariableLoader
 from dify_graph.variables.variables import Variable
 from extensions.ext_database import db
@@ -90,7 +95,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         app_config = self.application_generate_entity.app_config
         app_config = cast(AdvancedChatAppConfig, app_config)
 
-        system_inputs = SystemVariable(
+        system_inputs = build_system_variables(
             query=self.application_generate_entity.query,
             files=self.application_generate_entity.files,
             conversation_id=self.conversation.id,
@@ -150,7 +155,10 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
 
             self.application_generate_entity.inputs = new_inputs
             self.application_generate_entity.query = new_query
-            system_inputs.query = new_query
+            system_inputs = build_system_variables(
+                system_variables_to_mapping(system_inputs),
+                query=new_query,
+            )
 
             # annotation reply
             if self.handle_annotation_reply(
@@ -166,14 +174,17 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
 
             # Create a variable pool.
             # init variable pool
-            variable_pool = VariablePool(
-                system_variables=system_inputs,
-                user_inputs=new_inputs,
-                environment_variables=self._workflow.environment_variables,
-                # Based on the definition of `Variable`,
-                # `VariableBase` instances can be safely used as `Variable` since they are compatible.
-                conversation_variables=conversation_variables,
+            variable_pool = VariablePool()
+            add_variables_to_pool(
+                variable_pool,
+                build_bootstrap_variables(
+                    system_variables=system_inputs,
+                    environment_variables=self._workflow.environment_variables,
+                    conversation_variables=conversation_variables,
+                ),
             )
+            root_node_id = get_default_root_node_id(self._workflow.graph_dict)
+            add_node_inputs_to_pool(variable_pool, node_id=root_node_id, inputs=new_inputs)
 
             # init graph
             graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.time())
@@ -185,6 +196,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 user_id=self.application_generate_entity.user_id,
                 user_from=user_from,
                 invoke_from=invoke_from,
+                root_node_id=root_node_id,
             )
 
         db.session.close()

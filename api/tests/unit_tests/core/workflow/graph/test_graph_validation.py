@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 import pytest
 
+from core.workflow.system_variables import build_system_variables
 from dify_graph.entities import GraphInitParams
 from dify_graph.entities.base_node_data import BaseNodeData
 from dify_graph.enums import BuiltinNodeTypes, ErrorStrategy, NodeExecutionType, NodeType
@@ -13,7 +14,6 @@ from dify_graph.graph import Graph
 from dify_graph.graph.validation import GraphValidationError
 from dify_graph.nodes.base.node import Node
 from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.system_variable import SystemVariable
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
@@ -96,7 +96,7 @@ def graph_init_dependencies() -> tuple[_SimpleNodeFactory, dict[str, object]]:
         invoke_from="service-api",
         call_depth=0,
     )
-    variable_pool = VariablePool(system_variables=SystemVariable(user_id="user", files=[]), user_inputs={})
+    variable_pool = VariablePool(system_variables=build_system_variables(user_id="user", files=[]), user_inputs={})
     runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
     factory = _SimpleNodeFactory(graph_init_params=init_params, graph_runtime_state=runtime_state)
     return factory, graph_config

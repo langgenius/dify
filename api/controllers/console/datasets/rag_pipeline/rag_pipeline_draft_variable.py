@@ -21,7 +21,8 @@ from controllers.console.app.workflow_draft_variable import (
 from controllers.console.datasets.wraps import get_rag_pipeline
 from controllers.console.wraps import account_initialization_required, setup_required
 from controllers.web.error import InvalidArgumentError, NotFoundError
-from dify_graph.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
+from core.app.file_access import DatabaseFileAccessController
+from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from dify_graph.variables.types import SegmentType
 from extensions.ext_database import db
 from factories.file_factory import build_from_mapping, build_from_mappings
@@ -33,6 +34,7 @@ from services.rag_pipeline.rag_pipeline import RagPipelineService
 from services.workflow_draft_variable_service import WorkflowDraftVariableList, WorkflowDraftVariableService
 
 logger = logging.getLogger(__name__)
+_file_access_controller = DatabaseFileAccessController()
 
 
 def _create_pagination_parser():
@@ -223,13 +225,21 @@ class RagPipelineVariableApi(Resource):
             if variable.value_type == SegmentType.FILE:
                 if not isinstance(raw_value, dict):
                     raise InvalidArgumentError(description=f"expected dict for file, got {type(raw_value)}")
-                raw_value = build_from_mapping(mapping=raw_value, tenant_id=pipeline.tenant_id)
+                raw_value = build_from_mapping(
+                    mapping=raw_value,
+                    tenant_id=pipeline.tenant_id,
+                    access_controller=_file_access_controller,
+                )
             elif variable.value_type == SegmentType.ARRAY_FILE:
                 if not isinstance(raw_value, list):
                     raise InvalidArgumentError(description=f"expected list for files, got {type(raw_value)}")
                 if len(raw_value) > 0 and not isinstance(raw_value[0], dict):
                     raise InvalidArgumentError(description=f"expected dict for files[0], got {type(raw_value)}")
-                raw_value = build_from_mappings(mappings=raw_value, tenant_id=pipeline.tenant_id)
+                raw_value = build_from_mappings(
+                    mappings=raw_value,
+                    tenant_id=pipeline.tenant_id,
+                    access_controller=_file_access_controller,
+                )
             new_value = build_segment_with_type(variable.value_type, raw_value)
         draft_var_srv.update_variable(variable, name=new_name, value=new_value)
         db.session.commit()

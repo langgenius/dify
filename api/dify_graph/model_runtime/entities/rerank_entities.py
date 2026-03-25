@@ -1,4 +1,11 @@
+from typing import TypedDict
+
 from pydantic import BaseModel
+
+
+class MultimodalRerankInput(TypedDict):
+    content: str
+    content_type: str
 
 
 class RerankDocument(BaseModel):

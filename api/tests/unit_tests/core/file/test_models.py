@@ -15,18 +15,17 @@ def test_file():
         storage_key="test-storage-key",
         url="https://example.com/image.png",
     )
-    assert file.tenant_id == "test-tenant-id"
     assert file.type == FileType.IMAGE
     assert file.transfer_method == FileTransferMethod.TOOL_FILE
     assert file.related_id == "test-related-id"
+    assert file.storage_key == "test-storage-key"
     assert file.filename == "image.png"
     assert file.extension == ".png"
     assert file.mime_type == "image/png"
     assert file.size == 67
 
 
-def test_file_model_validate_with_legacy_fields():
-    """Test `File` model can handle data containing compatibility fields."""
+def test_file_model_validate_accepts_legacy_tenant_id():
     data = {
         "id": "test-file",
         "tenant_id": "test-tenant-id",
@@ -45,10 +44,8 @@ def test_file_model_validate_with_legacy_fields():
         "datasource_file_id": "datasource-file-789",
     }
 
-    # Should be able to create `File` object without raising an exception
     file = File.model_validate(data)
 
-    # The File object does not have tool_file_id, upload_file_id, or datasource_file_id as attributes.
-    # Instead, check it does not expose unrecognized legacy fields (should raise on getattr).
-    for legacy_field in ("tool_file_id", "upload_file_id", "datasource_file_id"):
-        assert not hasattr(file, legacy_field)
+    assert file.related_id == "test-related-id"
+    assert file.storage_key == "test-storage-key"
+    assert "tenant_id" not in file.model_dump()

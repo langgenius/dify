@@ -284,7 +284,12 @@ def test_run_normal_path_builds_graph(mocker):
         return_value=SimpleNamespace(belong_to_node_id="start", variable="input1"),
     )
     mocker.patch.object(module, "RAGPipelineVariableInput", side_effect=lambda **kwargs: SimpleNamespace(**kwargs))
-    mocker.patch.object(module, "VariablePool", side_effect=lambda **kwargs: SimpleNamespace(**kwargs))
+
+    class FakeVariablePool:
+        def add(self, selector, value):
+            return None
+
+    mocker.patch.object(module, "VariablePool", return_value=FakeVariablePool())
 
     workflow_entry = MagicMock()
     workflow_entry.graph_engine = MagicMock()

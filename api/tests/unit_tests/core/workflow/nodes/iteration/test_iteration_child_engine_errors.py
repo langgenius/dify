@@ -1,8 +1,9 @@
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from typing import Any
 
 import pytest
 
+from core.workflow.system_variables import default_system_variables
 from dify_graph.entities import GraphInitParams
 from dify_graph.nodes.iteration.exc import IterationGraphNotFoundError
 from dify_graph.nodes.iteration.iteration_node import IterationNode
@@ -12,7 +13,6 @@ from dify_graph.runtime import (
     GraphRuntimeState,
     VariablePool,
 )
-from dify_graph.system_variable import SystemVariable
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
@@ -22,17 +22,16 @@ class _MissingGraphBuilder:
         *,
         workflow_id: str,
         graph_init_params: GraphInitParams,
-        graph_runtime_state: GraphRuntimeState,
-        graph_config: Mapping[str, Any],
+        parent_graph_runtime_state: GraphRuntimeState,
         root_node_id: str,
-        layers: Sequence[object] = (),
+        variable_pool: VariablePool | None = None,
     ) -> object:
         raise ChildGraphNotFoundError(f"child graph root node '{root_node_id}' not found")
 
 
 def _build_runtime_state() -> GraphRuntimeState:
     return GraphRuntimeState(
-        variable_pool=VariablePool(system_variables=SystemVariable.default(), user_inputs={}),
+        variable_pool=VariablePool(system_variables=default_system_variables(), user_inputs={}),
         start_at=0.0,
     )
 
@@ -69,8 +68,6 @@ def test_graph_runtime_state_raises_specific_error_when_child_builder_is_missing
         runtime_state.create_child_engine(
             workflow_id="workflow",
             graph_init_params=graph_init_params,
-            graph_runtime_state=_build_runtime_state(),
-            graph_config={},
             root_node_id="root",
         )
 

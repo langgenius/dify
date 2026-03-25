@@ -282,14 +282,18 @@ class ModelProviderModelCredentialApi(Resource):
         )
 
         if args.config_from == "predefined-model":
-            available_credentials = model_provider_service.provider_manager.get_provider_available_credentials(
-                tenant_id=tenant_id, provider_name=provider
+            available_credentials = model_provider_service.get_provider_available_credentials(
+                tenant_id=tenant_id,
+                provider=provider,
             )
         else:
             # Normalize model_type to the origin value stored in DB (e.g., "text-generation" for LLM)
             normalized_model_type = args.model_type.to_origin_model_type()
-            available_credentials = model_provider_service.provider_manager.get_provider_model_available_credentials(
-                tenant_id=tenant_id, provider_name=provider, model_type=normalized_model_type, model_name=args.model
+            available_credentials = model_provider_service.get_provider_model_available_credentials(
+                tenant_id=tenant_id,
+                provider=provider,
+                model_type=normalized_model_type,
+                model=args.model,
             )
 
         return jsonable_encoder(

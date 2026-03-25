@@ -1,87 +1,56 @@
 from io import BytesIO
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
-from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
+from dify_graph.model_runtime.entities.common_entities import I18nObject
 from dify_graph.model_runtime.entities.model_entities import ModelType
+from dify_graph.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
 from dify_graph.model_runtime.errors.invoke import InvokeError
 from dify_graph.model_runtime.model_providers.__base.speech2text_model import Speech2TextModel
 
 
-class TestSpeech2TextModel:
-    @pytest.fixture
-    def mock_plugin_model_provider(self):
-        return MagicMock(spec=PluginModelProviderEntity)
+@pytest.fixture
+def provider_schema() -> ProviderEntity:
+    return ProviderEntity(
+        provider="test_provider",
+        label=I18nObject(en_US="test_provider"),
+        supported_model_types=[ModelType.SPEECH2TEXT],
+        configurate_methods=[ConfigurateMethod.PREDEFINED_MODEL],
+    )
 
-    @pytest.fixture
-    def speech2text_model(self, mock_plugin_model_provider):
-        return Speech2TextModel(
-            tenant_id="tenant_123",
-            model_type=ModelType.SPEECH2TEXT,
-            plugin_id="plugin_123",
-            provider_name="test_provider",
-            plugin_model_provider=mock_plugin_model_provider,
-        )
 
-    def test_model_type(self, speech2text_model):
-        assert speech2text_model.model_type == ModelType.SPEECH2TEXT
+@pytest.fixture
+def model_runtime() -> MagicMock:
+    return MagicMock()
 
-    def test_invoke_success(self, speech2text_model):
-        model_name = "test_model"
-        credentials = {"api_key": "abc"}
-        file = BytesIO(b"audio data")
-        user = "user_123"
 
-        with patch("core.plugin.impl.model.PluginModelClient") as mock_client_class:
-            mock_client = mock_client_class.return_value
-            mock_client.invoke_speech_to_text.return_value = "transcribed text"
+@pytest.fixture
+def speech2text_model(provider_schema: ProviderEntity, model_runtime: MagicMock) -> Speech2TextModel:
+    return Speech2TextModel(provider_schema=provider_schema, model_runtime=model_runtime)
 
-            result = speech2text_model.invoke(model=model_name, credentials=credentials, file=file, user=user)
 
-            assert result == "transcribed text"
-            mock_client.invoke_speech_to_text.assert_called_once_with(
-                tenant_id="tenant_123",
-                user_id="user_123",
-                plugin_id="plugin_123",
-                provider="test_provider",
-                model=model_name,
-                credentials=credentials,
-                file=file,
-            )
+def test_model_type(speech2text_model: Speech2TextModel) -> None:
+    assert speech2text_model.model_type == ModelType.SPEECH2TEXT
 
-    def test_invoke_success_no_user(self, speech2text_model):
-        model_name = "test_model"
-        credentials = {"api_key": "abc"}
-        file = BytesIO(b"audio data")
 
-        with patch("core.plugin.impl.model.PluginModelClient") as mock_client_class:
-            mock_client = mock_client_class.return_value
-            mock_client.invoke_speech_to_text.return_value = "transcribed text"
+def test_invoke_success(speech2text_model: Speech2TextModel, model_runtime: MagicMock) -> None:
+    file = BytesIO(b"audio data")
+    model_runtime.invoke_speech_to_text.return_value = "transcribed text"
 
-            result = speech2text_model.invoke(model=model_name, credentials=credentials, file=file)
+    result = speech2text_model.invoke(model="test_model", credentials={"api_key": "abc"}, file=file)
 
-            assert result == "transcribed text"
-            mock_client.invoke_speech_to_text.assert_called_once_with(
-                tenant_id="tenant_123",
-                user_id="unknown",
-                plugin_id="plugin_123",
-                provider="test_provider",
-                model=model_name,
-                credentials=credentials,
-                file=file,
-            )
+    assert result == "transcribed text"
+    model_runtime.invoke_speech_to_text.assert_called_once_with(
+        provider="test_provider",
+        model="test_model",
+        credentials={"api_key": "abc"},
+        file=file,
+    )
 
-    def test_invoke_exception(self, speech2text_model):
-        model_name = "test_model"
-        credentials = {"api_key": "abc"}
-        file = BytesIO(b"audio data")
 
-        with patch("core.plugin.impl.model.PluginModelClient") as mock_client_class:
-            mock_client = mock_client_class.return_value
-            mock_client.invoke_speech_to_text.side_effect = Exception("Test error")
+def test_invoke_exception(speech2text_model: Speech2TextModel, model_runtime: MagicMock) -> None:
+    model_runtime.invoke_speech_to_text.side_effect = Exception("Test error")
 
-            with pytest.raises(InvokeError) as excinfo:
-                speech2text_model.invoke(model=model_name, credentials=credentials, file=file)
-
-            assert "[test_provider] Error: Test error" in str(excinfo.value.description)
+    with pytest.raises(InvokeError, match="Test error"):
+        speech2text_model.invoke(model="test_model", credentials={"api_key": "abc"}, file=BytesIO(b"audio data"))

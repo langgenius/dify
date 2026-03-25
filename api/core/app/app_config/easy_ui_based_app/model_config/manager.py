@@ -2,9 +2,8 @@ from collections.abc import Mapping
 from typing import Any
 
 from core.app.app_config.entities import ModelConfigEntity
-from core.provider_manager import ProviderManager
+from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly
 from dify_graph.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
-from dify_graph.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from models.model import AppModelConfigDict
 from models.provider_ids import ModelProviderID
 
@@ -54,9 +53,12 @@ class ModelConfigManager:
         if not isinstance(config["model"], dict):
             raise ValueError("model must be of object type")
 
+        # Keep provider discovery and provider-backed model listing on the same
+        # request-scoped runtime so caller scope and provider caches stay aligned.
+        assembly = create_plugin_model_assembly(tenant_id=tenant_id)
+
         # model.provider
-        model_provider_factory = ModelProviderFactory(tenant_id)
-        provider_entities = model_provider_factory.get_providers()
+        provider_entities = assembly.model_provider_factory.get_providers()
         model_provider_names = [provider.provider for provider in provider_entities]
         if "provider" not in config["model"]:
             raise ValueError(f"model.provider is required and must be in {str(model_provider_names)}")
@@ -71,8 +73,7 @@ class ModelConfigManager:
         if "name" not in config["model"]:
             raise ValueError("model.name is required")
 
-        provider_manager = ProviderManager()
-        models = provider_manager.get_configurations(tenant_id).get_models(
+        models = assembly.provider_manager.get_configurations(tenant_id).get_models(
             provider=config["model"]["provider"], model_type=ModelType.LLM
         )
 

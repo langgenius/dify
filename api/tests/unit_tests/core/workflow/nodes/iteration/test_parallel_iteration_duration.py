@@ -1,5 +1,4 @@
 import time
-from contextlib import nullcontext
 from datetime import UTC, datetime
 
 import pytest
@@ -21,11 +20,17 @@ def test_parallel_iteration_duration_map_uses_worker_measured_time() -> None:
         parallel_nums=2,
         error_handle_mode=ErrorHandleMode.TERMINATED,
     )
-    node._capture_execution_context = lambda: nullcontext()
-    node._sync_conversation_variables_from_snapshot = lambda snapshot: None
     node._merge_usage = lambda current, new: new if current.total_tokens == 0 else current.plus(new)
 
-    def fake_execute_single_iteration_parallel(*, index: int, item: object, execution_context: object):
+    def fake_execute_tracked_iteration_parallel(
+        *,
+        index: int,
+        item: object,
+        started_child_engines: dict[int, object],
+        started_child_engines_lock: object,
+    ):
+        _ = started_child_engines
+        _ = started_child_engines_lock
         return (
             0.1 + (index * 0.1),
             [
@@ -37,11 +42,10 @@ def test_parallel_iteration_duration_map_uses_worker_measured_time() -> None:
                 ),
             ],
             f"output-{item}",
-            {},
             LLMUsage.empty_usage(),
         )
 
-    node._execute_single_iteration_parallel = fake_execute_single_iteration_parallel
+    node._execute_tracked_iteration_parallel = fake_execute_tracked_iteration_parallel
 
     outputs: list[object] = []
     iter_run_map: dict[str, float] = {}

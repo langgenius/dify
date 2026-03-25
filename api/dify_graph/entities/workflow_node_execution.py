@@ -1,9 +1,8 @@
 """
 Domain entities for workflow node execution.
 
-This module contains the domain model for workflow node execution, which is used
-by the core workflow module. These models are independent of the storage mechanism
-and don't contain implementation details like tenant_id, app_id, etc.
+These models capture node-level execution state for the graph runtime without
+describing storage or application-layer concerns.
 """
 
 from collections.abc import Mapping
@@ -19,13 +18,8 @@ class WorkflowNodeExecution(BaseModel):
     """
     Domain model for workflow node execution.
 
-    This model represents the core business entity of a node execution,
-    without implementation details like tenant_id, app_id, etc.
-
-    Note: User/context-specific fields (triggered_from, created_by, created_by_role)
-    have been moved to the repository implementation to keep the domain model clean.
-    These fields are still accepted in the constructor for backward compatibility,
-    but they are not stored in the model.
+    This model represents the graph-level record of a node execution and
+    contains only execution state relevant to the runtime.
     """
 
     # --------- Core identification fields ---------
@@ -41,7 +35,7 @@ class WorkflowNodeExecution(BaseModel):
     # In most scenarios, `id` should be used as the primary identifier.
     node_execution_id: str | None = None
     workflow_id: str  # ID of the workflow this node belongs to
-    workflow_execution_id: str | None = None  # ID of the specific workflow run (null for single-step debugging)
+    workflow_execution_id: str | None = None  # ID of the workflow execution (null for single-step debugging)
     # --------- Core identification fields ends ---------
 
     # Execution positioning and flow

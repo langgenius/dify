@@ -6,84 +6,84 @@ from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from typing import Annotated, Any, Union, cast
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
-from dify_graph.constants import (
-    CONVERSATION_VARIABLE_NODE_ID,
-    ENVIRONMENT_VARIABLE_NODE_ID,
-    RAG_PIPELINE_VARIABLE_NODE_ID,
-    SYSTEM_VARIABLE_NODE_ID,
-)
 from dify_graph.file import File, FileAttribute, file_manager
-from dify_graph.system_variable import SystemVariable
-from dify_graph.variables import Segment, SegmentGroup, VariableBase
+from dify_graph.variables import Segment, SegmentGroup, VariableBase, build_segment, segment_to_variable
 from dify_graph.variables.consts import SELECTORS_LENGTH
 from dify_graph.variables.segments import FileSegment, ObjectSegment
 from dify_graph.variables.variables import RAGPipelineVariableInput, Variable
-from factories import variable_factory
 
 VariableValue = Union[str, int, float, dict[str, object], list[object], File]
 
 VARIABLE_PATTERN = re.compile(r"\{\{#([a-zA-Z0-9_]{1,50}(?:\.[a-zA-Z_][a-zA-Z0-9_]{0,29}){1,10})#\}\}")
 
 
+def _default_variable_dictionary() -> defaultdict[str, dict[str, Variable]]:
+    return defaultdict(dict)
+
+
 class VariablePool(BaseModel):
+    _SYSTEM_VARIABLE_NODE_ID = "sys"
+    _ENVIRONMENT_VARIABLE_NODE_ID = "env"
+    _CONVERSATION_VARIABLE_NODE_ID = "conversation"
+    _RAG_PIPELINE_VARIABLE_NODE_ID = "rag"
+
     # Variable dictionary is a dictionary for looking up variables by their selector.
     # The first element of the selector is the node id, it's the first-level key in the dictionary.
     # Other elements of the selector are the keys in the second-level dictionary. To get the key, we hash the
     # elements of the selector except the first one.
     variable_dictionary: defaultdict[str, Annotated[dict[str, Variable], Field(default_factory=dict)]] = Field(
         description="Variables mapping",
-        default=defaultdict(dict),
+        default_factory=_default_variable_dictionary,
     )
+    system_variables: Sequence[Variable] = Field(default_factory=tuple, exclude=True)
+    environment_variables: Sequence[Variable] = Field(default_factory=tuple, exclude=True)
+    conversation_variables: Sequence[Variable] = Field(default_factory=tuple, exclude=True)
+    rag_pipeline_variables: Sequence[RAGPipelineVariableInput] = Field(default_factory=tuple, exclude=True)
+    user_inputs: Mapping[str, Any] = Field(default_factory=dict, exclude=True)
 
-    # The `user_inputs` is used only when constructing the inputs for the `StartNode`. It's not used elsewhere.
-    user_inputs: Mapping[str, Any] = Field(
-        description="User inputs",
-        default_factory=dict,
-    )
-    system_variables: SystemVariable = Field(
-        description="System variables",
-        default_factory=SystemVariable.default,
-    )
-    environment_variables: Sequence[Variable] = Field(
-        description="Environment variables.",
-        default_factory=list[Variable],
-    )
-    conversation_variables: Sequence[Variable] = Field(
-        description="Conversation variables.",
-        default_factory=list[Variable],
-    )
-    rag_pipeline_variables: list[RAGPipelineVariableInput] = Field(
-        description="RAG pipeline variables.",
-        default_factory=list,
-    )
+    @model_validator(mode="after")
+    def _load_legacy_bootstrap_inputs(self) -> VariablePool:
+        """
+        Accept legacy constructor kwargs that still appear throughout the workflow
+        layer while keeping serialized state focused on `variable_dictionary`.
+        """
 
-    def model_post_init(self, context: Any, /):
-        # Create a mapping from field names to SystemVariableKey enum values
-        self._add_system_variables(self.system_variables)
-        # Add environment variables to the variable pool
-        for var in self.environment_variables:
-            self.add((ENVIRONMENT_VARIABLE_NODE_ID, var.name), var)
-        # Add conversation variables to the variable pool. When restoring from a serialized
-        # snapshot, `variable_dictionary` already carries the latest runtime values.
-        # In that case, keep existing entries instead of overwriting them with the
-        # bootstrap list.
-        for var in self.conversation_variables:
-            selector = (CONVERSATION_VARIABLE_NODE_ID, var.name)
-            if self._has(selector):
-                continue
-            self.add(selector, var)
-        # Add rag pipeline variables to the variable pool
-        if self.rag_pipeline_variables:
-            rag_pipeline_variables_map: defaultdict[Any, dict[Any, Any]] = defaultdict(dict)
-            for rag_var in self.rag_pipeline_variables:
-                node_id = rag_var.variable.belong_to_node_id
-                key = rag_var.variable.variable
-                value = rag_var.value
-                rag_pipeline_variables_map[node_id][key] = value
-            for key, value in rag_pipeline_variables_map.items():
-                self.add((RAG_PIPELINE_VARIABLE_NODE_ID, key), value)
+        self._ingest_legacy_variables(self.system_variables, node_id=self._SYSTEM_VARIABLE_NODE_ID)
+        self._ingest_legacy_variables(self.environment_variables, node_id=self._ENVIRONMENT_VARIABLE_NODE_ID)
+        self._ingest_legacy_variables(self.conversation_variables, node_id=self._CONVERSATION_VARIABLE_NODE_ID)
+        self._ingest_legacy_rag_variables(self.rag_pipeline_variables)
+
+        # These kwargs are accepted for compatibility but should not affect the
+        # stable serialized form or model equality.
+        self.system_variables = ()
+        self.environment_variables = ()
+        self.conversation_variables = ()
+        self.rag_pipeline_variables = ()
+        self.user_inputs = {}
+        return self
+
+    def _ingest_legacy_variables(self, variables: Sequence[Variable], *, node_id: str) -> None:
+        for variable in variables:
+            selector = [node_id, variable.name]
+            normalized_variable = variable
+            if list(variable.selector) != selector:
+                normalized_variable = variable.model_copy(update={"selector": selector})
+            self.add(normalized_variable.selector, normalized_variable)
+
+    def _ingest_legacy_rag_variables(self, rag_pipeline_variables: Sequence[RAGPipelineVariableInput]) -> None:
+        if not rag_pipeline_variables:
+            return
+
+        values_by_node_id: defaultdict[str, dict[str, Any]] = defaultdict(dict)
+        for rag_variable_input in rag_pipeline_variables:
+            values_by_node_id[rag_variable_input.variable.belong_to_node_id][rag_variable_input.variable.variable] = (
+                rag_variable_input.value
+            )
+
+        for node_id, value in values_by_node_id.items():
+            self.add((self._RAG_PIPELINE_VARIABLE_NODE_ID, node_id), value)
 
     def add(self, selector: Sequence[str], value: Any, /):
         """
@@ -114,10 +114,10 @@ class VariablePool(BaseModel):
         if isinstance(value, VariableBase):
             variable = value
         elif isinstance(value, Segment):
-            variable = variable_factory.segment_to_variable(segment=value, selector=selector)
+            variable = segment_to_variable(segment=value, selector=selector)
         else:
-            segment = variable_factory.build_segment(value)
-            variable = variable_factory.segment_to_variable(segment=segment, selector=selector)
+            segment = build_segment(value)
+            variable = segment_to_variable(segment=segment, selector=selector)
 
         node_id, name = self._selector_to_keys(selector)
         # Based on the definition of `Variable`,
@@ -180,7 +180,7 @@ class VariablePool(BaseModel):
                 return None
             attr = FileAttribute(attr)
             attr_value = file_manager.get_attr(file=segment.value, attr=attr)
-            return variable_factory.build_segment(attr_value)
+            return build_segment(attr_value)
 
         # Navigate through nested attributes
         result: Any = segment
@@ -191,7 +191,7 @@ class VariablePool(BaseModel):
                 return None
 
         # Return result as Segment
-        return result if isinstance(result, Segment) else variable_factory.build_segment(result)
+        return result if isinstance(result, Segment) else build_segment(result)
 
     def _extract_value(self, obj: Any):
         """Extract the actual value from an ObjectSegment."""
@@ -212,7 +212,7 @@ class VariablePool(BaseModel):
         """
         if not isinstance(obj, dict) or attr not in obj:
             return None
-        return variable_factory.build_segment(obj.get(attr))
+        return build_segment(obj.get(attr))
 
     def remove(self, selector: Sequence[str], /):
         """
@@ -239,7 +239,7 @@ class VariablePool(BaseModel):
             if "." in part and (variable := self.get(part.split("."))):
                 segments.append(variable)
             else:
-                segments.append(variable_factory.build_segment(part))
+                segments.append(build_segment(part))
         return SegmentGroup(value=segments)
 
     def get_file(self, selector: Sequence[str], /) -> FileSegment | None:
@@ -262,19 +262,18 @@ class VariablePool(BaseModel):
 
         return result
 
-    def _add_system_variables(self, system_variable: SystemVariable):
-        sys_var_mapping = system_variable.to_dict()
-        for key, value in sys_var_mapping.items():
-            if value is None:
-                continue
-            selector = (SYSTEM_VARIABLE_NODE_ID, key)
-            # If the system variable already exists, do not add it again.
-            # This ensures that we can keep the id of the system variables intact.
-            if self._has(selector):
-                continue
-            self.add(selector, value)
+    def flatten(self, *, unprefixed_node_id: str | None = None) -> Mapping[str, object]:
+        """Return a selector-style snapshot of the entire variable pool."""
+
+        result: dict[str, object] = {}
+        for node_id, variables in self.variable_dictionary.items():
+            for name, variable in variables.items():
+                output_name = name if node_id == unprefixed_node_id else f"{node_id}.{name}"
+                result[output_name] = deepcopy(variable.value)
+
+        return result
 
     @classmethod
     def empty(cls) -> VariablePool:
         """Create an empty variable pool."""
-        return cls(system_variables=SystemVariable.default())
+        return cls()

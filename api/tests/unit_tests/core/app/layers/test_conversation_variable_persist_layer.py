@@ -3,16 +3,15 @@ from datetime import datetime
 from unittest.mock import Mock
 
 from core.app.layers.conversation_variable_persist_layer import ConversationVariablePersistenceLayer
-from dify_graph.constants import CONVERSATION_VARIABLE_NODE_ID
-from dify_graph.enums import BuiltinNodeTypes, NodeType, WorkflowNodeExecutionStatus
+from core.workflow.system_variables import SystemVariableKey
+from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID
+from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from dify_graph.graph_engine.protocols.command_channel import CommandChannel
-from dify_graph.graph_events.node import NodeRunSucceededEvent
+from dify_graph.graph_events.node import NodeRunSucceededEvent, NodeRunVariableUpdatedEvent
 from dify_graph.node_events import NodeRunResult
-from dify_graph.nodes.variable_assigner.common import helpers as common_helpers
 from dify_graph.runtime.graph_runtime_state_protocol import ReadOnlyGraphRuntimeState
-from dify_graph.system_variable import SystemVariable
 from dify_graph.variables import StringVariable
-from dify_graph.variables.segments import Segment
+from dify_graph.variables.segments import Segment, StringSegment
 
 
 class MockReadOnlyVariablePool:
@@ -36,31 +35,38 @@ def _build_graph_runtime_state(
     conversation_id: str | None = None,
 ) -> ReadOnlyGraphRuntimeState:
     graph_runtime_state = Mock(spec=ReadOnlyGraphRuntimeState)
+    if conversation_id is not None:
+        variable_pool._variables[("sys", SystemVariableKey.CONVERSATION_ID.value)] = StringSegment(
+            value=conversation_id
+        )
     graph_runtime_state.variable_pool = variable_pool
-    graph_runtime_state.system_variable = SystemVariable(conversation_id=conversation_id).as_view()
     return graph_runtime_state
 
 
-def _build_node_run_succeeded_event(
-    *,
-    node_type: NodeType,
-    outputs: dict[str, object] | None = None,
-    process_data: dict[str, object] | None = None,
-) -> NodeRunSucceededEvent:
+def _build_node_run_succeeded_event() -> NodeRunSucceededEvent:
     return NodeRunSucceededEvent(
         id="node-exec-id",
         node_id="assigner",
-        node_type=node_type,
+        node_type=BuiltinNodeTypes.LLM,
         start_at=datetime.utcnow(),
         node_run_result=NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
-            outputs=outputs or {},
-            process_data=process_data or {},
+            outputs={},
+            process_data={},
         ),
     )
 
 
-def test_persists_conversation_variables_from_assigner_output():
+def _build_variable_updated_event(variable: StringVariable) -> NodeRunVariableUpdatedEvent:
+    return NodeRunVariableUpdatedEvent(
+        id="node-exec-id",
+        node_id="assigner",
+        node_type=BuiltinNodeTypes.VARIABLE_ASSIGNER,
+        variable=variable,
+    )
+
+
+def test_persists_conversation_variables_from_variable_update_event():
     conversation_id = "conv-123"
     variable = StringVariable(
         id="var-1",
@@ -68,55 +74,26 @@ def test_persists_conversation_variables_from_assigner_output():
         value="updated",
         selector=[CONVERSATION_VARIABLE_NODE_ID, "name"],
     )
-    process_data = common_helpers.set_updated_variables(
-        {}, [common_helpers.variable_to_processed_data(variable.selector, variable)]
-    )
-
-    variable_pool = MockReadOnlyVariablePool({(CONVERSATION_VARIABLE_NODE_ID, "name"): variable})
-
     updater = Mock()
     layer = ConversationVariablePersistenceLayer(updater)
-    layer.initialize(_build_graph_runtime_state(variable_pool, conversation_id), Mock(spec=CommandChannel))
+    layer.initialize(_build_graph_runtime_state(MockReadOnlyVariablePool(), conversation_id), Mock(spec=CommandChannel))
 
-    event = _build_node_run_succeeded_event(node_type=BuiltinNodeTypes.VARIABLE_ASSIGNER, process_data=process_data)
+    event = _build_variable_updated_event(variable)
     layer.on_event(event)
 
     updater.update.assert_called_once_with(conversation_id=conversation_id, variable=variable)
-    updater.flush.assert_called_once()
 
 
-def test_skips_when_outputs_missing():
+def test_skips_non_variable_update_events():
     conversation_id = "conv-456"
-    variable = StringVariable(
-        id="var-2",
-        name="name",
-        value="updated",
-        selector=[CONVERSATION_VARIABLE_NODE_ID, "name"],
-    )
-
-    variable_pool = MockReadOnlyVariablePool({(CONVERSATION_VARIABLE_NODE_ID, "name"): variable})
-
     updater = Mock()
     layer = ConversationVariablePersistenceLayer(updater)
-    layer.initialize(_build_graph_runtime_state(variable_pool, conversation_id), Mock(spec=CommandChannel))
+    layer.initialize(_build_graph_runtime_state(MockReadOnlyVariablePool(), conversation_id), Mock(spec=CommandChannel))
 
-    event = _build_node_run_succeeded_event(node_type=BuiltinNodeTypes.VARIABLE_ASSIGNER)
+    event = _build_node_run_succeeded_event()
     layer.on_event(event)
 
     updater.update.assert_not_called()
-    updater.flush.assert_not_called()
-
-
-def test_skips_non_assigner_nodes():
-    updater = Mock()
-    layer = ConversationVariablePersistenceLayer(updater)
-    layer.initialize(_build_graph_runtime_state(MockReadOnlyVariablePool()), Mock(spec=CommandChannel))
-
-    event = _build_node_run_succeeded_event(node_type=BuiltinNodeTypes.LLM)
-    layer.on_event(event)
-
-    updater.update.assert_not_called()
-    updater.flush.assert_not_called()
 
 
 def test_skips_non_conversation_variables():
@@ -127,18 +104,11 @@ def test_skips_non_conversation_variables():
         value="updated",
         selector=["environment", "name"],
     )
-    process_data = common_helpers.set_updated_variables(
-        {}, [common_helpers.variable_to_processed_data(non_conversation_variable.selector, non_conversation_variable)]
-    )
-
-    variable_pool = MockReadOnlyVariablePool()
-
     updater = Mock()
     layer = ConversationVariablePersistenceLayer(updater)
-    layer.initialize(_build_graph_runtime_state(variable_pool, conversation_id), Mock(spec=CommandChannel))
+    layer.initialize(_build_graph_runtime_state(MockReadOnlyVariablePool(), conversation_id), Mock(spec=CommandChannel))
 
-    event = _build_node_run_succeeded_event(node_type=BuiltinNodeTypes.VARIABLE_ASSIGNER, process_data=process_data)
+    event = _build_variable_updated_event(non_conversation_variable)
     layer.on_event(event)
 
     updater.update.assert_not_called()
-    updater.flush.assert_not_called()

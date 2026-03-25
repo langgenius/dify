@@ -67,7 +67,6 @@ def test_pause_details_returns_backstage_input_url(app: Flask, monkeypatch: pyte
         actions=[UserAction(id="approve", title="Approve")],
         node_id="node-1",
         node_title="Ask Name",
-        form_token="backstage-token",
     )
     pause_entity = _PauseEntity(paused_at=datetime(2024, 1, 1, 12, 0, 0), reasons=[reason])
 
@@ -77,6 +76,11 @@ def test_pause_details_returns_backstage_input_url(app: Flask, monkeypatch: pyte
         workflow_run_module.DifyAPIRepositoryFactory,
         "create_api_workflow_run_repository",
         lambda *_, **__: repo,
+    )
+    monkeypatch.setattr(
+        workflow_run_module,
+        "_load_form_tokens_by_form_id",
+        lambda _form_ids: {"form-1": "backstage-token"},
     )
 
     with app.test_request_context("/console/api/workflow/run-1/pause-details", method="GET"):

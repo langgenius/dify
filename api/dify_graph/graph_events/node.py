@@ -1,10 +1,11 @@
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from datetime import datetime
+from typing import Any
 
 from pydantic import Field
 
-from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from dify_graph.entities.pause_reason import PauseReason
+from dify_graph.variables.variables import Variable
 
 from .base import GraphNodeEventBase
 
@@ -30,13 +31,19 @@ class NodeRunStreamChunkEvent(GraphNodeEventBase):
 
 
 class NodeRunRetrieverResourceEvent(GraphNodeEventBase):
-    retriever_resources: Sequence[RetrievalSourceMetadata] = Field(..., description="retriever resources")
+    retriever_resources: Sequence[Mapping[str, Any]] = Field(..., description="retriever resources")
     context: str = Field(..., description="context")
 
 
 class NodeRunSucceededEvent(GraphNodeEventBase):
     start_at: datetime = Field(..., description="node start time")
     finished_at: datetime | None = Field(default=None, description="node finish time")
+
+
+class NodeRunVariableUpdatedEvent(GraphNodeEventBase):
+    """Request that the engine apply a variable update before downstream observers continue."""
+
+    variable: Variable = Field(..., description="Updated variable payload to apply.")
 
 
 class NodeRunFailedEvent(GraphNodeEventBase):

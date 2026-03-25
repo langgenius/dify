@@ -5,9 +5,10 @@ import pytest
 from pydantic import BaseModel
 
 from core.helper import encrypter
+from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
+from core.workflow.variable_pool_initializer import add_variables_to_pool
 from dify_graph.file import File, FileTransferMethod, FileType
 from dify_graph.runtime import VariablePool
-from dify_graph.system_variable import SystemVariable
 from dify_graph.variables.segment_group import SegmentGroup
 from dify_graph.variables.segments import (
     ArrayAnySegment,
@@ -48,14 +49,28 @@ from dify_graph.variables.variables import (
 )
 
 
+def _build_variable_pool(
+    *,
+    system_variables: list[Variable] | None = None,
+    environment_variables: list[Variable] | None = None,
+) -> VariablePool:
+    variable_pool = VariablePool()
+    add_variables_to_pool(
+        variable_pool,
+        build_bootstrap_variables(
+            system_variables=system_variables or [],
+            environment_variables=environment_variables or [],
+        ),
+    )
+    return variable_pool
+
+
 def test_segment_group_to_text():
-    variable_pool = VariablePool(
-        system_variables=SystemVariable(user_id="fake-user-id"),
-        user_inputs={},
+    variable_pool = _build_variable_pool(
+        system_variables=build_system_variables(user_id="fake-user-id"),
         environment_variables=[
             SecretVariable(name="secret_key", value="fake-secret-key"),
         ],
-        conversation_variables=[],
     )
     variable_pool.add(("node_id", "custom_query"), "fake-user-query")
     template = (
@@ -71,11 +86,8 @@ def test_segment_group_to_text():
 
 
 def test_convert_constant_to_segment_group():
-    variable_pool = VariablePool(
-        system_variables=SystemVariable(user_id="1", app_id="1", workflow_id="1"),
-        user_inputs={},
-        environment_variables=[],
-        conversation_variables=[],
+    variable_pool = _build_variable_pool(
+        system_variables=build_system_variables(user_id="1", app_id="1", workflow_id="1"),
     )
     template = "Hello, world!"
     segments_group = variable_pool.convert_template(template)
@@ -84,12 +96,7 @@ def test_convert_constant_to_segment_group():
 
 
 def test_convert_variable_to_segment_group():
-    variable_pool = VariablePool(
-        system_variables=SystemVariable(user_id="fake-user-id"),
-        user_inputs={},
-        environment_variables=[],
-        conversation_variables=[],
-    )
+    variable_pool = _build_variable_pool(system_variables=build_system_variables(user_id="fake-user-id"))
     template = "{{#sys.user_id#}}"
     segments_group = variable_pool.convert_template(template)
     assert segments_group.text == "fake-user-id"
@@ -116,7 +123,6 @@ def create_test_file(
 ) -> File:
     """Factory function to create File objects for testing"""
     return File(
-        tenant_id="test-tenant",
         type=file_type,
         transfer_method=transfer_method,
         filename=filename,
@@ -190,7 +196,6 @@ class TestSegmentDumpAndLoad:
                 loaded_file = loaded_segment.value
                 assert isinstance(orig_file, File)
                 assert isinstance(loaded_file, File)
-                assert loaded_file.tenant_id == orig_file.tenant_id
                 assert loaded_file.type == orig_file.type
                 assert loaded_file.filename == orig_file.filename
             else:
@@ -234,7 +239,6 @@ class TestSegmentDumpAndLoad:
                 loaded_file = loaded_variable.value
                 assert isinstance(orig_file, File)
                 assert isinstance(loaded_file, File)
-                assert loaded_file.tenant_id == orig_file.tenant_id
                 assert loaded_file.type == orig_file.type
                 assert loaded_file.filename == orig_file.filename
             else:

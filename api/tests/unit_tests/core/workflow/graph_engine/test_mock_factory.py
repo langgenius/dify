@@ -111,7 +111,7 @@ class MockNodeFactory(DifyNodeFactory):
                     mock_config=self.mock_config,
                     http_request_config=self._http_request_config,
                     http_client=self._http_request_http_client,
-                    tool_file_manager_factory=self._http_request_tool_file_manager_factory,
+                    tool_file_manager_factory=self._bound_tool_file_manager_factory,
                     file_manager=self._http_request_file_manager,
                 )
             elif node_type in {

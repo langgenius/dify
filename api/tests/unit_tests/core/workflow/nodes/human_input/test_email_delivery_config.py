@@ -1,4 +1,4 @@
-from dify_graph.nodes.human_input.entities import EmailDeliveryConfig, EmailRecipients
+from core.workflow.human_input_compat import EmailDeliveryConfig, EmailRecipients
 from dify_graph.runtime import VariablePool
 
 

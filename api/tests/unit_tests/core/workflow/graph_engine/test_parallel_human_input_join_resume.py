@@ -4,6 +4,13 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any, Protocol
 
+from core.repositories.human_input_repository import (
+    FormCreateParams,
+    HumanInputFormEntity,
+    HumanInputFormRepository,
+)
+from core.workflow.node_runtime import DifyHumanInputNodeRuntime
+from core.workflow.system_variables import build_system_variables
 from dify_graph.entities.workflow_start_reason import WorkflowStartReason
 from dify_graph.graph import Graph
 from dify_graph.graph_engine.command_channels.in_memory_channel import InMemoryChannel
@@ -23,13 +30,7 @@ from dify_graph.nodes.human_input.enums import HumanInputFormStatus
 from dify_graph.nodes.human_input.human_input_node import HumanInputNode
 from dify_graph.nodes.start.entities import StartNodeData
 from dify_graph.nodes.start.start_node import StartNode
-from dify_graph.repositories.human_input_form_repository import (
-    FormCreateParams,
-    HumanInputFormEntity,
-    HumanInputFormRepository,
-)
 from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.system_variable import SystemVariable
 from libs.datetime_utils import naive_utc_now
 from tests.workflow_test_utils import build_test_graph_init_params
 
@@ -67,7 +68,7 @@ class StaticForm(HumanInputFormEntity):
         return self.form_id
 
     @property
-    def web_app_token(self) -> str | None:
+    def submission_token(self) -> str | None:
         return "token"
 
     @property
@@ -103,7 +104,7 @@ class StaticRepo(HumanInputFormRepository):
     def __init__(self, forms_by_node_id: Mapping[str, HumanInputFormEntity]) -> None:
         self._forms_by_node_id = dict(forms_by_node_id)
 
-    def get_form(self, workflow_execution_id: str, node_id: str) -> HumanInputFormEntity | None:
+    def get_form(self, node_id: str) -> HumanInputFormEntity | None:
         return self._forms_by_node_id.get(node_id)
 
     def create_form(self, params: FormCreateParams) -> HumanInputFormEntity:
@@ -112,7 +113,7 @@ class StaticRepo(HumanInputFormRepository):
 
 def _build_runtime_state() -> GraphRuntimeState:
     variable_pool = VariablePool(
-        system_variables=SystemVariable(
+        system_variables=build_system_variables(
             user_id="user",
             app_id="app",
             workflow_id="workflow",
@@ -159,6 +160,7 @@ def _build_graph(runtime_state: GraphRuntimeState, repo: HumanInputFormRepositor
         graph_init_params=graph_init_params,
         graph_runtime_state=runtime_state,
         form_repository=repo,
+        runtime=DifyHumanInputNodeRuntime(graph_init_params.run_context),
     )
 
     human_b_config = {"id": "human_b", "data": human_data.model_dump()}
@@ -168,6 +170,7 @@ def _build_graph(runtime_state: GraphRuntimeState, repo: HumanInputFormRepositor
         graph_init_params=graph_init_params,
         graph_runtime_state=runtime_state,
         form_repository=repo,
+        runtime=DifyHumanInputNodeRuntime(graph_init_params.run_context),
     )
 
     end_data = EndNodeData(
