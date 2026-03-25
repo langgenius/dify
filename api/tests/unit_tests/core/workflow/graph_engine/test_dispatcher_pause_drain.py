@@ -1,5 +1,5 @@
 import queue
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from dify_graph.graph_engine.orchestration.dispatcher import Dispatcher
@@ -52,7 +52,7 @@ def test_dispatcher_drains_events_when_paused() -> None:
         id="exec-1",
         node_id="node-1",
         node_type=BuiltinNodeTypes.START,
-        start_at=datetime.now(tz=timezone.utc),
+        start_at=datetime.now(tz=UTC),
         node_run_result=NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED),
     )
     event_queue.put(event)

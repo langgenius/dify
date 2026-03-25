@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from collections.abc import Generator
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from uuid import uuid4
 
@@ -174,7 +174,7 @@ def _create_submitted_form(
     action_title: str = "Approve",
     node_title: str = "Approval",
 ) -> HumanInputForm:
-    expiration_time = datetime.now(tz=timezone.utc) + timedelta(days=1)
+    expiration_time = datetime.now(tz=UTC) + timedelta(days=1)
     form_definition = FormDefinition(
         form_content="content",
         inputs=[],
@@ -207,7 +207,7 @@ def _create_waiting_form(
     workflow_run_id: str,
     default_values: dict | None = None,
 ) -> HumanInputForm:
-    expiration_time = datetime.now(tz=timezone.utc) + timedelta(days=1)
+    expiration_time = datetime.now(tz=UTC) + timedelta(days=1)
     form_definition = FormDefinition(
         form_content="content",
         inputs=[],

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from uuid import uuid4
 
@@ -117,7 +117,7 @@ def create_human_input_message_fixture(db_session) -> HumanInputMessageFixture:
         inputs=[],
         user_actions=[UserAction(id=action_id, title=action_text)],
         rendered_content="Rendered block",
-        expiration_time=datetime.now(tz=timezone.utc) + timedelta(days=1),
+        expiration_time=datetime.now(tz=UTC) + timedelta(days=1),
         node_title=node_title,
         display_in_ui=True,
     )
@@ -129,7 +129,7 @@ def create_human_input_message_fixture(db_session) -> HumanInputMessageFixture:
         form_definition=form_definition.model_dump_json(),
         rendered_content="Rendered block",
         status=HumanInputFormStatus.SUBMITTED,
-        expiration_time=datetime.now(tz=timezone.utc) + timedelta(days=1),
+        expiration_time=datetime.now(tz=UTC) + timedelta(days=1),
         selected_action_id=action_id,
     )
     db_session.add(form)

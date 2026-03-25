@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import pytest
@@ -272,7 +272,7 @@ def _make_form_definition() -> str:
         inputs=[],
         user_actions=[UserAction(id="submit", title="Submit")],
         rendered_content="<p>hello</p>",
-        expiration_time=datetime.now(tz=timezone.utc),
+        expiration_time=datetime.now(tz=UTC),
     ).model_dump_json()
 
 
