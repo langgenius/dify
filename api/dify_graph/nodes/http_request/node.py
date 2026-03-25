@@ -84,7 +84,7 @@ class HttpRequestNode(Node[HttpRequestNodeData]):
             },
             "retry_config": {
                 "max_retries": http_request_config.ssrf_default_max_retries,
-                "retry_interval": 0.5 * (2**2),
+                "retry_interval": 100,  # Base interval: 100ms (will grow exponentially)
                 "retry_enabled": True,
             },
         }

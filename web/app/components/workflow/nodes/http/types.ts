@@ -1,4 +1,4 @@
-import type { CommonNodeType, ValueSelector, Variable } from '@/app/components/workflow/types'
+﻿import type { CommonNodeType, ValueSelector, Variable } from '@/app/components/workflow/types'
 
 export enum Method {
   get = 'get',
@@ -82,4 +82,9 @@ export type HttpNodeType = CommonNodeType & {
   authorization: Authorization
   timeout: Timeout
   ssl_verify?: boolean
-}
+  retry_config?: {
+    max_retries: number
+    retry_interval: number
+    retry_enabled: boolean
+  }
+}
