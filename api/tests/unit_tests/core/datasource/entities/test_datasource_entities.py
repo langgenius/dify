@@ -257,7 +257,10 @@ def test_online_drive_models():
     assert bucket.bucket == "b1"
 
     req_default = OnlineDriveBrowseFilesRequest()
+    assert req_default.bucket is None
     assert req_default.prefix == ""
+    assert req_default.max_keys == 20
+    assert req_default.next_page_parameters is None
 
     req = OnlineDriveBrowseFilesRequest(bucket="b1", prefix="folder1", max_keys=10, next_page_parameters=None)
     assert req.prefix == "folder1"
