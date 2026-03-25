@@ -37,7 +37,7 @@ class DatasetIndexToolCallbackHandler:
         created_by = parse_uuid_str_or_none(self._user_id)
         if created_by is None:
             _logger.debug(
-                "Skipping dataset query log: invalid or empty created_by user_id (invoke_from=%s)",
+                "Skipping dataset query log: empty created_by user_id (invoke_from=%s)",
                 self._invoke_from,
             )
             return

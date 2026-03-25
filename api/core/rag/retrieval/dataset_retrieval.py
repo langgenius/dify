@@ -1004,7 +1004,7 @@ class DatasetRetrieval:
         created_by = parse_uuid_str_or_none(user_id)
         if created_by is None:
             logger.debug(
-                "Skipping dataset query log: invalid or empty created_by user_id (user_from=%s, app_id=%s)",
+                "Skipping dataset query log: empty created_by user_id (user_from=%s, app_id=%s)",
                 user_from,
                 app_id,
             )
