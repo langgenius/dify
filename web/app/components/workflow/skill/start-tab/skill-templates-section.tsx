@@ -78,7 +78,7 @@ const SkillTemplatesSection = () => {
   }, [searchQuery])
 
   return (
-    <section className="flex flex-1 flex-col gap-3">
+    <section className="flex flex-col gap-3">
       <div className="sticky top-0 z-10 flex flex-col gap-3 bg-components-panel-bg px-6 pb-1 pt-2">
         <SectionHeader
           title={t('skill.startTab.templatesTitle')}
@@ -92,7 +92,7 @@ const SkillTemplatesSection = () => {
       </div>
       {filtered.length === 0 && searchQuery
         ? (
-            <div className="flex flex-1 flex-col items-center justify-center gap-y-2">
+            <div className="flex min-h-60 flex-col items-center justify-center gap-y-2 px-6">
               <SearchMenu className="size-12 text-text-quaternary" />
               <span className="text-text-tertiary system-sm-regular">
                 {t('skill.startTab.noTemplatesFound')}

@@ -95,11 +95,12 @@ describe('SkillTemplatesSection', () => {
 
   describe('Rendering', () => {
     it('should render all templates from registry', () => {
-      render(<SkillTemplatesSection />)
+      const { container } = render(<SkillTemplatesSection />)
 
       expect(screen.getByText('alpha')).toBeInTheDocument()
       expect(screen.getByText('beta')).toBeInTheDocument()
       expect(screen.getAllByRole('button', { name: /workflow\.skill\.startTab\.useThisSkill/i })).toHaveLength(2)
+      expect(container.querySelector('.sticky.top-0')).not.toBeNull()
     })
 
     it('should render empty state when search query has no matches', async () => {
