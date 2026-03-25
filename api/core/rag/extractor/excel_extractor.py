@@ -59,7 +59,16 @@ class ExcelExtractor(BaseExtractor):
                                 if value is None:
                                     value = ""
                                 elif not isinstance(value, str):
-                                    value = str(value)
+                                    # Check if cell has percentage formatting
+                                    if isinstance(value, (int, float)) and hasattr(cell, "number_format"):
+                                        number_format = cell.number_format or ""
+                                        if "%" in number_format:
+                                            # Convert decimal to percentage (e.g., 0.9 -> 90%)
+                                            value = f"{value * 100:.10g}%"
+                                        else:
+                                            value = str(value)
+                                    else:
+                                        value = str(value)
                                 value = value.strip().replace('"', '\\"')
                                 page_content.append(f'"{col_name}":"{value}"')
                         if page_content:
