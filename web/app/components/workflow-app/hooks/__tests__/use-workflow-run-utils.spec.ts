@@ -76,6 +76,21 @@ describe('useWorkflowRun utils', () => {
     expect(validateWorkflowRunRequest(TriggerType.Schedule)).toBe('handleRun: schedule trigger run requires node id')
     expect(validateWorkflowRunRequest(TriggerType.Webhook)).toBe('handleRun: webhook trigger run requires node id')
     expect(validateWorkflowRunRequest(TriggerType.Plugin)).toBe('handleRun: plugin trigger run requires node id')
+    expect(validateWorkflowRunRequest(TriggerType.All)).toBe('')
+    expect(validateWorkflowRunRequest(TriggerType.All, { allNodeIds: [] })).toBe('')
+  })
+
+  it('should return empty trigger urls when app id is missing and keep user-input urls empty outside workflow debug', () => {
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    expect(resolveWorkflowRunUrl(undefined, TriggerType.Plugin, true)).toBe('')
+    expect(resolveWorkflowRunUrl(undefined, TriggerType.All, true)).toBe('')
+    expect(resolveWorkflowRunUrl({ id: 'app-1', mode: AppModeEnum.WORKFLOW }, TriggerType.UserInput, false)).toBe('')
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith('handleRun: missing app id for trigger plugin run')
+    expect(consoleErrorSpy).toHaveBeenCalledWith('handleRun: missing app id for trigger run all')
+
+    consoleErrorSpy.mockRestore()
   })
 
   it('should configure listening state for trigger and non-trigger modes', () => {
@@ -140,6 +155,10 @@ describe('useWorkflowRun utils', () => {
       ttsUrl: '/installed-apps/app-1/text-to-audio',
       ttsIsPublic: false,
     })
+    expect(buildTTSConfig({ appId: 'app-1' }, '/apps/app-1/workflow')).toEqual({
+      ttsUrl: '/apps/app-1/text-to-audio',
+      ttsIsPublic: false,
+    })
 
     const publishedWorkflow = {
       graph: {
@@ -175,6 +194,60 @@ describe('useWorkflowRun utils', () => {
       moderation: { enabled: true },
       file: { enabled: true },
     })
+  })
+
+  it('should handle trigger debug null and invalid json responses as request failures', async () => {
+    const clearAbortController = vi.fn()
+    const clearListeningStateSpy = vi.fn()
+    const setAbortController = vi.fn()
+    const setWorkflowRunningData = vi.fn()
+    const controllerTarget: Record<string, unknown> = {}
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    mockPost.mockResolvedValueOnce(null)
+
+    await runTriggerDebug({
+      debugType: TriggerType.Webhook,
+      url: '/apps/app-1/workflows/draft/trigger/run',
+      requestBody: { node_id: 'webhook-1' },
+      baseSseOptions: {},
+      controllerTarget,
+      setAbortController,
+      clearAbortController,
+      clearListeningState: clearListeningStateSpy,
+      setWorkflowRunningData,
+    })
+
+    expect(mockToastError).toHaveBeenCalledWith('Webhook debug request failed')
+    expect(clearAbortController).toHaveBeenCalledTimes(1)
+    expect(clearListeningStateSpy).not.toHaveBeenCalled()
+
+    mockPost.mockResolvedValueOnce(new Response('{invalid-json}', {
+      headers: { 'content-type': 'application/json' },
+    }))
+
+    await runTriggerDebug({
+      debugType: TriggerType.Schedule,
+      url: '/apps/app-1/workflows/draft/trigger/run',
+      requestBody: { node_id: 'schedule-1' },
+      baseSseOptions: {},
+      controllerTarget,
+      setAbortController,
+      clearAbortController,
+      clearListeningState: clearListeningStateSpy,
+      setWorkflowRunningData,
+    })
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      'handleRun: schedule debug response parse error',
+      expect.any(Error),
+    )
+    expect(mockToastError).toHaveBeenCalledWith('Schedule debug request failed')
+    expect(clearAbortController).toHaveBeenCalledTimes(2)
+    expect(clearListeningStateSpy).toHaveBeenCalledTimes(1)
+    expect(setWorkflowRunningData).not.toHaveBeenCalled()
+
+    consoleErrorSpy.mockRestore()
   })
 
   it('should handle trigger debug json failures and stream responses', async () => {
@@ -228,6 +301,126 @@ describe('useWorkflowRun utils', () => {
 
     expect(clearListeningStateSpy).toHaveBeenCalledTimes(2)
     expect(mockHandleStream).toHaveBeenCalledTimes(1)
+  })
+
+  it('should retry waiting trigger debug responses until a stream is returned', async () => {
+    vi.useFakeTimers()
+    const clearAbortController = vi.fn()
+    const clearListeningStateSpy = vi.fn()
+    const setAbortController = vi.fn()
+    const setWorkflowRunningData = vi.fn()
+    const controllerTarget: Record<string, unknown> = {}
+    const baseSseOptions = {
+      onData: vi.fn(),
+      onCompleted: vi.fn(),
+    }
+
+    mockPost
+      .mockResolvedValueOnce(new Response(JSON.stringify({ status: 'waiting', retry_in: 1 }), {
+        headers: { 'content-type': 'application/json' },
+      }))
+      .mockResolvedValueOnce(new Response('data: ok', {
+        headers: { 'content-type': 'text/event-stream' },
+      }))
+
+    const runPromise = runTriggerDebug({
+      debugType: TriggerType.All,
+      url: '/apps/app-1/workflows/draft/trigger/run-all',
+      requestBody: { node_ids: ['trigger-1'] },
+      baseSseOptions,
+      controllerTarget,
+      setAbortController,
+      clearAbortController,
+      clearListeningState: clearListeningStateSpy,
+      setWorkflowRunningData,
+    })
+
+    await vi.advanceTimersByTimeAsync(1)
+    await runPromise
+
+    expect(mockPost).toHaveBeenCalledTimes(2)
+    expect(clearListeningStateSpy).toHaveBeenCalledTimes(1)
+    expect(mockHandleStream).toHaveBeenCalledTimes(1)
+
+    vi.useRealTimers()
+  })
+
+  it('should stop trigger debug processing when the controller aborts before handling the response', async () => {
+    const clearAbortController = vi.fn()
+    const clearListeningStateSpy = vi.fn()
+    const setWorkflowRunningData = vi.fn()
+    const controllerTarget: Record<string, unknown> = {}
+
+    mockPost.mockResolvedValueOnce(new Response('data: ok', {
+      headers: { 'content-type': 'text/event-stream' },
+    }))
+
+    await runTriggerDebug({
+      debugType: TriggerType.Plugin,
+      url: '/apps/app-1/workflows/draft/trigger/run',
+      requestBody: { node_id: 'plugin-1' },
+      baseSseOptions: {},
+      controllerTarget,
+      setAbortController: (controller) => {
+        controller?.abort()
+      },
+      clearAbortController,
+      clearListeningState: clearListeningStateSpy,
+      setWorkflowRunningData,
+    })
+
+    expect(mockHandleStream).not.toHaveBeenCalled()
+    expect(mockToastError).not.toHaveBeenCalled()
+    expect(clearAbortController).not.toHaveBeenCalled()
+    expect(clearListeningStateSpy).not.toHaveBeenCalled()
+    expect(setWorkflowRunningData).not.toHaveBeenCalled()
+  })
+
+  it('should handle Response and non-Response trigger debug exceptions correctly', async () => {
+    const clearAbortController = vi.fn()
+    const clearListeningStateSpy = vi.fn()
+    const setAbortController = vi.fn()
+    const setWorkflowRunningData = vi.fn()
+    const controllerTarget: Record<string, unknown> = {}
+
+    mockPost.mockRejectedValueOnce(new Response(JSON.stringify({ error: 'Plugin failed' }), {
+      headers: { 'content-type': 'application/json' },
+    }))
+
+    await runTriggerDebug({
+      debugType: TriggerType.Plugin,
+      url: '/apps/app-1/workflows/draft/trigger/run',
+      requestBody: { node_id: 'plugin-1' },
+      baseSseOptions: {},
+      controllerTarget,
+      setAbortController,
+      clearAbortController,
+      clearListeningState: clearListeningStateSpy,
+      setWorkflowRunningData,
+    })
+
+    expect(mockToastError).toHaveBeenCalledWith('Plugin failed')
+    expect(clearAbortController).toHaveBeenCalledTimes(1)
+    expect(setWorkflowRunningData).toHaveBeenCalledWith(createFailedWorkflowState('Plugin failed'))
+    expect(clearListeningStateSpy).toHaveBeenCalledTimes(1)
+
+    mockPost.mockRejectedValueOnce(new Error('network failed'))
+
+    await runTriggerDebug({
+      debugType: TriggerType.Plugin,
+      url: '/apps/app-1/workflows/draft/trigger/run',
+      requestBody: { node_id: 'plugin-1' },
+      baseSseOptions: {},
+      controllerTarget,
+      setAbortController,
+      clearAbortController,
+      clearListeningState: clearListeningStateSpy,
+      setWorkflowRunningData,
+    })
+
+    expect(clearAbortController).toHaveBeenCalledTimes(1)
+    expect(setWorkflowRunningData).toHaveBeenCalledTimes(1)
+    expect(clearListeningStateSpy).toHaveBeenCalledTimes(2)
   })
 
   it('should expose the canonical workflow state factories', () => {

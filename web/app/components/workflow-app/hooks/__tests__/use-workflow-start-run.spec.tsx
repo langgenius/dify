@@ -130,6 +130,29 @@ describe('useWorkflowStartRun', () => {
     expect(mockSetShowInputsPanel).toHaveBeenCalledWith(true)
   })
 
+  it('should open the input panel when image upload is enabled even without start variables', async () => {
+    mockGetFeaturesState.mockReturnValue({
+      features: {
+        file: {
+          image: {
+            enabled: true,
+          },
+        },
+      },
+    })
+
+    const { result } = renderHook(() => useWorkflowStartRun())
+
+    await act(async () => {
+      await result.current.handleWorkflowStartRunInWorkflow()
+    })
+
+    expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
+    expect(mockHandleRun).not.toHaveBeenCalled()
+    expect(mockSetShowDebugAndPreviewPanel).toHaveBeenCalledWith(true)
+    expect(mockSetShowInputsPanel).toHaveBeenCalledWith(true)
+  })
+
   it('should cancel the current debug panel instead of starting another workflow when one is already open', async () => {
     workflowStoreState = createWorkflowStoreState({
       showDebugAndPreviewPanel: true,
@@ -196,6 +219,82 @@ describe('useWorkflowStartRun', () => {
     expect(mockSetShowInputsPanel).toHaveBeenCalledWith(false)
   })
 
+  it('should cancel schedule trigger execution when the debug panel is already open', async () => {
+    workflowStoreState = createWorkflowStoreState({
+      showDebugAndPreviewPanel: true,
+    })
+    mockGetNodes.mockReturnValue([
+      { id: 'schedule-1', data: { type: BlockEnum.TriggerSchedule } },
+    ])
+
+    const { result } = renderHook(() => useWorkflowStartRun())
+
+    await act(async () => {
+      await result.current.handleWorkflowTriggerScheduleRunInWorkflow('schedule-1')
+    })
+
+    expect(mockHandleCancelDebugAndPreviewPanel).toHaveBeenCalled()
+    expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
+    expect(mockHandleRun).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    {
+      title: 'schedule',
+      invoke: (hook: ReturnType<typeof useWorkflowStartRun>) => hook.handleWorkflowTriggerScheduleRunInWorkflow(undefined),
+    },
+    {
+      title: 'webhook',
+      invoke: (hook: ReturnType<typeof useWorkflowStartRun>) => hook.handleWorkflowTriggerWebhookRunInWorkflow({ nodeId: '' }),
+    },
+    {
+      title: 'plugin',
+      invoke: (hook: ReturnType<typeof useWorkflowStartRun>) => hook.handleWorkflowTriggerPluginRunInWorkflow(''),
+    },
+  ])('should ignore $title trigger execution when the node id is empty', async ({ invoke }) => {
+    const { result } = renderHook(() => useWorkflowStartRun())
+
+    await act(async () => {
+      await invoke(result.current)
+    })
+
+    expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
+    expect(mockHandleRun).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    {
+      title: 'schedule',
+      warnMessage: 'handleWorkflowTriggerScheduleRunInWorkflow: schedule node not found',
+      invoke: (hook: ReturnType<typeof useWorkflowStartRun>) => hook.handleWorkflowTriggerScheduleRunInWorkflow('schedule-missing'),
+    },
+    {
+      title: 'webhook',
+      warnMessage: 'handleWorkflowTriggerWebhookRunInWorkflow: webhook node not found',
+      invoke: (hook: ReturnType<typeof useWorkflowStartRun>) => hook.handleWorkflowTriggerWebhookRunInWorkflow({ nodeId: 'webhook-missing' }),
+    },
+    {
+      title: 'plugin',
+      warnMessage: 'handleWorkflowTriggerPluginRunInWorkflow: plugin node not found',
+      invoke: (hook: ReturnType<typeof useWorkflowStartRun>) => hook.handleWorkflowTriggerPluginRunInWorkflow('plugin-missing'),
+    },
+  ])('should warn when the $title trigger node cannot be found', async ({ warnMessage, invoke }) => {
+    const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    mockGetNodes.mockReturnValue([{ id: 'other-node', data: { type: BlockEnum.Start } }])
+
+    const { result } = renderHook(() => useWorkflowStartRun())
+
+    await act(async () => {
+      await invoke(result.current)
+    })
+
+    expect(consoleWarnSpy).toHaveBeenCalledWith(warnMessage, expect.stringContaining('missing'))
+    expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
+    expect(mockHandleRun).not.toHaveBeenCalled()
+
+    consoleWarnSpy.mockRestore()
+  })
+
   it.each([
     {
       title: 'webhook',
@@ -259,6 +358,18 @@ describe('useWorkflowStartRun', () => {
         allNodeIds: ['trigger-1', 'trigger-2'],
       },
     )
+  })
+
+  it('should ignore run-all requests when there are no trigger nodes', async () => {
+    const { result } = renderHook(() => useWorkflowStartRun())
+
+    await act(async () => {
+      await result.current.handleWorkflowRunAllTriggersInWorkflow([])
+    })
+
+    expect(mockSetListeningTriggerIsAll).not.toHaveBeenCalled()
+    expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
+    expect(mockHandleRun).not.toHaveBeenCalled()
   })
 
   it('should route handleStartWorkflowRun to the chatflow path when chat mode is enabled', async () => {

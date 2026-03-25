@@ -92,6 +92,20 @@ describe('useDSL', () => {
     }))
   })
 
+  it('should forward include and workflow id arguments when exporting dsl directly', async () => {
+    const { result } = renderHook(() => useDSL())
+
+    await act(async () => {
+      await result.current.handleExportDSL(true, 'workflow-1')
+    })
+
+    expect(mockExportAppConfig).toHaveBeenCalledWith({
+      appID: 'app-1',
+      include: true,
+      workflowID: 'workflow-1',
+    })
+  })
+
   it('should emit DSL_EXPORT_CHECK when secret environment variables exist', async () => {
     const secretVars = [{ id: 'env-1', value_type: 'secret', value: 'secret-token' }]
     mockFetchWorkflowDraft.mockResolvedValue({ environment_variables: secretVars })
@@ -111,6 +125,22 @@ describe('useDSL', () => {
     expect(mockExportAppConfig).not.toHaveBeenCalled()
   })
 
+  it('should return early when app detail is unavailable', async () => {
+    appStoreState = {}
+
+    const { result } = renderHook(() => useDSL())
+
+    await act(async () => {
+      await result.current.exportCheck()
+      await result.current.handleExportDSL()
+    })
+
+    expect(mockFetchWorkflowDraft).not.toHaveBeenCalled()
+    expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
+    expect(mockExportAppConfig).not.toHaveBeenCalled()
+    expect(mockEmit).not.toHaveBeenCalled()
+  })
+
   it('should notify when export fails', async () => {
     mockExportAppConfig.mockRejectedValue(new Error('export failed'))
 
@@ -126,6 +156,24 @@ describe('useDSL', () => {
         message: 'app.exportFailed',
       })
     })
+  })
+
+  it('should notify when exportCheck cannot load the workflow draft', async () => {
+    mockFetchWorkflowDraft.mockRejectedValue(new Error('draft fetch failed'))
+
+    const { result } = renderHook(() => useDSL())
+
+    await act(async () => {
+      await result.current.exportCheck()
+    })
+
+    await waitFor(() => {
+      expect(mockNotify).toHaveBeenCalledWith({
+        type: 'error',
+        message: 'app.exportFailed',
+      })
+    })
+    expect(mockExportAppConfig).not.toHaveBeenCalled()
   })
 
   it('should ignore repeated export attempts while an export is already in progress', async () => {

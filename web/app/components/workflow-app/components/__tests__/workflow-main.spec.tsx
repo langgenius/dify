@@ -94,6 +94,20 @@ vi.mock('@/app/components/workflow', () => ({
         >
           update-workflow-data
         </button>
+        <button
+          type="button"
+          onClick={() => onWorkflowDataUpdate?.({
+            conversation_variables: [{ id: 'conversation-only' }],
+          })}
+        >
+          update-conversation-only
+        </button>
+        <button
+          type="button"
+          onClick={() => onWorkflowDataUpdate?.({})}
+        >
+          update-empty-payload
+        </button>
         {children}
       </div>
     )
@@ -193,6 +207,38 @@ describe('WorkflowMain', () => {
     expect(mockSetFeatures).toHaveBeenCalledWith({ file: { enabled: true } })
     expect(mockSetConversationVariables).toHaveBeenCalledWith([{ id: 'conversation-1' }])
     expect(mockSetEnvironmentVariables).toHaveBeenCalledWith([{ id: 'env-1' }])
+  })
+
+  it('should only update the workflow store slices present in the payload', () => {
+    render(
+      <WorkflowMain
+        nodes={[]}
+        edges={[]}
+        viewport={{ x: 0, y: 0, zoom: 1 }}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /update-conversation-only/i }))
+
+    expect(mockSetConversationVariables).toHaveBeenCalledWith([{ id: 'conversation-only' }])
+    expect(mockSetFeatures).not.toHaveBeenCalled()
+    expect(mockSetEnvironmentVariables).not.toHaveBeenCalled()
+  })
+
+  it('should ignore empty workflow data updates', () => {
+    render(
+      <WorkflowMain
+        nodes={[]}
+        edges={[]}
+        viewport={{ x: 0, y: 0, zoom: 1 }}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /update-empty-payload/i }))
+
+    expect(mockSetFeatures).not.toHaveBeenCalled()
+    expect(mockSetConversationVariables).not.toHaveBeenCalled()
+    expect(mockSetEnvironmentVariables).not.toHaveBeenCalled()
   })
 
   it('should expose the composed workflow action hooks through hooksStore', () => {

@@ -1,4 +1,5 @@
 import { act, renderHook } from '@testing-library/react'
+import { TriggerType } from '@/app/components/workflow/header/test-run-menu'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { useWorkflowRun } from '../use-workflow-run'
 
@@ -74,7 +75,10 @@ const mocks = vi.hoisted(() => {
     mockPost: vi.fn(),
     mockStopWorkflowRun: vi.fn(),
     mockTrackEvent: vi.fn(),
+    mockGetAudioPlayer: vi.fn(),
     mockResetMsgId: vi.fn(),
+    mockCreateBaseWorkflowRunCallbacks: vi.fn(),
+    mockCreateFinalWorkflowRunCallbacks: vi.fn(),
     runEventHandlers: {
       handleWorkflowStarted: vi.fn(),
       handleWorkflowFinished: vi.fn(),
@@ -125,7 +129,7 @@ vi.mock('@/app/components/base/amplitude', () => ({
 vi.mock('@/app/components/base/audio-btn/audio.player.manager', () => ({
   AudioPlayerManager: {
     getInstance: () => ({
-      getAudioPlayer: vi.fn(),
+      getAudioPlayer: mocks.mockGetAudioPlayer,
       resetMsgId: mocks.mockResetMsgId,
     }),
   },
@@ -196,6 +200,22 @@ vi.mock('../use-nodes-sync-draft', () => ({
   }),
 }))
 
+vi.mock('../use-workflow-run-callbacks', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../use-workflow-run-callbacks')>()
+
+  return {
+    ...actual,
+    createBaseWorkflowRunCallbacks: vi.fn((params) => {
+      mocks.mockCreateBaseWorkflowRunCallbacks(params)
+      return actual.createBaseWorkflowRunCallbacks(params)
+    }),
+    createFinalWorkflowRunCallbacks: vi.fn((params) => {
+      mocks.mockCreateFinalWorkflowRunCallbacks(params)
+      return actual.createFinalWorkflowRunCallbacks(params)
+    }),
+  }
+})
+
 const createWorkflowStoreState = () => ({
   backupDraft: undefined,
   environmentVariables: [{ id: 'env-current', value: 'secret' }],
@@ -227,6 +247,12 @@ describe('useWorkflowRun', () => {
     ])
     mocks.mockGetViewport.mockReturnValue({ x: 1, y: 2, zoom: 1.5 })
     mocks.mockDoSyncWorkflowDraft.mockResolvedValue(undefined)
+    mocks.mockPost.mockResolvedValue(new Response('data: ok', {
+      headers: { 'content-type': 'text/event-stream' },
+    }))
+    mocks.mockGetAudioPlayer.mockReturnValue({
+      playAudioWithAudio: vi.fn(),
+    })
     mocks.workflowStoreState.backupDraft = undefined
     Object.assign(mocks.workflowStoreState, createWorkflowStoreState())
     mocks.workflowStoreSetState.mockImplementation((partial: Record<string, unknown>) => {
@@ -316,8 +342,142 @@ describe('useWorkflowRun', () => {
     )
   })
 
-  it('should stop workflow runs by task id or by aborting active debug controllers', () => {
+  it.each([
+    {
+      title: 'schedule',
+      params: {},
+      options: { mode: TriggerType.Schedule, scheduleNodeId: 'schedule-1' },
+      expectedUrl: '/apps/app-1/workflows/draft/trigger/run',
+      expectedBody: { node_id: 'schedule-1' },
+      expectedNodeIds: ['schedule-1'],
+      expectedIsAll: false,
+    },
+    {
+      title: 'webhook',
+      params: { node_id: 'webhook-1' },
+      options: { mode: TriggerType.Webhook, webhookNodeId: 'webhook-1' },
+      expectedUrl: '/apps/app-1/workflows/draft/trigger/run',
+      expectedBody: { node_id: 'webhook-1' },
+      expectedNodeIds: ['webhook-1'],
+      expectedIsAll: false,
+    },
+    {
+      title: 'plugin',
+      params: { node_id: 'plugin-1' },
+      options: { mode: TriggerType.Plugin, pluginNodeId: 'plugin-1' },
+      expectedUrl: '/apps/app-1/workflows/draft/trigger/run',
+      expectedBody: { node_id: 'plugin-1' },
+      expectedNodeIds: ['plugin-1'],
+      expectedIsAll: false,
+    },
+    {
+      title: 'all',
+      params: { node_ids: ['trigger-1', 'trigger-2'] },
+      options: { mode: TriggerType.All, allNodeIds: ['trigger-1', 'trigger-2'] },
+      expectedUrl: '/apps/app-1/workflows/draft/trigger/run-all',
+      expectedBody: { node_ids: ['trigger-1', 'trigger-2'] },
+      expectedNodeIds: ['trigger-1', 'trigger-2'],
+      expectedIsAll: true,
+    },
+  ])('should dispatch $title trigger runs through the debug runner integration', async ({
+    params,
+    options,
+    expectedUrl,
+    expectedBody,
+    expectedNodeIds,
+    expectedIsAll,
+  }) => {
     const { result } = renderHook(() => useWorkflowRun())
+
+    await act(async () => {
+      await result.current.handleRun(params, undefined, options)
+    })
+
+    expect(mocks.mockPost).toHaveBeenCalledWith(
+      expectedUrl,
+      expect.objectContaining({
+        body: expectedBody,
+        signal: expect.any(AbortSignal),
+      }),
+      { needAllResponseContent: true },
+    )
+    expect(mocks.workflowStoreState.setIsListening).toHaveBeenCalledWith(true)
+    expect(mocks.workflowStoreState.setListeningTriggerNodeIds).toHaveBeenCalledWith(expectedNodeIds)
+    expect(mocks.workflowStoreState.setListeningTriggerIsAll).toHaveBeenCalledWith(expectedIsAll)
+    expect(mocks.mockSsePost).not.toHaveBeenCalled()
+  })
+
+  it('should expose the workflow-failed tracker through the callback factory context', async () => {
+    const { result } = renderHook(() => useWorkflowRun())
+
+    await act(async () => {
+      await result.current.handleRun({ inputs: { query: 'hello' } })
+    })
+
+    const baseCallbackFactoryContext = mocks.mockCreateBaseWorkflowRunCallbacks.mock.calls.at(-1)?.[0] as {
+      trackWorkflowRunFailed: (params: { error?: string, node_type?: string }) => void
+    }
+
+    baseCallbackFactoryContext.trackWorkflowRunFailed({ error: 'failed', node_type: 'llm' })
+
+    expect(mocks.mockTrackEvent).toHaveBeenCalledWith('workflow_run_failed', {
+      workflow_id: 'flow-1',
+      reason: 'failed',
+      node_type: 'llm',
+    })
+  })
+
+  it('should lazily create audio players with the correct public and private tts urls', async () => {
+    const { result } = renderHook(() => useWorkflowRun())
+
+    await act(async () => {
+      await result.current.handleRun({ token: 'public-token' })
+    })
+
+    const publicBaseCallbackFactoryContext = mocks.mockCreateBaseWorkflowRunCallbacks.mock.calls.at(-1)?.[0] as {
+      getOrCreatePlayer: () => unknown
+    }
+
+    publicBaseCallbackFactoryContext.getOrCreatePlayer()
+
+    expect(mocks.mockGetAudioPlayer).toHaveBeenCalledWith(
+      '/text-to-audio',
+      true,
+      expect.any(String),
+      'none',
+      'none',
+      expect.any(Function),
+    )
+
+    mocks.mockSsePost.mockClear()
+    mocks.mockGetAudioPlayer.mockClear()
+
+    await act(async () => {
+      await result.current.handleRun({ appId: 'app-2' })
+    })
+
+    const privateBaseCallbackFactoryContext = mocks.mockCreateBaseWorkflowRunCallbacks.mock.calls.at(-1)?.[0] as {
+      getOrCreatePlayer: () => unknown
+    }
+
+    privateBaseCallbackFactoryContext.getOrCreatePlayer()
+
+    expect(mocks.mockGetAudioPlayer).toHaveBeenCalledWith(
+      '/apps/app-2/text-to-audio',
+      false,
+      expect.any(String),
+      'none',
+      'none',
+      expect.any(Function),
+    )
+  })
+
+  it('should stop workflow runs by task id or by aborting active debug controllers', async () => {
+    const { result } = renderHook(() => useWorkflowRun())
+
+    await act(async () => {
+      await result.current.handleRun({ inputs: { query: 'hello' } })
+    })
 
     act(() => {
       result.current.handleStopRun('task-1')
@@ -339,6 +499,12 @@ describe('useWorkflowRun', () => {
     windowWithDebugControllers.__pluginDebugAbortController = { abort: pluginAbort }
     windowWithDebugControllers.__scheduleDebugAbortController = { abort: scheduleAbort }
     windowWithDebugControllers.__allTriggersDebugAbortController = { abort: allTriggersAbort }
+    const refController = new AbortController()
+    const refAbortSpy = vi.spyOn(refController, 'abort')
+    const { getAbortController } = mocks.mockSsePost.mock.calls.at(-1)?.[2] as {
+      getAbortController?: (controller: AbortController) => void
+    }
+    getAbortController?.(refController)
 
     act(() => {
       result.current.handleStopRun('')
@@ -348,6 +514,7 @@ describe('useWorkflowRun', () => {
     expect(pluginAbort).toHaveBeenCalled()
     expect(scheduleAbort).toHaveBeenCalled()
     expect(allTriggersAbort).toHaveBeenCalled()
+    expect(refAbortSpy).toHaveBeenCalled()
   })
 
   it('should restore published workflow graph, features, and environment variables', () => {
@@ -389,5 +556,37 @@ describe('useWorkflowRun', () => {
       }),
     })
     expect(mocks.workflowStoreState.setEnvironmentVariables).toHaveBeenCalledWith([{ id: 'env-published', value: 'value' }])
+  })
+
+  it('should restore published workflows with empty environment variables as an empty list', () => {
+    const { result } = renderHook(() => useWorkflowRun())
+
+    act(() => {
+      result.current.handleRestoreFromPublishedWorkflow({
+        graph: {
+          nodes: [{ id: 'published-node', selected: true, data: { selected: true, label: 'Published' } }],
+          edges: [],
+          viewport: { x: 0, y: 0, zoom: 1 },
+        },
+        features: {
+          opening_statement: '',
+          suggested_questions: [],
+          suggested_questions_after_answer: { enabled: false },
+          text_to_speech: { enabled: false },
+          speech_to_text: { enabled: false },
+          retriever_resource: { enabled: false },
+          sensitive_word_avoidance: { enabled: false },
+          file_upload: { enabled: false },
+        },
+      } as never)
+    })
+
+    expect(mocks.featuresStoreSetState).toHaveBeenCalledWith({
+      features: expect.objectContaining({
+        opening: expect.objectContaining({ enabled: false }),
+        file: { enabled: false },
+      }),
+    })
+    expect(mocks.workflowStoreState.setEnvironmentVariables).toHaveBeenCalledWith([])
   })
 })

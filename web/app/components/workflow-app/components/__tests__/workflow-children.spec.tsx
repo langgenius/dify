@@ -230,6 +230,17 @@ vi.mock('@/app/components/workflow-app/components/workflow-onboarding-modal', ()
       <button type="button" onClick={() => onSelectStartNode(BlockEnum.Start)}>select-start-node</button>
       <button
         type="button"
+        onClick={() => onSelectStartNode(BlockEnum.Start, {
+          title: 'Configured Start Title',
+          desc: 'Configured Start Description',
+          config: { image: true, custom: 'config' },
+          extra: 'field',
+        } as never)}
+      >
+        select-start-node-with-config
+      </button>
+      <button
+        type="button"
         onClick={() => onSelectStartNode(BlockEnum.TriggerPlugin, {
           plugin_id: 'plugin-id',
           provider_name: 'provider-name',
@@ -247,6 +258,25 @@ vi.mock('@/app/components/workflow-app/components/workflow-onboarding-modal', ()
         })}
       >
         select-trigger-plugin
+      </button>
+      <button
+        type="button"
+        onClick={() => onSelectStartNode(BlockEnum.TriggerPlugin, {
+          plugin_id: 'plugin-id-2',
+          provider_name: 'provider-name-2',
+          provider_type: 'tool',
+          event_name: 'event-name-2',
+          event_label: '',
+          event_description: '',
+          output_schema: {},
+          paramSchemas: undefined,
+          params: {},
+          subscription_id: 'subscription-id-2',
+          plugin_unique_identifier: 'plugin-unique-2',
+          is_team_authorization: false,
+        } as never)}
+      >
+        select-trigger-plugin-fallback
       </button>
     </div>
   ),
@@ -319,6 +349,21 @@ describe('WorkflowChildren', () => {
     expect(screen.queryByTestId('dsl-export-confirm-modal')).not.toBeInTheDocument()
   })
 
+  it('should ignore unrelated workflow events when listening for DSL export checks', async () => {
+    render(<WorkflowChildren />)
+
+    await act(async () => {
+      eventSubscription?.({
+        type: 'UNRELATED_EVENT',
+        payload: {
+          data: [{ id: 'env-1' }],
+        },
+      })
+    })
+
+    expect(screen.queryByTestId('dsl-export-confirm-modal')).not.toBeInTheDocument()
+  })
+
   it('should close onboarding through the onboarding hook callback', async () => {
     const user = userEvent.setup()
     workflowStoreState = {
@@ -344,7 +389,7 @@ describe('WorkflowChildren', () => {
 
     render(<WorkflowChildren />)
 
-    await user.click(await screen.findByRole('button', { name: /select-start-node/i }))
+    await user.click(await screen.findByRole('button', { name: /^select-start-node$/i }))
 
     expect(lastGenerateNodeInput).toMatchObject({
       data: {
@@ -364,6 +409,30 @@ describe('WorkflowChildren', () => {
     expect(mockAutoGenerateWebhookUrl).toHaveBeenCalledWith('new-node-id')
   })
 
+  it('should merge non-trigger start node config directly into the default node data', async () => {
+    const user = userEvent.setup()
+    workflowStoreState = {
+      ...workflowStoreState,
+      showOnboarding: true,
+    }
+
+    render(<WorkflowChildren />)
+
+    await user.click(await screen.findByRole('button', { name: /select-start-node-with-config/i }))
+
+    expect(lastGenerateNodeInput).toMatchObject({
+      data: {
+        title: 'Configured Start Title',
+        desc: 'Configured Start Description',
+        config: {
+          image: true,
+          custom: 'config',
+        },
+        extra: 'field',
+      },
+    })
+  })
+
   it('should merge trigger plugin defaults and config before creating the node', async () => {
     const user = userEvent.setup()
     workflowStoreState = {
@@ -373,7 +442,7 @@ describe('WorkflowChildren', () => {
 
     render(<WorkflowChildren />)
 
-    await user.click(await screen.findByRole('button', { name: /select-trigger-plugin/i }))
+    await user.click(await screen.findByRole('button', { name: /^select-trigger-plugin$/i }))
 
     expect(lastGenerateNodeInput).toMatchObject({
       data: {
@@ -396,6 +465,29 @@ describe('WorkflowChildren', () => {
         plugin_unique_identifier: 'plugin-unique',
         is_team_authorization: true,
         meta: { source: 'plugin' },
+      },
+    })
+  })
+
+  it('should fall back to plugin default title and description when trigger labels are missing', async () => {
+    const user = userEvent.setup()
+    workflowStoreState = {
+      ...workflowStoreState,
+      showOnboarding: true,
+    }
+
+    render(<WorkflowChildren />)
+
+    await user.click(await screen.findByRole('button', { name: /select-trigger-plugin-fallback/i }))
+
+    expect(lastGenerateNodeInput).toMatchObject({
+      data: {
+        title: 'Plugin title',
+        desc: 'Plugin description',
+        parameters_schema: [],
+        config: {
+          baseConfig: 'base',
+        },
       },
     })
   })

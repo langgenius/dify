@@ -251,6 +251,13 @@ describe('WorkflowApp', () => {
     })
   })
 
+  it('should not sync trigger statuses when trigger data is unavailable', () => {
+    render(<WorkflowApp />)
+
+    expect(screen.getByTestId('workflow-app-main')).toBeInTheDocument()
+    expect(mockSetTriggerStatuses).not.toHaveBeenCalled()
+  })
+
   it('should replay workflow inputs from replayRunId and clean up workflow state on unmount', async () => {
     searchParamsValue = 'run-1'
     mockFetchRunDetail.mockResolvedValue({
@@ -276,5 +283,68 @@ describe('WorkflowApp', () => {
 
     expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({ isWorkflowDataLoaded: false })
     expect(mockDebouncedCancel).toHaveBeenCalled()
+  })
+
+  it('should skip replay lookups when replayRunId is missing', () => {
+    render(<WorkflowApp />)
+
+    expect(mockGetWorkflowRunAndTraceUrl).not.toHaveBeenCalled()
+    expect(mockFetchRunDetail).not.toHaveBeenCalled()
+    expect(mockSetInputs).not.toHaveBeenCalled()
+  })
+
+  it('should skip replay fetches when the resolved run url is empty', async () => {
+    searchParamsValue = 'run-1'
+    mockGetWorkflowRunAndTraceUrl.mockReturnValue({ runUrl: '' })
+
+    render(<WorkflowApp />)
+
+    await waitFor(() => {
+      expect(mockGetWorkflowRunAndTraceUrl).toHaveBeenCalledWith('run-1')
+    })
+
+    expect(mockFetchRunDetail).not.toHaveBeenCalled()
+    expect(mockSetInputs).not.toHaveBeenCalled()
+  })
+
+  it('should stop replay recovery when workflow run inputs cannot be parsed', async () => {
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    searchParamsValue = 'run-1'
+    mockFetchRunDetail.mockResolvedValue({
+      inputs: '{invalid-json}',
+    })
+
+    render(<WorkflowApp />)
+
+    await waitFor(() => {
+      expect(mockFetchRunDetail).toHaveBeenCalledWith('/runs/run-1')
+    })
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      'Failed to parse workflow run inputs',
+      expect.any(Error),
+    )
+    expect(mockSetInputs).not.toHaveBeenCalled()
+    expect(mockSetShowInputsPanel).not.toHaveBeenCalled()
+    expect(mockSetShowDebugAndPreviewPanel).not.toHaveBeenCalled()
+
+    consoleErrorSpy.mockRestore()
+  })
+
+  it('should ignore replay inputs when they only contain sys variables', async () => {
+    searchParamsValue = 'run-1'
+    mockFetchRunDetail.mockResolvedValue({
+      inputs: '{"sys.query":"hidden","sys.user_id":"u-1"}',
+    })
+
+    render(<WorkflowApp />)
+
+    await waitFor(() => {
+      expect(mockFetchRunDetail).toHaveBeenCalledWith('/runs/run-1')
+    })
+
+    expect(mockSetInputs).not.toHaveBeenCalled()
+    expect(mockSetShowInputsPanel).not.toHaveBeenCalled()
+    expect(mockSetShowDebugAndPreviewPanel).not.toHaveBeenCalled()
   })
 })
