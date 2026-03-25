@@ -22,7 +22,7 @@ import {
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import {
   CUSTOM_EDGE,
@@ -1890,12 +1890,9 @@ export const useNodesInteractions = () => {
       shouldRunCompatibilityCheck
       && (filteredNodeCount > 0 || filteredEdgeCount > 0)
     ) {
-      Toast.notify({
-        type: 'warning',
-        message: t('common.clipboardVersionCompatibilityWarning', {
-          ns: 'workflow',
-        }),
-      })
+      toast.warning(t('common.clipboardVersionCompatibilityWarning', {
+        ns: 'workflow',
+      }))
     }
 
     if (!compatibleClipboardElements.length)
@@ -2222,7 +2219,10 @@ export const useNodesInteractions = () => {
       if (sourceId && targetId) {
         const sourceNode = pastedNodesMap[sourceId]
         const targetNode = pastedNodesMap[targetId]
-        const parentNode = sourceNode?.parentId && sourceNode.parentId === targetNode?.parentId
+        if (!sourceNode || !targetNode)
+          return
+
+        const parentNode = sourceNode.parentId && sourceNode.parentId === targetNode.parentId
           ? pastedNodesMap[sourceNode.parentId] ?? nodes.find(n => n.id === sourceNode.parentId)
           : null
         const isInIteration = parentNode?.data.type === BlockEnum.Iteration
@@ -2233,7 +2233,9 @@ export const useNodesInteractions = () => {
           source: sourceId,
           target: targetId,
           data: {
-            ...edge.data,
+            ...(edge.data || {}),
+            sourceType: sourceNode.data.type,
+            targetType: targetNode.data.type,
             isInIteration,
             iteration_id: isInIteration ? parentNode?.id : undefined,
             isInLoop,
