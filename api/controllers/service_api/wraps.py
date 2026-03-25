@@ -12,6 +12,8 @@ from pydantic import BaseModel
 from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 
 from enums.cloud_plan import CloudPlan
+from sqlalchemy import select
+
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.login import current_user
@@ -62,7 +64,7 @@ def validate_app_token(
         def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R:
             api_token = validate_and_get_api_token("app")
 
-            app_model = db.session.query(App).where(App.id == api_token.app_id).first()
+            app_model = db.session.get(App, api_token.app_id)
             if not app_model:
                 raise Forbidden("The app no longer exists.")
 
@@ -72,7 +74,7 @@ def validate_app_token(
             if not app_model.enable_api:
                 raise Forbidden("The app's API service has been disabled.")
 
-            tenant = db.session.query(Tenant).where(Tenant.id == app_model.tenant_id).first()
+            tenant = db.session.get(Tenant, app_model.tenant_id)
             if tenant is None:
                 raise ValueError("Tenant does not exist.")
             if tenant.status == TenantStatus.ARCHIVE:
@@ -106,8 +108,8 @@ def validate_app_token(
             else:
                 # For service API without end-user context, ensure an Account is logged in
                 # so services relying on current_account_with_tenant() work correctly.
-                tenant_owner_info = (
-                    db.session.query(Tenant, Account)
+                tenant_owner_info = db.session.execute(
+                    select(Tenant, Account)
                     .join(TenantAccountJoin, Tenant.id == TenantAccountJoin.tenant_id)
                     .join(Account, TenantAccountJoin.account_id == Account.id)
                     .where(
@@ -115,8 +117,7 @@ def validate_app_token(
                         TenantAccountJoin.role == "owner",
                         Tenant.status == TenantStatus.NORMAL,
                     )
-                    .one_or_none()
-                )
+                ).one_or_none()
 
                 if tenant_owner_info:
                     tenant_model, account = tenant_owner_info
@@ -277,29 +278,28 @@ def validate_dataset_token(
             # Validate dataset if dataset_id is provided
             if dataset_id:
                 dataset_id = str(dataset_id)
-                dataset = (
-                    db.session.query(Dataset)
+                dataset = db.session.scalar(
+                    select(Dataset)
                     .where(
                         Dataset.id == dataset_id,
                         Dataset.tenant_id == api_token.tenant_id,
                     )
-                    .first()
+                    .limit(1)
                 )
                 if not dataset:
                     raise NotFound("Dataset not found.")
                 if not dataset.enable_api:
                     raise Forbidden("Dataset api access is not enabled.")
-            tenant_account_join = (
-                db.session.query(Tenant, TenantAccountJoin)
+            tenant_account_join = db.session.execute(
+                select(Tenant, TenantAccountJoin)
                 .where(Tenant.id == api_token.tenant_id)
                 .where(TenantAccountJoin.tenant_id == Tenant.id)
                 .where(TenantAccountJoin.role.in_(["owner"]))
                 .where(Tenant.status == TenantStatus.NORMAL)
-                .one_or_none()
-            )  # TODO: only owner information is required, so only one is returned.
+            ).one_or_none()  # TODO: only owner information is required, so only one is returned.
             if tenant_account_join:
                 tenant, ta = tenant_account_join
-                account = db.session.query(Account).where(Account.id == ta.account_id).first()
+                account = db.session.get(Account, ta.account_id)
                 # Login admin
                 if account:
                     account.current_tenant = tenant
@@ -360,7 +360,7 @@ class DatasetApiResource(Resource):
     method_decorators = [validate_dataset_token]
 
     def get_dataset(self, dataset_id: str, tenant_id: str) -> Dataset:
-        dataset = db.session.query(Dataset).where(Dataset.id == dataset_id, Dataset.tenant_id == tenant_id).first()
+        dataset = db.session.scalar(select(Dataset).where(Dataset.id == dataset_id, Dataset.tenant_id == tenant_id).limit(1))
 
         if not dataset:
             raise NotFound("Dataset not found.")
