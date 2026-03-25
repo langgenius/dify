@@ -37,7 +37,6 @@ describe('variable-modal helpers', () => {
       { key: 'count', type: ChatVarType.Number, value: 0 },
       { key: 'label', type: ChatVarType.String, value: '' },
     ])).toEqual({ count: 0, label: null })
-
     expect(formatChatVariableValue({
       editInJSON: false,
       objectValue: [{ key: 'enabled', type: ChatVarType.String, value: 'true' }],
@@ -110,7 +109,6 @@ describe('variable-modal helpers', () => {
       content: '{"enabled":true}',
       type: ChatVarType.ArrayBoolean,
     })).toThrow('JSON array')
-
     expect(parseEditorContent({
       content: '{"enabled":true}',
       type: ChatVarType.Object,

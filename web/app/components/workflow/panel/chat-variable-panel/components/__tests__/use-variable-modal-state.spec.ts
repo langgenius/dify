@@ -106,7 +106,6 @@ describe('useVariableModalState', () => {
     expect(result.current.value).toEqual({ timeout: 30 })
     expect(result.current.editorContent).toBe(JSON.stringify({ timeout: 30 }))
   })
-
   it('should reset object form values when leaving empty json mode', () => {
     const { result } = renderHook(() => useVariableModalState(createOptions({
       chatVar: {
@@ -171,7 +170,6 @@ describe('useVariableModalState', () => {
     expect(result.current.value).toEqual([0, 2])
     expect(result.current.editorContent).toBe(JSON.stringify([0, 2]))
   })
-
   it('should notify and stop saving when object keys are invalid', () => {
     const notify = vi.fn()
     const onSave = vi.fn()

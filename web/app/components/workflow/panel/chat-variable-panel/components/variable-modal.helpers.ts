@@ -90,7 +90,6 @@ export const formatChatVariableValue = ({
 }) => {
   const compactArrayValue = (items: unknown[]) =>
     items.filter(item => item !== null && item !== undefined && item !== '')
-
   switch (type) {
     case ChatVarTypeEnum.String:
       return value || ''
@@ -156,7 +155,6 @@ export const parseEditorContent = ({
 
   if (!Array.isArray(parsed))
     throw new TypeError('ArrayBoolean editor content must be a JSON array')
-
   return parsed
     .map((item: string | boolean) => {
       if (item === 'True' || item === 'true' || item === true)

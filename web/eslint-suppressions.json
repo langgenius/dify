@@ -965,11 +965,6 @@
       "count": 1
     }
   },
-  "app/components/app/configuration/dataset-config/params-config/weighted-score.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    }
-  },
   "app/components/app/configuration/dataset-config/select-dataset/index.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 2
@@ -2043,11 +2038,6 @@
       "count": 3
     }
   },
-  "app/components/base/features/new-feature-panel/annotation-reply/score-slider/base-slider/index.tsx": {
-    "unicorn/prefer-number-properties": {
-      "count": 1
-    }
-  },
   "app/components/base/features/new-feature-panel/annotation-reply/type.ts": {
     "erasable-syntax-only/enums": {
       "count": 1
@@ -2876,19 +2866,6 @@
   "app/components/base/select/pure.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 3
-    }
-  },
-  "app/components/base/slider/index.stories.tsx": {
-    "no-console": {
-      "count": 2
-    },
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/base/slider/index.tsx": {
-    "tailwindcss/no-unnecessary-whitespace": {
-      "count": 1
     }
   },
   "app/components/base/sort/index.tsx": {
@@ -7035,9 +7012,6 @@
     }
   },
   "app/components/workflow/nodes/_base/components/memory-config.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    },
     "unicorn/prefer-number-properties": {
       "count": 1
     }
@@ -7857,12 +7831,6 @@
   "app/components/workflow/nodes/iteration/panel.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    },
-    "tailwindcss/no-unnecessary-whitespace": {
-      "count": 1
     }
   },
   "app/components/workflow/nodes/iteration/use-config.ts": {
@@ -7890,9 +7858,6 @@
   },
   "app/components/workflow/nodes/knowledge-base/components/index-method.tsx": {
     "no-restricted-imports": {
-      "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
   },
