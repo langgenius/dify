@@ -410,6 +410,9 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
             # configs still serialize array constants as JSON strings.
             if isinstance(original_value, str):
                 value = json.loads(original_value) if original_value else []
+            elif original_value is None:
+                # Preserve legacy behavior: treat missing/empty array constants as [].
+                value = []
             else:
                 value = original_value
         else:
