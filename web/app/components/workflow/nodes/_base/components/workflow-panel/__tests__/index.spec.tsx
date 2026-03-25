@@ -4,6 +4,7 @@ import { fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
+import BasePanel from '../index'
 
 const mockHandleNodeSelect = vi.fn()
 const mockHandleNodeDataUpdate = vi.fn()
@@ -304,12 +305,6 @@ const createData = (overrides: Record<string, unknown> = {}) => ({
 })
 
 describe('workflow-panel index', () => {
-  let BasePanel: typeof import('../index').default
-
-  beforeAll(async () => {
-    BasePanel = (await import('../index')).default
-  })
-
   beforeEach(() => {
     vi.clearAllMocks()
     mockShowMessageLogModal = false
