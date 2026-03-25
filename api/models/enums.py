@@ -158,6 +158,13 @@ class FeedbackFromSource(StrEnum):
     ADMIN = "admin"
 
 
+class FeedbackRating(StrEnum):
+    """MessageFeedback rating"""
+
+    LIKE = "like"
+    DISLIKE = "dislike"
+
+
 class InvokeFrom(StrEnum):
     """How a conversation/message was invoked"""
 
@@ -213,6 +220,13 @@ class DatasetMetadataType(StrEnum):
     STRING = "string"
     NUMBER = "number"
     TIME = "time"
+
+
+class SegmentType(StrEnum):
+    """Document segment type"""
+
+    AUTOMATIC = "automatic"
+    CUSTOMIZED = "customized"
 
 
 class SegmentStatus(StrEnum):
@@ -316,3 +330,10 @@ class ProviderQuotaType(StrEnum):
             if member.value == value:
                 return member
         raise ValueError(f"No matching enum found for value '{value}'")
+
+
+class ApiTokenType(StrEnum):
+    """API Token type"""
+
+    APP = "app"
+    DATASET = "dataset"

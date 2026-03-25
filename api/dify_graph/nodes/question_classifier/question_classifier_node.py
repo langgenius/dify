@@ -114,6 +114,10 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
         variables = {"query": query}
         # fetch model instance
         model_instance = self._model_instance
+        # Resolve variable references in string-typed completion params
+        model_instance.parameters = llm_utils.resolve_completion_params_variables(
+            model_instance.parameters, variable_pool
+        )
         memory = self._memory
         # fetch instruction
         node_data.instruction = node_data.instruction or ""

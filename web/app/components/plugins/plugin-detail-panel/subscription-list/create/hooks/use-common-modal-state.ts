@@ -7,7 +7,7 @@ import type { BuildTriggerSubscriptionPayload } from '@/service/use-triggers'
 import { debounce } from 'es-toolkit/compat'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { SupportedCreationMethods } from '@/app/components/plugins/types'
 import { TriggerCredentialTypeEnum } from '@/app/components/workflow/block-selector/types'
 import {
@@ -154,10 +154,7 @@ export const useCommonModalState = ({
           onError: async (error: unknown) => {
             const errorMessage = await parsePluginErrorMessage(error) || t('modal.errors.updateFailed', { ns: 'pluginTrigger' })
             console.error('Failed to update subscription builder:', error)
-            Toast.notify({
-              type: 'error',
-              message: errorMessage,
-            })
+            toast.error(errorMessage)
           },
         },
       )
@@ -178,10 +175,7 @@ export const useCommonModalState = ({
       }
       catch (error) {
         console.error('createBuilder error:', error)
-        Toast.notify({
-          type: 'error',
-          message: t('modal.errors.createFailed', { ns: 'pluginTrigger' }),
-        })
+        toast.error(t('modal.errors.createFailed', { ns: 'pluginTrigger' }))
       }
     }
     if (!isInitializedRef.current && !subscriptionBuilder && detail?.provider)
@@ -239,10 +233,7 @@ export const useCommonModalState = ({
   const handleVerify = useCallback(() => {
     // Guard against uninitialized state
     if (!detail?.provider || !subscriptionBuilder?.id) {
-      Toast.notify({
-        type: 'error',
-        message: 'Subscription builder not initialized',
-      })
+      toast.error('Subscription builder not initialized')
       return
     }
 
@@ -250,10 +241,7 @@ export const useCommonModalState = ({
     const credentials = apiKeyCredentialsFormValues.values
 
     if (!Object.keys(credentials).length) {
-      Toast.notify({
-        type: 'error',
-        message: 'Please fill in all required credentials',
-      })
+      toast.error('Please fill in all required credentials')
       return
     }
 
@@ -270,10 +258,7 @@ export const useCommonModalState = ({
       },
       {
         onSuccess: () => {
-          Toast.notify({
-            type: 'success',
-            message: t('modal.apiKey.verify.success', { ns: 'pluginTrigger' }),
-          })
+          toast.success(t('modal.apiKey.verify.success', { ns: 'pluginTrigger' }))
           setCurrentStep(ApiKeyStep.Configuration)
         },
         onError: async (error: unknown) => {
@@ -290,10 +275,7 @@ export const useCommonModalState = ({
   // Handle create
   const handleCreate = useCallback(() => {
     if (!subscriptionBuilder) {
-      Toast.notify({
-        type: 'error',
-        message: 'Subscription builder not found',
-      })
+      toast.error('Subscription builder not found')
       return
     }
 
@@ -327,19 +309,13 @@ export const useCommonModalState = ({
       params,
       {
         onSuccess: () => {
-          Toast.notify({
-            type: 'success',
-            message: t('subscription.createSuccess', { ns: 'pluginTrigger' }),
-          })
+          toast.success(t('subscription.createSuccess', { ns: 'pluginTrigger' }))
           onClose()
           refetch?.()
         },
         onError: async (error: unknown) => {
           const errorMessage = await parsePluginErrorMessage(error) || t('subscription.createFailed', { ns: 'pluginTrigger' })
-          Toast.notify({
-            type: 'error',
-            message: errorMessage,
-          })
+          toast.error(errorMessage)
         },
       },
     )

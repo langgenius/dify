@@ -168,7 +168,7 @@ class InstructionGenerateApi(Resource):
         try:
             # Generate from nothing for a workflow node
             if (args.current in (code_template, "")) and args.node_id != "":
-                app = db.session.query(App).where(App.id == args.flow_id).first()
+                app = db.session.get(App, args.flow_id)
                 if not app:
                     return {"error": f"app {args.flow_id} not found"}, 400
                 workflow = WorkflowService().get_draft_workflow(app_model=app)

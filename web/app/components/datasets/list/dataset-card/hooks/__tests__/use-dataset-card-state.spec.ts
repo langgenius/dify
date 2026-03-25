@@ -5,9 +5,15 @@ import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
 import { useDatasetCardState } from '../use-dataset-card-state'
 
-vi.mock('@/app/components/base/toast', () => ({
-  default: {
-    notify: vi.fn(),
+const { mockToastSuccess, mockToastError } = vi.hoisted(() => ({
+  mockToastSuccess: vi.fn(),
+  mockToastError: vi.fn(),
+}))
+
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    success: mockToastSuccess,
+    error: mockToastError,
   },
 }))
 
@@ -299,7 +305,7 @@ describe('useDatasetCardState', () => {
 
   describe('Error Handling', () => {
     it('should show error toast when export pipeline fails', async () => {
-      const Toast = await import('@/app/components/base/toast')
+      const { toast } = await import('@/app/components/base/ui/toast')
       mockExportPipeline.mockRejectedValue(new Error('Export failed'))
 
       const dataset = createMockDataset({ pipeline_id: 'pipeline-1' })
@@ -311,14 +317,11 @@ describe('useDatasetCardState', () => {
         await result.current.handleExportPipeline()
       })
 
-      expect(Toast.default.notify).toHaveBeenCalledWith({
-        type: 'error',
-        message: expect.any(String),
-      })
+      expect(toast.error).toHaveBeenCalledWith(expect.any(String))
     })
 
     it('should handle Response error in detectIsUsedByApp', async () => {
-      const Toast = await import('@/app/components/base/toast')
+      const { toast } = await import('@/app/components/base/ui/toast')
       const mockResponse = new Response(JSON.stringify({ message: 'API Error' }), {
         status: 400,
       })
@@ -333,14 +336,11 @@ describe('useDatasetCardState', () => {
         await result.current.detectIsUsedByApp()
       })
 
-      expect(Toast.default.notify).toHaveBeenCalledWith({
-        type: 'error',
-        message: expect.stringContaining('API Error'),
-      })
+      expect(toast.error).toHaveBeenCalledWith(expect.stringContaining('API Error'))
     })
 
     it('should handle generic Error in detectIsUsedByApp', async () => {
-      const Toast = await import('@/app/components/base/toast')
+      const { toast } = await import('@/app/components/base/ui/toast')
       mockCheckUsage.mockRejectedValue(new Error('Network error'))
 
       const dataset = createMockDataset()
@@ -352,14 +352,11 @@ describe('useDatasetCardState', () => {
         await result.current.detectIsUsedByApp()
       })
 
-      expect(Toast.default.notify).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'Network error',
-      })
+      expect(toast.error).toHaveBeenCalledWith('Network error')
     })
 
     it('should handle error without message in detectIsUsedByApp', async () => {
-      const Toast = await import('@/app/components/base/toast')
+      const { toast } = await import('@/app/components/base/ui/toast')
       mockCheckUsage.mockRejectedValue({})
 
       const dataset = createMockDataset()
@@ -371,10 +368,7 @@ describe('useDatasetCardState', () => {
         await result.current.detectIsUsedByApp()
       })
 
-      expect(Toast.default.notify).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'Unknown error',
-      })
+      expect(toast.error).toHaveBeenCalledWith('dataset.unknownError')
     })
 
     it('should handle exporting state correctly', async () => {

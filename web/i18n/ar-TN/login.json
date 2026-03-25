@@ -35,6 +35,8 @@
   "error.emailEmpty": "عنوان البريد الإلكتروني مطلوب",
   "error.emailInValid": "يرجى إدخال عنوان بريد إلكتروني صالح",
   "error.invalidEmailOrPassword": "بريد إلكتروني أو كلمة مرور غير صالحة.",
+  "error.invalidRedirectUrlOrAppCode": "رابط إعادة التوجيه أو رمز التطبيق غير صالح",
+  "error.invalidSSOProtocol": "بروتوكول SSO غير صالح",
   "error.nameEmpty": "الاسم مطلوب",
   "error.passwordEmpty": "كلمة المرور مطلوبة",
   "error.passwordInvalid": "يجب أن تحتوي كلمة المرور على أحرف وأرقام، ويجب أن يكون الطول أكبر من 8",

@@ -24,7 +24,7 @@ vi.mock('react-i18next', async () => {
   })
 })
 
-const mockNotify = vi.hoisted(() => vi.fn())
+const mockToastSuccess = vi.hoisted(() => vi.fn())
 const mockUpdateModelList = vi.hoisted(() => vi.fn())
 const mockInvalidateDefaultModel = vi.hoisted(() => vi.fn())
 const mockUpdateDefaultModel = vi.hoisted(() => vi.fn(() => Promise.resolve({ result: 'success' })))
@@ -43,11 +43,16 @@ vi.mock('@/context/provider-context', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
-  toast: {
-    add: mockNotify,
-  },
-}))
+vi.mock('@/app/components/base/ui/toast', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/components/base/ui/toast')>()
+  return {
+    ...actual,
+    toast: {
+      ...actual.toast,
+      success: mockToastSuccess,
+    },
+  }
+})
 
 vi.mock('../../hooks', () => ({
   useModelList: () => ({
@@ -148,10 +153,7 @@ describe('SystemModel', () => {
 
     await waitFor(() => {
       expect(mockUpdateDefaultModel).toHaveBeenCalledTimes(1)
-      expect(mockNotify).toHaveBeenCalledWith({
-        type: 'success',
-        title: 'Modified successfully',
-      })
+      expect(mockToastSuccess).toHaveBeenCalledWith('Modified successfully')
       expect(mockInvalidateDefaultModel).toHaveBeenCalledTimes(5)
       expect(mockUpdateModelList).toHaveBeenCalledTimes(5)
     })
@@ -173,7 +175,7 @@ describe('SystemModel', () => {
       expect(mockUpdateDefaultModel).toHaveBeenCalledTimes(1)
     })
     expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument()
-    expect(mockNotify).not.toHaveBeenCalled()
+    expect(mockToastSuccess).not.toHaveBeenCalled()
     expect(mockInvalidateDefaultModel).not.toHaveBeenCalled()
     expect(mockUpdateModelList).not.toHaveBeenCalled()
   })

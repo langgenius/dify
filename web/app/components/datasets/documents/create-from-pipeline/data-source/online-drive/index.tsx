@@ -4,7 +4,7 @@ import type { DataSourceNodeCompletedResponse, DataSourceNodeErrorResponse } fro
 import { produce } from 'immer'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useDocLink } from '@/context/i18n'
@@ -105,10 +105,7 @@ const OnlineDrive = ({
           isLoadingRef.current = false
         },
         onDataSourceNodeError: (error: DataSourceNodeErrorResponse) => {
-          Toast.notify({
-            type: 'error',
-            message: error.error,
-          })
+          toast.error(error.error)
           setIsLoading(false)
           isLoadingRef.current = false
         },
