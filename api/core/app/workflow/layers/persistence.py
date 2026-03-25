@@ -297,12 +297,12 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
 
     def _handle_node_pause_requested(self, event: NodeRunPauseRequestedEvent) -> None:
         domain_execution = self._get_node_execution(event.id)
+        # Paused nodes may already have partial outputs/metadata (for example agent clarification context).
         self._update_node_execution(
             domain_execution,
             event.node_run_result,
             WorkflowNodeExecutionStatus.PAUSED,
-            error="",
-            update_outputs=False,
+            update_outputs=True,
         )
 
     # ------------------------------------------------------------------

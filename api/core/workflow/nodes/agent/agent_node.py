@@ -146,9 +146,12 @@ class AgentNode(Node[AgentNodeData]):
                 parameters_for_log=parameters_for_log,
                 user_id=dify_ctx.user_id,
                 tenant_id=dify_ctx.tenant_id,
+                app_id=dify_ctx.app_id,
+                workflow_execution_id=self.graph_runtime_state.variable_pool.system_variables.workflow_execution_id,
                 node_type=self.node_type,
                 node_id=self._node_id,
-                node_execution_id=self.id,
+                node_title=self.title,
+                node_execution_id=self.execution_id,
             )
         except PluginDaemonClientSideError as e:
             transform_error = AgentMessageTransformError(

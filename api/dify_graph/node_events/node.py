@@ -5,6 +5,7 @@ from typing import Any
 from pydantic import Field
 
 from dify_graph.entities.pause_reason import PauseReason
+from dify_graph.enums import WorkflowNodeExecutionStatus
 from dify_graph.file import File
 from dify_graph.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.node_events import NodeRunResult
@@ -47,6 +48,10 @@ class StreamCompletedEvent(NodeEventBase):
 
 class PauseRequestedEvent(NodeEventBase):
     reason: PauseReason = Field(..., description="pause reason")
+    node_run_result: NodeRunResult = Field(
+        default_factory=lambda: NodeRunResult(status=WorkflowNodeExecutionStatus.PAUSED),
+        description="partial node result persisted when the node pauses",
+    )
 
 
 class HumanInputFormFilledEvent(NodeEventBase):

@@ -271,6 +271,7 @@ class WorkflowNodeExecutionMetadataKey(StrEnum):
     DATASOURCE_INFO = "datasource_info"
     TRIGGER_INFO = "trigger_info"
     COMPLETED_REASON = "completed_reason"  # completed reason for loop node
+    PAUSE_INFO = "pause_info"  # structured pause payload for resumable nodes
 
 
 class WorkflowNodeExecutionStatus(StrEnum):

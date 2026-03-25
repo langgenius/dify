@@ -25,10 +25,14 @@ from factories import file_factory
 from models import ToolFile
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 
+from .clarification_helper import AgentClarificationHelper
 from .exceptions import AgentNodeError, AgentVariableTypeError, ToolFileNotFoundError
 
 
 class AgentMessageTransformer:
+    def __init__(self, *, clarification_helper: AgentClarificationHelper | None = None) -> None:
+        self._clarification_helper = clarification_helper or AgentClarificationHelper()
+
     def transform(
         self,
         *,
@@ -37,8 +41,11 @@ class AgentMessageTransformer:
         parameters_for_log: dict[str, Any],
         user_id: str,
         tenant_id: str,
+        app_id: str,
+        workflow_execution_id: str | None,
         node_type: NodeType,
         node_id: str,
+        node_title: str,
         node_execution_id: str,
     ) -> Generator[NodeEventBase, None, None]:
         from core.plugin.impl.plugin import PluginInstaller
@@ -123,20 +130,52 @@ class AgentMessageTransformer:
                 )
             elif message.type == ToolInvokeMessage.MessageType.JSON:
                 assert isinstance(message.message, ToolInvokeMessage.JsonMessage)
+                json_object = message.message.json_object
                 if node_type == BuiltinNodeTypes.AGENT:
-                    if isinstance(message.message.json_object, dict):
-                        msg_metadata: dict[str, Any] = message.message.json_object.pop("execution_metadata", {})
+                    if isinstance(json_object, dict):
+                        json_object = dict(json_object)
+                        msg_metadata: dict[str, Any] = json_object.pop("execution_metadata", {})
                         llm_usage = LLMUsage.from_metadata(cast(LLMUsageMetadata, msg_metadata))
                         agent_execution_metadata = {
                             WorkflowNodeExecutionMetadataKey(key): value
                             for key, value in msg_metadata.items()
                             if key in WorkflowNodeExecutionMetadataKey.__members__.values()
                         }
+                        clarification_payload = self._clarification_helper.extract_payload(json_object)
+                        if clarification_payload is not None:
+                            json_object.pop("human_required", None)
+                            json_object.pop("clarification", None)
+                            if json_object:
+                                json_list.append(json_object)
+                            # A clarification payload turns the agent node into a paused node result,
+                            # so we must stop before emitting the normal success completion event.
+                            yield self._clarification_helper.build_pause_event(
+                                payload=clarification_payload,
+                                tenant_id=tenant_id,
+                                app_id=app_id,
+                                workflow_execution_id=workflow_execution_id,
+                                node_id=node_id,
+                                node_title=node_title,
+                                node_execution_id=node_execution_id,
+                                tool_info=tool_info,
+                                parameters_for_log=parameters_for_log,
+                                partial_outputs={
+                                    "text": text,
+                                    "usage": jsonable_encoder(llm_usage),
+                                    "files": ArrayFileSegment(value=files),
+                                    "json": self._build_json_output(agent_logs=agent_logs, json_list=json_list),
+                                    **variables,
+                                },
+                                execution_metadata=agent_execution_metadata,
+                                llm_usage=llm_usage,
+                                agent_logs=agent_logs,
+                            )
+                            return
                     else:
                         llm_usage = LLMUsage.empty_usage()
                         agent_execution_metadata = {}
-                if message.message.json_object:
-                    json_list.append(message.message.json_object)
+                if json_object:
+                    json_list.append(json_object)
             elif message.type == ToolInvokeMessage.MessageType.LINK:
                 assert isinstance(message.message, ToolInvokeMessage.TextMessage)
                 stream_text = f"Link: {message.message.text}\n"
@@ -238,25 +277,7 @@ class AgentMessageTransformer:
 
                 yield agent_log
 
-        json_output: list[dict[str, Any] | list[Any]] = []
-        if agent_logs:
-            for log in agent_logs:
-                json_output.append(
-                    {
-                        "id": log.message_id,
-                        "parent_id": log.parent_id,
-                        "error": log.error,
-                        "status": log.status,
-                        "data": log.data,
-                        "label": log.label,
-                        "metadata": log.metadata,
-                        "node_id": log.node_id,
-                    }
-                )
-        if json_list:
-            json_output.extend(json_list)
-        else:
-            json_output.append({"data": []})
+        json_output = self._build_json_output(agent_logs=agent_logs, json_list=json_list)
 
         yield StreamChunkEvent(
             selector=[node_id, "text"],
@@ -290,3 +311,30 @@ class AgentMessageTransformer:
                 llm_usage=llm_usage,
             )
         )
+
+    @staticmethod
+    def _build_json_output(
+        *,
+        agent_logs: list[AgentLogEvent],
+        json_list: list[dict[str, Any] | list[Any]],
+    ) -> list[dict[str, Any] | list[Any]]:
+        json_output: list[dict[str, Any] | list[Any]] = []
+        if agent_logs:
+            for log in agent_logs:
+                json_output.append(
+                    {
+                        "id": log.message_id,
+                        "parent_id": log.parent_id,
+                        "error": log.error,
+                        "status": log.status,
+                        "data": log.data,
+                        "label": log.label,
+                        "metadata": log.metadata,
+                        "node_id": log.node_id,
+                    }
+                )
+        if json_list:
+            json_output.extend(json_list)
+        else:
+            json_output.append({"data": []})
+        return json_output
