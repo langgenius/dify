@@ -14,7 +14,7 @@ export type SliderProps = Pick<
   className?: string
 }
 
-const sliderRootClassName = 'group/slider relative inline-flex w-full'
+const sliderRootClassName = 'group/slider relative inline-flex w-full data-[disabled]:opacity-30'
 const sliderControlClassName = cn(
   'relative flex h-5 w-full touch-none select-none items-center',
   'data-[disabled]:cursor-not-allowed',
