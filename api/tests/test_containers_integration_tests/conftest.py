@@ -33,15 +33,6 @@ from extensions.ext_database import db
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-SANDBOX_COMPAT_COMMAND = (
-    "mkdir -p /usr/local/bin && ln -sf /opt/python/bin/python3 /usr/local/bin/python3 && exec /entrypoint.sh"
-)
-SANDBOX_COMPAT_ENTRYPOINT = [
-    "/bin/sh",
-    "-lc",
-    SANDBOX_COMPAT_COMMAND,
-]
-
 
 class _CloserProtocol(Protocol):
     """_Closer is any type which implement the close() method."""
@@ -173,18 +164,8 @@ class DifyTestContainers:
         logger.info("Redis container is ready and accepting connections")
 
         # Start Dify Sandbox container for code execution environment.
-        #
-        # The 0.2.13 sandbox image still creates runtime symlinks under
-        # /usr/local/bin during startup, but the new base image no longer
-        # includes that directory. Wrap the published entrypoint so tests keep
-        # exercising the pinned image while restoring the expected compatibility
-        # paths for Python and Node.js.
         logger.info("Initializing Dify Sandbox container...")
-        self.dify_sandbox = (
-            DockerContainer(image="langgenius/dify-sandbox:0.2.13")
-            .with_network(self.network)
-            .with_kwargs(entrypoint=SANDBOX_COMPAT_ENTRYPOINT)
-        )
+        self.dify_sandbox = DockerContainer(image="langgenius/dify-sandbox:0.2.14").with_network(self.network)
         self.dify_sandbox.with_exposed_ports(8194)
         self.dify_sandbox.env = {
             "API_KEY": "test_api_key",
@@ -204,7 +185,7 @@ class DifyTestContainers:
         # Start Dify Plugin Daemon container for plugin management
         # Dify Plugin Daemon provides plugin lifecycle management and execution
         logger.info("Initializing Dify Plugin Daemon container...")
-        self.dify_plugin_daemon = DockerContainer(image="langgenius/dify-plugin-daemon:0.5.4-local").with_network(
+        self.dify_plugin_daemon = DockerContainer(image="langgenius/dify-plugin-daemon:0.5.3-local").with_network(
             self.network
         )
         self.dify_plugin_daemon.with_exposed_ports(5002)
