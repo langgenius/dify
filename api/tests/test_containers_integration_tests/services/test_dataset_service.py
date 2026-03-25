@@ -11,6 +11,7 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.orm import Session
 
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from dify_graph.model_runtime.entities.model_entities import ModelType
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
@@ -106,7 +107,7 @@ class DatasetServiceIntegrationDataFactory:
             created_from=DocumentCreatedFrom.WEB,
             created_by=created_by,
             indexing_status=IndexingStatus.COMPLETED,
-            doc_form="text_model",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
         )
         db_session_with_containers.add(document)
         db_session_with_containers.flush()
@@ -706,3 +707,104 @@ class TestDatasetServiceRetrievalConfiguration:
         db_session_with_containers.refresh(dataset)
         assert result.id == dataset.id
         assert dataset.retrieval_model == update_data["retrieval_model"]
+
+
+class TestDocumentServicePauseRecoverRetry:
+    """Tests for pause/recover/retry orchestration using real DB and Redis."""
+
+    def _create_indexing_document(self, db_session_with_containers, indexing_status="indexing"):
+        factory = DatasetServiceIntegrationDataFactory
+        account, tenant = factory.create_account_with_tenant(db_session_with_containers)
+        dataset = factory.create_dataset(db_session_with_containers, tenant.id, account.id)
+        doc = factory.create_document(db_session_with_containers, dataset, account.id)
+        doc.indexing_status = indexing_status
+        db_session_with_containers.commit()
+        return doc, account
+
+    def test_pause_document_success(self, db_session_with_containers):
+        from extensions.ext_redis import redis_client
+        from services.dataset_service import DocumentService
+
+        doc, account = self._create_indexing_document(db_session_with_containers, indexing_status="indexing")
+
+        with patch("services.dataset_service.current_user") as mock_user:
+            mock_user.id = account.id
+            DocumentService.pause_document(doc)
+
+        db_session_with_containers.refresh(doc)
+        assert doc.is_paused is True
+        assert doc.paused_by == account.id
+        assert doc.paused_at is not None
+
+        cache_key = f"document_{doc.id}_is_paused"
+        assert redis_client.get(cache_key) is not None
+        redis_client.delete(cache_key)
+
+    def test_pause_document_invalid_status_error(self, db_session_with_containers):
+        from services.dataset_service import DocumentService
+        from services.errors.document import DocumentIndexingError
+
+        doc, account = self._create_indexing_document(db_session_with_containers, indexing_status="completed")
+
+        with patch("services.dataset_service.current_user") as mock_user:
+            mock_user.id = account.id
+            with pytest.raises(DocumentIndexingError):
+                DocumentService.pause_document(doc)
+
+    def test_recover_document_success(self, db_session_with_containers):
+        from extensions.ext_redis import redis_client
+        from services.dataset_service import DocumentService
+
+        doc, account = self._create_indexing_document(db_session_with_containers, indexing_status="indexing")
+
+        # Pause first
+        with patch("services.dataset_service.current_user") as mock_user:
+            mock_user.id = account.id
+            DocumentService.pause_document(doc)
+
+        # Recover
+        with patch("services.dataset_service.recover_document_indexing_task") as recover_task:
+            DocumentService.recover_document(doc)
+
+        db_session_with_containers.refresh(doc)
+        assert doc.is_paused is False
+        assert doc.paused_by is None
+        assert doc.paused_at is None
+
+        cache_key = f"document_{doc.id}_is_paused"
+        assert redis_client.get(cache_key) is None
+        recover_task.delay.assert_called_once_with(doc.dataset_id, doc.id)
+
+    def test_retry_document_indexing_success(self, db_session_with_containers):
+        from extensions.ext_redis import redis_client
+        from services.dataset_service import DocumentService
+
+        factory = DatasetServiceIntegrationDataFactory
+        account, tenant = factory.create_account_with_tenant(db_session_with_containers)
+        dataset = factory.create_dataset(db_session_with_containers, tenant.id, account.id)
+        doc1 = factory.create_document(db_session_with_containers, dataset, account.id, name="doc1.txt")
+        doc2 = factory.create_document(db_session_with_containers, dataset, account.id, name="doc2.txt")
+        doc2.position = 2
+        doc1.indexing_status = "error"
+        doc2.indexing_status = "error"
+        db_session_with_containers.commit()
+
+        with (
+            patch("services.dataset_service.current_user") as mock_user,
+            patch("services.dataset_service.retry_document_indexing_task") as retry_task,
+        ):
+            mock_user.id = account.id
+            DocumentService.retry_document(dataset.id, [doc1, doc2])
+
+        db_session_with_containers.refresh(doc1)
+        db_session_with_containers.refresh(doc2)
+        assert doc1.indexing_status == "waiting"
+        assert doc2.indexing_status == "waiting"
+
+        # Verify redis keys were set
+        assert redis_client.get(f"document_{doc1.id}_is_retried") is not None
+        assert redis_client.get(f"document_{doc2.id}_is_retried") is not None
+        retry_task.delay.assert_called_once_with(dataset.id, [doc1.id, doc2.id], account.id)
+
+        # Cleanup
+        redis_client.delete(f"document_{doc1.id}_is_retried", f"document_{doc2.id}_is_retried")

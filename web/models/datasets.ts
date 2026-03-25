@@ -381,7 +381,11 @@ export type OnlineDriveInfo = {
   type: 'file' | 'folder'
 }
 
-export type DataSourceInfo = LegacyDataSourceInfo | LocalFileInfo | OnlineDocumentInfo | WebsiteCrawlInfo
+export type UploadFileIdInfo = {
+  upload_file_id: string
+}
+
+export type DataSourceInfo = LegacyDataSourceInfo | LocalFileInfo | OnlineDocumentInfo | WebsiteCrawlInfo | UploadFileIdInfo
 
 export type InitialDocumentDetail = {
   id: string

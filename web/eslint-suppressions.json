@@ -1501,11 +1501,6 @@
       "count": 2
     }
   },
-  "app/components/base/amplitude/AmplitudeProvider.tsx": {
-    "react-refresh/only-export-components": {
-      "count": 1
-    }
-  },
   "app/components/base/amplitude/utils.ts": {
     "ts/no-explicit-any": {
       "count": 2
@@ -4700,9 +4695,6 @@
   "app/components/header/account-setting/data-source-page-new/configure.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
     }
   },
   "app/components/header/account-setting/data-source-page-new/hooks/use-marketplace-all-plugins.ts": {
@@ -4729,9 +4721,6 @@
   "app/components/header/account-setting/data-source-page-new/operator.tsx": {
     "no-restricted-imports": {
       "count": 2
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 5
     }
   },
   "app/components/header/account-setting/data-source-page-new/types.ts": {
@@ -4758,26 +4747,8 @@
     }
   },
   "app/components/header/account-setting/members-page/invite-modal/index.tsx": {
-    "no-restricted-imports": {
-      "count": 2
-    },
     "react/set-state-in-effect": {
       "count": 3
-    }
-  },
-  "app/components/header/account-setting/members-page/invite-modal/role-selector.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "app/components/header/account-setting/members-page/invited-modal/index.tsx": {
-    "no-restricted-imports": {
-      "count": 2
-    }
-  },
-  "app/components/header/account-setting/members-page/invited-modal/invitation-link.tsx": {
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "app/components/header/account-setting/members-page/operation/index.tsx": {
@@ -4833,9 +4804,6 @@
   "app/components/header/account-setting/model-provider-page/model-auth/add-custom-model.tsx": {
     "no-restricted-imports": {
       "count": 2
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
     }
   },
   "app/components/header/account-setting/model-provider-page/model-auth/authorized/authorized-item.tsx": {
@@ -4846,9 +4814,6 @@
   "app/components/header/account-setting/model-provider-page/model-auth/authorized/index.tsx": {
     "no-restricted-imports": {
       "count": 3
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
     },
     "ts/no-explicit-any": {
       "count": 2
@@ -4867,9 +4832,6 @@
   "app/components/header/account-setting/model-provider-page/model-auth/credential-selector.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 4
     }
   },
   "app/components/header/account-setting/model-provider-page/model-auth/hooks/use-auth.ts": {
@@ -5095,9 +5057,6 @@
     }
   },
   "app/components/plugins/install-plugin/hooks.ts": {
-    "no-restricted-imports": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 4
     }
@@ -5133,9 +5092,6 @@
   },
   "app/components/plugins/install-plugin/install-from-github/index.tsx": {
     "no-restricted-imports": {
-      "count": 3
-    },
-    "tailwindcss/enforce-consistent-class-order": {
       "count": 2
     },
     "ts/no-explicit-any": {
@@ -5400,17 +5356,9 @@
       "count": 1
     }
   },
-  "app/components/plugins/plugin-detail-panel/detail-header/hooks/use-plugin-operations.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "app/components/plugins/plugin-detail-panel/endpoint-card.tsx": {
     "no-restricted-imports": {
-      "count": 3
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 5
+      "count": 2
     },
     "ts/no-explicit-any": {
       "count": 2
@@ -5418,22 +5366,13 @@
   },
   "app/components/plugins/plugin-detail-panel/endpoint-list.tsx": {
     "no-restricted-imports": {
-      "count": 2
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 4
+      "count": 1
     },
     "ts/no-explicit-any": {
       "count": 2
     }
   },
   "app/components/plugins/plugin-detail-panel/endpoint-modal.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
-    },
     "ts/no-explicit-any": {
       "count": 7
     }
@@ -5447,9 +5386,6 @@
     }
   },
   "app/components/plugins/plugin-detail-panel/model-selector/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 3
     }
@@ -5504,27 +5440,21 @@
   "app/components/plugins/plugin-detail-panel/subscription-list/create/hooks/use-common-modal-state.ts": {
     "erasable-syntax-only/enums": {
       "count": 1
-    },
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "app/components/plugins/plugin-detail-panel/subscription-list/create/hooks/use-oauth-client-state.ts": {
     "erasable-syntax-only/enums": {
       "count": 2
-    },
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "app/components/plugins/plugin-detail-panel/subscription-list/create/index.tsx": {
     "no-restricted-imports": {
-      "count": 4
+      "count": 3
     }
   },
   "app/components/plugins/plugin-detail-panel/subscription-list/create/oauth-client.tsx": {
     "no-restricted-imports": {
-      "count": 2
+      "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 3
@@ -5540,20 +5470,17 @@
       "count": 1
     },
     "no-restricted-imports": {
-      "count": 2
-    },
-    "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
   },
   "app/components/plugins/plugin-detail-panel/subscription-list/edit/manual-edit-modal.tsx": {
     "no-restricted-imports": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/plugins/plugin-detail-panel/subscription-list/edit/oauth-edit-modal.tsx": {
     "no-restricted-imports": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/plugins/plugin-detail-panel/subscription-list/index.tsx": {
@@ -5571,9 +5498,6 @@
   },
   "app/components/plugins/plugin-detail-panel/subscription-list/log-viewer.tsx": {
     "erasable-syntax-only/enums": {
-      "count": 1
-    },
-    "no-restricted-imports": {
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -5633,11 +5557,6 @@
       "count": 2
     }
   },
-  "app/components/plugins/plugin-detail-panel/tool-selector/components/tool-credentials-form.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "app/components/plugins/plugin-detail-panel/tool-selector/components/tool-item.tsx": {
     "no-restricted-imports": {
       "count": 2
@@ -5676,7 +5595,7 @@
   },
   "app/components/plugins/plugin-item/action.tsx": {
     "no-restricted-imports": {
-      "count": 3
+      "count": 2
     }
   },
   "app/components/plugins/plugin-item/index.tsx": {
@@ -6668,9 +6587,6 @@
   "app/components/workflow/block-selector/tabs.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
     }
   },
   "app/components/workflow/block-selector/tool-picker.tsx": {
@@ -6802,9 +6718,6 @@
     },
     "react-refresh/only-export-components": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
     }
   },
   "app/components/workflow/header/undo-redo.tsx": {
@@ -6892,11 +6805,6 @@
   "app/components/workflow/hooks/use-serial-async-callback.ts": {
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/components/workflow/hooks/use-workflow-interactions.ts": {
-    "ts/no-explicit-any": {
-      "count": 2
     }
   },
   "app/components/workflow/hooks/use-workflow-run-event/use-workflow-agent-log.ts": {
@@ -7876,9 +7784,6 @@
   "app/components/workflow/nodes/human-input/components/variable-in-markdown.tsx": {
     "react-refresh/only-export-components": {
       "count": 2
-    },
-    "ts/no-explicit-any": {
-      "count": 8
     }
   },
   "app/components/workflow/nodes/human-input/node.tsx": {
@@ -8541,7 +8446,7 @@
   },
   "app/components/workflow/nodes/loop/use-single-run-form-params.ts": {
     "ts/no-explicit-any": {
-      "count": 4
+      "count": 3
     }
   },
   "app/components/workflow/nodes/parameter-extractor/components/extract-parameter/update.tsx": {
@@ -8972,7 +8877,7 @@
   },
   "app/components/workflow/panel/chat-record/user-input.tsx": {
     "ts/no-explicit-any": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/workflow/panel/chat-variable-panel/components/array-bool-list.tsx": {
@@ -9256,9 +9161,6 @@
   },
   "app/components/workflow/run/iteration-log/iteration-log-trigger.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
       "count": 1
     },
     "unicorn/prefer-number-properties": {
@@ -9826,11 +9728,6 @@
   "hooks/use-async-window-open.spec.ts": {
     "ts/no-explicit-any": {
       "count": 6
-    }
-  },
-  "hooks/use-breakpoints.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 1
     }
   },
   "hooks/use-format-time-from-now.spec.ts": {

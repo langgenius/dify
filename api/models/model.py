@@ -21,7 +21,7 @@ from configs import dify_config
 from constants import DEFAULT_FILE_NUMBER_LIMITS
 from core.tools.signature import sign_tool_file
 from dify_graph.enums import WorkflowExecutionStatus
-from dify_graph.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
+from dify_graph.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
 from dify_graph.file import helpers as file_helpers
 from extensions.storage.storage_type import StorageType
 from libs.helper import generate_string  # type: ignore[import-not-found]
@@ -31,6 +31,7 @@ from .account import Account, Tenant
 from .base import Base, TypeBase, gen_uuidv4_string
 from .engine import db
 from .enums import (
+    ApiTokenType,
     AppMCPServerStatus,
     AppStatus,
     BannerStatus,
@@ -43,6 +44,7 @@ from .enums import (
     MessageChainType,
     MessageFileBelongsTo,
     MessageStatus,
+    ProviderQuotaType,
     TagType,
 )
 from .provider_ids import GenericProviderID
@@ -587,7 +589,9 @@ class AppModelConfig(TypeBase):
     __tablename__ = "app_model_configs"
     __table_args__ = (sa.PrimaryKeyConstraint("id", name="app_model_config_pkey"), sa.Index("app_app_id_idx", "app_id"))
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
+    )
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     provider: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
     model_id: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
@@ -1783,7 +1787,7 @@ class MessageFile(TypeBase):
         StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
     )
     message_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    type: Mapped[str] = mapped_column(String(255), nullable=False)
+    type: Mapped[FileType] = mapped_column(EnumText(FileType, length=255), nullable=False)
     transfer_method: Mapped[FileTransferMethod] = mapped_column(
         EnumText(FileTransferMethod, length=255), nullable=False
     )
@@ -2095,7 +2099,7 @@ class ApiToken(Base):  # bug: this uses setattr so idk the field.
     id = mapped_column(StringUUID, default=lambda: str(uuid4()))
     app_id = mapped_column(StringUUID, nullable=True)
     tenant_id = mapped_column(StringUUID, nullable=True)
-    type = mapped_column(String(16), nullable=False)
+    type: Mapped[ApiTokenType] = mapped_column(EnumText(ApiTokenType, length=16), nullable=False)
     token: Mapped[str] = mapped_column(String(255), nullable=False)
     last_used_at = mapped_column(sa.DateTime, nullable=True)
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
@@ -2490,7 +2494,9 @@ class TenantCreditPool(TypeBase):
         StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
     )
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    pool_type: Mapped[str] = mapped_column(String(40), nullable=False, default="trial", server_default="trial")
+    pool_type: Mapped[ProviderQuotaType] = mapped_column(
+        EnumText(ProviderQuotaType, length=40), nullable=False, default=ProviderQuotaType.TRIAL, server_default="trial"
+    )
     quota_limit: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
     quota_used: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(

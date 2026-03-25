@@ -54,7 +54,7 @@ from fields.document_fields import document_status_fields
 from libs.login import current_account_with_tenant, login_required
 from models import ApiToken, Dataset, Document, DocumentSegment, UploadFile
 from models.dataset import DatasetPermission, DatasetPermissionEnum
-from models.enums import SegmentStatus
+from models.enums import ApiTokenType, SegmentStatus
 from models.provider_ids import ModelProviderID
 from services.api_token_service import ApiTokenCache
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
@@ -777,7 +777,7 @@ class DatasetIndexingStatusApi(Resource):
 class DatasetApiKeyApi(Resource):
     max_keys = 10
     token_prefix = "dataset-"
-    resource_type = "dataset"
+    resource_type = ApiTokenType.DATASET
 
     @console_ns.doc("get_dataset_api_keys")
     @console_ns.doc(description="Get dataset API keys")
@@ -826,7 +826,7 @@ class DatasetApiKeyApi(Resource):
 
 @console_ns.route("/datasets/api-keys/<uuid:api_key_id>")
 class DatasetApiDeleteApi(Resource):
-    resource_type = "dataset"
+    resource_type = ApiTokenType.DATASET
 
     @console_ns.doc("delete_dataset_api_key")
     @console_ns.doc(description="Delete dataset API key")

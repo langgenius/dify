@@ -13,6 +13,7 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.orm import Session
 
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from models.dataset import Dataset, Document
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from services.dataset_service import DocumentService
@@ -79,7 +80,7 @@ class DocumentBatchUpdateIntegrationDataFactory:
             name=name,
             created_from=DocumentCreatedFrom.WEB,
             created_by=created_by or str(uuid4()),
-            doc_form="text_model",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
         )
         document.id = document_id or str(uuid4())
         document.enabled = enabled
@@ -694,3 +695,19 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
 
         patched_dependencies["redis_client"].setex.assert_called_once_with(f"document_{doc1.id}_indexing", 600, 1)
         patched_dependencies["add_task"].delay.assert_called_once_with(doc1.id)
+
+    def test_batch_update_invalid_action_raises_value_error(
+        self, db_session_with_containers: Session, patched_dependencies
+    ):
+        """Test that an invalid action raises ValueError."""
+        factory = DocumentBatchUpdateIntegrationDataFactory
+        dataset = factory.create_dataset(db_session_with_containers)
+        doc = factory.create_document(db_session_with_containers, dataset)
+        user = UserDouble(id=str(uuid4()))
+
+        patched_dependencies["redis_client"].get.return_value = None
+
+        with pytest.raises(ValueError, match="Invalid action"):
+            DocumentService.batch_update_document_status(
+                dataset=dataset, document_ids=[doc.id], action="invalid_action", user=user
+            )
