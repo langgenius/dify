@@ -45,7 +45,8 @@ class SandboxProviderService:
             }
             system_configs = {
                 config.provider_type: config
-                for config in session.query(SandboxProviderSystemConfig).where(SandboxProviderSystemConfig.provider_type.in_(provider_types))
+                for config in session.query(SandboxProviderSystemConfig)
+                .where(SandboxProviderSystemConfig.provider_type.in_(provider_types))
                 .all()
             }
 
