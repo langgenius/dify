@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import * as React from 'react'
 import { useCallback } from 'react'
-import Slider from '@/app/components/base/slider'
+import { Slider } from '@/app/components/base/ui/slider'
 
 export type InputNumberWithSliderProps = {
   value: number
@@ -22,7 +22,7 @@ const InputNumberWithSlider: FC<InputNumberWithSliderProps> = ({
   onChange,
 }) => {
   const handleBlur = useCallback(() => {
-    if (value === undefined || value === null) {
+    if (value === undefined || value === null || Number.isNaN(value)) {
       onChange(defaultValue)
       return
     }
@@ -57,8 +57,9 @@ const InputNumberWithSlider: FC<InputNumberWithSliderProps> = ({
         min={min}
         max={max}
         step={1}
-        onChange={onChange}
+        onValueChange={onChange}
         disabled={readonly}
+        aria-label="Number input slider"
       />
     </div>
   )
