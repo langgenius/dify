@@ -97,6 +97,22 @@ class TestWorkflowChildEngineBuilder:
             ((sentinel.layer_two,), {}),
         ]
 
+    def test_build_child_engine_tolerates_invalid_graph_shape_until_graph_init(self):
+        builder = workflow_entry._WorkflowChildEngineBuilder()
+
+        with (
+            patch.object(workflow_entry, "DifyNodeFactory", return_value=sentinel.factory),
+            patch.object(workflow_entry.Graph, "init", side_effect=ValueError("invalid graph")),
+        ):
+            with pytest.raises(ValueError, match="invalid graph"):
+                builder.build_child_engine(
+                    workflow_id="workflow-id",
+                    graph_init_params=sentinel.graph_init_params,
+                    graph_runtime_state=sentinel.graph_runtime_state,
+                    graph_config={"nodes": "invalid"},
+                    root_node_id="root",
+                )
+
 
 class TestWorkflowEntryInit:
     def test_rejects_call_depth_above_limit(self):

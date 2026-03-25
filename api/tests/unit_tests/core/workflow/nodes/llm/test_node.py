@@ -15,6 +15,7 @@ from dify_graph.entities import GraphInitParams
 from dify_graph.file import File, FileTransferMethod, FileType
 from dify_graph.model_runtime.entities import LLMMode
 from dify_graph.model_runtime.entities.common_entities import I18nObject
+from dify_graph.model_runtime.entities.llm_entities import LLMResult, LLMResultWithStructuredOutput, LLMUsage
 from dify_graph.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     ImagePromptMessageContent,
@@ -118,6 +119,54 @@ def test_prompt_config_converts_none_jinja_variables() -> None:
     ).prompt_config
 
     assert prompt_config.jinja2_variables == []
+
+
+def test_fetch_structured_output_schema_validates_required_object_shape() -> None:
+    assert LLMNode.fetch_structured_output_schema(structured_output={"schema": {"type": "object", "a": 1}}) == {
+        "type": "object",
+        "a": 1,
+    }
+
+    with pytest.raises(Exception, match="valid structured output schema"):
+        LLMNode.fetch_structured_output_schema(structured_output={"schema": None})
+
+
+def test_handle_blocking_result_separates_reasoning_and_structured_output() -> None:
+    saver = mock.MagicMock(spec=LLMFileSaver)
+    event = LLMNode.handle_blocking_result(
+        invoke_result=LLMResultWithStructuredOutput(
+            model="gpt",
+            message=AssistantPromptMessage(content="<think>reasoning</think>answer"),
+            usage=LLMUsage.empty_usage(),
+            structured_output={"answer": "done"},
+        ),
+        saver=saver,
+        file_outputs=[],
+        reasoning_format="separated",
+        request_latency=1.2345,
+    )
+
+    assert event.text == "answer"
+    assert event.reasoning_content == "reasoning"
+    assert event.structured_output == {"answer": "done"}
+    assert event.usage.latency == 1.234
+
+
+def test_handle_blocking_result_keeps_tagged_text_without_structured_output() -> None:
+    saver = mock.MagicMock(spec=LLMFileSaver)
+    event = LLMNode.handle_blocking_result(
+        invoke_result=LLMResult(
+            model="gpt",
+            message=AssistantPromptMessage(content="plain text"),
+            usage=LLMUsage.empty_usage(),
+        ),
+        saver=saver,
+        file_outputs=[],
+    )
+
+    assert event.text == "plain text"
+    assert event.reasoning_content == ""
+    assert event.structured_output is None
 
 
 @pytest.fixture
