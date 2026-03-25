@@ -1,6 +1,7 @@
 """Abstract interface for document loader implementations."""
 
 import os
+import re
 from typing import TypedDict
 
 import pandas as pd
@@ -8,6 +9,9 @@ from openpyxl import load_workbook
 
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
+
+# Compiled regex for percentage precision extraction
+PERCENT_PRECISION_REGEX = re.compile(r"0(?:\.([0#]+))?%")
 
 
 class Candidate(TypedDict):
@@ -49,32 +53,29 @@ class ExcelExtractor(BaseExtractor):
                             continue
                         page_content = []
                         for col_idx, cell in enumerate(row):
-                            value = cell.value
                             if col_idx in column_map:
                                 col_name = column_map[col_idx]
+                                # Default value
+                                value = str(cell.value) if cell.value is not None else ""
+                                
+                                # Override for hyperlinks
                                 if hasattr(cell, "hyperlink") and cell.hyperlink:
                                     target = getattr(cell.hyperlink, "target", None)
                                     if target:
-                                        value = f"[{value}]({target})"
-                                if value is None:
-                                    value = ""
-                                elif not isinstance(value, str):
-                                    # Check if cell has percentage formatting
-                                    if isinstance(value, (int, float)) and hasattr(cell, "number_format"):
-                                        number_format = cell.number_format or ""
-                                        if "%" in number_format:
-                                            # Extract decimal precision from format (e.g., "0.00%" -> 2, "0%" -> 0)
-                                            precision = self._extract_percentage_precision(number_format)
-                                            if precision is not None:
-                                                # Convert decimal to percentage with proper rounding
-                                                value = f"{value * 100:.{precision}f}%"
-                                            else:
-                                                # Fallback if precision can't be determined
-                                                value = f"{value * 100:.10g}%"
+                                        value = f"[{cell.value}]({target})"
+                                # Override for percentage formatting
+                                elif isinstance(cell.value, (int, float)) and hasattr(cell, "number_format"):
+                                    number_format = cell.number_format or ""
+                                    if "%" in number_format:
+                                        # Extract decimal precision from format (e.g., "0.00%" -> 2, "0%" -> 0)
+                                        precision = self._extract_percentage_precision(number_format)
+                                        if precision is not None:
+                                            # Convert decimal to percentage with proper rounding
+                                            value = f"{cell.value * 100:.{precision}f}%"
                                         else:
-                                            value = str(value)
-                                    else:
-                                        value = str(value)
+                                            # Fallback if precision can't be determined
+                                            value = f"{cell.value * 100:.10g}%"
+                                
                                 value = value.strip().replace('"', '\\"')
                                 page_content.append(f'"{col_name}":"{value}"')
                         if page_content:
@@ -110,17 +111,16 @@ class ExcelExtractor(BaseExtractor):
             "0%" -> 0
             "0.0%" -> 1
             "0.00%" -> 2
+            "0.#%" -> 1
         Returns None if precision cannot be determined.
         """
-        import re
-
-        # Match patterns like "0.00%" or "0%" to extract decimal places
-        match = re.search(r"0(\.0+)?%", number_format)
+        # Match patterns like "0.00%", "0.##%", or "0%" to extract decimal places
+        match = PERCENT_PRECISION_REGEX.search(number_format)
         if match:
             decimal_part = match.group(1)
             if decimal_part:
-                # Count the number of zeros after the decimal point
-                return len(decimal_part) - 1  # Subtract 1 for the decimal point itself
+                # Count the number of placeholders (0 or #) after the decimal point
+                return len(decimal_part)
             else:
                 # No decimal part means 0 precision
                 return 0
