@@ -230,7 +230,7 @@ class WorkflowBasedAppRunner:
         node_type_filter_key: str,  # 'iteration_id' or 'loop_id'
         node_type_label: str = "node",  # 'iteration' or 'loop' for error messages
         *,
-        user_id: str,
+        user_id: str = "",
     ) -> tuple[Graph, VariablePool]:
         """
         Get graph and variable pool for single node execution (iteration or loop).
