@@ -4,7 +4,7 @@ import { ChevronDownIcon } from '@heroicons/react/20/solid'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactFlow } from 'reactflow'
-import { Avatar } from '@/app/components/base/avatar'
+import { AvatarFallback, AvatarImage, avatarPartClassNames, AvatarRoot, getAvatarSizeClassNames } from '@/app/components/base/avatar'
 import Divider from '@/app/components/base/divider'
 import {
   PortalToFollowElem,
@@ -50,6 +50,38 @@ const useAvatarUrls = (users: OnlineUser[]) => {
 
   return avatarUrls
 }
+
+const onlineUserAvatarSizeClassNames = getAvatarSizeClassNames('sm')
+
+type OnlineUserAvatarProps = {
+  name: string
+  avatar: string | null
+  className?: string
+  fallbackColor?: string
+}
+
+const OnlineUserAvatar = ({
+  name,
+  avatar,
+  className,
+  fallbackColor,
+}: OnlineUserAvatarProps) => (
+  <AvatarRoot className={cn(avatarPartClassNames.root, onlineUserAvatarSizeClassNames.root, className)}>
+    {avatar && (
+      <AvatarImage
+        src={avatar}
+        alt={name}
+        className={avatarPartClassNames.image}
+      />
+    )}
+    <AvatarFallback
+      className={cn(avatarPartClassNames.fallback, onlineUserAvatarSizeClassNames.text)}
+      style={fallbackColor ? { backgroundColor: fallbackColor } : undefined}
+    >
+      {name?.[0]?.toLocaleUpperCase()}
+    </AvatarFallback>
+  </AvatarRoot>
+)
 
 const OnlineUsers = () => {
   const { t } = useTranslation()
@@ -135,12 +167,11 @@ const OnlineUsers = () => {
                     style={{ zIndex: visibleUsers.length - index }}
                     onClick={() => !isCurrentUser && jumpToUserCursor(user.user_id)}
                   >
-                    <Avatar
+                    <OnlineUserAvatar
                       name={user.username || t('comments.fallback.user', { ns: 'workflow' })}
                       avatar={getAvatarUrl(user) ?? null}
-                      size="sm"
                       className="ring-1 ring-components-panel-bg"
-                      backgroundColor={userColor}
+                      fallbackColor={userColor}
                     />
                   </TooltipTrigger>
                   <TooltipContent
@@ -216,11 +247,10 @@ const OnlineUsers = () => {
                           }}
                         >
                           <div className="relative">
-                            <Avatar
+                            <OnlineUserAvatar
                               name={user.username || t('comments.fallback.user', { ns: 'workflow' })}
                               avatar={getAvatarUrl(user) ?? null}
-                              size="sm"
-                              backgroundColor={userColor}
+                              fallbackColor={userColor}
                             />
                           </div>
                           {renderDisplayName(

@@ -1,9 +1,10 @@
 import type { FC } from 'react'
 import type { AvatarSize } from '@/app/components/base/avatar'
 import { memo } from 'react'
-import { Avatar } from '@/app/components/base/avatar'
+import { AvatarFallback, AvatarImage, avatarPartClassNames, AvatarRoot, getAvatarSizeClassNames } from '@/app/components/base/avatar'
 import { getUserColor } from '@/app/components/workflow/collaboration/utils/user-color'
 import { useAppContext } from '@/context/app-context'
+import { cn } from '@/utils/classnames'
 
 type User = {
   id: string
@@ -60,6 +61,8 @@ export const UserAvatarList: FC<UserAvatarListProps> = memo(({
   const remainingCount = users.length - actualMaxVisible
 
   const currentUserId = userProfile?.id
+  const avatarSize = numericPxToAvatarSize(size)
+  const avatarSizeClassNames = getAvatarSizeClassNames(avatarSize)
 
   return (
     <div className={`flex items-center -space-x-1 ${className}`}>
@@ -72,13 +75,21 @@ export const UserAvatarList: FC<UserAvatarListProps> = memo(({
             className="relative"
             style={{ zIndex: visibleUsers.length - index }}
           >
-            <Avatar
-              name={user.name}
-              avatar={user.avatar_url || null}
-              size={numericPxToAvatarSize(size)}
-              className="ring-2 ring-components-panel-bg"
-              backgroundColor={userColor}
-            />
+            <AvatarRoot className={cn(avatarPartClassNames.root, avatarSizeClassNames.root, 'ring-2 ring-components-panel-bg')}>
+              {user.avatar_url && (
+                <AvatarImage
+                  src={user.avatar_url}
+                  alt={user.name}
+                  className={avatarPartClassNames.image}
+                />
+              )}
+              <AvatarFallback
+                className={cn(avatarPartClassNames.fallback, avatarSizeClassNames.text)}
+                style={userColor ? { backgroundColor: userColor } : undefined}
+              >
+                {user.name?.[0]?.toLocaleUpperCase()}
+              </AvatarFallback>
+            </AvatarRoot>
           </div>
         )
       },
