@@ -255,7 +255,10 @@ class PGVector(BaseVector):
                 return
 
             with self._get_cursor() as cur:
-                cur.execute("CREATE EXTENSION IF NOT EXISTS vector")
+                cur.execute("SELECT 1 FROM pg_extension WHERE extname = 'vector'")
+                if not cur.fetchone():
+                    cur.execute("CREATE EXTENSION vector")
+
                 cur.execute(SQL_CREATE_TABLE.format(table_name=self.table_name, dimension=dimension))
                 # PG hnsw index only support 2000 dimension or less
                 # ref: https://github.com/pgvector/pgvector?tab=readme-ov-file#indexing

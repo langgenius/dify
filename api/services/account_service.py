@@ -8,7 +8,7 @@ from hashlib import sha256
 from typing import Any, cast
 
 from pydantic import BaseModel
-from sqlalchemy import func
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Unauthorized
 
@@ -72,6 +72,16 @@ from tasks.mail_reset_password_task import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _try_join_enterprise_default_workspace(account_id: str) -> None:
+    """Best-effort join to enterprise default workspace."""
+    if not dify_config.ENTERPRISE_ENABLED:
+        return
+
+    from services.enterprise.enterprise_service import try_join_default_workspace
+
+    try_join_default_workspace(account_id)
 
 
 class TokenPair(BaseModel):
@@ -287,7 +297,14 @@ class AccountService:
             email=email, name=name, interface_language=interface_language, password=password
         )
 
-        TenantService.create_owner_tenant_if_not_exist(account=account)
+        try:
+            TenantService.create_owner_tenant_if_not_exist(account=account)
+        except Exception:
+            # Enterprise-only side-effect should run independently from personal workspace creation.
+            _try_join_enterprise_default_workspace(str(account.id))
+            raise
+
+        _try_join_enterprise_default_workspace(str(account.id))
 
         return account
 
@@ -327,6 +344,17 @@ class AccountService:
     @staticmethod
     def delete_account(account: Account):
         """Delete account. This method only adds a task to the queue for deletion."""
+        # Queue account deletion sync tasks for all workspaces BEFORE account deletion (enterprise only)
+        from services.enterprise.account_deletion_sync import sync_account_deletion
+
+        sync_success = sync_account_deletion(account_id=account.id, source="account_deleted")
+        if not sync_success:
+            logger.warning(
+                "Enterprise account deletion sync failed for account %s; proceeding with local deletion.",
+                account.id,
+            )
+
+        # Now proceed with async account deletion
         delete_account_task.delay(account.id)
 
     @staticmethod
@@ -748,6 +776,21 @@ class AccountService:
         cls.email_code_login_rate_limiter.increment_rate_limit(email)
         return token
 
+    @staticmethod
+    def get_account_by_email_with_case_fallback(email: str, session: Session | None = None) -> Account | None:
+        """
+        Retrieve an account by email and fall back to the lowercase email if the original lookup fails.
+
+        This keeps backward compatibility for older records that stored uppercase emails while the
+        rest of the system gradually normalizes new inputs.
+        """
+        query_session = session or db.session
+        account = query_session.execute(select(Account).filter_by(email=email)).scalar_one_or_none()
+        if account or email == email.lower():
+            return account
+
+        return query_session.execute(select(Account).filter_by(email=email.lower())).scalar_one_or_none()
+
     @classmethod
     def get_email_code_login_data(cls, token: str) -> dict[str, Any] | None:
         return TokenManager.get_token_data(token, "email_code_login")
@@ -999,6 +1042,11 @@ class TenantService:
 
         tenant.encrypt_public_key = generate_key_pair(tenant.id)
         db.session.commit()
+
+        from services.credit_pool_service import CreditPoolService
+
+        CreditPoolService.create_default_pool(tenant.id)
+
         return tenant
 
     @staticmethod
@@ -1041,9 +1089,9 @@ class TenantService:
 
         ta = db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=account.id).first()
         if ta:
-            ta.role = role
+            ta.role = TenantAccountRole(role)
         else:
-            ta = TenantAccountJoin(tenant_id=tenant.id, account_id=account.id, role=role)
+            ta = TenantAccountJoin(tenant_id=tenant.id, account_id=account.id, role=TenantAccountRole(role))
             db.session.add(ta)
 
         db.session.commit()
@@ -1194,7 +1242,12 @@ class TenantService:
 
     @staticmethod
     def remove_member_from_tenant(tenant: Tenant, account: Account, operator: Account):
-        """Remove member from tenant"""
+        """Remove member from tenant.
+
+        If the removed member has ``AccountStatus.PENDING`` (invited but never
+        activated) and no remaining workspace memberships, the orphaned account
+        record is deleted as well.
+        """
         if operator.id == account.id:
             raise CannotOperateSelfError("Cannot operate self.")
 
@@ -1204,11 +1257,46 @@ class TenantService:
         if not ta:
             raise MemberNotInTenantError("Member not in tenant.")
 
+        # Capture identifiers before any deletions; attribute access on the ORM
+        # object may fail after commit() expires the instance.
+        account_id = account.id
+        account_email = account.email
+
         db.session.delete(ta)
+
+        # Clean up orphaned pending accounts (invited but never activated)
+        should_delete_account = False
+        if account.status == AccountStatus.PENDING:
+            # autoflush flushes ta deletion before this query, so 0 means no remaining joins
+            remaining_joins = db.session.query(TenantAccountJoin).filter_by(account_id=account_id).count()
+            if remaining_joins == 0:
+                db.session.delete(account)
+                should_delete_account = True
+
         db.session.commit()
+
+        if should_delete_account:
+            logger.info(
+                "Deleted orphaned pending account: account_id=%s, email=%s",
+                account_id,
+                account_email,
+            )
 
         if dify_config.BILLING_ENABLED:
             BillingService.clean_billing_info_cache(tenant.id)
+
+        # Queue account deletion sync task for enterprise backend to reassign resources (enterprise only)
+        from services.enterprise.account_deletion_sync import sync_workspace_member_removal
+
+        sync_success = sync_workspace_member_removal(
+            workspace_id=tenant.id, member_id=account_id, source="workspace_member_removed"
+        )
+        if not sync_success:
+            logger.warning(
+                "Enterprise workspace member removal sync failed: workspace_id=%s, member_id=%s",
+                tenant.id,
+                account_id,
+            )
 
     @staticmethod
     def update_member_role(tenant: Tenant, member: Account, new_role: str, operator: Account):
@@ -1231,10 +1319,10 @@ class TenantService:
                 db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, role="owner").first()
             )
             if current_owner_join:
-                current_owner_join.role = "admin"
+                current_owner_join.role = TenantAccountRole.ADMIN
 
         # Update the role of the target member
-        target_member_join.role = new_role
+        target_member_join.role = TenantAccountRole(new_role)
         db.session.commit()
 
     @staticmethod
@@ -1330,12 +1418,18 @@ class RegisterService:
                 and create_workspace_required
                 and FeatureService.get_system_features().license.workspaces.is_available()
             ):
-                tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
-                TenantService.create_tenant_member(tenant, account, role="owner")
-                account.current_tenant = tenant
-                tenant_was_created.send(tenant)
+                try:
+                    tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
+                    TenantService.create_tenant_member(tenant, account, role="owner")
+                    account.current_tenant = tenant
+                    tenant_was_created.send(tenant)
+                except Exception:
+                    _try_join_enterprise_default_workspace(str(account.id))
+                    raise
 
             db.session.commit()
+
+            _try_join_enterprise_default_workspace(str(account.id))
         except WorkSpaceNotAllowedCreateError:
             db.session.rollback()
             logger.exception("Register failed")
@@ -1358,16 +1452,27 @@ class RegisterService:
         if not inviter:
             raise ValueError("Inviter is required")
 
+        normalized_email = email.lower()
+
         """Invite new member"""
+        # Check workspace permission for member invitations
+        from libs.workspace_permission import check_workspace_member_invite_permission
+
+        check_workspace_member_invite_permission(tenant.id)
+
         with Session(db.engine) as session:
-            account = session.query(Account).filter_by(email=email).first()
+            account = AccountService.get_account_by_email_with_case_fallback(email, session=session)
 
         if not account:
             TenantService.check_member_permission(tenant, inviter, None, "add")
-            name = email.split("@")[0]
+            name = normalized_email.split("@")[0]
 
             account = cls.register(
-                email=email, name=name, language=language, status=AccountStatus.PENDING, is_setup=True
+                email=normalized_email,
+                name=name,
+                language=language,
+                status=AccountStatus.PENDING,
+                is_setup=True,
             )
             # Create new tenant member for invited tenant
             TenantService.create_tenant_member(tenant, account, role)
@@ -1389,7 +1494,7 @@ class RegisterService:
         # send email
         send_invite_member_mail_task.delay(
             language=language,
-            to=email,
+            to=account.email,
             token=token,
             inviter_name=inviter.name if inviter else "Dify",
             workspace_name=tenant.name,
@@ -1487,6 +1592,16 @@ class RegisterService:
 
             invitation: dict = json.loads(data)
             return invitation
+
+    @classmethod
+    def get_invitation_with_case_fallback(
+        cls, workspace_id: str | None, email: str | None, token: str
+    ) -> dict[str, Any] | None:
+        invitation = cls.get_invitation_if_token_valid(workspace_id, email, token)
+        if invitation or not email or email == email.lower():
+            return invitation
+        normalized_email = email.lower()
+        return cls.get_invitation_if_token_valid(workspace_id, normalized_email, token)
 
 
 def _generate_refresh_token(length: int = 64):

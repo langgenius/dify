@@ -1,12 +1,12 @@
 import type { FC } from 'react'
-import { useCallback, useMemo } from 'react'
-import { useStore as useTagStore } from './store'
-import { cn } from '@/utils/classnames'
-import CustomPopover from '@/app/components/base/popover'
 import type { Tag } from '@/app/components/base/tag-management/constant'
+import { useCallback, useMemo } from 'react'
+import CustomPopover from '@/app/components/base/popover'
 import { fetchTagList } from '@/service/tag'
-import Trigger from './trigger'
+import { cn } from '@/utils/classnames'
 import Panel from './panel'
+import { useStore as useTagStore } from './store'
+import Trigger from './trigger'
 
 export type TagSelectorProps = {
   targetID: string
@@ -49,7 +49,7 @@ const TagSelector: FC<TagSelectorProps> = ({
     <>
       {isPopover && (
         <CustomPopover
-          htmlContent={
+          htmlContent={(
             <Panel
               type={type}
               targetID={targetID}
@@ -59,18 +59,17 @@ const TagSelector: FC<TagSelectorProps> = ({
               onChange={onChange}
               onCreate={getTagList}
             />
-          }
+          )}
           position={position}
-          trigger='click'
+          trigger="click"
           btnElement={<Trigger tags={tags} />}
           btnClassName={open =>
             cn(
               open ? '!bg-state-base-hover !text-text-secondary' : '!bg-transparent',
               '!w-full !border-0 !p-0 !text-text-tertiary hover:!bg-state-base-hover hover:!text-text-secondary',
-            )
-          }
+            )}
           popupClassName={cn('!w-full !ring-0', minWidth && '!min-w-80')}
-          className={'!z-20 h-fit !w-full'}
+          className="!z-20 h-fit !w-full"
         />
       )}
     </>

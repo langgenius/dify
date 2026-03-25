@@ -1,17 +1,18 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useMemo } from 'react'
-import { produce } from 'immer'
-import { uniqueId } from 'lodash-es'
 import type { Body, BodyPayload, KeyValue as KeyValueType } from '../../types'
+import type { ValueSelector, Var } from '@/app/components/workflow/types'
+import { uniqueId } from 'es-toolkit/compat'
+import { produce } from 'immer'
+import * as React from 'react'
+import { useCallback, useMemo } from 'react'
+import InputWithVar from '@/app/components/workflow/nodes/_base/components/prompt/editor'
+import { VarType } from '@/app/components/workflow/types'
+import { cn } from '@/utils/classnames'
+import VarReferencePicker from '../../../_base/components/variable/var-reference-picker'
+import useAvailableVarList from '../../../_base/hooks/use-available-var-list'
 import { BodyPayloadValueType, BodyType } from '../../types'
 import KeyValue from '../key-value'
-import useAvailableVarList from '../../../_base/hooks/use-available-var-list'
-import VarReferencePicker from '../../../_base/components/variable/var-reference-picker'
-import { cn } from '@/utils/classnames'
-import InputWithVar from '@/app/components/workflow/nodes/_base/components/prompt/editor'
-import type { ValueSelector, Var } from '@/app/components/workflow/types'
-import { VarType } from '@/app/components/workflow/types'
 
 const UNIQUE_ID_PREFIX = 'key-value-'
 
@@ -68,13 +69,13 @@ const EditBody: FC<Props> = ({
       type: newType,
       data: hasKeyValue
         ? [
-          {
-            id: uniqueId(UNIQUE_ID_PREFIX),
-            type: BodyPayloadValueType.text,
-            key: '',
-            value: '',
-          },
-        ]
+            {
+              id: uniqueId(UNIQUE_ID_PREFIX),
+              type: BodyPayloadValueType.text,
+              key: '',
+              value: '',
+            },
+          ]
         : [],
     })
   }, [onChange])
@@ -133,9 +134,9 @@ const EditBody: FC<Props> = ({
   return (
     <div>
       {/* body type */}
-      <div className='flex flex-wrap'>
+      <div className="flex flex-wrap">
         {allTypes.map(t => (
-          <label key={t} htmlFor={`body-type-${t}`} className='mr-4 flex h-7 items-center space-x-2'>
+          <label key={t} htmlFor={`body-type-${t}`} className="mr-4 flex h-7 items-center space-x-2">
             <input
               type="radio"
               id={`body-type-${t}`}
@@ -144,7 +145,7 @@ const EditBody: FC<Props> = ({
               onChange={handleTypeChange}
               disabled={readonly}
             />
-            <div className='text-[13px] font-normal leading-[18px] text-text-secondary'>{bodyTextMap[t]}</div>
+            <div className="text-[13px] font-normal leading-[18px] text-text-secondary">{bodyTextMap[t]}</div>
           </label>
         ))}
       </div>
@@ -164,8 +165,8 @@ const EditBody: FC<Props> = ({
 
         {type === BodyType.rawText && (
           <InputWithVar
-            instanceId={'http-body-raw'}
-            title={<div className='uppercase'>Raw text</div>}
+            instanceId="http-body-raw"
+            title={<div className="uppercase">Raw text</div>}
             onChange={handleBodyValueChange}
             value={stringValue}
             justVar
@@ -177,8 +178,8 @@ const EditBody: FC<Props> = ({
 
         {type === BodyType.json && (
           <InputWithVar
-            instanceId={'http-body-json'}
-            title='JSON'
+            instanceId="http-body-json"
+            title="JSON"
             value={stringValue}
             onChange={handleBodyValueChange}
             justVar

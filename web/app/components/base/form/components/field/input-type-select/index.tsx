@@ -1,14 +1,14 @@
+import type { CustomSelectProps } from '../../../../select/custom'
+import type { LabelProps } from '../../label'
+import type { FileTypeSelectOption, InputType } from './types'
+import { useCallback } from 'react'
 import { cn } from '@/utils/classnames'
 import { useFieldContext } from '../../..'
-import type { CustomSelectProps } from '../../../../select/custom'
 import CustomSelect from '../../../../select/custom'
-import type { LabelProps } from '../../label'
 import Label from '../../label'
-import { useCallback } from 'react'
-import Trigger from './trigger'
-import type { FileTypeSelectOption, InputType } from './types'
 import { useInputTypeOptions } from './hooks'
 import Option from './option'
+import Trigger from './trigger'
 
 type InputTypeSelectFieldProps = {
   label: string

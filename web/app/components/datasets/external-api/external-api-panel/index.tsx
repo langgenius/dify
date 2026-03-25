@@ -1,18 +1,18 @@
-import React from 'react'
 import {
   RiAddLine,
   RiBookOpenLine,
   RiCloseLine,
 } from '@remixicon/react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import ExternalKnowledgeAPICard from '../external-knowledge-api-card'
-import { cn } from '@/utils/classnames'
-import { useExternalKnowledgeApi } from '@/context/external-knowledge-api-context'
 import ActionButton from '@/app/components/base/action-button'
 import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
-import { useModalContext } from '@/context/modal-context'
+import { useExternalKnowledgeApi } from '@/context/external-knowledge-api-context'
 import { useDocLink } from '@/context/i18n'
+import { useModalContext } from '@/context/modal-context'
+import { cn } from '@/utils/classnames'
+import ExternalKnowledgeAPICard from '../external-knowledge-api-card'
 
 type ExternalAPIPanelProps = {
   onClose: () => void
@@ -48,42 +48,45 @@ const ExternalAPIPanel: React.FC<ExternalAPIPanelProps> = ({ onClose }) => {
           'relative flex h-full w-[420px] flex-col rounded-l-2xl border border-components-panel-border bg-components-panel-bg-alt',
         )}
       >
-        <div className='flex items-start self-stretch p-4 pb-0'>
-          <div className='flex grow flex-col items-start gap-1'>
-            <div className='system-xl-semibold self-stretch text-text-primary'>{t('dataset.externalAPIPanelTitle')}</div>
-            <div className='body-xs-regular self-stretch text-text-tertiary'>{t('dataset.externalAPIPanelDescription')}</div>
-            <a className='flex cursor-pointer items-center justify-center gap-1 self-stretch'
-              href={docLink('/guides/knowledge-base/connect-external-knowledge-base')} target='_blank'>
-              <RiBookOpenLine className='h-3 w-3 text-text-accent' />
-              <div className='body-xs-regular grow text-text-accent'>{t('dataset.externalAPIPanelDocumentation')}</div>
+        <div className="flex items-start self-stretch p-4 pb-0">
+          <div className="flex grow flex-col items-start gap-1">
+            <div className="system-xl-semibold self-stretch text-text-primary">{t('externalAPIPanelTitle', { ns: 'dataset' })}</div>
+            <div className="body-xs-regular self-stretch text-text-tertiary">{t('externalAPIPanelDescription', { ns: 'dataset' })}</div>
+            <a
+              className="flex cursor-pointer items-center justify-center gap-1 self-stretch"
+              href={docLink('/use-dify/knowledge/external-knowledge-api')}
+              target="_blank"
+            >
+              <RiBookOpenLine className="h-3 w-3 text-text-accent" />
+              <div className="body-xs-regular grow text-text-accent">{t('externalAPIPanelDocumentation', { ns: 'dataset' })}</div>
             </a>
           </div>
-          <div className='flex items-center'>
+          <div className="flex items-center">
             <ActionButton onClick={() => onClose()}>
-              <RiCloseLine className='h-4 w-4 text-text-tertiary' />
+              <RiCloseLine className="h-4 w-4 text-text-tertiary" />
             </ActionButton>
           </div>
         </div>
-        <div className='flex flex-col items-start justify-center gap-2 self-stretch px-4 py-3'>
+        <div className="flex flex-col items-start justify-center gap-2 self-stretch px-4 py-3">
           <Button
-            variant={'primary'}
-            className='flex items-center justify-center gap-0.5 px-3 py-2'
+            variant="primary"
+            className="flex items-center justify-center gap-0.5 px-3 py-2"
             onClick={handleOpenExternalAPIModal}
           >
-            <RiAddLine className='h-4 w-4 text-components-button-primary-text' />
-            <div className='system-sm-medium text-components-button-primary-text'>{t('dataset.createExternalAPI')}</div>
+            <RiAddLine className="h-4 w-4 text-components-button-primary-text" />
+            <div className="system-sm-medium text-components-button-primary-text">{t('createExternalAPI', { ns: 'dataset' })}</div>
           </Button>
         </div>
-        <div className='flex grow flex-col items-start gap-1 self-stretch px-4 py-0'>
+        <div className="flex grow flex-col items-start gap-1 self-stretch px-4 py-0">
           {isLoading
             ? (
-              <Loading />
-            )
+                <Loading />
+              )
             : (
-              externalKnowledgeApiList.map(api => (
-                <ExternalKnowledgeAPICard key={api.id} api={api} />
-              ))
-            )}
+                externalKnowledgeApiList.map(api => (
+                  <ExternalKnowledgeAPICard key={api.id} api={api} />
+                ))
+              )}
         </div>
       </div>
     </div>

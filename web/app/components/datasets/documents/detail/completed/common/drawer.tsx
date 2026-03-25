@@ -1,7 +1,8 @@
-import React, { useCallback, useEffect, useRef } from 'react'
+import { useKeyPress } from 'ahooks'
+import * as React from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { cn } from '@/utils/classnames'
-import { useKeyPress } from 'ahooks'
 import { useSegmentListContext } from '..'
 
 type DrawerProps = {
@@ -14,6 +15,31 @@ type DrawerProps = {
   panelClassName?: string
   panelContentClassName?: string
   needCheckChunks?: boolean
+}
+
+const SIDE_POSITION_CLASS = {
+  right: 'right-0',
+  left: 'left-0',
+  bottom: 'bottom-0',
+  top: 'top-0',
+} as const
+
+function containsTarget(selector: string, target: Node | null): boolean {
+  const elements = document.querySelectorAll(selector)
+  return Array.from(elements).some(el => el?.contains(target))
+}
+
+function shouldReopenChunkDetail(
+  isClickOnChunk: boolean,
+  isClickOnChildChunk: boolean,
+  segmentModalOpen: boolean,
+  childChunkModalOpen: boolean,
+): boolean {
+  if (segmentModalOpen && isClickOnChildChunk)
+    return true
+  if (childChunkModalOpen && isClickOnChunk && !isClickOnChildChunk)
+    return true
+  return !isClickOnChunk && !isClickOnChildChunk
 }
 
 const Drawer = ({
@@ -32,33 +58,37 @@ const Drawer = ({
   const currChildChunk = useSegmentListContext(s => s.currChildChunk)
 
   useKeyPress('esc', (e) => {
-    if (!open) return
+    if (!open)
+      return
     e.preventDefault()
     onClose()
   }, { exactMatch: true, useCapture: true })
 
   const shouldCloseDrawer = useCallback((target: Node | null) => {
     const panelContent = panelContentRef.current
-    if (!panelContent) return false
-    const chunks = document.querySelectorAll('.chunk-card')
-    const childChunks = document.querySelectorAll('.child-chunk')
-    const imagePreviewer = document.querySelector('.image-previewer')
-    const isClickOnChunk = Array.from(chunks).some((chunk) => {
-      return chunk && chunk.contains(target)
-    })
-    const isClickOnChildChunk = Array.from(childChunks).some((chunk) => {
-      return chunk && chunk.contains(target)
-    })
-    const reopenChunkDetail = (currSegment.showModal && isClickOnChildChunk)
-      || (currChildChunk.showModal && isClickOnChunk && !isClickOnChildChunk) || (!isClickOnChunk && !isClickOnChildChunk)
-    const isClickOnImagePreviewer = imagePreviewer && imagePreviewer.contains(target)
-    return target && !panelContent.contains(target) && (!needCheckChunks || reopenChunkDetail) && !isClickOnImagePreviewer
-  }, [currSegment, currChildChunk, needCheckChunks])
+    if (!panelContent || !target)
+      return false
+
+    if (panelContent.contains(target))
+      return false
+
+    if (containsTarget('.image-previewer', target))
+      return false
+
+    if (!needCheckChunks)
+      return true
+
+    const isClickOnChunk = containsTarget('.chunk-card', target)
+    const isClickOnChildChunk = containsTarget('.child-chunk', target)
+    return shouldReopenChunkDetail(isClickOnChunk, isClickOnChildChunk, currSegment.showModal, currChildChunk.showModal)
+  }, [currSegment.showModal, currChildChunk.showModal, needCheckChunks])
 
   const onDownCapture = useCallback((e: PointerEvent) => {
-    if (!open || modal) return
+    if (!open || modal)
+      return
     const panelContent = panelContentRef.current
-    if (!panelContent) return
+    if (!panelContent)
+      return
     const target = e.target as Node | null
     if (shouldCloseDrawer(target))
       queueMicrotask(onClose)
@@ -72,30 +102,27 @@ const Drawer = ({
 
   const isHorizontal = side === 'left' || side === 'right'
 
+  const overlayPointerEvents = modal && open ? 'pointer-events-auto' : 'pointer-events-none'
+
   const content = (
-    <div className='pointer-events-none fixed inset-0 z-[9999]'>
-      {showOverlay ? (
+    <div className="pointer-events-none fixed inset-0 z-[9999]">
+      {showOverlay && (
         <div
           onClick={modal ? onClose : undefined}
-          aria-hidden='true'
+          aria-hidden="true"
           className={cn(
             'fixed inset-0 bg-black/30 opacity-0 transition-opacity duration-200 ease-in',
             open && 'opacity-100',
-            modal && open ? 'pointer-events-auto' : 'pointer-events-none',
+            overlayPointerEvents,
           )}
         />
-      ) : null}
-
-      {/* Drawer panel */}
+      )}
       <div
-        role='dialog'
+        role="dialog"
         aria-modal={modal ? 'true' : 'false'}
         className={cn(
           'pointer-events-auto fixed flex flex-col',
-          side === 'right' && 'right-0',
-          side === 'left' && 'left-0',
-          side === 'bottom' && 'bottom-0',
-          side === 'top' && 'top-0',
+          SIDE_POSITION_CLASS[side],
           isHorizontal ? 'h-screen' : 'w-screen',
           panelClassName,
         )}
@@ -107,7 +134,10 @@ const Drawer = ({
     </div>
   )
 
-  return open && createPortal(content, document.body)
+  if (!open)
+    return null
+
+  return createPortal(content, document.body)
 }
 
 export default Drawer

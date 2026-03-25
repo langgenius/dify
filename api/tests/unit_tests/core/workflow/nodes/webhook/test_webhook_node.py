@@ -2,11 +2,8 @@ from unittest.mock import patch
 
 import pytest
 
-from core.app.entities.app_invoke_entities import InvokeFrom
-from core.file import File, FileTransferMethod, FileType
-from core.variables import FileVariable, StringVariable
-from core.workflow.entities.graph_init_params import GraphInitParams
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.trigger.constants import TRIGGER_WEBHOOK_NODE_TYPE
 from core.workflow.nodes.trigger_webhook.entities import (
     ContentType,
     Method,
@@ -15,11 +12,13 @@ from core.workflow.nodes.trigger_webhook.entities import (
     WebhookParameter,
 )
 from core.workflow.nodes.trigger_webhook.node import TriggerWebhookNode
-from core.workflow.runtime.graph_runtime_state import GraphRuntimeState
-from core.workflow.runtime.variable_pool import VariablePool
-from core.workflow.system_variable import SystemVariable
-from models.enums import UserFrom
-from models.workflow import WorkflowType
+from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY, GraphInitParams
+from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionStatus
+from dify_graph.file import File, FileTransferMethod, FileType
+from dify_graph.runtime.graph_runtime_state import GraphRuntimeState
+from dify_graph.runtime.variable_pool import VariablePool
+from dify_graph.system_variable import SystemVariable
+from dify_graph.variables import FileVariable, StringVariable
 
 
 def create_webhook_node(webhook_data: WebhookData, variable_pool: VariablePool) -> TriggerWebhookNode:
@@ -30,14 +29,17 @@ def create_webhook_node(webhook_data: WebhookData, variable_pool: VariablePool) 
     }
 
     graph_init_params = GraphInitParams(
-        tenant_id="1",
-        app_id="1",
-        workflow_type=WorkflowType.WORKFLOW,
         workflow_id="1",
         graph_config={},
-        user_id="1",
-        user_from=UserFrom.ACCOUNT,
-        invoke_from=InvokeFrom.SERVICE_API,
+        run_context={
+            DIFY_RUN_CONTEXT_KEY: {
+                "tenant_id": "1",
+                "app_id": "1",
+                "user_id": "1",
+                "user_from": UserFrom.ACCOUNT,
+                "invoke_from": InvokeFrom.SERVICE_API,
+            }
+        },
         call_depth=0,
     )
     runtime_state = GraphRuntimeState(
@@ -75,13 +77,13 @@ def test_webhook_node_basic_initialization():
     )
 
     variable_pool = VariablePool(
-        system_variables=SystemVariable.empty(),
+        system_variables=SystemVariable.default(),
         user_inputs={},
     )
 
     node = create_webhook_node(data, variable_pool)
 
-    assert node.node_type.value == "trigger-webhook"
+    assert node.node_type == TRIGGER_WEBHOOK_NODE_TYPE
     assert node.version() == "1"
     assert node._get_title() == "Test Webhook"
     assert node._node_data.method == Method.POST
@@ -118,7 +120,7 @@ def test_webhook_node_run_with_headers():
     )
 
     variable_pool = VariablePool(
-        system_variables=SystemVariable.empty(),
+        system_variables=SystemVariable.default(),
         user_inputs={
             "webhook_data": {
                 "headers": {
@@ -154,7 +156,7 @@ def test_webhook_node_run_with_query_params():
     )
 
     variable_pool = VariablePool(
-        system_variables=SystemVariable.empty(),
+        system_variables=SystemVariable.default(),
         user_inputs={
             "webhook_data": {
                 "headers": {},
@@ -190,7 +192,7 @@ def test_webhook_node_run_with_body_params():
     )
 
     variable_pool = VariablePool(
-        system_variables=SystemVariable.empty(),
+        system_variables=SystemVariable.default(),
         user_inputs={
             "webhook_data": {
                 "headers": {},
@@ -249,7 +251,7 @@ def test_webhook_node_run_with_file_params():
     )
 
     variable_pool = VariablePool(
-        system_variables=SystemVariable.empty(),
+        system_variables=SystemVariable.default(),
         user_inputs={
             "webhook_data": {
                 "headers": {},
@@ -302,7 +304,7 @@ def test_webhook_node_run_mixed_parameters():
     )
 
     variable_pool = VariablePool(
-        system_variables=SystemVariable.empty(),
+        system_variables=SystemVariable.default(),
         user_inputs={
             "webhook_data": {
                 "headers": {"Authorization": "Bearer token"},
@@ -342,7 +344,7 @@ def test_webhook_node_run_empty_webhook_data():
     )
 
     variable_pool = VariablePool(
-        system_variables=SystemVariable.empty(),
+        system_variables=SystemVariable.default(),
         user_inputs={},  # No webhook_data
     )
 
@@ -368,7 +370,7 @@ def test_webhook_node_run_case_insensitive_headers():
     )
 
     variable_pool = VariablePool(
-        system_variables=SystemVariable.empty(),
+        system_variables=SystemVariable.default(),
         user_inputs={
             "webhook_data": {
                 "headers": {
@@ -398,7 +400,7 @@ def test_webhook_node_variable_pool_user_inputs():
 
     # Add some additional variables to the pool
     variable_pool = VariablePool(
-        system_variables=SystemVariable.empty(),
+        system_variables=SystemVariable.default(),
         user_inputs={
             "webhook_data": {"headers": {}, "query_params": {}, "body": {}, "files": {}},
             "other_var": "should_be_included",
@@ -429,7 +431,7 @@ def test_webhook_node_different_methods(method):
     )
 
     variable_pool = VariablePool(
-        system_variables=SystemVariable.empty(),
+        system_variables=SystemVariable.default(),
         user_inputs={
             "webhook_data": {
                 "headers": {},

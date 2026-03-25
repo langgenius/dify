@@ -1,33 +1,33 @@
 import type { FC } from 'react'
 import {
+  RiZoomInLine,
+  RiZoomOutLine,
+} from '@remixicon/react'
+import {
   Fragment,
   memo,
   useCallback,
   useState,
 } from 'react'
-import {
-  RiZoomInLine,
-  RiZoomOutLine,
-} from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import {
   useReactFlow,
   useViewport,
 } from 'reactflow'
 import {
-  useNodesSyncDraft,
-  useWorkflowReadOnly,
-} from '../hooks'
-
-import ShortcutsName from '../shortcuts-name'
-import Divider from '../../base/divider'
-import TipPopup from './tip-popup'
-import { cn } from '@/utils/classnames'
-import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+
+import { cn } from '@/utils/classnames'
+import Divider from '../../base/divider'
+import {
+  useNodesSyncDraft,
+  useWorkflowReadOnly,
+} from '../hooks'
+import ShortcutsName from '../shortcuts-name'
+import TipPopup from './tip-popup'
 
 enum ZoomType {
   zoomIn = 'zoomIn',
@@ -82,7 +82,7 @@ const ZoomInOut: FC = () => {
     [
       {
         key: ZoomType.zoomToFit,
-        text: t('workflow.operator.zoomToFit'),
+        text: t('operator.zoomToFit', { ns: 'workflow' }),
       },
     ],
   ]
@@ -121,7 +121,7 @@ const ZoomInOut: FC = () => {
 
   return (
     <PortalToFollowElem
-      placement='top-start'
+      placement="top-start"
       open={open}
       onOpenChange={setOpen}
       offset={{
@@ -135,12 +135,14 @@ const ZoomInOut: FC = () => {
           p-0.5 text-[13px] shadow-lg backdrop-blur-[5px]
           hover:bg-state-base-hover
           ${workflowReadOnly && '!cursor-not-allowed opacity-50'}
-        `}>
+        `}
+        >
           <div className={cn(
             'flex h-8 w-[98px] items-center justify-between rounded-lg',
-          )}>
+          )}
+          >
             <TipPopup
-              title={t('workflow.operator.zoomOut')}
+              title={t('operator.zoomOut', { ns: 'workflow' })}
               shortcuts={['ctrl', '-']}
             >
               <div
@@ -153,12 +155,15 @@ const ZoomInOut: FC = () => {
                   zoomOut()
                 }}
               >
-                <RiZoomOutLine className='h-4 w-4 text-text-tertiary hover:text-text-secondary' />
+                <RiZoomOutLine className="h-4 w-4 text-text-tertiary hover:text-text-secondary" />
               </div>
             </TipPopup>
-            <div onClick={handleTrigger} className={cn('system-sm-medium w-[34px] text-text-tertiary hover:text-text-secondary')}>{Number.parseFloat(`${zoom * 100}`).toFixed(0)}%</div>
+            <div onClick={handleTrigger} className={cn('system-sm-medium w-[34px] text-text-tertiary hover:text-text-secondary')}>
+              {Number.parseFloat(`${zoom * 100}`).toFixed(0)}
+              %
+            </div>
             <TipPopup
-              title={t('workflow.operator.zoomIn')}
+              title={t('operator.zoomIn', { ns: 'workflow' })}
               shortcuts={['ctrl', '+']}
             >
               <div
@@ -171,32 +176,32 @@ const ZoomInOut: FC = () => {
                   zoomIn()
                 }}
               >
-                <RiZoomInLine className='h-4 w-4 text-text-tertiary hover:text-text-secondary' />
+                <RiZoomInLine className="h-4 w-4 text-text-tertiary hover:text-text-secondary" />
               </div>
             </TipPopup>
           </div>
         </div>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-10'>
-        <div className='w-[145px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]'>
+      <PortalToFollowElemContent className="z-10">
+        <div className="w-[145px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]">
           {
             ZOOM_IN_OUT_OPTIONS.map((options, i) => (
               <Fragment key={i}>
                 {
                   i !== 0 && (
-                    <Divider className='m-0' />
+                    <Divider className="m-0" />
                   )
                 }
-                <div className='p-1'>
+                <div className="p-1">
                   {
                     options.map(option => (
                       <div
                         key={option.key}
-                        className='system-md-regular flex h-8 cursor-pointer items-center justify-between space-x-1 rounded-lg py-1.5 pl-3 pr-2 text-text-secondary hover:bg-state-base-hover'
+                        className="system-md-regular flex h-8 cursor-pointer items-center justify-between space-x-1 rounded-lg py-1.5 pl-3 pr-2 text-text-secondary hover:bg-state-base-hover"
                         onClick={() => handleZoom(option.key)}
                       >
                         <span>{option.text}</span>
-                        <div className='flex items-center space-x-0.5'>
+                        <div className="flex items-center space-x-0.5">
                           {
                             option.key === ZoomType.zoomToFit && (
                               <ShortcutsName keys={['ctrl', '1']} />

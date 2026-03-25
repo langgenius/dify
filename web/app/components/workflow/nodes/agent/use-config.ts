@@ -1,21 +1,21 @@
-import { useStrategyProviderDetail } from '@/service/use-strategy'
-import useNodeCrud from '../_base/hooks/use-node-crud'
-import useVarList from '../_base/hooks/use-var-list'
+import type { Memory, Var } from '../../types'
+import type { ToolVarInputs } from '../tool/types'
 import type { AgentNodeType } from './types'
+import { produce } from 'immer'
+import { useCallback, useEffect, useMemo } from 'react'
+import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { generateAgentToolValue, toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import {
   useIsChatMode,
   useNodesReadOnly,
 } from '@/app/components/workflow/hooks'
-import { useCallback, useEffect, useMemo } from 'react'
-import { type ToolVarInputs, VarType } from '../tool/types'
 import { useCheckInstalled, useFetchPluginsInMarketPlaceByIds } from '@/service/use-plugins'
-import type { Memory, Var } from '../../types'
+import { useStrategyProviderDetail } from '@/service/use-strategy'
 import { VarType as VarKindType } from '../../types'
 import useAvailableVarList from '../_base/hooks/use-available-var-list'
-import { produce } from 'immer'
-import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { isSupportMCP } from '@/utils/plugin-version-feature'
-import { generateAgentToolValue, toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
+import useNodeCrud from '../_base/hooks/use-node-crud'
+import useVarList from '../_base/hooks/use-var-list'
+import { VarType } from '../tool/types'
 
 export type StrategyStatus = {
   plugin: {
@@ -100,7 +100,8 @@ const useConfig = (id: string, payload: AgentNodeType) => {
     const isVariable = currentStrategy?.parameters.some(
       param => param.name === paramName && param.type === FormTypeEnum.any,
     )
-    if (isVariable) return VarType.variable
+    if (isVariable)
+      return VarType.variable
     return VarType.constant
   }, [currentStrategy?.parameters])
 
@@ -220,7 +221,6 @@ const useConfig = (id: string, payload: AgentNodeType) => {
     outputSchema,
     handleMemoryChange,
     isChatMode,
-    canChooseMCPTool: isSupportMCP(inputs.meta?.version),
   }
 }
 

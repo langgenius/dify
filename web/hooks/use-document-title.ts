@@ -1,11 +1,11 @@
 'use client'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useFavicon, useTitle } from 'ahooks'
-import { basePath } from '@/utils/var'
 import { useEffect } from 'react'
+import { useGlobalPublicStore, useIsSystemFeaturesPending } from '@/context/global-public-context'
+import { basePath } from '@/utils/var'
 
 export default function useDocumentTitle(title: string) {
-  const isPending = useGlobalPublicStore(s => s.isGlobalPending)
+  const isPending = useIsSystemFeaturesPending()
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   const prefix = title ? `${title} - ` : ''
   let titleStr = ''

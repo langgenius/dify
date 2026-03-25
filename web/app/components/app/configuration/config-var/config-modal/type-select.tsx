@@ -1,17 +1,18 @@
 'use client'
 import type { FC } from 'react'
-import React, { useState } from 'react'
+import type { InputVarType } from '@/app/components/workflow/types'
 import { ChevronDownIcon } from '@heroicons/react/20/solid'
+import * as React from 'react'
+import { useState } from 'react'
+import Badge from '@/app/components/base/badge'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import InputVarTypeIcon from '@/app/components/workflow/nodes/_base/components/input-var-type-icon'
-import type { InputVarType } from '@/app/components/workflow/types'
-import { cn } from '@/utils/classnames'
-import Badge from '@/app/components/base/badge'
 import { inputVarTypeToVarType } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import { cn } from '@/utils/classnames'
 
 export type Item = {
   value: InputVarType
@@ -41,16 +42,16 @@ const TypeSelector: FC<Props> = ({
     <PortalToFollowElem
       open={open}
       onOpenChange={setOpen}
-      placement='bottom-start'
+      placement="bottom-start"
       offset={4}
     >
-      <PortalToFollowElemTrigger onClick={() => !readonly && setOpen(v => !v)} className='w-full'>
+      <PortalToFollowElemTrigger onClick={() => !readonly && setOpen(v => !v)} className="w-full">
         <div
           className={cn(`group flex h-9 items-center justify-between rounded-lg border-0 bg-components-input-bg-normal px-2 text-sm hover:bg-state-base-hover-alt ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`)}
           title={selectedItem?.name}
         >
-          <div className='flex items-center'>
-            <InputVarTypeIcon type={selectedItem?.value as InputVarType} className='size-4 shrink-0 text-text-secondary' />
+          <div className="flex items-center">
+            <InputVarTypeIcon type={selectedItem?.value as InputVarType} className="size-4 shrink-0 text-text-secondary" />
             <span
               className={`
               ml-1.5 text-components-input-text-filled ${!selectedItem?.name && 'text-components-input-text-placeholder'}
@@ -59,29 +60,29 @@ const TypeSelector: FC<Props> = ({
               {selectedItem?.name}
             </span>
           </div>
-          <div className='flex items-center space-x-1'>
+          <div className="flex items-center space-x-1">
             <Badge uppercase={false}>{inputVarTypeToVarType(selectedItem?.value as InputVarType)}</Badge>
             <ChevronDownIcon className={cn('h-4 w-4 shrink-0 text-text-quaternary group-hover:text-text-secondary', open && 'text-text-secondary')} />
           </div>
         </div>
 
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-[61]'>
+      <PortalToFollowElemContent className="z-[61]">
         <div
           className={cn('w-[432px] rounded-md border-[0.5px] border-components-panel-border bg-components-panel-bg px-1 py-1 text-base shadow-lg focus:outline-none sm:text-sm', popupInnerClassName)}
         >
           {items.map((item: Item) => (
             <div
               key={item.value}
-              className={'flex h-9 cursor-pointer items-center justify-between rounded-lg px-2 text-text-secondary hover:bg-state-base-hover'}
+              className="flex h-9 cursor-pointer items-center justify-between rounded-lg px-2 text-text-secondary hover:bg-state-base-hover"
               title={item.name}
               onClick={() => {
                 onSelect(item)
                 setOpen(false)
               }}
             >
-              <div className='flex items-center space-x-2'>
-                <InputVarTypeIcon type={item.value} className='size-4 shrink-0 text-text-secondary' />
+              <div className="flex items-center space-x-2">
+                <InputVarTypeIcon type={item.value} className="size-4 shrink-0 text-text-secondary" />
                 <span title={item.name}>{item.name}</span>
               </div>
               <Badge uppercase={false}>{inputVarTypeToVarType(item.value)}</Badge>

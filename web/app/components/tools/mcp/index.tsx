@@ -1,13 +1,13 @@
 'use client'
+import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { useMemo, useState } from 'react'
-import NewMCPCard from './create-card'
-import MCPCard from './provider-card'
-import MCPDetailPanel from './detail/provider-detail'
 import {
   useAllToolProviders,
 } from '@/service/use-tools'
-import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { cn } from '@/utils/classnames'
+import NewMCPCard from './create-card'
+import MCPDetailPanel from './detail/provider-detail'
+import MCPCard from './provider-card'
 
 type Props = {
   searchText: string
@@ -26,7 +26,8 @@ function renderDefaultCard() {
         index >= 16 && index < 20 && 'opacity-25',
         index >= 20 && index < 24 && 'opacity-20',
       )}
-    ></div>
+    >
+    </div>
   ))
   return defaultCards
 }

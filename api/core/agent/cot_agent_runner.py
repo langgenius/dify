@@ -6,22 +6,23 @@ from typing import Any
 
 from core.agent.base_agent_runner import BaseAgentRunner
 from core.agent.entities import AgentScratchpadUnit
+from core.agent.errors import AgentMaxIterationError
 from core.agent.output_parser.cot_output_parser import CotAgentOutputParser
 from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.entities.queue_entities import QueueAgentThoughtEvent, QueueMessageEndEvent, QueueMessageFileEvent
-from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
-from core.model_runtime.entities.message_entities import (
+from core.ops.ops_trace_manager import TraceQueueManager
+from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
+from core.tools.__base.tool import Tool
+from core.tools.entities.tool_entities import ToolInvokeMeta
+from core.tools.tool_engine import ToolEngine
+from dify_graph.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
+from dify_graph.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     PromptMessage,
     PromptMessageTool,
     ToolPromptMessage,
     UserPromptMessage,
 )
-from core.ops.ops_trace_manager import TraceQueueManager
-from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
-from core.tools.__base.tool import Tool
-from core.tools.entities.tool_entities import ToolInvokeMeta
-from core.tools.tool_engine import ToolEngine
 from models.model import Message
 
 logger = logging.getLogger(__name__)
@@ -165,6 +166,11 @@ class CotAgentRunner(BaseAgentRunner, ABC):
             scratchpad.thought = scratchpad.thought.strip() or "I am thinking about how to help you"
             self._agent_scratchpad.append(scratchpad)
 
+            # Check if max iteration is reached and model still wants to call tools
+            if iteration_step == max_iteration_steps and scratchpad.action:
+                if scratchpad.action.action_name.lower() != "final answer":
+                    raise AgentMaxIterationError(app_config.agent.max_iteration)
+
             # get llm usage
             if "usage" in usage_dict:
                 if usage_dict["usage"] is not None:
@@ -239,7 +245,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
             iteration_step += 1
 
         yield LLMResultChunk(
-            model=model_instance.model,
+            model=model_instance.model_name,
             prompt_messages=prompt_messages,
             delta=LLMResultChunkDelta(
                 index=0, message=AssistantPromptMessage(content=final_answer), usage=llm_usage["usage"]
@@ -262,7 +268,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         self.queue_manager.publish(
             QueueMessageEndEvent(
                 llm_result=LLMResult(
-                    model=model_instance.model,
+                    model=model_instance.model_name,
                     prompt_messages=prompt_messages,
                     message=AssistantPromptMessage(content=final_answer),
                     usage=llm_usage["usage"] or LLMUsage.empty_usage(),

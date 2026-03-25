@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.console.wraps import account_initialization_required, setup_required
-from core.model_runtime.utils.encoders import jsonable_encoder
+from dify_graph.model_runtime.utils.encoders import jsonable_encoder
 from libs.login import current_account_with_tenant, login_required
 from models import Account
 from models.model import OAuthProviderApp
@@ -155,43 +155,43 @@ class OAuthServerUserTokenApi(Resource):
             grant_type = OAuthGrantType(payload.grant_type)
         except ValueError:
             raise BadRequest("invalid grant_type")
+        match grant_type:
+            case OAuthGrantType.AUTHORIZATION_CODE:
+                if not payload.code:
+                    raise BadRequest("code is required")
 
-        if grant_type == OAuthGrantType.AUTHORIZATION_CODE:
-            if not payload.code:
-                raise BadRequest("code is required")
+                if payload.client_secret != oauth_provider_app.client_secret:
+                    raise BadRequest("client_secret is invalid")
 
-            if payload.client_secret != oauth_provider_app.client_secret:
-                raise BadRequest("client_secret is invalid")
+                if payload.redirect_uri not in oauth_provider_app.redirect_uris:
+                    raise BadRequest("redirect_uri is invalid")
 
-            if payload.redirect_uri not in oauth_provider_app.redirect_uris:
-                raise BadRequest("redirect_uri is invalid")
+                access_token, refresh_token = OAuthServerService.sign_oauth_access_token(
+                    grant_type, code=payload.code, client_id=oauth_provider_app.client_id
+                )
+                return jsonable_encoder(
+                    {
+                        "access_token": access_token,
+                        "token_type": "Bearer",
+                        "expires_in": OAUTH_ACCESS_TOKEN_EXPIRES_IN,
+                        "refresh_token": refresh_token,
+                    }
+                )
+            case OAuthGrantType.REFRESH_TOKEN:
+                if not payload.refresh_token:
+                    raise BadRequest("refresh_token is required")
 
-            access_token, refresh_token = OAuthServerService.sign_oauth_access_token(
-                grant_type, code=payload.code, client_id=oauth_provider_app.client_id
-            )
-            return jsonable_encoder(
-                {
-                    "access_token": access_token,
-                    "token_type": "Bearer",
-                    "expires_in": OAUTH_ACCESS_TOKEN_EXPIRES_IN,
-                    "refresh_token": refresh_token,
-                }
-            )
-        elif grant_type == OAuthGrantType.REFRESH_TOKEN:
-            if not payload.refresh_token:
-                raise BadRequest("refresh_token is required")
-
-            access_token, refresh_token = OAuthServerService.sign_oauth_access_token(
-                grant_type, refresh_token=payload.refresh_token, client_id=oauth_provider_app.client_id
-            )
-            return jsonable_encoder(
-                {
-                    "access_token": access_token,
-                    "token_type": "Bearer",
-                    "expires_in": OAUTH_ACCESS_TOKEN_EXPIRES_IN,
-                    "refresh_token": refresh_token,
-                }
-            )
+                access_token, refresh_token = OAuthServerService.sign_oauth_access_token(
+                    grant_type, refresh_token=payload.refresh_token, client_id=oauth_provider_app.client_id
+                )
+                return jsonable_encoder(
+                    {
+                        "access_token": access_token,
+                        "token_type": "Bearer",
+                        "expires_in": OAUTH_ACCESS_TOKEN_EXPIRES_IN,
+                        "refresh_token": refresh_token,
+                    }
+                )
 
 
 @console_ns.route("/oauth/provider/account")

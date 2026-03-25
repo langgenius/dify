@@ -1,14 +1,15 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
-import { useBoolean } from 'ahooks'
-import { cn } from '@/utils/classnames'
 import type { CodeLanguage } from '../../code/types'
-import { Generator } from '@/app/components/base/icons/src/vender/other'
-import { ActionButton } from '@/app/components/base/action-button'
-import { AppModeEnum } from '@/types/app'
 import type { GenRes } from '@/service/debug'
+import { useBoolean } from 'ahooks'
+import * as React from 'react'
+import { useCallback } from 'react'
 import { GetCodeGeneratorResModal } from '@/app/components/app/configuration/config/code-generator/get-code-generator-res'
+import { ActionButton } from '@/app/components/base/action-button'
+import { Generator } from '@/app/components/base/icons/src/vender/other'
+import { AppModeEnum } from '@/types/app'
+import { cn } from '@/utils/classnames'
 import { useHooksStore } from '../../../hooks-store'
 
 type Props = {
@@ -36,9 +37,10 @@ const CodeGenerateBtn: FC<Props> = ({
   return (
     <div className={cn(className)}>
       <ActionButton
-        className='hover:bg-[#155EFF]/8'
-        onClick={showAutomaticTrue}>
-        <Generator className='h-4 w-4 text-primary-600' />
+        className="hover:bg-[#155EFF]/8"
+        onClick={showAutomaticTrue}
+      >
+        <Generator className="h-4 w-4 text-primary-600" />
       </ActionButton>
       {showAutomatic && (
         <GetCodeGeneratorResModal

@@ -1,12 +1,14 @@
-import { useCallback } from 'react'
+import type { SyncDraftCallback } from '@/app/components/workflow/hooks-store'
 import { produce } from 'immer'
+import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
-import { useWorkflowStore } from '@/app/components/workflow/store'
-import { useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
-import { useSerialAsyncCallback } from '@/app/components/workflow/hooks/use-serial-async-callback'
-import { syncWorkflowDraft } from '@/service/workflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
+import { useSerialAsyncCallback } from '@/app/components/workflow/hooks/use-serial-async-callback'
+import { useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 import { API_PREFIX } from '@/config'
+import { postWithKeepalive } from '@/service/fetch'
+import { syncWorkflowDraft } from '@/service/workflow'
 import { useWorkflowRefreshDraft } from '.'
 
 export const useNodesSyncDraft = () => {
@@ -85,44 +87,55 @@ export const useNodesSyncDraft = () => {
     const postParams = getPostParams()
 
     if (postParams)
-      navigator.sendBeacon(`${API_PREFIX}${postParams.url}`, JSON.stringify(postParams.params))
+      postWithKeepalive(`${API_PREFIX}${postParams.url}`, postParams.params)
   }, [getPostParams, getNodesReadOnly])
 
   const performSync = useCallback(async (
     notRefreshWhenSyncError?: boolean,
-    callback?: {
-      onSuccess?: () => void
-      onError?: () => void
-      onSettled?: () => void
-    },
+    callback?: SyncDraftCallback,
   ) => {
     if (getNodesReadOnly())
       return
-    const postParams = getPostParams()
 
-    if (postParams) {
-      const {
-        setSyncWorkflowDraftHash,
-        setDraftUpdatedAt,
-      } = workflowStore.getState()
-      try {
-        const res = await syncWorkflowDraft(postParams)
-        setSyncWorkflowDraftHash(res.hash)
-        setDraftUpdatedAt(res.updated_at)
-        callback?.onSuccess?.()
+    // Get base params without hash
+    const baseParams = getPostParams()
+    if (!baseParams)
+      return
+
+    const {
+      setSyncWorkflowDraftHash,
+      setDraftUpdatedAt,
+    } = workflowStore.getState()
+
+    try {
+      // IMPORTANT: Get the LATEST hash right before sending the request
+      // This ensures that even if queued, each request uses the most recent hash
+      const latestHash = workflowStore.getState().syncWorkflowDraftHash
+
+      const postParams = {
+        ...baseParams,
+        params: {
+          ...baseParams.params,
+          hash: latestHash || null, // null for first-time, otherwise use latest hash
+        },
       }
-      catch (error: any) {
-        if (error && error.json && !error.bodyUsed) {
-          error.json().then((err: any) => {
-            if (err.code === 'draft_workflow_not_sync' && !notRefreshWhenSyncError)
-              handleRefreshWorkflowDraft()
-          })
-        }
-        callback?.onError?.()
+
+      const res = await syncWorkflowDraft(postParams)
+      setSyncWorkflowDraftHash(res.hash)
+      setDraftUpdatedAt(res.updated_at)
+      callback?.onSuccess?.()
+    }
+    catch (error: any) {
+      if (error && error.json && !error.bodyUsed) {
+        error.json().then((err: any) => {
+          if (err.code === 'draft_workflow_not_sync' && !notRefreshWhenSyncError)
+            handleRefreshWorkflowDraft(true)
+        })
       }
-      finally {
-        callback?.onSettled?.()
-      }
+      callback?.onError?.()
+    }
+    finally {
+      callback?.onSettled?.()
     }
   }, [workflowStore, getPostParams, getNodesReadOnly, handleRefreshWorkflowDraft])
 

@@ -1,10 +1,10 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
-import Button from '../../base/button'
 import { RiAddLine } from '@remixicon/react'
-import { cn } from '@/utils/classnames'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import { cn } from '@/utils/classnames'
+import Button from '../../base/button'
 
 type Props = {
   className?: string
@@ -19,12 +19,12 @@ const AddedMetadataButton: FC<Props> = ({
   return (
     <Button
       className={cn('flex w-full items-center', className)}
-      size='small'
-      variant='tertiary'
+      size="small"
+      variant="tertiary"
       onClick={onClick}
     >
-      <RiAddLine className='mr-1 size-3.5' />
-      <div>{t('dataset.metadata.addMetadata')}</div>
+      <RiAddLine className="mr-1 size-3.5" />
+      <div>{t('metadata.addMetadata', { ns: 'dataset' })}</div>
     </Button>
   )
 }

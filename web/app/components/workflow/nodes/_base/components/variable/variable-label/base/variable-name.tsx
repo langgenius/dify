@@ -1,6 +1,6 @@
 import { memo } from 'react'
-import { useVarName } from '../hooks'
 import { cn } from '@/utils/classnames'
+import { useVarName } from '../hooks'
 
 type VariableNameProps = {
   variables: string[]

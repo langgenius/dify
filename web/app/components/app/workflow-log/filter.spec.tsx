@@ -7,18 +7,18 @@
  * - Keyword search
  */
 
-import { useState } from 'react'
+import type { QueryParam } from './index'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import Filter, { TIME_PERIOD_MAPPING } from './filter'
-import type { QueryParam } from './index'
 
 // ============================================================================
 // Mocks
 // ============================================================================
 
-const mockTrackEvent = jest.fn()
-jest.mock('@/app/components/base/amplitude/utils', () => ({
+const mockTrackEvent = vi.fn()
+vi.mock('@/app/components/base/amplitude/utils', () => ({
   trackEvent: (...args: unknown[]) => mockTrackEvent(...args),
 }))
 
@@ -37,10 +37,10 @@ const createDefaultQueryParams = (overrides: Partial<QueryParam> = {}): QueryPar
 // ============================================================================
 
 describe('Filter', () => {
-  const defaultSetQueryParams = jest.fn()
+  const defaultSetQueryParams = vi.fn()
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   // --------------------------------------------------------------------------
@@ -116,7 +116,7 @@ describe('Filter', () => {
 
     it('should call setQueryParams when status is selected', async () => {
       const user = userEvent.setup()
-      const setQueryParams = jest.fn()
+      const setQueryParams = vi.fn()
 
       render(
         <Filter
@@ -155,7 +155,7 @@ describe('Filter', () => {
 
     it('should reset to all when status is cleared', async () => {
       const user = userEvent.setup()
-      const setQueryParams = jest.fn()
+      const setQueryParams = vi.fn()
 
       const { container } = render(
         <Filter
@@ -176,7 +176,7 @@ describe('Filter', () => {
       })
     })
 
-    test.each([
+    it.each([
       ['all', 'All'],
       ['succeeded', 'Success'],
       ['failed', 'Fail'],
@@ -232,7 +232,7 @@ describe('Filter', () => {
 
     it('should call setQueryParams when period is selected', async () => {
       const user = userEvent.setup()
-      const setQueryParams = jest.fn()
+      const setQueryParams = vi.fn()
 
       render(
         <Filter
@@ -252,7 +252,7 @@ describe('Filter', () => {
 
     it('should reset period to allTime when cleared', async () => {
       const user = userEvent.setup()
-      const setQueryParams = jest.fn()
+      const setQueryParams = vi.fn()
 
       render(
         <Filter
@@ -292,7 +292,7 @@ describe('Filter', () => {
 
     it('should call setQueryParams when typing in search', async () => {
       const user = userEvent.setup()
-      const setQueryParams = jest.fn()
+      const setQueryParams = vi.fn()
 
       const Wrapper = () => {
         const [queryParams, updateQueryParams] = useState<QueryParam>(createDefaultQueryParams())
@@ -321,7 +321,7 @@ describe('Filter', () => {
 
     it('should clear keyword when clear button is clicked', async () => {
       const user = userEvent.setup()
-      const setQueryParams = jest.fn()
+      const setQueryParams = vi.fn()
 
       const { container } = render(
         <Filter
@@ -348,7 +348,7 @@ describe('Filter', () => {
     })
 
     it('should update on direct input change', () => {
-      const setQueryParams = jest.fn()
+      const setQueryParams = vi.fn()
 
       render(
         <Filter
@@ -392,7 +392,7 @@ describe('Filter', () => {
       expect(Object.keys(TIME_PERIOD_MAPPING)).toHaveLength(9)
     })
 
-    test.each([
+    it.each([
       ['1', 'today', 0],
       ['2', 'last7days', 7],
       ['3', 'last4weeks', 28],
@@ -437,7 +437,7 @@ describe('Filter', () => {
 
     it('should preserve other query params when updating status', async () => {
       const user = userEvent.setup()
-      const setQueryParams = jest.fn()
+      const setQueryParams = vi.fn()
 
       render(
         <Filter
@@ -458,7 +458,7 @@ describe('Filter', () => {
 
     it('should preserve other query params when updating period', async () => {
       const user = userEvent.setup()
-      const setQueryParams = jest.fn()
+      const setQueryParams = vi.fn()
 
       render(
         <Filter
@@ -479,7 +479,7 @@ describe('Filter', () => {
 
     it('should preserve other query params when updating keyword', async () => {
       const user = userEvent.setup()
-      const setQueryParams = jest.fn()
+      const setQueryParams = vi.fn()
 
       render(
         <Filter

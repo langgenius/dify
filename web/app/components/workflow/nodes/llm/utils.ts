@@ -1,17 +1,48 @@
-import { z } from 'zod'
-import { ArrayType, Type } from './types'
-import type { ArrayItems, Field, LLMNodeType } from './types'
-import { draft07Validator, forbidBooleanProperties } from '@/utils/validators'
 import type { ValidationError } from 'jsonschema'
+import type { ArrayItems, Field, LLMNodeType } from './types'
+import * as z from 'zod'
+import { draft07Validator, forbidBooleanProperties } from '@/utils/validators'
+import { extractPluginId } from '../../utils/plugin'
+import { ArrayType, Type } from './types'
 
 export const checkNodeValid = (_payload: LLMNodeType) => {
   return true
 }
 
+export enum LLMModelIssueCode {
+  providerRequired = 'provider-required',
+  providerPluginUnavailable = 'provider-plugin-unavailable',
+}
+
+export const getLLMModelIssue = ({
+  modelProvider,
+  isModelProviderInstalled = true,
+}: {
+  modelProvider?: string
+  isModelProviderInstalled?: boolean
+}) => {
+  if (!modelProvider)
+    return LLMModelIssueCode.providerRequired
+
+  if (!isModelProviderInstalled)
+    return LLMModelIssueCode.providerPluginUnavailable
+
+  return null
+}
+
+export const isLLMModelProviderInstalled = (modelProvider: string | undefined, installedPluginIds: ReadonlySet<string>) => {
+  if (!modelProvider)
+    return true
+
+  return installedPluginIds.has(extractPluginId(modelProvider))
+}
+
 export const getFieldType = (field: Field) => {
   const { type, items, enum: enums } = field
-  if (field.schemaType === 'file') return Type.file
-  if (enums && enums.length > 0) return Type.enumType
+  if (field.schemaType === 'file')
+    return Type.file
+  if (enums && enums.length > 0)
+    return Type.enumType
   if (type !== Type.array || !items)
     return type
 
@@ -29,7 +60,8 @@ export const getHasChildren = (schema: Field) => {
 }
 
 export const getTypeOf = (target: any) => {
-  if (target === null) return 'null'
+  if (target === null)
+    return 'null'
   if (typeof target !== 'object') {
     return typeof target
   }
@@ -43,12 +75,17 @@ export const getTypeOf = (target: any) => {
 
 export const inferType = (value: any): Type => {
   const type = getTypeOf(value)
-  if (type === 'array') return Type.array
+  if (type === 'array')
+    return Type.array
   // type boolean will be treated as string
-  if (type === 'boolean') return Type.string
-  if (type === 'number') return Type.number
-  if (type === 'string') return Type.string
-  if (type === 'object') return Type.object
+  if (type === 'boolean')
+    return Type.string
+  if (type === 'number')
+    return Type.number
+  if (type === 'string')
+    return Type.string
+  if (type === 'object')
+    return Type.object
   return Type.string
 }
 

@@ -1,7 +1,8 @@
 'use client'
 import type { FC } from 'react'
-import React, { useState } from 'react'
 import { RiAddLine, RiDeleteBinLine, RiDraggable } from '@remixicon/react'
+import * as React from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
 import { cn } from '@/utils/classnames'
@@ -30,12 +31,12 @@ const ConfigSelect: FC<IConfigSelectProps> = ({
   return (
     <div>
       {options.length > 0 && (
-        <div className='mb-1'>
+        <div className="mb-1">
           <ReactSortable
             className="space-y-1"
             list={optionList}
             setList={list => onChange(list.map(item => item.name))}
-            handle='.handle'
+            handle=".handle"
             ghostClass="opacity-50"
             animation={150}
           >
@@ -48,10 +49,10 @@ const ConfigSelect: FC<IConfigSelectProps> = ({
                 )}
                 key={index}
               >
-                <RiDraggable className='handle h-4 w-4 cursor-grab text-text-quaternary' />
+                <RiDraggable className="handle h-4 w-4 cursor-grab text-text-quaternary" />
                 <input
                   key={index}
-                  type='input'
+                  type="input"
                   value={o || ''}
                   onChange={(e) => {
                     const value = e.target.value
@@ -62,13 +63,13 @@ const ConfigSelect: FC<IConfigSelectProps> = ({
                       return item
                     }))
                   }}
-                  className={'h-9 w-full grow cursor-pointer overflow-x-auto rounded-lg border-0 bg-transparent pl-1.5 pr-8 text-sm leading-9 text-text-secondary focus:outline-none'}
+                  className="h-9 w-full grow cursor-pointer overflow-x-auto rounded-lg border-0 bg-transparent pl-1.5 pr-8 text-sm leading-9 text-text-secondary focus:outline-none"
                   onFocus={() => setFocusID(index)}
                   onBlur={() => setFocusID(null)}
                 />
                 <div
-                  role='button'
-                  className='absolute right-1.5 top-1/2 block translate-y-[-50%] cursor-pointer rounded-md p-1 text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive'
+                  role="button"
+                  className="absolute right-1.5 top-1/2 block translate-y-[-50%] cursor-pointer rounded-md p-1 text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive"
                   onClick={() => {
                     onChange(options.filter((_, i) => index !== i))
                     setDeletingID(null)
@@ -76,7 +77,7 @@ const ConfigSelect: FC<IConfigSelectProps> = ({
                   onMouseEnter={() => setDeletingID(index)}
                   onMouseLeave={() => setDeletingID(null)}
                 >
-                  <RiDeleteBinLine className='h-3.5 w-3.5' />
+                  <RiDeleteBinLine className="h-3.5 w-3.5" />
                 </div>
               </div>
             ))}
@@ -86,9 +87,10 @@ const ConfigSelect: FC<IConfigSelectProps> = ({
 
       <div
         onClick={() => { onChange([...options, '']) }}
-        className='mt-1 flex h-9 cursor-pointer items-center gap-2 rounded-lg bg-components-button-tertiary-bg px-3  text-components-button-tertiary-text hover:bg-components-button-tertiary-bg-hover'>
-        <RiAddLine className='h-4 w-4' />
-        <div className='system-sm-medium text-[13px]'>{t('appDebug.variableConfig.addOption')}</div>
+        className="mt-1 flex h-9 cursor-pointer items-center gap-2 rounded-lg bg-components-button-tertiary-bg px-3  text-components-button-tertiary-text hover:bg-components-button-tertiary-bg-hover"
+      >
+        <RiAddLine className="h-4 w-4" />
+        <div className="system-sm-medium text-[13px]">{t('variableConfig.addOption', { ns: 'appDebug' })}</div>
       </div>
     </div>
   )

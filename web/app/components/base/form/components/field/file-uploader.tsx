@@ -1,11 +1,11 @@
-import React from 'react'
-import { useFieldContext } from '../..'
-import type { LabelProps } from '../label'
-import Label from '../label'
-import { cn } from '@/utils/classnames'
 import type { FileUploaderInAttachmentWrapperProps } from '../../../file-uploader/file-uploader-in-attachment'
-import FileUploaderInAttachmentWrapper from '../../../file-uploader/file-uploader-in-attachment'
 import type { FileEntity } from '../../../file-uploader/types'
+import type { LabelProps } from '../label'
+import * as React from 'react'
+import { cn } from '@/utils/classnames'
+import { useFieldContext } from '../..'
+import FileUploaderInAttachmentWrapper from '../../../file-uploader/file-uploader-in-attachment'
+import Label from '../label'
 
 type FileUploaderFieldProps = {
   label: string

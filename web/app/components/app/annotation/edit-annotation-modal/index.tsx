@@ -1,16 +1,17 @@
 'use client'
 import type { FC } from 'react'
-import React, { useState } from 'react'
+import * as React from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import EditItem, { EditItemType } from './edit-item'
+import Confirm from '@/app/components/base/confirm'
 import Drawer from '@/app/components/base/drawer-plus'
 import { MessageCheckRemove } from '@/app/components/base/icons/src/vender/line/communication'
-import Confirm from '@/app/components/base/confirm'
-import { addAnnotation, editAnnotation } from '@/service/annotation'
 import Toast from '@/app/components/base/toast'
-import { useProviderContext } from '@/context/provider-context'
 import AnnotationFull from '@/app/components/billing/annotation-full'
+import { useProviderContext } from '@/context/provider-context'
 import useTimestamp from '@/hooks/use-timestamp'
+import { addAnnotation, editAnnotation } from '@/service/annotation'
+import EditItem, { EditItemType } from './edit-item'
 
 type Props = {
   isShow: boolean
@@ -72,12 +73,12 @@ const EditAnnotationModal: FC<Props> = ({
       }
 
       Toast.notify({
-        message: t('common.api.actionSuccess') as string,
+        message: t('api.actionSuccess', { ns: 'common' }) as string,
         type: 'success',
       })
     }
     catch (error) {
-      const fallbackMessage = t('common.api.actionFailed') as string
+      const fallbackMessage = t('api.actionFailed', { ns: 'common' }) as string
       const message = error instanceof Error && error.message ? error.message : fallbackMessage
       Toast.notify({
         message,
@@ -94,11 +95,11 @@ const EditAnnotationModal: FC<Props> = ({
       <Drawer
         isShow={isShow}
         onHide={onHide}
-        maxWidthClassName='!max-w-[480px]'
-        title={t('appAnnotation.editModal.title') as string}
+        maxWidthClassName="!max-w-[480px]"
+        title={t('editModal.title', { ns: 'appAnnotation' }) as string}
         body={(
           <div>
-            <div className='space-y-6 p-6 pb-4'>
+            <div className="space-y-6 p-6 pb-4">
               <EditItem
                 type={EditItemType.Query}
                 content={query}
@@ -119,15 +120,15 @@ const EditAnnotationModal: FC<Props> = ({
                   setShowModal(false)
                   onHide()
                 }}
-                title={t('appDebug.feature.annotation.removeConfirm')}
+                title={t('feature.annotation.removeConfirm', { ns: 'appDebug' })}
               />
             </div>
           </div>
         )}
-        foot={
+        foot={(
           <div>
             {isAnnotationFull && (
-              <div className='mb-4 mt-6 px-6'>
+              <div className="mb-4 mt-6 px-6">
                 <AnnotationFull />
               </div>
             )}
@@ -135,21 +136,27 @@ const EditAnnotationModal: FC<Props> = ({
             {
               annotationId
                 ? (
-                  <div className='system-sm-medium flex h-16 items-center justify-between rounded-bl-xl rounded-br-xl border-t border-divider-subtle bg-background-section-burn px-4 text-text-tertiary'>
-                    <div
-                      className='flex cursor-pointer items-center space-x-2 pl-3'
-                      onClick={() => setShowModal(true)}
-                    >
-                      <MessageCheckRemove />
-                      <div>{t('appAnnotation.editModal.removeThisCache')}</div>
+                    <div className="system-sm-medium flex h-16 items-center justify-between rounded-bl-xl rounded-br-xl border-t border-divider-subtle bg-background-section-burn px-4 text-text-tertiary">
+                      <div
+                        className="flex cursor-pointer items-center space-x-2 pl-3"
+                        onClick={() => setShowModal(true)}
+                      >
+                        <MessageCheckRemove />
+                        <div>{t('editModal.removeThisCache', { ns: 'appAnnotation' })}</div>
+                      </div>
+                      {!!createdAt && (
+                        <div>
+                          {t('editModal.createdAt', { ns: 'appAnnotation' })}
+&nbsp;
+                          {formatTime(createdAt, t('dateTimeFormat', { ns: 'appLog' }) as string)}
+                        </div>
+                      )}
                     </div>
-                    {createdAt && <div>{t('appAnnotation.editModal.createdAt')}&nbsp;{formatTime(createdAt, t('appLog.dateTimeFormat') as string)}</div>}
-                  </div>
-                )
+                  )
                 : undefined
             }
           </div>
-        }
+        )}
       />
     </div>
 

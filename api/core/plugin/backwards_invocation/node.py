@@ -1,17 +1,17 @@
 from core.plugin.backwards_invocation.base import BaseBackwardsInvocation
-from core.workflow.enums import NodeType
-from core.workflow.nodes.parameter_extractor.entities import (
+from dify_graph.enums import BuiltinNodeTypes
+from dify_graph.nodes.parameter_extractor.entities import (
     ModelConfig as ParameterExtractorModelConfig,
 )
-from core.workflow.nodes.parameter_extractor.entities import (
+from dify_graph.nodes.parameter_extractor.entities import (
     ParameterConfig,
     ParameterExtractorNodeData,
 )
-from core.workflow.nodes.question_classifier.entities import (
+from dify_graph.nodes.question_classifier.entities import (
     ClassConfig,
     QuestionClassifierNodeData,
 )
-from core.workflow.nodes.question_classifier.entities import (
+from dify_graph.nodes.question_classifier.entities import (
     ModelConfig as QuestionClassifierModelConfig,
 )
 from services.workflow_service import WorkflowService
@@ -52,7 +52,7 @@ class PluginNodeBackwardsInvocation(BaseBackwardsInvocation):
             instruction=instruction,  # instruct with variables are not supported
         )
         node_data_dict = node_data.model_dump()
-        node_data_dict["type"] = NodeType.PARAMETER_EXTRACTOR
+        node_data_dict["type"] = BuiltinNodeTypes.PARAMETER_EXTRACTOR
         execution = workflow_service.run_free_workflow_node(
             node_data_dict,
             tenant_id=tenant_id,

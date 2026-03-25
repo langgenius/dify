@@ -1,8 +1,8 @@
-import { memo } from 'react'
 import type { ConnectionLineComponentProps } from 'reactflow'
+import { memo } from 'react'
 import {
-  Position,
   getBezierPath,
+  Position,
 } from 'reactflow'
 
 const CustomConnectionLine = ({ fromX, fromY, toX, toY }: ConnectionLineComponentProps) => {
@@ -22,7 +22,7 @@ const CustomConnectionLine = ({ fromX, fromY, toX, toY }: ConnectionLineComponen
     <g>
       <path
         fill="none"
-        stroke='#D0D5DD'
+        stroke="#D0D5DD"
         strokeWidth={2}
         d={edgePath}
       />
@@ -31,7 +31,7 @@ const CustomConnectionLine = ({ fromX, fromY, toX, toY }: ConnectionLineComponen
         y={toY - 4}
         width={2}
         height={8}
-        fill='#2970FF'
+        fill="#2970FF"
       />
     </g>
   )

@@ -1,4 +1,5 @@
-import { useTranslation } from 'react-i18next'
+import type { currentVarType } from './panel'
+import type { GenRes } from '@/service/debug'
 import {
   RiArrowGoBackLine,
   RiCloseLine,
@@ -6,35 +7,34 @@ import {
   RiMenuLine,
   RiSparklingFill,
 } from '@remixicon/react'
-import { useStore } from '../store'
-import { BlockEnum } from '../types'
-import useCurrentVars from '../hooks/use-inspect-vars-crud'
-import Empty from './empty'
-import ValueContent from './value-content'
+import { useBoolean } from 'ahooks'
+import { produce } from 'immer'
+import { useCallback, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import GetAutomaticResModal from '@/app/components/app/configuration/config/automatic/get-automatic-res'
 import ActionButton from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
 import CopyFeedback from '@/app/components/base/copy-feedback'
+import Loading from '@/app/components/base/loading'
 import Tooltip from '@/app/components/base/tooltip'
 import BlockIcon from '@/app/components/workflow/block-icon'
-import Loading from '@/app/components/base/loading'
-import type { currentVarType } from './panel'
+import { VariableIconWithColor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { AppModeEnum } from '@/types/app'
 import { VarInInspectType } from '@/types/workflow'
 import { cn } from '@/utils/classnames'
-import useNodeInfo from '../nodes/_base/hooks/use-node-info'
-import { useBoolean } from 'ahooks'
-import GetAutomaticResModal from '@/app/components/app/configuration/config/automatic/get-automatic-res'
 import GetCodeGeneratorResModal from '../../app/configuration/config/code-generator/get-code-generator-res'
-import { AppModeEnum } from '@/types/app'
-import { useHooksStore } from '../hooks-store'
-import { useCallback, useMemo } from 'react'
-import { useNodesInteractions, useToolIcon } from '../hooks'
-import { CodeLanguage } from '../nodes/code/types'
-import useNodeCrud from '../nodes/_base/hooks/use-node-crud'
-import type { GenRes } from '@/service/debug'
-import { produce } from 'immer'
 import { PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER } from '../../base/prompt-editor/plugins/update-block'
-import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { VariableIconWithColor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
+import { useNodesInteractions, useToolIcon } from '../hooks'
+import { useHooksStore } from '../hooks-store'
+import useCurrentVars from '../hooks/use-inspect-vars-crud'
+import useNodeCrud from '../nodes/_base/hooks/use-node-crud'
+import useNodeInfo from '../nodes/_base/hooks/use-node-info'
+import { CodeLanguage } from '../nodes/code/types'
+import { useStore } from '../store'
+import { BlockEnum } from '../types'
+import Empty from './empty'
+import ValueContent from './value-content'
 
 type Props = {
   nodeId: string
@@ -64,12 +64,14 @@ const Right = ({
   } = useCurrentVars()
 
   const handleValueChange = (varId: string, value: any) => {
-    if (!currentNodeVar) return
+    if (!currentNodeVar)
+      return
     editInspectVarValue(currentNodeVar.nodeId, varId, value)
   }
 
   const resetValue = () => {
-    if (!currentNodeVar) return
+    if (!currentNodeVar)
+      return
     resetToLastRunVar(currentNodeVar.nodeId, currentNodeVar.var.id)
   }
 
@@ -79,7 +81,8 @@ const Right = ({
   }
 
   const handleClear = () => {
-    if (!currentNodeVar) return
+    if (!currentNodeVar)
+      return
     resetConversationVar(currentNodeVar.var.id)
   }
 
@@ -161,20 +164,20 @@ const Right = ({
   return (
     <div className={cn('flex h-full flex-col')}>
       {/* header */}
-      <div className='flex shrink-0 items-center justify-between gap-1 px-2 pt-2'>
+      <div className="flex shrink-0 items-center justify-between gap-1 px-2 pt-2">
         {bottomPanelWidth < 488 && (
-          <ActionButton className='shrink-0' onClick={handleOpenMenu}>
-            <RiMenuLine className='h-4 w-4' />
+          <ActionButton className="shrink-0" onClick={handleOpenMenu}>
+            <RiMenuLine className="h-4 w-4" />
           </ActionButton>
         )}
-        <div className='flex w-0 grow items-center gap-1'>
+        <div className="flex w-0 grow items-center gap-1">
           {currentNodeVar?.var && (
             <>
               {
                 [VarInInspectType.environment, VarInInspectType.conversation, VarInInspectType.system].includes(currentNodeVar.nodeType as VarInInspectType) && (
                   <VariableIconWithColor
                     variableCategory={currentNodeVar.nodeType as VarInInspectType}
-                    className='size-4'
+                    className="size-4"
                   />
                 )
               }
@@ -184,22 +187,25 @@ const Right = ({
                 && (
                   <>
                     <BlockIcon
-                      className='shrink-0'
+                      className="shrink-0"
                       type={currentNodeVar.nodeType as BlockEnum}
-                      size='xs'
+                      size="xs"
                       toolIcon={toolIcon}
                     />
-                    <div className='system-sm-regular shrink-0 text-text-secondary'>{currentNodeVar.title}</div>
-                    <div className='system-sm-regular shrink-0 text-text-quaternary'>/</div>
+                    <div className="system-sm-regular shrink-0 text-text-secondary">{currentNodeVar.title}</div>
+                    <div className="system-sm-regular shrink-0 text-text-quaternary">/</div>
                   </>
                 )}
-              <div title={currentNodeVar.var.name} className='system-sm-semibold truncate text-text-secondary'>{currentNodeVar.var.name}</div>
-              <div className='system-xs-medium ml-1 shrink-0 space-x-2 text-text-tertiary'>
+              <div title={currentNodeVar.var.name} className="system-sm-semibold truncate text-text-secondary">{currentNodeVar.var.name}</div>
+              <div className="system-xs-medium ml-1 shrink-0 space-x-2 text-text-tertiary">
                 <span>{`${currentNodeVar.var.value_type}${displaySchemaType}`}</span>
                 {isTruncated && (
                   <>
                     <span>·</span>
-                    <span>{((fullContent?.size_bytes || 0) / 1024 / 1024).toFixed(1)}MB</span>
+                    <span>
+                      {((fullContent?.size_bytes || 0) / 1024 / 1024).toFixed(1)}
+                      MB
+                    </span>
                   </>
                 )}
               </div>
@@ -207,48 +213,48 @@ const Right = ({
             </>
           )}
         </div>
-        <div className='flex shrink-0 items-center gap-1'>
+        <div className="flex shrink-0 items-center gap-1">
           {currentNodeVar && (
             <>
               {canShowPromptGenerator && (
-                <Tooltip popupContent={t('appDebug.generate.optimizePromptTooltip')}>
+                <Tooltip popupContent={t('generate.optimizePromptTooltip', { ns: 'appDebug' })}>
                   <div
-                    className='cursor-pointer rounded-md p-1 hover:bg-state-accent-active'
+                    className="cursor-pointer rounded-md p-1 hover:bg-state-accent-active"
                     onClick={handleShowPromptGenerator}
                   >
-                    <RiSparklingFill className='size-4 text-components-input-border-active-prompt-1' />
+                    <RiSparklingFill className="size-4 text-components-input-border-active-prompt-1" />
                   </div>
                 </Tooltip>
               )}
               {isTruncated && (
-                <Tooltip popupContent={t('workflow.debug.variableInspect.exportToolTip')}>
+                <Tooltip popupContent={t('debug.variableInspect.exportToolTip', { ns: 'workflow' })}>
                   <ActionButton>
                     <a
                       href={fullContent?.download_url}
-                      target='_blank'
+                      target="_blank"
                     >
-                      <RiFileDownloadFill className='size-4' />
+                      <RiFileDownloadFill className="size-4" />
                     </a>
                   </ActionButton>
                 </Tooltip>
               )}
               {!isTruncated && currentNodeVar.var.edited && (
                 <Badge>
-                  <span className='ml-[2.5px] mr-[4.5px] h-[3px] w-[3px] rounded bg-text-accent-secondary'></span>
-                  <span className='system-2xs-semibold-uupercase'>{t('workflow.debug.variableInspect.edited')}</span>
+                  <span className="ml-[2.5px] mr-[4.5px] h-[3px] w-[3px] rounded bg-text-accent-secondary"></span>
+                  <span className="system-2xs-semibold-uupercase">{t('debug.variableInspect.edited', { ns: 'workflow' })}</span>
                 </Badge>
               )}
               {!isTruncated && currentNodeVar.var.edited && currentNodeVar.var.type !== VarInInspectType.conversation && (
-                <Tooltip popupContent={t('workflow.debug.variableInspect.reset')}>
+                <Tooltip popupContent={t('debug.variableInspect.reset', { ns: 'workflow' })}>
                   <ActionButton onClick={resetValue}>
-                    <RiArrowGoBackLine className='h-4 w-4' />
+                    <RiArrowGoBackLine className="h-4 w-4" />
                   </ActionButton>
                 </Tooltip>
               )}
               {!isTruncated && currentNodeVar.var.edited && currentNodeVar.var.type === VarInInspectType.conversation && (
-                <Tooltip popupContent={t('workflow.debug.variableInspect.resetConversationVar')}>
+                <Tooltip popupContent={t('debug.variableInspect.resetConversationVar', { ns: 'workflow' })}>
                   <ActionButton onClick={handleClear}>
-                    <RiArrowGoBackLine className='h-4 w-4' />
+                    <RiArrowGoBackLine className="h-4 w-4" />
                   </ActionButton>
                 </Tooltip>
               )}
@@ -258,15 +264,15 @@ const Right = ({
             </>
           )}
           <ActionButton onClick={handleClose}>
-            <RiCloseLine className='h-4 w-4' />
+            <RiCloseLine className="h-4 w-4" />
           </ActionButton>
         </div>
       </div>
       {/* content */}
-      <div className='grow p-2'>
+      <div className="grow p-2">
         {!currentNodeVar?.var && <Empty />}
         {isValueFetching && (
-          <div className='flex h-full items-center justify-center'>
+          <div className="flex h-full items-center justify-center">
             <Loading />
           </div>
         )}
@@ -281,25 +287,29 @@ const Right = ({
       </div>
       {isShowPromptGenerator && (
         isCodeBlock
-          ? <GetCodeGeneratorResModal
-            isShow
-            mode={AppModeEnum.CHAT}
-            onClose={handleHidePromptGenerator}
-            flowId={configsMap?.flowId || ''}
-            nodeId={nodeId}
-            currentCode={currentPrompt}
-            codeLanguages={node?.data?.code_languages || CodeLanguage.python3}
-            onFinished={handleUpdatePrompt}
-          />
-          : <GetAutomaticResModal
-            mode={AppModeEnum.CHAT}
-            isShow
-            onClose={handleHidePromptGenerator}
-            onFinished={handleUpdatePrompt}
-            flowId={configsMap?.flowId || ''}
-            nodeId={nodeId}
-            currentPrompt={currentPrompt}
-          />
+          ? (
+              <GetCodeGeneratorResModal
+                isShow
+                mode={AppModeEnum.CHAT}
+                onClose={handleHidePromptGenerator}
+                flowId={configsMap?.flowId || ''}
+                nodeId={nodeId}
+                currentCode={currentPrompt}
+                codeLanguages={node?.data?.code_languages || CodeLanguage.python3}
+                onFinished={handleUpdatePrompt}
+              />
+            )
+          : (
+              <GetAutomaticResModal
+                mode={AppModeEnum.CHAT}
+                isShow
+                onClose={handleHidePromptGenerator}
+                onFinished={handleUpdatePrompt}
+                flowId={configsMap?.flowId || ''}
+                nodeId={nodeId}
+                currentPrompt={currentPrompt}
+              />
+            )
       )}
     </div>
   )

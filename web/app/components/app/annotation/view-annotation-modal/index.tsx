@@ -1,20 +1,21 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import EditItem, { EditItemType } from '../edit-annotation-modal/edit-item'
 import type { AnnotationItem, HitHistoryItem } from '../type'
-import HitHistoryNoData from './hit-history-no-data'
+import * as React from 'react'
+import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
-import Drawer from '@/app/components/base/drawer-plus'
-import Pagination from '@/app/components/base/pagination'
-import { MessageCheckRemove } from '@/app/components/base/icons/src/vender/line/communication'
 import Confirm from '@/app/components/base/confirm'
+import Drawer from '@/app/components/base/drawer-plus'
+import { MessageCheckRemove } from '@/app/components/base/icons/src/vender/line/communication'
+import Pagination from '@/app/components/base/pagination'
 import TabSlider from '@/app/components/base/tab-slider-plain'
-import { fetchHitHistoryList } from '@/service/annotation'
 import { APP_PAGE_LIMIT } from '@/config'
 import useTimestamp from '@/hooks/use-timestamp'
+import { fetchHitHistoryList } from '@/service/annotation'
 import { cn } from '@/utils/classnames'
+import EditItem, { EditItemType } from '../edit-annotation-modal/edit-item'
+import HitHistoryNoData from './hit-history-no-data'
 
 type Props = {
   appId: string
@@ -80,20 +81,20 @@ const ViewAnnotationModal: FC<Props> = ({
   }, [id, isShow])
 
   const tabs = [
-    { value: TabType.annotation, text: t('appAnnotation.viewModal.annotatedResponse') },
+    { value: TabType.annotation, text: t('viewModal.annotatedResponse', { ns: 'appAnnotation' }) },
     {
       value: TabType.hitHistory,
       text: (
         hitHistoryList.length > 0
           ? (
-            <div className='flex items-center space-x-1'>
-              <div>{t('appAnnotation.viewModal.hitHistory')}</div>
-              <Badge
-                text={`${total} ${t(`appAnnotation.viewModal.hit${hitHistoryList.length > 1 ? 's' : ''}`)}`}
-              />
-            </div>
-          )
-          : t('appAnnotation.viewModal.hitHistory')
+              <div className="flex items-center space-x-1">
+                <div>{t('viewModal.hitHistory', { ns: 'appAnnotation' })}</div>
+                <Badge
+                  text={`${total} ${t(`viewModal.hit${hitHistoryList.length > 1 ? 's' : ''}`, { ns: 'appAnnotation' })}`}
+                />
+              </div>
+            )
+          : t('viewModal.hitHistory', { ns: 'appAnnotation' })
       ),
     },
   ]
@@ -134,73 +135,81 @@ const ViewAnnotationModal: FC<Props> = ({
   const hitHistoryTab = total === 0
     ? (<HitHistoryNoData />)
     : (
-      <div>
-        <table className={cn('w-full min-w-[440px] border-collapse border-0')} >
-          <thead className="system-xs-medium-uppercase text-text-tertiary">
-            <tr>
-              <td className='w-5 whitespace-nowrap rounded-l-lg bg-background-section-burn pl-2 pr-1'>{t('appAnnotation.hitHistoryTable.query')}</td>
-              <td className='whitespace-nowrap bg-background-section-burn py-1.5 pl-3'>{t('appAnnotation.hitHistoryTable.match')}</td>
-              <td className='whitespace-nowrap bg-background-section-burn py-1.5 pl-3'>{t('appAnnotation.hitHistoryTable.response')}</td>
-              <td className='whitespace-nowrap bg-background-section-burn py-1.5 pl-3'>{t('appAnnotation.hitHistoryTable.source')}</td>
-              <td className='whitespace-nowrap bg-background-section-burn py-1.5 pl-3'>{t('appAnnotation.hitHistoryTable.score')}</td>
-              <td className='w-[160px] whitespace-nowrap rounded-r-lg bg-background-section-burn py-1.5 pl-3'>{t('appAnnotation.hitHistoryTable.time')}</td>
-            </tr>
-          </thead>
-          <tbody className="system-sm-regular text-text-secondary">
-            {hitHistoryList.map(item => (
-              <tr
-                key={item.id}
-                className={'cursor-pointer border-b border-divider-subtle hover:bg-background-default-hover'}
-              >
-                <td
-                  className='max-w-[250px] overflow-hidden text-ellipsis whitespace-nowrap p-3 pr-2'
-                  title={item.question}
-                >{item.question}</td>
-                <td
-                  className='max-w-[250px] overflow-hidden text-ellipsis whitespace-nowrap p-3 pr-2'
-                  title={item.match}
-                >{item.match}</td>
-                <td
-                  className='max-w-[250px] overflow-hidden text-ellipsis whitespace-nowrap p-3 pr-2'
-                  title={item.response}
-                >{item.response}</td>
-                <td className='p-3 pr-2'>{item.source}</td>
-                <td className='p-3 pr-2'>{item.score ? item.score.toFixed(2) : '-'}</td>
-                <td className='p-3 pr-2'>{formatTime(item.created_at, t('appLog.dateTimeFormat') as string)}</td>
+        <div>
+          <table className={cn('w-full min-w-[440px] border-collapse border-0')}>
+            <thead className="system-xs-medium-uppercase text-text-tertiary">
+              <tr>
+                <td className="w-5 whitespace-nowrap rounded-l-lg bg-background-section-burn pl-2 pr-1">{t('hitHistoryTable.query', { ns: 'appAnnotation' })}</td>
+                <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('hitHistoryTable.match', { ns: 'appAnnotation' })}</td>
+                <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('hitHistoryTable.response', { ns: 'appAnnotation' })}</td>
+                <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('hitHistoryTable.source', { ns: 'appAnnotation' })}</td>
+                <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('hitHistoryTable.score', { ns: 'appAnnotation' })}</td>
+                <td className="w-[160px] whitespace-nowrap rounded-r-lg bg-background-section-burn py-1.5 pl-3">{t('hitHistoryTable.time', { ns: 'appAnnotation' })}</td>
               </tr>
-            ))}
-          </tbody>
-        </table>
-        {(total && total > APP_PAGE_LIMIT)
-          ? <Pagination
-            className='px-0'
-            current={currPage}
-            onChange={setCurrPage}
-            total={total}
-          />
-          : null}
-      </div>
+            </thead>
+            <tbody className="system-sm-regular text-text-secondary">
+              {hitHistoryList.map(item => (
+                <tr
+                  key={item.id}
+                  className="cursor-pointer border-b border-divider-subtle hover:bg-background-default-hover"
+                >
+                  <td
+                    className="max-w-[250px] overflow-hidden text-ellipsis whitespace-nowrap p-3 pr-2"
+                    title={item.question}
+                  >
+                    {item.question}
+                  </td>
+                  <td
+                    className="max-w-[250px] overflow-hidden text-ellipsis whitespace-nowrap p-3 pr-2"
+                    title={item.match}
+                  >
+                    {item.match}
+                  </td>
+                  <td
+                    className="max-w-[250px] overflow-hidden text-ellipsis whitespace-nowrap p-3 pr-2"
+                    title={item.response}
+                  >
+                    {item.response}
+                  </td>
+                  <td className="p-3 pr-2">{item.source}</td>
+                  <td className="p-3 pr-2">{item.score ? item.score.toFixed(2) : '-'}</td>
+                  <td className="p-3 pr-2">{formatTime(item.created_at, t('dateTimeFormat', { ns: 'appLog' }) as string)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {(total && total > APP_PAGE_LIMIT)
+            ? (
+                <Pagination
+                  className="px-0"
+                  current={currPage}
+                  onChange={setCurrPage}
+                  total={total}
+                />
+              )
+            : null}
+        </div>
 
-    )
+      )
   return (
     <div>
       <Drawer
         isShow={isShow}
         onHide={onHide}
-        maxWidthClassName='!max-w-[800px]'
-        title={
+        maxWidthClassName="!max-w-[800px]"
+        title={(
           <TabSlider
-            className='relative top-[9px] shrink-0'
+            className="relative top-[9px] shrink-0"
             value={activeTab}
             onChange={v => setActiveTab(v as TabType)}
             options={tabs}
             noBorderBottom
-            itemClassName='!pb-3.5'
+            itemClassName="!pb-3.5"
           />
-        }
+        )}
         body={(
           <div>
-            <div className='space-y-6 p-6 pb-4'>
+            <div className="space-y-6 p-6 pb-4">
               {activeTab === TabType.annotation ? annotationTab : hitHistoryTab}
             </div>
             <Confirm
@@ -211,23 +220,27 @@ const ViewAnnotationModal: FC<Props> = ({
                 setShowModal(false)
                 onHide()
               }}
-              title={t('appDebug.feature.annotation.removeConfirm')}
+              title={t('feature.annotation.removeConfirm', { ns: 'appDebug' })}
             />
           </div>
         )}
         foot={id
           ? (
-            <div className='system-sm-medium flex h-16 items-center justify-between rounded-bl-xl rounded-br-xl border-t border-divider-subtle bg-background-section-burn px-4 text-text-tertiary'>
-              <div
-                className='flex cursor-pointer items-center space-x-2 pl-3'
-                onClick={() => setShowModal(true)}
-              >
-                <MessageCheckRemove />
-                <div>{t('appAnnotation.editModal.removeThisCache')}</div>
+              <div className="system-sm-medium flex h-16 items-center justify-between rounded-bl-xl rounded-br-xl border-t border-divider-subtle bg-background-section-burn px-4 text-text-tertiary">
+                <div
+                  className="flex cursor-pointer items-center space-x-2 pl-3"
+                  onClick={() => setShowModal(true)}
+                >
+                  <MessageCheckRemove />
+                  <div>{t('editModal.removeThisCache', { ns: 'appAnnotation' })}</div>
+                </div>
+                <div>
+                  {t('editModal.createdAt', { ns: 'appAnnotation' })}
+&nbsp;
+                  {formatTime(createdAt, t('dateTimeFormat', { ns: 'appLog' }) as string)}
+                </div>
               </div>
-              <div>{t('appAnnotation.editModal.createdAt')}&nbsp;{formatTime(createdAt, t('appLog.dateTimeFormat') as string)}</div>
-            </div>
-          )
+            )
           : undefined}
       />
     </div>

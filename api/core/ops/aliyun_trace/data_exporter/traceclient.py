@@ -7,7 +7,7 @@ import uuid
 from collections import deque
 from collections.abc import Sequence
 from datetime import datetime
-from typing import Final, cast
+from typing import Final
 from urllib.parse import urljoin
 
 import httpx
@@ -166,7 +166,7 @@ class SpanBuilder:
             attributes=span_data.attributes,
             events=span_data.events,
             links=span_data.links,
-            kind=trace_api.SpanKind.INTERNAL,
+            kind=span_data.span_kind,
             status=span_data.status,
             start_time=span_data.start_time,
             end_time=span_data.end_time,
@@ -201,7 +201,7 @@ def convert_to_trace_id(uuid_v4: str | None) -> int:
         raise ValueError("UUID cannot be None")
     try:
         uuid_obj = uuid.UUID(uuid_v4)
-        return cast(int, uuid_obj.int)
+        return uuid_obj.int
     except ValueError as e:
         raise ValueError(f"Invalid UUID input: {uuid_v4}") from e
 

@@ -1,9 +1,9 @@
-import { cn } from '@/utils/classnames'
 import type { LabelProps } from '../label'
-import { useFieldContext } from '../..'
-import Label from '../label'
 import type { InputNumberWithSliderProps } from '@/app/components/workflow/nodes/_base/components/input-number-with-slider'
 import InputNumberWithSlider from '@/app/components/workflow/nodes/_base/components/input-number-with-slider'
+import { cn } from '@/utils/classnames'
+import { useFieldContext } from '../..'
+import Label from '../label'
 
 type NumberSliderFieldProps = {
   label: string
@@ -30,7 +30,7 @@ const NumberSliderField = ({
           {...(labelOptions ?? {})}
         />
         {description && (
-          <div className='body-xs-regular pb-0.5 text-text-tertiary'>
+          <div className="body-xs-regular pb-0.5 text-text-tertiary">
             {description}
           </div>
         )}

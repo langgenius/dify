@@ -1,6 +1,6 @@
-import React from 'react'
-import { cn } from '@/utils/classnames'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
+import * as React from 'react'
+import { cn } from '@/utils/classnames'
 import DatasourceIcon from './datasource-icon'
 import { useDatasourceIcon } from './hooks'
 
@@ -29,7 +29,7 @@ const OptionCard = ({
       )}
       onClick={onClick}
     >
-      <div className='flex size-8 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-components-panel-border bg-background-default-dodge p-1.5'>
+      <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-components-panel-border bg-background-default-dodge p-1.5">
         <DatasourceIcon iconUrl={iconUrl} />
       </div>
       <div

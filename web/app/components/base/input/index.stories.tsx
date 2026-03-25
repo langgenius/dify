@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { useState } from 'react'
 import Input from '.'
 
@@ -292,7 +292,7 @@ const FormExampleDemo = () => {
   })
 
   const validateEmail = (email: string) => {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+    return /^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/.test(email)
   }
 
   return (
@@ -389,7 +389,10 @@ const SearchExampleDemo = () => {
       {searchQuery && (
         <div className="rounded-lg bg-gray-50 p-4">
           <div className="mb-2 text-xs text-gray-500">
-            {filteredItems.length} result{filteredItems.length !== 1 ? 's' : ''}
+            {filteredItems.length}
+            {' '}
+            result
+            {filteredItems.length !== 1 ? 's' : ''}
           </div>
           <div className="flex flex-col gap-1">
             {filteredItems.map(item => (

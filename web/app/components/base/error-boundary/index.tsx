@@ -1,8 +1,10 @@
 'use client'
 import type { ErrorInfo, ReactNode } from 'react'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { RiAlertLine, RiBugLine } from '@remixicon/react'
+import * as React from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Button from '@/app/components/base/button'
+import { IS_DEV } from '@/config'
 import { cn } from '@/utils/classnames'
 
 type ErrorBoundaryState = {
@@ -53,7 +55,7 @@ class ErrorBoundaryInner extends React.Component<
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    if (process.env.NODE_ENV === 'development') {
+    if (IS_DEV) {
       console.error('ErrorBoundary caught an error:', error)
       console.error('Error Info:', errorInfo)
     }
@@ -113,43 +115,47 @@ class ErrorBoundaryInner extends React.Component<
             className,
           )}
         >
-          <div className='mb-4 flex items-center gap-2'>
-            <RiAlertLine className='text-state-critical-solid h-8 w-8' />
-            <h2 className='text-xl font-semibold text-text-primary'>
+          <div className="mb-4 flex items-center gap-2">
+            <RiAlertLine className="text-state-critical-solid h-8 w-8" />
+            <h2 className="text-xl font-semibold text-text-primary">
               {customTitle || 'Something went wrong'}
             </h2>
           </div>
 
-          <p className='mb-6 text-center text-text-secondary'>
+          <p className="mb-6 text-center text-text-secondary">
             {customMessage || 'An unexpected error occurred while rendering this component.'}
           </p>
 
           {showDetails && errorInfo && (
-            <details className='mb-6 w-full max-w-2xl'>
-              <summary className='mb-2 cursor-pointer text-sm font-medium text-text-tertiary hover:text-text-secondary'>
-                <span className='inline-flex items-center gap-1'>
-                  <RiBugLine className='h-4 w-4' />
+            <details className="mb-6 w-full max-w-2xl">
+              <summary className="mb-2 cursor-pointer text-sm font-medium text-text-tertiary hover:text-text-secondary">
+                <span className="inline-flex items-center gap-1">
+                  <RiBugLine className="h-4 w-4" />
                   Error Details (Development Only)
                 </span>
               </summary>
-              <div className='rounded-lg bg-gray-100 p-4'>
-                <div className='mb-2'>
-                  <span className='font-mono text-xs font-semibold text-gray-600'>Error:</span>
-                  <pre className='mt-1 overflow-auto whitespace-pre-wrap font-mono text-xs text-gray-800'>
+              <div className="rounded-lg bg-gray-100 p-4">
+                <div className="mb-2">
+                  <span className="font-mono text-xs font-semibold text-gray-600">Error:</span>
+                  <pre className="mt-1 overflow-auto whitespace-pre-wrap font-mono text-xs text-gray-800">
                     {error.toString()}
                   </pre>
                 </div>
                 {errorInfo && (
                   <div>
-                    <span className='font-mono text-xs font-semibold text-gray-600'>Component Stack:</span>
-                    <pre className='mt-1 max-h-40 overflow-auto whitespace-pre-wrap font-mono text-xs text-gray-700'>
+                    <span className="font-mono text-xs font-semibold text-gray-600">Component Stack:</span>
+                    <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap font-mono text-xs text-gray-700">
                       {errorInfo.componentStack}
                     </pre>
                   </div>
                 )}
                 {errorCount > 1 && (
-                  <div className='mt-2 text-xs text-gray-600'>
-                    This error has occurred {errorCount} times
+                  <div className="mt-2 text-xs text-gray-600">
+                    This error has occurred
+                    {' '}
+                    {errorCount}
+                    {' '}
+                    times
                   </div>
                 )}
               </div>
@@ -157,17 +163,17 @@ class ErrorBoundaryInner extends React.Component<
           )}
 
           {enableRecovery && (
-            <div className='flex gap-3'>
+            <div className="flex gap-3">
               <Button
-                variant='primary'
-                size='small'
+                variant="primary"
+                size="small"
                 onClick={resetErrorBoundary}
               >
                 Try Again
               </Button>
               <Button
-                variant='secondary'
-                size='small'
+                variant="secondary"
+                size="small"
                 onClick={() => window.location.reload()}
               >
                 Reload Page
@@ -257,13 +263,13 @@ export function withErrorBoundary<P extends object>(
 // Simple error fallback component
 export const ErrorFallback: React.FC<{
   error: Error
-  resetErrorBoundary: () => void
-}> = ({ error, resetErrorBoundary }) => {
+  resetErrorBoundaryAction: () => void
+}> = ({ error, resetErrorBoundaryAction }) => {
   return (
-    <div className='flex min-h-[200px] flex-col items-center justify-center rounded-lg border border-red-200 bg-red-50 p-8'>
-      <h2 className='mb-2 text-lg font-semibold text-red-800'>Oops! Something went wrong</h2>
-      <p className='mb-4 text-center text-red-600'>{error.message}</p>
-      <Button onClick={resetErrorBoundary} size='small'>
+    <div className="flex min-h-[200px] flex-col items-center justify-center rounded-lg border border-red-200 bg-red-50 p-8">
+      <h2 className="mb-2 text-lg font-semibold text-red-800">Oops! Something went wrong</h2>
+      <p className="mb-4 text-center text-red-600">{error.message}</p>
+      <Button onClick={resetErrorBoundaryAction} size="small">
         Try again
       </Button>
     </div>

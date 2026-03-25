@@ -1,12 +1,12 @@
-import Button from '@/app/components/base/button'
-import { RiInstallLine, RiLoader2Line } from '@remixicon/react'
 import type { ComponentProps, MouseEventHandler } from 'react'
+import { RiInstallLine, RiLoader2Line } from '@remixicon/react'
 import { useState } from 'react'
-import { cn } from '@/utils/classnames'
 import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
 import checkTaskStatus from '@/app/components/plugins/install-plugin/base/check-task-status'
 import { TaskStatus } from '@/app/components/plugins/types'
 import { useCheckInstalled, useInstallPackageFromMarketPlace } from '@/service/use-plugins'
+import { cn } from '@/utils/classnames'
 
 type InstallPluginButtonProps = Omit<ComponentProps<typeof Button>, 'children' | 'loading'> & {
   uniqueIdentifier: string
@@ -83,22 +83,26 @@ export const InstallPluginButton = (props: InstallPluginButtonProps) => {
       },
     })
   }
-  if (!manifest.data) return null
+  if (!manifest.data)
+    return null
   const identifierSet = new Set(identifiers)
   const isInstalled = manifest.data.plugins.some(plugin => (
     identifierSet.has(plugin.id)
     || (plugin.plugin_unique_identifier && identifierSet.has(plugin.plugin_unique_identifier))
     || (plugin.plugin_id && identifierSet.has(plugin.plugin_id))
   ))
-  if (isInstalled) return null
-  return <Button
-    variant={'secondary'}
-    disabled={isLoading}
-    {...rest}
-    onClick={handleInstall}
-    className={cn('flex items-center', className)}
-  >
-    {!isLoading ? t('workflow.nodes.agent.pluginInstaller.install') : t('workflow.nodes.agent.pluginInstaller.installing')}
-    {!isLoading ? <RiInstallLine className='ml-1 size-3.5' /> : <RiLoader2Line className='ml-1 size-3.5 animate-spin' />}
-  </Button>
+  if (isInstalled)
+    return null
+  return (
+    <Button
+      variant="secondary"
+      disabled={isLoading}
+      {...rest}
+      onClick={handleInstall}
+      className={cn('flex items-center', className)}
+    >
+      {!isLoading ? t('nodes.agent.pluginInstaller.install', { ns: 'workflow' }) : t('nodes.agent.pluginInstaller.installing', { ns: 'workflow' })}
+      {!isLoading ? <RiInstallLine className="ml-1 size-3.5" /> : <RiLoader2Line className="ml-1 size-3.5 animate-spin" />}
+    </Button>
+  )
 }

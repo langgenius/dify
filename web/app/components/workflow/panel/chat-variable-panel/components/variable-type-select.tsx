@@ -1,6 +1,7 @@
 'use client'
-import React, { useState } from 'react'
 import { RiArrowDownSLine, RiCheckLine } from '@remixicon/react'
+import * as React from 'react'
+import { useState } from 'react'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -29,32 +30,40 @@ const VariableTypeSelector = ({
     <PortalToFollowElem
       open={open}
       onOpenChange={() => setOpen(v => !v)}
-      placement='bottom'
+      placement="bottom"
     >
-      <PortalToFollowElemTrigger className='w-full' onClick={() => setOpen(v => !v)}>
+      <PortalToFollowElemTrigger className="w-full" onClick={() => setOpen(v => !v)}>
         <div className={cn(
           'flex w-full cursor-pointer items-center px-2',
           !inCell && 'radius-md bg-components-input-bg-normal py-1 hover:bg-state-base-hover-alt',
           inCell && 'py-0.5 hover:bg-state-base-hover',
           open && !inCell && 'bg-state-base-hover-alt hover:bg-state-base-hover-alt',
           open && inCell && 'bg-state-base-hover hover:bg-state-base-hover',
-        )}>
+        )}
+        >
           <div className={cn(
             'system-sm-regular grow truncate p-1 text-components-input-text-filled',
             inCell && 'system-xs-regular text-text-secondary',
-          )}>{value}</div>
-          <RiArrowDownSLine className='ml-0.5 h-4 w-4 text-text-quaternary' />
+          )}
+          >
+            {value}
+          </div>
+          <RiArrowDownSLine className="ml-0.5 h-4 w-4 text-text-quaternary" />
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className={cn('z-[11] w-full', popupClassName)}>
-        <div className='radius-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg'>
+        <div className="radius-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg">
           {list.map((item: any) => (
-            <div key={item} className='radius-md flex cursor-pointer items-center gap-2 py-[6px] pl-3 pr-2 hover:bg-state-base-hover' onClick={() => {
-              onSelect(item)
-              setOpen(false)
-            }}>
-              <div className='system-md-regular grow truncate text-text-secondary'>{item}</div>
-              {value === item && <RiCheckLine className='h-4 w-4 text-text-accent' />}
+            <div
+              key={item}
+              className="radius-md flex cursor-pointer items-center gap-2 py-[6px] pl-3 pr-2 hover:bg-state-base-hover"
+              onClick={() => {
+                onSelect(item)
+                setOpen(false)
+              }}
+            >
+              <div className="system-md-regular grow truncate text-text-secondary">{item}</div>
+              {value === item && <RiCheckLine className="h-4 w-4 text-text-accent" />}
             </div>
           ))}
         </div>

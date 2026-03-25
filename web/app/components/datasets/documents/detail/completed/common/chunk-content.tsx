@@ -1,9 +1,10 @@
-import React, { useEffect, useRef, useState } from 'react'
 import type { ComponentProps, FC } from 'react'
+import * as React from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Markdown } from '@/app/components/base/markdown'
 import { ChunkingMode } from '@/models/datasets'
 import { cn } from '@/utils/classnames'
-import { Markdown } from '@/app/components/base/markdown'
 
 type IContentProps = ComponentProps<'textarea'>
 
@@ -16,8 +17,7 @@ const Textarea: FC<IContentProps> = React.memo(({
 }) => {
   return (
     <textarea
-      className={cn('inset-0 w-full resize-none appearance-none overflow-y-auto border-none bg-transparent outline-none',
-        className)}
+      className={cn('inset-0 w-full resize-none appearance-none overflow-y-auto border-none bg-transparent outline-none', className)}
       placeholder={placeholder}
       value={value}
       disabled={disabled}
@@ -80,8 +80,7 @@ const AutoResizeTextArea: FC<IAutoResizeTextAreaProps> = React.memo(({
   return (
     <textarea
       ref={textareaRef}
-      className={cn('inset-0 w-full resize-none appearance-none border-none bg-transparent outline-none',
-        className)}
+      className={cn('inset-0 w-full resize-none appearance-none border-none bg-transparent outline-none', className)}
       style={{
         maxHeight,
       }}
@@ -115,22 +114,22 @@ const QATextArea: FC<IQATextAreaProps> = React.memo(({
   const labelRef = useRef<HTMLDivElement>(null)
 
   return (
-    <div ref={containerRef} className='h-full overflow-hidden'>
-      <div ref={labelRef} className='mb-1 text-xs font-medium text-text-tertiary'>QUESTION</div>
+    <div ref={containerRef} className="h-full overflow-hidden">
+      <div ref={labelRef} className="mb-1 text-xs font-medium text-text-tertiary">QUESTION</div>
       <AutoResizeTextArea
-        className='text-sm tracking-[-0.07px] text-text-secondary caret-[#295EFF]'
+        className="text-sm tracking-[-0.07px] text-text-secondary caret-[#295EFF]"
         value={question}
-        placeholder={t('datasetDocuments.segment.questionPlaceholder') || ''}
+        placeholder={t('segment.questionPlaceholder', { ns: 'datasetDocuments' }) || ''}
         onChange={e => onQuestionChange(e.target.value)}
         disabled={!isEditMode}
         containerRef={containerRef}
         labelRef={labelRef}
       />
-      <div className='mb-1 mt-6 text-xs font-medium text-text-tertiary'>ANSWER</div>
+      <div className="mb-1 mt-6 text-xs font-medium text-text-tertiary">ANSWER</div>
       <AutoResizeTextArea
-        className='text-sm tracking-[-0.07px] text-text-secondary caret-[#295EFF]'
+        className="text-sm tracking-[-0.07px] text-text-secondary caret-[#295EFF]"
         value={answer}
-        placeholder={t('datasetDocuments.segment.answerPlaceholder') || ''}
+        placeholder={t('segment.answerPlaceholder', { ns: 'datasetDocuments' }) || ''}
         onChange={e => onAnswerChange?.(e.target.value)}
         disabled={!isEditMode}
         autoFocus
@@ -163,19 +162,21 @@ const ChunkContent: FC<IChunkContentProps> = ({
   const { t } = useTranslation()
 
   if (docForm === ChunkingMode.qa) {
-    return <QATextArea
-      question={question}
-      answer={answer}
-      onQuestionChange={onQuestionChange}
-      onAnswerChange={onAnswerChange}
-      isEditMode={isEditMode}
-    />
+    return (
+      <QATextArea
+        question={question}
+        answer={answer}
+        onQuestionChange={onQuestionChange}
+        onAnswerChange={onAnswerChange}
+        isEditMode={isEditMode}
+      />
+    )
   }
 
   if (!isEditMode) {
     return (
       <Markdown
-        className='h-full w-full !text-text-secondary'
+        className="h-full w-full !text-text-secondary"
         content={question}
         customDisallowedElements={['input']}
       />
@@ -184,9 +185,9 @@ const ChunkContent: FC<IChunkContentProps> = ({
 
   return (
     <Textarea
-      className='body-md-regular h-full w-full pb-6 tracking-[-0.07px] text-text-secondary caret-[#295EFF]'
+      className="body-md-regular h-full w-full pb-6 tracking-[-0.07px] text-text-secondary caret-[#295EFF]"
       value={question}
-      placeholder={t('datasetDocuments.segment.contentPlaceholder') || ''}
+      placeholder={t('segment.contentPlaceholder', { ns: 'datasetDocuments' }) || ''}
       onChange={e => onQuestionChange(e.target.value)}
       disabled={!isEditMode}
       autoFocus

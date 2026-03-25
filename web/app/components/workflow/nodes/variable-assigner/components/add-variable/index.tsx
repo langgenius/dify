@@ -1,23 +1,23 @@
-import {
-  memo,
-  useCallback,
-  useState,
-} from 'react'
-import { useVariableAssigner } from '../../hooks'
 import type { VariableAssignerNodeType } from '../../types'
-import { cn } from '@/utils/classnames'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
-import { Plus02 } from '@/app/components/base/icons/src/vender/line/general'
-import AddVariablePopup from '@/app/components/workflow/nodes/_base/components/add-variable-popup'
 import type {
   NodeOutPutVar,
   ValueSelector,
   Var,
 } from '@/app/components/workflow/types'
+import {
+  memo,
+  useCallback,
+  useState,
+} from 'react'
+import { Plus02 } from '@/app/components/base/icons/src/vender/line/general'
+import {
+  PortalToFollowElem,
+  PortalToFollowElemContent,
+  PortalToFollowElemTrigger,
+} from '@/app/components/base/portal-to-follow-elem'
+import AddVariablePopup from '@/app/components/workflow/nodes/_base/components/add-variable-popup'
+import { cn } from '@/utils/classnames'
+import { useVariableAssigner } from '../../hooks'
 
 export type AddVariableProps = {
   variableAssignerNodeId: string
@@ -48,9 +48,10 @@ const AddVariable = ({
     <div className={cn(
       open && '!flex',
       variableAssignerNodeData.selected && '!flex',
-    )}>
+    )}
+    >
       <PortalToFollowElem
-        placement={'right'}
+        placement="right"
         offset={4}
         open={open}
         onOpenChange={setOpen}
@@ -75,7 +76,7 @@ const AddVariable = ({
             />
           </div>
         </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className='z-[1000]'>
+        <PortalToFollowElemContent className="z-[1000]">
           <AddVariablePopup
             onSelect={handleSelectVariable}
             availableVars={availableVars}

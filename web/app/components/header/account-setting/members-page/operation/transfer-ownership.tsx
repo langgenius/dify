@@ -1,10 +1,14 @@
 'use client'
-import { Fragment } from 'react'
-import { useTranslation } from 'react-i18next'
+import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
 import {
   RiArrowDownSLine,
 } from '@remixicon/react'
-import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
+import { Fragment } from 'react'
+import { useTranslation } from 'react-i18next'
+import Loading from '@/app/components/base/loading'
+import { useAppContext } from '@/context/app-context'
+import { useGlobalPublicStore } from '@/context/global-public-context'
+import { useWorkspacePermissions } from '@/service/use-workspace'
 import { cn } from '@/utils/classnames'
 
 type Props = {
@@ -13,6 +17,17 @@ type Props = {
 
 const TransferOwnership = ({ onOperate }: Props) => {
   const { t } = useTranslation()
+  const { currentWorkspace } = useAppContext()
+  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
+  const { data: workspacePermissions, isFetching: isFetchingWorkspacePermissions } = useWorkspacePermissions(currentWorkspace!.id, systemFeatures.branding.enabled)
+  if (systemFeatures.branding.enabled) {
+    if (isFetchingWorkspacePermissions) {
+      return <Loading />
+    }
+    if (!workspacePermissions || workspacePermissions.allow_owner_transfer !== true) {
+      return <span className="system-sm-regular px-3 text-text-secondary">{t('members.owner', { ns: 'common' })}</span>
+    }
+  }
 
   return (
     <Menu as="div" className="relative h-full w-full">
@@ -20,7 +35,7 @@ const TransferOwnership = ({ onOperate }: Props) => {
         ({ open }) => (
           <>
             <MenuButton className={cn('system-sm-regular group flex h-full w-full cursor-pointer items-center justify-between px-3 text-text-secondary hover:bg-state-base-hover', open && 'bg-state-base-hover')}>
-              {t('common.members.owner')}
+              {t('members.owner', { ns: 'common' })}
               <RiArrowDownSLine className={cn('h-4 w-4 group-hover:block', open ? 'block' : 'hidden')} />
             </MenuButton>
             <Transition
@@ -37,8 +52,8 @@ const TransferOwnership = ({ onOperate }: Props) => {
               >
                 <div className="p-1">
                   <MenuItem>
-                    <div className='flex cursor-pointer rounded-lg px-3 py-2 hover:bg-state-base-hover' onClick={onOperate}>
-                      <div className='system-md-regular whitespace-nowrap text-text-secondary'>{t('common.members.transferOwnership')}</div>
+                    <div className="flex cursor-pointer rounded-lg px-3 py-2 hover:bg-state-base-hover" onClick={onOperate}>
+                      <div className="system-md-regular whitespace-nowrap text-text-secondary">{t('members.transferOwnership', { ns: 'common' })}</div>
                     </div>
                   </MenuItem>
                 </div>

@@ -1,8 +1,8 @@
 import type { ActionItem, KnowledgeSearchResult } from './types'
 import type { DataSet } from '@/models/datasets'
 import { fetchDatasets } from '@/service/datasets'
-import { Folder } from '../../base/icons/src/vender/solid/files'
 import { cn } from '@/utils/classnames'
+import { Folder } from '../../base/icons/src/vender/solid/files'
 
 const EXTERNAL_PROVIDER = 'external' as const
 const isExternalProvider = (provider: string): boolean => provider === EXTERNAL_PROVIDER
@@ -20,8 +20,9 @@ const parser = (datasets: DataSet[]): KnowledgeSearchResult[] => {
         <div className={cn(
           'flex shrink-0 items-center justify-center rounded-md border-[0.5px] border-[#E0EAFF] bg-[#F5F8FF] p-2.5',
           !dataset.embedding_available && 'opacity-50 hover:opacity-100',
-        )}>
-          <Folder className='h-5 w-5 text-[#444CE7]' />
+        )}
+        >
+          <Folder className="h-5 w-5 text-[#444CE7]" />
         </div>
       ),
       data: dataset,

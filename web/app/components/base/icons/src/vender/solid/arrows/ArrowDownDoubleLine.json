@@ -1,26 +1,26 @@
 {
-	"icon": {
-		"type": "element",
-		"isRootNode": true,
-		"name": "svg",
-		"attributes": {
-			"width": "16",
-			"height": "16",
-			"viewBox": "0 0 16 16",
-			"fill": "none",
-			"xmlns": "http://www.w3.org/2000/svg"
-		},
-		"children": [
-			{
-				"type": "element",
-				"name": "path",
-				"attributes": {
-					"d": "M8.00001 12.7761L12.1381 8.63804L11.1953 7.69524L8.00001 10.8905L4.80475 7.69524L3.86194 8.63804L8.00001 12.7761ZM8.00001 9.00951L12.1381 4.87146L11.1953 3.92865L8.00001 7.12391L4.80475 3.92865L3.86194 4.87146L8.00001 9.00951Z",
-					"fill": "currentColor"
-				},
-				"children": []
-			}
-		]
-	},
-	"name": "ArrowDownDoubleLine"
+  "icon": {
+    "type": "element",
+    "isRootNode": true,
+    "name": "svg",
+    "attributes": {
+      "width": "16",
+      "height": "16",
+      "viewBox": "0 0 16 16",
+      "fill": "none",
+      "xmlns": "http://www.w3.org/2000/svg"
+    },
+    "children": [
+      {
+        "type": "element",
+        "name": "path",
+        "attributes": {
+          "d": "M8.00001 12.7761L12.1381 8.63804L11.1953 7.69524L8.00001 10.8905L4.80475 7.69524L3.86194 8.63804L8.00001 12.7761ZM8.00001 9.00951L12.1381 4.87146L11.1953 3.92865L8.00001 7.12391L4.80475 3.92865L3.86194 4.87146L8.00001 9.00951Z",
+          "fill": "currentColor"
+        },
+        "children": []
+      }
+    ]
+  },
+  "name": "ArrowDownDoubleLine"
 }

@@ -1,25 +1,24 @@
-import json
 from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Union, final
 
 from sqlalchemy.orm import Session
 
-from core.app.app_config.entities import VariableEntityType
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.file import File, FileUploadConfig
-from core.workflow.enums import NodeType
-from core.workflow.repositories.draft_variable_repository import (
+from dify_graph.enums import NodeType
+from dify_graph.file import File, FileUploadConfig
+from dify_graph.repositories.draft_variable_repository import (
     DraftVariableSaver,
     DraftVariableSaverFactory,
     NoopDraftVariableSaver,
 )
+from dify_graph.variables.input_entities import VariableEntityType
 from factories import file_factory
 from libs.orjson import orjson_dumps
 from models import Account, EndUser
 from services.workflow_draft_variable_service import DraftVariableSaver as DraftVariableSaverImpl
 
 if TYPE_CHECKING:
-    from core.app.app_config.entities import VariableEntity
+    from dify_graph.variables.input_entities import VariableEntity
 
 
 class BaseAppGenerator:
@@ -76,12 +75,24 @@ class BaseAppGenerator:
         user_inputs = {**user_inputs, **files_inputs, **file_list_inputs}
 
         # Check if all files are converted to File
-        if any(filter(lambda v: isinstance(v, dict), user_inputs.values())):
-            raise ValueError("Invalid input type")
-        if any(
-            filter(lambda v: isinstance(v, dict), filter(lambda item: isinstance(item, list), user_inputs.values()))
-        ):
-            raise ValueError("Invalid input type")
+        invalid_dict_keys = [
+            k
+            for k, v in user_inputs.items()
+            if isinstance(v, dict)
+            and entity_dictionary[k].type not in {VariableEntityType.FILE, VariableEntityType.JSON_OBJECT}
+        ]
+        if invalid_dict_keys:
+            raise ValueError(f"Invalid input type for {invalid_dict_keys}")
+
+        invalid_list_dict_keys = [
+            k
+            for k, v in user_inputs.items()
+            if isinstance(v, list)
+            and any(isinstance(item, dict) for item in v)
+            and entity_dictionary[k].type != VariableEntityType.FILE_LIST
+        ]
+        if invalid_list_dict_keys:
+            raise ValueError(f"Invalid input type for {invalid_list_dict_keys}")
 
         return user_inputs
 
@@ -105,8 +116,9 @@ class BaseAppGenerator:
             variable_entity.type in {VariableEntityType.FILE, VariableEntityType.FILE_LIST}
             and not variable_entity.required
         ):
-            # Treat empty string (frontend default) or empty list as unset
-            if not value and isinstance(value, (str, list)):
+            # Treat empty string (frontend default) as unset
+            # For FILE_LIST, allow empty list [] to pass through
+            if isinstance(value, str) and not value:
                 return None
 
         if variable_entity.type in {
@@ -177,12 +189,8 @@ class BaseAppGenerator:
                     elif value == 0:
                         value = False
             case VariableEntityType.JSON_OBJECT:
-                if not isinstance(value, str):
-                    raise ValueError(f"{variable_entity.variable} in input form must be a string")
-                try:
-                    json.loads(value)
-                except json.JSONDecodeError:
-                    raise ValueError(f"{variable_entity.variable} in input form must be a valid JSON object")
+                if value and not isinstance(value, dict):
+                    raise ValueError(f"{variable_entity.variable} in input form must be a dict")
             case _:
                 raise AssertionError("this statement should be unreachable.")
 

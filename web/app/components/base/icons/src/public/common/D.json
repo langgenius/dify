@@ -1,125 +1,125 @@
 {
-	"icon": {
-		"type": "element",
-		"isRootNode": true,
-		"name": "svg",
-		"attributes": {
-			"width": "16",
-			"height": "16",
-			"viewBox": "0 0 16 16",
-			"fill": "none",
-			"xmlns": "http://www.w3.org/2000/svg"
-		},
-		"children": [
-			{
-				"type": "element",
-				"name": "path",
-				"attributes": {
-					"d": "M2 1H7.94339C11.8094 1 14.9434 4.13401 14.9434 8C14.9434 11.866 11.8094 15 7.9434 15H2V1Z",
-					"fill": "white"
-				},
-				"children": []
-			},
-			{
-				"type": "element",
-				"name": "path",
-				"attributes": {
-					"d": "M2 1H7.94339C11.8094 1 14.9434 4.13401 14.9434 8C14.9434 11.866 11.8094 15 7.9434 15H2V1Z",
-					"fill": "url(#paint0_angular_19344_240446)"
-				},
-				"children": []
-			},
-			{
-				"type": "element",
-				"name": "path",
-				"attributes": {
-					"d": "M7.94336 8H8.20751V15H7.94336V8Z",
-					"fill": "url(#paint1_linear_19344_240446)"
-				},
-				"children": []
-			},
-			{
-				"type": "element",
-				"name": "defs",
-				"attributes": {},
-				"children": [
-					{
-						"type": "element",
-						"name": "radialGradient",
-						"attributes": {
-							"id": "paint0_angular_19344_240446",
-							"cx": "0",
-							"cy": "0",
-							"r": "1",
-							"gradientUnits": "userSpaceOnUse",
-							"gradientTransform": "translate(7.9434 8) rotate(90) scale(8.75 8.75)"
-						},
-						"children": [
-							{
-								"type": "element",
-								"name": "stop",
-								"attributes": {
-									"stop-color": "#001FC2"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "stop",
-								"attributes": {
-									"offset": "0.711334",
-									"stop-color": "#0667F8",
-									"stop-opacity": "0.2"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "stop",
-								"attributes": {
-									"offset": "1",
-									"stop-color": "#155EEF",
-									"stop-opacity": "0"
-								},
-								"children": []
-							}
-						]
-					},
-					{
-						"type": "element",
-						"name": "linearGradient",
-						"attributes": {
-							"id": "paint1_linear_19344_240446",
-							"x1": "8.06244",
-							"y1": "8.43754",
-							"x2": "7.93744",
-							"y2": "9.20317",
-							"gradientUnits": "userSpaceOnUse"
-						},
-						"children": [
-							{
-								"type": "element",
-								"name": "stop",
-								"attributes": {
-									"stop-color": "white",
-									"stop-opacity": "0"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "stop",
-								"attributes": {
-									"offset": "1",
-									"stop-color": "white"
-								},
-								"children": []
-							}
-						]
-					}
-				]
-			}
-		]
-	},
-	"name": "D"
+  "icon": {
+    "type": "element",
+    "isRootNode": true,
+    "name": "svg",
+    "attributes": {
+      "width": "16",
+      "height": "16",
+      "viewBox": "0 0 16 16",
+      "fill": "none",
+      "xmlns": "http://www.w3.org/2000/svg"
+    },
+    "children": [
+      {
+        "type": "element",
+        "name": "path",
+        "attributes": {
+          "d": "M2 1H7.94339C11.8094 1 14.9434 4.13401 14.9434 8C14.9434 11.866 11.8094 15 7.9434 15H2V1Z",
+          "fill": "white"
+        },
+        "children": []
+      },
+      {
+        "type": "element",
+        "name": "path",
+        "attributes": {
+          "d": "M2 1H7.94339C11.8094 1 14.9434 4.13401 14.9434 8C14.9434 11.866 11.8094 15 7.9434 15H2V1Z",
+          "fill": "url(#paint0_angular_19344_240446)"
+        },
+        "children": []
+      },
+      {
+        "type": "element",
+        "name": "path",
+        "attributes": {
+          "d": "M7.94336 8H8.20751V15H7.94336V8Z",
+          "fill": "url(#paint1_linear_19344_240446)"
+        },
+        "children": []
+      },
+      {
+        "type": "element",
+        "name": "defs",
+        "attributes": {},
+        "children": [
+          {
+            "type": "element",
+            "name": "radialGradient",
+            "attributes": {
+              "id": "paint0_angular_19344_240446",
+              "cx": "0",
+              "cy": "0",
+              "r": "1",
+              "gradientUnits": "userSpaceOnUse",
+              "gradientTransform": "translate(7.9434 8) rotate(90) scale(8.75 8.75)"
+            },
+            "children": [
+              {
+                "type": "element",
+                "name": "stop",
+                "attributes": {
+                  "stop-color": "#001FC2"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "stop",
+                "attributes": {
+                  "offset": "0.711334",
+                  "stop-color": "#0667F8",
+                  "stop-opacity": "0.2"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "stop",
+                "attributes": {
+                  "offset": "1",
+                  "stop-color": "#155EEF",
+                  "stop-opacity": "0"
+                },
+                "children": []
+              }
+            ]
+          },
+          {
+            "type": "element",
+            "name": "linearGradient",
+            "attributes": {
+              "id": "paint1_linear_19344_240446",
+              "x1": "8.06244",
+              "y1": "8.43754",
+              "x2": "7.93744",
+              "y2": "9.20317",
+              "gradientUnits": "userSpaceOnUse"
+            },
+            "children": [
+              {
+                "type": "element",
+                "name": "stop",
+                "attributes": {
+                  "stop-color": "white",
+                  "stop-opacity": "0"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "stop",
+                "attributes": {
+                  "offset": "1",
+                  "stop-color": "white"
+                },
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "name": "D"
 }

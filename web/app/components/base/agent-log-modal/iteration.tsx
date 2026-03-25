@@ -1,10 +1,10 @@
 'use client'
-import { useTranslation } from 'react-i18next'
 import type { FC } from 'react'
-import ToolCall from './tool-call'
-import Divider from '@/app/components/base/divider'
 import type { AgentIteration } from '@/models/log'
+import { useTranslation } from 'react-i18next'
+import Divider from '@/app/components/base/divider'
 import { cn } from '@/utils/classnames'
+import ToolCall from './tool-call'
 
 type Props = {
   isFinal: boolean
@@ -17,14 +17,14 @@ const Iteration: FC<Props> = ({ iterationInfo, isFinal, index }) => {
 
   return (
     <div className={cn('px-4 py-2')}>
-      <div className='flex items-center'>
+      <div className="flex items-center">
         {isFinal && (
-          <div className='mr-3 shrink-0 text-xs font-semibold leading-[18px] text-text-tertiary'>{t('appLog.agentLogDetail.finalProcessing')}</div>
+          <div className="mr-3 shrink-0 text-xs font-semibold leading-[18px] text-text-tertiary">{t('agentLogDetail.finalProcessing', { ns: 'appLog' })}</div>
         )}
         {!isFinal && (
-          <div className='mr-3 shrink-0 text-xs font-semibold leading-[18px] text-text-tertiary'>{`${t('appLog.agentLogDetail.iteration').toUpperCase()} ${index}`}</div>
+          <div className="mr-3 shrink-0 text-xs font-semibold leading-[18px] text-text-tertiary">{`${t('agentLogDetail.iteration', { ns: 'appLog' }).toUpperCase()} ${index}`}</div>
         )}
-        <Divider bgStyle='gradient' className='mx-0 h-px grow'/>
+        <Divider bgStyle="gradient" className="mx-0 h-px grow" />
       </div>
       <ToolCall
         isLLM

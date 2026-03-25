@@ -11,14 +11,14 @@ import {
 } from './apikey-info-panel.test-utils'
 
 // Mock config for Cloud edition
-jest.mock('@/config', () => ({
+vi.mock('@/config', () => ({
   IS_CE_EDITION: false, // Test Cloud edition
 }))
 
 afterEach(cleanup)
 
 describe('APIKeyInfoPanel - Cloud Edition', () => {
-  const mockSetShowAccountSettingModal = jest.fn()
+  const mockSetShowAccountSettingModal = vi.fn()
 
   beforeEach(() => {
     clearAllMocks()

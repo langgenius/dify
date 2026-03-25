@@ -1,29 +1,29 @@
+import type {
+  NodeOutPutVar,
+  ValueSelector,
+} from '@/app/components/workflow/types'
+import { RiArrowDownSLine } from '@remixicon/react'
+import { useBoolean } from 'ahooks'
+import { capitalize } from 'es-toolkit/string'
 import {
   memo,
   useCallback,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiArrowDownSLine } from '@remixicon/react'
-import { capitalize } from 'lodash-es'
-import { useBoolean } from 'ahooks'
-import { VarType as NumberVarType } from '../../tool/types'
-import VariableTag from '../../_base/components/variable-tag'
+import Button from '@/app/components/base/button'
+import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import Button from '@/app/components/base/button'
-import { cn } from '@/utils/classnames'
 import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
-import type {
-  NodeOutPutVar,
-  ValueSelector,
-} from '@/app/components/workflow/types'
 import { VarType } from '@/app/components/workflow/types'
 import { variableTransformer } from '@/app/components/workflow/utils'
-import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
+import { cn } from '@/utils/classnames'
+import VariableTag from '../../_base/components/variable-tag'
+import { VarType as NumberVarType } from '../../tool/types'
 
 const options = [
   NumberVarType.variable,
@@ -62,25 +62,25 @@ const ConditionNumberInput = ({
   }, [onValueChange])
 
   return (
-    <div className='flex cursor-pointer items-center'>
+    <div className="flex cursor-pointer items-center">
       <PortalToFollowElem
         open={numberVarTypeVisible}
         onOpenChange={setNumberVarTypeVisible}
-        placement='bottom-start'
+        placement="bottom-start"
         offset={{ mainAxis: 2, crossAxis: 0 }}
       >
         <PortalToFollowElemTrigger onClick={() => setNumberVarTypeVisible(v => !v)}>
           <Button
-            className='shrink-0'
-            variant='ghost'
-            size='small'
+            className="shrink-0"
+            variant="ghost"
+            size="small"
           >
             {capitalize(numberVarType)}
-            <RiArrowDownSLine className='ml-[1px] h-3.5 w-3.5' />
+            <RiArrowDownSLine className="ml-[1px] h-3.5 w-3.5" />
           </Button>
         </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className='z-[1000]'>
-          <div className='w-[112px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg'>
+        <PortalToFollowElemContent className="z-[1000]">
+          <div className="w-[112px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg">
             {
               options.map(option => (
                 <div
@@ -102,19 +102,20 @@ const ConditionNumberInput = ({
           </div>
         </PortalToFollowElemContent>
       </PortalToFollowElem>
-      <div className='mx-1 h-4 w-[1px] bg-divider-regular'></div>
-      <div className='ml-0.5 w-0 grow'>
+      <div className="mx-1 h-4 w-[1px] bg-divider-regular"></div>
+      <div className="ml-0.5 w-0 grow">
         {
           numberVarType === NumberVarType.variable && (
             <PortalToFollowElem
               open={variableSelectorVisible}
               onOpenChange={setVariableSelectorVisible}
-              placement='bottom-start'
+              placement="bottom-start"
               offset={{ mainAxis: 2, crossAxis: 0 }}
             >
               <PortalToFollowElemTrigger
-                className='w-full'
-                onClick={() => setVariableSelectorVisible(v => !v)}>
+                className="w-full"
+                onClick={() => setVariableSelectorVisible(v => !v)}
+              >
                 {
                   value && (
                     <VariableTag
@@ -126,14 +127,14 @@ const ConditionNumberInput = ({
                 }
                 {
                   !value && (
-                    <div className='flex h-6 items-center p-1 text-[13px] text-components-input-text-placeholder'>
-                      <Variable02 className='mr-1 h-4 w-4 shrink-0' />
-                      <div className='w-0 grow truncate'>{t('workflow.nodes.ifElse.selectVariable')}</div>
+                    <div className="flex h-6 items-center p-1 text-[13px] text-components-input-text-placeholder">
+                      <Variable02 className="mr-1 h-4 w-4 shrink-0" />
+                      <div className="w-0 grow truncate">{t('nodes.ifElse.selectVariable', { ns: 'workflow' })}</div>
                     </div>
                   )
                 }
               </PortalToFollowElemTrigger>
-              <PortalToFollowElemContent className='z-[1000]'>
+              <PortalToFollowElemContent className="z-[1000]">
                 <div className={cn('w-[296px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur pt-1 shadow-lg', isShort && 'w-[200px]')}>
                   <VarReferenceVars
                     vars={variables}
@@ -146,17 +147,17 @@ const ConditionNumberInput = ({
         }
         {
           numberVarType === NumberVarType.constant && (
-            <div className=' relative'>
+            <div className=" relative">
               <input
                 className={cn('block w-full appearance-none bg-transparent px-2 text-[13px] text-components-input-text-filled outline-none placeholder:text-components-input-text-placeholder', unit && 'pr-6')}
-                type='number'
+                type="number"
                 value={value}
                 onChange={e => onValueChange(e.target.value)}
-                placeholder={t('workflow.nodes.ifElse.enterValue') || ''}
+                placeholder={t('nodes.ifElse.enterValue', { ns: 'workflow' }) || ''}
                 onFocus={setFocus}
                 onBlur={setBlur}
               />
-              {!isFocus && unit && <div className='system-sm-regular absolute right-2 top-[50%] translate-y-[-50%] text-text-tertiary'>{unit}</div>}
+              {!isFocus && unit && <div className="system-sm-regular absolute right-2 top-[50%] translate-y-[-50%] text-text-tertiary">{unit}</div>}
             </div>
           )
         }

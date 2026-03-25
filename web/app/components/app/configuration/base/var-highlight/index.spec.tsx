@@ -3,7 +3,7 @@ import VarHighlight, { varHighlightHTML } from './index'
 
 describe('VarHighlight', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   // Rendering highlighted variable tags
@@ -19,7 +19,9 @@ describe('VarHighlight', () => {
       expect(screen.getByText('userInput')).toBeInTheDocument()
       expect(screen.getAllByText('{{')[0]).toBeInTheDocument()
       expect(screen.getAllByText('}}')[0]).toBeInTheDocument()
-      expect(container.firstChild).toHaveClass('item')
+      // CSS modules add a hash to class names, so we check that the class attribute contains 'item'
+      const firstChild = container.firstChild as HTMLElement
+      expect(firstChild.className).toContain('item')
     })
 
     it('should apply custom class names when provided', () => {
@@ -56,7 +58,9 @@ describe('VarHighlight', () => {
       const html = varHighlightHTML(props)
 
       // Assert
-      expect(html).toContain('class="item text-primary')
+      // CSS modules add a hash to class names, so the class attribute may contain _item_xxx
+      expect(html).toContain('text-primary')
+      expect(html).toContain('item')
     })
   })
 })

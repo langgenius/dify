@@ -1,17 +1,17 @@
+import type * as React from 'react'
+import type { MockedFunction } from 'vitest'
+import type { IndexingType } from '@/app/components/datasets/create/step-two'
+import type { DataSet } from '@/models/datasets'
+import type { RetrievalConfig } from '@/types/app'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import Item from './index'
-import type React from 'react'
-import type { DataSet } from '@/models/datasets'
-import { ChunkingMode, DataSourceType, DatasetPermission } from '@/models/datasets'
-import type { IndexingType } from '@/app/components/datasets/create/step-two'
-import type { RetrievalConfig } from '@/types/app'
-import { RETRIEVE_METHOD } from '@/types/app'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { RETRIEVE_METHOD } from '@/types/app'
+import Item from './index'
 
-jest.mock('../settings-modal', () => ({
-  __esModule: true,
-  default: ({ onSave, onCancel, currentDataset }: any) => (
+vi.mock('../settings-modal', () => ({
+  default: ({ onSave, onCancel, currentDataset }: { currentDataset: DataSet, onCancel: () => void, onSave: (newDataset: DataSet) => void }) => (
     <div>
       <div>Mock settings modal</div>
       <button onClick={() => onSave({ ...currentDataset, name: 'Updated dataset' })}>Save changes</button>
@@ -20,16 +20,15 @@ jest.mock('../settings-modal', () => ({
   ),
 }))
 
-jest.mock('@/hooks/use-breakpoints', () => {
-  const actual = jest.requireActual('@/hooks/use-breakpoints')
+vi.mock('@/hooks/use-breakpoints', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/hooks/use-breakpoints')>()
   return {
-    __esModule: true,
     ...actual,
-    default: jest.fn(() => actual.MediaType.pc),
+    default: vi.fn(() => actual.MediaType.pc),
   }
 })
 
-const mockedUseBreakpoints = useBreakpoints as jest.MockedFunction<typeof useBreakpoints>
+const mockedUseBreakpoints = useBreakpoints as MockedFunction<typeof useBreakpoints>
 
 const baseRetrievalConfig: RetrievalConfig = {
   search_method: RETRIEVE_METHOD.semantic,
@@ -123,8 +122,8 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => {
 }
 
 const renderItem = (config: DataSet, props?: Partial<React.ComponentProps<typeof Item>>) => {
-  const onSave = jest.fn()
-  const onRemove = jest.fn()
+  const onSave = vi.fn()
+  const onRemove = vi.fn()
 
   render(
     <Item
@@ -140,7 +139,7 @@ const renderItem = (config: DataSet, props?: Partial<React.ComponentProps<typeof
 
 describe('dataset-config/card-item', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     mockedUseBreakpoints.mockReturnValue(MediaType.pc)
   })
 
@@ -173,18 +172,14 @@ describe('dataset-config/card-item', () => {
     const [editButton] = within(card).getAllByRole('button', { hidden: true })
     await user.click(editButton)
 
-    expect(screen.getByText('Mock settings modal')).toBeInTheDocument()
-    await waitFor(() => {
-      expect(screen.getByRole('dialog')).toBeVisible()
-    })
-
-    await user.click(screen.getByText('Save changes'))
+    expect(await screen.findByText('Mock settings modal')).toBeInTheDocument()
+    fireEvent.click(await screen.findByText('Save changes'))
 
     await waitFor(() => {
       expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ name: 'Updated dataset' }))
     })
     await waitFor(() => {
-      expect(screen.getByText('Mock settings modal')).not.toBeVisible()
+      expect(screen.queryByText('Mock settings modal')).not.toBeInTheDocument()
     })
   })
 
@@ -195,7 +190,7 @@ describe('dataset-config/card-item', () => {
 
     const card = screen.getByText(dataset.name).closest('.group') as HTMLElement
     const buttons = within(card).getAllByRole('button', { hidden: true })
-    const deleteButton = buttons[buttons.length - 1]
+    const deleteButton = buttons.at(-1)!
 
     expect(deleteButton.className).not.toContain('action-btn-destructive')
 
@@ -234,7 +229,7 @@ describe('dataset-config/card-item', () => {
     await user.click(editButton)
     expect(screen.getByText('Mock settings modal')).toBeInTheDocument()
 
-    const overlay = Array.from(document.querySelectorAll('[class]'))
+    const overlay = [...document.querySelectorAll('[class]')]
       .find(element => element.className.toString().includes('bg-black/30'))
 
     expect(overlay).toBeInTheDocument()

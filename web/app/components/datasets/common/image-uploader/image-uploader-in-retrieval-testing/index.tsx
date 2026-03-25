@@ -1,19 +1,19 @@
+import type { FileEntity } from '../types'
+import type { ImageInfo } from '@/app/components/datasets/common/image-previewer'
 import {
   useCallback,
   useState,
 } from 'react'
+import { useTranslation } from 'react-i18next'
+import ImagePreviewer from '@/app/components/datasets/common/image-previewer'
+import { cn } from '@/utils/classnames'
+import { useUpload } from '../hooks/use-upload'
 import {
   FileContextProvider,
+  useFileStoreWithSelector,
 } from '../store'
-import type { FileEntity } from '../types'
-import { useUpload } from '../hooks/use-upload'
 import ImageInput from './image-input'
-import { cn } from '@/utils/classnames'
-import { useTranslation } from 'react-i18next'
-import { useFileStoreWithSelector } from '../store'
 import ImageItem from './image-item'
-import type { ImageInfo } from '@/app/components/datasets/common/image-previewer'
-import ImagePreviewer from '@/app/components/datasets/common/image-previewer'
 
 type ImageUploaderInRetrievalTestingProps = {
   textArea: React.ReactNode
@@ -43,7 +43,8 @@ const ImageUploaderInRetrievalTesting = ({
 
   const handleImagePreview = useCallback((fileId: string) => {
     const index = files.findIndex(item => item.id === fileId)
-    if (index === -1) return
+    if (index === -1)
+      return
     setPreviewIndex(index)
     setPreviewImages(files.map(item => ({
       url: item.base64Url || item.sourceUrl || '',
@@ -63,16 +64,16 @@ const ImageUploaderInRetrievalTesting = ({
     >
       {dragging && (
         <div
-          className='absolute inset-0.5 z-10 flex items-center justify-center rounded-lg border-[1.5px] border-dashed border-components-dropzone-border-accent bg-components-dropzone-bg-accent'
+          className="absolute inset-0.5 z-10 flex items-center justify-center rounded-lg border-[1.5px] border-dashed border-components-dropzone-border-accent bg-components-dropzone-bg-accent"
         >
-          <div>{t('datasetHitTesting.imageUploader.dropZoneTip')}</div>
-          <div ref={dragRef} className='absolute inset-0' />
+          <div>{t('imageUploader.dropZoneTip', { ns: 'datasetHitTesting' })}</div>
+          <div ref={dragRef} className="absolute inset-0" />
         </div>
       )}
       {textArea}
       {
         showUploader && !!files.length && (
-          <div className='flex flex-wrap gap-1 bg-background-default px-4 py-2'>
+          <div className="flex flex-wrap gap-1 bg-background-default px-4 py-2">
             {
               files.map(file => (
                 <ImageItem
@@ -93,7 +94,8 @@ const ImageUploaderInRetrievalTesting = ({
           'flex',
           showUploader ? 'justify-between' : 'justify-end',
           actionAreaClassName,
-        )}>
+        )}
+      >
         {showUploader && <ImageInput />}
         {actionButton}
       </div>

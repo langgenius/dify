@@ -1,15 +1,15 @@
+import type {
+  Node,
+  NodeOutPutVar,
+} from '@/app/components/workflow/types'
 import {
   memo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import PromptEditor from '@/app/components/base/prompt-editor'
-import Placeholder from './placeholder'
-import type {
-  Node,
-  NodeOutPutVar,
-} from '@/app/components/workflow/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { cn } from '@/utils/classnames'
+import Placeholder from './placeholder'
 
 type MixedVariableTextInputProps = {
   readOnly?: boolean
@@ -33,7 +33,7 @@ const MixedVariableTextInput = ({
         'hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
         'focus-within:border-components-input-border-active focus-within:bg-components-input-bg-active focus-within:shadow-xs',
       )}
-      className='caret:text-text-accent'
+      className="caret:text-text-accent"
       editable={!readOnly}
       value={value}
       workflowVariableBlock={{
@@ -46,7 +46,7 @@ const MixedVariableTextInput = ({
           }
           if (node.data.type === BlockEnum.Start) {
             acc.sys = {
-              title: t('workflow.blocks.start'),
+              title: t('blocks.start', { ns: 'workflow' }),
               type: BlockEnum.Start,
             }
           }

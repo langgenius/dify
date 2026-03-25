@@ -1,6 +1,5 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useRef, useState } from 'react'
 import {
   RiDeleteBinLine,
   RiEditLine,
@@ -8,10 +7,12 @@ import {
   RiPushpinLine,
   RiUnpinLine,
 } from '@remixicon/react'
-import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
-import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
+import * as React from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
+import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
 import { cn } from '@/utils/classnames'
 
 type Props = {
@@ -47,7 +48,7 @@ const Operation: FC<Props> = ({
     <PortalToFollowElem
       open={open}
       onOpenChange={setOpen}
-      placement='bottom-end'
+      placement="bottom-end"
       offset={4}
     >
       <PortalToFollowElemTrigger
@@ -63,13 +64,13 @@ const Operation: FC<Props> = ({
                 : ActionButtonState.Default
           }
         >
-          <RiMoreFill className='h-4 w-4' />
+          <RiMoreFill className="h-4 w-4" />
         </ActionButton>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-50">
         <div
           ref={ref}
-          className={'min-w-[120px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-sm'}
+          className="min-w-[120px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-sm"
           onMouseEnter={setIsHovering}
           onMouseLeave={setNotHovering}
           onClick={(e) => {
@@ -77,20 +78,20 @@ const Operation: FC<Props> = ({
           }}
         >
           <div className={cn('system-md-regular flex cursor-pointer items-center space-x-1 rounded-lg px-2 py-1.5 text-text-secondary hover:bg-state-base-hover')} onClick={togglePin}>
-            {isPinned && <RiUnpinLine className='h-4 w-4 shrink-0 text-text-tertiary' />}
-            {!isPinned && <RiPushpinLine className='h-4 w-4 shrink-0 text-text-tertiary' />}
-            <span className='grow'>{isPinned ? t('explore.sidebar.action.unpin') : t('explore.sidebar.action.pin')}</span>
+            {isPinned && <RiUnpinLine className="h-4 w-4 shrink-0 text-text-tertiary" />}
+            {!isPinned && <RiPushpinLine className="h-4 w-4 shrink-0 text-text-tertiary" />}
+            <span className="grow">{isPinned ? t('sidebar.action.unpin', { ns: 'explore' }) : t('sidebar.action.pin', { ns: 'explore' })}</span>
           </div>
           {isShowRenameConversation && (
             <div className={cn('system-md-regular flex cursor-pointer items-center space-x-1 rounded-lg px-2 py-1.5 text-text-secondary hover:bg-state-base-hover')} onClick={onRenameConversation}>
-              <RiEditLine className='h-4 w-4 shrink-0 text-text-tertiary' />
-              <span className='grow'>{t('explore.sidebar.action.rename')}</span>
+              <RiEditLine className="h-4 w-4 shrink-0 text-text-tertiary" />
+              <span className="grow">{t('sidebar.action.rename', { ns: 'explore' })}</span>
             </div>
           )}
           {isShowDelete && (
-            <div className={cn('system-md-regular group flex cursor-pointer items-center space-x-1 rounded-lg px-2 py-1.5 text-text-secondary hover:bg-state-destructive-hover hover:text-text-destructive')} onClick={onDelete} >
+            <div className={cn('system-md-regular group flex cursor-pointer items-center space-x-1 rounded-lg px-2 py-1.5 text-text-secondary hover:bg-state-destructive-hover hover:text-text-destructive')} onClick={onDelete}>
               <RiDeleteBinLine className={cn('h-4 w-4 shrink-0 text-text-tertiary group-hover:text-text-destructive')} />
-              <span className='grow'>{t('explore.sidebar.action.delete')}</span>
+              <span className="grow">{t('sidebar.action.delete', { ns: 'explore' })}</span>
             </div>
           )}
         </div>

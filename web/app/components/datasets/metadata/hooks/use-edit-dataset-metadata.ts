@@ -1,19 +1,20 @@
-import { useBoolean } from 'ahooks'
-import { useBuiltInMetaDataFields, useCreateMetaData, useDatasetMetaData, useDeleteMetaData, useRenameMeta, useUpdateBuiltInStatus } from '@/service/knowledge/use-metadata'
+import type { BuiltInMetadataItem, MetadataItemWithValueLength } from '../types'
 import type { DataSet } from '@/models/datasets'
+import { useBoolean } from 'ahooks'
 import { useCallback, useEffect, useState } from 'react'
-import { type BuiltInMetadataItem, type MetadataItemWithValueLength, isShowManageMetadataLocalStorageKey } from '../types'
-import useCheckMetadataName from './use-check-metadata-name'
-import Toast from '@/app/components/base/toast'
 import { useTranslation } from 'react-i18next'
+import Toast from '@/app/components/base/toast'
+import { useBuiltInMetaDataFields, useCreateMetaData, useDatasetMetaData, useDeleteMetaData, useRenameMeta, useUpdateBuiltInStatus } from '@/service/knowledge/use-metadata'
+import { isShowManageMetadataLocalStorageKey } from '../types'
+import useCheckMetadataName from './use-check-metadata-name'
 
 const useEditDatasetMetadata = ({
   datasetId,
   // dataset,
   onUpdateDocList,
 }: {
-  datasetId: string,
-  dataset?: DataSet,
+  datasetId: string
+  dataset?: DataSet
   onUpdateDocList: () => void
 }) => {
   const { t } = useTranslation()
@@ -85,7 +86,7 @@ const useEditDatasetMetadata = ({
       await toggleBuiltInStatus(enable)
       setBuiltInEnabled(enable)
       Toast.notify({
-        message: t('common.actionMsg.modifiedSuccessfully'),
+        message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }),
         type: 'success',
       })
     },

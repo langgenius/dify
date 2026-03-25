@@ -1,18 +1,19 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { NodeTracing } from '@/types/workflow'
 import {
   RiArrowRightSLine,
   RiCloseLine,
 } from '@remixicon/react'
-import { ArrowNarrowLeft } from '../../base/icons/src/vender/line/arrows'
-import TracingPanel from './tracing-panel'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Loop } from '@/app/components/base/icons/src/vender/workflow'
 import { cn } from '@/utils/classnames'
-import type { NodeTracing } from '@/types/workflow'
+import { ArrowNarrowLeft } from '../../base/icons/src/vender/line/arrows'
+import TracingPanel from './tracing-panel'
 
-const i18nPrefix = 'workflow.singleRun'
+const i18nPrefix = 'singleRun'
 
 type Props = {
   list: NodeTracing[][]
@@ -40,17 +41,17 @@ const LoopResultPanel: FC<Props> = ({
   const main = (
     <>
       <div className={cn(!noWrap && 'shrink-0 ', 'px-4 pt-3')}>
-        <div className='flex h-8 shrink-0 items-center justify-between'>
-          <div className='system-xl-semibold truncate text-text-primary'>
-            {t(`${i18nPrefix}.testRunLoop`)}
+        <div className="flex h-8 shrink-0 items-center justify-between">
+          <div className="system-xl-semibold truncate text-text-primary">
+            {t(`${i18nPrefix}.testRunLoop`, { ns: 'workflow' }) }
           </div>
-          <div className='ml-2 shrink-0 cursor-pointer p-1' onClick={onHide}>
-            <RiCloseLine className='h-4 w-4 text-text-tertiary' />
+          <div className="ml-2 shrink-0 cursor-pointer p-1" onClick={onHide}>
+            <RiCloseLine className="h-4 w-4 text-text-tertiary" />
           </div>
         </div>
-        <div className='flex cursor-pointer items-center space-x-1 py-2 text-text-accent-secondary' onClick={onBack}>
-          <ArrowNarrowLeft className='h-4 w-4' />
-          <div className='system-sm-medium'>{t(`${i18nPrefix}.back`)}</div>
+        <div className="flex cursor-pointer items-center space-x-1 py-2 text-text-accent-secondary" onClick={onBack}>
+          <ArrowNarrowLeft className="h-4 w-4" />
+          <div className="system-sm-medium">{t(`${i18nPrefix}.back`, { ns: 'workflow' })}</div>
         </div>
       </div>
       {/* List */}
@@ -66,30 +67,37 @@ const LoopResultPanel: FC<Props> = ({
               onClick={() => toggleLoop(index)}
             >
               <div className={cn('flex grow items-center gap-2')}>
-                <div className='flex h-4 w-4 shrink-0 items-center justify-center rounded-[5px] border-divider-subtle bg-util-colors-cyan-cyan-500'>
-                  <Loop className='h-3 w-3 text-text-primary-on-surface' />
+                <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded-[5px] border-divider-subtle bg-util-colors-cyan-cyan-500">
+                  <Loop className="h-3 w-3 text-text-primary-on-surface" />
                 </div>
-                <span className='system-sm-semibold-uppercase grow text-text-primary'>
-                  {t(`${i18nPrefix}.loop`)} {index + 1}
+                <span className="system-sm-semibold-uppercase grow text-text-primary">
+                  {t(`${i18nPrefix}.loop`, { ns: 'workflow' })}
+                  {' '}
+                  {index + 1}
                 </span>
                 <RiArrowRightSLine className={cn(
                   'h-4 w-4 shrink-0 text-text-tertiary transition-transform duration-200',
                   expandedLoops[index] && 'rotate-90',
-                )} />
+                )}
+                />
               </div>
             </div>
-            {expandedLoops[index] && <div
-              className="h-px grow bg-divider-subtle"
-            ></div>}
+            {expandedLoops[index] && (
+              <div
+                className="h-px grow bg-divider-subtle"
+              >
+              </div>
+            )}
             <div className={cn(
               'transition-all duration-200',
               expandedLoops[index]
                 ? 'opacity-100'
                 : 'max-h-0 overflow-hidden opacity-0',
-            )}>
+            )}
+            >
               <TracingPanel
                 list={loop}
-                className='bg-background-section-burn'
+                className="bg-background-section-burn"
               />
 
             </div>
@@ -109,16 +117,16 @@ const LoopResultPanel: FC<Props> = ({
 
   return (
     <div
-      className='absolute inset-0 z-10 rounded-2xl pt-10'
+      className="absolute inset-0 z-10 rounded-2xl pt-10"
       style={{
         backgroundColor: 'rgba(16, 24, 40, 0.20)',
       }}
       onClick={handleNotBubble}
     >
-      <div className='flex h-full flex-col rounded-2xl bg-components-panel-bg'>
+      <div className="flex h-full flex-col rounded-2xl bg-components-panel-bg">
         {main}
       </div>
-    </div >
+    </div>
   )
 }
 export default React.memo(LoopResultPanel)

@@ -1,3 +1,4 @@
+import { InputVarType } from '@/app/components/workflow/types'
 import {
   checkKey,
   checkKeys,
@@ -8,7 +9,6 @@ import {
   hasDuplicateStr,
   replaceSpaceWithUnderscoreInVarNameInput,
 } from './var'
-import { InputVarType } from '@/app/components/workflow/types'
 
 describe('Variable Utilities', () => {
   describe('checkKey', () => {

@@ -25,10 +25,11 @@ const DatasourceIcon: FC<DatasourceIconProps> = ({
         'flex items-center justify-center shadow-none',
         ICON_CONTAINER_CLASSNAME_SIZE_MAP[size],
         className,
-      )}
+      )
+    }
     >
       <div
-        className='h-full w-full shrink-0 rounded-md bg-cover bg-center'
+        className="h-full w-full shrink-0 rounded-md bg-cover bg-center"
         style={{
           backgroundImage: `url(${iconUrl})`,
         }}

@@ -18,6 +18,7 @@ from core.helper.provider_cache import NoOpProviderCredentialCache
 from core.mcp.auth.auth_flow import auth
 from core.mcp.auth_client import MCPClientWithAuthRetry
 from core.mcp.error import MCPAuthError, MCPError
+from core.mcp.types import Tool as MCPTool
 from core.tools.entities.api_entities import ToolProviderApiEntity
 from core.tools.utils.encryption import ProviderConfigEncrypter
 from models.tools import MCPToolProvider
@@ -319,8 +320,14 @@ class MCPToolManageService:
         except MCPError as e:
             raise ValueError(f"Failed to connect to MCP server: {e}")
 
-        # Update database with retrieved tools
-        db_provider.tools = json.dumps([tool.model_dump() for tool in tools])
+        # Update database with retrieved tools (ensure description is a non-null string)
+        tools_payload = []
+        for tool in tools:
+            data = tool.model_dump()
+            if data.get("description") is None:
+                data["description"] = ""
+            tools_payload.append(data)
+        db_provider.tools = json.dumps(tools_payload)
         db_provider.authed = True
         db_provider.updated_at = datetime.now()
         self._session.flush()
@@ -621,6 +628,21 @@ class MCPToolManageService:
         )
 
     @staticmethod
+    def reconnect_with_url(
+        *,
+        server_url: str,
+        headers: dict[str, str],
+        timeout: float | None,
+        sse_read_timeout: float | None,
+    ) -> ReconnectResult:
+        return MCPToolManageService._reconnect_with_url(
+            server_url=server_url,
+            headers=headers,
+            timeout=timeout,
+            sse_read_timeout=sse_read_timeout,
+        )
+
+    @staticmethod
     def _reconnect_with_url(
         *,
         server_url: str,
@@ -642,9 +664,16 @@ class MCPToolManageService:
                 sse_read_timeout=sse_read_timeout,
             ) as mcp_client:
                 tools = mcp_client.list_tools()
+                # Ensure tool descriptions are non-null in payload
+                tools_payload = []
+                for t in tools:
+                    d = t.model_dump()
+                    if d.get("description") is None:
+                        d["description"] = ""
+                    tools_payload.append(d)
                 return ReconnectResult(
                     authed=True,
-                    tools=json.dumps([tool.model_dump() for tool in tools]),
+                    tools=json.dumps(tools_payload),
                     encrypted_credentials=EMPTY_CREDENTIALS_JSON,
                 )
         except MCPAuthError:
@@ -653,7 +682,7 @@ class MCPToolManageService:
             raise ValueError(f"Failed to re-connect MCP server: {e}") from e
 
     def _build_tool_provider_response(
-        self, db_provider: MCPToolProvider, provider_entity: MCPProviderEntity, tools: list
+        self, db_provider: MCPToolProvider, provider_entity: MCPProviderEntity, tools: list[MCPTool]
     ) -> ToolProviderApiEntity:
         """Build API response for tool provider."""
         user = db_provider.load_user()
@@ -675,7 +704,7 @@ class MCPToolManageService:
             raise ValueError(f"MCP tool {server_url} already exists")
         if "unique_mcp_provider_server_identifier" in error_msg:
             raise ValueError(f"MCP tool {server_identifier} already exists")
-        raise
+        raise error
 
     def _is_valid_url(self, url: str) -> bool:
         """Validate URL format."""

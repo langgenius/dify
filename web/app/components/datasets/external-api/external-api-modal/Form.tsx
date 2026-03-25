@@ -1,11 +1,11 @@
-import React from 'react'
 import type { FC } from 'react'
-import { useTranslation } from 'react-i18next'
-import { RiBookOpenLine } from '@remixicon/react'
 import type { CreateExternalAPIReq, FormSchema } from '../declarations'
+import { RiBookOpenLine } from '@remixicon/react'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import { cn } from '@/utils/classnames'
 import { useDocLink } from '@/context/i18n'
+import { cn } from '@/utils/classnames'
 
 type FormProps = {
   className?: string
@@ -53,17 +53,17 @@ const Form: FC<FormProps> = React.memo(({
         <div className="flex w-full items-center justify-between">
           <label className={cn(fieldLabelClassName, 'system-sm-semibold text-text-secondary')} htmlFor={variable}>
             {label[i18n.language] || label.en_US}
-            {required && <span className='ml-1 text-red-500'>*</span>}
+            {required && <span className="ml-1 text-red-500">*</span>}
           </label>
           {variable === 'endpoint' && (
             <a
-              href={docLink('/guides/knowledge-base/connect-external-knowledge-base') || '/'}
-              target='_blank'
-              rel='noopener noreferrer'
-              className='body-xs-regular flex items-center text-text-accent'
+              href={docLink('/use-dify/knowledge/external-knowledge-api') || '/'}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="body-xs-regular flex items-center text-text-accent"
             >
-              <RiBookOpenLine className='mr-1 h-3 w-3 text-text-accent' />
-              {t('dataset.externalAPIPanelDocumentation')}
+              <RiBookOpenLine className="mr-1 h-3 w-3 text-text-accent" />
+              {t('externalAPIPanelDocumentation', { ns: 'dataset' })}
             </a>
           )}
         </div>

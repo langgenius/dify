@@ -1,10 +1,10 @@
 'use client'
-import { memo, useEffect, useMemo } from 'react'
-import { useAllTriggerPlugins } from '@/service/use-triggers'
-import TriggerPluginItem from './item'
 import type { BlockEnum } from '../../types'
 import type { TriggerDefaultValue, TriggerWithProvider } from '../types'
+import { memo, useEffect, useMemo } from 'react'
 import { useGetLanguage } from '@/context/i18n'
+import { useAllTriggerPlugins } from '@/service/use-triggers'
+import TriggerPluginItem from './item'
 
 type TriggerPluginListProps = {
   onSelect: (type: BlockEnum, trigger?: TriggerDefaultValue) => void

@@ -1,11 +1,11 @@
-import React from 'react'
 import { render, screen } from '@testing-library/react'
+import * as React from 'react'
 import WarningMask from './index'
 
 describe('WarningMask', () => {
   // Rendering of title, description, and footer content
   describe('Rendering', () => {
-    test('should display provided title, description, and footer node', () => {
+    it('should display provided title, description, and footer node', () => {
       const footer = <button type="button">Retry</button>
       // Arrange
       render(

@@ -1,20 +1,23 @@
-import React, { type FC, useCallback, useMemo, useRef, useState } from 'react'
+import type { FC } from 'react'
 import type { SchemaEnumType } from '../../../../types'
-import { ArrayType, Type } from '../../../../types'
+import type { AdvancedOptionsType } from './advanced-options'
 import type { TypeItem } from './type-selector'
-import TypeSelector from './type-selector'
-import RequiredSwitch from './required-switch'
+import { useUnmount } from 'ahooks'
+import * as React from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
+import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
+import { cn } from '@/utils/classnames'
+import { ArrayType, Type } from '../../../../types'
+import { useMittContext } from '../context'
+import { useVisualEditorStore } from '../store'
 import Actions from './actions'
 import AdvancedActions from './advanced-actions'
-import AdvancedOptions, { type AdvancedOptionsType } from './advanced-options'
-import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
-import { useVisualEditorStore } from '../store'
-import { useMittContext } from '../context'
-import { useUnmount } from 'ahooks'
-import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
+import AdvancedOptions from './advanced-options'
 import AutoWidthInput from './auto-width-input'
+import RequiredSwitch from './required-switch'
+import TypeSelector from './type-selector'
 
 export type EditData = {
   name: string
@@ -127,19 +130,22 @@ const EditCard: FC<EditCardProps> = ({
   }, [])
 
   const handlePropertyNameBlur = useCallback(() => {
-    if (isAdvancedEditing) return
+    if (isAdvancedEditing)
+      return
     emitPropertyNameChange()
   }, [isAdvancedEditing, emitPropertyNameChange])
 
   const handleTypeChange = useCallback((item: TypeItem) => {
     setCurrentFields(prev => ({ ...prev, type: item.value }))
-    if (isAdvancedEditing) return
+    if (isAdvancedEditing)
+      return
     emitPropertyTypeChange(item.value)
   }, [isAdvancedEditing, emitPropertyTypeChange])
 
   const toggleRequired = useCallback(() => {
     setCurrentFields(prev => ({ ...prev, required: !prev.required }))
-    if (isAdvancedEditing) return
+    if (isAdvancedEditing)
+      return
     emitPropertyRequiredToggle()
   }, [isAdvancedEditing, emitPropertyRequiredToggle])
 
@@ -148,7 +154,8 @@ const EditCard: FC<EditCardProps> = ({
   }, [])
 
   const handleDescriptionBlur = useCallback(() => {
-    if (isAdvancedEditing) return
+    if (isAdvancedEditing)
+      return
     emitPropertyOptionsChange({ description: currentFields.description, enum: currentFields.enum })
   }, [isAdvancedEditing, emitPropertyOptionsChange, currentFields])
 
@@ -165,7 +172,8 @@ const EditCard: FC<EditCardProps> = ({
         enumValue = stringArray
     }
     setCurrentFields(prev => ({ ...prev, enum: enumValue }))
-    if (isAdvancedEditing) return
+    if (isAdvancedEditing)
+      return
     emitPropertyOptionsChange({ description: currentFields.description, enum: enumValue })
   }, [isAdvancedEditing, emitPropertyOptionsChange, currentFields])
 
@@ -203,17 +211,18 @@ const EditCard: FC<EditCardProps> = ({
   }, [isAddingNewField, emit, setIsAddingNewField, setAdvancedEditing, backupFields])
 
   useUnmount(() => {
-    if (isAdvancedEditing || blurWithActions.current) return
+    if (isAdvancedEditing || blurWithActions.current)
+      return
     emitFieldChange()
   })
 
   return (
-    <div className='flex flex-col rounded-lg bg-components-panel-bg py-0.5 shadow-sm shadow-shadow-shadow-4'>
-      <div className='flex h-6 items-center pl-1 pr-0.5'>
-        <div className='flex grow items-center gap-x-1'>
+    <div className="flex flex-col rounded-lg bg-components-panel-bg py-0.5 shadow-sm shadow-shadow-shadow-4">
+      <div className="flex h-6 items-center pl-1 pr-0.5">
+        <div className="flex grow items-center gap-x-1">
           <AutoWidthInput
             value={currentFields.name}
-            placeholder={t('workflow.nodes.llm.jsonSchema.fieldNamePlaceholder')}
+            placeholder={t('nodes.llm.jsonSchema.fieldNamePlaceholder', { ns: 'workflow' })}
             minWidth={80}
             maxWidth={300}
             onChange={handlePropertyNameChange}
@@ -223,12 +232,12 @@ const EditCard: FC<EditCardProps> = ({
             currentValue={currentFields.type}
             items={maximumDepthReached ? MAXIMUM_DEPTH_TYPE_OPTIONS : TYPE_OPTIONS}
             onSelect={handleTypeChange}
-            popupClassName={'z-[1000]'}
+            popupClassName="z-[1000]"
           />
           {
             currentFields.required && (
-              <div className='system-2xs-medium-uppercase px-1 py-0.5 text-text-warning'>
-                {t('workflow.nodes.llm.jsonSchema.required')}
+              <div className="system-2xs-medium-uppercase px-1 py-0.5 text-text-warning">
+                {t('nodes.llm.jsonSchema.required', { ns: 'workflow' })}
               </div>
             )
           }
@@ -237,29 +246,31 @@ const EditCard: FC<EditCardProps> = ({
           defaultValue={currentFields.required}
           toggleRequired={toggleRequired}
         />
-        <Divider type='vertical' className='h-3' />
-        {isAdvancedEditing ? (
-          <AdvancedActions
-            isConfirmDisabled={currentFields.name === ''}
-            onCancel={handleCancel}
-            onConfirm={handleConfirm}
-          />
-        ) : (
-          <Actions
-            disableAddBtn={disableAddBtn}
-            onAddChildField={handleAddChildField}
-            onDelete={handleDelete}
-            onEdit={handleAdvancedEdit}
-          />
-        )}
+        <Divider type="vertical" className="h-3" />
+        {isAdvancedEditing
+          ? (
+              <AdvancedActions
+                isConfirmDisabled={currentFields.name === ''}
+                onCancel={handleCancel}
+                onConfirm={handleConfirm}
+              />
+            )
+          : (
+              <Actions
+                disableAddBtn={disableAddBtn}
+                onAddChildField={handleAddChildField}
+                onDelete={handleDelete}
+                onEdit={handleAdvancedEdit}
+              />
+            )}
       </div>
 
       {(fields.description || isAdvancedEditing) && (
         <div className={cn('flex', isAdvancedEditing ? 'p-2 pt-1' : 'px-2 pb-1')}>
           <input
             value={currentFields.description}
-            className='system-xs-regular placeholder:system-xs-regular h-4 w-full p-0 text-text-tertiary caret-[#295EFF] outline-none placeholder:text-text-placeholder'
-            placeholder={t('workflow.nodes.llm.jsonSchema.descriptionPlaceholder')}
+            className="system-xs-regular placeholder:system-xs-regular h-4 w-full p-0 text-text-tertiary caret-[#295EFF] outline-none placeholder:text-text-placeholder"
+            placeholder={t('nodes.llm.jsonSchema.descriptionPlaceholder', { ns: 'workflow' })}
             onChange={handleDescriptionChange}
             onBlur={handleDescriptionBlur}
             onKeyUp={e => e.key === 'Enter' && e.currentTarget.blur()}

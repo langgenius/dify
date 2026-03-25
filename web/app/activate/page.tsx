@@ -1,9 +1,9 @@
 'use client'
-import React from 'react'
+import * as React from 'react'
+import { useGlobalPublicStore } from '@/context/global-public-context'
+import { cn } from '@/utils/classnames'
 import Header from '../signin/_header'
 import ActivateForm from './activateForm'
-import { cn } from '@/utils/classnames'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 
 const Activate = () => {
   const { systemFeatures } = useGlobalPublicStore()
@@ -12,9 +12,15 @@ const Activate = () => {
       <div className={cn('flex w-full shrink-0 flex-col rounded-2xl border border-effects-highlight bg-background-default-subtle')}>
         <Header />
         <ActivateForm />
-        {!systemFeatures.branding.enabled && <div className='px-8 py-6 text-sm font-normal text-text-tertiary'>
-          © {new Date().getFullYear()} LangGenius, Inc. All rights reserved.
-        </div>}
+        {!systemFeatures.branding.enabled && (
+          <div className="px-8 py-6 text-sm font-normal text-text-tertiary">
+            ©
+            {' '}
+            {new Date().getFullYear()}
+            {' '}
+            LangGenius, Inc. All rights reserved.
+          </div>
+        )}
       </div>
     </div>
   )

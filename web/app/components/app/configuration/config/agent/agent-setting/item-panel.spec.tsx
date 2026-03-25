@@ -1,9 +1,9 @@
-import React from 'react'
 import { render, screen } from '@testing-library/react'
+import * as React from 'react'
 import ItemPanel from './item-panel'
 
 describe('AgentSetting/ItemPanel', () => {
-  test('should render icon, name, and children content', () => {
+  it('should render icon, name, and children content', () => {
     render(
       <ItemPanel
         className="custom"

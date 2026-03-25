@@ -1,15 +1,15 @@
+import type {
+  Node,
+  Var,
+} from '../../types'
+import { uniqBy } from 'es-toolkit/compat'
 import { useCallback } from 'react'
 import { useNodes } from 'reactflow'
-import { uniqBy } from 'lodash-es'
 import {
   useIsChatMode,
   useWorkflow,
   useWorkflowVariables,
 } from '../../hooks'
-import type {
-  Node,
-  Var,
-} from '../../types'
 import { AssignerNodeInputType, WriteMode } from './types'
 
 export const useGetAvailableVars = () => {

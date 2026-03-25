@@ -1,11 +1,14 @@
+from __future__ import annotations
+
 import dataclasses
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from typing import Any, Generic, TypeAlias, TypeVar, overload
 
 from configs import dify_config
-from core.file.models import File
-from core.variables.segments import (
+from dify_graph.file.models import File
+from dify_graph.nodes.variable_assigner.common.helpers import UpdatedVariable
+from dify_graph.variables.segments import (
     ArrayFileSegment,
     ArraySegment,
     BooleanSegment,
@@ -17,8 +20,7 @@ from core.variables.segments import (
     Segment,
     StringSegment,
 )
-from core.variables.utils import dumps_with_segments
-from core.workflow.nodes.variable_assigner.common.helpers import UpdatedVariable
+from dify_graph.variables.utils import dumps_with_segments
 
 _MAX_DEPTH = 100
 
@@ -106,7 +108,7 @@ class VariableTruncator(BaseTruncator):
         self._max_size_bytes = max_size_bytes
 
     @classmethod
-    def default(cls) -> "VariableTruncator":
+    def default(cls) -> VariableTruncator:
         return VariableTruncator(
             max_size_bytes=dify_config.WORKFLOW_VARIABLE_TRUNCATION_MAX_SIZE,
             array_element_limit=dify_config.WORKFLOW_VARIABLE_TRUNCATION_ARRAY_LENGTH,

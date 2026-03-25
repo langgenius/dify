@@ -1,15 +1,15 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import CustomizeModal from './index'
 import { AppModeEnum } from '@/types/app'
+import CustomizeModal from './index'
 
 // Mock useDocLink from context
-const mockDocLink = jest.fn((path?: string) => `https://docs.dify.ai/en-US${path || ''}`)
-jest.mock('@/context/i18n', () => ({
+const mockDocLink = vi.fn((path?: string) => `https://docs.dify.ai/en-US${path || ''}`)
+vi.mock('@/context/i18n', () => ({
   useDocLink: () => mockDocLink,
 }))
 
 // Mock window.open
-const mockWindowOpen = jest.fn()
+const mockWindowOpen = vi.fn()
 Object.defineProperty(window, 'open', {
   value: mockWindowOpen,
   writable: true,
@@ -18,14 +18,14 @@ Object.defineProperty(window, 'open', {
 describe('CustomizeModal', () => {
   const defaultProps = {
     isShow: true,
-    onClose: jest.fn(),
+    onClose: vi.fn(),
     api_base_url: 'https://api.example.com',
     appId: 'test-app-id-123',
     mode: AppModeEnum.CHAT,
   }
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   // Rendering tests - verify component renders correctly with various configurations
@@ -305,14 +305,14 @@ describe('CustomizeModal', () => {
       // Assert
       expect(mockWindowOpen).toHaveBeenCalledTimes(1)
       expect(mockWindowOpen).toHaveBeenCalledWith(
-        expect.stringContaining('/guides/application-publishing/developing-with-apis'),
+        expect.stringContaining('/use-dify/publish/developing-with-apis'),
         '_blank',
       )
     })
 
     it('should call onClose when modal close button is clicked', async () => {
       // Arrange
-      const onClose = jest.fn()
+      const onClose = vi.fn()
       const props = { ...defaultProps, onClose }
 
       // Act
@@ -323,14 +323,8 @@ describe('CustomizeModal', () => {
         expect(screen.getByText('appOverview.overview.appInfo.customize.title')).toBeInTheDocument()
       })
 
-      // Find the close button by navigating from the heading to the close icon
-      // The close icon is an SVG inside a sibling div of the title
-      const heading = screen.getByRole('heading', { name: /customize\.title/i })
-      const closeIcon = heading.parentElement!.querySelector('svg')
-
-      // Assert - closeIcon must exist for the test to be valid
-      expect(closeIcon).toBeInTheDocument()
-      fireEvent.click(closeIcon!)
+      const closeButton = screen.getByTestId('modal-close-button')
+      fireEvent.click(closeButton)
       expect(onClose).toHaveBeenCalledTimes(1)
     })
   })

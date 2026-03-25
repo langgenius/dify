@@ -1,8 +1,8 @@
-import React, { useMemo } from 'react'
+import * as React from 'react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/base/ui/select'
 import { languages } from '@/i18n-config/language'
-import { PortalSelect } from '@/app/components/base/select'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   currentModel: any
@@ -11,6 +11,8 @@ type Props = {
   onChange: (language: string, voice: string) => void
 }
 
+const supportedLanguages = languages.filter(item => item.supported)
+
 const TTSParamsPanel = ({
   currentModel,
   language,
@@ -18,11 +20,11 @@ const TTSParamsPanel = ({
   onChange,
 }: Props) => {
   const { t } = useTranslation()
-  const voiceList = useMemo(() => {
+  const voiceList = useMemo<Array<{ label: string, value: string }>>(() => {
     if (!currentModel)
       return []
-    return currentModel.model_properties.voices.map((item: { mode: any }) => ({
-      ...item,
+    return currentModel.model_properties.voices.map((item: { mode: string, name: string }) => ({
+      label: item.name,
       value: item.mode,
     }))
   }, [currentModel])
@@ -34,31 +36,61 @@ const TTSParamsPanel = ({
   }
   return (
     <>
-      <div className='mb-3'>
-        <div className='system-sm-semibold mb-1 flex items-center py-1 text-text-secondary'>
-          {t('appDebug.voice.voiceSettings.language')}
+      <div className="mb-3">
+        <div className="system-sm-semibold mb-1 flex items-center py-1 text-text-secondary">
+          {t('voice.voiceSettings.language', { ns: 'appDebug' })}
         </div>
-        <PortalSelect
-          triggerClassName='h-8'
-          popupClassName={cn('z-[1000]')}
-          popupInnerClassName={cn('w-[354px]')}
+        <Select
           value={language}
-          items={languages.filter(item => item.supported)}
-          onSelect={item => setLanguage(item.value as string)}
-        />
+          onValueChange={(value) => {
+            if (value == null)
+              return
+            setLanguage(value)
+          }}
+        >
+          <SelectTrigger
+            className="w-full"
+            data-testid="tts-language-select-trigger"
+            aria-label={t('voice.voiceSettings.language', { ns: 'appDebug' })}
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent popupClassName="w-[354px]">
+            {supportedLanguages.map(item => (
+              <SelectItem key={item.value} value={item.value}>
+                {item.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
-      <div className='mb-3'>
-        <div className='system-sm-semibold mb-1 flex items-center py-1 text-text-secondary'>
-          {t('appDebug.voice.voiceSettings.voice')}
+      <div className="mb-3">
+        <div className="system-sm-semibold mb-1 flex items-center py-1 text-text-secondary">
+          {t('voice.voiceSettings.voice', { ns: 'appDebug' })}
         </div>
-        <PortalSelect
-          triggerClassName='h-8'
-          popupClassName={cn('z-[1000]')}
-          popupInnerClassName={cn('w-[354px]')}
+        <Select
           value={voice}
-          items={voiceList}
-          onSelect={item => setVoice(item.value as string)}
-        />
+          onValueChange={(value) => {
+            if (value == null)
+              return
+            setVoice(value)
+          }}
+        >
+          <SelectTrigger
+            className="w-full"
+            data-testid="tts-voice-select-trigger"
+            aria-label={t('voice.voiceSettings.voice', { ns: 'appDebug' })}
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent popupClassName="w-[354px]">
+            {voiceList.map(item => (
+              <SelectItem key={item.value} value={item.value}>
+                {item.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
     </>
   )

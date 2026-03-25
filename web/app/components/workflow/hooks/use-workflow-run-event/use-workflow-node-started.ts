@@ -1,12 +1,12 @@
+import type { NodeStartedResponse } from '@/types/workflow'
+import { produce } from 'immer'
 import { useCallback } from 'react'
 import {
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
-import { produce } from 'immer'
-import type { NodeStartedResponse } from '@/types/workflow'
-import { NodeRunningStatus } from '@/app/components/workflow/types'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import { NodeRunningStatus } from '@/app/components/workflow/types'
 
 export const useWorkflowNodeStarted = () => {
   const store = useStoreApi()
@@ -16,8 +16,8 @@ export const useWorkflowNodeStarted = () => {
   const handleWorkflowNodeStarted = useCallback((
     params: NodeStartedResponse,
     containerParams: {
-      clientWidth: number,
-      clientHeight: number,
+      clientWidth: number
+      clientHeight: number
     },
   ) => {
     const { data } = params
@@ -33,12 +33,23 @@ export const useWorkflowNodeStarted = () => {
       transform,
     } = store.getState()
     const nodes = getNodes()
-    setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
-      draft.tracing!.push({
-        ...data,
-        status: NodeRunningStatus.Running,
-      })
-    }))
+    const currentIndex = workflowRunningData?.tracing?.findIndex(item => item.node_id === data.node_id)
+    if (currentIndex && currentIndex > -1) {
+      setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
+        draft.tracing![currentIndex] = {
+          ...data,
+          status: NodeRunningStatus.Running,
+        }
+      }))
+    }
+    else {
+      setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
+        draft.tracing!.push({
+          ...data,
+          status: NodeRunningStatus.Running,
+        })
+      }))
+    }
 
     const {
       setViewport,

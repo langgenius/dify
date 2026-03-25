@@ -1,12 +1,12 @@
 'use client'
 import type { FC, ReactNode } from 'react'
-import React from 'react'
 import {
   RiArrowDownSLine,
 } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
-import { cn } from '@/utils/classnames'
+import * as React from 'react'
 import Tooltip from '@/app/components/base/tooltip'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   className?: string
@@ -18,6 +18,7 @@ type Props = {
   operations?: React.JSX.Element
   inline?: boolean
   required?: boolean
+  warningDot?: boolean
 }
 
 const Field: FC<Props> = ({
@@ -30,6 +31,7 @@ const Field: FC<Props> = ({
   inline,
   supportFold,
   required,
+  warningDot,
 }) => {
   const [fold, {
     toggle: toggleFold,
@@ -38,27 +40,33 @@ const Field: FC<Props> = ({
     <div className={cn(className, inline && 'flex w-full items-center justify-between')}>
       <div
         onClick={() => supportFold && toggleFold()}
-        className={cn('flex items-center justify-between', supportFold && 'cursor-pointer')}>
-        <div className='flex h-6 items-center'>
-          <div className={cn(isSubTitle ? 'system-xs-medium-uppercase text-text-tertiary' : 'system-sm-semibold-uppercase text-text-secondary')}>
-            {title} {required && <span className='text-text-destructive'>*</span>}
+        className={cn('flex items-center justify-between', supportFold && 'cursor-pointer')}
+      >
+        <div className="flex h-6 items-center">
+          <div className={cn('relative', isSubTitle ? 'text-text-tertiary system-xs-medium-uppercase' : 'text-text-secondary system-sm-semibold-uppercase')}>
+            {warningDot && (
+              <span className="absolute -left-[9px] top-1/2 size-[5px] -translate-y-1/2 rounded-full bg-text-warning-secondary" />
+            )}
+            {title}
+            {' '}
+            {required && <span className="text-text-destructive">*</span>}
           </div>
-          {tooltip && (
+          {!!tooltip && (
             <Tooltip
               popupContent={tooltip}
-              popupClassName='ml-1'
-              triggerClassName='w-4 h-4 ml-1'
+              popupClassName="ml-1"
+              triggerClassName="w-4 h-4 ml-1"
             />
           )}
         </div>
-        <div className='flex'>
-          {operations && <div>{operations}</div>}
+        <div className="flex">
+          {!!operations && <div>{operations}</div>}
           {supportFold && (
-            <RiArrowDownSLine className='h-4 w-4 cursor-pointer text-text-tertiary transition-transform' style={{ transform: fold ? 'rotate(-90deg)' : 'rotate(0deg)' }} />
+            <RiArrowDownSLine className="h-4 w-4 cursor-pointer text-text-tertiary transition-transform" style={{ transform: fold ? 'rotate(-90deg)' : 'rotate(0deg)' }} />
           )}
         </div>
       </div>
-      {children && (!supportFold || (supportFold && !fold)) && <div className={cn(!inline && 'mt-1')}>{children}</div>}
+      {!!(children && (!supportFold || (supportFold && !fold))) && <div className={cn(!inline && 'mt-1')}>{children}</div>}
     </div>
   )
 }

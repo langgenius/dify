@@ -1,22 +1,22 @@
 import type { Dispatch, SetStateAction } from 'react'
-import {
-  memo,
-  useCallback,
-} from 'react'
-import { useTranslation } from 'react-i18next'
-import { RiArrowDownSLine } from '@remixicon/react'
-import Button from '@/app/components/base/button'
-import Indicator from '@/app/components/header/indicator'
-import Authorized from './authorized'
 import type {
   Credential,
   CustomModel,
   ModelProvider,
 } from '../declarations'
-import { ConfigurationMethodEnum, ModelModalModeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { cn } from '@/utils/classnames'
-import Tooltip from '@/app/components/base/tooltip'
+import { RiArrowDownSLine } from '@remixicon/react'
+import {
+  memo,
+  useCallback,
+} from 'react'
+import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
+import Button from '@/app/components/base/button'
+import Tooltip from '@/app/components/base/tooltip'
+import { ConfigurationMethodEnum, ModelModalModeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import Indicator from '@/app/components/header/indicator'
+import { cn } from '@/utils/classnames'
+import Authorized from './authorized'
 
 type SwitchCredentialInLoadBalancingProps = {
   provider: ModelProvider
@@ -55,7 +55,7 @@ const SwitchCredentialInLoadBalancing = ({
 
     const Item = (
       <Button
-        variant='secondary'
+        variant="secondary"
         className={cn(
           'shrink-0 space-x-1',
           (authRemoved || unavailable) && 'text-components-button-destructive-secondary-text',
@@ -65,33 +65,33 @@ const SwitchCredentialInLoadBalancing = ({
         {
           !empty && (
             <Indicator
-              className='mr-2'
+              className="mr-2"
               color={color as any}
             />
           )
         }
         {
-          authRemoved && t('common.modelProvider.auth.authRemoved')
+          authRemoved && t('modelProvider.auth.authRemoved', { ns: 'common' })
         }
         {
-          (unavailable || empty) && t('plugin.auth.credentialUnavailableInButton')
+          (unavailable || empty) && t('auth.credentialUnavailableInButton', { ns: 'plugin' })
         }
         {
           !authRemoved && !unavailable && !empty && customModelCredential?.credential_name
         }
         {
           currentCredential?.from_enterprise && (
-            <Badge className='ml-2'>Enterprise</Badge>
+            <Badge className="ml-2">Enterprise</Badge>
           )
         }
-        <RiArrowDownSLine className='h-4 w-4' />
+        <RiArrowDownSLine className="h-4 w-4" />
       </Button>
     )
     if (empty && notAllowCustomCredential) {
       return (
         <Tooltip
           asChild
-          popupContent={t('plugin.auth.credentialUnavailable')}
+          popupContent={t('auth.credentialUnavailable', { ns: 'plugin' })}
         >
           {Item}
         </Tooltip>
@@ -104,10 +104,12 @@ const SwitchCredentialInLoadBalancing = ({
     <Authorized
       provider={provider}
       configurationMethod={ConfigurationMethodEnum.customizableModel}
-      currentCustomConfigurationModelFixedFields={model ? {
-        __model_name: model.model,
-        __model_type: model.model_type,
-      } : undefined}
+      currentCustomConfigurationModelFixedFields={model
+        ? {
+            __model_name: model.model,
+            __model_type: model.model_type,
+          }
+        : undefined}
       authParams={{
         isModelCredential: true,
         mode: ModelModalModeEnum.configModelCredential,
@@ -118,17 +120,19 @@ const SwitchCredentialInLoadBalancing = ({
         {
           model,
           credentials: credentials || [],
-          selectedCredential: customModelCredential ? {
-            credential_id: customModelCredential?.credential_id || '',
-            credential_name: customModelCredential?.credential_name || '',
-          } : undefined,
+          selectedCredential: customModelCredential
+            ? {
+                credential_id: customModelCredential?.credential_id || '',
+                credential_name: customModelCredential?.credential_name || '',
+              }
+            : undefined,
         },
       ]}
       renderTrigger={renderTrigger}
       onItemClick={handleItemClick}
       enableAddModelCredential
       showItemSelectedIcon
-      popupTitle={t('common.modelProvider.auth.modelCredentials')}
+      popupTitle={t('modelProvider.auth.modelCredentials', { ns: 'common' })}
       triggerOnlyOpenModal={!credentials?.length}
     />
   )

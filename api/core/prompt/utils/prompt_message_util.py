@@ -1,7 +1,8 @@
 from collections.abc import Sequence
 from typing import Any, cast
 
-from core.model_runtime.entities import (
+from core.prompt.simple_prompt_transform import ModelMode
+from dify_graph.model_runtime.entities import (
     AssistantPromptMessage,
     AudioPromptMessageContent,
     ImagePromptMessageContent,
@@ -10,7 +11,6 @@ from core.model_runtime.entities import (
     PromptMessageRole,
     TextPromptMessageContent,
 )
-from core.prompt.simple_prompt_transform import ModelMode
 
 
 class PromptMessageUtil:

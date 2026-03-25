@@ -14,25 +14,25 @@ const RoleSelector = ({
   const options = [
     {
       key: 'Student',
-      value: t('education.form.schoolRole.option.student'),
+      value: t('form.schoolRole.option.student', { ns: 'education' }),
     },
     {
       key: 'Teacher',
-      value: t('education.form.schoolRole.option.teacher'),
+      value: t('form.schoolRole.option.teacher', { ns: 'education' }),
     },
     {
       key: 'School-Administrator',
-      value: t('education.form.schoolRole.option.administrator'),
+      value: t('form.schoolRole.option.administrator', { ns: 'education' }),
     },
   ]
 
   return (
-    <div className='flex'>
+    <div className="flex">
       {
         options.map(option => (
           <div
             key={option.key}
-            className='system-md-regular mr-6 flex h-5 cursor-pointer items-center text-text-primary'
+            className="system-md-regular mr-6 flex h-5 cursor-pointer items-center text-text-primary"
             onClick={() => onChange(option.key)}
           >
             <div

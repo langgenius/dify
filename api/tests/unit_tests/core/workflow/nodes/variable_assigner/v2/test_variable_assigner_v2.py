@@ -2,16 +2,16 @@ import time
 import uuid
 from uuid import uuid4
 
-from core.app.entities.app_invoke_entities import InvokeFrom
-from core.variables import ArrayStringVariable
-from core.workflow.entities import GraphInitParams
-from core.workflow.graph import Graph
-from core.workflow.nodes.node_factory import DifyNodeFactory
-from core.workflow.nodes.variable_assigner.v2 import VariableAssignerNode
-from core.workflow.nodes.variable_assigner.v2.enums import InputType, Operation
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
-from models.enums import UserFrom
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.workflow.node_factory import DifyNodeFactory
+from dify_graph.entities import GraphInitParams
+from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY
+from dify_graph.graph import Graph
+from dify_graph.nodes.variable_assigner.v2 import VariableAssignerNode
+from dify_graph.nodes.variable_assigner.v2.enums import InputType, Operation
+from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
+from dify_graph.variables import ArrayStringVariable
 
 DEFAULT_NODE_ID = "node_id"
 
@@ -85,13 +85,17 @@ def test_remove_first_from_array():
     }
 
     init_params = GraphInitParams(
-        tenant_id="1",
-        app_id="1",
         workflow_id="1",
         graph_config=graph_config,
-        user_id="1",
-        user_from=UserFrom.ACCOUNT,
-        invoke_from=InvokeFrom.DEBUGGER,
+        run_context={
+            DIFY_RUN_CONTEXT_KEY: {
+                "tenant_id": "1",
+                "app_id": "1",
+                "user_id": "1",
+                "user_from": UserFrom.ACCOUNT,
+                "invoke_from": InvokeFrom.DEBUGGER,
+            }
+        },
         call_depth=0,
     )
 
@@ -114,7 +118,7 @@ def test_remove_first_from_array():
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
     )
-    graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
+    graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
 
     node_config = {
         "id": "node_id",
@@ -169,13 +173,17 @@ def test_remove_last_from_array():
     }
 
     init_params = GraphInitParams(
-        tenant_id="1",
-        app_id="1",
         workflow_id="1",
         graph_config=graph_config,
-        user_id="1",
-        user_from=UserFrom.ACCOUNT,
-        invoke_from=InvokeFrom.DEBUGGER,
+        run_context={
+            DIFY_RUN_CONTEXT_KEY: {
+                "tenant_id": "1",
+                "app_id": "1",
+                "user_id": "1",
+                "user_from": UserFrom.ACCOUNT,
+                "invoke_from": InvokeFrom.DEBUGGER,
+            }
+        },
         call_depth=0,
     )
 
@@ -198,7 +206,7 @@ def test_remove_last_from_array():
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
     )
-    graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
+    graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
 
     node_config = {
         "id": "node_id",
@@ -250,13 +258,17 @@ def test_remove_first_from_empty_array():
     }
 
     init_params = GraphInitParams(
-        tenant_id="1",
-        app_id="1",
         workflow_id="1",
         graph_config=graph_config,
-        user_id="1",
-        user_from=UserFrom.ACCOUNT,
-        invoke_from=InvokeFrom.DEBUGGER,
+        run_context={
+            DIFY_RUN_CONTEXT_KEY: {
+                "tenant_id": "1",
+                "app_id": "1",
+                "user_id": "1",
+                "user_from": UserFrom.ACCOUNT,
+                "invoke_from": InvokeFrom.DEBUGGER,
+            }
+        },
         call_depth=0,
     )
 
@@ -279,7 +291,7 @@ def test_remove_first_from_empty_array():
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
     )
-    graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
+    graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
 
     node_config = {
         "id": "node_id",
@@ -331,13 +343,17 @@ def test_remove_last_from_empty_array():
     }
 
     init_params = GraphInitParams(
-        tenant_id="1",
-        app_id="1",
         workflow_id="1",
         graph_config=graph_config,
-        user_id="1",
-        user_from=UserFrom.ACCOUNT,
-        invoke_from=InvokeFrom.DEBUGGER,
+        run_context={
+            DIFY_RUN_CONTEXT_KEY: {
+                "tenant_id": "1",
+                "app_id": "1",
+                "user_id": "1",
+                "user_from": UserFrom.ACCOUNT,
+                "invoke_from": InvokeFrom.DEBUGGER,
+            }
+        },
         call_depth=0,
     )
 
@@ -360,7 +376,7 @@ def test_remove_last_from_empty_array():
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
     )
-    graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
+    graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
 
     node_config = {
         "id": "node_id",
@@ -390,3 +406,46 @@ def test_remove_last_from_empty_array():
     got = variable_pool.get(["conversation", conversation_variable.name])
     assert got is not None
     assert got.to_object() == []
+
+
+def test_node_factory_creates_variable_assigner_node():
+    graph_config = {
+        "edges": [],
+        "nodes": [
+            {
+                "data": {"type": "assigner", "version": "2", "title": "Variable Assigner", "items": []},
+                "id": "assigner",
+            },
+        ],
+    }
+
+    init_params = GraphInitParams(
+        workflow_id="1",
+        graph_config=graph_config,
+        run_context={
+            DIFY_RUN_CONTEXT_KEY: {
+                "tenant_id": "1",
+                "app_id": "1",
+                "user_id": "1",
+                "user_from": UserFrom.ACCOUNT,
+                "invoke_from": InvokeFrom.DEBUGGER,
+            }
+        },
+        call_depth=0,
+    )
+    variable_pool = VariablePool(
+        system_variables=SystemVariable(conversation_id="conversation_id"),
+        user_inputs={},
+        environment_variables=[],
+        conversation_variables=[],
+    )
+    graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+
+    node_factory = DifyNodeFactory(
+        graph_init_params=init_params,
+        graph_runtime_state=graph_runtime_state,
+    )
+
+    node = node_factory.create_node(graph_config["nodes"][0])
+
+    assert isinstance(node, VariableAssignerNode)

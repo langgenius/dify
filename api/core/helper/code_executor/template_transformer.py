@@ -5,13 +5,22 @@ from base64 import b64encode
 from collections.abc import Mapping
 from typing import Any
 
-from core.variables.utils import dumps_with_segments
+from dify_graph.variables.utils import dumps_with_segments
 
 
 class TemplateTransformer(ABC):
     _code_placeholder: str = "{{code}}"
     _inputs_placeholder: str = "{{inputs}}"
     _result_tag: str = "<<RESULT>>"
+
+    @classmethod
+    def serialize_code(cls, code: str) -> str:
+        """
+        Serialize template code to base64 to safely embed in generated script.
+        This prevents issues with special characters like quotes breaking the script.
+        """
+        code_bytes = code.encode("utf-8")
+        return b64encode(code_bytes).decode("utf-8")
 
     @classmethod
     def transform_caller(cls, code: str, inputs: Mapping[str, Any]) -> tuple[str, str]:
@@ -67,7 +76,7 @@ class TemplateTransformer(ABC):
         Post-process the result to convert scientific notation strings back to numbers
         """
 
-        def convert_scientific_notation(value):
+        def convert_scientific_notation(value: Any) -> Any:
             if isinstance(value, str):
                 # Check if the string looks like scientific notation
                 if re.match(r"^-?\d+\.?\d*e[+-]\d+$", value, re.IGNORECASE):
@@ -81,7 +90,7 @@ class TemplateTransformer(ABC):
                 return [convert_scientific_notation(v) for v in value]
             return value
 
-        return convert_scientific_notation(result)  # type: ignore[no-any-return]
+        return convert_scientific_notation(result)
 
     @classmethod
     @abstractmethod

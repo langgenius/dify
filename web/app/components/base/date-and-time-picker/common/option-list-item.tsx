@@ -1,4 +1,6 @@
-import React, { type FC, useEffect, useRef } from 'react'
+import type { FC } from 'react'
+import * as React from 'react'
+import { useEffect, useRef } from 'react'
 import { cn } from '@/utils/classnames'
 
 type OptionListItemProps = {

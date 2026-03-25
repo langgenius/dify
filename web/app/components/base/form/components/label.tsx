@@ -1,6 +1,6 @@
+import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
 import Tooltip from '../../tooltip'
-import { useTranslation } from 'react-i18next'
 
 export type LabelProps = {
   htmlFor: string
@@ -22,22 +22,22 @@ const Label = ({
   const { t } = useTranslation()
 
   return (
-    <div className='flex h-6 items-center'>
+    <div className="flex h-6 items-center">
       <label
-        data-testid='label'
+        data-testid="label"
         htmlFor={htmlFor}
         className={cn('system-sm-medium text-text-secondary', className)}
       >
         {label}
       </label>
-      {!isRequired && showOptional && <div className='system-xs-regular ml-1 text-text-tertiary'>{t('common.label.optional')}</div>}
-      {isRequired && <div className='system-xs-regular ml-1 text-text-destructive-secondary'>*</div>}
+      {!isRequired && showOptional && <div className="system-xs-regular ml-1 text-text-tertiary">{t('label.optional', { ns: 'common' })}</div>}
+      {isRequired && <div className="system-xs-regular ml-1 text-text-destructive-secondary">*</div>}
       {tooltip && (
         <Tooltip
           popupContent={
-            <div className='w-[200px]'>{tooltip}</div>
+            <div className="w-[200px]">{tooltip}</div>
           }
-          triggerClassName='ml-0.5 w-4 h-4'
+          triggerClassName="ml-0.5 w-4 h-4"
           triggerTestId={`${htmlFor}-tooltip`}
         />
       )}

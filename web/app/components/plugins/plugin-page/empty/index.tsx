@@ -1,19 +1,20 @@
 'use client'
-import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { MagicBox } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
+import { noop } from 'es-toolkit/function'
+import * as React from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
+import { Group } from '@/app/components/base/icons/src/vender/other'
 import { FileZip } from '@/app/components/base/icons/src/vender/solid/files'
 import { Github } from '@/app/components/base/icons/src/vender/solid/general'
+import { MagicBox } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import InstallFromGitHub from '@/app/components/plugins/install-plugin/install-from-github'
 import InstallFromLocalPackage from '@/app/components/plugins/install-plugin/install-from-local-package'
-import { usePluginPageContext } from '../context'
-import { Group } from '@/app/components/base/icons/src/vender/other'
-import Line from '../../marketplace/empty/line'
-import { useInstalledPluginList } from '@/service/use-plugins'
-import { useTranslation } from 'react-i18next'
 import { SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
-import { noop } from 'lodash-es'
 import { useGlobalPublicStore } from '@/context/global-public-context'
-import Button from '@/app/components/base/button'
+import { useInstalledPluginList } from '@/service/use-plugins'
+import Line from '../../marketplace/empty/line'
+import { usePluginPageContext } from '../context'
 
 type InstallMethod = {
   icon: React.FC<{ className?: string }>
@@ -41,63 +42,64 @@ const Empty = () => {
 
   const text = useMemo(() => {
     if (pluginList?.plugins.length === 0)
-      return t('plugin.list.noInstalled')
+      return t('list.noInstalled', { ns: 'plugin' })
     if (filters.categories.length > 0 || filters.tags.length > 0 || filters.searchQuery)
-      return t('plugin.list.notFound')
+      return t('list.notFound', { ns: 'plugin' })
   }, [pluginList?.plugins.length, t, filters.categories.length, filters.tags.length, filters.searchQuery])
 
   const [installMethods, setInstallMethods] = useState<InstallMethod[]>([])
   useEffect(() => {
     const methods = []
     if (enable_marketplace)
-      methods.push({ icon: MagicBox, text: t('plugin.source.marketplace'), action: 'marketplace' })
+      methods.push({ icon: MagicBox, text: t('source.marketplace', { ns: 'plugin' }), action: 'marketplace' })
 
     if (plugin_installation_permission.restrict_to_marketplace_only) {
       setInstallMethods(methods)
     }
     else {
-      methods.push({ icon: Github, text: t('plugin.source.github'), action: 'github' })
-      methods.push({ icon: FileZip, text: t('plugin.source.local'), action: 'local' })
+      methods.push({ icon: Github, text: t('source.github', { ns: 'plugin' }), action: 'github' })
+      methods.push({ icon: FileZip, text: t('source.local', { ns: 'plugin' }), action: 'local' })
       setInstallMethods(methods)
     }
   }, [plugin_installation_permission, enable_marketplace, t])
 
   return (
-    <div className='relative z-0 w-full grow'>
+    <div className="relative z-0 w-full grow">
       {/* skeleton */}
-      <div className='absolute top-0 z-10 grid h-full w-full grid-cols-2 gap-2 overflow-hidden px-12'>
+      <div className="absolute top-0 z-10 grid h-full w-full grid-cols-2 gap-2 overflow-hidden px-12">
         {Array.from({ length: 20 }).fill(0).map((_, i) => (
-          <div key={i} className='h-24 rounded-xl bg-components-card-bg' />
+          <div key={i} className="h-24 rounded-xl bg-components-card-bg" />
         ))}
       </div>
       {/* mask */}
-      <div className='absolute z-20 h-full w-full bg-gradient-to-b from-components-panel-bg-transparent to-components-panel-bg' />
-      <div className='relative z-30 flex h-full items-center justify-center'>
-        <div className='flex flex-col items-center gap-y-3'>
-          <div className='relative -z-10 flex size-14 items-center justify-center rounded-xl
-          border-[1px] border-dashed border-divider-deep bg-components-card-bg shadow-xl shadow-shadow-shadow-5'>
-            <Group className='h-5 w-5 text-text-tertiary' />
-            <Line className='absolute right-[-1px] top-1/2 -translate-y-1/2' />
-            <Line className='absolute left-[-1px] top-1/2 -translate-y-1/2' />
-            <Line className='absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 rotate-90' />
-            <Line className='absolute left-1/2 top-full -translate-x-1/2 -translate-y-1/2 rotate-90' />
+      <div className="absolute z-20 h-full w-full bg-gradient-to-b from-components-panel-bg-transparent to-components-panel-bg" />
+      <div className="relative z-30 flex h-full items-center justify-center">
+        <div className="flex flex-col items-center gap-y-3">
+          <div className="relative -z-10 flex size-14 items-center justify-center rounded-xl
+          border-[1px] border-dashed border-divider-deep bg-components-card-bg shadow-xl shadow-shadow-shadow-5"
+          >
+            <Group className="h-5 w-5 text-text-tertiary" />
+            <Line className="absolute right-[-1px] top-1/2 -translate-y-1/2" />
+            <Line className="absolute left-[-1px] top-1/2 -translate-y-1/2" />
+            <Line className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 rotate-90" />
+            <Line className="absolute left-1/2 top-full -translate-x-1/2 -translate-y-1/2 rotate-90" />
           </div>
-          <div className='system-md-regular text-text-tertiary'>
+          <div className="system-md-regular text-text-tertiary">
             {text}
           </div>
-          <div className='flex w-[236px] flex-col'>
+          <div className="flex w-[236px] flex-col">
             <input
-              type='file'
+              type="file"
               ref={fileInputRef}
               style={{ display: 'none' }}
               onChange={handleFileChange}
               accept={SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS}
             />
-            <div className='flex w-full flex-col gap-y-1'>
+            <div className="flex w-full flex-col gap-y-1">
               {installMethods.map(({ icon: Icon, text, action }) => (
                 <Button
                   key={action}
-                  className='justify-start gap-x-0.5 px-3'
+                  className="justify-start gap-x-0.5 px-3"
                   onClick={() => {
                     if (action === 'local')
                       fileInputRef.current?.click()
@@ -107,25 +109,27 @@ const Empty = () => {
                       setSelectedAction(action)
                   }}
                 >
-                  <Icon className='size-4' />
-                  <span className='px-0.5'>{text}</span>
+                  <Icon className="size-4" />
+                  <span className="px-0.5">{text}</span>
                 </Button>
               ))}
             </div>
           </div>
         </div>
-        {selectedAction === 'github' && <InstallFromGitHub
-          onSuccess={noop}
-          onClose={() => setSelectedAction(null)}
-        />}
-        {selectedAction === 'local' && selectedFile
-          && (<InstallFromLocalPackage
-            file={selectedFile}
-            onClose={() => setSelectedAction(null)}
+        {selectedAction === 'github' && (
+          <InstallFromGitHub
             onSuccess={noop}
+            onClose={() => setSelectedAction(null)}
           />
-          )
-        }
+        )}
+        {selectedAction === 'local' && selectedFile
+          && (
+            <InstallFromLocalPackage
+              file={selectedFile}
+              onClose={() => setSelectedAction(null)}
+              onSuccess={noop}
+            />
+          )}
       </div>
     </div>
   )

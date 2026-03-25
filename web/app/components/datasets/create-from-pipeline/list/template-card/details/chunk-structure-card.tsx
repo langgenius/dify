@@ -1,6 +1,6 @@
-import React from 'react'
-import { cn } from '@/utils/classnames'
 import type { Option } from './types'
+import * as React from 'react'
+import { cn } from '@/utils/classnames'
 import { EffectColor } from './types'
 
 const HEADER_EFFECT_MAP: Record<EffectColor, string> = {
@@ -32,28 +32,31 @@ const ChunkStructureCard = ({
     <div className={cn(
       'relative flex overflow-hidden rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-bg p-2 shadow-xs shadow-shadow-shadow-3',
       className,
-    )}>
+    )}
+    >
       <div className={cn(
         'absolute -left-1 -top-1 size-14 rounded-full blur-[80px]',
         `${HEADER_EFFECT_MAP[effectColor]}`,
-      )} />
-      <div className='p-1'>
+      )}
+      />
+      <div className="p-1">
         <div className={cn(
           'flex size-6 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-divider-subtle text-text-primary-on-surface shadow-md shadow-shadow-shadow-5',
           `${IconBackgroundColorMap[effectColor]}`,
-        )}>
+        )}
+        >
           {icon}
         </div>
       </div>
-      <div className='flex grow flex-col gap-y-0.5 py-px'>
-        <div className='flex items-center gap-x-1'>
-          <span className='system-sm-medium text-text-secondary'>
+      <div className="flex grow flex-col gap-y-0.5 py-px">
+        <div className="flex items-center gap-x-1">
+          <span className="system-sm-medium text-text-secondary">
             {title}
           </span>
         </div>
         {
           description && (
-            <div className='system-xs-regular text-text-tertiary'>
+            <div className="system-xs-regular text-text-tertiary">
               {description}
             </div>
           )

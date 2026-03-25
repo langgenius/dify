@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
-import { cn } from '@/utils/classnames'
 import { sleep } from '@/utils'
+import { cn } from '@/utils/classnames'
 
 type IProps = {
   placeholder?: string
@@ -31,7 +31,7 @@ const AutoHeightTextarea = (
     onKeyDown,
     onKeyUp,
   }: IProps & {
-    ref?: React.RefObject<HTMLTextAreaElement>;
+    ref?: React.RefObject<HTMLTextAreaElement>
   },
 ) => {
   // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -66,28 +66,33 @@ const AutoHeightTextarea = (
   }, [controlFocus])
 
   return (
-    (<div className={`relative ${wrapperClassName}`}>
-      <div className={cn(className, 'invisible overflow-y-auto whitespace-pre-wrap  break-all')} style={{
-        minHeight,
-        maxHeight,
-        paddingRight: (value && value.trim().length > 10000) ? 140 : 130,
-      }}>
-        {!value ? placeholder : value.replace(/\n$/, '\n ')}
+    (
+      <div className={`relative ${wrapperClassName}`}>
+        <div
+          className={cn(className, 'invisible overflow-y-auto whitespace-pre-wrap  break-all')}
+          style={{
+            minHeight,
+            maxHeight,
+            paddingRight: (value && value.trim().length > 10000) ? 140 : 130,
+          }}
+        >
+          {!value ? placeholder : value.replace(/\n$/, '\n ')}
+        </div>
+        <textarea
+          ref={ref}
+          autoFocus={autoFocus}
+          className={cn(className, 'absolute inset-0 resize-none overflow-auto')}
+          style={{
+            paddingRight: (value && value.trim().length > 10000) ? 140 : 130,
+          }}
+          placeholder={placeholder}
+          onChange={onChange}
+          onKeyDown={onKeyDown}
+          onKeyUp={onKeyUp}
+          value={value}
+        />
       </div>
-      <textarea
-        ref={ref}
-        autoFocus={autoFocus}
-        className={cn(className, 'absolute inset-0 resize-none overflow-auto')}
-        style={{
-          paddingRight: (value && value.trim().length > 10000) ? 140 : 130,
-        }}
-        placeholder={placeholder}
-        onChange={onChange}
-        onKeyDown={onKeyDown}
-        onKeyUp={onKeyUp}
-        value={value}
-      />
-    </div>)
+    )
   )
 }
 

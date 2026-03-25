@@ -1,4 +1,5 @@
-import React, { useCallback } from 'react'
+import * as React from 'react'
+import { useCallback } from 'react'
 import { cn } from '@/utils/classnames'
 
 type BreadcrumbItemProps = {
@@ -26,7 +27,7 @@ const BreadcrumbItem = ({
   return (
     <>
       <button
-        type='button'
+        type="button"
         className={cn(
           'max-w-full shrink truncate rounded-md px-[5px] py-1',
           isActive ? 'system-sm-medium text-text-secondary' : 'system-sm-regular text-text-tertiary',
@@ -38,7 +39,7 @@ const BreadcrumbItem = ({
       >
         {name}
       </button>
-      {showSeparator && <span className='system-xs-regular shrink-0 text-divider-deep'>/</span>}
+      {showSeparator && <span className="system-xs-regular shrink-0 text-divider-deep">/</span>}
     </>
   )
 }

@@ -3,9 +3,9 @@ from types import SimpleNamespace
 import pytest
 
 from core.app.apps.common.graph_runtime_state_support import GraphRuntimeStateSupport
-from core.workflow.runtime import GraphRuntimeState
-from core.workflow.runtime.variable_pool import VariablePool
-from core.workflow.system_variable import SystemVariable
+from dify_graph.runtime import GraphRuntimeState
+from dify_graph.runtime.variable_pool import VariablePool
+from dify_graph.system_variable import SystemVariable
 
 
 def _make_state(workflow_run_id: str | None) -> GraphRuntimeState:

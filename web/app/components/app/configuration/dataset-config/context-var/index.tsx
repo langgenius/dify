@@ -1,12 +1,12 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
-import { useTranslation } from 'react-i18next'
 import type { Props } from './var-picker'
-import VarPicker from './var-picker'
-import { cn } from '@/utils/classnames'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
 import { BracketsX } from '@/app/components/base/icons/src/vender/line/development'
 import Tooltip from '@/app/components/base/tooltip'
+import { cn } from '@/utils/classnames'
+import VarPicker from './var-picker'
 
 const ContextVar: FC<Props> = (props) => {
   const { t } = useTranslation()
@@ -15,17 +15,17 @@ const ContextVar: FC<Props> = (props) => {
   const notSetVar = !currItem
   return (
     <div className={cn(notSetVar ? 'rounded-bl-xl rounded-br-xl border-[#FEF0C7] bg-[#FEF0C7]' : 'border-components-panel-border-subtle', 'flex h-12 items-center justify-between border-t px-3 ')}>
-      <div className='flex shrink-0 items-center space-x-1'>
-        <div className='p-1'>
-          <BracketsX className='h-4 w-4 text-text-accent' />
+      <div className="flex shrink-0 items-center space-x-1">
+        <div className="p-1">
+          <BracketsX className="h-4 w-4 text-text-accent" />
         </div>
-        <div className='mr-1 text-sm font-medium text-text-secondary'>{t('appDebug.feature.dataSet.queryVariable.title')}</div>
+        <div className="mr-1 text-sm font-medium text-text-secondary">{t('feature.dataSet.queryVariable.title', { ns: 'appDebug' })}</div>
         <Tooltip
-          popupContent={
-            <div className='w-[180px]'>
-              {t('appDebug.feature.dataSet.queryVariable.tip')}
+          popupContent={(
+            <div className="w-[180px]">
+              {t('feature.dataSet.queryVariable.tip', { ns: 'appDebug' })}
             </div>
-          }
+          )}
         />
       </div>
 

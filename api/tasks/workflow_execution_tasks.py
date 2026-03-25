@@ -10,11 +10,10 @@ import logging
 
 from celery import shared_task
 from sqlalchemy import select
-from sqlalchemy.orm import sessionmaker
 
-from core.workflow.entities.workflow_execution import WorkflowExecution
-from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
-from extensions.ext_database import db
+from core.db.session_factory import session_factory
+from dify_graph.entities.workflow_execution import WorkflowExecution
+from dify_graph.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from models import CreatorUserRole, WorkflowRun
 from models.enums import WorkflowRunTriggeredFrom
 
@@ -46,10 +45,7 @@ def save_workflow_execution_task(
         True if successful, False otherwise
     """
     try:
-        # Create a new session for this task
-        session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
-
-        with session_factory() as session:
+        with session_factory.create_session() as session:
             # Deserialize execution data
             execution = WorkflowExecution.model_validate(execution_data)
 
@@ -98,13 +94,15 @@ def _create_workflow_run_from_execution(
     workflow_run.tenant_id = tenant_id
     workflow_run.app_id = app_id
     workflow_run.workflow_id = execution.workflow_id
-    workflow_run.type = execution.workflow_type.value
-    workflow_run.triggered_from = triggered_from.value
+    from models.workflow import WorkflowType as ModelWorkflowType
+
+    workflow_run.type = ModelWorkflowType(execution.workflow_type.value)
+    workflow_run.triggered_from = triggered_from
     workflow_run.version = execution.workflow_version
     json_converter = WorkflowRuntimeTypeConverter()
     workflow_run.graph = json.dumps(json_converter.to_json_encodable(execution.graph))
     workflow_run.inputs = json.dumps(json_converter.to_json_encodable(execution.inputs))
-    workflow_run.status = execution.status.value
+    workflow_run.status = execution.status
     workflow_run.outputs = (
         json.dumps(json_converter.to_json_encodable(execution.outputs)) if execution.outputs else "{}"
     )
@@ -112,7 +110,7 @@ def _create_workflow_run_from_execution(
     workflow_run.elapsed_time = execution.elapsed_time
     workflow_run.total_tokens = execution.total_tokens
     workflow_run.total_steps = execution.total_steps
-    workflow_run.created_by_role = creator_user_role.value
+    workflow_run.created_by_role = creator_user_role
     workflow_run.created_by = creator_user_id
     workflow_run.created_at = execution.started_at
     workflow_run.finished_at = execution.finished_at
@@ -125,7 +123,7 @@ def _update_workflow_run_from_execution(workflow_run: WorkflowRun, execution: Wo
     Update a WorkflowRun database model from a WorkflowExecution domain entity.
     """
     json_converter = WorkflowRuntimeTypeConverter()
-    workflow_run.status = execution.status.value
+    workflow_run.status = execution.status
     workflow_run.outputs = (
         json.dumps(json_converter.to_json_encodable(execution.outputs)) if execution.outputs else "{}"
     )

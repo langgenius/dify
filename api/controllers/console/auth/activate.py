@@ -7,9 +7,9 @@ from controllers.console import console_ns
 from controllers.console.error import AlreadyActivateError
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
-from libs.helper import EmailStr, extract_remote_ip, timezone
+from libs.helper import EmailStr, timezone
 from models import AccountStatus
-from services.account_service import AccountService, RegisterService
+from services.account_service import RegisterService
 
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
@@ -63,13 +63,19 @@ class ActivateCheckApi(Resource):
         args = ActivateCheckQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         workspaceId = args.workspace_id
-        reg_email = args.email
         token = args.token
 
-        invitation = RegisterService.get_invitation_if_token_valid(workspaceId, reg_email, token)
+        invitation = RegisterService.get_invitation_with_case_fallback(workspaceId, args.email, token)
         if invitation:
             data = invitation.get("data", {})
             tenant = invitation.get("tenant", None)
+
+            # Check workspace permission
+            if tenant:
+                from libs.workspace_permission import check_workspace_member_invite_permission
+
+                check_workspace_member_invite_permission(tenant.id)
+
             workspace_name = tenant.name if tenant else None
             workspace_id = tenant.id if tenant else None
             invitee_email = data.get("email") if data else None
@@ -93,7 +99,6 @@ class ActivateApi(Resource):
             "ActivationResponse",
             {
                 "result": fields.String(description="Operation result"),
-                "data": fields.Raw(description="Login token data"),
             },
         ),
     )
@@ -101,11 +106,12 @@ class ActivateApi(Resource):
     def post(self):
         args = ActivatePayload.model_validate(console_ns.payload)
 
-        invitation = RegisterService.get_invitation_if_token_valid(args.workspace_id, args.email, args.token)
+        normalized_request_email = args.email.lower() if args.email else None
+        invitation = RegisterService.get_invitation_with_case_fallback(args.workspace_id, args.email, args.token)
         if invitation is None:
             raise AlreadyActivateError()
 
-        RegisterService.revoke_token(args.workspace_id, args.email, args.token)
+        RegisterService.revoke_token(args.workspace_id, normalized_request_email, args.token)
 
         account = invitation["account"]
         account.name = args.name
@@ -117,6 +123,4 @@ class ActivateApi(Resource):
         account.initialized_at = naive_utc_now()
         db.session.commit()
 
-        token_pair = AccountService.login(account, ip_address=extract_remote_ip(request))
-
-        return {"result": "success", "data": token_pair.model_dump()}
+        return {"result": "success"}

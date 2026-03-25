@@ -1,6 +1,7 @@
-import React, { useCallback } from 'react'
-import { cn } from '@/utils/classnames'
 import type { WorkflowRunningData } from '@/app/components/workflow/types'
+import * as React from 'react'
+import { useCallback } from 'react'
+import { cn } from '@/utils/classnames'
 
 type TabProps = {
   isActive: boolean
@@ -17,7 +18,7 @@ const Tab = ({ isActive, label, value, workflowRunningData, onClick }: TabProps)
 
   return (
     <button
-      type='button'
+      type="button"
       className={cn(
         'system-sm-semibold-uppercase cursor-pointer border-b-2 border-transparent py-3 text-text-tertiary',
         isActive && 'border-util-colors-blue-brand-blue-brand-600 text-text-primary',

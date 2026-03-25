@@ -2,14 +2,14 @@ import {
   memo,
   useState,
 } from 'react'
-import { NoteTheme } from '../../types'
-import { THEME_MAP } from '../../constants'
-import { cn } from '@/utils/classnames'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import { cn } from '@/utils/classnames'
+import { THEME_MAP } from '../../constants'
+import { NoteTheme } from '../../types'
 
 export const COLOR_LIST = [
   {
@@ -58,29 +58,31 @@ const ColorPicker = ({
     <PortalToFollowElem
       open={open}
       onOpenChange={setOpen}
-      placement='top'
+      placement="top"
       offset={4}
     >
       <PortalToFollowElemTrigger onClick={() => setOpen(!open)}>
         <div className={cn(
           'flex h-8 w-8 cursor-pointer items-center justify-center rounded-md hover:bg-black/5',
           open && 'bg-black/5',
-        )}>
+        )}
+        >
           <div
             className={cn(
               'h-4 w-4 rounded-full border border-black/5',
               THEME_MAP[theme].title,
             )}
-          ></div>
+          >
+          </div>
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent>
-        <div className='grid grid-cols-3 grid-rows-2 gap-0.5 rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-lg'>
+        <div className="grid grid-cols-3 grid-rows-2 gap-0.5 rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-lg">
           {
             COLOR_LIST.map(color => (
               <div
                 key={color.key}
-                className='group relative flex h-8 w-8 cursor-pointer items-center justify-center rounded-md'
+                className="group relative flex h-8 w-8 cursor-pointer items-center justify-center rounded-md"
                 onClick={(e) => {
                   e.stopPropagation()
                   onThemeChange(color.key)
@@ -92,13 +94,15 @@ const ColorPicker = ({
                     'absolute left-1/2 top-1/2 hidden h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-[1.5px] group-hover:block',
                     color.outer,
                   )}
-                ></div>
+                >
+                </div>
                 <div
                   className={cn(
                     'absolute left-1/2 top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border border-black/5',
                     color.inner,
                   )}
-                ></div>
+                >
+                </div>
               </div>
             ))
           }

@@ -1,4 +1,4 @@
-import { get, post } from './base'
+import type { GeneratorType } from '@/app/components/app/configuration/config/automatic/types'
 import type {
   ApiKeysListResponse,
   AppDailyConversationsResponse,
@@ -10,14 +10,18 @@ import type {
   AppVoicesListResponse,
   WorkflowDailyConversationsResponse,
 } from '@/models/app'
-import type { App, AppModeEnum } from '@/types/app'
-import { useInvalid } from './use-base'
+import type { App } from '@/types/app'
 import {
+  keepPreviousData,
   useInfiniteQuery,
+  useMutation,
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query'
-import type { GeneratorType } from '@/app/components/app/configuration/config/automatic/types'
+import { consoleClient, consoleQuery } from '@/service/client'
+import { AppModeEnum } from '@/types/app'
+import { get, post } from './base'
+import { useInvalid } from './use-base'
 
 const NAME_SPACE = 'apps'
 
@@ -35,6 +39,16 @@ type DateRangeParams = {
   end?: string
 }
 
+// Allowed app modes for filtering; defined at module scope to avoid re-creating on every call
+const allowedModes = new Set<AppModeEnum | 'all'>([
+  'all',
+  AppModeEnum.WORKFLOW,
+  AppModeEnum.ADVANCED_CHAT,
+  AppModeEnum.CHAT,
+  AppModeEnum.AGENT_CHAT,
+  AppModeEnum.COMPLETION,
+])
+
 const normalizeAppListParams = (params: AppListParams) => {
   const {
     page = 1,
@@ -45,11 +59,13 @@ const normalizeAppListParams = (params: AppListParams) => {
     is_created_by_me,
   } = params
 
+  const safeMode = allowedModes.has((mode as any)) ? mode : undefined
+
   return {
     page,
     limit,
     name,
-    ...(mode && mode !== 'all' ? { mode } : {}),
+    ...(safeMode && safeMode !== 'all' ? { mode: safeMode } : {}),
     ...(tag_ids?.length ? { tag_ids } : {}),
     ...(is_created_by_me ? { is_created_by_me } : {}),
   }
@@ -107,6 +123,7 @@ export const useInfiniteAppList = (params: AppListParams, options?: { enabled?: 
     queryFn: ({ pageParam = normalizedParams.page }) => get<AppListResponse>('/apps', { params: { ...normalizedParams, page: pageParam } }),
     getNextPageParam: lastPage => lastPage.has_more ? lastPage.page + 1 : undefined,
     initialPageParam: normalizedParams.page,
+    placeholderData: keepPreviousData,
     ...options,
   })
 }
@@ -118,6 +135,29 @@ export const useInvalidateAppList = () => {
       queryKey: [NAME_SPACE, 'list'],
     })
   }
+}
+
+export const useDeleteAppMutation = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationKey: consoleQuery.apps.deleteApp.mutationKey(),
+    mutationFn: (appId: string) => {
+      return consoleClient.apps.deleteApp({
+        params: { appId },
+      })
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: [NAME_SPACE, 'list'],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: useAppFullListKey,
+        }),
+      ])
+    },
+  })
 }
 
 const useAppStatisticsQuery = <T>(metric: string, appId: string, params?: DateRangeParams) => {

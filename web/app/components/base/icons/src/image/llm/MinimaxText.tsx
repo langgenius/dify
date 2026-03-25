@@ -11,7 +11,7 @@ const Icon = (
     className,
     ...restProps
   }: React.DetailedHTMLProps<React.HTMLAttributes<HTMLSpanElement>, HTMLSpanElement> & {
-    ref?: React.RefObject<HTMLSpanElement>;
+    ref?: React.RefObject<HTMLSpanElement>
   },
 ) => <span className={cn(s.wrapper, className)} {...restProps} ref={ref} />
 

@@ -1,7 +1,7 @@
-import React from 'react'
 import type { Tag } from '../../../hooks'
-import { cn } from '@/utils/classnames'
 import { RiCloseCircleFill, RiPriceTag3Line } from '@remixicon/react'
+import * as React from 'react'
+import { cn } from '@/utils/classnames'
 
 type ToolSelectorTriggerProps = {
   selectedTagsLength: number
@@ -26,19 +26,20 @@ const ToolSelectorTrigger = ({
       open && !selectedTagsLength && 'bg-state-base-hover',
     )}
     >
-      <div className='p-0.5'>
+      <div className="p-0.5">
         <RiPriceTag3Line className={cn('size-4', !!selectedTagsLength && 'text-text-secondary')} />
       </div>
       {
         !!selectedTagsLength && (
-          <div className='system-sm-medium flex items-center gap-x-0.5 px-0.5 py-1'>
-            <span className='text-text-secondary'>
+          <div className="system-sm-medium flex items-center gap-x-0.5 px-0.5 py-1">
+            <span className="text-text-secondary">
               {tags.map(tag => tagsMap[tag].label).slice(0, 2).join(',')}
             </span>
             {
               selectedTagsLength > 2 && (
-                <div className='system-xs-medium text-text-tertiary'>
-                  +{selectedTagsLength - 2}
+                <div className="system-xs-medium text-text-tertiary">
+                  +
+                  {selectedTagsLength - 2}
                 </div>
               )
             }
@@ -48,7 +49,7 @@ const ToolSelectorTrigger = ({
       {
         !!selectedTagsLength && (
           <RiCloseCircleFill
-            className='size-4 text-text-quaternary'
+            className="size-4 text-text-quaternary"
             onClick={(e) => {
               e.stopPropagation()
               onTagsChange([])

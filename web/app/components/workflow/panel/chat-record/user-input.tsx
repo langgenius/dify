@@ -1,14 +1,25 @@
+import { RiArrowDownSLine } from '@remixicon/react'
 import {
   memo,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiArrowDownSLine } from '@remixicon/react'
 
-const UserInput = () => {
+type UserInputVariable = {
+  variable: string
+}
+
+type UserInputProps = {
+  variables?: UserInputVariable[]
+  initialExpanded?: boolean
+}
+
+const UserInput = ({
+  variables = [],
+  initialExpanded = true,
+}: UserInputProps) => {
   const { t } = useTranslation()
-  const [expanded, setExpanded] = useState(true)
-  const variables: any = []
+  const [expanded, setExpanded] = useState(initialExpanded)
 
   if (!variables.length)
     return null
@@ -30,17 +41,17 @@ const UserInput = () => {
         <RiArrowDownSLine
           className={`mr-1 h-3 w-3 ${!expanded ? '-rotate-90 text-text-accent' : 'text-text-tertiary'}`}
         />
-        {t('workflow.panel.userInputField').toLocaleUpperCase()}
+        {t('panel.userInputField', { ns: 'workflow' }).toLocaleUpperCase()}
       </div>
-      <div className='px-2 pb-3 pt-1'>
+      <div className="px-2 pb-3 pt-1">
         {
           expanded && (
-            <div className='py-2 text-[13px] text-text-primary'>
+            <div className="py-2 text-[13px] text-text-primary">
               {
                 variables.map((variable: any) => (
                   <div
                     key={variable.variable}
-                    className='mb-2 last-of-type:mb-0'
+                    className="mb-2 last-of-type:mb-0"
                   >
                   </div>
                 ))

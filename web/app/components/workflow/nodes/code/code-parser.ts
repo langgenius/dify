@@ -1,5 +1,5 @@
-import { VarType } from '../../types'
 import type { OutputVar } from './types'
+import { VarType } from '../../types'
 import { CodeLanguage } from './types'
 
 export const extractFunctionParams = (code: string, language: CodeLanguage) => {
@@ -31,7 +31,7 @@ export const extractReturnType = (code: string, language: CodeLanguage): OutputV
   if (returnIndex === -1)
     return {}
 
-  // return から始まる部分文字列を取得
+  // Extract the substring starting with 'return'.
   const codeAfterReturn = codeWithoutComments.slice(returnIndex)
 
   let bracketCount = 0
@@ -68,7 +68,7 @@ export const extractReturnType = (code: string, language: CodeLanguage): OutputV
 
   const result: OutputVar = {}
 
-  const keyRegex = /['"]?(\w+)['"]?\s*:(?![^{]*})/g
+  const keyRegex = /['"]?(\w+)['"]?\s*:(?![^{]*\})/g
   const matches = returnContent.matchAll(keyRegex)
 
   for (const match of matches) {

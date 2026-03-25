@@ -1,6 +1,6 @@
 """Tests for workflow pause related enums and constants."""
 
-from core.workflow.enums import (
+from dify_graph.enums import (
     WorkflowExecutionStatus,
 )
 
@@ -30,3 +30,12 @@ class TestWorkflowExecutionStatus:
 
         for status in non_ended_statuses:
             assert not status.is_ended(), f"{status} should not be considered ended"
+
+    def test_ended_values(self):
+        """Test ended_values returns the expected status values."""
+        assert set(WorkflowExecutionStatus.ended_values()) == {
+            WorkflowExecutionStatus.SUCCEEDED.value,
+            WorkflowExecutionStatus.FAILED.value,
+            WorkflowExecutionStatus.PARTIAL_SUCCEEDED.value,
+            WorkflowExecutionStatus.STOPPED.value,
+        }

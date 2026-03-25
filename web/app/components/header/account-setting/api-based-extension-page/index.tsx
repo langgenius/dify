@@ -1,12 +1,12 @@
-import { useTranslation } from 'react-i18next'
 import {
   RiAddLine,
 } from '@remixicon/react'
-import Item from './item'
-import Empty from './empty'
+import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { useModalContext } from '@/context/modal-context'
 import { useApiBasedExtensions } from '@/service/use-common'
+import Empty from './empty'
+import Item from './item'
 
 const ApiBasedExtensionPage = () => {
   const { t } = useTranslation()
@@ -39,12 +39,12 @@ const ApiBasedExtensionPage = () => {
         )
       }
       <Button
-        variant='secondary'
-        className='w-full'
+        variant="secondary"
+        className="w-full"
         onClick={handleOpenApiBasedExtensionModal}
       >
-        <RiAddLine className='mr-1 h-4 w-4' />
-        {t('common.apiBasedExtension.add')}
+        <RiAddLine className="mr-1 h-4 w-4" />
+        {t('apiBasedExtension.add', { ns: 'common' })}
       </Button>
     </div>
   )

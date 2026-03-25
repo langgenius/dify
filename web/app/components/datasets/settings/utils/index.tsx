@@ -1,4 +1,5 @@
-import { type DefaultModel, type Model, ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { DefaultModel, Model } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { IndexingType } from '../../create/step-two'
 
 type ShowMultiModalTipProps = {

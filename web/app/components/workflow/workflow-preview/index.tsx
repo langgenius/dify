@@ -1,49 +1,49 @@
 'use client'
 
-import {
-  useCallback,
-  useState,
-} from 'react'
-import ReactFlow, {
-  Background,
-  MiniMap,
-  ReactFlowProvider,
-  SelectionMode,
-  applyEdgeChanges,
-  applyNodeChanges,
-} from 'reactflow'
 import type {
   EdgeChange,
   NodeChange,
   Viewport,
 } from 'reactflow'
-import 'reactflow/dist/style.css'
-import '../style.css'
-import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
-import { CUSTOM_LOOP_START_NODE } from '@/app/components/workflow/nodes/loop-start/constants'
-import { CUSTOM_SIMPLE_NODE } from '@/app/components/workflow/simple-node/constants'
-import CustomConnectionLine from '@/app/components/workflow/custom-connection-line'
+import type {
+  Edge,
+  Node,
+} from '@/app/components/workflow/types'
+import {
+  useCallback,
+  useState,
+} from 'react'
+import ReactFlow, {
+  applyEdgeChanges,
+  applyNodeChanges,
+  Background,
+  MiniMap,
+  ReactFlowProvider,
+  SelectionMode,
+} from 'reactflow'
 import {
   CUSTOM_EDGE,
   CUSTOM_NODE,
   ITERATION_CHILDREN_Z_INDEX,
 } from '@/app/components/workflow/constants'
-import { cn } from '@/utils/classnames'
+import CustomConnectionLine from '@/app/components/workflow/custom-connection-line'
+import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
+import { CUSTOM_LOOP_START_NODE } from '@/app/components/workflow/nodes/loop-start/constants'
+import { CUSTOM_NOTE_NODE } from '@/app/components/workflow/note-node/constants'
+import { CUSTOM_SIMPLE_NODE } from '@/app/components/workflow/simple-node/constants'
 import {
   initialEdges,
   initialNodes,
 } from '@/app/components/workflow/utils/workflow-init'
-import type {
-  Edge,
-  Node,
-} from '@/app/components/workflow/types'
-import { CUSTOM_NOTE_NODE } from '@/app/components/workflow/note-node/constants'
-import CustomNode from './components/nodes'
+import { cn } from '@/utils/classnames'
 import CustomEdge from './components/custom-edge'
-import ZoomInOut from './components/zoom-in-out'
+import CustomNode from './components/nodes'
 import IterationStartNode from './components/nodes/iteration-start'
 import LoopStartNode from './components/nodes/loop-start'
 import CustomNoteNode from './components/note-node'
+import ZoomInOut from './components/zoom-in-out'
+import 'reactflow/dist/style.css'
+import '../style.css'
 
 const nodeTypes = {
   [CUSTOM_NODE]: CustomNode,
@@ -61,12 +61,14 @@ type WorkflowPreviewProps = {
   edges: Edge[]
   viewport: Viewport
   className?: string
+  miniMapToRight?: boolean
 }
 const WorkflowPreview = ({
   nodes,
   edges,
   viewport,
   className,
+  miniMapToRight,
 }: WorkflowPreviewProps) => {
   const [nodesData, setNodesData] = useState(() => initialNodes(nodes, edges))
   const [edgesData, setEdgesData] = useState(() => initialEdges(edges, nodes))
@@ -82,7 +84,7 @@ const WorkflowPreview = ({
 
   return (
     <div
-      id='workflow-container'
+      id="workflow-container"
       className={cn(
         'relative h-full w-full',
         className,
@@ -96,11 +98,10 @@ const WorkflowPreview = ({
             width: 102,
             height: 72,
           }}
-          maskColor='var(--color-workflow-minimap-bg)'
-          className='!absolute !bottom-14 !left-4 z-[9] !m-0 !h-[72px] !w-[102px] !rounded-lg !border-[0.5px]
-          !border-divider-subtle !bg-background-default-subtle !shadow-md !shadow-shadow-shadow-5'
+          maskColor="var(--color-workflow-minimap-bg)"
+          className={cn('!absolute !bottom-14 z-[9] !m-0 !h-[72px] !w-[102px] !rounded-lg !border-[0.5px] !border-divider-subtle !bg-background-default-subtle !shadow-md !shadow-shadow-shadow-5', miniMapToRight ? '!right-4' : '!left-4')}
         />
-        <div className='absolute bottom-4 left-4 z-[9] mt-1 flex items-center gap-2'>
+        <div className="absolute bottom-4 left-4 z-[9] mt-1 flex items-center gap-2">
           <ZoomInOut />
         </div>
       </>
@@ -128,8 +129,8 @@ const WorkflowPreview = ({
         <Background
           gap={[14, 14]}
           size={2}
-          className='bg-workflow-canvas-workflow-bg'
-          color='var(--color-workflow-canvas-workflow-dot-color)'
+          className="bg-workflow-canvas-workflow-bg"
+          color="var(--color-workflow-canvas-workflow-dot-color)"
         />
       </ReactFlow>
     </div>

@@ -1,8 +1,8 @@
-import Toast, { type IToastProps } from '@/app/components/base/toast'
+import type { GitHubRepoReleaseResponse } from '../types'
+import { toast } from '@/app/components/base/ui/toast'
+import { GITHUB_ACCESS_TOKEN } from '@/config'
 import { uploadGitHub } from '@/service/plugins'
 import { compareVersion, getLatestVersion } from '@/utils/semver'
-import type { GitHubRepoReleaseResponse } from '../types'
-import { GITHUB_ACCESS_TOKEN } from '@/config'
 
 const formatReleases = (releases: any) => {
   return releases.map((release: any) => ({
@@ -20,7 +20,8 @@ export const useGitHubReleases = () => {
       if (!GITHUB_ACCESS_TOKEN) {
         // Fetch releases without authentication from client
         const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/releases`)
-        if (!res.ok) throw new Error('Failed to fetch repository releases')
+        if (!res.ok)
+          throw new Error('Failed to fetch repository releases')
         const data = await res.json()
         return formatReleases(data)
       }
@@ -28,22 +29,17 @@ export const useGitHubReleases = () => {
         // Fetch releases with authentication from server
         const res = await fetch(`/repos/${owner}/${repo}/releases`)
         const bodyJson = await res.json()
-        if (bodyJson.status !== 200) throw new Error(bodyJson.data.message)
+        if (bodyJson.status !== 200)
+          throw new Error(bodyJson.data.message)
         return formatReleases(bodyJson.data)
       }
     }
     catch (error) {
       if (error instanceof Error) {
-        Toast.notify({
-          type: 'error',
-          message: error.message,
-        })
+        toast.error(error.message)
       }
       else {
-        Toast.notify({
-          type: 'error',
-          message: 'Failed to fetch repository releases',
-        })
+        toast.error('Failed to fetch repository releases')
       }
       return []
     }
@@ -51,7 +47,7 @@ export const useGitHubReleases = () => {
 
   const checkForUpdates = (fetchedReleases: GitHubRepoReleaseResponse[], currentVersion: string) => {
     let needUpdate = false
-    const toastProps: IToastProps = {
+    const toastProps: { type?: 'success' | 'error' | 'info' | 'warning', message: string } = {
       type: 'info',
       message: 'No new version available',
     }
@@ -83,7 +79,7 @@ export const useGitHubUpload = () => {
     repoUrl: string,
     selectedVersion: string,
     selectedPackage: string,
-    onSuccess?: (GitHubPackage: { manifest: any; unique_identifier: string }) => void,
+    onSuccess?: (GitHubPackage: { manifest: any, unique_identifier: string }) => void,
   ) => {
     try {
       const response = await uploadGitHub(repoUrl, selectedVersion, selectedPackage)
@@ -91,14 +87,12 @@ export const useGitHubUpload = () => {
         manifest: response.manifest,
         unique_identifier: response.unique_identifier,
       }
-      if (onSuccess) onSuccess(GitHubPackage)
+      if (onSuccess)
+        onSuccess(GitHubPackage)
       return GitHubPackage
     }
     catch (error) {
-      Toast.notify({
-        type: 'error',
-        message: 'Error uploading package',
-      })
+      toast.error('Error uploading package')
       throw error
     }
   }

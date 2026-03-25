@@ -1,7 +1,7 @@
 import logging
 from typing import Any
 
-from flask_restx import marshal, reqparse
+from flask_restx import marshal
 from pydantic import BaseModel, Field
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
@@ -19,11 +19,12 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
-from core.model_runtime.errors.invoke import InvokeError
+from dify_graph.model_runtime.errors.invoke import InvokeError
 from fields.hit_testing_fields import hit_testing_record_fields
 from libs.login import current_user
 from models.account import Account
 from services.dataset_service import DatasetService
+from services.entities.knowledge_entities.knowledge_entities import RetrievalModel
 from services.hit_testing_service import HitTestingService
 
 logger = logging.getLogger(__name__)
@@ -31,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 class HitTestingPayload(BaseModel):
     query: str = Field(max_length=250)
-    retrieval_model: dict[str, Any] | None = None
+    retrieval_model: RetrievalModel | None = None
     external_retrieval_model: dict[str, Any] | None = None
     attachment_ids: list[str] | None = None
 
@@ -56,15 +57,10 @@ class DatasetsHitTestingBase:
         HitTestingService.hit_testing_args_check(args)
 
     @staticmethod
-    def parse_args():
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("query", type=str, required=False, location="json")
-            .add_argument("attachment_ids", type=list, required=False, location="json")
-            .add_argument("retrieval_model", type=dict, required=False, location="json")
-            .add_argument("external_retrieval_model", type=dict, required=False, location="json")
-        )
-        return parser.parse_args()
+    def parse_args(payload: dict[str, Any]) -> dict[str, Any]:
+        """Validate and return hit-testing arguments from an incoming payload."""
+        hit_testing_payload = HitTestingPayload.model_validate(payload or {})
+        return hit_testing_payload.model_dump(exclude_none=True)
 
     @staticmethod
     def perform_hit_testing(dataset, args):

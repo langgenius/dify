@@ -1,26 +1,26 @@
 {
-	"icon": {
-		"type": "element",
-		"isRootNode": true,
-		"name": "svg",
-		"attributes": {
-			"width": "14",
-			"height": "14",
-			"viewBox": "0 0 14 14",
-			"fill": "none",
-			"xmlns": "http://www.w3.org/2000/svg"
-		},
-		"children": [
-			{
-				"type": "element",
-				"name": "path",
-				"attributes": {
-					"d": "M7.58325 1.75L7.58314 5.98908L11.2549 3.86982L11.8382 4.88018L8.16705 6.99942L11.8382 9.11983L11.2549 10.1302L7.58314 8.01033L7.58325 12.25H6.41659L6.41647 8.01033L2.74495 10.1302L2.16162 9.11983L5.83254 7L2.16162 4.88018L2.74495 3.86982L6.41647 5.98908L6.41659 1.75H7.58325Z",
-					"fill": "currentColor"
-				},
-				"children": []
-			}
-		]
-	},
-	"name": "Asterisk"
+  "icon": {
+    "type": "element",
+    "isRootNode": true,
+    "name": "svg",
+    "attributes": {
+      "width": "14",
+      "height": "14",
+      "viewBox": "0 0 14 14",
+      "fill": "none",
+      "xmlns": "http://www.w3.org/2000/svg"
+    },
+    "children": [
+      {
+        "type": "element",
+        "name": "path",
+        "attributes": {
+          "d": "M7.58325 1.75L7.58314 5.98908L11.2549 3.86982L11.8382 4.88018L8.16705 6.99942L11.8382 9.11983L11.2549 10.1302L7.58314 8.01033L7.58325 12.25H6.41659L6.41647 8.01033L2.74495 10.1302L2.16162 9.11983L5.83254 7L2.16162 4.88018L2.74495 3.86982L6.41647 5.98908L6.41659 1.75H7.58325Z",
+          "fill": "currentColor"
+        },
+        "children": []
+      }
+    ]
+  },
+  "name": "Asterisk"
 }

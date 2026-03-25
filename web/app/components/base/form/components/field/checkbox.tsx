@@ -3,8 +3,8 @@ import { useFieldContext } from '../..'
 import Checkbox from '../../../checkbox'
 
 type CheckboxFieldProps = {
-  label: string;
-  labelClassName?: string;
+  label: string
+  labelClassName?: string
 }
 
 const CheckboxField = ({
@@ -14,8 +14,8 @@ const CheckboxField = ({
   const field = useFieldContext<boolean>()
 
   return (
-    <div className='flex gap-2'>
-      <div className='flex h-6 shrink-0 items-center'>
+    <div className="flex gap-2">
+      <div className="flex h-6 shrink-0 items-center">
         <Checkbox
           id={field.name}
           checked={field.state.value}

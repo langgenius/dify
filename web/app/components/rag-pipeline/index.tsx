@@ -1,19 +1,19 @@
+import type { InjectWorkflowStoreSliceFn } from '@/app/components/workflow/store'
 import { useMemo } from 'react'
+import Loading from '@/app/components/base/loading'
 import WorkflowWithDefaultContext from '@/app/components/workflow'
 import {
   WorkflowContextProvider,
 } from '@/app/components/workflow/context'
-import type { InjectWorkflowStoreSliceFn } from '@/app/components/workflow/store'
 import {
   initialEdges,
   initialNodes,
 } from '@/app/components/workflow/utils'
-import Loading from '@/app/components/base/loading'
-import { createRagPipelineSliceSlice } from './store'
-import RagPipelineMain from './components/rag-pipeline-main'
-import { usePipelineInit } from './hooks'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import Conversion from './components/conversion'
+import RagPipelineMain from './components/rag-pipeline-main'
+import { usePipelineInit } from './hooks'
+import { createRagPipelineSliceSlice } from './store'
 import { processNodesWithoutDataSource } from './utils'
 
 const RagPipeline = () => {
@@ -36,7 +36,7 @@ const RagPipeline = () => {
 
   if (!data || isLoading) {
     return (
-      <div className='relative flex h-full w-full items-center justify-center'>
+      <div className="relative flex h-full w-full items-center justify-center">
         <Loading />
       </div>
     )

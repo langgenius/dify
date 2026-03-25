@@ -1,13 +1,13 @@
-import { cn } from '@/utils/classnames'
 import type { LabelProps } from '../label'
+import { useCallback } from 'react'
+import FileTypeItem from '@/app/components/workflow/nodes/_base/components/file-type-item'
+import { SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { cn } from '@/utils/classnames'
 import { useFieldContext } from '../..'
 import Label from '../label'
-import { SupportUploadFileTypes } from '@/app/components/workflow/types'
-import FileTypeItem from '@/app/components/workflow/nodes/_base/components/file-type-item'
-import { useCallback } from 'react'
 
 type FieldValue = {
-  allowedFileTypes: string[],
+  allowedFileTypes: string[]
   allowedFileExtensions: string[]
 }
 

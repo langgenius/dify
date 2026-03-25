@@ -1,10 +1,10 @@
-import type { CredentialFormSchemaBase } from '../header/account-setting/model-provider-page/declarations'
-import type { ToolCredential } from '@/app/components/tools/types'
-import type { Locale } from '@/i18n-config'
-import type { AgentFeature } from '@/app/components/workflow/nodes/agent/types'
-import type { AutoUpdateConfig } from './reference-setting-modal/auto-update-setting/types'
 import type { FormTypeEnum } from '../base/form/types'
+import type { CredentialFormSchemaBase } from '../header/account-setting/model-provider-page/declarations'
+import type { AutoUpdateConfig } from './reference-setting-modal/auto-update-setting/types'
 import type { TypeWithI18N } from '@/app/components/base/form/types'
+import type { ToolCredential } from '@/app/components/tools/types'
+import type { AgentFeature } from '@/app/components/workflow/nodes/agent/types'
+import type { Locale } from '@/i18n-config'
 
 export enum PluginCategoryEnum {
   tool = 'tool',
@@ -131,7 +131,7 @@ export type ParametersSchema = {
   scope: any
   required: boolean
   multiple: boolean
-  default?: string[]
+  default?: string | string[]
   min: any
   max: any
   precision: any
@@ -207,10 +207,10 @@ export type PluginManifestInMarket = {
   introduction: string
   verified: boolean
   install_count: number
-  badges: string[],
+  badges: string[]
   verification: {
     authorized_category: 'langgenius' | 'partner' | 'community'
-  },
+  }
   from: Dependency['type']
 }
 
@@ -260,9 +260,9 @@ export type Plugin = {
   icon: string
   icon_dark?: string
   verified: boolean
-  label: Record<Locale, string>
-  brief: Record<Locale, string>
-  description: Record<Locale, string>
+  label: Partial<Record<Locale, string>>
+  brief: Partial<Record<Locale, string>>
+  description: Partial<Record<Locale, string>>
   // Repo readme.md content
   introduction: string
   repository: string
@@ -272,10 +272,10 @@ export type Plugin = {
     settings: CredentialFormSchemaBase[]
   }
   tags: { name: string }[]
-  badges: string[],
+  badges: string[]
   verification: {
     authorized_category: 'langgenius' | 'partner' | 'community'
-  },
+  }
   from: Dependency['type']
 }
 
@@ -300,7 +300,7 @@ export type UpdateFromMarketPlacePayload = {
   originalPackageInfo: {
     id: string
     payload: PluginDeclaration
-  },
+  }
   targetPackageInfo: {
     id: string
     version: string
@@ -397,13 +397,13 @@ export type InstallPackageResponse = {
 }
 
 export type InstallStatusResponse = {
-  status: TaskStatus,
-  taskId: string,
-  uniqueIdentifier: string,
+  status: TaskStatus
+  taskId: string
+  uniqueIdentifier: string
 }
 
 export type InstallStatus = {
-  success: boolean,
+  success: boolean
   isFromMarketPlace?: boolean
 }
 
@@ -432,6 +432,7 @@ export enum TaskStatus {
 export type PluginStatus = {
   plugin_unique_identifier: string
   plugin_id: string
+  source: PluginSource
   status: TaskStatus
   message: string
   icon: string
@@ -508,6 +509,8 @@ export type GitHubItemAndMarketPlaceDependency = {
   type: 'github' | 'marketplace' | 'package'
   value: {
     repo?: string
+    organization?: string // from bundle marketplace dependency
+    plugin?: string // from bundle marketplace dependency
     version?: string // from app DSL
     package?: string // from app DSL
     release?: string // from local package. same to the version
@@ -543,8 +546,8 @@ export type VersionListResponse = {
 }
 
 export type VersionInfo = {
-  installedId: string, // use to uninstall
-  installedVersion: string,
+  installedId: string // use to uninstall
+  installedVersion: string
   uniqueIdentifier: string
 }
 
@@ -566,7 +569,7 @@ export type StrategyParamItem = {
   options: any[]
   template: {
     enabled: boolean
-  },
+  }
   auto_generate: {
     type: string
   }
@@ -579,7 +582,7 @@ export type StrategyDetail = {
     icon: string
     label: Record<Locale, string>
     provider: string
-  },
+  }
   parameters: StrategyParamItem[]
   description: Record<Locale, string>
   output_schema: Record<string, any>
@@ -597,7 +600,7 @@ export type Identity = {
 }
 
 export type StrategyDeclaration = {
-  identity: Identity,
+  identity: Identity
   plugin_id: string
   strategies: StrategyDetail[]
 }

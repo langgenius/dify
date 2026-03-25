@@ -1,14 +1,14 @@
-import { Fragment } from 'react'
 import type { FC } from 'react'
 import { Popover, PopoverButton, PopoverPanel, Transition } from '@headlessui/react'
-import { useTranslation } from 'react-i18next'
 import {
   RiCheckLine,
   RiMoreFill,
 } from '@remixicon/react'
-import { PreferredProviderTypeEnum } from '../declarations'
+import { Fragment } from 'react'
+import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { cn } from '@/utils/classnames'
+import { PreferredProviderTypeEnum } from '../declarations'
 
 type SelectorProps = {
   value?: string
@@ -22,46 +22,47 @@ const Selector: FC<SelectorProps> = ({
   const options = [
     {
       key: PreferredProviderTypeEnum.custom,
-      text: t('common.modelProvider.apiKey'),
+      text: t('modelProvider.apiKey', { ns: 'common' }),
     },
     {
       key: PreferredProviderTypeEnum.system,
-      text: t('common.modelProvider.quota'),
+      text: t('modelProvider.quota', { ns: 'common' }),
     },
   ]
 
   return (
-    <Popover className='relative'>
-      <PopoverButton as='div'>
+    <Popover className="relative">
+      <PopoverButton as="div">
         {
           ({ open }) => (
             <Button className={cn(
               'h-6 w-6 rounded-md px-0',
               open && 'bg-components-button-secondary-bg-hover',
-            )}>
-              <RiMoreFill className='h-3 w-3' />
+            )}
+            >
+              <RiMoreFill className="h-3 w-3" />
             </Button>
           )
         }
       </PopoverButton>
       <Transition
         as={Fragment}
-        leave='transition ease-in duration-100'
-        leaveFrom='opacity-100'
-        leaveTo='opacity-0'
+        leave="transition ease-in duration-100"
+        leaveFrom="opacity-100"
+        leaveTo="opacity-0"
       >
-        <PopoverPanel className='absolute right-0 top-7 z-10 w-[144px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg'>
-          <div className='p-1'>
-            <div className='px-3 pb-1 pt-2 text-sm font-medium text-text-secondary'>{t('common.modelProvider.card.priorityUse')}</div>
+        <PopoverPanel className="absolute right-0 top-7 z-10 w-[144px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg">
+          <div className="p-1">
+            <div className="px-3 pb-1 pt-2 text-sm font-medium text-text-secondary">{t('modelProvider.card.priorityUse', { ns: 'common' })}</div>
             {
               options.map(option => (
                 <PopoverButton as={Fragment} key={option.key}>
                   <div
-                    className='flex h-9 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-components-panel-on-panel-item-bg-hover'
+                    className="flex h-9 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-components-panel-on-panel-item-bg-hover"
                     onClick={() => onSelect(option.key)}
                   >
-                    <div className='grow'>{option.text}</div>
-                    {value === option.key && <RiCheckLine className='h-4 w-4 text-text-accent' />}
+                    <div className="grow">{option.text}</div>
+                    {value === option.key && <RiCheckLine className="h-4 w-4 text-text-accent" />}
                   </div>
                 </PopoverButton>
               ))

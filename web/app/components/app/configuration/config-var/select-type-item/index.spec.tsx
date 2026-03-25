@@ -1,18 +1,18 @@
-import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
-import SelectTypeItem from './index'
+import * as React from 'react'
 import { InputVarType } from '@/app/components/workflow/types'
+import SelectTypeItem from './index'
 
 describe('SelectTypeItem', () => {
   // Rendering pathways based on type and selection state
   describe('Rendering', () => {
-    test('should render ok', () => {
+    it('should render ok', () => {
       // Arrange
       const { container } = render(
         <SelectTypeItem
           type={InputVarType.textInput}
           selected={false}
-          onClick={jest.fn()}
+          onClick={vi.fn()}
         />,
       )
 
@@ -24,8 +24,8 @@ describe('SelectTypeItem', () => {
 
   // User interaction outcomes
   describe('Interactions', () => {
-    test('should trigger onClick when item is pressed', () => {
-      const handleClick = jest.fn()
+    it('should trigger onClick when item is pressed', () => {
+      const handleClick = vi.fn()
       // Arrange
       render(
         <SelectTypeItem

@@ -1,12 +1,12 @@
-import {
-  Position,
-} from 'reactflow'
+import type { IterationNodeType } from '../nodes/iteration/types'
+import type { LoopNodeType } from '../nodes/loop/types'
 import type {
   Node,
 } from '../types'
 import {
-  BlockEnum,
-} from '../types'
+  Position,
+} from 'reactflow'
+import { CUSTOM_SIMPLE_NODE } from '@/app/components/workflow/simple-node/constants'
 import {
   CUSTOM_NODE,
   ITERATION_CHILDREN_Z_INDEX,
@@ -16,9 +16,9 @@ import {
 } from '../constants'
 import { CUSTOM_ITERATION_START_NODE } from '../nodes/iteration-start/constants'
 import { CUSTOM_LOOP_START_NODE } from '../nodes/loop-start/constants'
-import type { IterationNodeType } from '../nodes/iteration/types'
-import type { LoopNodeType } from '../nodes/loop/types'
-import { CUSTOM_SIMPLE_NODE } from '@/app/components/workflow/simple-node/constants'
+import {
+  BlockEnum,
+} from '../types'
 
 export function generateNewNode({ data, position, id, zIndex, type, ...rest }: Omit<Node, 'id'> & { id?: string }): {
   newNode: Node

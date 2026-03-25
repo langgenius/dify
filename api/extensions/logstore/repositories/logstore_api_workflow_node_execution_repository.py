@@ -13,8 +13,12 @@ from typing import Any
 
 from sqlalchemy.orm import sessionmaker
 
+from dify_graph.enums import WorkflowNodeExecutionStatus
 from extensions.logstore.aliyun_logstore import AliyunLogStore
-from models.workflow import WorkflowNodeExecutionModel
+from extensions.logstore.repositories import safe_float, safe_int
+from extensions.logstore.sql_escape import escape_identifier, escape_logstore_query_value
+from models.enums import CreatorUserRole
+from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 from repositories.api_workflow_node_execution_repository import DifyAPIWorkflowNodeExecutionRepository
 
 logger = logging.getLogger(__name__)
@@ -44,17 +48,32 @@ def _dict_to_workflow_node_execution_model(data: dict[str, Any]) -> WorkflowNode
     model.tenant_id = data.get("tenant_id") or ""
     model.app_id = data.get("app_id") or ""
     model.workflow_id = data.get("workflow_id") or ""
-    model.triggered_from = data.get("triggered_from") or ""
+    triggered_from_val = data.get("triggered_from")
+    try:
+        model.triggered_from = (
+            WorkflowNodeExecutionTriggeredFrom(str(triggered_from_val))
+            if triggered_from_val
+            else WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN
+        )
+    except ValueError:
+        logger.warning("Invalid triggered_from value: %s, falling back to WORKFLOW_RUN", triggered_from_val)
+        model.triggered_from = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN
     model.node_id = data.get("node_id") or ""
     model.node_type = data.get("node_type") or ""
     model.status = data.get("status") or "running"  # Default status if missing
     model.title = data.get("title") or ""
-    model.created_by_role = data.get("created_by_role") or ""
+    created_by_role_val = data.get("created_by_role")
+    try:
+        model.created_by_role = (
+            CreatorUserRole(str(created_by_role_val)) if created_by_role_val else CreatorUserRole.ACCOUNT
+        )
+    except ValueError:
+        logger.warning("Invalid created_by_role value: %s, falling back to ACCOUNT", created_by_role_val)
+        model.created_by_role = CreatorUserRole.ACCOUNT
     model.created_by = data.get("created_by") or ""
 
-    # Numeric fields with defaults
-    model.index = int(data.get("index", 0))
-    model.elapsed_time = float(data.get("elapsed_time", 0))
+    model.index = safe_int(data.get("index", 0))
+    model.elapsed_time = safe_float(data.get("elapsed_time", 0))
 
     # Optional fields
     model.workflow_run_id = data.get("workflow_run_id")
@@ -130,6 +149,12 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
             node_id,
         )
         try:
+            # Escape parameters to prevent SQL injection
+            escaped_tenant_id = escape_identifier(tenant_id)
+            escaped_app_id = escape_identifier(app_id)
+            escaped_workflow_id = escape_identifier(workflow_id)
+            escaped_node_id = escape_identifier(node_id)
+
             # Check if PG protocol is supported
             if self.logstore_client.supports_pg_protocol:
                 # Use PG protocol with SQL query (get latest version of each record)
@@ -138,10 +163,10 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
                         SELECT *, 
                             ROW_NUMBER() OVER (PARTITION BY id ORDER BY log_version DESC) as rn
                         FROM "{AliyunLogStore.workflow_node_execution_logstore}"
-                        WHERE tenant_id = '{tenant_id}' 
-                          AND app_id = '{app_id}' 
-                          AND workflow_id = '{workflow_id}' 
-                          AND node_id = '{node_id}'
+                        WHERE tenant_id = '{escaped_tenant_id}' 
+                          AND app_id = '{escaped_app_id}' 
+                          AND workflow_id = '{escaped_workflow_id}' 
+                          AND node_id = '{escaped_node_id}'
                           AND __time__ > 0
                     ) AS subquery WHERE rn = 1
                     LIMIT 100
@@ -153,7 +178,8 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
             else:
                 # Use SDK with LogStore query syntax
                 query = (
-                    f"tenant_id: {tenant_id} and app_id: {app_id} and workflow_id: {workflow_id} and node_id: {node_id}"
+                    f"tenant_id: {escaped_tenant_id} and app_id: {escaped_app_id} "
+                    f"and workflow_id: {escaped_workflow_id} and node_id: {escaped_node_id}"
                 )
                 from_time = 0
                 to_time = int(time.time())  # now
@@ -199,8 +225,10 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
                 reverse=True,
             )
 
-            if deduplicated_results:
-                return _dict_to_workflow_node_execution_model(deduplicated_results[0])
+            for row in deduplicated_results:
+                model = _dict_to_workflow_node_execution_model(row)
+                if model.status != WorkflowNodeExecutionStatus.PAUSED:
+                    return model
 
             return None
 
@@ -227,6 +255,11 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
             workflow_run_id,
         )
         try:
+            # Escape parameters to prevent SQL injection
+            escaped_tenant_id = escape_identifier(tenant_id)
+            escaped_app_id = escape_identifier(app_id)
+            escaped_workflow_run_id = escape_identifier(workflow_run_id)
+
             # Check if PG protocol is supported
             if self.logstore_client.supports_pg_protocol:
                 # Use PG protocol with SQL query (get latest version of each record)
@@ -235,9 +268,9 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
                         SELECT *, 
                             ROW_NUMBER() OVER (PARTITION BY id ORDER BY log_version DESC) as rn
                         FROM "{AliyunLogStore.workflow_node_execution_logstore}"
-                        WHERE tenant_id = '{tenant_id}' 
-                          AND app_id = '{app_id}' 
-                          AND workflow_run_id = '{workflow_run_id}'
+                        WHERE tenant_id = '{escaped_tenant_id}' 
+                          AND app_id = '{escaped_app_id}' 
+                          AND workflow_run_id = '{escaped_workflow_run_id}'
                           AND __time__ > 0
                     ) AS subquery WHERE rn = 1
                     LIMIT 1000
@@ -248,7 +281,10 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
                 )
             else:
                 # Use SDK with LogStore query syntax
-                query = f"tenant_id: {tenant_id} and app_id: {app_id} and workflow_run_id: {workflow_run_id}"
+                query = (
+                    f"tenant_id: {escaped_tenant_id} and app_id: {escaped_app_id} "
+                    f"and workflow_run_id: {escaped_workflow_run_id}"
+                )
                 from_time = 0
                 to_time = int(time.time())  # now
 
@@ -293,6 +329,8 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
                     if model and model.id:  # Ensure model is valid
                         models.append(model)
 
+            models = [model for model in models if model.status != WorkflowNodeExecutionStatus.PAUSED]
+
             # Sort by index DESC for trace visualization
             models.sort(key=lambda x: x.index, reverse=True)
 
@@ -313,16 +351,24 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
         """
         logger.debug("get_execution_by_id: execution_id=%s, tenant_id=%s", execution_id, tenant_id)
         try:
+            # Escape parameters to prevent SQL injection
+            escaped_execution_id = escape_identifier(execution_id)
+
             # Check if PG protocol is supported
             if self.logstore_client.supports_pg_protocol:
                 # Use PG protocol with SQL query (get latest version of record)
-                tenant_filter = f"AND tenant_id = '{tenant_id}'" if tenant_id else ""
+                if tenant_id:
+                    escaped_tenant_id = escape_identifier(tenant_id)
+                    tenant_filter = f"AND tenant_id = '{escaped_tenant_id}'"
+                else:
+                    tenant_filter = ""
+
                 sql_query = f"""
                     SELECT * FROM (
                         SELECT *, 
                             ROW_NUMBER() OVER (PARTITION BY id ORDER BY log_version DESC) as rn
                         FROM "{AliyunLogStore.workflow_node_execution_logstore}"
-                        WHERE id = '{execution_id}' {tenant_filter} AND __time__ > 0
+                        WHERE id = '{escaped_execution_id}' {tenant_filter} AND __time__ > 0
                     ) AS subquery WHERE rn = 1
                     LIMIT 1
                 """
@@ -332,10 +378,14 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
                 )
             else:
                 # Use SDK with LogStore query syntax
+                # Note: Values must be quoted in LogStore query syntax to prevent injection
                 if tenant_id:
-                    query = f"id: {execution_id} and tenant_id: {tenant_id}"
+                    query = (
+                        f"id:{escape_logstore_query_value(execution_id)} "
+                        f"and tenant_id:{escape_logstore_query_value(tenant_id)}"
+                    )
                 else:
-                    query = f"id: {execution_id}"
+                    query = f"id:{escape_logstore_query_value(execution_id)}"
 
                 from_time = 0
                 to_time = int(time.time())  # now

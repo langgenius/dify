@@ -1,8 +1,9 @@
-import React, { type FC } from 'react'
-import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
+import type { FC } from 'react'
 import type { SegmentDetailModel } from '@/models/datasets'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
 import TagInput from '@/app/components/base/tag-input'
+import { cn } from '@/utils/classnames'
 
 type IKeywordsProps = {
   segInfo?: Partial<SegmentDetailModel> & { id: string }
@@ -24,19 +25,18 @@ const Keywords: FC<IKeywordsProps> = ({
   const { t } = useTranslation()
   return (
     <div className={cn('flex flex-col', className)}>
-      <div className='system-xs-medium-uppercase text-text-tertiary'>{t('datasetDocuments.segment.keywords')}</div>
-      <div className='flex max-h-[200px] w-full flex-wrap gap-1 overflow-auto text-text-tertiary'>
+      <div className="system-xs-medium-uppercase text-text-tertiary">{t('segment.keywords', { ns: 'datasetDocuments' })}</div>
+      <div className="flex max-h-[200px] w-full flex-wrap gap-1 overflow-auto text-text-tertiary">
         {(!segInfo?.keywords?.length && actionType === 'view')
           ? '-'
           : (
-            <TagInput
-              items={keywords}
-              onChange={newKeywords => onKeywordsChange(newKeywords)}
-              disableAdd={!isEditMode}
-              disableRemove={!isEditMode || (keywords.length === 1)}
-            />
-          )
-        }
+              <TagInput
+                items={keywords}
+                onChange={newKeywords => onKeywordsChange(newKeywords)}
+                disableAdd={!isEditMode}
+                disableRemove={!isEditMode || (keywords.length === 1)}
+              />
+            )}
       </div>
     </div>
   )

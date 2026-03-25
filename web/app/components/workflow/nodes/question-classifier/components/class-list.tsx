@@ -1,20 +1,21 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import type { Topic } from '@/app/components/workflow/nodes/question-classifier/types'
+import type { ValueSelector, Var } from '@/app/components/workflow/types'
+import { RiDraggable } from '@remixicon/react'
+import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
+import * as React from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { ReactSortable } from 'react-sortablejs'
+import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
+import { cn } from '@/utils/classnames'
 import { useEdgesInteractions } from '../../../hooks'
 import AddButton from '../../_base/components/add-button'
 import Item from './class-item'
-import type { Topic } from '@/app/components/workflow/nodes/question-classifier/types'
-import type { ValueSelector, Var } from '@/app/components/workflow/types'
-import { ReactSortable } from 'react-sortablejs'
-import { noop } from 'lodash-es'
-import { cn } from '@/utils/classnames'
-import { RiDraggable } from '@remixicon/react'
-import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
 
-const i18nPrefix = 'workflow.nodes.questionClassifiers'
+const i18nPrefix = 'nodes.questionClassifiers'
 
 // Layout constants
 const HANDLE_SIDE_WIDTH = 3 // Width offset for drag handle spacing
@@ -87,9 +88,11 @@ const ClassList: FC<Props> = ({
 
   return (
     <>
-      <div className='mb-2 flex items-center justify-between' onClick={handleCollapse}>
-        <div className='flex cursor-pointer items-center text-xs font-semibold uppercase text-text-secondary'>
-          {t(`${i18nPrefix}.class`)} <span className='text-text-destructive'>*</span>
+      <div className="mb-2 flex items-center justify-between" onClick={handleCollapse}>
+        <div className="flex cursor-pointer items-center text-xs font-semibold uppercase text-text-secondary">
+          {t(`${i18nPrefix}.class`, { ns: 'workflow' })}
+          {' '}
+          <span className="text-text-destructive">*</span>
           {list.length > 0 && (
             <ArrowDownRoundFill
               className={cn(
@@ -109,11 +112,11 @@ const ClassList: FC<Props> = ({
           <ReactSortable
             list={list.map(item => ({ ...item }))}
             setList={handleSortTopic}
-            handle='.handle'
-            ghostClass='bg-components-panel-bg'
+            handle=".handle"
+            ghostClass="bg-components-panel-bg"
             animation={150}
             disabled={readonly}
-            className='space-y-2'
+            className="space-y-2"
           >
             {
               list.map((item, index) => {
@@ -136,10 +139,13 @@ const ClassList: FC<Props> = ({
                     }}
                   >
                     <div>
-                      {canDrag && <RiDraggable className={cn(
-                        'handle absolute left-2 top-3 hidden h-3 w-3 cursor-pointer text-text-tertiary',
-                        'group-hover:block',
-                      )} />}
+                      {canDrag && (
+                        <RiDraggable className={cn(
+                          'handle absolute left-2 top-3 hidden h-3 w-3 cursor-pointer text-text-tertiary',
+                          'group-hover:block',
+                        )}
+                        />
+                      )}
                       <Item
                         className={cn(canDrag && 'handle')}
                         headerClassName={cn(canDrag && 'cursor-grab group-hover:pl-5')}
@@ -161,10 +167,10 @@ const ClassList: FC<Props> = ({
         </div>
       )}
       {!readonly && !collapsed && (
-        <div className='mt-2'>
+        <div className="mt-2">
           <AddButton
             onClick={handleAddClass}
-            text={t(`${i18nPrefix}.addClass`)}
+            text={t(`${i18nPrefix}.addClass`, { ns: 'workflow' })}
           />
         </div>
       )}

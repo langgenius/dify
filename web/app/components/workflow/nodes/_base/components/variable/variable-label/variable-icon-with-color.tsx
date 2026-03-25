@@ -1,8 +1,8 @@
-import { memo } from 'react'
-import VariableIcon from './base/variable-icon'
 import type { VariableIconProps } from './base/variable-icon'
-import { useVarColor } from './hooks'
+import { memo } from 'react'
 import { cn } from '@/utils/classnames'
+import VariableIcon from './base/variable-icon'
+import { useVarColor } from './hooks'
 
 type VariableIconWithColorProps = {
   isExceptionVariable?: boolean

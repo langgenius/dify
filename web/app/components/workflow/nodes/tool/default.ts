@@ -1,15 +1,15 @@
-import { genNodeMetaData } from '@/app/components/workflow/utils'
-import { BlockEnum } from '@/app/components/workflow/types'
 import type { NodeDefault, ToolWithProvider, Var } from '../../types'
 import type { ToolNodeType } from './types'
-import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
-import { TOOL_OUTPUT_STRUCT } from '../../constants'
 import { CollectionType } from '@/app/components/tools/types'
+import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { genNodeMetaData } from '@/app/components/workflow/utils'
 import { canFindTool } from '@/utils'
+import { TOOL_OUTPUT_STRUCT } from '../../constants'
 import { Type } from '../llm/types'
 import { resolveVarType } from './output-schema-utils'
 
-const i18nPrefix = 'workflow.errorMsg'
+const i18nPrefix = 'errorMsg'
 
 const metaData = genNodeMetaData({
   sort: -1,
@@ -27,7 +27,7 @@ const nodeDefault: NodeDefault<ToolNodeType> = {
     const { toolInputsSchema, toolSettingSchema, language, notAuthed } = moreDataForCheckValid
     let errorMessages = ''
     if (notAuthed)
-      errorMessages = t(`${i18nPrefix}.authRequired`)
+      errorMessages = t(`${i18nPrefix}.authRequired`, { ns: 'workflow' })
 
     if (!errorMessages) {
       toolInputsSchema.filter((field: any) => {
@@ -35,17 +35,17 @@ const nodeDefault: NodeDefault<ToolNodeType> = {
       }).forEach((field: any) => {
         const targetVar = payload.tool_parameters[field.variable]
         if (!targetVar) {
-          errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: field.label })
+          errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: field.label })
           return
         }
         const { type: variable_type, value } = targetVar
         if (variable_type === VarKindType.variable) {
           if (!errorMessages && (!value || value.length === 0))
-            errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: field.label })
+            errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: field.label })
         }
         else {
           if (!errorMessages && (value === undefined || value === null || value === ''))
-            errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: field.label })
+            errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: field.label })
         }
       })
     }
@@ -56,9 +56,9 @@ const nodeDefault: NodeDefault<ToolNodeType> = {
       }).forEach((field: any) => {
         const value = payload.tool_configurations[field.variable]
         if (!errorMessages && (value === undefined || value === null || value === ''))
-          errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: field.label[language] })
+          errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: field.label[language] })
         if (!errorMessages && typeof value === 'object' && !!value.type && (value.value === undefined || value.value === null || value.value === '' || (Array.isArray(value.value) && value.value.length === 0)))
-          errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: field.label[language] })
+          errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: field.label[language] })
       })
     }
 
@@ -104,13 +104,15 @@ const nodeDefault: NodeDefault<ToolNodeType> = {
           type,
           des: output.description,
           schemaType,
-          children: output.type === 'object' ? {
-            schema: {
-              type: Type.object,
-              properties: output.properties,
-              additionalProperties: false,
-            },
-          } : undefined,
+          children: output.type === 'object'
+            ? {
+                schema: {
+                  type: Type.object,
+                  properties: output.properties,
+                  additionalProperties: false,
+                },
+              }
+            : undefined,
         })
       })
       res = [

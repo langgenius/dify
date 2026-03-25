@@ -10,13 +10,12 @@ import logging
 
 from celery import shared_task
 from sqlalchemy import select
-from sqlalchemy.orm import sessionmaker
 
-from core.workflow.entities.workflow_node_execution import (
+from core.db.session_factory import session_factory
+from dify_graph.entities.workflow_node_execution import (
     WorkflowNodeExecution,
 )
-from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
-from extensions.ext_database import db
+from dify_graph.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from models import CreatorUserRole, WorkflowNodeExecutionModel
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
 
@@ -48,10 +47,7 @@ def save_workflow_node_execution_task(
         True if successful, False otherwise
     """
     try:
-        # Create a new session for this task
-        session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
-
-        with session_factory() as session:
+        with session_factory.create_session() as session:
             # Deserialize execution data
             execution = WorkflowNodeExecution.model_validate(execution_data)
 
@@ -102,12 +98,12 @@ def _create_node_execution_from_domain(
     node_execution.tenant_id = tenant_id
     node_execution.app_id = app_id
     node_execution.workflow_id = execution.workflow_id
-    node_execution.triggered_from = triggered_from.value
+    node_execution.triggered_from = triggered_from
     node_execution.workflow_run_id = execution.workflow_execution_id
     node_execution.index = execution.index
     node_execution.predecessor_node_id = execution.predecessor_node_id
     node_execution.node_id = execution.node_id
-    node_execution.node_type = execution.node_type.value
+    node_execution.node_type = execution.node_type
     node_execution.title = execution.title
     node_execution.node_execution_id = execution.node_execution_id
 
@@ -132,7 +128,7 @@ def _create_node_execution_from_domain(
     node_execution.status = execution.status.value
     node_execution.error = execution.error
     node_execution.elapsed_time = execution.elapsed_time
-    node_execution.created_by_role = creator_user_role.value
+    node_execution.created_by_role = creator_user_role
     node_execution.created_by = creator_user_id
     node_execution.created_at = execution.created_at
     node_execution.finished_at = execution.finished_at

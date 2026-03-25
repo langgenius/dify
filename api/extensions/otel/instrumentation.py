@@ -7,7 +7,10 @@ from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 from opentelemetry.instrumentation.redis import RedisInstrumentor
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 from opentelemetry.metrics import get_meter, get_meter_provider
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv.attributes.http_attributes import (  # type: ignore[import-untyped]
+    HTTP_REQUEST_METHOD,
+    HTTP_ROUTE,
+)
 from opentelemetry.trace import Span, get_tracer_provider
 from opentelemetry.trace.status import StatusCode
 
@@ -19,26 +22,43 @@ logger = logging.getLogger(__name__)
 
 
 class ExceptionLoggingHandler(logging.Handler):
+    """
+    Handler that records exceptions to the current OpenTelemetry span.
+
+    Unlike creating a new span, this records exceptions on the existing span
+    to maintain trace context consistency throughout the request lifecycle.
+    """
+
     def emit(self, record: logging.LogRecord):
         with contextlib.suppress(Exception):
-            if record.exc_info:
-                tracer = get_tracer_provider().get_tracer("dify.exception.logging")
-                with tracer.start_as_current_span(
-                    "log.exception",
-                    attributes={
-                        "log.level": record.levelname,
-                        "log.message": record.getMessage(),
-                        "log.logger": record.name,
-                        "log.file.path": record.pathname,
-                        "log.file.line": record.lineno,
-                    },
-                ) as span:
-                    span.set_status(StatusCode.ERROR)
-                    if record.exc_info[1]:
-                        span.record_exception(record.exc_info[1])
-                        span.set_attribute("exception.message", str(record.exc_info[1]))
-                    if record.exc_info[0]:
-                        span.set_attribute("exception.type", record.exc_info[0].__name__)
+            if not record.exc_info:
+                return
+
+            from opentelemetry.trace import get_current_span
+
+            span = get_current_span()
+            if not span or not span.is_recording():
+                return
+
+            # Record exception on the current span instead of creating a new one
+            span.set_status(StatusCode.ERROR, record.getMessage())
+
+            # Add log context as span events/attributes
+            span.add_event(
+                "log.exception",
+                attributes={
+                    "log.level": record.levelname,
+                    "log.message": record.getMessage(),
+                    "log.logger": record.name,
+                    "log.file.path": record.pathname,
+                    "log.file.line": record.lineno,
+                },
+            )
+
+            if record.exc_info[1]:
+                span.record_exception(record.exc_info[1])
+            if record.exc_info[0]:
+                span.set_attribute("exception.type", record.exc_info[0].__name__)
 
 
 def instrument_exception_logging() -> None:
@@ -68,9 +88,9 @@ def init_flask_instrumentor(app: DifyApp) -> None:
                 attributes: dict[str, str | int] = {"status_code": status_code, "status_class": status_class}
                 request = flask.request
                 if request and request.url_rule:
-                    attributes[SpanAttributes.HTTP_TARGET] = str(request.url_rule.rule)
+                    attributes[HTTP_ROUTE] = str(request.url_rule.rule)
                 if request and request.method:
-                    attributes[SpanAttributes.HTTP_METHOD] = str(request.method)
+                    attributes[HTTP_REQUEST_METHOD] = str(request.method)
                 _http_response_counter.add(1, attributes)
             except Exception:
                 logger.exception("Error setting status and attributes")

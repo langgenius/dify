@@ -1,7 +1,8 @@
-import React from 'react'
-import { type InputFieldConfiguration, InputFieldType } from './types'
-import { withForm } from '../..'
+import type { InputFieldConfiguration } from './types'
 import { useStore } from '@tanstack/react-form'
+import * as React from 'react'
+import { withForm } from '../..'
+import { InputFieldType } from './types'
 
 type InputFieldProps = {
   initialData?: Record<string, any>

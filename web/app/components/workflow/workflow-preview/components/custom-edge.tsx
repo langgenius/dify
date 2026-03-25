@@ -1,17 +1,17 @@
+import type { EdgeProps } from 'reactflow'
 import {
   memo,
   useMemo,
 } from 'react'
-import type { EdgeProps } from 'reactflow'
 import {
   BaseEdge,
-  Position,
   getBezierPath,
+  Position,
 } from 'reactflow'
-import { NodeRunningStatus } from '@/app/components/workflow/types'
-import { getEdgeColor } from '@/app/components/workflow/utils'
 import CustomEdgeLinearGradientRender from '@/app/components/workflow/custom-edge-linear-gradient-render'
 import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
+import { NodeRunningStatus } from '@/app/components/workflow/types'
+import { getEdgeColor } from '@/app/components/workflow/utils'
 
 const CustomEdge = ({
   id,
@@ -51,8 +51,9 @@ const CustomEdge = ({
         || _targetRunningStatus === NodeRunningStatus.Exception
         || _targetRunningStatus === NodeRunningStatus.Running
       )
-    )
+    ) {
       return id
+    }
   }, [_sourceRunningStatus, _targetRunningStatus, id])
 
   const stroke = useMemo(() => {

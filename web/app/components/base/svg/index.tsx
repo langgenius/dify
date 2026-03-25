@@ -1,7 +1,7 @@
-import React from 'react'
-import s from './style.module.css'
-import ActionButton from '../action-button'
+import * as React from 'react'
 import { cn } from '@/utils/classnames'
+import ActionButton from '../action-button'
+import s from './style.module.css'
 
 type ISVGBtnProps = {
   isSVG: boolean

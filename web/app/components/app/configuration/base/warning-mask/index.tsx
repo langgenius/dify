@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import * as React from 'react'
 
 import s from './style.module.css'
 
@@ -22,17 +22,16 @@ const WarningMask: FC<IWarningMaskProps> = ({
   footer,
 }) => {
   return (
-    <div className={`${s.mask} absolute inset-0 z-10 bg-components-panel-bg-blur pt-16`}
-    >
-      <div className='mx-auto px-10'>
+    <div className={`${s.mask} absolute inset-0 z-10 bg-components-panel-bg-blur pt-16`}>
+      <div className="mx-auto px-10">
         <div className={`${s.icon} flex h-11 w-11 items-center justify-center rounded-xl bg-components-panel-bg`}>{warningIcon}</div>
-        <div className='mt-4 text-[24px] font-semibold leading-normal text-text-primary'>
+        <div className="mt-4 text-[24px] font-semibold leading-normal text-text-primary">
           {title}
         </div>
-        <div className='mt-3 text-base text-text-secondary'>
+        <div className="mt-3 text-base text-text-secondary">
           {description}
         </div>
-        <div className='mt-6'>
+        <div className="mt-6">
           {footer}
         </div>
       </div>

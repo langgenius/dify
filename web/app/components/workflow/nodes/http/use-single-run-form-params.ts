@@ -1,12 +1,12 @@
 import type { RefObject } from 'react'
+import type { HttpNodeType } from './types'
 import type { InputVar, Variable } from '@/app/components/workflow/types'
 import { useCallback, useMemo } from 'react'
 import useNodeCrud from '../_base/hooks/use-node-crud'
-import type { HttpNodeType } from './types'
 
 type Params = {
-  id: string,
-  payload: HttpNodeType,
+  id: string
+  payload: HttpNodeType
   runInputData: Record<string, any>
   runInputDataRef: RefObject<Record<string, any>>
   getInputVars: (textList: string[]) => InputVar[]

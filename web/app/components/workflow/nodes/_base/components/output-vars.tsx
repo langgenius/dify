@@ -1,10 +1,10 @@
 'use client'
 import type { FC, ReactNode } from 'react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { FieldCollapse } from '@/app/components/workflow/nodes/_base/components/collapse'
-import TreeIndentLine from './variable/object-child-tree-panel/tree-indent-line'
 import { cn } from '@/utils/classnames'
+import TreeIndentLine from './variable/object-child-tree-panel/tree-indent-line'
 
 type Props = {
   className?: string
@@ -25,7 +25,7 @@ const OutputVars: FC<Props> = ({
   const { t } = useTranslation()
   return (
     <FieldCollapse
-      title={title || t('workflow.nodes.common.outputVars')}
+      title={title || t('nodes.common.outputVars', { ns: 'workflow' })}
       operations={operations}
       collapsed={collapsed}
       onCollapse={onCollapse}
@@ -56,17 +56,17 @@ export const VarItem: FC<VarItemProps> = ({
   return (
     <div className={cn('flex', isIndent && 'relative left-[-7px]')}>
       {isIndent && <TreeIndentLine depth={1} />}
-      <div className='py-1'>
-        <div className='flex'>
-          <div className='flex items-center leading-[18px]'>
-            <div className='code-sm-semibold text-text-secondary'>{name}</div>
-            <div className='system-xs-regular ml-2 text-text-tertiary'>{type}</div>
+      <div className="py-1">
+        <div className="flex">
+          <div className="flex items-center leading-[18px]">
+            <div className="code-sm-semibold text-text-secondary">{name}</div>
+            <div className="system-xs-regular ml-2 text-text-tertiary">{type}</div>
           </div>
         </div>
-        <div className='system-xs-regular mt-0.5 text-text-tertiary'>
+        <div className="system-xs-regular mt-0.5 text-text-tertiary">
           {description}
           {subItems && (
-            <div className='ml-2 border-l border-gray-200 pl-2'>
+            <div className="ml-2 border-l border-gray-200 pl-2">
               {subItems.map((item, index) => (
                 <VarItem
                   key={index}

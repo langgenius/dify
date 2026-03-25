@@ -1,12 +1,13 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import {
   RiDeleteBinLine,
   RiEditLine,
   RiMoreFill,
 } from '@remixicon/react'
+import * as React from 'react'
+import { useCallback, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import {
   PortalToFollowElem,
@@ -45,7 +46,7 @@ const OperationDropdown: FC<Props> = ({
     <PortalToFollowElem
       open={open}
       onOpenChange={setOpen}
-      placement='bottom-end'
+      placement="bottom-end"
       offset={{
         mainAxis: !inCard ? -12 : 0,
         crossAxis: !inCard ? 36 : 0,
@@ -58,27 +59,27 @@ const OperationDropdown: FC<Props> = ({
           </ActionButton>
         </div>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-50'>
-        <div className='w-[160px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-sm'>
+      <PortalToFollowElemContent className="z-50">
+        <div className="w-[160px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-sm">
           <div
-            className='flex cursor-pointer items-center rounded-lg px-3 py-1.5 hover:bg-state-base-hover'
+            className="flex cursor-pointer items-center rounded-lg px-3 py-1.5 hover:bg-state-base-hover"
             onClick={() => {
               onEdit()
               handleTrigger()
             }}
           >
-            <RiEditLine className='h-4 w-4 text-text-tertiary' />
-            <div className='system-md-regular ml-2 text-text-secondary'>{t('tools.mcp.operation.edit')}</div>
+            <RiEditLine className="h-4 w-4 text-text-tertiary" />
+            <div className="system-md-regular ml-2 text-text-secondary">{t('mcp.operation.edit', { ns: 'tools' })}</div>
           </div>
           <div
-            className='group flex cursor-pointer items-center rounded-lg px-3 py-1.5 hover:bg-state-destructive-hover'
+            className="group flex cursor-pointer items-center rounded-lg px-3 py-1.5 hover:bg-state-destructive-hover"
             onClick={() => {
               onRemove()
               handleTrigger()
             }}
           >
-            <RiDeleteBinLine className='h-4 w-4 text-text-tertiary group-hover:text-text-destructive-secondary' />
-            <div className='system-md-regular ml-2 text-text-secondary group-hover:text-text-destructive'>{t('tools.mcp.operation.remove')}</div>
+            <RiDeleteBinLine className="h-4 w-4 text-text-tertiary group-hover:text-text-destructive-secondary" />
+            <div className="system-md-regular ml-2 text-text-secondary group-hover:text-text-destructive">{t('mcp.operation.remove', { ns: 'tools' })}</div>
           </div>
         </div>
       </PortalToFollowElemContent>

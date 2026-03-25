@@ -7,15 +7,17 @@ export type PreviewHeaderProps = Omit<ComponentProps<'div'>, 'title'> & {
 
 export const PreviewHeader: FC<PreviewHeaderProps> = (props) => {
   const { title, className, children, ...rest } = props
-  return <div
-    {...rest}
-    className={cn(className)}
-  >
+  return (
     <div
-      className='system-2xs-semibold-uppercase mb-1 px-1 uppercase text-text-accent'
+      {...rest}
+      className={cn(className)}
     >
-      {title}
+      <div
+        className="system-2xs-semibold-uppercase mb-1 px-1 uppercase text-text-accent"
+      >
+        {title}
+      </div>
+      {children}
     </div>
-    {children}
-  </div>
+  )
 }

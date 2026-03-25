@@ -1,29 +1,29 @@
 'use client'
 import type { FC } from 'react'
+import type { Param, ParamType } from '../../types'
+import type { ToolParameter } from '@/app/components/tools/types'
+import type {
+  PluginDefaultValue,
+  ToolDefaultValue,
+} from '@/app/components/workflow/block-selector/types'
+import type { BlockEnum } from '@/app/components/workflow/types'
 import {
   memo,
   useCallback,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import BlockSelector from '../../../../block-selector'
-import type { Param, ParamType } from '../../types'
-import { cn } from '@/utils/classnames'
-import type {
-  PluginDefaultValue,
-  ToolDefaultValue,
-} from '@/app/components/workflow/block-selector/types'
-import type { ToolParameter } from '@/app/components/tools/types'
-import { CollectionType } from '@/app/components/tools/types'
-import type { BlockEnum } from '@/app/components/workflow/types'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { canFindTool } from '@/utils'
+import { CollectionType } from '@/app/components/tools/types'
 import {
   useAllBuiltInTools,
   useAllCustomTools,
   useAllWorkflowTools,
 } from '@/service/use-tools'
+import { canFindTool } from '@/utils'
+import { cn } from '@/utils/classnames'
+import BlockSelector from '../../../../block-selector'
 
-const i18nPrefix = 'workflow.nodes.parameterExtractor'
+const i18nPrefix = 'nodes.parameterExtractor'
 
 type Props = {
   onImport: (params: Param[]) => void
@@ -80,8 +80,9 @@ const ImportFromTool: FC<Props> = ({
         <div className={cn(
           'flex h-6 cursor-pointer items-center rounded-md px-2 text-xs font-medium text-text-tertiary hover:bg-state-base-hover',
           open && 'bg-state-base-hover',
-        )}>
-          {t(`${i18nPrefix}.importFromTool`)}
+        )}
+        >
+          {t(`${i18nPrefix}.importFromTool`, { ns: 'workflow' })}
         </div>
       </div>
     )
@@ -89,7 +90,7 @@ const ImportFromTool: FC<Props> = ({
 
   return (
     <BlockSelector
-      placement='bottom-end'
+      placement="bottom-end"
       offset={{
         mainAxis: 4,
         crossAxis: 52,

@@ -1,30 +1,31 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import type { VarInInspect } from '@/types/workflow'
 import { useDebounceFn } from 'ahooks'
-import Textarea from '@/app/components/base/textarea'
-import SchemaEditor from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/schema-editor'
+import * as React from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
+import { getProcessedFiles, getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
+import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
+import Textarea from '@/app/components/base/textarea'
 import ErrorMessage from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/error-message'
+import SchemaEditor from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/schema-editor'
 import {
   checkJsonSchemaDepth,
   getValidationErrorMessage,
   validateSchemaAgainstDraft7,
 } from '@/app/components/workflow/nodes/llm/utils'
+import { useStore } from '@/app/components/workflow/store'
+import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import {
   validateJSONSchema,
 } from '@/app/components/workflow/variable-inspect/utils'
-import { getProcessedFiles, getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
 import { TransferMethod } from '@/types/app'
-import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
-import { SupportUploadFileTypes } from '@/app/components/workflow/types'
-import type { VarInInspect } from '@/types/workflow'
 import { VarInInspectType } from '@/types/workflow'
 import { cn } from '@/utils/classnames'
-import LargeDataAlert from './large-data-alert'
-import BoolValue from '../panel/chat-variable-panel/components/bool-value'
-import { useStore } from '@/app/components/workflow/store'
 import { PreviewMode } from '../../base/features/types'
+import BoolValue from '../panel/chat-variable-panel/components/bool-value'
 import DisplayContent from './display-content'
+import LargeDataAlert from './large-data-alert'
 import { CHUNK_SCHEMA_TYPES, PreviewType } from './types'
 
 type Props = {
@@ -184,36 +185,38 @@ const ValueContent = ({
   return (
     <div
       ref={contentContainerRef}
-      className='flex h-full flex-col'
+      className="flex h-full flex-col"
     >
       <div className={cn('relative grow')} style={{ height: `${editorHeight}px` }}>
         {showTextEditor && (
           <>
-            {isTruncated && <LargeDataAlert className='absolute left-3 right-3 top-1' />}
+            {isTruncated && <LargeDataAlert className="absolute left-3 right-3 top-1" />}
             {
-              currentVar.value_type === 'string' ? (
-                <DisplayContent
-                  previewType={PreviewType.Markdown}
-                  varType={currentVar.value_type}
-                  mdString={value as any}
-                  readonly={textEditorDisabled}
-                  handleTextChange={handleTextChange}
-                  className={cn(isTruncated && 'pt-[36px]')}
-                />
-              ) : (
-                <Textarea
-                  readOnly={textEditorDisabled}
-                  disabled={textEditorDisabled || isTruncated}
-                  className={cn('h-full', isTruncated && 'pt-[48px]')}
-                  value={value as any}
-                  onChange={e => handleTextChange(e.target.value)}
-                />
-              )
+              currentVar.value_type === 'string'
+                ? (
+                    <DisplayContent
+                      previewType={PreviewType.Markdown}
+                      varType={currentVar.value_type}
+                      mdString={value as any}
+                      readonly={textEditorDisabled}
+                      handleTextChange={handleTextChange}
+                      className={cn(isTruncated && 'pt-[36px]')}
+                    />
+                  )
+                : (
+                    <Textarea
+                      readOnly={textEditorDisabled}
+                      disabled={textEditorDisabled || isTruncated}
+                      className={cn('h-full', isTruncated && 'pt-[48px]')}
+                      value={value as any}
+                      onChange={e => handleTextChange(e.target.value)}
+                    />
+                  )
             }
           </>
         )}
         {showBoolEditor && (
-          <div className='w-[295px]'>
+          <div className="w-[295px]">
             <BoolValue
               value={currentVar.value as boolean}
               onChange={(newValue) => {
@@ -225,7 +228,7 @@ const ValueContent = ({
         )}
         {
           showBoolArrayEditor && (
-            <div className='w-[295px] space-y-1'>
+            <div className="w-[295px] space-y-1">
               {currentVar.value.map((v: boolean, i: number) => (
                 <BoolValue
                   key={i}
@@ -244,28 +247,28 @@ const ValueContent = ({
         {showJSONEditor && (
           hasChunks
             ? (
-              <DisplayContent
-                previewType={PreviewType.Chunks}
-                varType={currentVar.value_type}
-                schemaType={currentVar.schemaType ?? ''}
-                jsonString={json ?? '{}'}
-                readonly={JSONEditorDisabled}
-                handleEditorChange={handleEditorChange}
-              />
-            )
+                <DisplayContent
+                  previewType={PreviewType.Chunks}
+                  varType={currentVar.value_type}
+                  schemaType={currentVar.schemaType ?? ''}
+                  jsonString={json ?? '{}'}
+                  readonly={JSONEditorDisabled}
+                  handleEditorChange={handleEditorChange}
+                />
+              )
             : (
-              <SchemaEditor
-                readonly={JSONEditorDisabled || isTruncated}
-                className='overflow-y-auto'
-                hideTopMenu
-                schema={json}
-                onUpdate={handleEditorChange}
-                isTruncated={isTruncated}
-              />
-            )
+                <SchemaEditor
+                  readonly={JSONEditorDisabled || isTruncated}
+                  className="overflow-y-auto"
+                  hideTopMenu
+                  schema={json}
+                  onUpdate={handleEditorChange}
+                  isTruncated={isTruncated}
+                />
+              )
         )}
         {showFileEditor && (
-          <div className='max-w-[460px]'>
+          <div className="max-w-[460px]">
             <FileUploaderInAttachmentWrapper
               value={fileValue}
               onChange={files => handleFileChange(getProcessedFiles(files))}
@@ -295,11 +298,11 @@ const ValueContent = ({
           </div>
         )}
       </div>
-      <div ref={errorMessageRef} className='shrink-0'>
-        {parseError && <ErrorMessage className='mt-1' message={parseError.message} />}
-        {validationError && <ErrorMessage className='mt-1' message={validationError} />}
+      <div ref={errorMessageRef} className="shrink-0">
+        {parseError && <ErrorMessage className="mt-1" message={parseError.message} />}
+        {validationError && <ErrorMessage className="mt-1" message={validationError} />}
       </div>
-    </div >
+    </div>
   )
 }
 

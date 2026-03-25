@@ -1,17 +1,17 @@
-import { memo } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { ViewHistoryProps } from './view-history'
 import {
   RiPlayLargeLine,
 } from '@remixicon/react'
+import { memo } from 'react'
+import { useTranslation } from 'react-i18next'
+import { cn } from '@/utils/classnames'
 import {
   useNodesReadOnly,
   useWorkflowStartRun,
 } from '../hooks'
-import type { ViewHistoryProps } from './view-history'
-import ViewHistory from './view-history'
 import Checklist from './checklist'
-import { cn } from '@/utils/classnames'
 import RunMode from './run-mode'
+import ViewHistory from './view-history'
 
 const PreviewMode = memo(() => {
   const { t } = useTranslation()
@@ -25,8 +25,8 @@ const PreviewMode = memo(() => {
       )}
       onClick={() => handleWorkflowStartRunInChatflow()}
     >
-      <RiPlayLargeLine className='mr-1 h-4 w-4' />
-      {t('workflow.common.debugAndPreview')}
+      <RiPlayLargeLine className="mr-1 h-4 w-4" />
+      {t('common.debugAndPreview', { ns: 'workflow' })}
     </div>
   )
 })
@@ -56,7 +56,7 @@ const RunAndHistory = ({
   const { RunMode: CustomRunMode } = components || {}
 
   return (
-    <div className='flex h-8 items-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-0.5 shadow-xs'>
+    <div className="flex h-8 items-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-0.5 shadow-xs">
       {
         showRunButton && (
           CustomRunMode ? <CustomRunMode text={runButtonText} /> : <RunMode text={runButtonText} />
@@ -65,7 +65,7 @@ const RunAndHistory = ({
       {
         showPreviewButton && <PreviewMode />
       }
-      <div className='mx-0.5 h-3.5 w-[1px] bg-divider-regular'></div>
+      <div className="mx-0.5 h-3.5 w-[1px] bg-divider-regular"></div>
       <ViewHistory {...viewHistoryProps} />
       <Checklist disabled={nodesReadOnly} />
     </div>

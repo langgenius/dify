@@ -1,5 +1,3 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
-import { useInvalid } from '../use-base'
 import type {
   ExternalKnowledgeBaseHitTestingRequest,
   ExternalKnowledgeBaseHitTestingResponse,
@@ -8,7 +6,9 @@ import type {
   HitTestingRequest,
   HitTestingResponse,
 } from '@/models/datasets'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { get, post } from '../base'
+import { useInvalid } from '../use-base'
 
 const NAME_SPACE = 'hit-testing'
 

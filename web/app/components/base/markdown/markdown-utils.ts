@@ -3,7 +3,7 @@
  * These functions were extracted from the main markdown renderer for better separation of concerns.
  * Includes preprocessing for LaTeX and custom "think" tags.
  */
-import { flow } from 'lodash-es'
+import { flow } from 'es-toolkit/compat'
 import { ALLOW_UNSAFE_DATA_SCHEME } from '@/config'
 
 export const preprocessLaTeX = (content: string) => {
@@ -80,8 +80,9 @@ export const customUrlTransform = (uri: string): string | undefined => {
     (slashIndex !== -1 && colonIndex > slashIndex)
     || (questionMarkIndex !== -1 && colonIndex > questionMarkIndex)
     || (hashIndex !== -1 && colonIndex > hashIndex)
-  )
+  ) {
     return uri
+  }
 
   const scheme = uri.substring(0, colonIndex + 1).toLowerCase()
   if (PERMITTED_SCHEME_REGEX.test(scheme))

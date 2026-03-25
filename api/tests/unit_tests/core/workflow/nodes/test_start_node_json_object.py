@@ -4,12 +4,12 @@ import time
 import pytest
 from pydantic import ValidationError as PydanticValidationError
 
-from core.app.app_config.entities import VariableEntity, VariableEntityType
-from core.workflow.entities import GraphInitParams
-from core.workflow.nodes.start.entities import StartNodeData
-from core.workflow.nodes.start.start_node import StartNode
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
+from dify_graph.nodes.start.entities import StartNodeData
+from dify_graph.nodes.start.start_node import StartNode
+from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
+from dify_graph.variables.input_entities import VariableEntity, VariableEntityType
+from tests.workflow_test_utils import build_test_graph_init_params
 
 
 def make_start_node(user_inputs, variables):
@@ -32,11 +32,11 @@ def make_start_node(user_inputs, variables):
     return StartNode(
         id="start",
         config=config,
-        graph_init_params=GraphInitParams(
-            tenant_id="tenant",
-            app_id="app",
+        graph_init_params=build_test_graph_init_params(
             workflow_id="wf",
             graph_config={},
+            tenant_id="tenant",
+            app_id="app",
             user_id="u",
             user_from="account",
             invoke_from="debugger",
@@ -58,6 +58,8 @@ def test_json_object_valid_schema():
         }
     )
 
+    schema = json.loads(schema)
+
     variables = [
         VariableEntity(
             variable="profile",
@@ -68,7 +70,7 @@ def test_json_object_valid_schema():
         )
     ]
 
-    user_inputs = {"profile": json.dumps({"age": 20, "name": "Tom"})}
+    user_inputs = {"profile": {"age": 20, "name": "Tom"}}
 
     node = make_start_node(user_inputs, variables)
     result = node._run()
@@ -87,6 +89,8 @@ def test_json_object_invalid_json_string():
             "required": ["age", "name"],
         }
     )
+
+    schema = json.loads(schema)
     variables = [
         VariableEntity(
             variable="profile",
@@ -97,12 +101,12 @@ def test_json_object_invalid_json_string():
         )
     ]
 
-    # Missing closing brace makes this invalid JSON
+    # Providing a string instead of an object should raise a type error
     user_inputs = {"profile": '{"age": 20, "name": "Tom"'}
 
     node = make_start_node(user_inputs, variables)
 
-    with pytest.raises(ValueError, match='{"age": 20, "name": "Tom" must be a valid JSON object'):
+    with pytest.raises(ValueError, match="JSON object for 'profile' must be an object"):
         node._run()
 
 
@@ -118,6 +122,8 @@ def test_json_object_does_not_match_schema():
         }
     )
 
+    schema = json.loads(schema)
+
     variables = [
         VariableEntity(
             variable="profile",
@@ -129,7 +135,7 @@ def test_json_object_does_not_match_schema():
     ]
 
     # age is a string, which violates the schema (expects number)
-    user_inputs = {"profile": json.dumps({"age": "twenty", "name": "Tom"})}
+    user_inputs = {"profile": {"age": "twenty", "name": "Tom"}}
 
     node = make_start_node(user_inputs, variables)
 
@@ -149,6 +155,8 @@ def test_json_object_missing_required_schema_field():
         }
     )
 
+    schema = json.loads(schema)
+
     variables = [
         VariableEntity(
             variable="profile",
@@ -160,7 +168,7 @@ def test_json_object_missing_required_schema_field():
     ]
 
     # Missing required field "name"
-    user_inputs = {"profile": json.dumps({"age": 20})}
+    user_inputs = {"profile": {"age": 20}}
 
     node = make_start_node(user_inputs, variables)
 

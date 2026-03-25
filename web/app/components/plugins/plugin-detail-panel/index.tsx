@@ -1,19 +1,20 @@
 'use client'
-import Drawer from '@/app/components/base/drawer'
-import { PluginCategoryEnum, type PluginDetail } from '@/app/components/plugins/types'
-import { cn } from '@/utils/classnames'
 import type { FC } from 'react'
+import type { PluginDetail } from '@/app/components/plugins/types'
 import { useCallback, useEffect } from 'react'
+import Drawer from '@/app/components/base/drawer'
+import { PluginCategoryEnum } from '@/app/components/plugins/types'
+import { cn } from '@/utils/classnames'
+import { ReadmeEntrance } from '../readme-panel/entrance'
 import ActionList from './action-list'
 import AgentStrategyList from './agent-strategy-list'
 import DatasourceActionList from './datasource-action-list'
 import DetailHeader from './detail-header'
 import EndpointList from './endpoint-list'
 import ModelList from './model-list'
-import { SubscriptionList } from './subscription-list'
 import { usePluginStore } from './store'
+import { SubscriptionList } from './subscription-list'
 import { TriggerEventsList } from './trigger/event-list'
-import { ReadmeEntrance } from '../readme-panel/entrance'
 
 type Props = {
   detail?: PluginDetail
@@ -35,15 +36,17 @@ const PluginDetailPanel: FC<Props> = ({
   const { setDetail } = usePluginStore()
 
   useEffect(() => {
-    setDetail(!detail ? undefined : {
-      plugin_id: detail.plugin_id,
-      provider: `${detail.plugin_id}/${detail.declaration.name}`,
-      plugin_unique_identifier: detail.plugin_unique_identifier || '',
-      declaration: detail.declaration,
-      name: detail.name,
-      id: detail.id,
-    })
-  }, [detail])
+    setDetail(!detail
+      ? undefined
+      : {
+          plugin_id: detail.plugin_id,
+          provider: `${detail.plugin_id}/${detail.declaration.name}`,
+          plugin_unique_identifier: detail.plugin_unique_identifier || '',
+          declaration: detail.declaration,
+          name: detail.name,
+          id: detail.id,
+        })
+  }, [detail, setDetail])
 
   if (!detail)
     return null
@@ -61,12 +64,12 @@ const PluginDetailPanel: FC<Props> = ({
       {detail && (
         <>
           <DetailHeader detail={detail} onUpdate={handleUpdate} onHide={onHide} />
-          <div className='grow overflow-y-auto'>
-            <div className='flex min-h-full flex-col'>
-              <div className='flex-1'>
+          <div className="grow overflow-y-auto">
+            <div className="flex min-h-full flex-col">
+              <div className="flex-1">
                 {detail.declaration.category === PluginCategoryEnum.trigger && (
                   <>
-                    <SubscriptionList />
+                    <SubscriptionList pluginDetail={detail} />
                     <TriggerEventsList />
                   </>
                 )}
@@ -76,7 +79,7 @@ const PluginDetailPanel: FC<Props> = ({
                 {!!detail.declaration.model && <ModelList detail={detail} />}
                 {!!detail.declaration.datasource && <DatasourceActionList detail={detail} />}
               </div>
-              <ReadmeEntrance pluginDetail={detail} className='mt-auto' />
+              <ReadmeEntrance pluginDetail={detail} className="mt-auto" />
             </div>
           </div>
         </>

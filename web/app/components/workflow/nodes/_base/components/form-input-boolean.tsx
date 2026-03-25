@@ -12,7 +12,7 @@ const FormInputBoolean: FC<Props> = ({
   onChange,
 }) => {
   return (
-    <div className='flex w-full space-x-1'>
+    <div className="flex w-full space-x-1">
       <div
         className={cn(
           'system-sm-regular flex h-8 grow cursor-default items-center justify-center rounded-md border border-components-option-card-option-border bg-components-option-card-option-bg px-2 text-text-secondary',
@@ -20,7 +20,9 @@ const FormInputBoolean: FC<Props> = ({
           value && 'system-sm-medium border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg shadow-xs',
         )}
         onClick={() => onChange(true)}
-      >True</div>
+      >
+        True
+      </div>
       <div
         className={cn(
           'system-sm-regular flex h-8 grow cursor-default items-center justify-center rounded-md border border-components-option-card-option-border bg-components-option-card-option-bg px-2 text-text-secondary',
@@ -28,7 +30,9 @@ const FormInputBoolean: FC<Props> = ({
           !value && 'system-sm-medium border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg shadow-xs',
         )}
         onClick={() => onChange(false)}
-      >False</div>
+      >
+        False
+      </div>
     </div>
   )
 }

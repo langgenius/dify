@@ -1,38 +1,38 @@
 {
-	"icon": {
-		"type": "element",
-		"isRootNode": true,
-		"name": "svg",
-		"attributes": {
-			"width": "12",
-			"height": "12",
-			"viewBox": "0 0 12 12",
-			"fill": "none",
-			"xmlns": "http://www.w3.org/2000/svg"
-		},
-		"children": [
-			{
-				"type": "element",
-				"name": "g",
-				"attributes": {
-					"id": "hash-02"
-				},
-				"children": [
-					{
-						"type": "element",
-						"name": "path",
-						"attributes": {
-							"id": "Icon",
-							"d": "M4.74999 1.5L3.24999 10.5M8.74998 1.5L7.24998 10.5M10.25 4H1.75M9.75 8H1.25",
-							"stroke": "currentColor",
-							"stroke-linecap": "round",
-							"stroke-linejoin": "round"
-						},
-						"children": []
-					}
-				]
-			}
-		]
-	},
-	"name": "Hash02"
+  "icon": {
+    "type": "element",
+    "isRootNode": true,
+    "name": "svg",
+    "attributes": {
+      "width": "12",
+      "height": "12",
+      "viewBox": "0 0 12 12",
+      "fill": "none",
+      "xmlns": "http://www.w3.org/2000/svg"
+    },
+    "children": [
+      {
+        "type": "element",
+        "name": "g",
+        "attributes": {
+          "id": "hash-02"
+        },
+        "children": [
+          {
+            "type": "element",
+            "name": "path",
+            "attributes": {
+              "id": "Icon",
+              "d": "M4.74999 1.5L3.24999 10.5M8.74998 1.5L7.24998 10.5M10.25 4H1.75M9.75 8H1.25",
+              "stroke": "currentColor",
+              "stroke-linecap": "round",
+              "stroke-linejoin": "round"
+            },
+            "children": []
+          }
+        ]
+      }
+    ]
+  },
+  "name": "Hash02"
 }

@@ -3,7 +3,7 @@ import GroupName from './index'
 
 describe('GroupName', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   describe('Rendering', () => {

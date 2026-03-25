@@ -1,10 +1,10 @@
-import { useCallback, useMemo, useState } from 'react'
+import type { ImageInfo } from '../image-previewer'
 import type { FileEntity } from '@/app/components/base/file-thumb'
+import { useCallback, useMemo, useState } from 'react'
 import FileThumb from '@/app/components/base/file-thumb'
 import { cn } from '@/utils/classnames'
-import More from './more'
-import type { ImageInfo } from '../image-previewer'
 import ImagePreviewer from '../image-previewer'
+import More from './more'
 
 type Image = {
   name: string
@@ -41,7 +41,8 @@ const ImageList = ({
 
   const handleImageClick = useCallback((file: FileEntity) => {
     const index = limitedImages.findIndex(image => image.sourceUrl === file.sourceUrl)
-    if (index === -1) return
+    if (index === -1)
+      return
     setPreviewIndex(index)
     setPreviewImages(limitedImages.map(image => ({
       url: image.sourceUrl,

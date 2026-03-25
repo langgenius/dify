@@ -1,25 +1,27 @@
+import type { DataSet } from '@/models/datasets'
+import type { RetrievalConfig } from '@/types/app'
+import type { DocPathWithoutLang } from '@/types/doc-paths'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import type { DataSet } from '@/models/datasets'
-import { ChunkingMode, DataSourceType, DatasetPermission, RerankingModeEnum } from '@/models/datasets'
-import { RETRIEVE_METHOD, type RetrievalConfig } from '@/types/app'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { ChunkingMode, DatasetPermission, DataSourceType, RerankingModeEnum } from '@/models/datasets'
+import { RETRIEVE_METHOD } from '@/types/app'
 import { RetrievalChangeTip, RetrievalSection } from './retrieval-section'
 
-const mockUseModelList = jest.fn()
-const mockUseModelListAndDefaultModel = jest.fn()
-const mockUseModelListAndDefaultModelAndCurrentProviderAndModel = jest.fn()
-const mockUseCurrentProviderAndModel = jest.fn()
+const mockUseModelList = vi.fn()
+const mockUseModelListAndDefaultModel = vi.fn()
+const mockUseModelListAndDefaultModelAndCurrentProviderAndModel = vi.fn()
+const mockUseCurrentProviderAndModel = vi.fn()
 
-jest.mock('ky', () => {
+vi.mock('ky', () => {
   const ky = () => ky
   ky.extend = () => ky
   ky.create = () => ky
   return { __esModule: true, default: ky }
 })
 
-jest.mock('@/context/provider-context', () => ({
+vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
     modelProviders: [],
     textGenerationModelList: [],
@@ -32,8 +34,7 @@ jest.mock('@/context/provider-context', () => ({
   }),
 }))
 
-jest.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  __esModule: true,
+vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useModelListAndDefaultModelAndCurrentProviderAndModel: (...args: unknown[]) =>
     mockUseModelListAndDefaultModelAndCurrentProviderAndModel(...args),
   useModelListAndDefaultModel: (...args: unknown[]) => mockUseModelListAndDefaultModel(...args),
@@ -41,17 +42,15 @@ jest.mock('@/app/components/header/account-setting/model-provider-page/hooks', (
   useCurrentProviderAndModel: (...args: unknown[]) => mockUseCurrentProviderAndModel(...args),
 }))
 
-jest.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  __esModule: true,
-  default: ({ defaultModel }: { defaultModel?: { provider: string; model: string } }) => (
-    <div data-testid='model-selector'>
+vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
+  default: ({ defaultModel }: { defaultModel?: { provider: string, model: string } }) => (
+    <div data-testid="model-selector">
       {defaultModel ? `${defaultModel.provider}/${defaultModel.model}` : 'no-model'}
     </div>
   ),
 }))
 
-jest.mock('@/app/components/datasets/create/step-two', () => ({
-  __esModule: true,
+vi.mock('@/app/components/datasets/create/step-two', () => ({
   IndexingType: {
     QUALIFIED: 'high_quality',
     ECONOMICAL: 'economy',
@@ -137,16 +136,16 @@ describe('RetrievalChangeTip', () => {
   const defaultProps = {
     visible: true,
     message: 'Test message',
-    onDismiss: jest.fn(),
+    onDismiss: vi.fn(),
   }
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   it('renders and supports dismiss', async () => {
     // Arrange
-    const onDismiss = jest.fn()
+    const onDismiss = vi.fn()
     render(<RetrievalChangeTip {...defaultProps} onDismiss={onDismiss} />)
 
     // Act
@@ -167,12 +166,15 @@ describe('RetrievalChangeTip', () => {
 })
 
 describe('RetrievalSection', () => {
-  const t = (key: string) => key
+  const t = (key: string, options?: { ns?: string }) => {
+    const prefix = options?.ns ? `${options.ns}.` : ''
+    return `${prefix}${key}`
+  }
   const rowClass = 'row'
   const labelClass = 'label'
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     mockUseModelList.mockImplementation((type: ModelTypeEnum) => {
       if (type === ModelTypeEnum.rerank)
         return { data: [{ provider: 'rerank-provider', models: [{ model: 'rerank-model' }] }] }
@@ -194,7 +196,7 @@ describe('RetrievalSection', () => {
         external_knowledge_api_endpoint: 'https://api.external.com',
       },
     })
-    const handleExternalChange = jest.fn()
+    const handleExternalChange = vi.fn()
 
     // Act
     render(
@@ -210,7 +212,7 @@ describe('RetrievalSection', () => {
         currentDataset={dataset}
       />,
     )
-    const [topKIncrement] = screen.getAllByLabelText('increment')
+    const [topKIncrement] = screen.getAllByRole('button', { name: /increment/i })
     await userEvent.click(topKIncrement)
 
     // Assert
@@ -222,7 +224,7 @@ describe('RetrievalSection', () => {
 
   it('renders internal retrieval config with doc link', () => {
     // Arrange
-    const docLink = jest.fn((path: string) => `https://docs.example${path}`)
+    const docLink = vi.fn((path: string) => `https://docs.example${path}`)
     const retrievalConfig = createRetrievalConfig()
 
     // Act
@@ -235,21 +237,21 @@ describe('RetrievalSection', () => {
         indexMethod={IndexingType.QUALIFIED}
         retrievalConfig={retrievalConfig}
         showMultiModalTip
-        onRetrievalConfigChange={jest.fn()}
-        docLink={docLink}
+        onRetrievalConfigChange={vi.fn()}
+        docLink={docLink as unknown as (path?: DocPathWithoutLang) => string}
       />,
     )
 
     // Assert
     expect(screen.getByText('dataset.retrieval.semantic_search.title')).toBeInTheDocument()
     const learnMoreLink = screen.getByRole('link', { name: 'datasetSettings.form.retrievalSetting.learnMore' })
-    expect(learnMoreLink).toHaveAttribute('href', 'https://docs.example/guides/knowledge-base/create-knowledge-and-upload-documents/setting-indexing-methods#setting-the-retrieval-setting')
-    expect(docLink).toHaveBeenCalledWith('/guides/knowledge-base/create-knowledge-and-upload-documents/setting-indexing-methods#setting-the-retrieval-setting')
+    expect(learnMoreLink).toHaveAttribute('href', 'https://docs.example/use-dify/knowledge/create-knowledge/setting-indexing-methods')
+    expect(docLink).toHaveBeenCalledWith('/use-dify/knowledge/create-knowledge/setting-indexing-methods')
   })
 
   it('propagates retrieval config changes for economical indexing', async () => {
     // Arrange
-    const handleRetrievalChange = jest.fn()
+    const handleRetrievalChange = vi.fn()
 
     // Act
     render(
@@ -262,10 +264,10 @@ describe('RetrievalSection', () => {
         retrievalConfig={createRetrievalConfig()}
         showMultiModalTip={false}
         onRetrievalConfigChange={handleRetrievalChange}
-        docLink={path => path}
+        docLink={path => path || ''}
       />,
     )
-    const [topKIncrement] = screen.getAllByLabelText('increment')
+    const [topKIncrement] = screen.getAllByRole('button', { name: /increment/i })
     await userEvent.click(topKIncrement)
 
     // Assert

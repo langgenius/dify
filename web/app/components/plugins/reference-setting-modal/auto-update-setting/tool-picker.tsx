@@ -1,20 +1,22 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useMemo, useState } from 'react'
+import type { ActivePluginType } from '../../marketplace/constants'
+import * as React from 'react'
+import { useCallback, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Loading from '@/app/components/base/loading'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { useInstalledPluginList } from '@/service/use-plugins'
-import { PLUGIN_TYPE_SEARCH_MAP } from '../../marketplace/plugin-type-switch'
 import SearchBox from '@/app/components/plugins/marketplace/search-box'
-import { useTranslation } from 'react-i18next'
+import { useInstalledPluginList } from '@/service/use-plugins'
 import { cn } from '@/utils/classnames'
-import ToolItem from './tool-item'
-import Loading from '@/app/components/base/loading'
-import NoDataPlaceholder from './no-data-placeholder'
+import { PLUGIN_TYPE_SEARCH_MAP } from '../../marketplace/constants'
 import { PluginSource } from '../../types'
+import NoDataPlaceholder from './no-data-placeholder'
+import ToolItem from './tool-item'
 
 type Props = {
   trigger: React.ReactNode
@@ -40,39 +42,39 @@ const ToolPicker: FC<Props> = ({
   const tabs = [
     {
       key: PLUGIN_TYPE_SEARCH_MAP.all,
-      name: t('plugin.category.all'),
+      name: t('category.all', { ns: 'plugin' }),
     },
     {
       key: PLUGIN_TYPE_SEARCH_MAP.model,
-      name: t('plugin.category.models'),
+      name: t('category.models', { ns: 'plugin' }),
     },
     {
       key: PLUGIN_TYPE_SEARCH_MAP.tool,
-      name: t('plugin.category.tools'),
+      name: t('category.tools', { ns: 'plugin' }),
     },
     {
       key: PLUGIN_TYPE_SEARCH_MAP.agent,
-      name: t('plugin.category.agents'),
+      name: t('category.agents', { ns: 'plugin' }),
     },
     {
       key: PLUGIN_TYPE_SEARCH_MAP.extension,
-      name: t('plugin.category.extensions'),
+      name: t('category.extensions', { ns: 'plugin' }),
     },
     {
       key: PLUGIN_TYPE_SEARCH_MAP.datasource,
-      name: t('plugin.category.datasources'),
+      name: t('category.datasources', { ns: 'plugin' }),
     },
     {
       key: PLUGIN_TYPE_SEARCH_MAP.trigger,
-      name: t('plugin.category.triggers'),
+      name: t('category.triggers', { ns: 'plugin' }),
     },
     {
       key: PLUGIN_TYPE_SEARCH_MAP.bundle,
-      name: t('plugin.category.bundles'),
+      name: t('category.bundles', { ns: 'plugin' }),
     },
   ]
 
-  const [pluginType, setPluginType] = useState(PLUGIN_TYPE_SEARCH_MAP.all)
+  const [pluginType, setPluginType] = useState<ActivePluginType>(PLUGIN_TYPE_SEARCH_MAP.all)
   const [query, setQuery] = useState('')
   const [tags, setTags] = useState<string[]>([])
   const { data, isLoading } = useInstalledPluginList()
@@ -97,7 +99,7 @@ const ToolPicker: FC<Props> = ({
   }, [onChange, value])
 
   const listContent = (
-    <div className='max-h-[396px] overflow-y-auto'>
+    <div className="max-h-[396px] overflow-y-auto">
       {filteredList.map(item => (
         <ToolItem
           key={item.plugin_id}
@@ -110,42 +112,42 @@ const ToolPicker: FC<Props> = ({
   )
 
   const loadingContent = (
-    <div className='flex h-[396px] items-center justify-center'>
+    <div className="flex h-[396px] items-center justify-center">
       <Loading />
     </div>
   )
 
   const noData = (
-    <NoDataPlaceholder className='h-[396px]' noPlugins={!query} />
+    <NoDataPlaceholder className="h-[396px]" noPlugins={!query} />
   )
 
   return (
     <PortalToFollowElem
-      placement='top'
+      placement="top"
       offset={0}
       open={isShow}
       onOpenChange={onShowChange}
     >
       <PortalToFollowElemTrigger
-        className='block w-full'
+        className="block w-full"
         onClick={toggleShowPopup}
       >
         {trigger}
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-[1000]'>
+      <PortalToFollowElemContent className="z-[1000]">
         <div className={cn('relative min-h-20 w-full rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur pb-2 shadow-lg backdrop-blur-sm')}>
-          <div className='p-2 pb-1'>
+          <div className="p-2 pb-1">
             <SearchBox
               search={query}
               onSearchChange={setQuery}
               tags={tags}
               onTagsChange={setTags}
-              placeholder={t('plugin.searchTools')!}
-              inputClassName='w-full'
+              placeholder={t('searchTools', { ns: 'plugin' })!}
+              inputClassName="w-full"
             />
           </div>
-          <div className='flex items-center justify-between border-b-[0.5px] border-divider-subtle bg-background-default-hover px-3 shadow-xs'>
-            <div className='flex h-8 items-center space-x-1'>
+          <div className="flex items-center justify-between border-b-[0.5px] border-divider-subtle bg-background-default-hover px-3 shadow-xs">
+            <div className="flex h-8 items-center space-x-1">
               {
                 tabs.map(tab => (
                   <div

@@ -115,8 +115,8 @@ describe('useBreakpoints', () => {
    */
   it('should clean up event listeners on unmount', () => {
     // Spy on addEventListener and removeEventListener
-    const addEventListenerSpy = jest.spyOn(window, 'addEventListener')
-    const removeEventListenerSpy = jest.spyOn(window, 'removeEventListener')
+    const addEventListenerSpy = vi.spyOn(window, 'addEventListener')
+    const removeEventListenerSpy = vi.spyOn(window, 'removeEventListener')
 
     const { unmount } = renderHook(() => useBreakpoints())
 

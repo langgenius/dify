@@ -8,6 +8,7 @@
   ],
   "typeCheckingMode": "strict",
   "allowedUntypedLibraries": [
+    "fastopenapi",
     "flask_restx",
     "flask_login",
     "opentelemetry.instrumentation.celery",
@@ -34,7 +35,8 @@
     "tos",
     "gmpy2",
     "sendgrid",
-    "sendgrid.helpers.mail"
+    "sendgrid.helpers.mail",
+    "holo_search_sdk.types"
   ],
   "reportUnknownMemberType": "hint",
   "reportUnknownParameterType": "hint",

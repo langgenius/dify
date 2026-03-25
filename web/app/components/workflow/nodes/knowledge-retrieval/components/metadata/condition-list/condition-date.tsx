@@ -1,14 +1,14 @@
-import { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
-import dayjs from 'dayjs'
+import type { TriggerProps } from '@/app/components/base/date-and-time-picker/types'
 import {
   RiCalendarLine,
   RiCloseCircleFill,
 } from '@remixicon/react'
+import dayjs from 'dayjs'
+import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import DatePicker from '@/app/components/base/date-and-time-picker/date-picker'
-import type { TriggerProps } from '@/app/components/base/date-and-time-picker/types'
-import { cn } from '@/utils/classnames'
 import { useAppContext } from '@/context/app-context'
+import { cn } from '@/utils/classnames'
 
 type ConditionDateProps = {
   value?: number
@@ -32,7 +32,7 @@ const ConditionDate = ({
     handleClickTrigger,
   }: TriggerProps) => {
     return (
-      <div className='group flex items-center' onClick={handleClickTrigger}>
+      <div className="group flex items-center" onClick={handleClickTrigger}>
         <div
           className={cn(
             'system-sm-regular mr-0.5 flex h-6 grow cursor-pointer items-center px-1',
@@ -42,11 +42,11 @@ const ConditionDate = ({
           {
             value
               ? dayjs(value * 1000).tz(timezone).format('MMMM DD YYYY HH:mm A')
-              : t('workflow.nodes.knowledgeRetrieval.metadata.panel.datePlaceholder')
+              : t('nodes.knowledgeRetrieval.metadata.panel.datePlaceholder', { ns: 'workflow' })
           }
         </div>
         {
-          value && (
+          !!value && (
             <RiCloseCircleFill
               className={cn(
                 'hidden h-4 w-4 shrink-0 cursor-pointer hover:text-components-input-text-filled group-hover:block',
@@ -71,7 +71,7 @@ const ConditionDate = ({
   }, [value, handleDateChange, timezone, t])
 
   return (
-    <div className='h-8 px-2 py-1'>
+    <div className="h-8 px-2 py-1">
       <DatePicker
         timezone={timezone}
         value={value ? dayjs(value * 1000) : undefined}

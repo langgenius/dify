@@ -1,12 +1,12 @@
 import base64
 
 from core.model_manager import ModelInstance, ModelManager
-from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.entities.rerank_entities import RerankResult
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.query_type import QueryType
 from core.rag.models.document import Document
 from core.rag.rerank.rerank_base import BaseRerankRunner
+from dify_graph.model_runtime.entities.model_entities import ModelType
+from dify_graph.model_runtime.entities.rerank_entities import RerankResult
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.model import UploadFile
@@ -38,7 +38,7 @@ class RerankModelRunner(BaseRerankRunner):
         is_support_vision = model_manager.check_model_support_vision(
             tenant_id=self.rerank_model_instance.provider_model_bundle.configuration.tenant_id,
             provider=self.rerank_model_instance.provider,
-            model=self.rerank_model_instance.model,
+            model=self.rerank_model_instance.model_name,
             model_type=ModelType.RERANK,
         )
         if not is_support_vision:

@@ -1,21 +1,23 @@
+import type { ModelItem, ModelProvider } from '../declarations'
+import { useQueryClient } from '@tanstack/react-query'
+import { useDebounceFn } from 'ahooks'
 import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useDebounceFn } from 'ahooks'
-import type { ModelItem, ModelProvider } from '../declarations'
-import { ModelStatusEnum } from '../declarations'
-import ModelIcon from '../model-icon'
-import ModelName from '../model-name'
-import { useUpdateModelList } from '../hooks'
-import { cn } from '@/utils/classnames'
+import Badge from '@/app/components/base/badge'
 import { Balance } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
-import { useProviderContext, useProviderContextSelector } from '@/context/provider-context'
-import { disableModel, enableModel } from '@/service/common'
 import { Plan } from '@/app/components/billing/type'
 import { useAppContext } from '@/context/app-context'
+import { useProviderContext, useProviderContextSelector } from '@/context/provider-context'
+import { consoleQuery } from '@/service/client'
+import { disableModel, enableModel } from '@/service/common'
+import { cn } from '@/utils/classnames'
+import { ModelStatusEnum } from '../declarations'
+import { useUpdateModelList } from '../hooks'
 import { ConfigModel } from '../model-auth'
-import Badge from '@/app/components/base/badge'
+import ModelIcon from '../model-icon'
+import ModelName from '../model-name'
 
 export type ModelListItemProps = {
   model: ModelItem
@@ -30,16 +32,30 @@ const ModelListItem = ({ model, provider, isConfigurable, onChange, onModifyLoad
   const { plan } = useProviderContext()
   const modelLoadBalancingEnabled = useProviderContextSelector(state => state.modelLoadBalancingEnabled)
   const { isCurrentWorkspaceManager } = useAppContext()
+  const queryClient = useQueryClient()
   const updateModelList = useUpdateModelList()
+  const modelProviderModelListQueryKey = consoleQuery.modelProviders.models.queryKey({
+    input: {
+      params: {
+        provider: provider.provider,
+      },
+    },
+  })
 
   const toggleModelEnablingStatus = useCallback(async (enabled: boolean) => {
     if (enabled)
       await enableModel(`/workspaces/current/model-providers/${provider.provider}/models/enable`, { model: model.model, model_type: model.model_type })
     else
       await disableModel(`/workspaces/current/model-providers/${provider.provider}/models/disable`, { model: model.model, model_type: model.model_type })
+
+    queryClient.invalidateQueries({
+      queryKey: modelProviderModelListQueryKey,
+      exact: true,
+      refetchType: 'none',
+    })
     updateModelList(model.model_type)
     onChange?.(provider.provider)
-  }, [model.model, model.model_type, onChange, provider.provider, updateModelList])
+  }, [model.model, model.model_type, modelProviderModelListQueryKey, onChange, provider.provider, queryClient, updateModelList])
 
   const { run: debouncedToggleModelEnablingStatus } = useDebounceFn(toggleModelEnablingStatus, { wait: 500 })
 
@@ -50,17 +66,15 @@ const ModelListItem = ({ model, provider, isConfigurable, onChange, onModifyLoad
   return (
     <div
       key={`${model.model}-${model.fetch_from}`}
-      className={cn('group flex h-8 items-center rounded-lg pl-2 pr-2.5',
-        isConfigurable && 'hover:bg-components-panel-on-panel-item-bg-hover',
-        model.deprecated && 'opacity-60')}
+      className={cn('group flex h-8 items-center rounded-lg pl-2 pr-2.5', isConfigurable && 'hover:bg-components-panel-on-panel-item-bg-hover', model.deprecated && 'opacity-60')}
     >
       <ModelIcon
-        className='mr-2 shrink-0'
+        className="mr-2 shrink-0"
         provider={provider}
         modelName={model.model}
       />
       <ModelName
-        className='system-md-regular grow text-text-secondary'
+        className="grow text-text-secondary system-md-regular"
         modelItem={model}
         showModelType
         showMode
@@ -69,10 +83,10 @@ const ModelListItem = ({ model, provider, isConfigurable, onChange, onModifyLoad
         showFeaturesLabel
       >
       </ModelName>
-      <div className='flex shrink-0 items-center'>
+      <div className="flex shrink-0 items-center">
         {modelLoadBalancingEnabled && !model.deprecated && model.load_balancing_enabled && !model.has_invalid_load_balancing_configs && (
-          <Badge className='mr-1 h-[18px] w-[18px] items-center justify-center border-text-accent-secondary p-0'>
-            <Balance className='h-3 w-3 text-text-accent-secondary' />
+          <Badge className="mr-1 h-[18px] w-[18px] items-center justify-center border-text-accent-secondary p-0">
+            <Balance className="h-3 w-3 text-text-accent-secondary" />
           </Badge>
         )}
         {
@@ -88,23 +102,24 @@ const ModelListItem = ({ model, provider, isConfigurable, onChange, onModifyLoad
         {
           model.deprecated
             ? (
-              <Tooltip
-                popupContent={
-                  <span className='font-semibold'>{t('common.modelProvider.modelHasBeenDeprecated')}</span>} offset={{ mainAxis: 4 }
-                }
-              >
-                <Switch defaultValue={false} disabled size='md' />
-              </Tooltip>
-            )
+                <Tooltip
+                  popupContent={
+                    <span className="font-semibold">{t('modelProvider.modelHasBeenDeprecated', { ns: 'common' })}</span>
+                  }
+                  offset={{ mainAxis: 4 }}
+                >
+                  <Switch value={false} disabled size="md" />
+                </Tooltip>
+              )
             : (isCurrentWorkspaceManager && (
-              <Switch
-                className='ml-2'
-                defaultValue={model?.status === ModelStatusEnum.active}
-                disabled={![ModelStatusEnum.active, ModelStatusEnum.disabled].includes(model.status)}
-                size='md'
-                onChange={onEnablingStateChange}
-              />
-            ))
+                <Switch
+                  className="ml-2"
+                  value={model?.status === ModelStatusEnum.active}
+                  disabled={![ModelStatusEnum.active, ModelStatusEnum.disabled].includes(model.status)}
+                  size="md"
+                  onChange={onEnablingStateChange}
+                />
+              ))
         }
       </div>
     </div>

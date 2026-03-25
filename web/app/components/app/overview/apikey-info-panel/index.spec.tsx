@@ -11,14 +11,14 @@ import {
 } from './apikey-info-panel.test-utils'
 
 // Mock config for CE edition
-jest.mock('@/config', () => ({
+vi.mock('@/config', () => ({
   IS_CE_EDITION: true, // Test CE edition by default
 }))
 
 afterEach(cleanup)
 
 describe('APIKeyInfoPanel - Community Edition', () => {
-  const mockSetShowAccountSettingModal = jest.fn()
+  const mockSetShowAccountSettingModal = vi.fn()
 
   beforeEach(() => {
     clearAllMocks()

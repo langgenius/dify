@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 from collections.abc import Sequence
 from typing import Any
@@ -16,7 +18,7 @@ class TaskWrapper(BaseModel):
         return self.model_dump_json()
 
     @classmethod
-    def deserialize(cls, serialized_data: str) -> "TaskWrapper":
+    def deserialize(cls, serialized_data: str) -> TaskWrapper:
         return cls.model_validate_json(serialized_data)
 
 

@@ -7,6 +7,7 @@ from werkzeug.exceptions import NotFound
 
 import services
 from controllers.common.errors import UnsupportedFileTypeError
+from controllers.common.file_response import enforce_download_for_html
 from controllers.files import files_ns
 from extensions.ext_database import db
 from services.account_service import TenantService
@@ -136,7 +137,14 @@ class FilePreviewApi(Resource):
         if args.as_attachment:
             encoded_filename = quote(upload_file.name)
             response.headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{encoded_filename}"
-            response.headers["Content-Type"] = "application/octet-stream"
+        response.headers["Content-Type"] = "application/octet-stream"
+
+        enforce_download_for_html(
+            response,
+            mime_type=upload_file.mime_type,
+            filename=upload_file.name,
+            extension=upload_file.extension,
+        )
 
         return response
 

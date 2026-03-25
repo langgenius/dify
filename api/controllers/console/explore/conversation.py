@@ -1,8 +1,7 @@
 from typing import Any
 
 from flask import request
-from flask_restx import marshal_with
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, TypeAdapter, model_validator
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
@@ -11,7 +10,11 @@ from controllers.console.explore.error import NotChatAppError
 from controllers.console.explore.wraps import InstalledAppResource
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
-from fields.conversation_fields import conversation_infinite_scroll_pagination_fields, simple_conversation_fields
+from fields.conversation_fields import (
+    ConversationInfiniteScrollPagination,
+    ResultResponse,
+    SimpleConversation,
+)
 from libs.helper import UUIDStrOrEmpty
 from libs.login import current_user
 from models import Account
@@ -49,7 +52,6 @@ register_schema_models(console_ns, ConversationListQuery, ConversationRenamePayl
     endpoint="installed_app_conversations",
 )
 class ConversationListApi(InstalledAppResource):
-    @marshal_with(conversation_infinite_scroll_pagination_fields)
     @console_ns.expect(console_ns.models[ConversationListQuery.__name__])
     def get(self, installed_app):
         app_model = installed_app.app
@@ -73,7 +75,7 @@ class ConversationListApi(InstalledAppResource):
             if not isinstance(current_user, Account):
                 raise ValueError("current_user must be an Account instance")
             with Session(db.engine) as session:
-                return WebConversationService.pagination_by_last_id(
+                pagination = WebConversationService.pagination_by_last_id(
                     session=session,
                     app_model=app_model,
                     user=current_user,
@@ -82,6 +84,13 @@ class ConversationListApi(InstalledAppResource):
                     invoke_from=InvokeFrom.EXPLORE,
                     pinned=args.pinned,
                 )
+                adapter = TypeAdapter(SimpleConversation)
+                conversations = [adapter.validate_python(item, from_attributes=True) for item in pagination.data]
+                return ConversationInfiniteScrollPagination(
+                    limit=pagination.limit,
+                    has_more=pagination.has_more,
+                    data=conversations,
+                ).model_dump(mode="json")
         except LastConversationNotExistsError:
             raise NotFound("Last Conversation Not Exists.")
 
@@ -105,7 +114,7 @@ class ConversationApi(InstalledAppResource):
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
 
-        return {"result": "success"}, 204
+        return ResultResponse(result="success").model_dump(mode="json"), 204
 
 
 @console_ns.route(
@@ -113,7 +122,6 @@ class ConversationApi(InstalledAppResource):
     endpoint="installed_app_conversation_rename",
 )
 class ConversationRenameApi(InstalledAppResource):
-    @marshal_with(simple_conversation_fields)
     @console_ns.expect(console_ns.models[ConversationRenamePayload.__name__])
     def post(self, installed_app, c_id):
         app_model = installed_app.app
@@ -128,8 +136,13 @@ class ConversationRenameApi(InstalledAppResource):
         try:
             if not isinstance(current_user, Account):
                 raise ValueError("current_user must be an Account instance")
-            return ConversationService.rename(
+            conversation = ConversationService.rename(
                 app_model, conversation_id, current_user, payload.name, payload.auto_generate
+            )
+            return (
+                TypeAdapter(SimpleConversation)
+                .validate_python(conversation, from_attributes=True)
+                .model_dump(mode="json")
             )
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
@@ -155,7 +168,7 @@ class ConversationPinApi(InstalledAppResource):
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
 
-        return {"result": "success"}
+        return ResultResponse(result="success").model_dump(mode="json")
 
 
 @console_ns.route(
@@ -174,4 +187,4 @@ class ConversationUnPinApi(InstalledAppResource):
             raise ValueError("current_user must be an Account instance")
         WebConversationService.unpin(app_model, conversation_id, current_user)
 
-        return {"result": "success"}
+        return ResultResponse(result="success").model_dump(mode="json")

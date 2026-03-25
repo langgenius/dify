@@ -9,7 +9,6 @@ Create Date: 2025-10-22 16:11:31.805407
 from alembic import op
 import models as models
 import sqlalchemy as sa
-from libs.uuid_utils import uuidv7
 
 def _is_pg(conn):
     return conn.dialect.name == "postgresql"

@@ -8,9 +8,7 @@ when passing files to downstream LLM nodes.
 
 from unittest.mock import Mock, patch
 
-from core.app.entities.app_invoke_entities import InvokeFrom
-from core.workflow.entities.graph_init_params import GraphInitParams
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.workflow.nodes.trigger_webhook.entities import (
     ContentType,
     Method,
@@ -18,11 +16,11 @@ from core.workflow.nodes.trigger_webhook.entities import (
     WebhookData,
 )
 from core.workflow.nodes.trigger_webhook.node import TriggerWebhookNode
-from core.workflow.runtime.graph_runtime_state import GraphRuntimeState
-from core.workflow.runtime.variable_pool import VariablePool
-from core.workflow.system_variable import SystemVariable
-from models.enums import UserFrom
-from models.workflow import WorkflowType
+from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY, GraphInitParams
+from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionStatus
+from dify_graph.runtime.graph_runtime_state import GraphRuntimeState
+from dify_graph.runtime.variable_pool import VariablePool
+from dify_graph.system_variable import SystemVariable
 
 
 def create_webhook_node(
@@ -37,14 +35,17 @@ def create_webhook_node(
     }
 
     graph_init_params = GraphInitParams(
-        tenant_id=tenant_id,
-        app_id="test-app",
-        workflow_type=WorkflowType.WORKFLOW,
         workflow_id="test-workflow",
         graph_config={},
-        user_id="test-user",
-        user_from=UserFrom.ACCOUNT,
-        invoke_from=InvokeFrom.SERVICE_API,
+        run_context={
+            DIFY_RUN_CONTEXT_KEY: {
+                "tenant_id": tenant_id,
+                "app_id": "test-app",
+                "user_id": "test-user",
+                "user_from": UserFrom.ACCOUNT,
+                "invoke_from": InvokeFrom.SERVICE_API,
+            }
+        },
         call_depth=0,
     )
 
@@ -111,7 +112,7 @@ def test_webhook_node_file_conversion_to_file_variable():
     )
 
     variable_pool = VariablePool(
-        system_variables=SystemVariable.empty(),
+        system_variables=SystemVariable.default(),
         user_inputs={
             "webhook_data": {
                 "headers": {},
@@ -184,7 +185,7 @@ def test_webhook_node_file_conversion_with_missing_files():
     )
 
     variable_pool = VariablePool(
-        system_variables=SystemVariable.empty(),
+        system_variables=SystemVariable.default(),
         user_inputs={
             "webhook_data": {
                 "headers": {},
@@ -219,7 +220,7 @@ def test_webhook_node_file_conversion_with_none_file():
     )
 
     variable_pool = VariablePool(
-        system_variables=SystemVariable.empty(),
+        system_variables=SystemVariable.default(),
         user_inputs={
             "webhook_data": {
                 "headers": {},
@@ -256,7 +257,7 @@ def test_webhook_node_file_conversion_with_non_dict_file():
     )
 
     variable_pool = VariablePool(
-        system_variables=SystemVariable.empty(),
+        system_variables=SystemVariable.default(),
         user_inputs={
             "webhook_data": {
                 "headers": {},
@@ -300,7 +301,7 @@ def test_webhook_node_file_conversion_mixed_parameters():
     )
 
     variable_pool = VariablePool(
-        system_variables=SystemVariable.empty(),
+        system_variables=SystemVariable.default(),
         user_inputs={
             "webhook_data": {
                 "headers": {},
@@ -370,7 +371,7 @@ def test_webhook_node_different_file_types():
     )
 
     variable_pool = VariablePool(
-        system_variables=SystemVariable.empty(),
+        system_variables=SystemVariable.default(),
         user_inputs={
             "webhook_data": {
                 "headers": {},
@@ -430,7 +431,7 @@ def test_webhook_node_file_conversion_with_non_dict_wrapper():
     )
 
     variable_pool = VariablePool(
-        system_variables=SystemVariable.empty(),
+        system_variables=SystemVariable.default(),
         user_inputs={
             "webhook_data": {
                 "headers": {},

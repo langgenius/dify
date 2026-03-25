@@ -1,19 +1,20 @@
 'use client'
-import React, { useCallback, useRef } from 'react'
-import { useHover } from 'ahooks'
-import { useTranslation } from 'react-i18next'
+import type { InputVarType } from '@/app/components/workflow/types'
+import type { InputVar } from '@/models/pipeline'
 import {
   RiDeleteBinLine,
   RiDraggable,
   RiEditLine,
 } from '@remixicon/react'
+import { useHover } from 'ahooks'
+import * as React from 'react'
+import { useCallback, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
+import ActionButton from '@/app/components/base/action-button'
+import Badge from '@/app/components/base/badge'
 import { InputField } from '@/app/components/base/icons/src/vender/pipeline'
 import InputVarTypeIcon from '@/app/components/workflow/nodes/_base/components/input-var-type-icon'
 import { cn } from '@/utils/classnames'
-import Badge from '@/app/components/base/badge'
-import type { InputVar } from '@/models/pipeline'
-import type { InputVarType } from '@/app/components/workflow/types'
-import ActionButton from '@/app/components/base/action-button'
 
 type FieldItemProps = {
   readonly?: boolean
@@ -37,13 +38,15 @@ const FieldItem = ({
 
   const handleOnClickEdit = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
-    if (readonly) return
+    if (readonly)
+      return
     onClickEdit(payload.variable)
   }, [onClickEdit, payload.variable, readonly])
 
   const handleRemove = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
-    if (readonly) return
+    if (readonly)
+      return
     onRemove(index)
   }, [index, onRemove, readonly])
 
@@ -57,24 +60,24 @@ const FieldItem = ({
       )}
     // onClick={handleOnClickEdit}
     >
-      <div className='flex grow basis-0 items-center gap-x-1 overflow-hidden'>
+      <div className="flex grow basis-0 items-center gap-x-1 overflow-hidden">
         {
           (isHovering && !readonly)
-            ? <RiDraggable className='size-4 shrink-0 text-text-quaternary' />
-            : <InputField className='size-4 shrink-0 text-text-accent' />
+            ? <RiDraggable className="size-4 shrink-0 text-text-quaternary" />
+            : <InputField className="size-4 shrink-0 text-text-accent" />
         }
         <div
           title={payload.variable}
-          className='system-sm-medium max-w-[130px] shrink-0 truncate text-text-secondary'
+          className="system-sm-medium max-w-[130px] shrink-0 truncate text-text-secondary"
         >
           {payload.variable}
         </div>
         {payload.label && (
           <>
-            <div className='system-xs-regular shrink-0 text-text-quaternary'>·</div>
+            <div className="system-xs-regular shrink-0 text-text-quaternary">·</div>
             <div
               title={payload.label}
-              className='system-xs-medium grow truncate text-text-tertiary'
+              className="system-xs-medium grow truncate text-text-tertiary"
             >
               {payload.label}
             </div>
@@ -83,29 +86,28 @@ const FieldItem = ({
       </div>
       {(isHovering && !readonly)
         ? (
-          <div className='flex shrink-0 items-center gap-x-1'>
-            <ActionButton
-              className='mr-1'
-              onClick={handleOnClickEdit}
-            >
-              <RiEditLine className='size-4 text-text-tertiary' />
-            </ActionButton>
-            <ActionButton
-              onClick={handleRemove}
-            >
-              <RiDeleteBinLine className='size-4 text-text-tertiary group-hover:text-text-destructive' />
-            </ActionButton>
-          </div>
-        )
+            <div className="flex shrink-0 items-center gap-x-1">
+              <ActionButton
+                className="mr-1"
+                onClick={handleOnClickEdit}
+              >
+                <RiEditLine className="size-4 text-text-tertiary" />
+              </ActionButton>
+              <ActionButton
+                onClick={handleRemove}
+              >
+                <RiDeleteBinLine className="size-4 text-text-tertiary group-hover:text-text-destructive" />
+              </ActionButton>
+            </div>
+          )
         : (
-          <div className='flex shrink-0 items-center gap-x-2'>
-            {payload.required && (
-              <Badge>{t('workflow.nodes.start.required')}</Badge>
-            )}
-            <InputVarTypeIcon type={payload.type as unknown as InputVarType} className='h-3 w-3 text-text-tertiary' />
-          </div>
-        )
-      }
+            <div className="flex shrink-0 items-center gap-x-2">
+              {payload.required && (
+                <Badge>{t('nodes.start.required', { ns: 'workflow' })}</Badge>
+              )}
+              <InputVarTypeIcon type={payload.type as unknown as InputVarType} className="h-3 w-3 text-text-tertiary" />
+            </div>
+          )}
     </div>
   )
 }

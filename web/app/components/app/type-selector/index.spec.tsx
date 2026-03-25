@@ -1,36 +1,34 @@
-import React from 'react'
-import { fireEvent, render, screen, within } from '@testing-library/react'
-import AppTypeSelector, { AppTypeIcon, AppTypeLabel } from './index'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import * as React from 'react'
 import { AppModeEnum } from '@/types/app'
-
-jest.mock('react-i18next')
+import AppTypeSelector, { AppTypeIcon, AppTypeLabel } from './index'
 
 describe('AppTypeSelector', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   // Covers default rendering and the closed dropdown state.
   describe('Rendering', () => {
     it('should render "all types" trigger when no types selected', () => {
-      render(<AppTypeSelector value={[]} onChange={jest.fn()} />)
+      render(<AppTypeSelector value={[]} onChange={vi.fn()} />)
 
       expect(screen.getByText('app.typeSelector.all')).toBeInTheDocument()
-      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+      expect(screen.queryByText('app.typeSelector.workflow')).not.toBeInTheDocument()
     })
   })
 
   // Covers prop-driven trigger variants (empty, single, multiple).
   describe('Props', () => {
     it('should render selected type label and clear button when a single type is selected', () => {
-      render(<AppTypeSelector value={[AppModeEnum.CHAT]} onChange={jest.fn()} />)
+      render(<AppTypeSelector value={[AppModeEnum.CHAT]} onChange={vi.fn()} />)
 
       expect(screen.getByText('app.typeSelector.chatbot')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'common.operation.clear' })).toBeInTheDocument()
     })
 
     it('should render icon-only trigger when multiple types are selected', () => {
-      render(<AppTypeSelector value={[AppModeEnum.CHAT, AppModeEnum.WORKFLOW]} onChange={jest.fn()} />)
+      render(<AppTypeSelector value={[AppModeEnum.CHAT, AppModeEnum.WORKFLOW]} onChange={vi.fn()} />)
 
       expect(screen.queryByText('app.typeSelector.all')).not.toBeInTheDocument()
       expect(screen.queryByText('app.typeSelector.chatbot')).not.toBeInTheDocument()
@@ -41,63 +39,66 @@ describe('AppTypeSelector', () => {
 
   // Covers opening/closing the dropdown and selection updates.
   describe('User interactions', () => {
-    it('should toggle option list when clicking the trigger', () => {
-      render(<AppTypeSelector value={[]} onChange={jest.fn()} />)
+    it('should close option list when clicking outside', () => {
+      render(<AppTypeSelector value={[]} onChange={vi.fn()} />)
 
-      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+      expect(screen.queryByRole('list')).not.toBeInTheDocument()
 
-      fireEvent.click(screen.getByText('app.typeSelector.all'))
-      expect(screen.getByRole('tooltip')).toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: 'app.typeSelector.all' }))
+      expect(screen.getByRole('list')).toBeInTheDocument()
 
-      fireEvent.click(screen.getByText('app.typeSelector.all'))
-      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+      fireEvent.pointerDown(document.body)
+      fireEvent.click(document.body)
+      return waitFor(() => {
+        expect(screen.queryByRole('list')).not.toBeInTheDocument()
+      })
     })
 
     it('should call onChange with added type when selecting an unselected item', () => {
-      const onChange = jest.fn()
+      const onChange = vi.fn()
       render(<AppTypeSelector value={[]} onChange={onChange} />)
 
-      fireEvent.click(screen.getByText('app.typeSelector.all'))
-      fireEvent.click(within(screen.getByRole('tooltip')).getByText('app.typeSelector.workflow'))
+      fireEvent.click(screen.getByRole('button', { name: 'app.typeSelector.all' }))
+      fireEvent.click(within(screen.getByRole('list')).getByRole('button', { name: 'app.typeSelector.workflow' }))
 
       expect(onChange).toHaveBeenCalledWith([AppModeEnum.WORKFLOW])
     })
 
     it('should call onChange with removed type when selecting an already-selected item', () => {
-      const onChange = jest.fn()
+      const onChange = vi.fn()
       render(<AppTypeSelector value={[AppModeEnum.WORKFLOW]} onChange={onChange} />)
 
-      fireEvent.click(screen.getByText('app.typeSelector.workflow'))
-      fireEvent.click(within(screen.getByRole('tooltip')).getByText('app.typeSelector.workflow'))
+      fireEvent.click(screen.getByRole('button', { name: 'app.typeSelector.workflow' }))
+      fireEvent.click(within(screen.getByRole('list')).getByRole('button', { name: 'app.typeSelector.workflow' }))
 
       expect(onChange).toHaveBeenCalledWith([])
     })
 
     it('should call onChange with appended type when selecting an additional item', () => {
-      const onChange = jest.fn()
+      const onChange = vi.fn()
       render(<AppTypeSelector value={[AppModeEnum.CHAT]} onChange={onChange} />)
 
-      fireEvent.click(screen.getByText('app.typeSelector.chatbot'))
-      fireEvent.click(within(screen.getByRole('tooltip')).getByText('app.typeSelector.agent'))
+      fireEvent.click(screen.getByRole('button', { name: 'app.typeSelector.chatbot' }))
+      fireEvent.click(within(screen.getByRole('list')).getByRole('button', { name: 'app.typeSelector.agent' }))
 
       expect(onChange).toHaveBeenCalledWith([AppModeEnum.CHAT, AppModeEnum.AGENT_CHAT])
     })
 
     it('should clear selection without opening the dropdown when clicking clear button', () => {
-      const onChange = jest.fn()
+      const onChange = vi.fn()
       render(<AppTypeSelector value={[AppModeEnum.CHAT]} onChange={onChange} />)
 
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.clear' }))
 
       expect(onChange).toHaveBeenCalledWith([])
-      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+      expect(screen.queryByText('app.typeSelector.workflow')).not.toBeInTheDocument()
     })
   })
 })
 
 describe('AppTypeLabel', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   // Covers label mapping for each supported app type.
@@ -121,7 +122,7 @@ describe('AppTypeLabel', () => {
 
 describe('AppTypeIcon', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   // Covers icon rendering for each supported app type.

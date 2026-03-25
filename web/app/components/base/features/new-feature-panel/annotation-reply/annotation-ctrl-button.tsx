@@ -1,17 +1,17 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
-import { useTranslation } from 'react-i18next'
 import {
   RiEditLine,
   RiFileEditLine,
 } from '@remixicon/react'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-import Tooltip from '@/app/components/base/tooltip'
-import { addAnnotation } from '@/service/annotation'
 import Toast from '@/app/components/base/toast'
-import { useProviderContext } from '@/context/provider-context'
+import Tooltip from '@/app/components/base/tooltip'
 import { useModalContext } from '@/context/modal-context'
+import { useProviderContext } from '@/context/provider-context'
+import { addAnnotation } from '@/service/annotation'
 
 type Props = {
   appId: string
@@ -47,7 +47,7 @@ const AnnotationCtrlButton: FC<Props> = ({
       answer,
     })
     Toast.notify({
-      message: t('common.api.actionSuccess') as string,
+      message: t('api.actionSuccess', { ns: 'common' }) as string,
       type: 'success',
     })
     onAdded(res.id, res.account?.name ?? '')
@@ -57,19 +57,19 @@ const AnnotationCtrlButton: FC<Props> = ({
     <>
       {cached && (
         <Tooltip
-          popupContent={t('appDebug.feature.annotation.edit')}
+          popupContent={t('feature.annotation.edit', { ns: 'appDebug' })}
         >
           <ActionButton onClick={onEdit}>
-            <RiEditLine className='h-4 w-4' />
+            <RiEditLine className="h-4 w-4" />
           </ActionButton>
         </Tooltip>
       )}
       {!cached && answer && (
         <Tooltip
-          popupContent={t('appDebug.feature.annotation.add')}
+          popupContent={t('feature.annotation.add', { ns: 'appDebug' })}
         >
           <ActionButton onClick={handleAdd}>
-            <RiFileEditLine className='h-4 w-4' />
+            <RiFileEditLine className="h-4 w-4" />
           </ActionButton>
         </Tooltip>
       )}

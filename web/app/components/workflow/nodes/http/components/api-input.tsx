@@ -1,15 +1,16 @@
 'use client'
 import type { FC } from 'react'
-import React, { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { Var } from '../../../types'
 import { RiArrowDownSLine } from '@remixicon/react'
-import { Method } from '../types'
+import * as React from 'react'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Input from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
+import { cn } from '@/utils/classnames'
+import { VarType } from '../../../types'
 import Selector from '../../_base/components/selector'
 import useAvailableVarList from '../../_base/hooks/use-available-var-list'
-import { VarType } from '../../../types'
-import type { Var } from '../../../types'
-import { cn } from '@/utils/classnames'
-import Input from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
+import { Method } from '../types'
 
 const MethodOptions = [
   { label: 'GET', value: Method.get },
@@ -47,24 +48,24 @@ const ApiInput: FC<Props> = ({
   })
 
   return (
-    <div className='flex items-start  space-x-1'>
+    <div className="flex items-start  space-x-1">
       <Selector
         value={method}
         onChange={onMethodChange}
         options={MethodOptions}
-        trigger={
-          <div className={cn(readonly && 'cursor-pointer', 'flex h-8 shrink-0 items-center rounded-lg border border-components-button-secondary-border bg-components-button-secondary-bg px-2.5')} >
-            <div className='w-12 pl-0.5 text-xs font-medium uppercase leading-[18px] text-text-primary'>{method}</div>
-            {!readonly && <RiArrowDownSLine className='ml-1 h-3.5 w-3.5 text-text-secondary' />}
+        trigger={(
+          <div className={cn(readonly && 'cursor-pointer', 'flex h-8 shrink-0 items-center rounded-lg border border-components-button-secondary-border bg-components-button-secondary-bg px-2.5')}>
+            <div className="w-12 pl-0.5 text-xs font-medium uppercase leading-[18px] text-text-primary">{method}</div>
+            {!readonly && <RiArrowDownSLine className="ml-1 h-3.5 w-3.5 text-text-secondary" />}
           </div>
-        }
-        popupClassName='top-[34px] w-[108px]'
+        )}
+        popupClassName="top-[34px] w-[108px]"
         showChecked
         readonly={readonly}
       />
 
       <Input
-        instanceId='http-api-url'
+        instanceId="http-api-url"
         className={cn(isFocus ? 'border-components-input-border-active bg-components-input-bg-active shadow-xs' : 'border-components-input-border-hover bg-components-input-bg-normal', 'w-0 grow rounded-lg border px-3 py-[6px]')}
         value={url}
         onChange={onUrlChange}
@@ -72,10 +73,10 @@ const ApiInput: FC<Props> = ({
         nodesOutputVars={availableVars}
         availableNodes={availableNodesWithParent}
         onFocusChange={setIsFocus}
-        placeholder={!readonly ? t('workflow.nodes.http.apiPlaceholder')! : ''}
-        placeholderClassName='!leading-[21px]'
+        placeholder={!readonly ? t('nodes.http.apiPlaceholder', { ns: 'workflow' })! : ''}
+        placeholderClassName="!leading-[21px]"
       />
-    </div >
+    </div>
   )
 }
 export default React.memo(ApiInput)

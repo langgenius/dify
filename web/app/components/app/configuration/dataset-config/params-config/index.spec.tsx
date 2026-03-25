@@ -1,36 +1,37 @@
-import * as React from 'react'
+import type { MockedFunction, MockInstance } from 'vitest'
+import type { DatasetConfigs } from '@/models/debug'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import ParamsConfig from './index'
-import ConfigContext from '@/context/debug-configuration'
-import type { DatasetConfigs } from '@/models/debug'
-import { RerankingModeEnum } from '@/models/datasets'
-import { RETRIEVE_TYPE } from '@/types/app'
-import Toast from '@/app/components/base/toast'
+import * as React from 'react'
+import { toast } from '@/app/components/base/ui/toast'
 import {
   useCurrentProviderAndModel,
   useModelListAndDefaultModelAndCurrentProviderAndModel,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import ConfigContext from '@/context/debug-configuration'
+import { RerankingModeEnum } from '@/models/datasets'
+import { RETRIEVE_TYPE } from '@/types/app'
+import ParamsConfig from './index'
 
-jest.mock('@headlessui/react', () => ({
-  Dialog: ({ children, className }: { children: React.ReactNode; className?: string }) => (
+vi.mock('@headlessui/react', () => ({
+  Dialog: ({ children, className }: { children: React.ReactNode, className?: string }) => (
     <div role="dialog" className={className}>
       {children}
     </div>
   ),
-  DialogPanel: ({ children, className, ...props }: { children: React.ReactNode; className?: string }) => (
+  DialogPanel: ({ children, className, ...props }: { children: React.ReactNode, className?: string }) => (
     <div className={className} {...props}>
       {children}
     </div>
   ),
-  DialogTitle: ({ children, className, ...props }: { children: React.ReactNode; className?: string }) => (
+  DialogTitle: ({ children, className, ...props }: { children: React.ReactNode, className?: string }) => (
     <div className={className} {...props}>
       {children}
     </div>
   ),
-  Transition: ({ show, children }: { show: boolean; children: React.ReactNode }) => (show ? <>{children}</> : null),
+  Transition: ({ show, children }: { show: boolean, children: React.ReactNode }) => (show ? <>{children}</> : null),
   TransitionChild: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  Switch: ({ checked, onChange, children, ...props }: { checked: boolean; onChange?: (value: boolean) => void; children?: React.ReactNode }) => (
+  Switch: ({ checked, onChange, children, ...props }: { checked: boolean, onChange?: (value: boolean) => void, children?: React.ReactNode }) => (
     <button
       type="button"
       role="switch"
@@ -43,15 +44,15 @@ jest.mock('@headlessui/react', () => ({
   ),
 }))
 
-jest.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useModelListAndDefaultModelAndCurrentProviderAndModel: jest.fn(),
-  useCurrentProviderAndModel: jest.fn(),
+vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
+  useModelListAndDefaultModelAndCurrentProviderAndModel: vi.fn(),
+  useCurrentProviderAndModel: vi.fn(),
 }))
 
-jest.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => {
+vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => {
   type Props = {
-    defaultModel?: { provider: string; model: string }
-    onSelect?: (model: { provider: string; model: string }) => void
+    defaultModel?: { provider: string, model: string }
+    onSelect?: (model: { provider: string, model: string }) => void
   }
 
   const MockModelSelector = ({ defaultModel, onSelect }: Props) => (
@@ -64,19 +65,17 @@ jest.mock('@/app/components/header/account-setting/model-provider-page/model-sel
   )
 
   return {
-    __esModule: true,
     default: MockModelSelector,
   }
 })
 
-jest.mock('@/app/components/header/account-setting/model-provider-page/model-parameter-modal', () => ({
-  __esModule: true,
+vi.mock('@/app/components/header/account-setting/model-provider-page/model-parameter-modal', () => ({
   default: () => <div data-testid="model-parameter-modal" />,
 }))
 
-const mockedUseModelListAndDefaultModelAndCurrentProviderAndModel = useModelListAndDefaultModelAndCurrentProviderAndModel as jest.MockedFunction<typeof useModelListAndDefaultModelAndCurrentProviderAndModel>
-const mockedUseCurrentProviderAndModel = useCurrentProviderAndModel as jest.MockedFunction<typeof useCurrentProviderAndModel>
-let toastNotifySpy: jest.SpyInstance
+const mockedUseModelListAndDefaultModelAndCurrentProviderAndModel = useModelListAndDefaultModelAndCurrentProviderAndModel as MockedFunction<typeof useModelListAndDefaultModelAndCurrentProviderAndModel>
+const mockedUseCurrentProviderAndModel = useCurrentProviderAndModel as MockedFunction<typeof useCurrentProviderAndModel>
+let toastErrorSpy: MockInstance
 
 const createDatasetConfigs = (overrides: Partial<DatasetConfigs> = {}): DatasetConfigs => {
   return {
@@ -139,9 +138,9 @@ const renderParamsConfig = ({
 
 describe('dataset-config/params-config', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
-    jest.useRealTimers()
-    toastNotifySpy = jest.spyOn(Toast, 'notify').mockImplementation(() => ({}))
+    vi.clearAllMocks()
+    vi.useRealTimers()
+    toastErrorSpy = vi.spyOn(toast, 'error').mockImplementation(() => '')
     mockedUseModelListAndDefaultModelAndCurrentProviderAndModel.mockReturnValue({
       modelList: [],
       defaultModel: undefined,
@@ -155,7 +154,7 @@ describe('dataset-config/params-config', () => {
   })
 
   afterEach(() => {
-    toastNotifySpy.mockRestore()
+    toastErrorSpy.mockRestore()
   })
 
   // Rendering tests (REQUIRED)
@@ -181,12 +180,12 @@ describe('dataset-config/params-config', () => {
       const dialog = await screen.findByRole('dialog', {}, { timeout: 3000 })
       const dialogScope = within(dialog)
 
-      const incrementButtons = dialogScope.getAllByRole('button', { name: 'increment' })
+      const incrementButtons = dialogScope.getAllByRole('button', { name: /increment/i })
       await user.click(incrementButtons[0])
 
       await waitFor(() => {
-        const [topKInput] = dialogScope.getAllByRole('spinbutton')
-        expect(topKInput).toHaveValue(5)
+        const [topKInput] = dialogScope.getAllByRole('textbox')
+        expect(topKInput).toHaveValue('5')
       })
 
       await user.click(dialogScope.getByRole('button', { name: 'common.operation.save' }))
@@ -198,10 +197,10 @@ describe('dataset-config/params-config', () => {
       await user.click(screen.getByRole('button', { name: 'dataset.retrievalSettings' }))
       const reopenedDialog = await screen.findByRole('dialog', {}, { timeout: 3000 })
       const reopenedScope = within(reopenedDialog)
-      const [reopenedTopKInput] = reopenedScope.getAllByRole('spinbutton')
+      const [reopenedTopKInput] = reopenedScope.getAllByRole('textbox')
 
       // Assert
-      expect(reopenedTopKInput).toHaveValue(5)
+      expect(reopenedTopKInput).toHaveValue('5')
     })
 
     it('should discard changes when cancel is clicked', async () => {
@@ -214,12 +213,12 @@ describe('dataset-config/params-config', () => {
       const dialog = await screen.findByRole('dialog', {}, { timeout: 3000 })
       const dialogScope = within(dialog)
 
-      const incrementButtons = dialogScope.getAllByRole('button', { name: 'increment' })
+      const incrementButtons = dialogScope.getAllByRole('button', { name: /increment/i })
       await user.click(incrementButtons[0])
 
       await waitFor(() => {
-        const [topKInput] = dialogScope.getAllByRole('spinbutton')
-        expect(topKInput).toHaveValue(5)
+        const [topKInput] = dialogScope.getAllByRole('textbox')
+        expect(topKInput).toHaveValue('5')
       })
 
       const cancelButton = await dialogScope.findByRole('button', { name: 'common.operation.cancel' })
@@ -232,10 +231,10 @@ describe('dataset-config/params-config', () => {
       await user.click(screen.getByRole('button', { name: 'dataset.retrievalSettings' }))
       const reopenedDialog = await screen.findByRole('dialog', {}, { timeout: 3000 })
       const reopenedScope = within(reopenedDialog)
-      const [reopenedTopKInput] = reopenedScope.getAllByRole('spinbutton')
+      const [reopenedTopKInput] = reopenedScope.getAllByRole('textbox')
 
       // Assert
-      expect(reopenedTopKInput).toHaveValue(4)
+      expect(reopenedTopKInput).toHaveValue('4')
     })
 
     it('should prevent saving when rerank model is required but invalid', async () => {
@@ -255,10 +254,7 @@ describe('dataset-config/params-config', () => {
       await user.click(dialogScope.getByRole('button', { name: 'common.operation.save' }))
 
       // Assert
-      expect(toastNotifySpy).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'appDebug.datasetConfig.rerankModelRequired',
-      })
+      expect(toastErrorSpy).toHaveBeenCalledWith('appDebug.datasetConfig.rerankModelRequired')
       expect(screen.getByRole('dialog')).toBeInTheDocument()
     })
   })

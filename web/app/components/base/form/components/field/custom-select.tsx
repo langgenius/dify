@@ -1,8 +1,8 @@
+import type { CustomSelectProps, Option } from '../../../select/custom'
+import type { LabelProps } from '../label'
 import { cn } from '@/utils/classnames'
 import { useFieldContext } from '../..'
-import type { CustomSelectProps, Option } from '../../../select/custom'
 import CustomSelect from '../../../select/custom'
-import type { LabelProps } from '../label'
 import Label from '../label'
 
 type CustomSelectFieldProps<T extends Option> = {

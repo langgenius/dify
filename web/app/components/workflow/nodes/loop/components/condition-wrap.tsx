@@ -1,20 +1,21 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { Node, NodeOutPutVar, Var } from '../../../types'
+import type { Condition, HandleAddCondition, HandleAddSubVariableCondition, HandleRemoveCondition, handleRemoveSubVariableCondition, HandleToggleConditionLogicalOperator, HandleToggleSubVariableConditionLogicalOperator, HandleUpdateCondition, HandleUpdateSubVariableCondition, LogicalOperator } from '../types'
 import {
   RiAddLine,
 } from '@remixicon/react'
-import type { Condition, HandleAddCondition, HandleAddSubVariableCondition, HandleRemoveCondition, HandleToggleConditionLogicalOperator, HandleToggleSubVariableConditionLogicalOperator, HandleUpdateCondition, HandleUpdateSubVariableCondition, LogicalOperator, handleRemoveSubVariableCondition } from '../types'
-import type { Node, NodeOutPutVar, Var } from '../../../types'
-import { VarType } from '../../../types'
-import { useGetAvailableVars } from '../../variable-assigner/hooks'
-import ConditionList from './condition-list'
-import ConditionAdd from './condition-add'
-import { SUB_VARIABLES } from './../default'
-import { cn } from '@/utils/classnames'
+import * as React from 'react'
+import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { PortalSelect as Select } from '@/app/components/base/select'
+import { cn } from '@/utils/classnames'
+import { VarType } from '../../../types'
+import { useGetAvailableVars } from '../../variable-assigner/hooks'
+import { SUB_VARIABLES } from './../default'
+import ConditionAdd from './condition-add'
+import ConditionList from './condition-list'
 
 type Props = {
   isSubVariable?: boolean
@@ -81,7 +82,7 @@ const ConditionWrap: FC<Props> = ({
         >
           {
             conditions && !!conditions.length && (
-              <div className='mb-2'>
+              <div className="mb-2">
                 <ConditionList
                   disabled={readOnly}
                   conditionId={conditionId}
@@ -109,33 +110,34 @@ const ConditionWrap: FC<Props> = ({
             !conditions.length && !isSubVariable && 'mt-1',
             !conditions.length && isSubVariable && 'mt-2',
             conditions.length > 1 && !isSubVariable && 'ml-[60px]',
-          )}>
+          )}
+          >
             {isSubVariable
               ? (
-                <Select
-                  popupInnerClassName='w-[165px] max-h-none'
-                  onSelect={value => handleAddSubVariableCondition?.(conditionId!, value.value as string)}
-                  items={subVarOptions}
-                  value=''
-                  renderTrigger={() => (
-                    <Button
-                      size='small'
-                      disabled={readOnly}
-                    >
-                      <RiAddLine className='mr-1 h-3.5 w-3.5' />
-                      {t('workflow.nodes.ifElse.addSubVariable')}
-                    </Button>
-                  )}
-                  hideChecked
-                />
-              )
+                  <Select
+                    popupInnerClassName="w-[165px] max-h-none"
+                    onSelect={value => handleAddSubVariableCondition?.(conditionId!, value.value as string)}
+                    items={subVarOptions}
+                    value=""
+                    renderTrigger={() => (
+                      <Button
+                        size="small"
+                        disabled={readOnly}
+                      >
+                        <RiAddLine className="mr-1 h-3.5 w-3.5" />
+                        {t('nodes.ifElse.addSubVariable', { ns: 'workflow' })}
+                      </Button>
+                    )}
+                    hideChecked
+                  />
+                )
               : (
-                <ConditionAdd
-                  disabled={readOnly}
-                  variables={availableVars}
-                  onSelectVariable={handleAddCondition!}
-                />
-              )}
+                  <ConditionAdd
+                    disabled={readOnly}
+                    variables={availableVars}
+                    onSelectVariable={handleAddCondition!}
+                  />
+                )}
           </div>
         </div>
       </div>

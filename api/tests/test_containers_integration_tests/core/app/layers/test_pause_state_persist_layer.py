@@ -31,15 +31,16 @@ from core.app.layers.pause_state_persist_layer import (
     PauseStatePersistenceLayer,
     WorkflowResumptionContext,
 )
-from core.model_runtime.entities.llm_entities import LLMUsage
-from core.workflow.entities.pause_reason import SchedulingPause
-from core.workflow.enums import WorkflowExecutionStatus
-from core.workflow.graph_engine.entities.commands import GraphEngineCommand
-from core.workflow.graph_events.graph import GraphRunPausedEvent
-from core.workflow.runtime.graph_runtime_state import GraphRuntimeState
-from core.workflow.runtime.graph_runtime_state_protocol import ReadOnlyGraphRuntimeState
-from core.workflow.runtime.read_only_wrappers import ReadOnlyGraphRuntimeStateWrapper
-from core.workflow.runtime.variable_pool import SystemVariable, VariablePool
+from dify_graph.entities.pause_reason import SchedulingPause
+from dify_graph.enums import WorkflowExecutionStatus
+from dify_graph.graph_engine.entities.commands import GraphEngineCommand
+from dify_graph.graph_engine.layers.base import GraphEngineLayerNotInitializedError
+from dify_graph.graph_events.graph import GraphRunPausedEvent
+from dify_graph.model_runtime.entities.llm_entities import LLMUsage
+from dify_graph.runtime.graph_runtime_state import GraphRuntimeState
+from dify_graph.runtime.graph_runtime_state_protocol import ReadOnlyGraphRuntimeState
+from dify_graph.runtime.read_only_wrappers import ReadOnlyGraphRuntimeStateWrapper
+from dify_graph.runtime.variable_pool import SystemVariable, VariablePool
 from extensions.ext_storage import storage
 from libs.datetime_utils import naive_utc_now
 from models import Account
@@ -543,7 +544,7 @@ class TestPauseStatePersistenceLayerTestContainers:
         layer.initialize(graph_runtime_state, command_channel)
 
         # Import other event types
-        from core.workflow.graph_events.graph import (
+        from dify_graph.graph_events.graph import (
             GraphRunFailedEvent,
             GraphRunStartedEvent,
             GraphRunSucceededEvent,
@@ -569,10 +570,10 @@ class TestPauseStatePersistenceLayerTestContainers:
         """Test that layer requires proper initialization before handling events."""
         # Arrange
         layer = self._create_pause_state_persistence_layer()
-        # Don't initialize - graph_runtime_state should not be set
+        # Don't initialize - graph_runtime_state should be uninitialized
 
         event = GraphRunPausedEvent(reasons=[SchedulingPause(message="test pause")])
 
-        # Act & Assert - Should raise AttributeError
-        with pytest.raises(AttributeError):
+        # Act & Assert - Should raise GraphEngineLayerNotInitializedError
+        with pytest.raises(GraphEngineLayerNotInitializedError):
             layer.on_event(event)
