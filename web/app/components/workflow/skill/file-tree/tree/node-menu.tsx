@@ -24,6 +24,7 @@ type NodeMenuProps = {
   type: NodeMenuType
   menuType: 'dropdown' | 'context'
   nodeId?: string
+  actionNodeIds?: string[]
   onClose: () => void
   fileInputRef: React.RefObject<HTMLInputElement | null>
   folderInputRef: React.RefObject<HTMLInputElement | null>
@@ -42,6 +43,7 @@ const NodeMenu = ({
   type,
   menuType,
   nodeId,
+  actionNodeIds,
   onClose,
   fileInputRef,
   folderInputRef,
@@ -57,7 +59,6 @@ const NodeMenu = ({
 }: NodeMenuProps) => {
   const { t } = useTranslation('workflow')
   const storeApi = useWorkflowStore()
-  const selectedNodeIds = useStore(s => s.selectedNodeIds)
   const hasClipboard = useStore(s => s.hasClipboard())
   const isRoot = type === NODE_MENU_TYPE.ROOT
   const isFolder = type === NODE_MENU_TYPE.FOLDER || isRoot
@@ -65,17 +66,29 @@ const NodeMenu = ({
   const currentNodeId = nodeId
 
   const handleCut = useCallback(() => {
-    const ids = selectedNodeIds.size > 0 ? [...selectedNodeIds] : (currentNodeId ? [currentNodeId] : [])
+    const ids = actionNodeIds && actionNodeIds.length > 0
+      ? actionNodeIds
+      : (currentNodeId ? [currentNodeId] : [])
     if (ids.length > 0) {
       storeApi.getState().cutNodes(ids)
       onClose()
     }
-  }, [currentNodeId, onClose, selectedNodeIds, storeApi])
+  }, [actionNodeIds, currentNodeId, onClose, storeApi])
 
   const handlePaste = useCallback(() => {
     window.dispatchEvent(new CustomEvent('skill:paste'))
     onClose()
   }, [onClose])
+
+  const handleCreateFile = useCallback(() => {
+    storeApi.getState().setFileTreeSearchTerm('')
+    onNewFile()
+  }, [onNewFile, storeApi])
+
+  const handleCreateFolder = useCallback(() => {
+    storeApi.getState().setFileTreeSearchTerm('')
+    onNewFolder()
+  }, [onNewFolder, storeApi])
 
   const showRenameDelete = isFolder ? !isRoot : true
   const Separator = menuType === 'dropdown' ? DropdownMenuSeparator : ContextMenuSeparator
@@ -106,14 +119,14 @@ const NodeMenu = ({
             menuType={menuType}
             icon={FileAdd}
             label={t('skillSidebar.menu.newFile')}
-            onClick={onNewFile}
+            onClick={handleCreateFile}
             disabled={isLoading}
           />
           <MenuItem
             menuType={menuType}
             icon={FolderAdd}
             label={t('skillSidebar.menu.newFolder')}
-            onClick={onNewFolder}
+            onClick={handleCreateFolder}
             disabled={isLoading}
           />
 

@@ -14,7 +14,6 @@ import { NODE_MENU_TYPE } from '../../constants'
 import NodeMenu from './node-menu'
 
 type MockWorkflowState = {
-  selectedNodeIds: Set<string>
   hasClipboard: () => boolean
 }
 
@@ -39,6 +38,7 @@ type RenderNodeMenuProps = {
   type?: 'root' | 'folder' | 'file'
   menuType?: 'dropdown' | 'context'
   nodeId?: string
+  actionNodeIds?: string[]
   onClose?: () => void
   onImportSkills?: () => void
 }
@@ -64,10 +64,10 @@ function createFileOperationsMock(): MockFileOperations {
 
 const mocks = vi.hoisted(() => ({
   storeState: {
-    selectedNodeIds: new Set<string>(),
     hasClipboard: () => false,
   } as MockWorkflowState,
   cutNodes: vi.fn(),
+  setFileTreeSearchTerm: vi.fn(),
   fileOperations: createFileOperationsMock(),
 }))
 
@@ -76,6 +76,7 @@ vi.mock('@/app/components/workflow/store', () => ({
   useWorkflowStore: () => ({
     getState: () => ({
       cutNodes: mocks.cutNodes,
+      setFileTreeSearchTerm: mocks.setFileTreeSearchTerm,
     }),
   }),
 }))
@@ -84,6 +85,7 @@ const renderNodeMenu = ({
   type = NODE_MENU_TYPE.FOLDER,
   menuType = 'dropdown',
   nodeId = 'node-1',
+  actionNodeIds,
   onClose = vi.fn(),
   onImportSkills,
 }: RenderNodeMenuProps = {}) => {
@@ -96,6 +98,7 @@ const renderNodeMenu = ({
               type={type}
               menuType={menuType}
               nodeId={nodeId}
+              actionNodeIds={actionNodeIds}
               onClose={onClose}
               fileInputRef={mocks.fileOperations.fileInputRef}
               folderInputRef={mocks.fileOperations.folderInputRef}
@@ -120,6 +123,7 @@ const renderNodeMenu = ({
               type={type}
               menuType={menuType}
               nodeId={nodeId}
+              actionNodeIds={actionNodeIds}
               onClose={onClose}
               fileInputRef={mocks.fileOperations.fileInputRef}
               folderInputRef={mocks.fileOperations.folderInputRef}
@@ -147,7 +151,6 @@ const renderNodeMenu = ({
 describe('NodeMenu', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.storeState.selectedNodeIds = new Set<string>()
     mocks.storeState.hasClipboard = () => false
     mocks.fileOperations = createFileOperationsMock()
   })
@@ -195,6 +198,8 @@ describe('NodeMenu', () => {
       fireEvent.click(screen.getByRole('menuitem', { name: /workflow\.skillSidebar\.menu\.newFile/i }))
       fireEvent.click(screen.getByRole('menuitem', { name: /workflow\.skillSidebar\.menu\.newFolder/i }))
 
+      expect(mocks.setFileTreeSearchTerm).toHaveBeenNthCalledWith(1, '')
+      expect(mocks.setFileTreeSearchTerm).toHaveBeenNthCalledWith(2, '')
       expect(mocks.fileOperations.handleNewFile).toHaveBeenCalledTimes(1)
       expect(mocks.fileOperations.handleNewFolder).toHaveBeenCalledTimes(1)
     })
@@ -209,9 +214,12 @@ describe('NodeMenu', () => {
       expect(clickSpy).toHaveBeenCalledTimes(2)
     })
 
-    it('should cut selected nodes and close menu when cut is clicked', () => {
-      mocks.storeState.selectedNodeIds = new Set(['file-1', 'file-2'])
-      const { onClose } = renderNodeMenu({ type: NODE_MENU_TYPE.FILE, nodeId: 'fallback-id' })
+    it('should cut explicit action node ids and close menu when cut is clicked', () => {
+      const { onClose } = renderNodeMenu({
+        type: NODE_MENU_TYPE.FILE,
+        nodeId: 'fallback-id',
+        actionNodeIds: ['file-1', 'file-2'],
+      })
 
       fireEvent.click(screen.getByRole('menuitem', { name: /workflow\.skillSidebar\.menu\.cut/i }))
 

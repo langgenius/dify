@@ -3,7 +3,7 @@
 import type { NodeRendererProps } from 'react-arborist'
 import type { TreeNodeData } from '../../type'
 import * as React from 'react'
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   DropdownMenu,
@@ -32,7 +32,13 @@ const TreeNode = ({ node, style, dragHandle, treeChildren }: TreeNodeProps) => {
   const isSelected = node.isSelected
   const isDirty = useStore(s => s.dirtyContents.has(node.data.id))
   const isCut = useStore(s => s.isCutNode(node.data.id))
+  const selectedNodeIds = useStore(s => s.selectedNodeIds)
   const storeApi = useWorkflowStore()
+  const actionNodeIds = useMemo(() => {
+    if (node.isSelected && selectedNodeIds.size > 0)
+      return [...selectedNodeIds]
+    return [node.data.id]
+  }, [node.data.id, node.isSelected, selectedNodeIds])
 
   // Sync react-arborist drag state to Zustand for DragActionTooltip
   const prevIsDraggingRef = useRef(node.isDragging)
@@ -181,6 +187,7 @@ const TreeNode = ({ node, style, dragHandle, treeChildren }: TreeNodeProps) => {
               menuType="dropdown"
               type={isFolder ? 'folder' : 'file'}
               nodeId={node.data.id}
+              actionNodeIds={actionNodeIds}
               onClose={handleMenuClose}
               fileInputRef={fileOperations.fileInputRef}
               folderInputRef={fileOperations.folderInputRef}

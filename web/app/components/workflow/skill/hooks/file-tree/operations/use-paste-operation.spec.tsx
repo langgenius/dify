@@ -35,6 +35,7 @@ type WorkflowStoreState = {
     nodeIds: Set<string>
   } | null
   selectedTreeNodeId: string | null
+  cutNodes: (nodeIds: string[]) => void
   clearClipboard: () => void
 }
 
@@ -48,6 +49,7 @@ const mocks = vi.hoisted(() => ({
   workflowState: {
     clipboard: null,
     selectedTreeNodeId: null,
+    cutNodes: vi.fn<(nodeIds: string[]) => void>(),
     clearClipboard: vi.fn<() => void>(),
   } as WorkflowStoreState,
   appStoreState: {
@@ -123,6 +125,7 @@ describe('usePasteOperation', () => {
     vi.clearAllMocks()
     mocks.workflowState.clipboard = null
     mocks.workflowState.selectedTreeNodeId = null
+    mocks.workflowState.cutNodes = vi.fn()
     mocks.appStoreState.appDetail = { id: 'app-1' }
     mocks.movePending = false
     mocks.moveMutateAsync.mockResolvedValue(undefined)
@@ -303,7 +306,34 @@ describe('usePasteOperation', () => {
       })
 
       expect(mocks.workflowState.clearClipboard).not.toHaveBeenCalled()
+      expect(mocks.workflowState.cutNodes).not.toHaveBeenCalled()
       expect(mocks.emitTreeUpdate).not.toHaveBeenCalled()
+      expect(mocks.toastError).toHaveBeenCalledWith('workflow.skillSidebar.menu.moveError')
+    })
+
+    it('should keep failed node ids in clipboard and still refresh tree when paste partially succeeds', async () => {
+      mocks.workflowState.clipboard = {
+        operation: 'cut',
+        nodeIds: new Set(['node-ok', 'node-fail']),
+      }
+      mocks.moveMutateAsync
+        .mockResolvedValueOnce(undefined)
+        .mockRejectedValueOnce(new Error('move failed'))
+      const treeRef = createTreeRef('target')
+      const treeData: AppAssetTreeResponse = {
+        children: [createTreeNode('node-ok', 'file'), createTreeNode('node-fail', 'file')],
+      }
+
+      const { result } = renderHook(() => usePasteOperation({ treeRef, treeData }))
+
+      await act(async () => {
+        await result.current.handlePaste()
+      })
+
+      expect(mocks.moveMutateAsync).toHaveBeenCalledTimes(2)
+      expect(mocks.workflowState.clearClipboard).not.toHaveBeenCalled()
+      expect(mocks.workflowState.cutNodes).toHaveBeenCalledWith(['node-fail'])
+      expect(mocks.emitTreeUpdate).toHaveBeenCalledTimes(1)
       expect(mocks.toastError).toHaveBeenCalledWith('workflow.skillSidebar.menu.moveError')
     })
 

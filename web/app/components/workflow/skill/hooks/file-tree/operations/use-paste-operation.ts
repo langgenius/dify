@@ -84,20 +84,37 @@ export function usePasteOperation({
       isPastingRef.current = true
 
       try {
-        await Promise.all(
-          nodeIdsArray.map(nodeId =>
-            moveNodeAsync({
+        const results = await Promise.allSettled(
+          nodeIdsArray.map(async (nodeId) => {
+            await moveNodeAsync({
               appId,
               nodeId,
               payload: { parent_id: targetParentId },
-            }),
-          ),
+            })
+            return nodeId
+          }),
         )
 
-        storeApi.getState().clearClipboard()
-        emitTreeUpdate()
+        const succeededNodeIds = results.flatMap(result =>
+          result.status === 'fulfilled' ? [result.value] : [],
+        )
+        const failedNodeIds = results.flatMap((result, index) =>
+          result.status === 'rejected' ? [nodeIdsArray[index]] : [],
+        )
 
-        toast.success(t('skillSidebar.menu.moved'))
+        if (succeededNodeIds.length > 0)
+          emitTreeUpdate()
+
+        if (failedNodeIds.length === 0) {
+          storeApi.getState().clearClipboard()
+          toast.success(t('skillSidebar.menu.moved'))
+          return
+        }
+
+        if (succeededNodeIds.length > 0)
+          storeApi.getState().cutNodes(failedNodeIds)
+
+        toast.error(t('skillSidebar.menu.moveError'))
       }
       catch {
         toast.error(t('skillSidebar.menu.moveError'))

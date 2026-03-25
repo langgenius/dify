@@ -6,6 +6,7 @@ import TreeNode from './tree-node'
 type MockWorkflowSelectorState = {
   dirtyContents: Set<string>
   isCutNode: (nodeId: string) => boolean
+  selectedNodeIds: Set<string>
 }
 
 type NodeState = {
@@ -24,6 +25,7 @@ type NodeState = {
 const workflowState = vi.hoisted(() => ({
   dirtyContents: new Set<string>(),
   cutNodeIds: new Set<string>(),
+  selectedNodeIds: new Set<string>(),
   dragOverFolderId: null as string | null,
 }))
 
@@ -69,6 +71,7 @@ vi.mock('@/app/components/workflow/store', () => ({
   useStore: (selector: (state: MockWorkflowSelectorState) => unknown) => selector({
     dirtyContents: workflowState.dirtyContents,
     isCutNode: (nodeId: string) => workflowState.cutNodeIds.has(nodeId),
+    selectedNodeIds: workflowState.selectedNodeIds,
   }),
   useWorkflowStore: () => ({
     getState: () => ({
@@ -114,15 +117,17 @@ vi.mock('./node-menu', () => ({
   default: ({
     type,
     menuType,
+    actionNodeIds,
     onClose,
     onDeleteClick,
   }: {
     type: string
     menuType: string
+    actionNodeIds?: string[]
     onClose: () => void
     onDeleteClick?: () => void
   }) => (
-    <div data-testid={`node-menu-${menuType}`} data-type={type}>
+    <div data-testid={`node-menu-${menuType}`} data-type={type} data-action-node-ids={(actionNodeIds ?? []).join(',')}>
       <button type="button" onClick={onClose}>close-menu</button>
       <button type="button" onClick={onDeleteClick}>delete-item</button>
     </div>
@@ -179,6 +184,7 @@ describe('TreeNode', () => {
 
     workflowState.dirtyContents.clear()
     workflowState.cutNodeIds.clear()
+    workflowState.selectedNodeIds = new Set<string>()
     workflowState.dragOverFolderId = null
 
     dndMocks.isDragOver = false
@@ -202,6 +208,7 @@ describe('TreeNode', () => {
     })
 
     it('should render selected open folder with folder expansion aria state', () => {
+      workflowState.selectedNodeIds = new Set(['folder-1', 'folder-2'])
       const props = buildProps({
         id: 'folder-1',
         name: 'src',
@@ -216,6 +223,8 @@ describe('TreeNode', () => {
       expect(treeItem).toHaveAttribute('aria-selected', 'true')
       expect(treeItem).toHaveAttribute('aria-expanded', 'true')
       expect(treeItem).toHaveClass('bg-state-base-active')
+      fireEvent.click(screen.getByRole('button', { name: /workflow\.skillSidebar\.menu\.moreActions/i }))
+      expect(screen.getByTestId('node-menu-dropdown')).toHaveAttribute('data-action-node-ids', 'folder-1,folder-2')
     })
 
     it('should apply drag-over, blinking, and cut styles when states are active', () => {

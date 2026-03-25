@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   toastSuccess: vi.fn<(message: string) => void>(),
   toastError: vi.fn<(message: string) => void>(),
   getAllDescendantFileIds: vi.fn<(nodeId: string, nodes: TreeNodeData[]) => string[]>(),
+  isDescendantOf: vi.fn<(potentialDescendantId: string | null | undefined, ancestorId: string | null | undefined, nodes: TreeNodeData[]) => boolean>(),
 }))
 
 vi.mock('@/service/use-app-asset', () => ({
@@ -34,6 +35,7 @@ vi.mock('../data/use-skill-tree-collaboration', () => ({
 
 vi.mock('../../../utils/tree-utils', () => ({
   getAllDescendantFileIds: mocks.getAllDescendantFileIds,
+  isDescendantOf: mocks.isDescendantOf,
 }))
 
 vi.mock('@/app/components/base/ui/toast', () => ({
@@ -75,19 +77,27 @@ const createTreeRef = (targetNode: NodeApi<TreeNodeData> | null) => {
 const createStoreApi = () => {
   const closeTab = vi.fn<(fileId: string) => void>()
   const clearDraftContent = vi.fn<(fileId: string) => void>()
+  const clearFileMetadata = vi.fn<(fileId: string) => void>()
+  const clearClipboard = vi.fn<() => void>()
   const state = {
+    clipboard: null,
     closeTab,
     clearDraftContent,
-  } as Pick<SkillEditorSliceShape, 'closeTab' | 'clearDraftContent'>
+    clearFileMetadata,
+    clearClipboard,
+  } as Pick<SkillEditorSliceShape, 'clipboard' | 'closeTab' | 'clearDraftContent' | 'clearFileMetadata' | 'clearClipboard'>
 
   const storeApi = {
     getState: () => state,
   } as unknown as StoreApi<SkillEditorSliceShape>
 
   return {
+    state,
     storeApi,
     closeTab,
     clearDraftContent,
+    clearFileMetadata,
+    clearClipboard,
   }
 }
 
@@ -97,6 +107,7 @@ describe('useModifyOperations', () => {
     mocks.deletePending = false
     mocks.deleteMutateAsync.mockResolvedValue(undefined)
     mocks.getAllDescendantFileIds.mockReturnValue([])
+    mocks.isDescendantOf.mockReturnValue(false)
   })
 
   // Scenario: loading state should match mutation pending status.
@@ -197,13 +208,17 @@ describe('useModifyOperations', () => {
   // Scenario: successful deletes should close tabs/drafts and emit collaboration updates.
   describe('Delete success', () => {
     it('should delete file node, clear descendants and current file tabs, and show file success toast', async () => {
-      const { storeApi, closeTab, clearDraftContent } = createStoreApi()
+      const { storeApi, closeTab, clearDraftContent, clearFileMetadata, clearClipboard, state } = createStoreApi()
       const onClose = vi.fn()
       const { node } = createNodeApi('file', 'file-7')
       const treeData: AppAssetTreeResponse = {
         children: [createTreeNodeData('root-folder', 'folder')],
       }
       mocks.getAllDescendantFileIds.mockReturnValue(['desc-1', 'desc-2'])
+      state.clipboard = {
+        operation: 'cut',
+        nodeIds: new Set(['file-7']),
+      }
 
       const { result } = renderHook(() => useModifyOperations({
         nodeId: 'file-7',
@@ -235,6 +250,10 @@ describe('useModifyOperations', () => {
       expect(clearDraftContent).toHaveBeenNthCalledWith(1, 'desc-1')
       expect(clearDraftContent).toHaveBeenNthCalledWith(2, 'desc-2')
       expect(clearDraftContent).toHaveBeenNthCalledWith(3, 'file-7')
+      expect(clearFileMetadata).toHaveBeenNthCalledWith(1, 'desc-1')
+      expect(clearFileMetadata).toHaveBeenNthCalledWith(2, 'desc-2')
+      expect(clearFileMetadata).toHaveBeenNthCalledWith(3, 'file-7')
+      expect(clearClipboard).toHaveBeenCalledTimes(1)
 
       expect(mocks.toastSuccess).toHaveBeenCalledWith('workflow.skillSidebar.menu.fileDeleted')
       expect(result.current.showDeleteConfirm).toBe(false)
@@ -242,12 +261,17 @@ describe('useModifyOperations', () => {
     })
 
     it('should delete folder node and skip closing the folder tab itself', async () => {
-      const { storeApi, closeTab, clearDraftContent } = createStoreApi()
+      const { storeApi, closeTab, clearDraftContent, clearFileMetadata, clearClipboard, state } = createStoreApi()
       const { node } = createNodeApi('folder', 'folder-9')
       const treeData: AppAssetTreeResponse = {
         children: [createTreeNodeData('root-folder', 'folder')],
       }
       mocks.getAllDescendantFileIds.mockReturnValue(['file-in-folder'])
+      mocks.isDescendantOf.mockReturnValueOnce(true)
+      state.clipboard = {
+        operation: 'cut',
+        nodeIds: new Set(['nested-folder']),
+      }
 
       const { result } = renderHook(() => useModifyOperations({
         nodeId: 'folder-9',
@@ -266,6 +290,9 @@ describe('useModifyOperations', () => {
       expect(closeTab).toHaveBeenCalledWith('file-in-folder')
       expect(clearDraftContent).toHaveBeenCalledTimes(1)
       expect(clearDraftContent).toHaveBeenCalledWith('file-in-folder')
+      expect(clearFileMetadata).toHaveBeenCalledTimes(1)
+      expect(clearFileMetadata).toHaveBeenCalledWith('file-in-folder')
+      expect(clearClipboard).toHaveBeenCalledTimes(1)
       expect(closeTab).not.toHaveBeenCalledWith('folder-9')
       expect(clearDraftContent).not.toHaveBeenCalledWith('folder-9')
       expect(mocks.toastSuccess).toHaveBeenCalledWith('workflow.skillSidebar.menu.deleted')
@@ -276,7 +303,7 @@ describe('useModifyOperations', () => {
   describe('Delete errors', () => {
     it('should show folder delete error toast on failure', async () => {
       mocks.deleteMutateAsync.mockRejectedValueOnce(new Error('delete failed'))
-      const { storeApi, closeTab, clearDraftContent } = createStoreApi()
+      const { storeApi, closeTab, clearDraftContent, clearFileMetadata, clearClipboard } = createStoreApi()
       const onClose = vi.fn()
       const { node } = createNodeApi('folder', 'folder-err')
       const treeData: AppAssetTreeResponse = {
@@ -299,6 +326,8 @@ describe('useModifyOperations', () => {
       expect(mocks.emitTreeUpdate).not.toHaveBeenCalled()
       expect(closeTab).not.toHaveBeenCalled()
       expect(clearDraftContent).not.toHaveBeenCalled()
+      expect(clearFileMetadata).not.toHaveBeenCalled()
+      expect(clearClipboard).not.toHaveBeenCalled()
       expect(mocks.toastError).toHaveBeenCalledWith('workflow.skillSidebar.menu.deleteError')
       expect(result.current.showDeleteConfirm).toBe(false)
       expect(onClose).toHaveBeenCalledTimes(1)

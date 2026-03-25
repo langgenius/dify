@@ -33,11 +33,13 @@ type MenuTarget = {
   nodeId: string
   type: typeof NODE_MENU_TYPE.ROOT | typeof NODE_MENU_TYPE.FOLDER | typeof NODE_MENU_TYPE.FILE
   fileName?: string
+  actionNodeIds: string[]
 }
 
 const defaultMenuTarget: MenuTarget = {
   nodeId: ROOT_ID,
   type: NODE_MENU_TYPE.ROOT,
+  actionNodeIds: [],
 }
 
 const TreeContextMenu = ({
@@ -68,13 +70,23 @@ const TreeContextMenu = ({
       return
 
     const targetNode = treeRef.current?.get(nodeId)
-    treeRef.current?.deselectAll?.()
-    targetNode?.select()
-    storeApi.getState().setSelectedNodeIds([nodeId])
+    const selectedNodeIds = storeApi.getState().selectedNodeIds
+    const targetIsInSelection = selectedNodeIds.has(nodeId)
+    const actionNodeIds = targetIsInSelection && selectedNodeIds.size > 0
+      ? [...selectedNodeIds]
+      : [nodeId]
+
+    if (!targetIsInSelection) {
+      treeRef.current?.deselectAll?.()
+      targetNode?.select()
+      storeApi.getState().setSelectedNodeIds([nodeId])
+    }
+
     setMenuTarget({
       nodeId,
       type: nodeType,
       fileName: targetNode?.data.name,
+      actionNodeIds,
     })
   }, [storeApi, treeRef])
 
@@ -107,6 +119,7 @@ const TreeContextMenu = ({
             menuType="context"
             type={menuTarget.type}
             nodeId={menuTarget.nodeId}
+            actionNodeIds={menuTarget.actionNodeIds}
             onClose={handleMenuClose}
             fileInputRef={fileOperations.fileInputRef}
             folderInputRef={fileOperations.folderInputRef}

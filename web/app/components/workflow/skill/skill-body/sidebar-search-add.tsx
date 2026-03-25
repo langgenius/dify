@@ -57,6 +57,16 @@ const SidebarSearchAdd = () => {
     onClose: handleMenuClose,
   })
 
+  const handleCreateFile = useCallback(() => {
+    storeApi.getState().setFileTreeSearchTerm('')
+    handleNewFile()
+  }, [handleNewFile, storeApi])
+
+  const handleCreateFolder = useCallback(() => {
+    storeApi.getState().setFileTreeSearchTerm('')
+    handleNewFolder()
+  }, [handleNewFolder, storeApi])
+
   return (
     <div className="flex items-center gap-1 p-2">
       <SearchInput
@@ -101,14 +111,14 @@ const SidebarSearchAdd = () => {
             menuType="dropdown"
             icon={FileAdd}
             label={t('skillSidebar.menu.newFile')}
-            onClick={handleNewFile}
+            onClick={handleCreateFile}
             disabled={isLoading}
           />
           <MenuItem
             menuType="dropdown"
             icon={FolderAdd}
             label={t('skillSidebar.menu.newFolder')}
-            onClick={handleNewFolder}
+            onClick={handleCreateFolder}
             disabled={isLoading}
           />
 

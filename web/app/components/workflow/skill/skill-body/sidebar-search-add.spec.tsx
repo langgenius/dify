@@ -133,6 +133,7 @@ describe('SidebarSearchAdd', () => {
 
     it('should call create handlers when clicking new file and new folder actions', () => {
       // Arrange
+      mocks.storeState.fileTreeSearchTerm = 'agent'
       render(<SidebarSearchAdd />)
       fireEvent.click(screen.getByRole('button', { name: /common\.operation\.add/i }))
 
@@ -141,6 +142,8 @@ describe('SidebarSearchAdd', () => {
       fireEvent.click(screen.getByRole('menuitem', { name: /workflow\.skillSidebar\.menu\.newFolder/i }))
 
       // Assert
+      expect(mocks.setFileTreeSearchTerm).toHaveBeenNthCalledWith(1, '')
+      expect(mocks.setFileTreeSearchTerm).toHaveBeenNthCalledWith(2, '')
       expect(mocks.fileOperations.handleNewFile).toHaveBeenCalledTimes(1)
       expect(mocks.fileOperations.handleNewFolder).toHaveBeenCalledTimes(1)
     })

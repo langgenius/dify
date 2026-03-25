@@ -11,7 +11,7 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/components/base/ui/toast'
 import { useDeleteAppAssetNode } from '@/service/use-app-asset'
-import { getAllDescendantFileIds } from '../../../utils/tree-utils'
+import { getAllDescendantFileIds, isDescendantOf } from '../../../utils/tree-utils'
 import { useSkillTreeUpdateEmitter } from '../data/use-skill-tree-collaboration'
 
 type UseModifyOperationsOptions = {
@@ -61,19 +61,31 @@ export function useModifyOperations({
       const descendantFileIds = treeData?.children
         ? getAllDescendantFileIds(nodeId, treeData.children)
         : []
+      const affectedFileIds = Array.from(new Set(
+        isFolder ? descendantFileIds : [...descendantFileIds, nodeId],
+      ))
 
       await deleteNodeAsync({ appId, nodeId })
       emitTreeUpdate()
 
-      descendantFileIds.forEach((fileId) => {
+      affectedFileIds.forEach((fileId) => {
         storeApi.getState().closeTab(fileId)
         storeApi.getState().clearDraftContent(fileId)
+        storeApi.getState().clearFileMetadata(fileId)
       })
 
-      // Also close and clear the node itself if it's a file
-      if (!isFolder) {
-        storeApi.getState().closeTab(nodeId)
-        storeApi.getState().clearDraftContent(nodeId)
+      const clipboard = storeApi.getState().clipboard
+      if (clipboard) {
+        const shouldClearClipboard = [...clipboard.nodeIds].some((clipboardNodeId) => {
+          if (clipboardNodeId === nodeId)
+            return true
+          if (!isFolder || !treeData?.children)
+            return false
+          return isDescendantOf(clipboardNodeId, nodeId, treeData.children)
+        })
+
+        if (shouldClearClipboard)
+          storeApi.getState().clearClipboard()
       }
 
       toast.success(

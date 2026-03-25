@@ -3,6 +3,7 @@ import { ROOT_ID } from '../../constants'
 import TreeContextMenu from './tree-context-menu'
 
 const mocks = vi.hoisted(() => ({
+  selectedNodeIds: new Set<string>(),
   clearSelection: vi.fn(),
   setSelectedNodeIds: vi.fn(),
   deselectAll: vi.fn(),
@@ -30,6 +31,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@/app/components/workflow/store', () => ({
   useWorkflowStore: () => ({
     getState: () => ({
+      selectedNodeIds: mocks.selectedNodeIds,
       clearSelection: mocks.clearSelection,
       setSelectedNodeIds: mocks.setSelectedNodeIds,
     }),
@@ -63,11 +65,12 @@ vi.mock('../../hooks/file-tree/operations/use-file-operations', () => ({
 }))
 
 vi.mock('./node-menu', () => ({
-  default: ({ type, menuType, nodeId, onImportSkills }: { type: string, menuType: string, nodeId?: string, onImportSkills?: () => void }) => (
+  default: ({ type, menuType, nodeId, actionNodeIds, onImportSkills }: { type: string, menuType: string, nodeId?: string, actionNodeIds?: string[], onImportSkills?: () => void }) => (
     <div
       data-testid={`node-menu-${menuType}`}
       data-type={type}
       data-node-id={nodeId ?? ''}
+      data-action-node-ids={(actionNodeIds ?? []).join(',')}
     >
       {onImportSkills && (
         <button type="button" onClick={onImportSkills}>
@@ -81,6 +84,7 @@ vi.mock('./node-menu', () => ({
 describe('TreeContextMenu', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.selectedNodeIds = new Set<string>()
     mocks.fileOperations.showDeleteConfirm = false
   })
 
@@ -143,11 +147,37 @@ describe('TreeContextMenu', () => {
       expect(mocks.clearSelection).not.toHaveBeenCalled()
       expect(screen.getByTestId('node-menu-context')).toHaveAttribute('data-type', 'file')
       expect(screen.getByTestId('node-menu-context')).toHaveAttribute('data-node-id', 'file-1')
+      expect(screen.getByTestId('node-menu-context')).toHaveAttribute('data-action-node-ids', 'file-1')
       expect(mocks.useFileOperations).toHaveBeenLastCalledWith(expect.objectContaining({
         nodeId: 'file-1',
         nodeType: 'file',
         fileName: 'readme.md',
       }))
+    })
+
+    it('should preserve multi-selection when right-click target is already selected', () => {
+      mocks.selectedNodeIds = new Set(['file-1', 'file-2'])
+      mocks.getNode.mockReturnValue({
+        select: mocks.selectNode,
+        data: { name: 'readme.md' },
+      })
+
+      render(
+        <TreeContextMenu treeRef={{ current: { deselectAll: mocks.deselectAll, get: mocks.getNode } as never }}>
+          <div>
+            <div data-skill-tree-node-id="file-1" data-skill-tree-node-type="file" role="treeitem">
+              readme.md
+            </div>
+          </div>
+        </TreeContextMenu>,
+      )
+
+      fireEvent.contextMenu(screen.getByRole('treeitem'))
+
+      expect(mocks.deselectAll).not.toHaveBeenCalled()
+      expect(mocks.selectNode).not.toHaveBeenCalled()
+      expect(mocks.setSelectedNodeIds).not.toHaveBeenCalled()
+      expect(screen.getByTestId('node-menu-context')).toHaveAttribute('data-action-node-ids', 'file-1,file-2')
     })
 
     it('should keep import modal mounted after root menu requests it', () => {
