@@ -158,6 +158,20 @@ describe('useVariableModalState', () => {
     expect(result.current.editorContent).toBe(JSON.stringify(['True', 'False']))
   })
 
+  it('should preserve zero values when switching number arrays into json mode', () => {
+    const { result } = renderHook(() => useVariableModalState(createOptions()))
+
+    act(() => {
+      result.current.handleTypeChange(ChatVarType.ArrayNumber)
+      result.current.setValue([0, 2, undefined])
+      result.current.handleEditorChange(true)
+    })
+
+    expect(result.current.editInJSON).toBe(true)
+    expect(result.current.value).toEqual([0, 2])
+    expect(result.current.editorContent).toBe(JSON.stringify([0, 2]))
+  })
+
   it('should notify and stop saving when object keys are invalid', () => {
     const notify = vi.fn()
     const onSave = vi.fn()

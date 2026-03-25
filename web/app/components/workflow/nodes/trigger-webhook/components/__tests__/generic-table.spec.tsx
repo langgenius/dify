@@ -3,6 +3,40 @@ import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import GenericTable from '../generic-table'
 
+vi.mock('@/app/components/base/select', () => ({
+  SimpleSelect: ({
+    items,
+    defaultValue,
+    onSelect,
+    disabled,
+    placeholder,
+  }: {
+    items: Array<{ name: string, value: string }>
+    defaultValue?: string
+    onSelect: (item: { name: string, value: string }) => void
+    disabled?: boolean
+    placeholder?: string
+  }) => (
+    <select
+      aria-label={placeholder ?? 'Select'}
+      disabled={disabled}
+      value={defaultValue ?? ''}
+      onChange={(e) => {
+        const item = items.find(item => item.value === e.target.value)
+        if (item)
+          onSelect(item)
+      }}
+    >
+      <option value="">{placeholder ?? 'Select'}</option>
+      {items.map(item => (
+        <option key={item.value} value={item.value}>
+          {item.name}
+        </option>
+      ))}
+    </select>
+  ),
+}))
+
 const columns = [
   {
     key: 'name',
@@ -144,12 +178,11 @@ describe('GenericTable', () => {
       <ControlledTable />,
     )
 
-    await user.click(screen.getByRole('button', { name: 'Choose method' }))
-    await user.click(await screen.findByText('POST'))
+    await user.selectOptions(screen.getAllByRole('combobox', { name: 'Choose method' })[0], 'post')
 
     await waitFor(() => {
       expect(onChange).toHaveBeenCalledWith([{ method: 'post', preview: '' }])
-      expect(screen.getByRole('button', { name: 'POST' })).toBeInTheDocument()
+      expect(screen.getAllByRole('combobox', { name: 'Choose method' })[0]).toHaveValue('post')
     })
 
     onChange.mockClear()

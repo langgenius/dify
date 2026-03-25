@@ -58,6 +58,16 @@ describe('before-run-form helpers', () => {
     })], [{}], t)).toContain('errorMsg.fieldRequired')
 
     expect(getFormErrorMessage([createForm({
+      inputs: [createInput({ variable: 'file', label: 'File', type: InputVarType.singleFile, required: true })],
+      values: createValues({ file: [] }),
+    })], [{}], t)).toContain('errorMsg.fieldRequired')
+
+    expect(getFormErrorMessage([createForm({
+      inputs: [createInput({ variable: 'files', label: 'Files', type: InputVarType.multiFiles, required: true })],
+      values: createValues({ files: [] }),
+    })], [{}], t)).toContain('errorMsg.fieldRequired')
+
+    expect(getFormErrorMessage([createForm({
       inputs: [createInput({ variable: 'file', label: 'File', type: InputVarType.singleFile })],
       values: createValues({ file: { transferMethod: TransferMethod.local_file } }),
     })], [{}], t)).toContain('errorMessage.waitForFileUpload')

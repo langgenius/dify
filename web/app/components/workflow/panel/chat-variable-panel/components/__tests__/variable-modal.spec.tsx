@@ -100,8 +100,10 @@ describe('variable-modal', () => {
     expect(screen.getByDisplayValue('secret')).toBeInTheDocument()
     expect(screen.getByDisplayValue('30')).toBeInTheDocument()
 
+    const timeoutInput = screen.getByDisplayValue('30') as HTMLInputElement
     await user.clear(screen.getByDisplayValue('secret'))
-    await user.type(screen.getByDisplayValue('30'), '5')
+    await user.clear(timeoutInput)
+    await user.type(timeoutInput, '5')
     await user.click(screen.getByText('common.operation.save'))
 
     expect(onSave).toHaveBeenCalledWith({
@@ -110,7 +112,7 @@ describe('variable-modal', () => {
       value_type: ChatVarType.Object,
       value: {
         apiKey: null,
-        timeout: 305,
+        timeout: 5,
       },
       description: 'settings',
     })

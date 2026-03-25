@@ -133,8 +133,11 @@ export const useVariableModalState = ({
 
       if (prev.type === ChatVarType.ArrayString || prev.type === ChatVarType.ArrayNumber) {
         if (nextEditInJSON) {
-          const nextValue = (Array.isArray(prev.value) && prev.value.length && prev.value.filter(Boolean).length)
-            ? prev.value.filter(Boolean)
+          const compactValues = Array.isArray(prev.value)
+            ? prev.value.filter(item => item !== null && item !== undefined && item !== '')
+            : []
+          const nextValue = compactValues.length
+            ? compactValues
             : undefined
           nextState.value = nextValue
           if (!prev.editorContent)

@@ -62,6 +62,13 @@ describe('variable-modal helpers', () => {
     expect(formatChatVariableValue({
       editInJSON: false,
       objectValue: [],
+      type: ChatVarType.ArrayNumber,
+      value: [0, 1, undefined, null, ''] as unknown as Array<number | undefined>,
+    })).toEqual([0, 1])
+
+    expect(formatChatVariableValue({
+      editInJSON: false,
+      objectValue: [],
       type: ChatVarType.Number,
       value: undefined,
     })).toBe(0)
@@ -98,6 +105,11 @@ describe('variable-modal helpers', () => {
       content: '["True","false",true,false,"invalid"]',
       type: ChatVarType.ArrayBoolean,
     })).toEqual([true, false, true, false])
+
+    expect(() => parseEditorContent({
+      content: '{"enabled":true}',
+      type: ChatVarType.ArrayBoolean,
+    })).toThrow('JSON array')
 
     expect(parseEditorContent({
       content: '{"enabled":true}',
