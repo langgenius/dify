@@ -1,4 +1,4 @@
-import type { VarInInspect } from '@/types/workflow'
+import type { FileResponse, VarInInspect } from '@/types/workflow'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import {
   checkJsonSchemaDepth,
@@ -12,6 +12,14 @@ import { validateJSONSchema } from './utils'
 
 type UploadedFileLike = {
   upload_file_id?: string
+}
+
+const isFileResponse = (value: unknown): value is FileResponse => {
+  if (!value || typeof value !== 'object' || Array.isArray(value))
+    return false
+
+  return ['related_id', 'filename', 'mime_type', 'transfer_method', 'type', 'url', 'upload_file_id', 'remote_url']
+    .every(key => key in value)
 }
 
 export const getValueEditorState = (currentVar: VarInInspect) => {
@@ -40,9 +48,15 @@ export const getValueEditorState = (currentVar: VarInInspect) => {
 
 export const formatInspectFileValue = (currentVar: VarInInspect) => {
   if (currentVar.value_type === 'file')
-    return currentVar.value ? getProcessedFilesFromResponse([currentVar.value]) : []
-  if (currentVar.value_type === 'array[file]' || (currentVar.type === VarInInspectType.system && currentVar.name === 'files'))
-    return currentVar.value && currentVar.value.length > 0 ? getProcessedFilesFromResponse(currentVar.value) : []
+    return isFileResponse(currentVar.value) ? getProcessedFilesFromResponse([currentVar.value]) : []
+
+  if (currentVar.value_type === 'array[file]' || (currentVar.type === VarInInspectType.system && currentVar.name === 'files')) {
+    if (!Array.isArray(currentVar.value) || !currentVar.value.every(isFileResponse))
+      return []
+
+    return currentVar.value.length > 0 ? getProcessedFilesFromResponse(currentVar.value) : []
+  }
+
   return []
 }
 

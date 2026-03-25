@@ -1963,7 +1963,7 @@ export const useNodesInteractions = () => {
           if (selectedNode) {
             // Keep this list aligned with availableBlocksFilter(inContainer)
             // in use-available-blocks.ts.
-            const commonNestedDisallowPasteNodes = [
+            const commonNestedDisallowPasteNodes: BlockEnum[] = [
               BlockEnum.End,
               BlockEnum.Iteration,
               BlockEnum.Loop,

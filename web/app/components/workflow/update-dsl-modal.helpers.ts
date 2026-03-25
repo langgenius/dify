@@ -1,8 +1,20 @@
 import type { CommonNodeType, Node } from './types'
+import type {
+  AnnotationReplyConfig,
+  FileUpload,
+  OpeningStatement,
+  RetrieverResource,
+  Runtime,
+  SensitiveWordAvoidance,
+  SpeechToText,
+  SuggestedQuestionsAfterAnswer,
+  TextToSpeech,
+} from '@/app/components/base/features/types'
+import type { WorkflowDraftFeatures } from '@/types/workflow'
 import { load as yamlLoad } from 'js-yaml'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { DSLImportStatus } from '@/models/app'
-import { AppModeEnum } from '@/types/app'
+import { AppModeEnum, TransferMethod } from '@/types/app'
 import { BlockEnum, SupportUploadFileTypes } from './types'
 
 type ParsedDSL = {
@@ -13,47 +25,49 @@ type ParsedDSL = {
   }
 }
 
-type WorkflowFileUploadFeatures = {
-  enabled?: boolean
-  allowed_file_types?: SupportUploadFileTypes[]
-  allowed_file_extensions?: string[]
-  allowed_file_upload_methods?: string[]
-  number_limits?: number
-  image?: {
-    enabled?: boolean
-    number_limits?: number
-    transfer_methods?: string[]
-  }
-}
-
-type WorkflowFeatures = {
-  file_upload?: WorkflowFileUploadFeatures
-  opening_statement?: string
-  suggested_questions?: string[]
-  suggested_questions_after_answer?: { enabled: boolean }
-  speech_to_text?: { enabled: boolean }
-  text_to_speech?: { enabled: boolean }
-  retriever_resource?: { enabled: boolean }
-  sensitive_word_avoidance?: { enabled: boolean }
-}
-
 type ImportNotificationPayload = {
   type: 'success' | 'warning'
   message: string
   children?: string
 }
 
+type NormalizedWorkflowFeatures = {
+  file: FileUpload
+  opening: OpeningStatement
+  suggested: SuggestedQuestionsAfterAnswer
+  speech2text: SpeechToText
+  text2speech: TextToSpeech
+  citation: RetrieverResource
+  moderation: SensitiveWordAvoidance
+  annotationReply: AnnotationReplyConfig
+  sandbox: Runtime
+}
+
+const DEFAULT_TRANSFER_METHODS: TransferMethod[] = [TransferMethod.local_file, TransferMethod.remote_url]
+
+const normalizeEnabledFeature = (feature?: boolean | Record<string, unknown>) => {
+  if (typeof feature === 'boolean')
+    return { enabled: feature }
+
+  if (feature && typeof feature === 'object')
+    return { enabled: typeof feature.enabled === 'boolean' ? feature.enabled : false }
+
+  return { enabled: false }
+}
+
 export const getInvalidNodeTypes = (mode?: AppModeEnum) => {
   if (mode === AppModeEnum.ADVANCED_CHAT) {
-    return [
+    const invalidNodeTypes: BlockEnum[] = [
       BlockEnum.End,
       BlockEnum.TriggerWebhook,
       BlockEnum.TriggerSchedule,
       BlockEnum.TriggerPlugin,
     ]
+    return invalidNodeTypes
   }
 
-  return [BlockEnum.Answer]
+  const invalidNodeTypes: BlockEnum[] = [BlockEnum.Answer]
+  return invalidNodeTypes
 }
 
 export const validateDSLContent = (content: string, mode?: AppModeEnum) => {
@@ -61,7 +75,7 @@ export const validateDSLContent = (content: string, mode?: AppModeEnum) => {
     const data = yamlLoad(content) as ParsedDSL
     const nodes = data?.workflow?.graph?.nodes ?? []
     const invalidNodes = getInvalidNodeTypes(mode)
-    return !nodes.some((node: Node<CommonNodeType>) => invalidNodes.includes(node?.data?.type))
+    return !nodes.some((node: Node<CommonNodeType>) => node?.data?.type ? invalidNodes.includes(node.data.type) : false)
   }
   catch {
     return false
@@ -82,19 +96,19 @@ export const getImportNotificationPayload = (status: DSLImportStatus, t: (key: s
   }
 }
 
-export const normalizeWorkflowFeatures = (features?: WorkflowFeatures) => {
+export const normalizeWorkflowFeatures = (features?: WorkflowDraftFeatures): NormalizedWorkflowFeatures => {
   const resolvedFeatures = features ?? {}
   return {
     file: {
       image: {
         enabled: !!resolvedFeatures.file_upload?.image?.enabled,
         number_limits: resolvedFeatures.file_upload?.image?.number_limits || 3,
-        transfer_methods: resolvedFeatures.file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
+        transfer_methods: resolvedFeatures.file_upload?.image?.transfer_methods || DEFAULT_TRANSFER_METHODS,
       },
       enabled: !!(resolvedFeatures.file_upload?.enabled || resolvedFeatures.file_upload?.image?.enabled),
       allowed_file_types: resolvedFeatures.file_upload?.allowed_file_types || [SupportUploadFileTypes.image],
       allowed_file_extensions: resolvedFeatures.file_upload?.allowed_file_extensions || FILE_EXTS[SupportUploadFileTypes.image].map(ext => `.${ext}`),
-      allowed_file_upload_methods: resolvedFeatures.file_upload?.allowed_file_upload_methods || resolvedFeatures.file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
+      allowed_file_upload_methods: resolvedFeatures.file_upload?.allowed_file_upload_methods || resolvedFeatures.file_upload?.image?.transfer_methods || DEFAULT_TRANSFER_METHODS,
       number_limits: resolvedFeatures.file_upload?.number_limits || resolvedFeatures.file_upload?.image?.number_limits || 3,
     },
     opening: {
@@ -102,10 +116,12 @@ export const normalizeWorkflowFeatures = (features?: WorkflowFeatures) => {
       opening_statement: resolvedFeatures.opening_statement,
       suggested_questions: resolvedFeatures.suggested_questions,
     },
-    suggested: resolvedFeatures.suggested_questions_after_answer || { enabled: false },
-    speech2text: resolvedFeatures.speech_to_text || { enabled: false },
-    text2speech: resolvedFeatures.text_to_speech || { enabled: false },
-    citation: resolvedFeatures.retriever_resource || { enabled: false },
-    moderation: resolvedFeatures.sensitive_word_avoidance || { enabled: false },
+    suggested: normalizeEnabledFeature(resolvedFeatures.suggested_questions_after_answer),
+    speech2text: normalizeEnabledFeature(resolvedFeatures.speech_to_text),
+    text2speech: normalizeEnabledFeature(resolvedFeatures.text_to_speech),
+    citation: normalizeEnabledFeature(resolvedFeatures.retriever_resource),
+    moderation: normalizeEnabledFeature(resolvedFeatures.sensitive_word_avoidance),
+    annotationReply: normalizeEnabledFeature(resolvedFeatures.annotation_reply),
+    sandbox: normalizeEnabledFeature(resolvedFeatures.sandbox),
   }
 }

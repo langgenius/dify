@@ -37,7 +37,7 @@ const createInputVar = (variable: string): InputVar => ({
   required: false,
 })
 
-const createNode = (id: string, title: string, type = BlockEnum.Tool): Node => ({
+const createNode = (id: string, title: string, type: BlockEnum = BlockEnum.Tool): Node => ({
   id,
   position: { x: 0, y: 0 },
   data: {

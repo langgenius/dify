@@ -19,6 +19,7 @@ const createProps = (
   isLoading: false,
   isShowAPart: false,
   isShowNodeName: true,
+  isValidVar: true,
   maxNodeNameWidth: 80,
   maxTypeWidth: 60,
   maxVarNameWidth: 80,

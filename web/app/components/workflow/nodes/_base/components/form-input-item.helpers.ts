@@ -158,16 +158,28 @@ export const getTargetVarType = (state: FormInputState) => {
 export const getFilterVar = (state: FormInputState) => {
   if (state.isNumber)
     return (varPayload: Var) => varPayload.type === VarType.number
-  if (state.isString)
-    return (varPayload: Var) => [VarType.string, VarType.number, VarType.secret].includes(varPayload.type)
+  if (state.isString) {
+    return (varPayload: Var) => (
+      varPayload.type === VarType.string
+      || varPayload.type === VarType.number
+      || varPayload.type === VarType.secret
+    )
+  }
   if (state.isFile)
-    return (varPayload: Var) => [VarType.file, VarType.arrayFile].includes(varPayload.type)
+    return (varPayload: Var) => varPayload.type === VarType.file || varPayload.type === VarType.arrayFile
   if (state.isBoolean)
     return (varPayload: Var) => varPayload.type === VarType.boolean
   if (state.isObject)
     return (varPayload: Var) => varPayload.type === VarType.object
-  if (state.isArray)
-    return (varPayload: Var) => [VarType.array, VarType.arrayString, VarType.arrayNumber, VarType.arrayObject, VarType.arrayMessage].includes(varPayload.type)
+  if (state.isArray) {
+    return (varPayload: Var) => (
+      varPayload.type === VarType.array
+      || varPayload.type === VarType.arrayString
+      || varPayload.type === VarType.arrayNumber
+      || varPayload.type === VarType.arrayObject
+      || varPayload.type === VarType.arrayMessage
+    )
+  }
   return undefined
 }
 

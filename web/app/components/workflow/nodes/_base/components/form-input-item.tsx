@@ -308,6 +308,7 @@ const FormInputItem: FC<Props> = ({
     const resolvedType = isAssembleValue
       ? VarKindType.nested_node
       : newType ?? (varInput?.type === VarKindType.nested_node ? VarKindType.nested_node : getVarKindType(formState))
+    const nextVarKindType = resolvedType ?? varInput?.type ?? VarKindType.constant
     const resolvedNestedNodeConfig = resolvedType === VarKindType.nested_node
       ? (nestedNodeConfig ?? varInput?.nested_node_config ?? {
           extractor_node_id: nodeId && variable ? `${nodeId}_ext_${variable}` : '',
@@ -321,7 +322,7 @@ const FormInputItem: FC<Props> = ({
       ...value,
       [variable]: {
         ...varInput,
-        type: resolvedType,
+        type: nextVarKindType,
         value: normalizedValue,
         nested_node_config: resolvedNestedNodeConfig,
       },

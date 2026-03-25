@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import type { ChatVarType } from '../type'
-import type { ConversationVariable } from '@/app/components/workflow/types'
+import type { ConversationVariable, JsonValue } from '@/app/components/workflow/types'
 import { checkKeys } from '@/utils/var'
 import { ChatVarType as ChatVarTypeEnum } from '../type'
 import {
@@ -27,6 +27,31 @@ export type ToastPayload = {
   onClose?: () => void
   className?: string
   customComponent?: ReactNode
+}
+
+const isJsonValue = (value: unknown): value is JsonValue => {
+  if (value === null)
+    return true
+
+  const valueType = typeof value
+  if (valueType === 'string' || valueType === 'number' || valueType === 'boolean')
+    return true
+
+  if (Array.isArray(value))
+    return value.every(item => isJsonValue(item))
+
+  if (valueType === 'object') {
+    if (!value)
+      return false
+
+    return Object.values(value).every(item => isJsonValue(item))
+  }
+
+  return false
+}
+
+const isJsonRecord = (value: JsonValue): value is Record<string, JsonValue> => {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
 }
 
 export const typeList = [
@@ -56,23 +81,27 @@ export const getPlaceholderByType = (type: ChatVarType) => {
 }
 
 export const buildObjectValueItems = (chatVar?: ConversationVariable): ObjectValueItem[] => {
-  if (!chatVar || !chatVar.value || Object.keys(chatVar.value).length === 0)
+  if (!chatVar)
     return [DEFAULT_OBJECT_VALUE]
 
-  return Object.keys(chatVar.value).map((key) => {
-    const itemValue = chatVar.value[key]
+  const value = chatVar.value
+  if (!isJsonRecord(value) || Object.keys(value).length === 0)
+    return [DEFAULT_OBJECT_VALUE]
+
+  return Object.keys(value).map((key) => {
+    const itemValue = value[key]
     return {
       key,
       type: typeof itemValue === 'string' ? ChatVarTypeEnum.String : ChatVarTypeEnum.Number,
-      value: itemValue,
+      value: typeof itemValue === 'string' || typeof itemValue === 'number' ? itemValue : undefined,
     }
   })
 }
 
 export const formatObjectValueFromList = (list: ObjectValueItem[]) => {
-  return list.reduce<Record<string, string | number | null>>((acc, curr) => {
+  return list.reduce<Record<string, JsonValue>>((acc, curr) => {
     if (curr.key)
-      acc[curr.key] = curr.value || null
+      acc[curr.key] = curr.value === undefined || curr.value === '' ? null : curr.value
     return acc
   }, {})
 }
@@ -87,22 +116,22 @@ export const formatChatVariableValue = ({
   objectValue: ObjectValueItem[]
   type: ChatVarType
   value: unknown
-}) => {
+}): JsonValue => {
   switch (type) {
     case ChatVarTypeEnum.String:
-      return value || ''
+      return typeof value === 'string' ? value : ''
     case ChatVarTypeEnum.Number:
-      return value || 0
+      return typeof value === 'number' && !Number.isNaN(value) ? value : 0
     case ChatVarTypeEnum.Boolean:
-      return value === undefined ? true : value
+      return typeof value === 'boolean' ? value : false
     case ChatVarTypeEnum.Object:
-      return editInJSON ? value : formatObjectValueFromList(objectValue)
+      return editInJSON && isJsonValue(value) ? value : formatObjectValueFromList(objectValue)
     case ChatVarTypeEnum.ArrayString:
     case ChatVarTypeEnum.ArrayNumber:
     case ChatVarTypeEnum.ArrayObject:
-      return Array.isArray(value) ? value.filter(Boolean) : []
+      return Array.isArray(value) ? value.filter((item): item is JsonValue => item !== undefined) : []
     case ChatVarTypeEnum.ArrayBoolean:
-      return value || []
+      return Array.isArray(value) ? value.filter((item): item is JsonValue => item !== undefined) : []
   }
 }
 
@@ -146,10 +175,16 @@ export const parseEditorContent = ({
 }: {
   content: string
   type: ChatVarType
-}) => {
-  const parsed = JSON.parse(content)
-  if (type !== ChatVarTypeEnum.ArrayBoolean)
+}): JsonValue => {
+  const parsed: unknown = JSON.parse(content)
+  if (type !== ChatVarTypeEnum.ArrayBoolean) {
+    if (!isJsonValue(parsed))
+      throw new Error('Invalid JSON')
     return parsed
+  }
+
+  if (!Array.isArray(parsed))
+    throw new Error('Invalid JSON array')
 
   return parsed
     .map((item: string | boolean) => {
