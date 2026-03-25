@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
+from services.knowledge_service import BedrockRetrievalSetting
 from controllers.common.schema import get_or_create_model, register_schema_models
 from controllers.console import console_ns
 from controllers.console.datasets.error import DatasetNameDuplicateError
@@ -86,7 +87,7 @@ class ExternalHitTestingPayload(BaseModel):
 
 
 class BedrockRetrievalPayload(BaseModel):
-    retrieval_setting: dict[str, object]
+    retrieval_setting: "BedrockRetrievalSetting"
     query: str
     knowledge_id: str
 
