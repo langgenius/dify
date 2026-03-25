@@ -214,17 +214,19 @@ class WorkflowEntry:
         node_type = node_config_data.type
 
         # init graph init params and runtime state
-        graph_init_params = GraphInitParams(
-            workflow_id=workflow.id,
-            graph_config=workflow.graph_dict,
-            run_context=build_dify_run_context(
-                tenant_id=workflow.tenant_id,
-                app_id=workflow.app_id,
-                user_id=user_id,
-                user_from=UserFrom.ACCOUNT,
-                invoke_from=InvokeFrom.DEBUGGER,
-            ),
-            call_depth=0,
+        graph_init_params = GraphInitParams.model_validate(
+            {
+                "workflow_id": workflow.id,
+                "graph_config": workflow.graph_dict,
+                "run_context": build_dify_run_context(
+                    tenant_id=workflow.tenant_id,
+                    app_id=workflow.app_id,
+                    user_id=user_id,
+                    user_from=UserFrom.ACCOUNT,
+                    invoke_from=InvokeFrom.DEBUGGER,
+                ),
+                "call_depth": 0,
+            }
         )
         graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
 
@@ -354,17 +356,19 @@ class WorkflowEntry:
         )
 
         # init graph init params and runtime state
-        graph_init_params = GraphInitParams(
-            workflow_id="",
-            graph_config=graph_dict,
-            run_context=build_dify_run_context(
-                tenant_id=tenant_id,
-                app_id="",
-                user_id=user_id,
-                user_from=UserFrom.ACCOUNT,
-                invoke_from=InvokeFrom.DEBUGGER,
-            ),
-            call_depth=0,
+        graph_init_params = GraphInitParams.model_validate(
+            {
+                "workflow_id": "",
+                "graph_config": graph_dict,
+                "run_context": build_dify_run_context(
+                    tenant_id=tenant_id,
+                    app_id="",
+                    user_id=user_id,
+                    user_from=UserFrom.ACCOUNT,
+                    invoke_from=InvokeFrom.DEBUGGER,
+                ),
+                "call_depth": 0,
+            }
         )
         graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
 

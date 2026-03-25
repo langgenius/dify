@@ -67,7 +67,9 @@ def build_dify_run_context(
     `extra_context` can carry user-defined context keys. The reserved `_dify`
     payload is always overwritten by this function to keep one canonical source.
     """
-    run_context = dict(extra_context) if extra_context else {}
+    run_context: dict[str, Any] = {}
+    if extra_context:
+        run_context.update(extra_context)
     run_context[DIFY_RUN_CONTEXT_KEY] = DifyRunContext(
         tenant_id=tenant_id,
         app_id=app_id,
