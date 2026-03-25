@@ -268,7 +268,7 @@ class AppBundleService:
                 zs.upload_items(upload_items, src_dir="bundle")
 
             # Tree sizes are already set from manifest; no need to update
-            app_model = db.session.query(App).filter(App.id == app_id).first()
+            app_model = db.session.query(App).where(App.id == app_id).first()
             if app_model:
                 AppAssetService.set_draft_assets(
                     app_model=app_model,

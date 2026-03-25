@@ -38,10 +38,15 @@ def _make_llm_node(reasoning_format: str) -> LLMNode:
     object.__setattr__(
         node,
         "_run_context",
-        {"_dify": types.SimpleNamespace(
-            tenant_id="tenant", app_id="app", user_id="user",
-            user_from="account", invoke_from="debugger",
-        )},
+        {
+            "_dify": types.SimpleNamespace(
+                tenant_id="tenant",
+                app_id="app",
+                user_id="user",
+                user_from="account",
+                invoke_from="debugger",
+            )
+        },
     )
     return node
 

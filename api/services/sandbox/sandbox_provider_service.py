@@ -41,12 +41,11 @@ class SandboxProviderService:
             provider_types = SandboxType.get_all()
             tenant_configs = {
                 config.provider_type: config
-                for config in session.query(SandboxProvider).filter(SandboxProvider.tenant_id == tenant_id).all()
+                for config in session.query(SandboxProvider).where(SandboxProvider.tenant_id == tenant_id).all()
             }
             system_configs = {
                 config.provider_type: config
-                for config in session.query(SandboxProviderSystemConfig)
-                .filter(SandboxProviderSystemConfig.provider_type.in_(provider_types))
+                for config in session.query(SandboxProviderSystemConfig).where(SandboxProviderSystemConfig.provider_type.in_(provider_types))
                 .all()
             }
 
@@ -149,7 +148,7 @@ class SandboxProviderService:
             tenant_config = _query_tenant_config(session, tenant_id, provider_type)
             system_config = session.query(SandboxProviderSystemConfig).filter_by(provider_type=provider_type).first()
 
-            session.query(SandboxProvider).filter(SandboxProvider.tenant_id == tenant_id).update({"is_active": False})
+            session.query(SandboxProvider).where(SandboxProvider.tenant_id == tenant_id).update({"is_active": False})
 
             # using tenant config
             if tenant_config:
