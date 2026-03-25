@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -570,10 +571,7 @@ class TestConvertToHttpRequestNodeVariants:
 
     @staticmethod
     def _setup(app_mode, default_variables):
-        app_model = MagicMock()
-        app_model.id = "app_id"
-        app_model.tenant_id = "tenant_id"
-        app_model.mode = app_mode
+        app_model = SimpleNamespace(id="app_id", tenant_id="tenant_id", mode=app_mode)
 
         ext = APIBasedExtension(tenant_id="tenant_id", name="api-1", api_key="enc", api_endpoint="https://dify.ai")
         ext.id = "ext_id"
