@@ -231,6 +231,8 @@ const ChatVariableModal = ({
     }
   }
 
+  const MAX_DESCRIPTION_LENGTH = 255
+
   const handleSave = () => {
     if (!checkVariableName(name))
       return
@@ -241,6 +243,8 @@ const ChatVariableModal = ({
     //   return notify({ type: 'error', message: 'value can not be empty' })
     if (type === ChatVarType.Object && objectValue.some(item => !item.key && !!item.value))
       return notify({ type: 'error', message: 'object key can not be empty' })
+    if (description.length > MAX_DESCRIPTION_LENGTH)
+      return notify({ type: 'error', message: t('chatVariable.modal.descriptionTooLong', { ns: 'workflow', maxLength: MAX_DESCRIPTION_LENGTH }) })
 
     onSave({
       id: chatVar ? chatVar.id : uuid4(),
@@ -412,6 +416,11 @@ const ChatVariableModal = ({
               placeholder={t('chatVariable.modal.descriptionPlaceholder', { ns: 'workflow' }) || ''}
               onChange={e => setDescription(e.target.value)}
             />
+          </div>
+          <div className={cn('mt-1 text-right system-xs-regular', description.length > MAX_DESCRIPTION_LENGTH ? 'text-text-destructive' : 'text-text-quaternary')}>
+            {description.length}
+            /
+            {MAX_DESCRIPTION_LENGTH}
           </div>
         </div>
       </div>
