@@ -25,7 +25,6 @@ import {
   ContextMenuGroupLabel,
   ContextMenuItem,
   ContextMenuSeparator,
-  ContextMenuTrigger,
 } from '@/app/components/base/ui/context-menu'
 import CreateSnippetDialog from './create-snippet-dialog'
 import { useNodesReadOnly, useNodesSyncDraft } from './hooks'
@@ -295,6 +294,25 @@ const SelectionContextmenu = () => {
     return getMenuPosition(selectionMenu, container?.getBoundingClientRect())
   }, [selectionMenu])
 
+  const anchor = useMemo(() => {
+    if (!selectionMenu)
+      return null
+
+    const container = document.querySelector('#workflow-container')
+    const containerRect = container?.getBoundingClientRect()
+    if (!containerRect)
+      return null
+
+    return {
+      getBoundingClientRect: () => DOMRect.fromRect({
+        width: 0,
+        height: 0,
+        x: containerRect.left + menuPosition.left,
+        y: containerRect.top + menuPosition.top,
+      }),
+    }
+  }, [menuPosition.left, menuPosition.top, selectionMenu])
+
   useEffect(() => {
     if (selectionMenu && selectedNodes.length <= 1)
       handleSelectionContextmenuCancel()
@@ -382,18 +400,11 @@ const SelectionContextmenu = () => {
     }
   }, [store, workflowStore, selectedNodes, getNodesReadOnly, handleSyncWorkflowDraft, saveStateToHistory, handleSelectionContextmenuCancel])
 
-  if (!selectionMenu && !isCreateSnippetDialogOpen)
+  if ((!selectionMenu || !anchor) && !isCreateSnippetDialogOpen)
     return null
 
   return (
-    <div
-      className="absolute z-[9]"
-      data-testid="selection-contextmenu"
-      style={{
-        left: menuPosition.left,
-        top: menuPosition.top,
-      }}
-    >
+    <div data-testid="selection-contextmenu">
       <ContextMenu
         open
         onOpenChange={(open) => {
@@ -401,10 +412,10 @@ const SelectionContextmenu = () => {
             handleSelectionContextmenuCancel()
         }}
       >
-        <ContextMenuTrigger>
-          <span aria-hidden className="block size-px opacity-0" />
-        </ContextMenuTrigger>
-        <ContextMenuContent popupClassName="w-[240px]">
+        <ContextMenuContent
+          positionerProps={{ anchor }}
+          popupClassName="w-[240px]"
+        >
           {menuSections.map((section, sectionIndex) => (
             <ContextMenuGroup key={section.titleKey}>
               {sectionIndex > 0 && <ContextMenuSeparator />}
