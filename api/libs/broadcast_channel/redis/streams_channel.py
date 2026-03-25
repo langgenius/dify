@@ -79,6 +79,15 @@ class _StreamsSubscription(Subscription):
         self._listener: threading.Thread | None = None
 
     def _listen(self) -> None:
+        """The `_listen` method handles the message retrieval loop. It requires a dedicated thread
+        and is not intended for direct invocation.
+
+        The thread is started by `_start_if_needed`.
+        """
+
+        # since this method runs in a dedicated thread, acquiring `_lock` inside this method won't cause
+        # deadlock.
+
         # Setting initial last id to `$` to signal redis that we only want new messages.
         #
         # ref: https://redis.io/docs/latest/commands/xread/#the-special--id
