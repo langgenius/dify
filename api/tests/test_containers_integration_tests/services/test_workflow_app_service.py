@@ -11,7 +11,7 @@ from faker import Faker
 from sqlalchemy.orm import Session
 
 from dify_graph.entities.workflow_execution import WorkflowExecutionStatus
-from models import Account, EndUser, Workflow, WorkflowAppLog, WorkflowArchiveLog, WorkflowRun
+from models import EndUser, Workflow, WorkflowAppLog, WorkflowArchiveLog, WorkflowRun
 from models.enums import AppTriggerType, CreatorUserRole, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowAppLogCreatedFrom
 from services.account_service import AccountService, TenantService
@@ -1547,9 +1547,7 @@ class TestWorkflowAppService:
     ):
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
         service = WorkflowAppService()
-        workflow, workflow_run, _log = self._create_test_workflow_data(
-            db_session_with_containers, app, account
-        )
+        workflow, workflow_run, _log = self._create_test_workflow_data(db_session_with_containers, app, account)
 
         result = service.get_paginate_workflow_app_logs(
             session=db_session_with_containers,
