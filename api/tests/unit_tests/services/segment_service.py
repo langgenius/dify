@@ -2,8 +2,10 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from models.account import Account
 from models.dataset import ChildChunk, Dataset, Document, DocumentSegment
+from models.enums import SegmentType
 from services.dataset_service import SegmentService
 from services.entities.knowledge_entities.knowledge_entities import SegmentUpdateArgs
 from services.errors.chunk import ChildChunkDeleteIndexError, ChildChunkIndexingError
@@ -77,7 +79,7 @@ class SegmentTestDataFactory:
         chunk.word_count = word_count
         chunk.index_node_id = f"node-{chunk_id}"
         chunk.index_node_hash = "hash-123"
-        chunk.type = "automatic"
+        chunk.type = SegmentType.AUTOMATIC
         chunk.created_by = "user-123"
         chunk.updated_by = None
         chunk.updated_at = None
@@ -90,7 +92,7 @@ class SegmentTestDataFactory:
         document_id: str = "doc-123",
         dataset_id: str = "dataset-123",
         tenant_id: str = "tenant-123",
-        doc_form: str = "text_model",
+        doc_form: str = IndexStructureType.PARAGRAPH_INDEX,
         word_count: int = 100,
         **kwargs,
     ) -> Mock:
@@ -109,7 +111,7 @@ class SegmentTestDataFactory:
     def create_dataset_mock(
         dataset_id: str = "dataset-123",
         tenant_id: str = "tenant-123",
-        indexing_technique: str = "high_quality",
+        indexing_technique: str = IndexTechniqueType.HIGH_QUALITY,
         embedding_model: str = "text-embedding-ada-002",
         embedding_model_provider: str = "openai",
         **kwargs,
@@ -161,7 +163,7 @@ class TestSegmentServiceCreateSegment:
         """Test successful creation of a segment."""
         # Arrange
         document = SegmentTestDataFactory.create_document_mock(word_count=100)
-        dataset = SegmentTestDataFactory.create_dataset_mock(indexing_technique="economy")
+        dataset = SegmentTestDataFactory.create_dataset_mock(indexing_technique=IndexTechniqueType.ECONOMY)
         args = {"content": "New segment content", "keywords": ["test", "segment"]}
 
         mock_query = MagicMock()
@@ -209,8 +211,8 @@ class TestSegmentServiceCreateSegment:
     def test_create_segment_with_qa_model(self, mock_db_session, mock_current_user):
         """Test creation of segment with QA model (requires answer)."""
         # Arrange
-        document = SegmentTestDataFactory.create_document_mock(doc_form="qa_model", word_count=100)
-        dataset = SegmentTestDataFactory.create_dataset_mock(indexing_technique="economy")
+        document = SegmentTestDataFactory.create_document_mock(doc_form=IndexStructureType.QA_INDEX, word_count=100)
+        dataset = SegmentTestDataFactory.create_dataset_mock(indexing_technique=IndexTechniqueType.ECONOMY)
         args = {"content": "What is AI?", "answer": "AI is Artificial Intelligence", "keywords": ["ai"]}
 
         mock_query = MagicMock()
@@ -245,7 +247,7 @@ class TestSegmentServiceCreateSegment:
         """Test creation of segment with high quality indexing technique."""
         # Arrange
         document = SegmentTestDataFactory.create_document_mock(word_count=100)
-        dataset = SegmentTestDataFactory.create_dataset_mock(indexing_technique="high_quality")
+        dataset = SegmentTestDataFactory.create_dataset_mock(indexing_technique=IndexTechniqueType.HIGH_QUALITY)
         args = {"content": "New segment content", "keywords": ["test"]}
 
         mock_query = MagicMock()
@@ -287,7 +289,7 @@ class TestSegmentServiceCreateSegment:
         """Test segment creation when vector indexing fails."""
         # Arrange
         document = SegmentTestDataFactory.create_document_mock(word_count=100)
-        dataset = SegmentTestDataFactory.create_dataset_mock(indexing_technique="economy")
+        dataset = SegmentTestDataFactory.create_dataset_mock(indexing_technique=IndexTechniqueType.ECONOMY)
         args = {"content": "New segment content", "keywords": ["test"]}
 
         mock_query = MagicMock()
@@ -340,7 +342,7 @@ class TestSegmentServiceUpdateSegment:
         # Arrange
         segment = SegmentTestDataFactory.create_segment_mock(enabled=True, word_count=10)
         document = SegmentTestDataFactory.create_document_mock(word_count=100)
-        dataset = SegmentTestDataFactory.create_dataset_mock(indexing_technique="economy")
+        dataset = SegmentTestDataFactory.create_dataset_mock(indexing_technique=IndexTechniqueType.ECONOMY)
         args = SegmentUpdateArgs(content="Updated content", keywords=["updated"])
 
         mock_db_session.query.return_value.where.return_value.first.return_value = segment
@@ -428,8 +430,8 @@ class TestSegmentServiceUpdateSegment:
         """Test update segment with QA model (includes answer)."""
         # Arrange
         segment = SegmentTestDataFactory.create_segment_mock(enabled=True, word_count=10)
-        document = SegmentTestDataFactory.create_document_mock(doc_form="qa_model", word_count=100)
-        dataset = SegmentTestDataFactory.create_dataset_mock(indexing_technique="economy")
+        document = SegmentTestDataFactory.create_document_mock(doc_form=IndexStructureType.QA_INDEX, word_count=100)
+        dataset = SegmentTestDataFactory.create_dataset_mock(indexing_technique=IndexTechniqueType.ECONOMY)
         args = SegmentUpdateArgs(content="Updated question", answer="Updated answer", keywords=["qa"])
 
         mock_db_session.query.return_value.where.return_value.first.return_value = segment

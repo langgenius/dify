@@ -4,6 +4,7 @@ import type { Banner } from '@/models/app'
 import { RiArrowRightLine } from '@remixicon/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { trackEvent } from '@/app/components/base/amplitude'
 import { useCarousel } from '@/app/components/base/carousel'
 import { cn } from '@/utils/classnames'
 import { IndicatorButton } from './indicator-button'
@@ -11,6 +12,9 @@ import { IndicatorButton } from './indicator-button'
 type BannerItemProps = {
   banner: Banner
   autoplayDelay: number
+  sort: number
+  language: string
+  accountId?: string
   isPaused?: boolean
 }
 
@@ -20,7 +24,14 @@ const INDICATOR_WIDTH = 20
 const INDICATOR_GAP = 8
 const MIN_VIEW_MORE_WIDTH = 480
 
-export const BannerItem: FC<BannerItemProps> = ({ banner, autoplayDelay, isPaused = false }) => {
+export const BannerItem: FC<BannerItemProps> = ({
+  banner,
+  autoplayDelay,
+  sort,
+  language,
+  accountId,
+  isPaused = false,
+}) => {
   const { t } = useTranslation()
   const { api, selectedIndex } = useCarousel()
   const { category, title, description, 'img-src': imgSrc } = banner.content
@@ -91,9 +102,21 @@ export const BannerItem: FC<BannerItemProps> = ({ banner, autoplayDelay, isPause
 
   const handleBannerClick = useCallback(() => {
     incrementResetKey()
+
+    trackEvent('explore_banner_click', {
+      banner_id: banner.id,
+      title: banner.content.title,
+      sort,
+      link: banner.link,
+      page: 'explore',
+      language,
+      account_id: accountId,
+      event_time: Date.now(),
+    })
+
     if (banner.link)
       window.open(banner.link, '_blank', 'noopener,noreferrer')
-  }, [banner.link, incrementResetKey])
+  }, [accountId, banner, incrementResetKey, language, sort])
 
   const handleIndicatorClick = useCallback((index: number) => {
     incrementResetKey()

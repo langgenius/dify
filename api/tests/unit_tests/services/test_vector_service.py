@@ -9,6 +9,7 @@ from unittest.mock import MagicMock
 import pytest
 
 import services.vector_service as vector_service_module
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from services.vector_service import VectorService
 
 
@@ -31,8 +32,8 @@ class _ParentDocStub:
 
 def _make_dataset(
     *,
-    indexing_technique: str = "high_quality",
-    doc_form: str = "text_model",
+    indexing_technique: str = IndexTechniqueType.HIGH_QUALITY,
+    doc_form: str = IndexStructureType.PARAGRAPH_INDEX,
     tenant_id: str = "tenant-1",
     dataset_id: str = "dataset-1",
     is_multimodal: bool = False,
@@ -106,7 +107,7 @@ def test_create_segments_vector_regular_indexing_loads_documents_and_keywords(mo
     factory_instance.init_index_processor.return_value = index_processor
     monkeypatch.setattr(vector_service_module, "IndexProcessorFactory", MagicMock(return_value=factory_instance))
 
-    VectorService.create_segments_vector([["k1"]], [segment], dataset, "text_model")
+    VectorService.create_segments_vector([["k1"]], [segment], dataset, IndexStructureType.PARAGRAPH_INDEX)
 
     index_processor.load.assert_called_once()
     args, kwargs = index_processor.load.call_args
@@ -131,7 +132,7 @@ def test_create_segments_vector_regular_indexing_loads_multimodal_documents(monk
     factory_instance.init_index_processor.return_value = index_processor
     monkeypatch.setattr(vector_service_module, "IndexProcessorFactory", MagicMock(return_value=factory_instance))
 
-    VectorService.create_segments_vector([["k1"]], [segment], dataset, "text_model")
+    VectorService.create_segments_vector([["k1"]], [segment], dataset, IndexStructureType.PARAGRAPH_INDEX)
 
     assert index_processor.load.call_count == 2
     first_args, first_kwargs = index_processor.load.call_args_list[0]
@@ -153,7 +154,7 @@ def test_create_segments_vector_with_no_segments_does_not_load(monkeypatch: pyte
     factory_instance.init_index_processor.return_value = index_processor
     monkeypatch.setattr(vector_service_module, "IndexProcessorFactory", MagicMock(return_value=factory_instance))
 
-    VectorService.create_segments_vector(None, [], dataset, "text_model")
+    VectorService.create_segments_vector(None, [], dataset, IndexStructureType.PARAGRAPH_INDEX)
     index_processor.load.assert_not_called()
 
 
@@ -191,7 +192,7 @@ def test_create_segments_vector_parent_child_calls_generate_child_chunks_with_ex
     dataset = _make_dataset(
         doc_form=vector_service_module.IndexStructureType.PARENT_CHILD_INDEX,
         embedding_model_provider="openai",
-        indexing_technique="high_quality",
+        indexing_technique=IndexTechniqueType.HIGH_QUALITY,
     )
     segment = _make_segment()
 
@@ -240,7 +241,7 @@ def test_create_segments_vector_parent_child_uses_default_embedding_model_when_p
     dataset = _make_dataset(
         doc_form=vector_service_module.IndexStructureType.PARENT_CHILD_INDEX,
         embedding_model_provider=None,
-        indexing_technique="high_quality",
+        indexing_technique=IndexTechniqueType.HIGH_QUALITY,
     )
     segment = _make_segment()
 
@@ -328,7 +329,7 @@ def test_create_segments_vector_parent_child_missing_processing_rule_raises(monk
 def test_create_segments_vector_parent_child_non_high_quality_raises(monkeypatch: pytest.MonkeyPatch) -> None:
     dataset = _make_dataset(
         doc_form=vector_service_module.IndexStructureType.PARENT_CHILD_INDEX,
-        indexing_technique="economy",
+        indexing_technique=IndexTechniqueType.ECONOMY,
     )
     segment = _make_segment()
     dataset_document = MagicMock()
@@ -347,7 +348,7 @@ def test_create_segments_vector_parent_child_non_high_quality_raises(monkeypatch
 
 
 def test_update_segment_vector_high_quality_uses_vector(monkeypatch: pytest.MonkeyPatch) -> None:
-    dataset = _make_dataset(indexing_technique="high_quality")
+    dataset = _make_dataset(indexing_technique=IndexTechniqueType.HIGH_QUALITY)
     segment = _make_segment()
 
     vector_instance = MagicMock()
@@ -363,7 +364,7 @@ def test_update_segment_vector_high_quality_uses_vector(monkeypatch: pytest.Monk
 
 
 def test_update_segment_vector_economy_uses_keyword_with_keywords_list(monkeypatch: pytest.MonkeyPatch) -> None:
-    dataset = _make_dataset(indexing_technique="economy")
+    dataset = _make_dataset(indexing_technique=IndexTechniqueType.ECONOMY)
     segment = _make_segment()
 
     keyword_instance = MagicMock()
@@ -379,7 +380,7 @@ def test_update_segment_vector_economy_uses_keyword_with_keywords_list(monkeypat
 
 
 def test_update_segment_vector_economy_uses_keyword_without_keywords_list(monkeypatch: pytest.MonkeyPatch) -> None:
-    dataset = _make_dataset(indexing_technique="economy")
+    dataset = _make_dataset(indexing_technique=IndexTechniqueType.ECONOMY)
     segment = _make_segment()
 
     keyword_instance = MagicMock()
@@ -392,7 +393,7 @@ def test_update_segment_vector_economy_uses_keyword_without_keywords_list(monkey
 
 
 def test_generate_child_chunks_regenerate_cleans_then_saves_children(monkeypatch: pytest.MonkeyPatch) -> None:
-    dataset = _make_dataset(doc_form="text_model", tenant_id="tenant-1", dataset_id="dataset-1")
+    dataset = _make_dataset(doc_form=IndexStructureType.PARAGRAPH_INDEX, tenant_id="tenant-1", dataset_id="dataset-1")
     segment = _make_segment(segment_id="seg-1")
 
     dataset_document = MagicMock()
@@ -439,7 +440,7 @@ def test_generate_child_chunks_regenerate_cleans_then_saves_children(monkeypatch
 
 
 def test_generate_child_chunks_commits_even_when_no_children(monkeypatch: pytest.MonkeyPatch) -> None:
-    dataset = _make_dataset(doc_form="text_model")
+    dataset = _make_dataset(doc_form=IndexStructureType.PARAGRAPH_INDEX)
     segment = _make_segment()
     dataset_document = MagicMock()
     dataset_document.doc_language = "en"
@@ -472,7 +473,7 @@ def test_generate_child_chunks_commits_even_when_no_children(monkeypatch: pytest
 
 
 def test_create_child_chunk_vector_high_quality_adds_texts(monkeypatch: pytest.MonkeyPatch) -> None:
-    dataset = _make_dataset(indexing_technique="high_quality")
+    dataset = _make_dataset(indexing_technique=IndexTechniqueType.HIGH_QUALITY)
     child_chunk = MagicMock()
     child_chunk.content = "child"
     child_chunk.index_node_id = "id"
@@ -488,7 +489,7 @@ def test_create_child_chunk_vector_high_quality_adds_texts(monkeypatch: pytest.M
 
 
 def test_create_child_chunk_vector_economy_noop(monkeypatch: pytest.MonkeyPatch) -> None:
-    dataset = _make_dataset(indexing_technique="economy")
+    dataset = _make_dataset(indexing_technique=IndexTechniqueType.ECONOMY)
     vector_cls = MagicMock()
     monkeypatch.setattr(vector_service_module, "Vector", vector_cls)
 
@@ -504,7 +505,7 @@ def test_create_child_chunk_vector_economy_noop(monkeypatch: pytest.MonkeyPatch)
 
 
 def test_update_child_chunk_vector_high_quality_updates_vector(monkeypatch: pytest.MonkeyPatch) -> None:
-    dataset = _make_dataset(indexing_technique="high_quality")
+    dataset = _make_dataset(indexing_technique=IndexTechniqueType.HIGH_QUALITY)
 
     new_chunk = MagicMock()
     new_chunk.content = "n"
@@ -535,7 +536,7 @@ def test_update_child_chunk_vector_high_quality_updates_vector(monkeypatch: pyte
 
 
 def test_update_child_chunk_vector_economy_noop(monkeypatch: pytest.MonkeyPatch) -> None:
-    dataset = _make_dataset(indexing_technique="economy")
+    dataset = _make_dataset(indexing_technique=IndexTechniqueType.ECONOMY)
     vector_cls = MagicMock()
     monkeypatch.setattr(vector_service_module, "Vector", vector_cls)
     VectorService.update_child_chunk_vector([], [], [], dataset)
@@ -560,7 +561,7 @@ def test_delete_child_chunk_vector_deletes_by_id(monkeypatch: pytest.MonkeyPatch
 
 
 def test_update_multimodel_vector_returns_when_not_high_quality(monkeypatch: pytest.MonkeyPatch) -> None:
-    dataset = _make_dataset(indexing_technique="economy", is_multimodal=True)
+    dataset = _make_dataset(indexing_technique=IndexTechniqueType.ECONOMY, is_multimodal=True)
     segment = _make_segment(tenant_id="t", attachments=[{"id": "a"}])
 
     vector_cls = MagicMock()
@@ -574,7 +575,7 @@ def test_update_multimodel_vector_returns_when_not_high_quality(monkeypatch: pyt
 
 
 def test_update_multimodel_vector_returns_when_no_actual_change(monkeypatch: pytest.MonkeyPatch) -> None:
-    dataset = _make_dataset(indexing_technique="high_quality", is_multimodal=True)
+    dataset = _make_dataset(indexing_technique=IndexTechniqueType.HIGH_QUALITY, is_multimodal=True)
     segment = _make_segment(tenant_id="t", attachments=[{"id": "a"}, {"id": "b"}])
 
     vector_cls = MagicMock()
@@ -590,7 +591,7 @@ def test_update_multimodel_vector_returns_when_no_actual_change(monkeypatch: pyt
 def test_update_multimodel_vector_deletes_bindings_and_commits_on_empty_new_ids(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    dataset = _make_dataset(indexing_technique="high_quality", is_multimodal=True)
+    dataset = _make_dataset(indexing_technique=IndexTechniqueType.HIGH_QUALITY, is_multimodal=True)
     segment = _make_segment(tenant_id="tenant-1", attachments=[{"id": "old-1"}, {"id": "old-2"}])
 
     vector_instance = MagicMock(name="vector_instance")
@@ -611,7 +612,7 @@ def test_update_multimodel_vector_deletes_bindings_and_commits_on_empty_new_ids(
 
 
 def test_update_multimodel_vector_commits_when_no_upload_files_found(monkeypatch: pytest.MonkeyPatch) -> None:
-    dataset = _make_dataset(indexing_technique="high_quality", is_multimodal=True)
+    dataset = _make_dataset(indexing_technique=IndexTechniqueType.HIGH_QUALITY, is_multimodal=True)
     segment = _make_segment(tenant_id="tenant-1", attachments=[{"id": "old-1"}])
 
     vector_instance = MagicMock()
@@ -629,7 +630,7 @@ def test_update_multimodel_vector_commits_when_no_upload_files_found(monkeypatch
 def test_update_multimodel_vector_adds_bindings_and_vectors_and_skips_missing_upload_files(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    dataset = _make_dataset(indexing_technique="high_quality", is_multimodal=True)
+    dataset = _make_dataset(indexing_technique=IndexTechniqueType.HIGH_QUALITY, is_multimodal=True)
     segment = _make_segment(segment_id="seg-1", tenant_id="tenant-1", attachments=[{"id": "old-1"}])
 
     vector_instance = MagicMock()
@@ -662,7 +663,7 @@ def test_update_multimodel_vector_adds_bindings_and_vectors_and_skips_missing_up
 def test_update_multimodel_vector_updates_bindings_without_multimodal_vector_ops(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    dataset = _make_dataset(indexing_technique="high_quality", is_multimodal=False)
+    dataset = _make_dataset(indexing_technique=IndexTechniqueType.HIGH_QUALITY, is_multimodal=False)
     segment = _make_segment(tenant_id="tenant-1", attachments=[{"id": "old-1"}])
 
     vector_instance = MagicMock()
@@ -682,7 +683,7 @@ def test_update_multimodel_vector_updates_bindings_without_multimodal_vector_ops
 
 
 def test_update_multimodel_vector_rolls_back_and_reraises_on_error(monkeypatch: pytest.MonkeyPatch) -> None:
-    dataset = _make_dataset(indexing_technique="high_quality", is_multimodal=True)
+    dataset = _make_dataset(indexing_technique=IndexTechniqueType.HIGH_QUALITY, is_multimodal=True)
     segment = _make_segment(segment_id="seg-1", tenant_id="tenant-1", attachments=[{"id": "old-1"}])
 
     vector_instance = MagicMock()
