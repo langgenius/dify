@@ -29,6 +29,7 @@ from core.provider_manager import ProviderManager
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo, WebsiteInfo
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from dify_graph.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
@@ -355,7 +356,7 @@ class DatasetListApi(Resource):
 
         for item in data:
             # convert embedding_model_provider to plugin standard format
-            if item["indexing_technique"] == "high_quality" and item["embedding_model_provider"]:
+            if item["indexing_technique"] == IndexTechniqueType.HIGH_QUALITY and item["embedding_model_provider"]:
                 item["embedding_model_provider"] = str(ModelProviderID(item["embedding_model_provider"]))
                 item_model = f"{item['embedding_model']}:{item['embedding_model_provider']}"
                 if item_model in model_names:
@@ -436,7 +437,7 @@ class DatasetApi(Resource):
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
         data = cast(dict[str, Any], marshal(dataset, dataset_detail_fields))
-        if dataset.indexing_technique == "high_quality":
+        if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             if dataset.embedding_model_provider:
                 provider_id = ModelProviderID(dataset.embedding_model_provider)
                 data["embedding_model_provider"] = str(provider_id)
@@ -454,7 +455,7 @@ class DatasetApi(Resource):
         for embedding_model in embedding_models:
             model_names.append(f"{embedding_model.model}:{embedding_model.provider.provider}")
 
-        if data["indexing_technique"] == "high_quality":
+        if data["indexing_technique"] == IndexTechniqueType.HIGH_QUALITY:
             item_model = f"{data['embedding_model']}:{data['embedding_model_provider']}"
             if item_model in model_names:
                 data["embedding_available"] = True
@@ -485,7 +486,7 @@ class DatasetApi(Resource):
         current_user, current_tenant_id = current_account_with_tenant()
         # check embedding model setting
         if (
-            payload.indexing_technique == "high_quality"
+            payload.indexing_technique == IndexTechniqueType.HIGH_QUALITY
             and payload.embedding_model_provider is not None
             and payload.embedding_model is not None
         ):
