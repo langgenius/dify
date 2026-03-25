@@ -13,12 +13,14 @@ from __future__ import annotations
 
 import logging
 
-from events.app_event import app_was_created
+from events.app_event import app_was_created, app_was_deleted, app_was_updated
 
 logger = logging.getLogger(__name__)
 
 __all__ = [
     "_handle_app_created",
+    "_handle_app_deleted",
+    "_handle_app_updated",
 ]
 
 
@@ -38,3 +40,33 @@ def _handle_app_created(sender: object, **kwargs: object) -> None:
         )
     except Exception:
         logger.warning("Failed to emit app_created telemetry", exc_info=True)
+
+
+@app_was_updated.connect
+def _handle_app_updated(sender: object, **kwargs: object) -> None:
+    try:
+        from core.telemetry.gateway import emit as gateway_emit
+        from enterprise.telemetry.contracts import TelemetryCase
+
+        gateway_emit(
+            case=TelemetryCase.APP_UPDATED,
+            context={"tenant_id": str(getattr(sender, "tenant_id", "") or "")},
+            payload={"app_id": getattr(sender, "id", None)},
+        )
+    except Exception:
+        logger.warning("Failed to emit app_updated telemetry", exc_info=True)
+
+
+@app_was_deleted.connect
+def _handle_app_deleted(sender: object, **kwargs: object) -> None:
+    try:
+        from core.telemetry.gateway import emit as gateway_emit
+        from enterprise.telemetry.contracts import TelemetryCase
+
+        gateway_emit(
+            case=TelemetryCase.APP_DELETED,
+            context={"tenant_id": str(getattr(sender, "tenant_id", "") or "")},
+            payload={"app_id": getattr(sender, "id", None)},
+        )
+    except Exception:
+        logger.warning("Failed to emit app_deleted telemetry", exc_info=True)
