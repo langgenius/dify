@@ -194,7 +194,7 @@ class DatadogDataTrace(BaseTraceInstance):
             end_ns = _datetime_to_ns(trace_info.end_time)
 
             status = Status(StatusCode.OK)
-            if getattr(trace_info, "error", None):
+            if trace_info.error:
                 status = Status(StatusCode.ERROR, trace_info.error)
 
             trace_key = f"message:{trace_info.message_id}"
