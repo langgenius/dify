@@ -7,7 +7,7 @@ import yaml
 from sqlalchemy.orm import Session
 
 from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
-from dify_graph.enums import BuiltinNodeTypes
+from graphon.enums import BuiltinNodeTypes
 from services.entities.knowledge_entities.rag_pipeline_entities import IconInfo, RagPipelineDatasetCreateEntity
 from services.rag_pipeline.rag_pipeline_dsl_service import (
     ImportStatus,
@@ -176,7 +176,7 @@ def test_extract_dependencies_from_workflow_graph_handles_empty_graph() -> None:
 def test_extract_dependencies_from_workflow_graph_handles_malformed_node(mocker) -> None:
     service = RagPipelineDslService(session=Mock())
     # Node with TOOL type but invalid data should be caught by exception handler
-    from dify_graph.enums import BuiltinNodeTypes
+    from graphon.enums import BuiltinNodeTypes
 
     graph = {"nodes": [{"data": {"type": BuiltinNodeTypes.TOOL}}]}
 

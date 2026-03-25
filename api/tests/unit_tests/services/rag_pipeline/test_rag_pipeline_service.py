@@ -299,7 +299,7 @@ def test_get_default_block_config_returns_config_for_valid_type(mocker, rag_pipe
     fake_node_class.get_default_config.return_value = {"type": "start", "config": {}}
 
     # Use a simpler approach: test with a known valid node type
-    from dify_graph.enums import BuiltinNodeTypes
+    from graphon.enums import BuiltinNodeTypes
 
     mocker.patch(
         "services.rag_pipeline.rag_pipeline.get_node_type_classes_mapping",
@@ -648,9 +648,9 @@ def test_run_datasource_node_preview_online_document(mocker, rag_pipeline_servic
 
 
 def test_handle_node_run_result_success(mocker, rag_pipeline_service) -> None:
-    from dify_graph.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
-    from dify_graph.graph_events import NodeRunSucceededEvent
-    from dify_graph.node_events.base import NodeRunResult
+    from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+    from graphon.graph_events import NodeRunSucceededEvent
+    from graphon.node_events.base import NodeRunResult
 
     # 1. Setup mock node and result
     node_instance = mocker.Mock()
@@ -905,7 +905,7 @@ def test_retry_error_document_success(mocker, rag_pipeline_service) -> None:
 
 
 def test_set_datasource_variables_success(mocker, rag_pipeline_service) -> None:
-    from dify_graph.entities.workflow_node_execution import WorkflowNodeExecution
+    from graphon.entities.workflow_node_execution import WorkflowNodeExecution
     from models.dataset import Pipeline
 
     # 1. Setup mocks
@@ -1015,7 +1015,7 @@ def test_get_default_block_configs_success(rag_pipeline_service) -> None:
 
 
 def test_get_default_block_config_success(rag_pipeline_service) -> None:
-    from dify_graph.enums import BuiltinNodeTypes
+    from graphon.enums import BuiltinNodeTypes
 
     result = rag_pipeline_service.get_default_block_config(BuiltinNodeTypes.LLM)
     assert result is not None
@@ -1033,7 +1033,7 @@ def test_publish_workflow_raises_when_draft_workflow_missing(mocker, rag_pipelin
 
 
 def test_get_default_block_config_returns_none_when_mapped_type_missing(mocker, rag_pipeline_service) -> None:
-    from dify_graph.enums import BuiltinNodeTypes
+    from graphon.enums import BuiltinNodeTypes
 
     mocker.patch("services.rag_pipeline.rag_pipeline.get_node_type_classes_mapping", return_value={})
 
@@ -1041,7 +1041,7 @@ def test_get_default_block_config_returns_none_when_mapped_type_missing(mocker, 
 
 
 def test_get_default_block_config_injects_http_request_filter(mocker, rag_pipeline_service) -> None:
-    from dify_graph.enums import BuiltinNodeTypes
+    from graphon.enums import BuiltinNodeTypes
 
     fake_node_cls = mocker.Mock()
     fake_node_cls.get_default_config.return_value = {"type": "http-request"}
@@ -1213,9 +1213,9 @@ def test_run_datasource_workflow_node_online_drive_success(mocker, rag_pipeline_
 def test_handle_node_run_result_default_value_strategy(mocker, rag_pipeline_service) -> None:
     from datetime import datetime
 
-    from dify_graph.enums import BuiltinNodeTypes, ErrorStrategy, WorkflowNodeExecutionStatus
-    from dify_graph.graph_events import NodeRunFailedEvent
-    from dify_graph.node_events.base import NodeRunResult
+    from graphon.enums import BuiltinNodeTypes, ErrorStrategy, WorkflowNodeExecutionStatus
+    from graphon.graph_events import NodeRunFailedEvent
+    from graphon.node_events.base import NodeRunResult
 
     node_instance = SimpleNamespace(
         workflow_id="wf-1",
@@ -1382,7 +1382,7 @@ def test_set_datasource_variables_raises_when_node_id_missing(mocker, rag_pipeli
 
 
 def test_get_default_block_configs_skips_empty_configs(mocker, rag_pipeline_service) -> None:
-    from dify_graph.enums import BuiltinNodeTypes
+    from graphon.enums import BuiltinNodeTypes
 
     http_node = mocker.Mock()
     http_node.get_default_config.return_value = {"type": "http-request"}
@@ -1612,9 +1612,9 @@ def test_handle_node_run_result_raises_when_no_terminal_event(mocker, rag_pipeli
 
 def test_handle_node_run_result_marks_document_error_for_published_invoke(mocker, rag_pipeline_service) -> None:
     from core.app.entities.app_invoke_entities import InvokeFrom
-    from dify_graph.enums import WorkflowNodeExecutionStatus
-    from dify_graph.graph_events import NodeRunFailedEvent
-    from dify_graph.node_events.base import NodeRunResult
+    from graphon.enums import WorkflowNodeExecutionStatus
+    from graphon.graph_events import NodeRunFailedEvent
+    from graphon.node_events.base import NodeRunResult
 
     class FakeVariablePool:
         def __init__(self):
@@ -1835,7 +1835,7 @@ def test_publish_workflow_skips_dataset_update_for_non_knowledge_nodes(mocker, r
 
 
 def test_get_default_block_config_returns_none_when_default_empty(mocker, rag_pipeline_service) -> None:
-    from dify_graph.enums import BuiltinNodeTypes
+    from graphon.enums import BuiltinNodeTypes
 
     node_cls = mocker.Mock()
     node_cls.get_default_config.return_value = None
