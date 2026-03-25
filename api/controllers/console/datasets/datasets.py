@@ -3,7 +3,7 @@ from typing import Any, cast
 from flask import request
 from flask_restx import Resource, fields, marshal, marshal_with
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import select
+from sqlalchemy import func, select
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
@@ -738,20 +738,23 @@ class DatasetIndexingStatusApi(Resource):
         documents_status = []
         for document in documents:
             completed_segments = (
-                db.session.query(DocumentSegment)
-                .where(
-                    DocumentSegment.completed_at.isnot(None),
-                    DocumentSegment.document_id == str(document.id),
-                    DocumentSegment.status != SegmentStatus.RE_SEGMENT,
+                db.session.scalar(
+                    select(func.count(DocumentSegment.id)).where(
+                        DocumentSegment.completed_at.isnot(None),
+                        DocumentSegment.document_id == str(document.id),
+                        DocumentSegment.status != SegmentStatus.RE_SEGMENT,
+                    )
                 )
-                .count()
+                or 0
             )
             total_segments = (
-                db.session.query(DocumentSegment)
-                .where(
-                    DocumentSegment.document_id == str(document.id), DocumentSegment.status != SegmentStatus.RE_SEGMENT
+                db.session.scalar(
+                    select(func.count(DocumentSegment.id)).where(
+                        DocumentSegment.document_id == str(document.id),
+                        DocumentSegment.status != SegmentStatus.RE_SEGMENT,
+                    )
                 )
-                .count()
+                or 0
             )
             # Create a dictionary with document attributes and additional fields
             document_dict = {
@@ -802,9 +805,12 @@ class DatasetApiKeyApi(Resource):
         _, current_tenant_id = current_account_with_tenant()
 
         current_key_count = (
-            db.session.query(ApiToken)
-            .where(ApiToken.type == self.resource_type, ApiToken.tenant_id == current_tenant_id)
-            .count()
+            db.session.scalar(
+                select(func.count(ApiToken.id)).where(
+                    ApiToken.type == self.resource_type, ApiToken.tenant_id == current_tenant_id
+                )
+            )
+            or 0
         )
 
         if current_key_count >= self.max_keys:
@@ -839,14 +845,14 @@ class DatasetApiDeleteApi(Resource):
     def delete(self, api_key_id):
         _, current_tenant_id = current_account_with_tenant()
         api_key_id = str(api_key_id)
-        key = (
-            db.session.query(ApiToken)
+        key = db.session.scalar(
+            select(ApiToken)
             .where(
                 ApiToken.tenant_id == current_tenant_id,
                 ApiToken.type == self.resource_type,
                 ApiToken.id == api_key_id,
             )
-            .first()
+            .limit(1)
         )
 
         if key is None:
@@ -857,7 +863,7 @@ class DatasetApiDeleteApi(Resource):
         assert key is not None  # nosec - for type checker only
         ApiTokenCache.delete(key.token, key.type)
 
-        db.session.query(ApiToken).where(ApiToken.id == api_key_id).delete()
+        db.session.delete(key)
         db.session.commit()
 
         return {"result": "success"}, 204
