@@ -6,7 +6,7 @@ Redis queuing, error handling, and community vs enterprise behavior.
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
