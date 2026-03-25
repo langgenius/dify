@@ -111,7 +111,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
-from core.rag.index_processor.constant.index_type import IndexStructureType
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from dify_graph.model_runtime.entities.model_entities import ModelType
 from models.dataset import Dataset, DatasetProcessRule, Document
 from services.dataset_service import DatasetService, DocumentService
@@ -154,7 +154,7 @@ class DocumentValidationTestDataFactory:
         dataset_id: str = "dataset-123",
         tenant_id: str = "tenant-123",
         doc_form: str | None = None,
-        indexing_technique: str = "high_quality",
+        indexing_technique: str = IndexTechniqueType.HIGH_QUALITY,
         embedding_model_provider: str = "openai",
         embedding_model: str = "text-embedding-ada-002",
         **kwargs,
@@ -190,7 +190,7 @@ class DocumentValidationTestDataFactory:
         data_source: DataSource | None = None,
         process_rule: ProcessRule | None = None,
         doc_form: str = IndexStructureType.PARAGRAPH_INDEX,
-        indexing_technique: str = "high_quality",
+        indexing_technique: str = IndexTechniqueType.HIGH_QUALITY,
         **kwargs,
     ) -> Mock:
         """
@@ -431,7 +431,7 @@ class TestDatasetServiceCheckDatasetModelSetting:
         Provides a mocked ModelManager that can be used to verify
         model instance retrieval and error handling.
         """
-        with patch("services.dataset_service.ModelManager") as mock_manager:
+        with patch("services.dataset_service.ModelManager.for_tenant") as mock_manager:
             yield mock_manager
 
     def test_check_dataset_model_setting_high_quality_success(self, mock_model_manager):
@@ -448,7 +448,7 @@ class TestDatasetServiceCheckDatasetModelSetting:
         """
         # Arrange
         dataset = DocumentValidationTestDataFactory.create_dataset_mock(
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             embedding_model_provider="openai",
             embedding_model="text-embedding-ada-002",
         )
@@ -481,7 +481,7 @@ class TestDatasetServiceCheckDatasetModelSetting:
         - No errors are raised
         """
         # Arrange
-        dataset = DocumentValidationTestDataFactory.create_dataset_mock(indexing_technique="economy")
+        dataset = DocumentValidationTestDataFactory.create_dataset_mock(indexing_technique=IndexTechniqueType.ECONOMY)
 
         # Act (should not raise)
         DatasetService.check_dataset_model_setting(dataset)
@@ -503,7 +503,7 @@ class TestDatasetServiceCheckDatasetModelSetting:
         """
         # Arrange
         dataset = DocumentValidationTestDataFactory.create_dataset_mock(
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             embedding_model_provider="openai",
             embedding_model="invalid-model",
         )
@@ -533,7 +533,7 @@ class TestDatasetServiceCheckDatasetModelSetting:
         """
         # Arrange
         dataset = DocumentValidationTestDataFactory.create_dataset_mock(
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             embedding_model_provider="openai",
             embedding_model="text-embedding-ada-002",
         )
@@ -580,7 +580,7 @@ class TestDatasetServiceCheckEmbeddingModelSetting:
         Provides a mocked ModelManager that can be used to verify
         model instance retrieval and error handling.
         """
-        with patch("services.dataset_service.ModelManager") as mock_manager:
+        with patch("services.dataset_service.ModelManager.for_tenant") as mock_manager:
             yield mock_manager
 
     def test_check_embedding_model_setting_success(self, mock_model_manager):
@@ -702,7 +702,7 @@ class TestDatasetServiceCheckRerankingModelSetting:
         Provides a mocked ModelManager that can be used to verify
         model instance retrieval and error handling.
         """
-        with patch("services.dataset_service.ModelManager") as mock_manager:
+        with patch("services.dataset_service.ModelManager.for_tenant") as mock_manager:
             yield mock_manager
 
     def test_check_reranking_model_setting_success(self, mock_model_manager):

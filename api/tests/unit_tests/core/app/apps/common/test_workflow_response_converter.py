@@ -12,7 +12,6 @@ class TestWorkflowResponseConverterFetchFilesFromVariableValue:
         """Create a test File object"""
         return File(
             id=file_id,
-            tenant_id="test_tenant",
             type=FileType.DOCUMENT,
             transfer_method=FileTransferMethod.LOCAL_FILE,
             related_id="related_123",
@@ -223,7 +222,7 @@ class TestWorkflowResponseConverterFetchFilesFromVariableValue:
         assert len(result) == 1
         file_dict = result[0]
         assert file_dict["id"] == "property_test"
-        assert file_dict["tenant_id"] == "test_tenant"
+        assert "tenant_id" not in file_dict
         assert file_dict["type"] == "document"
         assert file_dict["transfer_method"] == "local_file"
         assert file_dict["filename"] == "property_test.txt"

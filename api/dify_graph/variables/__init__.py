@@ -1,3 +1,10 @@
+from .factory import (
+    TypeMismatchError,
+    UnsupportedSegmentTypeError,
+    build_segment,
+    build_segment_with_type,
+    segment_to_variable,
+)
 from .input_entities import VariableEntity, VariableEntityType
 from .segment_group import SegmentGroup
 from .segments import (
@@ -63,8 +70,13 @@ __all__ = [
     "SegmentType",
     "StringSegment",
     "StringVariable",
+    "TypeMismatchError",
+    "UnsupportedSegmentTypeError",
     "Variable",
     "VariableBase",
     "VariableEntity",
     "VariableEntityType",
+    "build_segment",
+    "build_segment_with_type",
+    "segment_to_variable",
 ]

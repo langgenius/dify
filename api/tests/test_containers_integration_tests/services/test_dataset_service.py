@@ -11,7 +11,7 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.orm import Session
 
-from core.rag.index_processor.constant.index_type import IndexStructureType
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from dify_graph.model_runtime.entities.model_entities import ModelType
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
@@ -63,7 +63,7 @@ class DatasetServiceIntegrationDataFactory:
         name: str = "Test Dataset",
         description: str | None = "Test description",
         provider: str = "vendor",
-        indexing_technique: str | None = "high_quality",
+        indexing_technique: str | None = IndexTechniqueType.HIGH_QUALITY,
         permission: str = DatasetPermissionEnum.ONLY_ME,
         retrieval_model: dict | None = None,
         embedding_model_provider: str | None = None,
@@ -157,13 +157,13 @@ class TestDatasetServiceCreateDataset:
             tenant_id=tenant.id,
             name="Economy Dataset",
             description=None,
-            indexing_technique="economy",
+            indexing_technique=IndexTechniqueType.ECONOMY,
             account=account,
         )
 
         # Assert
         db_session_with_containers.refresh(result)
-        assert result.indexing_technique == "economy"
+        assert result.indexing_technique == IndexTechniqueType.ECONOMY
         assert result.embedding_model_provider is None
         assert result.embedding_model is None
 
@@ -174,20 +174,20 @@ class TestDatasetServiceCreateDataset:
         embedding_model = DatasetServiceIntegrationDataFactory.create_embedding_model()
 
         # Act
-        with patch("services.dataset_service.ModelManager") as mock_model_manager:
+        with patch("services.dataset_service.ModelManager.for_tenant") as mock_model_manager:
             mock_model_manager.return_value.get_default_model_instance.return_value = embedding_model
 
             result = DatasetService.create_empty_dataset(
                 tenant_id=tenant.id,
                 name="High Quality Dataset",
                 description=None,
-                indexing_technique="high_quality",
+                indexing_technique=IndexTechniqueType.HIGH_QUALITY,
                 account=account,
             )
 
         # Assert
         db_session_with_containers.refresh(result)
-        assert result.indexing_technique == "high_quality"
+        assert result.indexing_technique == IndexTechniqueType.HIGH_QUALITY
         assert result.embedding_model_provider == embedding_model.provider
         assert result.embedding_model == embedding_model.model_name
         mock_model_manager.return_value.get_default_model_instance.assert_called_once_with(
@@ -264,7 +264,7 @@ class TestDatasetServiceCreateDataset:
 
         # Act
         with (
-            patch("services.dataset_service.ModelManager") as mock_model_manager,
+            patch("services.dataset_service.ModelManager.for_tenant") as mock_model_manager,
             patch("services.dataset_service.DatasetService.check_reranking_model_setting") as mock_check_reranking,
         ):
             mock_model_manager.return_value.get_default_model_instance.return_value = embedding_model
@@ -273,7 +273,7 @@ class TestDatasetServiceCreateDataset:
                 tenant_id=tenant.id,
                 name="Dataset With Reranking",
                 description=None,
-                indexing_technique="high_quality",
+                indexing_technique=IndexTechniqueType.HIGH_QUALITY,
                 account=account,
                 retrieval_model=retrieval_model,
             )
@@ -297,7 +297,7 @@ class TestDatasetServiceCreateDataset:
 
         # Act
         with (
-            patch("services.dataset_service.ModelManager") as mock_model_manager,
+            patch("services.dataset_service.ModelManager.for_tenant") as mock_model_manager,
             patch("services.dataset_service.DatasetService.check_embedding_model_setting") as mock_check_embedding,
         ):
             mock_model_manager.return_value.get_model_instance.return_value = embedding_model
@@ -306,7 +306,7 @@ class TestDatasetServiceCreateDataset:
                 tenant_id=tenant.id,
                 name="Custom Embedding Dataset",
                 description=None,
-                indexing_technique="high_quality",
+                indexing_technique=IndexTechniqueType.HIGH_QUALITY,
                 account=account,
                 embedding_model_provider=embedding_provider,
                 embedding_model_name=embedding_model_name,
@@ -314,7 +314,7 @@ class TestDatasetServiceCreateDataset:
 
         # Assert
         db_session_with_containers.refresh(result)
-        assert result.indexing_technique == "high_quality"
+        assert result.indexing_technique == IndexTechniqueType.HIGH_QUALITY
         assert result.embedding_model_provider == embedding_provider
         assert result.embedding_model == embedding_model_name
         mock_check_embedding.assert_called_once_with(tenant.id, embedding_provider, embedding_model_name)
@@ -589,7 +589,7 @@ class TestDatasetServiceUpdateAndDeleteDataset:
             db_session_with_containers,
             tenant_id=tenant.id,
             created_by=account.id,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             chunk_structure="text_model",
         )
         DatasetServiceIntegrationDataFactory.create_document(
@@ -685,14 +685,14 @@ class TestDatasetServiceRetrievalConfiguration:
             db_session_with_containers,
             tenant_id=tenant.id,
             created_by=account.id,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             retrieval_model={"search_method": "semantic_search", "top_k": 2, "score_threshold": 0.0},
             embedding_model_provider="openai",
             embedding_model="text-embedding-ada-002",
             collection_binding_id=str(uuid4()),
         )
         update_data = {
-            "indexing_technique": "high_quality",
+            "indexing_technique": IndexTechniqueType.HIGH_QUALITY,
             "retrieval_model": {
                 "search_method": "full_text_search",
                 "top_k": 10,

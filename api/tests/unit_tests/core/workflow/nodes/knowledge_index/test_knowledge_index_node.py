@@ -5,6 +5,7 @@ from unittest.mock import Mock
 import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.workflow.nodes.knowledge_index.entities import KnowledgeIndexNodeData
 from core.workflow.nodes.knowledge_index.exc import KnowledgeIndexNodeError
 from core.workflow.nodes.knowledge_index.knowledge_index_node import KnowledgeIndexNode
@@ -14,9 +15,9 @@ from core.workflow.nodes.knowledge_index.protocols import (
     PreviewItem,
     SummaryIndexServiceProtocol,
 )
-from dify_graph.enums import SystemVariableKey, WorkflowNodeExecutionStatus
+from core.workflow.system_variables import SystemVariableKey, build_system_variables
+from dify_graph.enums import WorkflowNodeExecutionStatus
 from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.system_variable import SystemVariable
 from dify_graph.variables.segments import StringSegment
 from tests.workflow_test_utils import build_test_graph_init_params
 
@@ -40,7 +41,7 @@ def mock_graph_init_params():
 def mock_graph_runtime_state():
     """Create mock GraphRuntimeState."""
     variable_pool = VariablePool(
-        system_variables=SystemVariable(user_id=str(uuid.uuid4()), files=[]),
+        system_variables=build_system_variables(user_id=str(uuid.uuid4()), files=[]),
         user_inputs={},
         environment_variables=[],
         conversation_variables=[],
@@ -78,7 +79,7 @@ def sample_node_data():
         type="knowledge-index",
         chunk_structure="general_structure",
         index_chunk_variable_selector=["start", "chunks"],
-        indexing_technique="high_quality",
+        indexing_technique=IndexTechniqueType.HIGH_QUALITY,
         summary_index_setting=None,
     )
 

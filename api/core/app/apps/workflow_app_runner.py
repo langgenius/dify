@@ -34,7 +34,16 @@ from core.app.entities.queue_entities import (
 )
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.workflow.node_factory import DifyNodeFactory, get_default_root_node_id, resolve_workflow_node_class
+from core.workflow.system_variables import (
+    build_bootstrap_variables,
+    default_system_variables,
+    get_node_creation_preload_selectors,
+    inject_default_system_variable_mappings,
+    preload_node_creation_variables,
+)
+from core.workflow.variable_pool_initializer import add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
+from core.workflow.workflow_run_outputs import project_node_outputs_for_workflow_run
 from dify_graph.entities import GraphInitParams
 from dify_graph.entities.graph_config import NodeConfigDictAdapter
 from dify_graph.entities.pause_reason import HumanInputRequired
@@ -68,7 +77,6 @@ from dify_graph.graph_events import (
 )
 from dify_graph.graph_events.graph import GraphRunAbortedEvent
 from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.system_variable import SystemVariable
 from dify_graph.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from models.workflow import Workflow
 from tasks.mail_human_input_delivery_task import dispatch_human_input_email_task
@@ -175,14 +183,15 @@ class WorkflowBasedAppRunner:
             ValueError: If neither single_iteration_run nor single_loop_run is specified
         """
         # Create initial runtime state with variable pool containing environment variables
-        graph_runtime_state = GraphRuntimeState(
-            variable_pool=VariablePool(
-                system_variables=SystemVariable.default(),
-                user_inputs={},
+        variable_pool = VariablePool()
+        add_variables_to_pool(
+            variable_pool,
+            build_bootstrap_variables(
+                system_variables=default_system_variables(),
                 environment_variables=workflow.environment_variables,
             ),
-            start_at=time.time(),
         )
+        graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.time())
 
         # Determine which type of single node execution and get graph/variable_pool
         if single_iteration_run:
@@ -278,6 +287,8 @@ class WorkflowBasedAppRunner:
 
         graph_config["edges"] = edge_configs
 
+        typed_node_configs = [NodeConfigDictAdapter.validate_python(node) for node in node_configs]
+
         # Create required parameters for Graph.init
         graph_init_params = GraphInitParams(
             workflow_id=workflow.id,
@@ -297,25 +308,14 @@ class WorkflowBasedAppRunner:
             graph_runtime_state=graph_runtime_state,
         )
 
-        # init graph
-        graph = Graph.init(
-            graph_config=graph_config, node_factory=node_factory, root_node_id=node_id, skip_validation=True
-        )
-
-        if not graph:
-            raise ValueError("graph not found in workflow")
-
-        # fetch node config from node id
         target_node_config = None
-        for node in node_configs:
-            if node.get("id") == node_id:
+        for node in typed_node_configs:
+            if node["id"] == node_id:
                 target_node_config = node
                 break
 
         if not target_node_config:
             raise ValueError(f"{node_type_label} node id not found in workflow graph")
-
-        target_node_config = NodeConfigDictAdapter.validate_python(target_node_config)
 
         # Get node class
         node_type = target_node_config["data"].type
@@ -325,12 +325,31 @@ class WorkflowBasedAppRunner:
         # Use the variable pool from graph_runtime_state instead of creating a new one
         variable_pool = graph_runtime_state.variable_pool
 
+        preload_node_creation_variables(
+            variable_loader=self._variable_loader,
+            variable_pool=variable_pool,
+            selectors=[
+                selector
+                for node_config in typed_node_configs
+                for selector in get_node_creation_preload_selectors(
+                    node_type=node_config["data"].type,
+                    node_data=node_config["data"],
+                )
+            ],
+        )
+
         try:
             variable_mapping = node_cls.extract_variable_selector_to_variable_mapping(
                 graph_config=workflow.graph_dict, config=target_node_config
             )
         except NotImplementedError:
             variable_mapping = {}
+        variable_mapping = inject_default_system_variable_mappings(
+            node_id=target_node_config["id"],
+            node_type=node_type,
+            node_data=target_node_config["data"],
+            variable_mapping=variable_mapping,
+        )
 
         load_into_variable_pool(
             variable_loader=self._variable_loader,
@@ -345,6 +364,14 @@ class WorkflowBasedAppRunner:
             variable_pool=variable_pool,
             tenant_id=workflow.tenant_id,
         )
+
+        # init graph after constructor-time context has been loaded
+        graph = Graph.init(
+            graph_config=graph_config, node_factory=node_factory, root_node_id=node_id, skip_validation=True
+        )
+
+        if not graph:
+            raise ValueError("graph not found in workflow")
 
         return graph, variable_pool
 
@@ -414,7 +441,11 @@ class WorkflowBasedAppRunner:
             node_run_result = event.node_run_result
             inputs = node_run_result.inputs
             process_data = node_run_result.process_data
-            outputs = node_run_result.outputs
+            outputs = project_node_outputs_for_workflow_run(
+                node_type=event.node_type,
+                inputs=inputs,
+                outputs=node_run_result.outputs,
+            )
             execution_metadata = node_run_result.metadata
             self._publish_event(
                 QueueNodeRetryEvent(
@@ -454,7 +485,11 @@ class WorkflowBasedAppRunner:
             node_run_result = event.node_run_result
             inputs = node_run_result.inputs
             process_data = node_run_result.process_data
-            outputs = node_run_result.outputs
+            outputs = project_node_outputs_for_workflow_run(
+                node_type=event.node_type,
+                inputs=inputs,
+                outputs=node_run_result.outputs,
+            )
             execution_metadata = node_run_result.metadata
             self._publish_event(
                 QueueNodeSucceededEvent(
@@ -472,6 +507,11 @@ class WorkflowBasedAppRunner:
                 )
             )
         elif isinstance(event, NodeRunFailedEvent):
+            outputs = project_node_outputs_for_workflow_run(
+                node_type=event.node_type,
+                inputs=event.node_run_result.inputs,
+                outputs=event.node_run_result.outputs,
+            )
             self._publish_event(
                 QueueNodeFailedEvent(
                     node_execution_id=event.id,
@@ -481,7 +521,7 @@ class WorkflowBasedAppRunner:
                     finished_at=event.finished_at,
                     inputs=event.node_run_result.inputs,
                     process_data=event.node_run_result.process_data,
-                    outputs=event.node_run_result.outputs,
+                    outputs=outputs,
                     error=event.node_run_result.error or "Unknown error",
                     execution_metadata=event.node_run_result.metadata,
                     in_iteration_id=event.in_iteration_id,
@@ -489,6 +529,11 @@ class WorkflowBasedAppRunner:
                 )
             )
         elif isinstance(event, NodeRunExceptionEvent):
+            outputs = project_node_outputs_for_workflow_run(
+                node_type=event.node_type,
+                inputs=event.node_run_result.inputs,
+                outputs=event.node_run_result.outputs,
+            )
             self._publish_event(
                 QueueNodeExceptionEvent(
                     node_execution_id=event.id,
@@ -498,7 +543,7 @@ class WorkflowBasedAppRunner:
                     finished_at=event.finished_at,
                     inputs=event.node_run_result.inputs,
                     process_data=event.node_run_result.process_data,
-                    outputs=event.node_run_result.outputs,
+                    outputs=outputs,
                     error=event.node_run_result.error or "Unknown error",
                     execution_metadata=event.node_run_result.metadata,
                     in_iteration_id=event.in_iteration_id,

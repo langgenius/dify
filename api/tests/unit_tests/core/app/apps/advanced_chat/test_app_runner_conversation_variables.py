@@ -11,6 +11,19 @@ from dify_graph.variables import SegmentType
 from factories import variable_factory
 from models import ConversationVariable, Workflow
 
+MINIMAL_GRAPH = {
+    "nodes": [
+        {
+            "id": "start",
+            "data": {
+                "type": "start",
+                "title": "Start",
+            },
+        }
+    ],
+    "edges": [],
+}
+
 
 class TestAdvancedChatAppRunnerConversationVariables:
     """Test that AdvancedChatAppRunner correctly handles conversation variables."""
@@ -49,7 +62,7 @@ class TestAdvancedChatAppRunnerConversationVariables:
         mock_workflow.app_id = app_id
         mock_workflow.id = workflow_id
         mock_workflow.type = "chat"
-        mock_workflow.graph_dict = {}
+        mock_workflow.graph_dict = MINIMAL_GRAPH
         mock_workflow.environment_variables = []
 
         # Create existing conversation variable (only var1 exists in DB)
@@ -200,7 +213,7 @@ class TestAdvancedChatAppRunnerConversationVariables:
         mock_workflow.app_id = app_id
         mock_workflow.id = workflow_id
         mock_workflow.type = "chat"
-        mock_workflow.graph_dict = {}
+        mock_workflow.graph_dict = MINIMAL_GRAPH
         mock_workflow.environment_variables = []
 
         # Mock conversation and message
@@ -349,7 +362,7 @@ class TestAdvancedChatAppRunnerConversationVariables:
         mock_workflow.app_id = app_id
         mock_workflow.id = workflow_id
         mock_workflow.type = "chat"
-        mock_workflow.graph_dict = {}
+        mock_workflow.graph_dict = MINIMAL_GRAPH
         mock_workflow.environment_variables = []
 
         # Create existing conversation variables (both exist in DB)

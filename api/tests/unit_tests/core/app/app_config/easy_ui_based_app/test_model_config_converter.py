@@ -73,7 +73,7 @@ class TestModelConfigConverter:
         mock_manager = MagicMock()
         mock_manager.get_provider_model_bundle.return_value = mock_provider_bundle
         mocker.patch(
-            "core.app.app_config.easy_ui_based_app.model_config.converter.ProviderManager",
+            "core.app.app_config.easy_ui_based_app.model_config.converter.create_plugin_provider_manager",
             return_value=mock_manager,
         )
         return mock_manager
@@ -109,7 +109,7 @@ class TestModelConfigConverter:
         mock_manager = MagicMock()
         mock_manager.get_provider_model_bundle.return_value = mock_provider_bundle
         mocker.patch(
-            "core.app.app_config.easy_ui_based_app.model_config.converter.ProviderManager",
+            "core.app.app_config.easy_ui_based_app.model_config.converter.create_plugin_provider_manager",
             return_value=mock_manager,
         )
 
@@ -124,7 +124,7 @@ class TestModelConfigConverter:
         mock_manager = MagicMock()
         mock_manager.get_provider_model_bundle.return_value = mock_provider_bundle
         mocker.patch(
-            "core.app.app_config.easy_ui_based_app.model_config.converter.ProviderManager",
+            "core.app.app_config.easy_ui_based_app.model_config.converter.create_plugin_provider_manager",
             return_value=mock_manager,
         )
 
@@ -141,7 +141,7 @@ class TestModelConfigConverter:
         mock_manager = MagicMock()
         mock_manager.get_provider_model_bundle.return_value = mock_provider_bundle
         mocker.patch(
-            "core.app.app_config.easy_ui_based_app.model_config.converter.ProviderManager",
+            "core.app.app_config.easy_ui_based_app.model_config.converter.create_plugin_provider_manager",
             return_value=mock_manager,
         )
 
@@ -158,7 +158,7 @@ class TestModelConfigConverter:
         mock_manager = MagicMock()
         mock_manager.get_provider_model_bundle.return_value = mock_provider_bundle
         mocker.patch(
-            "core.app.app_config.easy_ui_based_app.model_config.converter.ProviderManager",
+            "core.app.app_config.easy_ui_based_app.model_config.converter.create_plugin_provider_manager",
             return_value=mock_manager,
         )
 
@@ -183,7 +183,7 @@ class TestModelConfigConverter:
         mock_manager = MagicMock()
         mock_manager.get_provider_model_bundle.return_value = mock_provider_bundle
         mocker.patch(
-            "core.app.app_config.easy_ui_based_app.model_config.converter.ProviderManager",
+            "core.app.app_config.easy_ui_based_app.model_config.converter.create_plugin_provider_manager",
             return_value=mock_manager,
         )
 
@@ -200,7 +200,7 @@ class TestModelConfigConverter:
         mock_manager = MagicMock()
         mock_manager.get_provider_model_bundle.return_value = mock_provider_bundle
         mocker.patch(
-            "core.app.app_config.easy_ui_based_app.model_config.converter.ProviderManager",
+            "core.app.app_config.easy_ui_based_app.model_config.converter.create_plugin_provider_manager",
             return_value=mock_manager,
         )
 

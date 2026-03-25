@@ -5,6 +5,7 @@ from typing import Any, ClassVar
 from pydantic import TypeAdapter
 
 from core.db.session_factory import session_factory
+from core.workflow.system_variables import SystemVariableKey, get_system_text
 from dify_graph.graph_engine.layers.base import GraphEngineLayer
 from dify_graph.graph_events.base import GraphEngineEvent
 from dify_graph.graph_events.graph import GraphRunFailedEvent, GraphRunPausedEvent, GraphRunSucceededEvent
@@ -59,7 +60,10 @@ class TriggerPostLayer(GraphEngineLayer):
                 outputs = self.graph_runtime_state.outputs
 
                 # BASICLY, workflow_execution_id is the same as workflow_run_id
-                workflow_run_id = self.graph_runtime_state.system_variable.workflow_execution_id
+                workflow_run_id = get_system_text(
+                    self.graph_runtime_state.variable_pool,
+                    SystemVariableKey.WORKFLOW_EXECUTION_ID,
+                )
                 assert workflow_run_id, "Workflow run id is not set"
 
                 total_tokens = self.graph_runtime_state.total_tokens

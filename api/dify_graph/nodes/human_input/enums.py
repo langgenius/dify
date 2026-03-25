@@ -25,16 +25,6 @@ class HumanInputFormKind(enum.StrEnum):
     DELIVERY_TEST = enum.auto()  # Form created for delivery tests.
 
 
-class DeliveryMethodType(enum.StrEnum):
-    """Delivery method types for human input forms."""
-
-    # WEBAPP controls whether the form is delivered to the web app. It not only controls
-    # the standalone web app, but also controls the installed apps in the console.
-    WEBAPP = enum.auto()
-
-    EMAIL = enum.auto()
-
-
 class ButtonStyle(enum.StrEnum):
     """Button styles for user actions."""
 
@@ -63,10 +53,3 @@ class PlaceholderType(enum.StrEnum):
 
     VARIABLE = enum.auto()
     CONSTANT = enum.auto()
-
-
-class EmailRecipientType(enum.StrEnum):
-    """Email recipient types."""
-
-    MEMBER = enum.auto()
-    EXTERNAL = enum.auto()

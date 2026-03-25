@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import base64
+import json
 from collections.abc import Mapping, Sequence
 from typing import Any
-from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -11,6 +12,8 @@ from dify_graph.model_runtime.entities.message_entities import ImagePromptMessag
 from . import helpers
 from .constants import FILE_MODEL_IDENTITY
 from .enums import FileTransferMethod, FileType
+
+_FILE_REFERENCE_PREFIX = "dify-file-ref:"
 
 
 def sign_tool_file(*, tool_file_id: str, extension: str, for_external: bool = True) -> str:
@@ -44,57 +47,68 @@ class FileUploadConfig(BaseModel):
     number_limits: int = 0
 
 
-class ToolFile(BaseModel):
-    id: UUID = Field(default_factory=uuid4, description="Unique identifier for the file")
-    user_id: UUID = Field(..., description="ID of the user who owns this file")
-    tenant_id: UUID = Field(..., description="ID of the tenant/organization")
-    conversation_id: UUID | None = Field(None, description="ID of the associated conversation")
-    file_key: str = Field(..., max_length=255, description="Storage key for the file")
-    mimetype: str = Field(..., max_length=255, description="MIME type of the file")
-    original_url: str | None = Field(
-        None, max_length=2048, description="Original URL if file was fetched from external source"
-    )
-    name: str = Field(default="", max_length=255, description="Display name of the file")
-    size: int = Field(default=-1, ge=-1, description="File size in bytes (-1 if unknown)")
+def _parse_reference(reference: str | None) -> tuple[str | None, str | None]:
+    """Best-effort parser for record references and historical storage-key payloads."""
+    if not reference:
+        return None, None
 
-    class Config:
-        from_attributes = True  # Enable ORM mode for SQLAlchemy compatibility
-        populate_by_name = True
+    if not reference.startswith(_FILE_REFERENCE_PREFIX):
+        return reference, None
+
+    encoded_payload = reference.removeprefix(_FILE_REFERENCE_PREFIX)
+    try:
+        payload = json.loads(base64.urlsafe_b64decode(encoded_payload.encode()))
+    except (ValueError, json.JSONDecodeError):
+        return reference, None
+
+    record_id = payload.get("record_id")
+    if not isinstance(record_id, str) or not record_id:
+        return reference, None
+
+    storage_key = payload.get("storage_key")
+    if not isinstance(storage_key, str):
+        storage_key = None
+
+    return record_id, storage_key
 
 
 class File(BaseModel):
+    """Graph-owned file reference.
+
+    The graph layer deliberately keeps only the metadata required to route,
+    serialize, and render files. Application ownership concerns such as
+    tenant/user/conversation identity stay in the workflow/storage layer.
+    """
+
     # NOTE: dify_model_identity is a special identifier used to distinguish between
     # new and old data formats during serialization and deserialization.
     dify_model_identity: str = FILE_MODEL_IDENTITY
 
     id: str | None = None  # message file id
-    tenant_id: str
     type: FileType
     transfer_method: FileTransferMethod
     # If `transfer_method` is `FileTransferMethod.remote_url`, the
     # `remote_url` attribute must not be `None`.
     remote_url: str | None = None  # remote url
-    # If `transfer_method` is `FileTransferMethod.local_file` or
-    # `FileTransferMethod.tool_file`, the `related_id` attribute must not be `None`.
-    #
-    # It should be set to `ToolFile.id` when `transfer_method` is `tool_file`.
-    related_id: str | None = None
+    # Opaque workflow-layer reference for files resolved outside ``dify_graph``.
+    # New payloads only carry the backing record id; historical payloads may
+    # still include storage_key and must remain readable.
+    reference: str | None = None
     filename: str | None = None
     extension: str | None = Field(default=None, description="File extension, should contain dot")
     mime_type: str | None = None
     size: int = -1
-
-    # Those properties are private, should not be exposed to the outside.
     _storage_key: str
 
     def __init__(
         self,
         *,
         id: str | None = None,
-        tenant_id: str,
+        tenant_id: str | None = None,
         type: FileType,
         transfer_method: FileTransferMethod,
         remote_url: str | None = None,
+        reference: str | None = None,
         related_id: str | None = None,
         filename: str | None = None,
         extension: str | None = None,
@@ -103,18 +117,23 @@ class File(BaseModel):
         storage_key: str | None = None,
         dify_model_identity: str | None = FILE_MODEL_IDENTITY,
         url: str | None = None,
-        # Legacy compatibility fields - explicitly handle known extra fields
+        # Legacy compatibility fields - explicitly accept known extra fields
         tool_file_id: str | None = None,
         upload_file_id: str | None = None,
         datasource_file_id: str | None = None,
     ):
+        legacy_record_id = related_id or tool_file_id or upload_file_id or datasource_file_id
+        normalized_reference = reference
+        if normalized_reference is None and legacy_record_id is not None:
+            normalized_reference = str(legacy_record_id)
+        _, parsed_storage_key = _parse_reference(normalized_reference)
+
         super().__init__(
             id=id,
-            tenant_id=tenant_id,
             type=type,
             transfer_method=transfer_method,
             remote_url=remote_url,
-            related_id=related_id,
+            reference=normalized_reference,
             filename=filename,
             extension=extension,
             mime_type=mime_type,
@@ -122,12 +141,15 @@ class File(BaseModel):
             dify_model_identity=dify_model_identity,
             url=url,
         )
-        self._storage_key = str(storage_key)
+        # Accept legacy constructor fields without promoting them back into the graph model.
+        _ = tenant_id
+        self._storage_key = storage_key or parsed_storage_key or ""
 
     def to_dict(self) -> Mapping[str, str | int | None]:
         data = self.model_dump(mode="json")
         return {
             **data,
+            "related_id": self.related_id,
             "url": self.generate_url(),
         }
 
@@ -142,21 +164,7 @@ class File(BaseModel):
         return text
 
     def generate_url(self, for_external: bool = True) -> str | None:
-        if self.transfer_method == FileTransferMethod.REMOTE_URL:
-            return self.remote_url
-        elif self.transfer_method == FileTransferMethod.LOCAL_FILE:
-            if self.related_id is None:
-                raise ValueError("Missing file related_id")
-            return helpers.get_signed_file_url(upload_file_id=self.related_id, for_external=for_external)
-        elif self.transfer_method in [FileTransferMethod.TOOL_FILE, FileTransferMethod.DATASOURCE_FILE]:
-            assert self.related_id is not None
-            assert self.extension is not None
-            return sign_tool_file(
-                tool_file_id=self.related_id,
-                extension=self.extension,
-                for_external=for_external,
-            )
-        return None
+        return helpers.resolve_file_url(self, for_external=for_external)
 
     def to_plugin_parameter(self) -> dict[str, Any]:
         return {
@@ -178,19 +186,29 @@ class File(BaseModel):
                 if not isinstance(self.remote_url, str) or not self.remote_url.startswith("http"):
                     raise ValueError("Invalid file url")
             case FileTransferMethod.LOCAL_FILE:
-                if not self.related_id:
-                    raise ValueError("Missing file related_id")
+                if not self.reference:
+                    raise ValueError("Missing file reference")
             case FileTransferMethod.TOOL_FILE:
-                if not self.related_id:
-                    raise ValueError("Missing file related_id")
+                if not self.reference:
+                    raise ValueError("Missing file reference")
             case FileTransferMethod.DATASOURCE_FILE:
-                if not self.related_id:
-                    raise ValueError("Missing file related_id")
+                if not self.reference:
+                    raise ValueError("Missing file reference")
         return self
 
     @property
+    def related_id(self) -> str | None:
+        record_id, _ = _parse_reference(self.reference)
+        return record_id
+
+    @related_id.setter
+    def related_id(self, value: str | None) -> None:
+        self.reference = value
+
+    @property
     def storage_key(self) -> str:
-        return self._storage_key
+        _, storage_key = _parse_reference(self.reference)
+        return storage_key or self._storage_key
 
     @storage_key.setter
     def storage_key(self, value: str) -> None:

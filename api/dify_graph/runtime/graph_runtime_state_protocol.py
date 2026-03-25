@@ -2,7 +2,6 @@ from collections.abc import Mapping, Sequence
 from typing import Any, Protocol
 
 from dify_graph.model_runtime.entities.llm_entities import LLMUsage
-from dify_graph.system_variable import SystemVariableReadOnlyView
 from dify_graph.variables.segments import Segment
 
 
@@ -30,9 +29,6 @@ class ReadOnlyGraphRuntimeState(Protocol):
     modifying the graph runtime state while still allowing observation.
     All methods return defensive copies to ensure immutability.
     """
-
-    @property
-    def system_variable(self) -> SystemVariableReadOnlyView: ...
 
     @property
     def variable_pool(self) -> ReadOnlyVariablePool:

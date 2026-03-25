@@ -27,6 +27,7 @@ from core.model_manager import ModelManager
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo, WebsiteInfo
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from dify_graph.model_runtime.entities.model_entities import ModelType
 from dify_graph.model_runtime.errors.invoke import InvokeAuthorizationError
 from extensions.ext_database import db
@@ -449,11 +450,11 @@ class DatasetInitApi(Resource):
             raise Forbidden()
 
         knowledge_config = KnowledgeConfig.model_validate(console_ns.payload or {})
-        if knowledge_config.indexing_technique == "high_quality":
+        if knowledge_config.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             if knowledge_config.embedding_model is None or knowledge_config.embedding_model_provider is None:
                 raise ValueError("embedding model and embedding model provider are required for high quality indexing.")
             try:
-                model_manager = ModelManager()
+                model_manager = ModelManager.for_tenant(tenant_id=current_tenant_id)
                 model_manager.get_model_instance(
                     tenant_id=current_tenant_id,
                     provider=knowledge_config.embedding_model_provider,
@@ -463,7 +464,7 @@ class DatasetInitApi(Resource):
                 is_multimodal = DatasetService.check_is_multimodal_model(
                     current_tenant_id, knowledge_config.embedding_model_provider, knowledge_config.embedding_model
                 )
-                knowledge_config.is_multimodal = is_multimodal
+                knowledge_config.is_multimodal = is_multimodal  # pyrefly: ignore[bad-assignment]
             except InvokeAuthorizationError:
                 raise ProviderNotInitializeError(
                     "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
@@ -1337,7 +1338,7 @@ class DocumentGenerateSummaryApi(Resource):
             raise BadRequest("document_list cannot be empty.")
 
         # Check if dataset configuration supports summary generation
-        if dataset.indexing_technique != "high_quality":
+        if dataset.indexing_technique != IndexTechniqueType.HIGH_QUALITY:
             raise ValueError(
                 f"Summary generation is only available for 'high_quality' indexing technique. "
                 f"Current indexing technique: {dataset.indexing_technique}"

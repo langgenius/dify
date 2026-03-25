@@ -197,6 +197,7 @@ const config = {
       path.resolve(_dirname, './app/components/base/button/index.css'),
       path.resolve(_dirname, './app/components/base/modal/index.css'),
       path.resolve(_dirname, './app/components/base/premium-badge/index.css'),
+      path.resolve(_dirname, './app/components/base/segmented-control/index.css'),
     ]),
   ],
   // https://github.com/tailwindlabs/tailwindcss/discussions/5969

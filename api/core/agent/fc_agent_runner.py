@@ -96,7 +96,6 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 tools=prompt_messages_tools,
                 stop=app_generate_entity.model_conf.stop,
                 stream=self.stream_tool_call,
-                user=self.user_id,
                 callbacks=[],
             )
 

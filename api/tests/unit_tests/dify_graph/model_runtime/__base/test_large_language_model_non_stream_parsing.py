@@ -4,7 +4,7 @@ from dify_graph.model_runtime.entities.message_entities import (
     TextPromptMessageContent,
     UserPromptMessage,
 )
-from dify_graph.model_runtime.model_providers.__base.large_language_model import _normalize_non_stream_plugin_result
+from dify_graph.model_runtime.model_providers.__base.large_language_model import _normalize_non_stream_runtime_result
 
 
 def _make_chunk(
@@ -20,7 +20,7 @@ def _make_chunk(
     return LLMResultChunk(model=model, delta=delta, system_fingerprint=system_fingerprint)
 
 
-def test__normalize_non_stream_plugin_result__from_first_chunk_str_content_and_tool_calls():
+def test__normalize_non_stream_runtime_result__from_first_chunk_str_content_and_tool_calls():
     prompt_messages = [UserPromptMessage(content="hi")]
 
     tool_calls = [
@@ -44,7 +44,7 @@ def test__normalize_non_stream_plugin_result__from_first_chunk_str_content_and_t
     usage = LLMUsage.empty_usage().model_copy(update={"prompt_tokens": 1, "total_tokens": 1})
     chunk = _make_chunk(content="hello", tool_calls=tool_calls, usage=usage, system_fingerprint="fp-1")
 
-    result = _normalize_non_stream_plugin_result(
+    result = _normalize_non_stream_runtime_result(
         model="test-model", prompt_messages=prompt_messages, result=iter([chunk])
     )
 
@@ -62,20 +62,20 @@ def test__normalize_non_stream_plugin_result__from_first_chunk_str_content_and_t
     ]
 
 
-def test__normalize_non_stream_plugin_result__from_first_chunk_list_content():
+def test__normalize_non_stream_runtime_result__from_first_chunk_list_content():
     prompt_messages = [UserPromptMessage(content="hi")]
 
     content_list = [TextPromptMessageContent(data="a"), TextPromptMessageContent(data="b")]
     chunk = _make_chunk(content=content_list, usage=LLMUsage.empty_usage())
 
-    result = _normalize_non_stream_plugin_result(
+    result = _normalize_non_stream_runtime_result(
         model="test-model", prompt_messages=prompt_messages, result=iter([chunk])
     )
 
     assert result.message.content == content_list
 
 
-def test__normalize_non_stream_plugin_result__passthrough_llm_result():
+def test__normalize_non_stream_runtime_result__passthrough_llm_result():
     prompt_messages = [UserPromptMessage(content="hi")]
     llm_result = LLMResult(
         model="test-model",
@@ -85,15 +85,15 @@ def test__normalize_non_stream_plugin_result__passthrough_llm_result():
     )
 
     assert (
-        _normalize_non_stream_plugin_result(model="test-model", prompt_messages=prompt_messages, result=llm_result)
+        _normalize_non_stream_runtime_result(model="test-model", prompt_messages=prompt_messages, result=llm_result)
         == llm_result
     )
 
 
-def test__normalize_non_stream_plugin_result__empty_iterator_defaults():
+def test__normalize_non_stream_runtime_result__empty_iterator_defaults():
     prompt_messages = [UserPromptMessage(content="hi")]
 
-    result = _normalize_non_stream_plugin_result(model="test-model", prompt_messages=prompt_messages, result=iter([]))
+    result = _normalize_non_stream_runtime_result(model="test-model", prompt_messages=prompt_messages, result=iter([]))
 
     assert result.model == "test-model"
     assert result.prompt_messages == prompt_messages
@@ -103,7 +103,7 @@ def test__normalize_non_stream_plugin_result__empty_iterator_defaults():
     assert result.system_fingerprint is None
 
 
-def test__normalize_non_stream_plugin_result__accumulates_all_chunks():
+def test__normalize_non_stream_runtime_result__accumulates_all_chunks():
     """All chunks are accumulated from the iterator."""
     prompt_messages = [UserPromptMessage(content="hi")]
 
@@ -116,7 +116,7 @@ def test__normalize_non_stream_plugin_result__accumulates_all_chunks():
         finally:
             closed.append(True)
 
-    result = _normalize_non_stream_plugin_result(
+    result = _normalize_non_stream_runtime_result(
         model="test-model",
         prompt_messages=prompt_messages,
         result=_chunk_iter(),
