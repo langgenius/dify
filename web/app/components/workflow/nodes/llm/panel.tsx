@@ -8,8 +8,8 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import AddButton2 from '@/app/components/base/button/add-button'
 import Switch from '@/app/components/base/switch'
-import Toast from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
+import { toast } from '@/app/components/base/ui/toast'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import { FieldCollapse } from '@/app/components/workflow/nodes/_base/components/collapse'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
@@ -151,11 +151,11 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
         )
         const keys = Object.keys(removedDetails)
         if (keys.length)
-          Toast.notify({ type: 'warning', message: `${t('modelProvider.parametersInvalidRemoved', { ns: 'common' })}: ${keys.map(k => `${k} (${removedDetails[k]})`).join(', ')}` })
+          toast.warning(`${t('modelProvider.parametersInvalidRemoved', { ns: 'common' })}: ${keys.map(k => `${k} (${removedDetails[k]})`).join(', ')}`)
         handleCompletionParamsChange(filtered)
       }
       catch {
-        Toast.notify({ type: 'error', message: t('error', { ns: 'common' }) })
+        toast.error(t('error', { ns: 'common' }))
         handleCompletionParamsChange({})
       }
       finally {

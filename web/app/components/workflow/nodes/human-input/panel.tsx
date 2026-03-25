@@ -16,8 +16,8 @@ import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
-import Toast from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
+import { toast } from '@/app/components/base/ui/toast'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
@@ -132,7 +132,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
                   className="flex size-6 cursor-pointer items-center justify-center rounded-md hover:bg-components-button-ghost-bg-hover"
                   onClick={() => {
                     copy(inputs.form_content)
-                    Toast.notify({ type: 'success', message: t('actionMsg.copySuccessfully', { ns: 'common' }) })
+                    toast.success(t('actionMsg.copySuccessfully', { ns: 'common' }))
                   }}
                 >
                   <RiClipboardLine className="h-4 w-4 text-text-secondary" />

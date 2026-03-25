@@ -12,8 +12,8 @@ import Drawer from '@/app/components/base/drawer-plus'
 import EmojiPicker from '@/app/components/base/emoji-picker'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
-import Toast from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
+import { toast } from '@/app/components/base/ui/toast'
 import LabelSelector from '@/app/components/tools/labels/selector'
 import ConfirmModal from '@/app/components/tools/workflow-tool/confirm-modal'
 import MethodSelector from '@/app/components/tools/workflow-tool/method-selector'
@@ -129,10 +129,7 @@ const WorkflowToolAsModal: FC<Props> = ({
       errorMessage = t('createTool.nameForToolCall', { ns: 'tools' }) + t('createTool.nameForToolCallTip', { ns: 'tools' })
 
     if (errorMessage) {
-      Toast.notify({
-        type: 'error',
-        message: errorMessage,
-      })
+      toast.error(errorMessage)
       return
     }
 

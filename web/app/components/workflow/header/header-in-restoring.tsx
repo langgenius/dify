@@ -5,11 +5,11 @@ import {
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
+import { toast } from '@/app/components/base/ui/toast'
 import { useSelector as useAppContextSelector } from '@/context/app-context'
 import useTheme from '@/hooks/use-theme'
 import { useInvalidAllLastRun } from '@/service/use-workflow'
 import { cn } from '@/utils/classnames'
-import Toast from '../../base/toast'
 import {
   useLeaderRestore,
   useWorkflowRun,
@@ -83,23 +83,17 @@ const HeaderInRestoring = ({
       conversationVariables,
     }, {
       onSuccess: () => {
-        Toast.notify({
-          type: 'success',
-          message: t('versionHistory.action.restoreSuccess', { ns: 'workflow' }),
-        })
+        toast.success(t('versionHistory.action.restoreSuccess', { ns: 'workflow' }))
+        deleteAllInspectVars()
+        invalidAllLastRun()
       },
       onError: () => {
-        Toast.notify({
-          type: 'error',
-          message: t('versionHistory.action.restoreFailure', { ns: 'workflow' }),
-        })
+        toast.error(t('versionHistory.action.restoreFailure', { ns: 'workflow' }))
       },
       onSettled: () => {
         onRestoreSettled?.()
       },
     })
-    deleteAllInspectVars()
-    invalidAllLastRun()
   }, [canRestore, currentVersion, featuresStore, setShowWorkflowVersionHistoryPanel, workflowStore, requestRestore, userProfile, deleteAllInspectVars, invalidAllLastRun, t, onRestoreSettled])
 
   return (

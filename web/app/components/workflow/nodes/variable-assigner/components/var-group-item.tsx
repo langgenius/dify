@@ -11,7 +11,7 @@ import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Folder } from '@/app/components/base/icons/src/vender/line/files'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import { VarType } from '@/app/components/workflow/types'
@@ -94,10 +94,7 @@ const VarGroupItem: FC<Props> = ({
     const value = e.target.value
     const { isValid, errorKey, errorMessageKey } = checkKeys([value], false)
     if (!isValid) {
-      Toast.notify({
-        type: 'error',
-        message: t(`varKeyError.${errorMessageKey}`, { ns: 'appDebug', key: errorKey }),
-      })
+      toast.error(t(`varKeyError.${errorMessageKey}`, { ns: 'appDebug', key: errorKey }))
       return
     }
     onGroupNameChange?.(value)

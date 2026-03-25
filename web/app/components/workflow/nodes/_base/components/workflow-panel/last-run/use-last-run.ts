@@ -6,7 +6,7 @@ import type { CommonNodeType, ValueSelector } from '@/app/components/workflow/ty
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import {
   useNodesSyncDraft,
 } from '@/app/components/workflow/hooks'
@@ -183,7 +183,7 @@ const useLastRun = <T>({
       return false
 
     const message = warningForNode.errorMessages[0] || 'This node has unresolved checklist issues'
-    Toast.notify({ type: 'error', message })
+    toast.error(message)
     return true
   }, [warningNodes, currentNodeId])
 
@@ -304,13 +304,10 @@ const useLastRun = <T>({
       if (!inspectVarValue) {
         const nodeLabel = getContextNodeLabel(nodeId)
           || t('nodes.llm.contextUnknownNode', { ns: 'workflow' })
-        Toast.notify({
-          type: 'error',
-          message: t('nodes.llm.contextMissing', {
-            ns: 'workflow',
-            nodeName: nodeLabel,
-          }),
-        })
+        toast.error(t('nodes.llm.contextMissing', {
+          ns: 'workflow',
+          nodeName: nodeLabel,
+        }))
         return false
       }
     }
@@ -328,13 +325,10 @@ const useLastRun = <T>({
     const dependentVars = singleRunParams?.getDependentVars?.()
     const nullOutput = getNullDependentOutput(dependentVars)
     if (nullOutput) {
-      Toast.notify({
-        type: 'error',
-        message: t('singleRun.subgraph.nullOutputError', {
-          ns: 'workflow',
-          output: formatSubgraphOutputLabel(nullOutput),
-        }),
-      })
+      toast.error(t('singleRun.subgraph.nullOutputError', {
+        ns: 'workflow',
+        output: formatSubgraphOutputLabel(nullOutput),
+      }))
       return
     }
     setNodeRunning()
@@ -442,13 +436,10 @@ const useLastRun = <T>({
     const dependentVars = singleRunParams?.getDependentVars?.()
     const nullOutput = getNullDependentOutput(dependentVars)
     if (nullOutput) {
-      Toast.notify({
-        type: 'error',
-        message: t('singleRun.subgraph.nullOutputError', {
-          ns: 'workflow',
-          output: formatSubgraphOutputLabel(nullOutput),
-        }),
-      })
+      toast.error(t('singleRun.subgraph.nullOutputError', {
+        ns: 'workflow',
+        output: formatSubgraphOutputLabel(nullOutput),
+      }))
       return
     }
     if (blockType === BlockEnum.TriggerWebhook || blockType === BlockEnum.TriggerPlugin || blockType === BlockEnum.TriggerSchedule)

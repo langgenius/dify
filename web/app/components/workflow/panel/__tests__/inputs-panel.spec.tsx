@@ -17,11 +17,13 @@ vi.mock('next/navigation', () => ({
   useParams: () => ({}),
 }))
 
-vi.mock('@/app/components/base/toast/context', () => ({
-  useToastContext: () => ({
-    notify: mockNotify,
-    close: vi.fn(),
-  }),
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    success: (message: string) => mockNotify({ type: 'success', message }),
+    error: (message: string) => mockNotify({ type: 'error', message }),
+    warning: (message: string) => mockNotify({ type: 'warning', message }),
+    info: (message: string) => mockNotify({ type: 'info', message }),
+  },
 }))
 
 vi.mock('@/app/components/base/chat/chat/check-input-forms-hooks', () => ({

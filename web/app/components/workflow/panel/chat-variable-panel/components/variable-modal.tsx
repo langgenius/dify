@@ -3,11 +3,10 @@ import { RiCloseLine, RiDraftLine, RiInputField } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import { v4 as uuid4 } from 'uuid'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
-import { ToastContext } from '@/app/components/base/toast/context'
+import { toast } from '@/app/components/base/ui/toast'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import ArrayValueList from '@/app/components/workflow/panel/chat-variable-panel/components/array-value-list'
@@ -57,7 +56,6 @@ const ChatVariableModal = ({
   onSave,
 }: ModalPropsType) => {
   const { t } = useTranslation()
-  const { notify } = useContext(ToastContext)
   const workflowStore = useWorkflowStore()
   const [name, setName] = React.useState('')
   const [type, setType] = React.useState<ChatVarType>(ChatVarType.String)
@@ -129,10 +127,7 @@ const ChatVariableModal = ({
   const checkVariableName = (value: string) => {
     const { isValid, errorMessageKey } = checkKeys([value], false)
     if (!isValid) {
-      notify({
-        type: 'error',
-        message: t(`varKeyError.${errorMessageKey}`, { ns: 'appDebug', key: t('env.modal.name', { ns: 'workflow' }) }),
-      })
+      toast.error(t(`varKeyError.${errorMessageKey}`, { ns: 'appDebug', key: t('env.modal.name', { ns: 'workflow' }) }))
       return false
     }
     return true
@@ -240,11 +235,9 @@ const ChatVariableModal = ({
       return
     const varList = workflowStore.getState().conversationVariables
     if (!chatVar && varList.some(chatVar => chatVar.name === name))
-      return notify({ type: 'error', message: 'name is existed' })
-    // if (type !== ChatVarType.Object && !value)
-    //   return notify({ type: 'error', message: 'value can not be empty' })
+      return toast.error(t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: t('chatVariable.modal.name', { ns: 'workflow' }) }))
     if (type === ChatVarType.Object && objectValue.some(item => !item.key && !!item.value))
-      return notify({ type: 'error', message: 'object key can not be empty' })
+      return toast.error(t('chatVariable.modal.objectKeyRequired', { ns: 'workflow' }))
 
     onSave({
       id: chatVar ? chatVar.id : uuid4(),
