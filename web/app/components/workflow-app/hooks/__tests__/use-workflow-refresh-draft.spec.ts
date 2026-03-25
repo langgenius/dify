@@ -52,7 +52,7 @@ describe('useWorkflowRefreshDraft — notUpdateCanvas parameter', () => {
     workflowStoreState = {
       appId: 'app-1',
       isWorkflowDataLoaded: true,
-      debouncedSyncWorkflowDraft: undefined,
+      debouncedSyncWorkflowDraft: { cancel: mockCancel },
       setSyncWorkflowDraftHash: mockSetSyncWorkflowDraftHash,
       setIsSyncingWorkflowDraft: mockSetIsSyncingWorkflowDraft,
       setEnvironmentVariables: mockSetEnvironmentVariables,
@@ -65,33 +65,38 @@ describe('useWorkflowRefreshDraft — notUpdateCanvas parameter', () => {
 
   it('should update canvas by default (notUpdateCanvas omitted)', async () => {
     const { result } = renderHook(() => useWorkflowRefreshDraft())
-    await act(async () => {
+    act(() => {
       result.current.handleRefreshWorkflowDraft()
     })
-    expect(mockHandleUpdateWorkflowCanvas).toHaveBeenCalledTimes(1)
+    await waitFor(() => {
+      expect(mockHandleUpdateWorkflowCanvas).toHaveBeenCalledTimes(1)
+    })
   })
 
   it('should update canvas when notUpdateCanvas=false', async () => {
     const { result } = renderHook(() => useWorkflowRefreshDraft())
-    await act(async () => {
+    act(() => {
       result.current.handleRefreshWorkflowDraft(false)
     })
-    expect(mockHandleUpdateWorkflowCanvas).toHaveBeenCalledTimes(1)
+    await waitFor(() => {
+      expect(mockHandleUpdateWorkflowCanvas).toHaveBeenCalledTimes(1)
+    })
   })
 
   it('should NOT update canvas when notUpdateCanvas=true', async () => {
-    // This is the key change: when called from a 409 error during editing,
-    // canvas must not be overwritten with server state.
     const { result } = renderHook(() => useWorkflowRefreshDraft())
-    await act(async () => {
+    act(() => {
       result.current.handleRefreshWorkflowDraft(true)
+    })
+    await waitFor(() => {
+      expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('server-hash')
     })
     expect(mockHandleUpdateWorkflowCanvas).not.toHaveBeenCalled()
   })
 
   it('should still update hash even when notUpdateCanvas=true', async () => {
     const { result } = renderHook(() => useWorkflowRefreshDraft())
-    await act(async () => {
+    act(() => {
       result.current.handleRefreshWorkflowDraft(true)
     })
     await waitFor(() => {

@@ -82,6 +82,8 @@ vi.mock('@/app/components/workflow/block-selector', () => ({
 }))
 
 vi.mock('../../loop-start', () => ({
+  __esModule: true,
+  default: () => <div>loop-start-node</div>,
   LoopStartNodeDumb: () => <div>loop-start-node</div>,
 }))
 

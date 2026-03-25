@@ -5,10 +5,10 @@ import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
 import { WorkflowVersion } from '../../types'
 import HeaderInRestoring from '../header-in-restoring'
 
-const mockRestoreWorkflow = vi.fn()
 const mockInvalidAllLastRun = vi.fn()
 const mockHandleLoadBackupDraft = vi.fn()
 const mockHandleRefreshWorkflowDraft = vi.fn()
+const mockRequestRestore = vi.fn()
 
 vi.mock('@/hooks/use-theme', () => ({
   default: () => ({
@@ -30,9 +30,6 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
 
 vi.mock('@/service/use-workflow', () => ({
   useInvalidAllLastRun: () => mockInvalidAllLastRun,
-  useRestoreWorkflow: () => ({
-    mutateAsync: mockRestoreWorkflow,
-  }),
 }))
 
 vi.mock('../../hooks', () => ({
@@ -41,6 +38,18 @@ vi.mock('../../hooks', () => ({
   }),
   useWorkflowRefreshDraft: () => ({
     handleRefreshWorkflowDraft: mockHandleRefreshWorkflowDraft,
+  }),
+  useLeaderRestore: () => ({
+    requestRestore: mockRequestRestore,
+  }),
+}))
+
+vi.mock('@/context/app-context', () => ({
+  useSelector: (selector: (state: { userProfile: { id: string, name: string } }) => unknown) => selector({
+    userProfile: {
+      id: 'user-1',
+      name: 'Alice',
+    },
   }),
 }))
 
@@ -73,6 +82,10 @@ const createVersion = (overrides: Partial<VersionHistory> = {}): VersionHistory 
 describe('HeaderInRestoring', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockRequestRestore.mockImplementation((_payload, callbacks) => {
+      callbacks?.onSuccess?.()
+      callbacks?.onSettled?.()
+    })
   })
 
   it('should disable restore when the flow id is not ready yet', () => {

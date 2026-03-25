@@ -1,7 +1,8 @@
 import type { InputVar, Node } from '../../../types'
 import type { IterationNodeType } from '../types'
 import type { NodeTracing } from '@/types/workflow'
-import { act, renderHook } from '@testing-library/react'
+import { act } from '@testing-library/react'
+import { renderWorkflowHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum, ErrorHandleMode, InputVarType, VarType } from '@/app/components/workflow/types'
 import useSingleRunFormParams from '../use-single-run-form-params'
 
@@ -94,7 +95,7 @@ describe('iteration/use-single-run-form-params', () => {
   it('should build single-run forms from external vars and keep iterator state in a dedicated form', () => {
     const toVarInputs = vi.fn(() => [createInputVar('#start-node.answer#')])
 
-    const { result } = renderHook(() => useSingleRunFormParams({
+    const { result } = renderWorkflowHook(() => useSingleRunFormParams({
       id: 'iteration-node',
       payload: createPayload(),
       runInputData: {
@@ -134,7 +135,7 @@ describe('iteration/use-single-run-form-params', () => {
   it('should forward form updates and expose iterator dependencies', () => {
     const setRunInputData = vi.fn()
 
-    const { result } = renderHook(() => useSingleRunFormParams({
+    const { result } = renderWorkflowHook(() => useSingleRunFormParams({
       id: 'iteration-node',
       payload: createPayload({
         iterator_selector: ['source-node', 'records'],

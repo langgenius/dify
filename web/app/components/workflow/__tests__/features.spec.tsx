@@ -10,6 +10,7 @@ import { renderWorkflowFlowComponent } from './workflow-test-env'
 
 const mockHandleSyncWorkflowDraft = vi.fn()
 const mockHandleAddVariable = vi.fn()
+const mockUpdateFeatures = vi.hoisted(() => vi.fn())
 
 let mockIsChatMode = true
 let mockNodesReadOnly = false
@@ -32,6 +33,24 @@ vi.mock('../nodes/start/use-config', () => ({
   default: () => ({
     handleAddVariable: mockHandleAddVariable,
   }),
+}))
+
+vi.mock('@/app/components/app/store', () => ({
+  useStore: (selector: (state: { appDetail?: { runtime_type?: string } }) => unknown) => selector({
+    appDetail: {
+      runtime_type: 'sandboxed',
+    },
+  }),
+}))
+
+vi.mock('@/service/workflow', () => ({
+  updateFeatures: mockUpdateFeatures,
+}))
+
+vi.mock('@/app/components/workflow/collaboration/core/websocket-manager', () => ({
+  webSocketClient: {
+    getSocket: () => null,
+  },
 }))
 
 vi.mock('@/app/components/base/features/new-feature-panel', () => ({
@@ -112,21 +131,29 @@ const DelayedFeatures = () => {
   return <Features />
 }
 
-const renderFeatures = (options?: Omit<Parameters<typeof renderWorkflowFlowComponent>[1], 'nodes' | 'edges'>) =>
-  renderWorkflowFlowComponent(
+const renderFeatures = (options?: Omit<NonNullable<Parameters<typeof renderWorkflowFlowComponent>[1]>, 'nodes' | 'edges'>) => {
+  const { initialStoreState, ...rest } = options ?? {}
+
+  return renderWorkflowFlowComponent(
     <DelayedFeatures />,
     {
       nodes: [startNode],
       edges: [],
-      ...options,
+      initialStoreState: {
+        appId: 'app-1',
+        ...initialStoreState,
+      },
+      ...rest,
     },
   )
+}
 
 describe('Features', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockIsChatMode = true
     mockNodesReadOnly = false
+    mockUpdateFeatures.mockResolvedValue(undefined)
   })
 
   describe('Rendering', () => {

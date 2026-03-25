@@ -76,8 +76,8 @@ describe('useWorkflowRun utils', () => {
     expect(validateWorkflowRunRequest(TriggerType.Schedule)).toBe('handleRun: schedule trigger run requires node id')
     expect(validateWorkflowRunRequest(TriggerType.Webhook)).toBe('handleRun: webhook trigger run requires node id')
     expect(validateWorkflowRunRequest(TriggerType.Plugin)).toBe('handleRun: plugin trigger run requires node id')
-    expect(validateWorkflowRunRequest(TriggerType.All)).toBe('')
-    expect(validateWorkflowRunRequest(TriggerType.All, { allNodeIds: [] })).toBe('')
+    expect(validateWorkflowRunRequest(TriggerType.All)).toBe('handleRun: all trigger run requires node ids')
+    expect(validateWorkflowRunRequest(TriggerType.All, { allNodeIds: [] })).toBe('handleRun: all trigger run requires node ids')
   })
 
   it('should return empty trigger urls when app id is missing and keep user-input urls empty outside workflow debug', () => {

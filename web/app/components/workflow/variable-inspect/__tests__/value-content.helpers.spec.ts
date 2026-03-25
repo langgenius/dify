@@ -1,5 +1,6 @@
 import type { VarInInspect } from '@/types/workflow'
 import { VarType } from '@/app/components/workflow/types'
+import { TransferMethod } from '@/types/app'
 import { VarInInspectType } from '@/types/workflow'
 import {
   formatInspectFileValue,
@@ -9,6 +10,19 @@ import {
 } from '../value-content.helpers'
 
 describe('value-content helpers', () => {
+  const createFileValue = (id: string) => ({
+    related_id: id,
+    extension: '.txt',
+    filename: `${id}.txt`,
+    size: 1,
+    mime_type: 'text/plain',
+    transfer_method: TransferMethod.local_file,
+    type: 'document',
+    url: `https://example.com/${id}.txt`,
+    upload_file_id: `${id}-upload`,
+    remote_url: '',
+  })
+
   const createVar = (overrides: Partial<VarInInspect>): VarInInspect => ({
     id: 'var-1',
     name: 'query',
@@ -56,7 +70,7 @@ describe('value-content helpers', () => {
     expect(formatInspectFileValue(createVar({
       name: 'file',
       value_type: VarType.file,
-      value: { id: 'file-1' },
+      value: createFileValue('file-1'),
     }))).toHaveLength(1)
 
     expect(isFileValueUploaded([{ upload_file_id: 'file-1' }])).toBe(true)
@@ -65,7 +79,7 @@ describe('value-content helpers', () => {
       type: VarInInspectType.system,
       name: 'files',
       value_type: VarType.arrayFile,
-      value: [{ id: 'file-2' }],
+      value: [createFileValue('file-2')],
     }))).toHaveLength(1)
   })
 

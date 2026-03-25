@@ -220,6 +220,7 @@ describe('useFileOperations', () => {
         nodeId: 'node-from-node',
         node,
         treeRef,
+        nodeType: 'file',
         appId: 'app-1',
         storeApi: mocks.workflowStore,
         treeData: mocks.treeData,

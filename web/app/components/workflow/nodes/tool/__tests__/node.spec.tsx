@@ -6,6 +6,16 @@ import Node from '../node'
 
 const mockUseNodePluginInstallation = vi.hoisted(() => vi.fn())
 const mockUseCurrentToolCollection = vi.hoisted(() => vi.fn())
+const mockUseNodes = vi.hoisted(() => vi.fn())
+const mockUseNodesMetaData = vi.hoisted(() => vi.fn())
+
+vi.mock('reactflow', () => ({
+  useNodes: () => mockUseNodes(),
+}))
+
+vi.mock('@/app/components/workflow/hooks', () => ({
+  useNodesMetaData: () => mockUseNodesMetaData(),
+}))
 
 vi.mock('@/app/components/workflow/hooks/use-node-plugin-installation', () => ({
   useNodePluginInstallation: mockUseNodePluginInstallation,
@@ -18,6 +28,14 @@ vi.mock('../hooks/use-current-tool-collection', () => ({
 
 vi.mock('@/app/components/workflow/nodes/_base/components/install-plugin-button', () => ({
   InstallPluginButton: () => <button type="button">Install Plugin</button>,
+}))
+
+vi.mock('@/context/i18n', () => ({
+  useGetLanguage: () => 'en-US',
+}))
+
+vi.mock('@/service/use-strategy', () => ({
+  useStrategyProviders: () => ({ data: undefined }),
 }))
 
 const createNodeData = (overrides: Partial<ToolNodeType> = {}): ToolNodeType => ({
@@ -37,6 +55,8 @@ const createNodeData = (overrides: Partial<ToolNodeType> = {}): ToolNodeType => 
 describe('ToolNode', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockUseNodes.mockReturnValue([])
+    mockUseNodesMetaData.mockReturnValue({ nodesMap: {} })
     mockUseNodePluginInstallation.mockReturnValue({
       isChecking: false,
       isMissing: false,

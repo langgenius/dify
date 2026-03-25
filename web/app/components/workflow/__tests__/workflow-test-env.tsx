@@ -72,6 +72,7 @@ import * as React from 'react'
 import ReactFlow, { ReactFlowProvider } from 'reactflow'
 import { temporal } from 'zundo'
 import { create } from 'zustand'
+import { FeaturesProvider } from '@/app/components/base/features/context'
 import { WorkflowContext } from '../context'
 import { HooksStoreContext } from '../hooks-store/provider'
 import { createHooksStore } from '../hooks-store/store'
@@ -138,14 +139,12 @@ type WorkflowProviderOptions = {
 
 type StoreInstances = {
   store: WorkflowStore
-  hooksStore?: HooksStore
+  hooksStore: HooksStore
 }
 
 function createStoresFromOptions(options: WorkflowProviderOptions): StoreInstances {
   const store = createTestWorkflowStore(options.initialStoreState)
-  const hooksStore = options.hooksStoreProps !== undefined
-    ? createTestHooksStore(options.hooksStoreProps)
-    : undefined
+  const hooksStore = createTestHooksStore(options.hooksStoreProps)
   return { store, hooksStore }
 }
 
@@ -175,21 +174,23 @@ function createWorkflowWrapper(
       )
     }
 
-    if (stores.hooksStore) {
-      inner = React.createElement(
-        HooksStoreContext.Provider,
-        { value: stores.hooksStore },
-        inner,
-      )
-    }
+    inner = React.createElement(
+      HooksStoreContext.Provider,
+      { value: stores.hooksStore },
+      inner,
+    )
 
     return React.createElement(
       QueryClientProvider,
       { client: queryClient },
       React.createElement(
-        WorkflowContext.Provider,
-        { value: stores.store },
-        inner,
+        FeaturesProvider,
+        null,
+        React.createElement(
+          WorkflowContext.Provider,
+          { value: stores.store },
+          inner,
+        ),
       ),
     )
   }

@@ -69,6 +69,7 @@ const mocks = vi.hoisted(() => {
     mockFetchInspectVars: vi.fn(),
     mockInvalidateAllLastRun: vi.fn(),
     mockInvalidateRunHistory: vi.fn(),
+    mockInvalidateSandboxFiles: vi.fn(),
     mockSsePost: vi.fn(),
     mockSseGet: vi.fn(),
     mockHandleStream: vi.fn(),
@@ -179,6 +180,10 @@ vi.mock('@/service/use-workflow', () => ({
 
 vi.mock('@/service/workflow', () => ({
   stopWorkflowRun: mocks.mockStopWorkflowRun,
+}))
+
+vi.mock('@/service/use-sandbox-file', () => ({
+  useInvalidateSandboxFiles: () => mocks.mockInvalidateSandboxFiles,
 }))
 
 vi.mock('@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars', () => ({
@@ -340,6 +345,14 @@ describe('useWorkflowRun', () => {
         getAbortController: expect.any(Function),
       }),
     )
+
+    const baseCallbackFactoryContext = mocks.mockCreateBaseWorkflowRunCallbacks.mock.calls.at(-1)?.[0] as {
+      callbacks: {
+        onWorkflowFinished?: (params: { workflow_run_id: string }) => void
+      }
+    }
+    baseCallbackFactoryContext.callbacks.onWorkflowFinished?.({ workflow_run_id: 'run-1' })
+    expect(mocks.mockInvalidateSandboxFiles).toHaveBeenCalledTimes(1)
   })
 
   it.each([
@@ -546,15 +559,34 @@ describe('useWorkflowRun', () => {
       edges: [{ id: 'published-edge' }],
       viewport: { x: 10, y: 20, zoom: 0.8 },
     })
-    expect(mocks.featuresStoreSetState).toHaveBeenCalledWith({
+    expect(mocks.featuresStoreSetState).toHaveBeenCalledWith(expect.objectContaining({
       features: expect.objectContaining({
         opening: expect.objectContaining({
           enabled: true,
           opening_statement: 'hello',
+          suggested_questions: ['Q1'],
         }),
-        file: { enabled: true },
+        suggested: { enabled: true },
+        text2speech: { enabled: true },
+        speech2text: { enabled: true },
+        citation: { enabled: true },
+        moderation: { enabled: true },
+        annotationReply: { enabled: false },
+        sandbox: { enabled: false },
+        file: expect.objectContaining({
+          enabled: true,
+          allowed_file_types: ['image'],
+          allowed_file_upload_methods: ['local_file', 'remote_url'],
+          number_limits: 3,
+          fileUploadConfig: undefined,
+          image: {
+            enabled: false,
+            number_limits: 3,
+            transfer_methods: ['local_file', 'remote_url'],
+          },
+        }),
       }),
-    })
+    }))
     expect(mocks.workflowStoreState.setEnvironmentVariables).toHaveBeenCalledWith([{ id: 'env-published', value: 'value' }])
   })
 
@@ -581,12 +613,34 @@ describe('useWorkflowRun', () => {
       } as never)
     })
 
-    expect(mocks.featuresStoreSetState).toHaveBeenCalledWith({
+    expect(mocks.featuresStoreSetState).toHaveBeenCalledWith(expect.objectContaining({
       features: expect.objectContaining({
-        opening: expect.objectContaining({ enabled: false }),
-        file: { enabled: false },
+        opening: {
+          enabled: false,
+          opening_statement: '',
+          suggested_questions: [],
+        },
+        suggested: { enabled: false },
+        text2speech: { enabled: false },
+        speech2text: { enabled: false },
+        citation: { enabled: false },
+        moderation: { enabled: false },
+        annotationReply: { enabled: false },
+        sandbox: { enabled: false },
+        file: expect.objectContaining({
+          enabled: false,
+          allowed_file_types: ['image'],
+          allowed_file_upload_methods: ['local_file', 'remote_url'],
+          number_limits: 3,
+          fileUploadConfig: undefined,
+          image: {
+            enabled: false,
+            number_limits: 3,
+            transfer_methods: ['local_file', 'remote_url'],
+          },
+        }),
       }),
-    })
+    }))
     expect(mocks.workflowStoreState.setEnvironmentVariables).toHaveBeenCalledWith([])
   })
 })

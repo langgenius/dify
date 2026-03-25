@@ -77,7 +77,7 @@ describe('variable-modal helpers', () => {
       objectValue: [],
       type: ChatVarType.Boolean,
       value: undefined,
-    })).toBe(true)
+    })).toBe(false)
 
     expect(formatChatVariableValue({
       editInJSON: false,

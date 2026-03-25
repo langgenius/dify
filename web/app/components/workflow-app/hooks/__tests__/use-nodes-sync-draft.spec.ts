@@ -70,8 +70,20 @@ vi.mock('@/service/workflow', () => ({
   syncWorkflowDraft: (p: unknown) => mockSyncWorkflowDraft(p),
 }))
 
-vi.mock('@/service/fetch', () => ({ postWithKeepalive: (...args: unknown[]) => mockPostWithKeepalive(...args) }))
-vi.mock('@/config', () => ({ API_PREFIX: '/api' }))
+vi.mock('@/service/fetch', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/fetch')>()
+  return {
+    ...actual,
+    postWithKeepalive: (...args: unknown[]) => mockPostWithKeepalive(...args),
+  }
+})
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+  return {
+    ...actual,
+    API_PREFIX: '/api',
+  }
+})
 
 const mockHandleRefreshWorkflowDraft = vi.fn()
 vi.mock('@/app/components/workflow-app/hooks', () => ({
@@ -207,9 +219,11 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
       await result.current.doSyncWorkflowDraft(false, callbacks)
     })
 
-    expect(mockSyncWorkflowDraft).toHaveBeenCalledWith({
+    expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(expect.objectContaining({
       url: '/apps/app-1/workflows/draft',
-      params: {
+      canNotSaveEmpty: true,
+      params: expect.objectContaining({
+        _is_collaborative: false,
         graph: {
           nodes: [{ id: 'n1', position: { x: 0, y: 0 }, data: { type: 'start', label: 'Start' } }],
           edges: [{ id: 'edge-1', source: 'n1', target: 'n2', data: { stable: 'keep' } }],
@@ -224,12 +238,13 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
           retriever_resource: { enabled: true },
           sensitive_word_avoidance: { enabled: false },
           file_upload: { enabled: true },
+          sandbox: undefined,
         },
         environment_variables: [{ id: 'env-1', value: 'env' }],
         conversation_variables: [{ id: 'conversation-1', value: 'conversation' }],
         hash: 'latest-hash',
-      },
-    })
+      }),
+    }))
     expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('new')
     expect(mockSetDraftUpdatedAt).toHaveBeenCalledWith(1)
     expect(callbacks.onSuccess).toHaveBeenCalled()

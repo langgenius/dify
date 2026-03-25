@@ -150,7 +150,7 @@ describe('VariableInspect Panel', () => {
       showVariableInspectPanel: true,
     })
 
-    fireEvent.click(screen.getAllByRole('button')[0])
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
 
     expect(screen.getByText('workflow.debug.variableInspect.emptyTip')).toBeInTheDocument()
     expect(store.getState().showVariableInspectPanel).toBe(false)

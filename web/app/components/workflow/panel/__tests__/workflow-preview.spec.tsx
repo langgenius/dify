@@ -142,7 +142,7 @@ describe('WorkflowPreview', () => {
 
   it('should keep the input tab active, switch to result after running, and close the preview panel', async () => {
     const user = userEvent.setup()
-    const { container } = renderWorkflowComponent(
+    const { container, store } = renderWorkflowComponent(
       <WorkflowPreview />,
       {
         initialStoreState: {
@@ -156,7 +156,20 @@ describe('WorkflowPreview', () => {
     expect(screen.getByRole('button', { name: 'run-inputs' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'run-inputs' }))
-    expect(screen.getByTestId('result-text')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'run-inputs' })).toBeInTheDocument()
+
+    store.setState({
+      workflowRunningData: createWorkflowRunningData({
+        result: createWorkflowResult({
+          status: WorkflowRunningStatus.Running,
+          files: [],
+        }),
+      }) as NonNullable<Shape['workflowRunningData']>,
+    })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('result-text')).toBeInTheDocument()
+    })
 
     await user.click(container.querySelector('.flex.items-center.justify-between .cursor-pointer.p-1') as HTMLElement)
     expect(mockHandleCancelDebugAndPreviewPanel).toHaveBeenCalledTimes(1)
@@ -281,6 +294,7 @@ describe('WorkflowPreview', () => {
       },
     )
 
+    fireEvent.click(screen.getByText('runLog.tracing'))
     expect(screen.getByTestId('tracing-panel')).toHaveTextContent('0')
     expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
   })

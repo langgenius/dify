@@ -6,6 +6,7 @@ const mockNotify = vi.fn()
 const mockEmit = vi.fn()
 const mockDoSyncWorkflowDraft = vi.fn()
 const mockExportAppConfig = vi.fn()
+const mockExportAppBundle = vi.fn()
 const mockFetchWorkflowDraft = vi.fn()
 const mockDownloadBlob = vi.fn()
 
@@ -39,6 +40,7 @@ vi.mock('../use-nodes-sync-draft', () => ({
 }))
 
 vi.mock('@/service/apps', () => ({
+  exportAppBundle: (...args: unknown[]) => mockExportAppBundle(...args),
   exportAppConfig: (...args: unknown[]) => mockExportAppConfig(...args),
 }))
 
@@ -69,6 +71,7 @@ describe('useDSL', () => {
     }
     mockDoSyncWorkflowDraft.mockResolvedValue(undefined)
     mockExportAppConfig.mockResolvedValue({ data: 'yaml-content' })
+    mockExportAppBundle.mockResolvedValue(undefined)
     mockFetchWorkflowDraft.mockResolvedValue({ environment_variables: [] })
   })
 
@@ -79,17 +82,19 @@ describe('useDSL', () => {
       await result.current.exportCheck()
     })
 
-    expect(mockFetchWorkflowDraft).toHaveBeenCalledWith('/apps/app-1/workflows/draft')
-    expect(mockDoSyncWorkflowDraft).toHaveBeenCalled()
-    expect(mockExportAppConfig).toHaveBeenCalledWith({
-      appID: 'app-1',
-      include: false,
-      workflowID: undefined,
+    await waitFor(() => {
+      expect(mockFetchWorkflowDraft).toHaveBeenCalledWith('/apps/app-1/workflows/draft')
+      expect(mockDoSyncWorkflowDraft).toHaveBeenCalled()
+      expect(mockExportAppConfig).toHaveBeenCalledWith({
+        appID: 'app-1',
+        include: false,
+        workflowID: undefined,
+      })
+      expect(mockDownloadBlob).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.any(Blob),
+        fileName: 'Workflow App.yaml',
+      }))
     })
-    expect(mockDownloadBlob).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.any(Blob),
-      fileName: 'Workflow App.yml',
-    }))
   })
 
   it('should forward include and workflow id arguments when exporting dsl directly', async () => {
@@ -120,6 +125,7 @@ describe('useDSL', () => {
       type: DSL_EXPORT_CHECK,
       payload: {
         data: secretVars,
+        sandboxed: false,
       },
     })
     expect(mockExportAppConfig).not.toHaveBeenCalled()

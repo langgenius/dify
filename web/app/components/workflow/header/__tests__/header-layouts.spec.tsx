@@ -14,7 +14,7 @@ const mockHandleNodeSelect = vi.fn()
 const mockHandleRefreshWorkflowDraft = vi.fn()
 const mockCloseAllInputFieldPanels = vi.fn()
 const mockInvalidAllLastRun = vi.fn()
-const mockRestoreWorkflow = vi.fn()
+const mockRequestRestore = vi.fn()
 const mockNotify = vi.fn()
 const mockRunAndHistory = vi.fn()
 const mockViewHistory = vi.fn()
@@ -39,6 +39,9 @@ vi.mock('../../hooks', () => ({
   useWorkflowRefreshDraft: () => ({
     handleRefreshWorkflowDraft: mockHandleRefreshWorkflowDraft,
   }),
+  useLeaderRestore: () => ({
+    requestRestore: mockRequestRestore,
+  }),
 }))
 
 vi.mock('@/app/components/rag-pipeline/hooks', () => ({
@@ -55,8 +58,14 @@ vi.mock('@/hooks/use-theme', () => ({
 
 vi.mock('@/service/use-workflow', () => ({
   useInvalidAllLastRun: () => mockInvalidAllLastRun,
-  useRestoreWorkflow: () => ({
-    mutateAsync: mockRestoreWorkflow,
+}))
+
+vi.mock('@/context/app-context', () => ({
+  useSelector: (selector: (state: { userProfile: { id: string, name: string } }) => unknown) => selector({
+    userProfile: {
+      id: 'user-1',
+      name: 'Tester',
+    },
   }),
 }))
 
@@ -75,6 +84,10 @@ vi.mock('../editing-title', () => ({
 
 vi.mock('../scroll-to-selected-node-button', () => ({
   default: () => <div>scroll-button</div>,
+}))
+
+vi.mock('../online-users', () => ({
+  default: () => <div>online-users</div>,
 }))
 
 vi.mock('../env-button', () => ({
@@ -162,7 +175,10 @@ describe('Header layout components', () => {
     mockNodesReadOnly = false
     mockTheme = 'light'
     mockUseNodes.mockReturnValue([])
-    mockRestoreWorkflow.mockResolvedValue(undefined)
+    mockRequestRestore.mockImplementation((_payload, callbacks) => {
+      callbacks?.onSuccess?.()
+      callbacks?.onSettled?.()
+    })
   })
 
   describe('HeaderInNormal', () => {
@@ -267,11 +283,18 @@ describe('Header layout components', () => {
       fireEvent.click(screen.getByRole('button', { name: 'workflow.common.restore' }))
 
       await waitFor(() => {
-        expect(mockRestoreWorkflow).toHaveBeenCalledWith('/apps/flow-1/workflows/version-1/restore')
+        expect(mockRequestRestore).toHaveBeenCalledWith(expect.objectContaining({
+          versionId: 'version-1',
+          initiatorUserId: 'user-1',
+          initiatorName: 'Tester',
+        }), expect.objectContaining({
+          onSuccess: expect.any(Function),
+          onError: expect.any(Function),
+          onSettled: expect.any(Function),
+        }))
         expect(store.getState().showWorkflowVersionHistoryPanel).toBe(false)
         expect(store.getState().isRestoring).toBe(false)
         expect(store.getState().backupDraft).toBeUndefined()
-        expect(mockHandleRefreshWorkflowDraft).toHaveBeenCalledTimes(1)
         expect(deleteAllInspectVars).toHaveBeenCalledTimes(1)
         expect(mockInvalidAllLastRun).toHaveBeenCalledTimes(1)
         expect(mockNotify).toHaveBeenCalledWith({

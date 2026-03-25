@@ -29,6 +29,7 @@ import {
   importDSLConfirm,
 } from '@/service/apps'
 import { fetchWorkflowDraft } from '@/service/workflow'
+import { collaborationManager } from './collaboration/core/collaboration-manager'
 import { WORKFLOW_DATA_UPDATE } from './constants'
 import {
   getImportNotificationPayload,
@@ -36,7 +37,6 @@ import {
   normalizeWorkflowFeatures,
   validateDSLContent,
 } from './update-dsl-modal.helpers'
-import { collaborationManager } from './collaboration/core/collaboration-manager'
 import {
   initialEdges,
   initialNodes,

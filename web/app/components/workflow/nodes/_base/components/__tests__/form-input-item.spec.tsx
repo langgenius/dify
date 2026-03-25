@@ -41,7 +41,7 @@ const renderFormInputItem = (props: Partial<ComponentProps<typeof FormInputItem>
   renderWorkflowFlowComponent(
     <FormInputItem
       readOnly={false}
-      nodeId="node-1"
+      nodeId=""
       schema={createSchema()}
       value={{
         field: {

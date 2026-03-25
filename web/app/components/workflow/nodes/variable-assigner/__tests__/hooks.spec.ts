@@ -1,4 +1,6 @@
 import { act, renderHook } from '@testing-library/react'
+import * as React from 'react'
+import { FeaturesProvider } from '@/app/components/base/features/context'
 import { VarType } from '../../../types'
 import { useGetAvailableVars, useVariableAssigner } from '../hooks'
 
@@ -229,7 +231,9 @@ describe('variable-assigner/hooks', () => {
       getNodeAvailableVars,
     })
 
-    const { result } = renderHook(() => useGetAvailableVars())
+    const { result } = renderHook(() => useGetAvailableVars(), {
+      wrapper: ({ children }) => React.createElement(FeaturesProvider, null, children),
+    })
 
     expect(result.current('current-node', 'target', () => true, true)).toEqual([{
       isStartNode: true,

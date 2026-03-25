@@ -8,6 +8,16 @@ import WorkflowMain from '../workflow-main'
 const mockSetFeatures = vi.fn()
 const mockSetConversationVariables = vi.fn()
 const mockSetEnvironmentVariables = vi.fn()
+const mockStartCursorTracking = vi.fn()
+const mockStopCursorTracking = vi.fn()
+const mockGetNodes = vi.fn()
+const mockSetNodes = vi.fn()
+const mockGetEdges = vi.fn()
+const mockSetEdges = vi.fn()
+
+const workflowUiState = {
+  appId: 'app-1',
+}
 
 const hookFns = {
   doSyncWorkflowDraft: vi.fn(),
@@ -54,6 +64,7 @@ type MockWorkflowWithInnerContextProps = Pick<WorkflowProps, 'nodes' | 'edges' |
 }
 
 vi.mock('@/app/components/base/features/hooks', () => ({
+  useFeatures: <T,>(selector: (state: { features: { sandbox?: { enabled: boolean } } }) => T) => selector({ features: {} }),
   useFeaturesStore: () => ({
     getState: () => ({
       setFeatures: mockSetFeatures,
@@ -62,12 +73,42 @@ vi.mock('@/app/components/base/features/hooks', () => ({
 }))
 
 vi.mock('@/app/components/workflow/store', () => ({
+  useStore: <T,>(selector: (state: typeof workflowUiState) => T) => selector(workflowUiState),
   useWorkflowStore: () => ({
     getState: () => ({
       setConversationVariables: mockSetConversationVariables,
       setEnvironmentVariables: mockSetEnvironmentVariables,
     }),
   }),
+}))
+
+vi.mock('reactflow', () => ({
+  useReactFlow: () => ({
+    getNodes: mockGetNodes,
+    setNodes: mockSetNodes,
+    getEdges: mockGetEdges,
+    setEdges: mockSetEdges,
+  }),
+}))
+
+vi.mock('@/app/components/workflow/collaboration', () => ({
+  collaborationManager: {
+    onVarsAndFeaturesUpdate: vi.fn(() => vi.fn()),
+    onWorkflowUpdate: vi.fn(() => vi.fn()),
+    onSyncRequest: vi.fn(() => vi.fn()),
+  },
+  useCollaboration: () => ({
+    startCursorTracking: mockStartCursorTracking,
+    stopCursorTracking: mockStopCursorTracking,
+    onlineUsers: [],
+    cursors: {},
+    isConnected: false,
+    isEnabled: false,
+  }),
+}))
+
+vi.mock('@/app/components/workflow/block-selector/context/mcp-tool-availability-context', () => ({
+  MCPToolAvailabilityProvider: ({ children }: { children: ReactNode, sandboxEnabled: boolean }) => <>{children}</>,
 }))
 
 vi.mock('@/app/components/workflow', () => ({
@@ -172,6 +213,8 @@ describe('WorkflowMain', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     capturedContextProps = null
+    mockGetNodes.mockReturnValue([])
+    mockGetEdges.mockReturnValue([])
   })
 
   it('should render the inner workflow context with children and forwarded graph props', () => {
@@ -207,9 +250,18 @@ describe('WorkflowMain', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /update-workflow-data/i }))
 
-    expect(mockSetFeatures).toHaveBeenCalledWith({ file: { enabled: true } })
-    expect(mockSetConversationVariables).toHaveBeenCalledWith([{ id: 'conversation-1' }])
-    expect(mockSetEnvironmentVariables).toHaveBeenCalledWith([{ id: 'env-1' }])
+    expect(mockSetFeatures).toHaveBeenCalledWith(expect.objectContaining({
+      file: expect.objectContaining({
+        enabled: true,
+      }),
+      sandbox: { enabled: false },
+    }))
+    expect(mockSetConversationVariables).toHaveBeenCalledWith([
+      expect.objectContaining({ id: 'conversation-1' }),
+    ])
+    expect(mockSetEnvironmentVariables).toHaveBeenCalledWith([
+      expect.objectContaining({ id: 'env-1' }),
+    ])
   })
 
   it('should only update the workflow store slices present in the payload', () => {
@@ -223,7 +275,9 @@ describe('WorkflowMain', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /update-conversation-only/i }))
 
-    expect(mockSetConversationVariables).toHaveBeenCalledWith([{ id: 'conversation-only' }])
+    expect(mockSetConversationVariables).toHaveBeenCalledWith([
+      expect.objectContaining({ id: 'conversation-only' }),
+    ])
     expect(mockSetFeatures).not.toHaveBeenCalled()
     expect(mockSetEnvironmentVariables).not.toHaveBeenCalled()
   })

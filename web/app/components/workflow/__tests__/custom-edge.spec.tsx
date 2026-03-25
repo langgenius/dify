@@ -9,6 +9,7 @@ const mockUseAvailableBlocks = vi.hoisted(() => vi.fn())
 const mockUseNodesInteractions = vi.hoisted(() => vi.fn())
 const mockBlockSelector = vi.hoisted(() => vi.fn())
 const mockGradientRender = vi.hoisted(() => vi.fn())
+const mockUseHooksStore = vi.hoisted(() => vi.fn())
 
 vi.mock('reactflow', () => ({
   BaseEdge: (props: {
@@ -42,6 +43,10 @@ vi.mock('reactflow', () => ({
 vi.mock('@/app/components/workflow/hooks', () => ({
   useAvailableBlocks: (...args: unknown[]) => mockUseAvailableBlocks(...args),
   useNodesInteractions: () => mockUseNodesInteractions(),
+}))
+
+vi.mock('../hooks-store', () => ({
+  useHooksStore: (selector: (state: { interactionMode: string }) => unknown) => mockUseHooksStore(selector),
 }))
 
 vi.mock('@/app/components/workflow/block-selector', () => ({
@@ -87,6 +92,9 @@ describe('CustomEdge', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockUseHooksStore.mockImplementation((selector: (state: { interactionMode: string }) => unknown) => selector({
+      interactionMode: 'default',
+    }))
     mockUseNodesInteractions.mockReturnValue({
       handleNodeAdd: mockHandleNodeAdd,
     })

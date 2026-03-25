@@ -3,9 +3,22 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { useAvailableNodesMetaData } from '../use-available-nodes-meta-data'
 
 const mockUseIsChatMode = vi.fn()
+const appStoreState = {
+  appDetail: {
+    runtime_type: 'default',
+  },
+}
 
 vi.mock('@/app/components/workflow-app/hooks/use-is-chat-mode', () => ({
   useIsChatMode: () => mockUseIsChatMode(),
+}))
+
+vi.mock('@/app/components/app/store', () => ({
+  useStore: <T>(selector: (state: typeof appStoreState) => T) => selector(appStoreState),
+}))
+
+vi.mock('@/app/components/base/features/hooks', () => ({
+  useFeatures: <T>(selector: (state: { features: { sandbox?: { enabled: boolean } } }) => T) => selector({ features: {} }),
 }))
 
 vi.mock('@/context/i18n', () => ({

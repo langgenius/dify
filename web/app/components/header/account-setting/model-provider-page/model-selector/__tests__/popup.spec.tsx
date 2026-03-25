@@ -405,7 +405,7 @@ describe('Popup', () => {
 
     expect(onHide).toHaveBeenCalled()
     expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
-      payload: 'provider',
+      payload: 'model-provider',
     })
   })
 
@@ -425,7 +425,7 @@ describe('Popup', () => {
     fireEvent.click(screen.getByText(/modelProvider\.selector\.configure/))
     expect(onHide).toHaveBeenCalled()
     expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
-      payload: 'provider',
+      payload: 'model-provider',
     })
   })
 

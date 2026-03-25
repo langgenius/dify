@@ -52,12 +52,12 @@ import {
 } from './hooks/use-workflow-init'
 import { parseAsViewType, WORKFLOW_VIEW_PARAM_KEY } from './search-params'
 import { createWorkflowSlice } from './store/workflow/workflow-slice'
-import { getSandboxMigrationDismissed, setSandboxMigrationDismissed } from './utils/sandbox-migration-storage'
 import {
   buildInitialFeatures,
   buildTriggerStatusMap,
   coerceReplayUserInputs,
 } from './utils'
+import { getSandboxMigrationDismissed, setSandboxMigrationDismissed } from './utils/sandbox-migration-storage'
 
 const SkillMain = dynamic(() => import('@/app/components/workflow/skill/main'), {
   ssr: false,

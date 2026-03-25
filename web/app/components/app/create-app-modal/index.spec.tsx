@@ -12,6 +12,10 @@ import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import CreateAppModal from './index'
 
+const { mockNotify } = vi.hoisted(() => ({
+  mockNotify: vi.fn(),
+}))
+
 vi.mock('ahooks', () => ({
   useDebounceFn: <T extends (...args: unknown[]) => unknown>(fn: T) => {
     const run = (...args: Parameters<T>) => fn(...args)
@@ -31,6 +35,12 @@ vi.mock('@/app/components/base/amplitude', () => ({
 vi.mock('@/service/apps', () => ({
   createApp: vi.fn(),
 }))
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    success: (message: string) => mockNotify({ type: 'success', message }),
+    error: (message: string) => mockNotify({ type: 'error', message }),
+  },
+}))
 vi.mock('@/utils/app-redirection', () => ({
   getRedirection: vi.fn(),
 }))
@@ -47,7 +57,6 @@ vi.mock('@/hooks/use-theme', () => ({
   default: () => ({ theme: 'light' }),
 }))
 
-const mockNotify = vi.fn()
 const mockUseRouter = vi.mocked(useRouter)
 const mockPush = vi.fn()
 const mockCreateApp = vi.mocked(createApp)

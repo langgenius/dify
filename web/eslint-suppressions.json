@@ -6339,9 +6339,6 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "perfectionist/sort-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }

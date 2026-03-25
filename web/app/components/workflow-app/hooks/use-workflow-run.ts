@@ -20,8 +20,7 @@ import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-
 import { useWorkflowRunEvent } from '@/app/components/workflow/hooks/use-workflow-run-event/use-workflow-run-event'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { usePathname } from '@/next/navigation'
-import { handleStream, post, sseGet, ssePost } from '@/service/base'
-import { ContentType } from '@/service/fetch'
+import { ssePost } from '@/service/base'
 import { useInvalidateSandboxFiles } from '@/service/use-sandbox-file'
 import { useInvalidAllLastRun, useInvalidateWorkflowRunHistory } from '@/service/use-workflow'
 import { stopWorkflowRun } from '@/service/workflow'
@@ -380,7 +379,6 @@ export const useWorkflowRun = () => {
   const handleStopRun = useCallback((taskId: string) => {
     const setStoppedState = () => {
       const {
-        workflowRunningData,
         setWorkflowRunningData,
         setIsListening,
         setShowVariableInspectPanel,

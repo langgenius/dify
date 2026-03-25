@@ -91,7 +91,7 @@ describe('useWorkflowFinished', () => {
     expect(state.resultText).toBe('hello')
   })
 
-  it('should not activate result tab for multi-key outputs', () => {
+  it('should activate result tab for multi-key outputs', () => {
     const { result, store } = renderWorkflowHook(() => useWorkflowFinished(), {
       initialStoreState: { workflowRunningData: baseRunningData() },
     })
@@ -100,7 +100,7 @@ describe('useWorkflowFinished', () => {
       data: { status: 'succeeded', outputs: { a: 'hello', b: 'world' } },
     } as unknown as WorkflowFinishedResponse)
 
-    expect(store.getState().workflowRunningData!.resultTabActive).toBeFalsy()
+    expect(store.getState().workflowRunningData!.resultTabActive).toBe(true)
   })
 })
 

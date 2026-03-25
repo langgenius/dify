@@ -1,7 +1,6 @@
 import type { Model, ModelItem } from '../declarations'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { tooltipManager } from '@/app/components/base/tooltip/TooltipManager'
 import {
   ConfigurationMethodEnum,
   ModelFeatureEnum,
@@ -29,18 +28,106 @@ vi.mock('@/utils/tool-call', () => ({
   supportFunctionCall: mockSupportFunctionCall,
 }))
 
+const mockMarketplacePlugins = vi.hoisted(() => ({
+  current: [] as Array<{ plugin_id: string, latest_package_identifier: string }>,
+  isLoading: false,
+}))
+const mockContextModelProviders = vi.hoisted(() => ({
+  current: [] as Array<{
+    provider: string
+    label: Record<string, string>
+    icon_small: Record<string, string>
+    icon_small_dark?: Record<string, string>
+    custom_configuration?: { status?: string }
+    system_configuration?: { enabled?: boolean }
+  }>,
+}))
+const mockTrialModels = vi.hoisted(() => ({
+  current: ['test-openai', 'test-anthropic'] as string[],
+}))
 vi.mock('../hooks', async () => {
   const actual = await vi.importActual<typeof import('../hooks')>('../hooks')
   return {
     ...actual,
     useLanguage: () => mockLanguage,
-    useMarketplaceAllPlugins: () => [],
+    useMarketplaceAllPlugins: () => ({
+      plugins: mockMarketplacePlugins.current,
+      isLoading: mockMarketplacePlugins.isLoading,
+    }),
   }
 })
 
 vi.mock('./popup-item', () => ({
   default: ({ model }: { model: Model }) => <div>{model.provider}</div>,
 }))
+
+vi.mock('@/context/provider-context', () => ({
+  useProviderContext: () => ({ modelProviders: mockContextModelProviders.current }),
+}))
+
+vi.mock('@/context/global-public-context', () => ({
+  useSystemFeaturesQuery: () => ({
+    data: { trial_models: mockTrialModels.current },
+  }),
+}))
+
+const mockTrialCredits = vi.hoisted(() => ({
+  credits: 200,
+  totalCredits: 200,
+  isExhausted: false,
+  isLoading: false,
+  nextCreditResetDate: undefined as number | undefined,
+}))
+vi.mock('../provider-added-card/use-trial-credits', () => ({
+  useTrialCredits: () => mockTrialCredits,
+}))
+
+vi.mock('../provider-added-card/model-auth-dropdown/credits-exhausted-alert', () => ({
+  default: () => <div data-testid="credits-exhausted-alert" />,
+}))
+
+vi.mock('next-themes', () => ({
+  useTheme: () => ({ theme: 'light' }),
+}))
+
+const mockInstallMutateAsync = vi.hoisted(() => vi.fn())
+vi.mock('@/service/use-plugins', () => ({
+  useInstallPackageFromMarketPlace: () => ({ mutateAsync: mockInstallMutateAsync }),
+}))
+
+const mockRefreshPluginList = vi.hoisted(() => vi.fn())
+vi.mock('@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list', () => ({
+  default: () => ({ refreshPluginList: mockRefreshPluginList }),
+}))
+
+const mockCheck = vi.hoisted(() => vi.fn())
+vi.mock('@/app/components/plugins/install-plugin/base/check-task-status', () => ({
+  default: () => ({ check: mockCheck }),
+}))
+
+vi.mock('@/utils/var', () => ({
+  getMarketplaceUrl: vi.fn(() => 'https://marketplace.example.com'),
+}))
+
+vi.mock('../utils', async () => {
+  const actual = await vi.importActual<typeof import('../utils')>('../utils')
+  return {
+    ...actual,
+    MODEL_PROVIDER_QUOTA_GET_PAID: ['test-openai', 'test-anthropic'],
+    providerIconMap: {
+      'test-openai': ({ className }: { className?: string }) => <span className={className}>OAI</span>,
+      'test-anthropic': ({ className }: { className?: string }) => <span className={className}>ANT</span>,
+    },
+    modelNameMap: {
+      'test-openai': 'TestOpenAI',
+      'test-anthropic': 'TestAnthropic',
+    },
+    providerKeyToPluginId: {
+      'test-openai': 'langgenius/openai',
+      'test-anthropic': 'langgenius/anthropic',
+    },
+  }
+})
 
 const makeModelItem = (overrides: Partial<ModelItem> = {}): ModelItem => ({
   model: 'gpt-4',
@@ -54,22 +141,30 @@ const makeModelItem = (overrides: Partial<ModelItem> = {}): ModelItem => ({
 })
 
 const makeModel = (overrides: Partial<Model> = {}): Model => ({
-  provider: 'openai',
+  provider: 'custom-provider',
   icon_small: { en_US: '', zh_Hans: '' },
-  label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
+  label: { en_US: 'Custom Provider', zh_Hans: 'Custom Provider' },
   models: [makeModelItem()],
   status: ModelStatusEnum.active,
   ...overrides,
 })
 
 describe('Popup', () => {
-  let closeActiveTooltipSpy: ReturnType<typeof vi.spyOn>
-
   beforeEach(() => {
     vi.clearAllMocks()
     mockLanguage = 'en_US'
     mockSupportFunctionCall.mockReturnValue(true)
-    closeActiveTooltipSpy = vi.spyOn(tooltipManager, 'closeActiveTooltip')
+    mockMarketplacePlugins.current = []
+    mockMarketplacePlugins.isLoading = false
+    mockContextModelProviders.current = []
+    mockTrialModels.current = ['test-openai', 'test-anthropic']
+    Object.assign(mockTrialCredits, {
+      credits: 200,
+      totalCredits: 200,
+      isExhausted: false,
+      isLoading: false,
+      nextCreditResetDate: undefined,
+    })
   })
 
   it('should filter models by search and allow clearing search', () => {
@@ -81,7 +176,7 @@ describe('Popup', () => {
       />,
     )
 
-    expect(screen.getByText('openai')).toBeInTheDocument()
+    expect(screen.getByText('custom-provider')).toBeInTheDocument()
 
     const input = screen.getByPlaceholderText('datasetSettings.form.searchModel')
     fireEvent.change(input, { target: { value: 'not-found' } })
@@ -89,7 +184,7 @@ describe('Popup', () => {
 
     fireEvent.change(input, { target: { value: '' } })
     expect((input as HTMLInputElement).value).toBe('')
-    expect(screen.getByText('openai')).toBeInTheDocument()
+    expect(screen.getByText('custom-provider')).toBeInTheDocument()
   })
 
   it('should filter by scope features including toolCall and non-toolCall checks', () => {
@@ -120,7 +215,7 @@ describe('Popup', () => {
         scopeFeatures={[ModelFeatureEnum.toolCall, ModelFeatureEnum.vision]}
       />,
     )
-    expect(screen.getByText('openai')).toBeInTheDocument()
+    expect(screen.getByText('custom-provider')).toBeInTheDocument()
 
     unmount2()
     const { unmount: unmount3 } = renderWithProviders(
@@ -131,7 +226,7 @@ describe('Popup', () => {
         scopeFeatures={[ModelFeatureEnum.vision]}
       />,
     )
-    expect(screen.getByText('openai')).toBeInTheDocument()
+    expect(screen.getByText('custom-provider')).toBeInTheDocument()
 
     // When features are missing, non-toolCall feature checks should fail.
     unmount3()
@@ -162,7 +257,7 @@ describe('Popup', () => {
       { target: { value: 'gpt' } },
     )
 
-    expect(screen.getByText('openai')).toBeInTheDocument()
+    expect(screen.getByText('No model found for “gpt”')).toBeInTheDocument()
   })
 
   it('should filter out model when features array exists but does not include required scopeFeature', () => {
@@ -180,11 +275,11 @@ describe('Popup', () => {
     )
 
     // The model item should be filtered out because it has toolCall but not vision
-    expect(screen.queryByText('openai')).not.toBeInTheDocument()
+    expect(screen.queryByText('custom-provider')).not.toBeInTheDocument()
   })
 
-  it('should close tooltip on scroll', () => {
-    const { container } = renderWithProviders(
+  it('should render marketplace providers that are not installed yet', () => {
+    renderWithProviders(
       <Popup
         modelList={[makeModel()]}
         onSelect={vi.fn()}
@@ -192,8 +287,8 @@ describe('Popup', () => {
       />,
     )
 
-    fireEvent.scroll(container.firstElementChild as HTMLElement)
-    expect(closeActiveTooltipSpy).toHaveBeenCalled()
+    expect(screen.getByText('TestOpenAI')).toBeInTheDocument()
+    expect(screen.getByText('TestAnthropic')).toBeInTheDocument()
   })
 
   it('should open provider settings when clicking footer link', () => {
@@ -205,7 +300,7 @@ describe('Popup', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('common.model.settingsLink'))
+    fireEvent.click(screen.getByText('common.modelProvider.selector.modelProviderSettings'))
 
     expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
       payload: 'model-provider',
@@ -222,7 +317,7 @@ describe('Popup', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('common.model.settingsLink'))
+    fireEvent.click(screen.getByText('common.modelProvider.selector.modelProviderSettings'))
 
     expect(mockOnHide).toHaveBeenCalled()
   })
@@ -240,6 +335,6 @@ describe('Popup', () => {
     const input = screen.getByPlaceholderText('datasetSettings.form.searchModel')
     fireEvent.change(input, { target: { value: 'gpt' } })
 
-    expect(screen.getByText('openai')).toBeInTheDocument()
+    expect(screen.getByText('No model found for “gpt”')).toBeInTheDocument()
   })
 })

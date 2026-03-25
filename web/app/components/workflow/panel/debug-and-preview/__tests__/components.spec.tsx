@@ -109,7 +109,7 @@ vi.mock('@/app/components/base/chat/chat', () => ({
   },
 }))
 
-vi.mock('../hooks', () => ({
+vi.mock('../hooks/use-chat', () => ({
   useChat: (...args: unknown[]) => mockUseChat(...args),
 }))
 

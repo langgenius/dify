@@ -10,6 +10,8 @@ const mockUsePanelInteractions = vi.hoisted(() => vi.fn())
 const mockUseWorkflowStartRun = vi.hoisted(() => vi.fn())
 const mockUseOperator = vi.hoisted(() => vi.fn())
 const mockUseDSL = vi.hoisted(() => vi.fn())
+const mockUseWorkflowMoveMode = vi.hoisted(() => vi.fn())
+const mockUseFeatures = vi.hoisted(() => vi.fn())
 
 vi.mock('ahooks', () => ({
   useClickAway: (...args: unknown[]) => mockUseClickAway(...args),
@@ -32,10 +34,15 @@ vi.mock('@/app/components/workflow/hooks', () => ({
   usePanelInteractions: () => mockUsePanelInteractions(),
   useWorkflowStartRun: () => mockUseWorkflowStartRun(),
   useDSL: () => mockUseDSL(),
+  useWorkflowMoveMode: () => mockUseWorkflowMoveMode(),
 }))
 
 vi.mock('@/app/components/workflow/operator/hooks', () => ({
   useOperator: () => mockUseOperator(),
+}))
+
+vi.mock('@/app/components/base/features/hooks', () => ({
+  useFeatures: (selector: (state: { features: { sandbox?: { enabled?: boolean } } }) => unknown) => mockUseFeatures(selector),
 }))
 
 vi.mock('@/app/components/workflow/operator/add-block', () => ({
@@ -62,14 +69,19 @@ describe('PanelContextmenu', () => {
   const mockHandleAddNote = vi.fn()
   const mockExportCheck = vi.fn()
   const mockSetShowImportDSLModal = vi.fn()
+  const mockSetShowUpgradeRuntimeModal = vi.fn()
+  const mockSetCommentPlacing = vi.fn()
+  const mockSetCommentQuickAdd = vi.fn()
   let panelMenu: { left: number, top: number } | undefined
   let clipboardElements: unknown[]
+  let pipelineId: string | undefined
   let clickAwayHandler: (() => void) | undefined
 
   beforeEach(() => {
     vi.clearAllMocks()
     panelMenu = undefined
     clipboardElements = []
+    pipelineId = 'pipeline-1'
     clickAwayHandler = undefined
 
     mockUseClickAway.mockImplementation((handler: () => void) => {
@@ -82,10 +94,20 @@ describe('PanelContextmenu', () => {
       panelMenu?: { left: number, top: number }
       clipboardElements: unknown[]
       setShowImportDSLModal: (visible: boolean) => void
+      setShowUpgradeRuntimeModal: (visible: boolean) => void
+      pendingComment?: unknown
+      setCommentPlacing: (placing: boolean) => void
+      setCommentQuickAdd: (placing: boolean) => void
+      pipelineId?: string
     }) => unknown) => selector({
       panelMenu,
       clipboardElements,
       setShowImportDSLModal: mockSetShowImportDSLModal,
+      setShowUpgradeRuntimeModal: mockSetShowUpgradeRuntimeModal,
+      pendingComment: undefined,
+      setCommentPlacing: mockSetCommentPlacing,
+      setCommentQuickAdd: mockSetCommentQuickAdd,
+      pipelineId,
     }))
     mockUseNodesInteractions.mockReturnValue({
       handleNodesPaste: mockHandleNodesPaste,
@@ -102,6 +124,16 @@ describe('PanelContextmenu', () => {
     mockUseDSL.mockReturnValue({
       exportCheck: mockExportCheck,
     })
+    mockUseWorkflowMoveMode.mockReturnValue({
+      isCommentModeAvailable: false,
+    })
+    mockUseFeatures.mockImplementation((selector: (state: { features: { sandbox?: { enabled?: boolean } } }) => unknown) => selector({
+      features: {
+        sandbox: {
+          enabled: false,
+        },
+      },
+    }))
   })
 
   it('should stay hidden when the panel menu is absent', () => {

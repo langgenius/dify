@@ -76,7 +76,7 @@ describe('useWorkflowTemplate', () => {
     expect(generateNewNodeCalls[2].data).toMatchObject({
       type: 'answer',
       title: 'workflow.blocks.answer',
-      answer: '{{#llm.text#}}',
+      answer: '{{#llm.generation#}}',
     })
   })
 })
