@@ -2,7 +2,7 @@ from unittest.mock import patch
 
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
 from core.workflow.nodes.agent.message_transformer import AgentMessageTransformer
-from dify_graph.enums import BuiltinNodeTypes
+from graphon.enums import BuiltinNodeTypes
 
 
 def test_transform_passes_conversation_id_to_tool_file_message_transformer() -> None:

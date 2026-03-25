@@ -3,9 +3,9 @@ import logging
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
-from dify_graph.nodes import BuiltinNodeTypes
-from dify_graph.nodes.tool.entities import ToolEntity
 from events.app_event import app_draft_workflow_was_synced
+from graphon.nodes import BuiltinNodeTypes
+from graphon.nodes.tool.entities import ToolEntity
 
 logger = logging.getLogger(__name__)
 

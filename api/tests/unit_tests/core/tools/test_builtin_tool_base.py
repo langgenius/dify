@@ -12,7 +12,7 @@ from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.builtin_tool.tool import BuiltinTool
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolEntity, ToolIdentity, ToolInvokeMessage, ToolProviderType
-from dify_graph.model_runtime.entities.message_entities import UserPromptMessage
+from graphon.model_runtime.entities.message_entities import UserPromptMessage
 
 
 class _BuiltinDummyTool(BuiltinTool):

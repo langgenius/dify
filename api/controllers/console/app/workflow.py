@@ -30,15 +30,15 @@ from core.trigger.debug.event_selectors import (
     create_event_poller,
     select_trigger_debug_events,
 )
-from dify_graph.enums import NodeType
-from dify_graph.file.models import File
-from dify_graph.graph_engine.manager import GraphEngineManager
-from dify_graph.model_runtime.utils.encoders import jsonable_encoder
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from factories import file_factory, variable_factory
 from fields.member_fields import simple_account_fields
 from fields.workflow_fields import workflow_fields, workflow_pagination_fields
+from graphon.enums import NodeType
+from graphon.file.models import File
+from graphon.graph_engine.manager import GraphEngineManager
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs import helper
 from libs.datetime_utils import naive_utc_now
 from libs.helper import TimestampField, uuid_value

@@ -18,13 +18,13 @@ from sqlalchemy.orm import sessionmaker
 
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
 from core.repositories.factory import OrderConfig, WorkflowNodeExecutionRepository
-from dify_graph.entities import WorkflowNodeExecution
-from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
-from dify_graph.model_runtime.utils.encoders import jsonable_encoder
-from dify_graph.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from extensions.logstore.aliyun_logstore import AliyunLogStore
 from extensions.logstore.repositories import safe_float, safe_int
 from extensions.logstore.sql_escape import escape_identifier
+from graphon.entities import WorkflowNodeExecution
+from graphon.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from graphon.model_runtime.utils.encoders import jsonable_encoder
+from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from libs.helper import extract_tenant_id
 from models import (
     Account,

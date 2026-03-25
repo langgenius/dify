@@ -10,8 +10,8 @@ from core.app.apps.workflow.app_runner import WorkflowAppRunner
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.workflow.system_variables import default_system_variables
-from dify_graph.entities.graph_config import NodeConfigDictAdapter
-from dify_graph.runtime import GraphRuntimeState, VariablePool
+from graphon.entities.graph_config import NodeConfigDictAdapter
+from graphon.runtime import GraphRuntimeState, VariablePool
 from models.workflow import Workflow
 
 

@@ -7,12 +7,12 @@ from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.system_variables import build_system_variables
-from dify_graph.enums import WorkflowNodeExecutionStatus
-from dify_graph.graph import Graph
-from dify_graph.node_events import NodeRunResult
-from dify_graph.nodes.code.code_node import CodeNode
-from dify_graph.nodes.code.limits import CodeNodeLimits
-from dify_graph.runtime import GraphRuntimeState, VariablePool
+from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.graph import Graph
+from graphon.node_events import NodeRunResult
+from graphon.nodes.code.code_node import CodeNode
+from graphon.nodes.code.limits import CodeNodeLimits
+from graphon.runtime import GraphRuntimeState, VariablePool
 from tests.integration_tests.workflow.nodes.__mock.code_executor import setup_code_executor_mock
 from tests.workflow_test_utils import build_test_graph_init_params
 

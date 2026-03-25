@@ -27,8 +27,8 @@ from core.tools.builtin_tool.tool import BuiltinTool
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolEntity, ToolIdentity, ToolInvokeMessage
 from core.tools.errors import ToolInvokeError
-from dify_graph.file.enums import FileType
-from dify_graph.model_runtime.entities.model_entities import ModelPropertyKey
+from graphon.file.enums import FileType
+from graphon.model_runtime.entities.model_entities import ModelPropertyKey
 
 
 def _build_builtin_tool(tool_cls: type[BuiltinTool]) -> BuiltinTool:

@@ -3,8 +3,8 @@ from typing import Any, Literal, Protocol
 from pydantic import BaseModel, Field
 
 from core.rag.data_post_processor.data_post_processor import RerankingModelDict, WeightsDict
-from dify_graph.model_runtime.entities import LLMUsage
-from dify_graph.nodes.llm.entities import ModelConfig
+from graphon.model_runtime.entities import LLMUsage
+from graphon.nodes.llm.entities import ModelConfig
 
 from .entities import MetadataFilteringCondition
 

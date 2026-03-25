@@ -64,13 +64,13 @@ from core.workflow.nodes.knowledge_retrieval.retrieval import (
     SourceChildChunk,
     SourceMetadata,
 )
-from dify_graph.file import File, FileTransferMethod, FileType
-from dify_graph.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMUsage
-from dify_graph.model_runtime.entities.message_entities import PromptMessage, PromptMessageRole, PromptMessageTool
-from dify_graph.model_runtime.entities.model_entities import ModelFeature, ModelType
-from dify_graph.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from graphon.file import File, FileTransferMethod, FileType
+from graphon.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMUsage
+from graphon.model_runtime.entities.message_entities import PromptMessage, PromptMessageRole, PromptMessageTool
+from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
+from graphon.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from libs.json_in_md_parser import parse_and_check_json_markdown
 from models import UploadFile
 from models.dataset import (

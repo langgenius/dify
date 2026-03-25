@@ -10,10 +10,11 @@ from core.workflow.variable_prefixes import (
     ENVIRONMENT_VARIABLE_NODE_ID,
     SYSTEM_VARIABLE_NODE_ID,
 )
-from dify_graph.file import File, FileTransferMethod, FileType
-from dify_graph.runtime import VariablePool
-from dify_graph.variables import FileSegment, StringSegment
-from dify_graph.variables.segments import (
+from factories.variable_factory import build_segment, segment_to_variable
+from graphon.file import File, FileTransferMethod, FileType
+from graphon.runtime import VariablePool
+from graphon.variables import FileSegment, StringSegment
+from graphon.variables.segments import (
     ArrayAnySegment,
     ArrayFileSegment,
     ArrayNumberSegment,
@@ -24,7 +25,7 @@ from dify_graph.variables.segments import (
     NoneSegment,
     ObjectSegment,
 )
-from dify_graph.variables.variables import (
+from graphon.variables.variables import (
     ArrayNumberVariable,
     ArrayObjectVariable,
     ArrayStringVariable,
@@ -34,7 +35,6 @@ from dify_graph.variables.variables import (
     StringVariable,
     Variable,
 )
-from factories.variable_factory import build_segment, segment_to_variable
 
 
 @pytest.fixture

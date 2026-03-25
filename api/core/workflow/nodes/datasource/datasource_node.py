@@ -7,19 +7,19 @@ from core.datasource.entities.datasource_entities import DatasourceProviderType
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.workflow.file_reference import resolve_file_record_id
 from core.workflow.system_variables import SystemVariableKey, get_system_segment
-from dify_graph.entities.graph_config import NodeConfigDict
-from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from dify_graph.enums import BuiltinNodeTypes, NodeExecutionType, WorkflowNodeExecutionMetadataKey
-from dify_graph.node_events import NodeRunResult, StreamCompletedEvent
-from dify_graph.nodes.base.node import Node
-from dify_graph.nodes.base.variable_template_parser import VariableTemplateParser
+from graphon.entities.graph_config import NodeConfigDict
+from graphon.entities.workflow_node_execution import WorkflowNodeExecutionStatus
+from graphon.enums import BuiltinNodeTypes, NodeExecutionType, WorkflowNodeExecutionMetadataKey
+from graphon.node_events import NodeRunResult, StreamCompletedEvent
+from graphon.nodes.base.node import Node
+from graphon.nodes.base.variable_template_parser import VariableTemplateParser
 
 from .entities import DatasourceNodeData, DatasourceParameter, OnlineDriveDownloadFileParam
 from .exc import DatasourceNodeError
 
 if TYPE_CHECKING:
-    from dify_graph.entities import GraphInitParams
-    from dify_graph.runtime import GraphRuntimeState
+    from graphon.entities import GraphInitParams
+    from graphon.runtime import GraphRuntimeState
 
 
 class DatasourceNode(Node[DatasourceNodeData]):

@@ -8,8 +8,8 @@ from core.app.workflow.layers.persistence import (
     WorkflowPersistenceLayer,
     _NodeRuntimeSnapshot,
 )
-from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus, WorkflowType
-from dify_graph.node_events import NodeRunResult
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus, WorkflowType
+from graphon.node_events import NodeRunResult
 
 
 def _build_layer() -> WorkflowPersistenceLayer:

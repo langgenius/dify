@@ -7,10 +7,10 @@ from core.errors.error import ProviderTokenNotInitError
 from core.model_manager import ModelInstance, ModelManager
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 from core.provider_manager import ProviderManager
-from dify_graph.model_runtime.entities.model_entities import ModelType
-from dify_graph.nodes.llm.entities import ModelConfig
-from dify_graph.nodes.llm.exc import LLMModeRequiredError, ModelNotExistError
-from dify_graph.nodes.llm.protocols import CredentialsProvider
+from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.nodes.llm.entities import ModelConfig
+from graphon.nodes.llm.exc import LLMModeRequiredError, ModelNotExistError
+from graphon.nodes.llm.protocols import CredentialsProvider
 
 
 class DifyCredentialsProvider:

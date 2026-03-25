@@ -21,11 +21,11 @@ from core.workflow.human_input_compat import (
     ExternalRecipient,
     MemberRecipient,
 )
-from dify_graph.nodes.human_input.entities import (
+from graphon.nodes.human_input.entities import (
     FormDefinition,
     UserAction,
 )
-from dify_graph.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
+from graphon.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from libs.datetime_utils import naive_utc_now
 from models.human_input import (
     EmailExternalRecipientPayload,

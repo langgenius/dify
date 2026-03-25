@@ -21,9 +21,9 @@ from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import ChatAppGenerateEntity, InvokeFrom
 from core.ops.ops_trace_manager import TraceQueueManager
-from dify_graph.model_runtime.errors.invoke import InvokeAuthorizationError
 from extensions.ext_database import db
 from factories import file_factory
+from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from models import Account
 from models.model import App, EndUser
 from services.conversation_service import ConversationService

@@ -3,19 +3,19 @@ from unittest import mock
 import pytest
 
 from core.model_manager import ModelInstance
-from dify_graph.file import FileTransferMethod, FileType
-from dify_graph.file.models import File
-from dify_graph.model_runtime.entities import (
+from graphon.file import FileTransferMethod, FileType
+from graphon.file.models import File
+from graphon.model_runtime.entities import (
     ImagePromptMessageContent,
     PromptMessageRole,
     TextPromptMessageContent,
 )
-from dify_graph.model_runtime.entities.message_entities import (
+from graphon.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     SystemPromptMessage,
     UserPromptMessage,
 )
-from dify_graph.model_runtime.entities.model_entities import (
+from graphon.model_runtime.entities.model_entities import (
     AIModelEntity,
     FetchFrom,
     ModelFeature,
@@ -24,17 +24,17 @@ from dify_graph.model_runtime.entities.model_entities import (
     ParameterRule,
     ParameterType,
 )
-from dify_graph.nodes.base.entities import VariableSelector
-from dify_graph.nodes.llm import llm_utils
-from dify_graph.nodes.llm.entities import LLMNodeChatModelMessage, LLMNodeCompletionModelPromptTemplate, MemoryConfig
-from dify_graph.nodes.llm.exc import (
+from graphon.nodes.base.entities import VariableSelector
+from graphon.nodes.llm import llm_utils
+from graphon.nodes.llm.entities import LLMNodeChatModelMessage, LLMNodeCompletionModelPromptTemplate, MemoryConfig
+from graphon.nodes.llm.exc import (
     InvalidVariableTypeError,
     MemoryRolePrefixRequiredError,
     NoPromptFoundError,
     TemplateTypeNotSupportError,
 )
-from dify_graph.runtime import VariablePool
-from dify_graph.variables import ArrayAnySegment, ArrayFileSegment, NoneSegment
+from graphon.runtime import VariablePool
+from graphon.variables import ArrayAnySegment, ArrayFileSegment, NoneSegment
 
 
 def _build_model_schema(
@@ -106,15 +106,15 @@ def _fetch_prompt_messages_with_mocked_content(content):
 
     with (
         mock.patch(
-            "dify_graph.nodes.llm.llm_utils.fetch_model_schema",
+            "graphon.nodes.llm.llm_utils.fetch_model_schema",
             return_value=mock.MagicMock(features=[]),
         ),
         mock.patch(
-            "dify_graph.nodes.llm.llm_utils.handle_list_messages",
+            "graphon.nodes.llm.llm_utils.handle_list_messages",
             return_value=[SystemPromptMessage(content=content)],
         ),
         mock.patch(
-            "dify_graph.nodes.llm.llm_utils.handle_memory_chat_mode",
+            "graphon.nodes.llm.llm_utils.handle_memory_chat_mode",
             return_value=[],
         ),
     ):
@@ -446,7 +446,7 @@ def test_handle_list_messages_splits_text_and_file_content():
     variable_pool.add(["input", "image"], image_file)
 
     with mock.patch(
-        "dify_graph.nodes.llm.llm_utils.file_manager.to_prompt_message_content",
+        "graphon.nodes.llm.llm_utils.file_manager.to_prompt_message_content",
         return_value=ImagePromptMessageContent(
             format="png",
             url="https://example.com/file.png",
@@ -508,7 +508,7 @@ def test_handle_list_messages_supports_array_file_segments():
     )
 
     with mock.patch(
-        "dify_graph.nodes.llm.llm_utils.file_manager.to_prompt_message_content",
+        "graphon.nodes.llm.llm_utils.file_manager.to_prompt_message_content",
         side_effect=[first_prompt, second_prompt],
     ):
         prompt_messages = llm_utils.handle_list_messages(
@@ -656,7 +656,7 @@ def test_handle_memory_chat_mode_returns_empty_without_memory_and_uses_window_wh
         == []
     )
 
-    with mock.patch("dify_graph.nodes.llm.llm_utils.calculate_rest_token", return_value=123) as mock_rest:
+    with mock.patch("graphon.nodes.llm.llm_utils.calculate_rest_token", return_value=123) as mock_rest:
         messages = llm_utils.handle_memory_chat_mode(
             memory=memory,
             memory_config=MemoryConfig(window=MemoryConfig.WindowConfig(enabled=True, size=2)),
@@ -686,7 +686,7 @@ def test_handle_memory_completion_mode_validates_role_prefix_and_formats_history
     )
 
     with (
-        mock.patch("dify_graph.nodes.llm.llm_utils.calculate_rest_token", return_value=456),
+        mock.patch("graphon.nodes.llm.llm_utils.calculate_rest_token", return_value=456),
         pytest.raises(MemoryRolePrefixRequiredError, match="Memory role prefix is required"),
     ):
         llm_utils.handle_memory_completion_mode(
@@ -695,7 +695,7 @@ def test_handle_memory_completion_mode_validates_role_prefix_and_formats_history
             model_instance=model_instance,
         )
 
-    with mock.patch("dify_graph.nodes.llm.llm_utils.calculate_rest_token", return_value=456):
+    with mock.patch("graphon.nodes.llm.llm_utils.calculate_rest_token", return_value=456):
         history_text = llm_utils.handle_memory_completion_mode(
             memory=memory,
             memory_config=MemoryConfig(
@@ -720,7 +720,7 @@ def test_append_file_prompts_merges_with_existing_user_content_or_appends_new_me
     prompt_messages = [UserPromptMessage(content=[TextPromptMessageContent(data="Question")])]
 
     with mock.patch(
-        "dify_graph.nodes.llm.llm_utils.file_manager.to_prompt_message_content",
+        "graphon.nodes.llm.llm_utils.file_manager.to_prompt_message_content",
         return_value=file_prompt,
     ):
         llm_utils._append_file_prompts(
@@ -736,7 +736,7 @@ def test_append_file_prompts_merges_with_existing_user_content_or_appends_new_me
 
     prompt_messages = [SystemPromptMessage(content="System prompt")]
     with mock.patch(
-        "dify_graph.nodes.llm.llm_utils.file_manager.to_prompt_message_content",
+        "graphon.nodes.llm.llm_utils.file_manager.to_prompt_message_content",
         return_value=file_prompt,
     ):
         llm_utils._append_file_prompts(
@@ -775,7 +775,7 @@ def test_fetch_prompt_messages_chat_mode_includes_query_memory_and_supported_fil
     ]
 
     with mock.patch(
-        "dify_graph.nodes.llm.llm_utils.file_manager.to_prompt_message_content",
+        "graphon.nodes.llm.llm_utils.file_manager.to_prompt_message_content",
         side_effect=file_prompts,
     ):
         prompt_messages, stop = llm_utils.fetch_prompt_messages(
@@ -891,7 +891,7 @@ def test_fetch_prompt_messages_filters_content_unsupported_by_model_features():
 
     with (
         mock.patch(
-            "dify_graph.nodes.llm.llm_utils.handle_list_messages",
+            "graphon.nodes.llm.llm_utils.handle_list_messages",
             return_value=[
                 SystemPromptMessage(
                     content=[
@@ -905,7 +905,7 @@ def test_fetch_prompt_messages_filters_content_unsupported_by_model_features():
                 )
             ],
         ),
-        mock.patch("dify_graph.nodes.llm.llm_utils.handle_memory_chat_mode", return_value=[]),
+        mock.patch("graphon.nodes.llm.llm_utils.handle_memory_chat_mode", return_value=[]),
     ):
         prompt_messages, stop = llm_utils.fetch_prompt_messages(
             sys_query=None,
@@ -931,11 +931,11 @@ def test_fetch_prompt_messages_completion_mode_supports_string_content_and_inval
 
     with (
         mock.patch(
-            "dify_graph.nodes.llm.llm_utils.handle_completion_template",
+            "graphon.nodes.llm.llm_utils.handle_completion_template",
             return_value=[UserPromptMessage(content="Prefix #histories# and #sys.query#")],
         ),
         mock.patch(
-            "dify_graph.nodes.llm.llm_utils.handle_memory_completion_mode",
+            "graphon.nodes.llm.llm_utils.handle_memory_completion_mode",
             return_value="history text",
         ),
     ):
@@ -980,11 +980,11 @@ def test_fetch_prompt_messages_completion_mode_supports_string_content_and_inval
     invalid_prompt.content = object()
     with (
         mock.patch(
-            "dify_graph.nodes.llm.llm_utils.handle_completion_template",
+            "graphon.nodes.llm.llm_utils.handle_completion_template",
             return_value=[invalid_prompt],
         ),
         mock.patch(
-            "dify_graph.nodes.llm.llm_utils.handle_memory_completion_mode",
+            "graphon.nodes.llm.llm_utils.handle_memory_completion_mode",
             return_value="history text",
         ),
         pytest.raises(ValueError, match="Invalid prompt content type"),
@@ -1009,11 +1009,11 @@ def test_fetch_prompt_messages_completion_mode_supports_string_content_and_inval
 
     with (
         mock.patch(
-            "dify_graph.nodes.llm.llm_utils.handle_completion_template",
+            "graphon.nodes.llm.llm_utils.handle_completion_template",
             return_value=[UserPromptMessage(content="Prefix only")],
         ),
         mock.patch(
-            "dify_graph.nodes.llm.llm_utils.handle_memory_completion_mode",
+            "graphon.nodes.llm.llm_utils.handle_memory_completion_mode",
             return_value="history text",
         ),
     ):

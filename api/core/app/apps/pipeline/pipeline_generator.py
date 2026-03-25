@@ -40,9 +40,9 @@ from core.repositories.factory import (
     WorkflowExecutionRepository,
     WorkflowNodeExecutionRepository,
 )
-from dify_graph.model_runtime.errors.invoke import InvokeAuthorizationError
-from dify_graph.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
 from extensions.ext_database import db
+from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
+from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
 from libs.flask_utils import preserve_flask_contexts
 from models import Account, EndUser, Workflow, WorkflowNodeExecutionTriggeredFrom
 from models.dataset import Document, DocumentPipelineExecutionLog, Pipeline

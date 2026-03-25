@@ -4,8 +4,8 @@ from collections.abc import Mapping
 from typing import Any
 
 from core.helper.code_executor.code_executor import CodeExecutionError, CodeExecutor
-from dify_graph.nodes.code.entities import CodeLanguage
-from dify_graph.template_rendering import Jinja2TemplateRenderer, TemplateRenderError
+from graphon.nodes.code.entities import CodeLanguage
+from graphon.template_rendering import Jinja2TemplateRenderer, TemplateRenderError
 
 
 class CodeExecutorJinja2TemplateRenderer(Jinja2TemplateRenderer):

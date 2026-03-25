@@ -14,15 +14,15 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
 from core.repositories.factory import OrderConfig
-from dify_graph.entities import (
+from graphon.entities import (
     WorkflowNodeExecution,
 )
-from dify_graph.enums import (
+from graphon.enums import (
     BuiltinNodeTypes,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
-from dify_graph.model_runtime.utils.encoders import jsonable_encoder
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 from models.account import Account, Tenant
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 

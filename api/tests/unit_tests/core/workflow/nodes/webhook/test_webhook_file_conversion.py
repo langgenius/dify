@@ -17,10 +17,10 @@ from core.workflow.nodes.trigger_webhook.entities import (
 )
 from core.workflow.nodes.trigger_webhook.node import TriggerWebhookNode
 from core.workflow.system_variables import default_system_variables
-from dify_graph.entities.graph_init_params import GraphInitParams
-from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from dify_graph.runtime.graph_runtime_state import GraphRuntimeState
-from dify_graph.runtime.variable_pool import VariablePool
+from graphon.entities.graph_init_params import GraphInitParams
+from graphon.entities.workflow_node_execution import WorkflowNodeExecutionStatus
+from graphon.runtime.graph_runtime_state import GraphRuntimeState
+from graphon.runtime.variable_pool import VariablePool
 from tests.workflow_test_utils import build_test_variable_pool
 
 

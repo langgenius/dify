@@ -35,8 +35,8 @@ from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.workflow.nodes.knowledge_retrieval import exc
 from core.workflow.nodes.knowledge_retrieval.retrieval import KnowledgeRetrievalRequest
-from dify_graph.model_runtime.entities.llm_entities import LLMUsage
-from dify_graph.model_runtime.entities.model_entities import ModelFeature
+from graphon.model_runtime.entities.llm_entities import LLMUsage
+from graphon.model_runtime.entities.model_entities import ModelFeature
 from models.dataset import Dataset
 from models.enums import CreatorUserRole
 

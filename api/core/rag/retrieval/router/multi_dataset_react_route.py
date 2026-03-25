@@ -8,9 +8,9 @@ from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate
 from core.rag.retrieval.output_parser.react_output import ReactAction
 from core.rag.retrieval.output_parser.structured_chat import StructuredChatOutputParser
-from dify_graph.model_runtime.entities.llm_entities import LLMResult, LLMUsage
-from dify_graph.model_runtime.entities.message_entities import PromptMessage, PromptMessageRole, PromptMessageTool
-from dify_graph.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+from graphon.model_runtime.entities.message_entities import PromptMessage, PromptMessageRole, PromptMessageTool
+from graphon.model_runtime.entities.model_entities import ModelType
 
 PREFIX = """Respond to the human as helpfully and accurately as possible. You have access to the following tools:"""
 

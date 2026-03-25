@@ -15,8 +15,8 @@ from core.app.entities.queue_entities import (
     WorkflowQueueMessage,
 )
 from core.model_manager import ModelInstance, ModelManager
-from dify_graph.model_runtime.entities.message_entities import TextPromptMessageContent
-from dify_graph.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.message_entities import TextPromptMessageContent
+from graphon.model_runtime.entities.model_entities import ModelType
 
 
 class AudioTrunk:

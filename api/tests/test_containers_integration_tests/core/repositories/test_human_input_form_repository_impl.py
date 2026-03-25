@@ -17,7 +17,7 @@ from core.workflow.human_input_compat import (
     MemberRecipient,
     WebAppDeliveryMethod,
 )
-from dify_graph.nodes.human_input.entities import FormDefinition, HumanInputNodeData, UserAction
+from graphon.nodes.human_input.entities import FormDefinition, HumanInputNodeData, UserAction
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.human_input import (
     EmailExternalRecipientPayload,

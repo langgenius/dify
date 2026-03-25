@@ -14,26 +14,26 @@ from core.model_manager import ModelInstance
 from core.workflow.node_runtime import DifyToolNodeRuntime
 from core.workflow.nodes.agent import AgentNode
 from core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node import KnowledgeRetrievalNode
-from dify_graph.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
-from dify_graph.model_runtime.entities.llm_entities import LLMUsage
-from dify_graph.node_events import NodeRunResult, StreamChunkEvent, StreamCompletedEvent
-from dify_graph.nodes.code import CodeNode
-from dify_graph.nodes.document_extractor import DocumentExtractorNode
-from dify_graph.nodes.http_request import HttpRequestNode
-from dify_graph.nodes.llm import LLMNode
-from dify_graph.nodes.llm.file_saver import LLMFileSaver
-from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory
-from dify_graph.nodes.llm.runtime_protocols import PromptMessageSerializerProtocol
-from dify_graph.nodes.parameter_extractor import ParameterExtractorNode
-from dify_graph.nodes.protocols import FileReferenceFactoryProtocol, HttpClientProtocol, ToolFileManagerProtocol
-from dify_graph.nodes.question_classifier import QuestionClassifierNode
-from dify_graph.nodes.template_transform import TemplateTransformNode
-from dify_graph.nodes.tool import ToolNode
-from dify_graph.template_rendering import Jinja2TemplateRenderer, TemplateRenderError
+from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from graphon.model_runtime.entities.llm_entities import LLMUsage
+from graphon.node_events import NodeRunResult, StreamChunkEvent, StreamCompletedEvent
+from graphon.nodes.code import CodeNode
+from graphon.nodes.document_extractor import DocumentExtractorNode
+from graphon.nodes.http_request import HttpRequestNode
+from graphon.nodes.llm import LLMNode
+from graphon.nodes.llm.file_saver import LLMFileSaver
+from graphon.nodes.llm.protocols import CredentialsProvider, ModelFactory
+from graphon.nodes.llm.runtime_protocols import PromptMessageSerializerProtocol
+from graphon.nodes.parameter_extractor import ParameterExtractorNode
+from graphon.nodes.protocols import FileReferenceFactoryProtocol, HttpClientProtocol, ToolFileManagerProtocol
+from graphon.nodes.question_classifier import QuestionClassifierNode
+from graphon.nodes.template_transform import TemplateTransformNode
+from graphon.nodes.tool import ToolNode
+from graphon.template_rendering import Jinja2TemplateRenderer, TemplateRenderError
 
 if TYPE_CHECKING:
-    from dify_graph.entities import GraphInitParams
-    from dify_graph.runtime import GraphRuntimeState
+    from graphon.entities import GraphInitParams
+    from graphon.runtime import GraphRuntimeState
 
     from .test_mock_config import MockConfig
 
@@ -81,7 +81,7 @@ class MockNodeMixin:
             kwargs.setdefault("jinja2_template_renderer", _TestJinja2Renderer())
 
         # Provide default tool_file_manager_factory for ToolNode subclasses
-        from dify_graph.nodes.tool import ToolNode as _ToolNode  # local import to avoid cycles
+        from graphon.nodes.tool import ToolNode as _ToolNode  # local import to avoid cycles
 
         if isinstance(self, _ToolNode):
             kwargs.setdefault("tool_file_manager_factory", MagicMock(spec=ToolFileManagerProtocol))
@@ -602,8 +602,8 @@ class MockDocumentExtractorNode(MockNodeMixin, DocumentExtractorNode):
         )
 
 
-from dify_graph.nodes.iteration import IterationNode
-from dify_graph.nodes.loop import LoopNode
+from graphon.nodes.iteration import IterationNode
+from graphon.nodes.loop import LoopNode
 
 
 class MockIterationNode(MockNodeMixin, IterationNode):
@@ -617,11 +617,11 @@ class MockIterationNode(MockNodeMixin, IterationNode):
     def _create_graph_engine(self, index: int, item: Any):
         """Create a graph engine with MockNodeFactory instead of DifyNodeFactory."""
         # Import dependencies
-        from dify_graph.entities import GraphInitParams
-        from dify_graph.graph import Graph
-        from dify_graph.graph_engine import GraphEngine, GraphEngineConfig
-        from dify_graph.graph_engine.command_channels import InMemoryChannel
-        from dify_graph.runtime import GraphRuntimeState
+        from graphon.entities import GraphInitParams
+        from graphon.graph import Graph
+        from graphon.graph_engine import GraphEngine, GraphEngineConfig
+        from graphon.graph_engine.command_channels import InMemoryChannel
+        from graphon.runtime import GraphRuntimeState
 
         # Import our MockNodeFactory instead of DifyNodeFactory
         from .test_mock_factory import MockNodeFactory
@@ -662,7 +662,7 @@ class MockIterationNode(MockNodeMixin, IterationNode):
         )
 
         if not iteration_graph:
-            from dify_graph.nodes.iteration.exc import IterationGraphNotFoundError
+            from graphon.nodes.iteration.exc import IterationGraphNotFoundError
 
             raise IterationGraphNotFoundError("iteration graph not found")
 
@@ -689,11 +689,11 @@ class MockLoopNode(MockNodeMixin, LoopNode):
     def _create_graph_engine(self, start_at, root_node_id: str):
         """Create a graph engine with MockNodeFactory instead of DifyNodeFactory."""
         # Import dependencies
-        from dify_graph.entities import GraphInitParams
-        from dify_graph.graph import Graph
-        from dify_graph.graph_engine import GraphEngine, GraphEngineConfig
-        from dify_graph.graph_engine.command_channels import InMemoryChannel
-        from dify_graph.runtime import GraphRuntimeState
+        from graphon.entities import GraphInitParams
+        from graphon.graph import Graph
+        from graphon.graph_engine import GraphEngine, GraphEngineConfig
+        from graphon.graph_engine.command_channels import InMemoryChannel
+        from graphon.runtime import GraphRuntimeState
 
         # Import our MockNodeFactory instead of DifyNodeFactory
         from .test_mock_factory import MockNodeFactory

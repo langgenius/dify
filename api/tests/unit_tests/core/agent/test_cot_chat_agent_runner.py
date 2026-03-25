@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from core.agent.cot_chat_agent_runner import CotChatAgentRunner
-from dify_graph.model_runtime.entities.message_entities import TextPromptMessageContent
+from graphon.model_runtime.entities.message_entities import TextPromptMessageContent
 from tests.unit_tests.core.agent.conftest import (
     DummyAgentConfig,
     DummyAppConfig,
@@ -93,7 +93,7 @@ class TestOrganizeUserQuery:
     @patch("core.agent.cot_chat_agent_runner.UserPromptMessage")
     @patch("core.agent.cot_chat_agent_runner.file_manager.to_prompt_message_content")
     def test_organize_user_query_with_image_file_default_config(self, mock_to_prompt, mock_user_prompt, runner):
-        from dify_graph.model_runtime.entities.message_entities import ImagePromptMessageContent
+        from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 
         mock_content = ImagePromptMessageContent(
             url="http://test",
@@ -118,7 +118,7 @@ class TestOrganizeUserQuery:
     @patch("core.agent.cot_chat_agent_runner.UserPromptMessage")
     @patch("core.agent.cot_chat_agent_runner.file_manager.to_prompt_message_content")
     def test_organize_user_query_with_image_file_high_detail(self, mock_to_prompt, mock_user_prompt, runner):
-        from dify_graph.model_runtime.entities.message_entities import ImagePromptMessageContent
+        from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 
         mock_content = ImagePromptMessageContent(
             url="http://test",

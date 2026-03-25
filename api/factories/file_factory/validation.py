@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dify_graph.file import FileTransferMethod, FileType, FileUploadConfig
+from graphon.file import FileTransferMethod, FileType, FileUploadConfig
 
 
 def is_file_valid_with_config(

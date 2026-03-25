@@ -10,7 +10,7 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
-from dify_graph.entities.workflow_execution import WorkflowExecutionStatus
+from graphon.entities.workflow_execution import WorkflowExecutionStatus
 from models import EndUser, Workflow, WorkflowAppLog, WorkflowArchiveLog, WorkflowRun
 from models.enums import AppTriggerType, CreatorUserRole, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowAppLogCreatedFrom

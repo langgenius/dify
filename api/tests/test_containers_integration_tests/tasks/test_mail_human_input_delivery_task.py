@@ -16,10 +16,10 @@ from core.workflow.human_input_compat import (
     ExternalRecipient,
     MemberRecipient,
 )
-from dify_graph.enums import WorkflowExecutionStatus
-from dify_graph.nodes.human_input.entities import HumanInputNodeData
-from dify_graph.runtime import GraphRuntimeState, VariablePool
 from extensions.ext_storage import storage
+from graphon.enums import WorkflowExecutionStatus
+from graphon.nodes.human_input.entities import HumanInputNodeData
+from graphon.runtime import GraphRuntimeState, VariablePool
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.human_input import HumanInputDelivery, HumanInputForm, HumanInputFormRecipient

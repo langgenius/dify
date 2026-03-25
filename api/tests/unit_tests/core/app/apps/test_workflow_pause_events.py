@@ -11,11 +11,11 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import QueueWorkflowPausedEvent
 from core.app.entities.task_entities import HumanInputRequiredResponse, WorkflowPauseStreamResponse
 from core.workflow.system_variables import build_system_variables
-from dify_graph.entities.pause_reason import HumanInputRequired
-from dify_graph.entities.workflow_start_reason import WorkflowStartReason
-from dify_graph.graph_events.graph import GraphRunPausedEvent
-from dify_graph.nodes.human_input.entities import FormInput, UserAction
-from dify_graph.nodes.human_input.enums import FormInputType
+from graphon.entities.pause_reason import HumanInputRequired
+from graphon.entities.workflow_start_reason import WorkflowStartReason
+from graphon.graph_events.graph import GraphRunPausedEvent
+from graphon.nodes.human_input.entities import FormInput, UserAction
+from graphon.nodes.human_input.enums import FormInputType
 from models.account import Account
 from models.human_input import RecipientType
 

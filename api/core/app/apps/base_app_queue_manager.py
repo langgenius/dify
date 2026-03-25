@@ -20,8 +20,8 @@ from core.app.entities.queue_entities import (
     QueueStopEvent,
     WorkflowQueueMessage,
 )
-from dify_graph.runtime import GraphRuntimeState
 from extensions.ext_redis import redis_client
+from graphon.runtime import GraphRuntimeState
 
 logger = logging.getLogger(__name__)
 

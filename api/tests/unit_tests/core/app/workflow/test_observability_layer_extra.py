@@ -3,7 +3,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 from core.app.workflow.layers.observability import ObservabilityLayer
-from dify_graph.enums import BuiltinNodeTypes
+from graphon.enums import BuiltinNodeTypes
 
 
 class TestObservabilityLayerExtras:

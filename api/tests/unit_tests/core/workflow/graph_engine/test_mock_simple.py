@@ -5,7 +5,7 @@ Simple test to validate the auto-mock system without external dependencies.
 import sys
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY
-from dify_graph.enums import BuiltinNodeTypes
+from graphon.enums import BuiltinNodeTypes
 from tests.unit_tests.core.workflow.graph_engine.test_mock_config import MockConfig, MockConfigBuilder, NodeMockConfig
 from tests.unit_tests.core.workflow.graph_engine.test_mock_factory import MockNodeFactory
 
@@ -98,8 +98,8 @@ def test_node_mock_config():
 def test_mock_factory_detection():
     """Test MockNodeFactory node type detection."""
     from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-    from dify_graph.entities import GraphInitParams
-    from dify_graph.runtime import GraphRuntimeState, VariablePool
+    from graphon.entities import GraphInitParams
+    from graphon.runtime import GraphRuntimeState, VariablePool
 
     print("Testing MockNodeFactory detection...")
 
@@ -154,8 +154,8 @@ def test_mock_factory_detection():
 def test_mock_factory_registration():
     """Test registering and unregistering mock node types."""
     from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-    from dify_graph.entities import GraphInitParams
-    from dify_graph.runtime import GraphRuntimeState, VariablePool
+    from graphon.entities import GraphInitParams
+    from graphon.runtime import GraphRuntimeState, VariablePool
 
     print("Testing MockNodeFactory registration...")
 

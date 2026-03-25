@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from core.app.file_access import FileAccessControllerProtocol
-from dify_graph.file import File, FileBelongsTo, FileTransferMethod, FileUploadConfig
+from graphon.file import File, FileBelongsTo, FileTransferMethod, FileUploadConfig
 from models import MessageFile
 
 from .builders import build_from_mapping

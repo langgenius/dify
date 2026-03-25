@@ -1,7 +1,7 @@
 from collections.abc import Mapping
 from typing import Any
 
-from dify_graph.enums import BuiltinNodeTypes, NodeType
+from graphon.enums import BuiltinNodeTypes, NodeType
 
 
 def project_node_outputs_for_workflow_run(

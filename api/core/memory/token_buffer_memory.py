@@ -7,8 +7,10 @@ from core.app.app_config.features.file_upload.manager import FileUploadConfigMan
 from core.app.file_access import DatabaseFileAccessController
 from core.model_manager import ModelInstance
 from core.prompt.utils.extract_thread_messages import extract_thread_messages
-from dify_graph.file import file_manager
-from dify_graph.model_runtime.entities import (
+from extensions.ext_database import db
+from factories import file_factory
+from graphon.file import file_manager
+from graphon.model_runtime.entities import (
     AssistantPromptMessage,
     ImagePromptMessageContent,
     PromptMessage,
@@ -16,9 +18,7 @@ from dify_graph.model_runtime.entities import (
     TextPromptMessageContent,
     UserPromptMessage,
 )
-from dify_graph.model_runtime.entities.message_entities import PromptMessageContentUnionTypes
-from extensions.ext_database import db
-from factories import file_factory
+from graphon.model_runtime.entities.message_entities import PromptMessageContentUnionTypes
 from models.model import AppMode, Conversation, Message, MessageFile
 from models.workflow import Workflow
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository

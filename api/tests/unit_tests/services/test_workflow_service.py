@@ -16,19 +16,19 @@ from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 
-from dify_graph.entities import WorkflowNodeExecution
-from dify_graph.enums import (
+from graphon.entities import WorkflowNodeExecution
+from graphon.enums import (
     BuiltinNodeTypes,
     ErrorStrategy,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
-from dify_graph.errors import WorkflowNodeRunFailedError
-from dify_graph.graph_events import NodeRunFailedEvent, NodeRunSucceededEvent
-from dify_graph.model_runtime.entities.model_entities import ModelType
-from dify_graph.node_events import NodeRunResult
-from dify_graph.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, HttpRequestNode, HttpRequestNodeConfig
-from dify_graph.variables.input_entities import VariableEntityType
+from graphon.errors import WorkflowNodeRunFailedError
+from graphon.graph_events import NodeRunFailedEvent, NodeRunSucceededEvent
+from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.node_events import NodeRunResult
+from graphon.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, HttpRequestNode, HttpRequestNodeConfig
+from graphon.variables.input_entities import VariableEntityType
 from libs.datetime_utils import naive_utc_now
 from models.human_input import RecipientType
 from models.model import App, AppMode
@@ -2751,7 +2751,7 @@ class TestWorkflowServiceFreeNodeExecution:
 
     def test_validate_human_input_node_data_error(self, service: WorkflowService) -> None:
         with patch(
-            "dify_graph.nodes.human_input.entities.HumanInputNodeData.model_validate", side_effect=Exception("error")
+            "graphon.nodes.human_input.entities.HumanInputNodeData.model_validate", side_effect=Exception("error")
         ):
             with pytest.raises(ValueError, match="Invalid HumanInput node data"):
                 service._validate_human_input_node_data({})

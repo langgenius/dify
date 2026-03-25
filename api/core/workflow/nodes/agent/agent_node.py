@@ -5,11 +5,11 @@ from typing import TYPE_CHECKING, Any
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
 from core.workflow.system_variables import SystemVariableKey, get_system_text
-from dify_graph.entities.graph_config import NodeConfigDict
-from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
-from dify_graph.node_events import NodeEventBase, NodeRunResult, StreamCompletedEvent
-from dify_graph.nodes.base.node import Node
-from dify_graph.nodes.base.variable_template_parser import VariableTemplateParser
+from graphon.entities.graph_config import NodeConfigDict
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
+from graphon.node_events import NodeEventBase, NodeRunResult, StreamCompletedEvent
+from graphon.nodes.base.node import Node
+from graphon.nodes.base.variable_template_parser import VariableTemplateParser
 
 from .entities import AgentNodeData
 from .exceptions import (
@@ -21,8 +21,8 @@ from .runtime_support import AgentRuntimeSupport
 from .strategy_protocols import AgentStrategyPresentationProvider, AgentStrategyResolver
 
 if TYPE_CHECKING:
-    from dify_graph.entities import GraphInitParams
-    from dify_graph.runtime import GraphRuntimeState
+    from graphon.entities import GraphInitParams
+    from graphon.runtime import GraphRuntimeState
 
 
 class AgentNode(Node[AgentNodeData]):

@@ -6,10 +6,10 @@ import pytest
 
 from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.system_variables import default_system_variables
-from dify_graph.graph import Graph
-from dify_graph.graph.validation import GraphValidationError
-from dify_graph.nodes import BuiltinNodeTypes
-from dify_graph.runtime import GraphRuntimeState, VariablePool
+from graphon.graph import Graph
+from graphon.graph.validation import GraphValidationError
+from graphon.nodes import BuiltinNodeTypes
+from graphon.runtime import GraphRuntimeState, VariablePool
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
