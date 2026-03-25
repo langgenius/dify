@@ -1,5 +1,7 @@
 import type { ComponentType } from 'react'
-import type { Node } from './types'
+import type { CreateSnippetDialogPayload } from './create-snippet-dialog'
+import type { Edge, Node } from './types'
+import type { SnippetCanvasData } from '@/models/snippet'
 import {
   RiAlignItemBottomLine,
   RiAlignItemHorizontalCenterLine,
@@ -25,6 +27,10 @@ import {
   ContextMenuItem,
   ContextMenuSeparator,
 } from '@/app/components/base/ui/context-menu'
+import { toast } from '@/app/components/base/ui/toast'
+import { useRouter } from '@/next/navigation'
+import { consoleClient } from '@/service/client'
+import { useCreateSnippetMutation } from '@/service/use-snippets'
 import { cn } from '@/utils/classnames'
 import CreateSnippetDialog from './create-snippet-dialog'
 import { useNodesInteractions, useNodesReadOnly, useNodesSyncDraft } from './hooks'
@@ -77,6 +83,7 @@ type ActionMenuItem = {
 
 const MENU_WIDTH = 240
 const MENU_HEIGHT = 240
+const DEFAULT_SNIPPET_VIEWPORT: SnippetCanvasData['viewport'] = { x: 0, y: 0, zoom: 1 }
 
 const alignMenuItems: AlignMenuItem[] = [
   { alignType: AlignType.Left, icon: RiAlignItemLeftLine, translationKey: 'operator.alignLeft' },
@@ -257,14 +264,88 @@ const distributeNodes = (
   })
 }
 
+const getSelectedSnippetGraph = (
+  nodes: Node[],
+  edges: Edge[],
+  selectedNodes: Node[],
+): SnippetCanvasData => {
+  const includedNodeIds = new Set(selectedNodes.map(node => node.id))
+
+  let shouldExpand = true
+  while (shouldExpand) {
+    shouldExpand = false
+
+    nodes.forEach((node) => {
+      if (!includedNodeIds.has(node.id))
+        return
+
+      if (node.parentId && !includedNodeIds.has(node.parentId)) {
+        includedNodeIds.add(node.parentId)
+        shouldExpand = true
+      }
+
+      node.data._children?.forEach((child) => {
+        if (!includedNodeIds.has(child.nodeId)) {
+          includedNodeIds.add(child.nodeId)
+          shouldExpand = true
+        }
+      })
+    })
+  }
+
+  const rootNodes = nodes.filter(node => includedNodeIds.has(node.id) && (!node.parentId || !includedNodeIds.has(node.parentId)))
+  const minRootX = rootNodes.length ? Math.min(...rootNodes.map(node => node.position.x)) : 0
+  const minRootY = rootNodes.length ? Math.min(...rootNodes.map(node => node.position.y)) : 0
+
+  return {
+    nodes: nodes
+      .filter(node => includedNodeIds.has(node.id))
+      .map((node) => {
+        const isRootNode = !node.parentId || !includedNodeIds.has(node.parentId)
+        const nextPosition = isRootNode
+          ? { x: node.position.x - minRootX, y: node.position.y - minRootY }
+          : node.position
+
+        return {
+          ...node,
+          position: nextPosition,
+          positionAbsolute: node.positionAbsolute
+            ? (isRootNode
+                ? {
+                    x: node.positionAbsolute.x - minRootX,
+                    y: node.positionAbsolute.y - minRootY,
+                  }
+                : node.positionAbsolute)
+            : undefined,
+          selected: false,
+          data: {
+            ...node.data,
+            selected: false,
+            _children: node.data._children?.filter(child => includedNodeIds.has(child.nodeId)),
+          },
+        }
+      }),
+    edges: edges
+      .filter(edge => includedNodeIds.has(edge.source) && includedNodeIds.has(edge.target))
+      .map(edge => ({
+        ...edge,
+        selected: false,
+      })),
+    viewport: DEFAULT_SNIPPET_VIEWPORT,
+  }
+}
+
 const SelectionContextmenu = () => {
   const { t } = useTranslation()
+  const { push } = useRouter()
+  const createSnippetMutation = useCreateSnippetMutation()
   const { getNodesReadOnly } = useNodesReadOnly()
   const { handleNodesCopy, handleNodesDelete, handleNodesDuplicate } = useNodesInteractions()
   const { handleSelectionContextmenuCancel } = useSelectionInteractions()
   const selectionMenu = useStore(s => s.selectionMenu)
   const [isCreateSnippetDialogOpen, setIsCreateSnippetDialogOpen] = useState(false)
-  const [selectedNodeIdsSnapshot, setSelectedNodeIdsSnapshot] = useState<string[]>([])
+  const [isCreatingSnippet, setIsCreatingSnippet] = useState(false)
+  const [selectedGraphSnapshot, setSelectedGraphSnapshot] = useState<SnippetCanvasData | undefined>()
 
   // Access React Flow methods
   const store = useStoreApi()
@@ -316,15 +397,57 @@ const SelectionContextmenu = () => {
     if (isAddToSnippetDisabled)
       return
 
-    setSelectedNodeIdsSnapshot(selectedNodes.map(node => node.id))
+    const nodes = store.getState().getNodes()
+    const { edges } = store.getState()
+
+    setSelectedGraphSnapshot(getSelectedSnippetGraph(nodes, edges, selectedNodes))
     setIsCreateSnippetDialogOpen(true)
     handleSelectionContextmenuCancel()
-  }, [handleSelectionContextmenuCancel, isAddToSnippetDisabled, selectedNodes])
+  }, [handleSelectionContextmenuCancel, isAddToSnippetDisabled, selectedNodes, store])
 
   const handleCloseCreateSnippetDialog = useCallback(() => {
     setIsCreateSnippetDialogOpen(false)
-    setSelectedNodeIdsSnapshot([])
+    setSelectedGraphSnapshot(undefined)
   }, [])
+
+  const handleCreateSnippet = useCallback(async ({
+    name,
+    description,
+    icon,
+    graph,
+  }: CreateSnippetDialogPayload) => {
+    setIsCreatingSnippet(true)
+
+    try {
+      const snippet = await createSnippetMutation.mutateAsync({
+        body: {
+          name,
+          description: description || undefined,
+          icon_info: {
+            icon: icon.type === 'emoji' ? icon.icon : icon.fileId,
+            icon_type: icon.type,
+            icon_background: icon.type === 'emoji' ? icon.background : undefined,
+            icon_url: icon.type === 'image' ? icon.url : undefined,
+          },
+        },
+      })
+
+      await consoleClient.snippets.syncDraftWorkflow({
+        params: { snippetId: snippet.id },
+        body: { graph },
+      })
+
+      toast.success(t('snippet.createSuccess', { ns: 'workflow' }))
+      handleCloseCreateSnippetDialog()
+      push(`/snippets/${snippet.id}/orchestrate`)
+    }
+    catch (error) {
+      toast.error(error instanceof Error ? error.message : t('createFailed', { ns: 'snippet' }))
+    }
+    finally {
+      setIsCreatingSnippet(false)
+    }
+  }, [createSnippetMutation, handleCloseCreateSnippetDialog, push, t])
 
   const menuActions = useMemo<ActionMenuItem[]>(() => [
     {
@@ -500,11 +623,10 @@ const SelectionContextmenu = () => {
       {isCreateSnippetDialogOpen && (
         <CreateSnippetDialog
           isOpen={isCreateSnippetDialogOpen}
-          selectedNodeIds={selectedNodeIdsSnapshot}
+          selectedGraph={selectedGraphSnapshot}
+          isSubmitting={isCreatingSnippet || createSnippetMutation.isPending}
           onClose={handleCloseCreateSnippetDialog}
-          onConfirm={(payload) => {
-            void payload
-          }}
+          onConfirm={handleCreateSnippet}
         />
       )}
     </div>

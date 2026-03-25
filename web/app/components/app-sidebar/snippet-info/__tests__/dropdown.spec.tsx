@@ -135,7 +135,11 @@ vi.mock('@/app/components/workflow/create-snippet-dialog', () => ({
               icon: '✨',
               background: '#FFFFFF',
             },
-            selectedNodeIds: [],
+            graph: {
+              nodes: [],
+              edges: [],
+              viewport: { x: 0, y: 0, zoom: 1 },
+            },
           })}
         >
           submit-edit

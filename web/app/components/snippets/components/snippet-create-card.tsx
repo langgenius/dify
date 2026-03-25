@@ -86,7 +86,6 @@ const SnippetCreateCard = () => {
       {isCreateDialogOpen && (
         <CreateSnippetDialog
           isOpen={isCreateDialogOpen}
-          selectedNodeIds={[]}
           isSubmitting={createSnippetMutation.isPending}
           onClose={() => setIsCreateDialogOpen(false)}
           onConfirm={handleCreateSnippet}

@@ -2,6 +2,7 @@
 
 import type { FC } from 'react'
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
+import type { SnippetCanvasData } from '@/models/snippet'
 import { useKeyPress } from 'ahooks'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -17,7 +18,7 @@ export type CreateSnippetDialogPayload = {
   name: string
   description: string
   icon: AppIconSelection
-  selectedNodeIds: string[]
+  graph: SnippetCanvasData
 }
 
 export type CreateSnippetDialogInitialValue = {
@@ -28,7 +29,7 @@ export type CreateSnippetDialogInitialValue = {
 
 type CreateSnippetDialogProps = {
   isOpen: boolean
-  selectedNodeIds: string[]
+  selectedGraph?: SnippetCanvasData
   onClose: () => void
   onConfirm: (payload: CreateSnippetDialogPayload) => void
   isSubmitting?: boolean
@@ -43,9 +44,15 @@ const defaultIcon: AppIconSelection = {
   background: '#FFEAD5',
 }
 
+const defaultGraph: SnippetCanvasData = {
+  nodes: [],
+  edges: [],
+  viewport: { x: 0, y: 0, zoom: 1 },
+}
+
 const CreateSnippetDialog: FC<CreateSnippetDialogProps> = ({
   isOpen,
-  selectedNodeIds,
+  selectedGraph,
   onClose,
   onConfirm,
   isSubmitting = false,
@@ -82,11 +89,11 @@ const CreateSnippetDialog: FC<CreateSnippetDialogProps> = ({
       name: trimmedName,
       description: trimmedDescription,
       icon,
-      selectedNodeIds,
+      graph: selectedGraph ?? defaultGraph,
     }
 
     onConfirm(payload)
-  }, [description, icon, name, onConfirm, selectedNodeIds])
+  }, [description, icon, name, onConfirm, selectedGraph])
 
   useKeyPress(['meta.enter', 'ctrl.enter'], () => {
     if (!isOpen)

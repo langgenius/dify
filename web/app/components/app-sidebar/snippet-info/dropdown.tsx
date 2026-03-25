@@ -158,7 +158,6 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
       {isEditDialogOpen && (
         <CreateSnippetDialog
           isOpen={isEditDialogOpen}
-          selectedNodeIds={[]}
           initialValue={initialValue}
           title={t('editDialogTitle')}
           confirmText={t('operation.save', { ns: 'common' })}
