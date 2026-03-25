@@ -3,7 +3,6 @@ import { noop } from 'es-toolkit/function'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Slider } from '@/app/components/base/ui/slider'
-import './weighted-score.css'
 
 const weightedScoreSliderStyle: CSSProperties & Record<'--slider-track' | '--slider-range', string> = {
   '--slider-track': 'var(--color-util-colors-teal-teal-500)',
