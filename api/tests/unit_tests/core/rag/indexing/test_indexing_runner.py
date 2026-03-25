@@ -61,7 +61,7 @@ from core.indexing_runner import (
     DocumentIsPausedError,
     IndexingRunner,
 )
-from core.rag.index_processor.constant.index_type import IndexStructureType
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.models.document import ChildDocument, Document
 from dify_graph.model_runtime.entities.model_entities import ModelType
 from libs.datetime_utils import naive_utc_now
@@ -76,7 +76,7 @@ from models.dataset import Document as DatasetDocument
 def create_mock_dataset(
     dataset_id: str | None = None,
     tenant_id: str | None = None,
-    indexing_technique: str = "high_quality",
+    indexing_technique: str = IndexTechniqueType.HIGH_QUALITY,
     embedding_provider: str = "openai",
     embedding_model: str = "text-embedding-ada-002",
 ) -> Mock:
@@ -458,7 +458,7 @@ class TestIndexingRunnerTransform:
         dataset = Mock(spec=Dataset)
         dataset.id = str(uuid.uuid4())
         dataset.tenant_id = str(uuid.uuid4())
-        dataset.indexing_technique = "high_quality"
+        dataset.indexing_technique = IndexTechniqueType.HIGH_QUALITY
         dataset.embedding_model_provider = "openai"
         dataset.embedding_model = "text-embedding-ada-002"
         return dataset
@@ -521,7 +521,7 @@ class TestIndexingRunnerTransform:
         """Test transformation with economy indexing (no embeddings)."""
         # Arrange
         runner = IndexingRunner()
-        sample_dataset.indexing_technique = "economy"
+        sample_dataset.indexing_technique = IndexTechniqueType.ECONOMY
 
         mock_processor = MagicMock()
         transformed_docs = [
@@ -605,7 +605,7 @@ class TestIndexingRunnerLoad:
         dataset = Mock(spec=Dataset)
         dataset.id = str(uuid.uuid4())
         dataset.tenant_id = str(uuid.uuid4())
-        dataset.indexing_technique = "high_quality"
+        dataset.indexing_technique = IndexTechniqueType.HIGH_QUALITY
         dataset.embedding_model_provider = "openai"
         dataset.embedding_model = "text-embedding-ada-002"
         return dataset
@@ -674,7 +674,7 @@ class TestIndexingRunnerLoad:
         """Test loading with economy indexing (keyword only)."""
         # Arrange
         runner = IndexingRunner()
-        sample_dataset.indexing_technique = "economy"
+        sample_dataset.indexing_technique = IndexTechniqueType.ECONOMY
 
         mock_processor = MagicMock()
 
@@ -701,7 +701,7 @@ class TestIndexingRunnerLoad:
         # Arrange
         runner = IndexingRunner()
         sample_dataset_document.doc_form = IndexStructureType.PARENT_CHILD_INDEX
-        sample_dataset.indexing_technique = "high_quality"
+        sample_dataset.indexing_technique = IndexTechniqueType.HIGH_QUALITY
 
         # Add child documents
         for doc in sample_documents:
@@ -795,7 +795,7 @@ class TestIndexingRunnerRun:
         mock_dataset = Mock(spec=Dataset)
         mock_dataset.id = doc.dataset_id
         mock_dataset.tenant_id = doc.tenant_id
-        mock_dataset.indexing_technique = "economy"
+        mock_dataset.indexing_technique = IndexTechniqueType.ECONOMY
         mock_dependencies["db"].session.query.return_value.filter_by.return_value.first.return_value = mock_dataset
 
         mock_process_rule = Mock(spec=DatasetProcessRule)
@@ -949,7 +949,7 @@ class TestIndexingRunnerRun:
         mock_dependencies["db"].session.get.side_effect = get_side_effect
 
         mock_dataset = Mock(spec=Dataset)
-        mock_dataset.indexing_technique = "economy"
+        mock_dataset.indexing_technique = IndexTechniqueType.ECONOMY
         mock_dependencies["db"].session.query.return_value.filter_by.return_value.first.return_value = mock_dataset
 
         mock_process_rule = Mock(spec=DatasetProcessRule)

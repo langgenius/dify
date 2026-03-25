@@ -1,7 +1,6 @@
 import type { EndpointListItem, PluginDetail } from '../../types'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import Toast from '@/app/components/base/toast'
 import EndpointCard from '../endpoint-card'
 
 const mockHandleChange = vi.fn()
@@ -9,6 +8,22 @@ const mockEnableEndpoint = vi.fn()
 const mockDisableEndpoint = vi.fn()
 const mockDeleteEndpoint = vi.fn()
 const mockUpdateEndpoint = vi.fn()
+const mockToastNotify = vi.fn()
+
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: Object.assign(
+    (message: string, options?: { type?: string }) => mockToastNotify({ type: options?.type, message }),
+    {
+      success: (message: string) => mockToastNotify({ type: 'success', message }),
+      error: (message: string) => mockToastNotify({ type: 'error', message }),
+      warning: (message: string) => mockToastNotify({ type: 'warning', message }),
+      info: (message: string) => mockToastNotify({ type: 'info', message }),
+      dismiss: vi.fn(),
+      update: vi.fn(),
+      promise: vi.fn(),
+    },
+  ),
+}))
 
 // Flags to control whether operations should fail
 const failureFlags = {
@@ -127,8 +142,6 @@ describe('EndpointCard', () => {
     failureFlags.disable = false
     failureFlags.delete = false
     failureFlags.update = false
-    // Mock Toast.notify to prevent toast elements from accumulating in DOM
-    vi.spyOn(Toast, 'notify').mockImplementation(() => ({ clear: vi.fn() }))
     // Polyfill document.execCommand for copy-to-clipboard in jsdom
     if (typeof document.execCommand !== 'function') {
       document.execCommand = vi.fn().mockReturnValue(true)

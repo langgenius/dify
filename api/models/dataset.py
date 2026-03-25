@@ -20,7 +20,7 @@ from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from configs import dify_config
 from core.rag.index_processor.constant.built_in_field import BuiltInField, MetadataDataSource
-from core.rag.index_processor.constant.index_type import IndexStructureType
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.index_processor.constant.query_type import QueryType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.signature import sign_upload_file
@@ -137,7 +137,7 @@ class Dataset(Base):
         default=DatasetPermissionEnum.ONLY_ME,
     )
     data_source_type = mapped_column(EnumText(DataSourceType, length=255))
-    indexing_technique: Mapped[str | None] = mapped_column(String(255))
+    indexing_technique: Mapped[IndexTechniqueType | None] = mapped_column(EnumText(IndexTechniqueType, length=255))
     index_struct = mapped_column(LongText, nullable=True)
     created_by = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
@@ -496,7 +496,9 @@ class Document(Base):
     )
     doc_type = mapped_column(EnumText(DocumentDocType, length=40), nullable=True)
     doc_metadata = mapped_column(AdjustedJSON, nullable=True)
-    doc_form = mapped_column(String(255), nullable=False, server_default=sa.text("'text_model'"))
+    doc_form: Mapped[IndexStructureType] = mapped_column(
+        EnumText(IndexStructureType, length=255), nullable=False, server_default=sa.text("'text_model'")
+    )
     doc_language = mapped_column(String(255), nullable=True)
     need_summary: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
 
