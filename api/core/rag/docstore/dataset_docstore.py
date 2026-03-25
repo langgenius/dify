@@ -6,6 +6,7 @@ from typing import Any
 from sqlalchemy import func, select
 
 from core.model_manager import ModelManager
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.models.document import AttachmentDocument, Document
 from dify_graph.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
@@ -71,7 +72,7 @@ class DatasetDocumentStore:
         if max_position is None:
             max_position = 0
         embedding_model = None
-        if self._dataset.indexing_technique == "high_quality":
+        if self._dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             model_manager = ModelManager()
             embedding_model = model_manager.get_model_instance(
                 tenant_id=self._dataset.tenant_id,
