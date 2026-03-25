@@ -8,6 +8,9 @@ const isNestedTracingNode = (trace: Pick<NodeTracing, 'iteration_id' | 'loop_id'
 export const upsertTopLevelTracingNodeOnStart = (
   tracing: NodeTracing[],
   startedNode: NodeTracing,
+  options?: {
+    reuseRunningNodeId?: boolean
+  },
 ) => {
   if (isNestedTracingNode(startedNode))
     return false
@@ -15,6 +18,9 @@ export const upsertTopLevelTracingNodeOnStart = (
   const currentIndex = tracing.findIndex((item) => {
     if (item.id === startedNode.id)
       return true
+
+    if (!options?.reuseRunningNodeId)
+      return false
 
     return item.node_id === startedNode.node_id && item.status === NodeRunningStatus.Running
   })
