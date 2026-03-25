@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 from uuid import uuid4
 
 from models.model import App, RecommendedApp, Site
