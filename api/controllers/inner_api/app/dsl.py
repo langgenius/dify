@@ -1,19 +1,16 @@
 """Inner API endpoints for app DSL import/export.
 
-Called by the enterprise admin-api service to import and export
-app definitions as YAML DSL files. These endpoints delegate to
-:class:`~services.app_dsl_service.AppDslService` for the actual work.
-
-Import requires a ``creator_email`` identifying the workspace member who
-will create the imported app. The caller (admin-api) is responsible for
-deciding which user to attribute the operation to.
+Called by the enterprise admin-api service. Import requires ``creator_email``
+to attribute the created app; workspace/membership validation is done by the
+Go admin-api caller.
 """
 
 from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from controllers.common.schema import register_schema_model
 from controllers.console.wraps import setup_required
 from controllers.inner_api import inner_api_ns
 from controllers.inner_api.wraps import enterprise_inner_api_only
@@ -23,26 +20,31 @@ from services.app_dsl_service import AppDslService, ImportMode, ImportStatus
 
 
 class InnerAppDSLImportPayload(BaseModel):
-    yaml_content: str
-    creator_email: str
-    name: str | None = None
-    description: str | None = None
+    yaml_content: str = Field(description="YAML DSL content")
+    creator_email: str = Field(description="Email of the workspace member who will own the imported app")
+    name: str | None = Field(default=None, description="Override app name from DSL")
+    description: str | None = Field(default=None, description="Override app description from DSL")
+
+
+register_schema_model(inner_api_ns, InnerAppDSLImportPayload)
 
 
 @inner_api_ns.route("/enterprise/workspaces/<string:workspace_id>/dsl/import")
 class EnterpriseAppDSLImport(Resource):
     @setup_required
     @enterprise_inner_api_only
+    @inner_api_ns.doc("enterprise_app_dsl_import")
+    @inner_api_ns.expect(inner_api_ns.models[InnerAppDSLImportPayload.__name__])
+    @inner_api_ns.doc(
+        responses={
+            200: "Import completed",
+            202: "Import pending (DSL version mismatch requires confirmation)",
+            400: "Import failed (business error)",
+            404: "Creator account not found or inactive",
+        }
+    )
     def post(self, workspace_id: str):
-        """Import a DSL into a workspace on behalf of a specified creator.
-
-        Requires ``creator_email`` to identify the account that will own the
-        imported app. The account must be active. Workspace existence and
-        membership are validated by the Go admin-api caller.
-
-        Returns 200 on success, 202 when a DSL version mismatch requires
-        confirmation, and 400 on business failure.
-        """
+        """Import a DSL into a workspace on behalf of a specified creator."""
         args = InnerAppDSLImportPayload.model_validate(inner_api_ns.payload or {})
 
         account = _get_active_account(args.creator_email)
@@ -62,23 +64,26 @@ class EnterpriseAppDSLImport(Resource):
             )
             session.commit()
 
-        status_code_map = {
-            ImportStatus.FAILED: 400,
-            ImportStatus.PENDING: 202,
-        }
-        return result.model_dump(mode="json"), status_code_map.get(result.status, 200)
+        if result.status == ImportStatus.FAILED:
+            return result.model_dump(mode="json"), 400
+        if result.status == ImportStatus.PENDING:
+            return result.model_dump(mode="json"), 202
+        return result.model_dump(mode="json"), 200
 
 
 @inner_api_ns.route("/enterprise/apps/<string:app_id>/dsl")
 class EnterpriseAppDSLExport(Resource):
     @setup_required
     @enterprise_inner_api_only
+    @inner_api_ns.doc(
+        "enterprise_app_dsl_export",
+        responses={
+            200: "Export successful",
+            404: "App not found",
+        },
+    )
     def get(self, app_id: str):
-        """Export an app's DSL as YAML.
-
-        This is a global lookup by app_id (no tenant scoping) because the
-        admin-api caller has platform-level access via secret-key auth.
-        """
+        """Export an app's DSL as YAML."""
         include_secret = request.args.get("include_secret", "false").lower() == "true"
 
         app_model = db.session.query(App).filter_by(id=app_id).first()
@@ -96,8 +101,7 @@ class EnterpriseAppDSLExport(Resource):
 def _get_active_account(email: str) -> Account | None:
     """Look up an active account by email.
 
-    Workspace membership is already validated by the Go admin-api caller;
-    this function only needs to retrieve the Account object for AppDslService.
+    Workspace membership is already validated by the Go admin-api caller.
     """
     account = db.session.query(Account).filter_by(email=email).first()
     if account is None or account.status != "active":
