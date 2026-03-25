@@ -3,6 +3,7 @@ import type { CommonNodeType, Memory, ModelConfig, ValueSelector, VisionSetting 
 export type Topic = {
   id: string
   name: string
+  label?: string
 }
 
 export type QuestionClassifierNodeType = CommonNodeType & {

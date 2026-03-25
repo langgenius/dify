@@ -104,6 +104,10 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
     def version(cls):
         return "1"
 
+    @staticmethod
+    def _default_class_label(index: int) -> str:
+        return f"CLASS {index}"
+
     def _run(self):
         node_data = self.node_data
         variable_pool = self.graph_runtime_state.variable_pool
@@ -195,6 +199,7 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
 
             category_name = rendered_classes[0].name
             category_id = rendered_classes[0].id
+            category_label = rendered_classes[0].label or self._default_class_label(1)
             if "<think>" in result_text:
                 result_text = re.sub(r"<think[^>]*>[\s\S]*?</think>", "", result_text, flags=re.IGNORECASE)
             result_text_json = parse_and_check_json_markdown(result_text, [])
@@ -202,10 +207,17 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
             if "category_name" in result_text_json and "category_id" in result_text_json:
                 category_id_result = result_text_json["category_id"]
                 classes = rendered_classes
-                classes_map = {class_.id: class_.name for class_ in classes}
+                classes_map = {
+                    class_.id: {
+                        "name": class_.name,
+                        "label": class_.label or self._default_class_label(index + 1),
+                    }
+                    for index, class_ in enumerate(classes)
+                }
                 category_ids = [_class.id for _class in classes]
                 if category_id_result in category_ids:
-                    category_name = classes_map[category_id_result]
+                    category_name = classes_map[category_id_result]["name"]
+                    category_label = classes_map[category_id_result]["label"]
                     category_id = category_id_result
             process_data = {
                 "model_mode": node_data.model.mode,
@@ -219,6 +231,7 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
             }
             outputs = {
                 "class_name": category_name,
+                "class_label": category_label,
                 "class_id": category_id,
                 "usage": jsonable_encoder(usage),
             }

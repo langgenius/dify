@@ -4,9 +4,8 @@ import type { QuestionClassifierNodeType } from '@/app/components/workflow/nodes
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import InfoPanel from '@/app/components/workflow/nodes/_base/components/info-panel'
+import { getDisplayClassLabel } from '@/app/components/workflow/nodes/question-classifier/components/class-label-utils'
 import { NodeSourceHandle } from '../../node-handle'
-
-const i18nPrefix = 'nodes.questionClassifiers'
 
 const Node: FC<NodeProps<QuestionClassifierNodeType>> = (props) => {
   const { t } = useTranslation()
@@ -20,12 +19,13 @@ const Node: FC<NodeProps<QuestionClassifierNodeType>> = (props) => {
           <div className="mt-2 space-y-0.5">
             {topics.map((topic, index) => (
               <div
-                key={index}
+                key={topic.id}
                 className="relative"
               >
                 <InfoPanel
-                  title={`${t(`${i18nPrefix}.class`, { ns: 'workflow' })} ${index + 1}`}
-                  content=""
+                  title={getDisplayClassLabel(topic.label, index + 1, t)}
+                  content={topic.name}
+                  titleClassName="text-xs font-semibold leading-4 normal-case"
                 />
                 <NodeSourceHandle
                   {...props}

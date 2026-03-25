@@ -116,7 +116,10 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
   const handleClassesChange = useCallback((newClasses: any) => {
     const newInputs = produce(inputs, (draft) => {
       draft.classes = newClasses
-      draft._targetBranches = newClasses
+      draft._targetBranches = newClasses.map((item: Topic) => ({
+        id: item.id,
+        name: item.name,
+      }))
     })
     setInputs(newInputs)
   }, [inputs, setInputs])
@@ -170,7 +173,13 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
 
   const handleSortTopic = useCallback((newTopics: (Topic & { id: string })[]) => {
     const newInputs = produce(inputs, (draft) => {
-      draft.classes = newTopics.filter(Boolean).map(item => ({
+      const sortedTopics = newTopics.filter(Boolean)
+      draft.classes = sortedTopics.map(item => ({
+        id: item.id,
+        name: item.name,
+        label: item.label,
+      }))
+      draft._targetBranches = sortedTopics.map(item => ({
         id: item.id,
         name: item.name,
       }))

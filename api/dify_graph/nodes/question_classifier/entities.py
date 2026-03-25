@@ -9,6 +9,7 @@ from dify_graph.nodes.llm import ModelConfig, VisionConfig
 class ClassConfig(BaseModel):
     id: str
     name: str
+    label: str | None = None
 
 
 class QuestionClassifierNodeData(BaseNodeData):

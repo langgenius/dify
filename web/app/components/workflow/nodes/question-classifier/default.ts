@@ -28,10 +28,12 @@ const nodeDefault: NodeDefault<QuestionClassifierNodeType> = {
       {
         id: '1',
         name: '',
+        label: 'CLASS 1',
       },
       {
         id: '2',
         name: '',
+        label: 'CLASS 2',
       },
     ],
     _targetBranches: [
