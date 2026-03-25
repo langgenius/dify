@@ -2,11 +2,11 @@ from types import SimpleNamespace
 from typing import cast
 
 import pytest
-from graphon.model_runtime.errors.invoke import InvokeBadRequestError
 from pytest_mock import MockerFixture
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.helper.moderation import check_moderation
+from graphon.model_runtime.errors.invoke import InvokeBadRequestError
 from models.provider import ProviderType
 
 
