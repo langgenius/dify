@@ -1,11 +1,16 @@
+from __future__ import annotations
+
 import json
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import (
+    AdvancedChatMessageEntity,
+    AdvancedChatPromptTemplateEntity,
+    AdvancedCompletionPromptTemplateEntity,
     DatasetEntity,
     DatasetRetrieveConfigEntity,
     ExternalDataVariableEntity,
@@ -13,10 +18,11 @@ from core.app.app_config.entities import (
     PromptTemplateEntity,
 )
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
-from dify_graph.model_runtime.entities.llm_entities import LLMMode
-from dify_graph.variables.input_entities import VariableEntity, VariableEntityType
+from graphon.model_runtime.entities.llm_entities import LLMMode
+from graphon.model_runtime.entities.message_entities import PromptMessageRole
+from graphon.variables.input_entities import VariableEntity, VariableEntityType
 from models import Account, Tenant
-from models.api_based_extension import APIBasedExtension
+from models.api_based_extension import APIBasedExtension, APIBasedExtensionPoint
 from models.model import App, AppMode, AppModelConfig
 from models.workflow import Workflow
 from services.workflow.workflow_converter import WorkflowConverter
@@ -548,3 +554,198 @@ class TestWorkflowConverter:
 
         # Verify single retrieval config is None for multiple strategy
         assert node["data"]["single_retrieval_config"] is None
+
+
+@pytest.fixture
+def default_variables():
+    return [
+        VariableEntity(variable="text_input", label="text-input", type=VariableEntityType.TEXT_INPUT),
+        VariableEntity(variable="paragraph", label="paragraph", type=VariableEntityType.PARAGRAPH),
+        VariableEntity(variable="select", label="select", type=VariableEntityType.SELECT),
+    ]
+
+
+class TestConvertToHttpRequestNodeVariants:
+    """Tests for chatbot vs workflow differences in HTTP request node conversion."""
+
+    @staticmethod
+    def _setup(app_mode, default_variables):
+        app_model = App(
+            tenant_id="tenant_id",
+            mode=app_mode,
+            name="test",
+            icon_type="emoji",
+            icon="🤖",
+            icon_background="#FFFFFF",
+        )
+
+        ext = APIBasedExtension(tenant_id="tenant_id", name="api-1", api_key="enc", api_endpoint="https://dify.ai")
+        ext.id = "ext_id"
+
+        converter = WorkflowConverter()
+        converter._get_api_based_extension = MagicMock(return_value=ext)
+
+        from core.helper import encrypter
+
+        encrypter.decrypt_token = MagicMock(return_value="api_key")
+
+        ext_vars = [
+            ExternalDataVariableEntity(
+                variable="external_variable", type="api", config={"api_based_extension_id": "ext_id"}
+            )
+        ]
+        nodes, _ = converter._convert_to_http_request_node(
+            app_model=app_model,
+            variables=default_variables,
+            external_data_variables=ext_vars,
+        )
+        return nodes
+
+    def test_chatbot_query_uses_sys_query(self, default_variables):
+        nodes = self._setup(AppMode.CHAT, default_variables)
+
+        body = json.loads(nodes[0]["data"]["body"]["data"])
+        assert body["params"]["query"] == "{{#sys.query#}}"
+        assert body["point"] == APIBasedExtensionPoint.APP_EXTERNAL_DATA_TOOL_QUERY
+        assert nodes[1]["data"]["type"] == "code"
+
+    def test_workflow_query_is_empty(self, default_variables):
+        nodes = self._setup(AppMode.WORKFLOW, default_variables)
+
+        body = json.loads(nodes[0]["data"]["body"]["data"])
+        assert body["params"]["query"] == ""
+
+
+class TestConvertToKnowledgeRetrievalNodeVariants:
+    """Tests for chatbot vs workflow differences in knowledge retrieval node."""
+
+    @staticmethod
+    def _dataset_config(query_variable=None):
+        return DatasetEntity(
+            dataset_ids=["ds1", "ds2"],
+            retrieve_config=DatasetRetrieveConfigEntity(
+                query_variable=query_variable,
+                retrieve_strategy=DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE,
+                top_k=5,
+                score_threshold=0.8,
+                reranking_model={"reranking_provider_name": "cohere", "reranking_model_name": "rerank-english-v2.0"},
+                reranking_enabled=True,
+            ),
+        )
+
+    @staticmethod
+    def _model_config():
+        return ModelConfigEntity(provider="openai", model="gpt-4", mode="chat", parameters={}, stop=[])
+
+    def test_chatbot_uses_sys_query(self):
+        node = WorkflowConverter()._convert_to_knowledge_retrieval_node(
+            new_app_mode=AppMode.ADVANCED_CHAT,
+            dataset_config=self._dataset_config(),
+            model_config=self._model_config(),
+        )
+        assert node["data"]["query_variable_selector"] == ["sys", "query"]
+
+    def test_workflow_uses_start_variable(self):
+        node = WorkflowConverter()._convert_to_knowledge_retrieval_node(
+            new_app_mode=AppMode.WORKFLOW,
+            dataset_config=self._dataset_config(query_variable="query"),
+            model_config=self._model_config(),
+        )
+        assert node["data"]["query_variable_selector"] == ["start", "query"]
+
+
+class TestConvertToLlmNode:
+    """Tests for LLM node conversion across model modes and prompt types."""
+
+    @staticmethod
+    def _model_config(model, mode):
+        return ModelConfigEntity(
+            provider="openai",
+            model=model,
+            mode=mode.value,
+            parameters={},
+            stop=[],
+        )
+
+    @staticmethod
+    def _graph(default_variables):
+        start = WorkflowConverter()._convert_to_start_node(default_variables)
+        return {"nodes": [start], "edges": []}
+
+    def test_simple_chat_model(self, default_variables):
+        prompt = PromptTemplateEntity(
+            prompt_type=PromptTemplateEntity.PromptType.SIMPLE,
+            simple_prompt_template="You are helpful {{text_input}}, {{paragraph}}, {{select}}.",
+        )
+        node = WorkflowConverter()._convert_to_llm_node(
+            original_app_mode=AppMode.CHAT,
+            new_app_mode=AppMode.ADVANCED_CHAT,
+            model_config=self._model_config("gpt-4", LLMMode.CHAT),
+            graph=self._graph(default_variables),
+            prompt_template=prompt,
+        )
+        assert node["data"]["type"] == "llm"
+        assert node["data"]["model"]["mode"] == LLMMode.CHAT.value
+        assert node["data"]["context"]["enabled"] is False
+        expected = "You are helpful {{#start.text_input#}}, {{#start.paragraph#}}, {{#start.select#}}.\n"
+        assert node["data"]["prompt_template"][0]["text"] == expected
+
+    def test_simple_completion_model(self, default_variables):
+        prompt = PromptTemplateEntity(
+            prompt_type=PromptTemplateEntity.PromptType.SIMPLE,
+            simple_prompt_template="You are helpful {{text_input}}, {{paragraph}}, {{select}}.",
+        )
+        node = WorkflowConverter()._convert_to_llm_node(
+            original_app_mode=AppMode.CHAT,
+            new_app_mode=AppMode.ADVANCED_CHAT,
+            model_config=self._model_config("gpt-3.5-turbo-instruct", LLMMode.COMPLETION),
+            graph=self._graph(default_variables),
+            prompt_template=prompt,
+        )
+        assert node["data"]["model"]["mode"] == LLMMode.COMPLETION.value
+        expected = "You are helpful {{#start.text_input#}}, {{#start.paragraph#}}, {{#start.select#}}.\n"
+        assert node["data"]["prompt_template"]["text"] == expected
+
+    def test_advanced_chat_model(self, default_variables):
+        prompt = PromptTemplateEntity(
+            prompt_type=PromptTemplateEntity.PromptType.ADVANCED,
+            advanced_chat_prompt_template=AdvancedChatPromptTemplateEntity(
+                messages=[
+                    AdvancedChatMessageEntity(
+                        text="You are helpful named {{name}}.\n\nContext:\n{{#context#}}",
+                        role=PromptMessageRole.SYSTEM,
+                    ),
+                    AdvancedChatMessageEntity(text="Hi.", role=PromptMessageRole.USER),
+                    AdvancedChatMessageEntity(text="Hello!", role=PromptMessageRole.ASSISTANT),
+                ]
+            ),
+        )
+        node = WorkflowConverter()._convert_to_llm_node(
+            original_app_mode=AppMode.CHAT,
+            new_app_mode=AppMode.ADVANCED_CHAT,
+            model_config=self._model_config("gpt-4", LLMMode.CHAT),
+            graph=self._graph(default_variables),
+            prompt_template=prompt,
+        )
+        assert isinstance(node["data"]["prompt_template"], list)
+        assert len(node["data"]["prompt_template"]) == 3
+
+    def test_advanced_completion_model(self, default_variables):
+        prompt = PromptTemplateEntity(
+            prompt_type=PromptTemplateEntity.PromptType.ADVANCED,
+            advanced_completion_prompt_template=AdvancedCompletionPromptTemplateEntity(
+                prompt="You are helpful named {{name}}.\n\nContext:\n{{#context#}}\n\nHuman: hi\nAssistant: ",
+                role_prefix=AdvancedCompletionPromptTemplateEntity.RolePrefixEntity(
+                    user="Human", assistant="Assistant"
+                ),
+            ),
+        )
+        node = WorkflowConverter()._convert_to_llm_node(
+            original_app_mode=AppMode.CHAT,
+            new_app_mode=AppMode.ADVANCED_CHAT,
+            model_config=self._model_config("gpt-3.5-turbo-instruct", LLMMode.COMPLETION),
+            graph=self._graph(default_variables),
+            prompt_template=prompt,
+        )
+        assert isinstance(node["data"]["prompt_template"], dict)
+        assert "text" in node["data"]["prompt_template"]

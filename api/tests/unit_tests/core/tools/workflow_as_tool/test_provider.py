@@ -13,7 +13,7 @@ from core.tools.entities.tool_entities import (
     ToolProviderType,
 )
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
-from dify_graph.variables.input_entities import VariableEntity, VariableEntityType
+from graphon.variables.input_entities import VariableEntity, VariableEntityType
 
 
 def _controller() -> WorkflowToolProviderController:

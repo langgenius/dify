@@ -399,7 +399,7 @@ class TestRetrievalServiceInternals:
         assert exceptions == []
         vector_instance.search_by_file.assert_not_called()
 
-    @patch("core.rag.datasource.retrieval_service.ModelManager")
+    @patch("core.rag.datasource.retrieval_service.ModelManager.for_tenant")
     @patch("core.rag.datasource.retrieval_service.DataPostProcessor")
     @patch("core.rag.datasource.retrieval_service.Vector")
     @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
@@ -451,9 +451,10 @@ class TestRetrievalServiceInternals:
         assert all_documents == reranked_docs
         assert exceptions == []
         processor_instance.invoke.assert_called_once()
+        mock_model_manager_class.assert_called_once_with(tenant_id=internal_dataset.tenant_id)
         model_manager.check_model_support_vision.assert_called_once()
 
-    @patch("core.rag.datasource.retrieval_service.ModelManager")
+    @patch("core.rag.datasource.retrieval_service.ModelManager.for_tenant")
     @patch("core.rag.datasource.retrieval_service.DataPostProcessor")
     @patch("core.rag.datasource.retrieval_service.Vector")
     @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
@@ -503,6 +504,7 @@ class TestRetrievalServiceInternals:
 
         assert all_documents == original_docs
         assert exceptions == []
+        mock_model_manager_class.assert_called_once_with(tenant_id=internal_dataset.tenant_id)
         processor_instance.invoke.assert_not_called()
 
     @patch("core.rag.datasource.retrieval_service.DataPostProcessor")

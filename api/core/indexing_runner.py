@@ -31,10 +31,10 @@ from core.rag.splitter.fixed_text_splitter import (
 )
 from core.rag.splitter.text_splitter import TextSplitter
 from core.tools.utils.web_reader_tool import get_image_upload_file_ids
-from dify_graph.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
+from graphon.model_runtime.entities.model_entities import ModelType
 from libs import helper
 from libs.datetime_utils import naive_utc_now
 from models import Account
@@ -50,7 +50,10 @@ logger = logging.getLogger(__name__)
 class IndexingRunner:
     def __init__(self):
         self.storage = storage
-        self.model_manager = ModelManager()
+
+    @staticmethod
+    def _get_model_manager(tenant_id: str) -> ModelManager:
+        return ModelManager.for_tenant(tenant_id=tenant_id)
 
     def _handle_indexing_error(self, document_id: str, error: Exception) -> None:
         """Handle indexing errors by updating document status."""
@@ -291,20 +294,20 @@ class IndexingRunner:
                 raise ValueError("Dataset not found.")
             if IndexTechniqueType.HIGH_QUALITY in {dataset.indexing_technique, indexing_technique}:
                 if dataset.embedding_model_provider:
-                    embedding_model_instance = self.model_manager.get_model_instance(
+                    embedding_model_instance = self._get_model_manager(tenant_id).get_model_instance(
                         tenant_id=tenant_id,
                         provider=dataset.embedding_model_provider,
                         model_type=ModelType.TEXT_EMBEDDING,
                         model=dataset.embedding_model,
                     )
                 else:
-                    embedding_model_instance = self.model_manager.get_default_model_instance(
+                    embedding_model_instance = self._get_model_manager(tenant_id).get_default_model_instance(
                         tenant_id=tenant_id,
                         model_type=ModelType.TEXT_EMBEDDING,
                     )
         else:
             if indexing_technique == IndexTechniqueType.HIGH_QUALITY:
-                embedding_model_instance = self.model_manager.get_default_model_instance(
+                embedding_model_instance = self._get_model_manager(tenant_id).get_default_model_instance(
                     tenant_id=tenant_id,
                     model_type=ModelType.TEXT_EMBEDDING,
                 )
@@ -574,7 +577,7 @@ class IndexingRunner:
 
         embedding_model_instance = None
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
-            embedding_model_instance = self.model_manager.get_model_instance(
+            embedding_model_instance = self._get_model_manager(dataset.tenant_id).get_model_instance(
                 tenant_id=dataset.tenant_id,
                 provider=dataset.embedding_model_provider,
                 model_type=ModelType.TEXT_EMBEDDING,
@@ -766,14 +769,14 @@ class IndexingRunner:
         embedding_model_instance = None
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             if dataset.embedding_model_provider:
-                embedding_model_instance = self.model_manager.get_model_instance(
+                embedding_model_instance = self._get_model_manager(dataset.tenant_id).get_model_instance(
                     tenant_id=dataset.tenant_id,
                     provider=dataset.embedding_model_provider,
                     model_type=ModelType.TEXT_EMBEDDING,
                     model=dataset.embedding_model,
                 )
             else:
-                embedding_model_instance = self.model_manager.get_default_model_instance(
+                embedding_model_instance = self._get_model_manager(dataset.tenant_id).get_default_model_instance(
                     tenant_id=dataset.tenant_id,
                     model_type=ModelType.TEXT_EMBEDDING,
                 )

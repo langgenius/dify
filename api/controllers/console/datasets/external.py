@@ -25,7 +25,7 @@ from libs.login import current_account_with_tenant, login_required
 from services.dataset_service import DatasetService
 from services.external_knowledge_service import ExternalDatasetService
 from services.hit_testing_service import HitTestingService
-from services.knowledge_service import ExternalDatasetTestService
+from services.knowledge_service import BedrockRetrievalSetting, ExternalDatasetTestService
 
 
 def _build_dataset_detail_model():
@@ -86,7 +86,7 @@ class ExternalHitTestingPayload(BaseModel):
 
 
 class BedrockRetrievalPayload(BaseModel):
-    retrieval_setting: dict[str, object]
+    retrieval_setting: "BedrockRetrievalSetting"
     query: str
     knowledge_id: str
 
