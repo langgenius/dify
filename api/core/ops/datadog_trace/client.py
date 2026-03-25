@@ -76,7 +76,7 @@ class DatadogTraceClient:
             self.span_contexts.popitem(last=False)
 
     @staticmethod
-    def _compute_trace_id(key: str) -> int:
+    def compute_trace_id(key: str) -> int:
         """
         Compute a deterministic 128-bit trace ID from a logical entity key.
         """

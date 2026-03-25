@@ -77,18 +77,19 @@ class DatadogSpanBuilder:
         return [DatadogSpanBuilder._to_otel_message("user", str(value) if value else "")]
 
     @staticmethod
+    def _extract_role_and_text(item: dict[str, Any]) -> tuple[str, str]:
+        role = str(item.get("role", "assistant"))
+        text = str(item.get("text", "") or item.get("content", "")).strip()
+        return role, text
+
+    @staticmethod
     def _normalize_output_messages(value: Any) -> list[dict[str, Any]]:
         if isinstance(value, list):
             messages: list[dict[str, Any]] = []
             for item in value:
                 if isinstance(item, dict) and "role" in item and ("text" in item or "content" in item):
-                    converted = DatadogSpanBuilder._convert_dify_prompt(item)
-                    messages.append(
-                        DatadogSpanBuilder._to_otel_output_message(
-                            str(converted.get("role", "assistant")),
-                            str(converted["parts"][0]["content"]),
-                        )
-                    )
+                    role, text = DatadogSpanBuilder._extract_role_and_text(item)
+                    messages.append(DatadogSpanBuilder._to_otel_output_message(role, text))
                 else:
                     messages.append(
                         DatadogSpanBuilder._to_otel_output_message("assistant", DatadogSpanBuilder._safe_json(item))
@@ -97,13 +98,8 @@ class DatadogSpanBuilder:
 
         if isinstance(value, dict):
             if "role" in value and ("text" in value or "content" in value):
-                converted = DatadogSpanBuilder._convert_dify_prompt(value)
-                return [
-                    DatadogSpanBuilder._to_otel_output_message(
-                        str(converted.get("role", "assistant")),
-                        str(converted["parts"][0]["content"]),
-                    )
-                ]
+                role, text = DatadogSpanBuilder._extract_role_and_text(value)
+                return [DatadogSpanBuilder._to_otel_output_message(role, text)]
             return [DatadogSpanBuilder._to_otel_output_message("assistant", DatadogSpanBuilder._safe_json(value))]
 
         return [DatadogSpanBuilder._to_otel_output_message("assistant", str(value) if value else "")]
@@ -193,9 +189,9 @@ class DatadogSpanBuilder:
             attrs[semconv.CONVERSATION_ID] = trace_info.conversation_id
 
         if app_id := inputs.get("sys.app_id"):
-            attrs["dify.app_id"] = app_id
+            attrs[semconv.DIFY_APP_ID] = app_id
         if workflow_id := inputs.get("sys.workflow_id"):
-            attrs["dify.workflow_id"] = workflow_id
+            attrs[semconv.DIFY_WORKFLOW_ID] = workflow_id
 
         return attrs
 
@@ -231,7 +227,7 @@ class DatadogSpanBuilder:
         """
         process_data = node_execution.process_data or {}
         outputs = node_execution.outputs or {}
-        usage = process_data.get("usage", {}) if "usage" in process_data else outputs.get("usage", {})
+        usage = process_data.get("usage") or outputs.get("usage") or {}
 
         provider = DatadogSpanBuilder._clean_provider_name(str(process_data.get("model_provider", "")))
         model = str(process_data.get("model_name", ""))
@@ -445,12 +441,10 @@ class DatadogSpanBuilder:
 
         doc_data = []
         for doc in documents:
-            doc_data.append(
-                {
-                    "content": doc.page_content,
-                    "metadata": doc.metadata,
-                }
-            )
+            if isinstance(doc, dict):
+                doc_data.append({"content": doc.get("page_content", ""), "metadata": doc.get("metadata", {})})
+            else:
+                doc_data.append({"content": doc.page_content, "metadata": doc.metadata})
 
         return {
             semconv.OPERATION_NAME: "retrieval",
