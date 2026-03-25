@@ -178,7 +178,7 @@ const TreeNode = ({ node, style, dragHandle, treeChildren }: TreeNodeProps) => {
             <span className="i-ri-more-fill size-4 text-text-tertiary" aria-hidden="true" />
           </DropdownMenuTrigger>
           <DropdownMenuContent
-            placement="bottom-start"
+            placement="bottom-end"
             sideOffset={4}
             popupClassName="min-w-[180px]"
             popupProps={{ onClick: handleDropdownContentClick }}
