@@ -28,7 +28,6 @@ class VectorType(StrEnum):
     OCEANBASE = "oceanbase"
     SEEKDB = "seekdb"
     OPENGAUSS = "opengauss"
-    TABLESTORE = "tablestore"
     HUAWEI_CLOUD = "huawei_cloud"
     MATRIXONE = "matrixone"
     IRIS = "iris"

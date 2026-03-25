@@ -59,7 +59,6 @@ core/rag/datasource/vdb/opensearch/opensearch_vector.py
 core/rag/datasource/vdb/oracle/oraclevector.py
 core/rag/datasource/vdb/pgvecto_rs/pgvecto_rs.py
 core/rag/datasource/vdb/relyt/relyt_vector.py
-core/rag/datasource/vdb/tablestore/tablestore_vector.py
 core/rag/datasource/vdb/tencent/tencent_vector.py
 core/rag/datasource/vdb/tidb_on_qdrant/tidb_on_qdrant_vector.py
 core/rag/datasource/vdb/tidb_on_qdrant/tidb_service.py

@@ -215,7 +215,6 @@ vdb = [
     "pyobvector~=0.2.17",
     "qdrant-client==1.9.0",
     "intersystems-irispython>=5.1.0",
-    "tablestore==6.4.1",
     "tcvectordb~=2.0.0",
     "tidb-vector==0.0.15",
     "upstash-vector==0.8.0",
