@@ -10,8 +10,8 @@ import pytest
 
 import services.vector_service as vector_service_module
 from core.rag.datasource.vdb.vector_factory import Vector
-from core.rag.models.document import AttachmentDocument, ChildDocument, Document
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
+from core.rag.models.document import AttachmentDocument, ChildDocument, Document
 from services.vector_service import VectorService
 
 
