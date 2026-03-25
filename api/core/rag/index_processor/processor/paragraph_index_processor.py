@@ -14,6 +14,7 @@ from core.llm_generator.prompts import DEFAULT_GENERATOR_SUMMARY_PROMPT
 from core.model_manager import ModelInstance
 from core.provider_manager import ProviderManager
 from core.rag.cleaner.clean_processor import CleanProcessor
+from core.rag.data_post_processor.data_post_processor import RerankingModelDict
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.datasource.vdb.vector_factory import Vector
@@ -21,8 +22,8 @@ from core.rag.docstore.dataset_docstore import DatasetDocumentStore
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.extractor.extract_processor import ExtractProcessor
 from core.rag.index_processor.constant.doc_type import DocType
-from core.rag.index_processor.constant.index_type import IndexStructureType
-from core.rag.index_processor.index_processor_base import BaseIndexProcessor
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
+from core.rag.index_processor.index_processor_base import BaseIndexProcessor, SummaryIndexSettingDict
 from core.rag.models.document import AttachmentDocument, Document, MultimodalGeneralStructureChunk
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.utils.text_processing_utils import remove_leading_symbols
@@ -116,7 +117,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         with_keywords: bool = True,
         **kwargs,
     ) -> None:
-        if dataset.indexing_technique == "high_quality":
+        if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             vector = Vector(dataset)
             vector.create(documents)
             if multimodal_documents and dataset.is_multimodal:
@@ -154,7 +155,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                 # Delete all summaries for the dataset
                 SummaryIndexService.delete_summaries_for_segments(dataset, None)
 
-        if dataset.indexing_technique == "high_quality":
+        if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             vector = Vector(dataset)
             if node_ids:
                 vector.delete_by_ids(node_ids)
@@ -175,7 +176,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         dataset: Dataset,
         top_k: int,
         score_threshold: float,
-        reranking_model: dict,
+        reranking_model: RerankingModelDict,
     ) -> list[Document]:
         # Set search parameters.
         results = RetrievalService.retrieve(
@@ -252,12 +253,12 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             doc_store = DatasetDocumentStore(dataset=dataset, user_id=document.created_by, document_id=document.id)
             # add document segments
             doc_store.add_documents(docs=documents, save_child=False)
-            if dataset.indexing_technique == "high_quality":
+            if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
                 vector = Vector(dataset)
                 vector.create(documents)
                 if all_multimodal_documents and dataset.is_multimodal:
                     vector.create_multimodal(all_multimodal_documents)
-            elif dataset.indexing_technique == "economy":
+            elif dataset.indexing_technique == IndexTechniqueType.ECONOMY:
                 keyword = Keyword(dataset)
                 keyword.add_texts(documents)
 
@@ -278,7 +279,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         self,
         tenant_id: str,
         preview_texts: list[PreviewDetail],
-        summary_index_setting: dict,
+        summary_index_setting: SummaryIndexSettingDict,
         doc_language: str | None = None,
     ) -> list[PreviewDetail]:
         """
@@ -362,7 +363,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
     def generate_summary(
         tenant_id: str,
         text: str,
-        summary_index_setting: dict | None = None,
+        summary_index_setting: SummaryIndexSettingDict | None = None,
         segment_id: str | None = None,
         document_language: str | None = None,
     ) -> tuple[str, LLMUsage]:

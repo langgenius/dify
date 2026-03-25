@@ -8,7 +8,6 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import InputWithCopy from '@/app/components/base/input-with-copy'
 import { SimpleSelect } from '@/app/components/base/select'
-import Toast from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
 import {
   NumberField,
@@ -18,6 +17,7 @@ import {
   NumberFieldIncrement,
   NumberFieldInput,
 } from '@/app/components/base/ui/number-field'
+import { toast } from '@/app/components/base/ui/toast'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import OutputVars from '@/app/components/workflow/nodes/_base/components/output-vars'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
@@ -102,10 +102,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
                   placeholder={t(`${i18nPrefix}.webhookUrlPlaceholder`, { ns: 'workflow' })}
                   readOnly
                   onCopy={() => {
-                    Toast.notify({
-                      type: 'success',
-                      message: t(`${i18nPrefix}.urlCopied`, { ns: 'workflow' }),
-                    })
+                    toast.success(t(`${i18nPrefix}.urlCopied`, { ns: 'workflow' }))
                   }}
                 />
               </div>

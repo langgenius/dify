@@ -4,6 +4,7 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
+from models.enums import ConversationFromSource
 from models.model import EndUser, Message
 from models.web import SavedMessage
 from services.app_service import AppService
@@ -132,11 +133,14 @@ class TestSavedMessageService:
         # Create a simple conversation first
         from models.model import Conversation
 
+        is_account = hasattr(user, "current_tenant")
+        from_source = ConversationFromSource.CONSOLE if is_account else ConversationFromSource.API
+
         conversation = Conversation(
             app_id=app.id,
-            from_source="account" if hasattr(user, "current_tenant") else "end_user",
-            from_end_user_id=user.id if not hasattr(user, "current_tenant") else None,
-            from_account_id=user.id if hasattr(user, "current_tenant") else None,
+            from_source=from_source,
+            from_end_user_id=user.id if not is_account else None,
+            from_account_id=user.id if is_account else None,
             name=fake.sentence(nb_words=3),
             inputs={},
             status="normal",
@@ -150,9 +154,9 @@ class TestSavedMessageService:
         message = Message(
             app_id=app.id,
             conversation_id=conversation.id,
-            from_source="account" if hasattr(user, "current_tenant") else "end_user",
-            from_end_user_id=user.id if not hasattr(user, "current_tenant") else None,
-            from_account_id=user.id if hasattr(user, "current_tenant") else None,
+            from_source=from_source,
+            from_end_user_id=user.id if not is_account else None,
+            from_account_id=user.id if is_account else None,
             inputs={},
             query=fake.sentence(nb_words=5),
             message=fake.text(max_nb_chars=100),
@@ -392,11 +396,6 @@ class TestSavedMessageService:
 
         assert "User is required" in str(exc_info.value)
 
-        # Verify no database operations were performed
-
-        saved_messages = db_session_with_containers.query(SavedMessage).all()
-        assert len(saved_messages) == 0
-
     def test_save_error_no_user(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test error handling when saving message with no user.
@@ -493,124 +492,140 @@ class TestSavedMessageService:
         # The message should still exist, only the saved_message should be deleted
         assert db_session_with_containers.query(Message).where(Message.id == message.id).first() is not None
 
-    def test_pagination_by_last_id_error_no_user(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test error handling when no user is provided.
-
-        This test verifies:
-        - Proper error handling for missing user
-        - ValueError is raised when user is None
-        - No database operations are performed
-        """
-        # Arrange: Create test data
-        fake = Faker()
+    def test_save_for_end_user(self, db_session_with_containers: Session, mock_external_service_dependencies):
+        """Test saving a message for an EndUser."""
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
+        end_user = self._create_test_end_user(db_session_with_containers, app)
+        message = self._create_test_message(db_session_with_containers, app, end_user)
 
-        # Act & Assert: Verify proper error handling
-        with pytest.raises(ValueError) as exc_info:
-            SavedMessageService.pagination_by_last_id(app_model=app, user=None, last_id=None, limit=10)
+        mock_external_service_dependencies["message_service"].get_message.return_value = message
 
-        assert "User is required" in str(exc_info.value)
+        SavedMessageService.save(app_model=app, user=end_user, message_id=message.id)
 
-        # Verify no database operations were performed for this specific test
-        # Note: We don't check total count as other tests may have created data
-        # Instead, we verify that the error was properly raised
-        pass
-
-    def test_save_error_no_user(self, db_session_with_containers: Session, mock_external_service_dependencies):
-        """
-        Test error handling when saving message with no user.
-
-        This test verifies:
-        - Method returns early when user is None
-        - No database operations are performed
-        - No exceptions are raised
-        """
-        # Arrange: Create test data
-        fake = Faker()
-        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
-        message = self._create_test_message(db_session_with_containers, app, account)
-
-        # Act: Execute the method under test with None user
-        result = SavedMessageService.save(app_model=app, user=None, message_id=message.id)
-
-        # Assert: Verify the expected outcomes
-        assert result is None
-
-        # Verify no saved message was created
-
-        saved_message = (
+        saved = (
             db_session_with_containers.query(SavedMessage)
-            .where(
-                SavedMessage.app_id == app.id,
-                SavedMessage.message_id == message.id,
-            )
+            .where(SavedMessage.app_id == app.id, SavedMessage.message_id == message.id)
             .first()
         )
+        assert saved is not None
+        assert saved.created_by == end_user.id
+        assert saved.created_by_role == "end_user"
 
-        assert saved_message is None
-
-    def test_delete_success_existing_message(
+    def test_save_duplicate_is_idempotent(
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
-        """
-        Test successful deletion of an existing saved message.
-
-        This test verifies:
-        - Proper deletion of existing saved message
-        - Correct database state after deletion
-        - No errors during deletion process
-        """
-        # Arrange: Create test data
-        fake = Faker()
+        """Test that saving an already-saved message does not create a duplicate."""
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
         message = self._create_test_message(db_session_with_containers, app, account)
 
-        # Create a saved message first
-        saved_message = SavedMessage(
-            app_id=app.id,
-            message_id=message.id,
-            created_by_role="account",
-            created_by=account.id,
-        )
+        mock_external_service_dependencies["message_service"].get_message.return_value = message
 
-        db_session_with_containers.add(saved_message)
+        # Save once
+        SavedMessageService.save(app_model=app, user=account, message_id=message.id)
+        # Save again
+        SavedMessageService.save(app_model=app, user=account, message_id=message.id)
+
+        count = (
+            db_session_with_containers.query(SavedMessage)
+            .where(SavedMessage.app_id == app.id, SavedMessage.message_id == message.id)
+            .count()
+        )
+        assert count == 1
+
+    def test_delete_without_user_does_nothing(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """Test that deleting without a user is a no-op."""
+        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
+        message = self._create_test_message(db_session_with_containers, app, account)
+
+        # Pre-create a saved message
+        saved = SavedMessage(app_id=app.id, message_id=message.id, created_by_role="account", created_by=account.id)
+        db_session_with_containers.add(saved)
         db_session_with_containers.commit()
 
-        # Verify saved message exists
+        SavedMessageService.delete(app_model=app, user=None, message_id=message.id)
+
+        # Should still exist
+        assert (
+            db_session_with_containers.query(SavedMessage)
+            .where(SavedMessage.app_id == app.id, SavedMessage.message_id == message.id)
+            .first()
+            is not None
+        )
+
+    def test_delete_non_existent_does_nothing(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """Test that deleting a non-existent saved message is a no-op."""
+        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
+
+        # Should not raise — use a valid UUID that doesn't exist in DB
+        from uuid import uuid4
+
+        SavedMessageService.delete(app_model=app, user=account, message_id=str(uuid4()))
+
+    def test_delete_for_end_user(self, db_session_with_containers: Session, mock_external_service_dependencies):
+        """Test deleting a saved message for an EndUser."""
+        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
+        end_user = self._create_test_end_user(db_session_with_containers, app)
+        message = self._create_test_message(db_session_with_containers, app, end_user)
+
+        saved = SavedMessage(app_id=app.id, message_id=message.id, created_by_role="end_user", created_by=end_user.id)
+        db_session_with_containers.add(saved)
+        db_session_with_containers.commit()
+
+        SavedMessageService.delete(app_model=app, user=end_user, message_id=message.id)
+
+        assert (
+            db_session_with_containers.query(SavedMessage)
+            .where(SavedMessage.app_id == app.id, SavedMessage.message_id == message.id)
+            .first()
+            is None
+        )
+
+    def test_delete_only_affects_own_saved_messages(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """Test that delete only removes the requesting user's saved message."""
+        app, account1 = self._create_test_app_and_account(
+            db_session_with_containers, mock_external_service_dependencies
+        )
+        end_user = self._create_test_end_user(db_session_with_containers, app)
+        message = self._create_test_message(db_session_with_containers, app, account1)
+
+        # Both users save the same message
+        saved_account = SavedMessage(
+            app_id=app.id, message_id=message.id, created_by_role="account", created_by=account1.id
+        )
+        saved_end_user = SavedMessage(
+            app_id=app.id, message_id=message.id, created_by_role="end_user", created_by=end_user.id
+        )
+        db_session_with_containers.add_all([saved_account, saved_end_user])
+        db_session_with_containers.commit()
+
+        # Delete only account1's saved message
+        SavedMessageService.delete(app_model=app, user=account1, message_id=message.id)
+
+        # Account's saved message should be gone
         assert (
             db_session_with_containers.query(SavedMessage)
             .where(
                 SavedMessage.app_id == app.id,
                 SavedMessage.message_id == message.id,
-                SavedMessage.created_by_role == "account",
-                SavedMessage.created_by == account.id,
+                SavedMessage.created_by == account1.id,
             )
             .first()
-            is not None
+            is None
         )
-
-        # Act: Execute the method under test
-        SavedMessageService.delete(app_model=app, user=account, message_id=message.id)
-
-        # Assert: Verify the expected outcomes
-        # Check if saved message was deleted from database
-        deleted_saved_message = (
+        # End user's saved message should still exist
+        assert (
             db_session_with_containers.query(SavedMessage)
             .where(
                 SavedMessage.app_id == app.id,
                 SavedMessage.message_id == message.id,
-                SavedMessage.created_by_role == "account",
-                SavedMessage.created_by == account.id,
+                SavedMessage.created_by == end_user.id,
             )
             .first()
+            is not None
         )
-
-        assert deleted_saved_message is None
-
-        # Verify database state
-        db_session_with_containers.commit()
-        # The message should still exist, only the saved_message should be deleted
-        assert db_session_with_containers.query(Message).where(Message.id == message.id).first() is not None

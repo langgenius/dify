@@ -1,7 +1,7 @@
 import type { Category } from './types'
-import Link from 'next/link'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import Link from '@/next/link'
 import { cn } from '@/utils/classnames'
 import { CategoryEnum } from './types'
 
@@ -28,8 +28,9 @@ const Footer = ({
         <span className="flex h-fit items-center gap-x-1 text-saas-dify-blue-accessible">
           <Link
             href={pricingPageURL}
-            className="system-md-regular"
+            className="system-md-regular hover:underline focus-visible:underline focus-visible:outline-none"
             target="_blank"
+            rel="noopener noreferrer"
           >
             {t('plansCommon.comparePlanAndFeatures', { ns: 'billing' })}
           </Link>

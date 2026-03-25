@@ -9,6 +9,8 @@ from flask import current_app
 from sqlalchemy import delete, func, select
 
 from core.db.session_factory import session_factory
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
+from core.rag.index_processor.index_processor_base import SummaryIndexSettingDict
 from core.workflow.nodes.knowledge_index.exc import KnowledgeIndexNodeError
 from core.workflow.nodes.knowledge_index.protocols import Preview, PreviewItem, QaPreview
 from models.dataset import Dataset, Document, DocumentSegment
@@ -51,7 +53,7 @@ class IndexProcessor:
         original_document_id: str,
         chunks: Mapping[str, Any],
         batch: Any,
-        summary_index_setting: dict | None = None,
+        summary_index_setting: SummaryIndexSettingDict | None = None,
     ):
         with session_factory.create_session() as session:
             document = session.query(Document).filter_by(id=document_id).first()
@@ -131,7 +133,12 @@ class IndexProcessor:
         }
 
     def get_preview_output(
-        self, chunks: Any, dataset_id: str, document_id: str, chunk_structure: str, summary_index_setting: dict | None
+        self,
+        chunks: Any,
+        dataset_id: str,
+        document_id: str,
+        chunk_structure: str,
+        summary_index_setting: SummaryIndexSettingDict | None,
     ) -> Preview:
         doc_language = None
         with session_factory.create_session() as session:
@@ -153,7 +160,7 @@ class IndexProcessor:
             tenant_id = dataset.tenant_id
 
         preview_output = self.format_preview(chunk_structure, chunks)
-        if indexing_technique != "high_quality":
+        if indexing_technique != IndexTechniqueType.HIGH_QUALITY:
             return preview_output
 
         if not summary_index_setting or not summary_index_setting.get("enable"):

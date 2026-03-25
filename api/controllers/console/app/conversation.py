@@ -5,7 +5,7 @@ from flask import abort, request
 from flask_restx import Resource, fields, marshal_with
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, or_
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import selectinload
 from werkzeug.exceptions import NotFound
 
 from controllers.console import console_ns
@@ -376,8 +376,12 @@ class CompletionConversationApi(Resource):
 
         # FIXME, the type ignore in this file
         if args.annotation_status == "annotated":
-            query = query.options(joinedload(Conversation.message_annotations)).join(  # type: ignore
-                MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id
+            query = (
+                query.options(selectinload(Conversation.message_annotations))  # type: ignore[arg-type]
+                .join(  # type: ignore
+                    MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id
+                )
+                .distinct()
             )
         elif args.annotation_status == "not_annotated":
             query = (
@@ -454,9 +458,7 @@ class ChatConversationApi(Resource):
         args = ChatConversationQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         subquery = (
-            db.session.query(
-                Conversation.id.label("conversation_id"), EndUser.session_id.label("from_end_user_session_id")
-            )
+            sa.select(Conversation.id.label("conversation_id"), EndUser.session_id.label("from_end_user_session_id"))
             .outerjoin(EndUser, Conversation.from_end_user_id == EndUser.id)
             .subquery()
         )
@@ -511,8 +513,12 @@ class ChatConversationApi(Resource):
 
         match args.annotation_status:
             case "annotated":
-                query = query.options(joinedload(Conversation.message_annotations)).join(  # type: ignore
-                    MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id
+                query = (
+                    query.options(selectinload(Conversation.message_annotations))  # type: ignore[arg-type]
+                    .join(  # type: ignore
+                        MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id
+                    )
+                    .distinct()
                 )
             case "not_annotated":
                 query = (
@@ -587,10 +593,8 @@ class ChatConversationDetailApi(Resource):
 
 def _get_conversation(app_model, conversation_id):
     current_user, _ = current_account_with_tenant()
-    conversation = (
-        db.session.query(Conversation)
-        .where(Conversation.id == conversation_id, Conversation.app_id == app_model.id)
-        .first()
+    conversation = db.session.scalar(
+        sa.select(Conversation).where(Conversation.id == conversation_id, Conversation.app_id == app_model.id).limit(1)
     )
 
     if not conversation:

@@ -25,6 +25,7 @@ from core.app.app_config.entities import ModelConfig as WorkflowModelConfig
 from core.app.entities.app_invoke_entities import InvokeFrom, ModelConfigWithCredentialsEntity
 from core.entities.agent_entities import PlanningStrategy
 from core.entities.model_entities import ModelStatus
+from core.rag.data_post_processor.data_post_processor import WeightsDict
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexStructureType
@@ -4686,7 +4687,10 @@ class TestSingleAndMultipleRetrieveCoverage:
             extra={"dataset_name": "Ext", "title": "Ext"},
         )
         app = Flask(__name__)
-        weights = {"vector_setting": {}}
+        weights: WeightsDict = {
+            "vector_setting": {"vector_weight": 0.5, "embedding_provider_name": "", "embedding_model_name": ""},
+            "keyword_setting": {"keyword_weight": 0.5},
+        }
 
         def fake_multiple_thread(**kwargs):
             if kwargs["query"]:
@@ -4796,8 +4800,8 @@ class TestInternalHooksCoverage:
         dataset_docs = [
             SimpleNamespace(id="doc-a", doc_form=IndexStructureType.PARENT_CHILD_INDEX),
             SimpleNamespace(id="doc-b", doc_form=IndexStructureType.PARENT_CHILD_INDEX),
-            SimpleNamespace(id="doc-c", doc_form="qa_model"),
-            SimpleNamespace(id="doc-d", doc_form="qa_model"),
+            SimpleNamespace(id="doc-c", doc_form=IndexStructureType.QA_INDEX),
+            SimpleNamespace(id="doc-d", doc_form=IndexStructureType.QA_INDEX),
         ]
         child_chunks = [SimpleNamespace(index_node_id="idx-a", segment_id="seg-a")]
         segments = [SimpleNamespace(index_node_id="idx-c", id="seg-c")]

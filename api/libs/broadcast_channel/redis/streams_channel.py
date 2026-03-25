@@ -64,7 +64,10 @@ class _StreamsSubscription(Subscription):
         self._client = client
         self._key = key
         self._closed = threading.Event()
-        self._last_id = "0-0"
+        # Setting initial last id to `$` to signal redis that we only want new messages.
+        #
+        # ref: https://redis.io/docs/latest/commands/xread/#the-special--id
+        self._last_id = "$"
         self._queue: queue.Queue[object] = queue.Queue()
         self._start_lock = threading.Lock()
         self._listener: threading.Thread | None = None

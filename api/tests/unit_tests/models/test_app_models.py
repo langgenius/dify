@@ -16,6 +16,7 @@ from uuid import uuid4
 
 import pytest
 
+from models.enums import ConversationFromSource
 from models.model import (
     App,
     AppAnnotationHitHistory,
@@ -324,7 +325,7 @@ class TestConversationModel:
             mode=AppMode.CHAT,
             name="Test Conversation",
             status="normal",
-            from_source="api",
+            from_source=ConversationFromSource.API,
             from_end_user_id=from_end_user_id,
         )
 
@@ -345,7 +346,7 @@ class TestConversationModel:
             mode=AppMode.CHAT,
             name="Test Conversation",
             status="normal",
-            from_source="api",
+            from_source=ConversationFromSource.API,
             from_end_user_id=str(uuid4()),
         )
         conversation._inputs = inputs
@@ -364,7 +365,7 @@ class TestConversationModel:
             mode=AppMode.CHAT,
             name="Test Conversation",
             status="normal",
-            from_source="api",
+            from_source=ConversationFromSource.API,
             from_end_user_id=str(uuid4()),
         )
         inputs = {"query": "Hello", "context": "test"}
@@ -383,7 +384,7 @@ class TestConversationModel:
             mode=AppMode.CHAT,
             name="Test Conversation",
             status="normal",
-            from_source="api",
+            from_source=ConversationFromSource.API,
             from_end_user_id=str(uuid4()),
             summary="Test summary",
         )
@@ -402,7 +403,7 @@ class TestConversationModel:
             mode=AppMode.CHAT,
             name="Test Conversation",
             status="normal",
-            from_source="api",
+            from_source=ConversationFromSource.API,
             from_end_user_id=str(uuid4()),
             summary=None,
         )
@@ -425,7 +426,7 @@ class TestConversationModel:
             mode=AppMode.CHAT,
             name="Test Conversation",
             status="normal",
-            from_source="api",
+            from_source=ConversationFromSource.API,
             from_end_user_id=str(uuid4()),
             override_model_configs='{"model": "gpt-4"}',
         )
@@ -446,7 +447,7 @@ class TestConversationModel:
             mode=AppMode.CHAT,
             name="Test Conversation",
             status="normal",
-            from_source="api",
+            from_source=ConversationFromSource.API,
             from_end_user_id=from_end_user_id,
             dialogue_count=5,
         )
@@ -487,7 +488,7 @@ class TestMessageModel:
             message_unit_price=Decimal("0.0001"),
             answer_unit_price=Decimal("0.0002"),
             currency="USD",
-            from_source="api",
+            from_source=ConversationFromSource.API,
         )
 
         # Assert
@@ -511,7 +512,7 @@ class TestMessageModel:
             message_unit_price=Decimal("0.0001"),
             answer_unit_price=Decimal("0.0002"),
             currency="USD",
-            from_source="api",
+            from_source=ConversationFromSource.API,
         )
         message._inputs = inputs
 
@@ -533,7 +534,7 @@ class TestMessageModel:
             message_unit_price=Decimal("0.0001"),
             answer_unit_price=Decimal("0.0002"),
             currency="USD",
-            from_source="api",
+            from_source=ConversationFromSource.API,
         )
         inputs = {"query": "Hello", "context": "test"}
 
@@ -555,7 +556,7 @@ class TestMessageModel:
             message_unit_price=Decimal("0.0001"),
             answer_unit_price=Decimal("0.0002"),
             currency="USD",
-            from_source="api",
+            from_source=ConversationFromSource.API,
             override_model_configs='{"model": "gpt-4"}',
         )
 
@@ -578,7 +579,7 @@ class TestMessageModel:
             message_unit_price=Decimal("0.0001"),
             answer_unit_price=Decimal("0.0002"),
             currency="USD",
-            from_source="api",
+            from_source=ConversationFromSource.API,
             message_metadata=json.dumps(metadata),
         )
 
@@ -600,7 +601,7 @@ class TestMessageModel:
             message_unit_price=Decimal("0.0001"),
             answer_unit_price=Decimal("0.0002"),
             currency="USD",
-            from_source="api",
+            from_source=ConversationFromSource.API,
             message_metadata=None,
         )
 
@@ -627,7 +628,7 @@ class TestMessageModel:
             answer_unit_price=Decimal("0.0002"),
             total_price=Decimal("0.0003"),
             currency="USD",
-            from_source="api",
+            from_source=ConversationFromSource.API,
             status="normal",
         )
         message.id = str(uuid4())
@@ -988,7 +989,7 @@ class TestModelIntegration:
             mode=AppMode.CHAT,
             name="Test Conversation",
             status="normal",
-            from_source="api",
+            from_source=ConversationFromSource.API,
             from_end_user_id=str(uuid4()),
         )
         conversation.id = conversation_id
@@ -1003,7 +1004,7 @@ class TestModelIntegration:
             message_unit_price=Decimal("0.0001"),
             answer_unit_price=Decimal("0.0002"),
             currency="USD",
-            from_source="api",
+            from_source=ConversationFromSource.API,
         )
         message.id = message_id
 
@@ -1064,7 +1065,7 @@ class TestModelIntegration:
             message_unit_price=Decimal("0.0001"),
             answer_unit_price=Decimal("0.0002"),
             currency="USD",
-            from_source="api",
+            from_source=ConversationFromSource.API,
         )
         message.id = message_id
 
@@ -1158,12 +1159,12 @@ class TestConversationStatusCount:
             mode=AppMode.CHAT,
             name="Test Conversation",
             status="normal",
-            from_source="api",
+            from_source=ConversationFromSource.API,
         )
         conversation.id = str(uuid4())
 
         # Mock the database query to return no messages
-        with patch("models.model.db.session.scalars", autospec=True) as mock_scalars:
+        with patch("models.model.db.session.scalars") as mock_scalars:
             mock_scalars.return_value.all.return_value = []
 
             # Act
@@ -1183,12 +1184,12 @@ class TestConversationStatusCount:
             mode=AppMode.CHAT,
             name="Test Conversation",
             status="normal",
-            from_source="api",
+            from_source=ConversationFromSource.API,
         )
         conversation.id = conversation_id
 
         # Mock the database query to return no messages with workflow_run_id
-        with patch("models.model.db.session.scalars", autospec=True) as mock_scalars:
+        with patch("models.model.db.session.scalars") as mock_scalars:
             mock_scalars.return_value.all.return_value = []
 
             # Act
@@ -1215,7 +1216,7 @@ class TestConversationStatusCount:
             mode=AppMode.CHAT,
             name="Test Conversation",
             status="normal",
-            from_source="api",
+            from_source=ConversationFromSource.API,
         )
         conversation.id = conversation_id
 
@@ -1273,7 +1274,7 @@ class TestConversationStatusCount:
             return mock_result
 
         # Act & Assert
-        with patch("models.model.db.session.scalars", side_effect=mock_scalars, autospec=True):
+        with patch("models.model.db.session.scalars", side_effect=mock_scalars):
             result = conversation.status_count
 
             # Verify only 2 database queries were made (not N+1)
@@ -1307,7 +1308,7 @@ class TestConversationStatusCount:
             mode=AppMode.CHAT,
             name="Test Conversation",
             status="normal",
-            from_source="api",
+            from_source=ConversationFromSource.API,
         )
         conversation.id = conversation_id
 
@@ -1336,7 +1337,7 @@ class TestConversationStatusCount:
             return mock_result
 
         # Act
-        with patch("models.model.db.session.scalars", side_effect=mock_scalars, autospec=True):
+        with patch("models.model.db.session.scalars", side_effect=mock_scalars):
             result = conversation.status_count
 
             # Assert - query should include app_id filter
@@ -1361,7 +1362,7 @@ class TestConversationStatusCount:
             mode=AppMode.CHAT,
             name="Test Conversation",
             status="normal",
-            from_source="api",
+            from_source=ConversationFromSource.API,
         )
         conversation.id = conversation_id
 
@@ -1381,7 +1382,7 @@ class TestConversationStatusCount:
             ),
         ]
 
-        with patch("models.model.db.session.scalars", autospec=True) as mock_scalars:
+        with patch("models.model.db.session.scalars") as mock_scalars:
             # Mock the messages query
             def mock_scalars_side_effect(query):
                 mock_result = MagicMock()
@@ -1418,7 +1419,7 @@ class TestConversationStatusCount:
             mode=AppMode.CHAT,
             name="Test Conversation",
             status="normal",
-            from_source="api",
+            from_source=ConversationFromSource.API,
         )
         conversation.id = conversation_id
 
@@ -1437,7 +1438,7 @@ class TestConversationStatusCount:
             ),
         ]
 
-        with patch("models.model.db.session.scalars", autospec=True) as mock_scalars:
+        with patch("models.model.db.session.scalars") as mock_scalars:
 
             def mock_scalars_side_effect(query):
                 mock_result = MagicMock()

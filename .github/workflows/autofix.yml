@@ -39,7 +39,7 @@ jobs:
         with:
           python-version: "3.11"
 
-      - uses: astral-sh/setup-uv@e06108dd0aef18192324c70427afc47652e63a82 # v7.5.0
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
 
       - name: Generate Docker Compose
         if: steps.docker-compose-changes.outputs.any_changed == 'true'
@@ -93,11 +93,6 @@ jobs:
           # Fix forward references that were incorrectly converted (Python doesn't support "Type" | None syntax)
           find . -name "*.py" -type f -exec sed -i.bak -E 's/"([^"]+)" \| None/Optional["\1"]/g; s/'"'"'([^'"'"']+)'"'"' \| None/Optional['"'"'\1'"'"']/g' {} \;
           find . -name "*.py.bak" -type f -delete
-
-      # mdformat breaks YAML front matter in markdown files. Add --exclude for directories containing YAML front matter.
-      - name: mdformat
-        run: |
-          uvx --python 3.13 mdformat . --exclude ".agents/skills/**"
 
       - name: Setup web environment
         if: steps.web-changes.outputs.any_changed == 'true'

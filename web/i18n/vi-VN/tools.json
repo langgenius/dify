@@ -126,6 +126,8 @@
   "mcp.modal.headerValuePlaceholder": "ví dụ: mã thông báo Bearer123",
   "mcp.modal.headers": "Tiêu đề",
   "mcp.modal.headersTip": "Các tiêu đề HTTP bổ sung để gửi cùng với các yêu cầu máy chủ MCP",
+  "mcp.modal.invalidServerIdentifier": "Vui lòng nhập định danh máy chủ hợp lệ",
+  "mcp.modal.invalidServerUrl": "Vui lòng nhập URL máy chủ hợp lệ",
   "mcp.modal.maskedHeadersTip": "Các giá trị tiêu đề được mã hóa để đảm bảo an ninh. Các thay đổi sẽ cập nhật các giá trị thực tế.",
   "mcp.modal.name": "Tên & Biểu tượng",
   "mcp.modal.namePlaceholder": "Đặt tên máy chủ MCP",

@@ -3,10 +3,6 @@
 import { RiExternalLinkLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import {
-  useRouter,
-  useSearchParams,
-} from 'next/navigation'
-import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -16,6 +12,10 @@ import { useToastContext } from '@/app/components/base/toast/context'
 import { EDUCATION_VERIFYING_LOCALSTORAGE_ITEM } from '@/app/education-apply/constants'
 import { useDocLink } from '@/context/i18n'
 import { useProviderContext } from '@/context/provider-context'
+import {
+  useRouter,
+  useSearchParams,
+} from '@/next/navigation'
 import {
   useEducationAdd,
   useInvalidateEducationStatus,

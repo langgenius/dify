@@ -6,6 +6,10 @@ import { RETRIEVE_METHOD } from '@/types/app'
 import { IndexingType } from '../../../create/step-two'
 import Form from '../index'
 
+const { mockToastError } = vi.hoisted(() => ({
+  mockToastError: vi.fn(),
+}))
+
 // Mock contexts
 const mockMutateDatasets = vi.fn()
 const mockInvalidDatasetList = vi.fn()
@@ -189,9 +193,10 @@ vi.mock('@/app/components/datasets/common/check-rerank-model', () => ({
   isReRankModelSelected: () => true,
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
-  default: {
-    notify: vi.fn(),
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    error: mockToastError,
+    success: vi.fn(),
   },
 }))
 
@@ -391,7 +396,7 @@ describe('Form', () => {
     })
 
     it('should show error when trying to save with empty name', async () => {
-      const Toast = await import('@/app/components/base/toast')
+      const { toast } = await import('@/app/components/base/ui/toast')
       render(<Form />)
 
       // Clear the name
@@ -403,10 +408,7 @@ describe('Form', () => {
       fireEvent.click(saveButton)
 
       await waitFor(() => {
-        expect(Toast.default.notify).toHaveBeenCalledWith({
-          type: 'error',
-          message: expect.any(String),
-        })
+        expect(toast.error).toHaveBeenCalledWith(expect.any(String))
       })
     })
 

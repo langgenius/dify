@@ -1,7 +1,7 @@
 import type { SimplePluginInfo, StreamdownWrapperProps } from './streamdown-wrapper'
 import { flow } from 'es-toolkit/compat'
-import dynamic from 'next/dynamic'
 import { memo, useMemo } from 'react'
+import dynamic from '@/next/dynamic'
 import { cn } from '@/utils/classnames'
 import { preprocessLaTeX, preprocessThinkTag } from './markdown-utils'
 
