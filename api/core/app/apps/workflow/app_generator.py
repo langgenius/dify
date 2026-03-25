@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Any, Literal, Union, overload
 from flask import Flask, current_app
 from pydantic import ValidationError
 from sqlalchemy import select
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 import contexts
 from configs import dify_config
@@ -55,6 +55,25 @@ logger = logging.getLogger(__name__)
 
 
 class WorkflowAppGenerator(BaseAppGenerator):
+    @staticmethod
+    def _ensure_snippet_start_node_in_worker(*, session: Session, workflow: Workflow) -> Workflow:
+        """Re-apply snippet virtual Start injection after worker reloads workflow from DB."""
+        if workflow.type != "snippet":
+            return workflow
+
+        from models.snippet import CustomizedSnippet
+        from services.snippet_generate_service import SnippetGenerateService
+
+        snippet = session.scalar(
+            select(CustomizedSnippet).where(
+                CustomizedSnippet.id == workflow.app_id,
+                CustomizedSnippet.tenant_id == workflow.tenant_id,
+            )
+        )
+        if snippet is None:
+            return workflow
+        return SnippetGenerateService.ensure_start_node_for_worker(workflow, snippet)
+
     @staticmethod
     def _should_prepare_user_inputs(args: Mapping[str, Any]) -> bool:
         return not bool(args.get(SKIP_PREPARE_USER_INPUTS_KEY))
@@ -550,6 +569,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 )
                 if workflow is None:
                     raise ValueError("Workflow not found")
+
+                workflow = self._ensure_snippet_start_node_in_worker(session=session, workflow=workflow)
 
                 # Determine system_user_id based on invocation source
                 is_external_api_call = application_generate_entity.invoke_from in {

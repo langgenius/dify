@@ -174,6 +174,11 @@ class SnippetGenerateService:
         return response
 
     @classmethod
+    def ensure_start_node_for_worker(cls, workflow: Workflow, snippet: CustomizedSnippet) -> Workflow:
+        """Public wrapper for worker-thread start-node injection."""
+        return cls._ensure_start_node(workflow, snippet)
+
+    @classmethod
     def _ensure_start_node(cls, workflow: Workflow, snippet: CustomizedSnippet) -> Workflow:
         """
         Return *workflow* with a Start node.

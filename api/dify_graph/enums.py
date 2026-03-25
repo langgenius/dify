@@ -129,6 +129,7 @@ class WorkflowType(StrEnum):
     WORKFLOW = "workflow"
     CHAT = "chat"
     RAG_PIPELINE = "rag-pipeline"
+    SNIPPET = "snippet"
 
 
 class WorkflowExecutionStatus(StrEnum):
