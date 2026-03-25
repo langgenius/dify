@@ -6,10 +6,13 @@ HIDDEN_VALUE replacement, and error handling for missing records.
 
 from __future__ import annotations
 
+import json
 from unittest.mock import MagicMock, patch
+from uuid import uuid4
 
 import pytest
 
+from models.tools import BuiltinToolProvider
 from services.plugin.plugin_parameter_service import PluginParameterService
 
 
@@ -39,67 +42,73 @@ class TestGetDynamicSelectOptionsTool:
 
     @patch("services.plugin.plugin_parameter_service.DynamicSelectClient")
     @patch("services.plugin.plugin_parameter_service.create_tool_provider_encrypter")
-    @patch("services.plugin.plugin_parameter_service.db")
     @patch("services.plugin.plugin_parameter_service.ToolManager")
-    def test_fetches_credentials_with_credential_id(self, mock_tool_mgr, mock_db, mock_encrypter_fn, mock_client_cls):
+    def test_fetches_credentials_with_credential_id(
+        self,
+        mock_tool_mgr,
+        mock_encrypter_fn,
+        mock_client_cls,
+        flask_app_with_containers,
+        db_session_with_containers,
+    ):
+        tenant_id = str(uuid4())
         provider_ctrl = MagicMock()
         provider_ctrl.need_credentials = True
         mock_tool_mgr.get_builtin_provider.return_value = provider_ctrl
         encrypter = MagicMock()
         encrypter.decrypt.return_value = {"api_key": "decrypted"}
         mock_encrypter_fn.return_value = (encrypter, None)
+        mock_client_cls.return_value.fetch_dynamic_select_options.return_value.options = ["opt1"]
 
-        # Mock the Session/query chain
-        db_record = MagicMock()
-        db_record.credentials = {"api_key": "encrypted"}
-        db_record.credential_type = "api_key"
+        db_record = BuiltinToolProvider(
+            tenant_id=tenant_id,
+            user_id=str(uuid4()),
+            provider="google",
+            name="API KEY 1",
+            encrypted_credentials=json.dumps({"api_key": "encrypted"}),
+            credential_type="api_key",
+        )
+        db_session_with_containers.add(db_record)
+        db_session_with_containers.commit()
 
-        with patch("services.plugin.plugin_parameter_service.Session") as mock_session_cls:
-            mock_session = MagicMock()
-            mock_session_cls.return_value.__enter__ = MagicMock(return_value=mock_session)
-            mock_session_cls.return_value.__exit__ = MagicMock(return_value=False)
-            mock_session.query.return_value.where.return_value.first.return_value = db_record
-            mock_client_cls.return_value.fetch_dynamic_select_options.return_value.options = ["opt1"]
-
-            result = PluginParameterService.get_dynamic_select_options(
-                tenant_id="t1",
-                user_id="u1",
-                plugin_id="p1",
-                provider="google",
-                action="search",
-                parameter="engine",
-                credential_id="cred-1",
-                provider_type="tool",
-            )
+        result = PluginParameterService.get_dynamic_select_options(
+            tenant_id=tenant_id,
+            user_id="u1",
+            plugin_id="p1",
+            provider="google",
+            action="search",
+            parameter="engine",
+            credential_id=db_record.id,
+            provider_type="tool",
+        )
 
         assert result == ["opt1"]
 
     @patch("services.plugin.plugin_parameter_service.create_tool_provider_encrypter")
-    @patch("services.plugin.plugin_parameter_service.db")
     @patch("services.plugin.plugin_parameter_service.ToolManager")
-    def test_raises_when_tool_provider_not_found(self, mock_tool_mgr, mock_db, mock_encrypter_fn):
+    def test_raises_when_tool_provider_not_found(
+        self,
+        mock_tool_mgr,
+        mock_encrypter_fn,
+        flask_app_with_containers,
+        db_session_with_containers,
+    ):
         provider_ctrl = MagicMock()
         provider_ctrl.need_credentials = True
         mock_tool_mgr.get_builtin_provider.return_value = provider_ctrl
         mock_encrypter_fn.return_value = (MagicMock(), None)
 
-        with patch("services.plugin.plugin_parameter_service.Session") as mock_session_cls:
-            mock_session = MagicMock()
-            mock_session_cls.return_value.__enter__ = MagicMock(return_value=mock_session)
-            mock_session_cls.return_value.__exit__ = MagicMock(return_value=False)
-            mock_session.query.return_value.where.return_value.order_by.return_value.first.return_value = None
-
-            with pytest.raises(ValueError, match="not found"):
-                PluginParameterService.get_dynamic_select_options(
-                    tenant_id="t1",
-                    user_id="u1",
-                    plugin_id="p1",
-                    provider="google",
-                    action="search",
-                    parameter="engine",
-                    credential_id=None,
-                    provider_type="tool",
-                )
+        with pytest.raises(ValueError, match="not found"):
+            PluginParameterService.get_dynamic_select_options(
+                tenant_id=str(uuid4()),
+                user_id="u1",
+                plugin_id="p1",
+                provider="google",
+                action="search",
+                parameter="engine",
+                credential_id=None,
+                provider_type="tool",
+            )
 
 
 class TestGetDynamicSelectOptionsTrigger:
