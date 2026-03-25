@@ -16,7 +16,7 @@ import AuthForm from '@/app/components/base/form/form-scenarios/auth'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import Loading from '@/app/components/base/loading'
 import Modal from '@/app/components/base/modal/modal'
-import { useToastContext } from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import { ReadmeEntrance } from '../../readme-panel/entrance'
 import { ReadmeShowType } from '../../readme-panel/store'
 import {

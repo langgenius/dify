@@ -1,3 +1,4 @@
+import type { SyncDraftCallback } from '@/app/components/workflow/hooks-store'
 import { produce } from 'immer'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
@@ -91,11 +92,7 @@ export const useNodesSyncDraft = () => {
 
   const performSync = useCallback(async (
     notRefreshWhenSyncError?: boolean,
-    callback?: {
-      onSuccess?: () => void
-      onError?: () => void
-      onSettled?: () => void
-    },
+    callback?: SyncDraftCallback,
   ) => {
     if (getNodesReadOnly())
       return
@@ -132,7 +129,7 @@ export const useNodesSyncDraft = () => {
       if (error && error.json && !error.bodyUsed) {
         error.json().then((err: any) => {
           if (err.code === 'draft_workflow_not_sync' && !notRefreshWhenSyncError)
-            handleRefreshWorkflowDraft()
+            handleRefreshWorkflowDraft(true)
         })
       }
       callback?.onError?.()

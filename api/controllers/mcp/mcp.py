@@ -6,13 +6,13 @@ from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy.orm import Session
 
 from controllers.common.schema import register_schema_model
-from controllers.console.app.mcp_server import AppMCPServerStatus
 from controllers.mcp import mcp_ns
 from core.mcp import types as mcp_types
 from core.mcp.server.streamable_http import handle_mcp_request
 from dify_graph.variables.input_entities import VariableEntity
 from extensions.ext_database import db
 from libs import helper
+from models.enums import AppMCPServerStatus
 from models.model import App, AppMCPServer, AppMode, EndUser
 
 

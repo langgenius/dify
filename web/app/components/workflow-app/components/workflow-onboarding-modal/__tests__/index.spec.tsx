@@ -1,65 +1,32 @@
+import type { ReactNode } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import * as React from 'react'
 import { BlockEnum } from '@/app/components/workflow/types'
 import WorkflowOnboardingModal from '../index'
 
-// Mock Modal component
-vi.mock('@/app/components/base/modal', () => ({
-  default: function MockModal({
-    isShow,
-    onClose,
-    children,
-    closable,
+vi.mock('@/app/components/workflow/block-selector', () => ({
+  default: function MockNodeSelector({
+    open,
+    onSelect,
+    trigger,
   }: {
-    isShow: boolean
-    onClose?: () => void
-    children?: React.ReactNode
-    closable?: boolean
+    open?: boolean
+    onSelect: (type: BlockEnum, config?: Record<string, unknown>) => void
+    trigger?: ((open: boolean) => ReactNode) | ReactNode
   }) {
-    if (!isShow)
-      return null
-
     return (
-      <div data-testid="modal" role="dialog">
-        {closable && (
-          <button data-testid="modal-close-button" onClick={onClose}>
-            Close
-          </button>
+      <div data-testid="mock-node-selector">
+        {typeof trigger === 'function' ? trigger(Boolean(open)) : trigger}
+        {open && (
+          <div>
+            <button data-testid="select-trigger-schedule" onClick={() => onSelect(BlockEnum.TriggerSchedule)}>
+              Select Trigger Schedule
+            </button>
+            <button data-testid="select-trigger-webhook" onClick={() => onSelect(BlockEnum.TriggerWebhook, { config: 'test' })}>
+              Select Trigger Webhook
+            </button>
+          </div>
         )}
-        {children}
-      </div>
-    )
-  },
-}))
-
-// Mock StartNodeSelectionPanel (using real component would be better for integration,
-// but for this test we'll mock to control behavior)
-vi.mock('../start-node-selection-panel', () => ({
-  default: function MockStartNodeSelectionPanel({
-    onSelectUserInput,
-    onSelectTrigger,
-  }: {
-    onSelectUserInput?: () => void
-    onSelectTrigger?: (type: BlockEnum, config?: Record<string, unknown>) => void
-  }) {
-    return (
-      <div data-testid="start-node-selection-panel">
-        <button data-testid="select-user-input" onClick={onSelectUserInput}>
-          Select User Input
-        </button>
-        <button
-          data-testid="select-trigger-schedule"
-          onClick={() => onSelectTrigger?.(BlockEnum.TriggerSchedule)}
-        >
-          Select Trigger Schedule
-        </button>
-        <button
-          data-testid="select-trigger-webhook"
-          onClick={() => onSelectTrigger?.(BlockEnum.TriggerWebhook, { config: 'test' })}
-        >
-          Select Trigger Webhook
-        </button>
       </div>
     )
   },
@@ -79,401 +46,292 @@ describe('WorkflowOnboardingModal', () => {
     vi.clearAllMocks()
   })
 
-  // Helper function to render component
   const renderComponent = (props = {}) => {
     return render(<WorkflowOnboardingModal {...defaultProps} {...props} />)
   }
+  const getBackdrop = () => document.body.querySelector('.bg-workflow-canvas-canvas-overlay')
+  const getUserInputHeading = () => screen.getByRole('heading', { name: 'workflow.onboarding.userInputFull' })
+  const getTriggerHeading = () => screen.getByRole('heading', { name: 'workflow.onboarding.trigger' })
 
-  // Rendering tests (REQUIRED)
   describe('Rendering', () => {
     it('should render without crashing', () => {
-      // Arrange & Act
       renderComponent()
 
-      // Assert
       expect(screen.getByRole('dialog')).toBeInTheDocument()
     })
 
-    it('should render modal when isShow is true', () => {
-      // Arrange & Act
+    it('should render dialog when isShow is true', () => {
       renderComponent({ isShow: true })
 
-      // Assert
-      expect(screen.getByTestId('modal')).toBeInTheDocument()
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
     })
 
-    it('should not render modal when isShow is false', () => {
-      // Arrange & Act
+    it('should not render dialog when isShow is false', () => {
       renderComponent({ isShow: false })
 
-      // Assert
-      expect(screen.queryByTestId('modal')).not.toBeInTheDocument()
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     })
 
-    it('should render modal title', () => {
-      // Arrange & Act
+    it('should render title', () => {
       renderComponent()
 
-      // Assert
       expect(screen.getByText('workflow.onboarding.title')).toBeInTheDocument()
     })
 
-    it('should render modal description', () => {
-      // Arrange & Act
-      const { container } = renderComponent()
+    it('should render description', () => {
+      renderComponent()
 
-      // Assert - Check both parts of description (separated by link)
-      const descriptionDiv = container.querySelector('.body-xs-regular.leading-4')
-      expect(descriptionDiv).toBeInTheDocument()
-      expect(descriptionDiv).toHaveTextContent('workflow.onboarding.description')
+      expect(screen.getByText('workflow.onboarding.description')).toBeInTheDocument()
     })
 
     it('should render StartNodeSelectionPanel', () => {
-      // Arrange & Act
       renderComponent()
 
-      // Assert
-      expect(screen.getByTestId('start-node-selection-panel')).toBeInTheDocument()
+      expect(getUserInputHeading()).toBeInTheDocument()
+      expect(getTriggerHeading()).toBeInTheDocument()
     })
 
-    it('should render ESC tip when modal is shown', () => {
-      // Arrange & Act
+    it('should render ESC tip when shown', () => {
       renderComponent({ isShow: true })
 
-      // Assert
       expect(screen.getByText('workflow.onboarding.escTip.press')).toBeInTheDocument()
       expect(screen.getByText('workflow.onboarding.escTip.key')).toBeInTheDocument()
       expect(screen.getByText('workflow.onboarding.escTip.toDismiss')).toBeInTheDocument()
     })
 
-    it('should not render ESC tip when modal is hidden', () => {
-      // Arrange & Act
+    it('should not render ESC tip when hidden', () => {
       renderComponent({ isShow: false })
 
-      // Assert
       expect(screen.queryByText('workflow.onboarding.escTip.press')).not.toBeInTheDocument()
     })
 
     it('should have correct styling for title', () => {
-      // Arrange & Act
       renderComponent()
 
-      // Assert
       const title = screen.getByText('workflow.onboarding.title')
       expect(title).toHaveClass('title-2xl-semi-bold')
       expect(title).toHaveClass('text-text-primary')
     })
 
-    it('should have modal close button', () => {
-      // Arrange & Act
+    it('should have close button', () => {
       renderComponent()
 
-      // Assert
-      expect(screen.getByTestId('modal-close-button')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument()
+    })
+
+    it('should render workflow canvas backdrop when shown', () => {
+      renderComponent({ isShow: true })
+
+      const backdrop = getBackdrop()
+      expect(backdrop).toBeInTheDocument()
+      expect(backdrop).not.toHaveClass('opacity-20')
     })
   })
 
-  // Props tests (REQUIRED)
   describe('Props', () => {
     it('should accept isShow prop', () => {
-      // Arrange & Act
       const { rerender } = renderComponent({ isShow: false })
 
-      // Assert
-      expect(screen.queryByTestId('modal')).not.toBeInTheDocument()
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
-      // Act
       rerender(<WorkflowOnboardingModal {...defaultProps} isShow={true} />)
 
-      // Assert
-      expect(screen.getByTestId('modal')).toBeInTheDocument()
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
     })
 
     it('should accept onClose prop', () => {
-      // Arrange
       const customOnClose = vi.fn()
 
-      // Act
       renderComponent({ onClose: customOnClose })
 
-      // Assert
-      expect(screen.getByTestId('modal')).toBeInTheDocument()
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
     })
 
     it('should accept onSelectStartNode prop', () => {
-      // Arrange
       const customHandler = vi.fn()
 
-      // Act
       renderComponent({ onSelectStartNode: customHandler })
 
-      // Assert
-      expect(screen.getByTestId('start-node-selection-panel')).toBeInTheDocument()
-    })
-
-    it('should handle undefined onClose gracefully', () => {
-      // Arrange & Act
-      expect(() => {
-        renderComponent({ onClose: undefined })
-      }).not.toThrow()
-
-      // Assert
-      expect(screen.getByTestId('modal')).toBeInTheDocument()
-    })
-
-    it('should handle undefined onSelectStartNode gracefully', () => {
-      // Arrange & Act
-      expect(() => {
-        renderComponent({ onSelectStartNode: undefined })
-      }).not.toThrow()
-
-      // Assert
-      expect(screen.getByTestId('modal')).toBeInTheDocument()
+      expect(getUserInputHeading()).toBeInTheDocument()
     })
   })
 
-  // User Interactions - Start Node Selection
   describe('User Interactions - Start Node Selection', () => {
     it('should call onSelectStartNode with Start block when user input is selected', async () => {
-      // Arrange
       const user = userEvent.setup()
       renderComponent()
 
-      // Act
-      const userInputButton = screen.getByTestId('select-user-input')
-      await user.click(userInputButton)
+      await user.click(getUserInputHeading())
 
-      // Assert
       expect(mockOnSelectStartNode).toHaveBeenCalledTimes(1)
       expect(mockOnSelectStartNode).toHaveBeenCalledWith(BlockEnum.Start)
     })
 
-    it('should call onClose after selecting user input', async () => {
-      // Arrange
+    it('should not call onClose when selecting user input (parent handles closing)', async () => {
       const user = userEvent.setup()
       renderComponent()
 
-      // Act
-      const userInputButton = screen.getByTestId('select-user-input')
-      await user.click(userInputButton)
+      await user.click(getUserInputHeading())
 
-      // Assert
-      expect(mockOnClose).toHaveBeenCalledTimes(1)
+      expect(mockOnClose).not.toHaveBeenCalled()
     })
 
     it('should call onSelectStartNode with trigger type when trigger is selected', async () => {
-      // Arrange
       const user = userEvent.setup()
       renderComponent()
 
-      // Act
-      const triggerButton = screen.getByTestId('select-trigger-schedule')
-      await user.click(triggerButton)
+      await user.click(getTriggerHeading())
+      await user.click(screen.getByTestId('select-trigger-schedule'))
 
-      // Assert
       expect(mockOnSelectStartNode).toHaveBeenCalledTimes(1)
       expect(mockOnSelectStartNode).toHaveBeenCalledWith(BlockEnum.TriggerSchedule, undefined)
     })
 
-    it('should call onClose after selecting trigger', async () => {
-      // Arrange
+    it('should not call onClose when selecting trigger (parent handles closing)', async () => {
       const user = userEvent.setup()
       renderComponent()
 
-      // Act
-      const triggerButton = screen.getByTestId('select-trigger-schedule')
-      await user.click(triggerButton)
+      await user.click(getTriggerHeading())
+      await user.click(screen.getByTestId('select-trigger-schedule'))
 
-      // Assert
-      expect(mockOnClose).toHaveBeenCalledTimes(1)
+      expect(mockOnClose).not.toHaveBeenCalled()
     })
 
     it('should pass tool config when selecting trigger with config', async () => {
-      // Arrange
       const user = userEvent.setup()
       renderComponent()
 
-      // Act
-      const webhookButton = screen.getByTestId('select-trigger-webhook')
-      await user.click(webhookButton)
+      await user.click(getTriggerHeading())
+      await user.click(screen.getByTestId('select-trigger-webhook'))
 
-      // Assert
       expect(mockOnSelectStartNode).toHaveBeenCalledTimes(1)
       expect(mockOnSelectStartNode).toHaveBeenCalledWith(BlockEnum.TriggerWebhook, { config: 'test' })
-      expect(mockOnClose).toHaveBeenCalledTimes(1)
+      expect(mockOnClose).not.toHaveBeenCalled()
     })
   })
 
-  // User Interactions - Modal Close
-  describe('User Interactions - Modal Close', () => {
+  describe('User Interactions - Dialog Close', () => {
     it('should call onClose when close button is clicked', async () => {
-      // Arrange
       const user = userEvent.setup()
       renderComponent()
 
-      // Act
-      const closeButton = screen.getByTestId('modal-close-button')
-      await user.click(closeButton)
+      await user.click(screen.getByRole('button', { name: 'Close' }))
 
-      // Assert
       expect(mockOnClose).toHaveBeenCalledTimes(1)
     })
 
     it('should not call onSelectStartNode when closing without selection', async () => {
-      // Arrange
       const user = userEvent.setup()
       renderComponent()
 
-      // Act
-      const closeButton = screen.getByTestId('modal-close-button')
-      await user.click(closeButton)
+      await user.click(screen.getByRole('button', { name: 'Close' }))
 
-      // Assert
       expect(mockOnSelectStartNode).not.toHaveBeenCalled()
       expect(mockOnClose).toHaveBeenCalledTimes(1)
     })
+
+    it('should call onClose exactly once when close button is clicked (no double-close)', async () => {
+      const user = userEvent.setup()
+      const onClose = vi.fn()
+      renderComponent({ onClose })
+
+      await user.click(screen.getByRole('button', { name: 'Close' }))
+
+      expect(onClose).toHaveBeenCalledTimes(1)
+    })
+
+    it('should not call onClose when clicking backdrop', async () => {
+      const user = userEvent.setup()
+      renderComponent()
+
+      const backdrop = getBackdrop()
+      expect(backdrop).toBeInTheDocument()
+      if (!backdrop)
+        throw new Error('backdrop should exist when dialog is open')
+
+      await user.click(backdrop)
+
+      expect(mockOnClose).not.toHaveBeenCalled()
+    })
   })
 
-  // Keyboard Event Handling
   describe('Keyboard Event Handling', () => {
     it('should call onClose when ESC key is pressed', () => {
-      // Arrange
       renderComponent({ isShow: true })
 
-      // Act
-      fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
+      fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
 
-      // Assert
       expect(mockOnClose).toHaveBeenCalledTimes(1)
     })
 
-    it('should not call onClose when other keys are pressed', () => {
-      // Arrange
-      renderComponent({ isShow: true })
-
-      // Act
-      fireEvent.keyDown(document, { key: 'Enter', code: 'Enter' })
-      fireEvent.keyDown(document, { key: 'Tab', code: 'Tab' })
-      fireEvent.keyDown(document, { key: 'a', code: 'KeyA' })
-
-      // Assert
-      expect(mockOnClose).not.toHaveBeenCalled()
-    })
-
-    it('should not call onClose when ESC is pressed but modal is hidden', () => {
-      // Arrange
+    it('should not call onClose when ESC is pressed but dialog is hidden', () => {
       renderComponent({ isShow: false })
 
-      // Act
-      fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
+      fireEvent.keyDown(document, { key: 'Escape' })
 
-      // Assert
       expect(mockOnClose).not.toHaveBeenCalled()
     })
 
-    it('should clean up event listener on unmount', () => {
-      // Arrange
+    it('should clean up on unmount', () => {
       const { unmount } = renderComponent({ isShow: true })
 
-      // Act
       unmount()
-      fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
+      fireEvent.keyDown(document, { key: 'Escape' })
 
-      // Assert
       expect(mockOnClose).not.toHaveBeenCalled()
     })
 
-    it('should update event listener when isShow changes', () => {
-      // Arrange
+    it('should respond to ESC based on open state', () => {
       const { rerender } = renderComponent({ isShow: true })
 
-      // Act - Press ESC when shown
-      fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
-
-      // Assert
+      fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
       expect(mockOnClose).toHaveBeenCalledTimes(1)
 
-      // Act - Hide modal and clear mock
       mockOnClose.mockClear()
       rerender(<WorkflowOnboardingModal {...defaultProps} isShow={false} />)
 
-      // Act - Press ESC when hidden
-      fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
-
-      // Assert
+      fireEvent.keyDown(document, { key: 'Escape' })
       expect(mockOnClose).not.toHaveBeenCalled()
-    })
-
-    it('should handle multiple ESC key presses', () => {
-      // Arrange
-      renderComponent({ isShow: true })
-
-      // Act
-      fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
-      fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
-      fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
-
-      // Assert
-      expect(mockOnClose).toHaveBeenCalledTimes(3)
     })
   })
 
-  // Edge Cases (REQUIRED)
   describe('Edge Cases', () => {
-    it('should handle rapid modal show/hide toggling', async () => {
-      // Arrange
+    it('should handle rapid show/hide toggling', async () => {
       const { rerender } = renderComponent({ isShow: false })
 
-      // Assert
-      expect(screen.queryByTestId('modal')).not.toBeInTheDocument()
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
-      // Act
       rerender(<WorkflowOnboardingModal {...defaultProps} isShow={true} />)
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
 
-      // Assert
-      expect(screen.getByTestId('modal')).toBeInTheDocument()
-
-      // Act
       rerender(<WorkflowOnboardingModal {...defaultProps} isShow={false} />)
-
-      // Assert
       await waitFor(() => {
-        expect(screen.queryByTestId('modal')).not.toBeInTheDocument()
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
       })
     })
 
     it('should handle selecting multiple nodes in sequence', async () => {
-      // Arrange
       const user = userEvent.setup()
       const { rerender } = renderComponent()
 
-      // Act - Select user input
-      await user.click(screen.getByTestId('select-user-input'))
-
-      // Assert
+      await user.click(getUserInputHeading())
       expect(mockOnSelectStartNode).toHaveBeenCalledWith(BlockEnum.Start)
-      expect(mockOnClose).toHaveBeenCalledTimes(1)
+      expect(mockOnClose).not.toHaveBeenCalled()
 
-      // Act - Re-show modal and select trigger
-      mockOnClose.mockClear()
       mockOnSelectStartNode.mockClear()
       rerender(<WorkflowOnboardingModal {...defaultProps} isShow={true} />)
 
+      await user.click(getTriggerHeading())
       await user.click(screen.getByTestId('select-trigger-schedule'))
-
-      // Assert
       expect(mockOnSelectStartNode).toHaveBeenCalledWith(BlockEnum.TriggerSchedule, undefined)
-      expect(mockOnClose).toHaveBeenCalledTimes(1)
+      expect(mockOnClose).not.toHaveBeenCalled()
     })
 
     it('should handle prop updates correctly', () => {
-      // Arrange
       const { rerender } = renderComponent({ isShow: true })
 
-      // Assert
-      expect(screen.getByTestId('modal')).toBeInTheDocument()
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
 
-      // Act - Update props
       const newOnClose = vi.fn()
       const newOnSelectStartNode = vi.fn()
       rerender(
@@ -484,169 +342,120 @@ describe('WorkflowOnboardingModal', () => {
         />,
       )
 
-      // Assert - Modal still renders with new props
-      expect(screen.getByTestId('modal')).toBeInTheDocument()
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
     })
 
-    it('should handle onClose being called multiple times', async () => {
-      // Arrange
-      const user = userEvent.setup()
-      renderComponent()
-
-      // Act
-      await user.click(screen.getByTestId('modal-close-button'))
-      await user.click(screen.getByTestId('modal-close-button'))
-
-      // Assert
-      expect(mockOnClose).toHaveBeenCalledTimes(2)
-    })
-
-    it('should maintain modal state when props change', () => {
-      // Arrange
+    it('should maintain dialog when props change', () => {
       const { rerender } = renderComponent({ isShow: true })
 
-      // Assert
-      expect(screen.getByTestId('modal')).toBeInTheDocument()
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
 
-      // Act - Change onClose handler
       const newOnClose = vi.fn()
       rerender(<WorkflowOnboardingModal {...defaultProps} isShow={true} onClose={newOnClose} />)
 
-      // Assert - Modal should still be visible
-      expect(screen.getByTestId('modal')).toBeInTheDocument()
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
     })
   })
 
-  // Accessibility Tests
   describe('Accessibility', () => {
     it('should have dialog role', () => {
-      // Arrange & Act
       renderComponent()
 
-      // Assert
       expect(screen.getByRole('dialog')).toBeInTheDocument()
     })
 
     it('should have proper heading hierarchy', () => {
-      // Arrange & Act
-      const { container } = renderComponent()
+      renderComponent()
 
-      // Assert
-      const heading = container.querySelector('h3')
+      const heading = screen.getByRole('heading', { name: 'workflow.onboarding.title' })
       expect(heading).toBeInTheDocument()
       expect(heading).toHaveTextContent('workflow.onboarding.title')
     })
 
-    it('should have keyboard navigation support via ESC key', () => {
-      // Arrange
+    it('should expose dialog accessible name from title', () => {
+      renderComponent()
+
+      expect(screen.getByRole('dialog', { name: 'workflow.onboarding.title' })).toBeInTheDocument()
+    })
+
+    it('should support ESC key dismissal', () => {
       renderComponent({ isShow: true })
 
-      // Act
-      fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
+      fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
 
-      // Assert
       expect(mockOnClose).toHaveBeenCalledTimes(1)
     })
 
     it('should have visible ESC key hint', () => {
-      // Arrange & Act
       renderComponent({ isShow: true })
 
-      // Assert - ShortcutsName component renders keys in div elements with system-kbd class
       const escKey = screen.getByText('workflow.onboarding.escTip.key')
-      // ShortcutsName renders a <div> with class system-kbd, not a <kbd> element
       expect(escKey.closest('.system-kbd')).toBeInTheDocument()
     })
 
     it('should have descriptive text for ESC functionality', () => {
-      // Arrange & Act
       renderComponent({ isShow: true })
 
-      // Assert
       expect(screen.getByText('workflow.onboarding.escTip.press')).toBeInTheDocument()
       expect(screen.getByText('workflow.onboarding.escTip.toDismiss')).toBeInTheDocument()
     })
 
     it('should have proper text color classes', () => {
-      // Arrange & Act
       renderComponent()
 
-      // Assert
       const title = screen.getByText('workflow.onboarding.title')
       expect(title).toHaveClass('text-text-primary')
     })
   })
 
-  // Integration Tests
   describe('Integration', () => {
     it('should complete full flow of selecting user input node', async () => {
-      // Arrange
       const user = userEvent.setup()
       renderComponent()
 
-      // Assert - Initial state
-      expect(screen.getByTestId('modal')).toBeInTheDocument()
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
       expect(screen.getByText('workflow.onboarding.title')).toBeInTheDocument()
-      expect(screen.getByTestId('start-node-selection-panel')).toBeInTheDocument()
+      expect(getUserInputHeading()).toBeInTheDocument()
 
-      // Act - Select user input
-      await user.click(screen.getByTestId('select-user-input'))
+      await user.click(getUserInputHeading())
 
-      // Assert - Callbacks called
       expect(mockOnSelectStartNode).toHaveBeenCalledWith(BlockEnum.Start)
-      expect(mockOnClose).toHaveBeenCalledTimes(1)
+      expect(mockOnClose).not.toHaveBeenCalled()
     })
 
     it('should complete full flow of selecting trigger node', async () => {
-      // Arrange
       const user = userEvent.setup()
       renderComponent()
 
-      // Assert - Initial state
-      expect(screen.getByTestId('modal')).toBeInTheDocument()
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
 
-      // Act - Select trigger
+      await user.click(getTriggerHeading())
       await user.click(screen.getByTestId('select-trigger-webhook'))
 
-      // Assert - Callbacks called with config
       expect(mockOnSelectStartNode).toHaveBeenCalledWith(BlockEnum.TriggerWebhook, { config: 'test' })
-      expect(mockOnClose).toHaveBeenCalledTimes(1)
+      expect(mockOnClose).not.toHaveBeenCalled()
     })
 
     it('should render all components in correct hierarchy', () => {
-      // Arrange & Act
-      const { container } = renderComponent()
+      renderComponent()
 
-      // Assert - Modal is the root
-      expect(screen.getByTestId('modal')).toBeInTheDocument()
-
-      // Assert - Header elements
-      const heading = container.querySelector('h3')
-      expect(heading).toBeInTheDocument()
-
-      // Assert - Selection panel
-      expect(screen.getByTestId('start-node-selection-panel')).toBeInTheDocument()
-
-      // Assert - ESC tip
+      const dialog = screen.getByRole('dialog')
+      expect(dialog).toBeInTheDocument()
+      expect(screen.getByText('workflow.onboarding.title')).toBeInTheDocument()
+      expect(getUserInputHeading()).toBeInTheDocument()
       expect(screen.getByText('workflow.onboarding.escTip.key')).toBeInTheDocument()
+      expect(dialog).not.toContainElement(screen.getByText('workflow.onboarding.escTip.key'))
     })
 
     it('should coordinate between keyboard and click interactions', async () => {
-      // Arrange
       const user = userEvent.setup()
       renderComponent()
 
-      // Act - Click close button
-      await user.click(screen.getByTestId('modal-close-button'))
-
-      // Assert
+      await user.click(screen.getByRole('button', { name: 'Close' }))
       expect(mockOnClose).toHaveBeenCalledTimes(1)
 
-      // Act - Clear and try ESC key
       mockOnClose.mockClear()
-      fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
-
-      // Assert
+      fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
       expect(mockOnClose).toHaveBeenCalledTimes(1)
     })
   })

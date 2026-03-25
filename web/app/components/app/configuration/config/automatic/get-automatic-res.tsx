@@ -298,7 +298,6 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
           <div>
             <ModelParameterModal
               popupClassName="!w-[520px]"
-              portalToFollowElemContentClassName="z-[1000]"
               isAdvancedMode={true}
               provider={model.provider}
               completionParams={model.completion_params}

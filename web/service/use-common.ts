@@ -371,7 +371,7 @@ export const useNotionBinding = (code?: string | null, enabled?: boolean) => {
 export const useModelParameterRules = (provider?: string, model?: string, enabled?: boolean) => {
   return useQuery<{ data: ModelParameterRule[] }>({
     queryKey: commonQueryKeys.modelParameterRules(provider, model),
-    queryFn: () => get<{ data: ModelParameterRule[] }>(`/workspaces/current/model-providers/${provider}/models/parameter-rules`, { params: { model } }),
+    queryFn: () => get<{ data: ModelParameterRule[] }>(`/workspaces/current/model-providers/${provider}/models/parameter-rules`, { params: { model }, silent: true }),
     enabled: !!provider && !!model && (enabled ?? true),
   })
 }

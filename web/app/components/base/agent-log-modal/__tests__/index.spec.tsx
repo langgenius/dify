@@ -1,7 +1,7 @@
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { useClickAway } from 'ahooks'
-import { ToastContext } from '@/app/components/base/toast'
+import { ToastContext } from '@/app/components/base/toast/context'
 import { fetchAgentLogDetail } from '@/service/log'
 import AgentLogModal from '../index'
 
@@ -138,5 +138,24 @@ describe('AgentLogModal', () => {
     clickAwayHandler(new Event('click'))
 
     expect(mockProps.onCancel).toHaveBeenCalledTimes(1)
+  })
+
+  it('should ignore click-away before mounted state is set', () => {
+    vi.mocked(fetchAgentLogDetail).mockReturnValue(new Promise(() => {}))
+    let invoked = false
+    vi.mocked(useClickAway).mockImplementation((callback) => {
+      if (!invoked) {
+        invoked = true
+        callback(new Event('click'))
+      }
+    })
+
+    render(
+      <ToastContext.Provider value={{ notify: vi.fn(), close: vi.fn() } as React.ComponentProps<typeof ToastContext.Provider>['value']}>
+        <AgentLogModal {...mockProps} />
+      </ToastContext.Provider>,
+    )
+
+    expect(mockProps.onCancel).not.toHaveBeenCalled()
   })
 })

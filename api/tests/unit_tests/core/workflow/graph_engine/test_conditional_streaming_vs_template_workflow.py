@@ -6,7 +6,7 @@ This test validates that:
 - When blocking != 1: NodeRunStreamChunkEvent present (direct LLM to End output)
 """
 
-from dify_graph.enums import NodeType
+from dify_graph.enums import BuiltinNodeTypes
 from dify_graph.graph_engine import GraphEngine, GraphEngineConfig
 from dify_graph.graph_engine.command_channels import InMemoryChannel
 from dify_graph.graph_events import (
@@ -74,7 +74,11 @@ def test_streaming_output_with_blocking_equals_one():
 
     # Find indices of first LLM success event and first stream chunk event
     llm2_start_index = next(
-        (i for i, e in enumerate(events) if isinstance(e, NodeRunSucceededEvent) and e.node_type == NodeType.LLM),
+        (
+            i
+            for i, e in enumerate(events)
+            if isinstance(e, NodeRunSucceededEvent) and e.node_type == BuiltinNodeTypes.LLM
+        ),
         -1,
     )
     first_chunk_index = next(
@@ -96,16 +100,16 @@ def test_streaming_output_with_blocking_equals_one():
 
     # Check all Template's NodeRunStreamChunkEvent should has same id with Template's NodeRunStartedEvent
     start_events = [
-        e for e in events if isinstance(e, NodeRunStartedEvent) and e.node_type == NodeType.TEMPLATE_TRANSFORM
+        e for e in events if isinstance(e, NodeRunStartedEvent) and e.node_type == BuiltinNodeTypes.TEMPLATE_TRANSFORM
     ]
-    template_chunk_events = [e for e in stream_chunk_events if e.node_type == NodeType.TEMPLATE_TRANSFORM]
+    template_chunk_events = [e for e in stream_chunk_events if e.node_type == BuiltinNodeTypes.TEMPLATE_TRANSFORM]
     assert len(template_chunk_events) == 1, f"Expected 1 template chunk event, but got {len(template_chunk_events)}"
     assert all(e.id in [se.id for se in start_events] for e in template_chunk_events), (
         "Expected all Template chunk events to have same id with Template's NodeRunStartedEvent"
     )
 
     # Check that NodeRunStreamChunkEvent contains '\n' is from the End node
-    end_events = [e for e in events if isinstance(e, NodeRunStartedEvent) and e.node_type == NodeType.END]
+    end_events = [e for e in events if isinstance(e, NodeRunStartedEvent) and e.node_type == BuiltinNodeTypes.END]
     assert len(end_events) == 1, f"Expected 1 end event, but got {len(end_events)}"
     newline_chunk_events = [e for e in stream_chunk_events if e.chunk == "\n"]
     assert len(newline_chunk_events) == 1, f"Expected 1 newline chunk event, but got {len(newline_chunk_events)}"
@@ -168,7 +172,11 @@ def test_streaming_output_with_blocking_not_equals_one():
 
     # Find indices of first LLM success event and first stream chunk event
     llm2_start_index = next(
-        (i for i, e in enumerate(events) if isinstance(e, NodeRunSucceededEvent) and e.node_type == NodeType.LLM),
+        (
+            i
+            for i, e in enumerate(events)
+            if isinstance(e, NodeRunSucceededEvent) and e.node_type == BuiltinNodeTypes.LLM
+        ),
         -1,
     )
     first_chunk_index = next(
@@ -194,15 +202,15 @@ def test_streaming_output_with_blocking_not_equals_one():
     assert all(e.id == start_event.id for e in query_chunk_events), "Expected all query chunk events to have same id"
 
     # Check all LLM's NodeRunStreamChunkEvent should be from LLM nodes
-    start_events = [e for e in events if isinstance(e, NodeRunStartedEvent) and e.node_type == NodeType.LLM]
-    llm_chunk_events = [e for e in stream_chunk_events if e.node_type == NodeType.LLM]
+    start_events = [e for e in events if isinstance(e, NodeRunStartedEvent) and e.node_type == BuiltinNodeTypes.LLM]
+    llm_chunk_events = [e for e in stream_chunk_events if e.node_type == BuiltinNodeTypes.LLM]
     llm_node_ids = {se.node_id for se in start_events}
     assert all(e.node_id in llm_node_ids for e in llm_chunk_events), (
         "Expected all LLM chunk events to be from LLM nodes"
     )
 
     # Check that NodeRunStreamChunkEvent contains '\n' is from the End node
-    end_events = [e for e in events if isinstance(e, NodeRunStartedEvent) and e.node_type == NodeType.END]
+    end_events = [e for e in events if isinstance(e, NodeRunStartedEvent) and e.node_type == BuiltinNodeTypes.END]
     assert len(end_events) == 1, f"Expected 1 end event, but got {len(end_events)}"
     newline_chunk_events = [e for e in stream_chunk_events if e.chunk == "\n"]
     assert len(newline_chunk_events) == 1, f"Expected 1 newline chunk event, but got {len(newline_chunk_events)}"

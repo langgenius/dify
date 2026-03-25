@@ -131,6 +131,25 @@ class TestLoginRequired:
                 setup_app.ensure_sync.assert_called_once()
 
     @patch("libs.login.check_csrf_token", mock_csrf_check)
+    def test_patched_current_user_without_login_manager(self, app: Flask):
+        """Test that patched current_user bypasses login manager bootstrapping."""
+
+        @login_required
+        def protected_view():
+            return "Protected content"
+
+        mock_user = MockUser("test_user", is_authenticated=True)
+        mock_proxy = MagicMock()
+        mock_proxy._get_current_object.return_value = mock_user
+
+        with app.test_request_context():
+            app.ensure_sync = lambda func: func
+            with patch("libs.login.current_user", mock_proxy):
+                result = protected_view()
+                assert result == "Protected content"
+                assert g._login_user == mock_user
+
+    @patch("libs.login.check_csrf_token", mock_csrf_check)
     def test_flask_1_compatibility(self, setup_app: Flask):
         """Test Flask 1.x compatibility without ensure_sync."""
 
@@ -140,7 +159,7 @@ class TestLoginRequired:
 
         # Remove ensure_sync to simulate Flask 1.x
         if hasattr(setup_app, "ensure_sync"):
-            delattr(setup_app, "ensure_sync")
+            del setup_app.ensure_sync
 
         with setup_app.test_request_context():
             mock_user = MockUser("test_user", is_authenticated=True)

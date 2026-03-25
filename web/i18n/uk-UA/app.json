@@ -36,6 +36,8 @@
   "createApp": "Створити додаток",
   "createFromConfigFile": "Створити з файлу DSL",
   "deleteAppConfirmContent": "Видалення додатка незворотнє. Користувачі більше не зможуть отримати доступ до вашого додатка, і всі налаштування запитів та журнали будуть остаточно видалені.",
+  "deleteAppConfirmInputLabel": "Для підтвердження введіть \"{{appName}}\" у поле нижче:",
+  "deleteAppConfirmInputPlaceholder": "Введіть назву додатка",
   "deleteAppConfirmTitle": "Видалити цей додаток?",
   "dslUploader.browse": "Огляд",
   "dslUploader.button": "Перетягніть файл, або",

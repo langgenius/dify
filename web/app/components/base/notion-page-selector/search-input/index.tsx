@@ -17,6 +17,10 @@ const SearchInput = ({
     onChange('')
   }, [onChange])
 
+  const placeholderText = t('dataSource.notion.selector.searchPages', { ns: 'common' })
+  /* v8 ignore next -- i18n test mock always returns a non-empty string; runtime fallback is defensive. -- @preserve */
+  const safePlaceholderText = placeholderText || ''
+
   return (
     <div
       className={cn('flex h-8 w-[200px] items-center rounded-lg bg-components-input-bg-normal p-2')}
@@ -27,7 +31,7 @@ const SearchInput = ({
         className="min-w-0 grow appearance-none border-0 bg-transparent px-1 text-[13px] leading-[16px] text-components-input-text-filled outline-0 placeholder:text-components-input-text-placeholder"
         value={value}
         onChange={(e: ChangeEvent<HTMLInputElement>) => onChange(e.target.value)}
-        placeholder={t('dataSource.notion.selector.searchPages', { ns: 'common' }) || ''}
+        placeholder={safePlaceholderText}
         data-testid="notion-search-input"
       />
       {

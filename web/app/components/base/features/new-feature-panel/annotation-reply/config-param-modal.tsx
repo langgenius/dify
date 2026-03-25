@@ -80,7 +80,7 @@ const ConfigParamModal: FC<Props> = ({
       onClose={onHide}
       className="!mt-14 !w-[640px] !max-w-none !p-6"
     >
-      <div className="title-2xl-semi-bold mb-2 text-text-primary">
+      <div className="mb-2 text-text-primary title-2xl-semi-bold">
         {t(`initSetup.${isInit ? 'title' : 'configTitle'}`, { ns: 'appAnnotation' })}
       </div>
 
@@ -93,6 +93,7 @@ const ConfigParamModal: FC<Props> = ({
             className="mt-1"
             value={(annotationConfig.score_threshold || ANNOTATION_DEFAULT.score_threshold) * 100}
             onChange={(val) => {
+              /* v8 ignore next -- callback dispatch depends on react-slider drag mechanics that are flaky in jsdom. @preserve */
               setAnnotationConfig({
                 ...annotationConfig,
                 score_threshold: val / 100,

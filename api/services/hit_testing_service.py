@@ -13,6 +13,7 @@ from dify_graph.model_runtime.entities import LLMMode
 from extensions.ext_database import db
 from models import Account
 from models.dataset import Dataset, DatasetQuery
+from models.enums import CreatorUserRole, DatasetQuerySource
 
 logger = logging.getLogger(__name__)
 
@@ -96,9 +97,9 @@ class HitTestingService:
             dataset_query = DatasetQuery(
                 dataset_id=dataset.id,
                 content=json.dumps(dataset_queries),
-                source="hit_testing",
+                source=DatasetQuerySource.HIT_TESTING,
                 source_app_id=None,
-                created_by_role="account",
+                created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=account.id,
             )
             db.session.add(dataset_query)
@@ -136,9 +137,9 @@ class HitTestingService:
         dataset_query = DatasetQuery(
             dataset_id=dataset.id,
             content=query,
-            source="hit_testing",
+            source=DatasetQuerySource.HIT_TESTING,
             source_app_id=None,
-            created_by_role="account",
+            created_by_role=CreatorUserRole.ACCOUNT,
             created_by=account.id,
         )
 

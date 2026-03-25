@@ -28,7 +28,7 @@ const ScoreSlider: FC<Props> = ({
           onChange={onChange}
         />
       </div>
-      <div className="system-xs-semibold-uppercase mt-[10px] flex items-center justify-between">
+      <div className="mt-[10px] flex items-center justify-between system-xs-semibold-uppercase">
         <div className="flex space-x-1 text-util-colors-cyan-cyan-500">
           <div>0.8</div>
           <div>·</div>

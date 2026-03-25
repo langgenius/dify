@@ -1,6 +1,6 @@
 import { act, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ChatContextProvider } from '@/app/components/base/chat/chat/context'
+import { ChatContextProvider } from '@/app/components/base/chat/chat/context-provider'
 import ThinkBlock from '../think-block'
 
 // Mock react-i18next
@@ -163,25 +163,16 @@ describe('ThinkBlock', () => {
       expect(screen.getByText(/Thought/)).toBeInTheDocument()
     })
 
-    it('should NOT stop timer when isResponding is undefined (outside ChatContextProvider)', () => {
-      // Render without ChatContextProvider
+    it('should stop timer when isResponding is undefined (historical conversation outside active response)', () => {
+      // Render without ChatContextProvider — simulates historical conversation
       render(
         <ThinkBlock data-think={true}>
           <p>Content without ENDTHINKFLAG</p>
         </ThinkBlock>,
       )
 
-      // Initial state should show "Thinking..."
-      expect(screen.getByText(/Thinking\.\.\./)).toBeInTheDocument()
-
-      // Advance timer
-      act(() => {
-        vi.advanceTimersByTime(2000)
-      })
-
-      // Timer should still be running (showing "Thinking..." not "Thought")
-      expect(screen.getByText(/Thinking\.\.\./)).toBeInTheDocument()
-      expect(screen.getByText(/\(2\.0s\)/)).toBeInTheDocument()
+      // Timer should be stopped immediately — isResponding undefined means not in active response
+      expect(screen.getByText(/Thought/)).toBeInTheDocument()
     })
   })
 

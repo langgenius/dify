@@ -12,7 +12,7 @@ from core.repositories.sqlalchemy_workflow_node_execution_repository import (
     SQLAlchemyWorkflowNodeExecutionRepository,
 )
 from dify_graph.entities.workflow_node_execution import WorkflowNodeExecution
-from dify_graph.enums import NodeType
+from dify_graph.enums import BuiltinNodeTypes
 from models import Account, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 
 
@@ -62,7 +62,7 @@ class TestSQLAlchemyWorkflowNodeExecutionRepositoryProcessData:
             workflow_id="test-workflow-id",
             index=1,
             node_id="test-node-id",
-            node_type=NodeType.LLM,
+            node_type=BuiltinNodeTypes.LLM,
             title="Test Node",
             process_data=process_data,
             created_at=datetime.now(),

@@ -10,6 +10,7 @@ import time
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
+from dify_graph.entities.base_node_data import DefaultValue, DefaultValueType
 from dify_graph.enums import ErrorStrategy
 from dify_graph.graph_engine import GraphEngine, GraphEngineConfig
 from dify_graph.graph_engine.command_channels import InMemoryChannel
@@ -18,7 +19,6 @@ from dify_graph.graph_events import (
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
 )
-from dify_graph.nodes.base.entities import DefaultValue, DefaultValueType
 
 # Import the test framework from the new module
 from .test_mock_config import MockConfigBuilder

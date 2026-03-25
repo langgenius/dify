@@ -58,7 +58,7 @@ def check_and_handle_human_input_timeouts(limit: int = 100) -> None:
     """Scan for expired human input forms and resume or end workflows."""
 
     session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
-    form_repo = HumanInputFormSubmissionRepository(session_factory)
+    form_repo = HumanInputFormSubmissionRepository()
     service = HumanInputService(session_factory, form_repository=form_repo)
     now = naive_utc_now()
     global_timeout_seconds = dify_config.HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS

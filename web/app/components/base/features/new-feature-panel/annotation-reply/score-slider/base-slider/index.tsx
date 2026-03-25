@@ -27,7 +27,7 @@ const Slider: React.FC<ISliderProps> = ({ className, max, min, step, value, disa
       renderThumb={(props, state) => (
         <div {...props}>
           <div className="relative h-full w-full">
-            <div className="system-sm-semibold absolute left-[50%] top-[-16px] translate-x-[-50%] text-text-primary">
+            <div className="absolute left-[50%] top-[-16px] translate-x-[-50%] text-text-primary system-sm-semibold">
               {(state.valueNow / 100).toFixed(2)}
             </div>
           </div>

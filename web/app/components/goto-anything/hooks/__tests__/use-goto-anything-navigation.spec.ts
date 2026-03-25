@@ -16,7 +16,7 @@ type MockCommandResult = {
 
 let mockFindCommandResult: MockCommandResult = null
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: mockRouterPush,
   }),

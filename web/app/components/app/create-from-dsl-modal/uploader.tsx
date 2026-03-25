@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import ActionButton from '@/app/components/base/action-button'
 import { Yaml as YamlIcon } from '@/app/components/base/icons/src/public/files'
-import { ToastContext } from '@/app/components/base/toast'
+import { ToastContext } from '@/app/components/base/toast/context'
 import { cn } from '@/utils/classnames'
 import { formatFileSize } from '@/utils/format'
 
@@ -121,7 +121,7 @@ const Uploader: FC<Props> = ({
           </div>
         )}
         {file && (
-          <div className={cn('group flex items-center rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs', ' hover:bg-components-panel-on-panel-item-bg-hover')}>
+          <div className={cn('group flex items-center rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs', 'hover:bg-components-panel-on-panel-item-bg-hover')}>
             <div className="flex items-center justify-center p-3">
               <YamlIcon className="h-6 w-6 shrink-0" />
             </div>

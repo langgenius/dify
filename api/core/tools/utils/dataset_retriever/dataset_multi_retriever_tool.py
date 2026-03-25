@@ -1,5 +1,4 @@
 import threading
-from typing import Any
 
 from flask import Flask, current_app
 from pydantic import BaseModel, Field
@@ -9,15 +8,17 @@ from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCa
 from core.model_manager import ModelManager
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.models.document import Document as RagDocument
 from core.rag.rerank.rerank_model import RerankModelRunner
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.utils.dataset_retriever.dataset_retriever_base_tool import DatasetRetrieverBaseTool
+from core.tools.utils.dataset_retriever.dataset_retriever_tool import DefaultRetrievalModelDict
 from dify_graph.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
 from models.dataset import Dataset, Document, DocumentSegment
 
-default_retrieval_model: dict[str, Any] = {
+default_retrieval_model: DefaultRetrievalModelDict = {
     "search_method": RetrievalMethod.SEMANTIC_SEARCH,
     "reranking_enable": False,
     "reranking_model": {"reranking_provider_name": "", "reranking_model_name": ""},
@@ -169,7 +170,7 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
             # get retrieval model , if the model is not setting , using default
             retrieval_model = dataset.retrieval_model or default_retrieval_model
 
-            if dataset.indexing_technique == "economy":
+            if dataset.indexing_technique == IndexTechniqueType.ECONOMY:
                 # use keyword table query
                 documents = RetrievalService.retrieve(
                     retrieval_method=RetrievalMethod.KEYWORD_SEARCH,

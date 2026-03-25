@@ -2,7 +2,8 @@ import type { ComponentProps } from 'react'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { AgentLogDetailResponse } from '@/models/log'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { ToastContext } from '@/app/components/base/toast'
+import { useStore as useAppStore } from '@/app/components/app/store'
+import { ToastContext } from '@/app/components/base/toast/context'
 import { fetchAgentLogDetail } from '@/service/log'
 import AgentLogDetail from '../detail'
 
@@ -104,7 +105,7 @@ describe('AgentLogDetail', () => {
 
   describe('Rendering', () => {
     it('should show loading indicator while fetching data', async () => {
-      vi.mocked(fetchAgentLogDetail).mockReturnValue(new Promise(() => {}))
+      vi.mocked(fetchAgentLogDetail).mockReturnValue(new Promise(() => { }))
 
       renderComponent()
 
@@ -193,6 +194,18 @@ describe('AgentLogDetail', () => {
   })
 
   describe('Edge Cases', () => {
+    it('should not fetch data when app detail is unavailable', async () => {
+      vi.mocked(useAppStore).mockImplementationOnce(selector => selector({ appDetail: undefined } as never))
+      vi.mocked(fetchAgentLogDetail).mockResolvedValue(createMockResponse())
+
+      renderComponent()
+
+      await waitFor(() => {
+        expect(fetchAgentLogDetail).not.toHaveBeenCalled()
+      })
+      expect(screen.getByRole('status')).toBeInTheDocument()
+    })
+
     it('should notify on API error', async () => {
       vi.mocked(fetchAgentLogDetail).mockRejectedValue(new Error('API Error'))
 

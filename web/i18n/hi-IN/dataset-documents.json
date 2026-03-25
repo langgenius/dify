@@ -300,7 +300,7 @@
   "segment.collapseChunks": "चंक्स संक्षिप्त करें",
   "segment.contentEmpty": "सामग्री खाली नहीं हो सकती",
   "segment.contentPlaceholder": "यहाँ सामग्री जोड़ें",
-  "segment.dateTimeFormat": "MM/DD/YYYY h:mm",
+  "segment.dateTimeFormat": "MM/DD/YYYY HH:mm",
   "segment.delete": "इस खंड को हटाएँ ?",
   "segment.editChildChunk": "संपादित करें बाल चंक",
   "segment.editChunk": "चंक संपादित करें",

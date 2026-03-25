@@ -1,10 +1,10 @@
 import uuid
 from typing import NamedTuple
 from unittest import mock
+from unittest.mock import MagicMock
 
 import httpx
 import pytest
-from sqlalchemy import Engine
 
 from core.helper import ssrf_proxy
 from core.tools import signature
@@ -44,7 +44,6 @@ class TestFileSaverImpl:
         )
         mock_tool_file.id = _gen_id()
         mocked_tool_file_manager = mock.MagicMock(spec=ToolFileManager)
-        mocked_engine = mock.MagicMock(spec=Engine)
 
         mocked_tool_file_manager.create_file_by_raw.return_value = mock_tool_file
         monkeypatch.setattr(FileSaverImpl, "_get_tool_file_manager", lambda _: mocked_tool_file_manager)
@@ -53,11 +52,12 @@ class TestFileSaverImpl:
         # Since `File.generate_url` used `signature.sign_tool_file` directly, we also need to patch it here.
         monkeypatch.setattr(models, "sign_tool_file", mocked_sign_file)
         mocked_sign_file.return_value = mock_signed_url
+        http_client = MagicMock()
 
         storage_file_manager = FileSaverImpl(
             user_id=user_id,
             tenant_id=tenant_id,
-            engine_factory=mocked_engine,
+            http_client=http_client,
         )
 
         file = storage_file_manager.save_binary_string(_PNG_DATA, mime_type, file_type)
@@ -87,16 +87,18 @@ class TestFileSaverImpl:
             status_code=401,
             request=mock_request,
         )
+        http_client = MagicMock()
+        http_client.get.return_value = mock_response
+
         file_saver = FileSaverImpl(
             user_id=_gen_id(),
             tenant_id=_gen_id(),
+            http_client=http_client,
         )
-        mock_get = mock.MagicMock(spec=ssrf_proxy.get, return_value=mock_response)
-        monkeypatch.setattr(ssrf_proxy, "get", mock_get)
 
         with pytest.raises(httpx.HTTPStatusError) as exc:
             file_saver.save_remote_url(_TEST_URL, FileType.IMAGE)
-        mock_get.assert_called_once_with(_TEST_URL)
+        http_client.get.assert_called_once_with(_TEST_URL)
         assert exc.value.response.status_code == 401
 
     def test_save_remote_url_success(self, monkeypatch: pytest.MonkeyPatch):
@@ -112,8 +114,10 @@ class TestFileSaverImpl:
             headers={"Content-Type": mime_type},
             request=mock_request,
         )
+        http_client = MagicMock()
+        http_client.get.return_value = mock_response
 
-        file_saver = FileSaverImpl(user_id=user_id, tenant_id=tenant_id)
+        file_saver = FileSaverImpl(user_id=user_id, tenant_id=tenant_id, http_client=http_client)
         mock_tool_file = ToolFile(
             user_id=user_id,
             tenant_id=tenant_id,

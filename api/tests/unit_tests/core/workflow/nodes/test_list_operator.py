@@ -2,8 +2,9 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from core.app.entities.app_invoke_entities import InvokeFrom
-from dify_graph.enums import UserFrom, WorkflowNodeExecutionStatus
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY
+from dify_graph.enums import WorkflowNodeExecutionStatus
 from dify_graph.file import File, FileTransferMethod, FileType
 from dify_graph.nodes.list_operator.entities import (
     ExtractConfig,
@@ -41,14 +42,18 @@ def list_operator_node():
     }
     # Create properly configured mock for graph_init_params
     graph_init_params = MagicMock()
-    graph_init_params.tenant_id = "test_tenant"
-    graph_init_params.app_id = "test_app"
     graph_init_params.workflow_id = "test_workflow"
     graph_init_params.graph_config = {}
-    graph_init_params.user_id = "test_user"
-    graph_init_params.user_from = UserFrom.ACCOUNT
-    graph_init_params.invoke_from = InvokeFrom.SERVICE_API
     graph_init_params.call_depth = 0
+    graph_init_params.run_context = {
+        DIFY_RUN_CONTEXT_KEY: {
+            "tenant_id": "test_tenant",
+            "app_id": "test_app",
+            "user_id": "test_user",
+            "user_from": UserFrom.ACCOUNT,
+            "invoke_from": InvokeFrom.SERVICE_API,
+        }
+    }
 
     node = ListOperatorNode(
         id="test_node_id",

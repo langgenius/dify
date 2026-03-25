@@ -111,7 +111,7 @@ def _render_body(
         url=form_link,
         variable_pool=variable_pool,
     )
-    return body
+    return EmailDeliveryConfig.render_markdown_body(body)
 
 
 def _load_variable_pool(workflow_run_id: str | None) -> VariablePool | None:
@@ -173,10 +173,11 @@ def dispatch_human_input_email_task(form_id: str, node_title: str | None = None,
             for recipient in job.recipients:
                 form_link = _build_form_link(recipient.token)
                 body = _render_body(job.body, form_link, variable_pool=variable_pool)
+                subject = EmailDeliveryConfig.sanitize_subject(job.subject)
 
                 mail.send(
                     to=recipient.email,
-                    subject=job.subject,
+                    subject=subject,
                     html=body,
                 )
 

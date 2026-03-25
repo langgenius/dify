@@ -3,11 +3,10 @@ import { RiCloseLine, RiDraftLine, RiInputField } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import { v4 as uuid4 } from 'uuid'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
-import { ToastContext } from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import ArrayValueList from '@/app/components/workflow/panel/chat-variable-panel/components/array-value-list'
@@ -57,7 +56,6 @@ const ChatVariableModal = ({
   onSave,
 }: ModalPropsType) => {
   const { t } = useTranslation()
-  const { notify } = useContext(ToastContext)
   const workflowStore = useWorkflowStore()
   const [name, setName] = React.useState('')
   const [type, setType] = React.useState<ChatVarType>(ChatVarType.String)
@@ -125,10 +123,7 @@ const ChatVariableModal = ({
   const checkVariableName = (value: string) => {
     const { isValid, errorMessageKey } = checkKeys([value], false)
     if (!isValid) {
-      notify({
-        type: 'error',
-        message: t(`varKeyError.${errorMessageKey}`, { ns: 'appDebug', key: t('env.modal.name', { ns: 'workflow' }) }),
-      })
+      toast.error(t(`varKeyError.${errorMessageKey}`, { ns: 'appDebug', key: t('env.modal.name', { ns: 'workflow' }) }))
       return false
     }
     return true
@@ -236,11 +231,9 @@ const ChatVariableModal = ({
       return
     const varList = workflowStore.getState().conversationVariables
     if (!chatVar && varList.some(chatVar => chatVar.name === name))
-      return notify({ type: 'error', message: 'name is existed' })
-    // if (type !== ChatVarType.Object && !value)
-    //   return notify({ type: 'error', message: 'value can not be empty' })
+      return toast.error(t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: t('chatVariable.modal.name', { ns: 'workflow' }) }))
     if (type === ChatVarType.Object && objectValue.some(item => !item.key && !!item.value))
-      return notify({ type: 'error', message: 'object key can not be empty' })
+      return toast.error(t('chatVariable.modal.objectKeyRequired', { ns: 'workflow' }))
 
     onSave({
       id: chatVar ? chatVar.id : uuid4(),
@@ -273,7 +266,7 @@ const ChatVariableModal = ({
     <div
       className={cn('flex h-full w-[360px] flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl', type === ChatVarType.Object && 'w-[480px]')}
     >
-      <div className="system-xl-semibold mb-3 flex shrink-0 items-center justify-between p-4 pb-0 text-text-primary">
+      <div className="mb-3 flex shrink-0 items-center justify-between p-4 pb-0 text-text-primary system-xl-semibold">
         {!chatVar ? t('chatVariable.modal.title', { ns: 'workflow' }) : t('chatVariable.modal.editTitle', { ns: 'workflow' })}
         <div className="flex items-center">
           <div
@@ -287,7 +280,7 @@ const ChatVariableModal = ({
       <div className="max-h-[480px] overflow-y-auto px-4 py-2">
         {/* name */}
         <div className="mb-4">
-          <div className="system-sm-semibold mb-1 flex h-6 items-center text-text-secondary">{t('chatVariable.modal.name', { ns: 'workflow' })}</div>
+          <div className="mb-1 flex h-6 items-center text-text-secondary system-sm-semibold">{t('chatVariable.modal.name', { ns: 'workflow' })}</div>
           <div className="flex">
             <Input
               placeholder={t('chatVariable.modal.namePlaceholder', { ns: 'workflow' }) || ''}
@@ -300,7 +293,7 @@ const ChatVariableModal = ({
         </div>
         {/* type */}
         <div className="mb-4">
-          <div className="system-sm-semibold mb-1 flex h-6 items-center text-text-secondary">{t('chatVariable.modal.type', { ns: 'workflow' })}</div>
+          <div className="mb-1 flex h-6 items-center text-text-secondary system-sm-semibold">{t('chatVariable.modal.type', { ns: 'workflow' })}</div>
           <div className="flex">
             <VariableTypeSelector
               value={type}
@@ -312,7 +305,7 @@ const ChatVariableModal = ({
         </div>
         {/* default value */}
         <div className="mb-4">
-          <div className="system-sm-semibold mb-1 flex h-6 items-center justify-between text-text-secondary">
+          <div className="mb-1 flex h-6 items-center justify-between text-text-secondary system-sm-semibold">
             <div>{t('chatVariable.modal.value', { ns: 'workflow' })}</div>
             {(type === ChatVarType.ArrayString || type === ChatVarType.ArrayNumber || type === ChatVarType.ArrayBoolean) && (
               <Button
@@ -341,7 +334,7 @@ const ChatVariableModal = ({
             {type === ChatVarType.String && (
               // Input will remove \n\r, so use Textarea just like description area
               <textarea
-                className="system-sm-regular placeholder:system-sm-regular block h-20 w-full resize-none appearance-none rounded-lg border border-transparent bg-components-input-bg-normal p-2 text-components-input-text-filled caret-primary-600 outline-none placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
+                className="block h-20 w-full resize-none appearance-none rounded-lg border border-transparent bg-components-input-bg-normal p-2 text-components-input-text-filled caret-primary-600 outline-none system-sm-regular placeholder:text-components-input-text-placeholder placeholder:system-sm-regular hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
                 value={value}
                 placeholder={t('chatVariable.modal.valuePlaceholder', { ns: 'workflow' }) || ''}
                 onChange={e => setValue(e.target.value)}
@@ -404,10 +397,10 @@ const ChatVariableModal = ({
         </div>
         {/* description */}
         <div className="">
-          <div className="system-sm-semibold mb-1 flex h-6 items-center text-text-secondary">{t('chatVariable.modal.description', { ns: 'workflow' })}</div>
+          <div className="mb-1 flex h-6 items-center text-text-secondary system-sm-semibold">{t('chatVariable.modal.description', { ns: 'workflow' })}</div>
           <div className="flex">
             <textarea
-              className="system-sm-regular placeholder:system-sm-regular block h-20 w-full resize-none appearance-none rounded-lg border border-transparent bg-components-input-bg-normal p-2 text-components-input-text-filled caret-primary-600 outline-none placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
+              className="block h-20 w-full resize-none appearance-none rounded-lg border border-transparent bg-components-input-bg-normal p-2 text-components-input-text-filled caret-primary-600 outline-none system-sm-regular placeholder:text-components-input-text-placeholder placeholder:system-sm-regular hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
               value={description}
               placeholder={t('chatVariable.modal.descriptionPlaceholder', { ns: 'workflow' }) || ''}
               onChange={e => setDescription(e.target.value)}

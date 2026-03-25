@@ -100,7 +100,7 @@ class TestHumanInputFormRepositoryImplWithContainers:
             member_emails=["member1@example.com", "member2@example.com"],
         )
 
-        repository = HumanInputFormRepositoryImpl(session_factory=engine, tenant_id=tenant.id)
+        repository = HumanInputFormRepositoryImpl(tenant_id=tenant.id)
         params = _build_form_params(
             delivery_methods=[_build_email_delivery(whole_workspace=True, recipients=[])],
         )
@@ -129,7 +129,7 @@ class TestHumanInputFormRepositoryImplWithContainers:
             member_emails=["primary@example.com", "secondary@example.com"],
         )
 
-        repository = HumanInputFormRepositoryImpl(session_factory=engine, tenant_id=tenant.id)
+        repository = HumanInputFormRepositoryImpl(tenant_id=tenant.id)
         params = _build_form_params(
             delivery_methods=[
                 _build_email_delivery(
@@ -173,7 +173,7 @@ class TestHumanInputFormRepositoryImplWithContainers:
             member_emails=["prefill@example.com"],
         )
 
-        repository = HumanInputFormRepositoryImpl(session_factory=engine, tenant_id=tenant.id)
+        repository = HumanInputFormRepositoryImpl(tenant_id=tenant.id)
         resolved_values = {"greeting": "Hello!"}
         params = FormCreateParams(
             app_id=str(uuid4()),
@@ -210,7 +210,7 @@ class TestHumanInputFormRepositoryImplWithContainers:
             member_emails=["ui@example.com"],
         )
 
-        repository = HumanInputFormRepositoryImpl(session_factory=engine, tenant_id=tenant.id)
+        repository = HumanInputFormRepositoryImpl(tenant_id=tenant.id)
         params = FormCreateParams(
             app_id=str(uuid4()),
             workflow_execution_id=str(uuid4()),

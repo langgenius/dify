@@ -3,7 +3,7 @@ from typing import Any, Literal
 
 from typing_extensions import deprecated
 
-from dify_graph.enums import NodeExecutionType, NodeType, WorkflowNodeExecutionStatus
+from dify_graph.enums import BuiltinNodeTypes, NodeExecutionType, WorkflowNodeExecutionStatus
 from dify_graph.node_events import NodeRunResult
 from dify_graph.nodes.base.node import Node
 from dify_graph.nodes.if_else.entities import IfElseNodeData
@@ -13,7 +13,7 @@ from dify_graph.utils.condition.processor import ConditionProcessor
 
 
 class IfElseNode(Node[IfElseNodeData]):
-    node_type = NodeType.IF_ELSE
+    node_type = BuiltinNodeTypes.IF_ELSE
     execution_type = NodeExecutionType.BRANCH
 
     @classmethod
@@ -97,13 +97,11 @@ class IfElseNode(Node[IfElseNodeData]):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: Mapping[str, Any],
+        node_data: IfElseNodeData,
     ) -> Mapping[str, Sequence[str]]:
-        # Create typed NodeData from dict
-        typed_node_data = IfElseNodeData.model_validate(node_data)
-
         var_mapping: dict[str, list[str]] = {}
-        for case in typed_node_data.cases or []:
+        _ = graph_config  # Explicitly mark as unused
+        for case in node_data.cases or []:
             for condition in case.conditions:
                 key = f"{node_id}.#{'.'.join(condition.variable_selector)}#"
                 var_mapping[key] = condition.variable_selector

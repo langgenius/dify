@@ -12,13 +12,18 @@ All tests use mocking to avoid external dependencies and ensure fast, reliable e
 Tests follow the Arrange-Act-Assert pattern for clarity.
 """
 
+from operator import itemgetter
+from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
 from core.model_manager import ModelInstance
+from core.rag.index_processor.constant.doc_type import DocType
+from core.rag.index_processor.constant.query_type import QueryType
 from core.rag.models.document import Document
 from core.rag.rerank.entity.weight import KeywordSetting, VectorSetting, Weights
+from core.rag.rerank.rerank_base import BaseRerankRunner
 from core.rag.rerank.rerank_factory import RerankRunnerFactory
 from core.rag.rerank.rerank_model import RerankModelRunner
 from core.rag.rerank.rerank_type import RerankMode
@@ -26,7 +31,7 @@ from core.rag.rerank.weight_rerank import WeightRerankRunner
 from dify_graph.model_runtime.entities.rerank_entities import RerankDocument, RerankResult
 
 
-def create_mock_model_instance():
+def create_mock_model_instance() -> ModelInstance:
     """Create a properly configured mock ModelInstance for reranking tests."""
     mock_instance = Mock(spec=ModelInstance)
     # Setup provider_model_bundle chain for check_model_support_vision
@@ -59,14 +64,7 @@ class TestRerankModelRunner:
     @pytest.fixture
     def mock_model_instance(self):
         """Create a mock ModelInstance for reranking."""
-        mock_instance = Mock(spec=ModelInstance)
-        # Setup provider_model_bundle chain for check_model_support_vision
-        mock_instance.provider_model_bundle = Mock()
-        mock_instance.provider_model_bundle.configuration = Mock()
-        mock_instance.provider_model_bundle.configuration.tenant_id = "test-tenant-id"
-        mock_instance.provider = "test-provider"
-        mock_instance.model_name = "test-model"
-        return mock_instance
+        return create_mock_model_instance()
 
     @pytest.fixture
     def rerank_runner(self, mock_model_instance):
@@ -382,6 +380,206 @@ class TestRerankModelRunner:
         assert call_kwargs["user"] == "user123"
 
 
+class _ForwardingBaseRerankRunner(BaseRerankRunner):
+    def run(
+        self,
+        query: str,
+        documents: list[Document],
+        score_threshold: float | None = None,
+        top_n: int | None = None,
+        user: str | None = None,
+        query_type: QueryType = QueryType.TEXT_QUERY,
+    ) -> list[Document]:
+        return super().run(
+            query=query,
+            documents=documents,
+            score_threshold=score_threshold,
+            top_n=top_n,
+            user=user,
+            query_type=query_type,
+        )
+
+
+class TestBaseRerankRunner:
+    def test_run_raises_not_implemented(self):
+        runner = _ForwardingBaseRerankRunner()
+
+        with pytest.raises(NotImplementedError):
+            runner.run(query="python", documents=[])
+
+
+class TestRerankModelRunnerMultimodal:
+    @pytest.fixture
+    def mock_model_instance(self):
+        return create_mock_model_instance()
+
+    @pytest.fixture
+    def rerank_runner(self, mock_model_instance):
+        return RerankModelRunner(rerank_model_instance=mock_model_instance)
+
+    def test_run_returns_original_documents_for_non_text_query_without_vision_support(
+        self, rerank_runner, mock_model_instance
+    ):
+        documents = [
+            Document(page_content="doc", metadata={"doc_id": "doc1"}, provider="dify"),
+        ]
+
+        with patch("core.rag.rerank.rerank_model.ModelManager") as mock_mm:
+            mock_mm.return_value.check_model_support_vision.return_value = False
+            result = rerank_runner.run(query="image-file-id", documents=documents, query_type=QueryType.IMAGE_QUERY)
+
+        assert result == documents
+        mock_model_instance.invoke_rerank.assert_not_called()
+
+    def test_run_uses_multimodal_path_when_vision_support_is_enabled(self, rerank_runner):
+        documents = [
+            Document(page_content="doc", metadata={"doc_id": "doc1", "source": "wiki"}, provider="dify"),
+        ]
+        rerank_result = RerankResult(
+            model="rerank-model",
+            docs=[RerankDocument(index=0, text="doc", score=0.88)],
+        )
+
+        with (
+            patch("core.rag.rerank.rerank_model.ModelManager") as mock_mm,
+            patch.object(
+                rerank_runner,
+                "fetch_multimodal_rerank",
+                return_value=(rerank_result, documents),
+            ) as mock_multimodal,
+        ):
+            mock_mm.return_value.check_model_support_vision.return_value = True
+            result = rerank_runner.run(query="python", documents=documents, query_type=QueryType.TEXT_QUERY)
+
+        mock_multimodal.assert_called_once()
+        assert len(result) == 1
+        assert result[0].metadata["score"] == 0.88
+
+    def test_fetch_multimodal_rerank_builds_docs_and_calls_text_rerank(self, rerank_runner):
+        image_doc = Document(
+            page_content="image-content",
+            metadata={"doc_id": "img-1", "doc_type": DocType.IMAGE},
+            provider="dify",
+        )
+        text_doc = Document(
+            page_content="text-content",
+            metadata={"doc_id": "txt-1", "doc_type": DocType.TEXT},
+            provider="dify",
+        )
+        external_doc = Document(
+            page_content="external-content",
+            metadata={},
+            provider="external",
+        )
+        query = Mock()
+        query.where.return_value.first.return_value = SimpleNamespace(key="image-key")
+        rerank_result = RerankResult(model="rerank-model", docs=[])
+
+        with (
+            patch("core.rag.rerank.rerank_model.db.session.query", return_value=query),
+            patch("core.rag.rerank.rerank_model.storage.load_once", return_value=b"image-bytes") as mock_load_once,
+            patch.object(
+                rerank_runner,
+                "fetch_text_rerank",
+                return_value=(rerank_result, [image_doc, text_doc, external_doc]),
+            ) as mock_text_rerank,
+        ):
+            result, unique_documents = rerank_runner.fetch_multimodal_rerank(
+                query="python",
+                documents=[image_doc, text_doc, external_doc, external_doc],
+                query_type=QueryType.TEXT_QUERY,
+            )
+
+        assert result == rerank_result
+        assert len(unique_documents) == 3
+        mock_load_once.assert_called_once_with("image-key")
+        text_rerank_call_args = mock_text_rerank.call_args.args
+        assert len(text_rerank_call_args[1]) == 3
+
+    def test_fetch_multimodal_rerank_skips_missing_image_upload(self, rerank_runner):
+        image_doc = Document(
+            page_content="image-content",
+            metadata={"doc_id": "img-missing", "doc_type": DocType.IMAGE},
+            provider="dify",
+        )
+        query = Mock()
+        query.where.return_value.first.return_value = None
+        rerank_result = RerankResult(model="rerank-model", docs=[])
+
+        with (
+            patch("core.rag.rerank.rerank_model.db.session.query", return_value=query),
+            patch.object(
+                rerank_runner,
+                "fetch_text_rerank",
+                return_value=(rerank_result, [image_doc]),
+            ) as mock_text_rerank,
+        ):
+            result, unique_documents = rerank_runner.fetch_multimodal_rerank(
+                query="python",
+                documents=[image_doc],
+                query_type=QueryType.TEXT_QUERY,
+            )
+
+        assert result == rerank_result
+        assert unique_documents == [image_doc]
+        docs_arg = mock_text_rerank.call_args.args[1]
+        assert len(docs_arg) == 1
+
+    def test_fetch_multimodal_rerank_image_query_invokes_multimodal_model(self, rerank_runner, mock_model_instance):
+        text_doc = Document(
+            page_content="text-content",
+            metadata={"doc_id": "txt-1", "doc_type": DocType.TEXT},
+            provider="dify",
+        )
+        query_chain = Mock()
+        query_chain.where.return_value.first.return_value = SimpleNamespace(key="query-image-key")
+        rerank_result = RerankResult(
+            model="rerank-model",
+            docs=[RerankDocument(index=0, text="text-content", score=0.77)],
+        )
+        mock_model_instance.invoke_multimodal_rerank.return_value = rerank_result
+
+        with (
+            patch("core.rag.rerank.rerank_model.db.session.query", return_value=query_chain),
+            patch("core.rag.rerank.rerank_model.storage.load_once", return_value=b"query-image-bytes"),
+        ):
+            result, unique_documents = rerank_runner.fetch_multimodal_rerank(
+                query="query-upload-id",
+                documents=[text_doc],
+                score_threshold=0.2,
+                top_n=2,
+                user="user-1",
+                query_type=QueryType.IMAGE_QUERY,
+            )
+
+        assert result == rerank_result
+        assert unique_documents == [text_doc]
+        invoke_kwargs = mock_model_instance.invoke_multimodal_rerank.call_args.kwargs
+        assert invoke_kwargs["query"]["content_type"] == DocType.IMAGE
+        assert invoke_kwargs["docs"][0]["content"] == "text-content"
+        assert invoke_kwargs["user"] == "user-1"
+
+    def test_fetch_multimodal_rerank_raises_when_query_image_not_found(self, rerank_runner):
+        query_chain = Mock()
+        query_chain.where.return_value.first.return_value = None
+
+        with patch("core.rag.rerank.rerank_model.db.session.query", return_value=query_chain):
+            with pytest.raises(ValueError, match="Upload file not found for query"):
+                rerank_runner.fetch_multimodal_rerank(
+                    query="missing-upload-id",
+                    documents=[],
+                    query_type=QueryType.IMAGE_QUERY,
+                )
+
+    def test_fetch_multimodal_rerank_rejects_unsupported_query_type(self, rerank_runner):
+        with pytest.raises(ValueError, match="is not supported"):
+            rerank_runner.fetch_multimodal_rerank(
+                query="python",
+                documents=[],
+                query_type="unsupported_query_type",
+            )
+
+
 class TestWeightRerankRunner:
     """Unit tests for WeightRerankRunner.
 
@@ -512,34 +710,39 @@ class TestWeightRerankRunner:
         - TF-IDF scores are calculated correctly
         - Cosine similarity is computed for keyword vectors
         """
-        # Arrange: Create runner
         runner = WeightRerankRunner(tenant_id="tenant123", weights=weights_config)
-
-        # Mock keyword extraction with specific keywords
+        keyword_map = {
+            "python programming": ["python", "programming"],
+            "Python is a programming language": ["python", "programming", "language"],
+            "JavaScript for web development": ["javascript", "web"],
+            "Java object-oriented programming": ["java", "programming"],
+        }
         mock_handler_instance = MagicMock()
-        mock_handler_instance.extract_keywords.side_effect = [
-            ["python", "programming"],  # query
-            ["python", "programming", "language"],  # doc1
-            ["javascript", "web"],  # doc2
-            ["java", "programming"],  # doc3
-        ]
+        mock_handler_instance.extract_keywords.side_effect = lambda text, _: keyword_map[text]
         mock_jieba_handler.return_value = mock_handler_instance
 
-        # Mock embedding
         mock_embedding_instance = MagicMock()
         mock_model_manager.return_value.get_model_instance.return_value = mock_embedding_instance
         mock_cache_instance = MagicMock()
         mock_cache_instance.embed_query.return_value = [0.1, 0.2, 0.3, 0.4]
         mock_cache_embedding.return_value = mock_cache_instance
 
-        # Act: Run reranking
+        query_scores = runner._calculate_keyword_score("python programming", sample_documents_with_vectors)
+        vector_scores = runner._calculate_cosine(
+            "tenant123", "python programming", sample_documents_with_vectors, weights_config.vector_setting
+        )
+        expected_scores = {
+            doc.metadata["doc_id"]: (0.6 * vector_score + 0.4 * query_score)
+            for doc, query_score, vector_score in zip(sample_documents_with_vectors, query_scores, vector_scores)
+        }
+
         result = runner.run(query="python programming", documents=sample_documents_with_vectors)
 
-        # Assert: Keywords are extracted and scores are calculated
-        assert len(result) == 3
-        # Document 1 should have highest keyword score (matches both query terms)
-        # Document 3 should have medium score (matches one term)
-        # Document 2 should have lowest score (matches no terms)
+        expected_order = [doc_id for doc_id, _ in sorted(expected_scores.items(), key=itemgetter(1), reverse=True)]
+        assert [doc.metadata["doc_id"] for doc in result] == expected_order
+        for doc in result:
+            doc_id = doc.metadata["doc_id"]
+            assert doc.metadata["score"] == pytest.approx(expected_scores[doc_id], rel=1e-6)
 
     def test_vector_score_calculation(
         self,
@@ -556,30 +759,42 @@ class TestWeightRerankRunner:
         - Cosine similarity is calculated with document vectors
         - Vector scores are properly normalized
         """
-        # Arrange: Create runner
         runner = WeightRerankRunner(tenant_id="tenant123", weights=weights_config)
 
-        # Mock keyword extraction
+        keyword_map = {
+            "test query": ["test"],
+            "Python is a programming language": ["python"],
+            "JavaScript for web development": ["javascript"],
+            "Java object-oriented programming": ["java"],
+        }
         mock_handler_instance = MagicMock()
-        mock_handler_instance.extract_keywords.return_value = ["test"]
+        mock_handler_instance.extract_keywords.side_effect = lambda text, _: keyword_map[text]
         mock_jieba_handler.return_value = mock_handler_instance
 
-        # Mock embedding model
         mock_embedding_instance = MagicMock()
         mock_model_manager.return_value.get_model_instance.return_value = mock_embedding_instance
 
-        # Mock cache embedding with specific query vector
         mock_cache_instance = MagicMock()
         query_vector = [0.2, 0.3, 0.4, 0.5]
         mock_cache_instance.embed_query.return_value = query_vector
         mock_cache_embedding.return_value = mock_cache_instance
 
-        # Act: Run reranking
+        query_scores = runner._calculate_keyword_score("test query", sample_documents_with_vectors)
+        vector_scores = runner._calculate_cosine(
+            "tenant123", "test query", sample_documents_with_vectors, weights_config.vector_setting
+        )
+        expected_scores = {
+            doc.metadata["doc_id"]: (0.6 * vector_score + 0.4 * query_score)
+            for doc, query_score, vector_score in zip(sample_documents_with_vectors, query_scores, vector_scores)
+        }
+
         result = runner.run(query="test query", documents=sample_documents_with_vectors)
 
-        # Assert: Vector scores are calculated
-        assert len(result) == 3
-        # Verify cosine similarity was computed (doc2 vector is closest to query vector)
+        expected_order = [doc_id for doc_id, _ in sorted(expected_scores.items(), key=itemgetter(1), reverse=True)]
+        assert [doc.metadata["doc_id"] for doc in result] == expected_order
+        for doc in result:
+            doc_id = doc.metadata["doc_id"]
+            assert doc.metadata["score"] == pytest.approx(expected_scores[doc_id], rel=1e-6)
 
     def test_score_threshold_filtering_weighted(
         self,
@@ -742,28 +957,40 @@ class TestWeightRerankRunner:
         - Keyword weight (0.4) is applied to keyword scores
         - Combined score is the sum of weighted components
         """
-        # Arrange: Create runner with known weights
         runner = WeightRerankRunner(tenant_id="tenant123", weights=weights_config)
 
-        # Mock keyword extraction
+        keyword_map = {
+            "test": ["test"],
+            "Python is a programming language": ["python", "language"],
+            "JavaScript for web development": ["javascript", "web"],
+            "Java object-oriented programming": ["java", "programming"],
+        }
         mock_handler_instance = MagicMock()
-        mock_handler_instance.extract_keywords.return_value = ["test"]
+        mock_handler_instance.extract_keywords.side_effect = lambda text, _: keyword_map[text]
         mock_jieba_handler.return_value = mock_handler_instance
 
-        # Mock embedding
         mock_embedding_instance = MagicMock()
         mock_model_manager.return_value.get_model_instance.return_value = mock_embedding_instance
         mock_cache_instance = MagicMock()
         mock_cache_instance.embed_query.return_value = [0.1, 0.2, 0.3, 0.4]
         mock_cache_embedding.return_value = mock_cache_instance
 
-        # Act: Run reranking
+        query_scores = runner._calculate_keyword_score("test", sample_documents_with_vectors)
+        vector_scores = runner._calculate_cosine(
+            "tenant123", "test", sample_documents_with_vectors, weights_config.vector_setting
+        )
+        expected_scores = {
+            doc.metadata["doc_id"]: (0.6 * vector_score + 0.4 * query_score)
+            for doc, query_score, vector_score in zip(sample_documents_with_vectors, query_scores, vector_scores)
+        }
+
         result = runner.run(query="test", documents=sample_documents_with_vectors)
 
-        # Assert: Scores are combined with weights
-        # Score = 0.6 * vector_score + 0.4 * keyword_score
-        assert len(result) == 3
-        assert all("score" in doc.metadata for doc in result)
+        expected_order = [doc_id for doc_id, _ in sorted(expected_scores.items(), key=itemgetter(1), reverse=True)]
+        assert [doc.metadata["doc_id"] for doc in result] == expected_order
+        for doc in result:
+            doc_id = doc.metadata["doc_id"]
+            assert doc.metadata["score"] == pytest.approx(expected_scores[doc_id], rel=1e-6)
 
     def test_existing_vector_score_in_metadata(
         self,
@@ -778,7 +1005,6 @@ class TestWeightRerankRunner:
         - If document already has a score in metadata, it's used
         - Cosine similarity calculation is skipped for such documents
         """
-        # Arrange: Documents with pre-existing scores
         documents = [
             Document(
                 page_content="Content with existing score",
@@ -790,24 +1016,29 @@ class TestWeightRerankRunner:
 
         runner = WeightRerankRunner(tenant_id="tenant123", weights=weights_config)
 
-        # Mock keyword extraction
+        keyword_map = {
+            "test": ["test"],
+            "Content with existing score": ["test"],
+        }
         mock_handler_instance = MagicMock()
-        mock_handler_instance.extract_keywords.return_value = ["test"]
+        mock_handler_instance.extract_keywords.side_effect = lambda text, _: keyword_map[text]
         mock_jieba_handler.return_value = mock_handler_instance
 
-        # Mock embedding
         mock_embedding_instance = MagicMock()
         mock_model_manager.return_value.get_model_instance.return_value = mock_embedding_instance
         mock_cache_instance = MagicMock()
         mock_cache_instance.embed_query.return_value = [0.1, 0.2]
         mock_cache_embedding.return_value = mock_cache_instance
 
-        # Act: Run reranking
+        query_scores = runner._calculate_keyword_score("test", documents)
+        vector_scores = runner._calculate_cosine("tenant123", "test", documents, weights_config.vector_setting)
+        expected_score = 0.6 * vector_scores[0] + 0.4 * query_scores[0]
+
         result = runner.run(query="test", documents=documents)
 
-        # Assert: Existing score is used in calculation
         assert len(result) == 1
-        # The final score should incorporate the existing score (0.95) with vector weight (0.6)
+        assert result[0].metadata["doc_id"] == "doc1"
+        assert result[0].metadata["score"] == pytest.approx(expected_score, rel=1e-6)
 
 
 class TestRerankRunnerFactory:

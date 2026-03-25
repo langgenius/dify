@@ -19,7 +19,7 @@ vi.mock('zustand/react/shallow', () => ({
   useShallow: (fn: unknown) => fn,
 }))
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   usePathname: () => mockPathname,
 }))
 

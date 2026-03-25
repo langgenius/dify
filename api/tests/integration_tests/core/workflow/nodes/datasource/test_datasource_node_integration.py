@@ -1,6 +1,7 @@
+from core.workflow.nodes.datasource.datasource_node import DatasourceNode
+from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY
 from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from dify_graph.node_events import NodeRunResult, StreamCompletedEvent
-from dify_graph.nodes.datasource.datasource_node import DatasourceNode
 
 
 class _Seg:
@@ -28,13 +29,17 @@ class _GS:
 
 
 class _GP:
-    tenant_id = "t1"
-    app_id = "app-1"
     workflow_id = "wf-1"
     graph_config = {}
-    user_id = "u1"
-    user_from = "account"
-    invoke_from = "debugger"
+    run_context = {
+        DIFY_RUN_CONTEXT_KEY: {
+            "tenant_id": "t1",
+            "app_id": "app-1",
+            "user_id": "u1",
+            "user_from": "account",
+            "invoke_from": "debugger",
+        }
+    }
     call_depth = 0
 
 
@@ -61,6 +66,8 @@ def test_node_integration_minimal_stream(mocker):
         def get_upload_file_by_id(cls, **_):
             raise AssertionError
 
+    mocker.patch("core.workflow.nodes.datasource.datasource_node.DatasourceManager", new=_Mgr)
+
     node = DatasourceNode(
         id="n",
         config={
@@ -77,7 +84,6 @@ def test_node_integration_minimal_stream(mocker):
         },
         graph_init_params=_GP(),
         graph_runtime_state=_GS(vp),
-        datasource_manager=_Mgr,
     )
 
     out = list(node._run())

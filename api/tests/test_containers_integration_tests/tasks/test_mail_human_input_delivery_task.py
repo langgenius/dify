@@ -96,8 +96,7 @@ def _build_form(db_session_with_containers, tenant, account, *, app_id: str, wor
         delivery_methods=[delivery_method],
     )
 
-    engine = db_session_with_containers.get_bind()
-    repo = HumanInputFormRepositoryImpl(session_factory=engine, tenant_id=tenant.id)
+    repo = HumanInputFormRepositoryImpl(tenant_id=tenant.id)
     params = FormCreateParams(
         app_id=app_id,
         workflow_execution_id=workflow_execution_id,

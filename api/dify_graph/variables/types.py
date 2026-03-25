@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 from dify_graph.file.models import File
 
 if TYPE_CHECKING:
-    pass
+    from dify_graph.variables.segments import Segment
 
 
 class ArrayValidation(StrEnum):
@@ -219,7 +219,7 @@ class SegmentType(StrEnum):
         return _ARRAY_ELEMENT_TYPES_MAPPING.get(self)
 
     @staticmethod
-    def get_zero_value(t: SegmentType):
+    def get_zero_value(t: SegmentType) -> Segment:
         # Lazy import to avoid circular dependency
         from factories import variable_factory
 

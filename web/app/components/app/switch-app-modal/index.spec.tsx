@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { ToastContext } from '@/app/components/base/toast'
+import { ToastContext } from '@/app/components/base/toast/context'
 import { Plan } from '@/app/components/billing/type'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { AppModeEnum } from '@/types/app'
@@ -11,7 +11,7 @@ import SwitchAppModal from './index'
 
 const mockPush = vi.fn()
 const mockReplace = vi.fn()
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
     replace: mockReplace,

@@ -1,6 +1,5 @@
 import type { FC } from 'react'
 import type { SortField, SortOrder } from '../hooks'
-import { RiArrowDownLine } from '@remixicon/react'
 import * as React from 'react'
 import { cn } from '@/utils/classnames'
 
@@ -23,19 +22,20 @@ const SortHeader: FC<SortHeaderProps> = React.memo(({
   const isDesc = isActive && sortOrder === 'desc'
 
   return (
-    <div
-      className="flex cursor-pointer items-center hover:text-text-secondary"
+    <button
+      type="button"
+      className="flex items-center bg-transparent p-0 text-left hover:text-text-secondary"
       onClick={() => onSort(field)}
     >
       {label}
-      <RiArrowDownLine
+      <span
         className={cn(
-          'ml-0.5 h-3 w-3 transition-all',
+          'i-ri-arrow-down-line ml-0.5 h-3 w-3 transition-all',
           isActive ? 'text-text-tertiary' : 'text-text-disabled',
           isActive && !isDesc ? 'rotate-180' : '',
         )}
       />
-    </div>
+    </button>
   )
 })
 

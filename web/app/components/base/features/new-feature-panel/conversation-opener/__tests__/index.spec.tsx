@@ -1,6 +1,6 @@
 import type { Features } from '../../../types'
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { FeaturesProvider } from '../../../context'
 import ConversationOpener from '../index'
 
@@ -144,7 +144,9 @@ describe('ConversationOpener', () => {
     fireEvent.click(screen.getByText(/openingStatement\.writeOpener/))
 
     const modalCall = mockSetShowOpeningModal.mock.calls[0][0]
-    modalCall.onSaveCallback({ enabled: true, opening_statement: 'Updated' })
+    act(() => {
+      modalCall.onSaveCallback({ enabled: true, opening_statement: 'Updated' })
+    })
 
     expect(onChange).toHaveBeenCalled()
   })
@@ -183,5 +185,42 @@ describe('ConversationOpener', () => {
 
     // After leave, statement visible again
     expect(screen.getByText('Welcome!')).toBeInTheDocument()
+  })
+
+  it('should return early from opener handler when disabled and hovered', () => {
+    renderWithProvider({ disabled: true }, {
+      opening: { enabled: true, opening_statement: 'Hello' },
+    })
+
+    const card = screen.getByText(/feature\.conversationOpener\.title/).closest('[class]')!
+    fireEvent.mouseEnter(card)
+    fireEvent.click(screen.getByText(/openingStatement\.writeOpener/))
+
+    expect(mockSetShowOpeningModal).not.toHaveBeenCalled()
+  })
+
+  it('should run save and cancel callbacks without onChange', () => {
+    renderWithProvider({}, {
+      opening: { enabled: true, opening_statement: 'Hello' },
+    })
+
+    const card = screen.getByText(/feature\.conversationOpener\.title/).closest('[class]')!
+    fireEvent.mouseEnter(card)
+    fireEvent.click(screen.getByText(/openingStatement\.writeOpener/))
+
+    const modalCall = mockSetShowOpeningModal.mock.calls[0][0]
+    act(() => {
+      modalCall.onSaveCallback({ enabled: true, opening_statement: 'Updated without callback' })
+      modalCall.onCancelCallback()
+    })
+
+    expect(mockSetShowOpeningModal).toHaveBeenCalledTimes(1)
+  })
+
+  it('should toggle feature switch without onChange callback', () => {
+    renderWithProvider()
+
+    fireEvent.click(screen.getByRole('switch'))
+    expect(screen.getByRole('switch')).toBeInTheDocument()
   })
 })

@@ -1,4 +1,5 @@
 from collections.abc import Mapping, Sequence
+from enum import StrEnum
 from typing import TYPE_CHECKING, Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
@@ -6,12 +7,75 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validat
 from constants import UUID_NIL
 from core.app.app_config.entities import EasyUIBasedAppConfig, WorkflowUIBasedAppConfig
 from core.entities.provider_configuration import ProviderModelBundle
-from dify_graph.enums import InvokeFrom
+from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY
 from dify_graph.file import File, FileUploadConfig
 from dify_graph.model_runtime.entities.model_entities import AIModelEntity
 
 if TYPE_CHECKING:
     from core.ops.ops_trace_manager import TraceQueueManager
+
+
+class UserFrom(StrEnum):
+    ACCOUNT = "account"
+    END_USER = "end-user"
+
+
+class InvokeFrom(StrEnum):
+    SERVICE_API = "service-api"
+    WEB_APP = "web-app"
+    TRIGGER = "trigger"
+    EXPLORE = "explore"
+    DEBUGGER = "debugger"
+    PUBLISHED_PIPELINE = "published"
+    VALIDATION = "validation"
+
+    @classmethod
+    def value_of(cls, value: str) -> "InvokeFrom":
+        return cls(value)
+
+    def to_source(self) -> str:
+        source_mapping = {
+            InvokeFrom.WEB_APP: "web_app",
+            InvokeFrom.DEBUGGER: "dev",
+            InvokeFrom.EXPLORE: "explore_app",
+            InvokeFrom.TRIGGER: "trigger",
+            InvokeFrom.SERVICE_API: "api",
+        }
+        return source_mapping.get(self, "dev")
+
+
+class DifyRunContext(BaseModel):
+    tenant_id: str
+    app_id: str
+    user_id: str
+    user_from: UserFrom
+    invoke_from: InvokeFrom
+
+
+def build_dify_run_context(
+    *,
+    tenant_id: str,
+    app_id: str,
+    user_id: str,
+    user_from: UserFrom,
+    invoke_from: InvokeFrom,
+    extra_context: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """
+    Build graph run_context with the reserved Dify runtime payload.
+
+    `extra_context` can carry user-defined context keys. The reserved `_dify`
+    payload is always overwritten by this function to keep one canonical source.
+    """
+    run_context = dict(extra_context) if extra_context else {}
+    run_context[DIFY_RUN_CONTEXT_KEY] = DifyRunContext(
+        tenant_id=tenant_id,
+        app_id=app_id,
+        user_id=user_id,
+        user_from=user_from,
+        invoke_from=invoke_from,
+    )
+    return run_context
 
 
 class ModelConfigWithCredentialsEntity(BaseModel):

@@ -18,15 +18,23 @@ if TYPE_CHECKING:
     from models.model import EndUser
 
 
+def _resolve_current_user() -> EndUser | Account | None:
+    """
+    Resolve the current user proxy to its underlying user object.
+    This keeps unit tests working when they patch `current_user` directly
+    instead of bootstrapping a full Flask-Login manager.
+    """
+    user_proxy = current_user
+    get_current_object = getattr(user_proxy, "_get_current_object", None)
+    return get_current_object() if callable(get_current_object) else user_proxy  # type: ignore
+
+
 def current_account_with_tenant():
     """
     Resolve the underlying account for the current user proxy and ensure tenant context exists.
     Allows tests to supply plain Account mocks without the LocalProxy helper.
     """
-    user_proxy = current_user
-
-    get_current_object = getattr(user_proxy, "_get_current_object", None)
-    user = get_current_object() if callable(get_current_object) else user_proxy  # type: ignore
+    user = _resolve_current_user()
 
     if not isinstance(user, Account):
         raise ValueError("current_user must be an Account instance")
@@ -77,12 +85,15 @@ def login_required(func: Callable[P, R]) -> Callable[P, R | ResponseReturnValue]
     @wraps(func)
     def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R | ResponseReturnValue:
         if request.method in EXEMPT_METHODS or dify_config.LOGIN_DISABLED:
-            pass
-        elif current_user is not None and not current_user.is_authenticated:
+            return current_app.ensure_sync(func)(*args, **kwargs)
+
+        user = _resolve_current_user()
+        if user is None or not user.is_authenticated:
             return current_app.login_manager.unauthorized()  # type: ignore
+        g._login_user = user
         # we put csrf validation here for less conflicts
         # TODO: maybe find a better place for it.
-        check_csrf_token(request, current_user.id)
+        check_csrf_token(request, user.id)
         return current_app.ensure_sync(func)(*args, **kwargs)
 
     return decorated_view

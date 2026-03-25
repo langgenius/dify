@@ -4,8 +4,8 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from core.app.entities.agent_strategy import AgentStrategyInfo
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
-from dify_graph.entities import AgentNodeStrategyInit
 from dify_graph.entities.workflow_start_reason import WorkflowStartReason
 from dify_graph.enums import WorkflowExecutionStatus, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from dify_graph.model_runtime.entities.llm_entities import LLMResult, LLMUsage
@@ -349,7 +349,7 @@ class NodeStartStreamResponse(StreamResponse):
         extras: dict[str, object] = Field(default_factory=dict)
         iteration_id: str | None = None
         loop_id: str | None = None
-        agent_strategy: AgentNodeStrategyInit | None = None
+        agent_strategy: AgentStrategyInfo | None = None
 
     event: StreamEvent = StreamEvent.NODE_STARTED
     workflow_run_id: str

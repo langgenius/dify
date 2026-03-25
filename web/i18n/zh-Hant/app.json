@@ -36,6 +36,8 @@
   "createApp": "建立應用",
   "createFromConfigFile": "透過 DSL 檔案建立",
   "deleteAppConfirmContent": "刪除應用將無法復原。使用者將無法存取你的應用，所有 Prompt 設定和日誌都將一併被刪除。",
+  "deleteAppConfirmInputLabel": "請在下方輸入框中輸入「{{appName}}」以確認：",
+  "deleteAppConfirmInputPlaceholder": "輸入應用程式名稱",
   "deleteAppConfirmTitle": "確認刪除應用？",
   "dslUploader.browse": "選擇檔案",
   "dslUploader.button": "拖拽檔案至此，或者",

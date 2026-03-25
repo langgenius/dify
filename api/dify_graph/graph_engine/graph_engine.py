@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 import queue
-from collections.abc import Generator
+from collections.abc import Generator, Mapping
 from typing import TYPE_CHECKING, cast, final
 
 from dify_graph.context import capture_current_context
@@ -27,6 +27,7 @@ from dify_graph.graph_events import (
     GraphRunSucceededEvent,
 )
 from dify_graph.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper
+from dify_graph.runtime.graph_runtime_state import ChildGraphEngineBuilderProtocol
 
 if TYPE_CHECKING:  # pragma: no cover - used only for static analysis
     from dify_graph.runtime.graph_runtime_state import GraphProtocol
@@ -49,6 +50,7 @@ from .protocols.command_channel import CommandChannel
 from .worker_management import WorkerPool
 
 if TYPE_CHECKING:
+    from dify_graph.entities import GraphInitParams
     from dify_graph.graph_engine.domain.graph_execution import GraphExecution
     from dify_graph.graph_engine.response_coordinator import ResponseStreamCoordinator
 
@@ -74,6 +76,7 @@ class GraphEngine:
         graph_runtime_state: GraphRuntimeState,
         command_channel: CommandChannel,
         config: GraphEngineConfig = _DEFAULT_CONFIG,
+        child_engine_builder: ChildGraphEngineBuilderProtocol | None = None,
     ) -> None:
         """Initialize the graph engine with all subsystems and dependencies."""
 
@@ -83,6 +86,9 @@ class GraphEngine:
         self._graph_runtime_state.configure(graph=cast("GraphProtocol", graph))
         self._command_channel = command_channel
         self._config = config
+        self._child_engine_builder = child_engine_builder
+        if child_engine_builder is not None:
+            self._graph_runtime_state.bind_child_engine_builder(child_engine_builder)
 
         # Graph execution tracks the overall execution state
         self._graph_execution = cast("GraphExecution", self._graph_runtime_state.graph_execution)
@@ -213,6 +219,25 @@ class GraphEngine:
         self._layers.append(layer)
         self._bind_layer_context(layer)
         return self
+
+    def create_child_engine(
+        self,
+        *,
+        workflow_id: str,
+        graph_init_params: GraphInitParams,
+        graph_runtime_state: GraphRuntimeState,
+        graph_config: dict[str, object] | Mapping[str, object],
+        root_node_id: str,
+        layers: list[GraphEngineLayer] | tuple[GraphEngineLayer, ...] = (),
+    ) -> GraphEngine:
+        return self._graph_runtime_state.create_child_engine(
+            workflow_id=workflow_id,
+            graph_init_params=graph_init_params,
+            graph_runtime_state=graph_runtime_state,
+            graph_config=graph_config,
+            root_node_id=root_node_id,
+            layers=layers,
+        )
 
     def run(self) -> Generator[GraphEngineEvent, None, None]:
         """

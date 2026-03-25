@@ -14,7 +14,6 @@ import {
 } from '@remixicon/react'
 import { useBoolean, useDebounceFn } from 'ahooks'
 import { noop } from 'es-toolkit/function'
-import { useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -24,10 +23,11 @@ import Divider from '@/app/components/base/divider'
 import { SearchLinesSparkle } from '@/app/components/base/icons/src/vender/knowledge'
 import CustomPopover from '@/app/components/base/popover'
 import Switch from '@/app/components/base/switch'
-import { ToastContext } from '@/app/components/base/toast'
+import { ToastContext } from '@/app/components/base/toast/context'
 import Tooltip from '@/app/components/base/tooltip'
 import { IS_CE_EDITION } from '@/config'
 import { DataSourceType, DocumentActionType } from '@/models/datasets'
+import { useRouter } from '@/next/navigation'
 import {
   useDocumentArchive,
   useDocumentDelete,

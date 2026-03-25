@@ -1,7 +1,8 @@
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
-from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
+from dify_graph.entities.graph_config import NodeConfigDict
+from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from dify_graph.node_events import NodeRunResult
 from dify_graph.nodes.base.node import Node
 from dify_graph.nodes.template_transform.entities import TemplateTransformNodeData
@@ -18,14 +19,14 @@ DEFAULT_TEMPLATE_TRANSFORM_MAX_OUTPUT_LENGTH = 400_000
 
 
 class TemplateTransformNode(Node[TemplateTransformNodeData]):
-    node_type = NodeType.TEMPLATE_TRANSFORM
+    node_type = BuiltinNodeTypes.TEMPLATE_TRANSFORM
     _template_renderer: Jinja2TemplateRenderer
     _max_output_length: int
 
     def __init__(
         self,
         id: str,
-        config: Mapping[str, Any],
+        config: NodeConfigDict,
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
         *,
@@ -86,12 +87,9 @@ class TemplateTransformNode(Node[TemplateTransformNodeData]):
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(
-        cls, *, graph_config: Mapping[str, Any], node_id: str, node_data: Mapping[str, Any]
+        cls, *, graph_config: Mapping[str, Any], node_id: str, node_data: TemplateTransformNodeData
     ) -> Mapping[str, Sequence[str]]:
-        # Create typed NodeData from dict
-        typed_node_data = TemplateTransformNodeData.model_validate(node_data)
-
         return {
             node_id + "." + variable_selector.variable: variable_selector.value_selector
-            for variable_selector in typed_node_data.variables
+            for variable_selector in node_data.variables
         }

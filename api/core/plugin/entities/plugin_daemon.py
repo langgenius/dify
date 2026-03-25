@@ -157,6 +157,7 @@ class PluginInstallTaskPluginStatus(BaseModel):
     message: str = Field(description="The message of the install task.")
     icon: str = Field(description="The icon of the plugin.")
     labels: I18nObject = Field(description="The labels of the plugin.")
+    source: str | None = Field(default=None, description="The installation source of the plugin")
 
 
 class PluginInstallTask(BasePluginEntity):

@@ -18,7 +18,7 @@ from tenacity import before_sleep_log, retry, retry_if_exception, stop_after_att
 
 from configs import dify_config
 from dify_graph.entities import WorkflowNodeExecution
-from dify_graph.enums import NodeType, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from dify_graph.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from dify_graph.model_runtime.utils.encoders import jsonable_encoder
 from dify_graph.repositories.workflow_node_execution_repository import OrderConfig, WorkflowNodeExecutionRepository
 from dify_graph.workflow_type_encoder import WorkflowRuntimeTypeConverter
@@ -146,7 +146,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             index=db_model.index,
             predecessor_node_id=db_model.predecessor_node_id,
             node_id=db_model.node_id,
-            node_type=NodeType(db_model.node_type),
+            node_type=db_model.node_type,
             title=db_model.title,
             inputs=inputs,
             process_data=process_data,

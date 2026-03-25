@@ -12,12 +12,15 @@ from core.db.session_factory import session_factory
 from core.model_manager import ModelManager
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.index_processor.constant.doc_type import DocType
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
+from core.rag.index_processor.index_processor_base import SummaryIndexSettingDict
 from core.rag.models.document import Document
 from dify_graph.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.model_runtime.entities.model_entities import ModelType
 from libs import helper
 from models.dataset import Dataset, DocumentSegment, DocumentSegmentSummary
 from models.dataset import Document as DatasetDocument
+from models.enums import SummaryStatus
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +32,7 @@ class SummaryIndexService:
     def generate_summary_for_segment(
         segment: DocumentSegment,
         dataset: Dataset,
-        summary_index_setting: dict,
+        summary_index_setting: SummaryIndexSettingDict,
     ) -> tuple[str, LLMUsage]:
         """
         Generate summary for a single segment.
@@ -73,7 +76,7 @@ class SummaryIndexService:
         segment: DocumentSegment,
         dataset: Dataset,
         summary_content: str,
-        status: str = "generating",
+        status: SummaryStatus = SummaryStatus.GENERATING,
     ) -> DocumentSegmentSummary:
         """
         Create or update a DocumentSegmentSummary record.
@@ -83,7 +86,7 @@ class SummaryIndexService:
             segment: DocumentSegment to create summary for
             dataset: Dataset containing the segment
             summary_content: Generated summary content
-            status: Summary status (default: "generating")
+            status: Summary status (default: SummaryStatus.GENERATING)
 
         Returns:
             Created or updated DocumentSegmentSummary instance
@@ -138,7 +141,7 @@ class SummaryIndexService:
             session: Optional SQLAlchemy session. If provided, uses this session instead of creating a new one.
                     If not provided, creates a new session and commits automatically.
         """
-        if dataset.indexing_technique != "high_quality":
+        if dataset.indexing_technique != IndexTechniqueType.HIGH_QUALITY:
             logger.warning(
                 "Summary vectorization skipped for dataset %s: indexing_technique is not high_quality",
                 dataset.id,
@@ -326,7 +329,7 @@ class SummaryIndexService:
                                     summary_index_node_id=summary_index_node_id,
                                     summary_index_node_hash=summary_hash,
                                     tokens=embedding_tokens,
-                                    status="completed",
+                                    status=SummaryStatus.COMPLETED,
                                     enabled=True,
                                 )
                                 session.add(summary_record_in_session)
@@ -362,7 +365,7 @@ class SummaryIndexService:
                     summary_record_in_session.summary_index_node_id = summary_index_node_id
                     summary_record_in_session.summary_index_node_hash = summary_hash
                     summary_record_in_session.tokens = embedding_tokens  # Save embedding tokens
-                    summary_record_in_session.status = "completed"
+                    summary_record_in_session.status = SummaryStatus.COMPLETED
                     # Ensure summary_content is preserved (use the latest from summary_record parameter)
                     # This is critical: use the parameter value, not the database value
                     summary_record_in_session.summary_content = summary_content
@@ -400,7 +403,7 @@ class SummaryIndexService:
                     summary_record.summary_index_node_id = summary_index_node_id
                     summary_record.summary_index_node_hash = summary_hash
                     summary_record.tokens = embedding_tokens
-                    summary_record.status = "completed"
+                    summary_record.status = SummaryStatus.COMPLETED
                     summary_record.summary_content = summary_content
                     if summary_record_in_session.updated_at:
                         summary_record.updated_at = summary_record_in_session.updated_at
@@ -487,7 +490,7 @@ class SummaryIndexService:
                             )
 
                         if summary_record_in_session:
-                            summary_record_in_session.status = "error"
+                            summary_record_in_session.status = SummaryStatus.ERROR
                             summary_record_in_session.error = f"Vectorization failed: {str(e)}"
                             summary_record_in_session.updated_at = datetime.now(UTC).replace(tzinfo=None)
                             error_session.add(summary_record_in_session)
@@ -498,7 +501,7 @@ class SummaryIndexService:
                                 summary_record_in_session.id,
                             )
                             # Update the original object for consistency
-                            summary_record.status = "error"
+                            summary_record.status = SummaryStatus.ERROR
                             summary_record.error = summary_record_in_session.error
                             summary_record.updated_at = summary_record_in_session.updated_at
                         else:
@@ -514,7 +517,7 @@ class SummaryIndexService:
     def batch_create_summary_records(
         segments: list[DocumentSegment],
         dataset: Dataset,
-        status: str = "not_started",
+        status: SummaryStatus = SummaryStatus.NOT_STARTED,
     ) -> None:
         """
         Batch create summary records for segments with specified status.
@@ -523,7 +526,7 @@ class SummaryIndexService:
         Args:
             segments: List of DocumentSegment instances
             dataset: Dataset containing the segments
-            status: Initial status for the records (default: "not_started")
+            status: Initial status for the records (default: SummaryStatus.NOT_STARTED)
         """
         segment_ids = [segment.id for segment in segments]
         if not segment_ids:
@@ -588,7 +591,7 @@ class SummaryIndexService:
             )
 
             if summary_record:
-                summary_record.status = "error"
+                summary_record.status = SummaryStatus.ERROR
                 summary_record.error = error
                 session.add(summary_record)
                 session.commit()
@@ -599,7 +602,7 @@ class SummaryIndexService:
     def generate_and_vectorize_summary(
         segment: DocumentSegment,
         dataset: Dataset,
-        summary_index_setting: dict,
+        summary_index_setting: SummaryIndexSettingDict,
     ) -> DocumentSegmentSummary:
         """
         Generate summary for a segment and vectorize it.
@@ -631,14 +634,14 @@ class SummaryIndexService:
                         document_id=segment.document_id,
                         chunk_id=segment.id,
                         summary_content="",
-                        status="generating",
+                        status=SummaryStatus.GENERATING,
                         enabled=True,
                     )
                     session.add(summary_record_in_session)
                     session.flush()
 
                 # Update status to "generating"
-                summary_record_in_session.status = "generating"
+                summary_record_in_session.status = SummaryStatus.GENERATING
                 summary_record_in_session.error = None  # type: ignore[assignment]
                 session.add(summary_record_in_session)
                 # Don't flush here - wait until after vectorization succeeds
@@ -681,7 +684,7 @@ class SummaryIndexService:
                 except Exception as vectorize_error:
                     # If vectorization fails, update status to error in current session
                     logger.exception("Failed to vectorize summary for segment %s", segment.id)
-                    summary_record_in_session.status = "error"
+                    summary_record_in_session.status = SummaryStatus.ERROR
                     summary_record_in_session.error = f"Vectorization failed: {str(vectorize_error)}"
                     session.add(summary_record_in_session)
                     session.commit()
@@ -694,7 +697,7 @@ class SummaryIndexService:
                     session.query(DocumentSegmentSummary).filter_by(chunk_id=segment.id, dataset_id=dataset.id).first()
                 )
                 if summary_record_in_session:
-                    summary_record_in_session.status = "error"
+                    summary_record_in_session.status = SummaryStatus.ERROR
                     summary_record_in_session.error = str(e)
                     session.add(summary_record_in_session)
                     session.commit()
@@ -704,7 +707,7 @@ class SummaryIndexService:
     def generate_summaries_for_document(
         dataset: Dataset,
         document: DatasetDocument,
-        summary_index_setting: dict,
+        summary_index_setting: SummaryIndexSettingDict,
         segment_ids: list[str] | None = None,
         only_parent_chunks: bool = False,
     ) -> list[DocumentSegmentSummary]:
@@ -722,7 +725,7 @@ class SummaryIndexService:
             List of created DocumentSegmentSummary instances
         """
         # Only generate summary index for high_quality indexing technique
-        if dataset.indexing_technique != "high_quality":
+        if dataset.indexing_technique != IndexTechniqueType.HIGH_QUALITY:
             logger.info(
                 "Skipping summary generation for dataset %s: indexing_technique is %s, not 'high_quality'",
                 dataset.id,
@@ -770,7 +773,7 @@ class SummaryIndexService:
             SummaryIndexService.batch_create_summary_records(
                 segments=segments,
                 dataset=dataset,
-                status="not_started",
+                status=SummaryStatus.NOT_STARTED,
             )
 
             summary_records = []
@@ -849,7 +852,7 @@ class SummaryIndexService:
             )
 
             # Remove from vector database (but keep records)
-            if dataset.indexing_technique == "high_quality":
+            if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
                 summary_node_ids = [s.summary_index_node_id for s in summaries if s.summary_index_node_id]
                 if summary_node_ids:
                     try:
@@ -887,7 +890,7 @@ class SummaryIndexService:
             segment_ids: List of segment IDs to enable summaries for. If None, enable all.
         """
         # Only enable summary index for high_quality indexing technique
-        if dataset.indexing_technique != "high_quality":
+        if dataset.indexing_technique != IndexTechniqueType.HIGH_QUALITY:
             return
 
         with session_factory.create_session() as session:
@@ -979,7 +982,7 @@ class SummaryIndexService:
                 return
 
             # Delete from vector database
-            if dataset.indexing_technique == "high_quality":
+            if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
                 summary_node_ids = [s.summary_index_node_id for s in summaries if s.summary_index_node_id]
                 if summary_node_ids:
                     vector = Vector(dataset)
@@ -1010,7 +1013,7 @@ class SummaryIndexService:
             Updated DocumentSegmentSummary instance, or None if indexing technique is not high_quality
         """
         # Only update summary index for high_quality indexing technique
-        if dataset.indexing_technique != "high_quality":
+        if dataset.indexing_technique != IndexTechniqueType.HIGH_QUALITY:
             return None
 
         # When user manually provides summary, allow saving even if summary_index_setting doesn't exist
@@ -1067,7 +1070,7 @@ class SummaryIndexService:
 
                     # Update summary content
                     summary_record.summary_content = summary_content
-                    summary_record.status = "generating"
+                    summary_record.status = SummaryStatus.GENERATING
                     summary_record.error = None  # type: ignore[assignment]  # Clear any previous errors
                     session.add(summary_record)
                     # Flush to ensure summary_content is saved before vectorize_summary queries it
@@ -1102,7 +1105,7 @@ class SummaryIndexService:
                         # If vectorization fails, update status to error in current session
                         # Don't raise the exception - just log it and return the record with error status
                         # This allows the segment update to complete even if vectorization fails
-                        summary_record.status = "error"
+                        summary_record.status = SummaryStatus.ERROR
                         summary_record.error = f"Vectorization failed: {str(e)}"
                         session.commit()
                         logger.exception("Failed to vectorize summary for segment %s", segment.id)
@@ -1112,7 +1115,7 @@ class SummaryIndexService:
                 else:
                     # Create new summary record if doesn't exist
                     summary_record = SummaryIndexService.create_summary_record(
-                        segment, dataset, summary_content, status="generating"
+                        segment, dataset, summary_content, status=SummaryStatus.GENERATING
                     )
                     # Re-vectorize summary (this will update status to "completed" and tokens in its own session)
                     # Note: summary_record was created in a different session,
@@ -1132,7 +1135,7 @@ class SummaryIndexService:
                         # If vectorization fails, update status to error in current session
                         # Merge the record into current session first
                         error_record = session.merge(summary_record)
-                        error_record.status = "error"
+                        error_record.status = SummaryStatus.ERROR
                         error_record.error = f"Vectorization failed: {str(e)}"
                         session.commit()
                         logger.exception("Failed to vectorize summary for segment %s", segment.id)
@@ -1146,7 +1149,7 @@ class SummaryIndexService:
                     session.query(DocumentSegmentSummary).filter_by(chunk_id=segment.id, dataset_id=dataset.id).first()
                 )
                 if summary_record:
-                    summary_record.status = "error"
+                    summary_record.status = SummaryStatus.ERROR
                     summary_record.error = str(e)
                     session.add(summary_record)
                     session.commit()
@@ -1266,7 +1269,7 @@ class SummaryIndexService:
         # Check if there are any "not_started" or "generating" status summaries
         has_pending_summaries = any(
             summary_status_map.get(segment_id) is not None  # Ensure summary exists (enabled=True)
-            and summary_status_map[segment_id] in ("not_started", "generating")
+            and summary_status_map[segment_id] in (SummaryStatus.NOT_STARTED, SummaryStatus.GENERATING)
             for segment_id in segment_ids
         )
 
@@ -1330,7 +1333,7 @@ class SummaryIndexService:
             # it means the summary is disabled (enabled=False) or not created yet, ignore it
             has_pending_summaries = any(
                 summary_status_map.get(segment_id) is not None  # Ensure summary exists (enabled=True)
-                and summary_status_map[segment_id] in ("not_started", "generating")
+                and summary_status_map[segment_id] in (SummaryStatus.NOT_STARTED, SummaryStatus.GENERATING)
                 for segment_id in segment_ids
             )
 
@@ -1393,17 +1396,17 @@ class SummaryIndexService:
 
         # Count statuses
         status_counts = {
-            "completed": 0,
-            "generating": 0,
-            "error": 0,
-            "not_started": 0,
+            SummaryStatus.COMPLETED: 0,
+            SummaryStatus.GENERATING: 0,
+            SummaryStatus.ERROR: 0,
+            SummaryStatus.NOT_STARTED: 0,
         }
 
         summary_list = []
         for segment in segments:
             summary = summary_map.get(segment.id)
             if summary:
-                status = summary.status
+                status = SummaryStatus(summary.status)
                 status_counts[status] = status_counts.get(status, 0) + 1
                 summary_list.append(
                     {
@@ -1421,12 +1424,12 @@ class SummaryIndexService:
                     }
                 )
             else:
-                status_counts["not_started"] += 1
+                status_counts[SummaryStatus.NOT_STARTED] += 1
                 summary_list.append(
                     {
                         "segment_id": segment.id,
                         "segment_position": segment.position,
-                        "status": "not_started",
+                        "status": SummaryStatus.NOT_STARTED,
                         "summary_preview": None,
                         "error": None,
                         "created_at": None,

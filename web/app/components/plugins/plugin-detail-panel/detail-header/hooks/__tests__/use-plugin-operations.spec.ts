@@ -3,7 +3,6 @@ import type { ModalStates, VersionTarget } from '../use-detail-header-state'
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import * as amplitude from '@/app/components/base/amplitude'
-import Toast from '@/app/components/base/toast'
 import { PluginSource } from '../../../../types'
 import { usePluginOperations } from '../use-plugin-operations'
 
@@ -15,20 +14,39 @@ type VersionPickerMock = {
 const {
   mockSetShowUpdatePluginModal,
   mockRefreshModelProviders,
+  mockInvalidateCheckInstalled,
   mockInvalidateAllToolProviders,
   mockUninstallPlugin,
   mockFetchReleases,
   mockCheckForUpdates,
+  mockToastNotify,
 } = vi.hoisted(() => {
   return {
     mockSetShowUpdatePluginModal: vi.fn(),
     mockRefreshModelProviders: vi.fn(),
+    mockInvalidateCheckInstalled: vi.fn(),
     mockInvalidateAllToolProviders: vi.fn(),
     mockUninstallPlugin: vi.fn(() => Promise.resolve({ success: true })),
     mockFetchReleases: vi.fn(() => Promise.resolve([{ tag_name: 'v2.0.0' }])),
     mockCheckForUpdates: vi.fn(() => ({ needUpdate: true, toastProps: { type: 'success', message: 'Update available' } })),
+    mockToastNotify: vi.fn(),
   }
 })
+
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: Object.assign(
+    (message: string, options?: { type?: string }) => mockToastNotify({ type: options?.type, message }),
+    {
+      success: (message: string) => mockToastNotify({ type: 'success', message }),
+      error: (message: string) => mockToastNotify({ type: 'error', message }),
+      warning: (message: string) => mockToastNotify({ type: 'warning', message }),
+      info: (message: string) => mockToastNotify({ type: 'info', message }),
+      dismiss: vi.fn(),
+      update: vi.fn(),
+      promise: vi.fn(),
+    },
+  ),
+}))
 
 vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
@@ -44,6 +62,10 @@ vi.mock('@/context/provider-context', () => ({
 
 vi.mock('@/service/plugins', () => ({
   uninstallPlugin: mockUninstallPlugin,
+}))
+
+vi.mock('@/service/use-plugins', () => ({
+  useInvalidateCheckInstalled: () => mockInvalidateCheckInstalled,
 }))
 
 vi.mock('@/service/use-tools', () => ({
@@ -118,7 +140,6 @@ describe('usePluginOperations', () => {
     modalStates = createModalStatesMock()
     versionPicker = createVersionPickerMock()
     mockOnUpdate = vi.fn()
-    vi.spyOn(Toast, 'notify').mockImplementation(() => ({ clear: vi.fn() }))
     vi.spyOn(amplitude, 'trackEvent').mockImplementation(() => {})
   })
 
@@ -178,6 +199,7 @@ describe('usePluginOperations', () => {
         result.current.handleUpdatedFromMarketplace()
       })
 
+      expect(mockInvalidateCheckInstalled).toHaveBeenCalled()
       expect(mockOnUpdate).toHaveBeenCalled()
       expect(modalStates.hideUpdateModal).toHaveBeenCalled()
     })
@@ -226,7 +248,7 @@ describe('usePluginOperations', () => {
       })
 
       expect(mockCheckForUpdates).toHaveBeenCalled()
-      expect(Toast.notify).toHaveBeenCalled()
+      expect(mockToastNotify).toHaveBeenCalledWith({ type: 'success', message: 'Update available' })
     })
 
     it('should show update plugin modal when update is needed', async () => {
@@ -249,6 +271,32 @@ describe('usePluginOperations', () => {
       })
 
       expect(mockSetShowUpdatePluginModal).toHaveBeenCalled()
+    })
+
+    it('should invalidate checkInstalled when GitHub update save callback fires', async () => {
+      const detail = createPluginDetail({
+        source: PluginSource.github,
+        meta: { repo: 'owner/repo', version: 'v1.0.0', package: 'pkg' },
+      })
+      const { result } = renderHook(() =>
+        usePluginOperations({
+          detail,
+          modalStates,
+          versionPicker,
+          isFromMarketplace: false,
+          onUpdate: mockOnUpdate,
+        }),
+      )
+
+      await act(async () => {
+        await result.current.handleUpdate()
+      })
+
+      const firstCall = mockSetShowUpdatePluginModal.mock.calls.at(0)?.[0]
+      firstCall?.onSaveCallback()
+
+      expect(mockInvalidateCheckInstalled).toHaveBeenCalled()
+      expect(mockOnUpdate).toHaveBeenCalled()
     })
 
     it('should not show modal when no releases found', async () => {
@@ -388,6 +436,7 @@ describe('usePluginOperations', () => {
         await result.current.handleDelete()
       })
 
+      expect(mockInvalidateCheckInstalled).toHaveBeenCalled()
       expect(mockOnUpdate).toHaveBeenCalledWith(true)
     })
 

@@ -5,13 +5,9 @@ This test module validates the 400-character limit enforcement
 for App descriptions across all creation and editing endpoints.
 """
 
-import os
 import sys
 
 import pytest
-
-# Add the API root to Python path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", ".."))
 
 
 class TestAppDescriptionValidationUnit:

@@ -10,7 +10,7 @@ from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from opentelemetry.trace import set_tracer_provider
 
-from dify_graph.enums import NodeType
+from dify_graph.enums import BuiltinNodeTypes
 
 
 @pytest.fixture
@@ -44,7 +44,7 @@ def mock_start_node():
     node.id = "test-start-node-id"
     node.title = "Start Node"
     node.execution_id = "test-start-execution-id"
-    node.node_type = NodeType.START
+    node.node_type = BuiltinNodeTypes.START
     return node
 
 
@@ -55,7 +55,7 @@ def mock_llm_node():
     node.id = "test-llm-node-id"
     node.title = "LLM Node"
     node.execution_id = "test-llm-execution-id"
-    node.node_type = NodeType.LLM
+    node.node_type = BuiltinNodeTypes.LLM
     return node
 
 
@@ -69,7 +69,7 @@ def mock_tool_node():
     node.id = "test-tool-node-id"
     node.title = "Test Tool Node"
     node.execution_id = "test-tool-execution-id"
-    node.node_type = NodeType.TOOL
+    node.node_type = BuiltinNodeTypes.TOOL
 
     tool_data = ToolNodeData(
         title="Test Tool Node",
@@ -108,7 +108,7 @@ def mock_retrieval_node():
     node.id = "test-retrieval-node-id"
     node.title = "Retrieval Node"
     node.execution_id = "test-retrieval-execution-id"
-    node.node_type = NodeType.KNOWLEDGE_RETRIEVAL
+    node.node_type = BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL
     return node
 
 
@@ -130,7 +130,7 @@ def mock_result_event():
     return NodeRunSucceededEvent(
         id="test-execution-id",
         node_id="test-node-id",
-        node_type=NodeType.LLM,
+        node_type=BuiltinNodeTypes.LLM,
         start_at=datetime.now(),
         node_run_result=node_run_result,
     )

@@ -7,7 +7,7 @@ import uuid
 from collections import deque
 from collections.abc import Sequence
 from datetime import datetime
-from typing import Final, cast
+from typing import Final
 from urllib.parse import urljoin
 
 import httpx
@@ -201,7 +201,7 @@ def convert_to_trace_id(uuid_v4: str | None) -> int:
         raise ValueError("UUID cannot be None")
     try:
         uuid_obj = uuid.UUID(uuid_v4)
-        return cast(int, uuid_obj.int)
+        return uuid_obj.int
     except ValueError as e:
         raise ValueError(f"Invalid UUID input: {uuid_v4}") from e
 
