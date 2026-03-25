@@ -149,8 +149,11 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
 
         # init generate records
         (conversation, message) = self._init_generate_records(application_generate_entity)
-        assert conversation is not None
-        assert message is not None
+        if conversation is None or message is None:
+            raise RuntimeError(
+                "_init_generate_records() returned None for conversation or message, "
+                "which is required to proceed with generation."
+            )
 
         # init queue manager
         queue_manager = MessageBasedAppQueueManager(

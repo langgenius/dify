@@ -523,7 +523,8 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         with Session(bind=db.engine, expire_on_commit=False) as session:
             workflow = _refresh_model(session=session, model=workflow)
             message = _refresh_model(session=session, model=message)
-        assert message is not None
+        if message is None:
+            raise RuntimeError("Failed to refresh Message; _refresh_model returned None.")
         #     workflow_ = session.get(Workflow, workflow.id)
         #     assert workflow_ is not None
         #     workflow = workflow_

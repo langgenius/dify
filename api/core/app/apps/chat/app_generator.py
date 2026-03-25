@@ -166,8 +166,8 @@ class ChatAppGenerator(MessageBasedAppGenerator):
 
         # init generate records
         (conversation, message) = self._init_generate_records(application_generate_entity, conversation)
-        assert conversation is not None
-        assert message is not None
+        if conversation is None or message is None:
+            raise RuntimeError("_init_generate_records() returned None for conversation or message")
         generated_conversation_id = str(conversation.id)
         generated_message_id = str(message.id)
 
