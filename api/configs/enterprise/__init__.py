@@ -56,7 +56,8 @@ class EnterpriseTelemetryConfig(BaseSettings):
 
     ENTERPRISE_INCLUDE_CONTENT: bool = Field(
         description="Include input/output content in traces (privacy toggle).",
-        default=True,
+        # Setting the default value to False to avoid accidentally log PII data in traces.
+        default=False,
     )
 
     ENTERPRISE_SERVICE_NAME: str = Field(
