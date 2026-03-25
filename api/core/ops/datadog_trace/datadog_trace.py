@@ -15,7 +15,7 @@ from sqlalchemy.orm import sessionmaker
 
 from core.ops.base_trace_instance import BaseTraceInstance
 from core.ops.datadog_trace.client import DatadogTraceClient
-from core.ops.datadog_trace.span_builder import DatadogSpanBuilder
+from core.ops.datadog_trace import span_builder
 from core.ops.entities.config_entity import DatadogConfig
 from core.ops.entities.trace_entity import (
     BaseTraceInfo,
@@ -71,25 +71,23 @@ class DatadogDataTrace(BaseTraceInstance):
         )
         self._session_factory: sessionmaker | None = None
 
+    _IGNORED_TRACE_TYPES = (ModerationTraceInfo, SuggestedQuestionTraceInfo, GenerateNameTraceInfo)
+
     def trace(self, trace_info: BaseTraceInfo) -> None:
+        if isinstance(trace_info, self._IGNORED_TRACE_TYPES):
+            return
         if isinstance(trace_info, WorkflowTraceInfo):
             self.workflow_trace(trace_info)
         elif isinstance(trace_info, MessageTraceInfo):
             self.message_trace(trace_info)
-        elif isinstance(trace_info, ModerationTraceInfo):
-            pass  # Content moderation result (flagged/action/query), not an LLM call
-        elif isinstance(trace_info, SuggestedQuestionTraceInfo):
-            pass  # Re-emission of message data with suggested questions attached; would duplicate the message span
         elif isinstance(trace_info, DatasetRetrievalTraceInfo):
             self.dataset_retrieval_trace(trace_info)
         elif isinstance(trace_info, ToolTraceInfo):
             self.tool_trace(trace_info)
-        elif isinstance(trace_info, GenerateNameTraceInfo):
-            pass  # LLM call to auto-generate conversation title, not part of user conversation flow
 
     def workflow_trace(self, trace_info: WorkflowTraceInfo) -> None:
         try:
-            attrs = DatadogSpanBuilder.build_workflow_attrs(trace_info)
+            attrs = span_builder.build_workflow_attrs(trace_info)
 
             if trace_info.message_id:
                 trace_key = f"message:{trace_info.message_id}"
@@ -114,7 +112,7 @@ class DatadogDataTrace(BaseTraceInstance):
 
     def message_trace(self, trace_info: MessageTraceInfo) -> None:
         try:
-            attrs = DatadogSpanBuilder.build_message_attrs(trace_info)
+            attrs = span_builder.build_message_attrs(trace_info)
             trace_key = f"message:{trace_info.message_id}"
             self.trace_client.add_span(
                 name="chat",
@@ -133,7 +131,7 @@ class DatadogDataTrace(BaseTraceInstance):
             if not trace_info.message_id:
                 return
 
-            attrs = DatadogSpanBuilder.build_tool_attrs(trace_info)
+            attrs = span_builder.build_tool_attrs(trace_info)
             trace_key = f"message:{trace_info.message_id}"
             self.trace_client.add_span(
                 name=trace_info.tool_name,
@@ -152,7 +150,7 @@ class DatadogDataTrace(BaseTraceInstance):
             if not trace_info.message_id:
                 return
 
-            attrs = DatadogSpanBuilder.build_retrieval_attrs(trace_info)
+            attrs = span_builder.build_retrieval_attrs(trace_info)
             trace_key = f"message:{trace_info.message_id}"
             self.trace_client.add_span(
                 name="retrieval",
@@ -174,7 +172,7 @@ class DatadogDataTrace(BaseTraceInstance):
 
             for node_execution in node_executions:
                 try:
-                    attrs = DatadogSpanBuilder.build_workflow_node_attrs(node_execution, trace_info)
+                    attrs = span_builder.build_workflow_node_attrs(node_execution, trace_info)
                     self.trace_client.add_span(
                         name=node_execution.title or node_execution.node_type,
                         attributes=attrs,

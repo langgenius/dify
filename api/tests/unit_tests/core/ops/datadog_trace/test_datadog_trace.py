@@ -98,7 +98,7 @@ class TestWorkflowNodeProcessing:
 
         mock_builder = MagicMock(side_effect=[{"node": 1}, RuntimeError("boom"), {"node": 3}])
         monkeypatch.setattr(
-            "core.ops.datadog_trace.datadog_trace.DatadogSpanBuilder.build_workflow_node_attrs",
+            "core.ops.datadog_trace.span_builder.build_workflow_node_attrs",
             mock_builder,
         )
         trace_id = DatadogTraceClient.compute_trace_id("message:msg-1")
