@@ -4,7 +4,7 @@ import pytest
 from faker import Faker
 
 from core.indexing_runner import DocumentIsPausedError
-from core.rag.index_processor.constant.index_type import IndexStructureType
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from enums.cloud_plan import CloudPlan
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
@@ -110,7 +110,7 @@ class TestDuplicateDocumentIndexingTasks:
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
             data_source_type=DataSourceType.UPLOAD_FILE,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             created_by=account.id,
         )
         db_session_with_containers.add(dataset)
@@ -245,7 +245,7 @@ class TestDuplicateDocumentIndexingTasks:
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
             data_source_type=DataSourceType.UPLOAD_FILE,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             created_by=account.id,
         )
         db_session_with_containers.add(dataset)
