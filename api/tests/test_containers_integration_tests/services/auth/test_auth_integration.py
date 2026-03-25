@@ -4,7 +4,6 @@ API Key Authentication System Integration Tests
 
 from __future__ import annotations
 
-import json
 from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import Mock, patch
 from uuid import uuid4
@@ -65,9 +64,7 @@ class TestAuthIntegration:
         mock_encrypt.assert_called_once_with(tenant_id_1, "fc_test_key_123")
 
         db_session_with_containers.expire_all()
-        bindings = db_session_with_containers.query(DataSourceApiKeyAuthBinding).filter_by(
-            tenant_id=tenant_id_1
-        ).all()
+        bindings = db_session_with_containers.query(DataSourceApiKeyAuthBinding).filter_by(tenant_id=tenant_id_1).all()
         assert len(bindings) == 1
         assert bindings[0].provider == AuthType.FIRECRAWL
 
@@ -213,9 +210,7 @@ class TestAuthIntegration:
             ApiKeyAuthService.create_provider_auth(tenant_id_1, args)
 
         db_session_with_containers.expire_all()
-        bindings = db_session_with_containers.query(DataSourceApiKeyAuthBinding).filter_by(
-            tenant_id=tenant_id_1
-        ).all()
+        bindings = db_session_with_containers.query(DataSourceApiKeyAuthBinding).filter_by(tenant_id=tenant_id_1).all()
         assert len(bindings) == 0
 
     @pytest.mark.parametrize(
