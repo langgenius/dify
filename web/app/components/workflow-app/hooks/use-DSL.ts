@@ -1,13 +1,8 @@
-import {
-  useCallback,
-  useState,
-} from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { useToastContext } from '@/app/components/base/toast/context'
-import {
-  DSL_EXPORT_CHECK,
-} from '@/app/components/workflow/constants'
+import { toast } from '@/app/components/base/ui/toast'
+import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { exportAppBundle, exportAppConfig } from '@/service/apps'
 import { fetchWorkflowDraft } from '@/service/workflow'
@@ -16,24 +11,18 @@ import { useNodesSyncDraft } from './use-nodes-sync-draft'
 
 export const useDSL = () => {
   const { t } = useTranslation()
-  const { notify } = useToastContext()
   const { eventEmitter } = useEventEmitterContextContext()
   const [exporting, setExporting] = useState(false)
   const { doSyncWorkflowDraft } = useNodesSyncDraft()
-
   const appDetail = useAppStore(s => s.appDetail)
-
   const handleExportDSL = useCallback(async (include = false, workflowId?: string, sandboxed = false) => {
     if (!appDetail)
       return
-
     if (exporting)
       return
-
     try {
       setExporting(true)
       await doSyncWorkflowDraft()
-
       if (sandboxed) {
         await exportAppBundle({
           appID: appDetail.id,
@@ -52,13 +41,12 @@ export const useDSL = () => {
       }
     }
     catch {
-      notify({ type: 'error', message: t('exportFailed', { ns: 'app' }) })
+      toast.error(t('exportFailed', { ns: 'app' }))
     }
     finally {
       setExporting(false)
     }
-  }, [appDetail, notify, t, doSyncWorkflowDraft, exporting])
-
+  }, [appDetail, t, doSyncWorkflowDraft, exporting])
   const exportCheck = useCallback(async () => {
     if (!appDetail)
       return
@@ -79,10 +67,9 @@ export const useDSL = () => {
       } as any)
     }
     catch {
-      notify({ type: 'error', message: t('exportFailed', { ns: 'app' }) })
+      toast.error(t('exportFailed', { ns: 'app' }))
     }
-  }, [appDetail, eventEmitter, handleExportDSL, notify, t])
-
+  }, [appDetail, eventEmitter, handleExportDSL, t])
   return {
     exportCheck,
     handleExportDSL,

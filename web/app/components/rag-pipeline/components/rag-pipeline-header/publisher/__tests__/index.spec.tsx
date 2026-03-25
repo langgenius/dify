@@ -3,7 +3,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { ToastContext } from '@/app/components/base/toast/context'
 import Publisher from '../index'
 import Popup from '../popup'
 
@@ -74,7 +73,19 @@ vi.mock('@/context/provider-context', () => ({
 }))
 
 const mockNotify = vi.fn()
+const mockToast = {
+  success: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'success', message, ...options }),
+  error: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'error', message, ...options }),
+  warning: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'warning', message, ...options }),
+  info: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'info', message, ...options }),
+  dismiss: vi.fn(),
+  update: vi.fn(),
+  promise: vi.fn(),
+}
 
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: mockToast,
+}))
 vi.mock('@/hooks/use-api-access-url', () => ({
   useDatasetApiAccessUrl: () => 'https://api.dify.ai/v1/datasets/test-dataset-id',
 }))
@@ -156,9 +167,8 @@ const renderWithQueryClient = (ui: React.ReactElement) => {
   const queryClient = createQueryClient()
   return render(
     <QueryClientProvider client={queryClient}>
-      <ToastContext.Provider value={{ notify: mockNotify, close: vi.fn() }}>
-        {ui}
-      </ToastContext.Provider>
+      {ui}
+
     </QueryClientProvider>,
   )
 }

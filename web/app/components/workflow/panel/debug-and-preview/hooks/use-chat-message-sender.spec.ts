@@ -76,10 +76,18 @@ vi.mock('react-i18next', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
-  useToastContext: () => ({
-    notify: vi.fn(),
-  }),
+const mockToast = Object.assign(vi.fn(), {
+  success: vi.fn(),
+  error: vi.fn(),
+  warning: vi.fn(),
+  info: vi.fn(),
+  dismiss: vi.fn(),
+  update: vi.fn(),
+  promise: vi.fn(),
+})
+
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: mockToast,
 }))
 
 vi.mock('@/service/base', () => ({

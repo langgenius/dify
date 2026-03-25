@@ -27,10 +27,6 @@ vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ replace: mockReplace }),
 }))
 
-vi.mock('use-context-selector', () => ({
-  useContext: () => ({ notify: mockNotify }),
-}))
-
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({ onPlanInfoChanged: mockOnPlanInfoChanged }),
 }))
@@ -42,8 +38,16 @@ vi.mock('@/app/components/app/store', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/toast/context', () => ({
-  ToastContext: {},
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: Object.assign(mockNotify, {
+    success: vi.fn((message, options) => mockNotify({ type: 'success', message, ...options })),
+    error: vi.fn((message, options) => mockNotify({ type: 'error', message, ...options })),
+    warning: vi.fn((message, options) => mockNotify({ type: 'warning', message, ...options })),
+    info: vi.fn((message, options) => mockNotify({ type: 'info', message, ...options })),
+    dismiss: vi.fn(),
+    update: vi.fn(),
+    promise: vi.fn(),
+  }),
 }))
 
 vi.mock('@/service/use-apps', () => ({

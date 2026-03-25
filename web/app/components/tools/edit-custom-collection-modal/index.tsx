@@ -13,7 +13,7 @@ import Drawer from '@/app/components/base/drawer-plus'
 import EmojiPicker from '@/app/components/base/emoji-picker'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import LabelSelector from '@/app/components/tools/labels/selector'
 import { parseParamsSchema } from '@/service/tools'
 import { cn } from '@/utils/classnames'
@@ -33,19 +33,10 @@ type Props = {
   onEdit?: (payload: CustomCollectionBackend) => void
 }
 // Add and Edit
-const EditCustomCollectionModal: FC<Props> = ({
-  positionLeft,
-  dialogClassName = '',
-  payload,
-  onHide,
-  onAdd,
-  onEdit,
-  onRemove,
-}) => {
+const EditCustomCollectionModal: FC<Props> = ({ positionLeft, dialogClassName = '', payload, onHide, onAdd, onEdit, onRemove }) => {
   const { t } = useTranslation()
   const isAdd = !payload
   const isEdit = !!payload
-
   const [editFirst, setEditFirst] = useState(!isAdd)
   const [paramsSchemas, setParamsSchemas] = useState<CustomParamSchema[]>(payload?.tools || [])
   const [labels, setLabels] = useState<string[]>(payload?.labels || [])
@@ -65,9 +56,7 @@ const EditCustomCollectionModal: FC<Props> = ({
         schema: '',
       }
     : payload)
-
   const originalProvider = isEdit ? payload.provider : ''
-
   // Sync customCollection state when payload changes
   useEffect(() => {
     if (isEdit) {
@@ -76,7 +65,6 @@ const EditCustomCollectionModal: FC<Props> = ({
       setLabels(payload.labels || [])
     }
   }, [isEdit, payload])
-
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const emoji = customCollection.icon
   const setEmoji = (emoji: Emoji) => {
@@ -93,7 +81,6 @@ const EditCustomCollectionModal: FC<Props> = ({
     })
     setCustomCollection(newCollection)
   }
-
   useEffect(() => {
     if (!debouncedSchema)
       return
@@ -121,7 +108,6 @@ const EditCustomCollectionModal: FC<Props> = ({
       }
     })()
   }, [debouncedSchema])
-
   const [credentialsModalShow, setCredentialsModalShow] = useState(false)
   const credential = customCollection.credentials
   const setCredential = (credential: Credential) => {
@@ -130,58 +116,43 @@ const EditCustomCollectionModal: FC<Props> = ({
     })
     setCustomCollection(newCollection)
   }
-
   const [currTool, setCurrTool] = useState<CustomParamSchema | null>(null)
   const [isShowTestApi, setIsShowTestApi] = useState(false)
-
   const handleLabelSelect = (value: string[]) => {
     setLabels(value)
   }
-
   const handleSave = () => {
     // const postData = clone(customCollection)
     const postData = produce(customCollection, (draft) => {
       delete draft.tools
-
       if (draft.credentials.auth_type === AuthType.none) {
         delete draft.credentials.api_key_header
         delete draft.credentials.api_key_header_prefix
         delete draft.credentials.api_key_value
       }
-
       draft.labels = labels
     })
-
     let errorMessage = ''
     if (!postData.provider)
       errorMessage = t('errorMsg.fieldRequired', { ns: 'common', field: t('createTool.name', { ns: 'tools' }) })
-
     if (!postData.schema)
       errorMessage = t('errorMsg.fieldRequired', { ns: 'common', field: t('createTool.schema', { ns: 'tools' }) })
-
     if (errorMessage) {
-      Toast.notify({
-        type: 'error',
-        message: errorMessage,
-      })
+      toast.error(errorMessage)
       return
     }
-
     if (isAdd) {
       onAdd?.(postData)
       return
     }
-
     onEdit?.({
       ...postData,
       original_provider: originalProvider,
     })
   }
-
   const getPath = (url: string) => {
     if (!url)
       return ''
-
     try {
       const path = decodeURI(new URL(url).pathname)
       return path || ''
@@ -190,7 +161,6 @@ const EditCustomCollectionModal: FC<Props> = ({
       return url
     }
   }
-
   return (
     <>
       <Drawer
@@ -237,12 +207,7 @@ const EditCustomCollectionModal: FC<Props> = ({
                       <span className="ml-1 text-red-500">*</span>
                     </div>
                     <div className="mx-2 h-3 w-px bg-divider-regular"></div>
-                    <a
-                      href="https://swagger.io/specification/"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex h-[18px] items-center space-x-1 text-text-accent"
-                    >
+                    <a href="https://swagger.io/specification/" target="_blank" rel="noopener noreferrer" className="flex h-[18px] items-center space-x-1 text-text-accent">
                       <div className="text-xs font-normal">{t('createTool.viewSchemaSpec', { ns: 'tools' })}</div>
                       <LinkExternal02 className="h-3 w-3" />
                     </a>
@@ -250,12 +215,7 @@ const EditCustomCollectionModal: FC<Props> = ({
                   <GetSchema onChange={setSchema} />
 
                 </div>
-                <Textarea
-                  className="h-[240px] resize-none"
-                  value={schema}
-                  onChange={e => setSchema(e.target.value)}
-                  placeholder={t('createTool.schemaPlaceHolder', { ns: 'tools' })!}
-                />
+                <Textarea className="h-[240px] resize-none" value={schema} onChange={e => setSchema(e.target.value)} placeholder={t('createTool.schemaPlaceHolder', { ns: 'tools' })!} />
               </div>
 
               {/* Available Tools  */}
@@ -345,11 +305,7 @@ const EditCustomCollectionModal: FC<Props> = ({
 
             </div>
             <div className={cn(isEdit ? 'justify-between' : 'justify-end', 'mt-2 flex shrink-0 rounded-b-[10px] border-t border-divider-regular bg-background-section-burn px-6 py-4')}>
-              {
-                isEdit && (
-                  <Button variant="warning" onClick={onRemove}>{t('operation.delete', { ns: 'common' })}</Button>
-                )
-              }
+              {isEdit && (<Button variant="warning" onClick={onRemove}>{t('operation.delete', { ns: 'common' })}</Button>)}
               <div className="flex space-x-2">
                 <Button onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
                 <Button variant="primary" onClick={handleSave}>{t('operation.save', { ns: 'common' })}</Button>
@@ -366,29 +322,14 @@ const EditCustomCollectionModal: FC<Props> = ({
                 }}
               />
             )}
-            {credentialsModalShow && (
-              <ConfigCredentials
-                positionCenter={isAdd}
-                credential={credential}
-                onChange={setCredential}
-                onHide={() => setCredentialsModalShow(false)}
-              />
-            )}
-            {isShowTestApi && (
-              <TestApi
-                positionCenter={isAdd}
-                tool={currTool as CustomParamSchema}
-                customCollection={customCollection}
-                onHide={() => setIsShowTestApi(false)}
-              />
-            )}
+            {credentialsModalShow && (<ConfigCredentials positionCenter={isAdd} credential={credential} onChange={setCredential} onHide={() => setCredentialsModalShow(false)} />)}
+            {isShowTestApi && (<TestApi positionCenter={isAdd} tool={currTool as CustomParamSchema} customCollection={customCollection} onHide={() => setIsShowTestApi(false)} />)}
           </div>
         )}
         isShowMask={true}
         clickOutsideNotOpen={true}
       />
     </>
-
   )
 }
 export default React.memo(EditCustomCollectionModal)

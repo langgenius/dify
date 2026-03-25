@@ -3,7 +3,6 @@ import type { ICurrentWorkspace } from '@/models/common'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
-import { ToastContext } from '@/app/components/base/toast/context'
 import { useAppContext } from '@/context/app-context'
 import { ownershipTransfer, sendOwnerEmail, verifyOwnerEmail } from '@/service/common'
 import { useMembers } from '@/service/use-common'
@@ -52,9 +51,9 @@ describe('TransferOwnershipModal', () => {
   })
 
   const renderModal = () => render(
-    <ToastContext.Provider value={{ notify: mockNotify, close: vi.fn() }}>
+    <>
       <TransferOwnershipModal show onClose={mockOnClose} />
-    </ToastContext.Provider>,
+    </>,
   )
 
   const mockEmailVerification = ({

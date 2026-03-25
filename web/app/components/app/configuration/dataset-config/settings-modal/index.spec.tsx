@@ -3,7 +3,6 @@ import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { ToastContext } from '@/app/components/base/toast/context'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -14,6 +13,19 @@ import { RETRIEVE_METHOD } from '@/types/app'
 import SettingsModal from './index'
 
 const mockNotify = vi.fn()
+const mockToast = {
+  success: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'success', message, ...options }),
+  error: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'error', message, ...options }),
+  warning: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'warning', message, ...options }),
+  info: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'info', message, ...options }),
+  dismiss: vi.fn(),
+  update: vi.fn(),
+  promise: vi.fn(),
+}
+
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: mockToast,
+}))
 const mockOnCancel = vi.fn()
 const mockOnSave = vi.fn()
 const mockSetShowAccountSettingModal = vi.fn()
@@ -183,13 +195,12 @@ const createDataset = (overrides: Partial<DataSet> = {}, retrievalOverrides: Par
 
 const renderWithProviders = (dataset: DataSet) => {
   return render(
-    <ToastContext.Provider value={{ notify: mockNotify, close: vi.fn() }}>
-      <SettingsModal
-        currentDataset={dataset}
-        onCancel={mockOnCancel}
-        onSave={mockOnSave}
-      />
-    </ToastContext.Provider>,
+    <SettingsModal
+      currentDataset={dataset}
+      onCancel={mockOnCancel}
+      onSave={mockOnSave}
+    />,
+
   )
 }
 

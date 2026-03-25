@@ -175,8 +175,8 @@ vi.mock('@/app/components/base/features/hooks', () => ({
 // ---------------------------------------------------------------------------
 // Toast context
 // ---------------------------------------------------------------------------
-vi.mock('@/app/components/base/toast/context', () => ({
-  useToastContext: () => ({ notify: mockNotify, close: vi.fn() }),
+vi.mock('@/app/components/base/ui/toast', () => ({
+
 }))
 
 // ---------------------------------------------------------------------------

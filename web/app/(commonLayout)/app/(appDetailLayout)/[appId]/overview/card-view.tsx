@@ -8,12 +8,11 @@ import type { I18nKeysByPrefix } from '@/types/i18n'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import AppCard from '@/app/components/app/overview/app-card'
 import TriggerCard from '@/app/components/app/overview/trigger-card'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Loading from '@/app/components/base/loading'
-import { ToastContext } from '@/app/components/base/toast/context'
+import { toast } from '@/app/components/base/ui/toast'
 import MCPServiceCard from '@/app/components/tools/mcp/mcp-service-card'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
@@ -37,7 +36,6 @@ export type ICardViewProps = {
 
 const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
   const { t } = useTranslation()
-  const { notify } = useContext(ToastContext)
   const appDetail = useAppStore(state => state.appDetail)
   const setAppDetail = useAppStore(state => state.setAppDetail)
 
@@ -106,10 +104,7 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
       }
     }
 
-    notify({
-      type,
-      message: t(`actionMsg.${message}`, { ns: 'common' }) as string,
-    })
+    toast(t(`actionMsg.${message}`, { ns: 'common' }) as string, { type })
   }
 
   // Listen for collaborative app state updates from other clients

@@ -1,11 +1,10 @@
 'use client'
-
 import type { FC } from 'react'
 import type { StepTwoProps } from './types'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useLocale } from '@/context/i18n'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -18,34 +17,12 @@ import { GeneralChunkingOptions, IndexingModeSection, ParentChildOptions, Previe
 import { IndexingType, MAXIMUM_CHUNK_TOKEN_LENGTH, useDocumentCreation, useIndexingConfig, useIndexingEstimate, usePreviewState, useSegmentationState } from './hooks'
 
 export { IndexingType }
-
-const StepTwo: FC<StepTwoProps> = ({
-  isSetting,
-  documentDetail,
-  isAPIKeySet,
-  datasetId,
-  indexingType: propsIndexingType,
-  dataSourceType: inCreatePageDataSourceType,
-  files,
-  notionPages = [],
-  notionCredentialId,
-  websitePages = [],
-  crawlOptions,
-  websiteCrawlProvider = DataSourceProvider.jinaReader,
-  websiteCrawlJobId = '',
-  onStepChange,
-  updateIndexingTypeCache,
-  updateResultCache,
-  onSave,
-  onCancel,
-  updateRetrievalMethodCache,
-}) => {
+const StepTwo: FC<StepTwoProps> = ({ isSetting, documentDetail, isAPIKeySet, datasetId, indexingType: propsIndexingType, dataSourceType: inCreatePageDataSourceType, files, notionPages = [], notionCredentialId, websitePages = [], crawlOptions, websiteCrawlProvider = DataSourceProvider.jinaReader, websiteCrawlJobId = '', onStepChange, updateIndexingTypeCache, updateResultCache, onSave, onCancel, updateRetrievalMethodCache }) => {
   const { t } = useTranslation()
   const locale = useLocale()
   const isMobile = useBreakpoints() === MediaType.mobile
   const currentDataset = useDatasetDetailContextWithSelector(s => s.dataset)
   const mutateDatasetRes = useDatasetDetailContextWithSelector(s => s.mutateDatasetRes)
-
   // Computed flags
   const isInUpload = Boolean(currentDataset)
   const isUploadInEmptyDataset = isInUpload && !currentDataset?.doc_form
@@ -55,13 +32,11 @@ const StepTwo: FC<StepTwoProps> = ({
   const dataSourceType = isInCreatePage ? inCreatePageDataSourceType : (currentDataset?.data_source_type ?? inCreatePageDataSourceType)
   const hasSetIndexType = !!propsIndexingType
   const isModelAndRetrievalConfigDisabled = !!datasetId && !!currentDataset?.data_source_type
-
   // Document form state
   const [docForm, setDocForm] = useState<ChunkingMode>((datasetId && documentDetail) ? documentDetail.doc_form as ChunkingMode : ChunkingMode.text)
   const [docLanguage, setDocLanguage] = useState<string>(() => (datasetId && documentDetail) ? documentDetail.doc_language : (locale !== LanguagesSupported[1] ? 'English' : 'Chinese Simplified'))
   const [isQAConfirmDialogOpen, setIsQAConfirmDialogOpen] = useState(false)
   const currentDocForm = currentDataset?.doc_form || docForm
-
   // Custom hooks
   const segmentation = useSegmentationState({
     initialSegmentationType: currentDataset?.doc_form === ChunkingMode.parentChild ? ProcessMode.parentChild : ProcessMode.general,
@@ -111,7 +86,6 @@ const StepTwo: FC<StepTwoProps> = ({
     indexingTechnique: indexing.getIndexingTechnique() as IndexingType,
     processRule: segmentation.getProcessRule(currentDocForm),
   })
-
   // Fetch default process rule
   const fetchDefaultProcessRuleMutation = useFetchDefaultProcessRule({
     onSuccess(data) {
@@ -123,7 +97,6 @@ const StepTwo: FC<StepTwoProps> = ({
       segmentation.setLimitMaxChunkLength(data.limits.indexing_max_segmentation_tokens_length)
     },
   })
-
   // Event handlers
   const handleDocFormChange = useCallback((value: ChunkingMode) => {
     if (value === ChunkingMode.qa && indexing.indexType === IndexingType.ECONOMICAL) {
@@ -136,15 +109,13 @@ const StepTwo: FC<StepTwoProps> = ({
     segmentation.setSegmentationType(value === ChunkingMode.parentChild ? ProcessMode.parentChild : ProcessMode.general)
     estimateHook.reset()
   }, [indexing, segmentation, estimateHook])
-
   const updatePreview = useCallback(() => {
     if (segmentation.segmentationType === ProcessMode.general && segmentation.maxChunkLength > MAXIMUM_CHUNK_TOKEN_LENGTH) {
-      Toast.notify({ type: 'error', message: t('stepTwo.maxLengthCheck', { ns: 'datasetCreation', limit: MAXIMUM_CHUNK_TOKEN_LENGTH }) })
+      toast.error(t('stepTwo.maxLengthCheck', { ns: 'datasetCreation', limit: MAXIMUM_CHUNK_TOKEN_LENGTH }))
       return
     }
     estimateHook.fetchEstimate()
   }, [segmentation, t, estimateHook])
-
   const handleCreate = useCallback(async () => {
     const isValid = creation.validateParams({
       segmentationType: segmentation.segmentationType,
@@ -163,19 +134,19 @@ const StepTwo: FC<StepTwoProps> = ({
       return
     await creation.executeCreation(params, indexing.indexType, indexing.retrievalConfig)
   }, [creation, segmentation, indexing, currentDocForm, docLanguage])
-
-  const handlePickerChange = useCallback((selected: { id: string, name: string }) => {
+  const handlePickerChange = useCallback((selected: {
+    id: string
+    name: string
+  }) => {
     estimateHook.reset()
     preview.handlePreviewChange(selected)
     estimateHook.fetchEstimate()
   }, [estimateHook, preview])
-
   const handleQAConfirm = useCallback(() => {
     setIsQAConfirmDialogOpen(false)
     indexing.setIndexType(IndexingType.QUALIFIED)
     setDocForm(ChunkingMode.qa)
   }, [indexing])
-
   // Initialize rules
   useEffect(() => {
     if (!isSetting) {
@@ -187,83 +158,19 @@ const StepTwo: FC<StepTwoProps> = ({
       segmentation.applyConfigFromRules(rules, isHierarchical)
       segmentation.setSegmentationType(documentDetail.dataset_process_rule.mode)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
   // Show options conditions
   const showGeneralOption = (isInUpload && [ChunkingMode.text, ChunkingMode.qa].includes(currentDataset!.doc_form)) || isUploadInEmptyDataset || isInInit
   const showParentChildOption = (isInUpload && currentDataset!.doc_form === ChunkingMode.parentChild) || isUploadInEmptyDataset || isInInit
-
   return (
     <div className="flex h-full w-full">
       <div className={cn('relative h-full w-1/2 overflow-y-auto py-6', isMobile ? 'px-4' : 'px-12')}>
         <div className="mb-1 text-text-secondary system-md-semibold">{t('stepTwo.segmentation', { ns: 'datasetCreation' })}</div>
-        {showGeneralOption && (
-          <GeneralChunkingOptions
-            segmentIdentifier={segmentation.segmentIdentifier}
-            maxChunkLength={segmentation.maxChunkLength}
-            overlap={segmentation.overlap}
-            rules={segmentation.rules}
-            currentDocForm={currentDocForm}
-            docLanguage={docLanguage}
-            isActive={[ChunkingMode.text, ChunkingMode.qa].includes(currentDocForm)}
-            isInUpload={isInUpload}
-            isNotUploadInEmptyDataset={isNotUploadInEmptyDataset}
-            hasCurrentDatasetDocForm={!!currentDataset?.doc_form}
-            onSegmentIdentifierChange={value => segmentation.setSegmentIdentifier(value, true)}
-            onMaxChunkLengthChange={segmentation.setMaxChunkLength}
-            onOverlapChange={segmentation.setOverlap}
-            onRuleToggle={segmentation.toggleRule}
-            onDocFormChange={handleDocFormChange}
-            onDocLanguageChange={setDocLanguage}
-            onPreview={updatePreview}
-            onReset={segmentation.resetToDefaults}
-            locale={locale}
-            showSummaryIndexSetting={showSummaryIndexSetting}
-            summaryIndexSetting={segmentation.summaryIndexSetting}
-            onSummaryIndexSettingChange={segmentation.handleSummaryIndexSettingChange}
-          />
-        )}
-        {showParentChildOption && (
-          <ParentChildOptions
-            parentChildConfig={segmentation.parentChildConfig}
-            rules={segmentation.rules}
-            currentDocForm={currentDocForm}
-            isActive={currentDocForm === ChunkingMode.parentChild}
-            isInUpload={isInUpload}
-            isNotUploadInEmptyDataset={isNotUploadInEmptyDataset}
-            onDocFormChange={handleDocFormChange}
-            onChunkForContextChange={segmentation.setChunkForContext}
-            onParentDelimiterChange={v => segmentation.updateParentConfig('delimiter', v)}
-            onParentMaxLengthChange={v => segmentation.updateParentConfig('maxLength', v)}
-            onChildDelimiterChange={v => segmentation.updateChildConfig('delimiter', v)}
-            onChildMaxLengthChange={v => segmentation.updateChildConfig('maxLength', v)}
-            onRuleToggle={segmentation.toggleRule}
-            onPreview={updatePreview}
-            onReset={segmentation.resetToDefaults}
-            showSummaryIndexSetting={showSummaryIndexSetting}
-            summaryIndexSetting={segmentation.summaryIndexSetting}
-            onSummaryIndexSettingChange={segmentation.handleSummaryIndexSettingChange}
-          />
-        )}
+        {showGeneralOption && (<GeneralChunkingOptions segmentIdentifier={segmentation.segmentIdentifier} maxChunkLength={segmentation.maxChunkLength} overlap={segmentation.overlap} rules={segmentation.rules} currentDocForm={currentDocForm} docLanguage={docLanguage} isActive={[ChunkingMode.text, ChunkingMode.qa].includes(currentDocForm)} isInUpload={isInUpload} isNotUploadInEmptyDataset={isNotUploadInEmptyDataset} hasCurrentDatasetDocForm={!!currentDataset?.doc_form} onSegmentIdentifierChange={value => segmentation.setSegmentIdentifier(value, true)} onMaxChunkLengthChange={segmentation.setMaxChunkLength} onOverlapChange={segmentation.setOverlap} onRuleToggle={segmentation.toggleRule} onDocFormChange={handleDocFormChange} onDocLanguageChange={setDocLanguage} onPreview={updatePreview} onReset={segmentation.resetToDefaults} locale={locale} showSummaryIndexSetting={showSummaryIndexSetting} summaryIndexSetting={segmentation.summaryIndexSetting} onSummaryIndexSettingChange={segmentation.handleSummaryIndexSettingChange} />)}
+        {showParentChildOption && (<ParentChildOptions parentChildConfig={segmentation.parentChildConfig} rules={segmentation.rules} currentDocForm={currentDocForm} isActive={currentDocForm === ChunkingMode.parentChild} isInUpload={isInUpload} isNotUploadInEmptyDataset={isNotUploadInEmptyDataset} onDocFormChange={handleDocFormChange} onChunkForContextChange={segmentation.setChunkForContext} onParentDelimiterChange={v => segmentation.updateParentConfig('delimiter', v)} onParentMaxLengthChange={v => segmentation.updateParentConfig('maxLength', v)} onChildDelimiterChange={v => segmentation.updateChildConfig('delimiter', v)} onChildMaxLengthChange={v => segmentation.updateChildConfig('maxLength', v)} onRuleToggle={segmentation.toggleRule} onPreview={updatePreview} onReset={segmentation.resetToDefaults} showSummaryIndexSetting={showSummaryIndexSetting} summaryIndexSetting={segmentation.summaryIndexSetting} onSummaryIndexSettingChange={segmentation.handleSummaryIndexSettingChange} />)}
         <Divider className="my-5" />
-        <IndexingModeSection
-          indexType={indexing.indexType}
-          hasSetIndexType={hasSetIndexType}
-          docForm={docForm}
-          embeddingModel={indexing.embeddingModel}
-          embeddingModelList={indexing.embeddingModelList}
-          retrievalConfig={indexing.retrievalConfig}
-          showMultiModalTip={indexing.showMultiModalTip}
-          isModelAndRetrievalConfigDisabled={isModelAndRetrievalConfigDisabled}
-          datasetId={datasetId}
-          isQAConfirmDialogOpen={isQAConfirmDialogOpen}
-          onIndexTypeChange={indexing.setIndexType}
-          onEmbeddingModelChange={indexing.setEmbeddingModel}
-          onRetrievalConfigChange={indexing.setRetrievalConfig}
-          onQAConfirmDialogClose={() => setIsQAConfirmDialogOpen(false)}
-          onQAConfirmDialogConfirm={handleQAConfirm}
-        />
+        <IndexingModeSection indexType={indexing.indexType} hasSetIndexType={hasSetIndexType} docForm={docForm} embeddingModel={indexing.embeddingModel} embeddingModelList={indexing.embeddingModelList} retrievalConfig={indexing.retrievalConfig} showMultiModalTip={indexing.showMultiModalTip} isModelAndRetrievalConfigDisabled={isModelAndRetrievalConfigDisabled} datasetId={datasetId} isQAConfirmDialogOpen={isQAConfirmDialogOpen} onIndexTypeChange={indexing.setIndexType} onEmbeddingModelChange={indexing.setEmbeddingModel} onRetrievalConfigChange={indexing.setRetrievalConfig} onQAConfirmDialogClose={() => setIsQAConfirmDialogOpen(false)} onQAConfirmDialogConfirm={handleQAConfirm} />
         <StepTwoFooter isSetting={isSetting} isCreating={creation.isCreating} onPrevious={() => onStepChange?.(-1)} onCreate={handleCreate} onCancel={onCancel} />
       </div>
       <PreviewPanel
@@ -273,7 +180,11 @@ const StepTwo: FC<StepTwoProps> = ({
         estimate={estimateHook.estimate}
         parentChildConfig={segmentation.parentChildConfig}
         isSetting={isSetting}
-        pickerFiles={preview.getPreviewPickerItems() as Array<{ id: string, name: string, extension: string }>}
+        pickerFiles={preview.getPreviewPickerItems() as Array<{
+          id: string
+          name: string
+          extension: string
+        }>}
         pickerValue={preview.getPreviewPickerValue()}
         isIdle={estimateHook.isIdle}
         isPending={estimateHook.isPending}
@@ -282,5 +193,4 @@ const StepTwo: FC<StepTwoProps> = ({
     </div>
   )
 }
-
 export default StepTwo

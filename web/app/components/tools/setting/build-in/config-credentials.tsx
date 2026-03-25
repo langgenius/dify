@@ -9,7 +9,7 @@ import Button from '@/app/components/base/button'
 import Drawer from '@/app/components/base/drawer-plus'
 import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
 import Loading from '@/app/components/base/loading'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
 import { fetchBuiltInToolCredential, fetchBuiltInToolCredentialSchema } from '@/service/tools'
@@ -24,15 +24,7 @@ type Props = {
   onRemove?: () => void
   isSaving?: boolean
 }
-
-const ConfigCredential: FC<Props> = ({
-  collection,
-  onCancel,
-  onSaved,
-  isHideRemoveBtn,
-  onRemove = noop,
-  isSaving,
-}) => {
+const ConfigCredential: FC<Props> = ({ collection, onCancel, onSaved, isHideRemoveBtn, onRemove = noop, isSaving }) => {
   const { t } = useTranslation()
   const language = useLanguage()
   const [credentialSchema, setCredentialSchema] = useState<any>(null)
@@ -49,11 +41,10 @@ const ConfigCredential: FC<Props> = ({
       setTempCredential(defaultCredentials)
     })
   }, [])
-
   const handleSave = async () => {
     for (const field of credentialSchema) {
       if (field.required && !tempCredential[field.name]) {
-        Toast.notify({ type: 'error', message: t('errorMsg.fieldRequired', { ns: 'common', field: field.label[language] || field.label.en_US }) })
+        toast.error(t('errorMsg.fieldRequired', { ns: 'common', field: field.label[language] || field.label.en_US }))
         return
       }
     }
@@ -66,7 +57,6 @@ const ConfigCredential: FC<Props> = ({
       setIsLoading(false)
     }
   }
-
   return (
     <Drawer
       isShow
@@ -96,12 +86,7 @@ const ConfigCredential: FC<Props> = ({
                     inputClassName="!bg-components-input-bg-normal"
                     fieldMoreInfo={item => item.url
                       ? (
-                          <a
-                            href={item.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center text-xs text-text-accent"
-                          >
+                          <a href={item.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center text-xs text-text-accent">
                             {t('howToGet', { ns: 'tools' })}
                             <LinkExternal02 className="ml-1 h-3 w-3" />
                           </a>
@@ -109,11 +94,7 @@ const ConfigCredential: FC<Props> = ({
                       : null}
                   />
                   <div className={cn((collection.is_team_authorization && !isHideRemoveBtn) ? 'justify-between' : 'justify-end', 'mt-2 flex')}>
-                    {
-                      (collection.is_team_authorization && !isHideRemoveBtn) && (
-                        <Button onClick={onRemove}>{t('operation.remove', { ns: 'common' })}</Button>
-                      )
-                    }
+                    {(collection.is_team_authorization && !isHideRemoveBtn) && (<Button onClick={onRemove}>{t('operation.remove', { ns: 'common' })}</Button>)}
                     <div className="flex space-x-2">
                       <Button onClick={onCancel}>{t('operation.cancel', { ns: 'common' })}</Button>
                       <Button loading={isLoading || isSaving} disabled={isLoading || isSaving} variant="primary" onClick={handleSave}>{t('operation.save', { ns: 'common' })}</Button>

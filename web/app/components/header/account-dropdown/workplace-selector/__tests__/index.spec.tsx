@@ -1,7 +1,6 @@
 import type { ProviderContextState } from '@/context/provider-context'
 import type { IWorkspace } from '@/models/common'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { ToastContext } from '@/app/components/base/toast/context'
 import { baseProviderContextValue, useProviderContext } from '@/context/provider-context'
 import { useWorkspacesContext } from '@/context/workspace-context'
 import { switchWorkspace } from '@/service/common'
@@ -47,9 +46,9 @@ describe('WorkplaceSelector', () => {
 
   const renderComponent = () => {
     return render(
-      <ToastContext.Provider value={{ notify: mockNotify, close: vi.fn() }}>
+      <>
         <WorkplaceSelector />
-      </ToastContext.Provider>,
+      </>,
     )
   }
 

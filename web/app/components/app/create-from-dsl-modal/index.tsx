@@ -2,15 +2,13 @@
 
 import type { DocPathWithoutLang } from '@/types/doc-paths'
 import { useKeyPress } from 'ahooks'
-import { noop } from 'es-toolkit/function'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import { trackEvent } from '@/app/components/base/amplitude'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
-import Modal from '@/app/components/base/modal'
-import { ToastContext } from '@/app/components/base/toast/context'
+import { Dialog, DialogContent } from '@/app/components/base/ui/dialog'
+import { toast } from '@/app/components/base/ui/toast'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
@@ -58,7 +56,6 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
   const { push } = useRouter()
   const { t } = useTranslation()
   const docLink = useDocLink()
-  const { notify } = useContext(ToastContext)
   const [currentFile, setDSLFile] = useState<File | undefined>(droppedFile)
   const [fileContent, setFileContent] = useState<string>()
   const [currentTab, setCurrentTab] = useState(activeTab)
@@ -152,11 +149,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         if (onClose)
           onClose()
 
-        notify({
-          type: status === DSLImportStatus.COMPLETED ? 'success' : 'warning',
-          message: t(status === DSLImportStatus.COMPLETED ? 'newApp.appCreated' : 'newApp.caution', { ns: 'app' }),
-          children: status === DSLImportStatus.COMPLETED_WITH_WARNINGS && t('newApp.appCreateDSLWarning', { ns: 'app' }),
-        })
+        toast(t(status === DSLImportStatus.COMPLETED ? 'newApp.appCreated' : 'newApp.caution', { ns: 'app' }), { type: status === DSLImportStatus.COMPLETED ? 'success' : 'warning', description: status === DSLImportStatus.COMPLETED_WITH_WARNINGS && t('newApp.appCreateDSLWarning', { ns: 'app' }) })
         localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
         if (app_id)
           await handleCheckPluginDependencies(app_id)
@@ -173,12 +166,12 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         setImportId(id)
       }
       else {
-        notify({ type: 'error', message: t('newApp.appCreateFailed', { ns: 'app' }) })
+        toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
       }
     }
     // eslint-disable-next-line unused-imports/no-unused-vars
     catch (e) {
-      notify({ type: 'error', message: t('newApp.appCreateFailed', { ns: 'app' }) })
+      toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
     }
     finally {
       isCreatingRef.current = false
@@ -213,22 +206,19 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         if (onClose)
           onClose()
 
-        notify({
-          type: 'success',
-          message: t('newApp.appCreated', { ns: 'app' }),
-        })
+        toast.success(t('newApp.appCreated', { ns: 'app' }))
         if (app_id)
           await handleCheckPluginDependencies(app_id)
         localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
         getRedirection(isCurrentWorkspaceEditor, { id: app_id!, mode: app_mode }, push)
       }
       else if (status === DSLImportStatus.FAILED) {
-        notify({ type: 'error', message: t('newApp.appCreateFailed', { ns: 'app' }) })
+        toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
       }
     }
     // eslint-disable-next-line unused-imports/no-unused-vars
     catch (e) {
-      notify({ type: 'error', message: t('newApp.appCreateFailed', { ns: 'app' }) })
+      toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
     }
   }
 
@@ -265,94 +255,98 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
 
   return (
     <>
-      <Modal
-        className="w-[520px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0 shadow-xl"
-        isShow={show}
-        onClose={noop}
+      <Dialog
+        open={show}
+        onOpenChange={(open) => {
+          if (!open)
+            onClose()
+        }}
       >
-        <div className="flex items-center justify-between pb-3 pl-6 pr-5 pt-6 text-text-primary title-2xl-semi-bold">
-          {t('importApp', { ns: 'app' })}
-          <div
-            className="flex h-8 w-8 cursor-pointer items-center justify-center"
-            onClick={() => onClose()}
-          >
-            <span className="i-ri-close-line h-[18px] w-[18px] text-text-tertiary" aria-hidden="true" />
+        <DialogContent className="w-[520px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0 shadow-xl">
+          <div className="flex items-center justify-between pb-3 pl-6 pr-5 pt-6 text-text-primary title-2xl-semi-bold">
+            {t('importApp', { ns: 'app' })}
+            <div
+              className="flex h-8 w-8 cursor-pointer items-center justify-center"
+              onClick={() => onClose()}
+            >
+              <span className="i-ri-close-line h-[18px] w-[18px] text-text-tertiary" aria-hidden="true" />
+            </div>
           </div>
-        </div>
-        <div className="flex h-9 items-center space-x-6 border-b border-divider-subtle px-6 text-text-tertiary system-md-semibold">
-          {
-            tabs.map(tab => (
-              <div
-                key={tab.key}
-                className={cn(
-                  'relative flex h-full cursor-pointer items-center',
-                  currentTab === tab.key && 'text-text-primary',
-                )}
-                onClick={() => setCurrentTab(tab.key)}
-              >
-                {tab.label}
-                {currentTab === tab.key && (
-                  <div className="absolute bottom-0 h-[2px] w-full bg-util-colors-blue-brand-blue-brand-600"></div>
-                )}
-              </div>
-            ))
-          }
-        </div>
-        <div className="px-6 py-4">
-          {currentTab === CreateFromDSLModalTab.FROM_FILE && (
-            <Uploader
-              className="mt-0"
-              file={currentFile}
-              updateFile={handleFile}
-              accept=".yaml,.yml,.zip"
-              displayName={isZipFile(currentFile) ? 'ZIP' : 'YAML'}
-            />
-          )}
-          {currentTab === CreateFromDSLModalTab.FROM_URL && (
-            <div>
-              <div className="mb-1 text-text-secondary system-md-semibold">
-                {t('importFromDSLUrl', { ns: 'app' })}
-              </div>
-              <Input
-                placeholder={t('importFromDSLUrlPlaceholder', { ns: 'app' }) || ''}
-                value={dslUrlValue}
-                onChange={e => setDslUrlValue(e.target.value)}
+          <div className="flex h-9 items-center space-x-6 border-b border-divider-subtle px-6 text-text-tertiary system-md-semibold">
+            {
+              tabs.map(tab => (
+                <div
+                  key={tab.key}
+                  className={cn(
+                    'relative flex h-full cursor-pointer items-center',
+                    currentTab === tab.key && 'text-text-primary',
+                  )}
+                  onClick={() => setCurrentTab(tab.key)}
+                >
+                  {tab.label}
+                  {currentTab === tab.key && (
+                    <div className="absolute bottom-0 h-[2px] w-full bg-util-colors-blue-brand-blue-brand-600"></div>
+                  )}
+                </div>
+              ))
+            }
+          </div>
+          <div className="px-6 py-4">
+            {currentTab === CreateFromDSLModalTab.FROM_FILE && (
+              <Uploader
+                className="mt-0"
+                file={currentFile}
+                updateFile={handleFile}
+                accept=".yaml,.yml,.zip"
+                displayName={isZipFile(currentFile) ? 'ZIP' : 'YAML'}
               />
+            )}
+            {currentTab === CreateFromDSLModalTab.FROM_URL && (
+              <div>
+                <div className="mb-1 text-text-secondary system-md-semibold">
+                  {t('importFromDSLUrl', { ns: 'app' })}
+                </div>
+                <Input
+                  placeholder={t('importFromDSLUrlPlaceholder', { ns: 'app' }) || ''}
+                  value={dslUrlValue}
+                  onChange={e => setDslUrlValue(e.target.value)}
+                />
+              </div>
+            )}
+          </div>
+          {isAppsFull && (
+            <div className="px-6">
+              <AppsFull className="mt-0" loc="app-create-dsl" />
             </div>
           )}
-        </div>
-        {isAppsFull && (
-          <div className="px-6">
-            <AppsFull className="mt-0" loc="app-create-dsl" />
-          </div>
-        )}
-        <div className="flex items-center justify-between px-6 pb-6 pt-5">
-          <a
-            className="flex items-center gap-1 text-text-accent system-xs-regular"
-            href={docLink('/use-dify/workspace/app-management#app-export-and-import', appManagementLocalizedPathMap)}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {learnMoreLabel}
-            <span className="i-ri-external-link-line h-[12px] w-[12px]" aria-hidden="true" />
-          </a>
-          <div className="flex items-center gap-3">
-            <Button variant="secondary" onClick={onClose}>
-              {t('newApp.Cancel', { ns: 'app' })}
-            </Button>
-            <Button
-              disabled={buttonDisabled || isCreating}
-              variant="primary"
-              onClick={onCreate}
-              className="gap-1"
-              loading={isCreating}
+          <div className="flex items-center justify-between px-6 pb-6 pt-5">
+            <a
+              className="flex items-center gap-1 text-text-accent system-xs-regular"
+              href={docLink('/use-dify/workspace/app-management#app-export-and-import', appManagementLocalizedPathMap)}
+              target="_blank"
+              rel="noopener noreferrer"
             >
-              <span>{t('newApp.import', { ns: 'app' })}</span>
-              <ShortcutsName keys={['ctrl', '↵']} bgColor="white" />
-            </Button>
+              {learnMoreLabel}
+              <span className="i-ri-external-link-line h-[12px] w-[12px]" aria-hidden="true" />
+            </a>
+            <div className="flex items-center gap-3">
+              <Button variant="secondary" onClick={onClose}>
+                {t('newApp.Cancel', { ns: 'app' })}
+              </Button>
+              <Button
+                disabled={buttonDisabled || isCreating}
+                variant="primary"
+                onClick={onCreate}
+                className="gap-1"
+                loading={isCreating}
+              >
+                <span>{t('newApp.import', { ns: 'app' })}</span>
+                <ShortcutsName keys={['ctrl', '↵']} bgColor="white" />
+              </Button>
+            </div>
           </div>
-        </div>
-      </Modal>
+        </DialogContent>
+      </Dialog>
       {showErrorModal && (
         <DSLConfirmModal
           file={currentFile}

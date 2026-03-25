@@ -28,6 +28,7 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import { toast } from '@/app/components/base/ui/toast'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import WorkflowToolConfigureButton from '@/app/components/tools/workflow-tool/configure-button'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
@@ -47,7 +48,6 @@ import { AppModeEnum } from '@/types/app'
 import { basePath } from '@/utils/var'
 import Divider from '../../base/divider'
 import Loading from '../../base/loading'
-import Toast from '../../base/toast'
 import Tooltip from '../../base/tooltip'
 import ShortcutsName from '../../workflow/shortcuts-name'
 import { getKeyboardKeyCodeBySystem } from '../../workflow/utils'
@@ -264,7 +264,7 @@ const AppPublisher = ({
       throw new Error('No app found in Explore')
     }, {
       onError: (err) => {
-        Toast.notify({ type: 'error', message: `${err.message || err}` })
+        toast.error(`${err.message || err}`)
       },
     })
   }, [appDetail?.id, openAsyncWindow])
@@ -290,7 +290,7 @@ const AppPublisher = ({
       window.open(result.redirect_url, '_blank')
     }
     catch (error: any) {
-      Toast.notify({ type: 'error', message: error.message || t('common.publishToMarketplaceFailed', { ns: 'workflow' }) })
+      toast.error(error.message || t('common.publishToMarketplaceFailed', { ns: 'workflow' }))
     }
     finally {
       setPublishingToMarketplace(false)

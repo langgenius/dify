@@ -473,6 +473,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
   })
 
   // Prevent browser zoom interactions from hijacking gestures meant for the workflow canvas
+
   useEffect(() => {
     const preventBrowserZoom = (event: WheelEvent) => {
       if (!isCommentPreviewHovering && !isCommentInputActive)

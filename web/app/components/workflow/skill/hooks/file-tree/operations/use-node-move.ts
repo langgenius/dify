@@ -1,9 +1,9 @@
 'use client'
 
+import { useCallback } from 'react'
 // Internal tree node move handler - API execution logic only
 // Drag state syncing is handled by react-arborist + TreeNode useEffect
 
-import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { toast } from '@/app/components/base/ui/toast'

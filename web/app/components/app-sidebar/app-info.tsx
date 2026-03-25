@@ -16,8 +16,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import CardView from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/card-view'
 import { useStore as useAppStore } from '@/app/components/app/store'
-
 import Button from '@/app/components/base/button'
+
 import ContentDialog from '@/app/components/base/content-dialog'
 import { toast } from '@/app/components/base/ui/toast'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'

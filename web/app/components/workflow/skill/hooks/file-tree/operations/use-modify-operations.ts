@@ -1,8 +1,8 @@
 'use client'
 
+import type { NodeApi, TreeApi } from 'react-arborist'
 // Handles file/folder rename and delete operations
 
-import type { NodeApi, TreeApi } from 'react-arborist'
 import type { StoreApi } from 'zustand'
 import type { TreeNodeData } from '../../../type'
 import type { SkillEditorSliceShape } from '@/app/components/workflow/store/workflow/skill-editor/types'

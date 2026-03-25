@@ -1,14 +1,7 @@
 import type { FC } from 'react'
-import type {
-  ChatItem,
-  Feedback,
-} from '../../types'
+import type { ChatItem, Feedback } from '../../types'
 import copy from 'copy-to-clipboard'
-import {
-  memo,
-  useMemo,
-  useState,
-} from 'react'
+import { memo, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import EditReplyModal from '@/app/components/app/annotation/edit-annotation-modal'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
@@ -17,8 +10,8 @@ import AnnotationCtrlButton from '@/app/components/base/features/new-feature-pan
 import Modal from '@/app/components/base/modal/modal'
 import NewAudioButton from '@/app/components/base/new-audio-button'
 import Textarea from '@/app/components/base/textarea'
-import Toast from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
+import { toast } from '@/app/components/base/ui/toast'
 import { cn } from '@/utils/classnames'
 import { useChatContext } from '../context'
 
@@ -32,14 +25,11 @@ type OperationProps = {
   hasWorkflowProcess: boolean
   noChatInput?: boolean
 }
-
 const stringifyCopyValue = (value: unknown) => {
   if (typeof value === 'string')
     return value
-
   if (value === null || typeof value === 'undefined')
     return ''
-
   try {
     return JSON.stringify(value, null, 2)
   }
@@ -47,196 +37,132 @@ const stringifyCopyValue = (value: unknown) => {
     return String(value)
   }
 }
-
 const buildCopyContentFromLLMGenerationItems = (llmGenerationItems?: ChatItem['llmGenerationItems']) => {
   if (!llmGenerationItems?.length)
     return ''
-
   const hasStructuredItems = llmGenerationItems.some(item => item.type !== 'text')
   if (!hasStructuredItems)
     return ''
-
   return llmGenerationItems
     .map((item) => {
       if (item.type === 'text')
         return item.text || ''
-
       if (item.type === 'thought')
         return item.thoughtOutput ? `[THOUGHT]\n${item.thoughtOutput}` : ''
-
       if (item.type === 'tool') {
         const sections = [
           `[TOOL] ${item.toolName || ''}`.trim(),
         ]
-
         if (item.toolArguments)
           sections.push(`INPUT:\n${stringifyCopyValue(item.toolArguments)}`)
         if (typeof item.toolOutput !== 'undefined')
           sections.push(`OUTPUT:\n${stringifyCopyValue(item.toolOutput)}`)
         if (item.toolError)
           sections.push(`ERROR:\n${item.toolError}`)
-
         return sections.join('\n')
       }
-
       if (item.type === 'model') {
         const sections = [
           `[MODEL] ${item.modelName || ''}`.trim(),
         ]
-
         if (typeof item.modelOutput !== 'undefined')
           sections.push(`OUTPUT:\n${stringifyCopyValue(item.modelOutput)}`)
-
         return sections.join('\n')
       }
-
       return ''
     })
     .filter(Boolean)
     .join('\n\n')
 }
-
 const buildCopyContentFromAgentThoughts = (agentThoughts?: ChatItem['agent_thoughts']) => {
   if (!agentThoughts?.length)
     return ''
-
   return agentThoughts
     .map((thought) => {
       const sections = [
         `[AGENT] ${thought.tool || ''}`.trim(),
       ]
-
       if (thought.thought)
         sections.push(`THOUGHT:\n${thought.thought}`)
       if (thought.tool_input)
         sections.push(`INPUT:\n${thought.tool_input}`)
       if (thought.observation)
         sections.push(`OUTPUT:\n${thought.observation}`)
-
       return sections.join('\n')
     })
     .join('\n\n')
 }
-
-const Operation: FC<OperationProps> = ({
-  item,
-  question,
-  index,
-  showPromptLog,
-  maxSize,
-  contentWidth,
-  hasWorkflowProcess,
-  noChatInput,
-}) => {
+const Operation: FC<OperationProps> = ({ item, question, index, showPromptLog, maxSize, contentWidth, hasWorkflowProcess, noChatInput }) => {
   const { t } = useTranslation()
-  const {
-    config,
-    onAnnotationAdded,
-    onAnnotationEdited,
-    onAnnotationRemoved,
-    onFeedback,
-    onRegenerate,
-  } = useChatContext()
+  const { config, onAnnotationAdded, onAnnotationEdited, onAnnotationRemoved, onFeedback, onRegenerate } = useChatContext()
   const [isShowReplyModal, setIsShowReplyModal] = useState(false)
   const [isShowFeedbackModal, setIsShowFeedbackModal] = useState(false)
   const [feedbackContent, setFeedbackContent] = useState('')
-  const {
-    id,
-    isOpeningStatement,
-    content: messageContent,
-    annotation,
-    feedback,
-    adminFeedback,
-    agent_thoughts,
-    humanInputFormDataList,
-  } = item
+  const { id, isOpeningStatement, content: messageContent, annotation, feedback, adminFeedback, agent_thoughts, humanInputFormDataList } = item
   const [userLocalFeedback, setUserLocalFeedback] = useState(feedback)
   const [adminLocalFeedback, setAdminLocalFeedback] = useState(adminFeedback)
   const [feedbackTarget, setFeedbackTarget] = useState<'user' | 'admin'>('user')
-
   // Separate feedback types for display
   const userFeedback = feedback
-
   const content = useMemo(() => {
     if (agent_thoughts?.length)
       return agent_thoughts.reduce((acc, cur) => acc + cur.thought, '')
-
     return messageContent
   }, [agent_thoughts, messageContent])
-
   const copyContent = useMemo(() => {
     const llmGenerationCopyContent = buildCopyContentFromLLMGenerationItems(item.llmGenerationItems)
     if (llmGenerationCopyContent)
       return llmGenerationCopyContent
-
     const agentThoughtCopyContent = buildCopyContentFromAgentThoughts(agent_thoughts)
     if (agentThoughtCopyContent)
       return agentThoughtCopyContent
-
     return messageContent
   }, [item.llmGenerationItems, agent_thoughts, messageContent])
-
   const displayUserFeedback = userLocalFeedback ?? userFeedback
-
   const hasUserFeedback = !!displayUserFeedback?.rating
   const hasAdminFeedback = !!adminLocalFeedback?.rating
-
   const shouldShowUserFeedbackBar = !isOpeningStatement && config?.supportFeedback && !!onFeedback && !config?.supportAnnotation
   const shouldShowAdminFeedbackBar = !isOpeningStatement && config?.supportFeedback && !!onFeedback && !!config?.supportAnnotation
-
   const userFeedbackLabel = t('table.header.userRate', { ns: 'appLog' }) || 'User feedback'
   const adminFeedbackLabel = t('table.header.adminRate', { ns: 'appLog' }) || 'Admin feedback'
   const feedbackTooltipClassName = 'max-w-[260px]'
-
   const buildFeedbackTooltip = (feedbackData?: Feedback | null, label = userFeedbackLabel) => {
     if (!feedbackData?.rating)
       return label
-
     const ratingLabel = feedbackData.rating === 'like'
       ? (t('detail.operation.like', { ns: 'appLog' }) || 'like')
       : (t('detail.operation.dislike', { ns: 'appLog' }) || 'dislike')
     const feedbackText = feedbackData.content?.trim()
-
     if (feedbackText)
       return `${label}: ${ratingLabel} - ${feedbackText}`
-
     return `${label}: ${ratingLabel}`
   }
-
   const handleFeedback = async (rating: 'like' | 'dislike' | null, content?: string, target: 'user' | 'admin' = 'user') => {
     if (!config?.supportFeedback || !onFeedback)
       return
-
     await onFeedback?.(id, { rating, content })
-
     const nextFeedback = rating === null ? { rating: null } : { rating, content }
-
     if (target === 'admin')
       setAdminLocalFeedback(nextFeedback)
     else
       setUserLocalFeedback(nextFeedback)
   }
-
   const handleLikeClick = (target: 'user' | 'admin') => {
     handleFeedback('like', undefined, target)
   }
-
   const handleDislikeClick = (target: 'user' | 'admin') => {
     setFeedbackTarget(target)
     setIsShowFeedbackModal(true)
   }
-
   const handleFeedbackSubmit = async () => {
     await handleFeedback('dislike', feedbackContent, feedbackTarget)
     setFeedbackContent('')
     setIsShowFeedbackModal(false)
   }
-
   const handleFeedbackCancel = () => {
     setFeedbackContent('')
     setIsShowFeedbackModal(false)
   }
-
   const operationWidth = useMemo(() => {
     let width = 0
     if (!isOpeningStatement)
@@ -251,40 +177,18 @@ const Operation: FC<OperationProps> = ({
       width += hasUserFeedback ? 28 + 8 : 60 + 8
     if (shouldShowAdminFeedbackBar)
       width += (hasAdminFeedback ? 28 : 60) + 8 + (hasUserFeedback ? 28 : 0)
-
     return width
   }, [config?.annotation_reply?.enabled, config?.supportAnnotation, config?.text_to_speech?.enabled, hasAdminFeedback, hasUserFeedback, isOpeningStatement, shouldShowAdminFeedbackBar, shouldShowUserFeedbackBar, showPromptLog])
-
   const positionRight = useMemo(() => operationWidth < maxSize, [operationWidth, maxSize])
-
   return (
     <>
-      <div
-        className={cn(
-          'absolute flex justify-end gap-1',
-          hasWorkflowProcess && '-bottom-4 right-2',
-          !positionRight && '-bottom-4 right-2',
-          !hasWorkflowProcess && positionRight && '!top-[9px]',
-        )}
-        style={(!hasWorkflowProcess && positionRight) ? { left: contentWidth + 8 } : {}}
-        data-testid="operation-bar"
-      >
+      <div className={cn('absolute flex justify-end gap-1', hasWorkflowProcess && '-bottom-4 right-2', !positionRight && '-bottom-4 right-2', !hasWorkflowProcess && positionRight && '!top-[9px]')} style={(!hasWorkflowProcess && positionRight) ? { left: contentWidth + 8 } : {}} data-testid="operation-bar">
         {shouldShowUserFeedbackBar && !humanInputFormDataList?.length && (
-          <div className={cn(
-            'ml-1 items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm',
-            hasUserFeedback ? 'flex' : 'hidden group-hover:flex',
-          )}
-          >
+          <div className={cn('ml-1 items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm', hasUserFeedback ? 'flex' : 'hidden group-hover:flex')}>
             {hasUserFeedback
               ? (
-                  <Tooltip
-                    popupContent={buildFeedbackTooltip(displayUserFeedback, userFeedbackLabel)}
-                    popupClassName={feedbackTooltipClassName}
-                  >
-                    <ActionButton
-                      state={displayUserFeedback?.rating === 'like' ? ActionButtonState.Active : ActionButtonState.Destructive}
-                      onClick={() => handleFeedback(null, undefined, 'user')}
-                    >
+                  <Tooltip popupContent={buildFeedbackTooltip(displayUserFeedback, userFeedbackLabel)} popupClassName={feedbackTooltipClassName}>
+                    <ActionButton state={displayUserFeedback?.rating === 'like' ? ActionButtonState.Active : ActionButtonState.Destructive} onClick={() => handleFeedback(null, undefined, 'user')}>
                       {displayUserFeedback?.rating === 'like'
                         ? <div className="i-ri-thumb-up-line h-4 w-4" />
                         : <div className="i-ri-thumb-down-line h-4 w-4" />}
@@ -293,16 +197,10 @@ const Operation: FC<OperationProps> = ({
                 )
               : (
                   <>
-                    <ActionButton
-                      state={displayUserFeedback?.rating === 'like' ? ActionButtonState.Active : ActionButtonState.Default}
-                      onClick={() => handleLikeClick('user')}
-                    >
+                    <ActionButton state={displayUserFeedback?.rating === 'like' ? ActionButtonState.Active : ActionButtonState.Default} onClick={() => handleLikeClick('user')}>
                       <div className="i-ri-thumb-up-line h-4 w-4" />
                     </ActionButton>
-                    <ActionButton
-                      state={displayUserFeedback?.rating === 'dislike' ? ActionButtonState.Destructive : ActionButtonState.Default}
-                      onClick={() => handleDislikeClick('user')}
-                    >
+                    <ActionButton state={displayUserFeedback?.rating === 'dislike' ? ActionButtonState.Destructive : ActionButtonState.Default} onClick={() => handleDislikeClick('user')}>
                       <div className="i-ri-thumb-down-line h-4 w-4" />
                     </ActionButton>
                   </>
@@ -310,17 +208,10 @@ const Operation: FC<OperationProps> = ({
           </div>
         )}
         {shouldShowAdminFeedbackBar && !humanInputFormDataList?.length && (
-          <div className={cn(
-            'ml-1 items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm',
-            (hasAdminFeedback || hasUserFeedback) ? 'flex' : 'hidden group-hover:flex',
-          )}
-          >
+          <div className={cn('ml-1 items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm', (hasAdminFeedback || hasUserFeedback) ? 'flex' : 'hidden group-hover:flex')}>
             {/* User Feedback Display */}
             {displayUserFeedback?.rating && (
-              <Tooltip
-                popupContent={buildFeedbackTooltip(displayUserFeedback, userFeedbackLabel)}
-                popupClassName={feedbackTooltipClassName}
-              >
+              <Tooltip popupContent={buildFeedbackTooltip(displayUserFeedback, userFeedbackLabel)} popupClassName={feedbackTooltipClassName}>
                 {displayUserFeedback.rating === 'like'
                   ? (
                       <ActionButton state={ActionButtonState.Active}>
@@ -339,14 +230,8 @@ const Operation: FC<OperationProps> = ({
             {displayUserFeedback?.rating && <div className="mx-1 h-3 w-[0.5px] bg-components-actionbar-border" />}
             {hasAdminFeedback
               ? (
-                  <Tooltip
-                    popupContent={buildFeedbackTooltip(adminLocalFeedback, adminFeedbackLabel)}
-                    popupClassName={feedbackTooltipClassName}
-                  >
-                    <ActionButton
-                      state={adminLocalFeedback?.rating === 'like' ? ActionButtonState.Active : ActionButtonState.Destructive}
-                      onClick={() => handleFeedback(null, undefined, 'admin')}
-                    >
+                  <Tooltip popupContent={buildFeedbackTooltip(adminLocalFeedback, adminFeedbackLabel)} popupClassName={feedbackTooltipClassName}>
+                    <ActionButton state={adminLocalFeedback?.rating === 'like' ? ActionButtonState.Active : ActionButtonState.Destructive} onClick={() => handleFeedback(null, undefined, 'admin')}>
                       {adminLocalFeedback?.rating === 'like'
                         ? <div className="i-ri-thumb-up-line h-4 w-4" />
                         : <div className="i-ri-thumb-down-line h-4 w-4" />}
@@ -355,25 +240,13 @@ const Operation: FC<OperationProps> = ({
                 )
               : (
                   <>
-                    <Tooltip
-                      popupContent={buildFeedbackTooltip(adminLocalFeedback, adminFeedbackLabel)}
-                      popupClassName={feedbackTooltipClassName}
-                    >
-                      <ActionButton
-                        state={adminLocalFeedback?.rating === 'like' ? ActionButtonState.Active : ActionButtonState.Default}
-                        onClick={() => handleLikeClick('admin')}
-                      >
+                    <Tooltip popupContent={buildFeedbackTooltip(adminLocalFeedback, adminFeedbackLabel)} popupClassName={feedbackTooltipClassName}>
+                      <ActionButton state={adminLocalFeedback?.rating === 'like' ? ActionButtonState.Active : ActionButtonState.Default} onClick={() => handleLikeClick('admin')}>
                         <div className="i-ri-thumb-up-line h-4 w-4" />
                       </ActionButton>
                     </Tooltip>
-                    <Tooltip
-                      popupContent={buildFeedbackTooltip(adminLocalFeedback, adminFeedbackLabel)}
-                      popupClassName={feedbackTooltipClassName}
-                    >
-                      <ActionButton
-                        state={adminLocalFeedback?.rating === 'dislike' ? ActionButtonState.Destructive : ActionButtonState.Default}
-                        onClick={() => handleDislikeClick('admin')}
-                      >
+                    <Tooltip popupContent={buildFeedbackTooltip(adminLocalFeedback, adminFeedbackLabel)} popupClassName={feedbackTooltipClassName}>
+                      <ActionButton state={adminLocalFeedback?.rating === 'dislike' ? ActionButtonState.Destructive : ActionButtonState.Default} onClick={() => handleDislikeClick('admin')}>
                         <div className="i-ri-thumb-down-line h-4 w-4" />
                       </ActionButton>
                     </Tooltip>
@@ -388,18 +261,12 @@ const Operation: FC<OperationProps> = ({
         )}
         {!isOpeningStatement && (
           <div className="ml-1 hidden items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm group-hover:flex" data-testid="operation-actions">
-            {(config?.text_to_speech?.enabled && !humanInputFormDataList?.length) && (
-              <NewAudioButton
-                id={id}
-                value={content}
-                voice={config?.text_to_speech?.voice}
-              />
-            )}
+            {(config?.text_to_speech?.enabled && !humanInputFormDataList?.length) && (<NewAudioButton id={id} value={content} voice={config?.text_to_speech?.voice} />)}
             {!humanInputFormDataList?.length && (
               <ActionButton
                 onClick={() => {
                   copy(copyContent)
-                  Toast.notify({ type: 'success', message: t('actionMsg.copySuccessfully', { ns: 'common' }) })
+                  toast.success(t('actionMsg.copySuccessfully', { ns: 'common' }))
                 }}
                 data-testid="copy-btn"
               >
@@ -411,55 +278,19 @@ const Operation: FC<OperationProps> = ({
                 <div className="i-ri-reset-left-line h-4 w-4" />
               </ActionButton>
             )}
-            {config?.supportAnnotation && config.annotation_reply?.enabled && !humanInputFormDataList?.length && (
-              <AnnotationCtrlButton
-                appId={config?.appId || ''}
-                messageId={id}
-                cached={!!annotation?.id}
-                query={question}
-                answer={content}
-                onAdded={(id, authorName) => onAnnotationAdded?.(id, authorName, question, content, index)}
-                onEdit={() => setIsShowReplyModal(true)}
-              />
-            )}
+            {config?.supportAnnotation && config.annotation_reply?.enabled && !humanInputFormDataList?.length && (<AnnotationCtrlButton appId={config?.appId || ''} messageId={id} cached={!!annotation?.id} query={question} answer={content} onAdded={(id, authorName) => onAnnotationAdded?.(id, authorName, question, content, index)} onEdit={() => setIsShowReplyModal(true)} />)}
           </div>
         )}
       </div>
-      <EditReplyModal
-        isShow={isShowReplyModal}
-        onHide={() => setIsShowReplyModal(false)}
-        query={question}
-        answer={content}
-        onEdited={(editedQuery, editedAnswer) => onAnnotationEdited?.(editedQuery, editedAnswer, index)}
-        onAdded={(annotationId, authorName, editedQuery, editedAnswer) => onAnnotationAdded?.(annotationId, authorName, editedQuery, editedAnswer, index)}
-        appId={config?.appId || ''}
-        messageId={id}
-        annotationId={annotation?.id || ''}
-        createdAt={annotation?.created_at}
-        onRemove={() => onAnnotationRemoved?.(index)}
-      />
+      <EditReplyModal isShow={isShowReplyModal} onHide={() => setIsShowReplyModal(false)} query={question} answer={content} onEdited={(editedQuery, editedAnswer) => onAnnotationEdited?.(editedQuery, editedAnswer, index)} onAdded={(annotationId, authorName, editedQuery, editedAnswer) => onAnnotationAdded?.(annotationId, authorName, editedQuery, editedAnswer, index)} appId={config?.appId || ''} messageId={id} annotationId={annotation?.id || ''} createdAt={annotation?.created_at} onRemove={() => onAnnotationRemoved?.(index)} />
       {isShowFeedbackModal && (
-        <Modal
-          title={t('feedback.title', { ns: 'common' }) || 'Provide Feedback'}
-          subTitle={t('feedback.subtitle', { ns: 'common' }) || 'Please tell us what went wrong with this response'}
-          onClose={handleFeedbackCancel}
-          onConfirm={handleFeedbackSubmit}
-          onCancel={handleFeedbackCancel}
-          confirmButtonText={t('operation.submit', { ns: 'common' }) || 'Submit'}
-          cancelButtonText={t('operation.cancel', { ns: 'common' }) || 'Cancel'}
-        >
+        <Modal title={t('feedback.title', { ns: 'common' }) || 'Provide Feedback'} subTitle={t('feedback.subtitle', { ns: 'common' }) || 'Please tell us what went wrong with this response'} onClose={handleFeedbackCancel} onConfirm={handleFeedbackSubmit} onCancel={handleFeedbackCancel} confirmButtonText={t('operation.submit', { ns: 'common' }) || 'Submit'} cancelButtonText={t('operation.cancel', { ns: 'common' }) || 'Cancel'}>
           <div className="space-y-3">
             <div>
               <label className="mb-2 block text-text-secondary system-sm-semibold">
                 {t('feedback.content', { ns: 'common' }) || 'Feedback Content'}
               </label>
-              <Textarea
-                value={feedbackContent}
-                onChange={e => setFeedbackContent(e.target.value)}
-                placeholder={t('feedback.placeholder', { ns: 'common' }) || 'Please describe what went wrong or how we can improve...'}
-                rows={4}
-                className="w-full"
-              />
+              <Textarea value={feedbackContent} onChange={e => setFeedbackContent(e.target.value)} placeholder={t('feedback.placeholder', { ns: 'common' }) || 'Please describe what went wrong or how we can improve...'} rows={4} className="w-full" />
             </div>
           </div>
         </Modal>
@@ -467,5 +298,4 @@ const Operation: FC<OperationProps> = ({
     </>
   )
 }
-
 export default memo(Operation)

@@ -25,6 +25,19 @@ let mockSystemFeatures = {
 
 const mockRouterPush = vi.fn()
 const mockNotify = vi.fn()
+const mockToast = {
+  success: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'success', message, ...options }),
+  error: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'error', message, ...options }),
+  warning: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'warning', message, ...options }),
+  info: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'info', message, ...options }),
+  dismiss: vi.fn(),
+  update: vi.fn(),
+  promise: vi.fn(),
+}
+
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: mockToast,
+}))
 const mockOnPlanInfoChanged = vi.fn()
 const mockDeleteAppMutation = vi.fn().mockResolvedValue(undefined)
 let mockDeleteMutationPending = false
@@ -92,27 +105,6 @@ vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
     onPlanInfoChanged: mockOnPlanInfoChanged,
   }),
-}))
-
-// Mock the ToastContext used via useContext from use-context-selector
-vi.mock('use-context-selector', async () => {
-  const actual = await vi.importActual<typeof import('use-context-selector')>('use-context-selector')
-  return {
-    ...actual,
-    useContext: () => ({ notify: mockNotify }),
-  }
-})
-
-vi.mock('@/app/components/base/tag-management/store', () => ({
-  useStore: (selector: (state: Record<string, unknown>) => unknown) => {
-    const state = {
-      tagList: [],
-      showTagManagementModal: false,
-      setTagList: vi.fn(),
-      setShowTagManagementModal: vi.fn(),
-    }
-    return selector(state)
-  },
 }))
 
 vi.mock('@/service/tag', () => ({

@@ -6,8 +6,8 @@ import { RiArrowRightLine, RiArrowRightSLine, RiExchange2Fill } from '@remixicon
 import { useDebounceFn, useKeyPress } from 'ahooks'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-
 import { trackEvent } from '@/app/components/base/amplitude'
+
 import AppIcon from '@/app/components/base/app-icon'
 import Badge from '@/app/components/base/badge'
 import Button from '@/app/components/base/button'

@@ -20,8 +20,8 @@ vi.mock('@/app/components/base/audio-btn/audio.player.manager', () => ({
   },
 }))
 
-vi.mock('@/app/components/base/toast/context', () => ({
-  useToastContext: () => ({ notify: vi.fn() }),
+vi.mock('@/app/components/base/ui/toast', () => ({
+
 }))
 
 vi.mock('@/hooks/use-timestamp', () => ({

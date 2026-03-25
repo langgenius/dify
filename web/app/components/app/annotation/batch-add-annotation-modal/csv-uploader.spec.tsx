@@ -1,11 +1,23 @@
 import type { Props } from './csv-uploader'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
-import { ToastContext } from '@/app/components/base/toast/context'
 import CSVUploader from './csv-uploader'
 
 describe('CSVUploader', () => {
   const notify = vi.fn()
+  const mockToast = {
+    success: (message: string, options?: Record<string, unknown>) => notify({ type: 'success', message, ...options }),
+    error: (message: string, options?: Record<string, unknown>) => notify({ type: 'error', message, ...options }),
+    warning: (message: string, options?: Record<string, unknown>) => notify({ type: 'warning', message, ...options }),
+    info: (message: string, options?: Record<string, unknown>) => notify({ type: 'info', message, ...options }),
+    dismiss: vi.fn(),
+    update: vi.fn(),
+    promise: vi.fn(),
+  }
+
+  vi.mock('@/app/components/base/ui/toast', () => ({
+    toast: mockToast,
+  }))
   const updateFile = vi.fn()
 
   const getDropElements = () => {
@@ -24,9 +36,8 @@ describe('CSVUploader', () => {
       ...props,
     }
     return render(
-      <ToastContext.Provider value={{ notify, close: vi.fn() }}>
-        <CSVUploader {...mergedProps} />
-      </ToastContext.Provider>,
+      <CSVUploader {...mergedProps} />,
+
     )
   }
 

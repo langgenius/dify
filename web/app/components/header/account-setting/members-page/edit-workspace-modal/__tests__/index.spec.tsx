@@ -3,7 +3,6 @@ import type { ICurrentWorkspace } from '@/models/common'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
-import { ToastContext } from '@/app/components/base/toast/context'
 import { useAppContext } from '@/context/app-context'
 import { updateWorkspaceInfo } from '@/service/common'
 import EditWorkspaceModal from '../index'
@@ -29,9 +28,9 @@ describe('EditWorkspaceModal', () => {
   })
 
   const renderModal = () => render(
-    <ToastContext.Provider value={{ notify: mockNotify, close: vi.fn() }}>
+    <>
       <EditWorkspaceModal onCancel={mockOnCancel} />
-    </ToastContext.Provider>,
+    </>,
   )
 
   it('should show current workspace name in the input', async () => {

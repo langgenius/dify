@@ -12,15 +12,14 @@ import Drawer from '@/app/components/base/drawer'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
 import Switch from '@/app/components/base/switch'
-import Toast from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
+import { toast } from '@/app/components/base/ui/toast'
 import CreateModal from '@/app/components/datasets/metadata/metadata-dataset/create-metadata-modal'
 import { cn } from '@/utils/classnames'
 import { getIcon } from '../utils/get-icon'
 import Field from './field'
 
 const i18nPrefix = 'metadata.datasetMetadata'
-
 type Props = {
   userMetadata: MetadataItemWithValueLength[]
   builtInMetadata: BuiltInMetadataItem[]
@@ -31,7 +30,6 @@ type Props = {
   onRename: (payload: MetadataItemWithValueLength) => void
   onRemove: (metaDataId: string) => void
 }
-
 type ItemProps = {
   readonly?: boolean
   disabled?: boolean
@@ -39,46 +37,22 @@ type ItemProps = {
   onRename?: () => void
   onDelete?: () => void
 }
-const Item: FC<ItemProps> = ({
-  readonly,
-  disabled,
-  payload,
-  onRename,
-  onDelete,
-}) => {
+const Item: FC<ItemProps> = ({ readonly, disabled, payload, onRename, onDelete }) => {
   const { t } = useTranslation()
   const Icon = getIcon(payload.type)
-
   const handleRename = useCallback(() => {
     onRename?.()
   }, [onRename])
-
   const deleteBtnRef = useRef<HTMLDivElement>(null)
   const isDeleteHovering = useHover(deleteBtnRef)
-  const [isShowDeleteConfirm, {
-    setTrue: showDeleteConfirm,
-    setFalse: hideDeleteConfirm,
-  }] = useBoolean(false)
+  const [isShowDeleteConfirm, { setTrue: showDeleteConfirm, setFalse: hideDeleteConfirm }] = useBoolean(false)
   const handleDelete = useCallback(() => {
     hideDeleteConfirm()
     onDelete?.()
   }, [hideDeleteConfirm, onDelete])
-
   return (
-    <div
-      key={payload.name}
-      className={cn(
-        !readonly && !disabled && 'group/item cursor-pointer hover:shadow-xs',
-        'rounded-md border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg',
-        isDeleteHovering && 'border border-state-destructive-border bg-state-destructive-hover',
-      )}
-    >
-      <div
-        className={cn(
-          'flex h-8 items-center justify-between px-2',
-          disabled && 'opacity-30', // not include border and bg
-        )}
-      >
+    <div key={payload.name} className={cn(!readonly && !disabled && 'group/item cursor-pointer hover:shadow-xs', 'rounded-md border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg', isDeleteHovering && 'border border-state-destructive-border bg-state-destructive-hover')}>
+      <div className={cn('flex h-8 items-center justify-between px-2', disabled && 'opacity-30')}>
         <div className="flex h-full items-center space-x-1 text-text-tertiary">
           <Icon className="size-4 shrink-0" />
           <div className="max-w-[250px] truncate text-text-primary system-sm-medium">{payload.name}</div>
@@ -95,31 +69,12 @@ const Item: FC<ItemProps> = ({
             <RiDeleteBinLine className="size-4 cursor-pointer" onClick={showDeleteConfirm} />
           </div>
         </div>
-        {isShowDeleteConfirm && (
-          <Confirm
-            isShow
-            type="warning"
-            title={t('metadata.datasetMetadata.deleteTitle', { ns: 'dataset' })}
-            content={t('metadata.datasetMetadata.deleteContent', { ns: 'dataset', name: payload.name })}
-            onConfirm={handleDelete}
-            onCancel={hideDeleteConfirm}
-          />
-        )}
+        {isShowDeleteConfirm && (<Confirm isShow type="warning" title={t('metadata.datasetMetadata.deleteTitle', { ns: 'dataset' })} content={t('metadata.datasetMetadata.deleteContent', { ns: 'dataset', name: payload.name })} onConfirm={handleDelete} onCancel={hideDeleteConfirm} />)}
       </div>
     </div>
   )
 }
-
-const DatasetMetadataDrawer: FC<Props> = ({
-  userMetadata,
-  builtInMetadata,
-  isBuiltInEnabled,
-  onIsBuiltInEnabledChange,
-  onClose,
-  onAdd,
-  onRename,
-  onRemove,
-}) => {
+const DatasetMetadataDrawer: FC<Props> = ({ userMetadata, builtInMetadata, isBuiltInEnabled, onIsBuiltInEnabledChange, onClose, onAdd, onRename, onRemove }) => {
   const { t } = useTranslation()
   const [isShowRenameModal, setIsShowRenameModal] = useState(false)
   const [currPayload, setCurrPayload] = useState<MetadataItemWithValueLength | null>(null)
@@ -131,17 +86,12 @@ const DatasetMetadataDrawer: FC<Props> = ({
       setIsShowRenameModal(true)
     }
   }, [setCurrPayload, setIsShowRenameModal])
-
   const [open, setOpen] = useState(false)
   const handleAdd = useCallback(async (data: MetadataItemWithValueLength) => {
     await onAdd(data)
-    Toast.notify({
-      type: 'success',
-      message: t('api.actionSuccess', { ns: 'common' }),
-    })
+    toast.success(t('api.actionSuccess', { ns: 'common' }))
     setOpen(false)
   }, [onAdd, t])
-
   const handleRenamed = useCallback(async () => {
     const item = userMetadata.find(p => p.id === currPayload?.id)
     if (item) {
@@ -149,33 +99,18 @@ const DatasetMetadataDrawer: FC<Props> = ({
         ...item,
         name: templeName,
       })
-      Toast.notify({
-        type: 'success',
-        message: t('api.actionSuccess', { ns: 'common' }),
-      })
+      toast.success(t('api.actionSuccess', { ns: 'common' }))
     }
     setIsShowRenameModal(false)
   }, [userMetadata, currPayload?.id, onRename, templeName, t])
-
   const handleDelete = useCallback((payload: MetadataItemWithValueLength) => {
     return async () => {
       await onRemove(payload.id)
-      Toast.notify({
-        type: 'success',
-        message: t('api.actionSuccess', { ns: 'common' }),
-      })
+      toast.success(t('api.actionSuccess', { ns: 'common' }))
     }
   }, [onRemove, t])
-
   return (
-    <Drawer
-      isOpen={true}
-      onClose={onClose}
-      showClose
-      title={t('metadata.metadata', { ns: 'dataset' })}
-      footer={null}
-      panelClassName="px-4 block !max-w-[420px] my-2 rounded-l-2xl"
-    >
+    <Drawer isOpen={true} onClose={onClose} showClose title={t('metadata.metadata', { ns: 'dataset' })} footer={null} panelClassName="px-4 block !max-w-[420px] my-2 rounded-l-2xl">
       <div className="h-full overflow-y-auto">
         <div className="text-text-tertiary system-sm-regular">{t(`${i18nPrefix}.description`, { ns: 'dataset' })}</div>
         <CreateModal
@@ -192,44 +127,23 @@ const DatasetMetadataDrawer: FC<Props> = ({
         />
 
         <div className="mt-3 space-y-1">
-          {userMetadata.map(payload => (
-            <Item
-              key={payload.id}
-              payload={payload}
-              onRename={handleRename(payload)}
-              onDelete={handleDelete(payload)}
-            />
-          ))}
+          {userMetadata.map(payload => (<Item key={payload.id} payload={payload} onRename={handleRename(payload)} onDelete={handleDelete(payload)} />))}
         </div>
 
         <div className="mt-3 flex h-6 items-center">
-          <Switch
-            value={isBuiltInEnabled}
-            onChange={onIsBuiltInEnabledChange}
-          />
+          <Switch value={isBuiltInEnabled} onChange={onIsBuiltInEnabledChange} />
           <div className="ml-2 mr-0.5 text-text-secondary system-sm-semibold">{t(`${i18nPrefix}.builtIn`, { ns: 'dataset' })}</div>
           <Tooltip popupContent={<div className="max-w-[100px]">{t(`${i18nPrefix}.builtInDescription`, { ns: 'dataset' })}</div>} />
         </div>
 
         <div className="mt-1 space-y-1">
-          {builtInMetadata.map(payload => (
-            <Item
-              key={payload.name}
-              readonly
-              disabled={!isBuiltInEnabled}
-              payload={payload as MetadataItemWithValueLength}
-            />
-          ))}
+          {builtInMetadata.map(payload => (<Item key={payload.name} readonly disabled={!isBuiltInEnabled} payload={payload as MetadataItemWithValueLength} />))}
         </div>
 
         {isShowRenameModal && (
           <Modal isShow title={t(`${i18nPrefix}.rename`, { ns: 'dataset' })} onClose={() => setIsShowRenameModal(false)}>
             <Field label={t(`${i18nPrefix}.name`, { ns: 'dataset' })} className="mt-4">
-              <Input
-                value={templeName}
-                onChange={e => setTempleName(e.target.value)}
-                placeholder={t(`${i18nPrefix}.namePlaceholder`, { ns: 'dataset' })}
-              />
+              <Input value={templeName} onChange={e => setTempleName(e.target.value)} placeholder={t(`${i18nPrefix}.namePlaceholder`, { ns: 'dataset' })} />
             </Field>
             <div className="mt-4 flex justify-end">
               <Button
@@ -241,11 +155,7 @@ const DatasetMetadataDrawer: FC<Props> = ({
               >
                 {t('operation.cancel', { ns: 'common' })}
               </Button>
-              <Button
-                onClick={handleRenamed}
-                variant="primary"
-                disabled={!templeName}
-              >
+              <Button onClick={handleRenamed} variant="primary" disabled={!templeName}>
                 {t('operation.save', { ns: 'common' })}
               </Button>
             </div>

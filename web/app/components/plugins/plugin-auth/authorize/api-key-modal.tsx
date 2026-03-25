@@ -11,12 +11,18 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
 import { EncryptedBottom } from '@/app/components/base/encrypted-bottom'
 import AuthForm from '@/app/components/base/form/form-scenarios/auth'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import Loading from '@/app/components/base/loading'
-import Modal from '@/app/components/base/modal/modal'
-import { useToastContext } from '@/app/components/base/toast/context'
+import {
+  Dialog,
+  DialogCloseButton,
+  DialogContent,
+  DialogTitle,
+} from '@/app/components/base/ui/dialog'
+import { toast } from '@/app/components/base/ui/toast'
 import { ReadmeEntrance } from '../../readme-panel/entrance'
 import { ReadmeShowType } from '../../readme-panel/store'
 import {
@@ -29,7 +35,7 @@ import { CredentialTypeEnum } from '../types'
 export type ApiKeyModalProps = {
   pluginPayload: PluginPayload
   onClose?: () => void
-  editValues?: Record<string, any>
+  editValues?: Record<string, unknown>
   onRemove?: () => void
   disabled?: boolean
   onUpdate?: () => void
@@ -45,7 +51,6 @@ const ApiKeyModal = ({
   formSchemas: formSchemasFromProps = [],
 }: ApiKeyModalProps) => {
   const { t } = useTranslation()
-  const { notify } = useToastContext()
   const [doingAction, setDoingAction] = useState(false)
   const doingActionRef = useRef(doingAction)
   const handleSetDoingAction = useCallback((value: boolean) => {
@@ -74,7 +79,7 @@ const ApiKeyModal = ({
     if (schema.default)
       acc[schema.name] = schema.default
     return acc
-  }, {} as Record<string, any>)
+  }, {} as Record<string, unknown>)
   const { mutateAsync: addPluginCredential } = useAddPluginCredentialHook(pluginPayload)
   const { mutateAsync: updatePluginCredential } = useUpdatePluginCredentialHook(pluginPayload)
   const formRef = useRef<FormRefObject>(null)
@@ -113,10 +118,7 @@ const ApiKeyModal = ({
           name: __name__ || '',
         })
       }
-      notify({
-        type: 'success',
-        message: t('api.actionSuccess', { ns: 'common' }),
-      })
+      toast.success(t('api.actionSuccess', { ns: 'common' }))
 
       onClose?.()
       onUpdate?.()
@@ -124,47 +126,60 @@ const ApiKeyModal = ({
     finally {
       handleSetDoingAction(false)
     }
-  }, [addPluginCredential, onClose, onUpdate, updatePluginCredential, notify, t, editValues, handleSetDoingAction])
+  }, [addPluginCredential, onClose, onUpdate, updatePluginCredential, t, editValues, handleSetDoingAction])
 
   return (
-    <Modal
-      size="md"
-      title={t('auth.useApiAuth', { ns: 'plugin' })}
-      subTitle={t('auth.useApiAuthDesc', { ns: 'plugin' })}
-      onClose={onClose}
-      onCancel={onClose}
-      footerSlot={
-        (<div></div>)
-      }
-      bottomSlot={<EncryptedBottom />}
-      onConfirm={handleConfirm}
-      showExtraButton={!!editValues}
-      onExtraButtonClick={onRemove}
-      disabled={disabled || isLoading || doingAction}
-      clickOutsideNotClose={true}
-      wrapperClassName="!z-[101]"
-    >
-      {pluginPayload.detail && (
-        <ReadmeEntrance pluginDetail={pluginPayload.detail} showType={ReadmeShowType.modal} />
-      )}
-      {
-        isLoading && (
-          <div className="flex h-40 items-center justify-center">
-            <Loading />
+    <Dialog open>
+      <DialogContent className="w-[640px] max-w-none overflow-visible px-8 pb-6 pt-8">
+        <DialogCloseButton onClick={onClose} />
+        <div className="mb-2 pr-8 text-xl font-semibold text-text-primary">
+          <DialogTitle>
+            {t('auth.useApiAuth', { ns: 'plugin' })}
+          </DialogTitle>
+        </div>
+        <div className="mb-4 text-sm font-medium leading-5 text-text-secondary">
+          {t('auth.useApiAuthDesc', { ns: 'plugin' })}
+        </div>
+        {pluginPayload.detail && (
+          <ReadmeEntrance pluginDetail={pluginPayload.detail} showType={ReadmeShowType.modal} />
+        )}
+        {
+          isLoading && (
+            <div className="flex h-40 items-center justify-center">
+              <Loading />
+            </div>
+          )
+        }
+        {
+          !isLoading && !!mergedData.length && (
+            <AuthForm
+              ref={formRef}
+              formSchemas={formSchemas}
+              defaultValues={editValues || defaultValues}
+              disabled={disabled}
+            />
+          )
+        }
+        <div className="mt-6 flex items-center justify-between">
+          <div>
+            {!!editValues && (
+              <Button variant="warning" onClick={onRemove} disabled={disabled || isLoading || doingAction}>
+                {t('operation.remove', { ns: 'common' })}
+              </Button>
+            )}
           </div>
-        )
-      }
-      {
-        !isLoading && !!mergedData.length && (
-          <AuthForm
-            ref={formRef}
-            formSchemas={formSchemas}
-            defaultValues={editValues || defaultValues}
-            disabled={disabled}
-          />
-        )
-      }
-    </Modal>
+          <div className="flex items-center gap-2">
+            <Button onClick={onClose} disabled={disabled || isLoading || doingAction}>
+              {t('operation.cancel', { ns: 'common' })}
+            </Button>
+            <Button variant="primary" onClick={handleConfirm} disabled={disabled || isLoading || doingAction}>
+              {t('operation.save', { ns: 'common' })}
+            </Button>
+          </div>
+        </div>
+        <EncryptedBottom />
+      </DialogContent>
+    </Dialog>
   )
 }
 

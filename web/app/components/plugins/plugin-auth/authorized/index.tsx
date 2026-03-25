@@ -1,11 +1,10 @@
 import type { Credential, PluginPayload } from '../types'
-import type {
-  PortalToFollowElemOptions,
-} from '@/app/components/base/portal-to-follow-elem'
+import type { Placement } from '@/app/components/base/ui/placement'
 import {
   RiArrowDownSLine,
 } from '@remixicon/react'
 import {
+  isValidElement,
   memo,
   useCallback,
   useRef,
@@ -13,13 +12,20 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
-import Confirm from '@/app/components/base/confirm'
 import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
-import { useToastContext } from '@/app/components/base/toast/context'
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogTitle,
+} from '@/app/components/base/ui/alert-dialog'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/app/components/base/ui/popover'
+import { toast } from '@/app/components/base/ui/toast'
 import Indicator from '@/app/components/header/indicator'
 import { cn } from '@/utils/classnames'
 import Authorize from '../authorize'
@@ -41,8 +47,8 @@ type AuthorizedProps = {
   renderTrigger?: (open?: boolean) => React.ReactNode
   isOpen?: boolean
   onOpenChange?: (open: boolean) => void
-  offset?: PortalToFollowElemOptions['offset']
-  placement?: PortalToFollowElemOptions['placement']
+  offset?: number
+  placement?: Placement
   triggerPopupSameWidth?: boolean
   popupClassName?: string
   disableSetDefault?: boolean
@@ -75,7 +81,6 @@ const Authorized = ({
   notAllowCustomCredential,
 }: AuthorizedProps) => {
   const { t } = useTranslation()
-  const { notify } = useToastContext()
   const [isLocalOpen, setIsLocalOpen] = useState(false)
   const mergedIsOpen = isOpen ?? isLocalOpen
   const setMergedIsOpen = useCallback((open: boolean) => {
@@ -115,10 +120,7 @@ const Authorized = ({
     try {
       handleSetDoingAction(true)
       await deletePluginCredential({ credential_id: pendingOperationCredentialId.current })
-      notify({
-        type: 'success',
-        message: t('api.actionSuccess', { ns: 'common' }),
-      })
+      toast.success(t('api.actionSuccess', { ns: 'common' }))
       onUpdate?.()
       setDeleteCredentialId(null)
       pendingOperationCredentialId.current = null
@@ -126,9 +128,9 @@ const Authorized = ({
     finally {
       handleSetDoingAction(false)
     }
-  }, [deletePluginCredential, onUpdate, notify, t, handleSetDoingAction])
-  const [editValues, setEditValues] = useState<Record<string, any> | null>(null)
-  const handleEdit = useCallback((id: string, values: Record<string, any>) => {
+  }, [deletePluginCredential, onUpdate, t, handleSetDoingAction])
+  const [editValues, setEditValues] = useState<Record<string, unknown> | null>(null)
+  const handleEdit = useCallback((id: string, values: Record<string, unknown>) => {
     pendingOperationCredentialId.current = id
     setEditValues(values)
   }, [])
@@ -142,16 +144,13 @@ const Authorized = ({
     try {
       handleSetDoingAction(true)
       await setPluginDefaultCredential(id)
-      notify({
-        type: 'success',
-        message: t('api.actionSuccess', { ns: 'common' }),
-      })
+      toast.success(t('api.actionSuccess', { ns: 'common' }))
       onUpdate?.()
     }
     finally {
       handleSetDoingAction(false)
     }
-  }, [setPluginDefaultCredential, onUpdate, notify, t, handleSetDoingAction])
+  }, [setPluginDefaultCredential, onUpdate, t, handleSetDoingAction])
   const { mutateAsync: updatePluginCredential } = useUpdatePluginCredentialHook(pluginPayload)
   const handleRename = useCallback(async (payload: {
     credential_id: string
@@ -162,35 +161,24 @@ const Authorized = ({
     try {
       handleSetDoingAction(true)
       await updatePluginCredential(payload)
-      notify({
-        type: 'success',
-        message: t('api.actionSuccess', { ns: 'common' }),
-      })
+      toast.success(t('api.actionSuccess', { ns: 'common' }))
       onUpdate?.()
     }
     finally {
       handleSetDoingAction(false)
     }
-  }, [updatePluginCredential, notify, t, handleSetDoingAction, onUpdate])
+  }, [updatePluginCredential, t, handleSetDoingAction, onUpdate])
   const unavailableCredentials = credentials.filter(credential => credential.not_allowed_to_use)
   const unavailableCredential = credentials.find(credential => credential.not_allowed_to_use && credential.is_default)
+  const triggerElement = renderTrigger?.(mergedIsOpen)
 
   return (
     <>
-      <PortalToFollowElem
-        open={mergedIsOpen}
-        onOpenChange={setMergedIsOpen}
-        placement={placement}
-        offset={offset}
-        triggerPopupSameWidth={triggerPopupSameWidth}
-      >
-        <PortalToFollowElemTrigger
-          onClick={() => setMergedIsOpen(!mergedIsOpen)}
-          asChild
-        >
-          {
-            renderTrigger
-              ? renderTrigger(mergedIsOpen)
+      <Popover open={mergedIsOpen} onOpenChange={setMergedIsOpen}>
+        <PopoverTrigger
+          render={
+            isValidElement(triggerElement)
+              ? triggerElement
               : (
                   <Button
                     className={cn(
@@ -200,7 +188,7 @@ const Authorized = ({
                   >
                     <Indicator className="mr-2" color={unavailableCredential ? 'gray' : 'green'} />
                     {credentials.length}
-&nbsp;
+                    &nbsp;
                     {
                       credentials.length > 1
                         ? t('auth.authorizations', { ns: 'plugin' })
@@ -215,14 +203,20 @@ const Authorized = ({
                   </Button>
                 )
           }
-        </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className="z-[100]" data-plugin-auth-portal="true">
+        />
+        <PopoverContent
+          placement={placement}
+          sideOffset={offset}
+          popupProps={triggerPopupSameWidth ? { style: { width: 'var(--anchor-width, auto)' } } : undefined}
+          popupClassName={cn(
+            'overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg',
+            popupClassName,
+          )}
+        >
           <div
-            className={cn(
-              'max-h-[360px] overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg',
-              popupClassName,
-            )}
+            className="max-h-[360px]"
             data-plugin-auth-panel="true"
+            onMouseLeave={() => setMergedIsOpen(false)}
           >
             <div className="py-1">
               {
@@ -328,19 +322,31 @@ const Authorized = ({
               )
             }
           </div>
-        </PortalToFollowElemContent>
-      </PortalToFollowElem>
-      {
-        deleteCredentialId && (
-          <Confirm
-            isShow
-            title={t('list.delete.title', { ns: 'datasetDocuments' })}
-            isDisabled={doingAction}
-            onCancel={closeConfirm}
-            onConfirm={handleConfirm}
-          />
-        )
-      }
+        </PopoverContent>
+      </Popover>
+      <AlertDialog
+        open={!!deleteCredentialId}
+        onOpenChange={(open) => {
+          if (!open)
+            closeConfirm()
+        }}
+      >
+        <AlertDialogContent className="w-[480px]">
+          <div className="px-6 pb-4 pt-6">
+            <AlertDialogTitle className="text-text-primary title-2xl-semi-bold">
+              {t('list.delete.title', { ns: 'datasetDocuments' })}
+            </AlertDialogTitle>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton disabled={doingAction} onClick={closeConfirm}>
+              {t('operation.cancel', { ns: 'common' })}
+            </AlertDialogCancelButton>
+            <AlertDialogConfirmButton loading={doingAction} disabled={doingAction} onClick={handleConfirm}>
+              {t('operation.confirm', { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
       {
         !!editValues && (
           <ApiKeyModal

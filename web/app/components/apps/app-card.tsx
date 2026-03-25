@@ -1,24 +1,18 @@
 'use client'
 
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
-import type { HtmlContentProps } from '@/app/components/base/popover'
 import type { Tag } from '@/app/components/base/tag-management/constant'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import type { WorkflowOnlineUser } from '@/models/app'
 import type { App } from '@/types/app'
 import * as React from 'react'
-import { useCallback, useEffect, useMemo, useState, useTransition } from 'react'
+import { useCallback, useMemo, useState, useTransition } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
 import AppIcon from '@/app/components/base/app-icon'
 import Divider from '@/app/components/base/divider'
-import CustomPopover from '@/app/components/base/popover'
 import TagSelector from '@/app/components/base/tag-management/selector'
-import Toast from '@/app/components/base/toast'
-import { ToastContext } from '@/app/components/base/toast/context'
-import Tooltip from '@/app/components/base/tooltip'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -28,6 +22,17 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@/app/components/base/ui/alert-dialog'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/app/components/base/ui/popover'
+import { toast } from '@/app/components/base/ui/toast'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/app/components/base/ui/tooltip'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
@@ -65,6 +70,166 @@ const AccessControl = dynamic(() => import('@/app/components/app/app-access-cont
   ssr: false,
 })
 
+type AppCardOperationsProps = {
+  app: App
+  webappAuthEnabled: boolean
+  isCurrentWorkspaceEditor: boolean
+  exporting: boolean
+  secretEnvListLength: number
+  isUpgradingRuntime: boolean
+  popupClassName: string
+  onEdit: () => void
+  onDuplicate: () => void
+  onExport: () => void
+  onSwitch: () => void
+  onDelete: () => void
+  onAccessControl: () => void
+  onInstalledApp: () => void
+  onUpgradeRuntime: () => void
+}
+
+const AppCardOperations = ({
+  app,
+  webappAuthEnabled,
+  isCurrentWorkspaceEditor,
+  exporting,
+  secretEnvListLength,
+  isUpgradingRuntime,
+  popupClassName,
+  onEdit,
+  onDuplicate,
+  onExport,
+  onSwitch,
+  onDelete,
+  onAccessControl,
+  onInstalledApp,
+  onUpgradeRuntime,
+}: AppCardOperationsProps) => {
+  const { t } = useTranslation()
+  const [open, setOpen] = useState(false)
+  const { data: userCanAccessApp, isLoading: isGettingUserCanAccessApp } = useGetUserCanAccessApp({
+    appId: app.id,
+    enabled: !!open && webappAuthEnabled,
+  })
+
+  const onMouseLeave = () => {
+    setOpen(false)
+  }
+
+  const onClickInstalledApp = async () => {
+    onInstalledApp()
+    onMouseLeave()
+  }
+
+  const onClickUpgradeRuntime = async () => {
+    onUpgradeRuntime()
+    onMouseLeave()
+  }
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        render={(
+          <button
+            type="button"
+            className={cn(
+              'flex h-8 w-8 cursor-pointer items-center justify-center rounded-md',
+              open && '!bg-state-base-hover !shadow-none',
+            )}
+          >
+            <span className="sr-only">{t('operation.more', { ns: 'common' })}</span>
+            <span aria-hidden className="i-ri-more-fill h-4 w-4 text-text-tertiary" />
+          </button>
+        )}
+      />
+      <PopoverContent
+        placement="bottom-end"
+        sideOffset={4}
+        popupClassName={cn(
+          'w-fit min-w-[130px] overflow-hidden rounded-lg bg-components-panel-bg shadow-lg ring-1 ring-black/5',
+          popupClassName,
+        )}
+      >
+        <div className="flex w-full flex-col py-1" onMouseLeave={onMouseLeave}>
+          <button type="button" className="mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover" onClick={onEdit}>
+            <span className="text-text-secondary system-sm-regular">{t('editApp', { ns: 'app' })}</span>
+          </button>
+          <Divider className="my-1" />
+          <button type="button" className="mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover" onClick={onDuplicate}>
+            <span className="text-text-secondary system-sm-regular">{t('duplicate', { ns: 'app' })}</span>
+          </button>
+          <button type="button" disabled={exporting || secretEnvListLength > 0} className="mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover disabled:cursor-not-allowed disabled:opacity-50" onClick={onExport}>
+            <span className="text-text-secondary system-sm-regular">{t('export', { ns: 'app' })}</span>
+          </button>
+          {(app.mode === AppModeEnum.COMPLETION || app.mode === AppModeEnum.CHAT) && (
+            <>
+              <Divider className="my-1" />
+              <button type="button" className="mx-1 flex h-8 cursor-pointer items-center rounded-lg px-3 hover:bg-state-base-hover" onClick={onSwitch}>
+                <span className="text-sm leading-5 text-text-secondary">{t('switch', { ns: 'app' })}</span>
+              </button>
+            </>
+          )}
+          {
+            !app.has_draft_trigger && (
+              (!webappAuthEnabled)
+                ? (
+                    <>
+                      <Divider className="my-1" />
+                      <button type="button" className="mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover" onClick={onClickInstalledApp}>
+                        <span className="text-text-secondary system-sm-regular">{t('openInExplore', { ns: 'app' })}</span>
+                      </button>
+                    </>
+                  )
+                : !(isGettingUserCanAccessApp || !userCanAccessApp?.result) && (
+                    <>
+                      <Divider className="my-1" />
+                      <button type="button" className="mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover" onClick={onClickInstalledApp}>
+                        <span className="text-text-secondary system-sm-regular">{t('openInExplore', { ns: 'app' })}</span>
+                      </button>
+                    </>
+                  )
+            )
+          }
+          <Divider className="my-1" />
+          {
+            webappAuthEnabled && isCurrentWorkspaceEditor && (
+              <>
+                <button type="button" className="mx-1 flex h-8 cursor-pointer items-center rounded-lg px-3 hover:bg-state-base-hover" onClick={onAccessControl}>
+                  <span className="text-sm leading-5 text-text-secondary">{t('accessControl', { ns: 'app' })}</span>
+                </button>
+                <Divider className="my-1" />
+              </>
+            )
+          }
+          {app.runtime_type !== 'sandboxed'
+            && (app.mode === AppModeEnum.WORKFLOW || app.mode === AppModeEnum.ADVANCED_CHAT)
+            && (
+              <button
+                type="button"
+                disabled={isUpgradingRuntime}
+                className="mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={onClickUpgradeRuntime}
+              >
+                <span className="text-text-accent system-sm-regular">
+                  {t('upgradeRuntime', { ns: 'app' })}
+                </span>
+              </button>
+            )}
+          <button
+            type="button"
+            className="group mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 py-[6px] hover:bg-state-destructive-hover"
+            onClick={onDelete}
+          >
+            <span className="text-text-secondary system-sm-regular group-hover:text-text-destructive">
+              {t('operation.delete', { ns: 'common' })}
+            </span>
+          </button>
+        </div>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
 export type AppCardProps = {
   app: App
   onRefresh?: () => void
@@ -73,7 +238,6 @@ export type AppCardProps = {
 
 const AppCard = ({ app, onRefresh, onlineUsers = [] }: AppCardProps) => {
   const { t } = useTranslation()
-  const { notify } = useContext(ToastContext)
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   const { isCurrentWorkspaceEditor } = useAppContext()
   const { onPlanInfoChanged } = useProviderContext()
@@ -93,20 +257,17 @@ const AppCard = ({ app, onRefresh, onlineUsers = [] }: AppCardProps) => {
   const onConfirmDelete = useCallback(async () => {
     try {
       await mutateDeleteApp(app.id)
-      notify({ type: 'success', message: t('appDeleted', { ns: 'app' }) })
+      toast.success(t('appDeleted', { ns: 'app' }))
       onPlanInfoChanged()
     }
     catch (e: unknown) {
-      notify({
-        type: 'error',
-        message: `${t('appDeleteFailed', { ns: 'app' })}${e instanceof Error ? `: ${e.message}` : ''}`,
-      })
+      toast.error(`${t('appDeleteFailed', { ns: 'app' })}${e instanceof Error ? `: ${e.message}` : ''}`)
     }
     finally {
       setShowConfirmDelete(false)
       setConfirmDeleteInput('')
     }
-  }, [app.id, mutateDeleteApp, notify, onPlanInfoChanged, t])
+  }, [app.id, mutateDeleteApp, onPlanInfoChanged, t])
 
   const onDeleteDialogOpenChange = useCallback((open: boolean) => {
     if (isDeleting)
@@ -138,20 +299,14 @@ const AppCard = ({ app, onRefresh, onlineUsers = [] }: AppCardProps) => {
         max_active_requests,
       })
       setShowEditModal(false)
-      notify({
-        type: 'success',
-        message: t('editDone', { ns: 'app' }),
-      })
+      toast.success(t('editDone', { ns: 'app' }))
       if (onRefresh)
         onRefresh()
     }
     catch (e: unknown) {
-      notify({
-        type: 'error',
-        message: (e instanceof Error ? e.message : '') || t('editFailed', { ns: 'app' }),
-      })
+      toast.error((e instanceof Error ? e.message : '') || t('editFailed', { ns: 'app' }))
     }
-  }, [app.id, notify, onRefresh, t])
+  }, [app.id, onRefresh, t])
 
   const onCopy: DuplicateAppModalProps['onConfirm'] = async ({ name, icon_type, icon, icon_background }) => {
     try {
@@ -164,10 +319,7 @@ const AppCard = ({ app, onRefresh, onlineUsers = [] }: AppCardProps) => {
         mode: app.mode,
       })
       setShowDuplicateModal(false)
-      notify({
-        type: 'success',
-        message: t('newApp.appCreated', { ns: 'app' }),
-      })
+      toast.success(t('newApp.appCreated', { ns: 'app' }))
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
       if (onRefresh)
         onRefresh()
@@ -175,7 +327,7 @@ const AppCard = ({ app, onRefresh, onlineUsers = [] }: AppCardProps) => {
       getRedirection(isCurrentWorkspaceEditor, newApp, push)
     }
     catch {
-      notify({ type: 'error', message: t('newApp.appCreateFailed', { ns: 'app' }) })
+      toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
     }
   }
 
@@ -197,10 +349,7 @@ const AppCard = ({ app, onRefresh, onlineUsers = [] }: AppCardProps) => {
       downloadBlob({ data: file, fileName: `${app.name}.yml` })
     }
     catch {
-      notify({
-        type: 'error',
-        message: t('exportFailed', { ns: 'app' }),
-      })
+      toast.error(t('exportFailed', { ns: 'app' }))
     }
   }
 
@@ -219,12 +368,11 @@ const AppCard = ({ app, onRefresh, onlineUsers = [] }: AppCardProps) => {
       setSecretEnvList(list)
     }
     catch {
-      notify({
-        type: 'error',
-        message: t('exportFailed', { ns: 'app' }),
-      })
+      toast.error(t('exportFailed', { ns: 'app' }))
     }
   }
+
+  const [isUpgradingRuntime, startUpgradeRuntime] = useTransition()
 
   const onSwitch = () => {
     if (onRefresh)
@@ -232,183 +380,59 @@ const AppCard = ({ app, onRefresh, onlineUsers = [] }: AppCardProps) => {
     setShowSwitchModal(false)
   }
 
-  const [isUpgradingRuntime, startUpgradeRuntime] = useTransition()
-  const isClassicWorkflowApp = app.runtime_type !== 'sandboxed'
-    && (app.mode === AppModeEnum.WORKFLOW || app.mode === AppModeEnum.ADVANCED_CHAT)
-
   const onUpdateAccessControl = useCallback(() => {
     if (onRefresh)
       onRefresh()
     setShowAccessControl(false)
   }, [onRefresh, setShowAccessControl])
 
-  const Operations = (props: HtmlContentProps) => {
-    const { data: userCanAccessApp, isLoading: isGettingUserCanAccessApp } = useGetUserCanAccessApp({ appId: app?.id, enabled: (!!props?.open && systemFeatures.webapp_auth.enabled) })
-    const onMouseLeave = async () => {
-      props.onClose?.()
-    }
-    const onClickSettings = async (e: React.MouseEvent<HTMLButtonElement>) => {
-      e.stopPropagation()
-      props.onClick?.()
-      e.preventDefault()
-      setShowEditModal(true)
-    }
-    const onClickDuplicate = async (e: React.MouseEvent<HTMLButtonElement>) => {
-      e.stopPropagation()
-      props.onClick?.()
-      e.preventDefault()
-      setShowDuplicateModal(true)
-    }
-    const onClickExport = (e: React.MouseEvent<HTMLButtonElement>) => {
-      e.stopPropagation()
-      props.onClick?.()
-      e.preventDefault()
-      startExport(async () => {
-        await exportCheck()
+  const handleOpenEditModal = useCallback(() => setShowEditModal(true), [])
+  const handleOpenDuplicateModal = useCallback(() => setShowDuplicateModal(true), [])
+  const handleOpenSwitchModal = useCallback(() => setShowSwitchModal(true), [])
+  const handleOpenDeleteModal = useCallback(() => setShowConfirmDelete(true), [])
+  const handleOpenAccessControl = useCallback(() => setShowAccessControl(true), [])
+  const handleExport = useCallback(() => {
+    startExport(async () => {
+      await exportCheck()
+    })
+  }, [exportCheck, startExport])
+  const handleInstalledApp = useCallback(async () => {
+    try {
+      await openAsyncWindow(async () => {
+        const { installed_apps } = (await fetchInstalledAppList(app.id) || {}) as { installed_apps?: { id: string }[] }
+        if (installed_apps && installed_apps.length > 0)
+          return `${basePath}/explore/installed/${installed_apps[0].id}`
+        throw new Error('No app found in Explore')
+      }, {
+        onError: (err) => {
+          toast.error(`${err.message || err}`)
+        },
       })
     }
-    const onClickSwitch = async (e: React.MouseEvent<HTMLButtonElement>) => {
-      e.stopPropagation()
-      props.onClick?.()
-      e.preventDefault()
-      setShowSwitchModal(true)
+    catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : String(e))
     }
-    const onClickDelete = async (e: React.MouseEvent<HTMLButtonElement>) => {
-      e.stopPropagation()
-      props.onClick?.()
-      e.preventDefault()
-      setShowConfirmDelete(true)
-    }
-    const onClickAccessControl = async (e: React.MouseEvent<HTMLButtonElement>) => {
-      e.stopPropagation()
-      props.onClick?.()
-      e.preventDefault()
-      setShowAccessControl(true)
-    }
-    const onClickInstalledApp = async (e: React.MouseEvent<HTMLButtonElement>) => {
-      e.stopPropagation()
-      props.onClick?.()
-      e.preventDefault()
+  }, [app.id, openAsyncWindow])
+  const handleUpgradeRuntime = useCallback(() => {
+    startUpgradeRuntime(async () => {
       try {
-        await openAsyncWindow(async () => {
-          const { installed_apps } = (await fetchInstalledAppList(app.id) || {}) as { installed_apps?: { id: string }[] }
-          if (installed_apps && installed_apps.length > 0)
-            return `${basePath}/explore/installed/${installed_apps[0].id}`
-          throw new Error('No app found in Explore')
-        }, {
-          onError: (err) => {
-            Toast.notify({ type: 'error', message: `${err.message || err}` })
-          },
-        })
+        const res = await upgradeAppRuntime(app.id)
+        if (res.result === 'success' && res.new_app_id) {
+          toast.success(t('sandboxMigrationModal.upgrade', { ns: 'workflow' }))
+          const params = new URLSearchParams({
+            upgraded_from: app.id,
+            upgraded_from_name: app.name,
+          })
+          push(`/app/${res.new_app_id}/workflow?${params.toString()}`)
+        }
       }
       catch (e: unknown) {
-        Toast.notify({ type: 'error', message: e instanceof Error ? e.message : String(e) })
+        toast.error((e instanceof Error ? e.message : '') || 'Upgrade failed')
       }
-    }
-    const onClickUpgradeRuntime = (e: React.MouseEvent<HTMLButtonElement>) => {
-      e.stopPropagation()
-      props.onClick?.()
-      e.preventDefault()
-      startUpgradeRuntime(async () => {
-        try {
-          const res = await upgradeAppRuntime(app.id)
-          if (res.result === 'success' && res.new_app_id) {
-            notify({ type: 'success', message: t('sandboxMigrationModal.upgrade', { ns: 'workflow' }) })
-            const params = new URLSearchParams({
-              upgraded_from: app.id,
-              upgraded_from_name: app.name,
-            })
-            push(`/app/${res.new_app_id}/workflow?${params.toString()}`)
-          }
-        }
-        catch (e: unknown) {
-          notify({ type: 'error', message: (e instanceof Error ? e.message : '') || 'Upgrade failed' })
-        }
-      })
-    }
-    return (
-      <div className="relative flex w-full flex-col py-1" onMouseLeave={onMouseLeave}>
-        <button type="button" className="mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover" onClick={onClickSettings}>
-          <span className="text-text-secondary system-sm-regular">{t('editApp', { ns: 'app' })}</span>
-        </button>
-        <Divider className="my-1" />
-        <button type="button" className="mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover" onClick={onClickDuplicate}>
-          <span className="text-text-secondary system-sm-regular">{t('duplicate', { ns: 'app' })}</span>
-        </button>
-        <button type="button" disabled={exporting || secretEnvList.length > 0} className="mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover disabled:cursor-not-allowed disabled:opacity-50" onClick={onClickExport}>
-          <span className="text-text-secondary system-sm-regular">{t('export', { ns: 'app' })}</span>
-        </button>
-        {(app.mode === AppModeEnum.COMPLETION || app.mode === AppModeEnum.CHAT) && (
-          <>
-            <Divider className="my-1" />
-            <button
-              type="button"
-              className="mx-1 flex h-8 cursor-pointer items-center rounded-lg px-3 hover:bg-state-base-hover"
-              onClick={onClickSwitch}
-            >
-              <span className="text-sm leading-5 text-text-secondary">{t('switch', { ns: 'app' })}</span>
-            </button>
-          </>
-        )}
-        {
-          !app.has_draft_trigger && (
-            (!systemFeatures.webapp_auth.enabled)
-              ? (
-                  <>
-                    <Divider className="my-1" />
-                    <button type="button" className="mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover" onClick={onClickInstalledApp}>
-                      <span className="text-text-secondary system-sm-regular">{t('openInExplore', { ns: 'app' })}</span>
-                    </button>
-                  </>
-                )
-              : !(isGettingUserCanAccessApp || !userCanAccessApp?.result) && (
-                  <>
-                    <Divider className="my-1" />
-                    <button type="button" className="mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover" onClick={onClickInstalledApp}>
-                      <span className="text-text-secondary system-sm-regular">{t('openInExplore', { ns: 'app' })}</span>
-                    </button>
-                  </>
-                )
-          )
-        }
-        <Divider className="my-1" />
-        {
-          systemFeatures.webapp_auth.enabled && isCurrentWorkspaceEditor && (
-            <>
-              <button type="button" className="mx-1 flex h-8 cursor-pointer items-center rounded-lg px-3 hover:bg-state-base-hover" onClick={onClickAccessControl}>
-                <span className="text-sm leading-5 text-text-secondary">{t('accessControl', { ns: 'app' })}</span>
-              </button>
-              <Divider className="my-1" />
-            </>
-          )
-        }
-        {isClassicWorkflowApp && (
-          <button
-            type="button"
-            disabled={isUpgradingRuntime}
-            className="mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover disabled:cursor-not-allowed disabled:opacity-50"
-            onClick={onClickUpgradeRuntime}
-          >
-            <span className="text-text-accent system-sm-regular">{t('upgradeRuntime', { ns: 'app' })}</span>
-          </button>
-        )}
-        <button
-          type="button"
-          className="group mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 py-[6px] hover:bg-state-destructive-hover"
-          onClick={onClickDelete}
-        >
-          <span className="text-text-secondary system-sm-regular group-hover:text-text-destructive">
-            {t('operation.delete', { ns: 'common' })}
-          </span>
-        </button>
-      </div>
-    )
-  }
+    })
+  }, [app.id, app.name, push, startUpgradeRuntime, t])
 
-  const [tags, setTags] = useState<Tag[]>(app.tags)
-  useEffect(() => {
-    setTags(app.tags)
-  }, [app.tags])
+  const [tags, setTags] = useState<Tag[]>(() => app.tags)
 
   const EditTimeText = useMemo(() => {
     const timeText = formatTime({
@@ -463,23 +487,27 @@ const AppCard = ({ app, onRefresh, onlineUsers = [] }: AppCardProps) => {
           </div>
           <div className="flex h-5 w-5 shrink-0 items-center justify-center">
             {app.access_mode === AccessMode.PUBLIC && (
-              <Tooltip asChild={false} popupContent={t('accessItemsDescription.anyone', { ns: 'app' })}>
-                <span className="i-ri-global-line h-4 w-4 text-text-quaternary" />
+              <Tooltip>
+                <TooltipTrigger render={<span className="i-ri-global-line h-4 w-4 text-text-quaternary" />} />
+                <TooltipContent>{t('accessItemsDescription.anyone', { ns: 'app' })}</TooltipContent>
               </Tooltip>
             )}
             {app.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS && (
-              <Tooltip asChild={false} popupContent={t('accessItemsDescription.specific', { ns: 'app' })}>
-                <span className="i-ri-lock-line h-4 w-4 text-text-quaternary" />
+              <Tooltip>
+                <TooltipTrigger render={<span className="i-ri-lock-line h-4 w-4 text-text-quaternary" />} />
+                <TooltipContent>{t('accessItemsDescription.specific', { ns: 'app' })}</TooltipContent>
               </Tooltip>
             )}
             {app.access_mode === AccessMode.ORGANIZATION && (
-              <Tooltip asChild={false} popupContent={t('accessItemsDescription.organization', { ns: 'app' })}>
-                <span className="i-ri-building-line h-4 w-4 text-text-quaternary" />
+              <Tooltip>
+                <TooltipTrigger render={<span className="i-ri-building-line h-4 w-4 text-text-quaternary" />} />
+                <TooltipContent>{t('accessItemsDescription.organization', { ns: 'app' })}</TooltipContent>
               </Tooltip>
             )}
             {app.access_mode === AccessMode.EXTERNAL_MEMBERS && (
-              <Tooltip asChild={false} popupContent={t('accessItemsDescription.external', { ns: 'app' })}>
-                <span className="i-ri-verified-badge-line h-4 w-4 text-text-quaternary" />
+              <Tooltip>
+                <TooltipTrigger render={<span className="i-ri-verified-badge-line h-4 w-4 text-text-quaternary" />} />
+                <TooltipContent>{t('accessItemsDescription.external', { ns: 'app' })}</TooltipContent>
               </Tooltip>
             )}
           </div>
@@ -521,29 +549,26 @@ const AppCard = ({ app, onRefresh, onlineUsers = [] }: AppCardProps) => {
               </div>
               <div className="mx-1 !hidden h-[14px] w-[1px] shrink-0 bg-divider-regular group-hover:!flex" />
               <div className="!hidden shrink-0 group-hover:!flex">
-                <CustomPopover
-                  htmlContent={<Operations />}
-                  position="br"
-                  trigger="click"
-                  btnElement={(
-                    <div
-                      className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-md"
-                    >
-                      <span className="sr-only">{t('operation.more', { ns: 'common' })}</span>
-                      <span aria-hidden className="i-ri-more-fill h-4 w-4 text-text-tertiary" />
-                    </div>
-                  )}
-                  btnClassName={open =>
-                    cn(
-                      open ? '!bg-state-base-hover !shadow-none' : '!bg-transparent',
-                      'h-8 w-8 rounded-md border-none !p-2 hover:!bg-state-base-hover',
-                    )}
+                <AppCardOperations
+                  app={app}
+                  webappAuthEnabled={systemFeatures.webapp_auth.enabled}
+                  isCurrentWorkspaceEditor={isCurrentWorkspaceEditor}
+                  exporting={exporting}
+                  secretEnvListLength={secretEnvList.length}
+                  isUpgradingRuntime={isUpgradingRuntime}
                   popupClassName={
                     (app.mode === AppModeEnum.COMPLETION || app.mode === AppModeEnum.CHAT)
-                      ? '!w-[256px] translate-x-[-224px]'
-                      : '!w-[216px] translate-x-[-128px]'
+                      ? 'w-[256px]'
+                      : 'w-[216px]'
                   }
-                  className="!z-20 h-fit"
+                  onEdit={handleOpenEditModal}
+                  onDuplicate={handleOpenDuplicateModal}
+                  onExport={handleExport}
+                  onSwitch={handleOpenSwitchModal}
+                  onDelete={handleOpenDeleteModal}
+                  onAccessControl={handleOpenAccessControl}
+                  onInstalledApp={handleInstalledApp}
+                  onUpgradeRuntime={handleUpgradeRuntime}
                 />
               </div>
             </>

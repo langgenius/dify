@@ -13,7 +13,7 @@ import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import { AliyunIcon, ArizeIcon, DatabricksIcon, LangfuseIcon, LangsmithIcon, MlflowIcon, OpikIcon, PhoenixIcon, TencentIcon, WeaveIcon } from '@/app/components/base/icons/src/public/tracing'
 import Loading from '@/app/components/base/loading'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import Indicator from '@/app/components/header/indicator'
 import { useAppContext } from '@/context/app-context'
 import { usePathname } from '@/next/navigation'
@@ -43,10 +43,7 @@ const Panel: FC = () => {
     await updateTracingStatus({ appId, body: tracingStatus })
     setTracingStatus(tracingStatus)
     if (!noToast) {
-      Toast.notify({
-        type: 'success',
-        message: t('api.success', { ns: 'common' }),
-      })
+      toast(t('api.success', { ns: 'common' }), { type: 'success' })
     }
   }
 

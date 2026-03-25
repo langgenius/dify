@@ -4,7 +4,6 @@ import type { App } from '@/types/app'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { ToastContext } from '@/app/components/base/toast/context'
 import { Plan } from '@/app/components/billing/type'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
 import FeaturesTrigger from '../features-trigger'
@@ -21,6 +20,19 @@ const mockUseNodes = vi.fn()
 const mockUseEdges = vi.fn()
 
 const mockNotify = vi.fn()
+const mockToast = {
+  success: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'success', message, ...options }),
+  error: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'error', message, ...options }),
+  warning: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'warning', message, ...options }),
+  info: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'info', message, ...options }),
+  dismiss: vi.fn(),
+  update: vi.fn(),
+  promise: vi.fn(),
+}
+
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: mockToast,
+}))
 const mockHandleCheckBeforePublish = vi.fn()
 const mockHandleSyncWorkflowDraft = vi.fn()
 const mockPublishWorkflow = vi.fn()
@@ -148,12 +160,7 @@ const createProviderContext = ({
 })
 
 const renderWithToast = (ui: ReactElement) => {
-  return render(
-    // eslint-disable-next-line react/no-context-provider
-    <ToastContext.Provider value={{ notify: mockNotify, close: vi.fn() }}>
-      {ui}
-    </ToastContext.Provider>,
-  )
+  return render(ui)
 }
 
 describe('FeaturesTrigger', () => {

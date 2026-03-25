@@ -40,7 +40,7 @@ vi.mock('@/service/knowledge/use-metadata', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
+vi.mock('@/app/components/base/ui/toast', () => ({
   default: {
     notify: vi.fn(),
   },

@@ -28,7 +28,7 @@ vi.mock('@/service/annotation', () => ({
   addAnnotation: (...args: unknown[]) => mockAddAnnotation(...args),
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
+vi.mock('@/app/components/base/ui/toast', () => ({
   default: { notify: vi.fn() },
 }))
 
