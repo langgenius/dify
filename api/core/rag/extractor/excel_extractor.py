@@ -57,7 +57,7 @@ class ExcelExtractor(BaseExtractor):
                                 col_name = column_map[col_idx]
                                 # Default value
                                 value = str(cell.value) if cell.value is not None else ""
-                                
+
                                 # Override for hyperlinks
                                 if hasattr(cell, "hyperlink") and cell.hyperlink:
                                     target = getattr(cell.hyperlink, "target", None)
@@ -75,7 +75,7 @@ class ExcelExtractor(BaseExtractor):
                                         else:
                                             # Fallback if precision can't be determined
                                             value = f"{cell.value * 100:.10g}%"
-                                
+
                                 value = value.strip().replace('"', '\\"')
                                 page_content.append(f'"{col_name}":"{value}"')
                         if page_content:
