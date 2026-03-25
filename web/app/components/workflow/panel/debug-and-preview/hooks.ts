@@ -474,9 +474,7 @@ export const useChat = (
         onIterationFinish: ({ data }) => {
           const currentTracingIndex = responseItem.workflowProcess!.tracing!.findIndex(item => item.id === data.id)
           if (currentTracingIndex > -1) {
-            responseItem.workflowProcess!.tracing[currentTracingIndex] = {
-              ...mergeTracingNodePreservingExecutionMetadata(responseItem.workflowProcess!.tracing[currentTracingIndex], data),
-            }
+            responseItem.workflowProcess!.tracing[currentTracingIndex] = mergeTracingNodePreservingExecutionMetadata(responseItem.workflowProcess!.tracing[currentTracingIndex], data)
             updateCurrentQAOnTree({
               placeholderQuestionId,
               questionItem,
@@ -500,9 +498,7 @@ export const useChat = (
         onLoopFinish: ({ data }) => {
           const currentTracingIndex = responseItem.workflowProcess!.tracing!.findIndex(item => item.id === data.id)
           if (currentTracingIndex > -1) {
-            responseItem.workflowProcess!.tracing[currentTracingIndex] = {
-              ...mergeTracingNodePreservingExecutionMetadata(responseItem.workflowProcess!.tracing[currentTracingIndex], data),
-            }
+            responseItem.workflowProcess!.tracing[currentTracingIndex] = mergeTracingNodePreservingExecutionMetadata(responseItem.workflowProcess!.tracing[currentTracingIndex], data)
             updateCurrentQAOnTree({
               placeholderQuestionId,
               questionItem,
@@ -544,9 +540,7 @@ export const useChat = (
 
           const currentTracingIndex = responseItem.workflowProcess!.tracing!.findIndex(item => item.id === data.id)
           if (currentTracingIndex > -1) {
-            responseItem.workflowProcess!.tracing[currentTracingIndex] = {
-              ...mergeTracingNodePreservingExecutionMetadata(responseItem.workflowProcess!.tracing[currentTracingIndex], data),
-            }
+            responseItem.workflowProcess!.tracing[currentTracingIndex] = mergeTracingNodePreservingExecutionMetadata(responseItem.workflowProcess!.tracing[currentTracingIndex], data)
             updateCurrentQAOnTree({
               placeholderQuestionId,
               questionItem,
@@ -831,9 +825,7 @@ export const useChat = (
             parallelId: nodeFinishedData.execution_metadata?.parallel_id,
           })
           if (currentIndex > -1) {
-            responseItem.workflowProcess.tracing[currentIndex] = {
-              ...mergeTracingNodePreservingExecutionMetadata(responseItem.workflowProcess.tracing[currentIndex], nodeFinishedData),
-            } as any
+            responseItem.workflowProcess.tracing[currentIndex] = mergeTracingNodePreservingExecutionMetadata(responseItem.workflowProcess.tracing[currentIndex], nodeFinishedData) as any
           }
         })
       },

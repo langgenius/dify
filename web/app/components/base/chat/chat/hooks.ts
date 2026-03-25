@@ -33,6 +33,7 @@ import {
 import { useToastContext } from '@/app/components/base/toast/context'
 import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { upsertTopLevelTracingNodeOnStart } from '@/app/components/workflow/utils/top-level-tracing'
+import { findTracingIndexByExecutionOrUniqueNodeId } from '@/app/components/workflow/utils/tracing-execution'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useParams, usePathname } from '@/next/navigation'
 import {
@@ -60,30 +61,10 @@ const findParallelTraceIndex = (
   tracing: ParallelTraceLike[],
   data: Partial<ParallelTraceLike>,
 ) => {
-  const incomingParallelId = data.execution_metadata?.parallel_id ?? data.parallel_id
-
-  if (data.id) {
-    const matchedByIdIndex = tracing.findIndex((item) => {
-      if (item.id !== data.id)
-        return false
-
-      const existingParallelId = item.execution_metadata?.parallel_id ?? item.parallel_id
-      if (!existingParallelId || !incomingParallelId)
-        return true
-
-      return existingParallelId === incomingParallelId
-    })
-
-    if (matchedByIdIndex > -1)
-      return matchedByIdIndex
-  }
-
-  return tracing.findIndex((item) => {
-    if (item.node_id !== data.node_id)
-      return false
-
-    const existingParallelId = item.execution_metadata?.parallel_id ?? item.parallel_id
-    return existingParallelId === incomingParallelId
+  return findTracingIndexByExecutionOrUniqueNodeId(tracing, {
+    executionId: data.id,
+    nodeId: data.node_id,
+    parallelId: data.execution_metadata?.parallel_id ?? data.parallel_id,
   })
 }
 

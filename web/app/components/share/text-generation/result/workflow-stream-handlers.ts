@@ -6,6 +6,7 @@ import { produce } from 'immer'
 import { getFilesInLogs } from '@/app/components/base/file-uploader/utils'
 import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { upsertTopLevelTracingNodeOnStart } from '@/app/components/workflow/utils/top-level-tracing'
+import { findTracingIndexByExecutionOrUniqueNodeId } from '@/app/components/workflow/utils/tracing-execution'
 import { sseGet } from '@/service/base'
 
 type Notify = (payload: { type: 'error' | 'warning', message: string }) => void
@@ -51,12 +52,17 @@ const matchParallelTrace = (trace: WorkflowProcess['tracing'][number], data: Nod
 }
 
 const findParallelTraceIndex = (tracing: WorkflowProcess['tracing'], data: NodeTracing) => {
-  return tracing.findIndex((trace) => {
-    if (trace.id && data.id)
-      return trace.id === data.id
-
-    return matchParallelTrace(trace, data)
+  const parallelId = data.execution_metadata?.parallel_id
+  const matchedIndex = findTracingIndexByExecutionOrUniqueNodeId(tracing, {
+    executionId: data.id,
+    nodeId: data.node_id,
+    parallelId,
   })
+
+  if (matchedIndex > -1)
+    return matchedIndex
+
+  return tracing.findIndex(trace => matchParallelTrace(trace, data))
 }
 
 const ensureParallelTraceDetails = (details?: NodeTracing['details']) => {
@@ -120,21 +126,12 @@ const upsertWorkflowNode = (current: WorkflowProcess | undefined, data: NodeTrac
   })
 }
 
-const findWorkflowNodeTraceIndex = (tracing: WorkflowProcess['tracing'], data: NodeTracing) => {
-  return tracing.findIndex((trace) => {
-    if (trace.id && data.id)
-      return trace.id === data.id
-
-    return matchParallelTrace(trace, data)
-  })
-}
-
 const finishWorkflowNode = (current: WorkflowProcess | undefined, data: NodeTracing) => {
   if (data.iteration_id || data.loop_id)
     return current
 
   return updateWorkflowProcess(current, (draft) => {
-    const currentIndex = findWorkflowNodeTraceIndex(draft.tracing, data)
+    const currentIndex = findParallelTraceIndex(draft.tracing, data)
     if (currentIndex > -1) {
       draft.tracing[currentIndex] = {
         ...(draft.tracing[currentIndex].extras
