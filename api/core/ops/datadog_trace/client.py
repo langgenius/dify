@@ -33,8 +33,6 @@ class DatadogTraceClient:
         self.site = site
         self.endpoint = f"https://otlp.{site}/v1/traces"
         self.service_name = service_name
-        self.resource: Resource | None = None
-        self.exporter: OTLPSpanExporter | None = None
         self.tracer_provider: TracerProvider | None = None
         self.span_processor: BatchSpanProcessor | None = None
         self.tracer: trace_api.Tracer | None = None
@@ -44,7 +42,7 @@ class DatadogTraceClient:
         if self.tracer is not None:
             return
 
-        self.resource = Resource(
+        resource = Resource(
             attributes={
                 ResourceAttributes.SERVICE_NAME: self.service_name,
                 ResourceAttributes.SERVICE_VERSION: f"dify-{dify_config.project.version}-{dify_config.COMMIT_SHA}",
@@ -54,14 +52,14 @@ class DatadogTraceClient:
                 ResourceAttributes.TELEMETRY_SDK_NAME: "opentelemetry",
             }
         )
-        self.exporter = OTLPSpanExporter(
+        exporter = OTLPSpanExporter(
             endpoint=self.endpoint,
             headers={"dd-api-key": self.api_key},
             timeout=30,
         )
-        self.tracer_provider = TracerProvider(resource=self.resource)
+        self.tracer_provider = TracerProvider(resource=resource)
         self.span_processor = BatchSpanProcessor(
-            span_exporter=self.exporter,
+            span_exporter=exporter,
             max_queue_size=1000,
             schedule_delay_millis=5000,
             max_export_batch_size=50,
@@ -167,8 +165,6 @@ class DatadogTraceClient:
         except Exception:
             logger.exception("[Datadog] Error during client shutdown")
         finally:
-            self.resource = None
-            self.exporter = None
             self.tracer_provider = None
             self.span_processor = None
             self.tracer = None

@@ -4,8 +4,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from core.ops.datadog_trace.entities import semconv
-from core.ops.datadog_trace.span_builder import DatadogSpanBuilder
+from core.ops.datadog_trace import semconv
+from core.ops.datadog_trace import span_builder
 from core.ops.entities.trace_entity import DatasetRetrievalTraceInfo, MessageTraceInfo, WorkflowTraceInfo
 from core.rag.models.document import Document
 from dify_graph.entities.workflow_node_execution import WorkflowNodeExecution
@@ -18,7 +18,7 @@ class TestOTelMessageFormat:
     def test_convert_dify_prompt_transforms_text_key_to_parts(self):
         prompt = {"role": "system", "text": "You are helpful.\n\n", "files": []}
 
-        result = DatadogSpanBuilder._convert_dify_prompt(prompt)
+        result = span_builder._convert_dify_prompt(prompt)
 
         assert result == {
             "role": "system",
@@ -28,7 +28,7 @@ class TestOTelMessageFormat:
     def test_convert_dify_prompt_handles_content_key(self):
         prompt = {"role": "user", "content": "Hello"}
 
-        result = DatadogSpanBuilder._convert_dify_prompt(prompt)
+        result = span_builder._convert_dify_prompt(prompt)
 
         assert result["parts"][0]["content"] == "Hello"
 
@@ -42,7 +42,7 @@ class TestOTelMessageFormat:
         ],
     )
     def test_clean_provider_name(self, raw: str, expected: str):
-        assert DatadogSpanBuilder._clean_provider_name(raw) == expected
+        assert span_builder._clean_provider_name(raw) == expected
 
 
 class TestBuilderOutputFormat:
@@ -66,7 +66,7 @@ class TestBuilderOutputFormat:
             conversation_mode="chat",
         )
 
-        attrs = DatadogSpanBuilder.build_message_attrs(trace_info)
+        attrs = span_builder.build_message_attrs(trace_info)
 
         assert attrs[semconv.OPERATION_NAME] == "chat"
         assert attrs[semconv.PROVIDER_NAME] == "openai"
@@ -97,7 +97,7 @@ class TestBuilderOutputFormat:
             conversation_mode="chat",
         )
 
-        attrs = DatadogSpanBuilder.build_message_attrs(trace_info)
+        attrs = span_builder.build_message_attrs(trace_info)
 
         input_messages = json.loads(attrs[semconv.INPUT_MESSAGES])
         assert input_messages == [
@@ -120,7 +120,7 @@ class TestBuilderOutputFormat:
         trace_info = MagicMock(spec=WorkflowTraceInfo)
         trace_info.metadata = {}
 
-        attrs = DatadogSpanBuilder.build_workflow_node_attrs(node, trace_info)
+        attrs = span_builder.build_workflow_node_attrs(node, trace_info)
 
         assert semconv.INPUT_MESSAGES in attrs
         assert attrs[semconv.PROVIDER_NAME] == "openai"
@@ -135,7 +135,7 @@ class TestBuilderOutputFormat:
         node.inputs = {"query": "test"}
         node.outputs = {"result": "found"}
 
-        attrs = DatadogSpanBuilder.build_workflow_node_attrs(node, MagicMock())
+        attrs = span_builder.build_workflow_node_attrs(node, MagicMock())
 
         assert attrs[semconv.OPERATION_NAME] == "execute_tool"
         assert attrs[semconv.TOOL_NAME] == "search"
@@ -153,7 +153,7 @@ class TestBuilderOutputFormat:
         trace_info.workflow_run_outputs = {"answer": "Hi"}
         trace_info.conversation_id = None
 
-        attrs = DatadogSpanBuilder.build_workflow_attrs(trace_info)
+        attrs = span_builder.build_workflow_attrs(trace_info)
 
         messages = json.loads(attrs[semconv.INPUT_MESSAGES])
         assert messages[0]["parts"][0]["content"] == "Hello"
@@ -176,7 +176,7 @@ class TestBuilderOutputFormat:
             ],
         )
 
-        attrs = DatadogSpanBuilder.build_retrieval_attrs(trace_info)
+        attrs = span_builder.build_retrieval_attrs(trace_info)
 
         assert attrs[semconv.OPERATION_NAME] == "retrieval"
         assert json.loads(attrs[semconv.INPUT_MESSAGES])[0]["parts"][0]["content"] == "weather"
