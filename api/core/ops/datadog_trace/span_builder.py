@@ -18,37 +18,24 @@ from dify_graph.nodes import BuiltinNodeTypes
 
 class DatadogSpanBuilder:
     @staticmethod
-    def _to_otel_message(role: str, content: str) -> dict[str, Any]:
-        return {"role": role, "parts": [{"type": "text", "content": content}]}
-
-    @staticmethod
-    def _to_otel_output_message(role: str, content: str, finish_reason: str = "stop") -> dict[str, Any]:
-        return {
-            "role": role,
-            "parts": [{"type": "text", "content": content}],
-            "finish_reason": finish_reason,
-        }
+    def _to_otel_message(role: str, content: str, *, finish_reason: str | None = None) -> dict[str, Any]:
+        msg: dict[str, Any] = {"role": role, "parts": [{"type": "text", "content": content}]}
+        if finish_reason is not None:
+            msg["finish_reason"] = finish_reason
+        return msg
 
     @staticmethod
     def _convert_dify_prompt(prompt: dict[str, Any]) -> dict[str, Any]:
-        """
-        Transform Dify prompt payloads into OTel v1.37 chat messages.
-        """
         role = prompt.get("role", "user")
         text = prompt.get("text", "") or prompt.get("content", "")
         return DatadogSpanBuilder._to_otel_message(str(role), str(text).strip())
 
     @staticmethod
     def _clean_provider_name(raw: str) -> str:
-        """
-        Strip Dify's provider prefix so Datadog receives the canonical provider name.
-        """
         if not raw:
             return ""
         if raw.startswith("langgenius/"):
-            parts = raw.split("/")
-            if len(parts) > 1:
-                return parts[1]
+            return raw.split("/", 2)[1]
         return raw
 
     @staticmethod
@@ -77,32 +64,50 @@ class DatadogSpanBuilder:
         return [DatadogSpanBuilder._to_otel_message("user", str(value) if value else "")]
 
     @staticmethod
-    def _extract_role_and_text(item: dict[str, Any]) -> tuple[str, str]:
-        role = str(item.get("role", "assistant"))
-        text = str(item.get("text", "") or item.get("content", "")).strip()
-        return role, text
-
-    @staticmethod
     def _normalize_output_messages(value: Any) -> list[dict[str, Any]]:
         if isinstance(value, list):
             messages: list[dict[str, Any]] = []
             for item in value:
                 if isinstance(item, dict) and "role" in item and ("text" in item or "content" in item):
-                    role, text = DatadogSpanBuilder._extract_role_and_text(item)
-                    messages.append(DatadogSpanBuilder._to_otel_output_message(role, text))
+                    role = str(item.get("role", "assistant"))
+                    text = str(item.get("text", "") or item.get("content", "")).strip()
+                    messages.append(DatadogSpanBuilder._to_otel_message(role, text, finish_reason="stop"))
                 else:
+                    content = DatadogSpanBuilder._safe_json(item)
                     messages.append(
-                        DatadogSpanBuilder._to_otel_output_message("assistant", DatadogSpanBuilder._safe_json(item))
+                        DatadogSpanBuilder._to_otel_message("assistant", content, finish_reason="stop")
                     )
             return messages
 
         if isinstance(value, dict):
             if "role" in value and ("text" in value or "content" in value):
-                role, text = DatadogSpanBuilder._extract_role_and_text(value)
-                return [DatadogSpanBuilder._to_otel_output_message(role, text)]
-            return [DatadogSpanBuilder._to_otel_output_message("assistant", DatadogSpanBuilder._safe_json(value))]
+                role = str(value.get("role", "assistant"))
+                text = str(value.get("text", "") or value.get("content", "")).strip()
+                return [DatadogSpanBuilder._to_otel_message(role, text, finish_reason="stop")]
+            content = DatadogSpanBuilder._safe_json(value)
+            return [DatadogSpanBuilder._to_otel_message("assistant", content, finish_reason="stop")]
 
-        return [DatadogSpanBuilder._to_otel_output_message("assistant", str(value) if value else "")]
+        return [DatadogSpanBuilder._to_otel_message("assistant", str(value) if value else "", finish_reason="stop")]
+
+    @staticmethod
+    def _single_exchange_attrs(
+        operation_name: str,
+        input_text: str,
+        output_text: str,
+        **extra_attrs: Any,
+    ) -> dict[str, Any]:
+        attrs: dict[str, Any] = {
+            semconv.OPERATION_NAME: operation_name,
+            semconv.INPUT_MESSAGES: json.dumps(
+                [DatadogSpanBuilder._to_otel_message("user", input_text)], ensure_ascii=False
+            ),
+            semconv.OUTPUT_MESSAGES: json.dumps(
+                [DatadogSpanBuilder._to_otel_message("assistant", output_text, finish_reason="stop")],
+                ensure_ascii=False,
+            ),
+        }
+        attrs.update(extra_attrs)
+        return attrs
 
     @staticmethod
     def _build_llm_like_attrs(
@@ -138,9 +143,6 @@ class DatadogSpanBuilder:
 
     @staticmethod
     def build_message_attrs(trace_info: MessageTraceInfo) -> dict[str, Any]:
-        """
-        Build Datadog attributes for a message span.
-        """
         metadata = trace_info.metadata or {}
         message_data = trace_info.message_data or {}
 
@@ -164,52 +166,33 @@ class DatadogSpanBuilder:
 
     @staticmethod
     def build_workflow_attrs(trace_info: WorkflowTraceInfo) -> dict[str, Any]:
-        """
-        Build Datadog attributes for a workflow root span.
-        """
         inputs = trace_info.workflow_run_inputs or {}
         outputs = trace_info.workflow_run_outputs or {}
 
         query = inputs.get("sys.query", "") or inputs.get("query", "")
         answer = outputs.get("answer", "") or DatadogSpanBuilder._safe_json(outputs)
 
-        attrs: dict[str, Any] = {
-            semconv.OPERATION_NAME: "workflow",
-            semconv.INPUT_MESSAGES: json.dumps(
-                [DatadogSpanBuilder._to_otel_message("user", str(query))],
-                ensure_ascii=False,
-            ),
-            semconv.OUTPUT_MESSAGES: json.dumps(
-                [DatadogSpanBuilder._to_otel_output_message("assistant", str(answer))],
-                ensure_ascii=False,
-            ),
-        }
-
+        extra: dict[str, Any] = {}
         if trace_info.conversation_id:
-            attrs[semconv.CONVERSATION_ID] = trace_info.conversation_id
-
+            extra[semconv.CONVERSATION_ID] = trace_info.conversation_id
         if app_id := inputs.get("sys.app_id"):
-            attrs[semconv.DIFY_APP_ID] = app_id
+            extra[semconv.DIFY_APP_ID] = app_id
         if workflow_id := inputs.get("sys.workflow_id"):
-            attrs[semconv.DIFY_WORKFLOW_ID] = workflow_id
+            extra[semconv.DIFY_WORKFLOW_ID] = workflow_id
 
-        return attrs
+        return DatadogSpanBuilder._single_exchange_attrs("workflow", str(query), str(answer), **extra)
 
     @staticmethod
     def build_workflow_node_attrs(
         node_execution: WorkflowNodeExecution, trace_info: WorkflowTraceInfo
     ) -> dict[str, Any]:
-        """
-        Dispatch workflow node span attributes based on node type.
-        """
         node_type = node_execution.node_type
 
-        if node_type == BuiltinNodeTypes.LLM:
-            return DatadogSpanBuilder._build_llm_node_attrs(node_execution, trace_info)
-        if node_type == BuiltinNodeTypes.QUESTION_CLASSIFIER:
-            return DatadogSpanBuilder._build_classifier_node_attrs(node_execution, trace_info)
-        if node_type == BuiltinNodeTypes.PARAMETER_EXTRACTOR:
-            return DatadogSpanBuilder._build_extractor_node_attrs(node_execution, trace_info)
+        _prompt_types = (
+            BuiltinNodeTypes.LLM, BuiltinNodeTypes.QUESTION_CLASSIFIER, BuiltinNodeTypes.PARAMETER_EXTRACTOR,
+        )
+        if node_type in _prompt_types:
+            return DatadogSpanBuilder._build_prompt_model_node_attrs(node_execution, trace_info)
         if node_type in (BuiltinNodeTypes.TOOL, BuiltinNodeTypes.HTTP_REQUEST):
             return DatadogSpanBuilder._build_tool_node_attrs(node_execution)
         if node_type == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
@@ -219,116 +202,54 @@ class DatadogSpanBuilder:
         return DatadogSpanBuilder._build_generic_node_attrs(node_execution)
 
     @staticmethod
-    def _build_llm_node_attrs(
+    def _build_prompt_model_node_attrs(
         node_execution: WorkflowNodeExecution, trace_info: WorkflowTraceInfo
     ) -> dict[str, Any]:
-        """
-        Build Datadog attributes for an LLM workflow node.
-        """
         process_data = node_execution.process_data or {}
         outputs = node_execution.outputs or {}
-        usage = process_data.get("usage") or outputs.get("usage") or {}
+        node_type = node_execution.node_type
 
-        provider = DatadogSpanBuilder._clean_provider_name(str(process_data.get("model_provider", "")))
-        model = str(process_data.get("model_name", ""))
-        mode = process_data.get("model_mode", "chat")
-        finish_reason = str(outputs.get("finish_reason", "stop"))
+        # Usage location differs per node type
+        if node_type == BuiltinNodeTypes.PARAMETER_EXTRACTOR:
+            usage = process_data.get("usage") or outputs.get("__usage") or {}
+        elif node_type == BuiltinNodeTypes.LLM:
+            usage = process_data.get("usage") or outputs.get("usage") or {}
+        else:
+            usage = process_data.get("usage", {}) or {}
 
-        raw_prompts = process_data.get("prompts", [])
-        input_messages = [DatadogSpanBuilder._convert_dify_prompt(prompt) for prompt in raw_prompts]
-
-        output_text = str(outputs.get("text", ""))
-        output_messages = [
-            DatadogSpanBuilder._to_otel_output_message("assistant", output_text, finish_reason)
-        ]
-
-        return DatadogSpanBuilder._build_llm_like_attrs(
-            operation_name=mode if mode in ("chat", "completion") else "chat",
-            provider=provider,
-            model=model,
-            input_tokens=usage.get("prompt_tokens", 0) if isinstance(usage, dict) else 0,
-            output_tokens=usage.get("completion_tokens", 0) if isinstance(usage, dict) else 0,
-            input_messages=input_messages,
-            output_messages=output_messages,
-            conversation_id=trace_info.metadata.get("conversation_id"),
-            finish_reason=finish_reason,
-        )
-
-    @staticmethod
-    def _build_classifier_node_attrs(
-        node_execution: WorkflowNodeExecution, trace_info: WorkflowTraceInfo
-    ) -> dict[str, Any]:
-        """
-        Build Datadog attributes for a question classifier node.
-        """
-        process_data = node_execution.process_data or {}
-        outputs = node_execution.outputs or {}
-        usage = process_data.get("usage", {}) or {}
-
-        provider = DatadogSpanBuilder._clean_provider_name(str(process_data.get("model_provider", "")))
-        model = str(process_data.get("model_name", ""))
-        finish_reason = str(process_data.get("finish_reason", "stop"))
+        # Output text location differs per node type
+        if node_type == BuiltinNodeTypes.LLM:
+            output_text = str(outputs.get("text", ""))
+            finish_reason = str(outputs.get("finish_reason", "stop"))
+            mode = process_data.get("model_mode", "chat")
+            operation_name = mode if mode in ("chat", "completion") else "chat"
+        elif node_type == BuiltinNodeTypes.QUESTION_CLASSIFIER:
+            output_text = str(outputs.get("class_name", "") or DatadogSpanBuilder._safe_json(outputs))
+            finish_reason = str(process_data.get("finish_reason", "stop"))
+            operation_name = "chat"
+        else:
+            output_text = str(process_data.get("llm_text", "") or DatadogSpanBuilder._safe_json(outputs))
+            finish_reason = str(process_data.get("finish_reason", "stop"))
+            operation_name = "chat"
 
         raw_prompts = process_data.get("prompts", [])
-        input_messages = [DatadogSpanBuilder._convert_dify_prompt(prompt) for prompt in raw_prompts]
-
-        output_text = outputs.get("class_name", "") or DatadogSpanBuilder._safe_json(outputs)
-        output_messages = [
-            DatadogSpanBuilder._to_otel_output_message("assistant", str(output_text), finish_reason)
-        ]
 
         return DatadogSpanBuilder._build_llm_like_attrs(
-            operation_name="chat",
-            provider=provider,
-            model=model,
+            operation_name=operation_name,
+            provider=DatadogSpanBuilder._clean_provider_name(str(process_data.get("model_provider", ""))),
+            model=str(process_data.get("model_name", "")),
             input_tokens=usage.get("prompt_tokens", 0) if isinstance(usage, dict) else 0,
             output_tokens=usage.get("completion_tokens", 0) if isinstance(usage, dict) else 0,
-            input_messages=input_messages,
-            output_messages=output_messages,
-            conversation_id=trace_info.metadata.get("conversation_id"),
-            finish_reason=finish_reason,
-        )
-
-    @staticmethod
-    def _build_extractor_node_attrs(
-        node_execution: WorkflowNodeExecution, trace_info: WorkflowTraceInfo
-    ) -> dict[str, Any]:
-        """
-        Build Datadog attributes for a parameter extractor node.
-        """
-        process_data = node_execution.process_data or {}
-        outputs = node_execution.outputs or {}
-        usage = process_data.get("usage") or outputs.get("__usage") or {}
-
-        provider = DatadogSpanBuilder._clean_provider_name(str(process_data.get("model_provider", "")))
-        model = str(process_data.get("model_name", ""))
-        finish_reason = str(process_data.get("finish_reason", "stop"))
-
-        raw_prompts = process_data.get("prompts", [])
-        input_messages = [DatadogSpanBuilder._convert_dify_prompt(prompt) for prompt in raw_prompts]
-
-        output_text = process_data.get("llm_text", "") or DatadogSpanBuilder._safe_json(outputs)
-        output_messages = [
-            DatadogSpanBuilder._to_otel_output_message("assistant", str(output_text), finish_reason)
-        ]
-
-        return DatadogSpanBuilder._build_llm_like_attrs(
-            operation_name="chat",
-            provider=provider,
-            model=model,
-            input_tokens=usage.get("prompt_tokens", 0) if isinstance(usage, dict) else 0,
-            output_tokens=usage.get("completion_tokens", 0) if isinstance(usage, dict) else 0,
-            input_messages=input_messages,
-            output_messages=output_messages,
+            input_messages=[DatadogSpanBuilder._convert_dify_prompt(p) for p in raw_prompts],
+            output_messages=[
+                DatadogSpanBuilder._to_otel_message("assistant", output_text, finish_reason=finish_reason)
+            ],
             conversation_id=trace_info.metadata.get("conversation_id"),
             finish_reason=finish_reason,
         )
 
     @staticmethod
     def _build_tool_node_attrs(node_execution: WorkflowNodeExecution) -> dict[str, Any]:
-        """
-        Build Datadog attributes for tool-like workflow nodes.
-        """
         return {
             semconv.OPERATION_NAME: "execute_tool",
             semconv.TOOL_NAME: node_execution.title or "",
@@ -338,88 +259,32 @@ class DatadogSpanBuilder:
 
     @staticmethod
     def _build_retrieval_node_attrs(node_execution: WorkflowNodeExecution) -> dict[str, Any]:
-        """
-        Build Datadog attributes for a knowledge retrieval workflow node.
-        """
         inputs = node_execution.inputs or {}
         outputs = node_execution.outputs or {}
-
-        return {
-            semconv.OPERATION_NAME: "retrieval",
-            semconv.INPUT_MESSAGES: json.dumps(
-                [DatadogSpanBuilder._to_otel_message("user", str(inputs.get("query", "")))],
-                ensure_ascii=False,
-            ),
-            semconv.OUTPUT_MESSAGES: json.dumps(
-                [
-                    DatadogSpanBuilder._to_otel_output_message(
-                        "assistant",
-                        DatadogSpanBuilder._safe_json(outputs.get("result", [])),
-                    )
-                ],
-                ensure_ascii=False,
-            ),
-        }
+        return DatadogSpanBuilder._single_exchange_attrs(
+            "retrieval",
+            str(inputs.get("query", "")),
+            DatadogSpanBuilder._safe_json(outputs.get("result", [])),
+        )
 
     @staticmethod
     def _build_agent_node_attrs(node_execution: WorkflowNodeExecution) -> dict[str, Any]:
-        """
-        Build Datadog attributes for an agent workflow node.
-        """
-        return {
-            semconv.OPERATION_NAME: "invoke_agent",
-            semconv.INPUT_MESSAGES: json.dumps(
-                [
-                    DatadogSpanBuilder._to_otel_message(
-                        "user",
-                        DatadogSpanBuilder._safe_json(node_execution.inputs or {}),
-                    )
-                ],
-                ensure_ascii=False,
-            ),
-            semconv.OUTPUT_MESSAGES: json.dumps(
-                [
-                    DatadogSpanBuilder._to_otel_output_message(
-                        "assistant",
-                        DatadogSpanBuilder._safe_json(node_execution.outputs or {}),
-                    )
-                ],
-                ensure_ascii=False,
-            ),
-        }
+        return DatadogSpanBuilder._single_exchange_attrs(
+            "invoke_agent",
+            DatadogSpanBuilder._safe_json(node_execution.inputs or {}),
+            DatadogSpanBuilder._safe_json(node_execution.outputs or {}),
+        )
 
     @staticmethod
     def _build_generic_node_attrs(node_execution: WorkflowNodeExecution) -> dict[str, Any]:
-        """
-        Build Datadog attributes for non-LLM, non-tool workflow nodes.
-        """
-        return {
-            semconv.OPERATION_NAME: "workflow",
-            semconv.INPUT_MESSAGES: json.dumps(
-                [
-                    DatadogSpanBuilder._to_otel_message(
-                        "user",
-                        DatadogSpanBuilder._safe_json(node_execution.inputs or {}),
-                    )
-                ],
-                ensure_ascii=False,
-            ),
-            semconv.OUTPUT_MESSAGES: json.dumps(
-                [
-                    DatadogSpanBuilder._to_otel_output_message(
-                        "assistant",
-                        DatadogSpanBuilder._safe_json(node_execution.outputs or {}),
-                    )
-                ],
-                ensure_ascii=False,
-            ),
-        }
+        return DatadogSpanBuilder._single_exchange_attrs(
+            "workflow",
+            DatadogSpanBuilder._safe_json(node_execution.inputs or {}),
+            DatadogSpanBuilder._safe_json(node_execution.outputs or {}),
+        )
 
     @staticmethod
     def build_tool_attrs(trace_info: ToolTraceInfo) -> dict[str, Any]:
-        """
-        Build Datadog attributes for a standalone tool trace.
-        """
         tool_result = trace_info.tool_outputs
         if not isinstance(tool_result, str):
             tool_result = DatadogSpanBuilder._safe_json(tool_result)
@@ -433,32 +298,16 @@ class DatadogSpanBuilder:
 
     @staticmethod
     def build_retrieval_attrs(trace_info: DatasetRetrievalTraceInfo) -> dict[str, Any]:
-        """
-        Build Datadog attributes for a standalone dataset retrieval trace.
-        """
         query = str(trace_info.inputs or "")
         documents = trace_info.documents or []
 
-        doc_data = []
-        for doc in documents:
-            if isinstance(doc, dict):
-                doc_data.append({"content": doc.get("page_content", ""), "metadata": doc.get("metadata", {})})
-            else:
-                doc_data.append({"content": doc.page_content, "metadata": doc.metadata})
+        doc_data = [
+            {"content": doc.get("page_content", ""), "metadata": doc.get("metadata", {})}
+            if isinstance(doc, dict)
+            else {"content": doc.page_content, "metadata": doc.metadata}
+            for doc in documents
+        ]
 
-        return {
-            semconv.OPERATION_NAME: "retrieval",
-            semconv.INPUT_MESSAGES: json.dumps(
-                [DatadogSpanBuilder._to_otel_message("user", query)],
-                ensure_ascii=False,
-            ),
-            semconv.OUTPUT_MESSAGES: json.dumps(
-                [
-                    DatadogSpanBuilder._to_otel_output_message(
-                        "assistant",
-                        DatadogSpanBuilder._safe_json(doc_data),
-                    )
-                ],
-                ensure_ascii=False,
-            ),
-        }
+        return DatadogSpanBuilder._single_exchange_attrs(
+            "retrieval", query, DatadogSpanBuilder._safe_json(doc_data)
+        )
