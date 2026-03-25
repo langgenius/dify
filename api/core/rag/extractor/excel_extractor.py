@@ -68,10 +68,15 @@ class ExcelExtractor(BaseExtractor):
                                     number_format = str(cell.number_format) if cell.number_format else ""
                                     if "%" in number_format:
                                         # Extract decimal precision from format (e.g., "0.00%" -> 2, "0%" -> 0)
-                                        precision = self._extract_percentage_precision(number_format)
-                                        if precision is not None:
+                                        precision_result = self._extract_percentage_precision(number_format)
+                                        if precision_result is not None:
+                                            precision, has_hash = precision_result
                                             # Convert decimal to percentage with proper rounding
-                                            value = f"{cell.value * 100:.{precision}f}%"
+                                            formatted_num = f"{cell.value * 100:.{precision}f}"
+                                            # If format uses # (optional decimals), strip trailing zeros
+                                            if has_hash and "." in formatted_num:
+                                                formatted_num = formatted_num.rstrip("0").rstrip(".")
+                                            value = f"{formatted_num}%"
                                         else:
                                             # Fallback if precision can't be determined
                                             value = f"{cell.value * 100:.10g}%"
@@ -104,15 +109,17 @@ class ExcelExtractor(BaseExtractor):
 
         return documents
 
-    def _extract_percentage_precision(self, number_format: str) -> int | None:
+    def _extract_percentage_precision(self, number_format: str) -> tuple[int, bool] | None:
         """
         Extract decimal precision from Excel percentage format string.
         Examples:
-            "0%" -> 0
-            "0.0%" -> 1
-            "0.00%" -> 2
-            "0.#%" -> 1
-        Returns None if precision cannot be determined.
+            "0%" -> (0, False)
+            "0.0%" -> (1, False)
+            "0.00%" -> (2, False)
+            "0.#%" -> (1, True)
+            "0.##%" -> (2, True)
+        Returns tuple of (precision, has_hash) or None if precision cannot be determined.
+        has_hash indicates whether the format uses optional decimal placeholders (#).
         """
         # Match patterns like "0.00%", "0.##%", or "0%" to extract decimal places
         match = PERCENT_PRECISION_REGEX.search(number_format)
@@ -120,10 +127,13 @@ class ExcelExtractor(BaseExtractor):
             decimal_part = match.group(1)
             if decimal_part:
                 # Count the number of placeholders (0 or #) after the decimal point
-                return len(decimal_part)
+                precision = len(decimal_part)
+                # Check if any # placeholders are present (optional decimals)
+                has_hash = "#" in decimal_part
+                return (precision, has_hash)
             else:
                 # No decimal part means 0 precision
-                return 0
+                return (0, False)
         return None
 
     def _find_header_and_columns(self, sheet, scan_rows=10) -> tuple[int, dict[int, str], int]:

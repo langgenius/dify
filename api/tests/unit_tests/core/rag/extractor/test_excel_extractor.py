@@ -127,6 +127,8 @@ class TestExcelExtractor:
                 (_FakeCell("Test C"), _FakeCell(0.456, number_format="0.0%")),
                 (_FakeCell("Test D"), _FakeCell(0.12345, number_format="0.00%")),
                 (_FakeCell("Test E"), _FakeCell(123.45, number_format="General")),
+                (_FakeCell("Test Hash 1"), _FakeCell(0.9, number_format="0.#%")),
+                (_FakeCell("Test Hash 2"), _FakeCell(0.912, number_format="0.##%")),
             ],
         )
 
@@ -136,7 +138,7 @@ class TestExcelExtractor:
         extractor = ExcelExtractor("/tmp/test.xlsx")
         docs = extractor.extract()
 
-        assert len(docs) == 5
+        assert len(docs) == 7
         # 0.9 with 0% format should become 90%
         assert '"Score":"90%"' in docs[0].page_content
         assert "0.9" not in docs[0].page_content
@@ -150,3 +152,7 @@ class TestExcelExtractor:
         assert '"Score":"12.35%"' in docs[3].page_content
         # Regular number without percentage format should remain as-is
         assert '"Score":"123.45"' in docs[4].page_content
+        # 0.9 with 0.#% format should become 90% (trailing zero stripped)
+        assert '"Score":"90%"' in docs[5].page_content
+        # 0.912 with 0.##% format should become 91.2% (one trailing zero stripped)
+        assert '"Score":"91.2%"' in docs[6].page_content
