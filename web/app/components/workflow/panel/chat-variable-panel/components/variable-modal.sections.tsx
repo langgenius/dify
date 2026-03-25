@@ -138,7 +138,10 @@ export const ValueSection = ({
         <Input
           placeholder={t('chatVariable.modal.valuePlaceholder', { ns: 'workflow' }) || ''}
           value={value as number | undefined}
-          onChange={e => onArrayChange([Number(e.target.value)])}
+          onChange={(e) => {
+            const rawValue = e.target.value
+            onArrayChange([rawValue === '' ? undefined : Number(rawValue)])
+          }}
           type="number"
         />
       )}

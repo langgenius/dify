@@ -72,7 +72,7 @@ export const buildObjectValueItems = (chatVar?: ConversationVariable): ObjectVal
 export const formatObjectValueFromList = (list: ObjectValueItem[]) => {
   return list.reduce<Record<string, string | number | null>>((acc, curr) => {
     if (curr.key)
-      acc[curr.key] = curr.value || null
+      acc[curr.key] = curr.value === '' || curr.value === undefined ? null : curr.value
     return acc
   }, {})
 }

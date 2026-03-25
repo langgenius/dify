@@ -33,6 +33,11 @@ describe('variable-modal helpers', () => {
       { key: '', type: ChatVarType.Number, value: 1 },
     ])).toEqual({ apiKey: 'secret' })
 
+    expect(formatObjectValueFromList([
+      { key: 'count', type: ChatVarType.Number, value: 0 },
+      { key: 'label', type: ChatVarType.String, value: '' },
+    ])).toEqual({ count: 0, label: null })
+
     expect(formatChatVariableValue({
       editInJSON: false,
       objectValue: [{ key: 'enabled', type: ChatVarType.String, value: 'true' }],

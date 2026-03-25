@@ -90,6 +90,23 @@ describe('useVariableModalState', () => {
     ])
   })
 
+  it('should keep valid object rows when switching to json mode from form mode', () => {
+    const { result } = renderHook(() => useVariableModalState(createOptions()))
+
+    act(() => {
+      result.current.handleTypeChange(ChatVarType.Object)
+      result.current.setObjectValue([
+        { key: '', type: ChatVarType.String, value: undefined },
+        { key: 'timeout', type: ChatVarType.Number, value: 30 },
+      ])
+      result.current.handleEditorChange(true)
+    })
+
+    expect(result.current.editInJSON).toBe(true)
+    expect(result.current.value).toEqual({ timeout: 30 })
+    expect(result.current.editorContent).toBe(JSON.stringify({ timeout: 30 }))
+  })
+
   it('should reset object form values when leaving empty json mode', () => {
     const { result } = renderHook(() => useVariableModalState(createOptions({
       chatVar: {
@@ -161,7 +178,7 @@ describe('useVariableModalState', () => {
       result.current.handleSave()
     })
 
-    expect(notify).toHaveBeenCalledWith({ type: 'error', message: 'object key can not be empty' })
+    expect(notify).toHaveBeenCalledWith({ type: 'error', message: 'chatVariable.modal.objectKeyRequired' })
     expect(onSave).not.toHaveBeenCalled()
     expect(onClose).not.toHaveBeenCalled()
   })

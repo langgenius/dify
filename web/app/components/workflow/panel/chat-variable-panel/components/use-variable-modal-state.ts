@@ -108,7 +108,7 @@ export const useVariableModalState = ({
 
       if (prev.type === ChatVarType.Object) {
         if (nextEditInJSON) {
-          const nextValue = !prev.objectValue[0].key ? undefined : formatObjectValueFromList(prev.objectValue)
+          const nextValue = prev.objectValue.some(item => item.key) ? formatObjectValueFromList(prev.objectValue) : undefined
           nextState.value = nextValue
           nextState.editorContent = JSON.stringify(nextValue)
           return nextState
@@ -181,12 +181,15 @@ export const useVariableModalState = ({
       return
 
     if (!chatVar && conversationVariables.some(item => item.name === state.name)) {
-      notify({ type: 'error', message: 'name is existed' })
+      notify({
+        type: 'error',
+        message: t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: t('chatVariable.modal.name', { ns: 'workflow' }) }),
+      })
       return
     }
 
-    if (state.type === ChatVarType.Object && state.objectValue.some(item => !item.key && !!item.value)) {
-      notify({ type: 'error', message: 'object key can not be empty' })
+    if (state.type === ChatVarType.Object && state.objectValue.some(item => !item.key && item.value !== undefined && item.value !== '')) {
+      notify({ type: 'error', message: t('chatVariable.modal.objectKeyRequired', { ns: 'workflow' }) })
       return
     }
 

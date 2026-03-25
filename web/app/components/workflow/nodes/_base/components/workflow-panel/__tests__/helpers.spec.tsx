@@ -75,16 +75,12 @@ describe('workflow-panel helpers', () => {
   })
 
   describe('custom run form fallback', () => {
-    it('should return a fallback message for unsupported custom run form nodes', () => {
+    it('should return null for unsupported custom run form nodes', () => {
       const form = getCustomRunForm({
         ...createCustomRunFormProps({ type: BlockEnum.Tool }),
       })
 
-      expect(form).toMatchObject({
-        props: {
-          children: expect.arrayContaining(['Custom Run Form:', ' ', 'not found']),
-        },
-      })
+      expect(form).toBeNull()
     })
   })
 })

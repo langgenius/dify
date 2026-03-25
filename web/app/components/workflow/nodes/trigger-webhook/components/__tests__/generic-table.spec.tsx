@@ -50,6 +50,7 @@ const advancedColumns = [
 describe('GenericTable', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.useRealTimers()
   })
 
   it('should render an empty editable row and append a configured row when typing into the virtual row', async () => {
@@ -144,10 +145,11 @@ describe('GenericTable', () => {
     )
 
     await user.click(screen.getByRole('button', { name: 'Choose method' }))
-    await user.click(await screen.findByRole('option', { name: 'POST' }))
+    await user.click(await screen.findByText('POST'))
 
     await waitFor(() => {
       expect(onChange).toHaveBeenCalledWith([{ method: 'post', preview: '' }])
+      expect(screen.getByRole('button', { name: 'POST' })).toBeInTheDocument()
     })
 
     onChange.mockClear()
