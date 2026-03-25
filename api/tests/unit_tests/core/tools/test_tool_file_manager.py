@@ -14,7 +14,7 @@ import httpx
 import pytest
 
 from core.tools.tool_file_manager import ToolFileManager
-from dify_graph.file import FileTransferMethod
+from graphon.file import FileTransferMethod
 
 
 def _setup_tool_file_signing(monkeypatch: pytest.MonkeyPatch) -> dict[str, str]:

@@ -16,9 +16,9 @@ from controllers.service_api.wraps import (
 )
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
-from dify_graph.model_runtime.entities.model_entities import ModelType
 from fields.dataset_fields import dataset_detail_fields
 from fields.tag_fields import DataSetTag
+from graphon.model_runtime.entities.model_entities import ModelType
 from libs.login import current_user
 from models.account import Account
 from models.dataset import DatasetPermissionEnum

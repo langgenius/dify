@@ -28,38 +28,38 @@ from core.tools.tool_file_manager import ToolFileManager
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
 from core.workflow.file_reference import build_file_reference
-from dify_graph.file import FileTransferMethod, FileType
-from dify_graph.model_runtime.entities import LLMMode
-from dify_graph.model_runtime.entities.llm_entities import (
+from extensions.ext_database import db
+from factories import file_factory
+from graphon.file import FileTransferMethod, FileType
+from graphon.model_runtime.entities import LLMMode
+from graphon.model_runtime.entities.llm_entities import (
     LLMResult,
     LLMResultChunk,
     LLMResultChunkWithStructuredOutput,
     LLMResultWithStructuredOutput,
     LLMUsage,
 )
-from dify_graph.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
-from dify_graph.model_runtime.entities.model_entities import AIModelEntity
-from dify_graph.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from dify_graph.nodes.human_input.entities import HumanInputNodeData
-from dify_graph.nodes.llm.runtime_protocols import (
+from graphon.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
+from graphon.model_runtime.entities.model_entities import AIModelEntity
+from graphon.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from graphon.nodes.human_input.entities import HumanInputNodeData
+from graphon.nodes.llm.runtime_protocols import (
     PreparedLLMProtocol,
     PromptMessageSerializerProtocol,
     RetrieverAttachmentLoaderProtocol,
 )
-from dify_graph.nodes.protocols import FileReferenceFactoryProtocol, HttpClientProtocol, ToolFileManagerProtocol
-from dify_graph.nodes.runtime import (
+from graphon.nodes.protocols import FileReferenceFactoryProtocol, HttpClientProtocol, ToolFileManagerProtocol
+from graphon.nodes.runtime import (
     HumanInputFormStateProtocol,
     HumanInputNodeRuntimeProtocol,
     ToolNodeRuntimeProtocol,
 )
-from dify_graph.nodes.tool.exc import ToolNodeError, ToolRuntimeInvocationError, ToolRuntimeResolutionError
-from dify_graph.nodes.tool_runtime_entities import (
+from graphon.nodes.tool.exc import ToolNodeError, ToolRuntimeInvocationError, ToolRuntimeResolutionError
+from graphon.nodes.tool_runtime_entities import (
     ToolRuntimeHandle,
     ToolRuntimeMessage,
     ToolRuntimeParameter,
 )
-from extensions.ext_database import db
-from factories import file_factory
 from models.dataset import SegmentAttachmentBinding
 from models.model import UploadFile
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
@@ -78,9 +78,9 @@ from .system_variables import SystemVariableKey, get_system_text
 if TYPE_CHECKING:
     from core.tools.__base.tool import Tool
     from core.tools.entities.tool_entities import ToolInvokeMessage as CoreToolInvokeMessage
-    from dify_graph.file import File
-    from dify_graph.nodes.llm.file_saver import LLMFileSaver
-    from dify_graph.nodes.tool.entities import ToolNodeData
+    from graphon.file import File
+    from graphon.nodes.llm.file_saver import LLMFileSaver
+    from graphon.nodes.tool.entities import ToolNodeData
 
 
 _file_access_controller = DatabaseFileAccessController()
@@ -104,7 +104,7 @@ def apply_dify_debug_email_recipient(
     enabled: bool,
     actor_id: str | None,
 ) -> DeliveryChannelConfig:
-    """Apply the Dify debugger-specific email recipient override outside `dify_graph`."""
+    """Apply the Dify debugger-specific email recipient override outside `graphon`."""
     if not enabled:
         return method
     if not isinstance(method, EmailDeliveryMethod):
@@ -136,7 +136,7 @@ class DifyFileReferenceFactory(FileReferenceFactoryProtocol):
 
 
 class DifyPreparedLLM(PreparedLLMProtocol):
-    """Workflow-layer adapter that hides the full `ModelInstance` API from `dify_graph` nodes."""
+    """Workflow-layer adapter that hides the full `ModelInstance` API from `graphon` nodes."""
 
     def __init__(self, model_instance: ModelInstance) -> None:
         self._model_instance = model_instance
@@ -260,7 +260,7 @@ class DifyRetrieverAttachmentLoader(RetrieverAttachmentLoaderProtocol):
 
 
 class DifyToolFileManager(ToolFileManagerProtocol):
-    """Workflow adapter that resolves conversation scope outside `dify_graph`."""
+    """Workflow adapter that resolves conversation scope outside `graphon`."""
 
     _conversation_id_getter: Callable[[], str | None] | None
 
@@ -308,7 +308,7 @@ class _WorkflowToolRuntimeSpec:
 class _WorkflowToolRuntimeBinding:
     """Workflow-private runtime state stored inside the opaque graph handle.
 
-    The binding keeps conversation scope in `core.workflow` while `dify_graph`
+    The binding keeps conversation scope in `core.workflow` while `graphon`
     continues to treat the handle as an opaque token.
     """
 
@@ -661,7 +661,7 @@ def build_dify_llm_file_saver(
     http_client: HttpClientProtocol,
     conversation_id_getter: Callable[[], str | None] | None = None,
 ) -> LLMFileSaver:
-    from dify_graph.nodes.llm.file_saver import FileSaverImpl
+    from graphon.nodes.llm.file_saver import FileSaverImpl
 
     return FileSaverImpl(
         tool_file_manager=DifyToolFileManager(run_context, conversation_id_getter=conversation_id_getter),

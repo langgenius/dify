@@ -13,7 +13,7 @@ from core.repositories.human_input_repository import (
     HumanInputFormRecipientEntity,
     HumanInputFormRepository,
 )
-from dify_graph.nodes.human_input.enums import HumanInputFormStatus
+from graphon.nodes.human_input.enums import HumanInputFormStatus
 from libs.datetime_utils import naive_utc_now
 
 

@@ -5,7 +5,7 @@ from faker import Faker
 from sqlalchemy.orm import Session
 
 from core.entities.model_entities import ModelStatus
-from dify_graph.model_runtime.entities.model_entities import FetchFrom, ModelType
+from graphon.model_runtime.entities.model_entities import FetchFrom, ModelType
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.provider import Provider, ProviderModel, ProviderModelSetting, ProviderType
 from services.model_provider_service import ModelProviderService
@@ -406,8 +406,8 @@ class TestModelProviderService:
 
         # Create mock models
         from core.entities.model_entities import ModelWithProviderEntity, SimpleModelProviderEntity
-        from dify_graph.model_runtime.entities.common_entities import I18nObject
-        from dify_graph.model_runtime.entities.provider_entities import ProviderEntity
+        from graphon.model_runtime.entities.common_entities import I18nObject
+        from graphon.model_runtime.entities.provider_entities import ProviderEntity
 
         # Create real model objects instead of mocks
         provider_entity_1 = SimpleModelProviderEntity(
@@ -644,7 +644,7 @@ class TestModelProviderService:
 
         # Create mock default model response
         from core.entities.model_entities import DefaultModelEntity, DefaultModelProviderEntity
-        from dify_graph.model_runtime.entities.common_entities import I18nObject
+        from graphon.model_runtime.entities.common_entities import I18nObject
 
         mock_default_model = DefaultModelEntity(
             model="gpt-3.5-turbo",

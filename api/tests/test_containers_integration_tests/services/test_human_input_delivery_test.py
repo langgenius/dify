@@ -10,8 +10,8 @@ from core.workflow.human_input_compat import (
     EmailRecipients,
     ExternalRecipient,
 )
-from dify_graph.enums import BuiltinNodeTypes
-from dify_graph.nodes.human_input.entities import HumanInputNodeData
+from graphon.enums import BuiltinNodeTypes
+from graphon.nodes.human_input.entities import HumanInputNodeData
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowType

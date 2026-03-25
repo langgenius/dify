@@ -7,9 +7,9 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
 from core.workflow.system_variables import SystemVariableKey, get_system_text
-from dify_graph.graph_engine.layers.base import GraphEngineLayer
-from dify_graph.graph_events.base import GraphEngineEvent
-from dify_graph.graph_events.graph import GraphRunPausedEvent
+from graphon.graph_engine.layers.base import GraphEngineLayer
+from graphon.graph_events.base import GraphEngineEvent
+from graphon.graph_events.graph import GraphRunPausedEvent
 from models.model import AppMode
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.factory import DifyAPIRepositoryFactory

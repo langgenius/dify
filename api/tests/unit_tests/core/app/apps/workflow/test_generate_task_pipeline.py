@@ -8,8 +8,8 @@ from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTas
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import QueueWorkflowStartedEvent
 from core.workflow.system_variables import build_system_variables
-from dify_graph.entities.workflow_start_reason import WorkflowStartReason
-from dify_graph.runtime import GraphRuntimeState
+from graphon.entities.workflow_start_reason import WorkflowStartReason
+from graphon.runtime import GraphRuntimeState
 from models.account import Account
 from models.model import AppMode
 from tests.workflow_test_utils import build_test_variable_pool

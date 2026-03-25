@@ -27,12 +27,12 @@ from core.db.session_factory import session_factory
 from core.plugin.impl.datasource import PluginDatasourceManager
 from core.workflow.file_reference import build_file_reference
 from core.workflow.nodes.datasource.entities import DatasourceParameter, OnlineDriveDownloadFileParam
-from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from dify_graph.enums import WorkflowNodeExecutionMetadataKey
-from dify_graph.file import File, get_file_type_by_mime_type
-from dify_graph.file.enums import FileTransferMethod, FileType
-from dify_graph.node_events import NodeRunResult, StreamChunkEvent, StreamCompletedEvent
 from factories import file_factory
+from graphon.entities.workflow_node_execution import WorkflowNodeExecutionStatus
+from graphon.enums import WorkflowNodeExecutionMetadataKey
+from graphon.file import File, get_file_type_by_mime_type
+from graphon.file.enums import FileTransferMethod, FileType
+from graphon.node_events import NodeRunResult, StreamChunkEvent, StreamCompletedEvent
 from models.model import UploadFile
 from models.tools import ToolFile
 from services.datasource_provider_service import DatasourceProviderService

@@ -2,9 +2,9 @@ from unittest.mock import Mock
 
 import pytest
 
-from dify_graph.model_runtime.entities.common_entities import I18nObject
-from dify_graph.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
-from dify_graph.model_runtime.entities.provider_entities import (
+from graphon.model_runtime.entities.common_entities import I18nObject
+from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
+from graphon.model_runtime.entities.provider_entities import (
     ConfigurateMethod,
     CredentialFormSchema,
     FieldModelSchema,
@@ -13,13 +13,13 @@ from dify_graph.model_runtime.entities.provider_entities import (
     ProviderCredentialSchema,
     ProviderEntity,
 )
-from dify_graph.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from dify_graph.model_runtime.model_providers.__base.moderation_model import ModerationModel
-from dify_graph.model_runtime.model_providers.__base.rerank_model import RerankModel
-from dify_graph.model_runtime.model_providers.__base.speech2text_model import Speech2TextModel
-from dify_graph.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
-from dify_graph.model_runtime.model_providers.__base.tts_model import TTSModel
-from dify_graph.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
+from graphon.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from graphon.model_runtime.model_providers.__base.moderation_model import ModerationModel
+from graphon.model_runtime.model_providers.__base.rerank_model import RerankModel
+from graphon.model_runtime.model_providers.__base.speech2text_model import Speech2TextModel
+from graphon.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
+from graphon.model_runtime.model_providers.__base.tts_model import TTSModel
+from graphon.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 
 
 def _build_model(model: str, model_type: ModelType) -> AIModelEntity:

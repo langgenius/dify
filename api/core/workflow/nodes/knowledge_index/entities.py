@@ -5,8 +5,8 @@ from pydantic import BaseModel
 from core.rag.index_processor.index_processor_base import SummaryIndexSettingDict
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
-from dify_graph.entities.base_node_data import BaseNodeData
-from dify_graph.enums import NodeType
+from graphon.entities.base_node_data import BaseNodeData
+from graphon.enums import NodeType
 
 
 class RerankingModelConfig(BaseModel):

@@ -39,28 +39,28 @@ from core.workflow.nodes.agent.plugin_strategy_adapter import (
 from core.workflow.nodes.agent.runtime_support import AgentRuntimeSupport
 from core.workflow.system_variables import SystemVariableKey, get_system_text, system_variable_selector
 from core.workflow.template_rendering import CodeExecutorJinja2TemplateRenderer
-from dify_graph.entities.base_node_data import BaseNodeData
-from dify_graph.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
-from dify_graph.enums import BuiltinNodeTypes, NodeType
-from dify_graph.file.file_manager import file_manager
-from dify_graph.graph.graph import NodeFactory
-from dify_graph.model_runtime.memory import PromptMessageMemory
-from dify_graph.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from dify_graph.nodes.base.node import Node
-from dify_graph.nodes.code.code_node import WorkflowCodeExecutor
-from dify_graph.nodes.code.entities import CodeLanguage
-from dify_graph.nodes.code.limits import CodeNodeLimits
-from dify_graph.nodes.document_extractor import UnstructuredApiConfig
-from dify_graph.nodes.http_request import build_http_request_config
-from dify_graph.nodes.llm.entities import LLMNodeData
-from dify_graph.nodes.parameter_extractor.entities import ParameterExtractorNodeData
-from dify_graph.nodes.question_classifier.entities import QuestionClassifierNodeData
 from extensions.ext_database import db
+from graphon.entities.base_node_data import BaseNodeData
+from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
+from graphon.enums import BuiltinNodeTypes, NodeType
+from graphon.file.file_manager import file_manager
+from graphon.graph.graph import NodeFactory
+from graphon.model_runtime.memory import PromptMessageMemory
+from graphon.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from graphon.nodes.base.node import Node
+from graphon.nodes.code.code_node import WorkflowCodeExecutor
+from graphon.nodes.code.entities import CodeLanguage
+from graphon.nodes.code.limits import CodeNodeLimits
+from graphon.nodes.document_extractor import UnstructuredApiConfig
+from graphon.nodes.http_request import build_http_request_config
+from graphon.nodes.llm.entities import LLMNodeData
+from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
+from graphon.nodes.question_classifier.entities import QuestionClassifierNodeData
 from models.model import Conversation
 
 if TYPE_CHECKING:
-    from dify_graph.entities import GraphInitParams
-    from dify_graph.runtime import GraphRuntimeState
+    from graphon.entities import GraphInitParams
+    from graphon.runtime import GraphRuntimeState
 
 LATEST_VERSION = "latest"
 _START_NODE_TYPES: frozenset[NodeType] = frozenset(
@@ -79,7 +79,7 @@ def _import_node_package(package_name: str, *, excluded_modules: frozenset[str] 
 @lru_cache(maxsize=1)
 def register_nodes() -> None:
     """Import production node modules so they self-register with ``Node``."""
-    _import_node_package("dify_graph.nodes")
+    _import_node_package("graphon.nodes")
     _import_node_package("core.workflow.nodes")
 
 
@@ -87,7 +87,7 @@ def get_node_type_classes_mapping() -> Mapping[NodeType, Mapping[str, type[Node]
     """Return a read-only snapshot of the current production node registry.
 
     The workflow layer owns node bootstrap because it must compose built-in
-    `dify_graph.nodes.*` implementations with workflow-local nodes under
+    `graphon.nodes.*` implementations with workflow-local nodes under
     `core.workflow.nodes.*`. Keeping this import side effect here avoids
     reintroducing registry bootstrapping into lower-level graph primitives.
     """
@@ -118,7 +118,7 @@ def get_default_root_node_id(graph_config: Mapping[str, Any]) -> str:
 
     This workflow-layer helper depends on start-node semantics defined by
     `is_start_node_type`, so it intentionally lives next to the node registry
-    instead of in the raw `dify_graph.entities.graph_config` schema module.
+    instead of in the raw `graphon.entities.graph_config` schema module.
     """
     nodes = graph_config.get("nodes")
     if not isinstance(nodes, list):

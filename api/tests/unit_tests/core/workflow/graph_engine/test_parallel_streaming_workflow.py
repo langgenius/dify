@@ -16,19 +16,19 @@ from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.model_manager import ModelInstance
 from core.workflow.node_factory import DifyNodeFactory, get_default_root_node_id
 from core.workflow.system_variables import build_system_variables
-from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
-from dify_graph.graph import Graph
-from dify_graph.graph_engine import GraphEngine, GraphEngineConfig
-from dify_graph.graph_engine.command_channels import InMemoryChannel
-from dify_graph.graph_events import (
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
+from graphon.graph import Graph
+from graphon.graph_engine import GraphEngine, GraphEngineConfig
+from graphon.graph_engine.command_channels import InMemoryChannel
+from graphon.graph_events import (
     GraphRunSucceededEvent,
     NodeRunStartedEvent,
     NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
 )
-from dify_graph.node_events import NodeRunResult, StreamCompletedEvent
-from dify_graph.nodes.llm.node import LLMNode
-from dify_graph.runtime import GraphRuntimeState, VariablePool
+from graphon.node_events import NodeRunResult, StreamCompletedEvent
+from graphon.nodes.llm.node import LLMNode
+from graphon.runtime import GraphRuntimeState, VariablePool
 from tests.workflow_test_utils import build_test_graph_init_params
 
 from .test_table_runner import TableTestRunner

@@ -23,10 +23,10 @@ from controllers.console.wraps import account_initialization_required, setup_req
 from controllers.web.error import InvalidArgumentError, NotFoundError
 from core.app.file_access import DatabaseFileAccessController
 from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
-from dify_graph.variables.types import SegmentType
 from extensions.ext_database import db
 from factories.file_factory import build_from_mapping, build_from_mappings
 from factories.variable_factory import build_segment_with_type
+from graphon.variables.types import SegmentType
 from libs.login import current_user, login_required
 from models import Account
 from models.dataset import Pipeline

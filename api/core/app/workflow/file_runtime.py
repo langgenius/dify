@@ -15,17 +15,17 @@ from core.db.session_factory import session_factory
 from core.helper.ssrf_proxy import ssrf_proxy
 from core.tools.signature import sign_tool_file
 from core.workflow.file_reference import parse_file_reference
-from dify_graph.file.enums import FileTransferMethod
-from dify_graph.file.protocols import HttpResponseProtocol, WorkflowFileRuntimeProtocol
-from dify_graph.file.runtime import set_workflow_file_runtime
 from extensions.ext_storage import storage
+from graphon.file.enums import FileTransferMethod
+from graphon.file.protocols import HttpResponseProtocol, WorkflowFileRuntimeProtocol
+from graphon.file.runtime import set_workflow_file_runtime
 
 if TYPE_CHECKING:
-    from dify_graph.file.models import File
+    from graphon.file.models import File
 
 
 class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
-    """Production runtime wiring for ``dify_graph.file``.
+    """Production runtime wiring for ``graphon.file``.
 
     Opaque file references are resolved back to canonical database records before
     URLs are signed or storage keys are used. When a request-scoped file access

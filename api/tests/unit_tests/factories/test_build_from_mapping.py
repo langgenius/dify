@@ -7,8 +7,8 @@ from httpx import Response
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.app.file_access import DatabaseFileAccessController, FileAccessScope, bind_file_access_scope
 from core.workflow.file_reference import build_file_reference, parse_file_reference, resolve_file_record_id
-from dify_graph.file import File, FileTransferMethod, FileType, FileUploadConfig
 from factories.file_factory.builders import build_from_mapping as _build_from_mapping
+from graphon.file import File, FileTransferMethod, FileType, FileUploadConfig
 from models import ToolFile, UploadFile
 
 # Test Data

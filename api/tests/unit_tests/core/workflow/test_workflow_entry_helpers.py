@@ -10,20 +10,20 @@ from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.model_manager import ModelInstance
 from core.workflow import workflow_entry
 from core.workflow.system_variables import default_system_variables
-from dify_graph.entities.base_node_data import BaseNodeData
-from dify_graph.entities.graph_config import NodeConfigDictAdapter
-from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
-from dify_graph.errors import WorkflowNodeRunFailedError
-from dify_graph.file.enums import FileTransferMethod, FileType
-from dify_graph.file.models import File
-from dify_graph.graph import Graph
-from dify_graph.graph_events import GraphRunFailedEvent
-from dify_graph.model_runtime.entities.llm_entities import LLMUsage
-from dify_graph.node_events import NodeRunResult
-from dify_graph.nodes import BuiltinNodeTypes
-from dify_graph.nodes.base.node import Node
-from dify_graph.runtime import ChildGraphNotFoundError, VariablePool
-from dify_graph.variables.variables import StringVariable
+from graphon.entities.base_node_data import BaseNodeData
+from graphon.entities.graph_config import NodeConfigDictAdapter
+from graphon.enums import NodeType, WorkflowNodeExecutionStatus
+from graphon.errors import WorkflowNodeRunFailedError
+from graphon.file.enums import FileTransferMethod, FileType
+from graphon.file.models import File
+from graphon.graph import Graph
+from graphon.graph_events import GraphRunFailedEvent
+from graphon.model_runtime.entities.llm_entities import LLMUsage
+from graphon.node_events import NodeRunResult
+from graphon.nodes import BuiltinNodeTypes
+from graphon.nodes.base.node import Node
+from graphon.runtime import ChildGraphNotFoundError, VariablePool
+from graphon.variables.variables import StringVariable
 from tests.workflow_test_utils import build_test_graph_init_params, build_test_variable_pool
 
 

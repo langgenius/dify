@@ -7,8 +7,8 @@ from sqlalchemy.orm import Session
 
 from core.app.apps.advanced_chat.app_runner import AdvancedChatAppRunner
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
-from dify_graph.variables import SegmentType
 from factories import variable_factory
+from graphon.variables import SegmentType
 from models import ConversationVariable, Workflow
 
 MINIMAL_GRAPH = {

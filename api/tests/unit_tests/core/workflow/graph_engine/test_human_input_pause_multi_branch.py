@@ -7,8 +7,8 @@ from unittest.mock import MagicMock
 from core.repositories.human_input_repository import HumanInputFormEntity, HumanInputFormRepository
 from core.workflow.node_runtime import DifyHumanInputNodeRuntime
 from core.workflow.system_variables import build_system_variables
-from dify_graph.graph import Graph
-from dify_graph.graph_events import (
+from graphon.graph import Graph
+from graphon.graph_events import (
     GraphRunPausedEvent,
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
@@ -17,23 +17,23 @@ from dify_graph.graph_events import (
     NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
 )
-from dify_graph.graph_events.node import NodeRunHumanInputFormFilledEvent
-from dify_graph.model_runtime.entities.message_entities import PromptMessageRole
-from dify_graph.nodes.base.entities import OutputVariableEntity, OutputVariableType
-from dify_graph.nodes.end.end_node import EndNode
-from dify_graph.nodes.end.entities import EndNodeData
-from dify_graph.nodes.human_input.entities import HumanInputNodeData, UserAction
-from dify_graph.nodes.human_input.human_input_node import HumanInputNode
-from dify_graph.nodes.llm.entities import (
+from graphon.graph_events.node import NodeRunHumanInputFormFilledEvent
+from graphon.model_runtime.entities.message_entities import PromptMessageRole
+from graphon.nodes.base.entities import OutputVariableEntity, OutputVariableType
+from graphon.nodes.end.end_node import EndNode
+from graphon.nodes.end.entities import EndNodeData
+from graphon.nodes.human_input.entities import HumanInputNodeData, UserAction
+from graphon.nodes.human_input.human_input_node import HumanInputNode
+from graphon.nodes.llm.entities import (
     ContextConfig,
     LLMNodeChatModelMessage,
     LLMNodeData,
     ModelConfig,
     VisionConfig,
 )
-from dify_graph.nodes.start.entities import StartNodeData
-from dify_graph.nodes.start.start_node import StartNode
-from dify_graph.runtime import GraphRuntimeState, VariablePool
+from graphon.nodes.start.entities import StartNodeData
+from graphon.nodes.start.start_node import StartNode
+from graphon.runtime import GraphRuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
 from tests.workflow_test_utils import build_test_graph_init_params
 

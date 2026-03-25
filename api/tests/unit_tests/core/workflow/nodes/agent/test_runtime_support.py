@@ -2,7 +2,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 from core.workflow.nodes.agent.runtime_support import AgentRuntimeSupport
-from dify_graph.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.model_entities import ModelType
 
 
 def test_fetch_model_reuses_single_model_assembly():

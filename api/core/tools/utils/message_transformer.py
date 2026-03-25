@@ -12,7 +12,7 @@ import pytz
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool_file_manager import ToolFileManager
 from core.workflow.file_reference import parse_file_reference
-from dify_graph.file import File, FileTransferMethod, FileType
+from graphon.file import File, FileTransferMethod, FileType
 from libs.login import current_user
 from models import Account
 

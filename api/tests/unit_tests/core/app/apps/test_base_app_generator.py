@@ -1,7 +1,7 @@
 import pytest
 
 from core.app.apps.base_app_generator import BaseAppGenerator
-from dify_graph.variables.input_entities import VariableEntity, VariableEntityType
+from graphon.variables.input_entities import VariableEntity, VariableEntityType
 
 
 def test_validate_inputs_with_zero():
@@ -477,7 +477,7 @@ class TestBaseAppGeneratorExtras:
 
     def test_get_draft_var_saver_factory_debugger(self):
         from core.app.entities.app_invoke_entities import InvokeFrom
-        from dify_graph.enums import BuiltinNodeTypes
+        from graphon.enums import BuiltinNodeTypes
         from models import Account
 
         base_app_generator = BaseAppGenerator()

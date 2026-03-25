@@ -7,12 +7,12 @@ from core.tools.utils.configuration import ToolParameterConfigurationManager
 from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.node_runtime import DifyToolNodeRuntime
 from core.workflow.system_variables import build_system_variables
-from dify_graph.enums import WorkflowNodeExecutionStatus
-from dify_graph.graph import Graph
-from dify_graph.node_events import StreamCompletedEvent
-from dify_graph.nodes.protocols import ToolFileManagerProtocol
-from dify_graph.nodes.tool.tool_node import ToolNode
-from dify_graph.runtime import GraphRuntimeState, VariablePool
+from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.graph import Graph
+from graphon.node_events import StreamCompletedEvent
+from graphon.nodes.protocols import ToolFileManagerProtocol
+from graphon.nodes.tool.tool_node import ToolNode
+from graphon.runtime import GraphRuntimeState, VariablePool
 from tests.workflow_test_utils import build_test_graph_init_params
 
 

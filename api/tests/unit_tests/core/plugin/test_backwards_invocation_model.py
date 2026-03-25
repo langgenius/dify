@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 from core.plugin.backwards_invocation.model import PluginModelBackwardsInvocation
 from core.plugin.entities.request import RequestInvokeSummary
-from dify_graph.model_runtime.entities.message_entities import UserPromptMessage
+from graphon.model_runtime.entities.message_entities import UserPromptMessage
 
 
 def test_system_model_helpers_forward_user_id():

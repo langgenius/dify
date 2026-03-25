@@ -1,7 +1,7 @@
 """
 Application-layer context adapters.
 
-Concrete execution-context implementations live here so `dify_graph` only
+Concrete execution-context implementations live here so `graphon` only
 depends on injected context managers rather than framework state capture.
 """
 

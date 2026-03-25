@@ -3,9 +3,9 @@ from enum import StrEnum, auto
 
 from pydantic import BaseModel, ConfigDict
 
-from dify_graph.model_runtime.entities.common_entities import I18nObject
-from dify_graph.model_runtime.entities.model_entities import ModelType, ProviderModel
-from dify_graph.model_runtime.entities.provider_entities import ProviderEntity
+from graphon.model_runtime.entities.common_entities import I18nObject
+from graphon.model_runtime.entities.model_entities import ModelType, ProviderModel
+from graphon.model_runtime.entities.provider_entities import ProviderEntity
 
 
 class ModelStatus(StrEnum):

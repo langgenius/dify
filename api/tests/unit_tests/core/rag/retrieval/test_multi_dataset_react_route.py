@@ -3,9 +3,9 @@ from unittest.mock import Mock, patch
 
 from core.rag.retrieval.output_parser.react_output import ReactAction, ReactFinish
 from core.rag.retrieval.router.multi_dataset_react_route import ReactMultiDatasetRouter
-from dify_graph.model_runtime.entities.llm_entities import LLMUsage
-from dify_graph.model_runtime.entities.message_entities import PromptMessageRole
-from dify_graph.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.llm_entities import LLMUsage
+from graphon.model_runtime.entities.message_entities import PromptMessageRole
+from graphon.model_runtime.entities.model_entities import ModelType
 
 
 class TestReactMultiDatasetRouter:

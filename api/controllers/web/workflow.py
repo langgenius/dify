@@ -22,9 +22,9 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
-from dify_graph.graph_engine.manager import GraphEngineManager
-from dify_graph.model_runtime.errors.invoke import InvokeError
 from extensions.ext_redis import redis_client
+from graphon.graph_engine.manager import GraphEngineManager
+from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from models.model import App, AppMode, EndUser
 from services.app_generate_service import AppGenerateService

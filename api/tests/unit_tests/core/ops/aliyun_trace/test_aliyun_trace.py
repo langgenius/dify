@@ -34,8 +34,8 @@ from core.ops.entities.trace_entity import (
     ToolTraceInfo,
     WorkflowTraceInfo,
 )
-from dify_graph.entities import WorkflowNodeExecution
-from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
+from graphon.entities import WorkflowNodeExecution
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 
 
 class RecordingTraceClient:

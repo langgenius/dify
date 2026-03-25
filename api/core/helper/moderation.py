@@ -5,10 +5,10 @@ from typing import cast
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.entities import DEFAULT_PLUGIN_ID
 from core.plugin.impl.model_runtime_factory import create_plugin_model_provider_factory
-from dify_graph.model_runtime.entities.model_entities import ModelType
-from dify_graph.model_runtime.errors.invoke import InvokeBadRequestError
-from dify_graph.model_runtime.model_providers.__base.moderation_model import ModerationModel
 from extensions.ext_hosting_provider import hosting_configuration
+from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.errors.invoke import InvokeBadRequestError
+from graphon.model_runtime.model_providers.__base.moderation_model import ModerationModel
 from models.provider import ProviderType
 
 logger = logging.getLogger(__name__)

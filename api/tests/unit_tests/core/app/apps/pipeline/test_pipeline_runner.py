@@ -26,7 +26,7 @@ import pytest
 import core.app.apps.pipeline.pipeline_runner as module
 from core.app.apps.pipeline.pipeline_runner import PipelineRunner
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from dify_graph.graph_events import GraphRunFailedEvent
+from graphon.graph_events import GraphRunFailedEvent
 
 
 def _build_app_generate_entity() -> SimpleNamespace:
