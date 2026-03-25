@@ -293,6 +293,8 @@ class PluginService:
 
         try:
             manager.fetch_plugin_manifest(tenant_id, new_plugin_unique_identifier)
+            # also verify the package file actually exists on disk (not just the DB declaration)
+            manager.decode_plugin_from_identifier(tenant_id, new_plugin_unique_identifier)
             # already downloaded, skip, and record install event
             marketplace.record_install_plugin_event(new_plugin_unique_identifier)
         except Exception:
