@@ -90,7 +90,7 @@ dependencies = [
     "croniter>=6.0.0",
     "weaviate-client==4.20.4",
     "apscheduler>=3.11.0",
-    "weave>=0.52.16",
+    "weave>=0.52.25",
     "fastopenapi[flask]>=0.7.0",
     "bleach~=6.3.0",
 ]
@@ -196,7 +196,7 @@ storage = [
 ############################################################
 # [ Tools ] dependency group
 ############################################################
-tools = ["cloudscraper~=1.2.71", "nltk~=3.9.1"]
+tools = ["cloudscraper~=1.2.71", "nltk~=3.9.4"]
 
 ############################################################
 # [ VDB ] dependency group

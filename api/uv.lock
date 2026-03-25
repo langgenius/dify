@@ -1748,7 +1748,7 @@ requires-dist = [
     { name = "tiktoken", specifier = "~=0.12.0" },
     { name = "transformers", specifier = "~=5.3.0" },
     { name = "unstructured", extras = ["docx", "epub", "md", "ppt", "pptx"], specifier = "~=0.21.5" },
-    { name = "weave", specifier = ">=0.52.16" },
+    { name = "weave", specifier = ">=0.52.25" },
     { name = "weaviate-client", specifier = "==4.20.4" },
     { name = "webvtt-py", specifier = "~=0.5.1" },
     { name = "yarl", specifier = "~=1.23.0" },
@@ -1833,7 +1833,7 @@ storage = [
 ]
 tools = [
     { name = "cloudscraper", specifier = "~=1.2.71" },
-    { name = "nltk", specifier = "~=3.9.1" },
+    { name = "nltk", specifier = "~=3.9.4" },
 ]
 vdb = [
     { name = "alibabacloud-gpdb20160503", specifier = "~=5.1.0" },
