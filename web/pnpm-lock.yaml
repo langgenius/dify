@@ -606,8 +606,8 @@ importers:
         specifier: 3.19.3
         version: 3.19.3
       vinext:
-        specifier: 0.0.34
-        version: 0.0.34(1a91bf00ec5f7fb5f0ffb625316f9d01)
+        specifier: https://pkg.pr.new/vinext@b6a2cac
+        version: https://pkg.pr.new/vinext@b6a2cac(1a91bf00ec5f7fb5f0ffb625316f9d01)
       vite:
         specifier: npm:@voidzero-dev/vite-plus-core@0.1.13
         version: '@voidzero-dev/vite-plus-core@0.1.13(@types/node@25.5.0)(esbuild@0.27.2)(jiti@1.21.7)(sass@1.98.0)(terser@5.46.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)'
@@ -7770,8 +7770,9 @@ packages:
   vfile@6.0.3:
     resolution: {integrity: sha512-KzIbH/9tXat2u30jf+smMwFCsno4wHVdNmzFyL+T/L3UGqqk6JKfVqOFOZEpZSHADH1k40ab6NUIXZq422ov3Q==}
 
-  vinext@0.0.34:
-    resolution: {integrity: sha512-igBP6UrL/tEtT73hPFt6EKmHTKd4lsSZ8luV5oQjmDWPcgGew3FaSt/7vo6qK42mj7yfg5MjvmQ2VmQrm2z8Cw==}
+  vinext@https://pkg.pr.new/vinext@b6a2cac:
+    resolution: {integrity: sha512-/Jm507qqC1dCOhCaorb9H8/I5JEqkcsiUJw0Wgprg7Znym4eyLUvcWcRLVyM9z22Tm0+O1PugcSDA8oNvbqPuQ==, tarball: https://pkg.pr.new/vinext@b6a2cac}
+    version: 0.0.5
     engines: {node: '>=22'}
     hasBin: true
     peerDependencies:
@@ -15977,7 +15978,7 @@ snapshots:
       '@types/unist': 3.0.3
       vfile-message: 4.0.3
 
-  vinext@0.0.34(1a91bf00ec5f7fb5f0ffb625316f9d01):
+  vinext@https://pkg.pr.new/vinext@b6a2cac(1a91bf00ec5f7fb5f0ffb625316f9d01):
     dependencies:
       '@unpic/react': 1.0.2(next@16.2.1(@babel/core@7.29.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.98.0))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@vercel/og': 0.8.6
