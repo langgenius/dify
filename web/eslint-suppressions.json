@@ -965,11 +965,6 @@
       "count": 1
     }
   },
-  "app/components/app/configuration/dataset-config/params-config/weighted-score.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    }
-  },
   "app/components/app/configuration/dataset-config/select-dataset/index.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 2
@@ -2043,11 +2038,6 @@
       "count": 3
     }
   },
-  "app/components/base/features/new-feature-panel/annotation-reply/score-slider/base-slider/index.tsx": {
-    "unicorn/prefer-number-properties": {
-      "count": 1
-    }
-  },
   "app/components/base/features/new-feature-panel/annotation-reply/type.ts": {
     "erasable-syntax-only/enums": {
       "count": 1
@@ -2876,19 +2866,6 @@
   "app/components/base/select/pure.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 3
-    }
-  },
-  "app/components/base/slider/index.stories.tsx": {
-    "no-console": {
-      "count": 2
-    },
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/base/slider/index.tsx": {
-    "tailwindcss/no-unnecessary-whitespace": {
-      "count": 1
     }
   },
   "app/components/base/sort/index.tsx": {
@@ -6862,7 +6839,7 @@
   },
   "app/components/workflow/nodes/_base/components/before-run-form/index.tsx": {
     "ts/no-explicit-any": {
-      "count": 11
+      "count": 5
     }
   },
   "app/components/workflow/nodes/_base/components/before-run-form/panel-wrap.tsx": {
@@ -6980,11 +6957,8 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
-      "count": 33
+      "count": 4
     }
   },
   "app/components/workflow/nodes/_base/components/form-input-type-switch.tsx": {
@@ -7041,9 +7015,6 @@
     }
   },
   "app/components/workflow/nodes/_base/components/memory-config.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    },
     "unicorn/prefer-number-properties": {
       "count": 1
     }
@@ -7221,15 +7192,9 @@
   },
   "app/components/workflow/nodes/_base/components/variable/var-reference-picker.tsx": {
     "no-restricted-imports": {
-      "count": 2
-    },
-    "react/set-state-in-effect": {
       "count": 1
     },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 4
-    },
-    "tailwindcss/no-unnecessary-whitespace": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "ts/no-explicit-any": {
@@ -7340,11 +7305,8 @@
     }
   },
   "app/components/workflow/nodes/_base/node.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
-      "count": 3
+      "count": 1
     }
   },
   "app/components/workflow/nodes/_base/types.ts": {
@@ -7872,12 +7834,6 @@
   "app/components/workflow/nodes/iteration/panel.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    },
-    "tailwindcss/no-unnecessary-whitespace": {
-      "count": 1
     }
   },
   "app/components/workflow/nodes/iteration/use-config.ts": {
@@ -7905,9 +7861,6 @@
   },
   "app/components/workflow/nodes/knowledge-base/components/index-method.tsx": {
     "no-restricted-imports": {
-      "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
   },
@@ -8860,14 +8813,6 @@
       "count": 1
     }
   },
-  "app/components/workflow/panel/chat-variable-panel/components/variable-modal.tsx": {
-    "react/set-state-in-effect": {
-      "count": 8
-    },
-    "ts/no-explicit-any": {
-      "count": 3
-    }
-  },
   "app/components/workflow/panel/chat-variable-panel/components/variable-type-select.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -9169,11 +9114,6 @@
       "count": 15
     }
   },
-  "app/components/workflow/run/tracing-panel.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    }
-  },
   "app/components/workflow/run/utils/format-log/agent/index.ts": {
     "ts/no-explicit-any": {
       "count": 11
@@ -9205,17 +9145,6 @@
     },
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "app/components/workflow/selection-contextmenu.tsx": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    },
-    "ts/no-explicit-any": {
-      "count": 4
     }
   },
   "app/components/workflow/shortcuts-name.tsx": {
@@ -9259,7 +9188,7 @@
       "count": 1
     },
     "ts/no-explicit-any": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/workflow/utils/data-source.ts": {
@@ -9396,7 +9325,7 @@
       "count": 2
     },
     "ts/no-explicit-any": {
-      "count": 8
+      "count": 5
     }
   },
   "app/components/workflow/workflow-history-store.tsx": {

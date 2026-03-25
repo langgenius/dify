@@ -144,7 +144,7 @@ describe('GenericTable', () => {
     )
 
     await user.click(screen.getByRole('button', { name: 'Choose method' }))
-    await user.click(await screen.findByText('POST'))
+    await user.click(await screen.findByRole('option', { name: 'POST' }))
 
     await waitFor(() => {
       expect(onChange).toHaveBeenCalledWith([{ method: 'post', preview: '' }])

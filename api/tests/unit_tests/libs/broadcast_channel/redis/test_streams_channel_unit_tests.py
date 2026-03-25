@@ -230,7 +230,7 @@ class TestStreamsSubscription:
                 if self._calls == 1:
                     key = next(iter(streams))
                     return [(key, [("1-0", self._fields)])]
-                subscription._closed.set()
+                subscription._closed = True
                 return []
 
         subscription = _StreamsSubscription(OneShotRedis(case.fields), "stream:payload-shape")
@@ -244,7 +244,6 @@ class TestStreamsSubscription:
             received.append(bytes(item))
 
         assert received == case.expected_messages
-        assert subscription._last_id == "1-0"
 
     def test_iterator_yields_messages_until_subscription_is_closed(self, streams_channel: StreamsBroadcastChannel):
         topic = streams_channel.topic("iter")
@@ -301,7 +300,7 @@ class TestStreamsSubscription:
 
     def test_start_if_needed_returns_immediately_for_closed_subscription(self):
         subscription = _StreamsSubscription(FakeStreamsRedis(), "stream:already-closed")
-        subscription._closed.set()
+        subscription._closed = True
 
         subscription._start_if_needed()
 
@@ -316,7 +315,7 @@ class TestStreamsSubscription:
         def fake_receive(timeout: float | None = 0.1) -> bytes | None:
             value = next(items)
             if value is not None:
-                subscription._closed.set()
+                subscription._closed = True
             return value
 
         subscription.receive = fake_receive  # type: ignore[method-assign]
