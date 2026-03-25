@@ -4,6 +4,7 @@ from urllib.parse import quote
 from flask import Response, request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 
 from controllers.common.file_response import enforce_download_for_html
 from controllers.common.schema import register_schema_model
@@ -12,8 +13,6 @@ from controllers.service_api.app.error import (
     FileAccessDeniedError,
     FileNotFoundError,
 )
-from sqlalchemy import select
-
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from extensions.ext_database import db
 from extensions.ext_storage import storage

@@ -9,11 +9,10 @@ from flask import current_app, request
 from flask_login import user_logged_in
 from flask_restx import Resource
 from pydantic import BaseModel
+from sqlalchemy import select
 from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 
 from enums.cloud_plan import CloudPlan
-from sqlalchemy import select
-
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.login import current_user
@@ -360,7 +359,9 @@ class DatasetApiResource(Resource):
     method_decorators = [validate_dataset_token]
 
     def get_dataset(self, dataset_id: str, tenant_id: str) -> Dataset:
-        dataset = db.session.scalar(select(Dataset).where(Dataset.id == dataset_id, Dataset.tenant_id == tenant_id).limit(1))
+        dataset = db.session.scalar(
+            select(Dataset).where(Dataset.id == dataset_id, Dataset.tenant_id == tenant_id).limit(1)
+        )
 
         if not dataset:
             raise NotFound("Dataset not found.")

@@ -1,9 +1,8 @@
 from flask_restx import Resource
+from sqlalchemy import select
 from werkzeug.exceptions import Forbidden
 
 from controllers.common.fields import Site as SiteResponse
-from sqlalchemy import select
-
 from controllers.service_api import service_api_ns
 from controllers.service_api.wraps import validate_app_token
 from extensions.ext_database import db
