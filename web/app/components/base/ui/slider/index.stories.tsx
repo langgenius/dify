@@ -38,8 +38,12 @@ export default meta
 
 type Story = StoryObj<typeof meta>
 
-function SliderDemo(args: React.ComponentProps<typeof Slider>) {
-  const [value, setValue] = useState(args.value ?? 50)
+function SliderDemo({
+  value: initialValue = 50,
+  defaultValue: _defaultValue,
+  ...args
+}: React.ComponentProps<typeof Slider>) {
+  const [value, setValue] = useState(initialValue)
 
   return (
     <div className="w-[320px] space-y-3">

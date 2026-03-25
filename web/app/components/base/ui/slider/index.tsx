@@ -7,12 +7,24 @@ import { cn } from '@/utils/classnames'
 type SliderRootProps = BaseSlider.Root.Props<number>
 type SliderThumbProps = BaseSlider.Thumb.Props
 
-export type SliderProps = Pick<
+type SliderBaseProps = Pick<
   SliderRootProps,
-  'value' | 'defaultValue' | 'onValueChange' | 'min' | 'max' | 'step' | 'disabled' | 'name'
+  'onValueChange' | 'min' | 'max' | 'step' | 'disabled' | 'name'
 > & Pick<SliderThumbProps, 'aria-label' | 'aria-labelledby'> & {
   className?: string
 }
+
+type ControlledSliderProps = SliderBaseProps & {
+  value: number
+  defaultValue?: never
+}
+
+type UncontrolledSliderProps = SliderBaseProps & {
+  value?: never
+  defaultValue?: number
+}
+
+export type SliderProps = ControlledSliderProps | UncontrolledSliderProps
 
 const sliderRootClassName = 'group/slider relative inline-flex w-full data-[disabled]:opacity-30'
 const sliderControlClassName = cn(
