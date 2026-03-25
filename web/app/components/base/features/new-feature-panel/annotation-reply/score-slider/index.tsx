@@ -27,7 +27,7 @@ const ScoreSlider: FC<Props> = ({
 
   return (
     <div className={className}>
-      <div className="relative mt-[14px] h-px">
+      <div className="relative mt-[14px]">
         <Slider
           className="w-full"
           value={safeValue}
