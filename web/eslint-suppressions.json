@@ -2153,14 +2153,6 @@
       "count": 1
     }
   },
-  "app/components/base/slider/index.stories.tsx": {
-    "no-console": {
-      "count": 2
-    },
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "app/components/base/sort/index.tsx": {
     "ts/no-explicit-any": {
       "count": 2
@@ -3527,6 +3519,11 @@
       "count": 1
     }
   },
+  "app/components/plugins/install-plugin/install-from-local-package/steps/uploading.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
   "app/components/plugins/install-plugin/install-from-marketplace/index.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -4370,6 +4367,9 @@
     }
   },
   "app/components/workflow-app/hooks/use-workflow-init.ts": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -4764,6 +4764,9 @@
   },
   "app/components/workflow/nodes/_base/components/form-input-item.tsx": {
     "no-restricted-imports": {
+      "count": 1
+    },
+    "react/unsupported-syntax": {
       "count": 1
     }
   },
