@@ -88,7 +88,7 @@ class TestDeliveryTestRegistry:
         with pytest.raises(DeliveryTestUnsupportedError, match="Delivery method does not support test send."):
             registry.dispatch(context=context, method=method)
 
-    def test_default(self, flask_app_with_containers):
+    def test_default(self, flask_app_with_containers, db_session_with_containers):
         registry = DeliveryTestRegistry.default()
         assert len(registry._handlers) == 1
         assert isinstance(registry._handlers[0], EmailDeliveryTestHandler)
