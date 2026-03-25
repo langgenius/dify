@@ -16,6 +16,7 @@ from controllers.inner_api import inner_api_ns
 from controllers.inner_api.wraps import enterprise_inner_api_only
 from extensions.ext_database import db
 from models import Account, App
+from models.account import AccountStatus
 from services.app_dsl_service import AppDslService, ImportMode, ImportStatus
 
 
@@ -104,6 +105,6 @@ def _get_active_account(email: str) -> Account | None:
     Workspace membership is already validated by the Go admin-api caller.
     """
     account = db.session.query(Account).filter_by(email=email).first()
-    if account is None or account.status != "active":
+    if account is None or account.status != AccountStatus.ACTIVE:
         return None
     return account
