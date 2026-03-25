@@ -91,6 +91,26 @@ describe('upsertTopLevelTracingNodeOnStart', () => {
     expect(tracing).toEqual([existingTrace, startedNode])
   })
 
+  it('should update an existing running top-level node when the same node restarts with a new execution id', () => {
+    const tracing: NodeTracing[] = [
+      createTrace({
+        id: 'trace-1',
+        node_id: 'node-1',
+        status: NodeRunningStatus.Running,
+      }),
+    ]
+    const startedNode = createTrace({
+      id: 'trace-2',
+      node_id: 'node-1',
+      status: NodeRunningStatus.Running,
+    })
+
+    const updated = upsertTopLevelTracingNodeOnStart(tracing, startedNode)
+
+    expect(updated).toBe(true)
+    expect(tracing).toEqual([startedNode])
+  })
+
   it('should ignore nested iteration node starts even when the node id matches a top-level trace', () => {
     const existingTrace = createTrace({
       id: 'top-level-trace',
