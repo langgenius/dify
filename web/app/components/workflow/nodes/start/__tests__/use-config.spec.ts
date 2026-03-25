@@ -1,7 +1,6 @@
 import type { StartNodeType } from '../types'
 import type { InputVar, ValueSelector } from '@/app/components/workflow/types'
 import { act, renderHook } from '@testing-library/react'
-import Toast from '@/app/components/base/toast'
 import { BlockEnum, ChangeType, InputVarType } from '@/app/components/workflow/types'
 import useConfig from '../use-config'
 
@@ -11,6 +10,7 @@ const mockUseWorkflow = vi.hoisted(() => vi.fn())
 const mockUseIsChatMode = vi.hoisted(() => vi.fn())
 const mockUseNodeCrud = vi.hoisted(() => vi.fn())
 const mockUseInspectVarsCrud = vi.hoisted(() => vi.fn())
+const mockNotify = vi.hoisted(() => vi.fn())
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => mockUseTranslation(),
@@ -30,6 +30,13 @@ vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-crud', () => ({
 vi.mock('@/app/components/workflow/hooks/use-inspect-vars-crud', () => ({
   __esModule: true,
   default: (...args: unknown[]) => mockUseInspectVarsCrud(...args),
+}))
+
+vi.mock('@/app/components/base/ui/toast', () => ({
+  __esModule: true,
+  toast: {
+    error: (message: string) => mockNotify({ type: 'error', message }),
+  },
 }))
 
 const createInputVar = (overrides: Partial<InputVar> = {}): InputVar => ({
@@ -64,7 +71,7 @@ describe('start/use-config', () => {
   const mockDeleteNodeInspectorVars = vi.fn()
   const mockRenameInspectVarName = vi.fn()
   const mockDeleteInspectVar = vi.fn()
-  const toastSpy = vi.spyOn(Toast, 'notify').mockImplementation(() => ({}))
+  const toastSpy = mockNotify
   let currentInputs: StartNodeType
 
   beforeEach(() => {

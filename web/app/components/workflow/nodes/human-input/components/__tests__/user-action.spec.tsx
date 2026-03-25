@@ -39,10 +39,13 @@ vi.mock('@/app/components/base/button', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
+vi.mock('@/app/components/base/ui/toast', () => ({
   __esModule: true,
-  default: {
-    notify: (...args: unknown[]) => mockNotify(...args),
+  toast: {
+    success: (message: string) => mockNotify({ type: 'success', message }),
+    error: (message: string) => mockNotify({ type: 'error', message }),
+    warning: (message: string) => mockNotify({ type: 'warning', message }),
+    info: (message: string) => mockNotify({ type: 'info', message }),
   },
 }))
 
