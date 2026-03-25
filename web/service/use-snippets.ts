@@ -263,6 +263,17 @@ export const useDeleteSnippetMutation = () => {
   })
 }
 
+export const useExportSnippetMutation = () => {
+  return useMutation<string, Error, { snippetId: string, include?: boolean }>({
+    mutationFn: ({ snippetId, include = false }) => {
+      return consoleClient.snippets.export({
+        params: { snippetId },
+        query: { include_secret: include ? 'true' : 'false' },
+      })
+    },
+  })
+}
+
 export const usePublishSnippetMutation = () => {
   const queryClient = useQueryClient()
 

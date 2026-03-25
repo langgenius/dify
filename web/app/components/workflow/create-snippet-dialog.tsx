@@ -20,12 +20,21 @@ export type CreateSnippetDialogPayload = {
   selectedNodeIds: string[]
 }
 
+export type CreateSnippetDialogInitialValue = {
+  name?: string
+  description?: string
+  icon?: AppIconSelection
+}
+
 type CreateSnippetDialogProps = {
   isOpen: boolean
   selectedNodeIds: string[]
   onClose: () => void
   onConfirm: (payload: CreateSnippetDialogPayload) => void
   isSubmitting?: boolean
+  title?: string
+  confirmText?: string
+  initialValue?: CreateSnippetDialogInitialValue
 }
 
 const defaultIcon: AppIconSelection = {
@@ -40,11 +49,14 @@ const CreateSnippetDialog: FC<CreateSnippetDialogProps> = ({
   onClose,
   onConfirm,
   isSubmitting = false,
+  title,
+  confirmText,
+  initialValue,
 }) => {
   const { t } = useTranslation()
-  const [name, setName] = useState('')
-  const [description, setDescription] = useState('')
-  const [icon, setIcon] = useState<AppIconSelection>(defaultIcon)
+  const [name, setName] = useState(initialValue?.name ?? '')
+  const [description, setDescription] = useState(initialValue?.description ?? '')
+  const [icon, setIcon] = useState<AppIconSelection>(initialValue?.icon ?? defaultIcon)
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
 
   const resetForm = useCallback(() => {
@@ -94,7 +106,7 @@ const CreateSnippetDialog: FC<CreateSnippetDialogProps> = ({
 
           <div className="px-6 pb-3 pt-6">
             <DialogTitle className="text-text-primary title-2xl-semi-bold">
-              {t('snippet.createDialogTitle', { ns: 'workflow' })}
+              {title || t('snippet.createDialogTitle', { ns: 'workflow' })}
             </DialogTitle>
           </div>
 
@@ -148,7 +160,7 @@ const CreateSnippetDialog: FC<CreateSnippetDialogProps> = ({
               loading={isSubmitting}
               onClick={handleConfirm}
             >
-              {t('snippet.confirm', { ns: 'workflow' })}
+              {confirmText || t('snippet.confirm', { ns: 'workflow' })}
               <ShortcutsName className="ml-1" keys={['ctrl', 'enter']} bgColor="white" />
             </Button>
           </div>

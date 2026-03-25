@@ -439,14 +439,16 @@ const SelectionContextmenu = () => {
           ))}
         </ContextMenuContent>
       </ContextMenu>
-      <CreateSnippetDialog
-        isOpen={isCreateSnippetDialogOpen}
-        selectedNodeIds={selectedNodeIdsSnapshot}
-        onClose={handleCloseCreateSnippetDialog}
-        onConfirm={(payload) => {
-          void payload
-        }}
-      />
+      {isCreateSnippetDialogOpen && (
+        <CreateSnippetDialog
+          isOpen={isCreateSnippetDialogOpen}
+          selectedNodeIds={selectedNodeIdsSnapshot}
+          onClose={handleCloseCreateSnippetDialog}
+          onConfirm={(payload) => {
+            void payload
+          }}
+        />
+      )}
     </div>
   )
 }

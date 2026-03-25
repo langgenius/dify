@@ -6,8 +6,8 @@ import type { SnippetDetailPayload, SnippetInputField, SnippetSection } from '@/
 import {
   RiFlaskFill,
   RiFlaskLine,
-  RiGitBranchFill,
-  RiGitBranchLine,
+  RiTerminalWindowFill,
+  RiTerminalWindowLine,
 } from '@remixicon/react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -16,7 +16,7 @@ import AppSideBar from '@/app/components/app-sidebar'
 import NavLink from '@/app/components/app-sidebar/nav-link'
 import SnippetInfo from '@/app/components/app-sidebar/snippet-info'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import Evaluation from '@/app/components/evaluation'
 import { WorkflowWithInnerContext } from '@/app/components/workflow'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -30,8 +30,8 @@ type SnippetMainProps = {
 } & Pick<WorkflowProps, 'nodes' | 'edges' | 'viewport'>
 
 const ORCHESTRATE_ICONS: { normal: NavIcon, selected: NavIcon } = {
-  normal: RiGitBranchLine,
-  selected: RiGitBranchFill,
+  normal: RiTerminalWindowLine,
+  selected: RiTerminalWindowFill,
 }
 
 const EVALUATION_ICONS: { normal: NavIcon, selected: NavIcon } = {
@@ -107,10 +107,7 @@ const SnippetMain = ({
     const duplicated = fields.some(item => item.variable === field.variable && item.variable !== originalVariable)
 
     if (duplicated) {
-      Toast.notify({
-        type: 'error',
-        message: t('inputFieldPanel.error.variableDuplicate', { ns: 'datasetPipeline' }),
-      })
+      toast.error(t('inputFieldPanel.error.variableDuplicate', { ns: 'datasetPipeline' }))
       return
     }
 
