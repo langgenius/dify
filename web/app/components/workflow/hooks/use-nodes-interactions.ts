@@ -1958,6 +1958,8 @@ export const useNodesInteractions = () => {
         else {
           // single node paste
           const selectedNode = nodes.find(node => node.selected)
+          let pastedToNestedBlock = false
+
           if (selectedNode) {
             const commonNestedDisallowPasteNodes = [
               // end node only can be placed outermost layer
@@ -1985,9 +1987,23 @@ export const useNodesInteractions = () => {
               }
               // set position base on parent node
               newNode.position = getNestedNodePosition(newNode, selectedNode)
+
               // update parent children array like native add
               parentChildrenToAppend.push({ parentId: selectedNode.id, childId: newNode.id, childType: newNode.data.type })
+
+              pastedToNestedBlock = true
             }
+          }
+
+          // Clear loop/iteration metadata when pasting outside nested blocks (fixes #29835)
+          // This ensures nodes copied from inside Loop/Iteration are properly independent
+          // when pasted outside
+          if (!pastedToNestedBlock) {
+            newNode.data.isInLoop = false
+            newNode.data.loop_id = undefined
+            newNode.data.isInIteration = false
+            newNode.data.iteration_id = undefined
+            newNode.parentId = undefined
           }
         }
 
