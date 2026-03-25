@@ -1956,21 +1956,26 @@ export const useNodesInteractions = () => {
           newChildren.push(newLoopStartNode!)
         }
         else {
-          // single node paste
+          // Paste a single regular node. Loop/Iteration nodes are handled above.
           const selectedNode = nodes.find(node => node.selected)
           let pastedToNestedBlock = false
 
           if (selectedNode) {
+            // Keep this list aligned with availableBlocksFilter(inContainer)
+            // in use-available-blocks.ts.
             const commonNestedDisallowPasteNodes = [
-              // end node only can be placed outermost layer
               BlockEnum.End,
+              BlockEnum.Iteration,
+              BlockEnum.Loop,
+              BlockEnum.DataSource,
+              BlockEnum.KnowledgeBase,
+              BlockEnum.HumanInput,
             ]
 
-            // handle disallow paste node
-            if ((commonNestedDisallowPasteNodes as BlockEnum[]).includes(nodeToPaste.data.type))
+            if (commonNestedDisallowPasteNodes.includes(nodeToPaste.data.type))
               return
 
-            // handle paste to nested block
+            // If a Loop/Iteration container is selected, paste into it as a child.
             if (selectedNode.data.type === BlockEnum.Iteration || selectedNode.data.type === BlockEnum.Loop) {
               const isIteration = selectedNode.data.type === BlockEnum.Iteration
 
@@ -1985,10 +1990,10 @@ export const useNodesInteractions = () => {
                 x: newNode.position.x,
                 y: newNode.position.y,
               }
-              // set position base on parent node
+              // Rebase position into the selected container coordinate system.
               newNode.position = getNestedNodePosition(newNode, selectedNode)
 
-              // update parent children array like native add
+              // Mirror native add behavior by appending parent._children.
               parentChildrenToAppend.push({ parentId: selectedNode.id, childId: newNode.id, childType: newNode.data.type })
 
               pastedToNestedBlock = true
