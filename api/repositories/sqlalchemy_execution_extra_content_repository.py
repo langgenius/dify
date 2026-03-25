@@ -5,9 +5,10 @@ import logging
 import re
 from collections import defaultdict
 from collections.abc import Sequence
-from typing import Any
+from typing import Any, cast
 
-from sqlalchemy import select
+from sqlalchemy import delete, func, select
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, selectinload, sessionmaker
 
 from core.entities.execution_extra_content import (
@@ -89,6 +90,26 @@ class SQLAlchemyExecutionExtraContentRepository(ExecutionExtraContentRepository)
             grouped_contents[message_id].append(domain_model)
 
         return [grouped_contents[message_id] for message_id in message_ids]
+
+    def delete_by_workflow_run_ids(self, session: Session, workflow_run_ids: Sequence[str]) -> int:
+        if not workflow_run_ids:
+            return 0
+        result = session.execute(
+            delete(ExecutionExtraContentModel).where(ExecutionExtraContentModel.workflow_run_id.in_(workflow_run_ids))
+        )
+        return cast(CursorResult, result).rowcount or 0
+
+    def count_by_workflow_run_ids(self, session: Session, workflow_run_ids: Sequence[str]) -> int:
+        if not workflow_run_ids:
+            return 0
+        return (
+            session.scalar(
+                select(func.count())
+                .select_from(ExecutionExtraContentModel)
+                .where(ExecutionExtraContentModel.workflow_run_id.in_(workflow_run_ids))
+            )
+            or 0
+        )
 
     def _map_model_to_domain(
         self,

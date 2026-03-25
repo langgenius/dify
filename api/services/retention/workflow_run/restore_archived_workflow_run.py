@@ -27,6 +27,8 @@ from libs.archive_storage import (
     ArchiveStorageNotConfiguredError,
     get_archive_storage,
 )
+from models.execution_extra_content import ExecutionExtraContent
+from models.human_input import HumanInputDelivery, HumanInputForm, HumanInputFormRecipient
 from models.trigger import WorkflowTriggerLog
 from models.workflow import (
     WorkflowAppLog,
@@ -52,6 +54,10 @@ TABLE_MODELS = {
     "workflow_node_execution_offload": WorkflowNodeExecutionOffload,
     "workflow_pauses": WorkflowPause,
     "workflow_pause_reasons": WorkflowPauseReason,
+    "human_input_forms": HumanInputForm,
+    "human_input_form_deliveries": HumanInputDelivery,
+    "human_input_form_recipients": HumanInputFormRecipient,
+    "execution_extra_contents": ExecutionExtraContent,
     "workflow_trigger_logs": WorkflowTriggerLog,
 }
 

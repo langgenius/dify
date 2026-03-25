@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from extensions.ext_database import db
 from models.workflow import WorkflowRun
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
+from repositories.sqlalchemy_execution_extra_content_repository import SQLAlchemyExecutionExtraContentRepository
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
 
 
@@ -96,6 +97,7 @@ class ArchivedWorkflowRunDeletion:
                 [run],
                 delete_node_executions=self._delete_node_executions,
                 delete_trigger_logs=self._delete_trigger_logs,
+                delete_execution_extra_contents=self._delete_execution_extra_contents,
             )
             result.deleted_counts = deleted_counts
             result.success = True
@@ -121,6 +123,13 @@ class ArchivedWorkflowRunDeletion:
             session_maker=sessionmaker(bind=session.get_bind(), expire_on_commit=False)
         )
         return repo.delete_by_runs(session, run_ids)
+
+    @staticmethod
+    def _delete_execution_extra_contents(session: Session, run_ids: Sequence[str]) -> int:
+        repo = SQLAlchemyExecutionExtraContentRepository(
+            session_maker=sessionmaker(bind=session.get_bind(), expire_on_commit=False)
+        )
+        return repo.delete_by_workflow_run_ids(session, run_ids)
 
     def _get_workflow_run_repo(self) -> APIWorkflowRunRepository:
         if self.workflow_run_repo is not None:
