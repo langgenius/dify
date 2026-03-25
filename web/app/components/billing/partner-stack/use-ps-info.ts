@@ -31,7 +31,6 @@ const usePSInfo = () => {
       return
     if (!isPSChanged)
       return
-    // console.log('set cookie')
     Cookies.set(PARTNER_STACK_CONFIG.cookieName, JSON.stringify({
       partnerKey: psPartnerKey,
       clickId: psClickId,
