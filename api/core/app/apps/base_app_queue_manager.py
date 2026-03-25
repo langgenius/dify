@@ -90,7 +90,14 @@ class AppQueueManager(ABC):
         """
         self._clear_task_belong_cache()
         self._q.put(None)
-        self._graph_runtime_state = None  # Release reference to allow GC to reclaim memory
+        # NOTE: Do NOT clear self._graph_runtime_state here.
+        # stop_listen() is called from the worker thread (via _publish) immediately
+        # after enqueueing a terminal event. The consumer thread may not have processed
+        # the preceding events yet and still needs to read graph_runtime_state via
+        # _resolve_graph_runtime_state(). Clearing it here causes a race condition
+        # where the consumer sees None and either raises ValueError or produces an
+        # empty response. The reference will be released when the queue manager is
+        # garbage-collected after both threads are done.
 
     def _clear_task_belong_cache(self) -> None:
         """
