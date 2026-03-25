@@ -394,7 +394,7 @@ class ToolNode(Node[ToolNodeData]):
             elif message.type == ToolInvokeMessage.MessageType.RETRIEVER_RESOURCES:
                 assert isinstance(message.message, ToolInvokeMessage.RetrieverResourceMessage)
                 yield RunRetrieverResourceEvent(
-                    retriever_resources=message.message.retriever_resources,
+                    retriever_resources=[r.model_dump() for r in message.message.retriever_resources],
                     context=message.message.context,
                 )
             elif message.type == ToolInvokeMessage.MessageType.LOG:
