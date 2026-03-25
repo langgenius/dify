@@ -21,11 +21,19 @@ import {
 } from '@floating-ui/react'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { LexicalTypeaheadMenuPlugin } from '@lexical/react/LexicalTypeaheadMenuPlugin'
-import { KEY_ESCAPE_COMMAND } from 'lexical'
+import { mergeRegister } from '@lexical/utils'
+import {
+  BLUR_COMMAND,
+  COMMAND_PRIORITY_EDITOR,
+  FOCUS_COMMAND,
+  KEY_ESCAPE_COMMAND,
+} from 'lexical'
 import {
   Fragment,
   memo,
   useCallback,
+  useEffect,
+  useRef,
   useState,
 } from 'react'
 import ReactDOM from 'react-dom'
@@ -87,6 +95,38 @@ const ComponentPicker = ({
   })
 
   const [queryString, setQueryString] = useState<string | null>(null)
+  const [blurHidden, setBlurHidden] = useState(false)
+  const blurTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return mergeRegister(
+      editor.registerCommand(
+        BLUR_COMMAND,
+        (event) => {
+          const target = event?.relatedTarget as HTMLElement
+          if (!target?.classList?.contains('var-search-input')) {
+            if (blurTimerRef.current)
+              clearTimeout(blurTimerRef.current)
+            blurTimerRef.current = setTimeout(() => setBlurHidden(true), 200)
+          }
+          return false
+        },
+        COMMAND_PRIORITY_EDITOR,
+      ),
+      editor.registerCommand(
+        FOCUS_COMMAND,
+        () => {
+          if (blurTimerRef.current) {
+            clearTimeout(blurTimerRef.current)
+            blurTimerRef.current = null
+          }
+          setBlurHidden(false)
+          return false
+        },
+        COMMAND_PRIORITY_EDITOR,
+      ),
+    )
+  }, [editor])
 
   eventEmitter?.useSubscription((v: any) => {
     if (v.type === INSERT_VARIABLE_VALUE_BLOCK_COMMAND)
@@ -159,6 +199,8 @@ const ComponentPicker = ({
     anchorElementRef,
     { options, selectedIndex, selectOptionAndCleanUp, setHighlightedIndex },
   ) => {
+    if (blurHidden)
+      return null
     if (!(anchorElementRef.current && (allFlattenOptions.length || workflowVariableBlock?.show)))
       return null
 
@@ -240,7 +282,7 @@ const ComponentPicker = ({
         }
       </>
     )
-  }, [allFlattenOptions.length, workflowVariableBlock?.show, floatingStyles, isPositioned, refs, workflowVariableOptions, isSupportFileVar, handleClose, currentBlock?.generatorType, handleSelectWorkflowVariable, queryString, workflowVariableBlock?.showManageInputField, workflowVariableBlock?.onManageInputField])
+  }, [blurHidden, allFlattenOptions.length, workflowVariableBlock?.show, floatingStyles, isPositioned, refs, workflowVariableOptions, isSupportFileVar, handleClose, currentBlock?.generatorType, handleSelectWorkflowVariable, queryString, workflowVariableBlock?.showManageInputField, workflowVariableBlock?.onManageInputField])
 
   return (
     <LexicalTypeaheadMenuPlugin
