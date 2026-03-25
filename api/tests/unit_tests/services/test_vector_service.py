@@ -707,22 +707,22 @@ def test_update_multimodel_vector_rolls_back_and_reraises_on_error(monkeypatch: 
     db_mock.session.rollback.assert_called_once()
 
 
-@patch("core.rag.datasource.vdb.vector_factory.Vector._init_vector")
-@patch("core.rag.datasource.vdb.vector_factory.Vector._get_embeddings")
-def test_vector_create_normalizes_child_documents(mock_get_embeddings: Mock, mock_init_vector: Mock) -> None:
+def test_vector_create_normalizes_child_documents() -> None:
     dataset = _make_dataset()
     documents = [ChildDocument(page_content="Child content", metadata={"doc_id": "child-1", "dataset_id": "dataset-1"})]
 
     mock_embeddings = Mock()
     mock_embeddings.embed_documents.return_value = [[0.1] * 1536]
-    mock_get_embeddings.return_value = mock_embeddings
 
     mock_vector_processor = Mock()
-    mock_init_vector.return_value = mock_vector_processor
 
-    vector = Vector(dataset=dataset)
+    with (
+        patch.object(Vector, "_get_embeddings", return_value=mock_embeddings),
+        patch.object(Vector, "_init_vector", return_value=mock_vector_processor),
+    ):
+        vector = Vector(dataset=dataset)
 
-    vector.create(texts=documents)
+        vector.create(texts=documents)
 
     normalized_document = mock_vector_processor.create.call_args.kwargs["texts"][0]
     assert isinstance(normalized_document, Document)
@@ -730,15 +730,11 @@ def test_vector_create_normalizes_child_documents(mock_get_embeddings: Mock, moc
     assert normalized_document.metadata["doc_id"] == "child-1"
 
 
-@patch("core.rag.datasource.vdb.vector_factory.Vector._init_vector")
-@patch("core.rag.datasource.vdb.vector_factory.Vector._get_embeddings")
 @patch("core.rag.datasource.vdb.vector_factory.storage")
 @patch("core.rag.datasource.vdb.vector_factory.db")
 def test_vector_create_multimodal_normalizes_attachment_documents(
     mock_db: Mock,
     mock_storage: Mock,
-    mock_get_embeddings: Mock,
-    mock_init_vector: Mock,
 ) -> None:
     dataset = _make_dataset()
     file_document = AttachmentDocument(
@@ -755,14 +751,16 @@ def test_vector_create_multimodal_normalizes_attachment_documents(
 
     mock_embeddings = Mock()
     mock_embeddings.embed_multimodal_documents.return_value = [[0.2] * 1536]
-    mock_get_embeddings.return_value = mock_embeddings
 
     mock_vector_processor = Mock()
-    mock_init_vector.return_value = mock_vector_processor
 
-    vector = Vector(dataset=dataset)
+    with (
+        patch.object(Vector, "_get_embeddings", return_value=mock_embeddings),
+        patch.object(Vector, "_init_vector", return_value=mock_vector_processor),
+    ):
+        vector = Vector(dataset=dataset)
 
-    vector.create_multimodal(file_documents=[file_document])
+        vector.create_multimodal(file_documents=[file_document])
 
     normalized_document = mock_vector_processor.create.call_args.kwargs["texts"][0]
     assert isinstance(normalized_document, Document)
@@ -770,15 +768,11 @@ def test_vector_create_multimodal_normalizes_attachment_documents(
     assert normalized_document.metadata["doc_id"] == "file-1"
 
 
-@patch("core.rag.datasource.vdb.vector_factory.Vector._init_vector")
-@patch("core.rag.datasource.vdb.vector_factory.Vector._get_embeddings")
 @patch("core.rag.datasource.vdb.vector_factory.storage")
 @patch("core.rag.datasource.vdb.vector_factory.db")
 def test_vector_create_multimodal_falls_back_to_dify_provider_when_attachment_provider_is_none(
     mock_db: Mock,
     mock_storage: Mock,
-    mock_get_embeddings: Mock,
-    mock_init_vector: Mock,
 ) -> None:
     dataset = _make_dataset()
     file_document = AttachmentDocument(
@@ -795,14 +789,16 @@ def test_vector_create_multimodal_falls_back_to_dify_provider_when_attachment_pr
 
     mock_embeddings = Mock()
     mock_embeddings.embed_multimodal_documents.return_value = [[0.2] * 1536]
-    mock_get_embeddings.return_value = mock_embeddings
 
     mock_vector_processor = Mock()
-    mock_init_vector.return_value = mock_vector_processor
 
-    vector = Vector(dataset=dataset)
+    with (
+        patch.object(Vector, "_get_embeddings", return_value=mock_embeddings),
+        patch.object(Vector, "_init_vector", return_value=mock_vector_processor),
+    ):
+        vector = Vector(dataset=dataset)
 
-    vector.create_multimodal(file_documents=[file_document])
+        vector.create_multimodal(file_documents=[file_document])
 
     normalized_document = mock_vector_processor.create.call_args.kwargs["texts"][0]
     assert isinstance(normalized_document, Document)
