@@ -1,15 +1,16 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { toast } from '@/app/components/base/ui/toast'
 import { BodyPayloadValueType, BodyType } from '../../types'
 import CurlPanel from '../curl-panel'
 import * as curlParser from '../curl-parser'
 
 const {
   mockHandleNodeSelect,
-  mockNotify,
+  mockToastError,
 } = vi.hoisted(() => ({
   mockHandleNodeSelect: vi.fn(),
-  mockNotify: vi.fn(),
+  mockToastError: vi.fn(),
 }))
 
 vi.mock('@/app/components/workflow/hooks', () => ({
@@ -18,9 +19,9 @@ vi.mock('@/app/components/workflow/hooks', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
-  default: {
-    notify: mockNotify,
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    error: mockToastError,
   },
 }))
 
@@ -131,9 +132,7 @@ describe('curl-panel', () => {
       await user.type(screen.getByRole('textbox'), 'invalid')
       await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'error',
-      }))
+      expect(vi.mocked(toast.error)).toHaveBeenCalledWith(expect.stringContaining('Invalid cURL command'))
     })
 
     it('should keep the panel open when parsing returns no node and no error', async () => {
@@ -159,7 +158,7 @@ describe('curl-panel', () => {
       expect(onHide).not.toHaveBeenCalled()
       expect(handleCurlImport).not.toHaveBeenCalled()
       expect(mockHandleNodeSelect).not.toHaveBeenCalled()
-      expect(mockNotify).not.toHaveBeenCalled()
+      expect(vi.mocked(toast.error)).not.toHaveBeenCalled()
     })
   })
 })

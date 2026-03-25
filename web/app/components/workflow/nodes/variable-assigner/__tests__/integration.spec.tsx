@@ -3,7 +3,7 @@ import type { VariableAssignerNodeType } from '../types'
 import type { PanelProps } from '@/types/workflow'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import AddVariable from '../components/add-variable'
@@ -18,6 +18,15 @@ const mockHandleAssignVariableValueChange = vi.fn()
 const mockHandleGroupItemMouseEnter = vi.fn()
 const mockHandleGroupItemMouseLeave = vi.fn()
 const mockGetAvailableVars = vi.fn()
+
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
+    warning: vi.fn(),
+    info: vi.fn(),
+  },
+}))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/add-variable-popup', () => ({
   default: ({ onSelect }: any) => (
@@ -102,6 +111,7 @@ vi.mock('../use-config', () => ({
 }))
 
 const mockUseConfig = vi.mocked(useConfig)
+const mockToastError = vi.mocked(toast.error)
 
 const createData = (overrides: Partial<VariableAssignerNodeType> = {}): VariableAssignerNodeType => ({
   title: 'Variable Assigner',
@@ -168,7 +178,6 @@ describe('variable-assigner path', () => {
       },
     ])
     mockUseConfig.mockReturnValue(createConfigResult())
-    vi.spyOn(Toast, 'notify').mockImplementation(() => ({}))
   })
 
   describe('Path Integration', () => {
@@ -296,7 +305,7 @@ describe('variable-assigner path', () => {
 
       await user.click(screen.getByText('Group1'))
       fireEvent.change(screen.getByDisplayValue('Group1'), { target: { value: '1bad' } })
-      expect(Toast.notify).toHaveBeenCalled()
+      expect(mockToastError).toHaveBeenCalled()
 
       fireEvent.change(screen.getByDisplayValue('Group1'), { target: { value: 'Renamed Group' } })
       expect(onGroupNameChange).toHaveBeenCalledWith('Renamed_Group')

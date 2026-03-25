@@ -6381,14 +6381,9 @@
       "count": 1
     }
   },
-  "app/components/tools/workflow-tool/hooks/use-configure-button.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "app/components/tools/workflow-tool/index.tsx": {
     "no-restricted-imports": {
-      "count": 2
+      "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 7
@@ -6591,7 +6586,7 @@
   },
   "app/components/workflow/block-selector/tool-picker.tsx": {
     "no-restricted-imports": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/workflow/block-selector/tool/action-item.tsx": {
@@ -6686,9 +6681,6 @@
     }
   },
   "app/components/workflow/header/header-in-restoring.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/no-unnecessary-whitespace": {
       "count": 1
     }
@@ -6700,9 +6692,6 @@
   },
   "app/components/workflow/header/run-mode.tsx": {
     "no-console": {
-      "count": 1
-    },
-    "no-restricted-imports": {
       "count": 1
     },
     "ts/no-explicit-any": {
@@ -6762,9 +6751,6 @@
     }
   },
   "app/components/workflow/hooks/use-checklist.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-empty-object-type": {
       "count": 1
     },
@@ -6875,9 +6861,6 @@
     }
   },
   "app/components/workflow/nodes/_base/components/before-run-form/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 11
     }
@@ -7315,9 +7298,6 @@
     }
   },
   "app/components/workflow/nodes/_base/components/workflow-panel/last-run/use-last-run.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "react/set-state-in-effect": {
       "count": 1
     },
@@ -7337,9 +7317,6 @@
     }
   },
   "app/components/workflow/nodes/_base/hooks/use-one-step-run.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "react/set-state-in-effect": {
       "count": 2
     },
@@ -7607,7 +7584,7 @@
   },
   "app/components/workflow/nodes/http/components/curl-panel.tsx": {
     "no-restricted-imports": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/workflow/nodes/http/components/key-value/key-value-edit/index.tsx": {
@@ -7664,7 +7641,7 @@
   },
   "app/components/workflow/nodes/human-input/components/delivery-method/email-configure-modal.tsx": {
     "no-restricted-imports": {
-      "count": 2
+      "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 8
@@ -7776,11 +7753,6 @@
       "count": 2
     }
   },
-  "app/components/workflow/nodes/human-input/components/user-action.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "app/components/workflow/nodes/human-input/components/variable-in-markdown.tsx": {
     "react-refresh/only-export-components": {
       "count": 2
@@ -7793,7 +7765,7 @@
   },
   "app/components/workflow/nodes/human-input/panel.tsx": {
     "no-restricted-imports": {
-      "count": 2
+      "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 4
@@ -7893,9 +7865,6 @@
     }
   },
   "app/components/workflow/nodes/iteration/node.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "react/set-state-in-effect": {
       "count": 1
     }
@@ -8203,9 +8172,6 @@
   "app/components/workflow/nodes/llm/components/json-schema-config-modal/json-schema-config.tsx": {
     "erasable-syntax-only/enums": {
       "count": 1
-    },
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "app/components/workflow/nodes/llm/components/json-schema-config-modal/json-schema-generator/generated-result.tsx": {
@@ -8221,7 +8187,7 @@
       "count": 1
     },
     "no-restricted-imports": {
-      "count": 2
+      "count": 1
     },
     "react/set-state-in-effect": {
       "count": 2
@@ -8282,9 +8248,6 @@
     }
   },
   "app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/hooks.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -8304,7 +8267,7 @@
   },
   "app/components/workflow/nodes/llm/panel.tsx": {
     "no-restricted-imports": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/workflow/nodes/llm/types.ts": {
@@ -8414,9 +8377,6 @@
     }
   },
   "app/components/workflow/nodes/loop/components/loop-variables/item.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 4
     }
@@ -8451,7 +8411,7 @@
   },
   "app/components/workflow/nodes/parameter-extractor/components/extract-parameter/update.tsx": {
     "no-restricted-imports": {
-      "count": 3
+      "count": 2
     },
     "ts/no-explicit-any": {
       "count": 1
@@ -8529,11 +8489,6 @@
       "count": 8
     }
   },
-  "app/components/workflow/nodes/start/components/var-list.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "app/components/workflow/nodes/start/node.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
@@ -8548,9 +8503,6 @@
     }
   },
   "app/components/workflow/nodes/start/use-config.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -8629,9 +8581,6 @@
     }
   },
   "app/components/workflow/nodes/tool/hooks/use-config.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 6
     }
@@ -8735,12 +8684,7 @@
   },
   "app/components/workflow/nodes/trigger-webhook/panel.tsx": {
     "no-restricted-imports": {
-      "count": 3
-    }
-  },
-  "app/components/workflow/nodes/trigger-webhook/use-config.ts": {
-    "no-restricted-imports": {
-      "count": 1
+      "count": 2
     }
   },
   "app/components/workflow/nodes/trigger-webhook/utils/render-output-vars.tsx": {
@@ -8764,9 +8708,6 @@
     }
   },
   "app/components/workflow/nodes/variable-assigner/components/var-group-item.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
     },
@@ -8891,9 +8832,6 @@
     }
   },
   "app/components/workflow/panel/chat-variable-panel/components/object-value-item.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "react-refresh/only-export-components": {
       "count": 1
     },
@@ -8923,9 +8861,6 @@
     }
   },
   "app/components/workflow/panel/chat-variable-panel/components/variable-modal.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "react/set-state-in-effect": {
       "count": 8
     },
@@ -8971,9 +8906,6 @@
     }
   },
   "app/components/workflow/panel/debug-and-preview/hooks.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 12
     }
@@ -8998,7 +8930,7 @@
   },
   "app/components/workflow/panel/env-panel/variable-modal.tsx": {
     "no-restricted-imports": {
-      "count": 2
+      "count": 1
     },
     "react/set-state-in-effect": {
       "count": 4
@@ -9152,9 +9084,6 @@
     }
   },
   "app/components/workflow/run/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "react/set-state-in-effect": {
       "count": 2
     }
@@ -9327,7 +9256,7 @@
   },
   "app/components/workflow/update-dsl-modal.tsx": {
     "no-restricted-imports": {
-      "count": 2
+      "count": 1
     },
     "ts/no-explicit-any": {
       "count": 2
