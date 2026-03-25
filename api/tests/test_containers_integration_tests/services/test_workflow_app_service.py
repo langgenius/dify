@@ -11,8 +11,8 @@ from faker import Faker
 from sqlalchemy.orm import Session
 
 from dify_graph.entities.workflow_execution import WorkflowExecutionStatus
-from models import EndUser, Workflow, WorkflowAppLog, WorkflowArchiveLog, WorkflowRun
-from models.enums import AppTriggerType, CreatorUserRole
+from models import Account, EndUser, Workflow, WorkflowAppLog, WorkflowArchiveLog, WorkflowRun
+from models.enums import AppTriggerType, CreatorUserRole, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowAppLogCreatedFrom
 from services.account_service import AccountService, TenantService
 
@@ -1547,7 +1547,9 @@ class TestWorkflowAppService:
     ):
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
         service = WorkflowAppService()
-        workflow, workflow_run = self._create_test_workflow_data(db_session_with_containers, app, account)
+        workflow, workflow_run, _log = self._create_test_workflow_data(
+            db_session_with_containers, app, account
+        )
 
         result = service.get_paginate_workflow_app_logs(
             session=db_session_with_containers,
@@ -1573,27 +1575,33 @@ class TestWorkflowAppService:
         db_session_with_containers.commit()
 
         archive_account = WorkflowArchiveLog(
-            id=str(uuid.uuid4()),
             tenant_id=app.tenant_id,
             app_id=app.id,
-            log_id=str(uuid.uuid4()),
+            workflow_id=str(uuid.uuid4()),
             workflow_run_id=str(uuid.uuid4()),
+            log_id=str(uuid.uuid4()),
             created_by=account.id,
             created_by_role=CreatorUserRole.ACCOUNT,
-            workflow_run_summary={"run": "1"},
             trigger_metadata='{"type":"trigger-webhook"}',
+            run_version="1.0.0",
+            run_status=WorkflowExecutionStatus.SUCCEEDED,
+            run_triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+            run_elapsed_time=1.0,
             run_created_at=datetime.now(UTC),
         )
         archive_end_user = WorkflowArchiveLog(
-            id=str(uuid.uuid4()),
             tenant_id=app.tenant_id,
             app_id=app.id,
-            log_id=str(uuid.uuid4()),
+            workflow_id=str(uuid.uuid4()),
             workflow_run_id=str(uuid.uuid4()),
+            log_id=str(uuid.uuid4()),
             created_by=end_user.id,
             created_by_role=CreatorUserRole.END_USER,
-            workflow_run_summary={"run": "2"},
             trigger_metadata='{"type":"trigger-webhook"}',
+            run_version="1.0.0",
+            run_status=WorkflowExecutionStatus.SUCCEEDED,
+            run_triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+            run_elapsed_time=1.0,
             run_created_at=datetime.now(UTC),
         )
         db_session_with_containers.add_all([archive_account, archive_end_user])
