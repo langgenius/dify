@@ -7,8 +7,8 @@ from uuid import uuid4
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from core.entities.execution_extra_content import ExecutionExtraContentDomainModel
-from dify_graph.file import File
 from fields.conversation_fields import AgentThought, JSONValue, MessageFile
+from graphon.file import File
 
 JSONValueType: TypeAlias = JSONValue
 

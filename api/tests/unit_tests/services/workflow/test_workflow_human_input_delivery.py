@@ -12,9 +12,9 @@ from core.workflow.human_input_compat import (
     ExternalRecipient,
     MemberRecipient,
 )
-from dify_graph.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
-from dify_graph.enums import BuiltinNodeTypes
-from dify_graph.nodes.human_input.entities import HumanInputNodeData
+from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
+from graphon.enums import BuiltinNodeTypes
+from graphon.nodes.human_input.entities import HumanInputNodeData
 from services import workflow_service as workflow_service_module
 from services.workflow_service import WorkflowService
 

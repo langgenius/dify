@@ -29,8 +29,8 @@ from core.workflow.human_input_compat import (
     MemberRecipient,
     WebAppDeliveryMethod,
 )
-from dify_graph.nodes.human_input.entities import HumanInputNodeData, UserAction
-from dify_graph.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
+from graphon.nodes.human_input.entities import HumanInputNodeData, UserAction
+from graphon.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from libs.datetime_utils import naive_utc_now
 from models.human_input import HumanInputFormRecipient, RecipientType
 

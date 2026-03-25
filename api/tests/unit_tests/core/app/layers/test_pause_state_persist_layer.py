@@ -14,17 +14,17 @@ from core.app.layers.pause_state_persist_layer import (
     _WorkflowGenerateEntityWrapper,
 )
 from core.workflow.system_variables import SystemVariableKey
-from dify_graph.entities.pause_reason import SchedulingPause
-from dify_graph.graph_engine.entities.commands import GraphEngineCommand
-from dify_graph.graph_engine.layers.base import GraphEngineLayerNotInitializedError
-from dify_graph.graph_events.graph import (
+from graphon.entities.pause_reason import SchedulingPause
+from graphon.graph_engine.entities.commands import GraphEngineCommand
+from graphon.graph_engine.layers.base import GraphEngineLayerNotInitializedError
+from graphon.graph_events.graph import (
     GraphRunFailedEvent,
     GraphRunPausedEvent,
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
 )
-from dify_graph.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
-from dify_graph.variables.segments import Segment
+from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
+from graphon.variables.segments import Segment
 from models.model import AppMode
 from repositories.factory import DifyAPIRepositoryFactory
 

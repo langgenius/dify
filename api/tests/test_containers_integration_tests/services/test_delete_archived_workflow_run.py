@@ -7,7 +7,7 @@ from uuid import uuid4
 
 from sqlalchemy import select
 
-from dify_graph.enums import WorkflowExecutionStatus
+from graphon.enums import WorkflowExecutionStatus
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowArchiveLog, WorkflowRun
 from services.retention.workflow_run.delete_archived_workflow_run import ArchivedWorkflowRunDeletion

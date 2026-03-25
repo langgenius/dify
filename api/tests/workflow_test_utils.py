@@ -3,9 +3,9 @@ from typing import Any
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
-from dify_graph.entities.graph_init_params import GraphInitParams
-from dify_graph.runtime import VariablePool
-from dify_graph.variables.variables import Variable
+from graphon.entities.graph_init_params import GraphInitParams
+from graphon.runtime import VariablePool
+from graphon.variables.variables import Variable
 
 
 def build_test_run_context(

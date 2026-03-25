@@ -13,11 +13,11 @@ from core.workflow.variable_prefixes import (
     ENVIRONMENT_VARIABLE_NODE_ID,
     SYSTEM_VARIABLE_NODE_ID,
 )
-from dify_graph.enums import BuiltinNodeTypes
-from dify_graph.file.enums import FileTransferMethod, FileType
-from dify_graph.file.models import File
-from dify_graph.variables.segments import StringSegment
-from dify_graph.variables.types import SegmentType
+from graphon.enums import BuiltinNodeTypes
+from graphon.file.enums import FileTransferMethod, FileType
+from graphon.file.models import File
+from graphon.variables.segments import StringSegment
+from graphon.variables.types import SegmentType
 from libs.uuid_utils import uuidv7
 from models.account import Account
 from models.enums import DraftVariableType

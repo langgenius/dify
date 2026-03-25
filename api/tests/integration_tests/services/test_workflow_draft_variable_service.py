@@ -7,14 +7,14 @@ from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
 from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
-from dify_graph.nodes import BuiltinNodeTypes
-from dify_graph.variables.segments import StringSegment
-from dify_graph.variables.types import SegmentType
-from dify_graph.variables.variables import StringVariable
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from extensions.storage.storage_type import StorageType
 from factories.variable_factory import build_segment
+from graphon.nodes import BuiltinNodeTypes
+from graphon.variables.segments import StringSegment
+from graphon.variables.types import SegmentType
+from graphon.variables.variables import StringVariable
 from libs import datetime_utils
 from models.enums import CreatorUserRole
 from models.model import UploadFile

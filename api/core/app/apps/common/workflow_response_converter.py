@@ -54,20 +54,20 @@ from core.trigger.trigger_manager import TriggerManager
 from core.workflow.human_input_forms import load_form_tokens_by_form_id
 from core.workflow.system_variables import SystemVariableKey, system_variables_to_mapping
 from core.workflow.workflow_entry import WorkflowEntry
-from dify_graph.entities.pause_reason import HumanInputRequired
-from dify_graph.entities.workflow_start_reason import WorkflowStartReason
-from dify_graph.enums import (
+from extensions.ext_database import db
+from graphon.entities.pause_reason import HumanInputRequired
+from graphon.entities.workflow_start_reason import WorkflowStartReason
+from graphon.enums import (
     BuiltinNodeTypes,
     WorkflowExecutionStatus,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
-from dify_graph.file import FILE_MODEL_IDENTITY, File
-from dify_graph.runtime import GraphRuntimeState
-from dify_graph.variables.segments import ArrayFileSegment, FileSegment, Segment
-from dify_graph.variables.variables import Variable
-from dify_graph.workflow_type_encoder import WorkflowRuntimeTypeConverter
-from extensions.ext_database import db
+from graphon.file import FILE_MODEL_IDENTITY, File
+from graphon.runtime import GraphRuntimeState
+from graphon.variables.segments import ArrayFileSegment, FileSegment, Segment
+from graphon.variables.variables import Variable
+from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from libs.datetime_utils import naive_utc_now
 from models import Account, EndUser
 from models.human_input import HumanInputForm

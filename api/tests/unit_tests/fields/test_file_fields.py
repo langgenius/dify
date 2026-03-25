@@ -6,9 +6,9 @@ from types import SimpleNamespace
 import pytest
 
 from core.workflow.file_reference import build_file_reference
-from dify_graph.file import File, FileTransferMethod, FileType
 from fields import conversation_fields, message_fields
 from fields.file_fields import FileResponse, FileWithSignedUrl, RemoteFileInfo, UploadConfig
+from graphon.file import File, FileTransferMethod, FileType
 
 
 def test_file_response_serializes_datetime() -> None:

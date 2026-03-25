@@ -24,13 +24,13 @@ from core.workflow.nodes.trigger_webhook.entities import (
     WebhookData,
     WebhookParameter,
 )
-from dify_graph.entities.graph_config import NodeConfigDict
-from dify_graph.file.models import FileTransferMethod
-from dify_graph.variables.types import ArrayValidation, SegmentType
 from enums.quota_type import QuotaType
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from factories import file_factory
+from graphon.entities.graph_config import NodeConfigDict
+from graphon.file.models import FileTransferMethod
+from graphon.variables.types import ArrayValidation, SegmentType
 from models.enums import AppTriggerStatus, AppTriggerType
 from models.model import App
 from models.trigger import AppTrigger, WorkflowWebhookTrigger

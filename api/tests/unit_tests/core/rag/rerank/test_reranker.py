@@ -28,7 +28,7 @@ from core.rag.rerank.rerank_factory import RerankRunnerFactory
 from core.rag.rerank.rerank_model import RerankModelRunner
 from core.rag.rerank.rerank_type import RerankMode
 from core.rag.rerank.weight_rerank import WeightRerankRunner
-from dify_graph.model_runtime.entities.rerank_entities import RerankDocument, RerankResult
+from graphon.model_runtime.entities.rerank_entities import RerankDocument, RerankResult
 
 
 def create_mock_model_instance() -> ModelInstance:

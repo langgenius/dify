@@ -4,7 +4,7 @@ import abc
 from collections.abc import Mapping
 from typing import Any, Protocol
 
-from dify_graph.enums import NodeType
+from graphon.enums import NodeType
 
 
 class DraftVariableSaver(Protocol):

@@ -5,7 +5,7 @@ from core.entities.provider_configuration import ProviderConfiguration, Provider
 from core.entities.provider_entities import CustomConfiguration, CustomProviderConfiguration, SystemConfiguration
 from core.model_manager import ModelInstance
 from core.plugin.impl.model_runtime_factory import create_plugin_model_provider_factory
-from dify_graph.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.model_entities import ModelType
 from models.provider import ProviderType
 
 

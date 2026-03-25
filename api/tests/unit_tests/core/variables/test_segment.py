@@ -7,10 +7,10 @@ from pydantic import BaseModel
 from core.helper import encrypter
 from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
 from core.workflow.variable_pool_initializer import add_variables_to_pool
-from dify_graph.file import File, FileTransferMethod, FileType
-from dify_graph.runtime import VariablePool
-from dify_graph.variables.segment_group import SegmentGroup
-from dify_graph.variables.segments import (
+from graphon.file import File, FileTransferMethod, FileType
+from graphon.runtime import VariablePool
+from graphon.variables.segment_group import SegmentGroup
+from graphon.variables.segments import (
     ArrayAnySegment,
     ArrayFileSegment,
     ArrayNumberSegment,
@@ -26,13 +26,13 @@ from dify_graph.variables.segments import (
     StringSegment,
     get_segment_discriminator,
 )
-from dify_graph.variables.types import SegmentType
-from dify_graph.variables.utils import (
+from graphon.variables.types import SegmentType
+from graphon.variables.utils import (
     dumps_with_segments,
     segment_orjson_default,
     to_selector,
 )
-from dify_graph.variables.variables import (
+from graphon.variables.variables import (
     ArrayAnyVariable,
     ArrayFileVariable,
     ArrayNumberVariable,

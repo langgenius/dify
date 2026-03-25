@@ -15,8 +15,8 @@ from unittest.mock import Mock, patch
 import pytest
 
 from core.tools.utils.model_invocation_utils import InvokeModelError, ModelInvocationUtils
-from dify_graph.model_runtime.entities.model_entities import ModelPropertyKey
-from dify_graph.model_runtime.errors.invoke import (
+from graphon.model_runtime.entities.model_entities import ModelPropertyKey
+from graphon.model_runtime.errors.invoke import (
     InvokeAuthorizationError,
     InvokeBadRequestError,
     InvokeConnectionError,

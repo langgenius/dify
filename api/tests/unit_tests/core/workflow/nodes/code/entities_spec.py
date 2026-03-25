@@ -1,8 +1,8 @@
 import pytest
 from pydantic import ValidationError
 
-from dify_graph.nodes.code.entities import CodeLanguage, CodeNodeData
-from dify_graph.variables.types import SegmentType
+from graphon.nodes.code.entities import CodeLanguage, CodeNodeData
+from graphon.variables.types import SegmentType
 
 
 class TestCodeNodeDataOutput:

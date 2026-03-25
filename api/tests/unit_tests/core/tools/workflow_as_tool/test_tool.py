@@ -24,7 +24,7 @@ from core.tools.entities.tool_entities import (
 )
 from core.tools.errors import ToolInvokeError
 from core.tools.workflow_as_tool.tool import WorkflowTool
-from dify_graph.file import FILE_MODEL_IDENTITY, FileTransferMethod, FileType
+from graphon.file import FILE_MODEL_IDENTITY, FileTransferMethod, FileType
 
 
 class StubScalars:

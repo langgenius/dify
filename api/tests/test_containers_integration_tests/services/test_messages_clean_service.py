@@ -8,9 +8,9 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
-from dify_graph.file.enums import FileType
 from enums.cloud_plan import CloudPlan
 from extensions.ext_redis import redis_client
+from graphon.file.enums import FileType
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import (
     ConversationFromSource,

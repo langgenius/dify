@@ -8,10 +8,10 @@ from core.datasource.datasource_manager import DatasourceManager
 from core.datasource.entities.datasource_entities import DatasourceMessage, DatasourceProviderType
 from core.datasource.errors import DatasourceProviderNotFoundError
 from core.workflow.file_reference import parse_file_reference
-from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from dify_graph.file import File
-from dify_graph.file.enums import FileTransferMethod, FileType
-from dify_graph.node_events import StreamChunkEvent, StreamCompletedEvent
+from graphon.entities.workflow_node_execution import WorkflowNodeExecutionStatus
+from graphon.file import File
+from graphon.file.enums import FileTransferMethod, FileType
+from graphon.node_events import StreamChunkEvent, StreamCompletedEvent
 
 
 def _gen_messages_text_only(text: str) -> Generator[DatasourceMessage, None, None]:

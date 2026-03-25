@@ -21,9 +21,9 @@ from core.app.entities.queue_entities import (
     QueueWorkflowSucceededEvent,
 )
 from core.workflow.system_variables import default_system_variables
-from dify_graph.entities.pause_reason import HumanInputRequired
-from dify_graph.enums import BuiltinNodeTypes
-from dify_graph.graph_events import (
+from graphon.entities.pause_reason import HumanInputRequired
+from graphon.enums import BuiltinNodeTypes
+from graphon.graph_events import (
     GraphRunPausedEvent,
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
@@ -37,9 +37,9 @@ from dify_graph.graph_events import (
     NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
 )
-from dify_graph.node_events import NodeRunResult
-from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.variables.variables import StringVariable
+from graphon.node_events import NodeRunResult
+from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.variables.variables import StringVariable
 
 
 class TestWorkflowBasedAppRunner:

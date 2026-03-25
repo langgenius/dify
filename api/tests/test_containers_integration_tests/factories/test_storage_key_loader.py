@@ -7,10 +7,10 @@ import pytest
 from sqlalchemy.orm import Session
 
 from core.app.file_access import DatabaseFileAccessController
-from dify_graph.file import File, FileTransferMethod, FileType
 from extensions.ext_database import db
 from extensions.storage.storage_type import StorageType
 from factories.file_factory import StorageKeyLoader
+from graphon.file import File, FileTransferMethod, FileType
 from models import ToolFile, UploadFile
 from models.enums import CreatorUserRole
 

@@ -3,7 +3,7 @@ root_packages =
     core
     constants
     context
-    dify_graph
+    graphon
     configs
     controllers
     extensions
@@ -26,22 +26,22 @@ layers =
     runtime
     entities
 containers =
-    dify_graph
+    graphon
 ignore_imports =
-    dify_graph.nodes.base.node -> dify_graph.graph_events
-    dify_graph.nodes.iteration.iteration_node -> dify_graph.graph_events
-    dify_graph.nodes.loop.loop_node -> dify_graph.graph_events
+    graphon.nodes.base.node -> graphon.graph_events
+    graphon.nodes.iteration.iteration_node -> graphon.graph_events
+    graphon.nodes.loop.loop_node -> graphon.graph_events
 
-    dify_graph.nodes.iteration.iteration_node -> dify_graph.graph_engine
-    dify_graph.nodes.loop.loop_node -> dify_graph.graph_engine
+    graphon.nodes.iteration.iteration_node -> graphon.graph_engine
+    graphon.nodes.loop.loop_node -> graphon.graph_engine
     # TODO(QuantumGhost): fix the import violation later
-    dify_graph.entities.pause_reason -> dify_graph.nodes.human_input.entities
+    graphon.entities.pause_reason -> graphon.nodes.human_input.entities
 
 [importlinter:contract:workflow-external-imports]
 name = Workflow External Imports
 type = forbidden
 source_modules =
-    dify_graph
+    graphon
 forbidden_modules =
     constants
     configs
@@ -87,7 +87,7 @@ forbidden_modules =
 name = Workflow Third-Party Imports
 type = forbidden
 source_modules =
-    dify_graph
+    graphon
 forbidden_modules =
     sqlalchemy
 
@@ -98,7 +98,7 @@ layers =
     graph_engine
     response_coordinator
 containers =
-    dify_graph.graph_engine
+    graphon.graph_engine
 
 [importlinter:contract:worker]
 name = Worker
@@ -107,7 +107,7 @@ layers =
     graph_engine
     worker
 containers =
-    dify_graph.graph_engine
+    graphon.graph_engine
 
 [importlinter:contract:graph-engine-architecture]
 name = Graph Engine Architecture
@@ -123,28 +123,28 @@ layers =
     worker_management
     domain
 containers =
-    dify_graph.graph_engine
+    graphon.graph_engine
 
 [importlinter:contract:domain-isolation]
 name = Domain Model Isolation
 type = forbidden
 source_modules =
-    dify_graph.graph_engine.domain
+    graphon.graph_engine.domain
 forbidden_modules =
-    dify_graph.graph_engine.worker_management
-    dify_graph.graph_engine.command_channels
-    dify_graph.graph_engine.layers
-    dify_graph.graph_engine.protocols
+    graphon.graph_engine.worker_management
+    graphon.graph_engine.command_channels
+    graphon.graph_engine.layers
+    graphon.graph_engine.protocols
 
 [importlinter:contract:worker-management]
 name = Worker Management
 type = forbidden
 source_modules =
-    dify_graph.graph_engine.worker_management
+    graphon.graph_engine.worker_management
 forbidden_modules =
-    dify_graph.graph_engine.orchestration
-    dify_graph.graph_engine.command_processing
-    dify_graph.graph_engine.event_management
+    graphon.graph_engine.orchestration
+    graphon.graph_engine.command_processing
+    graphon.graph_engine.event_management
 
 
 [importlinter:contract:graph-traversal-components]
@@ -154,11 +154,11 @@ layers =
     edge_processor
     skip_propagator
 containers =
-    dify_graph.graph_engine.graph_traversal
+    graphon.graph_engine.graph_traversal
 
 [importlinter:contract:command-channels]
 name = Command Channels Independence
 type = independence
 modules =
-    dify_graph.graph_engine.command_channels.in_memory_channel
-    dify_graph.graph_engine.command_channels.redis_channel
+    graphon.graph_engine.command_channels.in_memory_channel
+    graphon.graph_engine.command_channels.redis_channel

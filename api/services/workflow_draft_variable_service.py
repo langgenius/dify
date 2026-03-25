@@ -23,22 +23,22 @@ from core.workflow.variable_prefixes import (
     RAG_PIPELINE_VARIABLE_NODE_ID,
     SYSTEM_VARIABLE_NODE_ID,
 )
-from dify_graph.enums import NodeType
-from dify_graph.file.models import File
-from dify_graph.nodes import BuiltinNodeTypes
-from dify_graph.nodes.variable_assigner.common.helpers import get_updated_variables
-from dify_graph.variable_loader import VariableLoader
-from dify_graph.variables import Segment, StringSegment, VariableBase
-from dify_graph.variables.consts import SELECTORS_LENGTH
-from dify_graph.variables.segments import (
-    ArrayFileSegment,
-    FileSegment,
-)
-from dify_graph.variables.types import SegmentType
-from dify_graph.variables.utils import dumps_with_segments
 from extensions.ext_storage import storage
 from factories.file_factory import StorageKeyLoader
 from factories.variable_factory import build_segment, segment_to_variable
+from graphon.enums import NodeType
+from graphon.file.models import File
+from graphon.nodes import BuiltinNodeTypes
+from graphon.nodes.variable_assigner.common.helpers import get_updated_variables
+from graphon.variable_loader import VariableLoader
+from graphon.variables import Segment, StringSegment, VariableBase
+from graphon.variables.consts import SELECTORS_LENGTH
+from graphon.variables.segments import (
+    ArrayFileSegment,
+    FileSegment,
+)
+from graphon.variables.types import SegmentType
+from graphon.variables.utils import dumps_with_segments
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 from models import Account, App, Conversation
@@ -79,7 +79,7 @@ class UpdateNotSupportedError(WorkflowDraftVariableError):
 class DraftVarLoader(VariableLoader):
     # This implements the VariableLoader interface for loading draft variables.
     #
-    # ref: dify_graph.variable_loader.VariableLoader
+    # ref: graphon.variable_loader.VariableLoader
 
     # Database engine used for loading variables.
     _engine: Engine

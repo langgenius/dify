@@ -17,8 +17,8 @@ from core.workflow.human_input_compat import (
     InteractiveSurfaceDeliveryMethod,
     is_human_input_webapp_enabled,
 )
-from dify_graph.nodes.human_input.entities import FormDefinition, HumanInputNodeData
-from dify_graph.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
+from graphon.nodes.human_input.entities import FormDefinition, HumanInputNodeData
+from graphon.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 from models.account import Account, TenantAccountJoin

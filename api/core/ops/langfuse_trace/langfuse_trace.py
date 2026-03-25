@@ -28,8 +28,8 @@ from core.ops.langfuse_trace.entities.langfuse_trace_entity import (
 )
 from core.ops.utils import filter_none_values
 from core.repositories import DifyCoreRepositoryFactory
-from dify_graph.enums import BuiltinNodeTypes
 from extensions.ext_database import db
+from graphon.enums import BuiltinNodeTypes
 from models import EndUser, WorkflowNodeExecutionTriggeredFrom
 from models.enums import MessageStatus
 

@@ -1,6 +1,6 @@
-from dify_graph.runtime import VariablePool
-from dify_graph.utils.condition.entities import Condition
-from dify_graph.utils.condition.processor import ConditionProcessor
+from graphon.runtime import VariablePool
+from graphon.utils.condition.entities import Condition
+from graphon.utils.condition.processor import ConditionProcessor
 
 
 def test_number_formatting():

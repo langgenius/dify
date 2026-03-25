@@ -3,13 +3,13 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from dify_graph.entities.graph_config import NodeConfigDictAdapter
-from dify_graph.enums import WorkflowNodeExecutionStatus
-from dify_graph.graph_events import GraphRunAbortedEvent
-from dify_graph.model_runtime.entities.llm_entities import LLMUsage
-from dify_graph.node_events import LoopFailedEvent, LoopStartedEvent, StreamCompletedEvent
-from dify_graph.nodes.loop.entities import LoopNodeData
-from dify_graph.nodes.loop.loop_node import LoopNode
+from graphon.entities.graph_config import NodeConfigDictAdapter
+from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.graph_events import GraphRunAbortedEvent
+from graphon.model_runtime.entities.llm_entities import LLMUsage
+from graphon.node_events import LoopFailedEvent, LoopStartedEvent, StreamCompletedEvent
+from graphon.nodes.loop.entities import LoopNodeData
+from graphon.nodes.loop.loop_node import LoopNode
 from tests.workflow_test_utils import build_test_variable_pool
 
 

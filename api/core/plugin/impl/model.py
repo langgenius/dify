@@ -13,12 +13,12 @@ from core.plugin.entities.plugin_daemon import (
     PluginVoicesResponse,
 )
 from core.plugin.impl.base import BasePluginClient
-from dify_graph.model_runtime.entities.llm_entities import LLMResultChunk
-from dify_graph.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
-from dify_graph.model_runtime.entities.model_entities import AIModelEntity
-from dify_graph.model_runtime.entities.rerank_entities import MultimodalRerankInput, RerankResult
-from dify_graph.model_runtime.entities.text_embedding_entities import EmbeddingResult
-from dify_graph.model_runtime.utils.encoders import jsonable_encoder
+from graphon.model_runtime.entities.llm_entities import LLMResultChunk
+from graphon.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
+from graphon.model_runtime.entities.model_entities import AIModelEntity
+from graphon.model_runtime.entities.rerank_entities import MultimodalRerankInput, RerankResult
+from graphon.model_runtime.entities.text_embedding_entities import EmbeddingResult
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 
 
 class PluginModelClient(BasePluginClient):

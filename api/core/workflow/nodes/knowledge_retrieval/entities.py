@@ -3,9 +3,9 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from dify_graph.entities.base_node_data import BaseNodeData
-from dify_graph.enums import BuiltinNodeTypes, NodeType
-from dify_graph.nodes.llm.entities import ModelConfig, VisionConfig
+from graphon.entities.base_node_data import BaseNodeData
+from graphon.enums import BuiltinNodeTypes, NodeType
+from graphon.nodes.llm.entities import ModelConfig, VisionConfig
 
 
 class RerankingModelConfig(BaseModel):

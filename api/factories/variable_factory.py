@@ -1,6 +1,6 @@
 """Compatibility factory for non-graph variable bootstrapping.
 
-Graph runtime segment/variable conversions live under `dify_graph.variables`.
+Graph runtime segment/variable conversions live under `graphon.variables`.
 This module keeps the application-layer mapping helpers and re-exports the
 shared conversion functions for legacy callers and tests.
 """
@@ -13,16 +13,16 @@ from core.workflow.variable_prefixes import (
     CONVERSATION_VARIABLE_NODE_ID,
     ENVIRONMENT_VARIABLE_NODE_ID,
 )
-from dify_graph.variables.exc import VariableError
-from dify_graph.variables.factory import (
+from graphon.variables.exc import VariableError
+from graphon.variables.factory import (
     TypeMismatchError,
     UnsupportedSegmentTypeError,
     build_segment,
     build_segment_with_type,
     segment_to_variable,
 )
-from dify_graph.variables.types import SegmentType
-from dify_graph.variables.variables import (
+from graphon.variables.types import SegmentType
+from graphon.variables.variables import (
     ArrayBooleanVariable,
     ArrayNumberVariable,
     ArrayObjectVariable,

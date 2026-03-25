@@ -16,7 +16,7 @@ from core.repositories.factory import (
     OrderConfig,
     WorkflowNodeExecutionRepository,
 )
-from dify_graph.entities.workflow_node_execution import WorkflowNodeExecution
+from graphon.entities.workflow_node_execution import WorkflowNodeExecution
 from libs.helper import extract_tenant_id
 from models import Account, CreatorUserRole, EndUser
 from models.workflow import WorkflowNodeExecutionTriggeredFrom

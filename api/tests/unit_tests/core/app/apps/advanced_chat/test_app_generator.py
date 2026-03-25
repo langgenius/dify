@@ -1053,7 +1053,7 @@ class TestAdvancedChatAppGeneratorInternals:
                 _ = kwargs
 
             def run(self):
-                from dify_graph.model_runtime.errors.invoke import InvokeAuthorizationError
+                from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 
                 raise InvokeAuthorizationError("bad key")
 

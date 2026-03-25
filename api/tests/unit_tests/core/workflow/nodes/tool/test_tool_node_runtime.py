@@ -17,11 +17,11 @@ from core.tools.tool_manager import ToolManager
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
 from core.workflow.node_runtime import DifyToolNodeRuntime
 from core.workflow.system_variables import build_system_variables
-from dify_graph.model_runtime.entities.llm_entities import LLMUsage
-from dify_graph.nodes.tool.entities import ToolNodeData, ToolProviderType
-from dify_graph.nodes.tool.exc import ToolRuntimeInvocationError
-from dify_graph.nodes.tool_runtime_entities import ToolRuntimeHandle, ToolRuntimeMessage
-from dify_graph.runtime import VariablePool
+from graphon.model_runtime.entities.llm_entities import LLMUsage
+from graphon.nodes.tool.entities import ToolNodeData, ToolProviderType
+from graphon.nodes.tool.exc import ToolRuntimeInvocationError
+from graphon.nodes.tool_runtime_entities import ToolRuntimeHandle, ToolRuntimeMessage
+from graphon.runtime import VariablePool
 from tests.workflow_test_utils import build_test_graph_init_params, build_test_variable_pool
 
 

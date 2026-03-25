@@ -68,13 +68,13 @@ from core.ops.ops_trace_manager import TraceQueueManager
 from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
 from core.workflow.file_reference import resolve_file_record_id
 from core.workflow.system_variables import build_system_variables
-from dify_graph.entities.pause_reason import HumanInputRequired
-from dify_graph.enums import WorkflowExecutionStatus
-from dify_graph.model_runtime.entities.llm_entities import LLMUsage
-from dify_graph.model_runtime.utils.encoders import jsonable_encoder
-from dify_graph.nodes import BuiltinNodeTypes
-from dify_graph.runtime import GraphRuntimeState
 from extensions.ext_database import db
+from graphon.entities.pause_reason import HumanInputRequired
+from graphon.enums import WorkflowExecutionStatus
+from graphon.model_runtime.entities.llm_entities import LLMUsage
+from graphon.model_runtime.utils.encoders import jsonable_encoder
+from graphon.nodes import BuiltinNodeTypes
+from graphon.runtime import GraphRuntimeState
 from libs.datetime_utils import naive_utc_now
 from models import Account, Conversation, EndUser, Message, MessageFile
 from models.enums import CreatorUserRole, MessageFileBelongsTo, MessageStatus

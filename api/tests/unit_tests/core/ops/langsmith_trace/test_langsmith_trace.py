@@ -21,7 +21,7 @@ from core.ops.langsmith_trace.entities.langsmith_trace_entity import (
     LangSmithRunUpdateModel,
 )
 from core.ops.langsmith_trace.langsmith_trace import LangSmithDataTrace
-from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 from models import EndUser
 
 

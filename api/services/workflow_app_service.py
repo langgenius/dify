@@ -7,7 +7,7 @@ from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 from typing_extensions import TypedDict
 
-from dify_graph.enums import WorkflowExecutionStatus
+from graphon.enums import WorkflowExecutionStatus
 from models import Account, App, EndUser, TenantAccountJoin, WorkflowAppLog, WorkflowArchiveLog, WorkflowRun
 from models.enums import AppTriggerType, CreatorUserRole
 from models.trigger import WorkflowTriggerLog

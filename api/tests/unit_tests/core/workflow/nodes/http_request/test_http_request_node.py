@@ -9,11 +9,11 @@ from core.helper.ssrf_proxy import ssrf_proxy
 from core.tools.tool_file_manager import ToolFileManager
 from core.workflow.node_runtime import DifyFileReferenceFactory
 from core.workflow.system_variables import build_system_variables
-from dify_graph.enums import WorkflowNodeExecutionStatus
-from dify_graph.file.file_manager import file_manager
-from dify_graph.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, HttpRequestNode, HttpRequestNodeConfig
-from dify_graph.nodes.http_request.entities import HttpRequestNodeTimeout, Response
-from dify_graph.runtime import GraphRuntimeState, VariablePool
+from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.file.file_manager import file_manager
+from graphon.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, HttpRequestNode, HttpRequestNodeConfig
+from graphon.nodes.http_request.entities import HttpRequestNodeTimeout, Response
+from graphon.runtime import GraphRuntimeState, VariablePool
 from tests.workflow_test_utils import build_test_graph_init_params
 
 HTTP_REQUEST_CONFIG = HttpRequestNodeConfig(
@@ -163,7 +163,7 @@ def test_run_passes_node_data_ssl_verify_to_executor(monkeypatch: pytest.MonkeyP
                 )
             )
 
-    monkeypatch.setattr("dify_graph.nodes.http_request.node.Executor", FakeExecutor)
+    monkeypatch.setattr("graphon.nodes.http_request.node.Executor", FakeExecutor)
 
     result = node._run()
 

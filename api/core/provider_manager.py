@@ -30,17 +30,17 @@ from core.entities.provider_entities import (
 from core.helper import encrypter
 from core.helper.model_provider_cache import ProviderCredentialsCache, ProviderCredentialsCacheType
 from core.helper.position_helper import is_filtered
-from dify_graph.model_runtime.entities.model_entities import ModelType
-from dify_graph.model_runtime.entities.provider_entities import (
+from extensions import ext_hosting_provider
+from extensions.ext_database import db
+from extensions.ext_redis import redis_client
+from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.provider_entities import (
     ConfigurateMethod,
     CredentialFormSchema,
     FormType,
     ProviderEntity,
 )
-from dify_graph.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
-from extensions import ext_hosting_provider
-from extensions.ext_database import db
-from extensions.ext_redis import redis_client
+from graphon.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from models.provider import (
     LoadBalancingModelConfig,
     Provider,
@@ -56,7 +56,7 @@ from models.provider_ids import ModelProviderID
 from services.feature_service import FeatureService
 
 if TYPE_CHECKING:
-    from dify_graph.model_runtime.runtime import ModelRuntime
+    from graphon.model_runtime.runtime import ModelRuntime
 
 
 class ProviderManager:
