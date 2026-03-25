@@ -6,7 +6,7 @@ import { RiArrowDownSLine, RiArrowUpSLine, RiCheckboxCircleFill, RiCheckboxCircl
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactFlow, useViewport } from 'reactflow'
-import { Avatar, AvatarFallback, AvatarImage, avatarPartClassNames, AvatarRoot, getAvatarSizeClassNames } from '@/app/components/base/avatar'
+import { Avatar, AvatarFallback, AvatarImage, AvatarRoot } from '@/app/components/base/avatar'
 import Divider from '@/app/components/base/divider'
 import InlineDeleteConfirm from '@/app/components/base/inline-delete-confirm'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
@@ -18,8 +18,6 @@ import { useParams } from '@/next/navigation'
 import { cn } from '@/utils/classnames'
 import { useStore } from '../store'
 import { MentionInput } from './mention-input'
-
-const threadAvatarSizeClassNames = getAvatarSizeClassNames('sm')
 
 type CommentThreadProps = {
   comment: WorkflowCommentDetail
@@ -122,16 +120,15 @@ const ThreadMessage: FC<{
   return (
     <div className={cn('flex gap-3 pt-1', className)}>
       <div className="shrink-0">
-        <AvatarRoot className={cn(avatarPartClassNames.root, threadAvatarSizeClassNames.root, 'h-8 w-8 rounded-full')}>
+        <AvatarRoot size="sm" className="h-8 w-8 rounded-full">
           {avatarUrl && (
             <AvatarImage
               src={avatarUrl}
               alt={authorName}
-              className={avatarPartClassNames.image}
             />
           )}
           <AvatarFallback
-            className={cn(avatarPartClassNames.fallback, threadAvatarSizeClassNames.text)}
+            size="sm"
             style={userColor ? { backgroundColor: userColor } : undefined}
           >
             {authorName?.[0]?.toLocaleUpperCase()}

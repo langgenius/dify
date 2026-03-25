@@ -4,7 +4,7 @@ import { ChevronDownIcon } from '@heroicons/react/20/solid'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactFlow } from 'reactflow'
-import { AvatarFallback, AvatarImage, avatarPartClassNames, AvatarRoot, getAvatarSizeClassNames } from '@/app/components/base/avatar'
+import { AvatarFallback, AvatarImage, AvatarRoot } from '@/app/components/base/avatar'
 import Divider from '@/app/components/base/divider'
 import {
   PortalToFollowElem,
@@ -51,8 +51,6 @@ const useAvatarUrls = (users: OnlineUser[]) => {
   return avatarUrls
 }
 
-const onlineUserAvatarSizeClassNames = getAvatarSizeClassNames('sm')
-
 type OnlineUserAvatarProps = {
   name: string
   avatar: string | null
@@ -66,16 +64,15 @@ const OnlineUserAvatar = ({
   className,
   fallbackColor,
 }: OnlineUserAvatarProps) => (
-  <AvatarRoot className={cn(avatarPartClassNames.root, onlineUserAvatarSizeClassNames.root, className)}>
+  <AvatarRoot size="sm" className={className}>
     {avatar && (
       <AvatarImage
         src={avatar}
         alt={name}
-        className={avatarPartClassNames.image}
       />
     )}
     <AvatarFallback
-      className={cn(avatarPartClassNames.fallback, onlineUserAvatarSizeClassNames.text)}
+      size="sm"
       style={fallbackColor ? { backgroundColor: fallbackColor } : undefined}
     >
       {name?.[0]?.toLocaleUpperCase()}
