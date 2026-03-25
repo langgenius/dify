@@ -6,9 +6,9 @@ to ensure they work correctly with the TableTestRunner.
 """
 
 from configs import dify_config
-from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY
-from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
-from dify_graph.nodes.code.limits import CodeNodeLimits
+from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
+from graphon.nodes.code.limits import CodeNodeLimits
 from tests.unit_tests.core.workflow.graph_engine.test_mock_config import MockConfig, MockConfigBuilder, NodeMockConfig
 from tests.unit_tests.core.workflow.graph_engine.test_mock_factory import MockNodeFactory
 from tests.unit_tests.core.workflow.graph_engine.test_mock_nodes import MockCodeNode, MockTemplateTransformNode
@@ -40,8 +40,8 @@ class TestMockTemplateTransformNode:
 
     def test_mock_template_transform_node_default_output(self):
         """Test that MockTemplateTransformNode processes templates with Jinja2."""
-        from dify_graph.entities import GraphInitParams
-        from dify_graph.runtime import GraphRuntimeState, VariablePool
+        from graphon.entities import GraphInitParams
+        from graphon.runtime import GraphRuntimeState, VariablePool
 
         # Create test parameters
         graph_init_params = GraphInitParams(
@@ -60,7 +60,7 @@ class TestMockTemplateTransformNode:
         )
 
         variable_pool = VariablePool(
-            system_variables={},
+            system_variables=[],
             user_inputs={},
         )
 
@@ -103,8 +103,8 @@ class TestMockTemplateTransformNode:
 
     def test_mock_template_transform_node_custom_output(self):
         """Test that MockTemplateTransformNode returns custom configured output."""
-        from dify_graph.entities import GraphInitParams
-        from dify_graph.runtime import GraphRuntimeState, VariablePool
+        from graphon.entities import GraphInitParams
+        from graphon.runtime import GraphRuntimeState, VariablePool
 
         # Create test parameters
         graph_init_params = GraphInitParams(
@@ -123,7 +123,7 @@ class TestMockTemplateTransformNode:
         )
 
         variable_pool = VariablePool(
-            system_variables={},
+            system_variables=[],
             user_inputs={},
         )
 
@@ -167,8 +167,8 @@ class TestMockTemplateTransformNode:
 
     def test_mock_template_transform_node_error_simulation(self):
         """Test that MockTemplateTransformNode can simulate errors."""
-        from dify_graph.entities import GraphInitParams
-        from dify_graph.runtime import GraphRuntimeState, VariablePool
+        from graphon.entities import GraphInitParams
+        from graphon.runtime import GraphRuntimeState, VariablePool
 
         # Create test parameters
         graph_init_params = GraphInitParams(
@@ -187,7 +187,7 @@ class TestMockTemplateTransformNode:
         )
 
         variable_pool = VariablePool(
-            system_variables={},
+            system_variables=[],
             user_inputs={},
         )
 
@@ -228,9 +228,9 @@ class TestMockTemplateTransformNode:
 
     def test_mock_template_transform_node_with_variables(self):
         """Test that MockTemplateTransformNode processes templates with variables."""
-        from dify_graph.entities import GraphInitParams
-        from dify_graph.runtime import GraphRuntimeState, VariablePool
-        from dify_graph.variables import StringVariable
+        from graphon.entities import GraphInitParams
+        from graphon.runtime import GraphRuntimeState, VariablePool
+        from graphon.variables import StringVariable
 
         # Create test parameters
         graph_init_params = GraphInitParams(
@@ -249,7 +249,7 @@ class TestMockTemplateTransformNode:
         )
 
         variable_pool = VariablePool(
-            system_variables={},
+            system_variables=[],
             user_inputs={},
         )
 
@@ -298,8 +298,8 @@ class TestMockCodeNode:
 
     def test_mock_code_node_default_output(self):
         """Test that MockCodeNode returns default output."""
-        from dify_graph.entities import GraphInitParams
-        from dify_graph.runtime import GraphRuntimeState, VariablePool
+        from graphon.entities import GraphInitParams
+        from graphon.runtime import GraphRuntimeState, VariablePool
 
         # Create test parameters
         graph_init_params = GraphInitParams(
@@ -318,7 +318,7 @@ class TestMockCodeNode:
         )
 
         variable_pool = VariablePool(
-            system_variables={},
+            system_variables=[],
             user_inputs={},
         )
 
@@ -364,8 +364,8 @@ class TestMockCodeNode:
 
     def test_mock_code_node_with_output_schema(self):
         """Test that MockCodeNode generates outputs based on schema."""
-        from dify_graph.entities import GraphInitParams
-        from dify_graph.runtime import GraphRuntimeState, VariablePool
+        from graphon.entities import GraphInitParams
+        from graphon.runtime import GraphRuntimeState, VariablePool
 
         # Create test parameters
         graph_init_params = GraphInitParams(
@@ -384,7 +384,7 @@ class TestMockCodeNode:
         )
 
         variable_pool = VariablePool(
-            system_variables={},
+            system_variables=[],
             user_inputs={},
         )
 
@@ -438,8 +438,8 @@ class TestMockCodeNode:
 
     def test_mock_code_node_custom_output(self):
         """Test that MockCodeNode returns custom configured output."""
-        from dify_graph.entities import GraphInitParams
-        from dify_graph.runtime import GraphRuntimeState, VariablePool
+        from graphon.entities import GraphInitParams
+        from graphon.runtime import GraphRuntimeState, VariablePool
 
         # Create test parameters
         graph_init_params = GraphInitParams(
@@ -458,7 +458,7 @@ class TestMockCodeNode:
         )
 
         variable_pool = VariablePool(
-            system_variables={},
+            system_variables=[],
             user_inputs={},
         )
 
@@ -514,8 +514,8 @@ class TestMockNodeFactory:
 
     def test_code_and_template_nodes_mocked_by_default(self):
         """Test that CODE and TEMPLATE_TRANSFORM nodes are mocked by default (they require SSRF proxy)."""
-        from dify_graph.entities import GraphInitParams
-        from dify_graph.runtime import GraphRuntimeState, VariablePool
+        from graphon.entities import GraphInitParams
+        from graphon.runtime import GraphRuntimeState, VariablePool
 
         # Create test parameters
         graph_init_params = GraphInitParams(
@@ -534,7 +534,7 @@ class TestMockNodeFactory:
         )
 
         variable_pool = VariablePool(
-            system_variables={},
+            system_variables=[],
             user_inputs={},
         )
 
@@ -559,8 +559,8 @@ class TestMockNodeFactory:
 
     def test_factory_creates_mock_template_transform_node(self):
         """Test that MockNodeFactory creates MockTemplateTransformNode for template-transform type."""
-        from dify_graph.entities import GraphInitParams
-        from dify_graph.runtime import GraphRuntimeState, VariablePool
+        from graphon.entities import GraphInitParams
+        from graphon.runtime import GraphRuntimeState, VariablePool
 
         # Create test parameters
         graph_init_params = GraphInitParams(
@@ -579,7 +579,7 @@ class TestMockNodeFactory:
         )
 
         variable_pool = VariablePool(
-            system_variables={},
+            system_variables=[],
             user_inputs={},
         )
 
@@ -614,8 +614,8 @@ class TestMockNodeFactory:
 
     def test_factory_creates_mock_code_node(self):
         """Test that MockNodeFactory creates MockCodeNode for code type."""
-        from dify_graph.entities import GraphInitParams
-        from dify_graph.runtime import GraphRuntimeState, VariablePool
+        from graphon.entities import GraphInitParams
+        from graphon.runtime import GraphRuntimeState, VariablePool
 
         # Create test parameters
         graph_init_params = GraphInitParams(
@@ -634,7 +634,7 @@ class TestMockNodeFactory:
         )
 
         variable_pool = VariablePool(
-            system_variables={},
+            system_variables=[],
             user_inputs={},
         )
 

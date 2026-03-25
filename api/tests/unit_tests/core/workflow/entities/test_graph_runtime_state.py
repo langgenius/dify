@@ -4,10 +4,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from dify_graph.constants import CONVERSATION_VARIABLE_NODE_ID
-from dify_graph.model_runtime.entities.llm_entities import LLMUsage
-from dify_graph.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper, VariablePool
-from dify_graph.variables.variables import StringVariable
+from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID
+from graphon.model_runtime.entities.llm_entities import LLMUsage
+from graphon.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper, VariablePool
+from graphon.variables.variables import StringVariable
 
 
 class StubCoordinator:
@@ -23,6 +23,17 @@ class StubCoordinator:
 
 
 class TestGraphRuntimeState:
+    def test_execution_context_defaults_to_empty_context(self):
+        state = GraphRuntimeState(variable_pool=VariablePool(), start_at=time())
+
+        with state.execution_context:
+            assert state.execution_context is not None
+
+        state.execution_context = None
+
+        with state.execution_context:
+            assert state.execution_context is not None
+
     def test_property_getters_and_setters(self):
         # FIXME(-LAN-): Mock VariablePool if needed
         variable_pool = VariablePool()
@@ -117,7 +128,7 @@ class TestGraphRuntimeState:
 
         queue = state.ready_queue
 
-        from dify_graph.graph_engine.ready_queue import InMemoryReadyQueue
+        from graphon.graph_engine.ready_queue import InMemoryReadyQueue
 
         assert isinstance(queue, InMemoryReadyQueue)
 
@@ -126,7 +137,7 @@ class TestGraphRuntimeState:
 
         execution = state.graph_execution
 
-        from dify_graph.graph_engine.domain.graph_execution import GraphExecution
+        from graphon.graph_engine.domain.graph_execution import GraphExecution
 
         assert isinstance(execution, GraphExecution)
         assert execution.workflow_id == ""
@@ -141,7 +152,7 @@ class TestGraphRuntimeState:
 
         mock_graph = MagicMock()
         with patch(
-            "dify_graph.graph_engine.response_coordinator.ResponseStreamCoordinator", autospec=True
+            "graphon.graph_engine.response_coordinator.ResponseStreamCoordinator", autospec=True
         ) as coordinator_cls:
             coordinator_instance = coordinator_cls.return_value
             state.configure(graph=mock_graph)

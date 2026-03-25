@@ -31,9 +31,9 @@ from core.tools.errors import (
 )
 from core.tools.utils.message_transformer import ToolFileMessageTransformer, safe_json_value
 from core.tools.workflow_as_tool.tool import WorkflowTool
-from dify_graph.file import FileType
-from dify_graph.file.models import FileTransferMethod
 from extensions.ext_database import db
+from graphon.file import FileType
+from graphon.file.models import FileTransferMethod
 from models.enums import CreatorUserRole, MessageFileBelongsTo
 from models.model import Message, MessageFile
 

@@ -38,9 +38,9 @@ from core.app.entities.task_entities import (
 )
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.base.tts import AudioTrunk
-from dify_graph.file.enums import FileTransferMethod
-from dify_graph.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
-from dify_graph.model_runtime.entities.message_entities import AssistantPromptMessage, TextPromptMessageContent
+from graphon.file.enums import FileTransferMethod
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
+from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, TextPromptMessageContent
 from models.model import AppMode
 
 
