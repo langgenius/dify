@@ -195,7 +195,7 @@ class ProviderManager:
             preferred_provider_type_record = provider_name_to_preferred_model_provider_records_dict.get(provider_name)
 
             if preferred_provider_type_record:
-                preferred_provider_type = ProviderType.value_of(preferred_provider_type_record.preferred_provider_type)
+                preferred_provider_type = preferred_provider_type_record.preferred_provider_type
             elif dify_config.EDITION == "CLOUD" and system_configuration.enabled:
                 preferred_provider_type = ProviderType.SYSTEM
             elif custom_configuration.provider or custom_configuration.models:
@@ -918,11 +918,11 @@ class ProviderManager:
 
             trail_pool = CreditPoolService.get_pool(
                 tenant_id=tenant_id,
-                pool_type=ProviderQuotaType.TRIAL.value,
+                pool_type=ProviderQuotaType.TRIAL,
             )
             paid_pool = CreditPoolService.get_pool(
                 tenant_id=tenant_id,
-                pool_type=ProviderQuotaType.PAID.value,
+                pool_type=ProviderQuotaType.PAID,
             )
         else:
             trail_pool = None

@@ -69,7 +69,7 @@ const ApiBasedExtensionSelector: FC<ApiBasedExtensionSelectorProps> = ({
               )
         }
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-[102] w-[calc(100%-32px)] max-w-[576px]">
+      <PortalToFollowElemContent className="z-[1002] w-[calc(100%-32px)] max-w-[576px]">
         <div className="z-10 w-full rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg">
           <div className="p-1">
             <div className="flex items-center justify-between px-3 pb-1 pt-2">

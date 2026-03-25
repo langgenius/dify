@@ -1,6 +1,6 @@
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import Button from '@/app/components/base/button'
@@ -36,18 +36,33 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
   const [stepToken, setStepToken] = useState<string>('')
   const [newOwner, setNewOwner] = useState<string>('')
   const [isTransfer, setIsTransfer] = useState<boolean>(false)
+  const timerIdRef = React.useRef<number | undefined>(undefined)
+
+  const retimeCountdown = useCallback((timerId?: number) => {
+    if (timerIdRef.current !== undefined)
+      window.clearInterval(timerIdRef.current)
+
+    timerIdRef.current = timerId
+  }, [])
+
+  React.useEffect(() => {
+    if (!show)
+      retimeCountdown()
+
+    return retimeCountdown
+  }, [retimeCountdown, show])
 
   const startCount = () => {
     setTime(60)
-    const timer = setInterval(() => {
+    retimeCountdown(window.setInterval(() => {
       setTime((prev) => {
-        if (prev <= 0) {
-          clearInterval(timer)
+        if (prev <= 1) {
+          retimeCountdown()
           return 0
         }
         return prev - 1
       })
-    }, 1000)
+    }, 1000))
   }
 
   const sendEmail = async () => {
@@ -126,6 +141,7 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
     <Modal
       isShow={show}
       onClose={noop}
+      wrapperClassName="z-[1002]"
       className="!w-[420px] !p-6"
     >
       <div

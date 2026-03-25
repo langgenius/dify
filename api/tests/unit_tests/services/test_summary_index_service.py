@@ -11,6 +11,7 @@ from unittest.mock import MagicMock
 import pytest
 
 import services.summary_index_service as summary_module
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from models.enums import SegmentStatus, SummaryStatus
 from services.summary_index_service import SummaryIndexService
 
@@ -26,7 +27,7 @@ class _SessionContext:
         return None
 
 
-def _dataset(*, indexing_technique: str = "high_quality") -> MagicMock:
+def _dataset(*, indexing_technique: str = IndexTechniqueType.HIGH_QUALITY) -> MagicMock:
     dataset = MagicMock(name="dataset")
     dataset.id = "dataset-1"
     dataset.tenant_id = "tenant-1"
@@ -48,7 +49,7 @@ def _segment(*, has_document: bool = True) -> MagicMock:
     if has_document:
         doc = MagicMock(name="document")
         doc.doc_language = "en"
-        doc.doc_form = "text_model"
+        doc.doc_form = IndexStructureType.PARAGRAPH_INDEX
         segment.document = doc
     else:
         segment.document = None
@@ -168,7 +169,8 @@ def test_create_summary_record_creates_new(monkeypatch: pytest.MonkeyPatch) -> N
 def test_vectorize_summary_skips_non_high_quality(monkeypatch: pytest.MonkeyPatch) -> None:
     vector_cls = MagicMock()
     monkeypatch.setattr(summary_module, "Vector", vector_cls)
-    SummaryIndexService.vectorize_summary(_summary_record(), _segment(), _dataset(indexing_technique="economy"))
+    dataset = _dataset(indexing_technique=IndexTechniqueType.ECONOMY)
+    SummaryIndexService.vectorize_summary(_summary_record(), _segment(), dataset)
     vector_cls.assert_not_called()
 
 
@@ -620,16 +622,16 @@ def test_generate_and_vectorize_summary_creates_missing_record_and_logs_usage(mo
 
 
 def test_generate_summaries_for_document_skip_conditions(monkeypatch: pytest.MonkeyPatch) -> None:
-    dataset = _dataset(indexing_technique="economy")
+    dataset = _dataset(indexing_technique=IndexTechniqueType.ECONOMY)
     document = MagicMock(spec=summary_module.DatasetDocument)
     document.id = "doc-1"
-    document.doc_form = "text_model"
+    document.doc_form = IndexStructureType.PARAGRAPH_INDEX
     assert SummaryIndexService.generate_summaries_for_document(dataset, document, {"enable": True}) == []
 
     dataset = _dataset()
     assert SummaryIndexService.generate_summaries_for_document(dataset, document, {"enable": False}) == []
 
-    document.doc_form = "qa_model"
+    document.doc_form = IndexStructureType.QA_INDEX
     assert SummaryIndexService.generate_summaries_for_document(dataset, document, {"enable": True}) == []
 
 
@@ -637,7 +639,7 @@ def test_generate_summaries_for_document_runs_and_handles_errors(monkeypatch: py
     dataset = _dataset()
     document = MagicMock(spec=summary_module.DatasetDocument)
     document.id = "doc-1"
-    document.doc_form = "text_model"
+    document.doc_form = IndexStructureType.PARAGRAPH_INDEX
 
     seg1 = _segment()
     seg2 = _segment()
@@ -673,7 +675,7 @@ def test_generate_summaries_for_document_no_segments_returns_empty(monkeypatch: 
     dataset = _dataset()
     document = MagicMock(spec=summary_module.DatasetDocument)
     document.id = "doc-1"
-    document.doc_form = "text_model"
+    document.doc_form = IndexStructureType.PARAGRAPH_INDEX
 
     session = MagicMock()
     query = MagicMock()
@@ -696,7 +698,7 @@ def test_generate_summaries_for_document_applies_segment_ids_and_only_parent_chu
     dataset = _dataset()
     document = MagicMock(spec=summary_module.DatasetDocument)
     document.id = "doc-1"
-    document.doc_form = "text_model"
+    document.doc_form = IndexStructureType.PARAGRAPH_INDEX
     seg = _segment()
 
     session = MagicMock()
@@ -777,7 +779,7 @@ def test_disable_summaries_for_segments_no_summaries_noop(monkeypatch: pytest.Mo
 
 
 def test_enable_summaries_for_segments_skips_non_high_quality() -> None:
-    SummaryIndexService.enable_summaries_for_segments(_dataset(indexing_technique="economy"))
+    SummaryIndexService.enable_summaries_for_segments(_dataset(indexing_technique=IndexTechniqueType.ECONOMY))
 
 
 def test_enable_summaries_for_segments_revectorizes_and_enables(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -931,11 +933,10 @@ def test_delete_summaries_for_segments_no_summaries_noop(monkeypatch: pytest.Mon
 
 
 def test_update_summary_for_segment_skip_conditions() -> None:
-    assert (
-        SummaryIndexService.update_summary_for_segment(_segment(), _dataset(indexing_technique="economy"), "x") is None
-    )
+    economy_dataset = _dataset(indexing_technique=IndexTechniqueType.ECONOMY)
+    assert SummaryIndexService.update_summary_for_segment(_segment(), economy_dataset, "x") is None
     seg = _segment(has_document=True)
-    seg.document.doc_form = "qa_model"
+    seg.document.doc_form = IndexStructureType.QA_INDEX
     assert SummaryIndexService.update_summary_for_segment(seg, _dataset(), "x") is None
 
 

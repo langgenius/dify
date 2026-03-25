@@ -1,6 +1,5 @@
 import type { FC, ReactNode } from 'react'
 import type { SimpleSubscription } from '@/app/components/plugins/plugin-detail-panel/subscription-list'
-import type { CustomRunFormProps } from '@/app/components/workflow/nodes/data-source/types'
 import type { Node } from '@/app/components/workflow/types'
 import {
   RiCloseLine,
@@ -47,8 +46,6 @@ import {
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
-import DataSourceBeforeRunForm from '@/app/components/workflow/nodes/data-source/before-run-form'
-import { DataSourceClassification } from '@/app/components/workflow/nodes/data-source/types'
 import { useLogs } from '@/app/components/workflow/run/hooks'
 import SpecialResultPanel from '@/app/components/workflow/run/special-result-panel'
 import { useStore } from '@/app/components/workflow/store'
@@ -63,7 +60,6 @@ import { useModalContext } from '@/context/modal-context'
 import { useAllBuiltInTools } from '@/service/use-tools'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
 import { FlowType } from '@/types/common'
-import { canFindTool } from '@/utils'
 import { cn } from '@/utils/classnames'
 import { useResizePanel } from '../../hooks/use-resize-panel'
 import BeforeRunForm from '../before-run-form'
@@ -74,27 +70,19 @@ import NextStep from '../next-step'
 import PanelOperator from '../panel-operator'
 import RetryOnPanel from '../retry/retry-on-panel'
 import { DescriptionInput, TitleInput } from '../title-description-input'
+import {
+  clampNodePanelWidth,
+  getCompressedNodePanelWidth,
+  getCurrentDataSource,
+  getCurrentToolCollection,
+  getCurrentTriggerPlugin,
+  getCustomRunForm,
+  getMaxNodePanelWidth,
+} from './helpers'
 import LastRun from './last-run'
 import useLastRun from './last-run/use-last-run'
 import Tab, { TabType } from './tab'
 import { TriggerSubscription } from './trigger-subscription'
-
-const getCustomRunForm = (params: CustomRunFormProps): React.JSX.Element => {
-  const nodeType = params.payload.type
-  switch (nodeType) {
-    case BlockEnum.DataSource:
-      return <DataSourceBeforeRunForm {...params} />
-    default:
-      return (
-        <div>
-          Custom Run Form:
-          {nodeType}
-          {' '}
-          not found
-        </div>
-      )
-  }
-}
 
 type BasePanelProps = {
   children: ReactNode
@@ -124,17 +112,13 @@ const BasePanel: FC<BasePanelProps> = ({
 
   const reservedCanvasWidth = 400 // Reserve the minimum visible width for the canvas
 
-  const maxNodePanelWidth = useMemo(() => {
-    if (!workflowCanvasWidth)
-      return 720
-
-    const available = workflowCanvasWidth - (otherPanelWidth || 0) - reservedCanvasWidth
-    return Math.max(available, 400)
-  }, [workflowCanvasWidth, otherPanelWidth])
+  const maxNodePanelWidth = useMemo(
+    () => getMaxNodePanelWidth(workflowCanvasWidth, otherPanelWidth, reservedCanvasWidth),
+    [workflowCanvasWidth, otherPanelWidth],
+  )
 
   const updateNodePanelWidth = useCallback((width: number, source: 'user' | 'system' = 'user') => {
-    // Ensure the width is within the min and max range
-    const newValue = Math.max(400, Math.min(width, maxNodePanelWidth))
+    const newValue = clampNodePanelWidth(width, maxNodePanelWidth)
 
     if (source === 'user')
       localStorage.setItem('workflow-node-panel-width', `${newValue}`)
@@ -162,15 +146,9 @@ const BasePanel: FC<BasePanelProps> = ({
   })
 
   useEffect(() => {
-    if (!workflowCanvasWidth)
-      return
-
-    // If the total width of the three exceeds the canvas, shrink the node panel to the available range (at least 400px)
-    const total = nodePanelWidth + otherPanelWidth + reservedCanvasWidth
-    if (total > workflowCanvasWidth) {
-      const target = Math.max(workflowCanvasWidth - otherPanelWidth - reservedCanvasWidth, 400)
-      debounceUpdate(target)
-    }
+    const compressedWidth = getCompressedNodePanelWidth(nodePanelWidth, workflowCanvasWidth, otherPanelWidth, reservedCanvasWidth)
+    if (compressedWidth !== undefined)
+      debounceUpdate(compressedWidth)
   }, [nodePanelWidth, otherPanelWidth, workflowCanvasWidth, debounceUpdate])
 
   const { handleNodeSelect } = useNodesInteractions()
@@ -284,21 +262,17 @@ const BasePanel: FC<BasePanelProps> = ({
 
   const storeBuildInTools = useStore(s => s.buildInTools)
   const { data: buildInTools } = useAllBuiltInTools()
-  const currToolCollection = useMemo(() => {
-    const candidates = buildInTools ?? storeBuildInTools
-    return candidates?.find(item => canFindTool(item.id, data.provider_id))
-  }, [buildInTools, storeBuildInTools, data.provider_id])
+  const currToolCollection = useMemo(
+    () => getCurrentToolCollection(buildInTools, storeBuildInTools, data.provider_id),
+    [buildInTools, storeBuildInTools, data.provider_id],
+  )
   const needsToolAuth = useMemo(() => {
     return data.type === BlockEnum.Tool && currToolCollection?.allow_delete
   }, [data.type, currToolCollection?.allow_delete])
 
   // only fetch trigger plugins when the node is a trigger plugin
   const { data: triggerPlugins = [] } = useAllTriggerPlugins(data.type === BlockEnum.TriggerPlugin)
-  const currentTriggerPlugin = useMemo(() => {
-    if (data.type !== BlockEnum.TriggerPlugin || !data.plugin_id || !triggerPlugins?.length)
-      return undefined
-    return triggerPlugins?.find(p => p.plugin_id === data.plugin_id)
-  }, [data.type, data.plugin_id, triggerPlugins])
+  const currentTriggerPlugin = useMemo(() => getCurrentTriggerPlugin(data, triggerPlugins), [data, triggerPlugins])
   const { setDetail } = usePluginStore()
 
   useEffect(() => {
@@ -321,10 +295,7 @@ const BasePanel: FC<BasePanelProps> = ({
 
   const dataSourceList = useStore(s => s.dataSourceList)
 
-  const currentDataSource = useMemo(() => {
-    if (data.type === BlockEnum.DataSource && data.provider_type !== DataSourceClassification.localFile)
-      return dataSourceList?.find(item => item.plugin_id === data.plugin_id)
-  }, [data.type, data.provider_type, data.plugin_id, dataSourceList])
+  const currentDataSource = useMemo(() => getCurrentDataSource(data, dataSourceList), [data, dataSourceList])
 
   const handleAuthorizationItemClick = useCallback((credential_id: string) => {
     handleNodeDataUpdateWithSyncDraft({

@@ -4,7 +4,6 @@ import type { Placement } from '@/app/components/base/ui/placement'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { lt } from 'semver'
 import Badge from '@/app/components/base/badge'
 import {
   Popover,
@@ -14,6 +13,7 @@ import {
 import useTimestamp from '@/hooks/use-timestamp'
 import { useVersionListOfPlugin } from '@/service/use-plugins'
 import { cn } from '@/utils/classnames'
+import { isEarlierThanVersion } from '@/utils/semver'
 
 type Props = {
   disabled?: boolean
@@ -100,7 +100,7 @@ const PluginVersionPicker: FC<Props> = ({
               onClick={() => handleSelect({
                 version: version.version,
                 unique_identifier: version.unique_identifier,
-                isDowngrade: lt(version.version, currentVersion),
+                isDowngrade: isEarlierThanVersion(version.version, currentVersion),
               })}
             >
               <div className="flex grow items-center">
