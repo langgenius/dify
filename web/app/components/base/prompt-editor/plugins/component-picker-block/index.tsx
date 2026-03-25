@@ -98,17 +98,22 @@ const ComponentPicker = ({
   const [blurHidden, setBlurHidden] = useState(false)
   const blurTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  const clearBlurTimer = useCallback(() => {
+    if (blurTimerRef.current) {
+      clearTimeout(blurTimerRef.current)
+      blurTimerRef.current = null
+    }
+  }, [])
+
   useEffect(() => {
-    return mergeRegister(
+    const unregister = mergeRegister(
       editor.registerCommand(
         BLUR_COMMAND,
         (event) => {
+          clearBlurTimer()
           const target = event?.relatedTarget as HTMLElement
-          if (!target?.classList?.contains('var-search-input')) {
-            if (blurTimerRef.current)
-              clearTimeout(blurTimerRef.current)
+          if (!target?.classList?.contains('var-search-input'))
             blurTimerRef.current = setTimeout(() => setBlurHidden(true), 200)
-          }
           return false
         },
         COMMAND_PRIORITY_EDITOR,
@@ -116,17 +121,20 @@ const ComponentPicker = ({
       editor.registerCommand(
         FOCUS_COMMAND,
         () => {
-          if (blurTimerRef.current) {
-            clearTimeout(blurTimerRef.current)
-            blurTimerRef.current = null
-          }
+          clearBlurTimer()
           setBlurHidden(false)
           return false
         },
         COMMAND_PRIORITY_EDITOR,
       ),
     )
-  }, [editor])
+
+    return () => {
+      if (blurTimerRef.current)
+        clearTimeout(blurTimerRef.current)
+      unregister()
+    }
+  }, [editor, clearBlurTimer])
 
   eventEmitter?.useSubscription((v: any) => {
     if (v.type === INSERT_VARIABLE_VALUE_BLOCK_COMMAND)

@@ -739,6 +739,43 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
       vi.useRealTimers()
     })
 
+    it('cancels a pending blur timer when a subsequent blur targets var-search-input', async () => {
+      const captures: Captures = { editor: null, eventEmitter: null }
+
+      render((
+        <MinimalEditor
+          triggerString="{"
+          contextBlock={makeContextBlock()}
+          captures={captures}
+        />
+      ))
+
+      const editor = await waitForEditor(captures)
+      await setEditorText(editor, '{', true)
+      expect(await screen.findByText('common.promptEditor.context.item.title')).toBeInTheDocument()
+
+      vi.useFakeTimers()
+
+      act(() => {
+        editor.dispatchCommand(BLUR_COMMAND, new FocusEvent('blur', { relatedTarget: document.createElement('button') }))
+      })
+
+      const varInput = document.createElement('input')
+      varInput.classList.add('var-search-input')
+
+      act(() => {
+        editor.dispatchCommand(BLUR_COMMAND, new FocusEvent('blur', { relatedTarget: varInput }))
+      })
+
+      act(() => {
+        vi.advanceTimersByTime(200)
+      })
+
+      expect(screen.queryByText('common.promptEditor.context.item.title')).toBeInTheDocument()
+
+      vi.useRealTimers()
+    })
+
     it('does not hide the menu when blur target is var-search-input', async () => {
       const captures: Captures = { editor: null, eventEmitter: null }
 
