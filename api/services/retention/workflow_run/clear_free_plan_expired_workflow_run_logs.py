@@ -306,7 +306,7 @@ class WorkflowRunCleanup:
                         free_runs,
                         count_node_executions=self._count_node_executions,
                         count_trigger_logs=self._count_trigger_logs,
-                        count_execution_extra_contents=self._count_execution_extra_contents
+                        count_execution_extra_contents=self._count_execution_extra_contents,
                     )
                     logger.info(
                         "workflow_run_cleanup (batch #%s, dry_run): counted related records in %sms",
@@ -346,7 +346,7 @@ class WorkflowRunCleanup:
                         free_runs,
                         delete_node_executions=self._delete_node_executions,
                         delete_trigger_logs=self._delete_trigger_logs,
-                        delete_execution_extra_contents=self._delete_execution_extra_contents
+                        delete_execution_extra_contents=self._delete_execution_extra_contents,
                     )
                     delete_ms = int((time.monotonic() - delete_start) * 1000)
                 except Exception:
