@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import pytest
+from dify_graph.system_variable import SystemVariable
 
 from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
@@ -34,7 +35,6 @@ from dify_graph.graph_events.node import (
 )
 from dify_graph.node_events import NodeRunResult
 from dify_graph.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper, VariablePool
-from dify_graph.system_variable import SystemVariable
 
 
 class _RepoRecorder:
