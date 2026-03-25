@@ -2,11 +2,11 @@
 import type { AppIconType } from '@/types/app'
 
 import { useHover } from 'ahooks'
+import { useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useRef } from 'react'
 import AppIcon from '@/app/components/base/app-icon'
 import ItemOperation from '@/app/components/explore/item-operation'
-import { useRouter } from '@/next/navigation'
 import { cn } from '@/utils/classnames'
 
 export type IAppNavItemProps = {
@@ -22,6 +22,9 @@ export type IAppNavItemProps = {
   togglePin: () => void
   uninstallable: boolean
   onDelete: (id: string) => void
+  isInFolder?: boolean
+  onMoveToFolder?: () => void
+  onRemoveFromFolder?: () => void
 }
 
 export default function AppNavItem({
@@ -37,6 +40,9 @@ export default function AppNavItem({
   togglePin,
   uninstallable,
   onDelete,
+  isInFolder,
+  onMoveToFolder,
+  onRemoveFromFolder,
 }: IAppNavItemProps) {
   const router = useRouter()
   const url = `/explore/installed/${id}`
@@ -65,6 +71,9 @@ export default function AppNavItem({
               togglePin={togglePin}
               isShowDelete={!uninstallable && !isSelected}
               onDelete={() => onDelete(id)}
+              isInFolder={isInFolder}
+              onMoveToFolder={onMoveToFolder}
+              onRemoveFromFolder={onRemoveFromFolder}
             />
           </div>
         </>

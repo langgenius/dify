@@ -110,6 +110,7 @@ from .datasets.rag_pipeline import (
 # Import explore controllers
 from .explore import (
     banner,
+    folder,
     installed_app,
     parameter,
     recommended_app,

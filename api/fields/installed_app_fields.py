@@ -18,6 +18,7 @@ installed_app_fields = {
     "app": fields.Nested(app_fields),
     "app_owner_tenant_id": fields.String,
     "is_pinned": fields.Boolean,
+    "folder_id": fields.String,
     "last_used_at": TimestampField,
     "editable": fields.Boolean,
     "uninstallable": fields.Boolean,

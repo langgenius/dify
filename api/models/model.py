@@ -24,7 +24,6 @@ from core.tools.signature import sign_tool_file
 from dify_graph.enums import WorkflowExecutionStatus
 from dify_graph.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
 from dify_graph.file import helpers as file_helpers
-from extensions.storage.storage_type import StorageType
 from libs.helper import generate_string  # type: ignore[import-not-found]
 from libs.uuid_utils import uuidv7
 from models.utils.file_input_compat import build_file_from_input_mapping
@@ -425,12 +424,13 @@ class App(Base):
 
     @property
     def site(self) -> Site | None:
-        return db.session.scalar(select(Site).where(Site.app_id == self.id))
+        site = db.session.query(Site).where(Site.app_id == self.id).first()
+        return site
 
     @property
     def app_model_config(self) -> AppModelConfig | None:
         if self.app_model_config_id:
-            return db.session.scalar(select(AppModelConfig).where(AppModelConfig.id == self.app_model_config_id))
+            return db.session.query(AppModelConfig).where(AppModelConfig.id == self.app_model_config_id).first()
 
         return None
 
@@ -439,7 +439,7 @@ class App(Base):
         if self.workflow_id:
             from .workflow import Workflow
 
-            return db.session.scalar(select(Workflow).where(Workflow.id == self.workflow_id))
+            return db.session.query(Workflow).where(Workflow.id == self.workflow_id).first()
 
         return None
 
@@ -449,7 +449,8 @@ class App(Base):
 
     @property
     def tenant(self) -> Tenant | None:
-        return db.session.scalar(select(Tenant).where(Tenant.id == self.tenant_id))
+        tenant = db.session.query(Tenant).where(Tenant.id == self.tenant_id).first()
+        return tenant
 
     @property
     def is_agent(self) -> bool:
@@ -589,9 +590,9 @@ class App(Base):
         return deleted_tools
 
     @property
-    def tags(self) -> Sequence[Tag]:
-        tags = db.session.scalars(
-            select(Tag)
+    def tags(self) -> list[Tag]:
+        tags = (
+            db.session.query(Tag)
             .join(TagBinding, Tag.id == TagBinding.tag_id)
             .where(
                 TagBinding.target_id == self.id,
@@ -599,14 +600,15 @@ class App(Base):
                 Tag.tenant_id == self.tenant_id,
                 Tag.type == "app",
             )
-        ).all()
+            .all()
+        )
 
         return tags or []
 
     @property
     def author_name(self) -> str | None:
         if self.created_by:
-            account = db.session.scalar(select(Account).where(Account.id == self.created_by))
+            account = db.session.query(Account).where(Account.id == self.created_by).first()
             if account:
                 return account.name
 
@@ -660,7 +662,8 @@ class AppModelConfig(TypeBase):
 
     @property
     def app(self) -> App | None:
-        return db.session.scalar(select(App).where(App.id == self.app_id))
+        app = db.session.query(App).where(App.id == self.app_id).first()
+        return app
 
     @property
     def model_dict(self) -> ModelConfig:
@@ -695,8 +698,8 @@ class AppModelConfig(TypeBase):
 
     @property
     def annotation_reply_dict(self) -> AnnotationReplyConfig:
-        annotation_setting = db.session.scalar(
-            select(AppAnnotationSetting).where(AppAnnotationSetting.app_id == self.app_id)
+        annotation_setting = (
+            db.session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == self.app_id).first()
         )
         if annotation_setting:
             collection_binding_detail = annotation_setting.collection_binding_detail
@@ -888,7 +891,36 @@ class RecommendedApp(Base):  # bug
 
     @property
     def app(self) -> App | None:
-        return db.session.scalar(select(App).where(App.id == self.app_id))
+        app = db.session.query(App).where(App.id == self.app_id).first()
+        return app
+
+
+class ExploreAppFolder(TypeBase):
+    """Folder for organising installed apps in the explore sidebar.
+
+    Each folder belongs to a tenant and contains zero or more installed apps
+    (linked via InstalledApp.folder_id).  Empty folders can be deleted;
+    the UI prevents deletion of non-empty folders.
+    """
+
+    __tablename__ = "explore_app_folders"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="explore_app_folder_pkey"),
+        sa.Index("explore_app_folder_tenant_id_idx", "tenant_id"),
+    )
+
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
+    )
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    name: Mapped[str] = mapped_column(sa.String(255), nullable=False)
+    position: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
 
 
 class InstalledApp(TypeBase):
@@ -908,6 +940,7 @@ class InstalledApp(TypeBase):
     app_owner_tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     position: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
     is_pinned: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"), default=False)
+    folder_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     last_used_at: Mapped[datetime | None] = mapped_column(sa.DateTime, nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
@@ -915,11 +948,13 @@ class InstalledApp(TypeBase):
 
     @property
     def app(self) -> App | None:
-        return db.session.scalar(select(App).where(App.id == self.app_id))
+        app = db.session.query(App).where(App.id == self.app_id).first()
+        return app
 
     @property
     def tenant(self) -> Tenant | None:
-        return db.session.scalar(select(Tenant).where(Tenant.id == self.tenant_id))
+        tenant = db.session.query(Tenant).where(Tenant.id == self.tenant_id).first()
+        return tenant
 
 
 class TrialApp(Base):
@@ -939,7 +974,8 @@ class TrialApp(Base):
 
     @property
     def app(self) -> App | None:
-        return db.session.scalar(select(App).where(App.id == self.app_id))
+        app = db.session.query(App).where(App.id == self.app_id).first()
+        return app
 
 
 class AccountTrialAppRecord(Base):
@@ -958,11 +994,13 @@ class AccountTrialAppRecord(Base):
 
     @property
     def app(self) -> App | None:
-        return db.session.scalar(select(App).where(App.id == self.app_id))
+        app = db.session.query(App).where(App.id == self.app_id).first()
+        return app
 
     @property
     def user(self) -> Account | None:
-        return db.session.scalar(select(Account).where(Account.id == self.account_id))
+        user = db.session.query(Account).where(Account.id == self.account_id).first()
+        return user
 
 
 class ExporleBanner(TypeBase):
@@ -974,11 +1012,8 @@ class ExporleBanner(TypeBase):
     content: Mapped[dict[str, Any]] = mapped_column(sa.JSON, nullable=False)
     link: Mapped[str] = mapped_column(String(255), nullable=False)
     sort: Mapped[int] = mapped_column(sa.Integer, nullable=False)
-    status: Mapped[BannerStatus] = mapped_column(
-        EnumText(BannerStatus, length=255),
-        nullable=False,
-        server_default=sa.text("'enabled'::character varying"),
-        default=BannerStatus.ENABLED,
+    status: Mapped[str] = mapped_column(
+        sa.String(255), nullable=False, server_default=sa.text("'enabled'::character varying"), default="enabled"
     )
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
@@ -1059,12 +1094,10 @@ class Conversation(Base):
     #
     # Its value corresponds to the members of `InvokeFrom`.
     # (api/core/app/entities/app_invoke_entities.py)
-    invoke_from: Mapped[InvokeFrom | None] = mapped_column(EnumText(InvokeFrom, length=255), nullable=True)
+    invoke_from = mapped_column(String(255), nullable=True)
 
     # ref: ConversationSource.
-    from_source: Mapped[ConversationFromSource] = mapped_column(
-        EnumText(ConversationFromSource, length=255), nullable=False
-    )
+    from_source: Mapped[str] = mapped_column(String(255), nullable=False)
     from_end_user_id = mapped_column(StringUUID)
     from_account_id = mapped_column(StringUUID)
     read_at = mapped_column(sa.DateTime)
@@ -1161,8 +1194,8 @@ class Conversation(Base):
                 else:
                     model_config["configs"] = override_model_configs  # type: ignore[typeddict-unknown-key]
             else:
-                app_model_config = db.session.scalar(
-                    select(AppModelConfig).where(AppModelConfig.id == self.app_model_config_id)
+                app_model_config = (
+                    db.session.query(AppModelConfig).where(AppModelConfig.id == self.app_model_config_id).first()
                 )
                 if app_model_config:
                     model_config = app_model_config.to_dict()
@@ -1185,43 +1218,36 @@ class Conversation(Base):
 
     @property
     def annotated(self):
-        return (
-            db.session.scalar(
-                select(func.count(MessageAnnotation.id)).where(MessageAnnotation.conversation_id == self.id)
-            )
-            or 0
-        ) > 0
+        return db.session.query(MessageAnnotation).where(MessageAnnotation.conversation_id == self.id).count() > 0
 
     @property
     def annotation(self):
-        return db.session.scalar(select(MessageAnnotation).where(MessageAnnotation.conversation_id == self.id).limit(1))
+        return db.session.query(MessageAnnotation).where(MessageAnnotation.conversation_id == self.id).first()
 
     @property
     def message_count(self):
-        return db.session.scalar(select(func.count(Message.id)).where(Message.conversation_id == self.id)) or 0
+        return db.session.query(Message).where(Message.conversation_id == self.id).count()
 
     @property
     def user_feedback_stats(self):
         like = (
-            db.session.scalar(
-                select(func.count(MessageFeedback.id)).where(
-                    MessageFeedback.conversation_id == self.id,
-                    MessageFeedback.from_source == "user",
-                    MessageFeedback.rating == FeedbackRating.LIKE,
-                )
+            db.session.query(MessageFeedback)
+            .where(
+                MessageFeedback.conversation_id == self.id,
+                MessageFeedback.from_source == "user",
+                MessageFeedback.rating == "like",
             )
-            or 0
+            .count()
         )
 
         dislike = (
-            db.session.scalar(
-                select(func.count(MessageFeedback.id)).where(
-                    MessageFeedback.conversation_id == self.id,
-                    MessageFeedback.from_source == "user",
-                    MessageFeedback.rating == FeedbackRating.DISLIKE,
-                )
+            db.session.query(MessageFeedback)
+            .where(
+                MessageFeedback.conversation_id == self.id,
+                MessageFeedback.from_source == "user",
+                MessageFeedback.rating == "dislike",
             )
-            or 0
+            .count()
         )
 
         return {"like": like, "dislike": dislike}
@@ -1229,25 +1255,23 @@ class Conversation(Base):
     @property
     def admin_feedback_stats(self):
         like = (
-            db.session.scalar(
-                select(func.count(MessageFeedback.id)).where(
-                    MessageFeedback.conversation_id == self.id,
-                    MessageFeedback.from_source == "admin",
-                    MessageFeedback.rating == FeedbackRating.LIKE,
-                )
+            db.session.query(MessageFeedback)
+            .where(
+                MessageFeedback.conversation_id == self.id,
+                MessageFeedback.from_source == "admin",
+                MessageFeedback.rating == "like",
             )
-            or 0
+            .count()
         )
 
         dislike = (
-            db.session.scalar(
-                select(func.count(MessageFeedback.id)).where(
-                    MessageFeedback.conversation_id == self.id,
-                    MessageFeedback.from_source == "admin",
-                    MessageFeedback.rating == FeedbackRating.DISLIKE,
-                )
+            db.session.query(MessageFeedback)
+            .where(
+                MessageFeedback.conversation_id == self.id,
+                MessageFeedback.from_source == "admin",
+                MessageFeedback.rating == "dislike",
             )
-            or 0
+            .count()
         )
 
         return {"like": like, "dislike": dislike}
@@ -1309,19 +1333,22 @@ class Conversation(Base):
 
     @property
     def first_message(self):
-        return db.session.scalar(
-            select(Message).where(Message.conversation_id == self.id).order_by(Message.created_at.asc())
+        return (
+            db.session.query(Message)
+            .where(Message.conversation_id == self.id)
+            .order_by(Message.created_at.asc())
+            .first()
         )
 
     @property
     def app(self) -> App | None:
         with Session(db.engine, expire_on_commit=False) as session:
-            return session.scalar(select(App).where(App.id == self.app_id))
+            return session.query(App).where(App.id == self.app_id).first()
 
     @property
     def from_end_user_session_id(self):
         if self.from_end_user_id:
-            end_user = db.session.scalar(select(EndUser).where(EndUser.id == self.from_end_user_id))
+            end_user = db.session.query(EndUser).where(EndUser.id == self.from_end_user_id).first()
             if end_user:
                 return end_user.session_id
 
@@ -1330,7 +1357,7 @@ class Conversation(Base):
     @property
     def from_account_name(self) -> str | None:
         if self.from_account_id:
-            account = db.session.scalar(select(Account).where(Account.id == self.from_account_id))
+            account = db.session.query(Account).where(Account.id == self.from_account_id).first()
             if account:
                 return account.name
 
@@ -1413,10 +1440,8 @@ class Message(Base):
     )
     error: Mapped[str | None] = mapped_column(LongText)
     message_metadata: Mapped[str | None] = mapped_column(LongText)
-    invoke_from: Mapped[InvokeFrom | None] = mapped_column(EnumText(InvokeFrom, length=255), nullable=True)
-    from_source: Mapped[ConversationFromSource] = mapped_column(
-        EnumText(ConversationFromSource, length=255), nullable=False
-    )
+    invoke_from: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    from_source: Mapped[str] = mapped_column(String(255), nullable=False)
     from_end_user_id: Mapped[str | None] = mapped_column(StringUUID)
     from_account_id: Mapped[str | None] = mapped_column(StringUUID)
     created_at: Mapped[datetime] = mapped_column(sa.DateTime, server_default=func.current_timestamp())
@@ -1556,15 +1581,21 @@ class Message(Base):
 
     @property
     def user_feedback(self):
-        return db.session.scalar(
-            select(MessageFeedback).where(MessageFeedback.message_id == self.id, MessageFeedback.from_source == "user")
+        feedback = (
+            db.session.query(MessageFeedback)
+            .where(MessageFeedback.message_id == self.id, MessageFeedback.from_source == "user")
+            .first()
         )
+        return feedback
 
     @property
     def admin_feedback(self):
-        return db.session.scalar(
-            select(MessageFeedback).where(MessageFeedback.message_id == self.id, MessageFeedback.from_source == "admin")
+        feedback = (
+            db.session.query(MessageFeedback)
+            .where(MessageFeedback.message_id == self.id, MessageFeedback.from_source == "admin")
+            .first()
         )
+        return feedback
 
     @property
     def feedbacks(self):
@@ -1573,27 +1604,28 @@ class Message(Base):
 
     @property
     def annotation(self):
-        annotation = db.session.scalar(select(MessageAnnotation).where(MessageAnnotation.message_id == self.id))
+        annotation = db.session.query(MessageAnnotation).where(MessageAnnotation.message_id == self.id).first()
         return annotation
 
     @property
     def annotation_hit_history(self):
-        annotation_history = db.session.scalar(
-            select(AppAnnotationHitHistory).where(AppAnnotationHitHistory.message_id == self.id)
+        annotation_history = (
+            db.session.query(AppAnnotationHitHistory).where(AppAnnotationHitHistory.message_id == self.id).first()
         )
         if annotation_history:
-            return db.session.scalar(
-                select(MessageAnnotation).where(MessageAnnotation.id == annotation_history.annotation_id)
+            annotation = (
+                db.session.query(MessageAnnotation)
+                .where(MessageAnnotation.id == annotation_history.annotation_id)
+                .first()
             )
+            return annotation
         return None
 
     @property
     def app_model_config(self):
-        conversation = db.session.scalar(select(Conversation).where(Conversation.id == self.conversation_id))
+        conversation = db.session.query(Conversation).where(Conversation.id == self.conversation_id).first()
         if conversation:
-            return db.session.scalar(
-                select(AppModelConfig).where(AppModelConfig.id == conversation.app_model_config_id)
-            )
+            return db.session.query(AppModelConfig).where(AppModelConfig.id == conversation.app_model_config_id).first()
 
         return None
 
@@ -1606,12 +1638,13 @@ class Message(Base):
         return json.loads(self.message_metadata) if self.message_metadata else {}
 
     @property
-    def agent_thoughts(self) -> Sequence[MessageAgentThought]:
-        return db.session.scalars(
-            select(MessageAgentThought)
+    def agent_thoughts(self) -> list[MessageAgentThought]:
+        return (
+            db.session.query(MessageAgentThought)
             .where(MessageAgentThought.message_id == self.id)
             .order_by(MessageAgentThought.position.asc())
-        ).all()
+            .all()
+        )
 
     @property
     def retriever_resources(self) -> Any:
@@ -1622,7 +1655,7 @@ class Message(Base):
         from factories import file_factory
 
         message_files = db.session.scalars(select(MessageFile).where(MessageFile.message_id == self.id)).all()
-        current_app = db.session.scalar(select(App).where(App.id == self.app_id))
+        current_app = db.session.query(App).where(App.id == self.app_id).first()
         if not current_app:
             raise ValueError(f"App {self.app_id} not found")
 
@@ -1771,8 +1804,8 @@ class MessageFeedback(TypeBase):
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     conversation_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     message_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    rating: Mapped[FeedbackRating] = mapped_column(EnumText(FeedbackRating, length=255), nullable=False)
-    from_source: Mapped[FeedbackFromSource] = mapped_column(EnumText(FeedbackFromSource, length=255), nullable=False)
+    rating: Mapped[str] = mapped_column(String(255), nullable=False)
+    from_source: Mapped[str] = mapped_column(String(255), nullable=False)
     content: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
     from_end_user_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     from_account_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
@@ -1789,7 +1822,8 @@ class MessageFeedback(TypeBase):
 
     @property
     def from_account(self) -> Account | None:
-        return db.session.scalar(select(Account).where(Account.id == self.from_account_id))
+        account = db.session.query(Account).where(Account.id == self.from_account_id).first()
+        return account
 
     def to_dict(self) -> MessageFeedbackDict:
         return {
@@ -1825,9 +1859,7 @@ class MessageFile(TypeBase):
     )
     created_by_role: Mapped[CreatorUserRole] = mapped_column(EnumText(CreatorUserRole, length=255), nullable=False)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    belongs_to: Mapped[MessageFileBelongsTo | None] = mapped_column(
-        EnumText(MessageFileBelongsTo, length=255), nullable=True, default=None
-    )
+    belongs_to: Mapped[Literal["user", "assistant"] | None] = mapped_column(String(255), nullable=True, default=None)
     url: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
     upload_file_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(
@@ -1864,11 +1896,13 @@ class MessageAnnotation(Base):
 
     @property
     def account(self):
-        return db.session.scalar(select(Account).where(Account.id == self.account_id))
+        account = db.session.query(Account).where(Account.id == self.account_id).first()
+        return account
 
     @property
     def annotation_create_account(self):
-        return db.session.scalar(select(Account).where(Account.id == self.account_id))
+        account = db.session.query(Account).where(Account.id == self.account_id).first()
+        return account
 
 
 class AppAnnotationHitHistory(TypeBase):
@@ -1899,15 +1933,18 @@ class AppAnnotationHitHistory(TypeBase):
 
     @property
     def account(self):
-        return db.session.scalar(
-            select(Account)
+        account = (
+            db.session.query(Account)
             .join(MessageAnnotation, MessageAnnotation.account_id == Account.id)
             .where(MessageAnnotation.id == self.annotation_id)
+            .first()
         )
+        return account
 
     @property
     def annotation_create_account(self):
-        return db.session.scalar(select(Account).where(Account.id == self.account_id))
+        account = db.session.query(Account).where(Account.id == self.account_id).first()
+        return account
 
 
 class AppAnnotationSetting(TypeBase):
@@ -1940,9 +1977,12 @@ class AppAnnotationSetting(TypeBase):
     def collection_binding_detail(self):
         from .dataset import DatasetCollectionBinding
 
-        return db.session.scalar(
-            select(DatasetCollectionBinding).where(DatasetCollectionBinding.id == self.collection_binding_id)
+        collection_binding_detail = (
+            db.session.query(DatasetCollectionBinding)
+            .where(DatasetCollectionBinding.id == self.collection_binding_id)
+            .first()
         )
+        return collection_binding_detail
 
 
 class OperationLog(TypeBase):
@@ -2048,9 +2088,7 @@ class AppMCPServer(TypeBase):
     def generate_server_code(n: int) -> str:
         while True:
             result = generate_string(n)
-            while (
-                db.session.scalar(select(func.count(AppMCPServer.id)).where(AppMCPServer.server_code == result)) or 0
-            ) > 0:
+            while db.session.query(AppMCPServer).where(AppMCPServer.server_code == result).count() > 0:
                 result = generate_string(n)
 
             return result
@@ -2111,7 +2149,7 @@ class Site(Base):
     def generate_code(n: int) -> str:
         while True:
             result = generate_string(n)
-            while (db.session.scalar(select(func.count(Site.id)).where(Site.code == result)) or 0) > 0:
+            while db.session.query(Site).where(Site.code == result).count() > 0:
                 result = generate_string(n)
 
             return result
@@ -2159,7 +2197,7 @@ class UploadFile(Base):
     # The `server_default` serves as a fallback mechanism.
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    storage_type: Mapped[StorageType] = mapped_column(EnumText(StorageType, length=255), nullable=False)
+    storage_type: Mapped[str] = mapped_column(String(255), nullable=False)
     key: Mapped[str] = mapped_column(String(255), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     size: Mapped[int] = mapped_column(sa.Integer, nullable=False)
@@ -2203,7 +2241,7 @@ class UploadFile(Base):
         self,
         *,
         tenant_id: str,
-        storage_type: StorageType,
+        storage_type: str,
         key: str,
         name: str,
         size: int,
@@ -2268,7 +2306,7 @@ class MessageChain(TypeBase):
         StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
     )
     message_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    type: Mapped[MessageChainType] = mapped_column(EnumText(MessageChainType, length=255), nullable=False)
+    type: Mapped[str] = mapped_column(String(255), nullable=False)
     input: Mapped[str | None] = mapped_column(LongText, nullable=True)
     output: Mapped[str | None] = mapped_column(LongText, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -2443,7 +2481,7 @@ class Tag(TypeBase):
         StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
     )
     tenant_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
-    type: Mapped[TagType] = mapped_column(EnumText(TagType, length=16), nullable=False)
+    type: Mapped[str] = mapped_column(String(16), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
