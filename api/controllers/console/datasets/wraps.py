@@ -2,6 +2,8 @@ from collections.abc import Callable
 from functools import wraps
 from typing import ParamSpec, TypeVar
 
+from sqlalchemy import select
+
 from controllers.console.datasets.error import PipelineNotFoundError
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant
@@ -24,10 +26,8 @@ def get_rag_pipeline(view_func: Callable[P, R]):
 
         del kwargs["pipeline_id"]
 
-        pipeline = (
-            db.session.query(Pipeline)
-            .where(Pipeline.id == pipeline_id, Pipeline.tenant_id == current_tenant_id)
-            .first()
+        pipeline = db.session.scalar(
+            select(Pipeline).where(Pipeline.id == pipeline_id, Pipeline.tenant_id == current_tenant_id).limit(1)
         )
 
         if not pipeline:
