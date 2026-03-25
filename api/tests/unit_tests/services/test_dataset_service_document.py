@@ -1821,7 +1821,7 @@ class TestDocumentServiceSaveDocumentAdditionalBranches:
 
         with (
             patch("services.dataset_service.FeatureService.get_features", return_value=_make_features(enabled=False)),
-            patch("services.dataset_service.ModelManager") as model_manager_cls,
+            patch("services.dataset_service.ModelManager.for_tenant") as model_manager_cls,
             patch(
                 "services.dataset_service.DatasetCollectionBindingService.get_dataset_collection_binding",
                 return_value=SimpleNamespace(id="binding-1"),
@@ -1871,7 +1871,7 @@ class TestDocumentServiceSaveDocumentAdditionalBranches:
 
         with (
             patch("services.dataset_service.FeatureService.get_features", return_value=_make_features(enabled=False)),
-            patch("services.dataset_service.ModelManager") as model_manager_cls,
+            patch("services.dataset_service.ModelManager.for_tenant") as model_manager_cls,
             patch(
                 "services.dataset_service.DatasetCollectionBindingService.get_dataset_collection_binding",
                 return_value=SimpleNamespace(id="binding-2"),
