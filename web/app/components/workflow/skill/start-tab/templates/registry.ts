@@ -25,6 +25,13 @@ export const SKILL_TEMPLATES: SkillTemplateEntry[] = [
     loadContent: () => import('./skills/canvas-design').then(m => m.default),
   },
   {
+    id: 'claude-api',
+    name: 'claude-api',
+    description: 'Build apps with the Claude API or Anthropic SDK. TRIGGER when: code imports `anthropic`/`@anthropic-ai/sdk`/`claude_agent_sdk`, or user asks to use Claude API, Anthropic SDKs, or Agent SDK. DO NOT TRIGGER when: code imports `openai`/other AI SDK, general programming, or ML/data-science tasks.',
+    fileCount: 26,
+    loadContent: () => import('./skills/claude-api').then(m => m.default),
+  },
+  {
     id: 'doc-coauthoring',
     name: 'doc-coauthoring',
     description: 'Guide users through a structured workflow for co-authoring documentation. Use when user wants to write documentation, proposals, technical specs, decision docs, or similar structured content. This workflow helps users efficiently transfer context, refine content through iteration, and verify the doc works for readers. Trigger when user mentions writing docs, creating proposals, drafting specs, or similar documentation tasks.',
@@ -34,7 +41,7 @@ export const SKILL_TEMPLATES: SkillTemplateEntry[] = [
   {
     id: 'docx',
     name: 'docx',
-    description: 'Use this skill whenever the user wants to create, read, edit, or manipulate Word documents (.docx files). Triggers include: any mention of \\"Word doc\\", \\"word document\\", \\".docx\\", or requests to produce professional documents with formatting like tables of contents, headings, page numbers, or letterheads. Also use when extracting or reorganizing content from .docx files, inserting or replacing images in documents, performing find-and-replace in Word files, working with tracked changes or comments, or converting content into a polished Word document. If the user asks for a \\"report\\", \\"memo\\", \\"letter\\", \\"template\\", or similar deliverable as a Word or .docx file, use this skill. Do NOT use for PDFs, spreadsheets, Google Docs, or general coding tasks unrelated to document generation.',
+    description: 'Use this skill whenever the user wants to create, read, edit, or manipulate Word documents (.docx files). Triggers include: any mention of \'Word doc\', \'word document\', \'.docx\', or requests to produce professional documents with formatting like tables of contents, headings, page numbers, or letterheads. Also use when extracting or reorganizing content from .docx files, inserting or replacing images in documents, performing find-and-replace in Word files, working with tracked changes or comments, or converting content into a polished Word document. If the user asks for a \'report\', \'memo\', \'letter\', \'template\', or similar deliverable as a Word or .docx file, use this skill. Do NOT use for PDFs, spreadsheets, Google Docs, or general coding tasks unrelated to document generation.',
     fileCount: 60,
     loadContent: () => import('./skills/docx').then(m => m.default),
   },
@@ -76,8 +83,8 @@ export const SKILL_TEMPLATES: SkillTemplateEntry[] = [
   {
     id: 'skill-creator',
     name: 'skill-creator',
-    description: 'Guide for creating effective skills. This skill should be used when users want to create a new skill (or update an existing skill) that extends Claude\'s capabilities with specialized knowledge, workflows, or tool integrations.',
-    fileCount: 6,
+    description: 'Create new skills, modify and improve existing skills, and measure skill performance. Use when users want to create a skill from scratch, edit, or optimize an existing skill, run evals to test a skill, benchmark skill performance with variance analysis, or optimize a skill\'s description for better triggering accuracy.',
+    fileCount: 17,
     loadContent: () => import('./skills/skill-creator').then(m => m.default),
   },
   {
