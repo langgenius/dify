@@ -1,10 +1,15 @@
 'use client'
 import type { FC } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { IS_DEV } from '@/config'
 
-const defaultData = {
-  stars: 110918,
+type GithubStarResponse = {
+  repo: {
+    stars: number
+  }
+}
+
+const defaultData: GithubStarResponse = {
+  repo: { stars: 110918 },
 }
 
 const getStar = async () => {
@@ -17,12 +22,9 @@ const getStar = async () => {
 }
 
 const GithubStar: FC<{ className: string }> = (props) => {
-  const { isFetching, isError, data } = useQuery<{
-    stars: number
-  }>({
+  const { isFetching, isError, data } = useQuery<GithubStarResponse>({
     queryKey: ['github-star'],
     queryFn: getStar,
-    enabled: !IS_DEV,
     retry: false,
     placeholderData: defaultData,
   })
@@ -31,9 +33,9 @@ const GithubStar: FC<{ className: string }> = (props) => {
     return <span className="i-ri-loader-2-line size-3 shrink-0 animate-spin text-text-tertiary" />
 
   if (isError)
-    return <span {...props}>{defaultData.stars.toLocaleString()}</span>
+    return <span {...props}>{defaultData.repo.stars.toLocaleString()}</span>
 
-  return <span {...props}>{data?.stars.toLocaleString()}</span>
+  return <span {...props}>{data?.repo.stars.toLocaleString()}</span>
 }
 
 export default GithubStar
