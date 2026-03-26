@@ -276,6 +276,8 @@
       "object.values": "npm:@nolyfill/object.values@^1.0.44",
       "pbkdf2": "~3.1.5",
       "pbkdf2@<3.1.3": "3.1.3",
+      "picomatch@<2.3.2": "2.3.2",
+      "picomatch@>=4.0.0 <4.0.4": "4.0.4",
       "prismjs": "~1.30",
       "prismjs@<1.30.0": "1.30.0",
       "rollup@>=4.0.0 <4.59.0": "4.59.0",
@@ -283,6 +285,7 @@
       "safe-regex-test": "npm:@nolyfill/safe-regex-test@^1.0.44",
       "safer-buffer": "npm:@nolyfill/safer-buffer@^1.0.44",
       "side-channel": "npm:@nolyfill/side-channel@^1.0.44",
+      "smol-toml@<1.6.1": "1.6.1",
       "solid-js": "1.9.11",
       "string-width": "~8.2.0",
       "string.prototype.includes": "npm:@nolyfill/string.prototype.includes@^1.0.44",
@@ -296,6 +299,7 @@
       "vite": "npm:@voidzero-dev/vite-plus-core@0.1.13",
       "vitest": "npm:@voidzero-dev/vite-plus-test@0.1.13",
       "which-typed-array": "npm:@nolyfill/which-typed-array@^1.0.44",
+      "yaml@>=2.0.0 <2.8.3": "2.8.3",
       "yauzl@<3.2.1": "3.2.1"
     },
     "ignoredBuiltDependencies": [
