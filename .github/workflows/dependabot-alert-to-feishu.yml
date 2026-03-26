@@ -1,10 +1,6 @@
 name: Dependabot Alert to Feishu
 
 on:
-  repository_vulnerability_alert:
-    types:
-      - create
-      - reopen
   schedule:
     - cron: "0 * * * *"
   workflow_dispatch:
@@ -31,10 +27,7 @@ jobs:
         env:
           FEISHU_WEBHOOK: ${{ secrets.FEISHU_WEBHOOK }}
           GITHUB_TOKEN: ${{ github.token }}
-          EVENT_JSON: ${{ toJson(github.event) }}
-          EVENT_NAME: ${{ github.event_name }}
           REPOSITORY: ${{ github.repository }}
-          EVENT_ACTION: ${{ github.event.action }}
           WORKFLOW_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
@@ -64,17 +57,6 @@ jobs:
               -H "Content-Type: application/json" \
               -d "$payload"
           }
-
-          if [ "$EVENT_NAME" = "repository_vulnerability_alert" ]; then
-            severity="$(echo "$EVENT_JSON" | jq -r '.alert.security_advisory.severity // "unknown"')"
-            package_name="$(echo "$EVENT_JSON" | jq -r '.alert.dependency.package.name // "unknown"')"
-            summary="$(echo "$EVENT_JSON" | jq -r '.alert.security_advisory.summary // "N/A"')"
-            alert_url="$(echo "$EVENT_JSON" | jq -r '.alert.html_url // ""')"
-            action="${EVENT_ACTION:-create}"
-
-            send_feishu "event" "$action" "$severity" "$package_name" "$summary" "$alert_url"
-            exit 0
-          fi
 
           api_url="https://api.github.com/repos/${REPOSITORY}/dependabot/alerts?state=open&per_page=100"
           alerts_json="$(curl -sS -f -L \
