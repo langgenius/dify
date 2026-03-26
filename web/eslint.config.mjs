@@ -7,6 +7,7 @@ import md from 'eslint-markdown'
 import tailwindcss from 'eslint-plugin-better-tailwindcss'
 import hyoban from 'eslint-plugin-hyoban'
 import markdownPreferences from 'eslint-plugin-markdown-preferences'
+import noBarrelFiles from 'eslint-plugin-no-barrel-files'
 import { reactRefresh } from 'eslint-plugin-react-refresh'
 import sonar from 'eslint-plugin-sonarjs'
 import storybook from 'eslint-plugin-storybook'
@@ -30,12 +31,17 @@ const plugins = pluginReact.configs.all.plugins
 export default antfu(
   {
     react: false,
-    nextjs: true,
+    nextjs: {
+      overrides: {
+        'next/no-img-element': 'off',
+      },
+    },
     ignores: ['public', 'types/doc-paths.ts', 'eslint-suppressions.json'],
     typescript: {
       overrides: {
         'ts/consistent-type-definitions': ['error', 'type'],
         'ts/no-explicit-any': 'error',
+        'ts/no-redeclare': 'off',
       },
       erasableOnly: true,
     },
@@ -66,12 +72,23 @@ export default antfu(
       ...pluginReact.configs['recommended-typescript'].rules,
       'react/prefer-namespace-import': 'error',
       'react/set-state-in-effect': 'error',
+      'react/no-unnecessary-use-prefix': 'error',
     },
   },
   {
     files: [...GLOB_TESTS, GLOB_MARKDOWN_CODE, 'vitest.setup.ts', 'test/i18n-mock.ts'],
     rules: {
       'react/component-hook-factories': 'off',
+      'react/no-unnecessary-use-prefix': 'off',
+    },
+  },
+  {
+    plugins: {
+      'no-barrel-files': noBarrelFiles,
+    },
+    ignores: ['next/**'],
+    rules: {
+      'no-barrel-files/no-barrel-files': 'error',
     },
   },
   reactRefresh.configs.next(),
@@ -98,7 +115,6 @@ export default antfu(
   {
     rules: {
       'node/prefer-global/process': 'off',
-      'next/no-img-element': 'off',
     },
   },
   {
@@ -160,7 +176,7 @@ export default antfu(
     },
   },
   {
-    files: ['**/package.json'],
+    files: ['package.json'],
     rules: {
       'hyoban/no-dependency-version-prefix': 'error',
     },

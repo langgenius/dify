@@ -26,6 +26,7 @@ from controllers.console.datasets.rag_pipeline.rag_pipeline_workflow import (
     RagPipelineWorkflowLastRunApi,
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
+from libs.datetime_utils import naive_utc_now
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
 
@@ -372,7 +373,7 @@ class TestPublishedPipelineApis:
 
         workflow = MagicMock(
             id="w1",
-            created_at=datetime.utcnow(),
+            created_at=naive_utc_now(),
         )
 
         session = MagicMock()
