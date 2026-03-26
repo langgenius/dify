@@ -311,8 +311,6 @@ class TestEmailDeliveryTestHandler:
         handler = EmailDeliveryTestHandler(session_factory=MagicMock())
         assert handler._query_workspace_member_emails(tenant_id="t1", user_ids=[]) == {}
 
-
-
     def test_build_substitutions(self):
         context = DeliveryTestContext(
             tenant_id="t1",
