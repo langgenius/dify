@@ -373,6 +373,7 @@ const PromptEditorContent: FC<PromptEditorContentProps> = ({
                 <Placeholder
                   value={placeholder || (
                     <SandboxPlaceholder
+                      editable={editable}
                       disableToolBlocks={disableToolBlocks}
                       isSupportSandbox={isSupportSandbox}
                     />

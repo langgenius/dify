@@ -1,22 +1,40 @@
-import type { FC } from 'react'
+import type { FC, MouseEvent } from 'react'
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import { $getRoot, $insertNodes } from 'lexical'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
+import { $createCustomTextNode } from './plugins/custom-text/node'
+import { CLEAR_HIDE_MENU_TIMEOUT } from './plugins/workflow-variable-block'
 
 type SandboxPlaceholderTokenProps = {
   actionLabel?: string
+  onClick?: () => void
   shortcut: '/' | '@'
 }
 
 const SandboxPlaceholderToken: FC<SandboxPlaceholderTokenProps> = ({
   actionLabel,
+  onClick,
   shortcut,
 }) => {
+  const handleMouseDown = (e: MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault()
+  }
+
   return (
-    <span
+    <button
+      type="button"
+      tabIndex={-1}
+      onMouseDown={handleMouseDown}
+      onClick={onClick}
       className={cn(
-        'inline-flex cursor-pointer items-center gap-1 text-text-tertiary hover:text-components-button-secondary-accent-text',
+        'pointer-events-auto inline-flex appearance-none items-center gap-1 bg-transparent p-0 text-text-tertiary',
+        'cursor-pointer hover:text-components-button-secondary-accent-text',
+        'disabled:cursor-default disabled:hover:text-text-tertiary',
         'group/placeholder-token',
       )}
+      disabled={!onClick}
     >
       <span
         className={cn(
@@ -28,25 +46,38 @@ const SandboxPlaceholderToken: FC<SandboxPlaceholderTokenProps> = ({
       </span>
       <span
         className={cn(
-          'pointer-events-auto border-b border-dotted border-current px-0.5 transition-colors',
+          'border-b border-dotted border-current px-0.5 transition-colors',
         )}
       >
         {actionLabel}
       </span>
-    </span>
+    </button>
   )
 }
 
 type SandboxPlaceholderProps = {
+  editable?: boolean
   disableToolBlocks?: boolean
   isSupportSandbox?: boolean
 }
 
 const SandboxPlaceholder: FC<SandboxPlaceholderProps> = ({
+  editable = true,
   disableToolBlocks,
   isSupportSandbox,
 }) => {
+  const [editor] = useLexicalComposerContext()
   const { t } = useTranslation()
+
+  const handleQuickInsert = useCallback((trigger: '/' | '@') => {
+    editor.focus(() => {
+      editor.update(() => {
+        $getRoot().selectEnd()
+        $insertNodes([$createCustomTextNode(trigger)])
+        editor.dispatchCommand(CLEAR_HIDE_MENU_TIMEOUT, undefined)
+      })
+    })
+  }, [editor])
 
   if (!isSupportSandbox)
     return null
@@ -56,6 +87,7 @@ const SandboxPlaceholder: FC<SandboxPlaceholderProps> = ({
       {t('promptEditor.placeholderSandboxPrefix', { ns: 'common' })}
       <SandboxPlaceholderToken
         shortcut="/"
+        onClick={editable ? () => handleQuickInsert('/') : undefined}
         actionLabel={t('promptEditor.placeholderSandboxInsert', { ns: 'common' })}
       />
       {!disableToolBlocks && (
@@ -63,6 +95,7 @@ const SandboxPlaceholder: FC<SandboxPlaceholderProps> = ({
           {t('promptEditor.placeholderSandboxSeparator', { ns: 'common' })}
           <SandboxPlaceholderToken
             shortcut="@"
+            onClick={editable ? () => handleQuickInsert('@') : undefined}
             actionLabel={t('promptEditor.placeholderSandboxTools', { ns: 'common' })}
           />
         </>

@@ -1,5 +1,43 @@
-import { render } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { CLEAR_HIDE_MENU_TIMEOUT } from '../plugins/workflow-variable-block'
 import SandboxPlaceholder from '../sandbox-placeholder'
+
+const mocks = vi.hoisted(() => {
+  const selectEnd = vi.fn()
+  const insertNodes = vi.fn()
+  const createTextNode = vi.fn((text: string) => ({ text }))
+  const editor = {
+    focus: vi.fn((callback?: () => void) => callback?.()),
+    update: vi.fn((callback: () => void) => callback()),
+    dispatchCommand: vi.fn(),
+  }
+
+  return {
+    createTextNode,
+    editor,
+    insertNodes,
+    selectEnd,
+  }
+})
+
+vi.mock('@lexical/react/LexicalComposerContext', () => ({
+  useLexicalComposerContext: () => [mocks.editor],
+}))
+
+vi.mock('lexical', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('lexical')>()
+  return {
+    ...actual,
+    $getRoot: () => ({
+      selectEnd: mocks.selectEnd,
+    }),
+    $insertNodes: mocks.insertNodes,
+  }
+})
+
+vi.mock('../plugins/custom-text/node', () => ({
+  $createCustomTextNode: (text: string) => mocks.createTextNode(text),
+}))
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -20,7 +58,7 @@ describe('SandboxPlaceholder', () => {
     vi.clearAllMocks()
   })
 
-  // Rendering branches for sandbox availability and tool-block support.
+  // Rendering states for sandbox support and tool visibility.
   describe('Rendering', () => {
     it('should render nothing when sandbox is not supported', () => {
       const { container } = render(<SandboxPlaceholder isSupportSandbox={false} />)
@@ -28,63 +66,65 @@ describe('SandboxPlaceholder', () => {
       expect(container).toBeEmptyDOMElement()
     })
 
-    it('should render only the insert pair when tool blocks are disabled', () => {
-      const { container } = render(
+    it('should render only the insert action when tool blocks are disabled', () => {
+      render(
         <SandboxPlaceholder
           disableToolBlocks
           isSupportSandbox
         />,
       )
 
-      expect(container).toHaveTextContent('Write instructions here, /insert')
-      const tokens = container.querySelectorAll('.group\\/placeholder-token')
-      const kbdTokens = container.querySelectorAll('.system-kbd')
-      const actionTokens = container.querySelectorAll('.border-dotted')
-
-      expect(tokens).toHaveLength(1)
-      expect(kbdTokens).toHaveLength(1)
-      expect(actionTokens).toHaveLength(1)
-      expect(tokens[0]).toHaveClass(
-        'inline-flex',
-        'cursor-pointer',
-        'items-center',
-        'gap-1',
-        'text-text-tertiary',
-        'hover:text-components-button-secondary-accent-text',
-      )
-      expect(kbdTokens[0]).toHaveClass(
-        'bg-components-kbd-bg-gray',
-        'group-hover/placeholder-token:bg-components-button-secondary-accent-text-disabled',
-      )
-      expect(kbdTokens[0]).toHaveTextContent('/')
-      expect(actionTokens[0]).toHaveClass(
-        'pointer-events-auto',
-        'border-b',
-        'border-dotted',
-        'border-current',
-      )
-      expect(actionTokens[0]).toHaveTextContent('insert')
+      expect(screen.getByText('Write instructions here,')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /insert/i })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /tools/i })).not.toBeInTheDocument()
     })
 
-    it('should render both insert and tools pairs when tool blocks are enabled', () => {
-      const { container } = render(<SandboxPlaceholder isSupportSandbox />)
+    it('should render insert and tools actions when tool blocks are enabled', () => {
+      render(<SandboxPlaceholder isSupportSandbox />)
 
-      expect(container).toHaveTextContent('Write instructions here, /insert, @tools')
-      const tokens = container.querySelectorAll('.group\\/placeholder-token')
-      const kbdTokens = container.querySelectorAll('.system-kbd')
-      const actionTokens = container.querySelectorAll('.border-dotted')
+      expect(screen.getByRole('button', { name: /insert/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /tools/i })).toBeInTheDocument()
+      expect(screen.getAllByRole('button')).toHaveLength(2)
+    })
+  })
 
-      expect(tokens).toHaveLength(2)
-      expect(kbdTokens).toHaveLength(2)
-      expect(actionTokens).toHaveLength(2)
-      expect(kbdTokens[0]).toHaveTextContent('/')
-      expect(kbdTokens[1]).toHaveTextContent('@')
-      expect(actionTokens[0]).toHaveTextContent('insert')
-      expect(actionTokens[1]).toHaveTextContent('tools')
-      expect(tokens[1]).toHaveClass(
-        'group/placeholder-token',
-        'hover:text-components-button-secondary-accent-text',
-      )
+  // Click interactions should reuse the editor trigger workflow.
+  describe('Interactions', () => {
+    it('should insert slash and clear the hide timeout when clicking insert', () => {
+      render(<SandboxPlaceholder isSupportSandbox />)
+
+      fireEvent.click(screen.getByRole('button', { name: /insert/i }))
+
+      expect(mocks.editor.focus).toHaveBeenCalledTimes(1)
+      expect(mocks.editor.update).toHaveBeenCalledTimes(1)
+      expect(mocks.selectEnd).toHaveBeenCalledTimes(1)
+      expect(mocks.createTextNode).toHaveBeenCalledWith('/')
+      expect(mocks.insertNodes).toHaveBeenCalledWith([{ text: '/' }])
+      expect(mocks.editor.dispatchCommand).toHaveBeenCalledWith(CLEAR_HIDE_MENU_TIMEOUT, undefined)
+    })
+
+    it('should insert at-sign and clear the hide timeout when clicking tools', () => {
+      render(<SandboxPlaceholder isSupportSandbox />)
+
+      fireEvent.click(screen.getByRole('button', { name: /tools/i }))
+
+      expect(mocks.editor.focus).toHaveBeenCalledTimes(1)
+      expect(mocks.editor.update).toHaveBeenCalledTimes(1)
+      expect(mocks.selectEnd).toHaveBeenCalledTimes(1)
+      expect(mocks.createTextNode).toHaveBeenCalledWith('@')
+      expect(mocks.insertNodes).toHaveBeenCalledWith([{ text: '@' }])
+      expect(mocks.editor.dispatchCommand).toHaveBeenCalledWith(CLEAR_HIDE_MENU_TIMEOUT, undefined)
+    })
+
+    it('should not trigger editor insertion when placeholder is not editable', () => {
+      render(<SandboxPlaceholder isSupportSandbox editable={false} />)
+
+      fireEvent.click(screen.getByRole('button', { name: /insert/i }))
+
+      expect(mocks.editor.focus).not.toHaveBeenCalled()
+      expect(mocks.editor.update).not.toHaveBeenCalled()
+      expect(mocks.insertNodes).not.toHaveBeenCalled()
+      expect(mocks.editor.dispatchCommand).not.toHaveBeenCalled()
     })
   })
 })
