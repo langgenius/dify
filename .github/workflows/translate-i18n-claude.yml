@@ -56,15 +56,15 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             # Manual trigger
-            if [ -n "${{ github.event.inputs.files }}" ]; then
-              echo "CHANGED_FILES=${{ github.event.inputs.files }}" >> $GITHUB_OUTPUT
+            if [ -n "${INPUT_FILES}" ]; then
+              echo "CHANGED_FILES=${INPUT_FILES}" >> $GITHUB_OUTPUT
             else
               # Get all JSON files in en-US directory
               files=$(ls web/i18n/en-US/*.json 2>/dev/null | xargs -n1 basename | sed 's/.json$//' | tr '\n' ' ')
               echo "CHANGED_FILES=$files" >> $GITHUB_OUTPUT
             fi
-            echo "TARGET_LANGS=${{ github.event.inputs.languages }}" >> $GITHUB_OUTPUT
-            echo "SYNC_MODE=${{ github.event.inputs.mode || 'incremental' }}" >> $GITHUB_OUTPUT
+            echo "TARGET_LANGS=${INPUT_LANGUAGES}" >> $GITHUB_OUTPUT
+            echo "SYNC_MODE=${INPUT_MODE}" >> $GITHUB_OUTPUT
 
             # For manual trigger with incremental mode, get diff from last commit
             # For full mode, we'll do a complete check anyway
@@ -118,6 +118,10 @@ jobs:
 
           echo "Detected files: $(cat $GITHUB_OUTPUT | grep CHANGED_FILES || echo 'none')"
 
+        env:
+          INPUT_FILES: ${{ github.event.inputs.files }}
+          INPUT_LANGUAGES: ${{ github.event.inputs.languages }}
+          INPUT_MODE: ${{ github.event.inputs.mode || 'incremental' }}
       - name: Run Claude Code for Translation Sync
         if: steps.detect_changes.outputs.CHANGED_FILES != ''
         uses: anthropics/claude-code-action@ff9acae5886d41a99ed4ec14b7dc147d55834722 # v1.0.77
