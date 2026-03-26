@@ -74,8 +74,6 @@
     "@lexical/text": "0.42.0",
     "@lexical/utils": "0.42.0",
     "@monaco-editor/react": "4.7.0",
-    "@octokit/core": "7.0.6",
-    "@octokit/request-error": "7.1.0",
     "@orpc/client": "1.13.9",
     "@orpc/contract": "1.13.9",
     "@orpc/openapi-client": "1.13.9",
