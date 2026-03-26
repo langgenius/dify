@@ -31,8 +31,10 @@ jobs:
 
       - name: Prepare diagnostics extractor
         run: |
-          git show ${{ github.event.pull_request.head.sha }}:api/libs/pyrefly_diagnostics.py > /tmp/pyrefly_diagnostics.py
+          git show ${PR_HEAD_SHA}:api/libs/pyrefly_diagnostics.py > /tmp/pyrefly_diagnostics.py
 
+        env:
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
       - name: Run pyrefly on PR branch
         run: |
           uv run --directory api --dev pyrefly check 2>&1 \
