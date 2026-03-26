@@ -1230,7 +1230,7 @@
   "skill.startTab.createModal.namePlaceholder": "输入 Skill 名称",
   "skill.startTab.createModal.title": "创建空白 Skill",
   "skill.startTab.createSuccess": "Skill \"{{name}}\" 创建成功",
-  "skill.startTab.fileExplorerIntro": "在此管理已上传的文件与目录。在 Agent 节点的 Prompt 编辑器中，可选择任意已上传的文件或目录，输入 <mention>@</mention> 即可调用。",
+  "skill.startTab.fileExplorerIntro": "在此管理已上传的文件与目录。在 Agent 节点的 Prompt 编辑器中，输入 <mention>@</mention>，即可引用任意已上传的文件或文件夹。",
   "skill.startTab.filesIncluded": "包含 {{count}} 个文件",
   "skill.startTab.importModal.browseFiles": "浏览文件",
   "skill.startTab.importModal.changeFile": "更换文件",

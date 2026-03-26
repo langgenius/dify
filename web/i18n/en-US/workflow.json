@@ -1232,7 +1232,7 @@
   "skill.startTab.createModal.namePlaceholder": "Enter skill name",
   "skill.startTab.createModal.title": "Create Blank Skill",
   "skill.startTab.createSuccess": "Skill \"{{name}}\" created successfully",
-  "skill.startTab.fileExplorerIntro": "Manage uploaded files and folders here. In the Agent node's Prompt editor, select any uploaded file or folder and type <mention>@</mention> to reference it.",
+  "skill.startTab.fileExplorerIntro": "Manage uploaded files and folders here. In the Agent node's Prompt editor, type <mention>@</mention> to select and reference any uploaded file or folder.",
   "skill.startTab.filesIncluded": "{{count}} files included",
   "skill.startTab.importModal.browseFiles": "Browse Files",
   "skill.startTab.importModal.changeFile": "Change File",
