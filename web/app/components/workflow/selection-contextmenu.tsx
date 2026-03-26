@@ -1,13 +1,4 @@
-import type { ComponentType } from 'react'
 import type { Node } from './types'
-import {
-  RiAlignBottom,
-  RiAlignCenter,
-  RiAlignJustify,
-  RiAlignLeft,
-  RiAlignRight,
-  RiAlignTop,
-} from '@remixicon/react'
 import { produce } from 'immer'
 import {
   memo,
@@ -24,7 +15,6 @@ import {
   ContextMenuGroupLabel,
   ContextMenuItem,
   ContextMenuSeparator,
-  ContextMenuTrigger,
 } from '@/app/components/base/ui/context-menu'
 import { useNodesReadOnly, useNodesSyncDraft } from './hooks'
 import { useSelectionInteractions } from './hooks/use-selection-interactions'
@@ -44,13 +34,6 @@ const AlignType = {
 
 type AlignTypeValue = (typeof AlignType)[keyof typeof AlignType]
 
-type SelectionMenuPosition = {
-  left: number
-  top: number
-}
-
-type ContainerRect = Pick<DOMRect, 'width' | 'height'>
-
 type AlignBounds = {
   minX: number
   maxX: number
@@ -60,7 +43,7 @@ type AlignBounds = {
 
 type MenuItem = {
   alignType: AlignTypeValue
-  icon: ComponentType<{ className?: string }>
+  icon: string
   iconClassName?: string
   translationKey: string
 }
@@ -70,52 +53,26 @@ type MenuSection = {
   items: MenuItem[]
 }
 
-const MENU_WIDTH = 240
-const MENU_HEIGHT = 380
-
 const menuSections: MenuSection[] = [
   {
     titleKey: 'operator.vertical',
     items: [
-      { alignType: AlignType.Top, icon: RiAlignTop, translationKey: 'operator.alignTop' },
-      { alignType: AlignType.Middle, icon: RiAlignCenter, iconClassName: 'rotate-90', translationKey: 'operator.alignMiddle' },
-      { alignType: AlignType.Bottom, icon: RiAlignBottom, translationKey: 'operator.alignBottom' },
-      { alignType: AlignType.DistributeVertical, icon: RiAlignJustify, iconClassName: 'rotate-90', translationKey: 'operator.distributeVertical' },
+      { alignType: AlignType.Top, icon: 'i-ri-align-top', translationKey: 'operator.alignTop' },
+      { alignType: AlignType.Middle, icon: 'i-ri-align-center', iconClassName: 'rotate-90', translationKey: 'operator.alignMiddle' },
+      { alignType: AlignType.Bottom, icon: 'i-ri-align-bottom', translationKey: 'operator.alignBottom' },
+      { alignType: AlignType.DistributeVertical, icon: 'i-ri-align-justify', iconClassName: 'rotate-90', translationKey: 'operator.distributeVertical' },
     ],
   },
   {
     titleKey: 'operator.horizontal',
     items: [
-      { alignType: AlignType.Left, icon: RiAlignLeft, translationKey: 'operator.alignLeft' },
-      { alignType: AlignType.Center, icon: RiAlignCenter, translationKey: 'operator.alignCenter' },
-      { alignType: AlignType.Right, icon: RiAlignRight, translationKey: 'operator.alignRight' },
-      { alignType: AlignType.DistributeHorizontal, icon: RiAlignJustify, translationKey: 'operator.distributeHorizontal' },
+      { alignType: AlignType.Left, icon: 'i-ri-align-left', translationKey: 'operator.alignLeft' },
+      { alignType: AlignType.Center, icon: 'i-ri-align-center', translationKey: 'operator.alignCenter' },
+      { alignType: AlignType.Right, icon: 'i-ri-align-right', translationKey: 'operator.alignRight' },
+      { alignType: AlignType.DistributeHorizontal, icon: 'i-ri-align-justify', translationKey: 'operator.distributeHorizontal' },
     ],
   },
 ]
-
-const getMenuPosition = (
-  selectionMenu: SelectionMenuPosition | undefined,
-  containerRect?: ContainerRect | null,
-) => {
-  if (!selectionMenu)
-    return { left: 0, top: 0 }
-
-  let { left, top } = selectionMenu
-
-  if (containerRect) {
-    if (left + MENU_WIDTH > containerRect.width)
-      left = left - MENU_WIDTH
-
-    if (top + MENU_HEIGHT > containerRect.height)
-      top = top - MENU_HEIGHT
-
-    left = Math.max(0, left)
-    top = Math.max(0, top)
-  }
-
-  return { left, top }
-}
 
 const getAlignableNodes = (nodes: Node[], selectedNodes: Node[]) => {
   const selectedNodeIds = new Set(selectedNodes.map(node => node.id))
@@ -275,28 +232,17 @@ const SelectionContextmenu = () => {
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { saveStateToHistory } = useWorkflowHistory()
 
-  const { menuPosition, anchor } = useMemo(() => {
-    const container = document.querySelector('#workflow-container')
-    const containerRect = container?.getBoundingClientRect()
-    const position = getMenuPosition(selectionMenu, containerRect)
-
-    if (!containerRect) {
-      return {
-        menuPosition: position,
-        anchor: undefined,
-      }
-    }
+  const anchor = useMemo(() => {
+    if (!selectionMenu)
+      return undefined
 
     return {
-      menuPosition: position,
-      anchor: {
-        getBoundingClientRect: () => DOMRect.fromRect({
-          width: 0,
-          height: 0,
-          x: containerRect.x + position.left,
-          y: containerRect.y + position.top,
-        }),
-      },
+      getBoundingClientRect: () => DOMRect.fromRect({
+        width: 0,
+        height: 0,
+        x: selectionMenu.clientX,
+        y: selectionMenu.clientY,
+      }),
     }
   }, [selectionMenu])
 
@@ -372,52 +318,39 @@ const SelectionContextmenu = () => {
     return null
 
   return (
-    <div
-      className="absolute z-[9]"
-      data-testid="selection-contextmenu"
-      style={{
-        left: menuPosition.left,
-        top: menuPosition.top,
+    <ContextMenu
+      open
+      onOpenChange={(open) => {
+        if (!open)
+          handleSelectionContextmenuCancel()
       }}
     >
-      <ContextMenu
-        open
-        onOpenChange={(open) => {
-          if (!open)
-            handleSelectionContextmenuCancel()
-        }}
+      <ContextMenuContent
+        popupClassName="w-[240px]"
+        positionerProps={anchor ? { anchor } : undefined}
       >
-        <ContextMenuTrigger>
-          <span aria-hidden className="block size-px opacity-0" />
-        </ContextMenuTrigger>
-        <ContextMenuContent
-          popupClassName="w-[240px]"
-          positionerProps={anchor ? { anchor } : undefined}
-        >
-          {menuSections.map((section, sectionIndex) => (
-            <ContextMenuGroup key={section.titleKey}>
-              {sectionIndex > 0 && <ContextMenuSeparator />}
-              <ContextMenuGroupLabel>
-                {t(section.titleKey, { defaultValue: section.titleKey, ns: 'workflow' })}
-              </ContextMenuGroupLabel>
-              {section.items.map((item) => {
-                const Icon = item.icon
-                return (
-                  <ContextMenuItem
-                    key={item.alignType}
-                    data-testid={`selection-contextmenu-item-${item.alignType}`}
-                    onClick={() => handleAlignNodes(item.alignType)}
-                  >
-                    <Icon className={`h-4 w-4 ${item.iconClassName ?? ''}`.trim()} />
-                    {t(item.translationKey, { defaultValue: item.translationKey, ns: 'workflow' })}
-                  </ContextMenuItem>
-                )
-              })}
-            </ContextMenuGroup>
-          ))}
-        </ContextMenuContent>
-      </ContextMenu>
-    </div>
+        {menuSections.map((section, sectionIndex) => (
+          <ContextMenuGroup key={section.titleKey}>
+            {sectionIndex > 0 && <ContextMenuSeparator />}
+            <ContextMenuGroupLabel>
+              {t(section.titleKey, { defaultValue: section.titleKey, ns: 'workflow' })}
+            </ContextMenuGroupLabel>
+            {section.items.map((item) => {
+              return (
+                <ContextMenuItem
+                  key={item.alignType}
+                  data-testid={`selection-contextmenu-item-${item.alignType}`}
+                  onClick={() => handleAlignNodes(item.alignType)}
+                >
+                  <span aria-hidden className={`${item.icon} h-4 w-4 ${item.iconClassName ?? ''}`.trim()} />
+                  {t(item.translationKey, { defaultValue: item.translationKey, ns: 'workflow' })}
+                </ContextMenuItem>
+              )
+            })}
+          </ContextMenuGroup>
+        ))}
+      </ContextMenuContent>
+    </ContextMenu>
   )
 }
 
