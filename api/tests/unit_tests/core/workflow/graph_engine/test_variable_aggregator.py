@@ -2,9 +2,9 @@ from unittest.mock import patch
 
 import pytest
 
-from core.workflow.enums import WorkflowNodeExecutionStatus
-from core.workflow.node_events import NodeRunResult
-from core.workflow.nodes.template_transform.template_transform_node import TemplateTransformNode
+from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.node_events import NodeRunResult
+from graphon.nodes.template_transform.template_transform_node import TemplateTransformNode
 
 from .test_table_runner import TableTestRunner, WorkflowTestCase
 

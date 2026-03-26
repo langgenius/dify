@@ -14,9 +14,9 @@ from core.ops.aliyun_trace.entities.semconv import (
     GenAISpanKind,
 )
 from core.rag.models.document import Document
-from core.workflow.entities import WorkflowNodeExecution
-from core.workflow.enums import WorkflowNodeExecutionStatus
 from extensions.ext_database import db
+from graphon.entities import WorkflowNodeExecution
+from graphon.enums import WorkflowNodeExecutionStatus
 from models import EndUser
 
 # Constants

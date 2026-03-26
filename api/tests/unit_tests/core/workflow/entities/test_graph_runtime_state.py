@@ -4,8 +4,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from core.model_runtime.entities.llm_entities import LLMUsage
-from core.workflow.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper, VariablePool
+from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID
+from graphon.model_runtime.entities.llm_entities import LLMUsage
+from graphon.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper, VariablePool
+from graphon.variables.variables import StringVariable
 
 
 class StubCoordinator:
@@ -21,6 +23,17 @@ class StubCoordinator:
 
 
 class TestGraphRuntimeState:
+    def test_execution_context_defaults_to_empty_context(self):
+        state = GraphRuntimeState(variable_pool=VariablePool(), start_at=time())
+
+        with state.execution_context:
+            assert state.execution_context is not None
+
+        state.execution_context = None
+
+        with state.execution_context:
+            assert state.execution_context is not None
+
     def test_property_getters_and_setters(self):
         # FIXME(-LAN-): Mock VariablePool if needed
         variable_pool = VariablePool()
@@ -115,7 +128,7 @@ class TestGraphRuntimeState:
 
         queue = state.ready_queue
 
-        from core.workflow.graph_engine.ready_queue import InMemoryReadyQueue
+        from graphon.graph_engine.ready_queue import InMemoryReadyQueue
 
         assert isinstance(queue, InMemoryReadyQueue)
 
@@ -124,7 +137,7 @@ class TestGraphRuntimeState:
 
         execution = state.graph_execution
 
-        from core.workflow.graph_engine.domain.graph_execution import GraphExecution
+        from graphon.graph_engine.domain.graph_execution import GraphExecution
 
         assert isinstance(execution, GraphExecution)
         assert execution.workflow_id == ""
@@ -138,10 +151,10 @@ class TestGraphRuntimeState:
             _ = state.response_coordinator
 
         mock_graph = MagicMock()
-        with patch("core.workflow.graph_engine.response_coordinator.ResponseStreamCoordinator") as coordinator_cls:
-            coordinator_instance = MagicMock()
-            coordinator_cls.return_value = coordinator_instance
-
+        with patch(
+            "graphon.graph_engine.response_coordinator.ResponseStreamCoordinator", autospec=True
+        ) as coordinator_cls:
+            coordinator_instance = coordinator_cls.return_value
             state.configure(graph=mock_graph)
 
             assert state.response_coordinator is coordinator_instance
@@ -204,7 +217,7 @@ class TestGraphRuntimeState:
 
         mock_graph = MagicMock()
         stub = StubCoordinator()
-        with patch.object(GraphRuntimeState, "_build_response_coordinator", return_value=stub):
+        with patch.object(GraphRuntimeState, "_build_response_coordinator", return_value=stub, autospec=True):
             state.attach_graph(mock_graph)
 
         stub.state = "configured"
@@ -230,7 +243,7 @@ class TestGraphRuntimeState:
         assert restored_execution.started is True
 
         new_stub = StubCoordinator()
-        with patch.object(GraphRuntimeState, "_build_response_coordinator", return_value=new_stub):
+        with patch.object(GraphRuntimeState, "_build_response_coordinator", return_value=new_stub, autospec=True):
             restored.attach_graph(mock_graph)
 
         assert new_stub.state == "configured"
@@ -251,14 +264,14 @@ class TestGraphRuntimeState:
 
         mock_graph = MagicMock()
         original_stub = StubCoordinator()
-        with patch.object(GraphRuntimeState, "_build_response_coordinator", return_value=original_stub):
+        with patch.object(GraphRuntimeState, "_build_response_coordinator", return_value=original_stub, autospec=True):
             state.attach_graph(mock_graph)
 
         original_stub.state = "configured"
         snapshot = state.dumps()
 
         new_stub = StubCoordinator()
-        with patch.object(GraphRuntimeState, "_build_response_coordinator", return_value=new_stub):
+        with patch.object(GraphRuntimeState, "_build_response_coordinator", return_value=new_stub, autospec=True):
             restored = GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0)
             restored.attach_graph(mock_graph)
             restored.loads(snapshot)
@@ -278,3 +291,17 @@ class TestGraphRuntimeState:
         assert restored_execution.started is True
 
         assert new_stub.state == "configured"
+
+    def test_snapshot_restore_preserves_updated_conversation_variable(self):
+        variable_pool = VariablePool(
+            conversation_variables=[StringVariable(name="session_name", value="before")],
+        )
+        variable_pool.add((CONVERSATION_VARIABLE_NODE_ID, "session_name"), "after")
+
+        state = GraphRuntimeState(variable_pool=variable_pool, start_at=time())
+        snapshot = state.dumps()
+        restored = GraphRuntimeState.from_snapshot(snapshot)
+
+        restored_value = restored.variable_pool.get((CONVERSATION_VARIABLE_NODE_ID, "session_name"))
+        assert restored_value is not None
+        assert restored_value.value == "after"

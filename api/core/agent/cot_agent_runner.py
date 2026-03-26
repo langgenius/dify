@@ -6,23 +6,23 @@ from typing import Any
 
 from core.agent.base_agent_runner import BaseAgentRunner
 from core.agent.entities import AgentScratchpadUnit
+from core.agent.errors import AgentMaxIterationError
 from core.agent.output_parser.cot_output_parser import CotAgentOutputParser
 from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.entities.queue_entities import QueueAgentThoughtEvent, QueueMessageEndEvent, QueueMessageFileEvent
-from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
-from core.model_runtime.entities.message_entities import (
+from core.ops.ops_trace_manager import TraceQueueManager
+from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
+from core.tools.__base.tool import Tool
+from core.tools.entities.tool_entities import ToolInvokeMeta
+from core.tools.tool_engine import ToolEngine
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
+from graphon.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     PromptMessage,
     PromptMessageTool,
     ToolPromptMessage,
     UserPromptMessage,
 )
-from core.ops.ops_trace_manager import TraceQueueManager
-from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
-from core.tools.__base.tool import Tool
-from core.tools.entities.tool_entities import ToolInvokeMeta
-from core.tools.tool_engine import ToolEngine
-from core.workflow.nodes.agent.exc import AgentMaxIterationError
 from models.model import Message
 
 logger = logging.getLogger(__name__)
@@ -122,7 +122,6 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                 tools=[],
                 stop=app_generate_entity.model_conf.stop,
                 stream=True,
-                user=self.user_id,
                 callbacks=[],
             )
 
@@ -245,7 +244,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
             iteration_step += 1
 
         yield LLMResultChunk(
-            model=model_instance.model,
+            model=model_instance.model_name,
             prompt_messages=prompt_messages,
             delta=LLMResultChunkDelta(
                 index=0, message=AssistantPromptMessage(content=final_answer), usage=llm_usage["usage"]
@@ -268,7 +267,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         self.queue_manager.publish(
             QueueMessageEndEvent(
                 llm_result=LLMResult(
-                    model=model_instance.model,
+                    model=model_instance.model_name,
                     prompt_messages=prompt_messages,
                     message=AssistantPromptMessage(content=final_answer),
                     usage=llm_usage["usage"] or LLMUsage.empty_usage(),

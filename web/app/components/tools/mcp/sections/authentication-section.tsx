@@ -32,7 +32,7 @@ const AuthenticationSection: FC<AuthenticationSectionProps> = ({
         <div className="mb-1 flex h-6 items-center">
           <Switch
             className="mr-2"
-            defaultValue={isDynamicRegistration}
+            value={isDynamicRegistration}
             onChange={onDynamicRegistrationChange}
           />
           <span className="system-sm-medium text-text-secondary">{t('mcp.modal.useDynamicClientRegistration', { ns: 'tools' })}</span>

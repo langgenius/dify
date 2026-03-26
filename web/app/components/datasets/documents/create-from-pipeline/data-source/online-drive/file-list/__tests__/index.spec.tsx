@@ -334,10 +334,10 @@ describe('FileList', () => {
       it('should call resetKeywords prop when clear button is clicked', () => {
         const mockResetKeywords = vi.fn()
         const props = createDefaultProps({ resetKeywords: mockResetKeywords, keywords: 'to-reset' })
-        const { container } = render(<FileList {...props} />)
+        render(<FileList {...props} />)
 
         // Act - Click the clear icon div (it contains RiCloseCircleFill icon)
-        const clearButton = container.querySelector('[class*="cursor-pointer"] svg[class*="h-3.5"]')?.parentElement
+        const clearButton = screen.getByTestId('input-clear')
         expect(clearButton).toBeInTheDocument()
         fireEvent.click(clearButton!)
 
@@ -346,12 +346,12 @@ describe('FileList', () => {
 
       it('should reset inputValue to empty string when clear is clicked', () => {
         const props = createDefaultProps({ keywords: 'to-be-reset' })
-        const { container } = render(<FileList {...props} />)
+        render(<FileList {...props} />)
         const input = screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')
         fireEvent.change(input, { target: { value: 'some-search' } })
 
         // Act - Find and click the clear icon
-        const clearButton = container.querySelector('[class*="cursor-pointer"] svg[class*="h-3.5"]')?.parentElement
+        const clearButton = screen.getByTestId('input-clear')
         expect(clearButton).toBeInTheDocument()
         fireEvent.click(clearButton!)
 

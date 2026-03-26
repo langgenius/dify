@@ -1,4 +1,6 @@
-from sqlalchemy import select
+from typing import Any, cast
+
+from sqlalchemy import delete, select
 
 from events.app_event import app_model_config_was_updated
 from extensions.ext_database import db
@@ -29,9 +31,9 @@ def handle(sender, **kwargs):
 
     if removed_dataset_ids:
         for dataset_id in removed_dataset_ids:
-            db.session.query(AppDatasetJoin).where(
-                AppDatasetJoin.app_id == app.id, AppDatasetJoin.dataset_id == dataset_id
-            ).delete()
+            db.session.execute(
+                delete(AppDatasetJoin).where(AppDatasetJoin.app_id == app.id, AppDatasetJoin.dataset_id == dataset_id)
+            )
 
     if added_dataset_ids:
         for dataset_id in added_dataset_ids:
@@ -54,9 +56,11 @@ def get_dataset_ids_from_model_config(app_model_config: AppModelConfig) -> set[s
             continue
 
         tool_type = list(tool.keys())[0]
-        tool_config = list(tool.values())[0]
+        tool_config = cast(dict[str, Any], list(tool.values())[0])
         if tool_type == "dataset":
-            dataset_ids.add(tool_config.get("id"))
+            dataset_id = tool_config.get("id")
+            if isinstance(dataset_id, str):
+                dataset_ids.add(dataset_id)
 
     # get dataset from dataset_configs
     dataset_configs = app_model_config.dataset_configs_dict

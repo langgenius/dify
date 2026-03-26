@@ -18,6 +18,7 @@ import contexts
 from configs import dify_config
 from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
+from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.pipeline.pipeline_config_manager import PipelineConfigManager
 from core.app.apps.pipeline.pipeline_queue_manager import PipelineQueueManager
@@ -33,14 +34,15 @@ from core.datasource.entities.datasource_entities import (
 )
 from core.datasource.online_drive.online_drive_plugin import OnlineDriveDatasourcePlugin
 from core.entities.knowledge_entities import PipelineDataset, PipelineDocument
-from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.rag.index_processor.constant.built_in_field import BuiltInField
-from core.repositories.factory import DifyCoreRepositoryFactory
-from core.workflow.repositories.draft_variable_repository import DraftVariableSaverFactory
-from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
-from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
-from core.workflow.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
+from core.repositories.factory import (
+    DifyCoreRepositoryFactory,
+    WorkflowExecutionRepository,
+    WorkflowNodeExecutionRepository,
+)
 from extensions.ext_database import db
+from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
+from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
 from libs.flask_utils import preserve_flask_contexts
 from models import Account, EndUser, Workflow, WorkflowNodeExecutionTriggeredFrom
 from models.dataset import Document, DocumentPipelineExecutionLog, Pipeline
@@ -419,11 +421,12 @@ class PipelineGenerator(BaseAppGenerator):
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
         )
         draft_var_srv = WorkflowDraftVariableService(db.session())
-        draft_var_srv.prefill_conversation_variable_default_values(workflow)
+        draft_var_srv.prefill_conversation_variable_default_values(workflow, user_id=user.id)
         var_loader = DraftVarLoader(
             engine=db.engine,
             app_id=application_generate_entity.app_config.app_id,
             tenant_id=application_generate_entity.app_config.tenant_id,
+            user_id=user.id,
         )
 
         return self._generate(
@@ -514,11 +517,12 @@ class PipelineGenerator(BaseAppGenerator):
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
         )
         draft_var_srv = WorkflowDraftVariableService(db.session())
-        draft_var_srv.prefill_conversation_variable_default_values(workflow)
+        draft_var_srv.prefill_conversation_variable_default_values(workflow, user_id=user.id)
         var_loader = DraftVarLoader(
             engine=db.engine,
             app_id=application_generate_entity.app_config.app_id,
             tenant_id=application_generate_entity.app_config.tenant_id,
+            user_id=user.id,
         )
 
         return self._generate(

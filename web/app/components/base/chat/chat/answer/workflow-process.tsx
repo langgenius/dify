@@ -1,16 +1,10 @@
 import type { ChatItem, WorkflowProcess } from '../../types'
-import {
-  RiArrowRightSLine,
-  RiErrorWarningFill,
-  RiLoader2Line,
-  RiPauseCircleFill,
-} from '@remixicon/react'
+
 import {
   useEffect,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CheckCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import TracingPanel from '@/app/components/workflow/run/tracing-panel'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { cn } from '@/utils/classnames'
@@ -58,35 +52,52 @@ const WorkflowProcessItem = ({
         collapse && paused && 'bg-workflow-process-paused-bg',
         collapse && failed && 'bg-workflow-process-failed-bg',
       )}
+      data-testid="workflow-process-item"
     >
       <div
         className={cn('flex cursor-pointer items-center', !collapse && 'px-1.5')}
         onClick={() => setCollapse(!collapse)}
+        data-testid="workflow-process-header"
       >
         {
           running && (
-            <RiLoader2Line className="mr-1 h-3.5 w-3.5 shrink-0 animate-spin text-text-tertiary" />
+            <div
+              className="i-ri-loader-2-line mr-1 h-3.5 w-3.5 shrink-0 animate-spin text-text-tertiary"
+              data-testid="status-icon-running"
+            />
           )
         }
         {
           succeeded && (
-            <CheckCircle className="mr-1 h-3.5 w-3.5 shrink-0 text-text-success" />
+            <div
+              className="i-custom-vender-solid-general-check-circle mr-1 h-3.5 w-3.5 shrink-0 text-text-success"
+              data-testid="status-icon-success"
+            />
           )
         }
         {
           failed && (
-            <RiErrorWarningFill className="mr-1 h-3.5 w-3.5 shrink-0 text-text-destructive" />
+            <div
+              className="i-ri-error-warning-fill mr-1 h-3.5 w-3.5 shrink-0 text-text-destructive"
+              data-testid="status-icon-failed"
+            />
           )
         }
         {
           paused && (
-            <RiPauseCircleFill className="mr-1 h-3.5 w-3.5 shrink-0 text-text-warning-secondary" />
+            <div
+              className="i-ri-pause-circle-fill mr-1 h-3.5 w-3.5 shrink-0 text-text-warning-secondary"
+              data-testid="status-icon-paused"
+            />
           )
         }
-        <div className={cn('system-xs-medium text-text-secondary', !collapse && 'grow')}>
+        <div
+          className={cn('text-text-secondary system-xs-medium', !collapse && 'grow')}
+          data-testid="workflow-process-title"
+        >
           {!collapse ? t('common.workflowProcess', { ns: 'workflow' }) : latestNode?.title}
         </div>
-        <RiArrowRightSLine className={cn('ml-1 h-4 w-4 text-text-tertiary', !collapse && 'rotate-90')} />
+        <div className={cn('i-ri-arrow-right-s-line ml-1 h-4 w-4 text-text-tertiary', !collapse && 'rotate-90')} />
       </div>
       {
         !collapse && (

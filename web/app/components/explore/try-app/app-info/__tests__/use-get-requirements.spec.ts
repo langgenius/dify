@@ -400,6 +400,61 @@ describe('useGetRequirements', () => {
 
       expect(result.current.requirements[0].iconUrl).toBe('https://marketplace.api/plugins/org/plugin/icon')
     })
+
+    it('maps google model provider to gemini plugin icon URL', () => {
+      mockUseGetTryAppFlowPreview.mockReturnValue({ data: null })
+
+      const appDetail = createMockAppDetail('chat', {
+        model_config: {
+          model: {
+            provider: 'langgenius/google/google',
+            name: 'gemini-2.0',
+            mode: 'chat',
+          },
+          dataset_configs: { datasets: { datasets: [] } },
+          agent_mode: { tools: [] },
+          user_input_form: [],
+        },
+      } as unknown as Partial<TryAppInfo>)
+
+      const { result } = renderHook(() =>
+        useGetRequirements({ appDetail, appId: 'test-app-id' }),
+      )
+
+      expect(result.current.requirements[0].iconUrl).toBe('https://marketplace.api/plugins/langgenius/gemini/icon')
+    })
+
+    it('maps special builtin tool providers to *_tool plugin icon URL', () => {
+      mockUseGetTryAppFlowPreview.mockReturnValue({ data: null })
+
+      const appDetail = createMockAppDetail('agent-chat', {
+        model_config: {
+          model: {
+            provider: 'langgenius/openai/openai',
+            name: 'gpt-4',
+            mode: 'chat',
+          },
+          dataset_configs: { datasets: { datasets: [] } },
+          agent_mode: {
+            tools: [
+              {
+                enabled: true,
+                provider_id: 'langgenius/jina/jina',
+                tool_label: 'Jina Search',
+              },
+            ],
+          },
+          user_input_form: [],
+        },
+      } as unknown as Partial<TryAppInfo>)
+
+      const { result } = renderHook(() =>
+        useGetRequirements({ appDetail, appId: 'test-app-id' }),
+      )
+
+      const toolRequirement = result.current.requirements.find(item => item.name === 'Jina Search')
+      expect(toolRequirement?.iconUrl).toBe('https://marketplace.api/plugins/langgenius/jina_tool/icon')
+    })
   })
 
   describe('hook calls', () => {

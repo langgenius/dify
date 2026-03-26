@@ -31,8 +31,8 @@ from core.ops.entities.trace_entity import (
 )
 from core.ops.weave_trace.entities.weave_trace_entity import WeaveTraceModel
 from core.repositories import DifyCoreRepositoryFactory
-from core.workflow.enums import NodeType, WorkflowNodeExecutionMetadataKey
 from extensions.ext_database import db
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 from models import EndUser, MessageFile, WorkflowNodeExecutionTriggeredFrom
 
 logger = logging.getLogger(__name__)
@@ -161,8 +161,8 @@ class WeaveDataTrace(BaseTraceInstance):
         )
 
         # Get all executions for this workflow run
-        workflow_node_executions = workflow_node_execution_repository.get_by_workflow_run(
-            workflow_run_id=trace_info.workflow_run_id
+        workflow_node_executions = workflow_node_execution_repository.get_by_workflow_execution(
+            workflow_execution_id=trace_info.workflow_run_id
         )
 
         # rearrange workflow_node_executions by starting time
@@ -175,7 +175,7 @@ class WeaveDataTrace(BaseTraceInstance):
             node_name = node_execution.title
             node_type = node_execution.node_type
             status = node_execution.status
-            if node_type == NodeType.LLM:
+            if node_type == BuiltinNodeTypes.LLM:
                 inputs = node_execution.process_data.get("prompts", {}) if node_execution.process_data else {}
             else:
                 inputs = node_execution.inputs or {}

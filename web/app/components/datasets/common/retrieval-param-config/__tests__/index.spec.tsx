@@ -5,9 +5,9 @@ import { RETRIEVE_METHOD } from '@/types/app'
 import RetrievalParamConfig from '../index'
 
 const mockNotify = vi.fn()
-vi.mock('@/app/components/base/toast', () => ({
-  default: {
-    notify: (params: { type: string, message: string }) => mockNotify(params),
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    error: (message: string) => mockNotify(message),
   },
 }))
 
@@ -123,11 +123,11 @@ vi.mock('@/app/components/base/radio-card', () => ({
 }))
 
 vi.mock('@/app/components/base/switch', () => ({
-  default: ({ defaultValue, onChange }: { defaultValue: boolean, onChange: (v: boolean) => void }) => (
+  default: ({ value, onChange }: { value: boolean, onChange?: (v: boolean) => void }) => (
     <button
       data-testid="rerank-switch"
-      data-checked={defaultValue}
-      onClick={() => onChange(!defaultValue)}
+      data-checked={value}
+      onClick={() => onChange?.(!value)}
     >
       Switch
     </button>
@@ -260,10 +260,7 @@ describe('RetrievalParamConfig', () => {
 
       fireEvent.click(screen.getByTestId('rerank-switch'))
 
-      expect(mockNotify).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'workflow.errorMsg.rerankModelRequired',
-      })
+      expect(mockNotify).toHaveBeenCalledWith('workflow.errorMsg.rerankModelRequired')
     })
 
     it('should update reranking model on selection', () => {
@@ -618,10 +615,7 @@ describe('RetrievalParamConfig', () => {
       const rerankModelCard = radioCards.find(card => card.getAttribute('data-title') === 'common.modelProvider.rerankModel.key')
       fireEvent.click(rerankModelCard!)
 
-      expect(mockNotify).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'workflow.errorMsg.rerankModelRequired',
-      })
+      expect(mockNotify).toHaveBeenCalledWith('workflow.errorMsg.rerankModelRequired')
     })
 
     it('should update weights when WeightedScore changes', () => {

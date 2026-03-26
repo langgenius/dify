@@ -12,17 +12,17 @@ import pytest
 from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.model_runtime.utils.encoders import jsonable_encoder
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
-from core.workflow.entities import (
+from core.repositories.factory import OrderConfig
+from graphon.entities import (
     WorkflowNodeExecution,
 )
-from core.workflow.enums import (
-    NodeType,
+from graphon.enums import (
+    BuiltinNodeTypes,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
-from core.workflow.repositories.workflow_node_execution_repository import OrderConfig
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 from models.account import Account, Tenant
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 
@@ -175,8 +175,8 @@ def test_save_with_existing_tenant_id(repository, session):
     session_obj.commit.assert_called_once()
 
 
-def test_get_by_workflow_run(repository, session, mocker: MockerFixture):
-    """Test get_by_workflow_run method."""
+def test_get_by_workflow_execution(repository, session, mocker: MockerFixture):
+    """Test get_by_workflow_execution method."""
     session_obj, _ = session
     # Set up mock
     mock_select = mocker.patch("core.repositories.sqlalchemy_workflow_node_execution_repository.select")
@@ -206,7 +206,10 @@ def test_get_by_workflow_run(repository, session, mocker: MockerFixture):
 
     # Call method
     order_config = OrderConfig(order_by=["index"], order_direction="desc")
-    result = repository.get_by_workflow_run(workflow_run_id="test-workflow-run-id", order_config=order_config)
+    result = repository.get_by_workflow_execution(
+        workflow_execution_id="test-workflow-run-id",
+        order_config=order_config,
+    )
 
     # Assert select was called with correct parameters
     mock_select.assert_called_once()
@@ -230,7 +233,7 @@ def test_to_db_model(repository):
         index=1,
         predecessor_node_id="test-predecessor-id",
         node_id="test-node-id",
-        node_type=NodeType.START,
+        node_type=BuiltinNodeTypes.START,
         title="Test Node",
         inputs={"input_key": "input_value"},
         process_data={"process_key": "process_value"},
@@ -298,7 +301,7 @@ def test_to_domain_model(repository):
     db_model.predecessor_node_id = "test-predecessor-id"
     db_model.node_execution_id = "test-node-execution-id"
     db_model.node_id = "test-node-id"
-    db_model.node_type = NodeType.START
+    db_model.node_type = BuiltinNodeTypes.START
     db_model.title = "Test Node"
     db_model.inputs = json.dumps(inputs_dict)
     db_model.process_data = json.dumps(process_data_dict)
@@ -324,7 +327,7 @@ def test_to_domain_model(repository):
     assert domain_model.predecessor_node_id == db_model.predecessor_node_id
     assert domain_model.node_execution_id == db_model.node_execution_id
     assert domain_model.node_id == db_model.node_id
-    assert domain_model.node_type == NodeType(db_model.node_type)
+    assert domain_model.node_type == db_model.node_type
     assert domain_model.title == db_model.title
     assert domain_model.inputs == inputs_dict
     assert domain_model.process_data == process_data_dict

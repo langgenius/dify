@@ -3,12 +3,13 @@ import json
 import logging
 import time
 import uuid
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
+from itertools import islice
 from typing import Any
 
 import click
-from celery import shared_task  # type: ignore
+from celery import group, shared_task
 from flask import current_app, g
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -25,6 +26,11 @@ from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom
 from services.file_service import FileService
 
 logger = logging.getLogger(__name__)
+
+
+def chunked(iterable: Sequence, size: int):
+    it = iter(iterable)
+    return iter(lambda: list(islice(it, size)), [])
 
 
 @shared_task(queue="pipeline")
@@ -83,16 +89,24 @@ def rag_pipeline_run_task(
         logger.info("rag pipeline tenant isolation queue %s next files: %s", tenant_id, next_file_ids)
 
         if next_file_ids:
-            for next_file_id in next_file_ids:
-                # Process the next waiting task
-                # Keep the flag set to indicate a task is running
-                tenant_isolated_task_queue.set_task_waiting_time()
-                rag_pipeline_run_task.delay(  # type: ignore
-                    rag_pipeline_invoke_entities_file_id=next_file_id.decode("utf-8")
-                    if isinstance(next_file_id, bytes)
-                    else next_file_id,
-                    tenant_id=tenant_id,
-                )
+            for batch in chunked(next_file_ids, 100):
+                jobs = []
+                for next_file_id in batch:
+                    tenant_isolated_task_queue.set_task_waiting_time()
+
+                    file_id = (
+                        next_file_id.decode("utf-8") if isinstance(next_file_id, (bytes, bytearray)) else next_file_id
+                    )
+
+                    jobs.append(
+                        rag_pipeline_run_task.s(
+                            rag_pipeline_invoke_entities_file_id=file_id,
+                            tenant_id=tenant_id,
+                        )
+                    )
+
+                if jobs:
+                    group(jobs).apply_async()
         else:
             # No more waiting tasks, clear the flag
             tenant_isolated_task_queue.delete_task_key()

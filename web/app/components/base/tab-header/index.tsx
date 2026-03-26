@@ -32,8 +32,9 @@ const TabHeader: FC<ITabHeaderProps> = ({
   const renderItem = ({ id, name, icon, extra, disabled }: Item) => (
     <div
       key={id}
+      data-testid={`tab-header-item-${id}`}
       className={cn(
-        'system-md-semibold relative flex cursor-pointer items-center border-b-2 border-transparent pb-2 pt-2.5',
+        'relative flex cursor-pointer items-center border-b-2 border-transparent pb-2 pt-2.5 system-md-semibold',
         id === value ? cn('border-components-tab-active text-text-primary', activeItemClassName) : 'text-text-tertiary',
         disabled && 'cursor-not-allowed opacity-30',
         itemWrapClassName,
@@ -46,11 +47,11 @@ const TabHeader: FC<ITabHeaderProps> = ({
     </div>
   )
   return (
-    <div className="flex justify-between">
-      <div className="flex space-x-4">
+    <div data-testid="tab-header" className="flex justify-between">
+      <div data-testid="tab-header-left" className="flex space-x-4">
         {items.filter(item => !item.isRight).map(renderItem)}
       </div>
-      <div className="flex space-x-4">
+      <div data-testid="tab-header-right" className="flex space-x-4">
         {items.filter(item => item.isRight).map(renderItem)}
       </div>
     </div>

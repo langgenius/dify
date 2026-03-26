@@ -1,7 +1,7 @@
 import type { InputForm } from './type'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useToastContext } from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import { InputVarType } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
 

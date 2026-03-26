@@ -6,11 +6,11 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from core.workflow.nodes.human_input.entities import (
+from graphon.nodes.human_input.entities import (
     FormInput,
     UserAction,
 )
-from core.workflow.nodes.human_input.enums import (
+from graphon.nodes.human_input.enums import (
     FormInputType,
     TimeoutUnit,
 )

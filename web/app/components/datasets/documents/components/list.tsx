@@ -14,7 +14,7 @@ import { useDatasetDetailContextWithSelector as useDatasetDetailContext } from '
 import { ChunkingMode, DocumentActionType } from '@/models/datasets'
 import BatchAction from '../detail/completed/common/batch-action'
 import s from '../style.module.css'
-import { DocumentTableRow, renderTdValue, SortHeader } from './document-list/components'
+import { DocumentTableRow, SortHeader } from './document-list/components'
 import { useDocumentActions, useDocumentSelection, useDocumentSort } from './document-list/hooks'
 import RenameModal from './rename-modal'
 
@@ -29,8 +29,8 @@ type DocumentListProps = {
   pagination: PaginationProps
   onUpdate: () => void
   onManageMetadata: () => void
-  statusFilterValue: string
   remoteSortValue: string
+  onSortChange: (value: string) => void
 }
 
 /**
@@ -45,8 +45,8 @@ const DocumentList: FC<DocumentListProps> = ({
   pagination,
   onUpdate,
   onManageMetadata,
-  statusFilterValue,
   remoteSortValue,
+  onSortChange,
 }) => {
   const { t } = useTranslation()
   const datasetConfig = useDatasetDetailContext(s => s.dataset)
@@ -55,10 +55,9 @@ const DocumentList: FC<DocumentListProps> = ({
   const isQAMode = chunkingMode === ChunkingMode.qa
 
   // Sorting
-  const { sortField, sortOrder, handleSort, sortedDocuments } = useDocumentSort({
-    documents,
-    statusFilterValue,
+  const { sortField, sortOrder, handleSort } = useDocumentSort({
     remoteSortValue,
+    onRemoteSortChange: onSortChange,
   })
 
   // Selection
@@ -71,7 +70,7 @@ const DocumentList: FC<DocumentListProps> = ({
     downloadableSelectedIds,
     clearSelection,
   } = useDocumentSelection({
-    documents: sortedDocuments,
+    documents,
     selectedIds,
     onSelectedIdChange,
   })
@@ -135,24 +134,10 @@ const DocumentList: FC<DocumentListProps> = ({
                 </div>
               </td>
               <td>
-                <SortHeader
-                  field="name"
-                  label={t('list.table.header.fileName', { ns: 'datasetDocuments' })}
-                  currentSortField={sortField}
-                  sortOrder={sortOrder}
-                  onSort={handleSort}
-                />
+                {t('list.table.header.fileName', { ns: 'datasetDocuments' })}
               </td>
               <td className="w-[130px]">{t('list.table.header.chunkingMode', { ns: 'datasetDocuments' })}</td>
-              <td className="w-24">
-                <SortHeader
-                  field="word_count"
-                  label={t('list.table.header.words', { ns: 'datasetDocuments' })}
-                  currentSortField={sortField}
-                  sortOrder={sortOrder}
-                  onSort={handleSort}
-                />
-              </td>
+              <td className="w-24">{t('list.table.header.words', { ns: 'datasetDocuments' })}</td>
               <td className="w-44">
                 <SortHeader
                   field="hit_count"
@@ -176,7 +161,7 @@ const DocumentList: FC<DocumentListProps> = ({
             </tr>
           </thead>
           <tbody className="text-text-secondary">
-            {sortedDocuments.map((doc, index) => (
+            {documents.map((doc, index) => (
               <DocumentTableRow
                 key={doc.id}
                 doc={doc}
@@ -248,5 +233,3 @@ const DocumentList: FC<DocumentListProps> = ({
 }
 
 export default DocumentList
-
-export { renderTdValue }

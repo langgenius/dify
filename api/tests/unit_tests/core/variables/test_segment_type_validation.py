@@ -10,10 +10,10 @@ from typing import Any
 
 import pytest
 
-from core.file.enums import FileTransferMethod, FileType
-from core.file.models import File
-from core.variables.segment_group import SegmentGroup
-from core.variables.segments import (
+from graphon.file.enums import FileTransferMethod, FileType
+from graphon.file.models import File
+from graphon.variables.segment_group import SegmentGroup
+from graphon.variables.segments import (
     ArrayFileSegment,
     BooleanSegment,
     FileSegment,
@@ -22,7 +22,7 @@ from core.variables.segments import (
     ObjectSegment,
     StringSegment,
 )
-from core.variables.types import ArrayValidation, SegmentType
+from graphon.variables.types import ArrayValidation, SegmentType
 
 
 def create_test_file(

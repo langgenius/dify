@@ -39,7 +39,7 @@ export function isPrivateOrLocalAddress(url: string): boolean {
 
     // Check for private IP ranges
     const ipv4Regex = /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/
-    const ipv4Match = hostname.match(ipv4Regex)
+    const ipv4Match = ipv4Regex.exec(hostname)
     if (ipv4Match) {
       const [, a, b] = ipv4Match.map(Number)
       // 10.0.0.0/8

@@ -18,19 +18,19 @@ from werkzeug.exceptions import Forbidden, NotFound
 from configs import dify_config
 from core.db.session_factory import session_factory
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
-from core.file import helpers as file_helpers
 from core.helper.name_generator import generate_incremental_name
 from core.model_manager import ModelManager
-from core.model_runtime.entities.model_entities import ModelFeature, ModelType
-from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from core.rag.index_processor.constant.built_in_field import BuiltInField
-from core.rag.index_processor.constant.index_type import IndexStructureType
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from enums.cloud_plan import CloudPlan
 from events.dataset_event import dataset_was_deleted
 from events.document_event import document_was_deleted
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from graphon.file import helpers as file_helpers
+from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
+from graphon.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from libs import helper
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_user
@@ -50,6 +50,15 @@ from models.dataset import (
     ExternalKnowledgeBindings,
     Pipeline,
     SegmentAttachmentBinding,
+)
+from models.enums import (
+    DatasetRuntimeMode,
+    DataSourceType,
+    DocumentCreatedFrom,
+    IndexingStatus,
+    ProcessRuleMode,
+    SegmentStatus,
+    SegmentType,
 )
 from models.model import UploadFile
 from models.provider_ids import ModelProviderID
@@ -219,8 +228,8 @@ class DatasetService:
         if db.session.query(Dataset).filter_by(name=name, tenant_id=tenant_id).first():
             raise DatasetNameDuplicateError(f"Dataset with name {name} already exists.")
         embedding_model = None
-        if indexing_technique == "high_quality":
-            model_manager = ModelManager()
+        if indexing_technique == IndexTechniqueType.HIGH_QUALITY:
+            model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
             if embedding_model_provider and embedding_model_name:
                 # check if embedding model setting is valid
                 DatasetService.check_embedding_model_setting(tenant_id, embedding_model_provider, embedding_model_name)
@@ -245,16 +254,19 @@ class DatasetService:
                         retrieval_model.reranking_model.reranking_provider_name,
                         retrieval_model.reranking_model.reranking_model_name,
                     )
-        dataset = Dataset(name=name, indexing_technique=indexing_technique)
+        dataset = Dataset(
+            name=name,
+            indexing_technique=IndexTechniqueType(indexing_technique) if indexing_technique else None,
+        )
         # dataset = Dataset(name=name, provider=provider, config=config)
         dataset.description = description
         dataset.created_by = account.id
         dataset.updated_by = account.id
         dataset.tenant_id = tenant_id
         dataset.embedding_model_provider = embedding_model.provider if embedding_model else None
-        dataset.embedding_model = embedding_model.model if embedding_model else None
+        dataset.embedding_model = embedding_model.model_name if embedding_model else None
         dataset.retrieval_model = retrieval_model.model_dump() if retrieval_model else None
-        dataset.permission = permission or DatasetPermissionEnum.ONLY_ME
+        dataset.permission = DatasetPermissionEnum(permission) if permission else DatasetPermissionEnum.ONLY_ME
         dataset.provider = provider
         if summary_index_setting is not None:
             dataset.summary_index_setting = summary_index_setting
@@ -319,7 +331,7 @@ class DatasetService:
             description=rag_pipeline_dataset_create_entity.description,
             permission=rag_pipeline_dataset_create_entity.permission,
             provider="vendor",
-            runtime_mode="rag_pipeline",
+            runtime_mode=DatasetRuntimeMode.RAG_PIPELINE,
             icon_info=rag_pipeline_dataset_create_entity.icon_info.model_dump(),
             created_by=current_user.id,
             pipeline_id=pipeline.id,
@@ -340,9 +352,9 @@ class DatasetService:
 
     @staticmethod
     def check_dataset_model_setting(dataset):
-        if dataset.indexing_technique == "high_quality":
+        if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             try:
-                model_manager = ModelManager()
+                model_manager = ModelManager.for_tenant(tenant_id=dataset.tenant_id)
                 model_manager.get_model_instance(
                     tenant_id=dataset.tenant_id,
                     provider=dataset.embedding_model_provider,
@@ -359,7 +371,7 @@ class DatasetService:
     @staticmethod
     def check_embedding_model_setting(tenant_id: str, embedding_model_provider: str, embedding_model: str):
         try:
-            model_manager = ModelManager()
+            model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
             model_manager.get_model_instance(
                 tenant_id=tenant_id,
                 provider=embedding_model_provider,
@@ -376,7 +388,7 @@ class DatasetService:
     @staticmethod
     def check_is_multimodal_model(tenant_id: str, model_provider: str, model: str):
         try:
-            model_manager = ModelManager()
+            model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
             model_instance = model_manager.get_model_instance(
                 tenant_id=tenant_id,
                 provider=model_provider,
@@ -384,7 +396,7 @@ class DatasetService:
                 model=model,
             )
             text_embedding_model = cast(TextEmbeddingModel, model_instance.model_type_instance)
-            model_schema = text_embedding_model.get_model_schema(model_instance.model, model_instance.credentials)
+            model_schema = text_embedding_model.get_model_schema(model_instance.model_name, model_instance.credentials)
             if not model_schema:
                 raise ValueError("Model schema not found")
             if model_schema.features and ModelFeature.VISION in model_schema.features:
@@ -397,7 +409,7 @@ class DatasetService:
     @staticmethod
     def check_reranking_model_setting(tenant_id: str, reranking_model_provider: str, reranking_model: str):
         try:
-            model_manager = ModelManager()
+            model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
             model_manager.get_model_instance(
                 tenant_id=tenant_id,
                 provider=reranking_model_provider,
@@ -614,7 +626,7 @@ class DatasetService:
         """
         Update pipeline knowledge base node data.
         """
-        if dataset.runtime_mode != "rag_pipeline":
+        if dataset.runtime_mode != DatasetRuntimeMode.RAG_PIPELINE:
             return
 
         pipeline = db.session.query(Pipeline).filter_by(id=dataset.pipeline_id).first()
@@ -708,13 +720,13 @@ class DatasetService:
         if "indexing_technique" not in data:
             return None
         if dataset.indexing_technique != data["indexing_technique"]:
-            if data["indexing_technique"] == "economy":
+            if data["indexing_technique"] == IndexTechniqueType.ECONOMY:
                 # Remove embedding model configuration for economy mode
                 filtered_data["embedding_model"] = None
                 filtered_data["embedding_model_provider"] = None
                 filtered_data["collection_binding_id"] = None
                 return "remove"
-            elif data["indexing_technique"] == "high_quality":
+            elif data["indexing_technique"] == IndexTechniqueType.HIGH_QUALITY:
                 # Configure embedding model for high quality mode
                 DatasetService._configure_embedding_model_for_high_quality(data, filtered_data)
                 return "add"
@@ -734,7 +746,7 @@ class DatasetService:
         """
         # assert isinstance(current_user, Account) and current_user.current_tenant_id is not None
         try:
-            model_manager = ModelManager()
+            model_manager = ModelManager.for_tenant(tenant_id=current_user.current_tenant_id)
             assert isinstance(current_user, Account)
             assert current_user.current_tenant_id is not None
             embedding_model = model_manager.get_model_instance(
@@ -743,10 +755,12 @@ class DatasetService:
                 model_type=ModelType.TEXT_EMBEDDING,
                 model=data["embedding_model"],
             )
-            filtered_data["embedding_model"] = embedding_model.model
+            embedding_model_name = embedding_model.model_name
+            filtered_data["embedding_model"] = embedding_model_name
             filtered_data["embedding_model_provider"] = embedding_model.provider
             dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
-                embedding_model.provider, embedding_model.model
+                embedding_model.provider,
+                embedding_model_name,
             )
             filtered_data["collection_binding_id"] = dataset_collection_binding.id
         except LLMBadRequestError:
@@ -850,7 +864,7 @@ class DatasetService:
         """
         # assert isinstance(current_user, Account) and current_user.current_tenant_id is not None
 
-        model_manager = ModelManager()
+        model_manager = ModelManager.for_tenant(tenant_id=current_user.current_tenant_id)
         try:
             assert isinstance(current_user, Account)
             assert current_user.current_tenant_id is not None
@@ -876,10 +890,12 @@ class DatasetService:
             return
 
         # Apply new embedding model settings
-        filtered_data["embedding_model"] = embedding_model.model
+        embedding_model_name = embedding_model.model_name
+        filtered_data["embedding_model"] = embedding_model_name
         filtered_data["embedding_model_provider"] = embedding_model.provider
         dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
-            embedding_model.provider, embedding_model.model
+            embedding_model.provider,
+            embedding_model_name,
         )
         filtered_data["collection_binding_id"] = dataset_collection_binding.id
 
@@ -940,9 +956,9 @@ class DatasetService:
         dataset = session.merge(dataset)
         if not has_published:
             dataset.chunk_structure = knowledge_configuration.chunk_structure
-            dataset.indexing_technique = knowledge_configuration.indexing_technique
-            if knowledge_configuration.indexing_technique == "high_quality":
-                model_manager = ModelManager()
+            dataset.indexing_technique = IndexTechniqueType(knowledge_configuration.indexing_technique)
+            if knowledge_configuration.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
+                model_manager = ModelManager.for_tenant(tenant_id=current_user.current_tenant_id)
                 embedding_model = model_manager.get_model_instance(
                     tenant_id=current_user.current_tenant_id,  # ignore type error
                     provider=knowledge_configuration.embedding_model_provider or "",
@@ -955,13 +971,15 @@ class DatasetService:
                     knowledge_configuration.embedding_model,
                 )
                 dataset.is_multimodal = is_multimodal
-                dataset.embedding_model = embedding_model.model
+                embedding_model_name = embedding_model.model_name
+                dataset.embedding_model = embedding_model_name
                 dataset.embedding_model_provider = embedding_model.provider
                 dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
-                    embedding_model.provider, embedding_model.model
+                    embedding_model.provider,
+                    embedding_model_name,
                 )
                 dataset.collection_binding_id = dataset_collection_binding.id
-            elif knowledge_configuration.indexing_technique == "economy":
+            elif knowledge_configuration.indexing_technique == IndexTechniqueType.ECONOMY:
                 dataset.keyword_number = knowledge_configuration.keyword_number
             else:
                 raise ValueError("Invalid index method")
@@ -976,23 +994,25 @@ class DatasetService:
             action = None
             if dataset.indexing_technique != knowledge_configuration.indexing_technique:
                 # if update indexing_technique
-                if knowledge_configuration.indexing_technique == "economy":
+                if knowledge_configuration.indexing_technique == IndexTechniqueType.ECONOMY:
                     raise ValueError("Knowledge base indexing technique is not allowed to be updated to economy.")
-                elif knowledge_configuration.indexing_technique == "high_quality":
+                elif knowledge_configuration.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
                     action = "add"
                     # get embedding model setting
                     try:
-                        model_manager = ModelManager()
+                        model_manager = ModelManager.for_tenant(tenant_id=current_user.current_tenant_id)
                         embedding_model = model_manager.get_model_instance(
                             tenant_id=current_user.current_tenant_id,
                             provider=knowledge_configuration.embedding_model_provider,
                             model_type=ModelType.TEXT_EMBEDDING,
                             model=knowledge_configuration.embedding_model,
                         )
-                        dataset.embedding_model = embedding_model.model
+                        embedding_model_name = embedding_model.model_name
+                        dataset.embedding_model = embedding_model_name
                         dataset.embedding_model_provider = embedding_model.provider
                         dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
-                            embedding_model.provider, embedding_model.model
+                            embedding_model.provider,
+                            embedding_model_name,
                         )
                         is_multimodal = DatasetService.check_is_multimodal_model(
                             current_user.current_tenant_id,
@@ -1001,7 +1021,7 @@ class DatasetService:
                         )
                         dataset.is_multimodal = is_multimodal
                         dataset.collection_binding_id = dataset_collection_binding.id
-                        dataset.indexing_technique = knowledge_configuration.indexing_technique
+                        dataset.indexing_technique = IndexTechniqueType(knowledge_configuration.indexing_technique)
                     except LLMBadRequestError:
                         raise ValueError(
                             "No Embedding Model available. Please configure a valid provider "
@@ -1012,7 +1032,7 @@ class DatasetService:
             else:
                 # add default plugin id to both setting sets, to make sure the plugin model provider is consistent
                 # Skip embedding model checks if not provided in the update request
-                if dataset.indexing_technique == "high_quality":
+                if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
                     skip_embedding_update = False
                     try:
                         # Handle existing model provider
@@ -1033,7 +1053,7 @@ class DatasetService:
                             or knowledge_configuration.embedding_model != dataset.embedding_model
                         ):
                             action = "update"
-                            model_manager = ModelManager()
+                            model_manager = ModelManager.for_tenant(tenant_id=current_user.current_tenant_id)
                             embedding_model = None
                             try:
                                 embedding_model = model_manager.get_model_instance(
@@ -1049,11 +1069,13 @@ class DatasetService:
                                 skip_embedding_update = True
                             if not skip_embedding_update:
                                 if embedding_model:
-                                    dataset.embedding_model = embedding_model.model
+                                    embedding_model_name = embedding_model.model_name
+                                    dataset.embedding_model = embedding_model_name
                                     dataset.embedding_model_provider = embedding_model.provider
                                     dataset_collection_binding = (
                                         DatasetCollectionBindingService.get_dataset_collection_binding(
-                                            embedding_model.provider, embedding_model.model
+                                            embedding_model.provider,
+                                            embedding_model_name,
                                         )
                                     )
                                     dataset.collection_binding_id = dataset_collection_binding.id
@@ -1070,7 +1092,7 @@ class DatasetService:
                         )
                     except ProviderTokenNotInitError as ex:
                         raise ValueError(ex.description)
-                elif dataset.indexing_technique == "economy":
+                elif dataset.indexing_technique == IndexTechniqueType.ECONOMY:
                     if dataset.keyword_number != knowledge_configuration.keyword_number:
                         dataset.keyword_number = knowledge_configuration.keyword_number
             dataset.retrieval_model = knowledge_configuration.retrieval_model.model_dump()
@@ -1219,10 +1241,15 @@ class DocumentService:
         "enabled": "available",
     }
 
-    _INDEXING_STATUSES: tuple[str, ...] = ("parsing", "cleaning", "splitting", "indexing")
+    _INDEXING_STATUSES: tuple[IndexingStatus, ...] = (
+        IndexingStatus.PARSING,
+        IndexingStatus.CLEANING,
+        IndexingStatus.SPLITTING,
+        IndexingStatus.INDEXING,
+    )
 
     DISPLAY_STATUS_FILTERS: dict[str, tuple[Any, ...]] = {
-        "queuing": (Document.indexing_status == "waiting",),
+        "queuing": (Document.indexing_status == IndexingStatus.WAITING,),
         "indexing": (
             Document.indexing_status.in_(_INDEXING_STATUSES),
             Document.is_paused.is_not(True),
@@ -1231,19 +1258,19 @@ class DocumentService:
             Document.indexing_status.in_(_INDEXING_STATUSES),
             Document.is_paused.is_(True),
         ),
-        "error": (Document.indexing_status == "error",),
+        "error": (Document.indexing_status == IndexingStatus.ERROR,),
         "available": (
-            Document.indexing_status == "completed",
+            Document.indexing_status == IndexingStatus.COMPLETED,
             Document.archived.is_(False),
             Document.enabled.is_(True),
         ),
         "disabled": (
-            Document.indexing_status == "completed",
+            Document.indexing_status == IndexingStatus.COMPLETED,
             Document.archived.is_(False),
             Document.enabled.is_(False),
         ),
         "archived": (
-            Document.indexing_status == "completed",
+            Document.indexing_status == IndexingStatus.COMPLETED,
             Document.archived.is_(True),
         ),
     }
@@ -1416,7 +1443,7 @@ class DocumentService:
                 .filter(
                     Document.id.in_(document_id_list),
                     Document.dataset_id == dataset_id,
-                    Document.doc_form != "qa_model",  # Skip qa_model documents
+                    Document.doc_form != IndexStructureType.QA_INDEX,  # Skip qa_model documents
                 )
                 .update({Document.need_summary: need_summary}, synchronize_session=False)
             )
@@ -1526,7 +1553,7 @@ class DocumentService:
         """
         Normalize and validate `Document -> UploadFile` linkage for download flows.
         """
-        if document.data_source_type != "upload_file":
+        if document.data_source_type != DataSourceType.UPLOAD_FILE:
             raise NotFound(invalid_source_message)
 
         data_source_info: dict[str, Any] = document.data_source_info_dict or {}
@@ -1607,7 +1634,7 @@ class DocumentService:
             select(Document).where(
                 Document.id.in_(document_ids),
                 Document.enabled == True,
-                Document.indexing_status == "completed",
+                Document.indexing_status == IndexingStatus.COMPLETED,
                 Document.archived == False,
             )
         ).all()
@@ -1630,7 +1657,7 @@ class DocumentService:
             select(Document).where(
                 Document.dataset_id == dataset_id,
                 Document.enabled == True,
-                Document.indexing_status == "completed",
+                Document.indexing_status == IndexingStatus.COMPLETED,
                 Document.archived == False,
             )
         ).all()
@@ -1640,7 +1667,10 @@ class DocumentService:
     @staticmethod
     def get_error_documents_by_dataset_id(dataset_id: str) -> Sequence[Document]:
         documents = db.session.scalars(
-            select(Document).where(Document.dataset_id == dataset_id, Document.indexing_status.in_(["error", "paused"]))
+            select(Document).where(
+                Document.dataset_id == dataset_id,
+                Document.indexing_status.in_([IndexingStatus.ERROR, IndexingStatus.PAUSED]),
+            )
         ).all()
         return documents
 
@@ -1673,7 +1703,7 @@ class DocumentService:
     def delete_document(document):
         # trigger document_was_deleted signal
         file_id = None
-        if document.data_source_type == "upload_file":
+        if document.data_source_type == DataSourceType.UPLOAD_FILE:
             if document.data_source_info:
                 data_source_info = document.data_source_info_dict
                 if data_source_info and "upload_file_id" in data_source_info:
@@ -1694,7 +1724,7 @@ class DocumentService:
         file_ids = [
             document.data_source_info_dict.get("upload_file_id", "")
             for document in documents
-            if document.data_source_type == "upload_file" and document.data_source_info_dict
+            if document.data_source_type == DataSourceType.UPLOAD_FILE and document.data_source_info_dict
         ]
 
         # Delete documents first, then dispatch cleanup task after commit
@@ -1743,7 +1773,13 @@ class DocumentService:
 
     @staticmethod
     def pause_document(document):
-        if document.indexing_status not in {"waiting", "parsing", "cleaning", "splitting", "indexing"}:
+        if document.indexing_status not in {
+            IndexingStatus.WAITING,
+            IndexingStatus.PARSING,
+            IndexingStatus.CLEANING,
+            IndexingStatus.SPLITTING,
+            IndexingStatus.INDEXING,
+        }:
             raise DocumentIndexingError()
         # update document to be paused
         assert current_user is not None
@@ -1783,7 +1819,7 @@ class DocumentService:
             if cache_result is not None:
                 raise ValueError("Document is being retried, please try again later")
             # retry document indexing
-            document.indexing_status = "waiting"
+            document.indexing_status = IndexingStatus.WAITING
             db.session.add(document)
             db.session.commit()
 
@@ -1802,7 +1838,7 @@ class DocumentService:
         if cache_result is not None:
             raise ValueError("Document is being synced, please try again later")
         # sync document indexing
-        document.indexing_status = "waiting"
+        document.indexing_status = IndexingStatus.WAITING
         data_source_info = document.data_source_info_dict
         if data_source_info:
             data_source_info["mode"] = "scrape"
@@ -1830,7 +1866,7 @@ class DocumentService:
         knowledge_config: KnowledgeConfig,
         account: Account | Any,
         dataset_process_rule: DatasetProcessRule | None = None,
-        created_from: str = "web",
+        created_from: str = DocumentCreatedFrom.WEB,
     ) -> tuple[list[Document], str]:
         # check doc_form
         DatasetService.check_doc_form(dataset, knowledge_config.doc_form)
@@ -1874,9 +1910,9 @@ class DocumentService:
             if knowledge_config.indexing_technique not in Dataset.INDEXING_TECHNIQUE_LIST:
                 raise ValueError("Indexing technique is invalid")
 
-            dataset.indexing_technique = knowledge_config.indexing_technique
-            if knowledge_config.indexing_technique == "high_quality":
-                model_manager = ModelManager()
+            dataset.indexing_technique = IndexTechniqueType(knowledge_config.indexing_technique)
+            if knowledge_config.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
+                model_manager = ModelManager.for_tenant(tenant_id=current_user.current_tenant_id)
                 if knowledge_config.embedding_model and knowledge_config.embedding_model_provider:
                     dataset_embedding_model = knowledge_config.embedding_model
                     dataset_embedding_model_provider = knowledge_config.embedding_model_provider
@@ -1884,7 +1920,7 @@ class DocumentService:
                     embedding_model = model_manager.get_default_model_instance(
                         tenant_id=current_user.current_tenant_id, model_type=ModelType.TEXT_EMBEDDING
                     )
-                    dataset_embedding_model = embedding_model.model
+                    dataset_embedding_model = embedding_model.model_name
                     dataset_embedding_model_provider = embedding_model.provider
                 dataset.embedding_model = dataset_embedding_model
                 dataset.embedding_model_provider = dataset_embedding_model_provider
@@ -1922,7 +1958,7 @@ class DocumentService:
             if not dataset_process_rule:
                 process_rule = knowledge_config.process_rule
                 if process_rule:
-                    if process_rule.mode in ("custom", "hierarchical"):
+                    if process_rule.mode in (ProcessRuleMode.CUSTOM, ProcessRuleMode.HIERARCHICAL):
                         if process_rule.rules:
                             dataset_process_rule = DatasetProcessRule(
                                 dataset_id=dataset.id,
@@ -1934,7 +1970,7 @@ class DocumentService:
                             dataset_process_rule = dataset.latest_process_rule
                             if not dataset_process_rule:
                                 raise ValueError("No process rule found.")
-                    elif process_rule.mode == "automatic":
+                    elif process_rule.mode == ProcessRuleMode.AUTOMATIC:
                         dataset_process_rule = DatasetProcessRule(
                             dataset_id=dataset.id,
                             mode=process_rule.mode,
@@ -1957,7 +1993,7 @@ class DocumentService:
                     if not dataset_process_rule:
                         dataset_process_rule = DatasetProcessRule(
                             dataset_id=dataset.id,
-                            mode="automatic",
+                            mode=ProcessRuleMode.AUTOMATIC,
                             rules=json.dumps(DatasetProcessRule.AUTOMATIC_RULES),
                             created_by=account.id,
                         )
@@ -1991,7 +2027,7 @@ class DocumentService:
                             .where(
                                 Document.dataset_id == dataset.id,
                                 Document.tenant_id == current_user.current_tenant_id,
-                                Document.data_source_type == "upload_file",
+                                Document.data_source_type == DataSourceType.UPLOAD_FILE,
                                 Document.enabled == True,
                                 Document.name.in_(file_names),
                             )
@@ -2007,11 +2043,11 @@ class DocumentService:
                                 document.dataset_process_rule_id = dataset_process_rule.id
                                 document.updated_at = naive_utc_now()
                                 document.created_from = created_from
-                                document.doc_form = knowledge_config.doc_form
+                                document.doc_form = IndexStructureType(knowledge_config.doc_form)
                                 document.doc_language = knowledge_config.doc_language
                                 document.data_source_info = json.dumps(data_source_info)
                                 document.batch = batch
-                                document.indexing_status = "waiting"
+                                document.indexing_status = IndexingStatus.WAITING
                                 db.session.add(document)
                                 documents.append(document)
                                 duplicate_document_ids.append(document.id)
@@ -2046,7 +2082,7 @@ class DocumentService:
                             .filter_by(
                                 dataset_id=dataset.id,
                                 tenant_id=current_user.current_tenant_id,
-                                data_source_type="notion_import",
+                                data_source_type=DataSourceType.NOTION_IMPORT,
                                 enabled=True,
                             )
                             .all()
@@ -2188,7 +2224,7 @@ class DocumentService:
 
     #         dataset.indexing_technique = knowledge_config.indexing_technique
     #         if knowledge_config.indexing_technique == "high_quality":
-    #             model_manager = ModelManager()
+    #             model_manager = ModelManager.for_tenant(tenant_id=current_user.current_tenant_id)
     #             if knowledge_config.embedding_model and knowledge_config.embedding_model_provider:
     #                 dataset_embedding_model = knowledge_config.embedding_model
     #                 dataset_embedding_model_provider = knowledge_config.embedding_model_provider
@@ -2497,7 +2533,7 @@ class DocumentService:
         document_data: KnowledgeConfig,
         account: Account,
         dataset_process_rule: DatasetProcessRule | None = None,
-        created_from: str = "web",
+        created_from: str = DocumentCreatedFrom.WEB,
     ):
         assert isinstance(current_user, Account)
 
@@ -2510,14 +2546,14 @@ class DocumentService:
         # save process rule
         if document_data.process_rule:
             process_rule = document_data.process_rule
-            if process_rule.mode in {"custom", "hierarchical"}:
+            if process_rule.mode in {ProcessRuleMode.CUSTOM, ProcessRuleMode.HIERARCHICAL}:
                 dataset_process_rule = DatasetProcessRule(
                     dataset_id=dataset.id,
                     mode=process_rule.mode,
                     rules=process_rule.rules.model_dump_json() if process_rule.rules else None,
                     created_by=account.id,
                 )
-            elif process_rule.mode == "automatic":
+            elif process_rule.mode == ProcessRuleMode.AUTOMATIC:
                 dataset_process_rule = DatasetProcessRule(
                     dataset_id=dataset.id,
                     mode=process_rule.mode,
@@ -2599,7 +2635,7 @@ class DocumentService:
         if document_data.name:
             document.name = document_data.name
         # update document to be waiting
-        document.indexing_status = "waiting"
+        document.indexing_status = IndexingStatus.WAITING
         document.completed_at = None
         document.processing_started_at = None
         document.parsing_completed_at = None
@@ -2607,13 +2643,13 @@ class DocumentService:
         document.splitting_completed_at = None
         document.updated_at = naive_utc_now()
         document.created_from = created_from
-        document.doc_form = document_data.doc_form
+        document.doc_form = IndexStructureType(document_data.doc_form)
         db.session.add(document)
         db.session.commit()
         # update document segment
 
         db.session.query(DocumentSegment).filter_by(document_id=document.id).update(
-            {DocumentSegment.status: "re_segment"}
+            {DocumentSegment.status: SegmentStatus.RE_SEGMENT}
         )
         db.session.commit()
         # trigger async task
@@ -2656,7 +2692,7 @@ class DocumentService:
 
         dataset_collection_binding_id = None
         retrieval_model = None
-        if knowledge_config.indexing_technique == "high_quality":
+        if knowledge_config.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             assert knowledge_config.embedding_model_provider
             assert knowledge_config.embedding_model
             dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
@@ -2679,7 +2715,7 @@ class DocumentService:
             tenant_id=tenant_id,
             name="",
             data_source_type=knowledge_config.data_source.info_list.data_source_type,
-            indexing_technique=knowledge_config.indexing_technique,
+            indexing_technique=IndexTechniqueType(knowledge_config.indexing_technique),
             created_by=account.id,
             embedding_model=knowledge_config.embedding_model,
             embedding_model_provider=knowledge_config.embedding_model_provider,
@@ -2744,7 +2780,7 @@ class DocumentService:
         if knowledge_config.process_rule.mode not in DatasetProcessRule.MODES:
             raise ValueError("Process rule mode is invalid")
 
-        if knowledge_config.process_rule.mode == "automatic":
+        if knowledge_config.process_rule.mode == ProcessRuleMode.AUTOMATIC:
             knowledge_config.process_rule.rules = None
         else:
             if not knowledge_config.process_rule.rules:
@@ -2775,7 +2811,7 @@ class DocumentService:
                 raise ValueError("Process rule segmentation separator is invalid")
 
             if not (
-                knowledge_config.process_rule.mode == "hierarchical"
+                knowledge_config.process_rule.mode == ProcessRuleMode.HIERARCHICAL
                 and knowledge_config.process_rule.rules.parent_mode == "full-doc"
             ):
                 if not knowledge_config.process_rule.rules.segmentation.max_tokens:
@@ -2804,7 +2840,7 @@ class DocumentService:
         if args["process_rule"]["mode"] not in DatasetProcessRule.MODES:
             raise ValueError("Process rule mode is invalid")
 
-        if args["process_rule"]["mode"] == "automatic":
+        if args["process_rule"]["mode"] == ProcessRuleMode.AUTOMATIC:
             args["process_rule"]["rules"] = {}
         else:
             if "rules" not in args["process_rule"] or not args["process_rule"]["rules"]:
@@ -3011,7 +3047,7 @@ class DocumentService:
     @staticmethod
     def _prepare_disable_update(document, user, now):
         """Prepare updates for disabling a document."""
-        if not document.completed_at or document.indexing_status != "completed":
+        if not document.completed_at or document.indexing_status != IndexingStatus.COMPLETED:
             raise DocumentIndexingError(f"Document: {document.name} is not completed.")
 
         if not document.enabled:
@@ -3068,7 +3104,7 @@ class DocumentService:
 class SegmentService:
     @classmethod
     def segment_create_args_validate(cls, args: dict, document: Document):
-        if document.doc_form == "qa_model":
+        if document.doc_form == IndexStructureType.QA_INDEX:
             if "answer" not in args or not args["answer"]:
                 raise ValueError("Answer is required")
             if not args["answer"].strip():
@@ -3092,8 +3128,8 @@ class SegmentService:
         doc_id = str(uuid.uuid4())
         segment_hash = helper.generate_text_hash(content)
         tokens = 0
-        if dataset.indexing_technique == "high_quality":
-            model_manager = ModelManager()
+        if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
+            model_manager = ModelManager.for_tenant(tenant_id=current_user.current_tenant_id)
             embedding_model = model_manager.get_model_instance(
                 tenant_id=current_user.current_tenant_id,
                 provider=dataset.embedding_model_provider,
@@ -3120,12 +3156,12 @@ class SegmentService:
                     content=content,
                     word_count=len(content),
                     tokens=tokens,
-                    status="completed",
+                    status=SegmentStatus.COMPLETED,
                     indexing_at=naive_utc_now(),
                     completed_at=naive_utc_now(),
                     created_by=current_user.id,
                 )
-                if document.doc_form == "qa_model":
+                if document.doc_form == IndexStructureType.QA_INDEX:
                     segment_document.word_count += len(args["answer"])
                     segment_document.answer = args["answer"]
 
@@ -3157,7 +3193,7 @@ class SegmentService:
                 logger.exception("create segment index failed")
                 segment_document.enabled = False
                 segment_document.disabled_at = naive_utc_now()
-                segment_document.status = "error"
+                segment_document.status = SegmentStatus.ERROR
                 segment_document.error = str(e)
                 db.session.commit()
             segment = db.session.query(DocumentSegment).where(DocumentSegment.id == segment_document.id).first()
@@ -3175,8 +3211,8 @@ class SegmentService:
         try:
             with redis_client.lock(lock_name, timeout=600):
                 embedding_model = None
-                if dataset.indexing_technique == "high_quality":
-                    model_manager = ModelManager()
+                if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
+                    model_manager = ModelManager.for_tenant(tenant_id=current_user.current_tenant_id)
                     embedding_model = model_manager.get_model_instance(
                         tenant_id=current_user.current_tenant_id,
                         provider=dataset.embedding_model_provider,
@@ -3197,9 +3233,9 @@ class SegmentService:
                     doc_id = str(uuid.uuid4())
                     segment_hash = helper.generate_text_hash(content)
                     tokens = 0
-                    if dataset.indexing_technique == "high_quality" and embedding_model:
+                    if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY and embedding_model:
                         # calc embedding use tokens
-                        if document.doc_form == "qa_model":
+                        if document.doc_form == IndexStructureType.QA_INDEX:
                             tokens = embedding_model.get_text_embedding_num_tokens(
                                 texts=[content + segment_item["answer"]]
                             )[0]
@@ -3217,12 +3253,12 @@ class SegmentService:
                         word_count=len(content),
                         tokens=tokens,
                         keywords=segment_item.get("keywords", []),
-                        status="completed",
+                        status=SegmentStatus.COMPLETED,
                         indexing_at=naive_utc_now(),
                         completed_at=naive_utc_now(),
                         created_by=current_user.id,
                     )
-                    if document.doc_form == "qa_model":
+                    if document.doc_form == IndexStructureType.QA_INDEX:
                         segment_document.answer = segment_item["answer"]
                         segment_document.word_count += len(segment_item["answer"])
                     increment_word_count += segment_document.word_count
@@ -3249,7 +3285,7 @@ class SegmentService:
                     for segment_document in segment_data_list:
                         segment_document.enabled = False
                         segment_document.disabled_at = naive_utc_now()
-                        segment_document.status = "error"
+                        segment_document.status = SegmentStatus.ERROR
                         segment_document.error = str(e)
                 db.session.commit()
                 return segment_data_list
@@ -3289,7 +3325,7 @@ class SegmentService:
             content = args.content or segment.content
             if segment.content == content:
                 segment.word_count = len(content)
-                if document.doc_form == "qa_model":
+                if document.doc_form == IndexStructureType.QA_INDEX:
                     segment.answer = args.answer
                     segment.word_count += len(args.answer) if args.answer else 0
                 word_count_change = segment.word_count - word_count_change
@@ -3312,9 +3348,9 @@ class SegmentService:
                 if document.doc_form == IndexStructureType.PARENT_CHILD_INDEX and args.regenerate_child_chunks:
                     # regenerate child chunks
                     # get embedding model instance
-                    if dataset.indexing_technique == "high_quality":
+                    if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
                         # check embedding model setting
-                        model_manager = ModelManager()
+                        model_manager = ModelManager.for_tenant(tenant_id=dataset.tenant_id)
 
                         if dataset.embedding_model_provider:
                             embedding_model_instance = model_manager.get_model_instance(
@@ -3349,7 +3385,7 @@ class SegmentService:
                     # When user manually provides summary, allow saving even if summary_index_setting doesn't exist
                     # summary_index_setting is only needed for LLM generation, not for manual summary vectorization
                     # Vectorization uses dataset.embedding_model, which doesn't require summary_index_setting
-                    if dataset.indexing_technique == "high_quality":
+                    if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
                         # Query existing summary from database
                         from models.dataset import DocumentSegmentSummary
 
@@ -3376,8 +3412,8 @@ class SegmentService:
             else:
                 segment_hash = helper.generate_text_hash(content)
                 tokens = 0
-                if dataset.indexing_technique == "high_quality":
-                    model_manager = ModelManager()
+                if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
+                    model_manager = ModelManager.for_tenant(tenant_id=current_user.current_tenant_id)
                     embedding_model = model_manager.get_model_instance(
                         tenant_id=current_user.current_tenant_id,
                         provider=dataset.embedding_model_provider,
@@ -3386,7 +3422,7 @@ class SegmentService:
                     )
 
                     # calc embedding use tokens
-                    if document.doc_form == "qa_model":
+                    if document.doc_form == IndexStructureType.QA_INDEX:
                         segment.answer = args.answer
                         tokens = embedding_model.get_text_embedding_num_tokens(texts=[content + segment.answer])[0]  # type: ignore
                     else:
@@ -3395,7 +3431,7 @@ class SegmentService:
                 segment.index_node_hash = segment_hash
                 segment.word_count = len(content)
                 segment.tokens = tokens
-                segment.status = "completed"
+                segment.status = SegmentStatus.COMPLETED
                 segment.indexing_at = naive_utc_now()
                 segment.completed_at = naive_utc_now()
                 segment.updated_by = current_user.id
@@ -3403,7 +3439,7 @@ class SegmentService:
                 segment.enabled = True
                 segment.disabled_at = None
                 segment.disabled_by = None
-                if document.doc_form == "qa_model":
+                if document.doc_form == IndexStructureType.QA_INDEX:
                     segment.answer = args.answer
                     segment.word_count += len(args.answer) if args.answer else 0
                 word_count_change = segment.word_count - word_count_change
@@ -3416,9 +3452,9 @@ class SegmentService:
                 db.session.commit()
                 if document.doc_form == IndexStructureType.PARENT_CHILD_INDEX and args.regenerate_child_chunks:
                     # get embedding model instance
-                    if dataset.indexing_technique == "high_quality":
+                    if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
                         # check embedding model setting
-                        model_manager = ModelManager()
+                        model_manager = ModelManager.for_tenant(tenant_id=dataset.tenant_id)
 
                         if dataset.embedding_model_provider:
                             embedding_model_instance = model_manager.get_model_instance(
@@ -3448,7 +3484,7 @@ class SegmentService:
                     # update segment vector index
                     VectorService.update_segment_vector(args.keywords, segment, dataset)
                 # Handle summary index when content changed
-                if dataset.indexing_technique == "high_quality":
+                if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
                     from models.dataset import DocumentSegmentSummary
 
                     existing_summary = (
@@ -3520,7 +3556,7 @@ class SegmentService:
             logger.exception("update segment index failed")
             segment.enabled = False
             segment.disabled_at = naive_utc_now()
-            segment.status = "error"
+            segment.status = SegmentStatus.ERROR
             segment.error = str(e)
             db.session.commit()
         new_segment = db.session.query(DocumentSegment).where(DocumentSegment.id == segment.id).first()
@@ -3754,7 +3790,7 @@ class SegmentService:
                         child_chunk.word_count = len(child_chunk.content)
                         child_chunk.updated_by = current_user.id
                         child_chunk.updated_at = naive_utc_now()
-                        child_chunk.type = "customized"
+                        child_chunk.type = SegmentType.CUSTOMIZED
                         update_child_chunks.append(child_chunk)
             else:
                 new_child_chunks_args.append(child_chunk_update_args)
@@ -3813,7 +3849,7 @@ class SegmentService:
             child_chunk.word_count = len(content)
             child_chunk.updated_by = current_user.id
             child_chunk.updated_at = naive_utc_now()
-            child_chunk.type = "customized"
+            child_chunk.type = SegmentType.CUSTOMIZED
             db.session.add(child_chunk)
             VectorService.update_child_chunk_vector([], [child_chunk], [], dataset)
             db.session.commit()

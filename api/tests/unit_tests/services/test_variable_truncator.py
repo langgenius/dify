@@ -17,9 +17,9 @@ from uuid import uuid4
 
 import pytest
 
-from core.file.enums import FileTransferMethod, FileType
-from core.file.models import File
-from core.variables.segments import (
+from graphon.file.enums import FileTransferMethod, FileType
+from graphon.file.models import File
+from graphon.variables.segments import (
     ArrayFileSegment,
     ArrayNumberSegment,
     ArraySegment,

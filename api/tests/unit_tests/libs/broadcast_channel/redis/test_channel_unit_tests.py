@@ -403,7 +403,7 @@ class TestRedisSubscription:
 
     # ==================== Listener Thread Tests ====================
 
-    @patch("time.sleep", side_effect=lambda x: None)  # Speed up test
+    @patch("time.sleep", side_effect=lambda x: None, autospec=True)  # Speed up test
     def test_listener_thread_normal_operation(
         self, mock_sleep, subscription: _RedisSubscription, mock_pubsub: MagicMock
     ):
@@ -826,7 +826,7 @@ class TestRedisShardedSubscription:
 
     # ==================== Listener Thread Tests ====================
 
-    @patch("time.sleep", side_effect=lambda x: None)  # Speed up test
+    @patch("time.sleep", side_effect=lambda x: None, autospec=True)  # Speed up test
     def test_listener_thread_normal_operation(
         self, mock_sleep, sharded_subscription: _RedisShardedSubscription, mock_pubsub: MagicMock
     ):

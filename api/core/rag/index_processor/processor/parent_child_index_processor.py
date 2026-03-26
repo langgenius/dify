@@ -11,14 +11,15 @@ from core.db.session_factory import session_factory
 from core.entities.knowledge_entities import PreviewDetail
 from core.model_manager import ModelInstance
 from core.rag.cleaner.clean_processor import CleanProcessor
+from core.rag.data_post_processor.data_post_processor import RerankingModelDict
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.docstore.dataset_docstore import DatasetDocumentStore
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.extractor.extract_processor import ExtractProcessor
 from core.rag.index_processor.constant.doc_type import DocType
-from core.rag.index_processor.constant.index_type import IndexStructureType
-from core.rag.index_processor.index_processor_base import BaseIndexProcessor
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
+from core.rag.index_processor.index_processor_base import BaseIndexProcessor, SummaryIndexSettingDict
 from core.rag.models.document import AttachmentDocument, ChildDocument, Document, ParentChildStructureChunk
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
@@ -126,8 +127,8 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
         multimodal_documents: list[AttachmentDocument] | None = None,
         with_keywords: bool = True,
         **kwargs,
-    ):
-        if dataset.indexing_technique == "high_quality":
+    ) -> None:
+        if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             vector = Vector(dataset)
             for document in documents:
                 child_documents = document.children
@@ -139,7 +140,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
             if multimodal_documents and dataset.is_multimodal:
                 vector.create_multimodal(multimodal_documents)
 
-    def clean(self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, **kwargs):
+    def clean(self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, **kwargs) -> None:
         # node_ids is segment's node_ids
         # Note: Summary indexes are now disabled (not deleted) when segments are disabled.
         # This method is called for actual deletion scenarios (e.g., when segment is deleted).
@@ -165,7 +166,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                 # Delete all summaries for the dataset
                 SummaryIndexService.delete_summaries_for_segments(dataset, None)
 
-        if dataset.indexing_technique == "high_quality":
+        if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             delete_child_chunks = kwargs.get("delete_child_chunks") or False
             precomputed_child_node_ids = kwargs.get("precomputed_child_node_ids")
             vector = Vector(dataset)
@@ -215,7 +216,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
         dataset: Dataset,
         top_k: int,
         score_threshold: float,
-        reranking_model: dict,
+        reranking_model: RerankingModelDict,
     ) -> list[Document]:
         # Set search parameters.
         results = RetrievalService.retrieve(
@@ -272,7 +273,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                     child_nodes.append(child_document)
         return child_nodes
 
-    def index(self, dataset: Dataset, document: DatasetDocument, chunks: Any):
+    def index(self, dataset: Dataset, document: DatasetDocument, chunks: Any) -> None:
         parent_childs = ParentChildStructureChunk.model_validate(chunks)
         documents = []
         for parent_child in parent_childs.parent_child_chunks:
@@ -331,7 +332,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
             doc_store = DatasetDocumentStore(dataset=dataset, user_id=document.created_by, document_id=document.id)
             # add document segments
             doc_store.add_documents(docs=documents, save_child=True)
-            if dataset.indexing_technique == "high_quality":
+            if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
                 all_child_documents = []
                 all_multimodal_documents = []
                 for doc in documents:
@@ -361,7 +362,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
         self,
         tenant_id: str,
         preview_texts: list[PreviewDetail],
-        summary_index_setting: dict,
+        summary_index_setting: SummaryIndexSettingDict,
         doc_language: str | None = None,
     ) -> list[PreviewDetail]:
         """

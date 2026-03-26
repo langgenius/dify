@@ -24,7 +24,7 @@ const ReasoningFormatConfig: FC<ReasoningFormatConfigProps> = ({
       operations={(
         // ON = separated, OFF = tagged
         <Switch
-          defaultValue={value === 'separated'}
+          value={value === 'separated'}
           onChange={enabled => onChange(enabled ? 'separated' : 'tagged')}
           size="md"
           disabled={readonly}

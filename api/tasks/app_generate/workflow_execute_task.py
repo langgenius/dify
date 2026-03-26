@@ -21,8 +21,8 @@ from core.app.entities.app_invoke_entities import (
 )
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, WorkflowResumptionContext
 from core.repositories import DifyCoreRepositoryFactory
-from core.workflow.runtime import GraphRuntimeState
 from extensions.ext_database import db
+from graphon.runtime import GraphRuntimeState
 from libs.flask_utils import set_login_user
 from models.account import Account
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
@@ -239,13 +239,18 @@ def _resolve_user_for_run(session: Session, workflow_run: WorkflowRun) -> Accoun
 
 
 def _publish_streaming_response(
-    response_stream: Generator[str | Mapping[str, Any], None, None], workflow_run_id: str, app_mode: AppMode
+    response_stream: Generator[str | Mapping[str, Any] | BaseModel, None, None],
+    workflow_run_id: str,
+    app_mode: AppMode,
 ) -> None:
     topic = MessageBasedAppGenerator.get_response_topic(app_mode, workflow_run_id)
     for event in response_stream:
         try:
-            payload = json.dumps(event)
-        except TypeError:
+            if isinstance(event, BaseModel):
+                payload = json.dumps(event.model_dump(mode="json"), ensure_ascii=False)
+            else:
+                payload = json.dumps(event, ensure_ascii=False, default=str)
+        except (TypeError, ValueError):
             logger.exception("error while encoding event")
             continue
 
@@ -321,7 +326,13 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
                 return
 
             message = session.scalar(
-                select(Message).where(Message.workflow_run_id == workflow_run_id).order_by(Message.created_at.desc())
+                select(Message)
+                .where(
+                    Message.conversation_id == conversation.id,
+                    Message.workflow_run_id == workflow_run_id,
+                )
+                .order_by(Message.created_at.desc())
+                .limit(1)
             )
             if message is None:
                 logger.warning("Message not found for workflow run %s", workflow_run_id)

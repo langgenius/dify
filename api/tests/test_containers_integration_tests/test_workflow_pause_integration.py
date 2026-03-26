@@ -27,9 +27,9 @@ import pytest
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session, selectinload, sessionmaker
 
-from core.workflow.entities import WorkflowExecution
-from core.workflow.enums import WorkflowExecutionStatus
 from extensions.ext_storage import storage
+from graphon.entities import WorkflowExecution
+from graphon.enums import WorkflowExecutionStatus
 from libs.datetime_utils import naive_utc_now
 from models import Account
 from models import WorkflowPause as WorkflowPauseModel

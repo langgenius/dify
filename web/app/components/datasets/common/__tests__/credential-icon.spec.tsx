@@ -98,8 +98,8 @@ describe('CredentialIcon', () => {
       const classes1 = wrapper1.className
       const classes2 = wrapper2.className
 
-      const bgClass1 = classes1.match(/bg-components-icon-bg-\S+/)?.[0]
-      const bgClass2 = classes2.match(/bg-components-icon-bg-\S+/)?.[0]
+      const bgClass1 = /bg-components-icon-bg-\S+/.exec(classes1)?.[0]
+      const bgClass2 = /bg-components-icon-bg-\S+/.exec(classes2)?.[0]
 
       expect(bgClass1).toBe(bgClass2)
     })
@@ -112,8 +112,8 @@ describe('CredentialIcon', () => {
       const wrapper1 = container1.firstChild as HTMLElement
       const wrapper2 = container2.firstChild as HTMLElement
 
-      const bgClass1 = wrapper1.className.match(/bg-components-icon-bg-\S+/)?.[0]
-      const bgClass2 = wrapper2.className.match(/bg-components-icon-bg-\S+/)?.[0]
+      const bgClass1 = /bg-components-icon-bg-\S+/.exec(wrapper1.className)?.[0]
+      const bgClass2 = /bg-components-icon-bg-\S+/.exec(wrapper2.className)?.[0]
 
       expect(bgClass1).toBeDefined()
       expect(bgClass2).toBeDefined()

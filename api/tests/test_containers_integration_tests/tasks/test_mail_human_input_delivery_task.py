@@ -9,17 +9,17 @@ from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
 from core.repositories.human_input_repository import FormCreateParams, HumanInputFormRepositoryImpl
-from core.workflow.enums import WorkflowExecutionStatus
-from core.workflow.nodes.human_input.entities import (
+from core.workflow.human_input_compat import (
     EmailDeliveryConfig,
     EmailDeliveryMethod,
     EmailRecipients,
     ExternalRecipient,
-    HumanInputNodeData,
     MemberRecipient,
 )
-from core.workflow.runtime import GraphRuntimeState, VariablePool
 from extensions.ext_storage import storage
+from graphon.enums import WorkflowExecutionStatus
+from graphon.nodes.human_input.entities import HumanInputNodeData
+from graphon.runtime import GraphRuntimeState, VariablePool
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.human_input import HumanInputDelivery, HumanInputForm, HumanInputFormRecipient
@@ -79,9 +79,9 @@ def _build_form(db_session_with_containers, tenant, account, *, app_id: str, wor
     delivery_method = EmailDeliveryMethod(
         config=EmailDeliveryConfig(
             recipients=EmailRecipients(
-                whole_workspace=False,
+                include_bound_group=False,
                 items=[
-                    MemberRecipient(user_id=account.id),
+                    MemberRecipient(reference_id=account.id),
                     ExternalRecipient(email="external@example.com"),
                 ],
             ),
@@ -96,10 +96,8 @@ def _build_form(db_session_with_containers, tenant, account, *, app_id: str, wor
         delivery_methods=[delivery_method],
     )
 
-    engine = db_session_with_containers.get_bind()
-    repo = HumanInputFormRepositoryImpl(session_factory=engine, tenant_id=tenant.id)
+    repo = HumanInputFormRepositoryImpl(tenant_id=tenant.id, app_id=app_id)
     params = FormCreateParams(
-        app_id=app_id,
         workflow_execution_id=workflow_execution_id,
         node_id="node-1",
         form_config=node_data,

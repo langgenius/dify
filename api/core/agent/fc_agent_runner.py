@@ -7,19 +7,24 @@ import uuid
 from typing import Generator, List, Dict, Any, Union, cast
 
 from core.agent.base_agent_runner import BaseAgentRunner
+from core.agent.errors import AgentMaxIterationError
 from core.app.apps.base_app_queue_manager import PublishFrom
-from core.app.entities.queue_entities import QueueAgentThoughtEvent, QueueMessageFileEvent
-from core.model_runtime.entities import (
+from core.app.entities.queue_entities import QueueAgentThoughtEvent, QueueMessageEndEvent, QueueMessageFileEvent
+from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
+from core.tools.entities.tool_entities import ToolInvokeMeta
+from core.tools.tool_engine import ToolEngine
+from graphon.file import file_manager
+from graphon.model_runtime.entities import (
+    AssistantPromptMessage,
     LLMResult,
     LLMResultChunk,
     PromptMessage,
-    AssistantPromptMessage,
     SystemPromptMessage,
     ToolPromptMessage,
     LLMUsage
 )
-from core.tools.tool_engine import ToolEngine
-from extensions.ext_database import db
+from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent, PromptMessageContentUnionTypes
+from models.model import Message
 
 logger = logging.getLogger(__name__)
 
@@ -47,12 +52,15 @@ class FCAgentRunner(BaseAgentRunner):
         # 3. Iterative Reasoning Loop
         iteration_steps = [] 
         total_usage = LLMUsage(prompt_tokens=0, completion_tokens=0, total_tokens=0)
+        final_answer = ""
         
         while self.agent_thought_count < self.config.max_iteration:
             llm_result = self.model_instance.validate_and_call_llm(
                 prompt_messages=prompt_messages,
                 tools=prompt_messages_tools,
-                stream=self.stream_tool_call
+                stop=application_generate_entity.model_conf.stop,
+                stream=self.stream_tool_call,
+                callbacks=[],
             )
 
             if isinstance(llm_result, Generator):
@@ -73,10 +81,10 @@ class FCAgentRunner(BaseAgentRunner):
                     tool_name = tool_call.function.name
                     try:
                         tool_input = json.loads(tool_call.function.arguments)
-                    except json.JSONDecodeError:
+                    except (json.JSONDecodeError, TypeError):
                         tool_input = {}
-                    
-                    # LAYER 3 TRACKING: Record steps for the final cache storage
+
+                    # --- LAYER 3 TRACKING: Record steps for the final EROS cache storage ---
                     iteration_steps.append({
                         "tool_name": tool_name,
                         "inputs": tool_input,
@@ -88,7 +96,7 @@ class FCAgentRunner(BaseAgentRunner):
                         message_id=self.message.id, 
                         message="", 
                         tool_name=tool_name, 
-                        tool_input=json.dumps(tool_input), 
+                        tool_input=json.dumps(tool_input, ensure_ascii=False), 
                         messages_ids=[]
                     )
 
@@ -129,16 +137,31 @@ class FCAgentRunner(BaseAgentRunner):
                 continue 
 
             else:
-                # 5. FINAL ANSWER REACHED - STORE IN EROS
-                if iteration_steps:
-                    self._store_execution_plan_in_cache(iteration_steps, success=True)
-                
+                # FINAL ANSWER REACHED
+                final_answer = str(full_result.message.content)
                 yield LLMResultChunk(delta=full_result)
                 break
 
+        # --- EROS LAYER 3 STORAGE ---
+        if iteration_steps:
+            self._store_execution_plan_in_cache(iteration_steps, success=True)
+
+        # publish end event (Dify Standard)
+        self.queue_manager.publish(
+            QueueMessageEndEvent(
+                llm_result=LLMResult(
+                    model=self.model_instance.model_name,
+                    prompt_messages=prompt_messages,
+                    message=AssistantPromptMessage(content=final_answer),
+                    usage=total_usage,
+                    system_fingerprint="",
+                )
+            ),
+            PublishFrom.APPLICATION_MANAGER,
+        )
+
     def _apply_hybrid_welding(self, prompt_messages: List[PromptMessage]):
         """Injects Layer 2 knowledge with tool-existence verification."""
-        # FIX: Point directly to .engine to satisfy no-barrel-files
         from core.agent.plan_hydration.engine import get_hydrator
         
         is_valid, _ = get_hydrator().verify_plan(self.partial_reusable_steps, list(self.tool_instances.values()))
@@ -146,7 +169,6 @@ class FCAgentRunner(BaseAgentRunner):
             return
 
         reusable_names = [s.get('tool_name') or s.get('tool') for s in self.partial_reusable_steps]
-        
         hybrid_hint = (
             f"\n\n[EROS HYBRID]: High-confidence sequence match detected. "
             f"Optimized path: ({' -> '.join(reusable_names)}). "
@@ -162,10 +184,9 @@ class FCAgentRunner(BaseAgentRunner):
     def _store_execution_plan_in_cache(self, iteration_steps: List[Dict], success: bool):
         """Secure storage wrapper for EROS."""
         try:
-            # FIX: Point directly to .engine to satisfy no-barrel-files
             from core.agent.plan_hydration.engine import get_hydrator
             get_hydrator().store(
-                query=self.query,
+                query=self.application_generate_entity.query,
                 tools=list(self.tool_instances.values()),
                 plan_steps=iteration_steps,
                 tenant_id=self.tenant_id,

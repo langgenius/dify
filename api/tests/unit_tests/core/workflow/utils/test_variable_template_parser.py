@@ -1,7 +1,7 @@
 import dataclasses
 
-from core.workflow.nodes.base import variable_template_parser
-from core.workflow.nodes.base.entities import VariableSelector
+from graphon.nodes.base import variable_template_parser
+from graphon.nodes.base.entities import VariableSelector
 
 
 def test_extract_selectors_from_template():

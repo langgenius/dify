@@ -11,6 +11,7 @@ from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
 from core.app.task_pipeline import message_cycle_manager
 from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
+from models.enums import ConversationFromSource
 from models.model import AppMode, Conversation, Message
 
 
@@ -92,7 +93,7 @@ def test_init_generate_records_marks_existing_conversation():
         system_instruction_tokens=0,
         status="normal",
         invoke_from=InvokeFrom.WEB_APP.value,
-        from_source="api",
+        from_source=ConversationFromSource.API,
         from_end_user_id="user-id",
         from_account_id=None,
     )
@@ -124,12 +125,12 @@ def test_message_cycle_manager_uses_new_conversation_flag(monkeypatch):
         def start(self):
             self.started = True
 
-    def fake_thread(**kwargs):
+    def fake_thread(*args, **kwargs):
         thread = DummyThread(**kwargs)
         captured["thread"] = thread
         return thread
 
-    monkeypatch.setattr(message_cycle_manager, "Thread", fake_thread)
+    monkeypatch.setattr(message_cycle_manager, "Timer", fake_thread)
 
     manager = MessageCycleManager(application_generate_entity=entity, task_state=MagicMock())
     thread = manager.generate_conversation_name(conversation_id="existing-conversation-id", query="hello")

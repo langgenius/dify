@@ -23,15 +23,29 @@ const AgentContent: FC<AgentContentProps> = ({
     agent_thoughts,
   } = item
 
-  if (annotation?.logAnnotation)
-    return <Markdown content={annotation?.logAnnotation.content || ''} />
+  if (annotation?.logAnnotation) {
+    return (
+      <Markdown
+        content={annotation?.logAnnotation.content || ''}
+        data-testid="agent-content-markdown"
+      />
+    )
+  }
 
   return (
-    <div>
-      {content ? <Markdown content={content} /> : agent_thoughts?.map((thought, index) => (
-        <div key={index} className="px-2 py-1">
+    <div data-testid="agent-content-container">
+      {content ? (
+        <Markdown
+          content={content}
+          data-testid="agent-content-markdown"
+        />
+      ) : agent_thoughts?.map((thought, index) => (
+        <div key={index} className="px-2 py-1" data-testid="agent-thought-item">
           {thought.thought && (
-            <Markdown content={thought.thought} />
+            <Markdown
+              content={thought.thought}
+              data-testid="agent-thought-markdown"
+            />
           )}
           {/* {item.tool} */}
           {/* perhaps not use tool */}

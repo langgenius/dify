@@ -12,8 +12,7 @@ from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from controllers.web.error import NotFoundError
-from core.workflow.entities.pause_reason import HumanInputRequired
-from core.workflow.enums import WorkflowExecutionStatus
+from core.workflow.human_input_forms import load_form_tokens_by_form_id as _load_form_tokens_by_form_id
 from extensions.ext_database import db
 from fields.end_user_fields import simple_end_user_fields
 from fields.member_fields import simple_account_fields
@@ -27,6 +26,8 @@ from fields.workflow_run_fields import (
     workflow_run_node_execution_list_fields,
     workflow_run_pagination_fields,
 )
+from graphon.entities.pause_reason import HumanInputRequired
+from graphon.enums import WorkflowExecutionStatus
 from libs.archive_storage import ArchiveStorageNotConfiguredError, get_archive_storage
 from libs.custom_inputs import time_duration
 from libs.helper import uuid_value
@@ -496,6 +497,9 @@ class ConsoleWorkflowPauseDetailsApi(Resource):
 
         pause_entity = workflow_run_repo.get_workflow_pause(workflow_run_id)
         pause_reasons = pause_entity.get_pause_reasons() if pause_entity else []
+        form_tokens_by_form_id = _load_form_tokens_by_form_id(
+            [reason.form_id for reason in pause_reasons if isinstance(reason, HumanInputRequired)]
+        )
 
         # Build response
         paused_at = pause_entity.paused_at if pause_entity else None
@@ -514,7 +518,9 @@ class ConsoleWorkflowPauseDetailsApi(Resource):
                         "pause_type": {
                             "type": "human_input",
                             "form_id": reason.form_id,
-                            "backstage_input_url": _build_backstage_input_url(reason.form_token),
+                            "backstage_input_url": _build_backstage_input_url(
+                                form_tokens_by_form_id.get(reason.form_id)
+                            ),
                         },
                     }
                 )

@@ -10,10 +10,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
-from core.model_runtime.utils.encoders import jsonable_encoder
 from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from extensions.ext_storage import storage
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 from models.account import Tenant
 from models.model import (
     App,

@@ -9,12 +9,12 @@ from opentelemetry.trace import Span
 from opentelemetry.trace.status import Status, StatusCode
 from pydantic import BaseModel
 
-from core.file.models import File
-from core.variables import Segment
-from core.workflow.enums import NodeType
-from core.workflow.graph_events import GraphNodeEventBase
-from core.workflow.nodes.base.node import Node
 from extensions.otel.semconv.gen_ai import ChainAttributes, GenAIAttributes
+from graphon.enums import BuiltinNodeTypes
+from graphon.file.models import File
+from graphon.graph_events import GraphNodeEventBase
+from graphon.nodes.base.node import Node
+from graphon.variables import Segment
 
 
 def safe_json_dumps(obj: Any, ensure_ascii: bool = False) -> str:
@@ -84,21 +84,17 @@ class DefaultNodeOTelParser:
         span.set_attribute("node.id", node.id)
         if node.execution_id:
             span.set_attribute("node.execution_id", node.execution_id)
-        if hasattr(node, "node_type") and node.node_type:
-            span.set_attribute("node.type", node.node_type.value)
+        span.set_attribute("node.type", node.node_type)
 
         span.set_attribute(GenAIAttributes.FRAMEWORK, "dify")
 
-        node_type = getattr(node, "node_type", None)
-        if isinstance(node_type, NodeType):
-            if node_type == NodeType.LLM:
-                span.set_attribute(GenAIAttributes.SPAN_KIND, "LLM")
-            elif node_type == NodeType.KNOWLEDGE_RETRIEVAL:
-                span.set_attribute(GenAIAttributes.SPAN_KIND, "RETRIEVER")
-            elif node_type == NodeType.TOOL:
-                span.set_attribute(GenAIAttributes.SPAN_KIND, "TOOL")
-            else:
-                span.set_attribute(GenAIAttributes.SPAN_KIND, "TASK")
+        node_type = node.node_type
+        if node_type == BuiltinNodeTypes.LLM:
+            span.set_attribute(GenAIAttributes.SPAN_KIND, "LLM")
+        elif node_type == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
+            span.set_attribute(GenAIAttributes.SPAN_KIND, "RETRIEVER")
+        elif node_type == BuiltinNodeTypes.TOOL:
+            span.set_attribute(GenAIAttributes.SPAN_KIND, "TOOL")
         else:
             span.set_attribute(GenAIAttributes.SPAN_KIND, "TASK")
 

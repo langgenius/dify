@@ -5,13 +5,19 @@ import type { ToolVarInputs } from '../../tool/types'
 import type { CredentialFormSchema, CredentialFormSchemaNumberInput, CredentialFormSchemaTextInput } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { PluginMeta } from '@/app/components/plugins/types'
 import { noop } from 'es-toolkit/function'
-import Link from 'next/link'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Agent } from '@/app/components/base/icons/src/vender/workflow'
-import { InputNumber } from '@/app/components/base/input-number'
 import ListEmpty from '@/app/components/base/list-empty'
-import Slider from '@/app/components/base/slider'
+import {
+  NumberField,
+  NumberFieldControls,
+  NumberFieldDecrement,
+  NumberFieldGroup,
+  NumberFieldIncrement,
+  NumberFieldInput,
+} from '@/app/components/base/ui/number-field'
+import { Slider } from '@/app/components/base/ui/slider'
 import { FormTypeEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
@@ -19,6 +25,7 @@ import MultipleToolSelector from '@/app/components/plugins/plugin-detail-panel/m
 import ToolSelector from '@/app/components/plugins/plugin-detail-panel/tool-selector'
 import { useDocLink } from '@/context/i18n'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
+import Link from '@/next/link'
 import { AppModeEnum } from '@/types/app'
 import { useWorkflowStore } from '../../../store'
 import { AgentStrategySelector } from './agent-strategy-selector'
@@ -116,11 +123,11 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
         }
         case FormTypeEnum.textNumber: {
           const def = schema as CredentialFormSchemaNumberInput
-          if (!def.max || !def.min)
+          if (def.max == null || def.min == null)
             return false
 
           const defaultValue = schema.default ? Number.parseInt(schema.default) : 1
-          const value = props.value[schema.variable] || defaultValue
+          const value = props.value[schema.variable] ?? defaultValue
           const onChange = (value: number) => {
             props.onChange({ ...props.value, [schema.variable]: value })
           }
@@ -140,21 +147,26 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
               <div className="flex w-[200px] items-center gap-3">
                 <Slider
                   value={value}
-                  onChange={onChange}
+                  onValueChange={onChange}
                   className="w-full"
                   min={def.min}
                   max={def.max}
+                  aria-label={renderI18nObject(def.label)}
                 />
-                <InputNumber
+                <NumberField
                   value={value}
-                  // TODO: maybe empty, handle this
-                  onChange={onChange as any}
-                  defaultValue={defaultValue}
-                  size="regular"
                   min={def.min}
                   max={def.max}
-                  className="w-12"
-                />
+                  onValueChange={nextValue => onChange(nextValue ?? defaultValue)}
+                >
+                  <NumberFieldGroup size="regular">
+                    <NumberFieldInput size="regular" className="w-12" />
+                    <NumberFieldControls>
+                      <NumberFieldIncrement size="regular" />
+                      <NumberFieldDecrement size="regular" />
+                    </NumberFieldControls>
+                  </NumberFieldGroup>
+                </NumberField>
               </div>
             </Field>
           )

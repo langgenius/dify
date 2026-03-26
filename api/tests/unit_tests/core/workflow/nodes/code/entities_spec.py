@@ -1,9 +1,8 @@
 import pytest
 from pydantic import ValidationError
 
-from core.helper.code_executor.code_executor import CodeLanguage
-from core.variables.types import SegmentType
-from core.workflow.nodes.code.entities import CodeNodeData
+from graphon.nodes.code.entities import CodeLanguage, CodeNodeData
+from graphon.variables.types import SegmentType
 
 
 class TestCodeNodeDataOutput:

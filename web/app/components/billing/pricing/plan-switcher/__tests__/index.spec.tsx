@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
-import { CategoryEnum } from '../../index'
+import { CategoryEnum } from '../../types'
 import PlanSwitcher from '../index'
 import { PlanRange } from '../plan-range-switcher'
 

@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import logging
 
-from core.workflow.graph_engine.event_management.event_manager import EventManager
-from core.workflow.graph_engine.layers.base import GraphEngineLayer
-from core.workflow.graph_events import GraphEngineEvent
+from graphon.graph_engine.event_management.event_manager import EventManager
+from graphon.graph_engine.layers.base import GraphEngineLayer
+from graphon.graph_events import GraphEngineEvent
 
 
 class _FaultyLayer(GraphEngineLayer):

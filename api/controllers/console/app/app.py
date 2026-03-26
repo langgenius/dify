@@ -23,11 +23,12 @@ from controllers.console.wraps import (
     is_admin_or_owner_required,
     setup_required,
 )
-from core.file import helpers as file_helpers
 from core.ops.ops_trace_manager import OpsTraceManager
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from core.workflow.enums import NodeType, WorkflowExecutionStatus
+from core.trigger.constants import TRIGGER_NODE_TYPES
 from extensions.ext_database import db
+from graphon.enums import WorkflowExecutionStatus
+from graphon.file import helpers as file_helpers
 from libs.login import current_account_with_tenant, login_required
 from models import App, DatasetPermissionEnum, Workflow
 from models.model import IconType
@@ -94,7 +95,7 @@ class CreateAppPayload(BaseModel):
     name: str = Field(..., min_length=1, description="App name")
     description: str | None = Field(default=None, description="App description (max 400 chars)", max_length=400)
     mode: Literal["chat", "agent-chat", "advanced-chat", "workflow", "completion"] = Field(..., description="App mode")
-    icon_type: str | None = Field(default=None, description="Icon type")
+    icon_type: IconType | None = Field(default=None, description="Icon type")
     icon: str | None = Field(default=None, description="Icon")
     icon_background: str | None = Field(default=None, description="Icon background color")
 
@@ -102,7 +103,7 @@ class CreateAppPayload(BaseModel):
 class UpdateAppPayload(BaseModel):
     name: str = Field(..., min_length=1, description="App name")
     description: str | None = Field(default=None, description="App description (max 400 chars)", max_length=400)
-    icon_type: str | None = Field(default=None, description="Icon type")
+    icon_type: IconType | None = Field(default=None, description="Icon type")
     icon: str | None = Field(default=None, description="Icon")
     icon_background: str | None = Field(default=None, description="Icon background color")
     use_icon_as_answer_icon: bool | None = Field(default=None, description="Use icon as answer icon")
@@ -112,7 +113,7 @@ class UpdateAppPayload(BaseModel):
 class CopyAppPayload(BaseModel):
     name: str | None = Field(default=None, description="Name for the copied app")
     description: str | None = Field(default=None, description="Description for the copied app", max_length=400)
-    icon_type: str | None = Field(default=None, description="Icon type")
+    icon_type: IconType | None = Field(default=None, description="Icon type")
     icon: str | None = Field(default=None, description="Icon")
     icon_background: str | None = Field(default=None, description="Icon background color")
 
@@ -508,11 +509,7 @@ class AppListApi(Resource):
                 .scalars()
                 .all()
             )
-            trigger_node_types = {
-                NodeType.TRIGGER_WEBHOOK,
-                NodeType.TRIGGER_SCHEDULE,
-                NodeType.TRIGGER_PLUGIN,
-            }
+            trigger_node_types = TRIGGER_NODE_TYPES
             for workflow in draft_workflows:
                 node_id = None
                 try:
@@ -597,7 +594,7 @@ class AppApi(Resource):
         args_dict: AppService.ArgsDict = {
             "name": args.name,
             "description": args.description or "",
-            "icon_type": args.icon_type or "",
+            "icon_type": args.icon_type,
             "icon": args.icon or "",
             "icon_background": args.icon_background or "",
             "use_icon_as_answer_icon": args.use_icon_as_answer_icon or False,
@@ -659,6 +656,19 @@ class AppCopyApi(Resource):
                 icon_background=args.icon_background,
             )
             session.commit()
+
+            # Inherit web app permission from original app
+            if result.app_id and FeatureService.get_system_features().webapp_auth.enabled:
+                try:
+                    # Get the original app's access mode
+                    original_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_model.id)
+                    access_mode = original_settings.access_mode
+                except Exception:
+                    # If original app has no settings (old app), default to public to match fallback behavior
+                    access_mode = "public"
+
+                # Apply the same access mode to the copied app
+                EnterpriseService.WebAppAuth.update_app_access_mode(result.app_id, access_mode)
 
             stmt = select(App).where(App.id == result.app_id)
             app = session.scalar(stmt)

@@ -3,24 +3,23 @@
 import time
 from unittest.mock import MagicMock
 
-from core.app.entities.app_invoke_entities import InvokeFrom
-from core.variables import IntegerVariable, StringVariable
-from core.workflow.entities.graph_init_params import GraphInitParams
-from core.workflow.entities.pause_reason import SchedulingPause
-from core.workflow.graph import Graph
-from core.workflow.graph_engine import GraphEngine, GraphEngineConfig
-from core.workflow.graph_engine.command_channels import InMemoryChannel
-from core.workflow.graph_engine.entities.commands import (
+from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
+from graphon.entities.graph_init_params import GraphInitParams
+from graphon.entities.pause_reason import SchedulingPause
+from graphon.graph import Graph
+from graphon.graph_engine import GraphEngine, GraphEngineConfig
+from graphon.graph_engine.command_channels import InMemoryChannel
+from graphon.graph_engine.entities.commands import (
     AbortCommand,
     CommandType,
     PauseCommand,
     UpdateVariablesCommand,
     VariableUpdate,
 )
-from core.workflow.graph_events import GraphRunAbortedEvent, GraphRunPausedEvent, GraphRunStartedEvent
-from core.workflow.nodes.start.start_node import StartNode
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from models.enums import UserFrom
+from graphon.graph_events import GraphRunAbortedEvent, GraphRunPausedEvent, GraphRunStartedEvent
+from graphon.nodes.start.start_node import StartNode
+from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.variables import IntegerVariable, StringVariable
 
 
 def test_abort_command():
@@ -41,13 +40,17 @@ def test_abort_command():
         id="start",
         config={"id": "start", "data": {"title": "start", "variables": []}},
         graph_init_params=GraphInitParams(
-            tenant_id="test_tenant",
-            app_id="test_app",
             workflow_id="test_workflow",
             graph_config={},
-            user_id="test_user",
-            user_from=UserFrom.ACCOUNT,
-            invoke_from=InvokeFrom.DEBUGGER,
+            run_context={
+                DIFY_RUN_CONTEXT_KEY: {
+                    "tenant_id": "test_tenant",
+                    "app_id": "test_app",
+                    "user_id": "test_user",
+                    "user_from": UserFrom.ACCOUNT,
+                    "invoke_from": InvokeFrom.DEBUGGER,
+                }
+            },
             call_depth=0,
         ),
         graph_runtime_state=shared_runtime_state,
@@ -70,9 +73,8 @@ def test_abort_command():
         config=GraphEngineConfig(),
     )
 
-    # Send abort command before starting
-    abort_command = AbortCommand(reason="Test abort")
-    command_channel.send_command(abort_command)
+    # Queue an abort request before starting.
+    engine.request_abort("Test abort")
 
     # Run engine and collect events
     events = list(engine.run())
@@ -99,7 +101,7 @@ def test_redis_channel_serialization():
     mock_redis.pipeline.return_value.__enter__ = MagicMock(return_value=mock_pipeline)
     mock_redis.pipeline.return_value.__exit__ = MagicMock(return_value=None)
 
-    from core.workflow.graph_engine.command_channels.redis_channel import RedisChannel
+    from graphon.graph_engine.command_channels.redis_channel import RedisChannel
 
     # Create channel with a specific key
     channel = RedisChannel(mock_redis, channel_key="workflow:123:commands")
@@ -151,13 +153,17 @@ def test_pause_command():
         id="start",
         config={"id": "start", "data": {"title": "start", "variables": []}},
         graph_init_params=GraphInitParams(
-            tenant_id="test_tenant",
-            app_id="test_app",
             workflow_id="test_workflow",
             graph_config={},
-            user_id="test_user",
-            user_from=UserFrom.ACCOUNT,
-            invoke_from=InvokeFrom.DEBUGGER,
+            run_context={
+                DIFY_RUN_CONTEXT_KEY: {
+                    "tenant_id": "test_tenant",
+                    "app_id": "test_app",
+                    "user_id": "test_user",
+                    "user_from": UserFrom.ACCOUNT,
+                    "invoke_from": InvokeFrom.DEBUGGER,
+                }
+            },
             call_depth=0,
         ),
         graph_runtime_state=shared_runtime_state,
@@ -207,13 +213,17 @@ def test_update_variables_command_updates_pool():
         id="start",
         config={"id": "start", "data": {"title": "start", "variables": []}},
         graph_init_params=GraphInitParams(
-            tenant_id="test_tenant",
-            app_id="test_app",
             workflow_id="test_workflow",
             graph_config={},
-            user_id="test_user",
-            user_from=UserFrom.ACCOUNT,
-            invoke_from=InvokeFrom.DEBUGGER,
+            run_context={
+                DIFY_RUN_CONTEXT_KEY: {
+                    "tenant_id": "test_tenant",
+                    "app_id": "test_app",
+                    "user_id": "test_user",
+                    "user_from": UserFrom.ACCOUNT,
+                    "invoke_from": InvokeFrom.DEBUGGER,
+                }
+            },
             call_depth=0,
         ),
         graph_runtime_state=shared_runtime_state,

@@ -1,5 +1,5 @@
-from core.variables.types import SegmentType
-from core.workflow.nodes.parameter_extractor.entities import ParameterConfig
+from graphon.nodes.parameter_extractor.entities import ParameterConfig
+from graphon.variables.types import SegmentType
 
 
 class TestParameterConfig:

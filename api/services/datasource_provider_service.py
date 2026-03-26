@@ -10,13 +10,13 @@ from constants import HIDDEN_VALUE, UNKNOWN_VALUE
 from core.helper import encrypter
 from core.helper.name_generator import generate_incremental_name
 from core.helper.provider_cache import NoOpProviderCredentialCache
-from core.model_runtime.entities.provider_entities import FormType
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.datasource import PluginDatasourceManager
 from core.plugin.impl.oauth import OAuthHandler
 from core.tools.utils.encryption import ProviderConfigCache, ProviderConfigEncrypter, create_provider_encrypter
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from graphon.model_runtime.entities.provider_entities import FormType
 from models.oauth import DatasourceOauthParamConfig, DatasourceOauthTenantParamConfig, DatasourceProvider
 from models.provider_ids import DatasourceProviderID
 from services.plugin.plugin_service import PluginService
@@ -824,6 +824,7 @@ class DatasourceProviderService:
                 "langgenius/firecrawl_datasource",
                 "langgenius/notion_datasource",
                 "langgenius/jina_datasource",
+                "watercrawl/watercrawl_datasource",
             ]:
                 datasource_provider_id = DatasourceProviderID(f"{datasource.plugin_id}/{datasource.provider}")
                 credentials = self.list_datasource_credentials(

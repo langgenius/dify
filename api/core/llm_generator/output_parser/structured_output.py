@@ -10,22 +10,22 @@ from pydantic import TypeAdapter, ValidationError
 from core.llm_generator.output_parser.errors import OutputParserError
 from core.llm_generator.prompts import STRUCTURED_OUTPUT_PROMPT
 from core.model_manager import ModelInstance
-from core.model_runtime.callbacks.base_callback import Callback
-from core.model_runtime.entities.llm_entities import (
+from graphon.model_runtime.callbacks.base_callback import Callback
+from graphon.model_runtime.entities.llm_entities import (
     LLMResult,
     LLMResultChunk,
     LLMResultChunkDelta,
     LLMResultChunkWithStructuredOutput,
     LLMResultWithStructuredOutput,
 )
-from core.model_runtime.entities.message_entities import (
+from graphon.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     PromptMessage,
     PromptMessageTool,
     SystemPromptMessage,
     TextPromptMessageContent,
 )
-from core.model_runtime.entities.model_entities import AIModelEntity, ParameterRule
+from graphon.model_runtime.entities.model_entities import AIModelEntity, ParameterRule
 
 
 class ResponseFormat(StrEnum):
@@ -55,7 +55,6 @@ def invoke_llm_with_structured_output(
     tools: Sequence[PromptMessageTool] | None = None,
     stop: list[str] | None = None,
     stream: Literal[True],
-    user: str | None = None,
     callbacks: list[Callback] | None = None,
 ) -> Generator[LLMResultChunkWithStructuredOutput, None, None]: ...
 @overload
@@ -70,7 +69,6 @@ def invoke_llm_with_structured_output(
     tools: Sequence[PromptMessageTool] | None = None,
     stop: list[str] | None = None,
     stream: Literal[False],
-    user: str | None = None,
     callbacks: list[Callback] | None = None,
 ) -> LLMResultWithStructuredOutput: ...
 @overload
@@ -85,7 +83,6 @@ def invoke_llm_with_structured_output(
     tools: Sequence[PromptMessageTool] | None = None,
     stop: list[str] | None = None,
     stream: bool = True,
-    user: str | None = None,
     callbacks: list[Callback] | None = None,
 ) -> LLMResultWithStructuredOutput | Generator[LLMResultChunkWithStructuredOutput, None, None]: ...
 def invoke_llm_with_structured_output(
@@ -99,7 +96,6 @@ def invoke_llm_with_structured_output(
     tools: Sequence[PromptMessageTool] | None = None,
     stop: list[str] | None = None,
     stream: bool = True,
-    user: str | None = None,
     callbacks: list[Callback] | None = None,
 ) -> LLMResultWithStructuredOutput | Generator[LLMResultChunkWithStructuredOutput, None, None]:
     """
@@ -113,7 +109,6 @@ def invoke_llm_with_structured_output(
     :param tools: tools for tool calling
     :param stop: stop words
     :param stream: is stream response
-    :param user: unique user id
     :param callbacks: callbacks
     :return: full response or stream response chunk generator result
     """
@@ -143,7 +138,6 @@ def invoke_llm_with_structured_output(
         tools=tools,
         stop=stop,
         stream=stream,
-        user=user,
         callbacks=callbacks,
     )
 

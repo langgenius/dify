@@ -4,15 +4,13 @@ from typing import Any
 
 import pytest
 
-from core.app.entities.app_invoke_entities import InvokeFrom
-from core.app.workflow.node_factory import DifyNodeFactory
-from core.workflow.entities import GraphInitParams
-from core.workflow.graph import Graph
-from core.workflow.graph.validation import GraphValidationError
-from core.workflow.nodes import NodeType
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
-from models.enums import UserFrom
+from core.workflow.node_factory import DifyNodeFactory
+from core.workflow.system_variables import default_system_variables
+from graphon.graph import Graph
+from graphon.graph.validation import GraphValidationError
+from graphon.nodes import BuiltinNodeTypes
+from graphon.runtime import GraphRuntimeState, VariablePool
+from tests.workflow_test_utils import build_test_graph_init_params
 
 
 def _build_iteration_graph(node_id: str) -> dict[str, Any]:
@@ -53,19 +51,19 @@ def _build_loop_graph(node_id: str) -> dict[str, Any]:
 
 
 def _make_factory(graph_config: dict[str, Any]) -> DifyNodeFactory:
-    graph_init_params = GraphInitParams(
-        tenant_id="tenant",
-        app_id="app",
+    graph_init_params = build_test_graph_init_params(
         workflow_id="workflow",
         graph_config=graph_config,
+        tenant_id="tenant",
+        app_id="app",
         user_id="user",
-        user_from=UserFrom.ACCOUNT,
-        invoke_from=InvokeFrom.DEBUGGER,
+        user_from="account",
+        invoke_from="debugger",
         call_depth=0,
     )
     graph_runtime_state = GraphRuntimeState(
         variable_pool=VariablePool(
-            system_variables=SystemVariable.default(),
+            system_variables=default_system_variables(),
             user_inputs={},
             environment_variables=[],
         ),
@@ -94,7 +92,7 @@ def test_iteration_root_requires_skip_validation():
     )
 
     assert graph.root_node.id == node_id
-    assert graph.root_node.node_type == NodeType.ITERATION
+    assert graph.root_node.node_type == BuiltinNodeTypes.ITERATION
 
 
 def test_loop_root_requires_skip_validation():
@@ -117,4 +115,4 @@ def test_loop_root_requires_skip_validation():
     )
 
     assert graph.root_node.id == node_id
-    assert graph.root_node.node_type == NodeType.LOOP
+    assert graph.root_node.node_type == BuiltinNodeTypes.LOOP

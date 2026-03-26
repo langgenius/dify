@@ -28,8 +28,8 @@ from core.ops.langfuse_trace.entities.langfuse_trace_entity import (
 )
 from core.ops.utils import filter_none_values
 from core.repositories import DifyCoreRepositoryFactory
-from core.workflow.enums import NodeType
 from extensions.ext_database import db
+from graphon.enums import BuiltinNodeTypes
 from models import EndUser, WorkflowNodeExecutionTriggeredFrom
 from models.enums import MessageStatus
 
@@ -130,8 +130,8 @@ class LangFuseDataTrace(BaseTraceInstance):
         )
 
         # Get all executions for this workflow run
-        workflow_node_executions = workflow_node_execution_repository.get_by_workflow_run(
-            workflow_run_id=trace_info.workflow_run_id
+        workflow_node_executions = workflow_node_execution_repository.get_by_workflow_execution(
+            workflow_execution_id=trace_info.workflow_run_id
         )
 
         for node_execution in workflow_node_executions:
@@ -141,7 +141,7 @@ class LangFuseDataTrace(BaseTraceInstance):
             node_name = node_execution.title
             node_type = node_execution.node_type
             status = node_execution.status
-            if node_type == NodeType.LLM:
+            if node_type == BuiltinNodeTypes.LLM:
                 inputs = node_execution.process_data.get("prompts", {}) if node_execution.process_data else {}
             else:
                 inputs = node_execution.inputs or {}

@@ -6,8 +6,9 @@ to ensure they work correctly with the TableTestRunner.
 """
 
 from configs import dify_config
-from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
-from core.workflow.nodes.code.limits import CodeNodeLimits
+from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
+from graphon.nodes.code.limits import CodeNodeLimits
 from tests.unit_tests.core.workflow.graph_engine.test_mock_config import MockConfig, MockConfigBuilder, NodeMockConfig
 from tests.unit_tests.core.workflow.graph_engine.test_mock_factory import MockNodeFactory
 from tests.unit_tests.core.workflow.graph_engine.test_mock_nodes import MockCodeNode, MockTemplateTransformNode
@@ -24,28 +25,42 @@ DEFAULT_CODE_LIMITS = CodeNodeLimits(
 )
 
 
+class _NoopCodeExecutor:
+    def execute(self, *, language: object, code: str, inputs: dict[str, object]) -> dict[str, object]:
+        _ = (language, code, inputs)
+        return {}
+
+    def is_execution_error(self, error: Exception) -> bool:
+        _ = error
+        return False
+
+
 class TestMockTemplateTransformNode:
     """Test cases for MockTemplateTransformNode."""
 
     def test_mock_template_transform_node_default_output(self):
         """Test that MockTemplateTransformNode processes templates with Jinja2."""
-        from core.workflow.entities import GraphInitParams
-        from core.workflow.runtime import GraphRuntimeState, VariablePool
+        from graphon.entities import GraphInitParams
+        from graphon.runtime import GraphRuntimeState, VariablePool
 
         # Create test parameters
         graph_init_params = GraphInitParams(
-            tenant_id="test_tenant",
-            app_id="test_app",
             workflow_id="test_workflow",
             graph_config={},
-            user_id="test_user",
-            user_from="account",
-            invoke_from="debugger",
+            run_context={
+                DIFY_RUN_CONTEXT_KEY: {
+                    "tenant_id": "test_tenant",
+                    "app_id": "test_app",
+                    "user_id": "test_user",
+                    "user_from": "account",
+                    "invoke_from": "debugger",
+                }
+            },
             call_depth=0,
         )
 
         variable_pool = VariablePool(
-            system_variables={},
+            system_variables=[],
             user_inputs={},
         )
 
@@ -88,23 +103,27 @@ class TestMockTemplateTransformNode:
 
     def test_mock_template_transform_node_custom_output(self):
         """Test that MockTemplateTransformNode returns custom configured output."""
-        from core.workflow.entities import GraphInitParams
-        from core.workflow.runtime import GraphRuntimeState, VariablePool
+        from graphon.entities import GraphInitParams
+        from graphon.runtime import GraphRuntimeState, VariablePool
 
         # Create test parameters
         graph_init_params = GraphInitParams(
-            tenant_id="test_tenant",
-            app_id="test_app",
             workflow_id="test_workflow",
             graph_config={},
-            user_id="test_user",
-            user_from="account",
-            invoke_from="debugger",
+            run_context={
+                DIFY_RUN_CONTEXT_KEY: {
+                    "tenant_id": "test_tenant",
+                    "app_id": "test_app",
+                    "user_id": "test_user",
+                    "user_from": "account",
+                    "invoke_from": "debugger",
+                }
+            },
             call_depth=0,
         )
 
         variable_pool = VariablePool(
-            system_variables={},
+            system_variables=[],
             user_inputs={},
         )
 
@@ -148,23 +167,27 @@ class TestMockTemplateTransformNode:
 
     def test_mock_template_transform_node_error_simulation(self):
         """Test that MockTemplateTransformNode can simulate errors."""
-        from core.workflow.entities import GraphInitParams
-        from core.workflow.runtime import GraphRuntimeState, VariablePool
+        from graphon.entities import GraphInitParams
+        from graphon.runtime import GraphRuntimeState, VariablePool
 
         # Create test parameters
         graph_init_params = GraphInitParams(
-            tenant_id="test_tenant",
-            app_id="test_app",
             workflow_id="test_workflow",
             graph_config={},
-            user_id="test_user",
-            user_from="account",
-            invoke_from="debugger",
+            run_context={
+                DIFY_RUN_CONTEXT_KEY: {
+                    "tenant_id": "test_tenant",
+                    "app_id": "test_app",
+                    "user_id": "test_user",
+                    "user_from": "account",
+                    "invoke_from": "debugger",
+                }
+            },
             call_depth=0,
         )
 
         variable_pool = VariablePool(
-            system_variables={},
+            system_variables=[],
             user_inputs={},
         )
 
@@ -205,24 +228,28 @@ class TestMockTemplateTransformNode:
 
     def test_mock_template_transform_node_with_variables(self):
         """Test that MockTemplateTransformNode processes templates with variables."""
-        from core.variables import StringVariable
-        from core.workflow.entities import GraphInitParams
-        from core.workflow.runtime import GraphRuntimeState, VariablePool
+        from graphon.entities import GraphInitParams
+        from graphon.runtime import GraphRuntimeState, VariablePool
+        from graphon.variables import StringVariable
 
         # Create test parameters
         graph_init_params = GraphInitParams(
-            tenant_id="test_tenant",
-            app_id="test_app",
             workflow_id="test_workflow",
             graph_config={},
-            user_id="test_user",
-            user_from="account",
-            invoke_from="debugger",
+            run_context={
+                DIFY_RUN_CONTEXT_KEY: {
+                    "tenant_id": "test_tenant",
+                    "app_id": "test_app",
+                    "user_id": "test_user",
+                    "user_from": "account",
+                    "invoke_from": "debugger",
+                }
+            },
             call_depth=0,
         )
 
         variable_pool = VariablePool(
-            system_variables={},
+            system_variables=[],
             user_inputs={},
         )
 
@@ -271,23 +298,27 @@ class TestMockCodeNode:
 
     def test_mock_code_node_default_output(self):
         """Test that MockCodeNode returns default output."""
-        from core.workflow.entities import GraphInitParams
-        from core.workflow.runtime import GraphRuntimeState, VariablePool
+        from graphon.entities import GraphInitParams
+        from graphon.runtime import GraphRuntimeState, VariablePool
 
         # Create test parameters
         graph_init_params = GraphInitParams(
-            tenant_id="test_tenant",
-            app_id="test_app",
             workflow_id="test_workflow",
             graph_config={},
-            user_id="test_user",
-            user_from="account",
-            invoke_from="debugger",
+            run_context={
+                DIFY_RUN_CONTEXT_KEY: {
+                    "tenant_id": "test_tenant",
+                    "app_id": "test_app",
+                    "user_id": "test_user",
+                    "user_from": "account",
+                    "invoke_from": "debugger",
+                }
+            },
             call_depth=0,
         )
 
         variable_pool = VariablePool(
-            system_variables={},
+            system_variables=[],
             user_inputs={},
         )
 
@@ -319,6 +350,7 @@ class TestMockCodeNode:
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
             mock_config=mock_config,
+            code_executor=_NoopCodeExecutor(),
             code_limits=DEFAULT_CODE_LIMITS,
         )
 
@@ -332,23 +364,27 @@ class TestMockCodeNode:
 
     def test_mock_code_node_with_output_schema(self):
         """Test that MockCodeNode generates outputs based on schema."""
-        from core.workflow.entities import GraphInitParams
-        from core.workflow.runtime import GraphRuntimeState, VariablePool
+        from graphon.entities import GraphInitParams
+        from graphon.runtime import GraphRuntimeState, VariablePool
 
         # Create test parameters
         graph_init_params = GraphInitParams(
-            tenant_id="test_tenant",
-            app_id="test_app",
             workflow_id="test_workflow",
             graph_config={},
-            user_id="test_user",
-            user_from="account",
-            invoke_from="debugger",
+            run_context={
+                DIFY_RUN_CONTEXT_KEY: {
+                    "tenant_id": "test_tenant",
+                    "app_id": "test_app",
+                    "user_id": "test_user",
+                    "user_from": "account",
+                    "invoke_from": "debugger",
+                }
+            },
             call_depth=0,
         )
 
         variable_pool = VariablePool(
-            system_variables={},
+            system_variables=[],
             user_inputs={},
         )
 
@@ -384,6 +420,7 @@ class TestMockCodeNode:
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
             mock_config=mock_config,
+            code_executor=_NoopCodeExecutor(),
             code_limits=DEFAULT_CODE_LIMITS,
         )
 
@@ -401,23 +438,27 @@ class TestMockCodeNode:
 
     def test_mock_code_node_custom_output(self):
         """Test that MockCodeNode returns custom configured output."""
-        from core.workflow.entities import GraphInitParams
-        from core.workflow.runtime import GraphRuntimeState, VariablePool
+        from graphon.entities import GraphInitParams
+        from graphon.runtime import GraphRuntimeState, VariablePool
 
         # Create test parameters
         graph_init_params = GraphInitParams(
-            tenant_id="test_tenant",
-            app_id="test_app",
             workflow_id="test_workflow",
             graph_config={},
-            user_id="test_user",
-            user_from="account",
-            invoke_from="debugger",
+            run_context={
+                DIFY_RUN_CONTEXT_KEY: {
+                    "tenant_id": "test_tenant",
+                    "app_id": "test_app",
+                    "user_id": "test_user",
+                    "user_from": "account",
+                    "invoke_from": "debugger",
+                }
+            },
             call_depth=0,
         )
 
         variable_pool = VariablePool(
-            system_variables={},
+            system_variables=[],
             user_inputs={},
         )
 
@@ -453,6 +494,7 @@ class TestMockCodeNode:
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
             mock_config=mock_config,
+            code_executor=_NoopCodeExecutor(),
             code_limits=DEFAULT_CODE_LIMITS,
         )
 
@@ -472,23 +514,27 @@ class TestMockNodeFactory:
 
     def test_code_and_template_nodes_mocked_by_default(self):
         """Test that CODE and TEMPLATE_TRANSFORM nodes are mocked by default (they require SSRF proxy)."""
-        from core.workflow.entities import GraphInitParams
-        from core.workflow.runtime import GraphRuntimeState, VariablePool
+        from graphon.entities import GraphInitParams
+        from graphon.runtime import GraphRuntimeState, VariablePool
 
         # Create test parameters
         graph_init_params = GraphInitParams(
-            tenant_id="test_tenant",
-            app_id="test_app",
             workflow_id="test_workflow",
             graph_config={},
-            user_id="test_user",
-            user_from="account",
-            invoke_from="debugger",
+            run_context={
+                DIFY_RUN_CONTEXT_KEY: {
+                    "tenant_id": "test_tenant",
+                    "app_id": "test_app",
+                    "user_id": "test_user",
+                    "user_from": "account",
+                    "invoke_from": "debugger",
+                }
+            },
             call_depth=0,
         )
 
         variable_pool = VariablePool(
-            system_variables={},
+            system_variables=[],
             user_inputs={},
         )
 
@@ -504,32 +550,36 @@ class TestMockNodeFactory:
         )
 
         # Verify that CODE and TEMPLATE_TRANSFORM ARE mocked by default (they require SSRF proxy)
-        assert factory.should_mock_node(NodeType.CODE)
-        assert factory.should_mock_node(NodeType.TEMPLATE_TRANSFORM)
+        assert factory.should_mock_node(BuiltinNodeTypes.CODE)
+        assert factory.should_mock_node(BuiltinNodeTypes.TEMPLATE_TRANSFORM)
 
         # Verify that other third-party service nodes ARE also mocked by default
-        assert factory.should_mock_node(NodeType.LLM)
-        assert factory.should_mock_node(NodeType.AGENT)
+        assert factory.should_mock_node(BuiltinNodeTypes.LLM)
+        assert factory.should_mock_node(BuiltinNodeTypes.AGENT)
 
     def test_factory_creates_mock_template_transform_node(self):
         """Test that MockNodeFactory creates MockTemplateTransformNode for template-transform type."""
-        from core.workflow.entities import GraphInitParams
-        from core.workflow.runtime import GraphRuntimeState, VariablePool
+        from graphon.entities import GraphInitParams
+        from graphon.runtime import GraphRuntimeState, VariablePool
 
         # Create test parameters
         graph_init_params = GraphInitParams(
-            tenant_id="test_tenant",
-            app_id="test_app",
             workflow_id="test_workflow",
             graph_config={},
-            user_id="test_user",
-            user_from="account",
-            invoke_from="debugger",
+            run_context={
+                DIFY_RUN_CONTEXT_KEY: {
+                    "tenant_id": "test_tenant",
+                    "app_id": "test_app",
+                    "user_id": "test_user",
+                    "user_from": "account",
+                    "invoke_from": "debugger",
+                }
+            },
             call_depth=0,
         )
 
         variable_pool = VariablePool(
-            system_variables={},
+            system_variables=[],
             user_inputs={},
         )
 
@@ -560,27 +610,31 @@ class TestMockNodeFactory:
 
         # Verify the correct mock type was created
         assert isinstance(node, MockTemplateTransformNode)
-        assert factory.should_mock_node(NodeType.TEMPLATE_TRANSFORM)
+        assert factory.should_mock_node(BuiltinNodeTypes.TEMPLATE_TRANSFORM)
 
     def test_factory_creates_mock_code_node(self):
         """Test that MockNodeFactory creates MockCodeNode for code type."""
-        from core.workflow.entities import GraphInitParams
-        from core.workflow.runtime import GraphRuntimeState, VariablePool
+        from graphon.entities import GraphInitParams
+        from graphon.runtime import GraphRuntimeState, VariablePool
 
         # Create test parameters
         graph_init_params = GraphInitParams(
-            tenant_id="test_tenant",
-            app_id="test_app",
             workflow_id="test_workflow",
             graph_config={},
-            user_id="test_user",
-            user_from="account",
-            invoke_from="debugger",
+            run_context={
+                DIFY_RUN_CONTEXT_KEY: {
+                    "tenant_id": "test_tenant",
+                    "app_id": "test_app",
+                    "user_id": "test_user",
+                    "user_from": "account",
+                    "invoke_from": "debugger",
+                }
+            },
             call_depth=0,
         )
 
         variable_pool = VariablePool(
-            system_variables={},
+            system_variables=[],
             user_inputs={},
         )
 
@@ -613,4 +667,4 @@ class TestMockNodeFactory:
 
         # Verify the correct mock type was created
         assert isinstance(node, MockCodeNode)
-        assert factory.should_mock_node(NodeType.CODE)
+        assert factory.should_mock_node(BuiltinNodeTypes.CODE)

@@ -1,13 +1,14 @@
 import datetime
 import time
 from collections.abc import Iterable
+from unittest import mock
 from unittest.mock import MagicMock
 
-from core.model_runtime.entities.llm_entities import LLMMode
-from core.model_runtime.entities.message_entities import PromptMessageRole
-from core.workflow.entities import GraphInitParams
-from core.workflow.graph import Graph
-from core.workflow.graph_events import (
+from core.repositories.human_input_repository import HumanInputFormEntity, HumanInputFormRepository
+from core.workflow.node_runtime import DifyHumanInputNodeRuntime
+from core.workflow.system_variables import build_system_variables
+from graphon.graph import Graph
+from graphon.graph_events import (
     GraphRunPausedEvent,
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
@@ -16,25 +17,25 @@ from core.workflow.graph_events import (
     NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
 )
-from core.workflow.graph_events.node import NodeRunHumanInputFormFilledEvent
-from core.workflow.nodes.base.entities import OutputVariableEntity, OutputVariableType
-from core.workflow.nodes.end.end_node import EndNode
-from core.workflow.nodes.end.entities import EndNodeData
-from core.workflow.nodes.human_input.entities import HumanInputNodeData, UserAction
-from core.workflow.nodes.human_input.human_input_node import HumanInputNode
-from core.workflow.nodes.llm.entities import (
+from graphon.graph_events.node import NodeRunHumanInputFormFilledEvent
+from graphon.model_runtime.entities.message_entities import PromptMessageRole
+from graphon.nodes.base.entities import OutputVariableEntity, OutputVariableType
+from graphon.nodes.end.end_node import EndNode
+from graphon.nodes.end.entities import EndNodeData
+from graphon.nodes.human_input.entities import HumanInputNodeData, UserAction
+from graphon.nodes.human_input.human_input_node import HumanInputNode
+from graphon.nodes.llm.entities import (
     ContextConfig,
     LLMNodeChatModelMessage,
     LLMNodeData,
     ModelConfig,
     VisionConfig,
 )
-from core.workflow.nodes.start.entities import StartNodeData
-from core.workflow.nodes.start.start_node import StartNode
-from core.workflow.repositories.human_input_form_repository import HumanInputFormEntity, HumanInputFormRepository
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
+from graphon.nodes.start.entities import StartNodeData
+from graphon.nodes.start.start_node import StartNode
+from graphon.runtime import GraphRuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
+from tests.workflow_test_utils import build_test_graph_init_params
 
 from .test_mock_config import MockConfig
 from .test_mock_nodes import MockLLMNode
@@ -47,11 +48,11 @@ def _build_branching_graph(
     graph_runtime_state: GraphRuntimeState | None = None,
 ) -> tuple[Graph, GraphRuntimeState]:
     graph_config: dict[str, object] = {"nodes": [], "edges": []}
-    graph_init_params = GraphInitParams(
-        tenant_id="tenant",
-        app_id="app",
+    graph_init_params = build_test_graph_init_params(
         workflow_id="workflow",
         graph_config=graph_config,
+        tenant_id="tenant",
+        app_id="app",
         user_id="user",
         user_from="account",
         invoke_from="debugger",
@@ -60,7 +61,7 @@ def _build_branching_graph(
 
     if graph_runtime_state is None:
         variable_pool = VariablePool(
-            system_variables=SystemVariable(
+            system_variables=build_system_variables(
                 user_id="user",
                 app_id="app",
                 workflow_id="workflow",
@@ -82,7 +83,7 @@ def _build_branching_graph(
     def _create_llm_node(node_id: str, title: str, prompt_text: str) -> MockLLMNode:
         llm_data = LLMNodeData(
             title=title,
-            model=ModelConfig(provider="openai", name="gpt-3.5-turbo", mode=LLMMode.CHAT, completion_params={}),
+            model=ModelConfig(provider="openai", name="gpt-3.5-turbo", mode="chat", completion_params={}),
             prompt_template=[
                 LLMNodeChatModelMessage(
                     text=prompt_text,
@@ -101,6 +102,8 @@ def _build_branching_graph(
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
             mock_config=mock_config,
+            credentials_provider=mock.Mock(),
+            model_factory=mock.Mock(),
         )
         return llm_node
 
@@ -123,6 +126,7 @@ def _build_branching_graph(
         graph_init_params=graph_init_params,
         graph_runtime_state=graph_runtime_state,
         form_repository=form_repository,
+        runtime=DifyHumanInputNodeRuntime(graph_init_params.run_context),
     )
 
     llm_primary = _create_llm_node("llm_primary", "Primary LLM", "Primary stream output")
@@ -244,7 +248,7 @@ def test_human_input_llm_streaming_across_multiple_branches() -> None:
         mock_create_repo.get_form.return_value = None
         mock_form_entity = MagicMock(spec=HumanInputFormEntity)
         mock_form_entity.id = "test_form_id"
-        mock_form_entity.web_app_token = "test_web_app_token"
+        mock_form_entity.submission_token = "test_web_app_token"
         mock_form_entity.recipients = []
         mock_form_entity.rendered_content = "rendered"
         mock_form_entity.submitted = False
@@ -300,7 +304,7 @@ def test_human_input_llm_streaming_across_multiple_branches() -> None:
         mock_get_repo = MagicMock(spec=HumanInputFormRepository)
         submitted_form = MagicMock(spec=HumanInputFormEntity)
         submitted_form.id = mock_form_entity.id
-        submitted_form.web_app_token = mock_form_entity.web_app_token
+        submitted_form.submission_token = mock_form_entity.submission_token
         submitted_form.recipients = []
         submitted_form.rendered_content = mock_form_entity.rendered_content
         submitted_form.submitted = True

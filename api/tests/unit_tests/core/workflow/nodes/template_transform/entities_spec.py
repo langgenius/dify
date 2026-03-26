@@ -1,8 +1,8 @@
 import pytest
 from pydantic import ValidationError
 
-from core.workflow.enums import ErrorStrategy
-from core.workflow.nodes.template_transform.entities import TemplateTransformNodeData
+from graphon.enums import ErrorStrategy
+from graphon.nodes.template_transform.entities import TemplateTransformNodeData
 
 
 class TestTemplateTransformNodeData:

@@ -1,5 +1,20 @@
 import type { InferContractRouterInputs } from '@orpc/contract'
+import { appDeleteContract } from './console/apps'
 import { bindPartnerStackContract, invoicesContract } from './console/billing'
+import {
+  exploreAppDetailContract,
+  exploreAppsContract,
+  exploreBannersContract,
+  exploreInstalledAppAccessModeContract,
+  exploreInstalledAppMetaContract,
+  exploreInstalledAppParametersContract,
+  exploreInstalledAppPinContract,
+  exploreInstalledAppsContract,
+  exploreInstalledAppUninstallContract,
+} from './console/explore'
+import { changePreferredProviderTypeContract, modelProvidersModelsContract } from './console/model-providers'
+import { notificationContract, notificationDismissContract } from './console/notification'
+import { pluginCheckInstalledContract, pluginLatestVersionsContract } from './console/plugins'
 import { systemFeaturesContract } from './console/system'
 import {
   triggerOAuthConfigContract,
@@ -31,16 +46,40 @@ export type MarketPlaceInputs = InferContractRouterInputs<typeof marketplaceRout
 
 export const consoleRouterContract = {
   systemFeatures: systemFeaturesContract,
+  apps: {
+    deleteApp: appDeleteContract,
+  },
+  explore: {
+    apps: exploreAppsContract,
+    appDetail: exploreAppDetailContract,
+    installedApps: exploreInstalledAppsContract,
+    uninstallInstalledApp: exploreInstalledAppUninstallContract,
+    updateInstalledApp: exploreInstalledAppPinContract,
+    appAccessMode: exploreInstalledAppAccessModeContract,
+    installedAppParameters: exploreInstalledAppParametersContract,
+    installedAppMeta: exploreInstalledAppMetaContract,
+    banners: exploreBannersContract,
+  },
   trialApps: {
     info: trialAppInfoContract,
     datasets: trialAppDatasetsContract,
     parameters: trialAppParametersContract,
     workflows: trialAppWorkflowsContract,
   },
+  modelProviders: {
+    models: modelProvidersModelsContract,
+    changePreferredProviderType: changePreferredProviderTypeContract,
+  },
+  plugins: {
+    checkInstalled: pluginCheckInstalledContract,
+    latestVersions: pluginLatestVersionsContract,
+  },
   billing: {
     invoices: invoicesContract,
     bindPartnerStack: bindPartnerStackContract,
   },
+  notification: notificationContract,
+  notificationDismiss: notificationDismissContract,
   triggers: {
     list: triggersContract,
     providerInfo: triggerProviderInfoContract,

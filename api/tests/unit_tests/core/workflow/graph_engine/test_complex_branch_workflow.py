@@ -7,7 +7,7 @@ This test suite validates the behavior of a workflow that:
 3. Handles multiple answer nodes with different outputs
 """
 
-from core.workflow.graph_events import (
+from graphon.graph_events import (
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
     NodeRunStartedEvent,

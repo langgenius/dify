@@ -1,26 +1,27 @@
 import time
 from collections.abc import Mapping
 
-from core.model_runtime.entities.llm_entities import LLMMode
-from core.model_runtime.entities.message_entities import PromptMessageRole
-from core.workflow.entities import GraphInitParams
-from core.workflow.enums import NodeState
-from core.workflow.graph import Graph
-from core.workflow.graph_engine.graph_state_manager import GraphStateManager
-from core.workflow.graph_engine.ready_queue import InMemoryReadyQueue
-from core.workflow.nodes.end.end_node import EndNode
-from core.workflow.nodes.end.entities import EndNodeData
-from core.workflow.nodes.llm.entities import (
+from core.workflow.system_variables import build_system_variables
+from graphon.entities import GraphInitParams
+from graphon.enums import NodeState
+from graphon.graph import Graph
+from graphon.graph_engine.graph_state_manager import GraphStateManager
+from graphon.graph_engine.ready_queue import InMemoryReadyQueue
+from graphon.model_runtime.entities.llm_entities import LLMMode
+from graphon.model_runtime.entities.message_entities import PromptMessageRole
+from graphon.nodes.end.end_node import EndNode
+from graphon.nodes.end.entities import EndNodeData
+from graphon.nodes.llm.entities import (
     ContextConfig,
     LLMNodeChatModelMessage,
     LLMNodeData,
     ModelConfig,
     VisionConfig,
 )
-from core.workflow.nodes.start.entities import StartNodeData
-from core.workflow.nodes.start.start_node import StartNode
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
+from graphon.nodes.start.entities import StartNodeData
+from graphon.nodes.start.start_node import StartNode
+from graphon.runtime import GraphRuntimeState, VariablePool
+from tests.workflow_test_utils import build_test_graph_init_params
 
 from .test_mock_config import MockConfig
 from .test_mock_nodes import MockLLMNode
@@ -28,7 +29,7 @@ from .test_mock_nodes import MockLLMNode
 
 def _build_runtime_state() -> GraphRuntimeState:
     variable_pool = VariablePool(
-        system_variables=SystemVariable(
+        system_variables=build_system_variables(
             user_id="user",
             app_id="app",
             workflow_id="workflow",
@@ -73,11 +74,11 @@ def _build_llm_node(
 
 def _build_graph(runtime_state: GraphRuntimeState) -> Graph:
     graph_config: dict[str, object] = {"nodes": [], "edges": []}
-    graph_init_params = GraphInitParams(
-        tenant_id="tenant",
-        app_id="app",
+    graph_init_params = build_test_graph_init_params(
         workflow_id="workflow",
         graph_config=graph_config,
+        tenant_id="tenant",
+        app_id="app",
         user_id="user",
         user_from="account",
         invoke_from="debugger",

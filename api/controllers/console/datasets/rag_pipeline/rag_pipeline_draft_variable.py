@@ -21,11 +21,12 @@ from controllers.console.app.workflow_draft_variable import (
 from controllers.console.datasets.wraps import get_rag_pipeline
 from controllers.console.wraps import account_initialization_required, setup_required
 from controllers.web.error import InvalidArgumentError, NotFoundError
-from core.variables.types import SegmentType
-from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
+from core.app.file_access import DatabaseFileAccessController
+from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from extensions.ext_database import db
 from factories.file_factory import build_from_mapping, build_from_mappings
 from factories.variable_factory import build_segment_with_type
+from graphon.variables.types import SegmentType
 from libs.login import current_user, login_required
 from models import Account
 from models.dataset import Pipeline
@@ -33,6 +34,7 @@ from services.rag_pipeline.rag_pipeline import RagPipelineService
 from services.workflow_draft_variable_service import WorkflowDraftVariableList, WorkflowDraftVariableService
 
 logger = logging.getLogger(__name__)
+_file_access_controller = DatabaseFileAccessController()
 
 
 def _create_pagination_parser():
@@ -102,6 +104,7 @@ class RagPipelineVariableCollectionApi(Resource):
             app_id=pipeline.id,
             page=query.page,
             limit=query.limit,
+            user_id=current_user.id,
         )
 
         return workflow_vars
@@ -111,7 +114,7 @@ class RagPipelineVariableCollectionApi(Resource):
         draft_var_srv = WorkflowDraftVariableService(
             session=db.session(),
         )
-        draft_var_srv.delete_workflow_variables(pipeline.id)
+        draft_var_srv.delete_user_workflow_variables(pipeline.id, user_id=current_user.id)
         db.session.commit()
         return Response("", 204)
 
@@ -144,7 +147,7 @@ class RagPipelineNodeVariableCollectionApi(Resource):
             draft_var_srv = WorkflowDraftVariableService(
                 session=session,
             )
-            node_vars = draft_var_srv.list_node_variables(pipeline.id, node_id)
+            node_vars = draft_var_srv.list_node_variables(pipeline.id, node_id, user_id=current_user.id)
 
         return node_vars
 
@@ -152,7 +155,7 @@ class RagPipelineNodeVariableCollectionApi(Resource):
     def delete(self, pipeline: Pipeline, node_id: str):
         validate_node_id(node_id)
         srv = WorkflowDraftVariableService(db.session())
-        srv.delete_node_variables(pipeline.id, node_id)
+        srv.delete_node_variables(pipeline.id, node_id, user_id=current_user.id)
         db.session.commit()
         return Response("", 204)
 
@@ -222,13 +225,21 @@ class RagPipelineVariableApi(Resource):
             if variable.value_type == SegmentType.FILE:
                 if not isinstance(raw_value, dict):
                     raise InvalidArgumentError(description=f"expected dict for file, got {type(raw_value)}")
-                raw_value = build_from_mapping(mapping=raw_value, tenant_id=pipeline.tenant_id)
+                raw_value = build_from_mapping(
+                    mapping=raw_value,
+                    tenant_id=pipeline.tenant_id,
+                    access_controller=_file_access_controller,
+                )
             elif variable.value_type == SegmentType.ARRAY_FILE:
                 if not isinstance(raw_value, list):
                     raise InvalidArgumentError(description=f"expected list for files, got {type(raw_value)}")
                 if len(raw_value) > 0 and not isinstance(raw_value[0], dict):
                     raise InvalidArgumentError(description=f"expected dict for files[0], got {type(raw_value)}")
-                raw_value = build_from_mappings(mappings=raw_value, tenant_id=pipeline.tenant_id)
+                raw_value = build_from_mappings(
+                    mappings=raw_value,
+                    tenant_id=pipeline.tenant_id,
+                    access_controller=_file_access_controller,
+                )
             new_value = build_segment_with_type(variable.value_type, raw_value)
         draft_var_srv.update_variable(variable, name=new_name, value=new_value)
         db.session.commit()
@@ -283,11 +294,11 @@ def _get_variable_list(pipeline: Pipeline, node_id) -> WorkflowDraftVariableList
             session=session,
         )
         if node_id == CONVERSATION_VARIABLE_NODE_ID:
-            draft_vars = draft_var_srv.list_conversation_variables(pipeline.id)
+            draft_vars = draft_var_srv.list_conversation_variables(pipeline.id, user_id=current_user.id)
         elif node_id == SYSTEM_VARIABLE_NODE_ID:
-            draft_vars = draft_var_srv.list_system_variables(pipeline.id)
+            draft_vars = draft_var_srv.list_system_variables(pipeline.id, user_id=current_user.id)
         else:
-            draft_vars = draft_var_srv.list_node_variables(app_id=pipeline.id, node_id=node_id)
+            draft_vars = draft_var_srv.list_node_variables(app_id=pipeline.id, node_id=node_id, user_id=current_user.id)
     return draft_vars
 
 

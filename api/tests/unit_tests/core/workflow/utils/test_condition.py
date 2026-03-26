@@ -1,6 +1,6 @@
-from core.workflow.runtime import VariablePool
-from core.workflow.utils.condition.entities import Condition
-from core.workflow.utils.condition.processor import ConditionProcessor
+from graphon.runtime import VariablePool
+from graphon.utils.condition.entities import Condition
+from graphon.utils.condition.processor import ConditionProcessor
 
 
 def test_number_formatting():

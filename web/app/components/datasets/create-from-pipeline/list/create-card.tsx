@@ -1,10 +1,10 @@
 import { RiAddCircleLine } from '@remixicon/react'
-import { useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
+import { useRouter } from '@/next/navigation'
 import { useCreatePipelineDataset } from '@/service/knowledge/use-create-dataset'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 
@@ -20,10 +20,7 @@ const CreateCard = () => {
       onSuccess: (data) => {
         if (data) {
           const { id } = data
-          Toast.notify({
-            type: 'success',
-            message: t('creation.successTip', { ns: 'datasetPipeline' }),
-          })
+          toast.success(t('creation.successTip', { ns: 'datasetPipeline' }))
           invalidDatasetList()
           trackEvent('create_datasets_from_scratch', {
             dataset_id: id,
@@ -32,10 +29,7 @@ const CreateCard = () => {
         }
       },
       onError: () => {
-        Toast.notify({
-          type: 'error',
-          message: t('creation.errorTip', { ns: 'datasetPipeline' }),
-        })
+        toast.error(t('creation.errorTip', { ns: 'datasetPipeline' }))
       },
     })
   }, [createEmptyDataset, push, invalidDatasetList, t])

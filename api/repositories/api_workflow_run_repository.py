@@ -40,9 +40,9 @@ from typing import Protocol
 
 from sqlalchemy.orm import Session
 
-from core.workflow.entities.pause_reason import PauseReason
-from core.workflow.enums import WorkflowType
-from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
+from core.repositories.factory import WorkflowExecutionRepository
+from graphon.entities.pause_reason import PauseReason
+from graphon.enums import WorkflowType
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import WorkflowAppLog, WorkflowArchiveLog, WorkflowPause, WorkflowPauseReason, WorkflowRun

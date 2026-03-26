@@ -122,10 +122,16 @@ vi.mock('@/utils/urlValidation', () => ({
 }))
 
 const mockToastNotify = vi.fn()
-vi.mock('@/app/components/base/toast', () => ({
-  default: {
-    notify: (params: unknown) => mockToastNotify(params),
-  },
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: Object.assign((params: unknown) => mockToastNotify(params), {
+    success: (message: unknown) => mockToastNotify({ type: 'success', message }),
+    error: (message: unknown) => mockToastNotify({ type: 'error', message }),
+    warning: (message: unknown) => mockToastNotify({ type: 'warning', message }),
+    info: (message: unknown) => mockToastNotify({ type: 'info', message }),
+    dismiss: vi.fn(),
+    update: vi.fn(),
+    promise: vi.fn(),
+  }),
 }))
 
 vi.mock('@/app/components/base/modal/modal', () => ({
@@ -714,6 +720,7 @@ describe('CommonCreateModal', () => {
 
   describe('Manual Properties Change', () => {
     it('should call updateBuilder when manual properties change', async () => {
+      const builder = createMockSubscriptionBuilder()
       const detailWithManualSchema = createMockPluginDetail({
         declaration: {
           trigger: {
@@ -729,11 +736,7 @@ describe('CommonCreateModal', () => {
       })
       mockUsePluginStore.mockReturnValue(detailWithManualSchema)
 
-      render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.MANUAL} />)
-
-      await waitFor(() => {
-        expect(mockCreateBuilder).toHaveBeenCalled()
-      })
+      render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.MANUAL} builder={builder} />)
 
       const input = screen.getByTestId('form-field-webhook_url')
       fireEvent.change(input, { target: { value: 'https://example.com/webhook' } })
@@ -1336,12 +1339,9 @@ describe('CommonCreateModal', () => {
       mockVerifyCredentials.mockImplementation((params, { onSuccess }) => {
         onSuccess()
       })
+      const builder = createMockSubscriptionBuilder()
 
-      render(<CommonCreateModal {...defaultProps} />)
-
-      await waitFor(() => {
-        expect(mockCreateBuilder).toHaveBeenCalled()
-      })
+      render(<CommonCreateModal {...defaultProps} builder={builder} />)
 
       fireEvent.click(screen.getByTestId('modal-confirm'))
 

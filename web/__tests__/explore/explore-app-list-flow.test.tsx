@@ -9,8 +9,9 @@ import type { CreateAppModalProps } from '@/app/components/explore/create-app-mo
 import type { App } from '@/models/explore'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import AppList from '@/app/components/explore/app-list'
-import ExploreContext from '@/context/explore-context'
+import { useAppContext } from '@/context/app-context'
 import { fetchAppDetail } from '@/service/explore'
+import { useMembers } from '@/service/use-common'
 import { AppModeEnum } from '@/types/app'
 
 const allCategoriesEn = 'explore.apps.allCategories:{"lng":"en"}'
@@ -55,6 +56,14 @@ vi.mock('@/service/use-explore', () => ({
 vi.mock('@/service/explore', () => ({
   fetchAppDetail: vi.fn(),
   fetchAppList: vi.fn(),
+}))
+
+vi.mock('@/context/app-context', () => ({
+  useAppContext: vi.fn(),
+}))
+
+vi.mock('@/service/use-common', () => ({
+  useMembers: vi.fn(),
 }))
 
 vi.mock('@/hooks/use-import-dsl', () => ({
@@ -126,26 +135,25 @@ const createApp = (overrides: Partial<App> = {}): App => ({
   is_agent: overrides.is_agent ?? false,
 })
 
-const createContextValue = (hasEditPermission = true) => ({
-  controlUpdateInstalledApps: 0,
-  setControlUpdateInstalledApps: vi.fn(),
-  hasEditPermission,
-  installedApps: [] as never[],
-  setInstalledApps: vi.fn(),
-  isFetchingInstalledApps: false,
-  setIsFetchingInstalledApps: vi.fn(),
-  isShowTryAppPanel: false,
-  setShowTryAppPanel: vi.fn(),
-})
+const mockMemberRole = (hasEditPermission: boolean) => {
+  ;(useAppContext as Mock).mockReturnValue({
+    userProfile: { id: 'user-1' },
+  })
+  ;(useMembers as Mock).mockReturnValue({
+    data: {
+      accounts: [{ id: 'user-1', role: hasEditPermission ? 'admin' : 'normal' }],
+    },
+  })
+}
 
-const wrapWithContext = (hasEditPermission = true, onSuccess?: () => void) => (
-  <ExploreContext.Provider value={createContextValue(hasEditPermission)}>
-    <AppList onSuccess={onSuccess} />
-  </ExploreContext.Provider>
-)
+const renderAppList = (hasEditPermission = true, onSuccess?: () => void) => {
+  mockMemberRole(hasEditPermission)
+  return render(<AppList onSuccess={onSuccess} />)
+}
 
-const renderWithContext = (hasEditPermission = true, onSuccess?: () => void) => {
-  return render(wrapWithContext(hasEditPermission, onSuccess))
+const appListElement = (hasEditPermission = true, onSuccess?: () => void) => {
+  mockMemberRole(hasEditPermission)
+  return <AppList onSuccess={onSuccess} />
 }
 
 describe('Explore App List Flow', () => {
@@ -165,7 +173,7 @@ describe('Explore App List Flow', () => {
 
   describe('Browse and Filter Flow', () => {
     it('should display all apps when no category filter is applied', () => {
-      renderWithContext()
+      renderAppList()
 
       expect(screen.getByText('Writer Bot')).toBeInTheDocument()
       expect(screen.getByText('Translator')).toBeInTheDocument()
@@ -174,7 +182,7 @@ describe('Explore App List Flow', () => {
 
     it('should filter apps by selected category', () => {
       mockTabValue = 'Writing'
-      renderWithContext()
+      renderAppList()
 
       expect(screen.getByText('Writer Bot')).toBeInTheDocument()
       expect(screen.queryByText('Translator')).not.toBeInTheDocument()
@@ -182,7 +190,7 @@ describe('Explore App List Flow', () => {
     })
 
     it('should filter apps by search keyword', async () => {
-      renderWithContext()
+      renderAppList()
 
       const input = screen.getByPlaceholderText('common.operation.search')
       fireEvent.change(input, { target: { value: 'trans' } })
@@ -207,7 +215,7 @@ describe('Explore App List Flow', () => {
         options.onSuccess?.()
       })
 
-      renderWithContext(true, onSuccess)
+      renderAppList(true, onSuccess)
 
       // Step 2: Click add to workspace button - opens create modal
       fireEvent.click(screen.getAllByText('explore.appCard.addToWorkspace')[0])
@@ -240,7 +248,7 @@ describe('Explore App List Flow', () => {
       // Step 1: Loading state
       mockIsLoading = true
       mockExploreData = undefined
-      const { rerender } = render(wrapWithContext())
+      const { unmount } = render(appListElement())
 
       expect(screen.getByRole('status')).toBeInTheDocument()
 
@@ -250,7 +258,8 @@ describe('Explore App List Flow', () => {
         categories: ['Writing'],
         allList: [createApp()],
       }
-      rerender(wrapWithContext())
+      unmount()
+      renderAppList()
 
       expect(screen.queryByRole('status')).not.toBeInTheDocument()
       expect(screen.getByText('Alpha')).toBeInTheDocument()
@@ -259,13 +268,13 @@ describe('Explore App List Flow', () => {
 
   describe('Permission-Based Behavior', () => {
     it('should hide add-to-workspace button when user has no edit permission', () => {
-      renderWithContext(false)
+      renderAppList(false)
 
       expect(screen.queryByText('explore.appCard.addToWorkspace')).not.toBeInTheDocument()
     })
 
     it('should show add-to-workspace button when user has edit permission', () => {
-      renderWithContext(true)
+      renderAppList(true)
 
       expect(screen.getAllByText('explore.appCard.addToWorkspace').length).toBeGreaterThan(0)
     })
