@@ -372,7 +372,6 @@ class TestUninstall:
             tenant_id=tenant_id,
             provider_name=provider_name,
             preferred_provider_type="custom",
-            model_name="test-model",
         )
         db_session_with_containers.add(pref)
         db_session_with_containers.commit()
