@@ -226,7 +226,6 @@
     "jsdom-testing-mocks": "1.16.0",
     "knip": "6.0.2",
     "lint-staged": "16.4.0",
-    "nock": "14.0.11",
     "postcss": "8.5.8",
     "postcss-js": "5.1.0",
     "react-server-dom-webpack": "19.2.4",
