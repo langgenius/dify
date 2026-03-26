@@ -360,13 +360,16 @@ class TestUninstall:
         )
         db_session_with_containers.add(credential)
         db_session_with_containers.flush()
+        credential_id = credential.id
 
         provider = Provider(
             tenant_id=tenant_id,
             provider_name=provider_name,
-            credential_id=credential.id,
+            credential_id=credential_id,
         )
         db_session_with_containers.add(provider)
+        db_session_with_containers.flush()
+        provider_id = provider.id
 
         pref = TenantPreferredModelProvider(
             tenant_id=tenant_id,
@@ -393,11 +396,11 @@ class TestUninstall:
         db_session_with_containers.expire_all()
 
         remaining_creds = db_session_with_containers.scalars(
-            select(ProviderCredential).where(ProviderCredential.id == credential.id)
+            select(ProviderCredential).where(ProviderCredential.id == credential_id)
         ).all()
         assert len(remaining_creds) == 0
 
-        updated_provider = db_session_with_containers.get(Provider, provider.id)
+        updated_provider = db_session_with_containers.get(Provider, provider_id)
         assert updated_provider is not None
         assert updated_provider.credential_id is None
 
