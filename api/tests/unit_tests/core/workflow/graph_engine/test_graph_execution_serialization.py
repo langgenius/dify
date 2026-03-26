@@ -6,13 +6,13 @@ import json
 from collections import deque
 from unittest.mock import MagicMock
 
-from dify_graph.enums import BuiltinNodeTypes, NodeExecutionType, NodeState
-from dify_graph.graph_engine.domain import GraphExecution
-from dify_graph.graph_engine.response_coordinator import ResponseStreamCoordinator
-from dify_graph.graph_engine.response_coordinator.path import Path
-from dify_graph.graph_engine.response_coordinator.session import ResponseSession
-from dify_graph.graph_events import NodeRunStreamChunkEvent
-from dify_graph.nodes.base.template import Template, TextSegment, VariableSegment
+from graphon.enums import BuiltinNodeTypes, NodeExecutionType, NodeState
+from graphon.graph_engine.domain import GraphExecution
+from graphon.graph_engine.response_coordinator import ResponseStreamCoordinator
+from graphon.graph_engine.response_coordinator.path import Path
+from graphon.graph_engine.response_coordinator.session import ResponseSession
+from graphon.graph_events import NodeRunStreamChunkEvent
+from graphon.nodes.base.template import Template, TextSegment, VariableSegment
 
 
 class CustomGraphExecutionError(Exception):

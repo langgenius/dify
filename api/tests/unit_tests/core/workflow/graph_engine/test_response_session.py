@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import pytest
 
-from dify_graph.enums import BuiltinNodeTypes, NodeExecutionType, NodeState, NodeType
-from dify_graph.graph_engine.response_coordinator.session import ResponseSession
-from dify_graph.nodes.base.template import Template, TextSegment
+from graphon.enums import BuiltinNodeTypes, NodeExecutionType, NodeState, NodeType
+from graphon.graph_engine.response_coordinator.session import ResponseSession
+from graphon.nodes.base.template import Template, TextSegment
 
 
 class DummyResponseNode:

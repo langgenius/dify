@@ -10,11 +10,11 @@ from sqlalchemy.orm import sessionmaker
 from core.repositories.sqlalchemy_workflow_node_execution_repository import (
     SQLAlchemyWorkflowNodeExecutionRepository,
 )
-from dify_graph.entities.workflow_node_execution import (
+from graphon.entities.workflow_node_execution import (
     WorkflowNodeExecution,
     WorkflowNodeExecutionStatus,
 )
-from dify_graph.enums import BuiltinNodeTypes
+from graphon.enums import BuiltinNodeTypes
 from libs.datetime_utils import naive_utc_now
 from models import Account, WorkflowNodeExecutionTriggeredFrom
 

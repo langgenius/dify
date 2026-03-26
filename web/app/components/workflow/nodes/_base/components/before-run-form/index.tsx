@@ -9,14 +9,19 @@ import * as React from 'react'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
-import { getProcessedFiles } from '@/app/components/base/file-uploader/utils'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import SingleRunForm from '@/app/components/workflow/nodes/human-input/components/single-run-form'
-import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
-import { TransferMethod } from '@/types/app'
+import { BlockEnum } from '@/app/components/workflow/types'
 import { cn } from '@/utils/classnames'
 import Form from './form'
+import {
+  buildSubmitData,
+  getFormErrorMessage,
+  isFilesLoaded,
+  shouldAutoRunBeforeRunForm,
+  shouldAutoShowGeneratedForm,
+} from './helpers'
 import PanelWrap from './panel-wrap'
 
 const i18nPrefix = 'singleRun'
@@ -41,33 +46,6 @@ export type BeforeRunFormProps = {
   handleAfterHumanInputStepRun?: () => void
 } & Partial<SpecialResultPanelProps>
 
-function formatValue(value: string | any, type: InputVarType) {
-  if (type === InputVarType.checkbox)
-    return !!value
-  if (value === undefined || value === null)
-    return value
-  if (type === InputVarType.number)
-    return Number.parseFloat(value)
-  if (type === InputVarType.json)
-    return JSON.parse(value)
-  if (type === InputVarType.contexts) {
-    return value.map((item: any) => {
-      return JSON.parse(item)
-    })
-  }
-  if (type === InputVarType.multiFiles)
-    return getProcessedFiles(value)
-
-  if (type === InputVarType.singleFile) {
-    if (Array.isArray(value))
-      return getProcessedFiles(value)
-    if (!value)
-      return undefined
-    return getProcessedFiles([value])[0]
-  }
-
-  return value
-}
 const BeforeRunForm: FC<BeforeRunFormProps> = ({
   nodeName,
   nodeType,
@@ -88,69 +66,18 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
   const isHumanInput = nodeType === BlockEnum.HumanInput
   const showBackButton = filteredExistVarForms.length > 0
 
-  const isFileLoaded = (() => {
-    if (!forms || forms.length === 0)
-      return true
-    // system files
-    const filesForm = forms.find(item => !!item.values['#files#'])
-    if (!filesForm)
-      return true
-
-    const files = filesForm.values['#files#'] as any
-    if (files?.some((item: any) => item.transfer_method === TransferMethod.local_file && !item.upload_file_id))
-      return false
-
-    return true
-  })()
+  const isFileLoaded = isFilesLoaded(forms)
 
   const handleRunOrGenerateForm = () => {
-    let errMsg = ''
-    forms.forEach((form, i) => {
-      const existVarValuesInForm = existVarValuesInForms[i]
-
-      form.inputs.forEach((input) => {
-        const value = form.values[input.variable] as any
-        if (!errMsg && input.required && (input.type !== InputVarType.checkbox) && !(input.variable in existVarValuesInForm) && (value === '' || value === undefined || value === null || (input.type === InputVarType.files && value.length === 0)))
-          errMsg = t('errorMsg.fieldRequired', { ns: 'workflow', field: typeof input.label === 'object' ? input.label.variable : input.label })
-
-        if (!errMsg && (input.type === InputVarType.singleFile || input.type === InputVarType.multiFiles) && value) {
-          let fileIsUploading = false
-          if (Array.isArray(value))
-            fileIsUploading = value.find(item => item.transferMethod === TransferMethod.local_file && !item.uploadedId)
-          else
-            fileIsUploading = value.transferMethod === TransferMethod.local_file && !value.uploadedId
-
-          if (fileIsUploading)
-            errMsg = t('errorMessage.waitForFileUpload', { ns: 'appDebug' })
-        }
-      })
-    })
+    const errMsg = getFormErrorMessage(forms, existVarValuesInForms, t)
     if (errMsg) {
-      Toast.notify({
-        message: errMsg,
-        type: 'error',
-      })
+      toast.error(errMsg)
       return
     }
 
-    const submitData: Record<string, any> = {}
-    let parseErrorJsonField = ''
-    forms.forEach((form) => {
-      form.inputs.forEach((input) => {
-        try {
-          const value = formatValue(form.values[input.variable], input.type)
-          submitData[input.variable] = value
-        }
-        catch {
-          parseErrorJsonField = input.variable
-        }
-      })
-    })
+    const { submitData, parseErrorJsonField } = buildSubmitData(forms)
     if (parseErrorJsonField) {
-      Toast.notify({
-        message: t('errorMsg.invalidJson', { ns: 'workflow', field: parseErrorJsonField }),
-        type: 'error',
-      })
+      toast.error(t('errorMsg.invalidJson', { ns: 'workflow', field: parseErrorJsonField }))
       return
     }
 
@@ -171,13 +98,13 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
     if (hasRun.current)
       return
     hasRun.current = true
-    if (filteredExistVarForms.length === 0 && !isHumanInput)
+    if (shouldAutoRunBeforeRunForm(filteredExistVarForms, isHumanInput))
       onRun({})
-    if (filteredExistVarForms.length === 0 && isHumanInput)
+    if (shouldAutoShowGeneratedForm(filteredExistVarForms, isHumanInput))
       handleShowGeneratedForm?.({})
   }, [filteredExistVarForms, handleShowGeneratedForm, isHumanInput, onRun])
 
-  if (filteredExistVarForms.length === 0 && !isHumanInput)
+  if (shouldAutoRunBeforeRunForm(filteredExistVarForms, isHumanInput))
     return null
 
   return (

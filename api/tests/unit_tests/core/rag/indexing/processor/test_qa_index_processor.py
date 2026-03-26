@@ -6,6 +6,7 @@ import pytest
 from werkzeug.datastructures import FileStorage
 
 from core.entities.knowledge_entities import PreviewDetail
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.index_processor.processor.qa_index_processor import QAIndexProcessor
 from core.rag.models.document import AttachmentDocument, Document
 
@@ -33,7 +34,7 @@ class TestQAIndexProcessor:
         dataset = Mock()
         dataset.id = "dataset-1"
         dataset.tenant_id = "tenant-1"
-        dataset.indexing_technique = "high_quality"
+        dataset.indexing_technique = IndexTechniqueType.HIGH_QUALITY
         dataset.is_multimodal = True
         return dataset
 
@@ -207,7 +208,7 @@ class TestQAIndexProcessor:
         vector.create_multimodal.assert_called_once_with(multimodal_docs)
 
     def test_load_skips_vector_for_non_high_quality(self, processor: QAIndexProcessor, dataset: Mock) -> None:
-        dataset.indexing_technique = "economy"
+        dataset.indexing_technique = IndexTechniqueType.ECONOMY
         docs = [Document(page_content="Q1", metadata={"answer": "A1"})]
 
         with patch("core.rag.index_processor.processor.qa_index_processor.Vector") as mock_vector_cls:
@@ -298,7 +299,7 @@ class TestQAIndexProcessor:
     def test_index_requires_high_quality(
         self, processor: QAIndexProcessor, dataset: Mock, dataset_document: Mock
     ) -> None:
-        dataset.indexing_technique = "economy"
+        dataset.indexing_technique = IndexTechniqueType.ECONOMY
         qa_chunks = SimpleNamespace(qa_chunks=[SimpleNamespace(question="Q1", answer="A1")])
 
         with (

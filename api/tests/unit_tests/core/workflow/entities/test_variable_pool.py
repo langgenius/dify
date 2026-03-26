@@ -1,5 +1,5 @@
-from dify_graph.runtime import VariablePool
-from dify_graph.variables.segments import (
+from graphon.runtime import VariablePool
+from graphon.variables.segments import (
     BooleanSegment,
     IntegerSegment,
     NoneSegment,
@@ -126,7 +126,7 @@ class TestVariablePoolGetNotModifyVariableDictionary:
     def test_get_should_not_modify_variable_dictionary(self):
         pool = VariablePool.empty()
         pool.get([self._NODE_ID, self._VAR_NAME])
-        assert len(pool.variable_dictionary) == 1  # only contains `sys` node id
+        assert len(pool.variable_dictionary) == 0
         assert "start" not in pool.variable_dictionary
 
         pool = VariablePool.empty()

@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from uuid import uuid4
 
-from dify_graph.nodes.human_input.entities import FormDefinition, UserAction
+from graphon.nodes.human_input.entities import FormDefinition, UserAction
 from models.account import Account, Tenant, TenantAccountJoin
 from models.enums import ConversationFromSource, InvokeFrom
 from models.execution_extra_content import HumanInputContent

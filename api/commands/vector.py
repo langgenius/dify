@@ -10,6 +10,7 @@ from configs import dify_config
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.index_processor.constant.built_in_field import BuiltInField
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.models.document import ChildDocument, Document
 from extensions.ext_database import db
 from models.dataset import Dataset, DatasetCollectionBinding, DatasetMetadata, DatasetMetadataBinding, DocumentSegment
@@ -85,7 +86,7 @@ def migrate_annotation_vector_database():
                 dataset = Dataset(
                     id=app.id,
                     tenant_id=app.tenant_id,
-                    indexing_technique="high_quality",
+                    indexing_technique=IndexTechniqueType.HIGH_QUALITY,
                     embedding_model_provider=dataset_collection_binding.provider_name,
                     embedding_model=dataset_collection_binding.model_name,
                     collection_binding_id=dataset_collection_binding.id,
@@ -177,7 +178,9 @@ def migrate_knowledge_vector_database():
     while True:
         try:
             stmt = (
-                select(Dataset).where(Dataset.indexing_technique == "high_quality").order_by(Dataset.created_at.desc())
+                select(Dataset)
+                .where(Dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY)
+                .order_by(Dataset.created_at.desc())
             )
 
             datasets = db.paginate(select=stmt, page=page, per_page=50, max_per_page=50, error_out=False)
@@ -269,7 +272,7 @@ def migrate_knowledge_vector_database():
                                 "dataset_id": segment.dataset_id,
                             },
                         )
-                        if dataset_document.doc_form == "hierarchical_model":
+                        if dataset_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX:
                             child_chunks = segment.get_child_chunks()
                             if child_chunks:
                                 child_documents = []

@@ -1,6 +1,6 @@
 [project]
 name = "dify-api"
-version = "1.13.2"
+version = "1.13.3"
 requires-python = ">=3.11,<3.13"
 
 dependencies = [
@@ -174,7 +174,7 @@ dev = [
     "sseclient-py>=1.8.0",
     "pytest-timeout>=2.4.0",
     "pytest-xdist>=3.8.0",
-    "pyrefly>=0.55.0",
+    "pyrefly>=0.57.1",
 ]
 
 ############################################################
@@ -209,7 +209,7 @@ evaluation = ["ragas>=0.2.0", "deepeval>=2.0.0"]
 # Required by vector store clients
 ############################################################
 vdb = [
-    "alibabacloud_gpdb20160503~=3.8.0",
+    "alibabacloud_gpdb20160503~=5.1.0",
     "alibabacloud_tea_openapi~=0.4.3",
     "chromadb==0.5.20",
     "clickhouse-connect~=0.14.1",
@@ -247,7 +247,7 @@ module = [
     "configs.middleware.cache.redis_pubsub_config",
     "extensions.ext_redis",
     "tasks.workflow_execution_tasks",
-    "dify_graph.nodes.base.node",
+    "graphon.nodes.base.node",
     "services.human_input_delivery_test_service",
     "core.app.apps.advanced_chat.app_generator",
     "controllers.console.human_input_form",

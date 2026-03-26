@@ -3,7 +3,7 @@ import type { Params as OneStepRunParams } from '@/app/components/workflow/nodes
 // import
 import type { CommonNodeType, ValueSelector } from '@/app/components/workflow/types'
 import { useCallback, useEffect, useState } from 'react'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import {
   useNodesSyncDraft,
 } from '@/app/components/workflow/hooks'
@@ -163,7 +163,7 @@ const useLastRun = <T>({
       return false
 
     const message = warningForNode.errorMessages[0] || 'This node has unresolved checklist issues'
-    Toast.notify({ type: 'error', message })
+    toast.error(message)
     return true
   }, [warningNodes, id])
 

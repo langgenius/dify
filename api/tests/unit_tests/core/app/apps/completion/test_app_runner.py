@@ -6,7 +6,7 @@ import pytest
 import core.app.apps.completion.app_runner as module
 from core.app.apps.completion.app_runner import CompletionAppRunner
 from core.moderation.base import ModerationError
-from dify_graph.model_runtime.entities.message_entities import ImagePromptMessageContent
+from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 
 
 @pytest.fixture
