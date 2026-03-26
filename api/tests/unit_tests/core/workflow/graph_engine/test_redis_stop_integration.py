@@ -12,9 +12,9 @@ import pytest
 import redis
 
 from core.app.apps.base_app_queue_manager import AppQueueManager
-from dify_graph.graph_engine.command_channels.redis_channel import RedisChannel
-from dify_graph.graph_engine.entities.commands import AbortCommand, CommandType, PauseCommand
-from dify_graph.graph_engine.manager import GraphEngineManager
+from graphon.graph_engine.command_channels.redis_channel import RedisChannel
+from graphon.graph_engine.entities.commands import AbortCommand, CommandType, PauseCommand
+from graphon.graph_engine.manager import GraphEngineManager
 
 
 class TestRedisStopIntegration:

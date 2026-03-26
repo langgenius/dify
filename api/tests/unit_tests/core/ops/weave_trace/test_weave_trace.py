@@ -22,7 +22,7 @@ from core.ops.entities.trace_entity import (
 )
 from core.ops.weave_trace.entities.weave_trace_entity import WeaveTraceModel
 from core.ops.weave_trace.weave_trace import WeaveDataTrace
-from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -589,7 +589,7 @@ class TestWorkflowTrace:
             nodes = []
 
         repo = MagicMock()
-        repo.get_by_workflow_run.return_value = nodes
+        repo.get_by_workflow_execution.return_value = nodes
 
         mock_factory = MagicMock()
         mock_factory.create_workflow_node_execution_repository.return_value = repo

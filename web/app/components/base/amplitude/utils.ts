@@ -1,5 +1,5 @@
 import * as amplitude from '@amplitude/analytics-browser'
-import { isAmplitudeEnabled } from './AmplitudeProvider'
+import { isAmplitudeEnabled } from '@/config'
 
 /**
  * Track custom event
@@ -7,7 +7,7 @@ import { isAmplitudeEnabled } from './AmplitudeProvider'
  * @param eventProperties Event properties (optional)
  */
 export const trackEvent = (eventName: string, eventProperties?: Record<string, any>) => {
-  if (!isAmplitudeEnabled())
+  if (!isAmplitudeEnabled)
     return
   amplitude.track(eventName, eventProperties)
 }
@@ -17,7 +17,7 @@ export const trackEvent = (eventName: string, eventProperties?: Record<string, a
  * @param userId User ID
  */
 export const setUserId = (userId: string) => {
-  if (!isAmplitudeEnabled())
+  if (!isAmplitudeEnabled)
     return
   amplitude.setUserId(userId)
 }
@@ -27,7 +27,7 @@ export const setUserId = (userId: string) => {
  * @param properties User properties
  */
 export const setUserProperties = (properties: Record<string, any>) => {
-  if (!isAmplitudeEnabled())
+  if (!isAmplitudeEnabled)
     return
   const identifyEvent = new amplitude.Identify()
   Object.entries(properties).forEach(([key, value]) => {
@@ -40,7 +40,7 @@ export const setUserProperties = (properties: Record<string, any>) => {
  * Reset user (e.g., when user logs out)
  */
 export const resetUser = () => {
-  if (!isAmplitudeEnabled())
+  if (!isAmplitudeEnabled)
     return
   amplitude.reset()
 }

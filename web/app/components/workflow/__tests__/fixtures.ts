@@ -42,6 +42,13 @@ export function createStartNode(overrides: Omit<Partial<Node>, 'data'> & { data?
   })
 }
 
+export function createNodeDataFactory<T extends CommonNodeType & Record<string, unknown>>(defaults: T) {
+  return (overrides: Partial<T> = {}): T => ({
+    ...defaults,
+    ...overrides,
+  })
+}
+
 export function createTriggerNode(
   triggerType: BlockEnum.TriggerSchedule | BlockEnum.TriggerWebhook | BlockEnum.TriggerPlugin = BlockEnum.TriggerWebhook,
   overrides: Omit<Partial<Node>, 'data'> & { data?: Partial<CommonNodeType> & Record<string, unknown> } = {},

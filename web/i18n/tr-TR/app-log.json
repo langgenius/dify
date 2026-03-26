@@ -1,6 +1,6 @@
 {
-  "agentLog": "Agent Günlüğü",
-  "agentLogDetail.agentMode": "Agent Modu",
+  "agentLog": "Ajan Günlüğü",
+  "agentLogDetail.agentMode": "Ajan Modu",
   "agentLogDetail.finalProcessing": "Son İşleme",
   "agentLogDetail.iteration": "Yineleme",
   "agentLogDetail.iterations": "Yinelemeler",
@@ -80,5 +80,5 @@
   "triggerBy.webhook": "Webhook",
   "viewLog": "Günlüğü Görüntüle",
   "workflowSubtitle": "Günlük, Automate'in çalışmasını kaydetmiştir.",
-  "workflowTitle": "Workflow Günlükleri"
+  "workflowTitle": "İş Akışı Günlükleri"
 }

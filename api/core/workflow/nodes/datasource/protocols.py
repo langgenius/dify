@@ -1,8 +1,8 @@
 from collections.abc import Generator
 from typing import Any, Protocol
 
-from dify_graph.file import File
-from dify_graph.node_events import StreamChunkEvent, StreamCompletedEvent
+from graphon.file import File
+from graphon.node_events import StreamChunkEvent, StreamCompletedEvent
 
 from .entities import DatasourceParameter, OnlineDriveDownloadFileParam
 

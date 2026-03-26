@@ -3,11 +3,13 @@ from __future__ import annotations
 from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
-from dify_graph.entities.graph_config import NodeConfigDict
-from dify_graph.enums import BuiltinNodeTypes, SystemVariableKey, WorkflowNodeExecutionStatus
-from dify_graph.node_events import NodeEventBase, NodeRunResult, StreamCompletedEvent
-from dify_graph.nodes.base.node import Node
-from dify_graph.nodes.base.variable_template_parser import VariableTemplateParser
+from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
+from core.workflow.system_variables import SystemVariableKey, get_system_text
+from graphon.entities.graph_config import NodeConfigDict
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
+from graphon.node_events import NodeEventBase, NodeRunResult, StreamCompletedEvent
+from graphon.nodes.base.node import Node
+from graphon.nodes.base.variable_template_parser import VariableTemplateParser
 
 from .entities import AgentNodeData
 from .exceptions import (
@@ -19,8 +21,8 @@ from .runtime_support import AgentRuntimeSupport
 from .strategy_protocols import AgentStrategyPresentationProvider, AgentStrategyResolver
 
 if TYPE_CHECKING:
-    from dify_graph.entities import GraphInitParams
-    from dify_graph.runtime import GraphRuntimeState
+    from graphon.entities import GraphInitParams
+    from graphon.runtime import GraphRuntimeState
 
 
 class AgentNode(Node[AgentNodeData]):
@@ -59,7 +61,7 @@ class AgentNode(Node[AgentNodeData]):
         return "1"
 
     def populate_start_event(self, event) -> None:
-        dify_ctx = self.require_dify_context()
+        dify_ctx = DifyRunContext.model_validate(self.require_run_context_value(DIFY_RUN_CONTEXT_KEY))
         event.extras["agent_strategy"] = {
             "name": self.node_data.agent_strategy_name,
             "icon": self._presentation_provider.get_icon(
@@ -71,7 +73,7 @@ class AgentNode(Node[AgentNodeData]):
     def _run(self) -> Generator[NodeEventBase, None, None]:
         from core.plugin.impl.exc import PluginDaemonClientSideError
 
-        dify_ctx = self.require_dify_context()
+        dify_ctx = DifyRunContext.model_validate(self.require_run_context_value(DIFY_RUN_CONTEXT_KEY))
 
         try:
             strategy = self._strategy_resolver.resolve(
@@ -97,6 +99,7 @@ class AgentNode(Node[AgentNodeData]):
             node_data=self.node_data,
             strategy=strategy,
             tenant_id=dify_ctx.tenant_id,
+            user_id=dify_ctx.user_id,
             app_id=dify_ctx.app_id,
             invoke_from=dify_ctx.invoke_from,
         )
@@ -106,20 +109,21 @@ class AgentNode(Node[AgentNodeData]):
             node_data=self.node_data,
             strategy=strategy,
             tenant_id=dify_ctx.tenant_id,
+            user_id=dify_ctx.user_id,
             app_id=dify_ctx.app_id,
             invoke_from=dify_ctx.invoke_from,
             for_log=True,
         )
         credentials = self._runtime_support.build_credentials(parameters=parameters)
 
-        conversation_id = self.graph_runtime_state.variable_pool.get(["sys", SystemVariableKey.CONVERSATION_ID])
+        conversation_id = get_system_text(self.graph_runtime_state.variable_pool, SystemVariableKey.CONVERSATION_ID)
 
         try:
             message_stream = strategy.invoke(
                 params=parameters,
                 user_id=dify_ctx.user_id,
                 app_id=dify_ctx.app_id,
-                conversation_id=conversation_id.text if conversation_id else None,
+                conversation_id=conversation_id,
                 credentials=credentials,
             )
         except Exception as e:
@@ -146,6 +150,7 @@ class AgentNode(Node[AgentNodeData]):
                 parameters_for_log=parameters_for_log,
                 user_id=dify_ctx.user_id,
                 tenant_id=dify_ctx.tenant_id,
+                conversation_id=conversation_id,
                 node_type=self.node_type,
                 node_id=self._node_id,
                 node_execution_id=self.id,

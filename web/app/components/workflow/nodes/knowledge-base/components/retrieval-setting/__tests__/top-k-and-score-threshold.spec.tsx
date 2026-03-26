@@ -32,4 +32,38 @@ describe('TopKAndScoreThreshold', () => {
 
     expect(defaultProps.onScoreThresholdChange).toHaveBeenCalledWith(0.46)
   })
+
+  it('should hide the score-threshold column when requested', () => {
+    render(<TopKAndScoreThreshold {...defaultProps} hiddenScoreThreshold />)
+
+    expect(screen.getAllByRole('textbox')).toHaveLength(1)
+    expect(screen.queryByRole('switch')).not.toBeInTheDocument()
+  })
+
+  it('should fall back to zero when the number fields are cleared', () => {
+    render(
+      <TopKAndScoreThreshold
+        {...defaultProps}
+        scoreThreshold={undefined}
+        isScoreThresholdEnabled
+      />,
+    )
+
+    const [topKInput, scoreThresholdInput] = screen.getAllByRole('textbox')
+    fireEvent.change(topKInput, { target: { value: '' } })
+
+    expect(defaultProps.onTopKChange).toHaveBeenCalledWith(0)
+    expect(scoreThresholdInput).toHaveValue('')
+  })
+
+  it('should default the score-threshold switch to off when the flag is missing', () => {
+    render(
+      <TopKAndScoreThreshold
+        {...defaultProps}
+        isScoreThresholdEnabled={undefined}
+      />,
+    )
+
+    expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'false')
+  })
 })

@@ -10,10 +10,10 @@ from typing import Any
 
 import pytest
 
-from dify_graph.file.enums import FileTransferMethod, FileType
-from dify_graph.file.models import File
-from dify_graph.variables.segment_group import SegmentGroup
-from dify_graph.variables.segments import (
+from graphon.file.enums import FileTransferMethod, FileType
+from graphon.file.models import File
+from graphon.variables.segment_group import SegmentGroup
+from graphon.variables.segments import (
     ArrayFileSegment,
     BooleanSegment,
     FileSegment,
@@ -22,7 +22,7 @@ from dify_graph.variables.segments import (
     ObjectSegment,
     StringSegment,
 )
-from dify_graph.variables.types import ArrayValidation, SegmentType
+from graphon.variables.types import ArrayValidation, SegmentType
 
 
 def create_test_file(

@@ -15,20 +15,20 @@ from uuid import uuid4
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.model_manager import ModelInstance
 from core.workflow.node_factory import DifyNodeFactory, get_default_root_node_id
-from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
-from dify_graph.graph import Graph
-from dify_graph.graph_engine import GraphEngine, GraphEngineConfig
-from dify_graph.graph_engine.command_channels import InMemoryChannel
-from dify_graph.graph_events import (
+from core.workflow.system_variables import build_system_variables
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
+from graphon.graph import Graph
+from graphon.graph_engine import GraphEngine, GraphEngineConfig
+from graphon.graph_engine.command_channels import InMemoryChannel
+from graphon.graph_events import (
     GraphRunSucceededEvent,
     NodeRunStartedEvent,
     NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
 )
-from dify_graph.node_events import NodeRunResult, StreamCompletedEvent
-from dify_graph.nodes.llm.node import LLMNode
-from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.system_variable import SystemVariable
+from graphon.node_events import NodeRunResult, StreamCompletedEvent
+from graphon.nodes.llm.node import LLMNode
+from graphon.runtime import GraphRuntimeState, VariablePool
 from tests.workflow_test_utils import build_test_graph_init_params
 
 from .test_table_runner import TableTestRunner
@@ -98,7 +98,7 @@ def test_parallel_streaming_workflow():
     )
 
     # Create variable pool with system variables
-    system_variables = SystemVariable(
+    system_variables = build_system_variables(
         user_id="test_user",
         app_id="test_app",
         workflow_id=init_params.workflow_id,

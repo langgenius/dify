@@ -13,7 +13,7 @@ import { useTranslation } from 'react-i18next'
 import { Avatar } from '@/app/components/base/avatar'
 import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { setPostLoginRedirect } from '@/app/signin/utils/post-login-redirect'
 import { useRouter, useSearchParams } from '@/next/navigation'
@@ -91,10 +91,7 @@ export default function OAuthAuthorize() {
       globalThis.location.href = url.toString()
     }
     catch (err: any) {
-      Toast.notify({
-        type: 'error',
-        message: `${t('error.authorizeFailed', { ns: 'oauth' })}: ${err.message}`,
-      })
+      toast.error(`${t('error.authorizeFailed', { ns: 'oauth' })}: ${err.message}`)
     }
   }
 
@@ -102,11 +99,10 @@ export default function OAuthAuthorize() {
     const invalidParams = !client_id || !redirect_uri
     if ((invalidParams || isError) && !hasNotifiedRef.current) {
       hasNotifiedRef.current = true
-      Toast.notify({
-        type: 'error',
-        message: invalidParams ? t('error.invalidParams', { ns: 'oauth' }) : t('error.authAppInfoFetchFailed', { ns: 'oauth' }),
-        duration: 0,
-      })
+      toast.error(
+        invalidParams ? t('error.invalidParams', { ns: 'oauth' }) : t('error.authAppInfoFetchFailed', { ns: 'oauth' }),
+        { timeout: 0 },
+      )
     }
   }, [client_id, redirect_uri, isError])
 

@@ -9,7 +9,7 @@ from core.app.entities.task_entities import (
     WorkflowAppBlockingResponse,
     WorkflowAppStreamResponse,
 )
-from dify_graph.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
+from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 
 
 class TestWorkflowGenerateResponseConverter:

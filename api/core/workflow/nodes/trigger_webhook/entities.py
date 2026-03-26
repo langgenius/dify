@@ -4,9 +4,9 @@ from enum import StrEnum
 from pydantic import BaseModel, Field, field_validator
 
 from core.trigger.constants import TRIGGER_WEBHOOK_NODE_TYPE
-from dify_graph.entities.base_node_data import BaseNodeData
-from dify_graph.enums import NodeType
-from dify_graph.variables.types import SegmentType
+from graphon.entities.base_node_data import BaseNodeData
+from graphon.enums import NodeType
+from graphon.variables.types import SegmentType
 
 _WEBHOOK_HEADER_ALLOWED_TYPES = frozenset(
     {

@@ -2,9 +2,9 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from dify_graph.enums import BuiltinNodeTypes, NodeType
-from dify_graph.graph import Graph
-from dify_graph.nodes.base.node import Node
+from graphon.enums import BuiltinNodeTypes, NodeType
+from graphon.graph import Graph
+from graphon.nodes.base.node import Node
 
 
 def _make_node(node_id: str, node_type: NodeType = BuiltinNodeTypes.START) -> Node:

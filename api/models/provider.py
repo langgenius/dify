@@ -210,7 +210,7 @@ class TenantPreferredModelProvider(TypeBase):
     )
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     provider_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    preferred_provider_type: Mapped[str] = mapped_column(String(40), nullable=False)
+    preferred_provider_type: Mapped[ProviderType] = mapped_column(EnumText(ProviderType, length=40), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
