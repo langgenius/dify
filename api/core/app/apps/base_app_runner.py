@@ -29,22 +29,22 @@ from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.simple_prompt_transform import ModelMode, SimplePromptTransform
 from core.tools.tool_file_manager import ToolFileManager
-from dify_graph.file.enums import FileTransferMethod, FileType
-from dify_graph.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
-from dify_graph.model_runtime.entities.message_entities import (
+from extensions.ext_database import db
+from graphon.file.enums import FileTransferMethod, FileType
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
+from graphon.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     ImagePromptMessageContent,
     PromptMessage,
     TextPromptMessageContent,
 )
-from dify_graph.model_runtime.entities.model_entities import ModelPropertyKey
-from dify_graph.model_runtime.errors.invoke import InvokeBadRequestError
-from extensions.ext_database import db
+from graphon.model_runtime.entities.model_entities import ModelPropertyKey
+from graphon.model_runtime.errors.invoke import InvokeBadRequestError
 from models.enums import CreatorUserRole, MessageFileBelongsTo
 from models.model import App, AppMode, Message, MessageAnnotation, MessageFile
 
 if TYPE_CHECKING:
-    from dify_graph.file.models import File
+    from graphon.file.models import File
 
 _logger = logging.getLogger(__name__)
 

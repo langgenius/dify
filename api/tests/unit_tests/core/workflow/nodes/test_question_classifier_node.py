@@ -1,15 +1,16 @@
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
-from dify_graph.model_runtime.entities import ImagePromptMessageContent, LLMUsage
-from dify_graph.node_events import ModelInvokeCompletedEvent
-from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory, TemplateRenderer
-from dify_graph.nodes.protocols import HttpClientProtocol
-from dify_graph.nodes.question_classifier import (
+from graphon.model_runtime.entities import ImagePromptMessageContent, LLMUsage
+from graphon.node_events import ModelInvokeCompletedEvent
+from graphon.nodes.llm.protocols import CredentialsProvider, ModelFactory
+from graphon.nodes.protocols import HttpClientProtocol
+from graphon.nodes.question_classifier import (
     QuestionClassifierNode,
     QuestionClassifierNodeData,
 )
-from dify_graph.nodes.question_classifier.question_classifier_node import llm_utils
+from graphon.nodes.question_classifier.question_classifier_node import llm_utils
+from graphon.template_rendering import Jinja2TemplateRenderer
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
@@ -90,7 +91,7 @@ def test_question_classifier_calculate_rest_token_uses_shared_prompt_builder(mon
             "instruction": "This is a test instruction",
         }
     )
-    template_renderer = MagicMock(spec=TemplateRenderer)
+    template_renderer = MagicMock(spec=Jinja2TemplateRenderer)
     node = QuestionClassifierNode(
         id="node-id",
         config={"id": "node-id", "data": node_data.model_dump(mode="json")},
@@ -111,11 +112,11 @@ def test_question_classifier_calculate_rest_token_uses_shared_prompt_builder(mon
     )
     fetch_prompt_messages = MagicMock(return_value=([], None))
     monkeypatch.setattr(
-        "dify_graph.nodes.question_classifier.question_classifier_node.llm_utils.fetch_prompt_messages",
+        "graphon.nodes.question_classifier.question_classifier_node.llm_utils.fetch_prompt_messages",
         fetch_prompt_messages,
     )
     monkeypatch.setattr(
-        "dify_graph.nodes.question_classifier.question_classifier_node.llm_utils.fetch_model_schema",
+        "graphon.nodes.question_classifier.question_classifier_node.llm_utils.fetch_model_schema",
         MagicMock(return_value=SimpleNamespace(model_properties={}, parameter_rules=[])),
     )
 
@@ -176,7 +177,7 @@ def test_question_classifier_run_returns_class_label_separately(monkeypatch):
     variable_pool = MagicMock()
     variable_pool.get.return_value = SimpleNamespace(value="Where is my refund?")
     variable_pool.convert_template.side_effect = lambda value: SimpleNamespace(text=value)
-    template_renderer = MagicMock(spec=TemplateRenderer)
+    template_renderer = MagicMock(spec=Jinja2TemplateRenderer)
     node = _create_question_classifier_node_for_run(
         node_data,
         variable_pool=variable_pool,
@@ -192,7 +193,7 @@ def test_question_classifier_run_returns_class_label_separately(monkeypatch):
     monkeypatch.setattr(node, "_calculate_rest_token", MagicMock(return_value=1024))
     monkeypatch.setattr(node, "_get_prompt_template", MagicMock(return_value=[]))
     monkeypatch.setattr(
-        "dify_graph.nodes.question_classifier.question_classifier_node.LLMNode.invoke_llm",
+        "graphon.nodes.question_classifier.question_classifier_node.LLMNode.invoke_llm",
         lambda **_: iter(
             [
                 ModelInvokeCompletedEvent(
@@ -228,7 +229,7 @@ def test_question_classifier_run_falls_back_to_canonical_class_label(monkeypatch
     variable_pool = MagicMock()
     variable_pool.get.return_value = SimpleNamespace(value="Where is my refund?")
     variable_pool.convert_template.side_effect = lambda value: SimpleNamespace(text=value)
-    template_renderer = MagicMock(spec=TemplateRenderer)
+    template_renderer = MagicMock(spec=Jinja2TemplateRenderer)
     node = _create_question_classifier_node_for_run(
         node_data,
         variable_pool=variable_pool,
@@ -244,7 +245,7 @@ def test_question_classifier_run_falls_back_to_canonical_class_label(monkeypatch
     monkeypatch.setattr(node, "_calculate_rest_token", MagicMock(return_value=1024))
     monkeypatch.setattr(node, "_get_prompt_template", MagicMock(return_value=[]))
     monkeypatch.setattr(
-        "dify_graph.nodes.question_classifier.question_classifier_node.LLMNode.invoke_llm",
+        "graphon.nodes.question_classifier.question_classifier_node.LLMNode.invoke_llm",
         lambda **_: iter(
             [
                 ModelInvokeCompletedEvent(

@@ -7,16 +7,16 @@ import pytest
 
 from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
-from dify_graph.entities.pause_reason import SchedulingPause
-from dify_graph.entities.workflow_node_execution import WorkflowNodeExecution
-from dify_graph.enums import (
+from core.workflow.system_variables import SystemVariableKey, build_system_variables
+from graphon.entities.pause_reason import SchedulingPause
+from graphon.entities.workflow_node_execution import WorkflowNodeExecution
+from graphon.enums import (
     BuiltinNodeTypes,
-    SystemVariableKey,
     WorkflowExecutionStatus,
     WorkflowNodeExecutionStatus,
     WorkflowType,
 )
-from dify_graph.graph_events.graph import (
+from graphon.graph_events.graph import (
     GraphRunAbortedEvent,
     GraphRunFailedEvent,
     GraphRunPartialSucceededEvent,
@@ -24,7 +24,7 @@ from dify_graph.graph_events.graph import (
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
 )
-from dify_graph.graph_events.node import (
+from graphon.graph_events.node import (
     NodeRunExceptionEvent,
     NodeRunFailedEvent,
     NodeRunPauseRequestedEvent,
@@ -32,9 +32,8 @@ from dify_graph.graph_events.node import (
     NodeRunStartedEvent,
     NodeRunSucceededEvent,
 )
-from dify_graph.node_events import NodeRunResult
-from dify_graph.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper, VariablePool
-from dify_graph.system_variable import SystemVariable
+from graphon.node_events import NodeRunResult
+from graphon.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper, VariablePool
 
 
 class _RepoRecorder:
@@ -54,13 +53,16 @@ def _naive_utc_now() -> datetime:
 
 
 def _make_layer(
-    system_variable: SystemVariable | None = None,
+    system_variables: list | None = None,
     *,
     extras: dict | None = None,
     trace_manager: object | None = None,
 ):
-    system_variable = system_variable or SystemVariable(workflow_execution_id="run-id", conversation_id="conv-id")
-    runtime_state = GraphRuntimeState(variable_pool=VariablePool(system_variables=system_variable), start_at=0.0)
+    system_variables = system_variables or build_system_variables(
+        workflow_execution_id="run-id",
+        conversation_id="conv-id",
+    )
+    runtime_state = GraphRuntimeState(variable_pool=VariablePool(system_variables=system_variables), start_at=0.0)
     read_only_state = ReadOnlyGraphRuntimeStateWrapper(runtime_state)
 
     application_generate_entity = WorkflowAppGenerateEntity.model_construct(
@@ -115,8 +117,7 @@ class TestWorkflowPersistenceLayer:
         assert layer._node_sequence == 0
 
     def test_get_execution_id_requires_system_variable(self):
-        system_variable = SystemVariable(workflow_execution_id=None)
-        layer, _, _, _ = _make_layer(system_variable)
+        layer, _, _, _ = _make_layer(build_system_variables())
 
         with pytest.raises(ValueError, match="workflow_execution_id must be provided"):
             layer._get_execution_id()

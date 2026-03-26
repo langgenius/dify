@@ -1,10 +1,10 @@
 import queue
 from datetime import datetime
 
-from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
-from dify_graph.graph_engine.orchestration.dispatcher import Dispatcher
-from dify_graph.graph_events import NodeRunSucceededEvent
-from dify_graph.node_events import NodeRunResult
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
+from graphon.graph_engine.orchestration.dispatcher import Dispatcher
+from graphon.graph_events import NodeRunSucceededEvent
+from graphon.node_events import NodeRunResult
 
 
 class StubExecutionCoordinator:

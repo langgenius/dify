@@ -56,6 +56,7 @@ from core.rag.retrieval.template_prompts import (
 )
 from core.tools.signature import sign_upload_file
 from core.tools.utils.dataset_retriever.dataset_retriever_base_tool import DatasetRetrieverBaseTool
+from core.workflow.file_reference import build_file_reference
 from core.workflow.nodes.knowledge_retrieval import exc
 from core.workflow.nodes.knowledge_retrieval.retrieval import (
     KnowledgeRetrievalRequest,
@@ -63,13 +64,13 @@ from core.workflow.nodes.knowledge_retrieval.retrieval import (
     SourceChildChunk,
     SourceMetadata,
 )
-from dify_graph.file import File, FileTransferMethod, FileType
-from dify_graph.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMUsage
-from dify_graph.model_runtime.entities.message_entities import PromptMessage, PromptMessageRole, PromptMessageTool
-from dify_graph.model_runtime.entities.model_entities import ModelFeature, ModelType
-from dify_graph.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from graphon.file import File, FileTransferMethod, FileType
+from graphon.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMUsage
+from graphon.model_runtime.entities.message_entities import PromptMessage, PromptMessageRole, PromptMessageTool
+from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
+from graphon.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from libs.json_in_md_parser import parse_and_check_json_markdown
 from models import UploadFile
 from models.dataset import (
@@ -160,7 +161,7 @@ class DatasetRetrieval:
             if request.model_provider is None or request.model_name is None or request.query is None:
                 raise ValueError("model_provider, model_name, and query are required for single retrieval mode")
 
-            model_manager = ModelManager()
+            model_manager = ModelManager.for_tenant(tenant_id=request.tenant_id, user_id=request.user_id)
             model_instance = model_manager.get_model_instance(
                 tenant_id=request.tenant_id,
                 model_type=ModelType.LLM,
@@ -383,22 +384,26 @@ class DatasetRetrieval:
             return None, []
         retrieve_config = config.retrieve_config
 
-        # check model is support tool calling
-        model_type_instance = model_config.provider_model_bundle.model_type_instance
-        model_type_instance = cast(LargeLanguageModel, model_type_instance)
-
-        model_manager = ModelManager()
+        model_manager = ModelManager.for_tenant(tenant_id=tenant_id, user_id=user_id)
         model_instance = model_manager.get_model_instance(
             tenant_id=tenant_id, model_type=ModelType.LLM, provider=model_config.provider, model=model_config.model
         )
+        model_type_instance = cast(LargeLanguageModel, model_instance.model_type_instance)
 
-        # get model schema
+        # Reuse the caller-bound model instance for both schema resolution and
+        # downstream planner/invoke calls so a single request never mixes
+        # tenant-scope and request-bound runtimes.
         model_schema = model_type_instance.get_model_schema(
-            model=model_config.model, credentials=model_config.credentials
+            model=model_instance.model_name,
+            credentials=model_instance.credentials,
         )
 
         if not model_schema:
             return None, []
+
+        model_config.provider_model_bundle = model_instance.provider_model_bundle
+        model_config.credentials = model_instance.credentials
+        model_config.model_schema = model_schema
 
         planning_strategy = PlanningStrategy.REACT_ROUTER
         features = model_schema.features
@@ -517,11 +522,12 @@ class DatasetRetrieval:
                                     filename=upload_file.name,
                                     extension="." + upload_file.extension,
                                     mime_type=upload_file.mime_type,
-                                    tenant_id=segment.tenant_id,
                                     type=FileType.IMAGE,
                                     transfer_method=FileTransferMethod.LOCAL_FILE,
                                     remote_url=upload_file.source_url,
-                                    related_id=upload_file.id,
+                                    reference=build_file_reference(
+                                        record_id=str(upload_file.id),
+                                    ),
                                     size=upload_file.size,
                                     storage_key=upload_file.key,
                                     url=sign_upload_file(upload_file.id, upload_file.extension),
@@ -675,7 +681,7 @@ class DatasetRetrieval:
                     # get top k
                     top_k = retrieval_model_config["top_k"]
                     # get retrieval method
-                    if selected_dataset.indexing_technique == "economy":
+                    if selected_dataset.indexing_technique == IndexTechniqueType.ECONOMY:
                         retrieval_method = RetrievalMethod.KEYWORD_SEARCH
                     else:
                         retrieval_method = retrieval_model_config["search_method"]
@@ -752,7 +758,7 @@ class DatasetRetrieval:
                 "The configured knowledge base list have different indexing technique, please set reranking model."
             )
         index_type = available_datasets[0].indexing_technique
-        if index_type == "high_quality":
+        if index_type == IndexTechniqueType.HIGH_QUALITY:
             embedding_model_check = all(
                 item.embedding_model == available_datasets[0].embedding_model for item in available_datasets
             )
@@ -986,6 +992,24 @@ class DatasetRetrieval:
                 )
             )
 
+    @staticmethod
+    def _resolve_creator_user_role(user_from: str) -> CreatorUserRole | None:
+        """Map runtime user source values to dataset query audit roles.
+
+        Workflow run context uses the hyphenated ``end-user`` value, while
+        ``DatasetQuery.created_by_role`` persists the underscore-based
+        ``CreatorUserRole.END_USER`` enum. Query logging is a side effect, so an
+        unsupported value should be skipped instead of aborting retrieval.
+        """
+        normalized_user_from = str(user_from).strip().lower().replace("-", "_")
+        if normalized_user_from == CreatorUserRole.ACCOUNT.value:
+            return CreatorUserRole.ACCOUNT
+        if normalized_user_from == CreatorUserRole.END_USER.value:
+            return CreatorUserRole.END_USER
+
+        logger.warning("Skipping dataset query audit log for unsupported user_from=%r", user_from)
+        return None
+
     def _on_query(
         self,
         query: str | None,
@@ -996,9 +1020,12 @@ class DatasetRetrieval:
         user_id: str,
     ):
         """
-        Handle query.
+        Persist dataset query audit rows for retrieval requests.
         """
         if not query and not attachment_ids:
+            return
+        created_by_role = self._resolve_creator_user_role(user_from)
+        if created_by_role is None:
             return
         dataset_queries = []
         for dataset_id in dataset_ids:
@@ -1014,7 +1041,7 @@ class DatasetRetrieval:
                     content=json.dumps(contents),
                     source=DatasetQuerySource.APP,
                     source_app_id=app_id,
-                    created_by_role=CreatorUserRole(user_from),
+                    created_by_role=created_by_role,
                     created_by=user_id,
                 )
                 dataset_queries.append(dataset_query)
@@ -1068,7 +1095,7 @@ class DatasetRetrieval:
                     else default_retrieval_model
                 )
 
-                if dataset.indexing_technique == "economy":
+                if dataset.indexing_technique == IndexTechniqueType.ECONOMY:
                     # use keyword table query
                     documents = RetrievalService.retrieve(
                         retrieval_method=RetrievalMethod.KEYWORD_SEARCH,
@@ -1411,7 +1438,7 @@ class DatasetRetrieval:
             raise ValueError("metadata_model_config is required")
         # get metadata model instance
         # fetch model config
-        model_instance, model_config = self._fetch_model_config(tenant_id, metadata_model_config)
+        model_instance, model_config = self._fetch_model_config(tenant_id, metadata_model_config, user_id=user_id)
 
         # fetch prompt messages
         prompt_messages, stop = self._get_prompt_template(
@@ -1430,7 +1457,6 @@ class DatasetRetrieval:
                     model_parameters=model_config.parameters,
                     stop=stop,
                     stream=True,
-                    user=user_id,
                 ),
             )
 
@@ -1533,7 +1559,7 @@ class DatasetRetrieval:
         return filters
 
     def _fetch_model_config(
-        self, tenant_id: str, model: ModelConfig
+        self, tenant_id: str, model: ModelConfig, user_id: str | None = None
     ) -> tuple[ModelInstance, ModelConfigWithCredentialsEntity]:
         """
         Fetch model config
@@ -1543,7 +1569,7 @@ class DatasetRetrieval:
         model_name = model.name
         provider_name = model.provider
 
-        model_manager = ModelManager()
+        model_manager = ModelManager.for_tenant(tenant_id=tenant_id, user_id=user_id)
         model_instance = model_manager.get_model_instance(
             tenant_id=tenant_id, model_type=ModelType.LLM, provider=provider_name, model=model_name
         )

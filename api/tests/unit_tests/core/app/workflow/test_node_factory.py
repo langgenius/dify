@@ -4,7 +4,7 @@ import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
 from core.workflow.node_factory import DifyNodeFactory
-from dify_graph.enums import BuiltinNodeTypes
+from graphon.enums import BuiltinNodeTypes
 
 
 class DummyNode:
@@ -131,7 +131,7 @@ class TestDifyNodeFactory:
         node = factory.create_node({"id": "node-1", "data": {"type": BuiltinNodeTypes.TEMPLATE_TRANSFORM}})
 
         assert isinstance(node, DummyTemplateTransformNode)
-        assert "template_renderer" in node.kwargs
+        assert "jinja2_template_renderer" in node.kwargs
 
     def test_create_node_http_request_branch(self, monkeypatch):
         factory = self._factory(monkeypatch)

@@ -5,7 +5,7 @@ Tests for PauseReason discriminated union serialization/deserialization.
 import pytest
 from pydantic import BaseModel, ValidationError
 
-from dify_graph.entities.pause_reason import (
+from graphon.entities.pause_reason import (
     HumanInputRequired,
     PauseReason,
     SchedulingPause,

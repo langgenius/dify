@@ -10,7 +10,7 @@ from configs import dify_config
 from core.db.session_factory import session_factory
 from core.entities.document_task import DocumentTask
 from core.indexing_runner import DocumentIsPausedError, IndexingRunner
-from core.rag.index_processor.constant.index_type import IndexStructureType
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
 from enums.cloud_plan import CloudPlan
 from libs.datetime_utils import naive_utc_now
@@ -127,7 +127,7 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
                 logger.warning("Dataset %s not found after indexing", dataset_id)
                 return
 
-            if dataset.indexing_technique == "high_quality":
+            if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
                 summary_index_setting = dataset.summary_index_setting
                 if summary_index_setting and summary_index_setting.get("enable"):
                     # expire all session to get latest document's indexing status

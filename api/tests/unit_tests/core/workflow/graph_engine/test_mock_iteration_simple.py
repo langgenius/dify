@@ -2,8 +2,8 @@
 Simple test to verify MockNodeFactory works with iteration nodes.
 """
 
-from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY
-from dify_graph.enums import BuiltinNodeTypes
+from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY
+from graphon.enums import BuiltinNodeTypes
 from tests.unit_tests.core.workflow.graph_engine.test_mock_config import MockConfigBuilder
 from tests.unit_tests.core.workflow.graph_engine.test_mock_factory import MockNodeFactory
 
@@ -11,8 +11,8 @@ from tests.unit_tests.core.workflow.graph_engine.test_mock_factory import MockNo
 def test_mock_factory_registers_iteration_node():
     """Test that MockNodeFactory has iteration node registered."""
     from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-    from dify_graph.entities import GraphInitParams
-    from dify_graph.runtime import GraphRuntimeState, VariablePool
+    from graphon.entities import GraphInitParams
+    from graphon.runtime import GraphRuntimeState, VariablePool
 
     # Create a MockNodeFactory instance
     graph_init_params = GraphInitParams(
@@ -63,8 +63,8 @@ def test_mock_iteration_node_preserves_config():
     """Test that MockIterationNode preserves mock configuration."""
 
     from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-    from dify_graph.entities import GraphInitParams
-    from dify_graph.runtime import GraphRuntimeState, VariablePool
+    from graphon.entities import GraphInitParams
+    from graphon.runtime import GraphRuntimeState, VariablePool
     from tests.unit_tests.core.workflow.graph_engine.test_mock_nodes import MockIterationNode
 
     # Create mock config
@@ -128,8 +128,8 @@ def test_mock_loop_node_preserves_config():
     """Test that MockLoopNode preserves mock configuration."""
 
     from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-    from dify_graph.entities import GraphInitParams
-    from dify_graph.runtime import GraphRuntimeState, VariablePool
+    from graphon.entities import GraphInitParams
+    from graphon.runtime import GraphRuntimeState, VariablePool
     from tests.unit_tests.core.workflow.graph_engine.test_mock_nodes import MockLoopNode
 
     # Create mock config

@@ -27,13 +27,13 @@ from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.ops.utils import measure_time
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
-from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
-from dify_graph.model_runtime.entities.llm_entities import LLMResult
-from dify_graph.model_runtime.entities.message_entities import PromptMessage, SystemPromptMessage, UserPromptMessage
-from dify_graph.model_runtime.entities.model_entities import ModelType
-from dify_graph.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from extensions.ext_database import db
 from extensions.ext_storage import storage
+from graphon.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
+from graphon.model_runtime.entities.llm_entities import LLMResult
+from graphon.model_runtime.entities.message_entities import PromptMessage, SystemPromptMessage, UserPromptMessage
+from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from models import App, Message, WorkflowNodeExecutionModel
 from models.workflow import Workflow
 
@@ -62,7 +62,7 @@ class LLMGenerator:
 
         prompt += query + "\n"
 
-        model_manager = ModelManager()
+        model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
         model_instance = model_manager.get_default_model_instance(
             tenant_id=tenant_id,
             model_type=ModelType.LLM,
@@ -120,7 +120,7 @@ class LLMGenerator:
         prompt = prompt_template.format({"histories": histories, "format_instructions": format_instructions})
 
         try:
-            model_manager = ModelManager()
+            model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
             model_instance = model_manager.get_default_model_instance(
                 tenant_id=tenant_id,
                 model_type=ModelType.LLM,
@@ -172,7 +172,7 @@ class LLMGenerator:
 
             prompt_messages = [UserPromptMessage(content=prompt_generate)]
 
-            model_manager = ModelManager()
+            model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
 
             model_instance = model_manager.get_model_instance(
                 tenant_id=tenant_id,
@@ -219,7 +219,7 @@ class LLMGenerator:
         prompt_messages = [UserPromptMessage(content=prompt_generate_prompt)]
 
         # get model instance
-        model_manager = ModelManager()
+        model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
         model_instance = model_manager.get_model_instance(
             tenant_id=tenant_id,
             model_type=ModelType.LLM,
@@ -306,7 +306,7 @@ class LLMGenerator:
             remove_template_variables=False,
         )
 
-        model_manager = ModelManager()
+        model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
         model_instance = model_manager.get_model_instance(
             tenant_id=tenant_id,
             model_type=ModelType.LLM,
@@ -337,7 +337,7 @@ class LLMGenerator:
     def generate_qa_document(cls, tenant_id: str, query, document_language: str):
         prompt = GENERATOR_QA_PROMPT.format(language=document_language)
 
-        model_manager = ModelManager()
+        model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
         model_instance = model_manager.get_default_model_instance(
             tenant_id=tenant_id,
             model_type=ModelType.LLM,
@@ -362,7 +362,7 @@ class LLMGenerator:
 
     @classmethod
     def generate_structured_output(cls, tenant_id: str, args: RuleStructuredOutputPayload):
-        model_manager = ModelManager()
+        model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
         model_instance = model_manager.get_model_instance(
             tenant_id=tenant_id,
             model_type=ModelType.LLM,
@@ -536,7 +536,7 @@ class LLMGenerator:
             injected_instruction = injected_instruction.replace(CURRENT, current or "null")
         if ERROR_MESSAGE in injected_instruction:
             injected_instruction = injected_instruction.replace(ERROR_MESSAGE, error_message or "null")
-        model_instance = ModelManager().get_model_instance(
+        model_instance = ModelManager.for_tenant(tenant_id=tenant_id).get_model_instance(
             tenant_id=tenant_id,
             model_type=ModelType.LLM,
             provider=model_config.provider,
