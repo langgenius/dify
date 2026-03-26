@@ -16,8 +16,8 @@ export type PanelSliceShape = {
   }
   setPanelMenu: (panelMenu: PanelSliceShape['panelMenu']) => void
   selectionMenu?: {
-    top: number
-    left: number
+    clientX: number
+    clientY: number
   }
   setSelectionMenu: (selectionMenu: PanelSliceShape['selectionMenu']) => void
   edgeMenu?: {
