@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
-from dify_graph.enums import WorkflowNodeExecutionMetadataKey
+from graphon.enums import WorkflowNodeExecutionMetadataKey
 
 # ---------------------------------------------------------------------------
 # Helpers
