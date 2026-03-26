@@ -3,12 +3,17 @@ import { toast } from '@/app/components/base/ui/toast'
 import { uploadGitHub } from '@/service/plugins'
 import { compareVersion, getLatestVersion } from '@/utils/semver'
 
+const normalizeAssetName = (downloadUrl: string) => {
+  const parts = downloadUrl.split('/')
+  return parts[parts.length - 1]
+}
+
 const formatReleases = (releases: any) => {
   return releases.map((release: any) => ({
     tag_name: release.tag,
     assets: release.assets.map((asset: any) => ({
-      browser_download_url: asset.browser_download_url,
-      name: asset.name,
+      browser_download_url: asset.downloadUrl,
+      name: normalizeAssetName(asset.downloadUrl),
     })),
   }))
 }
