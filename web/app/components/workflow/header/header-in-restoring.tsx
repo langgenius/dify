@@ -4,12 +4,13 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
+import { toast } from '@/app/components/base/ui/toast'
 import useTheme from '@/hooks/use-theme'
-import { useInvalidAllLastRun } from '@/service/use-workflow'
+import { useInvalidAllLastRun, useRestoreWorkflow } from '@/service/use-workflow'
+import { getFlowPrefix } from '@/service/utils'
 import { cn } from '@/utils/classnames'
-import Toast from '../../base/toast'
 import {
-  useNodesSyncDraft,
+  useWorkflowRefreshDraft,
   useWorkflowRun,
 } from '../hooks'
 import { useHooksStore } from '../hooks-store'
@@ -42,7 +43,9 @@ const HeaderInRestoring = ({
   const {
     handleLoadBackupDraft,
   } = useWorkflowRun()
-  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
+  const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
+  const { mutateAsync: restoreWorkflow } = useRestoreWorkflow()
+  const canRestore = !!currentVersion?.id && !!configsMap?.flowId && currentVersion.version !== WorkflowVersion.Draft
 
   const handleCancelRestore = useCallback(() => {
     handleLoadBackupDraft()
@@ -50,30 +53,29 @@ const HeaderInRestoring = ({
     setShowWorkflowVersionHistoryPanel(false)
   }, [workflowStore, handleLoadBackupDraft, setShowWorkflowVersionHistoryPanel])
 
-  const handleRestore = useCallback(() => {
+  const handleRestore = useCallback(async () => {
+    if (!canRestore)
+      return
+
     setShowWorkflowVersionHistoryPanel(false)
-    workflowStore.setState({ isRestoring: false })
-    workflowStore.setState({ backupDraft: undefined })
-    handleSyncWorkflowDraft(true, false, {
-      onSuccess: () => {
-        Toast.notify({
-          type: 'success',
-          message: t('versionHistory.action.restoreSuccess', { ns: 'workflow' }),
-        })
-      },
-      onError: () => {
-        Toast.notify({
-          type: 'error',
-          message: t('versionHistory.action.restoreFailure', { ns: 'workflow' }),
-        })
-      },
-      onSettled: () => {
-        onRestoreSettled?.()
-      },
-    })
-    deleteAllInspectVars()
-    invalidAllLastRun()
-  }, [setShowWorkflowVersionHistoryPanel, workflowStore, handleSyncWorkflowDraft, deleteAllInspectVars, invalidAllLastRun, t, onRestoreSettled])
+    const restoreUrl = `/${getFlowPrefix(configsMap.flowType)}/${configsMap.flowId}/workflows/${currentVersion.id}/restore`
+
+    try {
+      await restoreWorkflow(restoreUrl)
+      workflowStore.setState({ isRestoring: false })
+      workflowStore.setState({ backupDraft: undefined })
+      handleRefreshWorkflowDraft()
+      toast.success(t('versionHistory.action.restoreSuccess', { ns: 'workflow' }))
+      deleteAllInspectVars()
+      invalidAllLastRun()
+    }
+    catch {
+      toast.error(t('versionHistory.action.restoreFailure', { ns: 'workflow' }))
+    }
+    finally {
+      onRestoreSettled?.()
+    }
+  }, [canRestore, currentVersion?.id, configsMap, setShowWorkflowVersionHistoryPanel, workflowStore, restoreWorkflow, handleRefreshWorkflowDraft, deleteAllInspectVars, invalidAllLastRun, t, onRestoreSettled])
 
   return (
     <>
@@ -83,7 +85,7 @@ const HeaderInRestoring = ({
       <div className=" flex items-center justify-end gap-x-2">
         <Button
           onClick={handleRestore}
-          disabled={!currentVersion || currentVersion.version === WorkflowVersion.Draft}
+          disabled={!canRestore}
           variant="primary"
           className={cn(
             'rounded-lg border border-transparent',

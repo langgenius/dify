@@ -8,6 +8,19 @@ from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity,
 from core.app.entities.queue_entities import QueueStopEvent
 from core.moderation.base import ModerationError
 
+MINIMAL_GRAPH = {
+    "nodes": [
+        {
+            "id": "start",
+            "data": {
+                "type": "start",
+                "title": "Start",
+            },
+        }
+    ],
+    "edges": [],
+}
+
 
 @pytest.fixture
 def build_runner():
@@ -30,7 +43,7 @@ def build_runner():
     mock_workflow.tenant_id = str(uuid4())
     mock_workflow.app_id = app_id
     mock_workflow.type = "chat"
-    mock_workflow.graph_dict = {}
+    mock_workflow.graph_dict = MINIMAL_GRAPH
     mock_workflow.environment_variables = []
 
     mock_app_config = MagicMock()

@@ -56,7 +56,7 @@
     "no-console": {
       "count": 16
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 4
     },
     "ts/no-explicit-any": {
@@ -74,7 +74,7 @@
     }
   },
   "app/(commonLayout)/app/(appDetailLayout)/[appId]/layout-main.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 2
     },
     "ts/no-explicit-any": {
@@ -157,6 +157,11 @@
       "count": 1
     }
   },
+  "app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/type.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    }
+  },
   "app/(commonLayout)/datasets/(datasetDetailLayout)/[datasetId]/layout-main.tsx": {
     "ts/no-explicit-any": {
       "count": 1
@@ -168,7 +173,7 @@
     }
   },
   "app/(humanInputLayout)/form/[token]/form.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -181,7 +186,7 @@
     }
   },
   "app/(shareLayout)/components/splash.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -189,9 +194,6 @@
     }
   },
   "app/(shareLayout)/webapp-reset-password/check-code/page.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 4
     }
@@ -205,56 +207,31 @@
     }
   },
   "app/(shareLayout)/webapp-reset-password/page.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 4
     }
   },
   "app/(shareLayout)/webapp-reset-password/set-password/page.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 6
     }
   },
   "app/(shareLayout)/webapp-signin/check-code/page.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 4
     }
   },
-  "app/(shareLayout)/webapp-signin/components/external-member-sso-auth.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "app/(shareLayout)/webapp-signin/components/mail-and-code-auth.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
   },
   "app/(shareLayout)/webapp-signin/components/mail-and-password-auth.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
     },
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "app/(shareLayout)/webapp-signin/components/sso-auth.tsx": {
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "app/(shareLayout)/webapp-signin/layout.tsx": {
@@ -278,6 +255,9 @@
     }
   },
   "app/account/(commonLayout)/account-page/email-change-modal.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
     "no-restricted-imports": {
       "count": 2
     },
@@ -312,7 +292,7 @@
     }
   },
   "app/account/(commonLayout)/delete-account/components/verify-email.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -343,7 +323,7 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 4
     }
   },
@@ -386,6 +366,9 @@
     }
   },
   "app/components/app/annotation/add-annotation-modal/edit-item/index.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
     "react-refresh/only-export-components": {
       "count": 1
     },
@@ -422,13 +405,16 @@
     }
   },
   "app/components/app/annotation/batch-add-annotation-modal/index.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
     "no-restricted-imports": {
       "count": 2
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react-refresh/only-export-components": {
       "count": 1
     },
-    "react-refresh/only-export-components": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -444,10 +430,13 @@
     }
   },
   "app/components/app/annotation/edit-annotation-modal/edit-item/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "erasable-syntax-only/enums": {
       "count": 1
     },
     "react-refresh/only-export-components": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -481,6 +470,9 @@
     "no-restricted-imports": {
       "count": 1
     },
+    "react/component-hook-factories": {
+      "count": 1
+    },
     "react/no-nested-component-definitions": {
       "count": 1
     },
@@ -500,7 +492,7 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "ts/no-explicit-any": {
@@ -517,16 +509,24 @@
       "count": 1
     }
   },
+  "app/components/app/annotation/type.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 2
+    }
+  },
   "app/components/app/annotation/view-annotation-modal/hit-history-no-data.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
   },
   "app/components/app/annotation/view-annotation-modal/index.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 5
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -675,6 +675,9 @@
   "app/components/app/configuration/config-var/index.tsx": {
     "no-restricted-imports": {
       "count": 3
+    },
+    "react-refresh/only-export-components": {
+      "count": 1
     }
   },
   "app/components/app/configuration/config-var/input-type-icon.tsx": {
@@ -741,7 +744,7 @@
     }
   },
   "app/components/app/configuration/config/agent/agent-setting/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "ts/no-explicit-any": {
@@ -778,7 +781,10 @@
     }
   },
   "app/components/app/configuration/config/agent/agent-tools/setting-built-in-tool.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -811,7 +817,7 @@
     "no-restricted-imports": {
       "count": 3
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 4
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -843,12 +849,17 @@
     }
   },
   "app/components/app/configuration/config/automatic/prompt-res.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
   "app/components/app/configuration/config/automatic/result.tsx": {
     "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "app/components/app/configuration/config/automatic/types.ts": {
+    "erasable-syntax-only/enums": {
       "count": 1
     }
   },
@@ -867,7 +878,7 @@
     "no-restricted-imports": {
       "count": 3
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 4
     },
     "ts/no-explicit-any": {
@@ -948,15 +959,10 @@
   },
   "app/components/app/configuration/dataset-config/params-config/index.tsx": {
     "no-restricted-imports": {
-      "count": 2
-    },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
-    }
-  },
-  "app/components/app/configuration/dataset-config/params-config/weighted-score.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
+    },
+    "react/set-state-in-effect": {
+      "count": 1
     }
   },
   "app/components/app/configuration/dataset-config/select-dataset/index.spec.tsx": {
@@ -973,7 +979,7 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 2
     },
     "ts/no-explicit-any": {
@@ -1048,7 +1054,7 @@
     "no-restricted-imports": {
       "count": 2
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 2
     },
     "ts/no-explicit-any": {
@@ -1064,7 +1070,7 @@
     "no-restricted-imports": {
       "count": 3
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "style/multiline-ternary": {
@@ -1129,6 +1135,9 @@
     }
   },
   "app/components/app/create-app-dialog/app-list/sidebar.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
     "react-refresh/only-export-components": {
       "count": 1
     },
@@ -1140,7 +1149,7 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "ts/no-explicit-any": {
@@ -1156,14 +1165,17 @@
     }
   },
   "app/components/app/create-from-dsl-modal/index.tsx": {
-    "no-restricted-imports": {
-      "count": 2
+    "erasable-syntax-only/enums": {
+      "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "no-restricted-imports": {
       "count": 2
     },
     "react-refresh/only-export-components": {
       "count": 1
+    },
+    "react/set-state-in-effect": {
+      "count": 2
     }
   },
   "app/components/app/create-from-dsl-modal/uploader.tsx": {
@@ -1190,7 +1202,7 @@
     }
   },
   "app/components/app/log/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -1201,7 +1213,7 @@
     "no-restricted-imports": {
       "count": 2
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 6
     },
     "style/multiline-ternary": {
@@ -1241,7 +1253,7 @@
     "no-restricted-imports": {
       "count": 2
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 3
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -1271,7 +1283,7 @@
     "no-restricted-imports": {
       "count": 2
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -1285,7 +1297,7 @@
     "no-restricted-imports": {
       "count": 4
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 3
     },
     "regexp/no-unused-capturing-group": {
@@ -1304,7 +1316,7 @@
     "no-restricted-imports": {
       "count": 3
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -1312,11 +1324,11 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 3
-    },
     "react-refresh/only-export-components": {
       "count": 1
+    },
+    "react/set-state-in-effect": {
+      "count": 3
     },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 6
@@ -1353,9 +1365,6 @@
     }
   },
   "app/components/app/type-selector/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 3
     }
@@ -1384,7 +1393,7 @@
     }
   },
   "app/components/app/workflow-log/list.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 2
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -1403,10 +1412,13 @@
     "no-restricted-imports": {
       "count": 5
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/component-hook-factories": {
       "count": 1
     },
     "react/no-nested-component-definitions": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
       "count": 1
     },
     "ts/no-explicit-any": {
@@ -1423,12 +1435,29 @@
       "count": 1
     }
   },
+  "app/components/apps/list.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    },
+    "react/unsupported-syntax": {
+      "count": 2
+    }
+  },
   "app/components/apps/new-app-card.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
   },
   "app/components/base/action-button/index.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
     "react-refresh/only-export-components": {
       "count": 1
     }
@@ -1453,7 +1482,7 @@
     }
   },
   "app/components/base/agent-log-modal/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -1465,11 +1494,6 @@
   "app/components/base/agent-log-modal/tool-call.tsx": {
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "app/components/base/amplitude/AmplitudeProvider.tsx": {
-    "react-refresh/only-export-components": {
-      "count": 1
     }
   },
   "app/components/base/amplitude/utils.ts": {
@@ -1525,7 +1549,18 @@
     }
   },
   "app/components/base/auto-height-textarea/index.tsx": {
+    "react-hooks/rules-of-hooks": {
+      "count": 1
+    },
+    "react/rules-of-hooks": {
+      "count": 1
+    },
     "tailwindcss/no-unnecessary-whitespace": {
+      "count": 1
+    }
+  },
+  "app/components/base/badge/index.tsx": {
+    "erasable-syntax-only/enums": {
       "count": 1
     }
   },
@@ -1538,13 +1573,16 @@
     }
   },
   "app/components/base/block-input/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 1
-    },
     "react-refresh/only-export-components": {
       "count": 1
     },
+    "react/component-hook-factories": {
+      "count": 1
+    },
     "react/no-nested-component-definitions": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -1569,8 +1607,14 @@
     }
   },
   "app/components/base/carousel/index.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    },
     "react-refresh/only-export-components": {
       "count": 1
+    },
+    "react/set-state-in-effect": {
+      "count": 3
     }
   },
   "app/components/base/chat/chat-with-history/chat-wrapper.tsx": {
@@ -1614,7 +1658,7 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 4
     },
     "ts/no-explicit-any": {
@@ -1622,7 +1666,7 @@
     }
   },
   "app/components/base/chat/chat-with-history/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -1666,7 +1710,7 @@
     }
   },
   "app/components/base/chat/chat-with-history/sidebar/operation.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -1692,7 +1736,7 @@
     }
   },
   "app/components/base/chat/chat/answer/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 3
     },
     "ts/no-explicit-any": {
@@ -1710,7 +1754,7 @@
     }
   },
   "app/components/base/chat/chat/answer/workflow-process.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -1731,7 +1775,10 @@
     }
   },
   "app/components/base/chat/chat/citation/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -1739,7 +1786,7 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 2
     },
     "ts/no-explicit-any": {
@@ -1747,7 +1794,7 @@
     }
   },
   "app/components/base/chat/chat/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "ts/no-explicit-any": {
@@ -1790,6 +1837,9 @@
     },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 3
+    },
+    "react/set-state-in-effect": {
+      "count": 6
     }
   },
   "app/components/base/chat/embedded-chatbot/index.tsx": {
@@ -1835,15 +1885,15 @@
     }
   },
   "app/components/base/confirm/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 2
     },
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/base/content-dialog/index.stories.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -1883,7 +1933,7 @@
     }
   },
   "app/components/base/date-and-time-picker/date-picker/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 4
     }
   },
@@ -1893,13 +1943,18 @@
     }
   },
   "app/components/base/date-and-time-picker/time-picker/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 2
     }
   },
   "app/components/base/date-and-time-picker/time-picker/options.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 3
+    }
+  },
+  "app/components/base/date-and-time-picker/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 2
     }
   },
   "app/components/base/date-and-time-picker/year-and-month-picker/header.tsx": {
@@ -1913,12 +1968,17 @@
     }
   },
   "app/components/base/dialog/index.stories.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
   "app/components/base/dialog/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
+      "count": 1
+    }
+  },
+  "app/components/base/drawer-plus/index.stories.tsx": {
+    "react/component-hook-factories": {
       "count": 1
     }
   },
@@ -1928,7 +1988,7 @@
     }
   },
   "app/components/base/emoji-picker/Inner.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -1945,6 +2005,9 @@
   "app/components/base/error-boundary/index.tsx": {
     "react-refresh/only-export-components": {
       "count": 3
+    },
+    "react/component-hook-factories": {
+      "count": 1
     },
     "ts/no-explicit-any": {
       "count": 2
@@ -1975,8 +2038,8 @@
       "count": 3
     }
   },
-  "app/components/base/features/new-feature-panel/annotation-reply/score-slider/base-slider/index.tsx": {
-    "unicorn/prefer-number-properties": {
+  "app/components/base/features/new-feature-panel/annotation-reply/type.ts": {
+    "erasable-syntax-only/enums": {
       "count": 1
     }
   },
@@ -1989,7 +2052,7 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -2066,6 +2129,9 @@
     }
   },
   "app/components/base/features/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 2
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -2132,6 +2198,11 @@
       "count": 4
     }
   },
+  "app/components/base/file-uploader/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    }
+  },
   "app/components/base/file-uploader/utils.ts": {
     "ts/no-explicit-any": {
       "count": 3
@@ -2187,11 +2258,17 @@
     }
   },
   "app/components/base/form/form-scenarios/base/field.tsx": {
+    "react/component-hook-factories": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
   },
   "app/components/base/form/form-scenarios/base/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 3
     }
@@ -2207,21 +2284,33 @@
     }
   },
   "app/components/base/form/form-scenarios/input-field/field.tsx": {
+    "react/component-hook-factories": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
   },
   "app/components/base/form/form-scenarios/input-field/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 2
     }
   },
   "app/components/base/form/form-scenarios/node-panel/field.tsx": {
+    "react/component-hook-factories": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
   },
   "app/components/base/form/form-scenarios/node-panel/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -2240,6 +2329,9 @@
     }
   },
   "app/components/base/form/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 2
+    },
     "ts/no-explicit-any": {
       "count": 16
     }
@@ -2250,13 +2342,21 @@
     }
   },
   "app/components/base/ga/index.tsx": {
-    "react-refresh/only-export-components": {
+    "erasable-syntax-only/enums": {
       "count": 1
+    },
+    "react-refresh/only-export-components": {
+      "count": 4
     }
   },
   "app/components/base/icons/utils.ts": {
     "ts/no-explicit-any": {
       "count": 3
+    }
+  },
+  "app/components/base/image-uploader/__tests__/image-preview.spec.tsx": {
+    "erasable-syntax-only/parameter-properties": {
+      "count": 1
     }
   },
   "app/components/base/image-uploader/hooks.ts": {
@@ -2297,6 +2397,11 @@
   },
   "app/components/base/inline-delete-confirm/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
+      "count": 1
+    }
+  },
+  "app/components/base/input-with-copy/index.tsx": {
+    "react/unsupported-syntax": {
       "count": 1
     }
   },
@@ -2342,11 +2447,16 @@
     }
   },
   "app/components/base/markdown-blocks/code-block.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 7
     },
     "ts/no-explicit-any": {
       "count": 9
+    }
+  },
+  "app/components/base/markdown-blocks/form.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 3
     }
   },
   "app/components/base/markdown-blocks/link.tsx": {
@@ -2360,17 +2470,17 @@
     }
   },
   "app/components/base/markdown-blocks/plugin-img.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 2
     }
   },
   "app/components/base/markdown-blocks/plugin-paragraph.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 2
     }
   },
   "app/components/base/markdown-blocks/think-block.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "ts/no-explicit-any": {
@@ -2393,7 +2503,7 @@
     }
   },
   "app/components/base/mermaid/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 7
     },
     "regexp/no-super-linear-backtracking": {
@@ -2420,7 +2530,7 @@
     }
   },
   "app/components/base/message-log-modal/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "ts/no-explicit-any": {
@@ -2433,7 +2543,7 @@
     }
   },
   "app/components/base/modal/index.stories.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -2441,7 +2551,7 @@
     "no-console": {
       "count": 4
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -2454,6 +2564,9 @@
     }
   },
   "app/components/base/node-status/index.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
     "react-refresh/only-export-components": {
       "count": 1
     }
@@ -2469,12 +2582,12 @@
     }
   },
   "app/components/base/notion-page-selector/base.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 2
     }
   },
   "app/components/base/notion-page-selector/page-selector/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -2519,6 +2632,11 @@
   },
   "app/components/base/prompt-editor/plugins/component-picker-block/index.tsx": {
     "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/prompt-editor/plugins/component-picker-block/menu.tsx": {
+    "erasable-syntax-only/parameter-properties": {
       "count": 1
     }
   },
@@ -2572,6 +2690,11 @@
       "count": 2
     }
   },
+  "app/components/base/prompt-editor/plugins/hitl-input-block/component-ui.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
   "app/components/base/prompt-editor/plugins/hitl-input-block/hitl-input-block-replacement-block.tsx": {
     "ts/no-explicit-any": {
       "count": 1
@@ -2623,11 +2746,17 @@
     }
   },
   "app/components/base/prompt-editor/plugins/shortcuts-popup-plugin/index.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 2
     }
   },
   "app/components/base/prompt-editor/plugins/update-block.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 2
+    },
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -2639,7 +2768,7 @@
   },
   "app/components/base/prompt-editor/plugins/workflow-variable-block/index.tsx": {
     "react-refresh/only-export-components": {
-      "count": 4
+      "count": 3
     }
   },
   "app/components/base/prompt-editor/plugins/workflow-variable-block/node.tsx": {
@@ -2658,7 +2787,7 @@
     }
   },
   "app/components/base/prompt-log-modal/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -2719,7 +2848,7 @@
     }
   },
   "app/components/base/select/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 2
     },
     "style/multiline-ternary": {
@@ -2737,19 +2866,6 @@
   "app/components/base/select/pure.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 3
-    }
-  },
-  "app/components/base/slider/index.stories.tsx": {
-    "no-console": {
-      "count": 2
-    },
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/base/slider/index.tsx": {
-    "tailwindcss/no-unnecessary-whitespace": {
-      "count": 1
     }
   },
   "app/components/base/sort/index.tsx": {
@@ -2771,7 +2887,7 @@
     }
   },
   "app/components/base/tab-slider/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 2
     }
   },
@@ -2785,6 +2901,14 @@
   },
   "app/components/base/tag-input/index.tsx": {
     "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "app/components/base/tag-management/__tests__/selector.spec.tsx": {
+    "react-hooks/rules-of-hooks": {
+      "count": 1
+    },
+    "react/rules-of-hooks": {
       "count": 1
     }
   },
@@ -2840,7 +2964,7 @@
     }
   },
   "app/components/base/video-gallery/VideoPlayer.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -2860,9 +2984,15 @@
   "app/components/base/with-input-validation/index.stories.tsx": {
     "no-console": {
       "count": 1
+    },
+    "react/component-hook-factories": {
+      "count": 1
     }
   },
   "app/components/base/with-input-validation/index.tsx": {
+    "react/component-hook-factories": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -2904,6 +3034,9 @@
     }
   },
   "app/components/billing/pricing/plan-switcher/plan-range-switcher.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
     "react-refresh/only-export-components": {
       "count": 1
     }
@@ -2943,12 +3076,22 @@
       "count": 1
     }
   },
+  "app/components/billing/pricing/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    }
+  },
   "app/components/billing/priority-label/index.tsx": {
     "no-restricted-imports": {
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
+    }
+  },
+  "app/components/billing/type.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 4
     }
   },
   "app/components/billing/upgrade-btn/index.tsx": {
@@ -2995,11 +3138,6 @@
       "count": 2
     }
   },
-  "app/components/datasets/common/document-status-with-action/auto-disabled-document.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "app/components/datasets/common/image-list/more.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
@@ -3013,10 +3151,12 @@
       "count": 3
     }
   },
-  "app/components/datasets/common/image-uploader/hooks/use-upload.ts": {
-    "no-restricted-imports": {
+  "app/components/datasets/common/image-uploader/__tests__/store.spec.tsx": {
+    "react/error-boundaries": {
       "count": 1
-    },
+    }
+  },
+  "app/components/datasets/common/image-uploader/hooks/use-upload.ts": {
     "ts/no-explicit-any": {
       "count": 3
     }
@@ -3046,7 +3186,7 @@
   },
   "app/components/datasets/common/retrieval-param-config/index.tsx": {
     "no-restricted-imports": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/datasets/create-from-pipeline/create-options/create-from-dsl-modal/dsl-confirm-modal.tsx": {
@@ -3063,6 +3203,9 @@
     }
   },
   "app/components/datasets/create-from-pipeline/create-options/create-from-dsl-modal/hooks/use-dsl-import.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
     "no-restricted-imports": {
       "count": 1
     }
@@ -3104,9 +3247,6 @@
     }
   },
   "app/components/datasets/create-from-pipeline/list/create-card.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
     }
@@ -3139,17 +3279,19 @@
       "count": 4
     }
   },
-  "app/components/datasets/create-from-pipeline/list/template-card/edit-pipeline-info.tsx": {
-    "no-restricted-imports": {
+  "app/components/datasets/create-from-pipeline/list/template-card/details/types.ts": {
+    "erasable-syntax-only/enums": {
       "count": 1
-    },
+    }
+  },
+  "app/components/datasets/create-from-pipeline/list/template-card/edit-pipeline-info.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 3
     }
   },
   "app/components/datasets/create-from-pipeline/list/template-card/index.tsx": {
     "no-restricted-imports": {
-      "count": 3
+      "count": 2
     }
   },
   "app/components/datasets/create-from-pipeline/list/template-card/operations.tsx": {
@@ -3176,7 +3318,7 @@
     }
   },
   "app/components/datasets/create/file-preview/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -3186,7 +3328,7 @@
     }
   },
   "app/components/datasets/create/notion-page-preview/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -3229,12 +3371,18 @@
     }
   },
   "app/components/datasets/create/step-two/hooks/use-indexing-config.ts": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
       "count": 3
     }
   },
   "app/components/datasets/create/step-two/index.tsx": {
     "no-restricted-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -3250,6 +3398,9 @@
     }
   },
   "app/components/datasets/create/step-two/preview-item/index.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
     "react-refresh/only-export-components": {
       "count": 1
     }
@@ -3295,13 +3446,16 @@
     }
   },
   "app/components/datasets/create/website/firecrawl/index.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
     "no-console": {
       "count": 1
     },
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "ts/no-explicit-any": {
@@ -3319,13 +3473,16 @@
     }
   },
   "app/components/datasets/create/website/jina-reader/index.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
     "no-console": {
       "count": 1
     },
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "ts/no-explicit-any": {
@@ -3351,13 +3508,16 @@
     }
   },
   "app/components/datasets/create/website/watercrawl/index.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
     "no-console": {
       "count": 1
     },
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "ts/no-explicit-any": {
@@ -3377,11 +3537,6 @@
       "count": 1
     }
   },
-  "app/components/datasets/documents/components/document-list/hooks/use-document-actions.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "app/components/datasets/documents/components/documents-header.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -3394,7 +3549,7 @@
   },
   "app/components/datasets/documents/components/rename-modal.tsx": {
     "no-restricted-imports": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/datasets/documents/create-from-pipeline/actions/index.tsx": {
@@ -3404,6 +3559,11 @@
   },
   "app/components/datasets/documents/create-from-pipeline/data-source-options/option-card.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
+      "count": 1
+    }
+  },
+  "app/components/datasets/documents/create-from-pipeline/data-source/base/credential-selector/__tests__/index.spec.tsx": {
+    "erasable-syntax-only/enums": {
       "count": 1
     }
   },
@@ -3431,15 +3591,12 @@
     }
   },
   "app/components/datasets/documents/create-from-pipeline/data-source/online-documents/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
   },
   "app/components/datasets/documents/create-from-pipeline/data-source/online-documents/page-selector/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -3510,10 +3667,7 @@
     }
   },
   "app/components/datasets/documents/create-from-pipeline/data-source/online-drive/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 5
     }
   },
@@ -3561,9 +3715,6 @@
     }
   },
   "app/components/datasets/documents/create-from-pipeline/data-source/website-crawl/base/options/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     },
@@ -3590,9 +3741,6 @@
     }
   },
   "app/components/datasets/documents/create-from-pipeline/preview/online-document-preview.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 4
     }
@@ -3606,9 +3754,6 @@
     }
   },
   "app/components/datasets/documents/create-from-pipeline/process-documents/form.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 3
     }
@@ -3636,6 +3781,11 @@
       "count": 3
     }
   },
+  "app/components/datasets/documents/create-from-pipeline/types.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    }
+  },
   "app/components/datasets/documents/detail/batch-modal/csv-uploader.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -3645,7 +3795,7 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -3678,7 +3828,7 @@
     }
   },
   "app/components/datasets/documents/detail/completed/common/chunk-content.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -3759,6 +3909,9 @@
   "app/components/datasets/documents/detail/completed/index.tsx": {
     "react-refresh/only-export-components": {
       "count": 1
+    },
+    "react/use-memo": {
+      "count": 1
     }
   },
   "app/components/datasets/documents/detail/completed/segment-card/chunk-content.tsx": {
@@ -3827,9 +3980,18 @@
   "app/components/datasets/documents/detail/metadata/hooks/use-metadata-state.ts": {
     "no-restricted-imports": {
       "count": 1
+    },
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 4
+    },
+    "react/set-state-in-effect": {
+      "count": 4
     }
   },
   "app/components/datasets/documents/detail/segment-add/index.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
     "no-restricted-imports": {
       "count": 1
     },
@@ -3872,7 +4034,7 @@
     "no-restricted-imports": {
       "count": 4
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -3890,7 +4052,7 @@
     }
   },
   "app/components/datasets/external-knowledge-base/create/ExternalApiSelect.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -3898,7 +4060,7 @@
     }
   },
   "app/components/datasets/external-knowledge-base/create/ExternalApiSelection.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -4011,6 +4173,11 @@
       "count": 1
     }
   },
+  "app/components/datasets/hit-testing/index.tsx": {
+    "react/unsupported-syntax": {
+      "count": 1
+    }
+  },
   "app/components/datasets/hit-testing/modify-external-retrieval-modal.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
@@ -4050,10 +4217,7 @@
     }
   },
   "app/components/datasets/list/dataset-card/hooks/use-dataset-card-state.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -4109,7 +4273,7 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -4151,6 +4315,9 @@
     }
   },
   "app/components/datasets/metadata/metadata-dataset/select-metadata-modal.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
     "no-restricted-imports": {
       "count": 1
     }
@@ -4184,6 +4351,11 @@
       "count": 1
     }
   },
+  "app/components/datasets/metadata/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 2
+    }
+  },
   "app/components/datasets/preview/header.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
@@ -4192,6 +4364,11 @@
   "app/components/datasets/rename-modal/index.tsx": {
     "no-restricted-imports": {
       "count": 2
+    }
+  },
+  "app/components/datasets/settings/chunk-structure/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
     }
   },
   "app/components/datasets/settings/form/components/basic-info-section.tsx": {
@@ -4207,11 +4384,6 @@
   "app/components/datasets/settings/form/components/indexing-section.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 7
-    }
-  },
-  "app/components/datasets/settings/form/hooks/use-form-state.ts": {
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "app/components/datasets/settings/index-method/index.tsx": {
@@ -4292,11 +4464,23 @@
     }
   },
   "app/components/explore/banner/banner-item.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
+      "count": 3
+    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 4
     }
   },
   "app/components/explore/banner/indicator-button.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
+      "count": 2
+    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
@@ -4327,17 +4511,12 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
   "app/components/explore/sidebar/app-nav-item/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    }
-  },
-  "app/components/explore/sidebar/index.tsx": {
-    "no-restricted-imports": {
       "count": 2
     }
   },
@@ -4373,6 +4552,9 @@
     }
   },
   "app/components/explore/try-app/tab.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
     "react-refresh/only-export-components": {
       "count": 1
     }
@@ -4405,11 +4587,26 @@
       "count": 2
     }
   },
+  "app/components/goto-anything/command-selector.tsx": {
+    "react/unsupported-syntax": {
+      "count": 2
+    }
+  },
+  "app/components/goto-anything/components/footer.tsx": {
+    "react/unsupported-syntax": {
+      "count": 1
+    }
+  },
   "app/components/goto-anything/context.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 4
-    },
     "react-refresh/only-export-components": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
+      "count": 4
+    }
+  },
+  "app/components/goto-anything/hooks/use-goto-anything-results.ts": {
+    "@tanstack/query/exhaustive-deps": {
       "count": 1
     }
   },
@@ -4424,7 +4621,15 @@
     }
   },
   "app/components/header/account-dropdown/compliance.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
     "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "app/components/header/account-dropdown/menu-item-content.tsx": {
+    "react-refresh/only-export-components": {
       "count": 1
     }
   },
@@ -4467,9 +4672,6 @@
   "app/components/header/account-setting/data-source-page-new/configure.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
     }
   },
   "app/components/header/account-setting/data-source-page-new/hooks/use-marketplace-all-plugins.ts": {
@@ -4496,9 +4698,6 @@
   "app/components/header/account-setting/data-source-page-new/operator.tsx": {
     "no-restricted-imports": {
       "count": 2
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 5
     }
   },
   "app/components/header/account-setting/data-source-page-new/types.ts": {
@@ -4506,65 +4705,10 @@
       "count": 2
     }
   },
-  "app/components/header/account-setting/data-source-page/data-source-notion/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "app/components/header/account-setting/data-source-page/data-source-notion/operate/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 4
-    }
-  },
-  "app/components/header/account-setting/data-source-page/data-source-website/config-firecrawl-modal.tsx": {
-    "no-restricted-imports": {
-      "count": 2
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/header/account-setting/data-source-page/data-source-website/config-jina-reader-modal.tsx": {
-    "no-restricted-imports": {
-      "count": 2
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/header/account-setting/data-source-page/data-source-website/config-watercrawl-modal.tsx": {
-    "no-restricted-imports": {
-      "count": 2
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/header/account-setting/data-source-page/data-source-website/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/header/account-setting/data-source-page/panel/config-item.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    },
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/header/account-setting/data-source-page/panel/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
-    }
-  },
   "app/components/header/account-setting/key-validator/declarations.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -4580,26 +4724,8 @@
     }
   },
   "app/components/header/account-setting/members-page/invite-modal/index.tsx": {
-    "no-restricted-imports": {
-      "count": 2
-    },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 3
-    }
-  },
-  "app/components/header/account-setting/members-page/invite-modal/role-selector.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "app/components/header/account-setting/members-page/invited-modal/index.tsx": {
-    "no-restricted-imports": {
-      "count": 2
-    }
-  },
-  "app/components/header/account-setting/members-page/invited-modal/invitation-link.tsx": {
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "app/components/header/account-setting/members-page/operation/index.tsx": {
@@ -4613,6 +4739,9 @@
     }
   },
   "app/components/header/account-setting/members-page/transfer-ownership-modal/index.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
     "no-restricted-imports": {
       "count": 2
     },
@@ -4629,6 +4758,9 @@
     }
   },
   "app/components/header/account-setting/model-provider-page/declarations.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 11
+    },
     "ts/no-explicit-any": {
       "count": 4
     }
@@ -4649,9 +4781,6 @@
   "app/components/header/account-setting/model-provider-page/model-auth/add-custom-model.tsx": {
     "no-restricted-imports": {
       "count": 2
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
     }
   },
   "app/components/header/account-setting/model-provider-page/model-auth/authorized/authorized-item.tsx": {
@@ -4662,9 +4791,6 @@
   "app/components/header/account-setting/model-provider-page/model-auth/authorized/index.tsx": {
     "no-restricted-imports": {
       "count": 3
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
     },
     "ts/no-explicit-any": {
       "count": 2
@@ -4683,9 +4809,6 @@
   "app/components/header/account-setting/model-provider-page/model-auth/credential-selector.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 4
     }
   },
   "app/components/header/account-setting/model-provider-page/model-auth/hooks/use-auth.ts": {
@@ -4765,7 +4888,7 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 2
     }
   },
@@ -4796,7 +4919,7 @@
     "no-restricted-imports": {
       "count": 3
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "ts/no-explicit-any": {
@@ -4824,7 +4947,7 @@
     }
   },
   "app/components/header/app-nav/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 2
     },
     "ts/no-explicit-any": {
@@ -4911,14 +5034,14 @@
     }
   },
   "app/components/plugins/install-plugin/hooks.ts": {
-    "no-restricted-imports": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 4
     }
   },
   "app/components/plugins/install-plugin/install-bundle/index.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
     "no-restricted-imports": {
       "count": 1
     },
@@ -4930,7 +5053,12 @@
     }
   },
   "app/components/plugins/install-plugin/install-bundle/item/github-item.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "app/components/plugins/install-plugin/install-bundle/steps/hooks/use-install-multi-state.ts": {
+    "react-hooks/exhaustive-deps": {
       "count": 1
     }
   },
@@ -4941,9 +5069,6 @@
   },
   "app/components/plugins/install-plugin/install-from-github/index.tsx": {
     "no-restricted-imports": {
-      "count": 3
-    },
-    "tailwindcss/enforce-consistent-class-order": {
       "count": 2
     },
     "ts/no-explicit-any": {
@@ -4976,11 +5101,6 @@
       "count": 1
     }
   },
-  "app/components/plugins/install-plugin/install-from-local-package/steps/install.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    }
-  },
   "app/components/plugins/install-plugin/install-from-local-package/steps/uploading.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
@@ -4997,11 +5117,6 @@
       "count": 1
     }
   },
-  "app/components/plugins/install-plugin/install-from-marketplace/steps/install.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    }
-  },
   "app/components/plugins/marketplace/description/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 9
@@ -5009,6 +5124,11 @@
   },
   "app/components/plugins/marketplace/empty/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
+      "count": 1
+    }
+  },
+  "app/components/plugins/marketplace/hooks.ts": {
+    "@tanstack/query/exhaustive-deps": {
       "count": 1
     }
   },
@@ -5141,6 +5261,9 @@
     }
   },
   "app/components/plugins/plugin-auth/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 2
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -5182,9 +5305,6 @@
   "app/components/plugins/plugin-detail-panel/app-selector/app-picker.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
     }
   },
   "app/components/plugins/plugin-detail-panel/app-selector/app-trigger.tsx": {
@@ -5194,9 +5314,6 @@
   },
   "app/components/plugins/plugin-detail-panel/app-selector/index.tsx": {
     "no-restricted-imports": {
-      "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
   },
@@ -5216,17 +5333,9 @@
       "count": 1
     }
   },
-  "app/components/plugins/plugin-detail-panel/detail-header/hooks/use-plugin-operations.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "app/components/plugins/plugin-detail-panel/endpoint-card.tsx": {
     "no-restricted-imports": {
-      "count": 3
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 5
+      "count": 2
     },
     "ts/no-explicit-any": {
       "count": 2
@@ -5234,22 +5343,13 @@
   },
   "app/components/plugins/plugin-detail-panel/endpoint-list.tsx": {
     "no-restricted-imports": {
-      "count": 2
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 4
+      "count": 1
     },
     "ts/no-explicit-any": {
       "count": 2
     }
   },
   "app/components/plugins/plugin-detail-panel/endpoint-modal.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
-    },
     "ts/no-explicit-any": {
       "count": 7
     }
@@ -5263,9 +5363,6 @@
     }
   },
   "app/components/plugins/plugin-detail-panel/model-selector/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 3
     }
@@ -5276,14 +5373,11 @@
     }
   },
   "app/components/plugins/plugin-detail-panel/model-selector/tts-params-panel.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
     },
     "ts/no-explicit-any": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/plugins/plugin-detail-panel/multiple-tool-selector/index.tsx": {
@@ -5321,44 +5415,49 @@
     }
   },
   "app/components/plugins/plugin-detail-panel/subscription-list/create/hooks/use-common-modal-state.ts": {
-    "no-restricted-imports": {
+    "erasable-syntax-only/enums": {
       "count": 1
     }
   },
   "app/components/plugins/plugin-detail-panel/subscription-list/create/hooks/use-oauth-client-state.ts": {
-    "no-restricted-imports": {
-      "count": 1
+    "erasable-syntax-only/enums": {
+      "count": 2
     }
   },
   "app/components/plugins/plugin-detail-panel/subscription-list/create/index.tsx": {
     "no-restricted-imports": {
-      "count": 4
+      "count": 3
     }
   },
   "app/components/plugins/plugin-detail-panel/subscription-list/create/oauth-client.tsx": {
     "no-restricted-imports": {
-      "count": 2
+      "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 3
     }
   },
+  "app/components/plugins/plugin-detail-panel/subscription-list/create/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    }
+  },
   "app/components/plugins/plugin-detail-panel/subscription-list/edit/apikey-edit-modal.tsx": {
-    "no-restricted-imports": {
-      "count": 2
+    "erasable-syntax-only/enums": {
+      "count": 1
     },
-    "tailwindcss/enforce-consistent-class-order": {
+    "no-restricted-imports": {
       "count": 1
     }
   },
   "app/components/plugins/plugin-detail-panel/subscription-list/edit/manual-edit-modal.tsx": {
     "no-restricted-imports": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/plugins/plugin-detail-panel/subscription-list/edit/oauth-edit-modal.tsx": {
     "no-restricted-imports": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/plugins/plugin-detail-panel/subscription-list/index.tsx": {
@@ -5375,7 +5474,7 @@
     }
   },
   "app/components/plugins/plugin-detail-panel/subscription-list/log-viewer.tsx": {
-    "no-restricted-imports": {
+    "erasable-syntax-only/enums": {
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -5409,6 +5508,11 @@
       "count": 3
     }
   },
+  "app/components/plugins/plugin-detail-panel/subscription-list/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    }
+  },
   "app/components/plugins/plugin-detail-panel/tool-selector/components/reasoning-config-form.tsx": {
     "no-restricted-imports": {
       "count": 2
@@ -5428,11 +5532,6 @@
   "app/components/plugins/plugin-detail-panel/tool-selector/components/tool-base-form.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
-    }
-  },
-  "app/components/plugins/plugin-detail-panel/tool-selector/components/tool-credentials-form.tsx": {
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "app/components/plugins/plugin-detail-panel/tool-selector/components/tool-item.tsx": {
@@ -5473,15 +5572,12 @@
   },
   "app/components/plugins/plugin-item/action.tsx": {
     "no-restricted-imports": {
-      "count": 3
+      "count": 2
     }
   },
   "app/components/plugins/plugin-item/index.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 7
     },
     "ts/no-explicit-any": {
       "count": 1
@@ -5509,7 +5605,7 @@
     }
   },
   "app/components/plugins/plugin-page/empty/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 2
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -5541,7 +5637,7 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 2
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -5571,6 +5667,16 @@
   "app/components/plugins/provider-card.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
+    }
+  },
+  "app/components/plugins/readme-panel/index.tsx": {
+    "react/unsupported-syntax": {
+      "count": 1
+    }
+  },
+  "app/components/plugins/readme-panel/store.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
     }
   },
   "app/components/plugins/reference-setting-modal/auto-update-setting/index.tsx": {
@@ -5619,6 +5725,11 @@
       "count": 1
     }
   },
+  "app/components/plugins/reference-setting-modal/auto-update-setting/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 2
+    }
+  },
   "app/components/plugins/reference-setting-modal/index.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -5633,11 +5744,17 @@
     }
   },
   "app/components/plugins/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 7
+    },
     "ts/no-explicit-any": {
       "count": 30
     }
   },
   "app/components/plugins/update-plugin/from-market-place.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
     "no-restricted-imports": {
       "count": 1
     }
@@ -5652,6 +5769,11 @@
       "count": 1
     }
   },
+  "app/components/rag-pipeline/components/chunk-card-list/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    }
+  },
   "app/components/rag-pipeline/components/conversion.tsx": {
     "no-restricted-imports": {
       "count": 2
@@ -5661,6 +5783,9 @@
     }
   },
   "app/components/rag-pipeline/components/panel/input-field/editor/form/hidden-fields.tsx": {
+    "react/component-hook-factories": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -5676,11 +5801,17 @@
     }
   },
   "app/components/rag-pipeline/components/panel/input-field/editor/form/initial-fields.tsx": {
+    "react/component-hook-factories": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 2
     }
   },
   "app/components/rag-pipeline/components/panel/input-field/editor/form/show-all-settings.tsx": {
+    "react/component-hook-factories": {
+      "count": 1
+    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
     },
@@ -5709,7 +5840,7 @@
     }
   },
   "app/components/rag-pipeline/components/panel/input-field/hooks.ts": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -5797,6 +5928,11 @@
   },
   "app/components/rag-pipeline/components/panel/test-run/result/tabs/tab.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
+      "count": 1
+    }
+  },
+  "app/components/rag-pipeline/components/panel/test-run/types.ts": {
+    "erasable-syntax-only/enums": {
       "count": 1
     }
   },
@@ -5917,7 +6053,7 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -5933,7 +6069,7 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -5973,7 +6109,7 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -5983,12 +6119,20 @@
       "count": 3
     }
   },
+  "app/components/share/text-generation/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    }
+  },
   "app/components/share/utils.ts": {
     "ts/no-explicit-any": {
       "count": 2
     }
   },
   "app/components/signin/countdown.tsx": {
+    "react-refresh/only-export-components": {
+      "count": 2
+    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
     }
@@ -6002,9 +6146,6 @@
     }
   },
   "app/components/tools/edit-custom-collection-modal/get-schema.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 3
     },
@@ -6019,7 +6160,7 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 4
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -6040,14 +6181,6 @@
       "count": 1
     },
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/tools/labels/filter.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "tailwindcss/no-unnecessary-whitespace": {
       "count": 1
     }
   },
@@ -6138,7 +6271,7 @@
   },
   "app/components/tools/mcp/modal.tsx": {
     "no-restricted-imports": {
-      "count": 2
+      "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 7
@@ -6179,16 +6312,13 @@
     }
   },
   "app/components/tools/provider/custom-create-card.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
   },
   "app/components/tools/provider/detail.tsx": {
     "no-restricted-imports": {
-      "count": 2
+      "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 10
@@ -6216,6 +6346,9 @@
     }
   },
   "app/components/tools/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 5
+    },
     "ts/no-explicit-any": {
       "count": 4
     }
@@ -6225,14 +6358,9 @@
       "count": 1
     }
   },
-  "app/components/tools/workflow-tool/hooks/use-configure-button.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "app/components/tools/workflow-tool/index.tsx": {
     "no-restricted-imports": {
-      "count": 2
+      "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 7
@@ -6288,11 +6416,8 @@
     }
   },
   "app/components/workflow-app/hooks/use-workflow-run.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
-      "count": 13
+      "count": 5
     }
   },
   "app/components/workflow-app/hooks/use-workflow-template.ts": {
@@ -6311,7 +6436,7 @@
     }
   },
   "app/components/workflow/block-selector/all-start-blocks.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -6335,7 +6460,7 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 2
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -6352,7 +6477,7 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 2
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -6366,13 +6491,13 @@
     }
   },
   "app/components/workflow/block-selector/hooks.ts": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
   "app/components/workflow/block-selector/index-bar.tsx": {
     "react-refresh/only-export-components": {
-      "count": 1
+      "count": 5
     }
   },
   "app/components/workflow/block-selector/main.tsx": {
@@ -6384,7 +6509,7 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -6392,6 +6517,9 @@
     }
   },
   "app/components/workflow/block-selector/market-place-plugin/item.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 4
     },
@@ -6405,7 +6533,7 @@
     }
   },
   "app/components/workflow/block-selector/rag-tool-recommendations/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -6428,14 +6556,11 @@
   "app/components/workflow/block-selector/tabs.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
     }
   },
   "app/components/workflow/block-selector/tool-picker.tsx": {
     "no-restricted-imports": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/workflow/block-selector/tool/action-item.tsx": {
@@ -6449,7 +6574,7 @@
     }
   },
   "app/components/workflow/block-selector/tool/tool.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 2
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -6465,7 +6590,7 @@
     }
   },
   "app/components/workflow/block-selector/trigger-plugin/item.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 2
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -6475,12 +6600,25 @@
       "count": 1
     }
   },
+  "app/components/workflow/block-selector/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 4
+    }
+  },
   "app/components/workflow/block-selector/use-check-vertical-scrollbar.ts": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/block-selector/use-sticky-scroll.ts": {
+    "erasable-syntax-only/enums": {
       "count": 1
     }
   },
   "app/components/workflow/block-selector/view-type-select.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
     "react-refresh/only-export-components": {
       "count": 1
     },
@@ -6517,9 +6655,6 @@
     }
   },
   "app/components/workflow/header/header-in-restoring.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/no-unnecessary-whitespace": {
       "count": 1
     }
@@ -6533,21 +6668,18 @@
     "no-console": {
       "count": 1
     },
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
   },
   "app/components/workflow/header/test-run-menu.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
     "no-restricted-imports": {
       "count": 1
     },
     "react-refresh/only-export-components": {
-      "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
   },
@@ -6587,10 +6719,12 @@
       "count": 6
     }
   },
-  "app/components/workflow/hooks/use-checklist.ts": {
-    "no-restricted-imports": {
+  "app/components/workflow/hooks/__tests__/use-checklist.spec.ts": {
+    "react/error-boundaries": {
       "count": 1
-    },
+    }
+  },
+  "app/components/workflow/hooks/use-checklist.ts": {
     "ts/no-empty-object-type": {
       "count": 1
     },
@@ -6631,11 +6765,6 @@
   "app/components/workflow/hooks/use-serial-async-callback.ts": {
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/components/workflow/hooks/use-workflow-interactions.ts": {
-    "ts/no-explicit-any": {
-      "count": 2
     }
   },
   "app/components/workflow/hooks/use-workflow-run-event/use-workflow-agent-log.ts": {
@@ -6706,11 +6835,8 @@
     }
   },
   "app/components/workflow/nodes/_base/components/before-run-form/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
-      "count": 11
+      "count": 5
     }
   },
   "app/components/workflow/nodes/_base/components/before-run-form/panel-wrap.tsx": {
@@ -6734,7 +6860,7 @@
     }
   },
   "app/components/workflow/nodes/_base/components/editor/code-editor/editor-support-vars.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "ts/no-explicit-any": {
@@ -6750,6 +6876,9 @@
     }
   },
   "app/components/workflow/nodes/_base/components/entry-node-container.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
     "react-refresh/only-export-components": {
       "count": 1
     }
@@ -6794,6 +6923,9 @@
     }
   },
   "app/components/workflow/nodes/_base/components/error-handle/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -6822,11 +6954,8 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
-      "count": 33
+      "count": 4
     }
   },
   "app/components/workflow/nodes/_base/components/form-input-type-switch.tsx": {
@@ -6883,9 +7012,6 @@
     }
   },
   "app/components/workflow/nodes/_base/components/memory-config.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    },
     "unicorn/prefer-number-properties": {
       "count": 1
     }
@@ -6927,7 +7053,7 @@
     }
   },
   "app/components/workflow/nodes/_base/components/node-handle.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -7056,17 +7182,16 @@
       "count": 1
     }
   },
+  "app/components/workflow/nodes/_base/components/variable/var-list.tsx": {
+    "react/unsupported-syntax": {
+      "count": 1
+    }
+  },
   "app/components/workflow/nodes/_base/components/variable/var-reference-picker.tsx": {
     "no-restricted-imports": {
-      "count": 2
+      "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 2
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 4
-    },
-    "tailwindcss/no-unnecessary-whitespace": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "ts/no-explicit-any": {
@@ -7108,7 +7233,7 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 3
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -7122,7 +7247,7 @@
     }
   },
   "app/components/workflow/nodes/_base/components/workflow-panel/last-run/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 7
     },
     "ts/no-explicit-any": {
@@ -7135,10 +7260,7 @@
     }
   },
   "app/components/workflow/nodes/_base/components/workflow-panel/last-run/use-last-run.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "ts/no-explicit-any": {
@@ -7146,6 +7268,9 @@
     }
   },
   "app/components/workflow/nodes/_base/components/workflow-panel/tab.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
     "react-refresh/only-export-components": {
       "count": 1
     },
@@ -7154,10 +7279,7 @@
     }
   },
   "app/components/workflow/nodes/_base/hooks/use-one-step-run.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 2
     },
     "ts/no-explicit-any": {
@@ -7170,7 +7292,7 @@
     }
   },
   "app/components/workflow/nodes/_base/hooks/use-toggle-expend.ts": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -7180,14 +7302,14 @@
     }
   },
   "app/components/workflow/nodes/_base/node.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
-      "count": 3
+      "count": 1
     }
   },
   "app/components/workflow/nodes/_base/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 3
     }
@@ -7202,6 +7324,9 @@
   },
   "app/components/workflow/nodes/agent/components/tool-icon.tsx": {
     "no-restricted-imports": {
+      "count": 1
+    },
+    "react/unsupported-syntax": {
       "count": 1
     }
   },
@@ -7224,6 +7349,9 @@
     }
   },
   "app/components/workflow/nodes/agent/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -7272,6 +7400,9 @@
     }
   },
   "app/components/workflow/nodes/assigner/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 2
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -7296,8 +7427,13 @@
       "count": 1
     }
   },
+  "app/components/workflow/nodes/code/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    }
+  },
   "app/components/workflow/nodes/code/use-config.ts": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 2
     },
     "regexp/no-useless-assertions": {
@@ -7348,6 +7484,9 @@
     }
   },
   "app/components/workflow/nodes/data-source/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -7404,7 +7543,7 @@
   },
   "app/components/workflow/nodes/http/components/curl-panel.tsx": {
     "no-restricted-imports": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/workflow/nodes/http/components/key-value/key-value-edit/index.tsx": {
@@ -7433,8 +7572,13 @@
       "count": 2
     }
   },
+  "app/components/workflow/nodes/http/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 5
+    }
+  },
   "app/components/workflow/nodes/http/use-config.ts": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "ts/no-explicit-any": {
@@ -7456,7 +7600,7 @@
   },
   "app/components/workflow/nodes/human-input/components/delivery-method/email-configure-modal.tsx": {
     "no-restricted-imports": {
-      "count": 2
+      "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 8
@@ -7533,11 +7677,19 @@
       "count": 2
     }
   },
+  "app/components/workflow/nodes/human-input/components/form-content-preview.tsx": {
+    "react/unsupported-syntax": {
+      "count": 1
+    }
+  },
   "app/components/workflow/nodes/human-input/components/form-content.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/component-hook-factories": {
       "count": 1
     },
     "react/no-nested-component-definitions": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -7560,17 +7712,9 @@
       "count": 2
     }
   },
-  "app/components/workflow/nodes/human-input/components/user-action.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "app/components/workflow/nodes/human-input/components/variable-in-markdown.tsx": {
     "react-refresh/only-export-components": {
       "count": 2
-    },
-    "ts/no-explicit-any": {
-      "count": 8
     }
   },
   "app/components/workflow/nodes/human-input/node.tsx": {
@@ -7580,13 +7724,18 @@
   },
   "app/components/workflow/nodes/human-input/panel.tsx": {
     "no-restricted-imports": {
-      "count": 2
+      "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 4
     },
     "tailwindcss/no-unnecessary-whitespace": {
       "count": 1
+    }
+  },
+  "app/components/workflow/nodes/human-input/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 2
     }
   },
   "app/components/workflow/nodes/if-else/components/condition-add.tsx": {
@@ -7649,6 +7798,11 @@
       "count": 1
     }
   },
+  "app/components/workflow/nodes/if-else/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 2
+    }
+  },
   "app/components/workflow/nodes/if-else/use-single-run-form-params.ts": {
     "ts/no-explicit-any": {
       "count": 5
@@ -7670,21 +7824,12 @@
     }
   },
   "app/components/workflow/nodes/iteration/node.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
   "app/components/workflow/nodes/iteration/panel.tsx": {
     "no-restricted-imports": {
-      "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    },
-    "tailwindcss/no-unnecessary-whitespace": {
       "count": 1
     }
   },
@@ -7713,9 +7858,6 @@
   },
   "app/components/workflow/nodes/knowledge-base/components/index-method.tsx": {
     "no-restricted-imports": {
-      "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
   },
@@ -7749,9 +7891,19 @@
       "count": 2
     }
   },
+  "app/components/workflow/nodes/knowledge-base/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    }
+  },
   "app/components/workflow/nodes/knowledge-base/use-single-run-form-params.ts": {
     "ts/no-explicit-any": {
       "count": 3
+    }
+  },
+  "app/components/workflow/nodes/knowledge-base/utils.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
     }
   },
   "app/components/workflow/nodes/knowledge-retrieval/components/dataset-item.tsx": {
@@ -7852,7 +8004,7 @@
     }
   },
   "app/components/workflow/nodes/knowledge-retrieval/node.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 2
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -7860,6 +8012,9 @@
     }
   },
   "app/components/workflow/nodes/knowledge-retrieval/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 4
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -7911,6 +8066,11 @@
       "count": 1
     }
   },
+  "app/components/workflow/nodes/list-operator/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    }
+  },
   "app/components/workflow/nodes/llm/components/config-prompt-item.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -7920,6 +8080,9 @@
     }
   },
   "app/components/workflow/nodes/llm/components/config-prompt.tsx": {
+    "react/unsupported-syntax": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -7957,7 +8120,7 @@
     }
   },
   "app/components/workflow/nodes/llm/components/json-schema-config-modal/json-schema-config.tsx": {
-    "no-restricted-imports": {
+    "erasable-syntax-only/enums": {
       "count": 1
     }
   },
@@ -7970,10 +8133,13 @@
     }
   },
   "app/components/workflow/nodes/llm/components/json-schema-config-modal/json-schema-generator/index.tsx": {
-    "no-restricted-imports": {
-      "count": 2
+    "erasable-syntax-only/enums": {
+      "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "react/set-state-in-effect": {
       "count": 2
     }
   },
@@ -8006,7 +8172,7 @@
     }
   },
   "app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/edit-card/auto-width-input.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -8032,9 +8198,6 @@
     }
   },
   "app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/hooks.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -8054,11 +8217,16 @@
   },
   "app/components/workflow/nodes/llm/panel.tsx": {
     "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/llm/types.ts": {
+    "erasable-syntax-only/enums": {
       "count": 2
     }
   },
   "app/components/workflow/nodes/llm/use-config.ts": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 2
     },
     "ts/no-explicit-any": {
@@ -8071,6 +8239,9 @@
     }
   },
   "app/components/workflow/nodes/llm/utils.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 10
     }
@@ -8156,9 +8327,6 @@
     }
   },
   "app/components/workflow/nodes/loop/components/loop-variables/item.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 4
     }
@@ -8174,6 +8342,9 @@
     }
   },
   "app/components/workflow/nodes/loop/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 2
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -8185,12 +8356,12 @@
   },
   "app/components/workflow/nodes/loop/use-single-run-form-params.ts": {
     "ts/no-explicit-any": {
-      "count": 4
+      "count": 3
     }
   },
   "app/components/workflow/nodes/parameter-extractor/components/extract-parameter/update.tsx": {
     "no-restricted-imports": {
-      "count": 3
+      "count": 2
     },
     "ts/no-explicit-any": {
       "count": 1
@@ -8206,8 +8377,13 @@
       "count": 1
     }
   },
+  "app/components/workflow/nodes/parameter-extractor/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 2
+    }
+  },
   "app/components/workflow/nodes/parameter-extractor/use-config.ts": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 2
     },
     "ts/no-explicit-any": {
@@ -8225,13 +8401,16 @@
     }
   },
   "app/components/workflow/nodes/question-classifier/components/class-item.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
   "app/components/workflow/nodes/question-classifier/components/class-list.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
+    },
+    "react/unsupported-syntax": {
+      "count": 2
     }
   },
   "app/components/workflow/nodes/question-classifier/default.ts": {
@@ -8248,7 +8427,7 @@
     }
   },
   "app/components/workflow/nodes/question-classifier/use-config.ts": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 2
     },
     "ts/no-explicit-any": {
@@ -8258,11 +8437,6 @@
   "app/components/workflow/nodes/question-classifier/use-single-run-form-params.ts": {
     "ts/no-explicit-any": {
       "count": 8
-    }
-  },
-  "app/components/workflow/nodes/start/components/var-list.tsx": {
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "app/components/workflow/nodes/start/node.tsx": {
@@ -8279,9 +8453,6 @@
     }
   },
   "app/components/workflow/nodes/start/use-config.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -8360,9 +8531,6 @@
     }
   },
   "app/components/workflow/nodes/tool/hooks/use-config.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 6
     }
@@ -8409,6 +8577,9 @@
     }
   },
   "app/components/workflow/nodes/trigger-plugin/node.tsx": {
+    "react/unsupported-syntax": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -8463,12 +8634,7 @@
   },
   "app/components/workflow/nodes/trigger-webhook/panel.tsx": {
     "no-restricted-imports": {
-      "count": 3
-    }
-  },
-  "app/components/workflow/nodes/trigger-webhook/use-config.ts": {
-    "no-restricted-imports": {
-      "count": 1
+      "count": 2
     }
   },
   "app/components/workflow/nodes/trigger-webhook/utils/render-output-vars.tsx": {
@@ -8492,9 +8658,6 @@
     }
   },
   "app/components/workflow/nodes/variable-assigner/components/var-group-item.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
     },
@@ -8516,7 +8679,7 @@
     }
   },
   "app/components/workflow/note-node/note-editor/plugins/link-editor-plugin/component.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -8556,6 +8719,11 @@
       "count": 1
     }
   },
+  "app/components/workflow/note-node/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    }
+  },
   "app/components/workflow/operator/add-block.tsx": {
     "ts/no-explicit-any": {
       "count": 1
@@ -8583,6 +8751,9 @@
     }
   },
   "app/components/workflow/operator/zoom-in-out.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
     "no-restricted-imports": {
       "count": 1
     },
@@ -8597,7 +8768,7 @@
   },
   "app/components/workflow/panel/chat-record/user-input.tsx": {
     "ts/no-explicit-any": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/workflow/panel/chat-variable-panel/components/array-bool-list.tsx": {
@@ -8611,9 +8782,6 @@
     }
   },
   "app/components/workflow/panel/chat-variable-panel/components/object-value-item.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "react-refresh/only-export-components": {
       "count": 1
     },
@@ -8642,17 +8810,6 @@
       "count": 1
     }
   },
-  "app/components/workflow/panel/chat-variable-panel/components/variable-modal.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 8
-    },
-    "ts/no-explicit-any": {
-      "count": 3
-    }
-  },
   "app/components/workflow/panel/chat-variable-panel/components/variable-type-select.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -8667,6 +8824,11 @@
   "app/components/workflow/panel/chat-variable-panel/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 11
+    }
+  },
+  "app/components/workflow/panel/chat-variable-panel/type.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
     }
   },
   "app/components/workflow/panel/debug-and-preview/chat-wrapper.tsx": {
@@ -8686,9 +8848,6 @@
     }
   },
   "app/components/workflow/panel/debug-and-preview/hooks.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 12
     }
@@ -8713,9 +8872,9 @@
   },
   "app/components/workflow/panel/env-panel/variable-modal.tsx": {
     "no-restricted-imports": {
-      "count": 2
+      "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 4
     },
     "ts/no-explicit-any": {
@@ -8799,11 +8958,6 @@
       "count": 1
     }
   },
-  "app/components/workflow/panel/version-history-panel/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
   "app/components/workflow/panel/version-history-panel/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
@@ -8872,18 +9026,12 @@
     }
   },
   "app/components/workflow/run/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 2
     }
   },
   "app/components/workflow/run/iteration-log/iteration-log-trigger.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
       "count": 1
     },
     "unicorn/prefer-number-properties": {
@@ -8925,7 +9073,7 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
@@ -8963,16 +9111,6 @@
       "count": 15
     }
   },
-  "app/components/workflow/run/tracing-panel.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    }
-  },
-  "app/components/workflow/run/utils/format-log/agent/index.spec.ts": {
-    "ts/no-explicit-any": {
-      "count": 3
-    }
-  },
   "app/components/workflow/run/utils/format-log/agent/index.ts": {
     "ts/no-explicit-any": {
       "count": 11
@@ -8988,17 +9126,7 @@
       "count": 2
     }
   },
-  "app/components/workflow/run/utils/format-log/iteration/index.spec.ts": {
-    "ts/no-explicit-any": {
-      "count": 3
-    }
-  },
   "app/components/workflow/run/utils/format-log/iteration/index.ts": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/run/utils/format-log/loop/index.spec.ts": {
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -9014,19 +9142,6 @@
     },
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "app/components/workflow/run/utils/format-log/retry/index.spec.ts": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/selection-contextmenu.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    },
-    "ts/no-explicit-any": {
-      "count": 4
     }
   },
   "app/components/workflow/shortcuts-name.tsx": {
@@ -9055,6 +9170,9 @@
     }
   },
   "app/components/workflow/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 16
+    },
     "ts/no-empty-object-type": {
       "count": 3
     },
@@ -9064,10 +9182,10 @@
   },
   "app/components/workflow/update-dsl-modal.tsx": {
     "no-restricted-imports": {
-      "count": 2
+      "count": 1
     },
     "ts/no-explicit-any": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/workflow/utils/data-source.ts": {
@@ -9183,13 +9301,18 @@
       "count": 1
     }
   },
+  "app/components/workflow/variable-inspect/types.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 2
+    }
+  },
   "app/components/workflow/variable-inspect/utils.tsx": {
     "ts/no-explicit-any": {
       "count": 2
     }
   },
   "app/components/workflow/variable-inspect/value-content.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 5
     },
     "regexp/no-super-linear-backtracking": {
@@ -9199,7 +9322,7 @@
       "count": 2
     },
     "ts/no-explicit-any": {
-      "count": 8
+      "count": 5
     }
   },
   "app/components/workflow/workflow-history-store.tsx": {
@@ -9239,6 +9362,9 @@
     }
   },
   "app/components/workflow/workflow-preview/components/zoom-in-out.tsx": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
     "no-restricted-imports": {
       "count": 1
     },
@@ -9260,7 +9386,7 @@
     }
   },
   "app/education-apply/hooks.ts": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 5
     }
   },
@@ -9289,16 +9415,11 @@
     }
   },
   "app/education-apply/verify-state-modal.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 5
-    }
-  },
-  "app/forgot-password/ChangePasswordForm.tsx": {
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "app/forgot-password/ForgotPasswordForm.spec.tsx": {
@@ -9325,9 +9446,6 @@
     }
   },
   "app/reset-password/check-code/page.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 4
     }
@@ -9341,17 +9459,11 @@
     }
   },
   "app/reset-password/page.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 4
     }
   },
   "app/reset-password/set-password/page.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 6
     }
@@ -9361,26 +9473,13 @@
       "count": 1
     }
   },
-  "app/signin/check-code/page.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "app/signin/components/mail-and-code-auth.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
   },
   "app/signin/components/mail-and-password-auth.tsx": {
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/signin/components/sso-auth.tsx": {
-    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -9397,11 +9496,6 @@
       "count": 1
     }
   },
-  "app/signin/normal-form.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "app/signin/one-more-step.tsx": {
     "no-restricted-imports": {
       "count": 3
@@ -9414,17 +9508,11 @@
     }
   },
   "app/signup/check-code/page.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 4
     }
   },
   "app/signup/components/input-mail.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 4
     }
@@ -9443,9 +9531,6 @@
     }
   },
   "app/signup/set-password/page.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 5
     }
@@ -9466,7 +9551,7 @@
     }
   },
   "context/hooks/use-trigger-events-limit-modal.ts": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 3
     }
   },
@@ -9519,12 +9604,15 @@
     }
   },
   "hooks/use-mitt.ts": {
+    "react/component-hook-factories": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 2
     }
   },
   "hooks/use-moderate.ts": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     }
   },
@@ -9537,11 +9625,11 @@
     "no-restricted-imports": {
       "count": 2
     },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 4
-    },
     "react-refresh/only-export-components": {
       "count": 3
+    },
+    "react/set-state-in-effect": {
+      "count": 4
     }
   },
   "i18n/de-DE/billing.json": {
@@ -9594,27 +9682,52 @@
       "count": 1
     }
   },
+  "models/access-control.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 2
+    }
+  },
+  "models/app.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 2
+    }
+  },
   "models/common.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 3
+    },
     "ts/no-explicit-any": {
       "count": 3
     }
   },
   "models/datasets.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 8
+    },
     "ts/no-explicit-any": {
       "count": 5
     }
   },
   "models/debug.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 2
+    },
     "ts/no-explicit-any": {
       "count": 4
     }
   },
   "models/log.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 7
     }
   },
   "models/pipeline.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 3
+    },
     "ts/no-explicit-any": {
       "count": 6
     }
@@ -9635,6 +9748,11 @@
   "scripts/component-analyzer.js": {
     "regexp/no-unused-capturing-group": {
       "count": 6
+    }
+  },
+  "service/access-control.ts": {
+    "@tanstack/query/exhaustive-deps": {
+      "count": 1
     }
   },
   "service/annotation.ts": {
@@ -9678,7 +9796,15 @@
       "count": 2
     }
   },
+  "service/knowledge/use-dataset.ts": {
+    "@tanstack/query/exhaustive-deps": {
+      "count": 1
+    }
+  },
   "service/share.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 3
     }
@@ -9702,6 +9828,9 @@
     }
   },
   "service/use-pipeline.ts": {
+    "@tanstack/query/exhaustive-deps": {
+      "count": 2
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -9712,7 +9841,7 @@
     }
   },
   "service/use-plugins.ts": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+    "react/set-state-in-effect": {
       "count": 1
     },
     "regexp/no-unused-capturing-group": {
@@ -9728,6 +9857,9 @@
     }
   },
   "service/use-workflow.ts": {
+    "@tanstack/query/exhaustive-deps": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 3
     }
@@ -9743,6 +9875,9 @@
     }
   },
   "types/app.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 11
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -9752,9 +9887,24 @@
       "count": 5
     }
   },
+  "types/common.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    }
+  },
+  "types/feature.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 3
+    }
+  },
   "types/lamejs.d.ts": {
     "ts/no-explicit-any": {
       "count": 3
+    }
+  },
+  "types/model-provider.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
     }
   },
   "types/pipeline.tsx": {
@@ -9768,6 +9918,9 @@
     }
   },
   "types/workflow.ts": {
+    "erasable-syntax-only/enums": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 17
     }
@@ -9784,6 +9937,11 @@
   },
   "utils/completion-params.ts": {
     "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "utils/context.ts": {
+    "react/component-hook-factories": {
       "count": 1
     }
   },

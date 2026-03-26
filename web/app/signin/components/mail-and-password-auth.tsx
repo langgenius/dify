@@ -35,18 +35,15 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
 
   const handleEmailPasswordLogin = async () => {
     if (!email) {
-      toast.add({ type: 'error', title: t('error.emailEmpty', { ns: 'login' }) })
+      toast.error(t('error.emailEmpty', { ns: 'login' }))
       return
     }
     if (!emailRegex.test(email)) {
-      toast.add({
-        type: 'error',
-        title: t('error.emailInValid', { ns: 'login' }),
-      })
+      toast.error(t('error.emailInValid', { ns: 'login' }))
       return
     }
     if (!password?.trim()) {
-      toast.add({ type: 'error', title: t('error.passwordEmpty', { ns: 'login' }) })
+      toast.error(t('error.passwordEmpty', { ns: 'login' }))
       return
     }
 
@@ -83,18 +80,12 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
         }
       }
       else {
-        toast.add({
-          type: 'error',
-          title: res.data,
-        })
+        toast.error(res.data)
       }
     }
     catch (error) {
       if ((error as ResponseError).code === 'authentication_failed') {
-        toast.add({
-          type: 'error',
-          title: t('error.invalidEmailOrPassword', { ns: 'login' }),
-        })
+        toast.error(t('error.invalidEmailOrPassword', { ns: 'login' }))
       }
     }
     finally {

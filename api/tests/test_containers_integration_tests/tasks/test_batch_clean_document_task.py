@@ -13,6 +13,8 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
+from core.rag.index_processor.constant.index_type import IndexStructureType
+from extensions.storage.storage_type import StorageType
 from libs.datetime_utils import naive_utc_now
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
@@ -151,7 +153,7 @@ class TestBatchCleanDocumentTask:
             created_from=DocumentCreatedFrom.WEB,
             created_by=account.id,
             indexing_status=IndexingStatus.COMPLETED,
-            doc_form="text_model",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
         )
 
         db_session_with_containers.add(document)
@@ -209,7 +211,7 @@ class TestBatchCleanDocumentTask:
 
         upload_file = UploadFile(
             tenant_id=account.current_tenant.id,
-            storage_type="local",
+            storage_type=StorageType.LOCAL,
             key=f"test_files/{fake.file_name()}",
             name=fake.file_name(),
             size=1024,
@@ -391,7 +393,12 @@ class TestBatchCleanDocumentTask:
         db_session_with_containers.commit()
 
         # Execute the task with non-existent dataset
-        batch_clean_document_task(document_ids=[document_id], dataset_id=dataset_id, doc_form="text_model", file_ids=[])
+        batch_clean_document_task(
+            document_ids=[document_id],
+            dataset_id=dataset_id,
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
+            file_ids=[],
+        )
 
         # Verify that no index processing occurred
         mock_external_service_dependencies["index_processor"].clean.assert_not_called()
@@ -524,7 +531,11 @@ class TestBatchCleanDocumentTask:
         account = self._create_test_account(db_session_with_containers)
 
         # Test different doc_form types
-        doc_forms = ["text_model", "qa_model", "hierarchical_model"]
+        doc_forms = [
+            IndexStructureType.PARAGRAPH_INDEX,
+            IndexStructureType.QA_INDEX,
+            IndexStructureType.PARENT_CHILD_INDEX,
+        ]
 
         for doc_form in doc_forms:
             dataset = self._create_test_dataset(db_session_with_containers, account)

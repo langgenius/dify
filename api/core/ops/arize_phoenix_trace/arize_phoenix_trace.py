@@ -181,10 +181,6 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         arize_phoenix_config: ArizeConfig | PhoenixConfig,
     ):
         super().__init__(arize_phoenix_config)
-        import logging
-
-        logging.basicConfig()
-        logging.getLogger().setLevel(logging.DEBUG)
         self.arize_phoenix_config = arize_phoenix_config
         self.tracer, self.processor = setup_tracer(arize_phoenix_config)
         self.project = arize_phoenix_config.project
@@ -275,8 +271,8 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         )
 
         # Get all executions for this workflow run
-        workflow_node_executions = workflow_node_execution_repository.get_by_workflow_run(
-            workflow_run_id=trace_info.workflow_run_id
+        workflow_node_executions = workflow_node_execution_repository.get_by_workflow_execution(
+            workflow_execution_id=trace_info.workflow_run_id
         )
 
         try:

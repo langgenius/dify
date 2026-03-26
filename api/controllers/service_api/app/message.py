@@ -15,6 +15,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from fields.conversation_fields import ResultResponse
 from fields.message_fields import MessageInfiniteScrollPagination, MessageListItem
 from libs.helper import UUIDStrOrEmpty
+from models.enums import FeedbackRating
 from models.model import App, AppMode, EndUser
 from services.errors.message import (
     FirstMessageNotExistsError,
@@ -116,7 +117,7 @@ class MessageFeedbackApi(Resource):
                 app_model=app_model,
                 message_id=message_id,
                 user=end_user,
-                rating=payload.rating,
+                rating=FeedbackRating(payload.rating) if payload.rating else None,
                 content=payload.content,
             )
         except MessageNotExistsError:

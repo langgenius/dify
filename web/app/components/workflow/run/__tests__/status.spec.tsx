@@ -1,8 +1,9 @@
 import type { WorkflowPausedDetailsResponse } from '@/models/log'
 import { render, screen } from '@testing-library/react'
+import { createDocLinkMock, resolveDocLink } from '../../__tests__/i18n'
 import Status from '../status'
 
-const mockDocLink = vi.fn((path: string) => `https://docs.example.com${path}`)
+const mockDocLink = createDocLinkMock()
 const mockUseWorkflowPausedDetails = vi.fn()
 
 vi.mock('@/context/i18n', () => ({
@@ -79,7 +80,7 @@ describe('Status', () => {
     const learnMoreLink = screen.getByRole('link', { name: 'workflow.common.learnMore' })
 
     expect(screen.getByText('EXCEPTION')).toBeInTheDocument()
-    expect(learnMoreLink).toHaveAttribute('href', 'https://docs.example.com/use-dify/debug/error-type')
+    expect(learnMoreLink).toHaveAttribute('href', resolveDocLink('/use-dify/debug/error-type'))
     expect(mockDocLink).toHaveBeenCalledWith('/use-dify/debug/error-type')
   })
 

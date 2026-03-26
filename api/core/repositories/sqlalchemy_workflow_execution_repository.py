@@ -9,10 +9,10 @@ from typing import Union
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
-from dify_graph.entities import WorkflowExecution
-from dify_graph.enums import WorkflowExecutionStatus, WorkflowType
-from dify_graph.repositories.workflow_execution_repository import WorkflowExecutionRepository
-from dify_graph.workflow_type_encoder import WorkflowRuntimeTypeConverter
+from core.repositories.factory import WorkflowExecutionRepository
+from graphon.entities import WorkflowExecution
+from graphon.enums import WorkflowExecutionStatus, WorkflowType
+from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from libs.helper import extract_tenant_id
 from models import (
     Account,

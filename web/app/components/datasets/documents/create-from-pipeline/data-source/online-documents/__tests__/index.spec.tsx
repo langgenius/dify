@@ -32,16 +32,21 @@ vi.mock('@/service/base', () => ({
   ssePost: mockSsePost,
 }))
 
-// Mock Toast.notify - static method that manipulates DOM, needs mocking to verify calls
-const { mockToastNotify } = vi.hoisted(() => ({
-  mockToastNotify: vi.fn(),
+// Mock toast.error because the component reports errors through the UI toast manager.
+const { mockToastError } = vi.hoisted(() => ({
+  mockToastError: vi.fn(),
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
-  default: {
-    notify: mockToastNotify,
-  },
-}))
+vi.mock('@/app/components/base/ui/toast', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/components/base/ui/toast')>()
+  return {
+    ...actual,
+    toast: {
+      ...actual.toast,
+      error: mockToastError,
+    },
+  }
+})
 
 // Mock useGetDataSourceAuth - API service hook requires mocking
 const { mockUseGetDataSourceAuth } = vi.hoisted(() => ({
@@ -192,6 +197,7 @@ const createDefaultProps = (overrides?: Partial<OnlineDocumentsProps>): OnlineDo
 describe('OnlineDocuments', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockToastError.mockReset()
 
     // Reset store state
     mockStoreState.documentsData = []
@@ -509,10 +515,7 @@ describe('OnlineDocuments', () => {
       render(<OnlineDocuments {...props} />)
 
       await waitFor(() => {
-        expect(mockToastNotify).toHaveBeenCalledWith({
-          type: 'error',
-          message: 'Something went wrong',
-        })
+        expect(mockToastError).toHaveBeenCalledWith('Something went wrong')
       })
     })
 
@@ -774,10 +777,7 @@ describe('OnlineDocuments', () => {
       render(<OnlineDocuments {...props} />)
 
       await waitFor(() => {
-        expect(mockToastNotify).toHaveBeenCalledWith({
-          type: 'error',
-          message: 'API Error Message',
-        })
+        expect(mockToastError).toHaveBeenCalledWith('API Error Message')
       })
     })
 
@@ -1094,10 +1094,7 @@ describe('OnlineDocuments', () => {
       render(<OnlineDocuments {...props} />)
 
       await waitFor(() => {
-        expect(mockToastNotify).toHaveBeenCalledWith({
-          type: 'error',
-          message: 'Failed to fetch documents',
-        })
+        expect(mockToastError).toHaveBeenCalledWith('Failed to fetch documents')
       })
 
       // Should still show loading since documentsData is empty

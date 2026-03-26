@@ -12,41 +12,22 @@ vi.mock('@/config', () => ({
 }))
 
 const mockToastNotify = vi.fn()
-vi.mock('@/app/components/base/toast', () => ({
-  default: { notify: (...args: unknown[]) => mockToastNotify(...args) },
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: Object.assign((message: string, options?: { type?: string }) => mockToastNotify({ type: options?.type, message }), {
+    success: (message: string) => mockToastNotify({ type: 'success', message }),
+    error: (message: string) => mockToastNotify({ type: 'error', message }),
+    warning: (message: string) => mockToastNotify({ type: 'warning', message }),
+    info: (message: string) => mockToastNotify({ type: 'info', message }),
+    dismiss: vi.fn(),
+    update: vi.fn(),
+    promise: vi.fn(),
+  }),
 }))
 
 const mockUploadGitHub = vi.fn()
 vi.mock('@/service/plugins', () => ({
   uploadGitHub: (...args: unknown[]) => mockUploadGitHub(...args),
   checkTaskStatus: vi.fn(),
-}))
-
-vi.mock('@/utils/semver', () => ({
-  compareVersion: (a: string, b: string) => {
-    const parse = (v: string) => v.replace(/^v/, '').split('.').map(Number)
-    const [aMajor, aMinor = 0, aPatch = 0] = parse(a)
-    const [bMajor, bMinor = 0, bPatch = 0] = parse(b)
-    if (aMajor !== bMajor)
-      return aMajor > bMajor ? 1 : -1
-    if (aMinor !== bMinor)
-      return aMinor > bMinor ? 1 : -1
-    if (aPatch !== bPatch)
-      return aPatch > bPatch ? 1 : -1
-    return 0
-  },
-  getLatestVersion: (versions: string[]) => {
-    return versions.sort((a, b) => {
-      const parse = (v: string) => v.replace(/^v/, '').split('.').map(Number)
-      const [aMaj, aMin = 0, aPat = 0] = parse(a)
-      const [bMaj, bMin = 0, bPat = 0] = parse(b)
-      if (aMaj !== bMaj)
-        return bMaj - aMaj
-      if (aMin !== bMin)
-        return bMin - aMin
-      return bPat - aPat
-    })[0]
-  },
 }))
 
 const { useGitHubReleases, useGitHubUpload } = await import(

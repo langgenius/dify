@@ -1,7 +1,7 @@
-from dify_graph.entities.graph_config import NodeConfigDictAdapter
-from dify_graph.enums import BuiltinNodeTypes
-from dify_graph.nodes.iteration.entities import ErrorHandleMode, IterationNodeData
-from dify_graph.nodes.iteration.exc import (
+from graphon.entities.graph_config import NodeConfigDictAdapter
+from graphon.enums import BuiltinNodeTypes
+from graphon.nodes.iteration.entities import ErrorHandleMode, IterationNodeData
+from graphon.nodes.iteration.exc import (
     InvalidIteratorValueError,
     IterationGraphNotFoundError,
     IterationIndexNotFoundError,
@@ -9,7 +9,7 @@ from dify_graph.nodes.iteration.exc import (
     IteratorVariableNotFoundError,
     StartNodeIdNotFoundError,
 )
-from dify_graph.nodes.iteration.iteration_node import IterationNode
+from graphon.nodes.iteration.iteration_node import IterationNode
 
 
 class TestIterationNodeExceptions:
