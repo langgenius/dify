@@ -17,17 +17,33 @@ const {
   mockEmit,
   mockFetchInspectVarValue,
   mockHandleNodeSelect,
+  mockDownloadUrlOptions,
+  mockTreeOptions,
+  mockUseQuery,
   mockResetConversationVar,
   mockResetToLastRunVar,
   mockSetInputs,
+  flatData,
+  isLoading,
 } = vi.hoisted(() => ({
   mockEditInspectVarValue: vi.fn(),
   mockEmit: vi.fn(),
   mockFetchInspectVarValue: vi.fn(),
   mockHandleNodeSelect: vi.fn(),
+  mockDownloadUrlOptions: vi.fn().mockReturnValue({
+    queryKey: ['sandboxFile', 'downloadFile'],
+    queryFn: vi.fn(),
+  }),
+  mockTreeOptions: vi.fn().mockReturnValue({
+    queryKey: ['sandboxFile', 'listFiles'],
+    queryFn: vi.fn(),
+  }),
+  mockUseQuery: vi.fn(),
   mockResetConversationVar: vi.fn(),
   mockResetToLastRunVar: vi.fn(),
   mockSetInputs: vi.fn(),
+  flatData: [] as unknown[],
+  isLoading: false,
 }))
 
 let inspectVarsState: InspectVarsState
@@ -89,10 +105,36 @@ vi.mock('../../hooks-store', () => ({
     }),
 }))
 
+vi.mock('@tanstack/react-query', async importOriginal => ({
+  ...await importOriginal<typeof import('@tanstack/react-query')>(),
+  useQuery: (options: { queryKey?: unknown }) => mockUseQuery(options),
+}))
+
+vi.mock('@/service/use-sandbox-file', async importOriginal => ({
+  ...(await importOriginal<typeof import('@/service/use-sandbox-file')>()),
+  sandboxFileDownloadUrlOptions: (...args: unknown[]) => mockDownloadUrlOptions(...args),
+  sandboxFilesTreeOptions: (...args: unknown[]) => mockTreeOptions(...args),
+  useDownloadSandboxFile: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+}))
+
 vi.mock('@/context/event-emitter', () => ({
   useEventEmitterContextContext: () => ({
     eventEmitter: {
       emit: mockEmit,
+    },
+  }),
+}))
+
+vi.mock('@/app/components/base/features/hooks', async importOriginal => ({
+  ...(await importOriginal<typeof import('@/app/components/base/features/hooks')>()),
+  useFeatures: (selector: (state: { features: { sandbox: { enabled: boolean } } }) => unknown) => selector({
+    features: {
+      sandbox: {
+        enabled: true,
+      },
     },
   }),
 }))
@@ -124,6 +166,20 @@ const renderPanel = (initialStoreState: Record<string, unknown> = {}) => {
 describe('VariableInspect Panel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockUseQuery.mockImplementation((options: { queryKey?: unknown }) => {
+      const treeKey = mockTreeOptions.mock.results.at(-1)?.value?.queryKey
+      if (treeKey && options.queryKey === treeKey) {
+        return {
+          data: flatData,
+          isLoading,
+        }
+      }
+
+      return {
+        data: undefined,
+        isLoading: false,
+      }
+    })
     inspectVarsState = {
       conversationVars: [],
       systemVars: [],

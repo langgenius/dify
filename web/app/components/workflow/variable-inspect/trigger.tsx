@@ -1,10 +1,8 @@
-import type { FC } from 'react'
 import type { CommonNodeType } from '@/app/components/workflow/types'
-import { RiLoader2Line, RiStopCircleFill } from '@remixicon/react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNodes } from 'reactflow'
-import Tooltip from '@/app/components/base/tooltip'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
@@ -13,7 +11,7 @@ import useCurrentVars from '../hooks/use-inspect-vars-crud'
 import { useNodesReadOnly } from '../hooks/use-workflow'
 import { useStore } from '../store'
 
-const VariableInspectTrigger: FC = () => {
+export default function VariableInspectTrigger() {
   const { t } = useTranslation()
   const { eventEmitter } = useEventEmitterContextContext()
 
@@ -104,19 +102,22 @@ const VariableInspectTrigger: FC = () => {
             className="flex h-6 cursor-pointer items-center gap-1 rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-2 text-text-accent shadow-lg backdrop-blur-sm system-xs-medium hover:bg-components-actionbar-bg-accent"
             onClick={() => setShowVariableInspectPanel(true)}
           >
-            <RiLoader2Line className="h-4 w-4 animate-spin" />
+            <span className="i-ri-loader-2-line h-4 w-4 animate-spin" aria-hidden="true" />
             <span className="text-text-accent">{t('debug.variableInspect.trigger.running', { ns: 'workflow' })}</span>
           </div>
           {isPreviewRunning && (
-            <Tooltip
-              popupContent={t('debug.variableInspect.trigger.stop', { ns: 'workflow' })}
-            >
-              <div
-                className="flex h-6 cursor-pointer items-center rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-1 shadow-lg backdrop-blur-sm hover:bg-components-actionbar-bg-accent"
-                onClick={handleStop}
-              >
-                <RiStopCircleFill className="h-4 w-4 text-text-accent" />
-              </div>
+            <Tooltip>
+              <TooltipTrigger
+                render={(
+                  <div
+                    className="flex h-6 cursor-pointer items-center rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-1 shadow-lg backdrop-blur-sm hover:bg-components-actionbar-bg-accent"
+                    onClick={handleStop}
+                  >
+                    <span className="i-ri-stop-circle-fill h-4 w-4 text-text-accent" aria-hidden="true" />
+                  </div>
+                )}
+              />
+              <TooltipContent>{t('debug.variableInspect.trigger.stop', { ns: 'workflow' })}</TooltipContent>
             </Tooltip>
           )}
         </>
@@ -124,5 +125,3 @@ const VariableInspectTrigger: FC = () => {
     </div>
   )
 }
-
-export default VariableInspectTrigger

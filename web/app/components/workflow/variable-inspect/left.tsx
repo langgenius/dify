@@ -1,18 +1,14 @@
-import type { currentVarType } from './variables-tab'
-
+import type { CurrentVarInInspect } from './types'
 import type { VarInInspect } from '@/types/workflow'
 import { VarInInspectType } from '@/types/workflow'
-import { cn } from '@/utils/classnames'
 import useCurrentVars from '../hooks/use-inspect-vars-crud'
 import { useNodesInteractions } from '../hooks/use-nodes-interactions'
 import { useStore } from '../store'
-// import ActionButton from '@/app/components/base/action-button'
-// import Tooltip from '@/app/components/base/tooltip'
 import Group from './group'
 
 type Props = {
-  currentNodeVar?: currentVarType
-  handleVarSelect: (state: currentVarType) => void
+  currentNodeVar?: CurrentVarInInspect
+  handleVarSelect: (state: CurrentVarInInspect) => void
 }
 
 const Left = ({
@@ -40,55 +36,48 @@ const Left = ({
   }
 
   return (
-    <div className={cn('flex h-full flex-col')}>
-      <div className="grow overflow-y-auto py-1">
-        {/* group ENV */}
-        {environmentVariables.length > 0 && (
-          <Group
-            varType={VarInInspectType.environment}
-            varList={environmentVariables as VarInInspect[]}
-            currentVar={currentNodeVar}
-            handleSelect={handleVarSelect}
-          />
-        )}
-        {/* group CHAT VAR */}
-        {conversationVars.length > 0 && (
-          <Group
-            varType={VarInInspectType.conversation}
-            varList={conversationVars}
-            currentVar={currentNodeVar}
-            handleSelect={handleVarSelect}
-          />
-        )}
-        {/* group SYSTEM VAR */}
-        {systemVars.length > 0 && (
-          <Group
-            varType={VarInInspectType.system}
-            varList={systemVars}
-            currentVar={currentNodeVar}
-            handleSelect={handleVarSelect}
-          />
-        )}
-        {/* divider */}
-        {showDivider && (
-          <div className="px-4 py-1">
-            <div className="h-px bg-divider-subtle"></div>
-          </div>
-        )}
-        {/* group nodes */}
-        {visibleNodesWithInspectVars.length > 0 && visibleNodesWithInspectVars.map(group => (
-          <Group
-            key={group.nodeId}
-            varType={VarInInspectType.node}
-            varList={group.vars}
-            nodeData={group}
-            currentVar={currentNodeVar}
-            handleSelect={handleVarSelect}
-            handleView={() => handleNodeSelect(group.nodeId, false, true)}
-            handleClear={() => handleClearNode(group.nodeId)}
-          />
-        ))}
-      </div>
+    <div className="py-1">
+      {environmentVariables.length > 0 && (
+        <Group
+          varType={VarInInspectType.environment}
+          varList={environmentVariables as VarInInspect[]}
+          currentVar={currentNodeVar}
+          handleSelect={handleVarSelect}
+        />
+      )}
+      {conversationVars.length > 0 && (
+        <Group
+          varType={VarInInspectType.conversation}
+          varList={conversationVars}
+          currentVar={currentNodeVar}
+          handleSelect={handleVarSelect}
+        />
+      )}
+      {systemVars.length > 0 && (
+        <Group
+          varType={VarInInspectType.system}
+          varList={systemVars}
+          currentVar={currentNodeVar}
+          handleSelect={handleVarSelect}
+        />
+      )}
+      {showDivider && (
+        <div className="px-4 py-1">
+          <div className="h-px bg-divider-subtle"></div>
+        </div>
+      )}
+      {visibleNodesWithInspectVars.length > 0 && visibleNodesWithInspectVars.map(group => (
+        <Group
+          key={group.nodeId}
+          varType={VarInInspectType.node}
+          varList={group.vars}
+          nodeData={group}
+          currentVar={currentNodeVar}
+          handleSelect={handleVarSelect}
+          handleView={() => handleNodeSelect(group.nodeId, false, true)}
+          handleClear={() => handleClearNode(group.nodeId)}
+        />
+      ))}
     </div>
   )
 }

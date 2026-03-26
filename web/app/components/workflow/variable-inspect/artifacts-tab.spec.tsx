@@ -1,7 +1,6 @@
 import type { SandboxFileNode } from '@/types/sandbox-file'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import ArtifactsTab from './artifacts-tab'
-import { InspectTab } from './types'
+import { act, renderHook, waitFor } from '@testing-library/react'
+import { useArtifactsInspectView } from './hooks/use-artifacts-inspect-state'
 
 type MockStoreState = {
   appId: string | undefined
@@ -11,7 +10,6 @@ type MockStoreState = {
     }
   }
   isResponding: boolean
-  bottomPanelWidth: number
 }
 
 const mocks = vi.hoisted(() => ({
@@ -19,7 +17,6 @@ const mocks = vi.hoisted(() => ({
     appId: 'app-1',
     workflowRunningData: undefined,
     isResponding: false,
-    bottomPanelWidth: 640,
   } as MockStoreState,
   flatData: [] as SandboxFileNode[],
   isLoading: false,
@@ -41,7 +38,7 @@ vi.mock('../store', () => ({
 
 vi.mock('@tanstack/react-query', async importOriginal => ({
   ...await importOriginal<typeof import('@tanstack/react-query')>(),
-  useQuery: (options: unknown) => mocks.mockUseQuery(options),
+  useQuery: (options: { queryKey?: unknown }) => mocks.mockUseQuery(options),
 }))
 
 vi.mock('@/service/use-sandbox-file', async importOriginal => ({
@@ -51,20 +48,6 @@ vi.mock('@/service/use-sandbox-file', async importOriginal => ({
   useDownloadSandboxFile: () => ({
     mutateAsync: mocks.fetchDownloadUrl,
     isPending: false,
-  }),
-}))
-
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path: string) => path,
-}))
-
-vi.mock('@/app/components/base/features/hooks', () => ({
-  useFeatures: (selector: (state: { features: { sandbox: { enabled: boolean } } }) => unknown) => selector({
-    features: {
-      sandbox: {
-        enabled: true,
-      },
-    },
   }),
 }))
 
@@ -81,13 +64,12 @@ const createFlatFileNode = (overrides: Partial<SandboxFileNode> = {}): SandboxFi
   ...overrides,
 })
 
-describe('ArtifactsTab', () => {
+describe('useArtifactsInspectState', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.storeState.appId = 'app-1'
     mocks.storeState.workflowRunningData = undefined
     mocks.storeState.isResponding = false
-    mocks.storeState.bottomPanelWidth = 640
 
     mocks.flatData = [createFlatFileNode()]
     mocks.isLoading = false
@@ -99,6 +81,7 @@ describe('ArtifactsTab', () => {
           isLoading: mocks.isLoading,
         }
       }
+
       return {
         data: undefined,
         isLoading: false,
@@ -107,23 +90,24 @@ describe('ArtifactsTab', () => {
   })
 
   it('should stop using stale file path for download url query after files are cleared', async () => {
-    const headerProps = {
-      activeTab: InspectTab.Artifacts,
-      onTabChange: vi.fn(),
-      onClose: vi.fn(),
-    }
+    const { result, rerender } = renderHook(() => useArtifactsInspectView())
 
-    const { rerender } = render(<ArtifactsTab {...headerProps} />)
-
-    fireEvent.click(screen.getByRole('button', { name: 'a.txt' }))
+    act(() => {
+      result.current.handleFileSelect({
+        name: 'a.txt',
+        path: 'a.txt',
+        node_type: 'file',
+        size: 128,
+        extension: 'txt',
+      } as never)
+    })
 
     await waitFor(() => {
       expect(mocks.mockDownloadUrlOptions).toHaveBeenCalledWith('app-1', 'a.txt')
     })
 
     mocks.flatData = []
-
-    rerender(<ArtifactsTab {...headerProps} />)
+    rerender()
 
     await waitFor(() => {
       const lastCall = mocks.mockDownloadUrlOptions.mock.calls.at(-1)

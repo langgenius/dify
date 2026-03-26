@@ -6059,29 +6059,13 @@
       "count": 1
     }
   },
-  "app/components/workflow/variable-inspect/group.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "app/components/workflow/variable-inspect/listening.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 2
     }
   },
   "app/components/workflow/variable-inspect/right.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/variable-inspect/trigger.tsx": {
-    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -6568,14 +6552,42 @@
       "count": 1
     }
   },
-  "utils/clipboard.ts": {
+  "utils/__tests__/completion-params.spec.ts": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "utils/__tests__/get-icon.spec.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "utils/__tests__/index.spec.ts": {
+    "test/no-identical-title": {
+      "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 8
+    }
+  },
+  "utils/__tests__/model-config.spec.ts": {
+    "ts/no-explicit-any": {
+      "count": 13
+    }
+  },
+  "utils/__tests__/navigation.spec.ts": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "utils/__tests__/tool-call.spec.ts": {
     "ts/no-explicit-any": {
       "count": 1
     }
   },
-  "utils/__tests__/completion-params.spec.ts": {
+  "utils/clipboard.ts": {
     "ts/no-explicit-any": {
-      "count": 3
+      "count": 1
     }
   },
   "utils/completion-params.ts": {
@@ -6596,22 +6608,9 @@
       "count": 1
     }
   },
-  "utils/__tests__/get-icon.spec.ts": {
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
   "utils/gtag.ts": {
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "utils/__tests__/index.spec.ts": {
-    "test/no-identical-title": {
-      "count": 2
-    },
-    "ts/no-explicit-any": {
-      "count": 8
     }
   },
   "utils/index.ts": {
@@ -6624,24 +6623,9 @@
       "count": 1
     }
   },
-  "utils/__tests__/model-config.spec.ts": {
-    "ts/no-explicit-any": {
-      "count": 13
-    }
-  },
   "utils/model-config.ts": {
     "ts/no-explicit-any": {
       "count": 6
-    }
-  },
-  "utils/__tests__/navigation.spec.ts": {
-    "ts/no-explicit-any": {
-      "count": 4
-    }
-  },
-  "utils/__tests__/tool-call.spec.ts": {
-    "ts/no-explicit-any": {
-      "count": 1
     }
   },
   "utils/validators.ts": {

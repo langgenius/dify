@@ -1,4 +1,4 @@
-import type { FC, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFeatures } from '@/app/components/base/features/hooks'
@@ -16,11 +16,11 @@ type TabHeaderProps = {
   children?: ReactNode
 }
 
-const TabHeader: FC<TabHeaderProps> = ({
+export default function TabHeader({
   activeTab,
   onTabChange,
   children,
-}) => {
+}: TabHeaderProps) {
   const { t } = useTranslation('workflow')
   const sandboxEnabled = useFeatures(s => s.features.sandbox?.enabled) ?? false
 
@@ -46,9 +46,7 @@ const TabHeader: FC<TabHeaderProps> = ({
           {t(tab.labelKey)}
         </button>
       ))}
-      <div className="ml-auto">{children}</div>
+      <div className="ml-auto flex justify-end">{children}</div>
     </div>
   )
 }
-
-export default TabHeader
