@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from faker import Faker
 
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
@@ -63,7 +64,7 @@ class TestDocumentIndexingUpdateTask:
             name=fake.company(),
             description=fake.text(max_nb_chars=64),
             data_source_type=DataSourceType.UPLOAD_FILE,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             created_by=account.id,
         )
         db_session_with_containers.add(dataset)
@@ -80,7 +81,7 @@ class TestDocumentIndexingUpdateTask:
             created_by=account.id,
             indexing_status=IndexingStatus.WAITING,
             enabled=True,
-            doc_form="text_model",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
         )
         db_session_with_containers.add(document)
         db_session_with_containers.commit()

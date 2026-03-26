@@ -8,6 +8,7 @@ from configs import dify_config
 from core.rag.datasource.vdb.tidb_on_qdrant.tidb_service import TidbService
 from extensions.ext_database import db
 from models.dataset import TidbAuthBinding
+from models.enums import TidbAuthBindingStatus
 
 
 @app.celery.task(queue="dataset")
@@ -57,7 +58,7 @@ def create_clusters(batch_size):
                 account=new_cluster["account"],
                 password=new_cluster["password"],
                 active=False,
-                status="CREATING",
+                status=TidbAuthBindingStatus.CREATING,
             )
             db.session.add(tidb_auth_binding)
         db.session.commit()

@@ -802,6 +802,81 @@ class TestWorkflowService:
         with pytest.raises(ValueError, match="No valid workflow found"):
             workflow_service.publish_workflow(session=db_session_with_containers, app_model=app, account=account)
 
+    def test_restore_published_workflow_to_draft_does_not_persist_normalized_source_features(
+        self, db_session_with_containers: Session
+    ):
+        """Restore copies legacy feature JSON into draft without rewriting the source row."""
+        fake = Faker()
+        account = self._create_test_account(db_session_with_containers, fake)
+        app = self._create_test_app(db_session_with_containers, fake)
+        app.mode = AppMode.ADVANCED_CHAT
+
+        legacy_features = {
+            "file_upload": {
+                "image": {
+                    "enabled": True,
+                    "number_limits": 6,
+                    "transfer_methods": ["remote_url", "local_file"],
+                }
+            },
+            "opening_statement": "",
+            "retriever_resource": {"enabled": True},
+            "sensitive_word_avoidance": {"enabled": False},
+            "speech_to_text": {"enabled": False},
+            "suggested_questions": [],
+            "suggested_questions_after_answer": {"enabled": False},
+            "text_to_speech": {"enabled": False, "language": "", "voice": ""},
+        }
+        published_workflow = Workflow(
+            id=fake.uuid4(),
+            tenant_id=app.tenant_id,
+            app_id=app.id,
+            type=WorkflowType.WORKFLOW,
+            version="2026.03.19.001",
+            graph=json.dumps({"nodes": [], "edges": []}),
+            features=json.dumps(legacy_features),
+            created_by=account.id,
+            updated_by=account.id,
+            environment_variables=[],
+            conversation_variables=[],
+        )
+        draft_workflow = Workflow(
+            id=fake.uuid4(),
+            tenant_id=app.tenant_id,
+            app_id=app.id,
+            type=WorkflowType.WORKFLOW,
+            version=Workflow.VERSION_DRAFT,
+            graph=json.dumps({"nodes": [], "edges": []}),
+            features=json.dumps({}),
+            created_by=account.id,
+            updated_by=account.id,
+            environment_variables=[],
+            conversation_variables=[],
+        )
+        db_session_with_containers.add(published_workflow)
+        db_session_with_containers.add(draft_workflow)
+        db_session_with_containers.commit()
+
+        workflow_service = WorkflowService()
+
+        restored_workflow = workflow_service.restore_published_workflow_to_draft(
+            app_model=app,
+            workflow_id=published_workflow.id,
+            account=account,
+        )
+
+        db_session_with_containers.expire_all()
+        refreshed_published_workflow = (
+            db_session_with_containers.query(Workflow).filter_by(id=published_workflow.id).first()
+        )
+        refreshed_draft_workflow = db_session_with_containers.query(Workflow).filter_by(id=draft_workflow.id).first()
+
+        assert restored_workflow.id == draft_workflow.id
+        assert refreshed_published_workflow is not None
+        assert refreshed_draft_workflow is not None
+        assert refreshed_published_workflow.serialized_features == json.dumps(legacy_features)
+        assert refreshed_draft_workflow.serialized_features == json.dumps(legacy_features)
+
     def test_get_default_block_configs(self, db_session_with_containers: Session):
         """
         Test retrieval of default block configurations for all node types.
@@ -1428,10 +1503,10 @@ class TestWorkflowService:
             import uuid
             from datetime import datetime
 
-            from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
-            from dify_graph.graph_events import NodeRunSucceededEvent
-            from dify_graph.node_events import NodeRunResult
-            from dify_graph.nodes.base.node import Node
+            from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
+            from graphon.graph_events import NodeRunSucceededEvent
+            from graphon.node_events import NodeRunResult
+            from graphon.nodes.base.node import Node
 
             # Create mock node
             mock_node = MagicMock(spec=Node)
@@ -1473,12 +1548,12 @@ class TestWorkflowService:
         # Assert
         assert result is not None
         assert result.node_id == node_id
-        from dify_graph.enums import BuiltinNodeTypes
+        from graphon.enums import BuiltinNodeTypes
 
         assert result.node_type == BuiltinNodeTypes.START  # Should match the mock node type
         assert result.title == "Test Node"
         # Import the enum for comparison
-        from dify_graph.enums import WorkflowNodeExecutionStatus
+        from graphon.enums import WorkflowNodeExecutionStatus
 
         assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
         assert result.inputs is not None
@@ -1503,10 +1578,10 @@ class TestWorkflowService:
             import uuid
             from datetime import datetime
 
-            from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
-            from dify_graph.graph_events import NodeRunFailedEvent
-            from dify_graph.node_events import NodeRunResult
-            from dify_graph.nodes.base.node import Node
+            from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
+            from graphon.graph_events import NodeRunFailedEvent
+            from graphon.node_events import NodeRunResult
+            from graphon.nodes.base.node import Node
 
             # Create mock node
             mock_node = MagicMock(spec=Node)
@@ -1548,7 +1623,7 @@ class TestWorkflowService:
         assert result is not None
         assert result.node_id == node_id
         # Import the enum for comparison
-        from dify_graph.enums import WorkflowNodeExecutionStatus
+        from graphon.enums import WorkflowNodeExecutionStatus
 
         assert result.status == WorkflowNodeExecutionStatus.FAILED
         assert result.error is not None
@@ -1572,10 +1647,10 @@ class TestWorkflowService:
             import uuid
             from datetime import datetime
 
-            from dify_graph.enums import BuiltinNodeTypes, ErrorStrategy, WorkflowNodeExecutionStatus
-            from dify_graph.graph_events import NodeRunFailedEvent
-            from dify_graph.node_events import NodeRunResult
-            from dify_graph.nodes.base.node import Node
+            from graphon.enums import BuiltinNodeTypes, ErrorStrategy, WorkflowNodeExecutionStatus
+            from graphon.graph_events import NodeRunFailedEvent
+            from graphon.node_events import NodeRunResult
+            from graphon.nodes.base.node import Node
 
             # Create mock node with continue_on_error
             mock_node = MagicMock(spec=Node)
@@ -1618,7 +1693,7 @@ class TestWorkflowService:
         assert result is not None
         assert result.node_id == node_id
         # Import the enum for comparison
-        from dify_graph.enums import WorkflowNodeExecutionStatus
+        from graphon.enums import WorkflowNodeExecutionStatus
 
         assert result.status == WorkflowNodeExecutionStatus.EXCEPTION  # Should be EXCEPTION, not FAILED
         assert result.outputs is not None

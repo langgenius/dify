@@ -5,7 +5,7 @@ import { capitalize } from 'es-toolkit/string'
 import { produce } from 'immer'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { CollectionType } from '@/app/components/tools/types'
 import {
@@ -66,10 +66,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
     async (value: any) => {
       await updateBuiltInToolCredential(currCollection?.name as string, value)
 
-      Toast.notify({
-        type: 'success',
-        message: t('api.actionSuccess', { ns: 'common' }),
-      })
+      toast.success(t('api.actionSuccess', { ns: 'common' }))
       invalidToolsByType()
       hideSetAuthModal()
     },

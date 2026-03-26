@@ -16,10 +16,6 @@ from opentelemetry.trace import Span, SpanKind, Tracer, get_tracer, set_span_in_
 from typing_extensions import override
 
 from configs import dify_config
-from dify_graph.enums import BuiltinNodeTypes, NodeType
-from dify_graph.graph_engine.layers.base import GraphEngineLayer
-from dify_graph.graph_events import GraphNodeEventBase
-from dify_graph.nodes.base.node import Node
 from extensions.otel.parser import (
     DefaultNodeOTelParser,
     LLMNodeOTelParser,
@@ -28,6 +24,10 @@ from extensions.otel.parser import (
     ToolNodeOTelParser,
 )
 from extensions.otel.runtime import is_instrument_flag_enabled
+from graphon.enums import BuiltinNodeTypes, NodeType
+from graphon.graph_engine.layers.base import GraphEngineLayer
+from graphon.graph_events import GraphNodeEventBase
+from graphon.nodes.base.node import Node
 
 logger = logging.getLogger(__name__)
 

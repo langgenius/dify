@@ -9,12 +9,12 @@ from core.repositories.human_input_repository import (
     HumanInputFormRecord,
     HumanInputFormSubmissionRepository,
 )
-from dify_graph.nodes.human_input.entities import (
+from graphon.nodes.human_input.entities import (
     FormDefinition,
     FormInput,
     UserAction,
 )
-from dify_graph.nodes.human_input.enums import FormInputType, HumanInputFormKind, HumanInputFormStatus
+from graphon.nodes.human_input.enums import FormInputType, HumanInputFormKind, HumanInputFormStatus
 from models.human_input import RecipientType
 from services.human_input_service import (
     Form,

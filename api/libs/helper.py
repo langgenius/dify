@@ -21,9 +21,9 @@ from pydantic.functional_validators import AfterValidator
 
 from configs import dify_config
 from core.app.features.rate_limiting.rate_limit import RateLimitGenerator
-from dify_graph.file import helpers as file_helpers
-from dify_graph.model_runtime.utils.encoders import jsonable_encoder
 from extensions.ext_redis import redis_client
+from graphon.file import helpers as file_helpers
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 
 if TYPE_CHECKING:
     from models import Account

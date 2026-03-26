@@ -5,18 +5,18 @@ from __future__ import annotations
 import queue
 from unittest import mock
 
-from dify_graph.entities.pause_reason import SchedulingPause
-from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
-from dify_graph.graph_engine.event_management.event_handlers import EventHandler
-from dify_graph.graph_engine.orchestration.dispatcher import Dispatcher
-from dify_graph.graph_engine.orchestration.execution_coordinator import ExecutionCoordinator
-from dify_graph.graph_events import (
+from graphon.entities.pause_reason import SchedulingPause
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
+from graphon.graph_engine.event_management.event_handlers import EventHandler
+from graphon.graph_engine.orchestration.dispatcher import Dispatcher
+from graphon.graph_engine.orchestration.execution_coordinator import ExecutionCoordinator
+from graphon.graph_events import (
     GraphNodeEventBase,
     NodeRunPauseRequestedEvent,
     NodeRunStartedEvent,
     NodeRunSucceededEvent,
 )
-from dify_graph.node_events import NodeRunResult
+from graphon.node_events import NodeRunResult
 from libs.datetime_utils import naive_utc_now
 
 

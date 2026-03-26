@@ -2,9 +2,9 @@
 
 from unittest.mock import MagicMock, create_autospec
 
-from dify_graph.graph import Edge, Graph
-from dify_graph.graph_engine.graph_state_manager import GraphStateManager
-from dify_graph.graph_engine.graph_traversal.skip_propagator import SkipPropagator
+from graphon.graph import Edge, Graph
+from graphon.graph_engine.graph_state_manager import GraphStateManager
+from graphon.graph_engine.graph_traversal.skip_propagator import SkipPropagator
 
 
 class TestSkipPropagator:

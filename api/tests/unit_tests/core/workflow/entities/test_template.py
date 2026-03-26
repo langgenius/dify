@@ -1,6 +1,6 @@
 """Tests for template module."""
 
-from dify_graph.nodes.base.template import Template, TextSegment, VariableSegment
+from graphon.nodes.base.template import Template, TextSegment, VariableSegment
 
 
 class TestTemplate:

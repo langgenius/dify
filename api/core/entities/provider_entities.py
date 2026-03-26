@@ -12,7 +12,7 @@ from core.entities.parameter_entities import (
     ToolSelectorScope,
 )
 from core.tools.entities.common_entities import I18nObject
-from dify_graph.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.model_entities import ModelType
 
 
 class ProviderQuotaType(StrEnum):

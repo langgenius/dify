@@ -2,7 +2,7 @@ import ssl
 from datetime import timedelta
 from typing import Any
 
-import pytz
+import pytz  # type: ignore[import-untyped]
 from celery import Celery, Task
 from celery.schedules import crontab
 
