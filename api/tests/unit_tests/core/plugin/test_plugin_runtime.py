@@ -36,14 +36,14 @@ from core.plugin.impl.exc import (
 )
 from core.plugin.impl.plugin import PluginInstaller
 from core.plugin.impl.tool import PluginToolManager
-from dify_graph.model_runtime.errors.invoke import (
+from graphon.model_runtime.errors.invoke import (
     InvokeAuthorizationError,
     InvokeBadRequestError,
     InvokeConnectionError,
     InvokeRateLimitError,
     InvokeServerUnavailableError,
 )
-from dify_graph.model_runtime.errors.validate import CredentialsValidateFailedError
+from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
 
 
 class TestPluginRuntimeExecution:

@@ -292,9 +292,6 @@ export const resetHITLInputReg = () => HITL_INPUT_REG.lastIndex = 0
 
 export const DISABLE_UPLOAD_IMAGE_AS_ICON = env.NEXT_PUBLIC_DISABLE_UPLOAD_IMAGE_AS_ICON
 
-export const GITHUB_ACCESS_TOKEN
-  = env.NEXT_PUBLIC_GITHUB_ACCESS_TOKEN
-
 export const SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS = '.difypkg,.difybndl'
 export const FULL_DOC_PREVIEW_LENGTH = 50
 

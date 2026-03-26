@@ -74,10 +74,16 @@ vi.mock('@/app/components/plugins/install-plugin/base/use-get-icon', () => ({
   default: () => ({ getIconUrl: mockGetIconUrl }),
 }))
 
-const mockFetchReleases = vi.fn()
-vi.mock('../../hooks', () => ({
-  useGitHubReleases: () => ({ fetchReleases: mockFetchReleases }),
+const { mockFetchReleases } = vi.hoisted(() => ({
+  mockFetchReleases: vi.fn(),
 }))
+vi.mock('../../hooks', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../hooks')>()
+  return {
+    ...actual,
+    fetchReleases: mockFetchReleases,
+  }
+})
 
 const mockRefreshPluginList = vi.fn()
 vi.mock('../../hooks/use-refresh-plugin-list', () => ({

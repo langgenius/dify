@@ -72,12 +72,14 @@ vi.mock('@/service/use-tools', () => ({
   useInvalidateAllToolProviders: () => mockInvalidateAllToolProviders,
 }))
 
-vi.mock('../../../../install-plugin/hooks', () => ({
-  useGitHubReleases: () => ({
+vi.mock('../../../../install-plugin/hooks', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../install-plugin/hooks')>()
+  return {
+    ...actual,
     checkForUpdates: mockCheckForUpdates,
     fetchReleases: mockFetchReleases,
-  }),
-}))
+  }
+})
 
 const createPluginDetail = (overrides: Partial<PluginDetail> = {}): PluginDetail => ({
   id: 'test-id',

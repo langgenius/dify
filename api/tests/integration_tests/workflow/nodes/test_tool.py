@@ -5,13 +5,14 @@ from unittest.mock import MagicMock, patch
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.tools.utils.configuration import ToolParameterConfigurationManager
 from core.workflow.node_factory import DifyNodeFactory
-from dify_graph.enums import WorkflowNodeExecutionStatus
-from dify_graph.graph import Graph
-from dify_graph.node_events import StreamCompletedEvent
-from dify_graph.nodes.protocols import ToolFileManagerProtocol
-from dify_graph.nodes.tool.tool_node import ToolNode
-from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.system_variable import SystemVariable
+from core.workflow.node_runtime import DifyToolNodeRuntime
+from core.workflow.system_variables import build_system_variables
+from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.graph import Graph
+from graphon.node_events import StreamCompletedEvent
+from graphon.nodes.protocols import ToolFileManagerProtocol
+from graphon.nodes.tool.tool_node import ToolNode
+from graphon.runtime import GraphRuntimeState, VariablePool
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
@@ -40,7 +41,7 @@ def init_tool_node(config: dict):
 
     # construct variable pool
     variable_pool = VariablePool(
-        system_variables=SystemVariable(user_id="aaa", files=[]),
+        system_variables=build_system_variables(user_id="aaa", files=[]),
         user_inputs={},
         environment_variables=[],
         conversation_variables=[],
@@ -64,6 +65,7 @@ def init_tool_node(config: dict):
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
         tool_file_manager_factory=tool_file_manager_factory,
+        runtime=DifyToolNodeRuntime(init_params.run_context),
     )
     return node
 

@@ -9,12 +9,12 @@ from sqlalchemy.orm import Session
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
-from dify_graph.enums import WorkflowExecutionStatus
 from extensions.ext_database import db
 from fields.workflow_app_log_fields import (
     build_workflow_app_log_pagination_model,
     build_workflow_archived_log_pagination_model,
 )
+from graphon.enums import WorkflowExecutionStatus
 from libs.login import login_required
 from models import App
 from models.model import AppMode

@@ -26,14 +26,14 @@ from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.workflow.nodes.datasource.entities import DatasourceNodeData
 from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
-from dify_graph.enums import BuiltinNodeTypes
-from dify_graph.model_runtime.utils.encoders import jsonable_encoder
-from dify_graph.nodes.llm.entities import LLMNodeData
-from dify_graph.nodes.parameter_extractor.entities import ParameterExtractorNodeData
-from dify_graph.nodes.question_classifier.entities import QuestionClassifierNodeData
-from dify_graph.nodes.tool.entities import ToolNodeData
 from extensions.ext_redis import redis_client
 from factories import variable_factory
+from graphon.enums import BuiltinNodeTypes
+from graphon.model_runtime.utils.encoders import jsonable_encoder
+from graphon.nodes.llm.entities import LLMNodeData
+from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
+from graphon.nodes.question_classifier.entities import QuestionClassifierNodeData
+from graphon.nodes.tool.entities import ToolNodeData
 from models import Account
 from models.dataset import Dataset, DatasetCollectionBinding, Pipeline
 from models.enums import CollectionBindingType, DatasetRuntimeMode

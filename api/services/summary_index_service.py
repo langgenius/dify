@@ -15,8 +15,8 @@ from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.index_processor.index_processor_base import SummaryIndexSettingDict
 from core.rag.models.document import Document
-from dify_graph.model_runtime.entities.llm_entities import LLMUsage
-from dify_graph.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.llm_entities import LLMUsage
+from graphon.model_runtime.entities.model_entities import ModelType
 from libs import helper
 from models.dataset import Dataset, DocumentSegment, DocumentSegmentSummary
 from models.dataset import Document as DatasetDocument
@@ -192,7 +192,7 @@ class SummaryIndexService:
         # Calculate embedding tokens for summary (for logging and statistics)
         embedding_tokens = 0
         try:
-            model_manager = ModelManager()
+            model_manager = ModelManager.for_tenant(tenant_id=dataset.tenant_id)
             embedding_model = model_manager.get_model_instance(
                 tenant_id=dataset.tenant_id,
                 provider=dataset.embedding_model_provider,
@@ -201,7 +201,8 @@ class SummaryIndexService:
             )
             if embedding_model:
                 tokens_list = embedding_model.get_text_embedding_num_tokens([summary_content])
-                embedding_tokens = tokens_list[0] if tokens_list else 0
+                raw_embedding_tokens = tokens_list[0] if tokens_list else 0
+                embedding_tokens = raw_embedding_tokens if isinstance(raw_embedding_tokens, int) else 0
         except Exception as e:
             logger.warning("Failed to calculate embedding tokens for summary: %s", str(e))
 
