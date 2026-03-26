@@ -261,3 +261,31 @@ class TestRunMethod:
         with pytest.raises(AgentMaxIterationError):
             list(runner.run(message, "query"))
 
+# ==============================
+# EROS Iteration Tracking (The Missing Piece)
+# ==============================
+
+class TestEROSTracking:
+    def test_save_thought_updates_iteration_steps(self, runner, mocker):
+        """Ensures that every agent thought is recorded in the EROS iteration_steps."""
+        # Un-mock save_agent_thought to test the real iterative logic
+        runner.save_agent_thought = FunctionCallAgentRunner.save_agent_thought.__get__(runner)
+        mocker.patch('core.agent.base_agent_runner.db.session.scalar', return_value=MagicMock())
+        
+        usage = build_usage()
+        runner.save_agent_thought(
+            agent_thought_id="t1",
+            tool_name="weather",
+            tool_input={"city": "London"},
+            thought="checking",
+            observation="rain",
+            answer=None,
+            tool_meta=None,
+            files=[],
+            message_usage=usage
+        )
+        
+        # Verify Layer 3 captured the iteration
+        assert len(runner.iteration_steps) == 1
+        assert runner.iteration_steps[0]['tool'] == "weather"
+
