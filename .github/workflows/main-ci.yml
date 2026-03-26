@@ -3,6 +3,9 @@ name: Main CI Pipeline
 on:
   pull_request:
     branches: ["main"]
+  merge_group:
+    branches: ["main"]
+    types: [checks_requested]
   push:
     branches: ["main"]
 
