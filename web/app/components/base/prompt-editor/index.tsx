@@ -39,7 +39,6 @@ import {
 } from 'lexical'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
-import { Trans } from 'react-i18next'
 import { WorkflowContext } from '@/app/components/workflow/context'
 import { HooksStoreContext } from '@/app/components/workflow/hooks-store/provider'
 import { FileReferenceNode } from '@/app/components/workflow/skill/editor/skill-editor/plugins/file-reference-block/node'
@@ -118,6 +117,7 @@ import {
   WorkflowVariableBlockNode,
   WorkflowVariableBlockReplacementBlock,
 } from './plugins/workflow-variable-block'
+import SandboxPlaceholder from './sandbox-placeholder'
 import { textToEditorState } from './utils'
 
 const ValueSyncPlugin: FC<{ value?: string }> = ({ value }) => {
@@ -342,50 +342,6 @@ const PromptEditorContent: FC<PromptEditorContentProps> = ({
     enabled: Boolean(isSupportSandbox),
   }), [isSupportSandbox])
 
-  const sandboxPlaceHolder = React.useMemo(() => {
-    if (!isSupportSandbox)
-      return null
-    const i18nKey = disableToolBlocks
-      ? 'promptEditor.placeholderSandboxNoTools'
-      : 'promptEditor.placeholderSandbox'
-    const components = disableToolBlocks
-      ? [
-          <span
-            key="slash"
-            className="inline-flex h-5 min-w-5 items-center justify-center rounded-[4px] bg-components-kbd-bg-gray px-1 text-text-tertiary system-kbd"
-          />,
-          <span
-            key="insert"
-            className="border-b border-dotted border-current"
-          />,
-        ]
-      : [
-          <span
-            key="slash"
-            className="inline-flex h-5 min-w-5 items-center justify-center rounded-[4px] bg-components-kbd-bg-gray px-1 text-text-tertiary system-kbd"
-          />,
-          <span
-            key="insert"
-            className="border-b border-dotted border-current"
-          />,
-          <span
-            key="at"
-            className="inline-flex h-5 min-w-5 items-center justify-center rounded-[4px] bg-components-kbd-bg-gray px-1 text-text-tertiary system-kbd"
-          />,
-          <span
-            key="tools"
-            className="border-b border-dotted border-current"
-          />,
-        ]
-    return (
-      <Trans
-        i18nKey={i18nKey}
-        ns="common"
-        components={components}
-      />
-    )
-  }, [disableToolBlocks, isSupportSandbox])
-
   const [floatingAnchorElem, setFloatingAnchorElem] = useState<HTMLDivElement | null>(null)
 
   const onRef = (floatingAnchorElement: HTMLDivElement | null) => {
@@ -415,7 +371,12 @@ const PromptEditorContent: FC<PromptEditorContentProps> = ({
               )}
               placeholder={(
                 <Placeholder
-                  value={placeholder || sandboxPlaceHolder}
+                  value={placeholder || (
+                    <SandboxPlaceholder
+                      disableToolBlocks={disableToolBlocks}
+                      isSupportSandbox={isSupportSandbox}
+                    />
+                  )}
                   className={cn('truncate', placeholderClassName)}
                   compact={compact}
                 />
