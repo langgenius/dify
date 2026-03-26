@@ -24,7 +24,7 @@ const ViewPicker: FC<ViewPickerProps> = ({
   const { t } = useTranslation()
   const options = useMemo(() => ([
     { value: ViewType.graph, text: t('viewPicker.graph', { ns: 'workflow' }), disabled: disabled && value !== ViewType.graph },
-    { value: ViewType.skill, text: t('viewPicker.skill', { ns: 'workflow' }), disabled: disabled && value !== ViewType.skill },
+    { value: ViewType.skill, text: t('viewPicker.file', { ns: 'workflow' }), disabled: disabled && value !== ViewType.skill },
   ]), [t, disabled, value])
 
   const handleChange = useCallback((nextValue: string | number | symbol) => {
