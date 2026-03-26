@@ -98,10 +98,27 @@ jobs:
         if: steps.web-changes.outputs.any_changed == 'true'
         uses: ./.github/actions/setup-web
 
+      - name: Restore ESLint cache
+        if: steps.web-changes.outputs.any_changed == 'true'
+        id: eslint-cache-restore
+        uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        with:
+          path: web/.eslintcache
+          key: ${{ runner.os }}-web-eslint-${{ hashFiles('web/package.json', 'web/pnpm-lock.yaml', 'web/eslint.config.mjs', 'web/eslint.constants.mjs', 'web/plugins/eslint/**') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-web-eslint-${{ hashFiles('web/package.json', 'web/pnpm-lock.yaml', 'web/eslint.config.mjs', 'web/eslint.constants.mjs', 'web/plugins/eslint/**') }}-
+
       - name: ESLint autofix
         if: steps.web-changes.outputs.any_changed == 'true'
         run: |
           cd web
-          vp exec eslint --concurrency=2 --prune-suppressions --quiet || true
+          vp exec eslint --cache --concurrency=2 --prune-suppressions --quiet || true
+
+      - name: Save ESLint cache
+        if: steps.web-changes.outputs.any_changed == 'true' && success() && steps.eslint-cache-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        with:
+          path: web/.eslintcache
+          key: ${{ steps.eslint-cache-restore.outputs.cache-primary-key }}
 
       - uses: autofix-ci/action@7a166d7532b277f34e16238930461bf77f9d7ed8 # v1.3.3
