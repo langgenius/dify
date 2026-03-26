@@ -1,15 +1,6 @@
 import type { CreateSnippetDialogPayload } from './create-snippet-dialog'
 import type { Edge, Node } from './types'
 import type { SnippetCanvasData } from '@/models/snippet'
-import {
-  RiAlignItemBottomLine,
-  RiAlignItemHorizontalCenterLine,
-  RiAlignItemLeftLine,
-  RiAlignItemRightLine,
-  RiAlignItemTopLine,
-  RiAlignItemVerticalCenterLine,
-  RiAlignJustify,
-} from '@remixicon/react'
 import { produce } from 'immer'
 import {
   memo,
@@ -73,8 +64,6 @@ type ActionMenuItem = {
   translationKey: string
 }
 
-const MENU_WIDTH = 240
-const MENU_HEIGHT = 240
 const DEFAULT_SNIPPET_VIEWPORT: SnippetCanvasData['viewport'] = { x: 0, y: 0, zoom: 1 }
 
 const alignMenuItems: AlignMenuItem[] = [
@@ -562,7 +551,6 @@ const SelectionContextmenu = () => {
           <div className="p-1.5">
             <div className="flex items-center">
               {alignMenuItems.map((item) => {
-                const Icon = item.icon
                 return (
                   <ContextMenuItem
                     key={item.alignType}
