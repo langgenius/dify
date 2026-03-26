@@ -8423,7 +8423,7 @@
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/workflow/nodes/question-classifier/use-config.ts": {
