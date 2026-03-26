@@ -8,13 +8,11 @@ import { cn } from '@/utils/classnames'
 
 type PlaceholderProps = {
   disableVariableInsertion?: boolean
-  hasSelectedAgent?: boolean
   hideBadge?: boolean
 }
 
 const Placeholder = ({
   disableVariableInsertion = false,
-  hasSelectedAgent = false,
   hideBadge = false,
 }: PlaceholderProps) => {
   const { t } = useTranslation()
@@ -54,21 +52,6 @@ const Placeholder = ({
             >
               {t('nodes.tool.insertPlaceholder2', { ns: 'workflow' })}
             </div>
-            {!hasSelectedAgent && (
-              <>
-                <div className="mx-0.5 flex h-4 w-4 items-center justify-center rounded bg-components-kbd-bg-gray text-text-placeholder system-kbd">@</div>
-                <div
-                  className="cursor-pointer text-components-input-text-placeholder underline decoration-dotted decoration-auto underline-offset-auto system-sm-regular hover:text-text-tertiary"
-                  onMouseDown={((e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    handleInsert('@')
-                  })}
-                >
-                  {t('nodes.tool.insertPlaceholder3', { ns: 'workflow' })}
-                </div>
-              </>
-            )}
           </>
         )}
       </div>

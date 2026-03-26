@@ -414,15 +414,12 @@ const MixedVariableTextInput = ({
               workflowNodesMap,
               showManageInputField,
               onManageInputField,
+              agentNodes,
+              onSelectAgent: handleAgentSelect,
               showAssembleVariables: !disableVariableInsertion && !!toolNodeId && !!paramKey,
               onAssembleVariables: handleAssembleSelect,
             }}
-            agentBlock={{
-              show: agentNodes.length > 0 && !detectedAgentFromValue,
-              agentNodes,
-              onSelect: handleAgentSelect,
-            }}
-            placeholder={<Placeholder disableVariableInsertion={disableVariableInsertion} hasSelectedAgent={!!detectedAgentFromValue} />}
+            placeholder={<Placeholder disableVariableInsertion={disableVariableInsertion} />}
             onChange={(text) => {
               const hasPlaceholder = new RegExp(AGENT_CONTEXT_VAR_PATTERN.source).test(text)
               if (hasPlaceholder)

@@ -223,4 +223,83 @@ describe('VarReferenceVars', () => {
     fireEvent.click(screen.getByText('asset'))
     expect(onChange).not.toHaveBeenCalled()
   })
+
+  it('should render agent entries before assemble variables and normal variables', () => {
+    const onSelectAgent = vi.fn()
+
+    render(
+      <VarReferenceVars
+        hideSearch
+        vars={baseVars}
+        onChange={vi.fn()}
+        agentNodes={[{ id: 'agent-1', title: 'Agent One' }]}
+        onSelectAgent={onSelectAgent}
+        showAssembleVariables
+        onAssembleVariables={() => null}
+      />,
+    )
+
+    const agentButton = screen.getByRole('button', { name: 'Agent One' })
+    const assembleButton = screen.getByRole('button', { name: 'workflow.nodes.tool.assembleVariables' })
+    const variableLabel = screen.getByText('valid_name')
+
+    expect(agentButton.compareDocumentPosition(assembleButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(assembleButton.compareDocumentPosition(variableLabel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+
+    fireEvent.click(agentButton)
+    expect(onSelectAgent).toHaveBeenCalledWith({ id: 'agent-1', title: 'Agent One' })
+  })
+
+  it('should filter agent entries and variables with the shared search box', () => {
+    render(
+      <VarReferenceVars
+        vars={baseVars}
+        onChange={vi.fn()}
+        agentNodes={[{ id: 'agent-1', title: 'Agent One' }]}
+        onSelectAgent={vi.fn()}
+      />,
+    )
+
+    const searchInput = screen.getByPlaceholderText('workflow.common.searchVar')
+
+    fireEvent.change(searchInput, { target: { value: 'agent' } })
+    expect(screen.getByRole('button', { name: 'Agent One' })).toBeInTheDocument()
+    expect(screen.queryByText('valid_name')).not.toBeInTheDocument()
+
+    fireEvent.change(searchInput, { target: { value: 'valid' } })
+    expect(screen.getByText('valid_name')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Agent One' })).not.toBeInTheDocument()
+  })
+
+  it('should include agents, assemble variables, and variables in keyboard navigation order', () => {
+    const onSelectAgent = vi.fn()
+    const onAssembleVariables = vi.fn(() => null)
+    const onChange = vi.fn()
+
+    render(
+      <VarReferenceVars
+        hideSearch
+        enableKeyboardNavigation
+        vars={baseVars}
+        onChange={onChange}
+        agentNodes={[{ id: 'agent-1', title: 'Agent One' }]}
+        onSelectAgent={onSelectAgent}
+        showAssembleVariables
+        onAssembleVariables={onAssembleVariables}
+      />,
+    )
+
+    fireEvent.keyDown(document, { key: 'Enter' })
+    expect(onSelectAgent).toHaveBeenCalledWith({ id: 'agent-1', title: 'Agent One' })
+
+    fireEvent.keyDown(document, { key: 'ArrowDown' })
+    fireEvent.keyDown(document, { key: 'Enter' })
+    expect(onAssembleVariables).toHaveBeenCalledTimes(1)
+
+    fireEvent.keyDown(document, { key: 'ArrowDown' })
+    fireEvent.keyDown(document, { key: 'Enter' })
+    expect(onChange).toHaveBeenCalledWith(['node-a', 'valid_name'], expect.objectContaining({
+      variable: 'valid_name',
+    }))
+  })
 })

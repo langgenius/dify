@@ -631,4 +631,77 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
     // With a single option group, the only divider should be the workflow-var/options separator.
     expect(document.querySelectorAll('.bg-divider-subtle')).toHaveLength(1)
   })
+
+  it('renders agent entries in the slash menu and routes selection through workflowVariableBlock.onSelectAgent', async () => {
+    const captures: Captures = { editor: null, eventEmitter: null }
+    const onSelectAgent = vi.fn()
+
+    const workflowVariableBlock = makeWorkflowVariableBlock({
+      agentNodes: [{ id: 'agent-1', title: 'Agent One' }],
+      onSelectAgent,
+      showAssembleVariables: true,
+      onAssembleVariables: vi.fn(() => ['tool-ext', 'result']),
+    }, [
+      makeWorkflowVarNode('node-1', 'Node 1', [
+        makeWorkflowNodeVar('output', VarType.string),
+      ]),
+    ])
+
+    render((
+      <MinimalEditor
+        triggerString="/"
+        workflowVariableBlock={workflowVariableBlock}
+        captures={captures}
+      />
+    ))
+
+    const editor = await waitForEditor(captures)
+    const dispatchSpy = vi.spyOn(editor, 'dispatchCommand')
+
+    await setEditorText(editor, '/', true)
+    await flushNextTick()
+
+    const agentButton = await screen.findByRole('button', { name: 'Agent One' })
+    const assembleButton = await screen.findByRole('button', { name: 'workflow.nodes.tool.assembleVariables' })
+
+    expect(agentButton.compareDocumentPosition(assembleButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+
+    fireEvent.click(agentButton)
+
+    expect(dispatchSpy).toHaveBeenCalledWith(INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND, ['agent-1', 'context'])
+    expect(onSelectAgent).toHaveBeenCalledWith({ id: 'agent-1', title: 'Agent One' })
+
+    await waitFor(() => {
+      expect(readEditorText(editor)).not.toContain('/')
+    })
+  })
+
+  it('does not render an at-menu when triggerString is @ but agentBlock is not provided', async () => {
+    const captures: Captures = { editor: null, eventEmitter: null }
+
+    const workflowVariableBlock = makeWorkflowVariableBlock({
+      agentNodes: [{ id: 'agent-1', title: 'Agent One' }],
+      onSelectAgent: vi.fn(),
+    }, [
+      makeWorkflowVarNode('node-1', 'Node 1', [
+        makeWorkflowNodeVar('output', VarType.string),
+      ]),
+    ])
+
+    render((
+      <MinimalEditor
+        triggerString="@"
+        workflowVariableBlock={workflowVariableBlock}
+        captures={captures}
+      />
+    ))
+
+    const editor = await waitForEditor(captures)
+    await setEditorText(editor, '@', true)
+
+    await waitFor(() => {
+      expect(screen.queryByText('Agent One')).not.toBeInTheDocument()
+      expect(screen.queryByPlaceholderText('workflow.common.searchVar')).not.toBeInTheDocument()
+    })
+  })
 })

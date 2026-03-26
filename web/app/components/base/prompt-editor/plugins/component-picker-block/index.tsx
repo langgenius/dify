@@ -254,13 +254,14 @@ const ComponentPicker = ({
       root.selectStart()
     })
     editor.dispatchCommand(INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND, [agent.id, 'context'])
+    workflowVariableBlock?.onSelectAgent?.(agent)
     agentBlock?.onSelect?.(agent)
     editor.update(() => {
       const root = $getRoot()
       root.selectEnd()
     })
     handleClose()
-  }, [editor, getMatchFromSelection, agentBlock, handleClose])
+  }, [editor, getMatchFromSelection, workflowVariableBlock, agentBlock, handleClose])
 
   const handleSelectContext = useCallback(() => {
     if (!contextBlock?.selectable)
@@ -279,7 +280,9 @@ const ComponentPicker = ({
 
   const isAgentTrigger = triggerString === '@' && agentBlock?.show
   const showAssembleVariables = triggerString === '/' && workflowVariableBlock?.showAssembleVariables && !!workflowVariableBlock?.onAssembleVariables
-  const agentNodes: AgentNode[] = useMemo(() => agentBlock?.agentNodes || [], [agentBlock?.agentNodes])
+  const agentNodes: AgentNode[] = useMemo(() => {
+    return workflowVariableBlock?.agentNodes || agentBlock?.agentNodes || []
+  }, [workflowVariableBlock?.agentNodes, agentBlock?.agentNodes])
   const handleOpen = useCallback(() => {
     if (isSupportSandbox && triggerString === '/')
       setActiveTab('variables')
@@ -289,6 +292,9 @@ const ComponentPicker = ({
     anchorElementRef,
     { options, selectedIndex, selectOptionAndCleanUp, setHighlightedIndex },
   ) => {
+    if (triggerString === '@' && !agentBlock?.show)
+      return null
+
     if (isAgentTrigger) {
       if (!(anchorElementRef.current && agentNodes.length))
         return null
@@ -462,6 +468,8 @@ const ComponentPicker = ({
                                 onBlur={handleClose}
                                 showManageInputField={workflowVariableBlock.showManageInputField}
                                 onManageInputField={workflowVariableBlock.onManageInputField}
+                                agentNodes={triggerString === '/' ? workflowVariableBlock.agentNodes : undefined}
+                                onSelectAgent={triggerString === '/' && workflowVariableBlock.agentNodes?.length ? handleSelectAgent : undefined}
                                 showAssembleVariables={showAssembleVariables}
                                 onAssembleVariables={showAssembleVariables ? handleSelectAssembleVariables : undefined}
                                 autoFocus={false}
@@ -510,7 +518,7 @@ const ComponentPicker = ({
         }
       </>
     )
-  }, [isAgentTrigger, isSupportSandbox, triggerString, allFlattenOptions.length, workflowVariableBlock?.show, workflowVariableBlock?.showManageInputField, workflowVariableBlock?.onManageInputField, floatingStyles, isPositioned, refs, agentNodes, handleSelectAgent, handleClose, useExternalSearch, queryString, workflowVariableOptions, isSupportFileVar, showAssembleVariables, handleSelectAssembleVariables, currentBlock?.generatorType, t, activeTab, handleSelectWorkflowVariable, handleSelectFileReference, contextBlock?.show, contextBlock?.selectable, handleSelectContext])
+  }, [isAgentTrigger, isSupportSandbox, triggerString, allFlattenOptions.length, workflowVariableBlock?.show, workflowVariableBlock?.showManageInputField, workflowVariableBlock?.onManageInputField, workflowVariableBlock?.agentNodes, floatingStyles, isPositioned, refs, agentNodes, handleSelectAgent, handleClose, useExternalSearch, queryString, workflowVariableOptions, isSupportFileVar, showAssembleVariables, handleSelectAssembleVariables, currentBlock?.generatorType, t, activeTab, handleSelectWorkflowVariable, handleSelectFileReference, contextBlock?.show, contextBlock?.selectable, handleSelectContext, agentBlock?.show])
 
   return (
     <>

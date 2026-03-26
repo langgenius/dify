@@ -12,8 +12,7 @@ import type {
   ContextGenerateResponse,
 } from '@/service/debug'
 import type { CompletionParams, Model, ModelModeType } from '@/types/app'
-import { useSessionStorageState } from 'ahooks'
-import useBoolean from 'ahooks/lib/useBoolean'
+import { useBoolean, useSessionStorageState } from 'ahooks'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/components/base/ui/toast'
