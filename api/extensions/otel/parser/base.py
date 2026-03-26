@@ -27,7 +27,6 @@ def should_include_content() -> bool:
     """Return True if content should be written to spans.
 
     CE (ENTERPRISE_ENABLED=False): always True — no behaviour change.
-    EE: follows ENTERPRISE_INCLUDE_CONTENT (default True).
     """
     if not dify_config.ENTERPRISE_ENABLED:
         return True
