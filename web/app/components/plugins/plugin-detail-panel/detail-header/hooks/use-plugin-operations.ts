@@ -11,7 +11,7 @@ import { useProviderContext } from '@/context/provider-context'
 import { uninstallPlugin } from '@/service/plugins'
 import { useInvalidateCheckInstalled } from '@/service/use-plugins'
 import { useInvalidateAllToolProviders } from '@/service/use-tools'
-import { useGitHubReleases } from '../../../install-plugin/hooks'
+import { checkForUpdates, fetchReleases } from '../../../install-plugin/hooks'
 import { PluginCategoryEnum, PluginSource } from '../../../types'
 
 type UsePluginOperationsParams = {
@@ -39,7 +39,6 @@ export const usePluginOperations = ({
   onUpdate,
 }: UsePluginOperationsParams): UsePluginOperationsReturn => {
   const { t } = useTranslation()
-  const { checkForUpdates, fetchReleases } = useGitHubReleases()
   const { setShowUpdatePluginModal } = useModalContext()
   const { refreshModelProviders } = useProviderContext()
   const invalidateCheckInstalled = useInvalidateCheckInstalled()
