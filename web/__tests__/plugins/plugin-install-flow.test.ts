@@ -5,11 +5,9 @@
  * upload handling, and task status polling. Verifies the complete plugin
  * installation pipeline from source discovery to completion.
  */
-import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-vi.mock('@/config', () => ({
-  GITHUB_ACCESS_TOKEN: '',
-}))
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { checkForUpdates, fetchReleases, handleUpload } from '@/app/components/plugins/install-plugin/hooks'
 
 const mockToastNotify = vi.fn()
 vi.mock('@/app/components/base/ui/toast', () => ({
@@ -29,10 +27,6 @@ vi.mock('@/service/plugins', () => ({
   uploadGitHub: (...args: unknown[]) => mockUploadGitHub(...args),
   checkTaskStatus: vi.fn(),
 }))
-
-const { useGitHubReleases, useGitHubUpload } = await import(
-  '@/app/components/plugins/install-plugin/hooks',
-)
 
 describe('Plugin Installation Flow Integration', () => {
   beforeEach(() => {
@@ -67,8 +61,6 @@ describe('Plugin Installation Flow Integration', () => {
         unique_identifier: 'test-plugin:2.0.0',
       })
 
-      const { fetchReleases, checkForUpdates } = useGitHubReleases()
-
       const releases = await fetchReleases('test-org', 'test-repo')
       expect(releases).toHaveLength(3)
       expect(releases[0].tag_name).toBe('v2.0.0')
@@ -77,7 +69,6 @@ describe('Plugin Installation Flow Integration', () => {
       expect(needUpdate).toBe(true)
       expect(toastProps.message).toContain('v2.0.0')
 
-      const { handleUpload } = useGitHubUpload()
       const onSuccess = vi.fn()
       const result = await handleUpload(
         'https://github.com/test-org/test-repo',
@@ -114,8 +105,6 @@ describe('Plugin Installation Flow Integration', () => {
         json: () => Promise.resolve(mockReleases),
       })
 
-      const { fetchReleases, checkForUpdates } = useGitHubReleases()
-
       const releases = await fetchReleases('test-org', 'test-repo')
       const { needUpdate, toastProps } = checkForUpdates(releases, 'v1.0.0')
 
@@ -129,8 +118,6 @@ describe('Plugin Installation Flow Integration', () => {
         ok: true,
         json: () => Promise.resolve([]),
       })
-
-      const { fetchReleases, checkForUpdates } = useGitHubReleases()
 
       const releases = await fetchReleases('test-org', 'test-repo')
       expect(releases).toHaveLength(0)
@@ -147,7 +134,6 @@ describe('Plugin Installation Flow Integration', () => {
         status: 404,
       })
 
-      const { fetchReleases } = useGitHubReleases()
       const releases = await fetchReleases('nonexistent-org', 'nonexistent-repo')
 
       expect(releases).toEqual([])
@@ -159,7 +145,6 @@ describe('Plugin Installation Flow Integration', () => {
     it('handles upload failure gracefully', async () => {
       mockUploadGitHub.mockRejectedValue(new Error('Upload failed'))
 
-      const { handleUpload } = useGitHubUpload()
       const onSuccess = vi.fn()
 
       await expect(
