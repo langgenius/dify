@@ -3,6 +3,7 @@ from typing import Any
 from flask import request
 from flask_restx import marshal
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
@@ -92,7 +93,9 @@ class SegmentApi(DatasetApiResource):
         _, current_tenant_id = current_account_with_tenant()
         """Create single segment."""
         # check dataset
-        dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        dataset = db.session.scalar(
+            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1)
+        )
         if not dataset:
             raise NotFound("Dataset not found.")
         # check document
@@ -150,7 +153,9 @@ class SegmentApi(DatasetApiResource):
         # check dataset
         page = request.args.get("page", default=1, type=int)
         limit = request.args.get("limit", default=20, type=int)
-        dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        dataset = db.session.scalar(
+            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1)
+        )
         if not dataset:
             raise NotFound("Dataset not found.")
         # check document
@@ -220,7 +225,9 @@ class DatasetSegmentApi(DatasetApiResource):
     def delete(self, tenant_id: str, dataset_id: str, document_id: str, segment_id: str):
         _, current_tenant_id = current_account_with_tenant()
         # check dataset
-        dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        dataset = db.session.scalar(
+            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1)
+        )
         if not dataset:
             raise NotFound("Dataset not found.")
         # check user's model setting
@@ -254,7 +261,9 @@ class DatasetSegmentApi(DatasetApiResource):
     def post(self, tenant_id: str, dataset_id: str, document_id: str, segment_id: str):
         _, current_tenant_id = current_account_with_tenant()
         # check dataset
-        dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        dataset = db.session.scalar(
+            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1)
+        )
         if not dataset:
             raise NotFound("Dataset not found.")
         # check user's model setting
@@ -301,7 +310,9 @@ class DatasetSegmentApi(DatasetApiResource):
     def get(self, tenant_id: str, dataset_id: str, document_id: str, segment_id: str):
         _, current_tenant_id = current_account_with_tenant()
         # check dataset
-        dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        dataset = db.session.scalar(
+            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1)
+        )
         if not dataset:
             raise NotFound("Dataset not found.")
         # check user's model setting
@@ -344,7 +355,9 @@ class ChildChunkApi(DatasetApiResource):
         _, current_tenant_id = current_account_with_tenant()
         """Create child chunk."""
         # check dataset
-        dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        dataset = db.session.scalar(
+            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1)
+        )
         if not dataset:
             raise NotFound("Dataset not found.")
 
@@ -402,7 +415,9 @@ class ChildChunkApi(DatasetApiResource):
         _, current_tenant_id = current_account_with_tenant()
         """Get child chunks."""
         # check dataset
-        dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        dataset = db.session.scalar(
+            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1)
+        )
         if not dataset:
             raise NotFound("Dataset not found.")
 
@@ -468,7 +483,9 @@ class DatasetChildChunkApi(DatasetApiResource):
         _, current_tenant_id = current_account_with_tenant()
         """Delete child chunk."""
         # check dataset
-        dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        dataset = db.session.scalar(
+            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1)
+        )
         if not dataset:
             raise NotFound("Dataset not found.")
 
@@ -527,7 +544,9 @@ class DatasetChildChunkApi(DatasetApiResource):
         _, current_tenant_id = current_account_with_tenant()
         """Update child chunk."""
         # check dataset
-        dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        dataset = db.session.scalar(
+            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1)
+        )
         if not dataset:
             raise NotFound("Dataset not found.")
 
