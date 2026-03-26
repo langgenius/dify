@@ -71,20 +71,6 @@ if (typeof globalThis.IntersectionObserver === 'undefined') {
   }
 }
 
-// Mock Element.scrollIntoView for tests when the DOM runtime does not provide it
-if (typeof Element !== 'undefined' && !Element.prototype.scrollIntoView)
-  Element.prototype.scrollIntoView = function () { /* noop */ }
-
-// Mock DOMRect.fromRect for tests when the DOM runtime does not provide it
-if (typeof DOMRect !== 'undefined' && typeof (DOMRect as typeof DOMRect & { fromRect?: unknown }).fromRect !== 'function') {
-  (DOMRect as typeof DOMRect & { fromRect: (rect?: DOMRectInit) => DOMRect }).fromRect = (rect = {}) => new DOMRect(
-    rect.x ?? 0,
-    rect.y ?? 0,
-    rect.width ?? 0,
-    rect.height ?? 0,
-  )
-}
-
 afterEach(async () => {
   // Wrap cleanup in act() to flush pending React scheduler work
   // This prevents "window is not defined" errors from React 19's scheduler
@@ -218,23 +204,6 @@ vi.mock('@monaco-editor/react', () => {
   }
 })
 
-// mock window.matchMedia
-if (typeof window !== 'undefined') {
-  Object.defineProperty(window, 'matchMedia', {
-    writable: true,
-    value: vi.fn().mockImplementation(query => ({
-      matches: false,
-      media: query,
-      onchange: null,
-      addListener: vi.fn(), // deprecated
-      removeListener: vi.fn(), // deprecated
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      dispatchEvent: vi.fn(),
-    })),
-  })
-}
-
 // Mock localStorage for testing
 const createMockLocalStorage = () => {
   const storage: Record<string, string> = {}
@@ -253,22 +222,7 @@ const createMockLocalStorage = () => {
   }
 }
 
-const createMockClipboard = () => ({
-  writeText: vi.fn().mockResolvedValue(undefined),
-  write: vi.fn().mockResolvedValue(undefined),
-  readText: vi.fn().mockResolvedValue(''),
-})
-
 let mockLocalStorage: ReturnType<typeof createMockLocalStorage>
-const defaultMockClipboard = createMockClipboard()
-
-if (typeof navigator !== 'undefined') {
-  Object.defineProperty(globalThis.navigator, 'clipboard', {
-    value: defaultMockClipboard,
-    writable: true,
-    configurable: true,
-  })
-}
 
 beforeEach(() => {
   vi.clearAllMocks()
