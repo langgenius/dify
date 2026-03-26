@@ -5,7 +5,7 @@ import { compareVersion, getLatestVersion } from '@/utils/semver'
 
 const formatReleases = (releases: any) => {
   return releases.map((release: any) => ({
-    tag_name: release.tag_name,
+    tag_name: release.tag,
     assets: release.assets.map((asset: any) => ({
       browser_download_url: asset.browser_download_url,
       name: asset.name,
@@ -20,7 +20,7 @@ export const fetchReleases = async (owner: string, repo: string) => {
     if (!res.ok)
       throw new Error('Failed to fetch repository releases')
     const data = await res.json()
-    return formatReleases(data)
+    return formatReleases(data.releases)
   }
   catch (error) {
     if (error instanceof Error) {
