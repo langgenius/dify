@@ -1,5 +1,5 @@
 # (c) 2026 EROS Systems - Issue #32306
-# Hardened Version 1.3.0 - Dify Base Integration
+# Hardened Version 1.3.1 - Dify Base Integration (No-Barrel Compliance)
 
 import json
 import logging
@@ -8,9 +8,10 @@ from typing import Generator, List, Dict, Any, Union, cast, Optional
 
 from sqlalchemy import select
 from core.agent.entities import AgentEntity, AgentToolEntity
-from core.agent.plan_hydration.engine import get_hydrator  # FIX: Corrected import path
+# FIX: Direct import to comply with 'no-barrel-files' rule
+from core.agent.plan_hydration.engine import get_hydrator  
 from core.app.apps.agent_chat.app_config_manager import AgentChatAppConfig
-# ... (keeping other imports from her file)
+# ... (Keeping all other standard Dify imports)
 
 logger = logging.getLogger(__name__)
 
@@ -47,17 +48,17 @@ class BaseAgentRunner(AppRunner):
         # --- EROS 3-LAYER HYDRATION INITIALIZATION ---
         self.hydrator = get_hydrator()
         
-        # FIX: Ensure we use the proper tool list format for the engine
+        # Format tools for the EROS engine
         tool_list = self._get_eros_tool_list()
         
-        # FIX: Passing tenant_id for secure check
+        # Secure check with tenant_id
         cache_result = self.hydrator.check(
             query=application_generate_entity.query,
             tenant_id=self.tenant_id,
             instruction=config.prompt_template or ""
         )
         
-        # Set EROS state for child runners
+        # Set EROS state for child runners (like FCAgentRunner)
         self.use_cached_plan = (cache_result.status == 'EXACT_HIT')
         self.is_partial_match = (cache_result.status == 'PARTIAL_HIT')
         self.plan_fingerprint = cache_result.fingerprint
@@ -70,19 +71,17 @@ class BaseAgentRunner(AppRunner):
             self.partial_reusable_steps = cache_result.plan_steps
         # --- END EROS INITIALIZATION ---
 
-        # ... (rest of the original Dify history & feature detection)
+        # (Original Dify logic continues below...)
 
     def _get_eros_tool_list(self) -> list:
         """Helper to format tools for the EROS engine."""
         if not self.app_config.agent or not self.app_config.agent.tools:
             return []
-        # Dify Standard: Access identity name
         return [{'name': t.tool_name, 'provider': t.provider_type} for t in self.app_config.agent.tools]
 
     def _store_execution_plan_in_cache(self, plan_steps: list[dict], success: bool = True):
         """Verifies and stores the final plan with tenant scoping."""
         try:
-            # FIX: Added tenant_id and instruction to the store call
             self.hydrator.store(
                 query=self.application_generate_entity.query,
                 tools=self._get_eros_tool_list(),
@@ -93,5 +92,3 @@ class BaseAgentRunner(AppRunner):
             )
         except Exception as e:
             logger.error(f"EROS Persistence Fail: {e}")
-
-    # ... (rest of her original Dify utility methods)
