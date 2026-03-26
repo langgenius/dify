@@ -23,6 +23,8 @@ import {
   $createTextNode,
   $getRoot,
   $setSelection,
+  BLUR_COMMAND,
+  FOCUS_COMMAND,
   KEY_ESCAPE_COMMAND,
 } from 'lexical'
 import * as React from 'react'
@@ -702,6 +704,182 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
     await waitFor(() => {
       expect(screen.queryByText('Agent One')).not.toBeInTheDocument()
       expect(screen.queryByPlaceholderText('workflow.common.searchVar')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('blur/focus menu visibility', () => {
+    it('hides the menu after a 200ms delay when blur command is dispatched', async () => {
+      const captures: Captures = { editor: null, eventEmitter: null }
+
+      render((
+        <MinimalEditor
+          triggerString="{"
+          contextBlock={makeContextBlock()}
+          captures={captures}
+        />
+      ))
+
+      const editor = await waitForEditor(captures)
+      await setEditorText(editor, '{', true)
+      expect(await screen.findByText('common.promptEditor.context.item.title')).toBeInTheDocument()
+
+      vi.useFakeTimers()
+
+      act(() => {
+        editor.dispatchCommand(BLUR_COMMAND, new FocusEvent('blur', { relatedTarget: document.createElement('button') }))
+      })
+
+      expect(screen.queryByText('common.promptEditor.context.item.title')).toBeInTheDocument()
+
+      act(() => {
+        vi.advanceTimersByTime(200)
+      })
+
+      expect(screen.queryByText('common.promptEditor.context.item.title')).not.toBeInTheDocument()
+
+      vi.useRealTimers()
+    })
+
+    it('restores menu visibility when focus command is dispatched after blur hides it', async () => {
+      const captures: Captures = { editor: null, eventEmitter: null }
+
+      render((
+        <MinimalEditor
+          triggerString="{"
+          contextBlock={makeContextBlock()}
+          captures={captures}
+        />
+      ))
+
+      const editor = await waitForEditor(captures)
+      await setEditorText(editor, '{', true)
+      expect(await screen.findByText('common.promptEditor.context.item.title')).toBeInTheDocument()
+
+      vi.useFakeTimers()
+
+      act(() => {
+        editor.dispatchCommand(BLUR_COMMAND, new FocusEvent('blur', { relatedTarget: document.createElement('button') }))
+      })
+      act(() => {
+        vi.advanceTimersByTime(200)
+      })
+
+      expect(screen.queryByText('common.promptEditor.context.item.title')).not.toBeInTheDocument()
+
+      act(() => {
+        editor.dispatchCommand(FOCUS_COMMAND, new FocusEvent('focus'))
+      })
+
+      vi.useRealTimers()
+
+      await setEditorText(editor, '{', true)
+      await waitFor(() => {
+        expect(screen.queryByText('common.promptEditor.context.item.title')).toBeInTheDocument()
+      })
+    })
+
+    it('cancels the blur timer when focus arrives before the 200ms timeout', async () => {
+      const captures: Captures = { editor: null, eventEmitter: null }
+
+      render((
+        <MinimalEditor
+          triggerString="{"
+          contextBlock={makeContextBlock()}
+          captures={captures}
+        />
+      ))
+
+      const editor = await waitForEditor(captures)
+      await setEditorText(editor, '{', true)
+      expect(await screen.findByText('common.promptEditor.context.item.title')).toBeInTheDocument()
+
+      vi.useFakeTimers()
+
+      act(() => {
+        editor.dispatchCommand(BLUR_COMMAND, new FocusEvent('blur', { relatedTarget: document.createElement('button') }))
+      })
+
+      act(() => {
+        editor.dispatchCommand(FOCUS_COMMAND, new FocusEvent('focus'))
+      })
+
+      act(() => {
+        vi.advanceTimersByTime(200)
+      })
+
+      expect(screen.queryByText('common.promptEditor.context.item.title')).toBeInTheDocument()
+
+      vi.useRealTimers()
+    })
+
+    it('cancels a pending blur timer when a subsequent blur targets var-search-input', async () => {
+      const captures: Captures = { editor: null, eventEmitter: null }
+
+      render((
+        <MinimalEditor
+          triggerString="{"
+          contextBlock={makeContextBlock()}
+          captures={captures}
+        />
+      ))
+
+      const editor = await waitForEditor(captures)
+      await setEditorText(editor, '{', true)
+      expect(await screen.findByText('common.promptEditor.context.item.title')).toBeInTheDocument()
+
+      vi.useFakeTimers()
+
+      act(() => {
+        editor.dispatchCommand(BLUR_COMMAND, new FocusEvent('blur', { relatedTarget: document.createElement('button') }))
+      })
+
+      const varInput = document.createElement('input')
+      varInput.classList.add('var-search-input')
+
+      act(() => {
+        editor.dispatchCommand(BLUR_COMMAND, new FocusEvent('blur', { relatedTarget: varInput }))
+      })
+
+      act(() => {
+        vi.advanceTimersByTime(200)
+      })
+
+      expect(screen.queryByText('common.promptEditor.context.item.title')).toBeInTheDocument()
+
+      vi.useRealTimers()
+    })
+
+    it('does not hide the menu when blur target is var-search-input', async () => {
+      const captures: Captures = { editor: null, eventEmitter: null }
+
+      render((
+        <MinimalEditor
+          triggerString="{"
+          contextBlock={makeContextBlock()}
+          captures={captures}
+        />
+      ))
+
+      const editor = await waitForEditor(captures)
+      await setEditorText(editor, '{', true)
+      expect(await screen.findByText('common.promptEditor.context.item.title')).toBeInTheDocument()
+
+      vi.useFakeTimers()
+
+      const target = document.createElement('input')
+      target.classList.add('var-search-input')
+
+      act(() => {
+        editor.dispatchCommand(BLUR_COMMAND, new FocusEvent('blur', { relatedTarget: target }))
+      })
+
+      act(() => {
+        vi.advanceTimersByTime(200)
+      })
+
+      expect(screen.queryByText('common.promptEditor.context.item.title')).toBeInTheDocument()
+
+      vi.useRealTimers()
     })
   })
 })

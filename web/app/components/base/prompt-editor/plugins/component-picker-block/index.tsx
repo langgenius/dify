@@ -24,11 +24,15 @@ import {
 } from '@floating-ui/react'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { LexicalTypeaheadMenuPlugin } from '@lexical/react/LexicalTypeaheadMenuPlugin'
+import { mergeRegister } from '@lexical/utils'
 import {
   $getRoot,
   $getSelection,
   $insertNodes,
   $isRangeSelection,
+  BLUR_COMMAND,
+  COMMAND_PRIORITY_EDITOR,
+  FOCUS_COMMAND,
   KEY_ESCAPE_COMMAND,
 } from 'lexical'
 import {
@@ -37,6 +41,8 @@ import {
   useCallback,
   useLayoutEffect,
   useMemo,
+  useEffect,
+  useRef,
   useState,
 } from 'react'
 import ReactDOM from 'react-dom'
@@ -142,6 +148,46 @@ const ComponentPicker = ({
   const [activeTab, setActiveTab] = useState<'variables' | 'files'>('variables')
   const [isFileUploadModalOpen, setIsFileUploadModalOpen] = useState(false)
   const [fileUploadModalKey, setFileUploadModalKey] = useState(0)
+  const [blurHidden, setBlurHidden] = useState(false)
+  const blurTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const clearBlurTimer = useCallback(() => {
+    if (blurTimerRef.current) {
+      clearTimeout(blurTimerRef.current)
+      blurTimerRef.current = null
+    }
+  }, [])
+
+  useEffect(() => {
+    const unregister = mergeRegister(
+      editor.registerCommand(
+        BLUR_COMMAND,
+        (event) => {
+          clearBlurTimer()
+          const target = event?.relatedTarget as HTMLElement
+          if (!target?.classList?.contains('var-search-input'))
+            blurTimerRef.current = setTimeout(() => setBlurHidden(true), 200)
+          return false
+        },
+        COMMAND_PRIORITY_EDITOR,
+      ),
+      editor.registerCommand(
+        FOCUS_COMMAND,
+        () => {
+          clearBlurTimer()
+          setBlurHidden(false)
+          return false
+        },
+        COMMAND_PRIORITY_EDITOR,
+      ),
+    )
+
+    return () => {
+      if (blurTimerRef.current)
+        clearTimeout(blurTimerRef.current)
+      unregister()
+    }
+  }, [editor, clearBlurTimer])
 
   eventEmitter?.useSubscription((v: any) => {
     if (v.type === INSERT_VARIABLE_VALUE_BLOCK_COMMAND)
@@ -292,6 +338,8 @@ const ComponentPicker = ({
     anchorElementRef,
     { options, selectedIndex, selectOptionAndCleanUp, setHighlightedIndex },
   ) => {
+    if (blurHidden)
+      return null
     if (triggerString === '@' && !agentBlock?.show)
       return null
 
@@ -518,7 +566,7 @@ const ComponentPicker = ({
         }
       </>
     )
-  }, [isAgentTrigger, isSupportSandbox, triggerString, allFlattenOptions.length, workflowVariableBlock?.show, workflowVariableBlock?.showManageInputField, workflowVariableBlock?.onManageInputField, workflowVariableBlock?.agentNodes, floatingStyles, isPositioned, refs, agentNodes, handleSelectAgent, handleClose, useExternalSearch, queryString, workflowVariableOptions, isSupportFileVar, showAssembleVariables, handleSelectAssembleVariables, currentBlock?.generatorType, t, activeTab, handleSelectWorkflowVariable, handleSelectFileReference, contextBlock?.show, contextBlock?.selectable, handleSelectContext, agentBlock?.show])
+  }, [blurHidden, isAgentTrigger, isSupportSandbox, triggerString, allFlattenOptions.length, workflowVariableBlock?.show, workflowVariableBlock?.showManageInputField, workflowVariableBlock?.onManageInputField, workflowVariableBlock?.agentNodes, floatingStyles, isPositioned, refs, agentNodes, handleSelectAgent, handleClose, useExternalSearch, queryString, workflowVariableOptions, isSupportFileVar, showAssembleVariables, handleSelectAssembleVariables, currentBlock?.generatorType, t, activeTab, handleSelectWorkflowVariable, handleSelectFileReference, contextBlock?.show, contextBlock?.selectable, handleSelectContext, agentBlock?.show])
 
   return (
     <>

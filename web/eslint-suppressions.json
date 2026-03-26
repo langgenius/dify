@@ -1981,7 +1981,7 @@
   },
   "app/components/base/prompt-editor/plugins/workflow-variable-block/index.tsx": {
     "react-refresh/only-export-components": {
-      "count": 4
+      "count": 3
     }
   },
   "app/components/base/prompt-editor/plugins/workflow-variable-block/node.tsx": {

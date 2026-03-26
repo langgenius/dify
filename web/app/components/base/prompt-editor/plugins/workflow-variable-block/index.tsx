@@ -18,7 +18,6 @@ import {
 
 export const INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND = createCommand('INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND')
 export const DELETE_WORKFLOW_VARIABLE_BLOCK_COMMAND = createCommand('DELETE_WORKFLOW_VARIABLE_BLOCK_COMMAND')
-export const CLEAR_HIDE_MENU_TIMEOUT = createCommand('CLEAR_HIDE_MENU_TIMEOUT')
 
 export type UpdateWorkflowNodesMapPayload = {
   workflowNodesMap: NonNullable<WorkflowVariableBlockType['workflowNodesMap']>
@@ -59,7 +58,6 @@ const WorkflowVariableBlock = memo(({
       editor.registerCommand(
         INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND,
         (insertedVariables: string[]) => {
-          editor.dispatchCommand(CLEAR_HIDE_MENU_TIMEOUT, undefined)
           const workflowVariableBlockNode = $createWorkflowVariableBlockNode(insertedVariables, workflowNodesMap, getVarType, undefined, undefined, undefined, variables)
 
           $insertNodes([workflowVariableBlockNode])
