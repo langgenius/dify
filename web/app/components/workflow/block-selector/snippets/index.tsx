@@ -1,4 +1,3 @@
-import type { CreateSnippetDialogPayload } from '../../create-snippet-dialog'
 import { useInfiniteScroll } from 'ahooks'
 import {
   memo,
@@ -7,7 +6,6 @@ import {
   useRef,
   useState,
 } from 'react'
-import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import {
   ScrollAreaContent,
@@ -16,23 +14,19 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@/app/components/base/ui/scroll-area'
-import { toast } from '@/app/components/base/ui/toast'
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@/app/components/base/ui/tooltip'
-import { useRouter } from '@/next/navigation'
-import { consoleClient } from '@/service/client'
-import {
-  useCreateSnippetMutation,
-  useInfiniteSnippetList,
-} from '@/service/use-snippets'
+import { useInfiniteSnippetList } from '@/service/use-snippets'
 import { cn } from '@/utils/classnames'
 import CreateSnippetDialog from '../../create-snippet-dialog'
 import SnippetDetailCard from './snippet-detail-card'
 import SnippetEmptyState from './snippet-empty-state'
 import SnippetListItem from './snippet-list-item'
+import { useCreateSnippet } from './use-create-snippet'
+import { useInsertSnippet } from './use-insert-snippet'
 
 type SnippetsProps = {
   loading?: boolean
@@ -67,14 +61,18 @@ const Snippets = ({
   loading = false,
   searchText,
 }: SnippetsProps) => {
-  const { t } = useTranslation()
-  const { push } = useRouter()
-  const createSnippetMutation = useCreateSnippetMutation()
+  const {
+    createSnippetMutation,
+    handleCloseCreateSnippetDialog,
+    handleCreateSnippet,
+    handleOpenCreateSnippetDialog,
+    isCreateSnippetDialogOpen,
+    isCreatingSnippet,
+  } = useCreateSnippet()
+  const { handleInsertSnippet } = useInsertSnippet()
   const deferredSearchText = useDeferredValue(searchText)
   const viewportRef = useRef<HTMLDivElement>(null)
   const [hoveredSnippetId, setHoveredSnippetId] = useState<string | null>(null)
-  const [isCreateSnippetDialogOpen, setIsCreateSnippetDialogOpen] = useState(false)
-  const [isCreatingSnippet, setIsCreatingSnippet] = useState(false)
 
   const keyword = deferredSearchText.trim() || undefined
 
@@ -113,49 +111,6 @@ const Snippets = ({
     },
   )
 
-  const handleCloseCreateSnippetDialog = () => {
-    setIsCreateSnippetDialogOpen(false)
-  }
-
-  const handleCreateSnippet = async ({
-    name,
-    description,
-    icon,
-    graph,
-  }: CreateSnippetDialogPayload) => {
-    setIsCreatingSnippet(true)
-
-    try {
-      const snippet = await createSnippetMutation.mutateAsync({
-        body: {
-          name,
-          description: description || undefined,
-          icon_info: {
-            icon: icon.type === 'emoji' ? icon.icon : icon.fileId,
-            icon_type: icon.type,
-            icon_background: icon.type === 'emoji' ? icon.background : undefined,
-            icon_url: icon.type === 'image' ? icon.url : undefined,
-          },
-        },
-      })
-
-      await consoleClient.snippets.syncDraftWorkflow({
-        params: { snippetId: snippet.id },
-        body: { graph },
-      })
-
-      toast.success(t('snippet.createSuccess', { ns: 'workflow' }))
-      handleCloseCreateSnippetDialog()
-      push(`/snippets/${snippet.id}/orchestrate`)
-    }
-    catch (error) {
-      toast.error(error instanceof Error ? error.message : t('createFailed', { ns: 'snippet' }))
-    }
-    finally {
-      setIsCreatingSnippet(false)
-    }
-  }
-
   if (loading || isLoading || (isFetching && snippets.length === 0))
     return <LoadingSkeleton />
 
@@ -163,7 +118,7 @@ const Snippets = ({
     <>
       {!snippets.length
         ? (
-            <SnippetEmptyState onCreate={() => setIsCreateSnippetDialogOpen(true)} />
+            <SnippetEmptyState onCreate={handleOpenCreateSnippetDialog} />
           )
         : (
             <ScrollAreaRoot className="relative max-h-[480px] max-w-[500px] overflow-hidden">
@@ -174,6 +129,7 @@ const Snippets = ({
                       <SnippetListItem
                         snippet={item}
                         isHovered={hoveredSnippetId === item.id}
+                        onClick={() => handleInsertSnippet(item.id)}
                         onMouseEnter={() => setHoveredSnippetId(item.id)}
                         onMouseLeave={() => setHoveredSnippetId(current => current === item.id ? null : current)}
                       />

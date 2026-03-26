@@ -23,7 +23,7 @@ const SnippetListItem = ({
     <div
       ref={ref}
       className={cn(
-        'flex h-8 items-center gap-2 rounded-lg px-3',
+        'flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3',
         isHovered && 'bg-background-default-hover',
         className,
       )}
