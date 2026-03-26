@@ -1,6 +1,15 @@
-import type { CurrentVarInInspect } from './types'
+import type { FC } from 'react'
+import type { SplitRightProps } from './split-panel'
 import type { VarInspectValue } from './value-types'
+import type { currentVarType } from './variables-tab'
 import type { GenRes } from '@/service/debug'
+import {
+  RiArrowGoBackLine,
+  RiCloseLine,
+  RiFileDownloadFill,
+  RiMenuLine,
+  RiSparklingFill,
+} from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { produce } from 'immer'
 import { useCallback, useMemo } from 'react'
@@ -10,7 +19,7 @@ import ActionButton from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
 import CopyFeedback from '@/app/components/base/copy-feedback'
 import Loading from '@/app/components/base/loading'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
+import Tooltip from '@/app/components/base/tooltip'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { VariableIconWithColor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
@@ -26,23 +35,24 @@ import useNodeInfo from '../nodes/_base/hooks/use-node-info'
 import { CodeLanguage } from '../nodes/code/types'
 import { BlockEnum } from '../types'
 import Empty from './empty'
-import useInspectShell from './hooks/use-inspect-shell'
 import { formatVarTypeLabel } from './utils'
 import ValueContent from './value-content'
 
-type Props = {
+type Props = SplitRightProps & {
   nodeId: string
-  currentNodeVar?: CurrentVarInInspect
+  currentNodeVar?: currentVarType
   isValueFetching?: boolean
 }
 
-export default function Right({
+const Right: FC<Props> = ({
   nodeId,
   currentNodeVar,
   isValueFetching,
-}: Props) {
+  isNarrow,
+  onOpenMenu,
+  onClose,
+}) => {
   const { t } = useTranslation()
-  const { isNarrow, onClose, openLeftPane } = useInspectShell()
   const toolIcon = useToolIcon(currentNodeVar?.nodeData)
   const currentVar = currentNodeVar?.var
   const currentNodeType = currentNodeVar?.nodeType
@@ -101,7 +111,7 @@ export default function Right({
       return node?.data?.prompt_template?.text || node?.data?.prompt_template?.[0].text
     if (blockType === BlockEnum.Code)
       return node?.data?.code
-  }, [blockType, canShowPromptGenerator, node?.data?.code, node?.data?.prompt_template])
+  }, [canShowPromptGenerator])
 
   const [isShowPromptGenerator, {
     setTrue: doShowPromptGenerator,
@@ -135,7 +145,7 @@ export default function Right({
       payload: res.modified,
     })
     handleHidePromptGenerator()
-  }, [eventEmitter, setInputs, blockType, nodeId, node?.data, handleHidePromptGenerator])
+  }, [setInputs, blockType, nodeId, node?.data, handleHidePromptGenerator])
 
   const schemaType = currentVar?.schemaType
   const valueType = currentVar?.value_type
@@ -149,13 +159,11 @@ export default function Right({
     <>
       <div className="flex shrink-0 items-center justify-between gap-1 px-2 pt-2">
         <div className="flex min-w-0 flex-1 items-center gap-1">
-          {isNarrow
-            ? (
-                <ActionButton className="shrink-0" onClick={openLeftPane} aria-label="Open menu">
-                  <span className="i-ri-menu-line h-4 w-4" aria-hidden="true" />
-                </ActionButton>
-              )
-            : null}
+          {isNarrow && (
+            <ActionButton className="shrink-0" onClick={onOpenMenu} aria-label="Open menu">
+              <RiMenuLine className="h-4 w-4" />
+            </ActionButton>
+          )}
           <div className="flex w-0 grow items-center gap-1">
             {currentVar && (
               <>
@@ -204,70 +212,44 @@ export default function Right({
             {currentVar && (
               <>
                 {canShowPromptGenerator && (
-                  <Tooltip>
-                    <TooltipTrigger
-                      render={(
-                        <button
-                          type="button"
-                          className="cursor-pointer rounded-md p-1 hover:bg-state-accent-active"
-                          onClick={handleShowPromptGenerator}
-                        >
-                          <span className="i-ri-sparkling-fill size-4 text-components-input-border-active-prompt-1" aria-hidden="true" />
-                        </button>
-                      )}
-                    />
-                    <TooltipContent>{t('generate.optimizePromptTooltip', { ns: 'appDebug' })}</TooltipContent>
+                  <Tooltip popupContent={t('generate.optimizePromptTooltip', { ns: 'appDebug' })}>
+                    <button
+                      type="button"
+                      className="cursor-pointer rounded-md p-1 hover:bg-state-accent-active"
+                      onClick={handleShowPromptGenerator}
+                    >
+                      <RiSparklingFill className="size-4 text-components-input-border-active-prompt-1" />
+                    </button>
                   </Tooltip>
                 )}
                 {isTruncated && (
-                  <Tooltip>
-                    <TooltipTrigger
-                      render={(
-                        <span className="inline-flex">
-                          <ActionButton
-                            onClick={() => window.open(fullContent?.download_url, '_blank')}
-                            aria-label={t('debug.variableInspect.exportToolTip', { ns: 'workflow' })}
-                          >
-                            <span className="i-ri-file-download-fill size-4" aria-hidden="true" />
-                          </ActionButton>
-                        </span>
-                      )}
-                    />
-                    <TooltipContent>{t('debug.variableInspect.exportToolTip', { ns: 'workflow' })}</TooltipContent>
+                  <Tooltip popupContent={t('debug.variableInspect.exportToolTip', { ns: 'workflow' })}>
+                    <ActionButton
+                      onClick={() => window.open(fullContent?.download_url, '_blank')}
+                      aria-label={t('debug.variableInspect.exportToolTip', { ns: 'workflow' })}
+                    >
+                      <RiFileDownloadFill className="size-4" />
+                    </ActionButton>
                   </Tooltip>
                 )}
                 {!isTruncated && currentVar.edited && (
                   <Badge>
                     <span className="ml-[2.5px] mr-[4.5px] h-[3px] w-[3px] rounded bg-text-accent-secondary"></span>
-                    <span className="system-2xs-semibold-uppercase">{t('debug.variableInspect.edited', { ns: 'workflow' })}</span>
+                    <span className="system-2xs-semibold-uupercase">{t('debug.variableInspect.edited', { ns: 'workflow' })}</span>
                   </Badge>
                 )}
                 {!isTruncated && currentVar.edited && currentVar.type !== VarInInspectType.conversation && (
-                  <Tooltip>
-                    <TooltipTrigger
-                      render={(
-                        <span className="inline-flex">
-                          <ActionButton onClick={resetValue}>
-                            <span className="i-ri-arrow-go-back-line h-4 w-4" aria-hidden="true" />
-                          </ActionButton>
-                        </span>
-                      )}
-                    />
-                    <TooltipContent>{t('debug.variableInspect.reset', { ns: 'workflow' })}</TooltipContent>
+                  <Tooltip popupContent={t('debug.variableInspect.reset', { ns: 'workflow' })}>
+                    <ActionButton onClick={resetValue}>
+                      <RiArrowGoBackLine className="h-4 w-4" />
+                    </ActionButton>
                   </Tooltip>
                 )}
                 {!isTruncated && currentVar.edited && currentVar.type === VarInInspectType.conversation && (
-                  <Tooltip>
-                    <TooltipTrigger
-                      render={(
-                        <span className="inline-flex">
-                          <ActionButton onClick={handleClear}>
-                            <span className="i-ri-arrow-go-back-line h-4 w-4" aria-hidden="true" />
-                          </ActionButton>
-                        </span>
-                      )}
-                    />
-                    <TooltipContent>{t('debug.variableInspect.resetConversationVar', { ns: 'workflow' })}</TooltipContent>
+                  <Tooltip popupContent={t('debug.variableInspect.resetConversationVar', { ns: 'workflow' })}>
+                    <ActionButton onClick={handleClear}>
+                      <RiArrowGoBackLine className="h-4 w-4" />
+                    </ActionButton>
                   </Tooltip>
                 )}
                 {currentVar.value_type !== 'secret' && (
@@ -278,7 +260,7 @@ export default function Right({
           </div>
         </div>
         <ActionButton className="shrink-0" onClick={onClose} aria-label="Close">
-          <span className="i-ri-close-line h-4 w-4" aria-hidden="true" />
+          <RiCloseLine className="h-4 w-4" />
         </ActionButton>
       </div>
       <div className="flex min-h-0 flex-1 flex-col">
@@ -328,3 +310,5 @@ export default function Right({
     </>
   )
 }
+
+export default Right

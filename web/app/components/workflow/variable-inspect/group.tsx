@@ -1,9 +1,18 @@
-import type { CurrentVarInInspect } from './types'
+import type { currentVarType } from './variables-tab'
 import type { NodeWithVar, VarInInspect } from '@/types/workflow'
+import {
+  RiArrowRightSLine,
+  RiDeleteBinLine,
+  RiFileList3Line,
+  RiLoader2Line,
+  // RiErrorWarningFill,
+} from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+// import Button from '@/app/components/base/button'
 import ActionButton from '@/app/components/base/action-button'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
+import { AtSign } from '@/app/components/base/icons/src/vender/workflow'
+import Tooltip from '@/app/components/base/tooltip'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { VariableIconWithColor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 import { VarInInspectType } from '@/types/workflow'
@@ -13,15 +22,15 @@ import { formatVarTypeLabel } from './utils'
 
 type Props = {
   nodeData?: NodeWithVar
-  currentVar?: CurrentVarInInspect
+  currentVar?: currentVarType
   varType: VarInInspectType
   varList: VarInInspect[]
-  handleSelect: (state: CurrentVarInInspect) => void
+  handleSelect: (state: currentVarType) => void
   handleView?: () => void
   handleClear?: () => void
 }
 
-export default function Group({
+const Group = ({
   nodeData,
   currentVar,
   varType,
@@ -29,7 +38,7 @@ export default function Group({
   handleSelect,
   handleView,
   handleClear,
-}: Props) {
+}: Props) => {
   const { t } = useTranslation()
   const [isCollapsed, setIsCollapsed] = useState(false)
 
@@ -95,10 +104,10 @@ export default function Group({
       <div className="group flex h-6 items-center gap-0.5">
         <div className="h-3 w-3 shrink-0">
           {nodeData?.isSingRunRunning && (
-            <span aria-hidden="true" className="i-ri-loader-2-line h-3 w-3 animate-spin text-text-accent" />
+            <RiLoader2Line className="h-3 w-3 animate-spin text-text-accent" />
           )}
           {(!nodeData || !nodeData.isSingRunRunning) && visibleVarList.length > 0 && (
-            <span aria-hidden="true" className={cn('i-ri-arrow-right-s-line h-3 w-3 text-text-tertiary', !isCollapsed && 'rotate-90')} />
+            <RiArrowRightSLine className={cn('h-3 w-3 text-text-tertiary', !isCollapsed && 'rotate-90')} aria-hidden="true" />
           )}
         </div>
         <div className="flex grow cursor-pointer items-center gap-1" onClick={() => setIsCollapsed(!isCollapsed)}>
@@ -123,29 +132,15 @@ export default function Group({
         </div>
         {nodeData && !nodeData.isSingRunRunning && (
           <div className="hidden shrink-0 items-center group-hover:flex">
-            <Tooltip>
-              <TooltipTrigger
-                render={(
-                  <span className="inline-flex">
-                    <ActionButton onClick={handleView}>
-                      <span className="i-ri-file-list-3-line h-4 w-4" />
-                    </ActionButton>
-                  </span>
-                )}
-              />
-              <TooltipContent>{t('debug.variableInspect.view', { ns: 'workflow' })}</TooltipContent>
+            <Tooltip popupContent={t('debug.variableInspect.view', { ns: 'workflow' })}>
+              <ActionButton onClick={handleView}>
+                <RiFileList3Line className="h-4 w-4" />
+              </ActionButton>
             </Tooltip>
-            <Tooltip>
-              <TooltipTrigger
-                render={(
-                  <span className="inline-flex">
-                    <ActionButton onClick={handleClear}>
-                      <span className="i-ri-delete-bin-line h-4 w-4" />
-                    </ActionButton>
-                  </span>
-                )}
-              />
-              <TooltipContent>{t('debug.variableInspect.clearNode', { ns: 'workflow' })}</TooltipContent>
+            <Tooltip popupContent={t('debug.variableInspect.clearNode', { ns: 'workflow' })}>
+              <ActionButton onClick={handleClear}>
+                <RiDeleteBinLine className="h-4 w-4" />
+              </ActionButton>
             </Tooltip>
           </div>
         )}
@@ -167,7 +162,7 @@ export default function Group({
                 onClick={() => handleSelectVar(varItem, varType)}
               >
                 {isAgentAliasVar
-                  ? <span className="inline-flex size-4 shrink-0 items-center justify-center text-util-colors-violet-violet-600 system-xs-semibold">@</span>
+                  ? <AtSign className="size-4 shrink-0 text-util-colors-violet-violet-600" />
                   : (
                       <VariableIconWithColor
                         variableCategory={varType}
@@ -185,3 +180,5 @@ export default function Group({
     </div>
   )
 }
+
+export default Group

@@ -1,3 +1,4 @@
+import type { FC } from 'react'
 import { debounce } from 'es-toolkit/compat'
 import {
   useCallback,
@@ -8,7 +9,7 @@ import { useResizePanel } from '../nodes/_base/hooks/use-resize-panel'
 import { useStore } from '../store'
 import Panel from './panel'
 
-export default function VariableInspectPanel() {
+const VariableInspectPanel: FC = () => {
   const showVariableInspectPanel = useStore(s => s.showVariableInspectPanel)
   const workflowCanvasHeight = useStore(s => s.workflowCanvasHeight)
   const variableInspectPanelHeight = useStore(s => s.variableInspectPanelHeight)
@@ -57,3 +58,5 @@ export default function VariableInspectPanel() {
     </div>
   )
 }
+
+export default VariableInspectPanel

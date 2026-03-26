@@ -1,7 +1,3 @@
-import type { ReactNode } from 'react'
-import type { NodeProps } from '../types'
-import type { VarInInspect } from '@/types/workflow'
-
 /* eslint-disable ts/no-redeclare -- const + type share names (erasable enum replacement) */
 export const EVENT_WORKFLOW_STOP = 'WORKFLOW_STOP'
 
@@ -24,19 +20,3 @@ export const InspectTab = {
   Artifacts: 'artifacts',
 } as const
 export type InspectTab = typeof InspectTab[keyof typeof InspectTab]
-
-export type InspectHeaderProps = {
-  activeTab: InspectTab
-  headerActions?: ReactNode
-  onClose: () => void
-  onTabChange: (tab: InspectTab) => void
-}
-
-export type CurrentVarInInspect = {
-  nodeId: string
-  nodeType: string
-  title: string
-  isValueFetched?: boolean
-  var?: VarInInspect
-  nodeData?: NodeProps['data']
-}
