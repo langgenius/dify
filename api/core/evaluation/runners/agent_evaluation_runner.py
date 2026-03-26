@@ -12,7 +12,7 @@ from core.evaluation.entities.evaluation_entity import (
     EvaluationItemResult,
 )
 from core.evaluation.runners.base_evaluation_runner import BaseEvaluationRunner
-from dify_graph.node_events import NodeRunResult
+from graphon.node_events import NodeRunResult
 from models.model import App
 
 logger = logging.getLogger(__name__)

@@ -34,7 +34,7 @@ from controllers.console.wraps import (
 )
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
-from dify_graph.graph_engine.manager import GraphEngineManager
+from graphon.graph_engine.manager import GraphEngineManager
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from factories import variable_factory

@@ -22,8 +22,8 @@ from core.evaluation.entities.evaluation_entity import (
     NodeInfo,
 )
 from core.evaluation.evaluation_manager import EvaluationManager
-from dify_graph.enums import WorkflowNodeExecutionMetadataKey
-from dify_graph.node_events.base import NodeRunResult
+from graphon.enums import WorkflowNodeExecutionMetadataKey
+from graphon.node_events.base import NodeRunResult
 from models.evaluation import (
     EvaluationConfiguration,
     EvaluationRun,
@@ -727,7 +727,7 @@ class EvaluationService:
         """Query all node execution records for a workflow run."""
         from sqlalchemy import asc, select
 
-        from dify_graph.enums import WorkflowNodeExecutionStatus
+        from graphon.enums import WorkflowNodeExecutionStatus
         from models.workflow import WorkflowNodeExecutionModel
 
         stmt = (

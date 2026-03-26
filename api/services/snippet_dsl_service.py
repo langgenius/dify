@@ -14,8 +14,8 @@ from sqlalchemy.orm import Session
 
 from core.helper import ssrf_proxy
 from core.plugin.entities.plugin import PluginDependency
-from dify_graph.enums import BuiltinNodeTypes
-from dify_graph.model_runtime.utils.encoders import jsonable_encoder
+from graphon.enums import BuiltinNodeTypes
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 from extensions.ext_redis import redis_client
 from factories import variable_factory
 from models import Account

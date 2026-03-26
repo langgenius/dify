@@ -24,7 +24,7 @@ from core.evaluation.runners.llm_evaluation_runner import LLMEvaluationRunner
 from core.evaluation.runners.retrieval_evaluation_runner import RetrievalEvaluationRunner
 from core.evaluation.runners.snippet_evaluation_runner import SnippetEvaluationRunner
 from core.evaluation.runners.workflow_evaluation_runner import WorkflowEvaluationRunner
-from dify_graph.node_events import NodeRunResult
+from graphon.node_events import NodeRunResult
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models.enums import CreatorUserRole

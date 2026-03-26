@@ -8,8 +8,8 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.workflow.node_factory import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
-from dify_graph.enums import NodeType
-from dify_graph.variables.variables import VariableBase
+from graphon.enums import NodeType
+from graphon.variables.variables import VariableBase
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account
