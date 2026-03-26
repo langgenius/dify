@@ -1,22 +1,38 @@
-import type { FC, PropsWithChildren, ReactElement } from 'react'
-import { Trans } from 'react-i18next'
+import type { FC } from 'react'
+import { useTranslation } from 'react-i18next'
+import { cn } from '@/utils/classnames'
 
-type SandboxPlaceholderTokenProps = PropsWithChildren<{
-  variant: 'kbd' | 'action'
-}>
+type SandboxPlaceholderTokenProps = {
+  actionLabel?: string
+  shortcut: '/' | '@'
+}
 
-const SandboxPlaceholderToken: FC<SandboxPlaceholderTokenProps> = ({ variant, children }) => {
-  if (variant === 'kbd') {
-    return (
-      <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-[4px] bg-components-kbd-bg-gray px-1 text-text-tertiary system-kbd">
-        {children}
-      </span>
-    )
-  }
-
+const SandboxPlaceholderToken: FC<SandboxPlaceholderTokenProps> = ({
+  actionLabel,
+  shortcut,
+}) => {
   return (
-    <span className="border-b border-dotted border-current">
-      {children}
+    <span
+      className={cn(
+        'inline-flex cursor-pointer items-center gap-1 text-text-tertiary hover:text-components-button-secondary-accent-text',
+        'group/placeholder-token',
+      )}
+    >
+      <span
+        className={cn(
+          'inline-flex h-5 min-w-5 items-center justify-center rounded-[4px] bg-components-kbd-bg-gray px-1 system-kbd',
+          'group-hover/placeholder-token:bg-components-button-secondary-accent-text-disabled',
+        )}
+      >
+        {shortcut}
+      </span>
+      <span
+        className={cn(
+          'pointer-events-auto border-b border-dotted border-current px-0.5 transition-colors',
+        )}
+      >
+        {actionLabel}
+      </span>
     </span>
   )
 }
@@ -30,27 +46,28 @@ const SandboxPlaceholder: FC<SandboxPlaceholderProps> = ({
   disableToolBlocks,
   isSupportSandbox,
 }) => {
+  const { t } = useTranslation()
+
   if (!isSupportSandbox)
     return null
 
-  const components: ReactElement[] = [
-    <SandboxPlaceholderToken key="slash" variant="kbd" />,
-    <SandboxPlaceholderToken key="insert" variant="action" />,
-  ]
-
-  if (!disableToolBlocks) {
-    components.push(
-      <SandboxPlaceholderToken key="at" variant="kbd" />,
-      <SandboxPlaceholderToken key="tools" variant="action" />,
-    )
-  }
-
   return (
-    <Trans
-      i18nKey={disableToolBlocks ? 'promptEditor.placeholderSandboxNoTools' : 'promptEditor.placeholderSandbox'}
-      ns="common"
-      components={components}
-    />
+    <span>
+      {t('promptEditor.placeholderSandboxPrefix', { ns: 'common' })}
+      <SandboxPlaceholderToken
+        shortcut="/"
+        actionLabel={t('promptEditor.placeholderSandboxInsert', { ns: 'common' })}
+      />
+      {!disableToolBlocks && (
+        <>
+          {t('promptEditor.placeholderSandboxSeparator', { ns: 'common' })}
+          <SandboxPlaceholderToken
+            shortcut="@"
+            actionLabel={t('promptEditor.placeholderSandboxTools', { ns: 'common' })}
+          />
+        </>
+      )}
+    </span>
   )
 }
 

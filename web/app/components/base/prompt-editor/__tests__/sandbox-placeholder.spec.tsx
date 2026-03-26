@@ -1,16 +1,18 @@
-import type { ReactElement } from 'react'
-import { render, screen } from '@testing-library/react'
+import { render } from '@testing-library/react'
 import SandboxPlaceholder from '../sandbox-placeholder'
 
 vi.mock('react-i18next', () => ({
-  Trans: ({ i18nKey, components = [] }: {
-    i18nKey: string
-    components?: ReactElement[]
-  }) => (
-    <div data-i18n-key={i18nKey} data-testid="sandbox-placeholder-trans">
-      {components}
-    </div>
-  ),
+  useTranslation: () => ({
+    t: (key: string) => {
+      const translations: Record<string, string> = {
+        'promptEditor.placeholderSandboxPrefix': 'Write instructions here, ',
+        'promptEditor.placeholderSandboxInsert': 'insert',
+        'promptEditor.placeholderSandboxSeparator': ', ',
+        'promptEditor.placeholderSandboxTools': 'tools',
+      }
+      return translations[key] ?? key
+    },
+  }),
 }))
 
 describe('SandboxPlaceholder', () => {
@@ -24,10 +26,9 @@ describe('SandboxPlaceholder', () => {
       const { container } = render(<SandboxPlaceholder isSupportSandbox={false} />)
 
       expect(container).toBeEmptyDOMElement()
-      expect(screen.queryByTestId('sandbox-placeholder-trans')).not.toBeInTheDocument()
     })
 
-    it('should render slash and insert tokens when tool blocks are disabled', () => {
+    it('should render only the insert pair when tool blocks are disabled', () => {
       const { container } = render(
         <SandboxPlaceholder
           disableToolBlocks
@@ -35,25 +36,33 @@ describe('SandboxPlaceholder', () => {
         />,
       )
 
-      expect(screen.getByTestId('sandbox-placeholder-trans')).toHaveAttribute('data-i18n-key', 'promptEditor.placeholderSandboxNoTools')
-
-      const spans = container.querySelectorAll('span')
-      expect(spans).toHaveLength(2)
-      expect(spans[0]).toHaveClass('inline-flex', 'bg-components-kbd-bg-gray', 'system-kbd')
-      expect(spans[1]).toHaveClass('border-b', 'border-dotted', 'border-current')
+      expect(container).toHaveTextContent('Write instructions here, /insert')
+      expect(container.querySelector('.sandbox-placeholder-pair-insert')).toBeInTheDocument()
+      expect(container.querySelector('.sandbox-placeholder-pair-tools')).not.toBeInTheDocument()
+      expect(container.querySelector('.sandbox-placeholder-action-insert')).toHaveClass(
+        'pointer-events-auto',
+        'border-dotted',
+      )
     })
 
-    it('should render slash insert at and tools tokens when tool blocks are enabled', () => {
+    it('should render both insert and tools pairs with linked hover classes when tool blocks are enabled', () => {
       const { container } = render(<SandboxPlaceholder isSupportSandbox />)
 
-      expect(screen.getByTestId('sandbox-placeholder-trans')).toHaveAttribute('data-i18n-key', 'promptEditor.placeholderSandbox')
-
-      const spans = container.querySelectorAll('span')
-      expect(spans).toHaveLength(4)
-      expect(spans[0]).toHaveClass('inline-flex', 'bg-components-kbd-bg-gray', 'system-kbd')
-      expect(spans[1]).toHaveClass('border-b', 'border-dotted', 'border-current')
-      expect(spans[2]).toHaveClass('inline-flex', 'bg-components-kbd-bg-gray', 'system-kbd')
-      expect(spans[3]).toHaveClass('border-b', 'border-dotted', 'border-current')
+      expect(container).toHaveTextContent('Write instructions here, /insert, @tools')
+      expect(container.querySelector('.sandbox-placeholder-kbd-insert')).toHaveTextContent('/')
+      expect(container.querySelector('.sandbox-placeholder-kbd-tools')).toHaveTextContent('@')
+      expect(container.querySelector('.sandbox-placeholder-action-insert')).toHaveTextContent('insert')
+      expect(container.querySelector('.sandbox-placeholder-action-tools')).toHaveTextContent('tools')
+      expect(container.querySelector('.sandbox-placeholder-pair-insert')).toHaveClass(
+        'has-[.sandbox-placeholder-action-insert:hover]:[&_.sandbox-placeholder-kbd-insert]:bg-state-accent-hover-alt',
+        'has-[.sandbox-placeholder-action-insert:hover]:[&_.sandbox-placeholder-action-insert]:bg-state-accent-hover',
+        'has-[.sandbox-placeholder-action-insert:hover]:[&_.sandbox-placeholder-action-insert]:text-text-accent-secondary',
+      )
+      expect(container.querySelector('.sandbox-placeholder-pair-tools')).toHaveClass(
+        'has-[.sandbox-placeholder-action-tools:hover]:[&_.sandbox-placeholder-kbd-tools]:bg-state-accent-hover-alt',
+        'has-[.sandbox-placeholder-action-tools:hover]:[&_.sandbox-placeholder-action-tools]:bg-state-accent-hover',
+        'has-[.sandbox-placeholder-action-tools:hover]:[&_.sandbox-placeholder-action-tools]:text-text-accent-secondary',
+      )
     })
   })
 })
