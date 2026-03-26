@@ -55,6 +55,7 @@ describe('StartTabContent', () => {
     it('should render create/import actions and template list when mounted', () => {
       const { container } = render(<StartTabContent />)
 
+      expect(screen.getByText('skill.startTab.fileExplorerIntro')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: /workflow\.skill\.startTab\.createBlankSkill/i })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: /workflow\.skill\.startTab\.importSkill/i })).toBeInTheDocument()
       expect(screen.getByRole('textbox')).toBeInTheDocument()

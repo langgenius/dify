@@ -17,7 +17,7 @@ const CreateImportSection = () => {
 
   return (
     <>
-      <div className="grid grid-cols-3 gap-2 px-6 pb-4 pt-6">
+      <div className="grid grid-cols-3 gap-2 px-6 pb-4 pt-0">
         <ActionCard
           icon={<span className="i-ri-add-circle-fill size-5 text-text-accent" />}
           title={t('skill.startTab.createBlankSkill')}

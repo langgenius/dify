@@ -4,6 +4,7 @@ import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ScrollArea } from '@/app/components/base/ui/scroll-area'
 import CreateImportSection from './create-import-section'
+import FileExplorerIntro from './file-explorer-intro'
 import SkillTemplatesSection from './skill-templates-section'
 
 const StartTabContent = () => {
@@ -19,6 +20,7 @@ const StartTabContent = () => {
           scrollbar: 'z-20',
         }}
       >
+        <FileExplorerIntro />
         <CreateImportSection />
         <SkillTemplatesSection />
       </ScrollArea>
