@@ -3,7 +3,7 @@
   "type": "module",
   "version": "1.13.2",
   "private": true,
-  "packageManager": "pnpm@10.32.1",
+  "packageManager": "pnpm@10.33.0",
   "imports": {
     "#i18n": {
       "react-server": "./i18n-config/lib.server.ts",
