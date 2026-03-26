@@ -271,6 +271,7 @@ export const useBatchUpload = () => {
       appId,
       tree,
       files,
+      parentId,
       onProgress,
     }: {
       appId: string
@@ -281,7 +282,7 @@ export const useBatchUpload = () => {
     }): Promise<BatchUploadNodeOutput[]> => {
       const response = await consoleClient.appAsset.batchUpload({
         params: { appId },
-        body: { children: tree },
+        body: { children: tree, parent_id: parentId },
       })
 
       const uploadTasks: Array<{ path: string, file: File, url: string }> = []

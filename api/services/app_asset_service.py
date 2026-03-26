@@ -505,8 +505,16 @@ class AppAssetService:
         app_model: App,
         account_id: str,
         input_children: list[BatchUploadNode],
+        parent_id: str | None = None,
         expires_in: int = 3600,
     ) -> list[BatchUploadNode]:
+        """
+        Create a nested batch-upload tree under one parent in a single tree mutation.
+
+        The full metadata tree is added to the draft asset tree before the method
+        returns any upload URLs. That preserves sibling name de-duplication and
+        keeps nested uploads atomic for both root and subfolder targets.
+        """
         if not input_children:
             return []
 
@@ -516,16 +524,20 @@ class AppAssetService:
                 tree = assets.asset_tree
 
                 taken_by_parent: dict[str | None, set[str]] = {}
-                stack: list[tuple[BatchUploadNode, str | None]] = [(child, None) for child in reversed(input_children)]
+                stack: list[tuple[BatchUploadNode, str | None]] = [
+                    (child, parent_id) for child in reversed(input_children)
+                ]
                 while stack:
-                    node, parent_id = stack.pop()
+                    node, current_parent_id = stack.pop()
                     if node.id is None:
                         node.id = str(uuid4())
-                    if parent_id not in taken_by_parent:
-                        taken_by_parent[parent_id] = {child.name for child in tree.get_children(parent_id)}
-                    taken = taken_by_parent[parent_id]
+                    if current_parent_id not in taken_by_parent:
+                        taken_by_parent[current_parent_id] = {
+                            child.name for child in tree.get_children(current_parent_id)
+                        }
+                    taken = taken_by_parent[current_parent_id]
                     unique_name = tree.ensure_unique_name(
-                        parent_id,
+                        current_parent_id,
                         node.name,
                         is_file=node.node_type == AssetNodeType.FILE,
                         extra_taken=taken,
@@ -538,7 +550,7 @@ class AppAssetService:
 
                 new_nodes: list[AppAssetNode] = []
                 for child in input_children:
-                    new_nodes.extend(child.to_app_asset_nodes(None))
+                    new_nodes.extend(child.to_app_asset_nodes(parent_id))
 
                 try:
                     for node in new_nodes:

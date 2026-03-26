@@ -65,6 +65,12 @@ class GetUploadUrlPayload(BaseModel):
 
 class BatchUploadPayload(BaseModel):
     children: list[BatchUploadNode] = Field(..., min_length=1)
+    parent_id: str | None = None
+
+    @field_validator("parent_id", mode="before")
+    @classmethod
+    def empty_to_none(cls, v: str | None) -> str | None:
+        return v or None
 
 
 class UpdateFileContentPayload(BaseModel):
@@ -291,6 +297,7 @@ class AppAssetBatchUploadResource(Resource):
 
         Input:
         {
+            "parent_id": "optional-target-folder-id",
             "children": [
                 {"name": "folder1", "node_type": "folder", "children": [
                     {"name": "file1.txt", "node_type": "file", "size": 1024}
@@ -313,7 +320,12 @@ class AppAssetBatchUploadResource(Resource):
         payload = BatchUploadPayload.model_validate(console_ns.payload or {})
 
         try:
-            result_children = AppAssetService.batch_create_from_tree(app_model, current_user.id, payload.children)
+            result_children = AppAssetService.batch_create_from_tree(
+                app_model,
+                current_user.id,
+                payload.children,
+                parent_id=payload.parent_id,
+            )
             return {"children": [child.model_dump() for child in result_children]}, 201
         except AppAssetParentNotFoundError:
             raise AppAssetNodeNotFoundError()
