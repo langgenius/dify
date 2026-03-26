@@ -379,6 +379,36 @@ describe('ConfigCredential', () => {
     })
   })
 
+  describe('Basic Auth Type', () => {
+    it('should render basic auth option and submit username/password', async () => {
+      await act(async () => {
+        render(
+          <ConfigCredential
+            credential={baseCredential}
+            onChange={mockOnChange}
+            onHide={mockOnHide}
+          />,
+        )
+      })
+
+      fireEvent.click(screen.getByText('tools.createTool.authMethod.types.basic_auth'))
+
+      const usernameInput = screen.getByPlaceholderText('tools.createTool.authMethod.basic.usernamePlaceholder')
+      const passwordInput = screen.getByPlaceholderText('tools.createTool.authMethod.basic.passwordPlaceholder')
+      fireEvent.change(usernameInput, { target: { value: 'user1' } })
+      fireEvent.change(passwordInput, { target: { value: 'pass1' } })
+
+      fireEvent.click(screen.getByText('common.operation.save'))
+
+      expect(mockOnChange).toHaveBeenCalledWith({
+        auth_type: AuthType.basicAuth,
+        basic_username: 'user1',
+        basic_password: 'pass1',
+      })
+      expect(mockOnHide).toHaveBeenCalled()
+    })
+  })
+
   // Tests for switching between auth types
   describe('Switching Auth Types', () => {
     it('should switch from apiKeyHeader to apiKeyQuery', async () => {

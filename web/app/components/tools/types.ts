@@ -16,6 +16,7 @@ export enum AuthType {
   apiKey = 'api_key', // backward compatibility
   apiKeyHeader = 'api_key_header',
   apiKeyQuery = 'api_key_query',
+  basicAuth = 'basic_auth',
 }
 
 export enum AuthHeaderPrefix {
@@ -30,6 +31,8 @@ export type Credential = {
   api_key_value?: string
   api_key_header_prefix?: AuthHeaderPrefix
   api_key_query_param?: string
+  basic_username?: string
+  basic_password?: string
 }
 
 export enum CollectionType {
