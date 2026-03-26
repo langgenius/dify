@@ -1758,4 +1758,3 @@ class TestDatasetPermissionService:
                 DatasetPermissionService.clear_partial_member_list("dataset-1")
 
         mock_db.session.rollback.assert_called_once()
-        
