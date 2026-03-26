@@ -1,5 +1,5 @@
 # (c) 2026 EROS Systems - Issue #32306
-# License: MIT
+# Hardened Version 1.3.0 - Dify Production Grade
 
 import json
 import logging
@@ -20,30 +20,30 @@ from core.model_runtime.entities import (
 )
 from core.tools.tool_engine import ToolEngine
 from extensions.ext_database import db
-from models.model import MessageAgentThought
 
 logger = logging.getLogger(__name__)
 
 class FCAgentRunner(BaseAgentRunner):
     def run(self, application_generate_entity, queue_manager) -> Generator[LLMResultChunk, None, None]:
         """
-        Full-scale Function Calling Agent Runner with 3-Layer EROS Integration.
-        Maintains all original Dify utility logic while adding Short-circuit and Hybrid capabilities.
+        Function Calling Agent Runner with secure EROS 3-Layer Integration.
         """
-        # 1. Initialize tool instances and prompt-ready tool schemas (Dify Original)
-        tool_instances, prompt_messages_tools = self._init_prompt_tools()
+        # 1. Initialize tools (Dify Standard)
+        self.tool_instances, prompt_messages_tools = self._init_prompt_tools()
 
-        # --- LAYER 1: 100% EXACT MATCH SHORT-CIRCUIT (EROS) ---
-        if self.use_cached_plan:
-            logger.info(f"EROS [L1]: Executing cached path for fingerprint {self.plan_fingerprint}")
-            yield from self._execute_eros_cached_path(tool_instances)
+        # --- LAYER 1: EXACT MATCH (EROS) ---
+        # FIX: Check if we have an exact fingerprint match from the base class
+        if hasattr(self, 'use_cached_plan') and self.use_cached_plan:
+            logger.info(f"EROS [L1]: Short-circuiting for fingerprint {self.plan_fingerprint}")
+            yield from self._execute_eros_cached_path(self.tool_instances)
             return
 
-        # 2. Prepare the message history (Dify Original)
+        # 2. Prepare prompt history
         prompt_messages = self.history_prompt_messages
         
-        # --- LAYER 2: HYBRID PROMPT INJECTION (>50% Match) (EROS) ---
-        if self.is_partial_match and hasattr(self, 'partial_reusable_steps'):
+        # --- LAYER 2: HYBRID WELDING (EROS) ---
+        # FIX: Only apply if the base class detected a partial match (>50%)
+        if hasattr(self, 'is_partial_match') and self.is_partial_match:
             self._apply_hybrid_welding(prompt_messages)
         
         # 3. Iterative Reasoning Loop
@@ -51,26 +51,23 @@ class FCAgentRunner(BaseAgentRunner):
         total_usage = LLMUsage(prompt_tokens=0, completion_tokens=0, total_tokens=0)
         
         while self.agent_thought_count < self.config.max_iteration:
-            # Call the LLM (Guided by EROS Hybrid context if match > 50%)
             llm_result = self.model_instance.validate_and_call_llm(
                 prompt_messages=prompt_messages,
                 tools=prompt_messages_tools,
                 stream=self.stream_tool_call
             )
 
-            # 4. Handle LLM Results (Streaming vs Blocking)
             if isinstance(llm_result, Generator):
                 full_result = self._handle_llm_stream(llm_result)
             else:
                 full_result = llm_result
 
-            # Aggregate usage (Original Dify metric tracking)
             if full_result.usage:
                 total_usage.prompt_tokens += full_result.usage.prompt_tokens
                 total_usage.completion_tokens += full_result.usage.completion_tokens
                 total_usage.total_tokens += full_result.usage.total_tokens
 
-            # 5. Process Tool Calls
+            # 4. Process Tool Calls
             if full_result.message.tool_calls:
                 prompt_messages.append(full_result.message)
                 
@@ -81,14 +78,14 @@ class FCAgentRunner(BaseAgentRunner):
                     except json.JSONDecodeError:
                         tool_input = {}
                     
-                    # LAYER 3 TRACKING: Record for verification
+                    # LAYER 3 TRACKING: Record steps for the final cache storage
                     iteration_steps.append({
-                        "tool": tool_name,
+                        "tool_name": tool_name,
                         "inputs": tool_input,
                         "thought": full_result.message.content or ""
                     })
 
-                    # Original Dify Database Tracking
+                    # Standard Dify Database Tracking
                     agent_thought_id = self.create_agent_thought(
                         message_id=self.message.id, 
                         message="", 
@@ -97,9 +94,9 @@ class FCAgentRunner(BaseAgentRunner):
                         messages_ids=[]
                     )
 
-                    # Trigger tool invocation (Original Tool Engine)
+                    # Invoke Tool
                     observation, files, meta = ToolEngine.agent_invoke(
-                        tool=tool_instances.get(tool_name),
+                        tool=self.tool_instances.get(tool_name),
                         tool_parameters=tool_input,
                         user_id=self.user_id,
                         tenant_id=self.tenant_id,
@@ -110,13 +107,6 @@ class FCAgentRunner(BaseAgentRunner):
                         message_id=self.message.id,
                         conversation_id=self.conversation.id
                     )
-
-                    # Maintain Original File Publishing Logic
-                    for file_id in files:
-                        self.queue_manager.publish(
-                            QueueMessageFileEvent(message_file_id=file_id), 
-                            PublishFrom.APPLICATION_MANAGER
-                        )
 
                     # Save result of thought
                     self.save_agent_thought(
@@ -131,59 +121,57 @@ class FCAgentRunner(BaseAgentRunner):
                         llm_usage=full_result.usage
                     )
 
-                    # Re-feed observation for next iteration
+                    # Re-feed observation
                     prompt_messages.append(ToolPromptMessage(
                         content=str(observation),
                         tool_call_id=tool_call.id,
                         name=tool_name
                     ))
                 
-                continue # Let the LLM reason on the tool results
+                continue 
 
             else:
-                # 6. FINAL ANSWER REACHED
-                # --- LAYER 3: VERIFICATION & STORAGE ---
+                # 5. FINAL ANSWER REACHED - STORE IN EROS
                 if iteration_steps:
-                    # The store() method inside engine handles the >50% and Safety checks
                     self._store_execution_plan_in_cache(iteration_steps, success=True)
                 
                 yield LLMResultChunk(delta=full_result)
                 break
 
     def _apply_hybrid_welding(self, prompt_messages: List[PromptMessage]):
-        """Injects Layer 2 knowledge (Partial Pattern) into the prompt context."""
-        reusable_names = [s.get('tool') or s.get('tool_name', 'unknown') for s in self.partial_reusable_steps]
+        """Injects Layer 2 knowledge with tool-existence verification."""
+        from core.agent.plan_hydration.engine import get_hydrator
+        
+        # Verify tools exist before suggesting them
+        is_valid, _ = get_hydrator().verify_plan(self.partial_reusable_steps, list(self.tool_instances.values()))
+        if not is_valid:
+            return
+
+        reusable_names = [s.get('tool_name') or s.get('tool') for s in self.partial_reusable_steps]
         
         hybrid_hint = (
-            "\n\n[EROS HYBRID SYSTEM]: A pattern match (>50%) was detected. "
-            "Optimized tool sequence for this intent: "
-            f"({' -> '.join(reusable_names)}). "
-            "Integrate these steps to resolve the query efficiently."
+            f"\n\n[EROS HYBRID]: High-confidence sequence match detected. "
+            f"Optimized path: ({' -> '.join(reusable_names)}). "
+            "Execute these steps if they align with the current goal."
         )
 
         for message in prompt_messages:
             if isinstance(message, SystemPromptMessage):
                 message.content += hybrid_hint
                 return
-        
         prompt_messages.insert(0, SystemPromptMessage(content=hybrid_hint))
 
-    def _handle_llm_stream(self, stream: Generator) -> LLMResult:
-        """Aggregates streaming chunks while preserving usage and tool call data."""
-        full_content = ""
-        tool_calls = []
-        usage = None
-
-        for chunk in stream:
-            if chunk.delta.message.content:
-                full_content += chunk.delta.message.content
-            if chunk.delta.message.tool_calls:
-                tool_calls.extend(chunk.delta.message.tool_calls)
-            if chunk.delta.usage:
-                usage = chunk.delta.usage
-            yield chunk
-
-        return LLMResult(
-            message=AssistantPromptMessage(content=full_content, tool_calls=tool_calls),
-            usage=usage
-        )
+    def _store_execution_plan_in_cache(self, iteration_steps: List[Dict], success: bool):
+        """Secure storage wrapper for EROS."""
+        try:
+            from core.agent.plan_hydration.engine import get_hydrator
+            get_hydrator().store(
+                query=self.query,
+                tools=list(self.tool_instances.values()),
+                plan_steps=iteration_steps,
+                tenant_id=self.tenant_id, # FIX: Passing the critical tenant_id
+                instruction=self.app_config.agent.prompt_template,
+                success=success
+            )
+        except Exception as e:
+            logger.error(f"EROS Storage Failure: {e}")
