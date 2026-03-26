@@ -35,12 +35,10 @@ const SkillMain = () => {
   const appId = appDetail?.id || ''
   const [queryFileId] = useQueryState('fileId', parseAsString)
   const storeApi = useWorkflowStore()
-  const openedFileRef = React.useRef<string | null>(null)
 
   React.useEffect(() => {
-    if (!queryFileId || openedFileRef.current === queryFileId)
+    if (!queryFileId)
       return
-    openedFileRef.current = queryFileId
     storeApi.getState().openTab(queryFileId, { pinned: true })
   }, [queryFileId, storeApi])
 
