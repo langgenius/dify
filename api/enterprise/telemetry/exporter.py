@@ -49,7 +49,10 @@ def is_enterprise_telemetry_enabled() -> bool:
 
 def _parse_otlp_headers(raw: str) -> dict[str, str]:
     ctx = W3CBaggagePropagator().extract({"baggage": raw})
-    return dict(get_all(ctx))
+    return {
+        k: v for k, v in get_all(ctx).items()
+        if isinstance(v, str)
+    }
 
 
 def _datetime_to_ns(dt: datetime) -> int:
