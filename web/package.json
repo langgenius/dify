@@ -215,6 +215,7 @@
     "eslint-plugin-better-tailwindcss": "4.3.2",
     "eslint-plugin-hyoban": "0.14.1",
     "eslint-plugin-markdown-preferences": "0.40.3",
+    "eslint-plugin-no-barrel-files": "1.2.2",
     "eslint-plugin-react-hooks": "7.0.1",
     "eslint-plugin-react-refresh": "0.5.2",
     "eslint-plugin-sonarjs": "4.0.2",

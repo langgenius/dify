@@ -527,6 +527,9 @@ importers:
       eslint-plugin-markdown-preferences:
         specifier: 0.40.3
         version: 0.40.3(@eslint/markdown@7.5.1)(eslint@10.1.0(jiti@1.21.7))
+      eslint-plugin-no-barrel-files:
+        specifier: 1.2.2
+        version: 1.2.2(eslint@10.1.0(jiti@1.21.7))(typescript@5.9.3)
       eslint-plugin-react-hooks:
         specifier: 7.0.1
         version: 7.0.1(eslint@10.1.0(jiti@1.21.7))
@@ -4916,6 +4919,9 @@ packages:
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
     peerDependencies:
       eslint: '>=8.23.0'
+
+  eslint-plugin-no-barrel-files@1.2.2:
+    resolution: {integrity: sha512-DF2bnHuEHClmL1+maBO5TD2HnnRsLj8J69FFtVkjObkELyjCXaWBsk+URJkqBpdOWURlL+raGX9AEpWCAiOV0g==}
 
   eslint-plugin-no-only-tests@3.3.0:
     resolution: {integrity: sha512-brcKcxGnISN2CcVhXJ/kEQlNa0MEfGRtwKtWA16SkqXHKitaKIMrfemJKLKX1YqDU5C/5JY3PvZXd5jEW04e0Q==}
@@ -12310,6 +12316,14 @@ snapshots:
       semver: 7.7.4
       ts-declaration-location: 1.0.7(typescript@5.9.3)
     transitivePeerDependencies:
+      - typescript
+
+  eslint-plugin-no-barrel-files@1.2.2(eslint@10.1.0(jiti@1.21.7))(typescript@5.9.3):
+    dependencies:
+      '@typescript-eslint/utils': 8.57.1(eslint@10.1.0(jiti@1.21.7))(typescript@5.9.3)
+    transitivePeerDependencies:
+      - eslint
+      - supports-color
       - typescript
 
   eslint-plugin-no-only-tests@3.3.0: {}
