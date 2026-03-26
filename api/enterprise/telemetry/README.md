@@ -38,7 +38,7 @@ The Enterprise OTEL exporter is configured via environment variables.
 | `ENTERPRISE_OTLP_HEADERS` | Custom headers for OTLP requests (e.g., `x-scope-orgid=tenant1`). | - |
 | `ENTERPRISE_OTLP_PROTOCOL` | OTLP transport protocol (`http` or `grpc`). | `http` |
 | `ENTERPRISE_OTLP_API_KEY` | Bearer token for authentication. | - |
-| `ENTERPRISE_INCLUDE_CONTENT` | Whether to include sensitive content (inputs/outputs) in logs. | `true` |
+| `ENTERPRISE_INCLUDE_CONTENT` | Whether to include sensitive content (inputs/outputs) in logs. | `false` |
 | `ENTERPRISE_SERVICE_NAME` | Service name reported to OTEL. | `dify` |
 | `ENTERPRISE_OTEL_SAMPLING_RATE` | Sampling rate for traces (0.0 to 1.0). Metrics are always 100%. | `1.0` |
 
