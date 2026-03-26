@@ -37,31 +37,53 @@ describe('SandboxPlaceholder', () => {
       )
 
       expect(container).toHaveTextContent('Write instructions here, /insert')
-      expect(container.querySelector('.sandbox-placeholder-pair-insert')).toBeInTheDocument()
-      expect(container.querySelector('.sandbox-placeholder-pair-tools')).not.toBeInTheDocument()
-      expect(container.querySelector('.sandbox-placeholder-action-insert')).toHaveClass(
-        'pointer-events-auto',
-        'border-dotted',
+      const tokens = container.querySelectorAll('.group\\/placeholder-token')
+      const kbdTokens = container.querySelectorAll('.system-kbd')
+      const actionTokens = container.querySelectorAll('.border-dotted')
+
+      expect(tokens).toHaveLength(1)
+      expect(kbdTokens).toHaveLength(1)
+      expect(actionTokens).toHaveLength(1)
+      expect(tokens[0]).toHaveClass(
+        'inline-flex',
+        'cursor-pointer',
+        'items-center',
+        'gap-1',
+        'text-text-tertiary',
+        'hover:text-components-button-secondary-accent-text',
       )
+      expect(kbdTokens[0]).toHaveClass(
+        'bg-components-kbd-bg-gray',
+        'group-hover/placeholder-token:bg-components-button-secondary-accent-text-disabled',
+      )
+      expect(kbdTokens[0]).toHaveTextContent('/')
+      expect(actionTokens[0]).toHaveClass(
+        'pointer-events-auto',
+        'border-b',
+        'border-dotted',
+        'border-current',
+      )
+      expect(actionTokens[0]).toHaveTextContent('insert')
     })
 
-    it('should render both insert and tools pairs with linked hover classes when tool blocks are enabled', () => {
+    it('should render both insert and tools pairs when tool blocks are enabled', () => {
       const { container } = render(<SandboxPlaceholder isSupportSandbox />)
 
       expect(container).toHaveTextContent('Write instructions here, /insert, @tools')
-      expect(container.querySelector('.sandbox-placeholder-kbd-insert')).toHaveTextContent('/')
-      expect(container.querySelector('.sandbox-placeholder-kbd-tools')).toHaveTextContent('@')
-      expect(container.querySelector('.sandbox-placeholder-action-insert')).toHaveTextContent('insert')
-      expect(container.querySelector('.sandbox-placeholder-action-tools')).toHaveTextContent('tools')
-      expect(container.querySelector('.sandbox-placeholder-pair-insert')).toHaveClass(
-        'has-[.sandbox-placeholder-action-insert:hover]:[&_.sandbox-placeholder-kbd-insert]:bg-state-accent-hover-alt',
-        'has-[.sandbox-placeholder-action-insert:hover]:[&_.sandbox-placeholder-action-insert]:bg-state-accent-hover',
-        'has-[.sandbox-placeholder-action-insert:hover]:[&_.sandbox-placeholder-action-insert]:text-text-accent-secondary',
-      )
-      expect(container.querySelector('.sandbox-placeholder-pair-tools')).toHaveClass(
-        'has-[.sandbox-placeholder-action-tools:hover]:[&_.sandbox-placeholder-kbd-tools]:bg-state-accent-hover-alt',
-        'has-[.sandbox-placeholder-action-tools:hover]:[&_.sandbox-placeholder-action-tools]:bg-state-accent-hover',
-        'has-[.sandbox-placeholder-action-tools:hover]:[&_.sandbox-placeholder-action-tools]:text-text-accent-secondary',
+      const tokens = container.querySelectorAll('.group\\/placeholder-token')
+      const kbdTokens = container.querySelectorAll('.system-kbd')
+      const actionTokens = container.querySelectorAll('.border-dotted')
+
+      expect(tokens).toHaveLength(2)
+      expect(kbdTokens).toHaveLength(2)
+      expect(actionTokens).toHaveLength(2)
+      expect(kbdTokens[0]).toHaveTextContent('/')
+      expect(kbdTokens[1]).toHaveTextContent('@')
+      expect(actionTokens[0]).toHaveTextContent('insert')
+      expect(actionTokens[1]).toHaveTextContent('tools')
+      expect(tokens[1]).toHaveClass(
+        'group/placeholder-token',
+        'hover:text-components-button-secondary-accent-text',
       )
     })
   })
