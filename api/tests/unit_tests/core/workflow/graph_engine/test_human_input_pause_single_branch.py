@@ -3,8 +3,11 @@ import time
 from unittest import mock
 from unittest.mock import MagicMock
 
-from dify_graph.graph import Graph
-from dify_graph.graph_events import (
+from core.repositories.human_input_repository import HumanInputFormEntity, HumanInputFormRepository
+from core.workflow.node_runtime import DifyHumanInputNodeRuntime
+from core.workflow.system_variables import build_system_variables
+from graphon.graph import Graph
+from graphon.graph_events import (
     GraphRunPausedEvent,
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
@@ -13,25 +16,23 @@ from dify_graph.graph_events import (
     NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
 )
-from dify_graph.graph_events.node import NodeRunHumanInputFormFilledEvent
-from dify_graph.model_runtime.entities.message_entities import PromptMessageRole
-from dify_graph.nodes.base.entities import OutputVariableEntity, OutputVariableType
-from dify_graph.nodes.end.end_node import EndNode
-from dify_graph.nodes.end.entities import EndNodeData
-from dify_graph.nodes.human_input.entities import HumanInputNodeData, UserAction
-from dify_graph.nodes.human_input.human_input_node import HumanInputNode
-from dify_graph.nodes.llm.entities import (
+from graphon.graph_events.node import NodeRunHumanInputFormFilledEvent
+from graphon.model_runtime.entities.message_entities import PromptMessageRole
+from graphon.nodes.base.entities import OutputVariableEntity, OutputVariableType
+from graphon.nodes.end.end_node import EndNode
+from graphon.nodes.end.entities import EndNodeData
+from graphon.nodes.human_input.entities import HumanInputNodeData, UserAction
+from graphon.nodes.human_input.human_input_node import HumanInputNode
+from graphon.nodes.llm.entities import (
     ContextConfig,
     LLMNodeChatModelMessage,
     LLMNodeData,
     ModelConfig,
     VisionConfig,
 )
-from dify_graph.nodes.start.entities import StartNodeData
-from dify_graph.nodes.start.start_node import StartNode
-from dify_graph.repositories.human_input_form_repository import HumanInputFormEntity, HumanInputFormRepository
-from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.system_variable import SystemVariable
+from graphon.nodes.start.entities import StartNodeData
+from graphon.nodes.start.start_node import StartNode
+from graphon.runtime import GraphRuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
 from tests.workflow_test_utils import build_test_graph_init_params
 
@@ -59,7 +60,7 @@ def _build_llm_human_llm_graph(
 
     if graph_runtime_state is None:
         variable_pool = VariablePool(
-            system_variables=SystemVariable(
+            system_variables=build_system_variables(
                 user_id="user", app_id="app", workflow_id="workflow", workflow_execution_id="test-execution-id,"
             ),
             user_inputs={},
@@ -121,6 +122,7 @@ def _build_llm_human_llm_graph(
         graph_init_params=graph_init_params,
         graph_runtime_state=graph_runtime_state,
         form_repository=form_repository,
+        runtime=DifyHumanInputNodeRuntime(graph_init_params.run_context),
     )
 
     llm_second = _create_llm_node("llm_resume", "Follow-up LLM", "Follow-up prompt")
@@ -191,7 +193,7 @@ def test_human_input_llm_streaming_order_across_pause() -> None:
     mock_create_repo.get_form.return_value = None
     mock_form_entity = MagicMock(spec=HumanInputFormEntity)
     mock_form_entity.id = "test_form_id"
-    mock_form_entity.web_app_token = "test_web_app_token"
+    mock_form_entity.submission_token = "test_web_app_token"
     mock_form_entity.recipients = []
     mock_form_entity.rendered_content = "rendered"
     mock_form_entity.submitted = False
@@ -260,7 +262,7 @@ def test_human_input_llm_streaming_order_across_pause() -> None:
     mock_get_repo = MagicMock(spec=HumanInputFormRepository)
     submitted_form = MagicMock(spec=HumanInputFormEntity)
     submitted_form.id = mock_form_entity.id
-    submitted_form.web_app_token = mock_form_entity.web_app_token
+    submitted_form.submission_token = mock_form_entity.submission_token
     submitted_form.recipients = []
     submitted_form.rendered_content = mock_form_entity.rendered_content
     submitted_form.submitted = True

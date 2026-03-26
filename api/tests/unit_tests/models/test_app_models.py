@@ -1201,7 +1201,7 @@ class TestConversationStatusCount:
     def test_status_count_batch_loading_implementation(self):
         """Test that status_count uses batch loading instead of N+1 queries."""
         # Arrange
-        from dify_graph.enums import WorkflowExecutionStatus
+        from graphon.enums import WorkflowExecutionStatus
 
         app_id = str(uuid4())
         conversation_id = str(uuid4())
@@ -1408,7 +1408,7 @@ class TestConversationStatusCount:
     def test_status_count_paused(self):
         """Test status_count includes paused workflow runs."""
         # Arrange
-        from dify_graph.enums import WorkflowExecutionStatus
+        from graphon.enums import WorkflowExecutionStatus
 
         app_id = str(uuid4())
         conversation_id = str(uuid4())

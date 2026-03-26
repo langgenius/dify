@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from dify_graph.variables import (
+from graphon.variables import (
     ArrayFileVariable,
     ArrayVariable,
     FloatVariable,
@@ -11,7 +11,7 @@ from dify_graph.variables import (
     SegmentType,
     StringVariable,
 )
-from dify_graph.variables.variables import VariableBase
+from graphon.variables.variables import VariableBase
 
 
 def test_frozen_variables():

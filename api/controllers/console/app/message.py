@@ -24,9 +24,9 @@ from controllers.console.wraps import (
 )
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
-from dify_graph.model_runtime.errors.invoke import InvokeError
 from extensions.ext_database import db
 from fields.raws import FilesContainedField
+from graphon.model_runtime.errors.invoke import InvokeError
 from libs.helper import TimestampField, uuid_value
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from libs.login import current_account_with_tenant, login_required

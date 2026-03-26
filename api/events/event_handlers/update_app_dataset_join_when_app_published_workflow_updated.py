@@ -3,9 +3,9 @@ from typing import cast
 from sqlalchemy import delete, select
 
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
-from dify_graph.nodes import BuiltinNodeTypes
 from events.app_event import app_published_workflow_was_updated
 from extensions.ext_database import db
+from graphon.nodes import BuiltinNodeTypes
 from models.dataset import AppDatasetJoin
 from models.workflow import Workflow
 

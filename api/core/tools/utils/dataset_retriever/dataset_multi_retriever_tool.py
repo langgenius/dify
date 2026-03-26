@@ -14,8 +14,8 @@ from core.rag.rerank.rerank_model import RerankModelRunner
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.utils.dataset_retriever.dataset_retriever_base_tool import DatasetRetrieverBaseTool
 from core.tools.utils.dataset_retriever.dataset_retriever_tool import DefaultRetrievalModelDict
-from dify_graph.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
+from graphon.model_runtime.entities.model_entities import ModelType
 from models.dataset import Dataset, Document, DocumentSegment
 
 default_retrieval_model: DefaultRetrievalModelDict = {
@@ -66,7 +66,7 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
         for thread in threads:
             thread.join()
         # do rerank for searched documents
-        model_manager = ModelManager()
+        model_manager = ModelManager.for_tenant(tenant_id=self.tenant_id)
         rerank_model_instance = model_manager.get_model_instance(
             tenant_id=self.tenant_id,
             provider=self.reranking_provider_name,
