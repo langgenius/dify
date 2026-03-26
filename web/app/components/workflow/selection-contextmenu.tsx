@@ -1,4 +1,3 @@
-import type { ComponentType } from 'react'
 import type { CreateSnippetDialogPayload } from './create-snippet-dialog'
 import type { Edge, Node } from './types'
 import type { SnippetCanvasData } from '@/models/snippet'
@@ -53,13 +52,6 @@ const AlignType = {
 
 type AlignTypeValue = (typeof AlignType)[keyof typeof AlignType]
 
-type SelectionMenuPosition = {
-  left: number
-  top: number
-}
-
-type ContainerRect = Pick<DOMRect, 'width' | 'height'>
-
 type AlignBounds = {
   minX: number
   maxX: number
@@ -69,7 +61,7 @@ type AlignBounds = {
 
 type AlignMenuItem = {
   alignType: AlignTypeValue
-  icon: ComponentType<{ className?: string }>
+  icon: string
   iconClassName?: string
   translationKey: string
 }
@@ -86,38 +78,15 @@ const MENU_HEIGHT = 240
 const DEFAULT_SNIPPET_VIEWPORT: SnippetCanvasData['viewport'] = { x: 0, y: 0, zoom: 1 }
 
 const alignMenuItems: AlignMenuItem[] = [
-  { alignType: AlignType.Left, icon: RiAlignItemLeftLine, translationKey: 'operator.alignLeft' },
-  { alignType: AlignType.Center, icon: RiAlignItemHorizontalCenterLine, translationKey: 'operator.alignCenter' },
-  { alignType: AlignType.Right, icon: RiAlignItemRightLine, translationKey: 'operator.alignRight' },
-  { alignType: AlignType.Top, icon: RiAlignItemTopLine, translationKey: 'operator.alignTop' },
-  { alignType: AlignType.Middle, icon: RiAlignItemVerticalCenterLine, iconClassName: 'rotate-90', translationKey: 'operator.alignMiddle' },
-  { alignType: AlignType.Bottom, icon: RiAlignItemBottomLine, translationKey: 'operator.alignBottom' },
-  { alignType: AlignType.DistributeHorizontal, icon: RiAlignJustify, translationKey: 'operator.distributeHorizontal' },
-  { alignType: AlignType.DistributeVertical, icon: RiAlignJustify, iconClassName: 'rotate-90', translationKey: 'operator.distributeVertical' },
+  { alignType: AlignType.Left, icon: 'i-ri-align-item-left-line', translationKey: 'operator.alignLeft' },
+  { alignType: AlignType.Center, icon: 'i-ri-align-item-horizontal-center-line', translationKey: 'operator.alignCenter' },
+  { alignType: AlignType.Right, icon: 'i-ri-align-item-right-line', translationKey: 'operator.alignRight' },
+  { alignType: AlignType.Top, icon: 'i-ri-align-item-top-line', translationKey: 'operator.alignTop' },
+  { alignType: AlignType.Middle, icon: 'i-ri-align-item-vertical-center-line', iconClassName: 'rotate-90', translationKey: 'operator.alignMiddle' },
+  { alignType: AlignType.Bottom, icon: 'i-ri-align-item-bottom-line', translationKey: 'operator.alignBottom' },
+  { alignType: AlignType.DistributeHorizontal, icon: 'i-ri-align-justify-line', translationKey: 'operator.distributeHorizontal' },
+  { alignType: AlignType.DistributeVertical, icon: 'i-ri-align-justify-line', iconClassName: 'rotate-90', translationKey: 'operator.distributeVertical' },
 ]
-
-const getMenuPosition = (
-  selectionMenu: SelectionMenuPosition | undefined,
-  containerRect?: ContainerRect | null,
-) => {
-  if (!selectionMenu)
-    return { left: 0, top: 0 }
-
-  let { left, top } = selectionMenu
-
-  if (containerRect) {
-    if (left + MENU_WIDTH > containerRect.width)
-      left = left - MENU_WIDTH
-
-    if (top + MENU_HEIGHT > containerRect.height)
-      top = top - MENU_HEIGHT
-
-    left = Math.max(0, left)
-    top = Math.max(0, top)
-  }
-
-  return { left, top }
-}
 
 const getAlignableNodes = (nodes: Node[], selectedNodes: Node[]) => {
   const selectedNodeIds = new Set(selectedNodes.map(node => node.id))
@@ -356,29 +325,19 @@ const SelectionContextmenu = () => {
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { saveStateToHistory } = useWorkflowHistory()
 
-  const menuPosition = useMemo(() => {
-    const container = document.querySelector('#workflow-container')
-    return getMenuPosition(selectionMenu, container?.getBoundingClientRect())
-  }, [selectionMenu])
-
   const anchor = useMemo(() => {
     if (!selectionMenu)
-      return null
-
-    const container = document.querySelector('#workflow-container')
-    const containerRect = container?.getBoundingClientRect()
-    if (!containerRect)
-      return null
+      return undefined
 
     return {
       getBoundingClientRect: () => DOMRect.fromRect({
         width: 0,
         height: 0,
-        x: containerRect.left + menuPosition.left,
-        y: containerRect.top + menuPosition.top,
+        x: selectionMenu.clientX,
+        y: selectionMenu.clientY,
       }),
     }
-  }, [menuPosition.left, menuPosition.top, selectionMenu])
+  }, [selectionMenu])
 
   useEffect(() => {
     if (selectionMenu && selectedNodes.length <= 1)
@@ -574,7 +533,7 @@ const SelectionContextmenu = () => {
         }}
       >
         <ContextMenuContent
-          positionerProps={{ anchor }}
+          positionerProps={anchor ? { anchor } : undefined}
           popupClassName="w-[240px] py-0"
         >
           <div className="p-1">
@@ -612,7 +571,7 @@ const SelectionContextmenu = () => {
                     data-testid={`selection-contextmenu-item-${item.alignType}`}
                     onClick={() => handleAlignNodes(item.alignType)}
                   >
-                    <Icon className={`h-[18px] w-[18px] ${item.iconClassName ?? ''}`.trim()} />
+                    <span aria-hidden className={`${item.icon} h-4 w-4 ${item.iconClassName ?? ''}`.trim()} />
                   </ContextMenuItem>
                 )
               })}

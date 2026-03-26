@@ -130,7 +130,7 @@ describe('SelectionContextmenu', () => {
     expect(screen.queryByText('operator.vertical')).not.toBeInTheDocument()
   })
 
-  it('should still render the menu when the requested position exceeds workflow container bounds', () => {
+  it('should render menu items when selectionMenu is present', async () => {
     const nodes = [
       createNode({ id: 'n1', selected: true, width: 80, height: 40 }),
       createNode({ id: 'n2', selected: true, position: { x: 140, y: 0 }, width: 80, height: 40 }),
@@ -151,10 +151,12 @@ describe('SelectionContextmenu', () => {
     })
 
     act(() => {
-      store.setState({ selectionMenu: { left: 780, top: 590 } })
+      store.setState({ selectionMenu: { clientX: 780, clientY: 590 } })
     })
 
-    expect(screen.getByTestId('selection-contextmenu-item-left')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByTestId('selection-contextmenu-item-left')).toBeInTheDocument()
+    })
   })
 
   it('should close itself when only one node is selected', async () => {
@@ -165,7 +167,7 @@ describe('SelectionContextmenu', () => {
     const { store } = renderSelectionMenu({ nodes })
 
     act(() => {
-      store.setState({ selectionMenu: { left: 120, top: 120 } })
+      store.setState({ selectionMenu: { clientX: 120, clientY: 120 } })
     })
 
     await waitFor(() => {
@@ -190,7 +192,7 @@ describe('SelectionContextmenu', () => {
     })
 
     act(() => {
-      store.setState({ selectionMenu: { left: 100, top: 100 } })
+      store.setState({ selectionMenu: { clientX: 100, clientY: 100 } })
     })
 
     fireEvent.click(screen.getByTestId('selection-contextmenu-item-left'))
@@ -220,7 +222,7 @@ describe('SelectionContextmenu', () => {
     const { store } = renderSelectionMenu({ nodes })
 
     act(() => {
-      store.setState({ selectionMenu: { left: 120, top: 120 } })
+      store.setState({ selectionMenu: { clientX: 120, clientY: 120 } })
     })
 
     expect(screen.getByTestId('selection-contextmenu-item-copy')).toHaveTextContent('workflow.common.copy')
@@ -230,12 +232,12 @@ describe('SelectionContextmenu', () => {
     fireEvent.click(screen.getByTestId('selection-contextmenu-item-copy'))
 
     act(() => {
-      store.setState({ selectionMenu: { left: 120, top: 120 } })
+      store.setState({ selectionMenu: { clientX: 120, clientY: 120 } })
     })
     fireEvent.click(screen.getByTestId('selection-contextmenu-item-duplicate'))
 
     act(() => {
-      store.setState({ selectionMenu: { left: 120, top: 120 } })
+      store.setState({ selectionMenu: { clientX: 120, clientY: 120 } })
     })
     fireEvent.click(screen.getByTestId('selection-contextmenu-item-delete'))
 
@@ -261,7 +263,7 @@ describe('SelectionContextmenu', () => {
     const { store } = renderSelectionMenu({ nodes, edges })
 
     act(() => {
-      store.setState({ selectionMenu: { left: 120, top: 120 } })
+      store.setState({ selectionMenu: { clientX: 120, clientY: 120 } })
     })
 
     fireEvent.click(screen.getByTestId('selection-contextmenu-item-createSnippet'))
@@ -324,7 +326,7 @@ describe('SelectionContextmenu', () => {
     })
 
     act(() => {
-      store.setState({ selectionMenu: { left: 160, top: 120 } })
+      store.setState({ selectionMenu: { clientX: 160, clientY: 120 } })
     })
 
     fireEvent.click(screen.getByTestId('selection-contextmenu-item-distributeHorizontal'))
@@ -363,7 +365,7 @@ describe('SelectionContextmenu', () => {
     })
 
     act(() => {
-      store.setState({ selectionMenu: { left: 180, top: 120 } })
+      store.setState({ selectionMenu: { clientX: 180, clientY: 120 } })
     })
 
     fireEvent.click(screen.getByTestId('selection-contextmenu-item-left'))
@@ -382,7 +384,7 @@ describe('SelectionContextmenu', () => {
     const { store } = renderSelectionMenu({ nodes })
 
     act(() => {
-      store.setState({ selectionMenu: { left: 100, top: 100 } })
+      store.setState({ selectionMenu: { clientX: 100, clientY: 100 } })
     })
 
     fireEvent.click(screen.getByTestId('selection-contextmenu-item-left'))
@@ -400,7 +402,7 @@ describe('SelectionContextmenu', () => {
     const { store } = renderSelectionMenu({ nodes })
 
     act(() => {
-      store.setState({ selectionMenu: { left: 100, top: 100 } })
+      store.setState({ selectionMenu: { clientX: 100, clientY: 100 } })
     })
 
     fireEvent.click(screen.getByTestId('selection-contextmenu-item-left'))
@@ -425,7 +427,7 @@ describe('SelectionContextmenu', () => {
     const { store } = renderSelectionMenu({ nodes })
 
     act(() => {
-      store.setState({ selectionMenu: { left: 100, top: 100 } })
+      store.setState({ selectionMenu: { clientX: 100, clientY: 100 } })
     })
 
     fireEvent.click(screen.getByTestId('selection-contextmenu-item-left'))
