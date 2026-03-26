@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react'
+import type { CreateSnippetDialogPayload } from '../create-snippet-dialog'
+import type { Snippet as SnippetDetail } from '@/types/snippet'
 import {
   memo,
   useDeferredValue,
@@ -7,40 +8,49 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
-import {
-  SearchMenu,
-} from '@/app/components/base/icons/src/vender/line/others'
+import { toast } from '@/app/components/base/ui/toast'
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@/app/components/base/ui/tooltip'
+import { useRouter } from '@/next/navigation'
+import { consoleClient } from '@/service/client'
+import { useCreateSnippetMutation } from '@/service/use-snippets'
 import { cn } from '@/utils/classnames'
-import BlockIcon from '../block-icon'
+import CreateSnippetDialog from '../create-snippet-dialog'
 import { BlockEnum } from '../types'
+import SnippetDetailCard from './snippet-detail-card'
+import SnippetListItem from './snippet-list-item'
 
 type SnippetsProps = {
   loading?: boolean
   searchText: string
 }
 
-type StaticSnippet = {
-  id: string
-  badge: string
-  badgeClassName: string
-  title: string
-  description: string
-  author?: string
+type StaticSnippet = SnippetDetail & {
   relatedBlocks?: BlockEnum[]
 }
 
 const STATIC_SNIPPETS: StaticSnippet[] = [
   {
     id: 'customer-review',
-    badge: 'CR',
-    title: 'Customer Review',
-    description: 'Customer Review Description',
+    name: 'Customer Review',
+    description: 'Collects customer review context, classifies request intent, and routes the workflow through the right generation branch.',
     author: 'Evan',
+    type: 'group',
+    is_published: true,
+    version: '1.0.0',
+    use_count: 128,
+    input_fields: [],
+    created_at: 1742889600,
+    updated_at: 1742976000,
+    icon_info: {
+      icon_type: 'emoji',
+      icon: '🧾',
+      icon_background: '#FFEAD5',
+      icon_url: '',
+    },
     relatedBlocks: [
       BlockEnum.LLM,
       BlockEnum.Code,
@@ -48,7 +58,6 @@ const STATIC_SNIPPETS: StaticSnippet[] = [
       BlockEnum.QuestionClassifier,
       BlockEnum.IfElse,
     ],
-    badgeClassName: 'bg-gradient-to-br from-orange-500 to-rose-500',
   },
 ] as const
 
@@ -76,76 +85,17 @@ const LoadingSkeleton = () => {
   )
 }
 
-const SnippetBadge = ({
-  badge,
-  badgeClassName,
-}: Pick<StaticSnippet, 'badge' | 'badgeClassName'>) => {
-  return (
-    <div
-      aria-hidden="true"
-      className={cn(
-        'flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-[9px] font-semibold uppercase text-white shadow-[0px_3px_10px_-2px_rgba(9,9,11,0.08),0px_2px_4px_-2px_rgba(9,9,11,0.06)]',
-        badgeClassName,
-      )}
-    >
-      {badge}
-    </div>
-  )
-}
-
-const SnippetDetailCard = ({
-  author,
-  description,
-  relatedBlocks = [],
-  title,
-  triggerBadge,
-}: {
-  author?: string
-  description?: string
-  relatedBlocks?: BlockEnum[]
-  title: string
-  triggerBadge: ReactNode
-}) => {
-  return (
-    <div className="w-[224px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-3 pb-4 pt-3 shadow-lg backdrop-blur-[5px]">
-      <div className="flex flex-col gap-2">
-        <div className="flex flex-col gap-2">
-          {triggerBadge}
-          <div className="text-text-primary system-md-medium">{title}</div>
-        </div>
-        {!!description && (
-          <div className="w-[200px] text-text-secondary system-xs-regular">
-            {description}
-          </div>
-        )}
-        {!!relatedBlocks.length && (
-          <div className="flex items-center gap-0.5 pt-1">
-            {relatedBlocks.map(block => (
-              <BlockIcon
-                key={block}
-                type={block}
-                size="sm"
-              />
-            ))}
-          </div>
-        )}
-      </div>
-      {!!author && (
-        <div className="pt-3 text-text-tertiary system-xs-regular">
-          {author}
-        </div>
-      )}
-    </div>
-  )
-}
-
 const Snippets = ({
   loading = false,
   searchText,
 }: SnippetsProps) => {
   const { t } = useTranslation()
+  const { push } = useRouter()
+  const createSnippetMutation = useCreateSnippetMutation()
   const deferredSearchText = useDeferredValue(searchText)
   const [hoveredSnippetId, setHoveredSnippetId] = useState<string | null>(null)
+  const [isCreateSnippetDialogOpen, setIsCreateSnippetDialogOpen] = useState(false)
+  const [isCreatingSnippet, setIsCreatingSnippet] = useState(false)
 
   const snippets = useMemo(() => {
     return STATIC_SNIPPETS.map(item => ({
@@ -153,12 +103,55 @@ const Snippets = ({
     }))
   }, [])
 
+  const handleCloseCreateSnippetDialog = () => {
+    setIsCreateSnippetDialogOpen(false)
+  }
+
+  const handleCreateSnippet = async ({
+    name,
+    description,
+    icon,
+    graph,
+  }: CreateSnippetDialogPayload) => {
+    setIsCreatingSnippet(true)
+
+    try {
+      const snippet = await createSnippetMutation.mutateAsync({
+        body: {
+          name,
+          description: description || undefined,
+          icon_info: {
+            icon: icon.type === 'emoji' ? icon.icon : icon.fileId,
+            icon_type: icon.type,
+            icon_background: icon.type === 'emoji' ? icon.background : undefined,
+            icon_url: icon.type === 'image' ? icon.url : undefined,
+          },
+        },
+      })
+
+      await consoleClient.snippets.syncDraftWorkflow({
+        params: { snippetId: snippet.id },
+        body: { graph },
+      })
+
+      toast.success(t('snippet.createSuccess', { ns: 'workflow' }))
+      handleCloseCreateSnippetDialog()
+      push(`/snippets/${snippet.id}/orchestrate`)
+    }
+    catch (error) {
+      toast.error(error instanceof Error ? error.message : t('createFailed', { ns: 'snippet' }))
+    }
+    finally {
+      setIsCreatingSnippet(false)
+    }
+  }
+
   const filteredSnippets = useMemo(() => {
     const normalizedSearch = deferredSearchText.trim().toLowerCase()
     if (!normalizedSearch)
       return snippets
 
-    return snippets.filter(item => item.title.toLowerCase().includes(normalizedSearch))
+    return snippets.filter(item => item.name.toLowerCase().includes(normalizedSearch))
   }, [deferredSearchText, snippets])
 
   if (loading)
@@ -166,53 +159,40 @@ const Snippets = ({
 
   if (!filteredSnippets.length) {
     return (
-      <div className="flex min-h-[480px] flex-col items-center justify-center gap-2 px-4">
-        <SearchMenu className="h-8 w-8 text-text-tertiary" />
-        <div className="text-text-secondary system-sm-regular">
-          {t('tabs.noSnippetsFound', { ns: 'workflow' })}
+      <>
+        <div className="flex min-h-[480px] flex-col items-center justify-center gap-2 px-4">
+          <span className="i-custom-vender-line-others-search-menu h-8 w-8 text-text-tertiary" />
+          <div className="text-text-secondary system-sm-regular">
+            {t('tabs.noSnippetsFound', { ns: 'workflow' })}
+          </div>
+          <Button
+            variant="secondary-accent"
+            size="small"
+            onClick={() => setIsCreateSnippetDialogOpen(true)}
+          >
+            {t('tabs.createSnippet', { ns: 'workflow' })}
+          </Button>
         </div>
-        <Button
-          variant="secondary-accent"
-          size="small"
-          onClick={(e) => {
-            e.preventDefault()
-          }}
-        >
-          {t('tabs.createSnippet', { ns: 'workflow' })}
-        </Button>
-      </div>
+        <CreateSnippetDialog
+          isOpen={isCreateSnippetDialogOpen}
+          isSubmitting={isCreatingSnippet || createSnippetMutation.isPending}
+          onClose={handleCloseCreateSnippetDialog}
+          onConfirm={handleCreateSnippet}
+        />
+      </>
     )
   }
 
   return (
     <div className="max-h-[480px] max-w-[500px] overflow-y-auto p-1">
       {filteredSnippets.map((item) => {
-        const badge = (
-          <SnippetBadge
-            badge={item.badge}
-            badgeClassName={item.badgeClassName}
-          />
-        )
-
         const row = (
-          <div
-            className={cn(
-              'flex h-8 items-center gap-2 rounded-lg px-3',
-              hoveredSnippetId === item.id && 'bg-background-default-hover',
-            )}
+          <SnippetListItem
+            snippet={item}
+            isHovered={hoveredSnippetId === item.id}
             onMouseEnter={() => setHoveredSnippetId(item.id)}
             onMouseLeave={() => setHoveredSnippetId(current => current === item.id ? null : current)}
-          >
-            {badge}
-            <div className="min-w-0 text-text-secondary system-sm-medium">
-              {item.title}
-            </div>
-            {hoveredSnippetId === item.id && item.author && (
-              <div className="ml-auto text-text-tertiary system-xs-regular">
-                {item.author}
-              </div>
-            )}
-          </div>
+          />
         )
 
         if (!item.description)
@@ -229,13 +209,7 @@ const Snippets = ({
               variant="plain"
               popupClassName="!bg-transparent !p-0"
             >
-              <SnippetDetailCard
-                author={item.author}
-                description={item.description}
-                relatedBlocks={item.relatedBlocks}
-                title={item.title}
-                triggerBadge={badge}
-              />
+              <SnippetDetailCard snippet={item} />
             </TooltipContent>
           </Tooltip>
         )

@@ -1,0 +1,51 @@
+import type {
+  ComponentPropsWithoutRef,
+  Ref,
+} from 'react'
+import type { PublishedSnippetDetail } from './snippet-detail-card'
+import AppIcon from '@/app/components/base/app-icon'
+import { cn } from '@/utils/classnames'
+
+type SnippetListItemProps = {
+  isHovered: boolean
+  ref?: Ref<HTMLDivElement>
+  snippet: PublishedSnippetDetail
+} & ComponentPropsWithoutRef<'div'>
+
+const SnippetListItem = ({
+  isHovered,
+  snippet,
+  className,
+  ref,
+  ...props
+}: SnippetListItemProps) => {
+  return (
+    <div
+      ref={ref}
+      className={cn(
+        'flex h-8 items-center gap-2 rounded-lg px-3',
+        isHovered && 'bg-background-default-hover',
+        className,
+      )}
+      {...props}
+    >
+      <AppIcon
+        size="tiny"
+        iconType={snippet.icon_info.icon_type}
+        icon={snippet.icon_info.icon}
+        background={snippet.icon_info.icon_background}
+        imageUrl={snippet.icon_info.icon_url}
+      />
+      <div className="min-w-0 text-text-secondary system-sm-medium">
+        {snippet.name}
+      </div>
+      {isHovered && snippet.author && (
+        <div className="ml-auto text-text-tertiary system-xs-regular">
+          {snippet.author}
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default SnippetListItem
