@@ -82,8 +82,13 @@ class TestFetchTokenWithSingleFlight:
         auth_token = "token-123"
         scope = "app"
         cached_token = CachedApiToken(
-            id="id-1", app_id="app-1", tenant_id="tenant-1", type="app",
-            token=auth_token, last_used_at=None, created_at=None,
+            id="id-1",
+            app_id="app-1",
+            tenant_id="tenant-1",
+            type="app",
+            token=auth_token,
+            last_used_at=None,
+            created_at=None,
         )
         lock = MagicMock()
         lock.acquire.return_value = True
@@ -150,7 +155,8 @@ class TestFetchTokenWithSingleFlight:
             patch.object(api_token_service_module, "redis_client") as mock_redis,
             patch.object(api_token_service_module.ApiTokenCache, "get", return_value=None),
             patch.object(
-                api_token_service_module, "query_token_from_db",
+                api_token_service_module,
+                "query_token_from_db",
                 side_effect=Unauthorized("Access token is invalid"),
             ),
         ):
@@ -185,8 +191,13 @@ class TestApiTokenCacheTenantBranches:
         scope = "app"
         cache_key = ApiTokenCache._make_cache_key(token, scope)
         cached_token = CachedApiToken(
-            id="id-1", app_id="app-1", tenant_id="tenant-1", type="app",
-            token=token, last_used_at=None, created_at=None,
+            id="id-1",
+            app_id="app-1",
+            tenant_id="tenant-1",
+            type="app",
+            token=token,
+            last_used_at=None,
+            created_at=None,
         )
         mock_redis.get.return_value = cached_token.model_dump_json().encode("utf-8")
 
@@ -218,15 +229,25 @@ class TestApiTokenCacheTenantBranches:
 class TestApiTokenCacheCoreBranches:
     def test_cached_api_token_repr_should_include_id_and_type(self):
         token = CachedApiToken(
-            id="id-123", app_id="app-123", tenant_id="tenant-123", type="app",
-            token="token-123", last_used_at=None, created_at=None,
+            id="id-123",
+            app_id="app-123",
+            tenant_id="tenant-123",
+            type="app",
+            token="token-123",
+            last_used_at=None,
+            created_at=None,
         )
         assert repr(token) == "<CachedApiToken id=id-123 type=app>"
 
     def test_serialize_token_should_handle_cached_api_token_instances(self):
         token = CachedApiToken(
-            id="id-123", app_id="app-123", tenant_id="tenant-123", type="app",
-            token="token-123", last_used_at=None, created_at=None,
+            id="id-123",
+            app_id="app-123",
+            tenant_id="tenant-123",
+            type="app",
+            token="token-123",
+            last_used_at=None,
+            created_at=None,
         )
         serialized = ApiTokenCache._serialize_token(token)
         assert isinstance(serialized, bytes)
@@ -248,8 +269,13 @@ class TestApiTokenCacheCoreBranches:
     @patch("services.api_token_service.redis_client")
     def test_get_should_deserialize_cached_payload_on_cache_hit(self, mock_redis):
         token = CachedApiToken(
-            id="id-123", app_id="app-123", tenant_id="tenant-123", type="app",
-            token="token-123", last_used_at=None, created_at=None,
+            id="id-123",
+            app_id="app-123",
+            tenant_id="tenant-123",
+            type="app",
+            token="token-123",
+            last_used_at=None,
+            created_at=None,
         )
         mock_redis.get.return_value = token.model_dump_json().encode("utf-8")
         result = ApiTokenCache.get("token-123", "app")
