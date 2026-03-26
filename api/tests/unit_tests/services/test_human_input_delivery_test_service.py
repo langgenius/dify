@@ -302,8 +302,10 @@ class TestEmailDeliveryTestHandler:
 
         # user_ids is None (all)
         mock_execute = MagicMock()
+        mock_tuples = MagicMock()
         mock_session.execute.return_value = mock_execute
-        mock_execute.all.return_value = [("u1", "u1@example.com")]
+        mock_execute.tuples.return_value = mock_tuples
+        mock_tuples.all.return_value = [("u1", "u1@example.com")]
 
         result = handler._query_workspace_member_emails(tenant_id="t1", user_ids=None)
         assert result == {"u1": "u1@example.com"}
