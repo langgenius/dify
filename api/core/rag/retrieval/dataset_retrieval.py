@@ -71,6 +71,7 @@ from graphon.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMU
 from graphon.model_runtime.entities.message_entities import PromptMessage, PromptMessageRole, PromptMessageTool
 from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
 from graphon.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from libs.helper import parse_uuid_str_or_none
 from libs.json_in_md_parser import parse_and_check_json_markdown
 from models import UploadFile
 from models.dataset import (
@@ -1024,8 +1025,13 @@ class DatasetRetrieval:
         """
         if not query and not attachment_ids:
             return
-        created_by_role = self._resolve_creator_user_role(user_from)
-        if created_by_role is None:
+        created_by = parse_uuid_str_or_none(user_id)
+        if created_by is None:
+            logger.debug(
+                "Skipping dataset query log: empty created_by user_id (user_from=%s, app_id=%s)",
+                user_from,
+                app_id,
+            )
             return
         dataset_queries = []
         for dataset_id in dataset_ids:
@@ -1041,8 +1047,8 @@ class DatasetRetrieval:
                     content=json.dumps(contents),
                     source=DatasetQuerySource.APP,
                     source_app_id=app_id,
-                    created_by_role=created_by_role,
-                    created_by=user_id,
+                    created_by_role=CreatorUserRole(user_from),
+                    created_by=created_by,
                 )
                 dataset_queries.append(dataset_query)
             if dataset_queries:

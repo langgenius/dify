@@ -174,6 +174,18 @@ def normalize_uuid(value: str | UUID) -> str:
         raise ValueError("must be a valid UUID") from exc
 
 
+def parse_uuid_str_or_none(value: str | None) -> str | None:
+    """
+    Return None for missing/empty UUID-like values.
+
+    Keep non-empty values unchanged to avoid changing behavior in paths that
+    currently pass placeholder IDs in tests/mocks.
+    """
+    if value is None or not str(value).strip():
+        return None
+    return str(value)
+
+
 UUIDStrOrEmpty = Annotated[str, AfterValidator(normalize_uuid)]
 
 
