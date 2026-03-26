@@ -38,22 +38,22 @@ describe('Plugin Installation Flow Integration', () => {
     it('fetches releases, checks for updates, and uploads the new version', async () => {
       const mockReleases = [
         {
-          tag_name: 'v2.0.0',
-          assets: [{ browser_download_url: 'https://github.com/test/v2.difypkg', name: 'plugin-v2.difypkg' }],
+          tag: 'v2.0.0',
+          assets: [{ downloadUrl: 'https://github.com/test/v2.difypkg' }],
         },
         {
-          tag_name: 'v1.5.0',
-          assets: [{ browser_download_url: 'https://github.com/test/v1.5.difypkg', name: 'plugin-v1.5.difypkg' }],
+          tag: 'v1.5.0',
+          assets: [{ downloadUrl: 'https://github.com/test/v1.5.difypkg' }],
         },
         {
-          tag_name: 'v1.0.0',
-          assets: [{ browser_download_url: 'https://github.com/test/v1.difypkg', name: 'plugin-v1.difypkg' }],
+          tag: 'v1.0.0',
+          assets: [{ downloadUrl: 'https://github.com/test/v1.difypkg' }],
         },
       ]
 
       ;(globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve(mockReleases),
+        json: () => Promise.resolve({ releases: mockReleases }),
       })
 
       mockUploadGitHub.mockResolvedValue({
@@ -95,14 +95,14 @@ describe('Plugin Installation Flow Integration', () => {
     it('handles no new version available', async () => {
       const mockReleases = [
         {
-          tag_name: 'v1.0.0',
-          assets: [{ browser_download_url: 'https://github.com/test/v1.difypkg', name: 'plugin-v1.difypkg' }],
+          tag: 'v1.0.0',
+          assets: [{ downloadUrl: 'https://github.com/test/v1.difypkg' }],
         },
       ]
 
       ;(globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve(mockReleases),
+        json: () => Promise.resolve({ releases: mockReleases }),
       })
 
       const releases = await fetchReleases('test-org', 'test-repo')
@@ -116,7 +116,7 @@ describe('Plugin Installation Flow Integration', () => {
     it('handles empty releases', async () => {
       ;(globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve([]),
+        json: () => Promise.resolve({ releases: [] }),
       })
 
       const releases = await fetchReleases('test-org', 'test-repo')

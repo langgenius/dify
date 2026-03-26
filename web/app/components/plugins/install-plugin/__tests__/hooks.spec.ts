@@ -32,13 +32,14 @@ describe('install-plugin/hooks', () => {
       it('fetches releases from GitHub API and formats them', async () => {
         mockFetch.mockResolvedValue({
           ok: true,
-          json: () => Promise.resolve([
-            {
-              tag_name: 'v1.0.0',
-              assets: [{ browser_download_url: 'https://example.com/v1.zip', name: 'plugin.zip' }],
-              body: 'Release notes',
-            },
-          ]),
+          json: () => Promise.resolve({
+            releases: [
+              {
+                tag: 'v1.0.0',
+                assets: [{ downloadUrl: 'https://example.com/plugin.zip' }],
+              },
+            ],
+          }),
         })
 
         const releases = await fetchReleases('owner', 'repo')
