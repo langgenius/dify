@@ -1,4 +1,3 @@
-from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -25,6 +24,7 @@ from controllers.console.datasets.error import (
 )
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.rag.index_processor.constant.index_type import IndexStructureType
+from libs.datetime_utils import naive_utc_now
 from models.dataset import ChildChunk, DocumentSegment
 from models.model import UploadFile
 
@@ -54,8 +54,8 @@ def _segment():
         disabled_by=None,
         status="normal",
         created_by="u1",
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow(),
+        created_at=naive_utc_now(),
+        updated_at=naive_utc_now(),
         updated_by="u1",
         indexing_at=None,
         completed_at=None,
