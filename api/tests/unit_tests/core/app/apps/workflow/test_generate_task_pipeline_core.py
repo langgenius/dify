@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from datetime import datetime
 from types import SimpleNamespace
 
 import pytest
@@ -47,6 +46,7 @@ from core.base.tts.app_generator_tts_publisher import AudioTrunk
 from core.workflow.system_variables import build_system_variables, system_variables_to_mapping
 from graphon.enums import BuiltinNodeTypes, WorkflowExecutionStatus
 from graphon.runtime import GraphRuntimeState, VariablePool
+from libs.datetime_utils import naive_utc_now
 from models.enums import CreatorUserRole
 from models.model import AppMode, EndUser
 from tests.workflow_test_utils import build_test_variable_pool
@@ -192,7 +192,7 @@ class TestWorkflowGenerateTaskPipeline:
             node_execution_id="exec",
             node_id="node",
             node_type=BuiltinNodeTypes.START,
-            start_at=datetime.utcnow(),
+            start_at=naive_utc_now(),
             inputs={},
             outputs={},
             process_data={},
@@ -245,7 +245,7 @@ class TestWorkflowGenerateTaskPipeline:
             node_execution_id="exec",
             node_id="node",
             node_type=BuiltinNodeTypes.START,
-            start_at=datetime.utcnow(),
+            start_at=naive_utc_now(),
             inputs={},
             outputs={},
             process_data={},
@@ -303,7 +303,7 @@ class TestWorkflowGenerateTaskPipeline:
             node_id="node",
             node_type=BuiltinNodeTypes.LLM,
             node_title="LLM",
-            start_at=datetime.utcnow(),
+            start_at=naive_utc_now(),
             node_run_index=1,
         )
         iter_next = QueueIterationNextEvent(
@@ -319,7 +319,7 @@ class TestWorkflowGenerateTaskPipeline:
             node_id="node",
             node_type=BuiltinNodeTypes.LLM,
             node_title="LLM",
-            start_at=datetime.utcnow(),
+            start_at=naive_utc_now(),
             node_run_index=1,
         )
         loop_start = QueueLoopStartEvent(
@@ -327,7 +327,7 @@ class TestWorkflowGenerateTaskPipeline:
             node_id="node",
             node_type=BuiltinNodeTypes.LLM,
             node_title="LLM",
-            start_at=datetime.utcnow(),
+            start_at=naive_utc_now(),
             node_run_index=1,
         )
         loop_next = QueueLoopNextEvent(
@@ -343,7 +343,7 @@ class TestWorkflowGenerateTaskPipeline:
             node_id="node",
             node_type=BuiltinNodeTypes.LLM,
             node_title="LLM",
-            start_at=datetime.utcnow(),
+            start_at=naive_utc_now(),
             node_run_index=1,
         )
         filled_event = QueueHumanInputFormFilledEvent(
@@ -359,7 +359,7 @@ class TestWorkflowGenerateTaskPipeline:
             node_id="node",
             node_type=BuiltinNodeTypes.LLM,
             node_title="title",
-            expiration_time=datetime.utcnow(),
+            expiration_time=naive_utc_now(),
         )
         agent_event = QueueAgentLogEvent(
             id="log",
@@ -648,7 +648,7 @@ class TestWorkflowGenerateTaskPipeline:
             node_title="title",
             node_type=BuiltinNodeTypes.LLM,
             node_run_index=1,
-            start_at=datetime.utcnow(),
+            start_at=naive_utc_now(),
             provider_type="provider",
             provider_id="provider-id",
             error="error",
@@ -660,7 +660,7 @@ class TestWorkflowGenerateTaskPipeline:
             node_title="title",
             node_type=BuiltinNodeTypes.LLM,
             node_run_index=1,
-            start_at=datetime.utcnow(),
+            start_at=naive_utc_now(),
             provider_type="provider",
             provider_id="provider-id",
         )
@@ -685,7 +685,7 @@ class TestWorkflowGenerateTaskPipeline:
             node_execution_id="exec-id",
             node_id="node",
             node_type=BuiltinNodeTypes.START,
-            start_at=datetime.utcnow(),
+            start_at=naive_utc_now(),
             inputs={},
             outputs={},
             process_data={},
@@ -836,7 +836,7 @@ class TestWorkflowGenerateTaskPipeline:
             node_id="node-id",
             node_type=BuiltinNodeTypes.START,
             in_loop_id="loop-id",
-            start_at=datetime.utcnow(),
+            start_at=naive_utc_now(),
             process_data={"k": "v"},
             outputs={"out": 1},
         )
