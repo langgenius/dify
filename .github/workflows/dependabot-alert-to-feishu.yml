@@ -28,54 +28,255 @@ jobs:
           FEISHU_WEBHOOK: ${{ secrets.FEISHU_WEBHOOK }}
           GITHUB_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
-          WORKFLOW_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
 
-          send_feishu() {
-            local source="$1"
-            local action="$2"
-            local severity="$3"
-            local package_name="$4"
-            local summary="$5"
-            local alert_url="$6"
+          MAX_ITEMS="${MAX_ITEMS:-10}"
+          SUMMARY_MAX_LEN="${SUMMARY_MAX_LEN:-140}"
 
-            local message payload
-            message="$(printf '%s\n' \
-              '[Dependabot Alert]' \
-              "Repository: ${REPOSITORY}" \
-              "Source: ${source}" \
-              "Action: ${action}" \
-              "Severity: ${severity}" \
-              "Package: ${package_name}" \
-              "Summary: ${summary}" \
-              "Alert: ${alert_url}" \
-              "Run: ${WORKFLOW_URL}")"
+          build_payload() {
+            local alerts_json="$1"
+            local alert_count critical_count high_count header_template
+            local summary_line summary_line_2 summary_line_3 generated_at
+            local stats_elements visible_items hidden_count table_rows_data
 
-            payload="$(jq -n --arg text "$message" '{msg_type: "text", content: {text: $text}}')"
-            curl -sS -f -X POST "$FEISHU_WEBHOOK" \
-              -H "Content-Type: application/json" \
-              -d "$payload"
+            alert_count="$(echo "${alerts_json}" | jq 'length')"
+            critical_count="$(echo "${alerts_json}" | jq '[.[] | select((.security_advisory.severity // "") == "critical")] | length')"
+            high_count="$(echo "${alerts_json}" | jq '[.[] | select((.security_advisory.severity // "") == "high")] | length')"
+
+            header_template="orange"
+            if [ "${critical_count}" -gt 0 ]; then
+              header_template="red"
+            fi
+
+            summary_line="🚨 嗨，这里是您的 EE&CE 企业级🐮🐴在线打工播报员～"
+            summary_line_2="当前系统雷达已锁定一批**高风险依赖告警**，建议优先处理，不然它们可能比 KPI 先“爆炸”💥"
+            summary_line_3=$'📌 已为您智能筛选：\n仅展示 **未分配负责人的 High / Critical 告警**\n（也就是说——没人背锅，但锅已经烧起来了🔥）\n\n请尽快认领处理，拯救系统于水火之中 🙏'
+            generated_at="$(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+
+            stats_elements="$(jq -n \
+              --argjson total "${alert_count}" \
+              --argjson critical "${critical_count}" \
+              --argjson high "${high_count}" '
+              [
+                {
+                  tag: "column_set",
+                  flex_mode: "trisect",
+                  horizontal_spacing: "small",
+                  columns: [
+                    {
+                      tag: "column",
+                      width: "weighted",
+                      weight: 1,
+                      padding: "8px",
+                      background_style: "grey",
+                      elements: [{tag: "markdown", content: "**待处理告警**\n" + ($total|tostring)}]
+                    },
+                    {
+                      tag: "column",
+                      width: "weighted",
+                      weight: 1,
+                      padding: "8px",
+                      background_style: "grey",
+                      elements: [{tag: "markdown", content: "**🔴 严重风险**\n" + ($critical|tostring)}]
+                    },
+                    {
+                      tag: "column",
+                      width: "weighted",
+                      weight: 1,
+                      padding: "8px",
+                      background_style: "grey",
+                      elements: [{tag: "markdown", content: "**🟠 高风险**\n" + ($high|tostring)}]
+                    }
+                  ]
+                }
+              ]')"
+
+            if [ "${alert_count}" -eq 0 ]; then
+              jq -n \
+                --arg title "Dependabot Security Alerts" \
+                --arg subtitle "${REPOSITORY}" \
+                --arg summary "🚨 嗨，这里是您的 EE&CE 企业级🐮🐴在线打工播报员～" \
+                --arg summary2 "当前没有待处理的高风险依赖告警，继续保持，今天可以安心下班。" \
+                --arg summary3 $'📌 已为您智能筛选：\n仅展示 **未分配负责人的 High / Critical 告警**\n（当前结果为空，系统暂时平稳）' \
+                --arg generatedAt "${generated_at}" '
+                {
+                  msg_type: "interactive",
+                  card: {
+                    schema: "2.0",
+                    config: {wide_screen_mode: true},
+                    header: {
+                      template: "green",
+                      title: {tag: "plain_text", content: $title},
+                      subtitle: {tag: "plain_text", content: $subtitle}
+                    },
+                    body: {
+                      elements: [
+                        {tag: "markdown", content: $summary},
+                        {tag: "markdown", content: $summary2},
+                        {tag: "markdown", content: $summary3},
+                        {
+                          tag: "column_set",
+                          flex_mode: "trisect",
+                          horizontal_spacing: "small",
+                          columns: [
+                            {
+                              tag: "column",
+                              width: "weighted",
+                              weight: 1,
+                              padding: "8px",
+                              background_style: "grey",
+                              elements: [{tag: "markdown", content: "**待处理告警**\n0"}]
+                            },
+                            {
+                              tag: "column",
+                              width: "weighted",
+                              weight: 1,
+                              padding: "8px",
+                              background_style: "grey",
+                              elements: [{tag: "markdown", content: "**🔴 严重风险**\n0"}]
+                            },
+                            {
+                              tag: "column",
+                              width: "weighted",
+                              weight: 1,
+                              padding: "8px",
+                              background_style: "grey",
+                              elements: [{tag: "markdown", content: "**🟠 高风险**\n0"}]
+                            }
+                          ]
+                        },
+                        {
+                          tag: "div",
+                          text: {
+                            tag: "plain_text",
+                            content: ("通知时间：" + $generatedAt),
+                            text_color: "grey",
+                            text_align: "right"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }'
+              return 0
+            fi
+
+            visible_items="$(echo "${alerts_json}" | jq --argjson max "${MAX_ITEMS}" '.[:$max]')"
+            hidden_count="$(echo "${alerts_json}" | jq --argjson max "${MAX_ITEMS}" 'if length > $max then length - $max else 0 end')"
+
+            table_rows_data="$(echo "${visible_items}" | jq -c \
+              --argjson maxLen "${SUMMARY_MAX_LEN}" '
+              map(
+                . as $a |
+                ($a.number // "unknown") as $number |
+                ($a.security_advisory.severity // "unknown") as $severity |
+                ($a.dependency.package.name // "unknown") as $package |
+                ($a.security_advisory.summary // "N/A") as $summary |
+                ($a.html_url // "") as $url |
+                (
+                  if ($summary | length) > $maxLen
+                  then ($summary[0:$maxLen] + "...")
+                  else $summary
+                  end
+                ) as $summaryShort |
+                {
+                  level: (if $severity == "critical" then "🔴 critical" else "🟠 high" end),
+                  alert_id: ("#" + ($number|tostring)),
+                  package: ("`" + $package + "`"),
+                  details: ($summaryShort + "\n[View alert](" + $url + ")")
+                }
+              )')"
+
+            jq -n \
+              --arg title "Dependabot Security Alerts" \
+              --arg subtitle "${REPOSITORY}" \
+              --arg summary "${summary_line}" \
+              --arg summary2 "${summary_line_2}" \
+              --arg summary3 "${summary_line_3}" \
+              --arg generatedAt "${generated_at}" \
+              --arg headerTemplate "${header_template}" \
+              --argjson stats "${stats_elements}" \
+              --argjson tableRows "${table_rows_data}" \
+              --argjson hidden "${hidden_count}" '
+              {
+                msg_type: "interactive",
+                card: {
+                  schema: "2.0",
+                  config: {wide_screen_mode: true},
+                  header: {
+                    template: $headerTemplate,
+                    title: {tag: "plain_text", content: $title},
+                    subtitle: {tag: "plain_text", content: $subtitle}
+                  },
+                  body: {
+                    elements:
+                      (
+                        [
+                          {tag: "markdown", content: $summary},
+                          {tag: "markdown", content: $summary2},
+                          {tag: "markdown", content: $summary3},
+                          {tag: "hr"},
+                          $stats[0],
+                          {tag: "hr"},
+                          {
+                            tag: "table",
+                            page_size: 10,
+                            row_height: "auto",
+                            header_style: {
+                              text_align: "left",
+                              text_size: "normal",
+                              text_color: "grey",
+                              bold: true,
+                              lines: 1
+                            },
+                            columns: [
+                              {name: "level", display_name: "Level", data_type: "text", width: "120px"},
+                              {name: "alert_id", display_name: "ID", data_type: "text", width: "90px"},
+                              {name: "package", display_name: "Package", data_type: "lark_md", width: "140px"},
+                              {name: "details", display_name: "Summary / Link", data_type: "lark_md", width: "auto"}
+                            ],
+                            rows: $tableRows
+                          }
+                        ]
+                        + (
+                          if $hidden > 0
+                          then [
+                            {tag: "hr"},
+                            {tag: "markdown", content: ("还有 " + ($hidden|tostring) + " 条告警未展示，请点击仓库安全页查看全部。")}
+                          ]
+                          else []
+                          end
+                        )
+                        + [
+                          {
+                            tag: "div",
+                            text: {
+                              tag: "plain_text",
+                              content: ("通知时间：" + $generatedAt),
+                              text_color: "grey",
+                              text_align: "right"
+                            }
+                          }
+                        ]
+                      )
+                  }
+                }
+              }'
           }
 
-          api_url="https://api.github.com/repos/${REPOSITORY}/dependabot/alerts?state=open&per_page=100"
+          api_url="https://api.github.com/repos/${REPOSITORY}/dependabot/alerts?state=open&severity=high,critical&assignee=none&per_page=100"
           alerts_json="$(curl -sS -f -L \
             -H "Accept: application/vnd.github+json" \
             -H "Authorization: Bearer ${GITHUB_TOKEN}" \
             -H "X-GitHub-Api-Version: 2026-03-10" \
             "$api_url")"
 
-          alert_count="$(echo "$alerts_json" | jq 'length')"
-          if [ "$alert_count" -eq 0 ]; then
-            echo "No open dependabot alerts."
-            exit 0
-          fi
+          filtered_json="$(echo "${alerts_json}" | jq '[.[] | select(((.security_advisory.severity // "") == "high" or (.security_advisory.severity // "") == "critical") and ((.assignees | length) == 0))]')"
+          alert_count="$(echo "${filtered_json}" | jq 'length')"
+          echo "Filtered dependabot alerts count: ${alert_count}"
 
-          echo "$alerts_json" | jq -c '.[]' | while IFS= read -r alert; do
-            severity="$(echo "$alert" | jq -r '.security_advisory.severity // "unknown"')"
-            package_name="$(echo "$alert" | jq -r '.dependency.package.name // "unknown"')"
-            summary="$(echo "$alert" | jq -r '.security_advisory.summary // "N/A"')"
-            alert_url="$(echo "$alert" | jq -r '.html_url // ""')"
-
-            send_feishu "poll" "open" "$severity" "$package_name" "$summary" "$alert_url"
-          done
+          payload="$(build_payload "${filtered_json}")"
+          curl -sS -f -X POST "${FEISHU_WEBHOOK}" \
+            -H "Content-Type: application/json" \
+            -d "${payload}"
