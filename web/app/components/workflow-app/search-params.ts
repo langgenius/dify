@@ -1,7 +1,7 @@
 import { parseAsStringLiteral } from 'nuqs'
 import { ViewType } from '@/app/components/workflow/types'
 
-const VIEW_TYPES = Object.values(ViewType)
+const VIEW_TYPES = Object.values(ViewType) as ViewType[]
 
 export const parseAsViewType = parseAsStringLiteral(VIEW_TYPES)
   .withDefault(ViewType.graph)
