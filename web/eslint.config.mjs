@@ -66,12 +66,14 @@ export default antfu(
       ...pluginReact.configs['recommended-typescript'].rules,
       'react/prefer-namespace-import': 'error',
       'react/set-state-in-effect': 'error',
+      'react/no-unnecessary-use-prefix': 'error',
     },
   },
   {
     files: [...GLOB_TESTS, GLOB_MARKDOWN_CODE, 'vitest.setup.ts', 'test/i18n-mock.ts'],
     rules: {
       'react/component-hook-factories': 'off',
+      'react/no-unnecessary-use-prefix': 'off',
     },
   },
   reactRefresh.configs.next(),

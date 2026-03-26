@@ -100,6 +100,7 @@ def test_run_uses_single_node_execution_branch(
         workflow=workflow,
         single_iteration_run=single_iteration_run,
         single_loop_run=single_loop_run,
+        user_id="user",
     )
     init_graph.assert_not_called()
 
@@ -158,6 +159,7 @@ def test_single_node_run_validates_target_node_config(monkeypatch) -> None:
             graph_runtime_state=graph_runtime_state,
             node_type_filter_key="loop_id",
             node_type_label="loop",
+            user_id="00000000-0000-0000-0000-000000000001",
         )
 
     assert seen_configs == [workflow.graph_dict["nodes"][0]]

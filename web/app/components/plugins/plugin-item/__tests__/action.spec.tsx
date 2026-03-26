@@ -46,13 +46,15 @@ vi.mock('@/service/plugins', () => ({
   uninstallPlugin: (id: string) => mockUninstallPlugin(id),
 }))
 
-// Mock GitHub releases hook
-vi.mock('../../install-plugin/hooks', () => ({
-  useGitHubReleases: () => ({
+// Mock GitHub release helpers
+vi.mock('../../install-plugin/hooks', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../install-plugin/hooks')>()
+  return {
+    ...actual,
     fetchReleases: mockFetchReleases,
     checkForUpdates: mockCheckForUpdates,
-  }),
-}))
+  }
+})
 
 // Mock modal context
 vi.mock('@/context/modal-context', () => ({
