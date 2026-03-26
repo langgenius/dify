@@ -5,12 +5,12 @@ import type { SkillEditorSliceShape } from '@/app/components/workflow/store/work
 import type { BatchUploadNodeInput } from '@/types/app-asset'
 import { useCallback, useRef } from 'react'
 import {
-  useBatchUpload,
   useCreateAppAssetFolder,
   useUploadFileWithPresignedUrl,
 } from '@/service/use-app-asset'
 import { prepareSkillUploadFile } from '../../../utils/skill-upload-utils'
 import { useSkillTreeUpdateEmitter } from '../data/use-skill-tree-collaboration'
+import { useBatchUploadOperation } from './use-batch-upload-operation'
 
 type UseCreateOperationsOptions = {
   parentId: string | null
@@ -34,7 +34,7 @@ export function useCreateOperations({
 
   const { isPending: isCreateFolderPending } = useCreateAppAssetFolder()
   const { mutateAsync: uploadFileAsync, isPending: isUploadFilePending } = useUploadFileWithPresignedUrl()
-  const { mutateAsync: batchUploadAsync, isPending: isBatchUploadPending } = useBatchUpload()
+  const { mutateAsync: batchUploadAsync, isPending: isBatchUploadPending } = useBatchUploadOperation()
   const emitTreeUpdate = useSkillTreeUpdateEmitter()
 
   const handleNewFile = useCallback(() => {

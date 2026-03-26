@@ -271,7 +271,6 @@ export const useBatchUpload = () => {
       appId,
       tree,
       files,
-      parentId,
       onProgress,
     }: {
       appId: string
@@ -284,17 +283,6 @@ export const useBatchUpload = () => {
         params: { appId },
         body: { children: tree },
       })
-
-      if (parentId) {
-        await Promise.all(
-          response.children.map(node =>
-            consoleClient.appAsset.moveNode({
-              params: { appId, nodeId: node.id },
-              body: { parent_id: parentId },
-            }),
-          ),
-        )
-      }
 
       const uploadTasks: Array<{ path: string, file: File, url: string }> = []
 
