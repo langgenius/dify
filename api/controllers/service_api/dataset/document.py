@@ -155,7 +155,9 @@ class DocumentAddByTextApi(DatasetApiResource):
 
         dataset_id = str(dataset_id)
         tenant_id = str(tenant_id)
-        dataset = db.session.scalar(select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1))
+        dataset = db.session.scalar(
+            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1)
+        )
 
         if not dataset:
             raise ValueError("Dataset does not exist.")
@@ -238,7 +240,9 @@ class DocumentUpdateByTextApi(DatasetApiResource):
     def post(self, tenant_id: str, dataset_id: UUID, document_id: UUID):
         """Update document by text."""
         payload = DocumentTextUpdate.model_validate(service_api_ns.payload or {})
-        dataset = db.session.scalar(select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == str(dataset_id)).limit(1))
+        dataset = db.session.scalar(
+            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == str(dataset_id)).limit(1)
+        )
         args = payload.model_dump(exclude_none=True)
         if not dataset:
             raise ValueError("Dataset does not exist.")
@@ -315,7 +319,9 @@ class DocumentAddByFileApi(DatasetApiResource):
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def post(self, tenant_id, dataset_id):
         """Create document by upload file."""
-        dataset = db.session.scalar(select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1))
+        dataset = db.session.scalar(
+            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1)
+        )
 
         if not dataset:
             raise ValueError("Dataset does not exist.")
@@ -425,7 +431,9 @@ class DocumentUpdateByFileApi(DatasetApiResource):
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def post(self, tenant_id, dataset_id, document_id):
         """Update document by upload file."""
-        dataset = db.session.scalar(select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1))
+        dataset = db.session.scalar(
+            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1)
+        )
 
         if not dataset:
             raise ValueError("Dataset does not exist.")
@@ -515,7 +523,9 @@ class DocumentListApi(DatasetApiResource):
         dataset_id = str(dataset_id)
         tenant_id = str(tenant_id)
         query_params = DocumentListQuery.model_validate(request.args.to_dict())
-        dataset = db.session.scalar(select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1))
+        dataset = db.session.scalar(
+            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1)
+        )
         if not dataset:
             raise NotFound("Dataset not found.")
 
@@ -609,7 +619,9 @@ class DocumentIndexingStatusApi(DatasetApiResource):
         batch = str(batch)
         tenant_id = str(tenant_id)
         # get dataset
-        dataset = db.session.scalar(select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1))
+        dataset = db.session.scalar(
+            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1)
+        )
         if not dataset:
             raise NotFound("Dataset not found.")
         # get documents
@@ -618,19 +630,25 @@ class DocumentIndexingStatusApi(DatasetApiResource):
             raise NotFound("Documents not found.")
         documents_status = []
         for document in documents:
-            completed_segments = db.session.scalar(
-                select(func.count(DocumentSegment.id)).where(
-                    DocumentSegment.completed_at.isnot(None),
-                    DocumentSegment.document_id == str(document.id),
-                    DocumentSegment.status != SegmentStatus.RE_SEGMENT,
+            completed_segments = (
+                db.session.scalar(
+                    select(func.count(DocumentSegment.id)).where(
+                        DocumentSegment.completed_at.isnot(None),
+                        DocumentSegment.document_id == str(document.id),
+                        DocumentSegment.status != SegmentStatus.RE_SEGMENT,
+                    )
                 )
-            ) or 0
-            total_segments = db.session.scalar(
-                select(func.count(DocumentSegment.id)).where(
-                    DocumentSegment.document_id == str(document.id),
-                    DocumentSegment.status != SegmentStatus.RE_SEGMENT,
+                or 0
+            )
+            total_segments = (
+                db.session.scalar(
+                    select(func.count(DocumentSegment.id)).where(
+                        DocumentSegment.document_id == str(document.id),
+                        DocumentSegment.status != SegmentStatus.RE_SEGMENT,
+                    )
                 )
-            ) or 0
+                or 0
+            )
             # Create a dictionary with document attributes and additional fields
             document_dict = {
                 "id": document.id,
@@ -819,7 +837,9 @@ class DocumentApi(DatasetApiResource):
         tenant_id = str(tenant_id)
 
         # get dataset info
-        dataset = db.session.scalar(select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1))
+        dataset = db.session.scalar(
+            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1)
+        )
 
         if not dataset:
             raise ValueError("Dataset does not exist.")
