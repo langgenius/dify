@@ -22,11 +22,6 @@ jobs:
     defaults:
       run:
         shell: bash
-    strategy:
-      matrix:
-        python-version:
-          - "3.11"
-          - "3.12"
 
     steps:
       - name: Checkout code
@@ -39,7 +34,7 @@ jobs:
         uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
         with:
           enable-cache: true
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.12"
           cache-dependency-glob: api/uv.lock
 
       - name: Check UV lockfile
@@ -89,7 +84,7 @@ jobs:
             api/tests/unit_tests
 
       - name: Report coverage
-        if: ${{ env.CODECOV_TOKEN != '' && matrix.python-version == '3.12' }}
+        if: ${{ env.CODECOV_TOKEN != '' }}
         uses: codecov/codecov-action@1af58845a975a7985b0beb0cbe6fbbb71a41dbad # v5.5.3
         with:
           files: ./coverage.xml

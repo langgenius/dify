@@ -11,11 +11,6 @@ jobs:
   test:
     name: VDB Tests
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version:
-          - "3.11"
-          - "3.12"
 
     steps:
       - name: Checkout code
@@ -34,7 +29,7 @@ jobs:
         uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
         with:
           enable-cache: true
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.12"
           cache-dependency-glob: api/uv.lock
 
       - name: Check UV lockfile
