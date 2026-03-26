@@ -6,8 +6,6 @@ import type {
   ConversationVariableResponse,
   FetchWorkflowDraftResponse,
   HumanInputFormData,
-  NestedNodeGraphPayload,
-  NestedNodeGraphResponse,
   NodesDefaultConfigsResponse,
   VarInInspect,
 } from '@/types/workflow'
@@ -35,10 +33,6 @@ export const syncWorkflowDraft = ({ url, params, canNotSaveEmpty }: {
 
 export const fetchNodesDefaultConfigs = (url: string) => {
   return get<NodesDefaultConfigsResponse>(url)
-}
-
-export const fetchNestedNodeGraph = (flowType: FlowType, flowId: string, payload: NestedNodeGraphPayload) => {
-  return post<NestedNodeGraphResponse>(`${getFlowPrefix(flowType)}/${flowId}/workflows/draft/nested-node-graph`, { body: payload }, { silent: true })
 }
 
 export const singleNodeRun = (flowType: FlowType, flowId: string, nodeId: string, params: object) => {

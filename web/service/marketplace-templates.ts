@@ -1,6 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
 import { MARKETPLACE_API_PREFIX } from '@/config'
-import { marketplaceClient, marketplaceQuery } from '@/service/client'
 
 export type MarketplaceTemplate = {
   id: string
@@ -22,16 +20,6 @@ export type MarketplaceTemplate = {
   usage_count: number | null
   created_at: string
   updated_at: string
-}
-
-export const useMarketplaceTemplateDetail = (templateId: string) => {
-  return useQuery({
-    queryKey: marketplaceQuery.templateDetail.queryKey({
-      input: { params: { templateId } },
-    }),
-    queryFn: () => marketplaceClient.templateDetail({ params: { templateId } }),
-    enabled: !!templateId,
-  })
 }
 
 export const fetchMarketplaceTemplateDSL = async (

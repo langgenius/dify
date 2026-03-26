@@ -1,10 +1,9 @@
 import type { IOnCompleted, IOnData, IOnError, IOnFile, IOnMessageEnd, IOnMessageReplace, IOnThought } from './base'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { ModelParameterRule } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { StructuredOutput } from '@/app/components/workflow/nodes/llm/types'
-import type { BlockEnum, ValueSelector, VarType } from '@/app/components/workflow/types'
+import type { ContextGenerateSuggestedQuestionsRequest, ContextGenerateSuggestedQuestionsResponse } from '@/contract/console/generator'
 import type { ChatPromptConfig, CompletionPromptConfig } from '@/models/debug'
-import type { AppModeEnum, CompletionParams, ModelModeType } from '@/types/app'
+import type { AppModeEnum, ModelModeType } from '@/types/app'
 import { get, post, ssePost } from './base'
 
 export type BasicAppFirstRes = {
@@ -26,85 +25,6 @@ export type CodeGenRes = {
   code: string
   language: string[]
   error?: string
-}
-
-export type ContextGenerateMessage = {
-  role: 'user' | 'assistant' | 'system' | 'tool'
-  content: string
-  tool_call_id?: string
-}
-
-// FIXME
-export type ContextGenerateAvailableVar = {
-  value_selector: ValueSelector
-  type: VarType
-  description?: string
-  node_id?: string
-  node_title?: string
-  node_type?: BlockEnum
-  schema?: StructuredOutput['schema'] | Record<string, unknown> | null
-}
-
-export type ContextGenerateParameterInfo = {
-  name: string
-  type?: string
-  description?: string
-  required?: boolean
-  options?: string[]
-  min?: number
-  max?: number
-  default?: string | number | boolean | null
-  multiple?: boolean
-  label?: string
-}
-
-export type ContextGenerateCodeContext = {
-  code: string
-  outputs?: Record<string, { type: string }>
-  variables?: ContextGenerateVariable[]
-}
-
-export type ContextGenerateRequest = {
-  language?: 'python3' | 'javascript'
-  prompt_messages: ContextGenerateMessage[]
-  model_config: {
-    provider: string
-    name: string
-    completion_params?: CompletionParams
-  }
-  available_vars: ContextGenerateAvailableVar[]
-  parameter_info: ContextGenerateParameterInfo
-  code_context?: ContextGenerateCodeContext | null
-}
-
-export type ContextGenerateVariable = {
-  variable: string
-  value_selector: string[]
-}
-
-export type ContextGenerateResponse = {
-  variables: ContextGenerateVariable[]
-  code_language: string
-  code: string
-  outputs: Record<string, { type: string }>
-  message: string
-  error: string
-}
-
-export type ContextGenerateSuggestedQuestionsRequest = {
-  language: string
-  model_config?: {
-    provider: string
-    name: string
-    completion_params?: CompletionParams
-  }
-  available_vars: ContextGenerateAvailableVar[]
-  parameter_info: ContextGenerateParameterInfo
-}
-
-export type ContextGenerateSuggestedQuestionsResponse = {
-  questions: string[]
-  error: string
 }
 
 export type TextGenerationMessageFile = FileEntity & {
@@ -188,12 +108,6 @@ export const generateBasicAppFirstTimeRule = (body: Record<string, unknown>) => 
 
 export const generateRule = (body: Record<string, unknown>) => {
   return post<GenRes>('/instruction-generate', {
-    body,
-  })
-}
-
-export const generateContext = (body: ContextGenerateRequest) => {
-  return post<ContextGenerateResponse>('/context-generate', {
     body,
   })
 }

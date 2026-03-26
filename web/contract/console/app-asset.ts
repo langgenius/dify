@@ -2,7 +2,6 @@ import type {
   AppAssetDeleteResponse,
   AppAssetFileDownloadUrlResponse,
   AppAssetNode,
-  AppAssetPublishResponse,
   AppAssetTreeResponse,
   BatchUploadPayload,
   BatchUploadResponse,
@@ -110,16 +109,6 @@ export const reorderNodeContract = base
     body: ReorderNodePayload
   }>())
   .output(type<AppAssetNode>())
-
-export const publishContract = base
-  .route({
-    path: '/apps/{appId}/assets/publish',
-    method: 'POST',
-  })
-  .input(type<{
-    params: { appId: string }
-  }>())
-  .output(type<AppAssetPublishResponse>())
 
 export const getFileUploadUrlContract = base
   .route({

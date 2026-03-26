@@ -221,23 +221,6 @@ export const useReorderAppAssetNode = () => {
   })
 }
 
-export const usePublishAppAssets = () => {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationKey: consoleQuery.appAsset.publish.mutationKey(),
-    mutationFn: (appId: string) => {
-      return consoleClient.appAsset.publish({
-        params: { appId },
-      })
-    },
-    onSuccess: (_, appId) => {
-      queryClient.invalidateQueries({
-        queryKey: consoleQuery.appAsset.tree.key({ type: 'query', input: { params: { appId } } }),
-      })
-    },
-  })
-}
-
 export const useUploadFileWithPresignedUrl = () => {
   const queryClient = useQueryClient()
   return useMutation({
@@ -299,8 +282,19 @@ export const useBatchUpload = () => {
     }): Promise<BatchUploadNodeOutput[]> => {
       const response = await consoleClient.appAsset.batchUpload({
         params: { appId },
-        body: { children: tree, parent_id: parentId },
+        body: { children: tree },
       })
+
+      if (parentId) {
+        await Promise.all(
+          response.children.map(node =>
+            consoleClient.appAsset.moveNode({
+              params: { appId, nodeId: node.id },
+              body: { parent_id: parentId },
+            }),
+          ),
+        )
+      }
 
       const uploadTasks: Array<{ path: string, file: File, url: string }> = []
 

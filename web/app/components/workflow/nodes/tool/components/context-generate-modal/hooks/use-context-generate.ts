@@ -10,7 +10,7 @@ import type {
   ContextGenerateMessage,
   ContextGenerateParameterInfo,
   ContextGenerateResponse,
-} from '@/service/debug'
+} from '@/contract/console/generator'
 import type { CompletionParams, Model, ModelModeType } from '@/types/app'
 import { useBoolean, useSessionStorageState } from 'ahooks'
 import { useCallback, useMemo, useRef, useState } from 'react'
@@ -24,7 +24,8 @@ import { useStore } from '@/app/components/workflow/store'
 import { STORAGE_KEYS } from '@/config/storage-keys'
 import { useGetLanguage } from '@/context/i18n'
 import { languages } from '@/i18n-config/language'
-import { fetchContextGenerateSuggestedQuestions, generateContext } from '@/service/debug'
+import { consoleClient } from '@/service/client'
+import { fetchContextGenerateSuggestedQuestions } from '@/service/debug'
 import { AppModeEnum } from '@/types/app'
 import { storage } from '@/utils/storage'
 import { CONTEXT_GEN_STORAGE_SUFFIX, getContextGenStorageKey } from '../utils/storage'
@@ -35,11 +36,17 @@ export type ContextGenerateChatMessage = ContextGenerateMessage & {
   durationMs?: number
 }
 
-export const normalizeCodeLanguage = (value?: string) => {
+export const normalizeCodeLanguage = (value?: string): CodeLanguage => {
   if (value === CodeLanguage.javascript)
     return CodeLanguage.javascript
   if (value === CodeLanguage.python3)
     return CodeLanguage.python3
+  return CodeLanguage.python3
+}
+
+export const normalizeContextGenerateLanguage = (value?: string): 'python3' | 'javascript' => {
+  if (value === CodeLanguage.javascript)
+    return CodeLanguage.javascript
   return CodeLanguage.python3
 }
 
@@ -454,19 +461,21 @@ const useContextGenerate = ({
     setGeneratingTrue()
     generateStartRef.current = Date.now()
     try {
-      const response = await generateContext({
-        language: normalizeCodeLanguage(current?.code_language || codeNodeData?.code_language) as 'python3' | 'javascript',
-        prompt_messages: nextMessages.map(({ role, content, tool_call_id }) => ({
-          role,
-          content,
-          tool_call_id,
-        })),
-        model_config: {
-          ...modelConfig,
+      const response = await consoleClient.generator.contextGenerate({
+        body: {
+          language: normalizeContextGenerateLanguage(current?.code_language || codeNodeData?.code_language),
+          prompt_messages: nextMessages.map(({ role, content, tool_call_id }) => ({
+            role,
+            content,
+            tool_call_id,
+          })),
+          model_config: {
+            ...modelConfig,
+          },
+          available_vars: availableVarsPayload,
+          parameter_info: parameterInfo,
+          code_context: codeContext,
         },
-        available_vars: availableVarsPayload,
-        parameter_info: parameterInfo,
-        code_context: codeContext,
       })
 
       if (response.error) {

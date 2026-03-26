@@ -1,7 +1,8 @@
 'use client'
 
 import type { FC } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import type { WorkflowOnlineUsersResponse } from '@/models/app'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { parseAsStringLiteral, useQueryState } from 'nuqs'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -18,7 +19,7 @@ import { useAppContext } from '@/context/app-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { CheckModal } from '@/hooks/use-pay'
 import dynamic from '@/next/dynamic'
-import { fetchWorkflowOnlineUsers } from '@/service/apps'
+import { consoleQuery } from '@/service/client'
 import { useInfiniteAppList } from '@/service/use-apps'
 import { AppModeEnum, AppModes } from '@/types/app'
 import { cn } from '@/utils/classnames'
@@ -131,11 +132,18 @@ const List: FC<Props> = ({
     return Array.from(ids)
   }, [apps])
 
-  const { data: onlineUsersByWorkflow = {}, refetch: refreshOnlineUsers } = useQuery({
-    queryKey: ['apps', 'workflow-online-users', workflowIds],
-    queryFn: () => fetchWorkflowOnlineUsers({ workflowIds }),
-    enabled: workflowIds.length > 0,
-  })
+  const { data: onlineUsersByWorkflow = {}, refetch: refreshOnlineUsers } = useQuery(
+    consoleQuery.apps.workflowOnlineUsers.queryOptions({
+      input: workflowIds.length
+        ? { query: { workflow_ids: workflowIds.join(',') } }
+        : skipToken,
+      select: ({ data }) => data.reduce<Record<string, WorkflowOnlineUsersResponse['data'][number]['users']>>((acc, item) => {
+        if (item.workflow_id)
+          acc[item.workflow_id] = item.users
+        return acc
+      }, {}),
+    }),
+  )
 
   useEffect(() => {
     const timer = window.setInterval(() => {

@@ -9,6 +9,7 @@ import type {
 } from '@/app/components/base/features/types'
 import type { ConversationVariable, EnvironmentVariable } from '@/app/components/workflow/types'
 import type { CommonResponse } from '@/models/common'
+import type { NestedNodeGraphPayload, NestedNodeGraphResponse } from '@/types/workflow'
 import { type } from '@orpc/contract'
 import { base } from '../base'
 
@@ -97,5 +98,19 @@ export const workflowDraftNodeSkillsContract = base
       type: string
       provider: string
       tool_name: string
+      enabled: boolean
     }[]
   }>())
+
+export const workflowDraftNestedNodeGraphContract = base
+  .route({
+    path: '/apps/{appId}/workflows/draft/nested-node-graph',
+    method: 'POST',
+  })
+  .input(type<{
+    params: {
+      appId: string
+    }
+    body: NestedNodeGraphPayload
+  }>())
+  .output(type<NestedNodeGraphResponse>())

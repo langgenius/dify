@@ -1,4 +1,4 @@
-import type { ContextGenerateResponse } from '@/service/debug'
+import type { ContextGenerateResponse } from '@/contract/console/generator'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import useContextGenData from '../use-context-gen-data'
 

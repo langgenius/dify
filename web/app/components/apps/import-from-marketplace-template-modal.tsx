@@ -1,6 +1,7 @@
 'use client'
 
 import type { MarketplaceTemplate } from '@/service/marketplace-templates'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
@@ -8,10 +9,8 @@ import Button from '@/app/components/base/button'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@/app/components/base/ui/dialog'
 import { toast } from '@/app/components/base/ui/toast'
 import { MARKETPLACE_API_PREFIX, MARKETPLACE_URL_PREFIX } from '@/config'
-import {
-  fetchMarketplaceTemplateDSL,
-  useMarketplaceTemplateDetail,
-} from '@/service/marketplace-templates'
+import { marketplaceQuery } from '@/service/client'
+import { fetchMarketplaceTemplateDSL } from '@/service/marketplace-templates'
 
 type ImportFromMarketplaceTemplateModalProps = {
   templateId: string
@@ -26,7 +25,11 @@ const ImportFromMarketplaceTemplateModal = ({
 }: ImportFromMarketplaceTemplateModalProps) => {
   const { t } = useTranslation()
 
-  const { data, isLoading, isError } = useMarketplaceTemplateDetail(templateId)
+  const { data, isLoading, isError } = useQuery(marketplaceQuery.templateDetail.queryOptions({
+    input: templateId
+      ? { params: { templateId } }
+      : skipToken,
+  }))
   const template = data?.data ?? null
 
   const [isImporting, setIsImporting] = useState(false)

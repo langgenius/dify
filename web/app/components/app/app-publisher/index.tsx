@@ -40,7 +40,8 @@ import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { AccessMode } from '@/models/access-control'
 import { useAppWhiteListSubjects, useGetUserCanAccessApp } from '@/service/access-control'
-import { fetchAppDetailDirect, publishToCreatorsPlatform } from '@/service/apps'
+import { fetchAppDetailDirect } from '@/service/apps'
+import { consoleClient } from '@/service/client'
 import { fetchInstalledAppList } from '@/service/explore'
 import { useInvalidateAppWorkflow } from '@/service/use-workflow'
 import { fetchPublishedWorkflow } from '@/service/workflow'
@@ -286,7 +287,9 @@ const AppPublisher = ({
       return
     setPublishingToMarketplace(true)
     try {
-      const result = await publishToCreatorsPlatform({ appID: appDetail.id })
+      const result = await consoleClient.apps.publishToCreatorsPlatform({
+        params: { appId: appDetail.id },
+      })
       window.open(result.redirect_url, '_blank')
     }
     catch (error: any) {

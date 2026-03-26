@@ -178,7 +178,6 @@ export type BatchUploadNodeOutput = {
  * Request payload for batch upload
  */
 export type BatchUploadPayload = {
-  parent_id?: string | null
   children: BatchUploadNodeInput[]
 }
 

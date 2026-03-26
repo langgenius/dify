@@ -1,4 +1,4 @@
-import type { ContextGenerateResponse } from '@/service/debug'
+import type { ContextGenerateResponse } from '@/contract/console/generator'
 import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'

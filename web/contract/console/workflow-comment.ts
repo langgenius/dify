@@ -1,4 +1,3 @@
-import type { CommonResponse } from '@/models/common'
 import { type } from '@orpc/contract'
 import { base } from '../base'
 
@@ -6,7 +5,13 @@ export type UserProfile = {
   id: string
   name: string
   email: string
+  avatar?: string | null
   avatar_url?: string
+  last_login_at?: number | null
+  last_active_at?: number | null
+  created_at?: number | null
+  role?: string
+  status?: string
 }
 
 export type WorkflowCommentList = {
@@ -60,12 +65,12 @@ export type WorkflowCommentDetail = {
 
 export type WorkflowCommentCreateRes = {
   id: string
-  created_at: string
+  created_at: number
 }
 
 export type WorkflowCommentUpdateRes = {
   id: string
-  updated_at: string
+  updated_at: number
 }
 
 export type WorkflowCommentResolveRes = {
@@ -75,20 +80,14 @@ export type WorkflowCommentResolveRes = {
   resolved_at: number
 }
 
-export type WorkflowCommentReply = {
+export type WorkflowCommentReplyCreateRes = {
   id: string
-  comment_id: string
-  content: string
-  created_by: string
-  created_at: string
-  updated_at: string
-  mentioned_user_ids: string[]
-  author: {
-    id: string
-    name: string
-    email: string
-    avatar?: string
-  }
+  created_at: number
+}
+
+export type WorkflowCommentReplyUpdateRes = {
+  id: string
+  updated_at: number
 }
 
 export type CreateCommentParams = {
@@ -173,7 +172,7 @@ export const workflowCommentDeleteContract = base
       commentId: string
     }
   }>())
-  .output(type<CommonResponse>())
+  .output(type<unknown>())
 
 export const workflowCommentResolveContract = base
   .route({
@@ -200,7 +199,7 @@ export const workflowCommentReplyCreateContract = base
     }
     body: CreateReplyParams
   }>())
-  .output(type<WorkflowCommentReply>())
+  .output(type<WorkflowCommentReplyCreateRes>())
 
 export const workflowCommentReplyUpdateContract = base
   .route({
@@ -215,7 +214,7 @@ export const workflowCommentReplyUpdateContract = base
     }
     body: CreateReplyParams
   }>())
-  .output(type<WorkflowCommentReply>())
+  .output(type<WorkflowCommentReplyUpdateRes>())
 
 export const workflowCommentReplyDeleteContract = base
   .route({
@@ -229,7 +228,7 @@ export const workflowCommentReplyDeleteContract = base
       replyId: string
     }
   }>())
-  .output(type<CommonResponse>())
+  .output(type<unknown>())
 
 export const workflowCommentMentionUsersContract = base
   .route({

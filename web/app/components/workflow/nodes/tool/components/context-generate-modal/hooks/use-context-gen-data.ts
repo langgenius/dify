@@ -1,4 +1,4 @@
-import type { ContextGenerateResponse } from '@/service/debug'
+import type { ContextGenerateResponse } from '@/contract/console/generator'
 import { useSessionStorageState } from 'ahooks'
 import { useCallback } from 'react'
 import { CONTEXT_GEN_STORAGE_SUFFIX, getContextGenStorageKey } from '../utils/storage'

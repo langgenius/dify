@@ -136,10 +136,7 @@ export const useWorkflowComment = () => {
         mentioned_user_ids: mentionedUserIds,
       })
 
-      const createdAt = Number(newComment.created_at)
-      const createdAtSeconds = Number.isNaN(createdAt)
-        ? Math.floor(Date.parse(newComment.created_at) / 1000)
-        : createdAt
+      const createdAtSeconds = newComment.created_at
       const createdByAccount = {
         id: userProfile?.id ?? '',
         name: userProfile?.name ?? '',

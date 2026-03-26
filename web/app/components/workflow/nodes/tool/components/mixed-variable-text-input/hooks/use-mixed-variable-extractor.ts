@@ -15,7 +15,7 @@ import { NULL_STRATEGY } from '@/app/components/workflow/nodes/_base/constants'
 import { Type } from '@/app/components/workflow/nodes/llm/types'
 import { BlockEnum, EditionType, isPromptMessageContext, PromptRole, VarType } from '@/app/components/workflow/types'
 import { generateNewNode, getNodeCustomTypeByNodeDataType, mergeNodeDefaultData } from '@/app/components/workflow/utils'
-import { fetchNestedNodeGraph } from '@/service/workflow'
+import { consoleClient } from '@/service/client'
 import { FlowType } from '@/types/common'
 
 // Constants
@@ -427,11 +427,14 @@ export function useMixedVariableExtractor({
       return
     const parameterSchema = resolveNestedNodeParameterSchema(paramKey)
     try {
-      const response = await fetchNestedNodeGraph(configsMap.flowType, configsMap.flowId, {
-        parent_node_id: toolNodeId,
-        parameter_key: paramKey,
-        context_source: [payload.agentId, 'context'],
-        parameter_schema: parameterSchema,
+      const response = await consoleClient.workflowDraft.nestedNodeGraph({
+        params: { appId: configsMap.flowId },
+        body: {
+          parent_node_id: toolNodeId,
+          parameter_key: paramKey,
+          context_source: [payload.agentId, 'context'],
+          parameter_schema: parameterSchema,
+        },
       })
       const nestedNode = response?.graph?.nodes?.find(node => node.id === payload.extractorNodeId)
       const nestedNodeData = nestedNode?.data as Partial<LLMNodeType> | undefined

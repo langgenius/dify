@@ -44,7 +44,7 @@ export type DSLImportResponse = {
   current_dsl_version?: string
   imported_dsl_version?: string
   error: string
-  leaked_dependencies: Dependency[]
+  leaked_dependencies?: Dependency[]
 }
 
 export type AppTemplatesResponse = {
@@ -122,7 +122,7 @@ export type WorkflowOnlineUser = {
 }
 
 export type WorkflowOnlineUsersResponse = {
-  data: Record<string, WorkflowOnlineUser[]> | Array<{
+  data: Array<{
     workflow_id: string
     users: WorkflowOnlineUser[]
   }>

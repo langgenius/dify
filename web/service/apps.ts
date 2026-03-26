@@ -1,5 +1,6 @@
 import type { TracingProvider } from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/type'
-import type { ApiKeysListResponse, AppDailyConversationsResponse, AppDailyEndUsersResponse, AppDailyMessagesResponse, AppDetailResponse, AppListResponse, AppStatisticsResponse, AppTemplatesResponse, AppTokenCostsResponse, AppVoicesListResponse, CreateApiKeyResponse, DSLImportMode, DSLImportResponse, GenerationIntroductionResponse, TracingConfig, TracingStatus, UpdateAppModelConfigResponse, UpdateAppSiteCodeResponse, UpdateOpenAIKeyResponse, ValidateOpenAIKeyResponse, WebhookTriggerResponse, WorkflowDailyConversationsResponse, WorkflowOnlineUser } from '@/models/app'
+import type { AppExportBundleResponse, AppRuntimeUpgradeResponse } from '@/contract/console/apps'
+import type { ApiKeysListResponse, AppDailyConversationsResponse, AppDailyEndUsersResponse, AppDailyMessagesResponse, AppDetailResponse, AppListResponse, AppStatisticsResponse, AppTemplatesResponse, AppTokenCostsResponse, AppVoicesListResponse, CreateApiKeyResponse, DSLImportMode, DSLImportResponse, GenerationIntroductionResponse, TracingConfig, TracingStatus, UpdateAppModelConfigResponse, UpdateAppSiteCodeResponse, UpdateOpenAIKeyResponse, ValidateOpenAIKeyResponse, WebhookTriggerResponse, WorkflowDailyConversationsResponse } from '@/models/app'
 import type { CommonResponse } from '@/models/common'
 import type { AppIconType, AppModeEnum, ModelConfig } from '@/types/app'
 import { del, get, patch, post, put } from './base'
@@ -7,33 +8,6 @@ import { consoleClient } from './client'
 
 export const fetchAppList = ({ url, params }: { url: string, params?: Record<string, any> }): Promise<AppListResponse> => {
   return get<AppListResponse>(url, { params })
-}
-
-export const fetchWorkflowOnlineUsers = async ({ workflowIds }: { workflowIds: string[] }): Promise<Record<string, WorkflowOnlineUser[]>> => {
-  if (!workflowIds.length)
-    return {}
-
-  const params = { workflow_ids: workflowIds.join(',') }
-  const response = await consoleClient.apps.workflowOnlineUsers({
-    query: params,
-  })
-
-  if (!response || !response.data)
-    return {}
-
-  if (Array.isArray(response.data)) {
-    return response.data.reduce<Record<string, WorkflowOnlineUser[]>>((acc, item) => {
-      if (item?.workflow_id)
-        acc[item.workflow_id] = item.users || []
-      return acc
-    }, {})
-  }
-
-  return Object.entries(response.data).reduce<Record<string, WorkflowOnlineUser[]>>((acc, [workflowId, users]) => {
-    if (workflowId)
-      acc[workflowId] = users || []
-    return acc
-  }, {})
 }
 
 export const fetchAppDetail = ({ url, id }: { url: string, id: string }): Promise<AppDetailResponse> => {
@@ -111,8 +85,10 @@ export const copyApp = ({
   return post<AppDetailResponse>(`apps/${appID}/copy`, { body: { name, icon_type, icon, icon_background, mode, description } })
 }
 
-export const upgradeAppRuntime = (appID: string): Promise<{ result: string, new_app_id?: string, converted_agents?: number, skipped_agents?: number }> => {
-  return post(`apps/${appID}/upgrade-runtime`)
+export const upgradeAppRuntime = (appID: string): Promise<AppRuntimeUpgradeResponse> => {
+  return consoleClient.apps.upgradeRuntime({
+    params: { appId: appID },
+  })
 }
 
 export const exportAppConfig = ({ appID, include = false, workflowID }: { appID: string, include?: boolean, workflowID?: string }): Promise<{ data: string }> => {
@@ -125,27 +101,13 @@ export const exportAppConfig = ({ appID, include = false, workflowID }: { appID:
 }
 
 export const exportAppBundle = async ({ appID, include = false, workflowID }: { appID: string, include?: boolean, workflowID?: string }): Promise<void> => {
-  const { API_PREFIX, CSRF_COOKIE_NAME, CSRF_HEADER_NAME } = await import('@/config')
-  const Cookies = (await import('js-cookie')).default
-  const params = new URLSearchParams({
-    include_secret: include.toString(),
-  })
-  if (workflowID)
-    params.append('workflow_id', workflowID)
-
-  const url = `${API_PREFIX}/apps/${appID}/export-bundle?${params.toString()}`
-  const response = await fetch(url, {
-    method: 'GET',
-    credentials: 'include',
-    headers: {
-      [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME()) || '',
+  const result: AppExportBundleResponse = await consoleClient.apps.exportBundle({
+    params: { appId: appID },
+    query: {
+      include_secret: include,
+      ...(workflowID ? { workflow_id: workflowID } : {}),
     },
   })
-
-  if (!response.ok)
-    throw new Error('Export bundle failed')
-
-  const result: { download_url: string, filename: string } = await response.json()
 
   const a = document.createElement('a')
   a.href = result.download_url
@@ -159,49 +121,6 @@ export const importDSL = ({ mode, yaml_content, yaml_url, app_id, name, descript
 
 export const importDSLConfirm = ({ import_id }: { import_id: string }): Promise<DSLImportResponse> => {
   return post<DSLImportResponse>(`apps/imports/${import_id}/confirm`, { body: {} })
-}
-
-export type PublishToCreatorsPlatformResponse = {
-  redirect_url: string
-}
-
-export const publishToCreatorsPlatform = ({ appID }: { appID: string }): Promise<PublishToCreatorsPlatformResponse> => {
-  return post<PublishToCreatorsPlatformResponse>(`apps/${appID}/publish-to-creators-platform`, { body: {} })
-}
-
-export type ImportBundlePrepareResponse = {
-  import_id: string
-  upload_url: string
-}
-
-export const prepareImportBundle = (): Promise<ImportBundlePrepareResponse> => {
-  return post<ImportBundlePrepareResponse>('apps/imports-bundle/prepare', { body: {} })
-}
-
-export const confirmImportBundle = ({
-  import_id,
-  name,
-  description,
-  icon_type,
-  icon,
-  icon_background,
-}: {
-  import_id: string
-  name?: string
-  description?: string
-  icon_type?: string
-  icon?: string
-  icon_background?: string
-}): Promise<DSLImportResponse> => {
-  return post<DSLImportResponse>(`apps/imports-bundle/${import_id}/confirm`, {
-    body: {
-      name,
-      description,
-      icon_type,
-      icon,
-      icon_background,
-    },
-  })
 }
 
 export const importAppBundle = async ({
@@ -219,10 +138,8 @@ export const importAppBundle = async ({
   icon?: string
   icon_background?: string
 }): Promise<DSLImportResponse> => {
-  // Step 1: Prepare import and get upload URL
-  const { import_id, upload_url } = await prepareImportBundle()
+  const { import_id, upload_url } = await consoleClient.apps.importsBundle.prepare()
 
-  // Step 2: Upload file to presigned URL
   const uploadResponse = await fetch(upload_url, {
     method: 'PUT',
     body: file,
@@ -231,14 +148,15 @@ export const importAppBundle = async ({
   if (!uploadResponse.ok)
     throw new Error('Failed to upload bundle file')
 
-  // Step 3: Confirm import
-  return confirmImportBundle({
-    import_id,
-    name,
-    description,
-    icon_type,
-    icon,
-    icon_background,
+  return consoleClient.apps.importsBundle.confirm({
+    params: { importId: import_id },
+    body: {
+      name,
+      description,
+      icon_type,
+      icon,
+      icon_background,
+    },
   })
 }
 

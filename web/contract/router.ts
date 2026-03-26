@@ -8,13 +8,20 @@ import {
   getFileDownloadUrlContract,
   getFileUploadUrlContract,
   moveNodeContract,
-  publishContract,
   renameNodeContract,
   reorderNodeContract,
   treeContract,
   updateFileContentContract,
 } from './console/app-asset'
-import { appDeleteContract, workflowOnlineUsersContract } from './console/apps'
+import {
+  appDeleteContract,
+  appExportBundleContract,
+  confirmImportBundleContract,
+  prepareImportBundleContract,
+  publishToCreatorsPlatformContract,
+  upgradeAppRuntimeContract,
+  workflowOnlineUsersContract,
+} from './console/apps'
 import { bindPartnerStackContract, invoicesContract } from './console/billing'
 import {
   exploreAppDetailContract,
@@ -27,6 +34,10 @@ import {
   exploreInstalledAppsContract,
   exploreInstalledAppUninstallContract,
 } from './console/explore'
+import {
+  contextGenerateContract,
+  contextGenerateSuggestedQuestionsContract,
+} from './console/generator'
 import { changePreferredProviderTypeContract, modelProvidersModelsContract } from './console/model-providers'
 import { notificationContract, notificationDismissContract } from './console/notification'
 import { pluginCheckInstalledContract, pluginLatestVersionsContract } from './console/plugins'
@@ -61,6 +72,7 @@ import {
 import { trialAppDatasetsContract, trialAppInfoContract, trialAppParametersContract, trialAppWorkflowsContract } from './console/try-app'
 import {
   workflowDraftEnvironmentVariablesContract,
+  workflowDraftNestedNodeGraphContract,
   workflowDraftNodeSkillsContract,
   workflowDraftUpdateConversationVariablesContract,
   workflowDraftUpdateEnvironmentVariablesContract,
@@ -83,9 +95,20 @@ export const consoleRouterContract = {
     avatar: accountAvatarContract,
   },
   systemFeatures: systemFeaturesContract,
+  generator: {
+    contextGenerate: contextGenerateContract,
+    contextGenerateSuggestedQuestions: contextGenerateSuggestedQuestionsContract,
+  },
   apps: {
     deleteApp: appDeleteContract,
     workflowOnlineUsers: workflowOnlineUsersContract,
+    exportBundle: appExportBundleContract,
+    publishToCreatorsPlatform: publishToCreatorsPlatformContract,
+    upgradeRuntime: upgradeAppRuntimeContract,
+    importsBundle: {
+      prepare: prepareImportBundleContract,
+      confirm: confirmImportBundleContract,
+    },
   },
   explore: {
     apps: exploreAppsContract,
@@ -138,13 +161,13 @@ export const consoleRouterContract = {
     renameNode: renameNodeContract,
     moveNode: moveNodeContract,
     reorderNode: reorderNodeContract,
-    publish: publishContract,
     getFileUploadUrl: getFileUploadUrlContract,
     batchUpload: batchUploadContract,
   },
   workflowDraft: {
     environmentVariables: workflowDraftEnvironmentVariablesContract,
     nodeSkills: workflowDraftNodeSkillsContract,
+    nestedNodeGraph: workflowDraftNestedNodeGraphContract,
     updateEnvironmentVariables: workflowDraftUpdateEnvironmentVariablesContract,
     updateConversationVariables: workflowDraftUpdateConversationVariablesContract,
     updateFeatures: workflowDraftUpdateFeaturesContract,

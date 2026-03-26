@@ -5,11 +5,11 @@ import type {
   WorkflowCommentCreateRes,
   WorkflowCommentDetail,
   WorkflowCommentList,
-  WorkflowCommentReply,
+  WorkflowCommentReplyCreateRes,
+  WorkflowCommentReplyUpdateRes,
   WorkflowCommentResolveRes,
   WorkflowCommentUpdateRes,
 } from '@/contract/console/workflow-comment'
-import type { CommonResponse } from '@/models/common'
 import { consoleClient } from './client'
 
 export type {
@@ -22,7 +22,8 @@ export type {
   WorkflowCommentDetailMention,
   WorkflowCommentDetailReply,
   WorkflowCommentList,
-  WorkflowCommentReply,
+  WorkflowCommentReplyCreateRes,
+  WorkflowCommentReplyUpdateRes,
   WorkflowCommentResolveRes,
   WorkflowCommentUpdateRes,
 } from '@/contract/console/workflow-comment'
@@ -54,7 +55,7 @@ export const updateWorkflowComment = async (appId: string, commentId: string, pa
   })
 }
 
-export const deleteWorkflowComment = async (appId: string, commentId: string): Promise<CommonResponse> => {
+export const deleteWorkflowComment = async (appId: string, commentId: string): Promise<unknown> => {
   return consoleClient.workflowComments.delete({
     params: { appId, commentId },
   })
@@ -66,14 +67,14 @@ export const resolveWorkflowComment = async (appId: string, commentId: string): 
   })
 }
 
-export const createWorkflowCommentReply = async (appId: string, commentId: string, params: CreateReplyParams): Promise<WorkflowCommentReply> => {
+export const createWorkflowCommentReply = async (appId: string, commentId: string, params: CreateReplyParams): Promise<WorkflowCommentReplyCreateRes> => {
   return consoleClient.workflowComments.replies.create({
     params: { appId, commentId },
     body: params,
   })
 }
 
-export const updateWorkflowCommentReply = async (appId: string, commentId: string, replyId: string, params: CreateReplyParams): Promise<WorkflowCommentReply> => {
+export const updateWorkflowCommentReply = async (appId: string, commentId: string, replyId: string, params: CreateReplyParams): Promise<WorkflowCommentReplyUpdateRes> => {
   return consoleClient.workflowComments.replies.update({
     params: {
       appId,
@@ -84,7 +85,7 @@ export const updateWorkflowCommentReply = async (appId: string, commentId: strin
   })
 }
 
-export const deleteWorkflowCommentReply = async (appId: string, commentId: string, replyId: string): Promise<CommonResponse> => {
+export const deleteWorkflowCommentReply = async (appId: string, commentId: string, replyId: string): Promise<unknown> => {
   return consoleClient.workflowComments.replies.delete({
     params: {
       appId,

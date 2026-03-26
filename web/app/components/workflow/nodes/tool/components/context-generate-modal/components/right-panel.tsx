@@ -1,6 +1,6 @@
 import type { PointerEvent, RefObject } from 'react'
 import type { VersionOption } from '../types'
-import type { ContextGenerateResponse } from '@/service/debug'
+import type { ContextGenerateResponse } from '@/contract/console/generator'
 import { RiArrowDownSLine, RiCheckLine, RiCloseLine, RiPlayLargeLine } from '@remixicon/react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'

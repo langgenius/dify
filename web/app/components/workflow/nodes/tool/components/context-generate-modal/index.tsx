@@ -1,7 +1,7 @@
 'use client'
 import type { CodeNodeType, OutputVar } from '@/app/components/workflow/nodes/code/types'
 import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
-import type { ContextGenerateResponse } from '@/service/debug'
+import type { ContextGenerateResponse } from '@/contract/console/generator'
 import * as React from 'react'
 import { forwardRef, useCallback, useImperativeHandle, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
