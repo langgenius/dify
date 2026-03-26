@@ -1,5 +1,5 @@
 # (c) 2026 EROS Systems - Issue #32306
-# Hardened Version 1.3.0 - Dify Production Grade
+# Hardened Version 1.3.1 - Dify Production Grade (No-Barrel Compliance)
 
 import json
 import logging
@@ -32,7 +32,6 @@ class FCAgentRunner(BaseAgentRunner):
         self.tool_instances, prompt_messages_tools = self._init_prompt_tools()
 
         # --- LAYER 1: EXACT MATCH (EROS) ---
-        # FIX: Check if we have an exact fingerprint match from the base class
         if hasattr(self, 'use_cached_plan') and self.use_cached_plan:
             logger.info(f"EROS [L1]: Short-circuiting for fingerprint {self.plan_fingerprint}")
             yield from self._execute_eros_cached_path(self.tool_instances)
@@ -42,7 +41,6 @@ class FCAgentRunner(BaseAgentRunner):
         prompt_messages = self.history_prompt_messages
         
         # --- LAYER 2: HYBRID WELDING (EROS) ---
-        # FIX: Only apply if the base class detected a partial match (>50%)
         if hasattr(self, 'is_partial_match') and self.is_partial_match:
             self._apply_hybrid_welding(prompt_messages)
         
@@ -140,9 +138,9 @@ class FCAgentRunner(BaseAgentRunner):
 
     def _apply_hybrid_welding(self, prompt_messages: List[PromptMessage]):
         """Injects Layer 2 knowledge with tool-existence verification."""
+        # FIX: Point directly to .engine to satisfy no-barrel-files
         from core.agent.plan_hydration.engine import get_hydrator
         
-        # Verify tools exist before suggesting them
         is_valid, _ = get_hydrator().verify_plan(self.partial_reusable_steps, list(self.tool_instances.values()))
         if not is_valid:
             return
@@ -164,12 +162,13 @@ class FCAgentRunner(BaseAgentRunner):
     def _store_execution_plan_in_cache(self, iteration_steps: List[Dict], success: bool):
         """Secure storage wrapper for EROS."""
         try:
+            # FIX: Point directly to .engine to satisfy no-barrel-files
             from core.agent.plan_hydration.engine import get_hydrator
             get_hydrator().store(
                 query=self.query,
                 tools=list(self.tool_instances.values()),
                 plan_steps=iteration_steps,
-                tenant_id=self.tenant_id, # FIX: Passing the critical tenant_id
+                tenant_id=self.tenant_id,
                 instruction=self.app_config.agent.prompt_template,
                 success=success
             )
