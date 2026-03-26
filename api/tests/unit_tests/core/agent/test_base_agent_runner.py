@@ -150,7 +150,7 @@ class TestOrganizeHistory:
         assert history[1].tool_call_id == "uuid-val"
 
 # ==========================================================
-# Dataset & File Handling (The missing 500-768 content)
+# Dataset & File Handling
 # ==========================================================
 
 class TestDatasetAndFiles:
@@ -174,6 +174,9 @@ class TestDatasetAndFiles:
 
 class TestEROSPisistence:
     def test_save_agent_thought_full_eros_path(self, runner, mock_db_session, mocker):
+        # PRECISION FIX: Explicitly bind method to instance
+        runner.save_agent_thought = BaseAgentRunner.save_agent_thought.__get__(runner)
+        
         agent_thought = mocker.MagicMock(tool="tool1", thought="")
         mock_db_session.scalar.return_value = agent_thought
         
@@ -190,8 +193,10 @@ class TestEROSPisistence:
         assert runner.iteration_steps[0]['thought'] == "thought"
 
     def test_json_robustness(self, runner, mock_db_session, mocker):
+        runner.save_agent_thought = BaseAgentRunner.save_agent_thought.__get__(runner)
+        
         agent = mocker.MagicMock(tool="t", thought="")
         mock_db_session.scalar.return_value = agent
-        # Test with a non-serializable object to ensure try-except block in runner works
+        # Test with a non-serializable object to ensure try-except block works
         runner.save_agent_thought("id", "t", mocker.MagicMock(), "thought", {}, {}, None, [], None)
         assert mock_db_session.commit.called
