@@ -274,7 +274,7 @@ def _make_form_definition() -> str:
         inputs=[],
         user_actions=[UserAction(id="submit", title="Submit")],
         rendered_content="<p>hello</p>",
-        expiration_time=datetime.utcnow(),
+        expiration_time=naive_utc_now(),
     ).model_dump_json()
 
 

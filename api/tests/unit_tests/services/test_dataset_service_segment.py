@@ -9,6 +9,7 @@ from .dataset_service_test_helpers import (
     DocumentSegment,
     IndexStructureType,
     MagicMock,
+    ModelType,
     SegmentService,
     SegmentUpdateArgs,
     SimpleNamespace,
@@ -459,7 +460,7 @@ class TestSegmentServiceMutations:
             patch("services.dataset_service.naive_utc_now", return_value="now"),
         ):
             mock_redis.lock.return_value = _make_lock_context()
-            model_manager_cls.return_value.get_model_instance.return_value = embedding_model
+            model_manager_cls.for_tenant.return_value.get_model_instance.return_value = embedding_model
             mock_db.session.query.return_value.where.return_value.scalar.return_value = 1
             vector_service.create_segments_vector.side_effect = RuntimeError("vector failed")
 
@@ -571,7 +572,7 @@ class TestSegmentServiceMutations:
             patch("services.summary_index_service.SummaryIndexService.update_summary_for_segment") as update_summary,
         ):
             mock_redis.get.return_value = None
-            model_manager_cls.return_value.get_model_instance.return_value = embedding_model_instance
+            model_manager_cls.for_tenant.return_value.get_model_instance.return_value = embedding_model_instance
 
             processing_rule_query = MagicMock()
             processing_rule_query.where.return_value.first.return_value = processing_rule
@@ -618,7 +619,7 @@ class TestSegmentServiceMutations:
             ) as generate_summary,
         ):
             mock_redis.get.return_value = None
-            model_manager_cls.return_value.get_model_instance.return_value = embedding_model
+            model_manager_cls.for_tenant.return_value.get_model_instance.return_value = embedding_model
 
             summary_query = MagicMock()
             summary_query.where.return_value.first.return_value = existing_summary
@@ -661,7 +662,7 @@ class TestSegmentServiceMutations:
             patch("services.summary_index_service.SummaryIndexService.update_summary_for_segment") as update_summary,
         ):
             mock_redis.get.return_value = None
-            model_manager_cls.return_value.get_model_instance.return_value = embedding_model
+            model_manager_cls.for_tenant.return_value.get_model_instance.return_value = embedding_model
 
             summary_query = MagicMock()
             summary_query.where.return_value.first.return_value = existing_summary
@@ -900,7 +901,7 @@ class TestSegmentServiceAdditionalRegenerationBranches:
             patch("services.dataset_service.naive_utc_now", return_value="now"),
         ):
             mock_redis.get.return_value = None
-            model_manager_cls.return_value.get_model_instance.return_value = embedding_model
+            model_manager_cls.for_tenant.return_value.get_model_instance.return_value = embedding_model
             summary_query = MagicMock()
             summary_query.where.return_value.first.return_value = None
             refreshed_query = MagicMock()
@@ -947,7 +948,7 @@ class TestSegmentServiceAdditionalRegenerationBranches:
             patch("services.summary_index_service.SummaryIndexService.update_summary_for_segment") as update_summary,
         ):
             mock_redis.get.return_value = None
-            model_manager_cls.return_value.get_default_model_instance.return_value = embedding_model_instance
+            model_manager_cls.for_tenant.return_value.get_default_model_instance.return_value = embedding_model_instance
             update_summary.side_effect = RuntimeError("summary failed")
 
             processing_rule_query = MagicMock()
@@ -966,9 +967,9 @@ class TestSegmentServiceAdditionalRegenerationBranches:
             )
 
         assert result is refreshed_segment
-        model_manager_cls.return_value.get_default_model_instance.assert_called_once_with(
+        model_manager_cls.for_tenant.return_value.get_default_model_instance.assert_called_once_with(
             tenant_id="tenant-1",
-            model_type="text-embedding",
+            model_type=ModelType.TEXT_EMBEDDING,
         )
         vector_service.generate_child_chunks.assert_called_once_with(
             segment,

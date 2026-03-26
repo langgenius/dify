@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from datetime import datetime
 from types import SimpleNamespace
 
 import pytest
@@ -45,6 +44,7 @@ from core.base.tts.app_generator_tts_publisher import AudioTrunk
 from core.workflow.system_variables import build_system_variables
 from graphon.enums import BuiltinNodeTypes
 from graphon.runtime import GraphRuntimeState, VariablePool
+from libs.datetime_utils import naive_utc_now
 from models.enums import MessageStatus
 from models.model import AppMode, EndUser
 from tests.workflow_test_utils import build_test_variable_pool
@@ -76,7 +76,7 @@ def _make_pipeline():
     message = SimpleNamespace(
         id="message-id",
         query="hello",
-        created_at=datetime.utcnow(),
+        created_at=naive_utc_now(),
         status=MessageStatus.NORMAL,
         answer="",
     )
@@ -257,7 +257,7 @@ class TestAdvancedChatGenerateTaskPipeline:
             node_id="node",
             node_type=BuiltinNodeTypes.LLM,
             node_title="LLM",
-            start_at=datetime.utcnow(),
+            start_at=naive_utc_now(),
             node_run_index=1,
         )
         iter_next = QueueIterationNextEvent(
@@ -273,7 +273,7 @@ class TestAdvancedChatGenerateTaskPipeline:
             node_id="node",
             node_type=BuiltinNodeTypes.LLM,
             node_title="LLM",
-            start_at=datetime.utcnow(),
+            start_at=naive_utc_now(),
             node_run_index=1,
         )
         loop_start = QueueLoopStartEvent(
@@ -281,7 +281,7 @@ class TestAdvancedChatGenerateTaskPipeline:
             node_id="node",
             node_type=BuiltinNodeTypes.LLM,
             node_title="LLM",
-            start_at=datetime.utcnow(),
+            start_at=naive_utc_now(),
             node_run_index=1,
         )
         loop_next = QueueLoopNextEvent(
@@ -297,7 +297,7 @@ class TestAdvancedChatGenerateTaskPipeline:
             node_id="node",
             node_type=BuiltinNodeTypes.LLM,
             node_title="LLM",
-            start_at=datetime.utcnow(),
+            start_at=naive_utc_now(),
             node_run_index=1,
         )
 
@@ -360,7 +360,7 @@ class TestAdvancedChatGenerateTaskPipeline:
             node_execution_id="exec",
             node_id="node",
             node_type=BuiltinNodeTypes.LLM,
-            start_at=datetime.utcnow(),
+            start_at=naive_utc_now(),
             inputs={},
             outputs={},
             process_data={},
@@ -370,7 +370,7 @@ class TestAdvancedChatGenerateTaskPipeline:
             node_execution_id="exec",
             node_id="node",
             node_type=BuiltinNodeTypes.LLM,
-            start_at=datetime.utcnow(),
+            start_at=naive_utc_now(),
             inputs={},
             outputs={},
             process_data={},
@@ -473,7 +473,7 @@ class TestAdvancedChatGenerateTaskPipeline:
             node_id="node",
             node_type=BuiltinNodeTypes.LLM,
             node_title="title",
-            expiration_time=datetime.utcnow(),
+            expiration_time=naive_utc_now(),
         )
 
         assert list(pipeline._handle_human_input_form_filled_event(filled_event)) == ["filled"]
@@ -591,7 +591,7 @@ class TestAdvancedChatGenerateTaskPipeline:
             node_execution_id="exec",
             node_id="node",
             node_type=BuiltinNodeTypes.LLM,
-            start_at=datetime.utcnow(),
+            start_at=naive_utc_now(),
             inputs={},
             outputs={},
             process_data={},
