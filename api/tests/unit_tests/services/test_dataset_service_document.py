@@ -1828,7 +1828,7 @@ class TestDocumentServiceSaveDocumentAdditionalBranches:
             ) as get_binding,
             patch.object(DocumentService, "update_document_with_dataset_id", return_value=updated_document),
         ):
-            model_manager_cls.return_value.get_default_model_instance.return_value = SimpleNamespace(
+            model_manager_cls.for_tenant.return_value.get_default_model_instance.return_value = SimpleNamespace(
                 model_name="default-embedding",
                 provider="default-provider",
             )
@@ -1880,7 +1880,7 @@ class TestDocumentServiceSaveDocumentAdditionalBranches:
         ):
             DocumentService.save_document_with_dataset_id(dataset, knowledge_config, account_context)
 
-        model_manager_cls.return_value.get_default_model_instance.assert_not_called()
+        model_manager_cls.for_tenant.return_value.get_default_model_instance.assert_not_called()
         get_binding.assert_called_once_with("explicit-provider", "explicit-model")
         assert dataset.embedding_model == "explicit-model"
         assert dataset.embedding_model_provider == "explicit-provider"
