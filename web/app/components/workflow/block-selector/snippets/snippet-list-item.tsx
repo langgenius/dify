@@ -2,14 +2,14 @@ import type {
   ComponentPropsWithoutRef,
   Ref,
 } from 'react'
-import type { PublishedSnippetDetail } from './snippet-detail-card'
+import type { PublishedSnippetListItem } from './snippet-detail-card'
 import AppIcon from '@/app/components/base/app-icon'
 import { cn } from '@/utils/classnames'
 
 type SnippetListItemProps = {
   isHovered: boolean
   ref?: Ref<HTMLDivElement>
-  snippet: PublishedSnippetDetail
+  snippet: PublishedSnippetListItem
 } & ComponentPropsWithoutRef<'div'>
 
 const SnippetListItem = ({

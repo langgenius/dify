@@ -1,21 +1,17 @@
 import type { FC } from 'react'
-import type { BlockEnum } from '../types'
-import type { Snippet as SnippetDetail } from '@/types/snippet'
+import type { SnippetListItem } from '@/types/snippet'
 import AppIcon from '@/app/components/base/app-icon'
-import BlockIcon from '../block-icon'
 
-export type PublishedSnippetDetail = SnippetDetail & {
-  relatedBlocks?: BlockEnum[]
-}
+export type PublishedSnippetListItem = SnippetListItem
 
 type SnippetDetailCardProps = {
-  snippet: PublishedSnippetDetail
+  snippet: PublishedSnippetListItem
 }
 
 const SnippetDetailCard: FC<SnippetDetailCardProps> = ({
   snippet,
 }) => {
-  const { author, description, icon_info, name, relatedBlocks = [] } = snippet
+  const { author, description, icon_info, name } = snippet
 
   return (
     <div className="w-[224px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-3 pb-4 pt-3 shadow-lg backdrop-blur-[5px]">
@@ -33,17 +29,6 @@ const SnippetDetailCard: FC<SnippetDetailCardProps> = ({
         {!!description && (
           <div className="w-[200px] text-text-secondary system-xs-regular">
             {description}
-          </div>
-        )}
-        {!!relatedBlocks.length && (
-          <div className="flex items-center gap-0.5 pt-1">
-            {relatedBlocks.map(block => (
-              <BlockIcon
-                key={block}
-                type={block}
-                size="sm"
-              />
-            ))}
           </div>
         )}
       </div>
