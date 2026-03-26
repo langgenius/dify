@@ -1,17 +1,9 @@
-import { createParser } from 'nuqs'
+import { parseAsStringLiteral } from 'nuqs'
 import { ViewType } from '@/app/components/workflow/types'
 
-const VIEW_TYPES = Object.values(ViewType) as ViewType[]
+const VIEW_TYPES = Object.values(ViewType)
 
-export const parseAsViewType = createParser<ViewType>({
-  parse: (value) => {
-    if (value === 'skill')
-      return ViewType.file
-
-    return VIEW_TYPES.includes(value as ViewType) ? value as ViewType : null
-  },
-  serialize: value => value,
-})
+export const parseAsViewType = parseAsStringLiteral(VIEW_TYPES)
   .withDefault(ViewType.graph)
   .withOptions({
     history: 'push',
