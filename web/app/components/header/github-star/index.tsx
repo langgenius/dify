@@ -1,16 +1,14 @@
 'use client'
 import type { FC } from 'react'
-import type { GithubRepo } from '@/models/common'
-import { RiLoader2Line } from '@remixicon/react'
 import { useQuery } from '@tanstack/react-query'
 import { IS_DEV } from '@/config'
 
 const defaultData = {
-  stargazers_count: 110918,
+  stars: 110918,
 }
 
 const getStar = async () => {
-  const res = await fetch('https://api.github.com/repos/langgenius/dify')
+  const res = await fetch('https://ungh.cc/repos/langgenius/dify')
 
   if (!res.ok)
     throw new Error('Failed to fetch github star')
@@ -19,7 +17,9 @@ const getStar = async () => {
 }
 
 const GithubStar: FC<{ className: string }> = (props) => {
-  const { isFetching, isError, data } = useQuery<GithubRepo>({
+  const { isFetching, isError, data } = useQuery<{
+    stars: number
+  }>({
     queryKey: ['github-star'],
     queryFn: getStar,
     enabled: !IS_DEV,
@@ -28,12 +28,12 @@ const GithubStar: FC<{ className: string }> = (props) => {
   })
 
   if (isFetching)
-    return <RiLoader2Line className="size-3 shrink-0 animate-spin text-text-tertiary" />
+    return <span className="i-ri-loader-2-line size-3 shrink-0 animate-spin text-text-tertiary" />
 
   if (isError)
-    return <span {...props}>{defaultData.stargazers_count.toLocaleString()}</span>
+    return <span {...props}>{defaultData.stars.toLocaleString()}</span>
 
-  return <span {...props}>{data?.stargazers_count.toLocaleString()}</span>
+  return <span {...props}>{data?.stars.toLocaleString()}</span>
 }
 
 export default GithubStar
