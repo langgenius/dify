@@ -13,13 +13,50 @@ jobs:
   notify-feishu:
     runs-on: ubuntu-latest
     steps:
-      - name: Fetch Dependabot alerts only
+      - name: Validate webhook secret
         env:
+          FEISHU_WEBHOOK: ${{ secrets.FEISHU_WEBHOOK }}
+        run: |
+          set -euo pipefail
+          if [ -z "${FEISHU_WEBHOOK:-}" ]; then
+            echo "FEISHU_WEBHOOK secret is not configured."
+            exit 1
+          fi
+
+      - name: Notify Feishu from event or API polling
+        env:
+          FEISHU_WEBHOOK: ${{ secrets.FEISHU_WEBHOOK }}
           GITHUB_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
           WORKFLOW_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
+
+          send_feishu() {
+            local source="$1"
+            local action="$2"
+            local severity="$3"
+            local package_name="$4"
+            local summary="$5"
+            local alert_url="$6"
+
+            local message payload
+            message="$(printf '%s\n' \
+              '[Dependabot Alert]' \
+              "Repository: ${REPOSITORY}" \
+              "Source: ${source}" \
+              "Action: ${action}" \
+              "Severity: ${severity}" \
+              "Package: ${package_name}" \
+              "Summary: ${summary}" \
+              "Alert: ${alert_url}" \
+              "Run: ${WORKFLOW_URL}")"
+
+            payload="$(jq -n --arg text "$message" '{msg_type: "text", content: {text: $text}}')"
+            curl -sS -f -X POST "$FEISHU_WEBHOOK" \
+              -H "Content-Type: application/json" \
+              -d "$payload"
+          }
 
           api_url="https://api.github.com/repos/${REPOSITORY}/dependabot/alerts?state=open&per_page=100"
           alerts_json="$(curl -sS -f -L \
@@ -34,16 +71,11 @@ jobs:
             exit 0
           fi
 
-          echo "Fetched ${alert_count} open dependabot alerts."
-          echo "Run URL: ${WORKFLOW_URL}"
-
           echo "$alerts_json" | jq -c '.[]' | while IFS= read -r alert; do
-            alert_number="$(echo "$alert" | jq -r '.number // "unknown"')"
             severity="$(echo "$alert" | jq -r '.security_advisory.severity // "unknown"')"
             package_name="$(echo "$alert" | jq -r '.dependency.package.name // "unknown"')"
             summary="$(echo "$alert" | jq -r '.security_advisory.summary // "N/A"')"
             alert_url="$(echo "$alert" | jq -r '.html_url // ""')"
 
-            printf '#%s | %s | %s\nSummary: %s\nURL: %s\n\n' \
-              "$alert_number" "$severity" "$package_name" "$summary" "$alert_url"
+            send_feishu "poll" "open" "$severity" "$package_name" "$summary" "$alert_url"
           done
