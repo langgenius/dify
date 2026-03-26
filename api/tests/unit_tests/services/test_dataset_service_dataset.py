@@ -179,7 +179,7 @@ class TestDatasetServiceValidation:
     def test_check_dataset_model_setting_skips_non_high_quality_datasets(self):
         dataset = DatasetServiceUnitDataFactory.create_dataset_mock(indexing_technique="economy")
 
-        with patch("services.dataset_service.ModelManager.for_tenant") as model_manager_cls:
+        with patch("services.dataset_service.ModelManager") as model_manager_cls:
             DatasetService.check_dataset_model_setting(dataset)
 
         model_manager_cls.assert_not_called()
@@ -187,7 +187,7 @@ class TestDatasetServiceValidation:
     def test_check_dataset_model_setting_validates_embedding_model_for_high_quality_dataset(self):
         dataset = DatasetServiceUnitDataFactory.create_dataset_mock(indexing_technique="high_quality")
 
-        with patch("services.dataset_service.ModelManager.for_tenant") as model_manager_cls:
+        with patch("services.dataset_service.ModelManager") as model_manager_cls:
             DatasetService.check_dataset_model_setting(dataset)
 
         model_manager_cls.for_tenant.return_value.get_model_instance.assert_called_once_with(
@@ -227,7 +227,7 @@ class TestDatasetServiceValidation:
                 DatasetService.check_embedding_model_setting("tenant-1", "provider", "embedding-model")
 
     def test_check_reranking_model_setting_uses_rerank_model_type(self):
-        with patch("services.dataset_service.ModelManager.for_tenant") as model_manager_cls:
+        with patch("services.dataset_service.ModelManager") as model_manager_cls:
             DatasetService.check_reranking_model_setting("tenant-1", "provider", "reranker")
 
         model_manager_cls.for_tenant.return_value.get_model_instance.assert_called_once_with(
@@ -323,7 +323,7 @@ class TestDatasetServiceCreationAndUpdate:
                 "services.dataset_service.Dataset",
                 side_effect=lambda **kwargs: SimpleNamespace(id="dataset-1", **kwargs),
             ),
-            patch("services.dataset_service.ModelManager.for_tenant") as model_manager_cls,
+            patch("services.dataset_service.ModelManager") as model_manager_cls,
             patch.object(DatasetService, "check_embedding_model_setting") as check_embedding,
         ):
             mock_db.session.query.return_value.filter_by.return_value.first.return_value = None
@@ -363,7 +363,7 @@ class TestDatasetServiceCreationAndUpdate:
                 "services.dataset_service.ExternalKnowledgeBindings",
                 side_effect=lambda **kwargs: SimpleNamespace(**kwargs),
             ) as binding_cls,
-            patch("services.dataset_service.ModelManager.for_tenant") as model_manager_cls,
+            patch("services.dataset_service.ModelManager") as model_manager_cls,
             patch("services.dataset_service.ExternalDatasetService.get_external_knowledge_api", return_value=object()),
             patch.object(DatasetService, "check_embedding_model_setting") as check_embedding,
             patch.object(DatasetService, "check_reranking_model_setting") as check_reranking,
@@ -802,7 +802,7 @@ class TestDatasetServiceCreationAndUpdate:
         with (
             patch("services.dataset_service.Account", FakeAccount),
             patch("services.dataset_service.current_user", current_user),
-            patch("services.dataset_service.ModelManager.for_tenant") as model_manager_cls,
+            patch("services.dataset_service.ModelManager") as model_manager_cls,
             patch(
                 "services.dataset_service.DatasetCollectionBindingService.get_dataset_collection_binding",
                 return_value=SimpleNamespace(id="binding-1"),
@@ -838,7 +838,7 @@ class TestDatasetServiceCreationAndUpdate:
         with (
             patch("services.dataset_service.Account", FakeAccount),
             patch("services.dataset_service.current_user", current_user),
-            patch("services.dataset_service.ModelManager.for_tenant") as model_manager_cls,
+            patch("services.dataset_service.ModelManager") as model_manager_cls,
         ):
             model_manager_cls.for_tenant.return_value.get_model_instance.side_effect = error
 
@@ -965,7 +965,7 @@ class TestDatasetServiceCreationAndUpdate:
         with (
             patch("services.dataset_service.Account", FakeAccount),
             patch("services.dataset_service.current_user", current_user),
-            patch("services.dataset_service.ModelManager.for_tenant") as model_manager_cls,
+            patch("services.dataset_service.ModelManager") as model_manager_cls,
             patch(
                 "services.dataset_service.DatasetCollectionBindingService.get_dataset_collection_binding",
                 return_value=SimpleNamespace(id="binding-2"),
@@ -1004,7 +1004,7 @@ class TestDatasetServiceCreationAndUpdate:
         with (
             patch("services.dataset_service.Account", FakeAccount),
             patch("services.dataset_service.current_user", current_user),
-            patch("services.dataset_service.ModelManager.for_tenant") as model_manager_cls,
+            patch("services.dataset_service.ModelManager") as model_manager_cls,
         ):
             model_manager_cls.for_tenant.return_value.get_model_instance.side_effect = ProviderTokenNotInitError(
                 "token missing"
@@ -1066,7 +1066,7 @@ class TestDatasetServiceRagPipelineSettings:
 
         with (
             patch("services.dataset_service.current_user", SimpleNamespace(current_tenant_id="tenant-1")),
-            patch("services.dataset_service.ModelManager.for_tenant") as model_manager_cls,
+            patch("services.dataset_service.ModelManager") as model_manager_cls,
             patch.object(DatasetService, "check_is_multimodal_model", return_value=True) as check_multimodal,
             patch(
                 "services.dataset_service.DatasetCollectionBindingService.get_dataset_collection_binding",
@@ -1159,7 +1159,7 @@ class TestDatasetServiceRagPipelineSettings:
 
         with (
             patch("services.dataset_service.current_user", SimpleNamespace(current_tenant_id="tenant-1")),
-            patch("services.dataset_service.ModelManager.for_tenant") as model_manager_cls,
+            patch("services.dataset_service.ModelManager") as model_manager_cls,
             patch.object(DatasetService, "check_is_multimodal_model", return_value=False),
             patch(
                 "services.dataset_service.DatasetCollectionBindingService.get_dataset_collection_binding",
@@ -1202,7 +1202,7 @@ class TestDatasetServiceRagPipelineSettings:
 
         with (
             patch("services.dataset_service.current_user", SimpleNamespace(current_tenant_id="tenant-1")),
-            patch("services.dataset_service.ModelManager.for_tenant") as model_manager_cls,
+            patch("services.dataset_service.ModelManager") as model_manager_cls,
             patch.object(DatasetService, "check_is_multimodal_model", return_value=True),
             patch(
                 "services.dataset_service.DatasetCollectionBindingService.get_dataset_collection_binding",
@@ -1246,7 +1246,7 @@ class TestDatasetServiceRagPipelineSettings:
 
         with (
             patch("services.dataset_service.current_user", SimpleNamespace(current_tenant_id="tenant-1")),
-            patch("services.dataset_service.ModelManager.for_tenant") as model_manager_cls,
+            patch("services.dataset_service.ModelManager") as model_manager_cls,
             patch("services.dataset_service.deal_dataset_index_update_task") as update_task,
         ):
             model_manager_cls.for_tenant.return_value.get_model_instance.side_effect = ProviderTokenNotInitError(

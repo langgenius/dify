@@ -7,7 +7,6 @@ document, and segment service test modules that exercise
 
 import json
 from types import SimpleNamespace
-from typing import Literal
 from unittest.mock import MagicMock, Mock, create_autospec, patch
 
 import pytest
@@ -439,7 +438,7 @@ def _make_rag_pipeline_retrieval_setting() -> RagPipelineRetrievalSetting:
 def _make_knowledge_configuration(
     *,
     chunk_structure: str = "paragraph",
-    indexing_technique: Literal["economy", "high_quality"] = "high_quality",
+    indexing_technique: str = "high_quality",
     embedding_model_provider: str = "provider",
     embedding_model: str = "embedding-model",
     keyword_number: int = 8,

@@ -453,7 +453,7 @@ class TestSegmentServiceMutations:
         with (
             patch("services.dataset_service.redis_client") as mock_redis,
             patch("services.dataset_service.db") as mock_db,
-            patch("services.dataset_service.ModelManager.for_tenant") as model_manager_cls,
+            patch("services.dataset_service.ModelManager") as model_manager_cls,
             patch("services.dataset_service.VectorService") as vector_service,
             patch("services.dataset_service.helper.generate_text_hash", side_effect=["hash-1", "hash-2"]),
             patch("services.dataset_service.uuid.uuid4", side_effect=["node-1", "node-2"]),
@@ -567,7 +567,7 @@ class TestSegmentServiceMutations:
         with (
             patch("services.dataset_service.redis_client") as mock_redis,
             patch("services.dataset_service.db") as mock_db,
-            patch("services.dataset_service.ModelManager.for_tenant") as model_manager_cls,
+            patch("services.dataset_service.ModelManager") as model_manager_cls,
             patch("services.dataset_service.VectorService") as vector_service,
             patch("services.summary_index_service.SummaryIndexService.update_summary_for_segment") as update_summary,
         ):
@@ -610,7 +610,7 @@ class TestSegmentServiceMutations:
         with (
             patch("services.dataset_service.redis_client") as mock_redis,
             patch("services.dataset_service.db") as mock_db,
-            patch("services.dataset_service.ModelManager.for_tenant") as model_manager_cls,
+            patch("services.dataset_service.ModelManager") as model_manager_cls,
             patch("services.dataset_service.VectorService") as vector_service,
             patch("services.dataset_service.helper.generate_text_hash", return_value="hash-1"),
             patch("services.dataset_service.naive_utc_now", return_value="now"),
@@ -652,7 +652,7 @@ class TestSegmentServiceMutations:
         with (
             patch("services.dataset_service.redis_client") as mock_redis,
             patch("services.dataset_service.db") as mock_db,
-            patch("services.dataset_service.ModelManager.for_tenant") as model_manager_cls,
+            patch("services.dataset_service.ModelManager") as model_manager_cls,
             patch("services.dataset_service.VectorService") as vector_service,
             patch("services.dataset_service.helper.generate_text_hash", return_value="hash-2"),
             patch("services.dataset_service.naive_utc_now", return_value="now"),
@@ -895,7 +895,7 @@ class TestSegmentServiceAdditionalRegenerationBranches:
         with (
             patch("services.dataset_service.redis_client") as mock_redis,
             patch("services.dataset_service.db") as mock_db,
-            patch("services.dataset_service.ModelManager.for_tenant") as model_manager_cls,
+            patch("services.dataset_service.ModelManager") as model_manager_cls,
             patch("services.dataset_service.VectorService") as vector_service,
             patch("services.dataset_service.helper.generate_text_hash", return_value="hash-qa"),
             patch("services.dataset_service.naive_utc_now", return_value="now"),
@@ -941,7 +941,7 @@ class TestSegmentServiceAdditionalRegenerationBranches:
         with (
             patch("services.dataset_service.redis_client") as mock_redis,
             patch("services.dataset_service.db") as mock_db,
-            patch("services.dataset_service.ModelManager.for_tenant") as model_manager_cls,
+            patch("services.dataset_service.ModelManager") as model_manager_cls,
             patch("services.dataset_service.VectorService") as vector_service,
             patch("services.dataset_service.helper.generate_text_hash", return_value="hash-parent"),
             patch("services.dataset_service.naive_utc_now", return_value="now"),
