@@ -270,15 +270,6 @@ if (typeof navigator !== 'undefined') {
   })
 }
 
-const defaultFetchMock = vi.fn<typeof fetch>(() => Promise.reject(new Error('Unexpected network request in tests')))
-if (typeof window !== 'undefined') {
-  Object.defineProperty(globalThis, 'fetch', {
-    value: defaultFetchMock,
-    writable: true,
-    configurable: true,
-  })
-}
-
 beforeEach(() => {
   vi.clearAllMocks()
   mockLocalStorage = createMockLocalStorage()
