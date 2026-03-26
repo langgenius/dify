@@ -18,14 +18,14 @@ import {
 import { useTranslation } from 'react-i18next'
 import { useStore as useReactFlowStore, useStoreApi } from 'reactflow'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuGroupLabel,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/app/components/base/ui/dropdown-menu'
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuGroup,
+  ContextMenuGroupLabel,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from '@/app/components/base/ui/context-menu'
 import { useNodesReadOnly, useNodesSyncDraft } from './hooks'
 import { useSelectionInteractions } from './hooks/use-selection-interactions'
 import { useWorkflowHistory, WorkflowHistoryEvent } from './hooks/use-workflow-history'
@@ -275,9 +275,29 @@ const SelectionContextmenu = () => {
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { saveStateToHistory } = useWorkflowHistory()
 
-  const menuPosition = useMemo(() => {
+  const { menuPosition, anchor } = useMemo(() => {
     const container = document.querySelector('#workflow-container')
-    return getMenuPosition(selectionMenu, container?.getBoundingClientRect())
+    const containerRect = container?.getBoundingClientRect()
+    const position = getMenuPosition(selectionMenu, containerRect)
+
+    if (!containerRect) {
+      return {
+        menuPosition: position,
+        anchor: undefined,
+      }
+    }
+
+    return {
+      menuPosition: position,
+      anchor: {
+        getBoundingClientRect: () => DOMRect.fromRect({
+          width: 0,
+          height: 0,
+          x: containerRect.x + position.left,
+          y: containerRect.y + position.top,
+        }),
+      },
+    }
   }, [selectionMenu])
 
   useEffect(() => {
@@ -360,44 +380,43 @@ const SelectionContextmenu = () => {
         top: menuPosition.top,
       }}
     >
-      <DropdownMenu
+      <ContextMenu
         open
         onOpenChange={(open) => {
           if (!open)
             handleSelectionContextmenuCancel()
         }}
       >
-        <DropdownMenuTrigger>
+        <ContextMenuTrigger>
           <span aria-hidden className="block size-px opacity-0" />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
-          placement="bottom-start"
-          sideOffset={0}
+        </ContextMenuTrigger>
+        <ContextMenuContent
           popupClassName="w-[240px]"
+          positionerProps={anchor ? { anchor } : undefined}
         >
           {menuSections.map((section, sectionIndex) => (
-            <DropdownMenuGroup key={section.titleKey}>
-              {sectionIndex > 0 && <DropdownMenuSeparator />}
-              <DropdownMenuGroupLabel>
+            <ContextMenuGroup key={section.titleKey}>
+              {sectionIndex > 0 && <ContextMenuSeparator />}
+              <ContextMenuGroupLabel>
                 {t(section.titleKey, { defaultValue: section.titleKey, ns: 'workflow' })}
-              </DropdownMenuGroupLabel>
+              </ContextMenuGroupLabel>
               {section.items.map((item) => {
                 const Icon = item.icon
                 return (
-                  <DropdownMenuItem
+                  <ContextMenuItem
                     key={item.alignType}
                     data-testid={`selection-contextmenu-item-${item.alignType}`}
                     onClick={() => handleAlignNodes(item.alignType)}
                   >
                     <Icon className={`h-4 w-4 ${item.iconClassName ?? ''}`.trim()} />
                     {t(item.translationKey, { defaultValue: item.translationKey, ns: 'workflow' })}
-                  </DropdownMenuItem>
+                  </ContextMenuItem>
                 )
               })}
-            </DropdownMenuGroup>
+            </ContextMenuGroup>
           ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
+        </ContextMenuContent>
+      </ContextMenu>
     </div>
   )
 }
