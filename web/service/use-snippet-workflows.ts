@@ -1,10 +1,3 @@
-import type {
-  SnippetDraftNodeRunPayload,
-  SnippetDraftRunPayload,
-  SnippetDraftSyncPayload,
-  SnippetIterationNodeRunPayload,
-  SnippetLoopNodeRunPayload,
-} from '@/types/snippet'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { consoleQuery } from '@/service/client'
 
@@ -174,12 +167,4 @@ export const useStopSnippetWorkflowTaskMutation = (snippetId: string) => {
       },
     }),
   })
-}
-
-export type {
-  SnippetDraftNodeRunPayload,
-  SnippetDraftRunPayload,
-  SnippetDraftSyncPayload,
-  SnippetIterationNodeRunPayload,
-  SnippetLoopNodeRunPayload,
 }
