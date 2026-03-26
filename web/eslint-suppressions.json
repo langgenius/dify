@@ -1937,6 +1937,11 @@
       "count": 4
     }
   },
+  "app/components/base/date-and-time-picker/hooks.ts": {
+    "react/no-unnecessary-use-prefix": {
+      "count": 2
+    }
+  },
   "app/components/base/date-and-time-picker/time-picker/header.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
@@ -2182,6 +2187,9 @@
   },
   "app/components/base/file-uploader/hooks.ts": {
     "no-restricted-imports": {
+      "count": 1
+    },
+    "react/no-unnecessary-use-prefix": {
       "count": 1
     },
     "ts/no-explicit-any": {
@@ -4766,6 +4774,9 @@
     }
   },
   "app/components/header/account-setting/model-provider-page/hooks.ts": {
+    "react/no-unnecessary-use-prefix": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -4817,6 +4828,11 @@
     },
     "ts/no-explicit-any": {
       "count": 6
+    }
+  },
+  "app/components/header/account-setting/model-provider-page/model-auth/hooks/use-custom-models.ts": {
+    "react/no-unnecessary-use-prefix": {
+      "count": 2
     }
   },
   "app/components/header/account-setting/model-provider-page/model-auth/hooks/use-model-form-schemas.ts": {
@@ -5038,6 +5054,11 @@
       "count": 4
     }
   },
+  "app/components/plugins/install-plugin/hooks/use-fold-anim-into.ts": {
+    "react/no-unnecessary-use-prefix": {
+      "count": 1
+    }
+  },
   "app/components/plugins/install-plugin/install-bundle/index.tsx": {
     "erasable-syntax-only/enums": {
       "count": 1
@@ -5239,6 +5260,11 @@
       "count": 1
     },
     "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/plugins/plugin-auth/hooks/use-get-api.ts": {
+    "react/no-unnecessary-use-prefix": {
       "count": 1
     }
   },
@@ -7229,6 +7255,11 @@
       "count": 2
     }
   },
+  "app/components/workflow/nodes/_base/components/variable/variable-label/hooks.ts": {
+    "react/no-unnecessary-use-prefix": {
+      "count": 2
+    }
+  },
   "app/components/workflow/nodes/_base/components/workflow-panel/index.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -7260,6 +7291,9 @@
     }
   },
   "app/components/workflow/nodes/_base/components/workflow-panel/last-run/use-last-run.ts": {
+    "react/no-unnecessary-use-prefix": {
+      "count": 2
+    },
     "react/set-state-in-effect": {
       "count": 1
     },
@@ -9825,6 +9859,11 @@
   "service/use-endpoints.ts": {
     "ts/no-explicit-any": {
       "count": 7
+    }
+  },
+  "service/use-flow.ts": {
+    "react/no-unnecessary-use-prefix": {
+      "count": 1
     }
   },
   "service/use-pipeline.ts": {
