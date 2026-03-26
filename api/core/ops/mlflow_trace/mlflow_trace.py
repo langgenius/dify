@@ -23,8 +23,8 @@ from core.ops.entities.trace_entity import (
     TraceTaskName,
     WorkflowTraceInfo,
 )
-from dify_graph.enums import BuiltinNodeTypes
 from extensions.ext_database import db
+from graphon.enums import BuiltinNodeTypes
 from models import EndUser
 from models.workflow import WorkflowNodeExecutionModel
 

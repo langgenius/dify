@@ -536,3 +536,151 @@ class TestApiToolManageService:
         # Verify mock interactions
         mock_external_service_dependencies["encrypter"].assert_called_once()
         mock_external_service_dependencies["provider_controller"].from_db.assert_called_once()
+
+    def test_delete_api_tool_provider_success(
+        self, flask_req_ctx_with_containers, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """Test successful deletion of an API tool provider."""
+        fake = Faker()
+        account, tenant = self._create_test_account_and_tenant(
+            db_session_with_containers, mock_external_service_dependencies
+        )
+        schema = self._create_test_openapi_schema()
+        provider_name = fake.unique.word()
+
+        ApiToolManageService.create_api_tool_provider(
+            user_id=account.id,
+            tenant_id=tenant.id,
+            provider_name=provider_name,
+            icon={"content": "🔧", "background": "#FFF"},
+            credentials={"auth_type": "none"},
+            schema_type=ApiProviderSchemaType.OPENAPI,
+            schema=schema,
+            privacy_policy="",
+            custom_disclaimer="",
+            labels=[],
+        )
+
+        provider = (
+            db_session_with_containers.query(ApiToolProvider)
+            .filter(ApiToolProvider.tenant_id == tenant.id, ApiToolProvider.name == provider_name)
+            .first()
+        )
+        assert provider is not None
+
+        result = ApiToolManageService.delete_api_tool_provider(account.id, tenant.id, provider_name)
+
+        assert result == {"result": "success"}
+        deleted = (
+            db_session_with_containers.query(ApiToolProvider)
+            .filter(ApiToolProvider.tenant_id == tenant.id, ApiToolProvider.name == provider_name)
+            .first()
+        )
+        assert deleted is None
+
+    def test_delete_api_tool_provider_not_found(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """Test deletion raises ValueError when provider not found."""
+        fake = Faker()
+        account, tenant = self._create_test_account_and_tenant(
+            db_session_with_containers, mock_external_service_dependencies
+        )
+
+        with pytest.raises(ValueError, match="you have not added provider"):
+            ApiToolManageService.delete_api_tool_provider(account.id, tenant.id, "nonexistent")
+
+    def test_update_api_tool_provider_not_found(
+        self, flask_req_ctx_with_containers, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """Test update raises ValueError when original provider not found."""
+        fake = Faker()
+        account, tenant = self._create_test_account_and_tenant(
+            db_session_with_containers, mock_external_service_dependencies
+        )
+
+        with pytest.raises(ValueError, match="does not exists"):
+            ApiToolManageService.update_api_tool_provider(
+                user_id=account.id,
+                tenant_id=tenant.id,
+                provider_name="new-name",
+                original_provider="nonexistent",
+                icon={},
+                credentials={"auth_type": "none"},
+                _schema_type=ApiProviderSchemaType.OPENAPI,
+                schema=self._create_test_openapi_schema(),
+                privacy_policy=None,
+                custom_disclaimer="",
+                labels=[],
+            )
+
+    def test_update_api_tool_provider_missing_auth_type(
+        self, flask_req_ctx_with_containers, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """Test update raises ValueError when auth_type is missing from credentials."""
+        fake = Faker()
+        account, tenant = self._create_test_account_and_tenant(
+            db_session_with_containers, mock_external_service_dependencies
+        )
+        schema = self._create_test_openapi_schema()
+        provider_name = fake.unique.word()
+
+        ApiToolManageService.create_api_tool_provider(
+            user_id=account.id,
+            tenant_id=tenant.id,
+            provider_name=provider_name,
+            icon={"content": "🔧", "background": "#FFF"},
+            credentials={"auth_type": "none"},
+            schema_type=ApiProviderSchemaType.OPENAPI,
+            schema=schema,
+            privacy_policy="",
+            custom_disclaimer="",
+            labels=[],
+        )
+
+        with pytest.raises(ValueError, match="auth_type is required"):
+            ApiToolManageService.update_api_tool_provider(
+                user_id=account.id,
+                tenant_id=tenant.id,
+                provider_name=provider_name,
+                original_provider=provider_name,
+                icon={},
+                credentials={},
+                _schema_type=ApiProviderSchemaType.OPENAPI,
+                schema=schema,
+                privacy_policy=None,
+                custom_disclaimer="",
+                labels=[],
+            )
+
+    def test_list_api_tool_provider_tools_not_found(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """Test listing tools raises ValueError when provider not found."""
+        fake = Faker()
+        account, tenant = self._create_test_account_and_tenant(
+            db_session_with_containers, mock_external_service_dependencies
+        )
+
+        with pytest.raises(ValueError, match="you have not added provider"):
+            ApiToolManageService.list_api_tool_provider_tools(account.id, tenant.id, "nonexistent")
+
+    def test_test_api_tool_preview_invalid_schema_type(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """Test preview raises ValueError for invalid schema type."""
+        fake = Faker()
+        account, tenant = self._create_test_account_and_tenant(
+            db_session_with_containers, mock_external_service_dependencies
+        )
+
+        with pytest.raises(ValueError, match="invalid schema type"):
+            ApiToolManageService.test_api_tool_preview(
+                tenant_id=tenant.id,
+                provider_name="provider-a",
+                tool_name="tool-a",
+                credentials={"auth_type": "none"},
+                parameters={},
+                schema_type="bad-schema-type",
+                schema="schema",
+            )

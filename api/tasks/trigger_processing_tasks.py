@@ -27,8 +27,8 @@ from core.trigger.entities.entities import TriggerProviderEntity
 from core.trigger.provider import PluginTriggerProviderController
 from core.trigger.trigger_manager import TriggerManager
 from core.workflow.nodes.trigger_plugin.entities import TriggerEventNodeData
-from dify_graph.enums import WorkflowExecutionStatus
 from enums.quota_type import QuotaType, unlimited
+from graphon.enums import WorkflowExecutionStatus
 from models.enums import (
     AppTriggerType,
     CreatorUserRole,
@@ -179,7 +179,7 @@ def _record_trigger_failure_log(
         app_id=workflow.app_id,
         workflow_id=workflow.id,
         workflow_run_id=workflow_run.id,
-        created_from=WorkflowAppLogCreatedFrom.SERVICE_API.value,
+        created_from=WorkflowAppLogCreatedFrom.SERVICE_API,
         created_by_role=created_by_role,
         created_by=created_by,
     )

@@ -18,9 +18,9 @@ from core.trigger.provider import PluginTriggerProviderController
 from core.trigger.trigger_manager import TriggerManager
 from core.trigger.utils.encryption import create_trigger_provider_encrypter_for_subscription
 from core.workflow.nodes.trigger_plugin.entities import TriggerEventNodeData
-from dify_graph.entities.graph_config import NodeConfigDict
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from graphon.entities.graph_config import NodeConfigDict
 from models.model import App
 from models.provider_ids import TriggerProviderID
 from models.trigger import TriggerSubscription, WorkflowPluginTrigger

@@ -9,7 +9,6 @@ import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Agent } from '@/app/components/base/icons/src/vender/workflow'
 import ListEmpty from '@/app/components/base/list-empty'
-import Slider from '@/app/components/base/slider'
 import {
   NumberField,
   NumberFieldControls,
@@ -18,6 +17,7 @@ import {
   NumberFieldIncrement,
   NumberFieldInput,
 } from '@/app/components/base/ui/number-field'
+import { Slider } from '@/app/components/base/ui/slider'
 import { FormTypeEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
@@ -147,10 +147,11 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
               <div className="flex w-[200px] items-center gap-3">
                 <Slider
                   value={value}
-                  onChange={onChange}
+                  onValueChange={onChange}
                   className="w-full"
                   min={def.min}
                   max={def.max}
+                  aria-label={renderI18nObject(def.label)}
                 />
                 <NumberField
                   value={value}

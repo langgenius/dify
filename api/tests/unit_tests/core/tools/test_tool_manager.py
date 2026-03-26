@@ -15,6 +15,7 @@ from core.plugin.entities.plugin_daemon import CredentialType
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.tool_entities import (
     ApiProviderAuthType,
+    ToolInvokeFrom,
     ToolParameter,
     ToolProviderType,
 )
@@ -421,7 +422,7 @@ def test_get_agent_runtime_apply_runtime_parameters():
     tool_runtime = SimpleNamespace(runtime=ToolRuntime(tenant_id="tenant-1", runtime_parameters={}))
     tool_runtime.get_merged_runtime_parameters = Mock(return_value=[parameter])
 
-    with patch.object(ToolManager, "get_tool_runtime", return_value=tool_runtime):
+    with patch.object(ToolManager, "get_tool_runtime", return_value=tool_runtime) as mock_get_tool_runtime:
         with patch.object(ToolManager, "_convert_tool_parameters_type", return_value={"query": "hello"}):
             manager = Mock()
             manager.decrypt_tool_parameters.return_value = {"query": "decrypted"}
@@ -437,12 +438,23 @@ def test_get_agent_runtime_apply_runtime_parameters():
                     tenant_id="tenant-1",
                     app_id="app-1",
                     agent_tool=agent_tool,
+                    user_id="user-1",
                     invoke_from=InvokeFrom.DEBUGGER,
                     variable_pool=None,
                 )
 
     assert result is tool_runtime
     assert tool_runtime.runtime.runtime_parameters["query"] == "decrypted"
+    mock_get_tool_runtime.assert_called_once_with(
+        provider_type=ToolProviderType.API,
+        provider_id="api-1",
+        tool_name="search",
+        tenant_id="tenant-1",
+        user_id="user-1",
+        invoke_from=InvokeFrom.DEBUGGER,
+        tool_invoke_from=ToolInvokeFrom.AGENT,
+        credential_id=None,
+    )
 
 
 def test_get_workflow_runtime_apply_runtime_parameters():
@@ -463,7 +475,7 @@ def test_get_workflow_runtime_apply_runtime_parameters():
     )
     tool_runtime2 = SimpleNamespace(runtime=ToolRuntime(tenant_id="tenant-1", runtime_parameters={}))
     tool_runtime2.get_merged_runtime_parameters = Mock(return_value=[parameter])
-    with patch.object(ToolManager, "get_tool_runtime", return_value=tool_runtime2):
+    with patch.object(ToolManager, "get_tool_runtime", return_value=tool_runtime2) as mock_get_tool_runtime:
         with patch.object(ToolManager, "_convert_tool_parameters_type", return_value={"query": "workflow"}):
             manager = Mock()
             manager.decrypt_tool_parameters.return_value = {"query": "workflow-dec"}
@@ -473,12 +485,23 @@ def test_get_workflow_runtime_apply_runtime_parameters():
                     app_id="app-1",
                     node_id="node-1",
                     workflow_tool=workflow_tool,
+                    user_id="user-1",
                     invoke_from=InvokeFrom.DEBUGGER,
                     variable_pool=None,
                 )
 
     assert workflow_result is tool_runtime2
     assert tool_runtime2.runtime.runtime_parameters["query"] == "workflow-dec"
+    mock_get_tool_runtime.assert_called_once_with(
+        provider_type=ToolProviderType.API,
+        provider_id="api-1",
+        tool_name="search",
+        tenant_id="tenant-1",
+        user_id="user-1",
+        invoke_from=InvokeFrom.DEBUGGER,
+        tool_invoke_from=ToolInvokeFrom.WORKFLOW,
+        credential_id=None,
+    )
 
 
 def test_get_agent_runtime_raises_when_runtime_missing():
@@ -520,17 +543,28 @@ def test_get_tool_runtime_from_plugin_only_uses_form_parameters():
     tool_entity = SimpleNamespace(runtime=ToolRuntime(tenant_id="tenant-1", runtime_parameters={}))
     tool_entity.get_merged_runtime_parameters = Mock(return_value=[form_param, llm_param])
 
-    with patch.object(ToolManager, "get_tool_runtime", return_value=tool_entity):
+    with patch.object(ToolManager, "get_tool_runtime", return_value=tool_entity) as mock_get_tool_runtime:
         result = ToolManager.get_tool_runtime_from_plugin(
             tool_type=ToolProviderType.API,
             tenant_id="tenant-1",
             provider="api-1",
             tool_name="search",
             tool_parameters={"q": "hello", "llm": "ignore"},
+            user_id="user-1",
         )
 
     assert result is tool_entity
     assert tool_entity.runtime.runtime_parameters == {"q": "hello"}
+    mock_get_tool_runtime.assert_called_once_with(
+        provider_type=ToolProviderType.API,
+        provider_id="api-1",
+        tool_name="search",
+        tenant_id="tenant-1",
+        user_id="user-1",
+        invoke_from=InvokeFrom.SERVICE_API,
+        tool_invoke_from=ToolInvokeFrom.PLUGIN,
+        credential_id=None,
+    )
 
 
 def test_hardcoded_provider_icon_success():

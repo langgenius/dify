@@ -6,10 +6,10 @@ This test validates that:
 - When blocking != 1: NodeRunStreamChunkEvent present (direct LLM to End output)
 """
 
-from dify_graph.enums import BuiltinNodeTypes
-from dify_graph.graph_engine import GraphEngine, GraphEngineConfig
-from dify_graph.graph_engine.command_channels import InMemoryChannel
-from dify_graph.graph_events import (
+from graphon.enums import BuiltinNodeTypes
+from graphon.graph_engine import GraphEngine, GraphEngineConfig
+from graphon.graph_engine.command_channels import InMemoryChannel
+from graphon.graph_events import (
     GraphRunSucceededEvent,
     NodeRunStartedEvent,
     NodeRunStreamChunkEvent,

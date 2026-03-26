@@ -11,7 +11,7 @@ from core.rag.index_processor.constant.query_type import QueryType
 from core.rag.models.document import Document
 from core.rag.rerank.entity.weight import VectorSetting, Weights
 from core.rag.rerank.rerank_base import BaseRerankRunner
-from dify_graph.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.model_entities import ModelType
 
 
 class WeightRerankRunner(BaseRerankRunner):
@@ -25,7 +25,6 @@ class WeightRerankRunner(BaseRerankRunner):
         documents: list[Document],
         score_threshold: float | None = None,
         top_n: int | None = None,
-        user: str | None = None,
         query_type: QueryType = QueryType.TEXT_QUERY,
     ) -> list[Document]:
         """
@@ -34,7 +33,6 @@ class WeightRerankRunner(BaseRerankRunner):
         :param documents: documents for reranking
         :param score_threshold: score threshold
         :param top_n: top n
-        :param user: unique user id if needed
 
         :return:
         """
@@ -163,7 +161,7 @@ class WeightRerankRunner(BaseRerankRunner):
         """
         query_vector_scores = []
 
-        model_manager = ModelManager()
+        model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
 
         embedding_model = model_manager.get_model_instance(
             tenant_id=tenant_id,

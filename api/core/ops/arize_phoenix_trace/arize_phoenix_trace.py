@@ -39,6 +39,7 @@ from core.ops.entities.trace_entity import (
 )
 from core.repositories import DifyCoreRepositoryFactory
 from extensions.ext_database import db
+from graphon.enums import WorkflowNodeExecutionStatus
 from models.model import EndUser, MessageFile
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
 
@@ -271,8 +272,8 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         )
 
         # Get all executions for this workflow run
-        workflow_node_executions = workflow_node_execution_repository.get_by_workflow_run(
-            workflow_run_id=trace_info.workflow_run_id
+        workflow_node_executions = workflow_node_execution_repository.get_by_workflow_execution(
+            workflow_execution_id=trace_info.workflow_run_id
         )
 
         try:
@@ -300,7 +301,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                         "app_name": node_execution.title,
                         "status": node_execution.status,
                         "status_message": node_execution.error or "",
-                        "level": "ERROR" if node_execution.status == "failed" else "DEFAULT",
+                        "level": "ERROR" if node_execution.status == WorkflowNodeExecutionStatus.FAILED else "DEFAULT",
                     }
                 )
 
@@ -361,7 +362,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                         llm_attributes.update(self._construct_llm_attributes(process_data.get("prompts", [])))
                         node_span.set_attributes(llm_attributes)
                 finally:
-                    if node_execution.status == "failed":
+                    if node_execution.status == WorkflowNodeExecutionStatus.FAILED:
                         set_span_status(node_span, node_execution.error)
                     else:
                         set_span_status(node_span)

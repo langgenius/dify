@@ -17,17 +17,19 @@ from typing import Any, Union
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
-from dify_graph.constants import SYSTEM_VARIABLE_NODE_ID
-from dify_graph.entities import WorkflowExecution, WorkflowNodeExecution
-from dify_graph.enums import (
-    SystemVariableKey,
+from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
+from core.workflow.system_variables import SystemVariableKey
+from core.workflow.variable_prefixes import SYSTEM_VARIABLE_NODE_ID
+from core.workflow.workflow_run_outputs import project_node_outputs_for_workflow_run
+from graphon.entities import WorkflowExecution, WorkflowNodeExecution
+from graphon.enums import (
     WorkflowExecutionStatus,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
     WorkflowType,
 )
-from dify_graph.graph_engine.layers.base import GraphEngineLayer
-from dify_graph.graph_events import (
+from graphon.graph_engine.layers.base import GraphEngineLayer
+from graphon.graph_events import (
     GraphEngineEvent,
     GraphRunAbortedEvent,
     GraphRunFailedEvent,
@@ -42,9 +44,7 @@ from dify_graph.graph_events import (
     NodeRunStartedEvent,
     NodeRunSucceededEvent,
 )
-from dify_graph.node_events import NodeRunResult
-from dify_graph.repositories.workflow_execution_repository import WorkflowExecutionRepository
-from dify_graph.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
+from graphon.node_events import NodeRunResult
 from libs.datetime_utils import naive_utc_now
 
 
@@ -128,12 +128,12 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
             self._handle_graph_run_paused(event)
             return
 
-        if isinstance(event, NodeRunStartedEvent):
-            self._handle_node_started(event)
-            return
-
         if isinstance(event, NodeRunRetryEvent):
             self._handle_node_retry(event)
+            return
+
+        if isinstance(event, NodeRunStartedEvent):
+            self._handle_node_started(event)
             return
 
         if isinstance(event, NodeRunSucceededEvent):
@@ -372,10 +372,15 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
             domain_execution.error = error
 
         if update_outputs:
+            projected_outputs = project_node_outputs_for_workflow_run(
+                node_type=domain_execution.node_type,
+                inputs=node_result.inputs,
+                outputs=node_result.outputs,
+            )
             domain_execution.update_from_mapping(
                 inputs=node_result.inputs,
                 process_data=node_result.process_data,
-                outputs=node_result.outputs,
+                outputs=projected_outputs,
                 metadata=node_result.metadata,
             )
 
