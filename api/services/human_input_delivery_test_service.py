@@ -220,7 +220,7 @@ class EmailDeliveryTestHandler:
             stmt = stmt.where(Account.id.in_(unique_ids))
 
         with self._session_factory() as session:
-            rows = session.execute(stmt).all()
+            rows = session.execute(stmt).tuples().all()
         return dict(rows)
 
     @staticmethod
