@@ -18,14 +18,14 @@ import {
 import { useTranslation } from 'react-i18next'
 import { useStore as useReactFlowStore, useStoreApi } from 'reactflow'
 import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuGroup,
-  ContextMenuGroupLabel,
-  ContextMenuItem,
-  ContextMenuSeparator,
-  ContextMenuTrigger,
-} from '@/app/components/base/ui/context-menu'
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuGroupLabel,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/app/components/base/ui/dropdown-menu'
 import { useNodesReadOnly, useNodesSyncDraft } from './hooks'
 import { useSelectionInteractions } from './hooks/use-selection-interactions'
 import { useWorkflowHistory, WorkflowHistoryEvent } from './hooks/use-workflow-history'
@@ -360,40 +360,44 @@ const SelectionContextmenu = () => {
         top: menuPosition.top,
       }}
     >
-      <ContextMenu
+      <DropdownMenu
         open
         onOpenChange={(open) => {
           if (!open)
             handleSelectionContextmenuCancel()
         }}
       >
-        <ContextMenuTrigger>
+        <DropdownMenuTrigger>
           <span aria-hidden className="block size-px opacity-0" />
-        </ContextMenuTrigger>
-        <ContextMenuContent popupClassName="w-[240px]">
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          placement="bottom-start"
+          sideOffset={0}
+          popupClassName="w-[240px]"
+        >
           {menuSections.map((section, sectionIndex) => (
-            <ContextMenuGroup key={section.titleKey}>
-              {sectionIndex > 0 && <ContextMenuSeparator />}
-              <ContextMenuGroupLabel>
+            <DropdownMenuGroup key={section.titleKey}>
+              {sectionIndex > 0 && <DropdownMenuSeparator />}
+              <DropdownMenuGroupLabel>
                 {t(section.titleKey, { defaultValue: section.titleKey, ns: 'workflow' })}
-              </ContextMenuGroupLabel>
+              </DropdownMenuGroupLabel>
               {section.items.map((item) => {
                 const Icon = item.icon
                 return (
-                  <ContextMenuItem
+                  <DropdownMenuItem
                     key={item.alignType}
                     data-testid={`selection-contextmenu-item-${item.alignType}`}
                     onClick={() => handleAlignNodes(item.alignType)}
                   >
                     <Icon className={`h-4 w-4 ${item.iconClassName ?? ''}`.trim()} />
                     {t(item.translationKey, { defaultValue: item.translationKey, ns: 'workflow' })}
-                  </ContextMenuItem>
+                  </DropdownMenuItem>
                 )
               })}
-            </ContextMenuGroup>
+            </DropdownMenuGroup>
           ))}
-        </ContextMenuContent>
-      </ContextMenu>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   )
 }
