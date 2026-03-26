@@ -55,13 +55,17 @@ describe('StartTabContent', () => {
     it('should render create/import actions and template list when mounted', () => {
       const { container } = render(<StartTabContent />)
 
-      expect(screen.getByText('skill.startTab.fileExplorerIntro')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /workflow\.skill\.startTab\.createBlankSkill/i })).toBeInTheDocument()
+      const intro = screen.getByText('skill.startTab.fileExplorerIntro')
+      const createButton = screen.getByRole('button', { name: /workflow\.skill\.startTab\.createBlankSkill/i })
+
+      expect(intro).toBeInTheDocument()
+      expect(createButton).toBeInTheDocument()
       expect(screen.getByRole('button', { name: /workflow\.skill\.startTab\.importSkill/i })).toBeInTheDocument()
       expect(screen.getByRole('textbox')).toBeInTheDocument()
       expect(screen.getByText('workflow.skill.startTab.templatesTitle')).toBeInTheDocument()
       expect(screen.getByRole('region', { name: 'workflow.skill.startTab.templatesTitle' })).toBeInTheDocument()
       expect(screen.getAllByRole('button', { name: /workflow\.skill\.startTab\.useThisSkill/i }).length).toBeGreaterThan(0)
+      expect(intro.compareDocumentPosition(createButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
       expect(container.firstChild).toHaveClass('flex', 'h-full', 'min-h-0', 'w-full', 'bg-components-panel-bg')
     })
   })
