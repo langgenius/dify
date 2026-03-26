@@ -162,6 +162,27 @@ describe('SidebarSearchAdd', () => {
       expect(clickSpy).toHaveBeenCalledTimes(2)
     })
 
+    it('should keep upload inputs mounted after menu closes so change handlers still run', () => {
+      // Arrange
+      render(<SidebarSearchAdd />)
+      fireEvent.click(screen.getByRole('button', { name: /common\.operation\.add/i }))
+
+      // Act
+      fireEvent.click(screen.getByRole('menuitem', { name: /workflow\.skillSidebar\.menu\.uploadFile/i }))
+
+      // Assert
+      const uploadFileInput = document.querySelector('input[type="file"][multiple]') as HTMLInputElement | null
+      expect(uploadFileInput).not.toBeNull()
+
+      fireEvent.change(uploadFileInput!, {
+        target: {
+          files: [new File(['content'], 'readme.md', { type: 'text/markdown' })],
+        },
+      })
+
+      expect(mocks.fileOperations.handleFileChange).toHaveBeenCalledTimes(1)
+    })
+
     it('should open and close import modal when import skills action is used', () => {
       // Arrange
       render(<SidebarSearchAdd />)

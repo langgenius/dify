@@ -32,8 +32,6 @@ type NodeMenuProps = {
   onDownload: () => void
   onNewFile: () => void
   onNewFolder: () => void
-  onFileChange: React.ChangeEventHandler<HTMLInputElement>
-  onFolderChange: React.ChangeEventHandler<HTMLInputElement>
   onRename: () => void
   onDeleteClick: () => void
   onImportSkills?: () => void
@@ -51,8 +49,6 @@ const NodeMenu = ({
   onDownload,
   onNewFile,
   onNewFolder,
-  onFileChange,
-  onFolderChange,
   onRename,
   onDeleteClick,
   onImportSkills,
@@ -97,24 +93,6 @@ const NodeMenu = ({
     <>
       {isFolder && (
         <>
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            className="hidden"
-            aria-label={t('skillSidebar.menu.uploadFile')}
-            onChange={onFileChange}
-          />
-          <input
-            ref={folderInputRef}
-            type="file"
-            // @ts-expect-error webkitdirectory is a non-standard attribute
-            webkitdirectory=""
-            className="hidden"
-            aria-label={t('skillSidebar.menu.uploadFolder')}
-            onChange={onFolderChange}
-          />
-
           <MenuItem
             menuType={menuType}
             icon={FileAdd}

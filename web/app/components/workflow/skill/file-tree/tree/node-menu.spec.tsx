@@ -26,8 +26,6 @@ type MockFileOperations = {
   handleDownload: () => void
   handleNewFile: () => void
   handleNewFolder: () => void
-  handleFileChange: () => void
-  handleFolderChange: () => void
   handleRename: () => void
   handleDeleteClick: () => void
   handleDeleteConfirm: () => void
@@ -53,8 +51,6 @@ function createFileOperationsMock(): MockFileOperations {
     handleDownload: vi.fn(),
     handleNewFile: vi.fn(),
     handleNewFolder: vi.fn(),
-    handleFileChange: vi.fn(),
-    handleFolderChange: vi.fn(),
     handleRename: vi.fn(),
     handleDeleteClick: vi.fn(),
     handleDeleteConfirm: vi.fn(),
@@ -106,8 +102,6 @@ const renderNodeMenu = ({
               onDownload={mocks.fileOperations.handleDownload}
               onNewFile={mocks.fileOperations.handleNewFile}
               onNewFolder={mocks.fileOperations.handleNewFolder}
-              onFileChange={mocks.fileOperations.handleFileChange}
-              onFolderChange={mocks.fileOperations.handleFolderChange}
               onRename={mocks.fileOperations.handleRename}
               onDeleteClick={mocks.fileOperations.handleDeleteClick}
               onImportSkills={onImportSkills}
@@ -131,8 +125,6 @@ const renderNodeMenu = ({
               onDownload={mocks.fileOperations.handleDownload}
               onNewFile={mocks.fileOperations.handleNewFile}
               onNewFolder={mocks.fileOperations.handleNewFolder}
-              onFileChange={mocks.fileOperations.handleFileChange}
-              onFolderChange={mocks.fileOperations.handleFolderChange}
               onRename={mocks.fileOperations.handleRename}
               onDeleteClick={mocks.fileOperations.handleDeleteClick}
               onImportSkills={onImportSkills}
@@ -205,13 +197,20 @@ describe('NodeMenu', () => {
     })
 
     it('should trigger hidden file and folder input clicks from upload actions', () => {
-      const clickSpy = vi.spyOn(HTMLInputElement.prototype, 'click')
+      const fileInput = document.createElement('input')
+      const folderInput = document.createElement('input')
+      const fileClickSpy = vi.spyOn(fileInput, 'click')
+      const folderClickSpy = vi.spyOn(folderInput, 'click')
+      mocks.fileOperations.fileInputRef.current = fileInput
+      mocks.fileOperations.folderInputRef.current = folderInput
+
       renderNodeMenu({ type: NODE_MENU_TYPE.FOLDER })
 
       fireEvent.click(screen.getByRole('menuitem', { name: /workflow\.skillSidebar\.menu\.uploadFile/i }))
       fireEvent.click(screen.getByRole('menuitem', { name: /workflow\.skillSidebar\.menu\.uploadFolder/i }))
 
-      expect(clickSpy).toHaveBeenCalledTimes(2)
+      expect(fileClickSpy).toHaveBeenCalledTimes(1)
+      expect(folderClickSpy).toHaveBeenCalledTimes(1)
     })
 
     it('should cut explicit action node ids and close menu when cut is clicked', () => {

@@ -21,6 +21,7 @@ import NodeMenu from './node-menu'
 import TreeEditInput from './tree-edit-input'
 import TreeGuideLines from './tree-guide-lines'
 import { TreeNodeIcon } from './tree-node-icon'
+import UploadInputs from './upload-inputs'
 
 type TreeNodeProps = NodeRendererProps<TreeNodeData> & {
   treeChildren: TreeNodeData[]
@@ -101,6 +102,12 @@ const TreeNode = ({ node, style, dragHandle, treeChildren }: TreeNodeProps) => {
 
   return (
     <>
+      <UploadInputs
+        fileInputRef={fileOperations.fileInputRef}
+        folderInputRef={fileOperations.folderInputRef}
+        onFileChange={fileOperations.handleFileChange}
+        onFolderChange={fileOperations.handleFolderChange}
+      />
       <div
         ref={dragHandle}
         style={style}
@@ -195,8 +202,6 @@ const TreeNode = ({ node, style, dragHandle, treeChildren }: TreeNodeProps) => {
               onDownload={fileOperations.handleDownload}
               onNewFile={fileOperations.handleNewFile}
               onNewFolder={fileOperations.handleNewFolder}
-              onFileChange={fileOperations.handleFileChange}
-              onFolderChange={fileOperations.handleFolderChange}
               onRename={fileOperations.handleRename}
               onDeleteClick={fileOperations.handleDeleteClick}
             />

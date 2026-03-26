@@ -18,6 +18,7 @@ import dynamic from '@/next/dynamic'
 import { cn } from '@/utils/classnames'
 import { ROOT_ID } from '../constants'
 import MenuItem from '../file-tree/tree/menu-item'
+import UploadInputs from '../file-tree/tree/upload-inputs'
 import { useSkillAssetTreeData } from '../hooks/file-tree/data/use-skill-asset-tree'
 import { useFileOperations } from '../hooks/file-tree/operations/use-file-operations'
 import { getTargetFolderIdFromSelection } from '../utils/tree-utils'
@@ -69,6 +70,12 @@ const SidebarSearchAdd = () => {
 
   return (
     <div className="flex items-center gap-1 p-2">
+      <UploadInputs
+        fileInputRef={fileInputRef}
+        folderInputRef={folderInputRef}
+        onFileChange={handleFileChange}
+        onFolderChange={handleFolderChange}
+      />
       <SearchInput
         value={searchValue}
         onChange={v => storeApi.getState().setFileTreeSearchTerm(v)}
@@ -91,22 +98,6 @@ const SidebarSearchAdd = () => {
           sideOffset={4}
           popupClassName="min-w-[180px]"
         >
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            className="hidden"
-            onChange={handleFileChange}
-          />
-          <input
-            ref={folderInputRef}
-            type="file"
-            // @ts-expect-error webkitdirectory is a non-standard attribute
-            webkitdirectory=""
-            className="hidden"
-            onChange={handleFolderChange}
-          />
-
           <MenuItem
             menuType="dropdown"
             icon={FileAdd}

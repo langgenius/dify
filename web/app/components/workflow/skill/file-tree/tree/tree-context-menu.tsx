@@ -15,6 +15,7 @@ import { NODE_MENU_TYPE, ROOT_ID } from '../../constants'
 import { useFileOperations } from '../../hooks/file-tree/operations/use-file-operations'
 import NodeDeleteConfirmDialog from './node-delete-confirm-dialog'
 import NodeMenu from './node-menu'
+import UploadInputs from './upload-inputs'
 
 const ImportSkillModal = dynamic(() => import('../../start-tab/import-skill-modal'), {
   ssr: false,
@@ -106,6 +107,12 @@ const TreeContextMenu = ({
 
   return (
     <>
+      <UploadInputs
+        fileInputRef={fileOperations.fileInputRef}
+        folderInputRef={fileOperations.folderInputRef}
+        onFileChange={fileOperations.handleFileChange}
+        onFolderChange={fileOperations.handleFolderChange}
+      />
       <ContextMenu>
         <ContextMenuTrigger
           ref={triggerRef}
@@ -127,8 +134,6 @@ const TreeContextMenu = ({
             onDownload={fileOperations.handleDownload}
             onNewFile={fileOperations.handleNewFile}
             onNewFolder={fileOperations.handleNewFolder}
-            onFileChange={fileOperations.handleFileChange}
-            onFolderChange={fileOperations.handleFolderChange}
             onRename={fileOperations.handleRename}
             onDeleteClick={fileOperations.handleDeleteClick}
             onImportSkills={isRootTarget ? handleOpenImportSkills : undefined}
