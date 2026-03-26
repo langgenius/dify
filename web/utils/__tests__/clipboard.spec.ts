@@ -10,7 +10,7 @@
  */
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 
-import { writeTextToClipboard } from './clipboard'
+import { writeTextToClipboard } from '../clipboard'
 
 describe('Clipboard Utilities', () => {
   describe('writeTextToClipboard', () => {

@@ -8,7 +8,7 @@ import {
   getTextWidthWithCanvas,
   randomString,
   sleep,
-} from './index'
+} from '../index'
 
 describe('sleep', () => {
   it('should wait for the specified time', async () => {

@@ -10,7 +10,7 @@ import {
   datasetNavigation,
   extractQueryParams,
   mergeQueryParams,
-} from './navigation'
+} from '../navigation'
 
 describe('navigation', () => {
   const originalWindow = globalThis.window

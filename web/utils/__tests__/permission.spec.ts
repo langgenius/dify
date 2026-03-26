@@ -3,7 +3,7 @@ import { DatasetPermission } from '@/models/datasets'
  * Test suite for permission utility functions
  * Tests dataset edit permission logic based on user roles and dataset settings
  */
-import { hasEditPermissionForDataset } from './permission'
+import { hasEditPermissionForDataset } from '../permission'
 
 describe('permission', () => {
   /**

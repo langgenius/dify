@@ -1,6 +1,6 @@
 import type { Mock } from 'vitest'
 import { SearchIndex } from 'emoji-mart'
-import { searchEmoji } from './emoji'
+import { searchEmoji } from '../emoji'
 
 vi.mock('emoji-mart', () => ({
   SearchIndex: {

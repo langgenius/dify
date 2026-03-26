@@ -1,4 +1,4 @@
-import { formatFileSize, formatNumber, formatNumberAbbreviated, formatTime } from './format'
+import { formatFileSize, formatNumber, formatNumberAbbreviated, formatTime } from '../format'
 
 describe('formatNumber', () => {
   it('should correctly format integers', () => {

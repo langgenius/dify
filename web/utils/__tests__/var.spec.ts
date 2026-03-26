@@ -8,7 +8,7 @@ import {
   getVars,
   hasDuplicateStr,
   replaceSpaceWithUnderscoreInVarNameInput,
-} from './var'
+} from '../var'
 
 describe('Variable Utilities', () => {
   describe('checkKey', () => {

@@ -2,7 +2,7 @@ import type { SetupStatusResponse } from '@/models/common'
 
 import { fetchSetupStatus } from '@/service/common'
 
-import { fetchSetupStatusWithCache } from './setup-status'
+import { fetchSetupStatusWithCache } from '../setup-status'
 
 vi.mock('@/service/common', () => ({
   fetchSetupStatus: vi.fn(),

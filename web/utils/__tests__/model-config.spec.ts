@@ -16,7 +16,7 @@ import {
   formatBooleanInputs,
   promptVariablesToUserInputsForm,
   userInputsFormToPromptVariables,
-} from './model-config'
+} from '../model-config'
 
 describe('Model Config Utilities', () => {
   describe('userInputsFormToPromptVariables', () => {

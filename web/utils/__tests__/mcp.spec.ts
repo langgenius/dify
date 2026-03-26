@@ -2,7 +2,7 @@
  * Test suite for MCP (Model Context Protocol) utility functions
  * Tests icon detection logic for MCP-related features
  */
-import { shouldUseMcpIcon, shouldUseMcpIconForAppIcon } from './mcp'
+import { shouldUseMcpIcon, shouldUseMcpIconForAppIcon } from '../mcp'
 
 describe('mcp', () => {
   /**

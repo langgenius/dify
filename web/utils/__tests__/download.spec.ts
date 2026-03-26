@@ -1,4 +1,4 @@
-import { downloadBlob, downloadUrl } from './download'
+import { downloadBlob, downloadUrl } from '../download'
 
 describe('downloadUrl', () => {
   let mockAnchor: HTMLAnchorElement

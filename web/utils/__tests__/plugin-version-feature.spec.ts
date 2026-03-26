@@ -1,4 +1,4 @@
-import { isSupportMCP } from './plugin-version-feature'
+import { isSupportMCP } from '../plugin-version-feature'
 
 describe('plugin-version-feature', () => {
   beforeEach(() => {

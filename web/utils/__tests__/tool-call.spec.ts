@@ -3,7 +3,7 @@ import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-
  * Test suite for tool call utility functions
  * Tests detection of function/tool call support in AI models
  */
-import { supportFunctionCall } from './tool-call'
+import { supportFunctionCall } from '../tool-call'
 
 describe('tool-call', () => {
   /**

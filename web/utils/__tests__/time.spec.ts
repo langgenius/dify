@@ -2,7 +2,7 @@
  * Test suite for time utility functions
  * Tests date comparison and formatting using dayjs
  */
-import { formatTime, isAfter } from './time'
+import { formatTime, isAfter } from '../time'
 
 describe('time', () => {
   /**

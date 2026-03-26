@@ -1,4 +1,4 @@
-import { draft07Validator, forbidBooleanProperties } from './validators'
+import { draft07Validator, forbidBooleanProperties } from '../validators'
 
 describe('Validators', () => {
   describe('draft07Validator', () => {

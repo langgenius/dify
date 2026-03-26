@@ -1,4 +1,4 @@
-import { validateRedirectUrl } from './urlValidation'
+import { validateRedirectUrl } from '../urlValidation'
 
 describe('URL Validation', () => {
   describe('validateRedirectUrl', () => {

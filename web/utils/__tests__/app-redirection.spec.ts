@@ -3,7 +3,7 @@
  * Tests navigation path generation based on user permissions and app modes
  */
 import { AppModeEnum } from '@/types/app'
-import { getRedirection, getRedirectionPath } from './app-redirection'
+import { getRedirection, getRedirectionPath } from '../app-redirection'
 
 describe('app-redirection', () => {
   /**
