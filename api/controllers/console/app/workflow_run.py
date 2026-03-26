@@ -1,5 +1,5 @@
 from datetime import UTC, datetime, timedelta
-from typing import Literal, cast
+from typing import Literal, TypedDict, cast
 
 from flask import request
 from flask_restx import Resource, fields, marshal_with
@@ -171,6 +171,23 @@ console_ns.schema_model(
     WorkflowRunCountQuery.__name__,
     WorkflowRunCountQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
 )
+
+
+class HumanInputPauseTypeResponse(TypedDict):
+    type: Literal["human_input"]
+    form_id: str
+    backstage_input_url: str | None
+
+
+class PausedNodeResponse(TypedDict):
+    node_id: str
+    node_title: str
+    pause_type: HumanInputPauseTypeResponse
+
+
+class WorkflowPauseDetailsResponse(TypedDict):
+    paused_at: str | None
+    paused_nodes: list[PausedNodeResponse]
 
 
 @console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflow-runs")
@@ -490,10 +507,11 @@ class ConsoleWorkflowPauseDetailsApi(Resource):
         # Check if workflow is suspended
         is_paused = workflow_run.status == WorkflowExecutionStatus.PAUSED
         if not is_paused:
-            return {
+            empty_response: WorkflowPauseDetailsResponse = {
                 "paused_at": None,
                 "paused_nodes": [],
-            }, 200
+            }
+            return empty_response, 200
 
         pause_entity = workflow_run_repo.get_workflow_pause(workflow_run_id)
         pause_reasons = pause_entity.get_pause_reasons() if pause_entity else []
@@ -503,8 +521,8 @@ class ConsoleWorkflowPauseDetailsApi(Resource):
 
         # Build response
         paused_at = pause_entity.paused_at if pause_entity else None
-        paused_nodes = []
-        response = {
+        paused_nodes: list[PausedNodeResponse] = []
+        response: WorkflowPauseDetailsResponse = {
             "paused_at": paused_at.isoformat() + "Z" if paused_at else None,
             "paused_nodes": paused_nodes,
         }
