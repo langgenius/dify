@@ -82,7 +82,7 @@ const FilePreviewPanel = ({ resourceId, currentNode, className, style, onClose }
     if (!canOpenInEditor)
       return
     const nextUrl = new URL(window.location.href)
-    nextUrl.searchParams.set('view', 'skill')
+    nextUrl.searchParams.set('view', 'file')
     nextUrl.searchParams.set('fileId', resourceId)
     window.open(nextUrl.toString(), '_blank', 'noopener,noreferrer')
   }, [canOpenInEditor, resourceId])

@@ -606,6 +606,6 @@ export type Block = {
 
 export const ViewType = {
   graph: 'graph',
-  skill: 'skill',
+  file: 'file',
 } as const
 export type ViewType = typeof ViewType[keyof typeof ViewType]
