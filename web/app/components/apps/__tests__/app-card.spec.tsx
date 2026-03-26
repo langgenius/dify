@@ -1,54 +1,77 @@
-import type { Mock } from 'vitest'
 import type { App } from '@/types/app'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import * as React from 'react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { AccessMode } from '@/models/access-control'
-import * as appsService from '@/service/apps'
-import * as exploreService from '@/service/explore'
-import * as workflowService from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 import AppCard from '../app-card'
 
-// Mock next/navigation
-const mockPush = vi.fn()
+const {
+  mockPush,
+  mockGetRedirection,
+  mockToastSuccess,
+  mockToastError,
+  mockUpdateAppInfo,
+  mockCopyApp,
+  mockExportAppBundle,
+  mockExportAppConfig,
+  mockUpgradeAppRuntime,
+  mockFetchInstalledAppList,
+  mockFetchWorkflowDraft,
+  mockDeleteAppMutation,
+  mockDownloadBlob,
+  mockOpenAsyncWindow,
+  mockOnPlanInfoChanged,
+} = vi.hoisted(() => ({
+  mockPush: vi.fn(),
+  mockGetRedirection: vi.fn(),
+  mockToastSuccess: vi.fn(),
+  mockToastError: vi.fn(),
+  mockUpdateAppInfo: vi.fn(),
+  mockCopyApp: vi.fn(),
+  mockExportAppBundle: vi.fn(),
+  mockExportAppConfig: vi.fn(),
+  mockUpgradeAppRuntime: vi.fn(),
+  mockFetchInstalledAppList: vi.fn(),
+  mockFetchWorkflowDraft: vi.fn(),
+  mockDeleteAppMutation: vi.fn(),
+  mockDownloadBlob: vi.fn(),
+  mockOpenAsyncWindow: vi.fn(),
+  mockOnPlanInfoChanged: vi.fn(),
+}))
+
+let mockIsCurrentWorkspaceEditor = true
+let mockWebappAuthEnabled = false
+let mockUserCanAccessApp = true
+let mockUserCanAccessAppLoading = false
+let mockDeleteMutationPending = false
+
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
   }),
 }))
 
-// Mock use-context-selector with stable mockNotify reference for tracking calls
-// Include createContext for components that use it (like Toast)
-const mockNotify = vi.fn()
-vi.mock('use-context-selector', () => ({
-  createContext: <T,>(defaultValue: T) => React.createContext(defaultValue),
-  useContext: () => ({
-    notify: mockNotify,
-  }),
-  useContextSelector: (_context: unknown, selector: (state: Record<string, unknown>) => unknown) => selector({
-    notify: mockNotify,
-  }),
-}))
-
-// Mock app context
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
-    isCurrentWorkspaceEditor: true,
+    isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor,
   }),
 }))
 
-// Mock provider context
-const mockOnPlanInfoChanged = vi.fn()
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
     onPlanInfoChanged: mockOnPlanInfoChanged,
   }),
 }))
 
-// Mock global public store - allow dynamic configuration
-let mockWebappAuthEnabled = false
 vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: (selector: (s: Record<string, unknown>) => unknown) => selector({
+  useGlobalPublicStore: <T,>(selector: (state: {
+    systemFeatures: {
+      webapp_auth: { enabled: boolean }
+      branding: { enabled: boolean }
+    }
+  }) => T) => selector({
     systemFeatures: {
       webapp_auth: { enabled: mockWebappAuthEnabled },
       branding: { enabled: false },
@@ -56,15 +79,13 @@ vi.mock('@/context/global-public-context', () => ({
   }),
 }))
 
-vi.mock('@/service/apps', () => ({
-  deleteApp: vi.fn(() => Promise.resolve()),
-  updateAppInfo: vi.fn(() => Promise.resolve()),
-  copyApp: vi.fn(() => Promise.resolve({ id: 'new-app-id' })),
-  exportAppConfig: vi.fn(() => Promise.resolve({ data: 'yaml: content' })),
+vi.mock('@/service/access-control', () => ({
+  useGetUserCanAccessApp: () => ({
+    data: { result: mockUserCanAccessApp },
+    isLoading: mockUserCanAccessAppLoading,
+  }),
 }))
 
-const mockDeleteAppMutation = vi.fn(() => Promise.resolve())
-let mockDeleteMutationPending = false
 vi.mock('@/service/use-apps', () => ({
   useDeleteAppMutation: () => ({
     mutateAsync: mockDeleteAppMutation,
@@ -72,1258 +93,585 @@ vi.mock('@/service/use-apps', () => ({
   }),
 }))
 
-vi.mock('@/service/workflow', () => ({
-  fetchWorkflowDraft: vi.fn(() => Promise.resolve({ environment_variables: [] })),
+vi.mock('@/service/apps', () => ({
+  updateAppInfo: mockUpdateAppInfo,
+  copyApp: mockCopyApp,
+  exportAppBundle: mockExportAppBundle,
+  exportAppConfig: mockExportAppConfig,
+  upgradeAppRuntime: mockUpgradeAppRuntime,
 }))
 
 vi.mock('@/service/explore', () => ({
-  fetchInstalledAppList: vi.fn(() => Promise.resolve({ installed_apps: [{ id: 'installed-1' }] })),
+  fetchInstalledAppList: mockFetchInstalledAppList,
 }))
 
-vi.mock('@/service/access-control', () => ({
-  useGetUserCanAccessApp: () => ({
-    data: { result: true },
-    isLoading: false,
-  }),
+vi.mock('@/service/workflow', () => ({
+  fetchWorkflowDraft: mockFetchWorkflowDraft,
 }))
 
-// Mock hooks
-const mockOpenAsyncWindow = vi.fn()
 vi.mock('@/hooks/use-async-window-open', () => ({
   useAsyncWindowOpen: () => mockOpenAsyncWindow,
-}))
-
-// Mock utils
-const { mockGetRedirection } = vi.hoisted(() => ({
-  mockGetRedirection: vi.fn(),
 }))
 
 vi.mock('@/utils/app-redirection', () => ({
   getRedirection: mockGetRedirection,
 }))
 
-vi.mock('@/utils/var', () => ({
-  basePath: '',
+vi.mock('@/utils/download', () => ({
+  downloadBlob: mockDownloadBlob,
 }))
 
 vi.mock('@/utils/time', () => ({
-  formatTime: () => 'Jan 1, 2024',
+  formatTime: () => 'Jan 2, 2024',
 }))
 
-// Mock dynamic imports
-vi.mock('@/next/dynamic', () => ({
-  default: (importFn: () => Promise<unknown>) => {
-    const fnString = importFn.toString()
+vi.mock('@/utils/var', () => ({
+  basePath: '/console',
+}))
 
-    if (fnString.includes('create-app-modal') || fnString.includes('explore/create-app-modal')) {
-      return function MockEditAppModal({ show, onHide, onConfirm }: { show: boolean, onHide: () => void, onConfirm?: (data: Record<string, unknown>) => void }) {
-        if (!show)
-          return null
-        return React.createElement('div', { 'data-testid': 'edit-app-modal' }, React.createElement('button', { 'onClick': onHide, 'data-testid': 'close-edit-modal' }, 'Close'), React.createElement('button', {
-          'onClick': () => onConfirm?.({
-            name: 'Updated App',
-            icon_type: 'emoji',
-            icon: '🎯',
-            icon_background: '#FFEAD5',
-            description: 'Updated description',
-            use_icon_as_answer_icon: false,
-            max_active_requests: null,
-          }),
-          'data-testid': 'confirm-edit-modal',
-        }, 'Confirm'))
-      }
-    }
-    if (fnString.includes('duplicate-modal')) {
-      return function MockDuplicateAppModal({ show, onHide, onConfirm }: { show: boolean, onHide: () => void, onConfirm?: (data: Record<string, unknown>) => void }) {
-        if (!show)
-          return null
-        return React.createElement('div', { 'data-testid': 'duplicate-modal' }, React.createElement('button', { 'onClick': onHide, 'data-testid': 'close-duplicate-modal' }, 'Close'), React.createElement('button', {
-          'onClick': () => onConfirm?.({
-            name: 'Copied App',
-            icon_type: 'emoji',
-            icon: '📋',
-            icon_background: '#E4FBCC',
-          }),
-          'data-testid': 'confirm-duplicate-modal',
-        }, 'Confirm'))
-      }
-    }
-    if (fnString.includes('switch-app-modal')) {
-      return function MockSwitchAppModal({ show, onClose, onSuccess }: { show: boolean, onClose: () => void, onSuccess: () => void }) {
-        if (!show)
-          return null
-        return React.createElement('div', { 'data-testid': 'switch-modal' }, React.createElement('button', { 'onClick': onClose, 'data-testid': 'close-switch-modal' }, 'Close'), React.createElement('button', { 'onClick': onSuccess, 'data-testid': 'confirm-switch-modal' }, 'Switch'))
-      }
-    }
-    if (fnString.includes('dsl-export-confirm-modal')) {
-      return function MockDSLExportModal({ onClose, onConfirm }: { onClose?: () => void, onConfirm?: (withSecrets: boolean) => void }) {
-        return React.createElement('div', { 'data-testid': 'dsl-export-modal' }, React.createElement('button', { 'onClick': () => onClose?.(), 'data-testid': 'close-dsl-export' }, 'Close'), React.createElement('button', { 'onClick': () => onConfirm?.(true), 'data-testid': 'confirm-dsl-export' }, 'Export with secrets'), React.createElement('button', { 'onClick': () => onConfirm?.(false), 'data-testid': 'confirm-dsl-export-no-secrets' }, 'Export without secrets'))
-      }
-    }
-    if (fnString.includes('app-access-control')) {
-      return function MockAccessControl({ onClose, onConfirm }: { onClose: () => void, onConfirm: () => void }) {
-        return React.createElement('div', { 'data-testid': 'access-control-modal' }, React.createElement('button', { 'onClick': onClose, 'data-testid': 'close-access-control' }, 'Close'), React.createElement('button', { 'onClick': onConfirm, 'data-testid': 'confirm-access-control' }, 'Confirm'))
-      }
-    }
-    return () => null
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    success: mockToastSuccess,
+    error: mockToastError,
   },
 }))
 
-// Popover uses @headlessui/react portals - mock for controlled interaction testing
-vi.mock('@/app/components/base/popover', () => {
-  type PopoverHtmlContent = React.ReactNode | ((state: { open: boolean, onClose: () => void, onClick: () => void }) => React.ReactNode)
-  type MockPopoverProps = { htmlContent: PopoverHtmlContent, btnElement: React.ReactNode, btnClassName?: string | ((open: boolean) => string) }
-  const MockPopover = ({ htmlContent, btnElement, btnClassName }: MockPopoverProps) => {
-    const [isOpen, setIsOpen] = React.useState(false)
-    const computedClassName = typeof btnClassName === 'function' ? btnClassName(isOpen) : ''
-    return React.createElement('div', { 'data-testid': 'custom-popover', 'className': computedClassName }, React.createElement('div', {
-      'onClick': () => setIsOpen(!isOpen),
-      'data-testid': 'popover-trigger',
-    }, btnElement), isOpen && React.createElement('div', {
-      'data-testid': 'popover-content',
-      'onMouseLeave': () => setIsOpen(false),
-    }, typeof htmlContent === 'function' ? htmlContent({ open: isOpen, onClose: () => setIsOpen(false), onClick: () => setIsOpen(false) }) : htmlContent))
-  }
-  return { __esModule: true, default: MockPopover }
-})
-
-// Tooltip uses portals - minimal mock preserving popup content as title attribute
-vi.mock('@/app/components/base/tooltip', () => ({
-  default: ({ children, popupContent }: { children: React.ReactNode, popupContent: React.ReactNode }) => React.createElement('div', { title: popupContent }, children),
-}))
-
-// TagSelector has API dependency (service/tag) - mock for isolated testing
-vi.mock('@/app/components/base/tag-management/selector', () => ({
-  default: ({ tags }: { tags?: { id: string, name: string }[] }) => {
-    return React.createElement('div', { 'aria-label': 'tag-selector' }, tags?.map((tag: { id: string, name: string }) => React.createElement('span', { key: tag.id }, tag.name)))
-  },
-}))
-
-// AppTypeIcon has complex icon mapping - mock for focused component testing
 vi.mock('@/app/components/app/type-selector', () => ({
   AppTypeIcon: () => React.createElement('div', { 'data-testid': 'app-type-icon' }),
+}))
+
+vi.mock('@/next/dynamic', () => ({
+  default: (importFn: () => Promise<unknown>) => {
+    const loader = importFn.toString()
+
+    if (loader.includes('explore/create-app-modal')) {
+      return function MockEditAppModal({
+        show,
+        onHide,
+        onConfirm,
+      }: {
+        show: boolean
+        onHide: () => void
+        onConfirm?: (payload: {
+          name: string
+          icon_type: 'emoji'
+          icon: string
+          icon_background: string
+          description: string
+          use_icon_as_answer_icon: boolean
+          max_active_requests: null
+        }) => void
+      }) {
+        if (!show)
+          return null
+
+        return React.createElement(
+          'div',
+          { 'data-testid': 'edit-app-modal' },
+          React.createElement('button', { 'data-testid': 'close-edit-modal', 'onClick': onHide }, 'Close'),
+          React.createElement('button', {
+            'data-testid': 'confirm-edit-modal',
+            'onClick': () => onConfirm?.({
+              name: 'Updated App',
+              icon_type: 'emoji',
+              icon: '🎯',
+              icon_background: '#FFEAD5',
+              description: 'Updated description',
+              use_icon_as_answer_icon: false,
+              max_active_requests: null,
+            }),
+          }, 'Confirm'),
+        )
+      }
+    }
+
+    if (loader.includes('app/duplicate-modal')) {
+      return function MockDuplicateAppModal({
+        show,
+        onHide,
+        onConfirm,
+      }: {
+        show: boolean
+        onHide: () => void
+        onConfirm?: (payload: {
+          name: string
+          icon_type: 'emoji'
+          icon: string
+          icon_background: string
+        }) => void
+      }) {
+        if (!show)
+          return null
+
+        return React.createElement(
+          'div',
+          { 'data-testid': 'duplicate-app-modal' },
+          React.createElement('button', { 'data-testid': 'close-duplicate-modal', 'onClick': onHide }, 'Close'),
+          React.createElement('button', {
+            'data-testid': 'confirm-duplicate-modal',
+            'onClick': () => onConfirm?.({
+              name: 'Copied App',
+              icon_type: 'emoji',
+              icon: '📋',
+              icon_background: '#E4FBCC',
+            }),
+          }, 'Confirm'),
+        )
+      }
+    }
+
+    if (loader.includes('app/switch-app-modal')) {
+      return function MockSwitchAppModal({
+        show,
+        onClose,
+        onSuccess,
+      }: {
+        show: boolean
+        onClose: () => void
+        onSuccess: () => void
+      }) {
+        if (!show)
+          return null
+
+        return React.createElement(
+          'div',
+          { 'data-testid': 'switch-app-modal' },
+          React.createElement('button', { 'data-testid': 'close-switch-modal', 'onClick': onClose }, 'Close'),
+          React.createElement('button', { 'data-testid': 'confirm-switch-modal', 'onClick': onSuccess }, 'Confirm'),
+        )
+      }
+    }
+
+    if (loader.includes('workflow/dsl-export-confirm-modal')) {
+      return function MockDslExportConfirmModal({
+        onClose,
+        onConfirm,
+      }: {
+        onClose?: () => void
+        onConfirm?: (withSecrets: boolean) => void
+      }) {
+        return React.createElement(
+          'div',
+          { 'data-testid': 'dsl-export-confirm-modal' },
+          React.createElement('button', { 'data-testid': 'close-dsl-export-modal', 'onClick': onClose }, 'Close'),
+          React.createElement('button', { 'data-testid': 'confirm-dsl-export-modal', 'onClick': () => onConfirm?.(true) }, 'Confirm'),
+        )
+      }
+    }
+
+    if (loader.includes('app/app-access-control')) {
+      return function MockAccessControl({
+        onClose,
+        onConfirm,
+      }: {
+        onClose: () => void
+        onConfirm: () => void
+      }) {
+        return React.createElement(
+          'div',
+          { 'data-testid': 'access-control-modal' },
+          React.createElement('button', { 'data-testid': 'close-access-control-modal', 'onClick': onClose }, 'Close'),
+          React.createElement('button', { 'data-testid': 'confirm-access-control-modal', 'onClick': onConfirm }, 'Confirm'),
+        )
+      }
+    }
+
+    return () => null
+  },
 }))
 
 const createMockApp = (overrides: Partial<App> = {}): App => ({
   id: 'test-app-id',
   name: 'Test App',
   description: 'Test app description',
-  mode: AppModeEnum.CHAT,
+  author_name: 'Test Author',
+  icon_type: 'emoji',
   icon: '🤖',
-  icon_type: 'emoji' as const,
   icon_background: '#FFEAD5',
   icon_url: null,
-  author_name: 'Test Author',
-  created_at: 1704067200,
-  updated_at: 1704153600,
-  tags: [],
   use_icon_as_answer_icon: false,
-  max_active_requests: null,
-  access_mode: AccessMode.PUBLIC,
-  has_draft_trigger: false,
+  mode: AppModeEnum.CHAT,
+  runtime_type: 'classic',
   enable_site: true,
   enable_api: true,
   api_rpm: 60,
   api_rph: 3600,
   is_demo: false,
+  model_config: {} as App['model_config'],
+  app_model_config: {} as App['app_model_config'],
+  created_at: 1704067200,
+  updated_at: 1704153600,
+  site: {} as App['site'],
+  api_base_url: 'https://example.com',
+  tags: [],
+  access_mode: AccessMode.PUBLIC,
+  has_draft_trigger: false,
   ...overrides,
-} as App)
+}) as App
+
+const renderAppCard = (appOverrides: Partial<App> = {}, onRefresh = vi.fn()) => {
+  const app = createMockApp(appOverrides)
+  render(<AppCard app={app} onRefresh={onRefresh} />)
+  return { app, onRefresh }
+}
+
+const openOperationsMenu = async () => {
+  fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
+  return await screen.findByRole('menu')
+}
 
 describe('AppCard', () => {
-  const mockApp = createMockApp()
-  const mockOnRefresh = vi.fn()
-
   beforeEach(() => {
     vi.clearAllMocks()
-    mockOpenAsyncWindow.mockReset()
+    mockIsCurrentWorkspaceEditor = true
     mockWebappAuthEnabled = false
+    mockUserCanAccessApp = true
+    mockUserCanAccessAppLoading = false
     mockDeleteMutationPending = false
+
+    mockUpdateAppInfo.mockResolvedValue(undefined)
+    mockCopyApp.mockResolvedValue({ id: 'copied-app-id' })
+    mockExportAppBundle.mockResolvedValue(undefined)
+    mockExportAppConfig.mockResolvedValue({ data: 'yaml: content' })
+    mockUpgradeAppRuntime.mockResolvedValue({ result: 'success', new_app_id: 'upgraded-app-id' })
+    mockFetchInstalledAppList.mockResolvedValue({ installed_apps: [{ id: 'installed-1' }] })
+    mockFetchWorkflowDraft.mockResolvedValue({ environment_variables: [] })
+    mockDeleteAppMutation.mockResolvedValue(undefined)
+    mockOpenAsyncWindow.mockImplementation(async (resolver: () => Promise<string>) => await resolver())
   })
 
+  // Rendering and primary navigation behavior.
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<AppCard app={mockApp} />)
-      // Use title attribute to target specific element
-      expect(screen.getByTitle('Test App')).toBeInTheDocument()
-    })
+    it('should render app metadata and type icon', () => {
+      renderAppCard()
 
-    it('should display app name', () => {
-      render(<AppCard app={mockApp} />)
       expect(screen.getByTitle('Test App')).toBeInTheDocument()
-    })
-
-    it('should display app description', () => {
-      render(<AppCard app={mockApp} />)
       expect(screen.getByTitle('Test app description')).toBeInTheDocument()
-    })
-
-    it('should display author name', () => {
-      render(<AppCard app={mockApp} />)
       expect(screen.getByTitle('Test Author')).toBeInTheDocument()
-    })
-
-    it('should render app icon', () => {
-      const { container } = render(<AppCard app={mockApp} />)
-      const emojiElement = container.querySelector('em-emoji')
-      expect(emojiElement).toBeTruthy()
-      expect(emojiElement?.getAttribute('id')).toBe(mockApp.icon)
-    })
-
-    it('should render app type icon', () => {
-      render(<AppCard app={mockApp} />)
+      expect(screen.getByText(/datasetDocuments\.segment\.editedAt/i)).toBeInTheDocument()
       expect(screen.getByTestId('app-type-icon')).toBeInTheDocument()
     })
 
-    it('should display formatted edit time', () => {
-      render(<AppCard app={mockApp} />)
-      expect(screen.getByText(/edited/i)).toBeInTheDocument()
+    it('should call getRedirection when the main card button is clicked', () => {
+      const { app } = renderAppCard()
+
+      fireEvent.click(screen.getByTitle('Test App').closest('button')!)
+
+      expect(mockGetRedirection).toHaveBeenCalledWith(true, app, mockPush)
+    })
+
+    it('should open the operations menu without triggering card navigation', async () => {
+      renderAppCard()
+
+      const menu = await openOperationsMenu()
+
+      expect(mockGetRedirection).not.toHaveBeenCalled()
+      expect(within(menu).getByRole('menuitem', { name: 'app.editApp' })).toBeInTheDocument()
+      expect(within(menu).getByRole('menuitem', { name: 'app.duplicate' })).toBeInTheDocument()
+      expect(within(menu).getByRole('menuitem', { name: 'common.operation.delete' })).toBeInTheDocument()
+    })
+
+    it('should hide editor operations when the current user is not a workspace editor', () => {
+      mockIsCurrentWorkspaceEditor = false
+      renderAppCard()
+
+      expect(screen.queryByRole('button', { name: 'common.operation.more' })).not.toBeInTheDocument()
+    })
+
+    it.each([
+      [AppModeEnum.CHAT, true],
+      [AppModeEnum.COMPLETION, true],
+      [AppModeEnum.WORKFLOW, false],
+    ])('should toggle the switch action for %s mode', async (mode, shouldExist) => {
+      renderAppCard({ mode })
+
+      const menu = await openOperationsMenu()
+      const switchAction = within(menu).queryByRole('menuitem', { name: 'app.switch' })
+
+      if (shouldExist)
+        expect(switchAction).toBeInTheDocument()
+      else
+        expect(switchAction).not.toBeInTheDocument()
     })
   })
 
-  describe('Props', () => {
-    it('should handle different app modes', () => {
-      const workflowApp = { ...mockApp, mode: AppModeEnum.WORKFLOW }
-      render(<AppCard app={workflowApp} />)
-      expect(screen.getByTitle('Test App')).toBeInTheDocument()
-    })
+  // Editing and duplication should drive the expected service callbacks.
+  describe('App mutations', () => {
+    it('should submit updated app info when the edit modal is confirmed', async () => {
+      const { onRefresh } = renderAppCard()
 
-    it('should handle app with tags', () => {
-      const appWithTags = {
-        ...mockApp,
-        tags: [{ id: 'tag1', name: 'Tag 1', type: 'app', binding_count: 0 }],
-      }
-      render(<AppCard app={appWithTags} />)
-      // Verify the tag selector component renders
-      expect(screen.getByLabelText('tag-selector')).toBeInTheDocument()
-    })
+      const menu = await openOperationsMenu()
+      fireEvent.click(within(menu).getByRole('menuitem', { name: 'app.editApp' }))
 
-    it('should render with onRefresh callback', () => {
-      render(<AppCard app={mockApp} onRefresh={mockOnRefresh} />)
-      expect(screen.getByTitle('Test App')).toBeInTheDocument()
-    })
-  })
-
-  describe('Access Mode Icons', () => {
-    it('should show public icon for public access mode', () => {
-      const publicApp = { ...mockApp, access_mode: AccessMode.PUBLIC }
-      const { container } = render(<AppCard app={publicApp} />)
-      const tooltip = container.querySelector('[title="app.accessItemsDescription.anyone"]')
-      expect(tooltip).toBeInTheDocument()
-    })
-
-    it('should show lock icon for specific groups access mode', () => {
-      const specificApp = { ...mockApp, access_mode: AccessMode.SPECIFIC_GROUPS_MEMBERS }
-      const { container } = render(<AppCard app={specificApp} />)
-      const tooltip = container.querySelector('[title="app.accessItemsDescription.specific"]')
-      expect(tooltip).toBeInTheDocument()
-    })
-
-    it('should show organization icon for organization access mode', () => {
-      const orgApp = { ...mockApp, access_mode: AccessMode.ORGANIZATION }
-      const { container } = render(<AppCard app={orgApp} />)
-      const tooltip = container.querySelector('[title="app.accessItemsDescription.organization"]')
-      expect(tooltip).toBeInTheDocument()
-    })
-
-    it('should show external icon for external access mode', () => {
-      const externalApp = { ...mockApp, access_mode: AccessMode.EXTERNAL_MEMBERS }
-      const { container } = render(<AppCard app={externalApp} />)
-      const tooltip = container.querySelector('[title="app.accessItemsDescription.external"]')
-      expect(tooltip).toBeInTheDocument()
-    })
-  })
-
-  describe('Card Interaction', () => {
-    it('should handle card click', () => {
-      render(<AppCard app={mockApp} />)
-      const card = screen.getByTitle('Test App').closest('[class*="cursor-pointer"]')
-      expect(card).toBeInTheDocument()
-    })
-
-    it('should call getRedirection on card click', () => {
-      render(<AppCard app={mockApp} />)
-      const card = screen.getByTitle('Test App').closest('[class*="cursor-pointer"]')!
-      fireEvent.click(card)
-      expect(mockGetRedirection).toHaveBeenCalledWith(true, mockApp, mockPush)
-    })
-  })
-
-  describe('Operations Menu', () => {
-    it('should render operations popover', () => {
-      render(<AppCard app={mockApp} />)
-      expect(screen.getByTestId('custom-popover')).toBeInTheDocument()
-    })
-
-    it('should show edit option when popover is opened', async () => {
-      render(<AppCard app={mockApp} />)
-
-      fireEvent.click(screen.getByTestId('popover-trigger'))
+      expect(await screen.findByTestId('edit-app-modal')).toBeInTheDocument()
+      fireEvent.click(screen.getByTestId('confirm-edit-modal'))
 
       await waitFor(() => {
-        expect(screen.getByText('app.editApp')).toBeInTheDocument()
+        expect(mockUpdateAppInfo).toHaveBeenCalledWith({
+          appID: 'test-app-id',
+          name: 'Updated App',
+          icon_type: 'emoji',
+          icon: '🎯',
+          icon_background: '#FFEAD5',
+          description: 'Updated description',
+          use_icon_as_answer_icon: false,
+          max_active_requests: null,
+        })
       })
-    })
-
-    it('should show duplicate option when popover is opened', async () => {
-      render(<AppCard app={mockApp} />)
-
-      fireEvent.click(screen.getByTestId('popover-trigger'))
-
-      await waitFor(() => {
-        expect(screen.getByText('app.duplicate')).toBeInTheDocument()
-      })
-    })
-
-    it('should show export option when popover is opened', async () => {
-      render(<AppCard app={mockApp} />)
-
-      fireEvent.click(screen.getByTestId('popover-trigger'))
-
-      await waitFor(() => {
-        expect(screen.getByText('app.export')).toBeInTheDocument()
-      })
-    })
-
-    it('should show delete option when popover is opened', async () => {
-      render(<AppCard app={mockApp} />)
-
-      fireEvent.click(screen.getByTestId('popover-trigger'))
-
-      await waitFor(() => {
-        expect(screen.getByText('common.operation.delete')).toBeInTheDocument()
-      })
-    })
-
-    it('should show switch option for chat mode apps', async () => {
-      const chatApp = { ...mockApp, mode: AppModeEnum.CHAT }
-      render(<AppCard app={chatApp} />)
-
-      fireEvent.click(screen.getByTestId('popover-trigger'))
-
-      await waitFor(() => {
-        expect(screen.getByText(/switch/i)).toBeInTheDocument()
-      })
-    })
-
-    it('should show switch option for completion mode apps', async () => {
-      const completionApp = { ...mockApp, mode: AppModeEnum.COMPLETION }
-      render(<AppCard app={completionApp} />)
-
-      fireEvent.click(screen.getByTestId('popover-trigger'))
-
-      await waitFor(() => {
-        expect(screen.getByText(/switch/i)).toBeInTheDocument()
-      })
-    })
-
-    it('should not show switch option for workflow mode apps', async () => {
-      const workflowApp = { ...mockApp, mode: AppModeEnum.WORKFLOW }
-      render(<AppCard app={workflowApp} />)
-
-      fireEvent.click(screen.getByTestId('popover-trigger'))
-
-      await waitFor(() => {
-        expect(screen.queryByText(/switch/i)).not.toBeInTheDocument()
-      })
-    })
-  })
-
-  describe('Modal Interactions', () => {
-    it('should open edit modal when edit button is clicked', async () => {
-      render(<AppCard app={mockApp} />)
-
-      fireEvent.click(screen.getByTestId('popover-trigger'))
-
-      await waitFor(() => {
-        const editButton = screen.getByText('app.editApp')
-        fireEvent.click(editButton)
-      })
-
-      await waitFor(() => {
-        expect(screen.getByTestId('edit-app-modal')).toBeInTheDocument()
-      })
-    })
-
-    it('should open duplicate modal when duplicate button is clicked', async () => {
-      render(<AppCard app={mockApp} />)
-
-      fireEvent.click(screen.getByTestId('popover-trigger'))
-
-      await waitFor(() => {
-        const duplicateButton = screen.getByText('app.duplicate')
-        fireEvent.click(duplicateButton)
-      })
-
-      await waitFor(() => {
-        expect(screen.getByTestId('duplicate-modal')).toBeInTheDocument()
-      })
-    })
-
-    it('should open confirm dialog when delete button is clicked', async () => {
-      render(<AppCard app={mockApp} />)
-
-      fireEvent.click(screen.getByTestId('popover-trigger'))
-      fireEvent.click(await screen.findByRole('button', { name: 'common.operation.delete' }))
-      expect(await screen.findByRole('alertdialog')).toBeInTheDocument()
-    })
-
-    it('should close confirm dialog when cancel is clicked', async () => {
-      render(<AppCard app={mockApp} />)
-
-      fireEvent.click(screen.getByTestId('popover-trigger'))
-      fireEvent.click(await screen.findByRole('button', { name: 'common.operation.delete' }))
-      expect(await screen.findByRole('alertdialog')).toBeInTheDocument()
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
-      await waitFor(() => {
-        expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
-      })
-    })
-
-    it('should close edit modal when onHide is called', async () => {
-      render(<AppCard app={mockApp} />)
-
-      fireEvent.click(screen.getByTestId('popover-trigger'))
-      await waitFor(() => {
-        fireEvent.click(screen.getByText('app.editApp'))
-      })
-
-      await waitFor(() => {
-        expect(screen.getByTestId('edit-app-modal')).toBeInTheDocument()
-      })
-
-      // Click close button to trigger onHide
-      fireEvent.click(screen.getByTestId('close-edit-modal'))
-
+      expect(mockToastSuccess).toHaveBeenCalledWith('app.editDone')
+      expect(onRefresh).toHaveBeenCalledTimes(1)
       await waitFor(() => {
         expect(screen.queryByTestId('edit-app-modal')).not.toBeInTheDocument()
       })
     })
 
-    it('should close duplicate modal when onHide is called', async () => {
-      render(<AppCard app={mockApp} />)
+    it('should duplicate the app and redirect to the copied app', async () => {
+      const { onRefresh } = renderAppCard()
 
-      fireEvent.click(screen.getByTestId('popover-trigger'))
-      await waitFor(() => {
-        fireEvent.click(screen.getByText('app.duplicate'))
-      })
+      const menu = await openOperationsMenu()
+      fireEvent.click(within(menu).getByRole('menuitem', { name: 'app.duplicate' }))
 
-      await waitFor(() => {
-        expect(screen.getByTestId('duplicate-modal')).toBeInTheDocument()
-      })
-
-      // Click close button to trigger onHide
-      fireEvent.click(screen.getByTestId('close-duplicate-modal'))
-
-      await waitFor(() => {
-        expect(screen.queryByTestId('duplicate-modal')).not.toBeInTheDocument()
-      })
-    })
-  })
-
-  describe('Styling', () => {
-    it('should have correct card container styling', () => {
-      const { container } = render(<AppCard app={mockApp} />)
-      const card = container.querySelector('[class*="h-[160px]"]')
-      expect(card).toBeInTheDocument()
-    })
-
-    it('should have rounded corners', () => {
-      const { container } = render(<AppCard app={mockApp} />)
-      const card = container.querySelector('[class*="rounded-xl"]')
-      expect(card).toBeInTheDocument()
-    })
-  })
-
-  describe('API Callbacks', () => {
-    it('should call deleteApp API when confirming delete', async () => {
-      render(<AppCard app={mockApp} onRefresh={mockOnRefresh} />)
-
-      // Open popover and click delete
-      fireEvent.click(screen.getByTestId('popover-trigger'))
-      fireEvent.click(await screen.findByRole('button', { name: 'common.operation.delete' }))
-      expect(await screen.findByRole('alertdialog')).toBeInTheDocument()
-
-      // Fill in the confirmation input with app name
-      const deleteInput = screen.getByRole('textbox')
-      fireEvent.change(deleteInput, { target: { value: mockApp.name } })
-
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
-
-      await waitFor(() => {
-        expect(mockDeleteAppMutation).toHaveBeenCalled()
-      })
-    })
-
-    it('should not call onRefresh after successful delete', async () => {
-      render(<AppCard app={mockApp} onRefresh={mockOnRefresh} />)
-
-      fireEvent.click(screen.getByTestId('popover-trigger'))
-      fireEvent.click(await screen.findByRole('button', { name: 'common.operation.delete' }))
-      expect(await screen.findByRole('alertdialog')).toBeInTheDocument()
-
-      // Fill in the confirmation input with app name
-      const deleteInput = screen.getByRole('textbox')
-      fireEvent.change(deleteInput, { target: { value: mockApp.name } })
-
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
-
-      await waitFor(() => {
-        expect(mockDeleteAppMutation).toHaveBeenCalled()
-      })
-      expect(mockOnRefresh).not.toHaveBeenCalled()
-    })
-
-    it('should handle delete failure', async () => {
-      ;(mockDeleteAppMutation as Mock).mockRejectedValueOnce(new Error('Delete failed'))
-
-      render(<AppCard app={mockApp} onRefresh={mockOnRefresh} />)
-
-      fireEvent.click(screen.getByTestId('popover-trigger'))
-      fireEvent.click(await screen.findByRole('button', { name: 'common.operation.delete' }))
-      expect(await screen.findByRole('alertdialog')).toBeInTheDocument()
-
-      // Fill in the confirmation input with app name
-      const deleteInput = screen.getByRole('textbox')
-      fireEvent.change(deleteInput, { target: { value: mockApp.name } })
-
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
-
-      await waitFor(() => {
-        expect(mockDeleteAppMutation).toHaveBeenCalled()
-        expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: expect.stringContaining('Delete failed') })
-      })
-    })
-
-    it('should call updateAppInfo API when editing app', async () => {
-      render(<AppCard app={mockApp} onRefresh={mockOnRefresh} />)
-
-      fireEvent.click(screen.getByTestId('popover-trigger'))
-      await waitFor(() => {
-        fireEvent.click(screen.getByText('app.editApp'))
-      })
-
-      await waitFor(() => {
-        expect(screen.getByTestId('edit-app-modal')).toBeInTheDocument()
-      })
-
-      fireEvent.click(screen.getByTestId('confirm-edit-modal'))
-
-      await waitFor(() => {
-        expect(appsService.updateAppInfo).toHaveBeenCalled()
-      })
-    })
-
-    it('should call copyApp API when duplicating app', async () => {
-      render(<AppCard app={mockApp} onRefresh={mockOnRefresh} />)
-
-      fireEvent.click(screen.getByTestId('popover-trigger'))
-      await waitFor(() => {
-        fireEvent.click(screen.getByText('app.duplicate'))
-      })
-
-      await waitFor(() => {
-        expect(screen.getByTestId('duplicate-modal')).toBeInTheDocument()
-      })
-
+      expect(await screen.findByTestId('duplicate-app-modal')).toBeInTheDocument()
       fireEvent.click(screen.getByTestId('confirm-duplicate-modal'))
 
       await waitFor(() => {
-        expect(appsService.copyApp).toHaveBeenCalled()
+        expect(mockCopyApp).toHaveBeenCalledWith({
+          appID: 'test-app-id',
+          name: 'Copied App',
+          icon_type: 'emoji',
+          icon: '📋',
+          icon_background: '#E4FBCC',
+          mode: AppModeEnum.CHAT,
+        })
       })
-    })
-
-    it('should call onPlanInfoChanged after successful duplication', async () => {
-      render(<AppCard app={mockApp} onRefresh={mockOnRefresh} />)
-
-      fireEvent.click(screen.getByTestId('popover-trigger'))
-      await waitFor(() => {
-        fireEvent.click(screen.getByText('app.duplicate'))
-      })
-
-      await waitFor(() => {
-        expect(screen.getByTestId('duplicate-modal')).toBeInTheDocument()
-      })
-
-      fireEvent.click(screen.getByTestId('confirm-duplicate-modal'))
-
-      await waitFor(() => {
-        expect(mockOnPlanInfoChanged).toHaveBeenCalled()
-      })
-    })
-
-    it('should handle copy failure', async () => {
-      (appsService.copyApp as Mock).mockRejectedValueOnce(new Error('Copy failed'))
-
-      render(<AppCard app={mockApp} onRefresh={mockOnRefresh} />)
-
-      fireEvent.click(screen.getByTestId('popover-trigger'))
-      await waitFor(() => {
-        fireEvent.click(screen.getByText('app.duplicate'))
-      })
-
-      await waitFor(() => {
-        expect(screen.getByTestId('duplicate-modal')).toBeInTheDocument()
-      })
-
-      fireEvent.click(screen.getByTestId('confirm-duplicate-modal'))
-
-      await waitFor(() => {
-        expect(appsService.copyApp).toHaveBeenCalled()
-        expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: 'app.newApp.appCreateFailed' })
-      })
-    })
-
-    it('should call exportAppConfig API when exporting', async () => {
-      render(<AppCard app={mockApp} />)
-
-      fireEvent.click(screen.getByTestId('popover-trigger'))
-      await waitFor(() => {
-        fireEvent.click(screen.getByText('app.export'))
-      })
-
-      await waitFor(() => {
-        expect(appsService.exportAppConfig).toHaveBeenCalled()
-      })
-    })
-
-    it('should handle export failure', async () => {
-      (appsService.exportAppConfig as Mock).mockRejectedValueOnce(new Error('Export failed'))
-
-      render(<AppCard app={mockApp} />)
-
-      fireEvent.click(screen.getByTestId('popover-trigger'))
-      await waitFor(() => {
-        fireEvent.click(screen.getByText('app.export'))
-      })
-
-      await waitFor(() => {
-        expect(appsService.exportAppConfig).toHaveBeenCalled()
-        expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: 'app.exportFailed' })
-      })
+      expect(localStorage.setItem).toHaveBeenCalledWith(NEED_REFRESH_APP_LIST_KEY, '1')
+      expect(mockOnPlanInfoChanged).toHaveBeenCalledTimes(1)
+      expect(onRefresh).toHaveBeenCalledTimes(1)
+      expect(mockGetRedirection).toHaveBeenCalledWith(true, { id: 'copied-app-id' }, mockPush)
     })
   })
 
-  describe('Switch Modal', () => {
-    it('should open switch modal when switch button is clicked', async () => {
-      const chatApp = { ...mockApp, mode: AppModeEnum.CHAT }
-      render(<AppCard app={chatApp} />)
+  // Export paths differ based on app mode and workflow secret variables.
+  describe('Exporting', () => {
+    it('should export and download the yaml config for a non-workflow app', async () => {
+      renderAppCard({ mode: AppModeEnum.CHAT })
 
-      fireEvent.click(screen.getByTestId('popover-trigger'))
+      const menu = await openOperationsMenu()
+      fireEvent.click(within(menu).getByRole('menuitem', { name: 'app.export' }))
+
       await waitFor(() => {
-        fireEvent.click(screen.getByText('app.switch'))
+        expect(mockExportAppConfig).toHaveBeenCalledWith({
+          appID: 'test-app-id',
+          include: false,
+        })
       })
-
-      await waitFor(() => {
-        expect(screen.getByTestId('switch-modal')).toBeInTheDocument()
-      })
-    })
-
-    it('should close switch modal when close button is clicked', async () => {
-      const chatApp = { ...mockApp, mode: AppModeEnum.CHAT }
-      render(<AppCard app={chatApp} />)
-
-      fireEvent.click(screen.getByTestId('popover-trigger'))
-      await waitFor(() => {
-        fireEvent.click(screen.getByText('app.switch'))
-      })
-
-      await waitFor(() => {
-        expect(screen.getByTestId('switch-modal')).toBeInTheDocument()
-      })
-
-      fireEvent.click(screen.getByTestId('close-switch-modal'))
-
-      await waitFor(() => {
-        expect(screen.queryByTestId('switch-modal')).not.toBeInTheDocument()
+      expect(mockDownloadBlob).toHaveBeenCalledTimes(1)
+      expect(mockDownloadBlob.mock.calls[0][0]).toMatchObject({
+        fileName: 'Test App.yml',
       })
     })
 
-    it('should call onRefresh after successful switch', async () => {
-      const chatApp = { ...mockApp, mode: AppModeEnum.CHAT }
-      render(<AppCard app={chatApp} onRefresh={mockOnRefresh} />)
-
-      fireEvent.click(screen.getByTestId('popover-trigger'))
-      await waitFor(() => {
-        fireEvent.click(screen.getByText('app.switch'))
+    it('should request secret confirmation before exporting workflow apps with secret envs', async () => {
+      mockFetchWorkflowDraft.mockResolvedValueOnce({
+        environment_variables: [{ name: 'SECRET_KEY', value_type: 'secret' }],
       })
 
+      renderAppCard({ mode: AppModeEnum.WORKFLOW })
+
+      const menu = await openOperationsMenu()
+      fireEvent.click(within(menu).getByRole('menuitem', { name: 'app.export' }))
+
+      expect(await screen.findByTestId('dsl-export-confirm-modal')).toBeInTheDocument()
+      fireEvent.click(screen.getByTestId('confirm-dsl-export-modal'))
+
       await waitFor(() => {
-        expect(screen.getByTestId('switch-modal')).toBeInTheDocument()
+        expect(mockExportAppConfig).toHaveBeenCalledWith({
+          appID: 'test-app-id',
+          include: true,
+        })
+      })
+    })
+
+    it('should close the secret export confirmation modal when dismissed', async () => {
+      mockFetchWorkflowDraft.mockResolvedValueOnce({
+        environment_variables: [{ name: 'SECRET_KEY', value_type: 'secret' }],
       })
 
-      fireEvent.click(screen.getByTestId('confirm-switch-modal'))
+      renderAppCard({ mode: AppModeEnum.WORKFLOW })
+
+      const menu = await openOperationsMenu()
+      fireEvent.click(within(menu).getByRole('menuitem', { name: 'app.export' }))
+
+      expect(await screen.findByTestId('dsl-export-confirm-modal')).toBeInTheDocument()
+      fireEvent.click(screen.getByTestId('close-dsl-export-modal'))
 
       await waitFor(() => {
-        expect(mockOnRefresh).toHaveBeenCalled()
+        expect(screen.queryByTestId('dsl-export-confirm-modal')).not.toBeInTheDocument()
       })
     })
 
-    it('should open switch modal for completion mode apps', async () => {
-      const completionApp = { ...mockApp, mode: AppModeEnum.COMPLETION }
-      render(<AppCard app={completionApp} />)
+    it('should export the app bundle for sandboxed apps', async () => {
+      renderAppCard({ runtime_type: 'sandboxed' })
 
-      fireEvent.click(screen.getByTestId('popover-trigger'))
-      await waitFor(() => {
-        fireEvent.click(screen.getByText('app.switch'))
-      })
+      const menu = await openOperationsMenu()
+      fireEvent.click(within(menu).getByRole('menuitem', { name: 'app.export' }))
 
       await waitFor(() => {
-        expect(screen.getByTestId('switch-modal')).toBeInTheDocument()
+        expect(mockExportAppBundle).toHaveBeenCalledWith({
+          appID: 'test-app-id',
+          include: false,
+        })
       })
-    })
-  })
-
-  describe('Open in Explore', () => {
-    it('should show open in explore option when popover is opened', async () => {
-      render(<AppCard app={mockApp} />)
-
-      fireEvent.click(screen.getByTestId('popover-trigger'))
-
-      await waitFor(() => {
-        expect(screen.getByText('app.openInExplore')).toBeInTheDocument()
-      })
+      expect(mockExportAppConfig).not.toHaveBeenCalled()
     })
   })
 
-  describe('Workflow Export with Environment Variables', () => {
-    it('should check for secret environment variables in workflow apps', async () => {
-      const workflowApp = { ...mockApp, mode: AppModeEnum.WORKFLOW }
-      render(<AppCard app={workflowApp} />)
+  // Menu branches should stay aligned with auth and runtime conditions.
+  describe('Conditional menu actions', () => {
+    it('should open the installed app in Explore when web app auth is disabled', async () => {
+      renderAppCard()
 
-      fireEvent.click(screen.getByTestId('popover-trigger'))
-      await waitFor(() => {
-        fireEvent.click(screen.getByText('app.export'))
-      })
+      const menu = await openOperationsMenu()
+      fireEvent.click(within(menu).getByRole('menuitem', { name: 'app.openInExplore' }))
 
       await waitFor(() => {
-        expect(workflowService.fetchWorkflowDraft).toHaveBeenCalled()
+        expect(mockOpenAsyncWindow).toHaveBeenCalledTimes(1)
       })
+      const [resolver] = mockOpenAsyncWindow.mock.calls[0]
+      await expect(resolver()).resolves.toBe('/console/explore/installed/installed-1')
+      expect(mockFetchInstalledAppList).toHaveBeenCalledWith('test-app-id')
     })
 
-    it('should show DSL export modal when workflow has secret variables', async () => {
-      (workflowService.fetchWorkflowDraft as Mock).mockResolvedValueOnce({
-        environment_variables: [{ value_type: 'secret', name: 'API_KEY' }],
-      })
-
-      const workflowApp = { ...mockApp, mode: AppModeEnum.WORKFLOW }
-      render(<AppCard app={workflowApp} />)
-
-      fireEvent.click(screen.getByTestId('popover-trigger'))
-      await waitFor(() => {
-        fireEvent.click(screen.getByText('app.export'))
-      })
-
-      await waitFor(() => {
-        expect(screen.getByTestId('dsl-export-modal')).toBeInTheDocument()
-      })
-    })
-
-    it('should check for secret environment variables in advanced chat apps', async () => {
-      const advancedChatApp = { ...mockApp, mode: AppModeEnum.ADVANCED_CHAT }
-      render(<AppCard app={advancedChatApp} />)
-
-      fireEvent.click(screen.getByTestId('popover-trigger'))
-      await waitFor(() => {
-        fireEvent.click(screen.getByText('app.export'))
-      })
-
-      await waitFor(() => {
-        expect(workflowService.fetchWorkflowDraft).toHaveBeenCalled()
-      })
-    })
-
-    it('should close DSL export modal when onClose is called', async () => {
-      (workflowService.fetchWorkflowDraft as Mock).mockResolvedValueOnce({
-        environment_variables: [{ value_type: 'secret', name: 'API_KEY' }],
-      })
-
-      const workflowApp = { ...mockApp, mode: AppModeEnum.WORKFLOW }
-      render(<AppCard app={workflowApp} />)
-
-      fireEvent.click(screen.getByTestId('popover-trigger'))
-      await waitFor(() => {
-        fireEvent.click(screen.getByText('app.export'))
-      })
-
-      await waitFor(() => {
-        expect(screen.getByTestId('dsl-export-modal')).toBeInTheDocument()
-      })
-
-      // Click close button to trigger onClose
-      fireEvent.click(screen.getByTestId('close-dsl-export'))
-
-      await waitFor(() => {
-        expect(screen.queryByTestId('dsl-export-modal')).not.toBeInTheDocument()
-      })
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should handle empty description', () => {
-      const appNoDesc = { ...mockApp, description: '' }
-      render(<AppCard app={appNoDesc} />)
-      expect(screen.getByText('Test App')).toBeInTheDocument()
-    })
-
-    it('should handle long app name', () => {
-      const longNameApp = {
-        ...mockApp,
-        name: 'This is a very long app name that might overflow the container',
-      }
-      render(<AppCard app={longNameApp} />)
-      expect(screen.getByText(longNameApp.name)).toBeInTheDocument()
-    })
-
-    it('should handle empty tags array', () => {
-      const noTagsApp = { ...mockApp, tags: [] }
-      // With empty tags, the component should still render successfully
-      render(<AppCard app={noTagsApp} />)
-      expect(screen.getByTitle('Test App')).toBeInTheDocument()
-    })
-
-    it('should handle missing author name', () => {
-      const noAuthorApp = { ...mockApp, author_name: '' }
-      render(<AppCard app={noAuthorApp} />)
-      expect(screen.getByTitle('Test App')).toBeInTheDocument()
-    })
-
-    it('should handle null icon_url', () => {
-      const nullIconApp = { ...mockApp, icon_url: null }
-      // With null icon_url, the component should fall back to emoji icon and render successfully
-      render(<AppCard app={nullIconApp} />)
-      expect(screen.getByTitle('Test App')).toBeInTheDocument()
-    })
-
-    it('should use created_at when updated_at is not available', () => {
-      const noUpdateApp = { ...mockApp, updated_at: 0 }
-      render(<AppCard app={noUpdateApp} />)
-      expect(screen.getByText(/edited/i)).toBeInTheDocument()
-    })
-
-    it('should handle agent chat mode apps', () => {
-      const agentApp = { ...mockApp, mode: AppModeEnum.AGENT_CHAT }
-      render(<AppCard app={agentApp} />)
-      expect(screen.getByTitle('Test App')).toBeInTheDocument()
-    })
-
-    it('should handle advanced chat mode apps', () => {
-      const advancedApp = { ...mockApp, mode: AppModeEnum.ADVANCED_CHAT }
-      render(<AppCard app={advancedApp} />)
-      expect(screen.getByTitle('Test App')).toBeInTheDocument()
-    })
-
-    it('should handle apps with multiple tags', () => {
-      const multiTagApp = {
-        ...mockApp,
-        tags: [
-          { id: 'tag1', name: 'Tag 1', type: 'app', binding_count: 0 },
-          { id: 'tag2', name: 'Tag 2', type: 'app', binding_count: 0 },
-          { id: 'tag3', name: 'Tag 3', type: 'app', binding_count: 0 },
-        ],
-      }
-      render(<AppCard app={multiTagApp} />)
-      // Verify the tag selector renders (actual tag display is handled by the real TagSelector component)
-      expect(screen.getByLabelText('tag-selector')).toBeInTheDocument()
-    })
-
-    it('should handle edit failure', async () => {
-      (appsService.updateAppInfo as Mock).mockRejectedValueOnce(new Error('Edit failed'))
-
-      render(<AppCard app={mockApp} onRefresh={mockOnRefresh} />)
-
-      fireEvent.click(screen.getByTestId('popover-trigger'))
-      await waitFor(() => {
-        fireEvent.click(screen.getByText('app.editApp'))
-      })
-
-      await waitFor(() => {
-        expect(screen.getByTestId('edit-app-modal')).toBeInTheDocument()
-      })
-
-      fireEvent.click(screen.getByTestId('confirm-edit-modal'))
-
-      await waitFor(() => {
-        expect(appsService.updateAppInfo).toHaveBeenCalled()
-        expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: expect.stringContaining('Edit failed') })
-      })
-    })
-
-    it('should close edit modal after successful edit', async () => {
-      render(<AppCard app={mockApp} onRefresh={mockOnRefresh} />)
-
-      fireEvent.click(screen.getByTestId('popover-trigger'))
-      await waitFor(() => {
-        fireEvent.click(screen.getByText('app.editApp'))
-      })
-
-      await waitFor(() => {
-        expect(screen.getByTestId('edit-app-modal')).toBeInTheDocument()
-      })
-
-      fireEvent.click(screen.getByTestId('confirm-edit-modal'))
-
-      await waitFor(() => {
-        expect(mockOnRefresh).toHaveBeenCalled()
-      })
-    })
-
-    it('should render all app modes correctly', () => {
-      const modes = [
-        AppModeEnum.CHAT,
-        AppModeEnum.COMPLETION,
-        AppModeEnum.WORKFLOW,
-        AppModeEnum.ADVANCED_CHAT,
-        AppModeEnum.AGENT_CHAT,
-      ]
-
-      modes.forEach((mode) => {
-        const testApp = { ...mockApp, mode }
-        const { unmount } = render(<AppCard app={testApp} />)
-        expect(screen.getByTitle('Test App')).toBeInTheDocument()
-        unmount()
-      })
-    })
-
-    it('should handle workflow draft fetch failure during export', async () => {
-      (workflowService.fetchWorkflowDraft as Mock).mockRejectedValueOnce(new Error('Fetch failed'))
-
-      const workflowApp = { ...mockApp, mode: AppModeEnum.WORKFLOW }
-      render(<AppCard app={workflowApp} />)
-
-      fireEvent.click(screen.getByTestId('popover-trigger'))
-      await waitFor(() => {
-        fireEvent.click(screen.getByText('app.export'))
-      })
-
-      await waitFor(() => {
-        expect(workflowService.fetchWorkflowDraft).toHaveBeenCalled()
-        expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: 'app.exportFailed' })
-      })
-    })
-  })
-
-  // --------------------------------------------------------------------------
-  // Additional Edge Cases for Coverage
-  // --------------------------------------------------------------------------
-  describe('Additional Coverage', () => {
-    it('should handle onRefresh callback in switch modal success', async () => {
-      const chatApp = createMockApp({ mode: AppModeEnum.CHAT })
-      render(<AppCard app={chatApp} onRefresh={mockOnRefresh} />)
-
-      fireEvent.click(screen.getByTestId('popover-trigger'))
-      await waitFor(() => {
-        fireEvent.click(screen.getByText('app.switch'))
-      })
-
-      await waitFor(() => {
-        expect(screen.getByTestId('switch-modal')).toBeInTheDocument()
-      })
-
-      // Trigger success callback
-      fireEvent.click(screen.getByTestId('confirm-switch-modal'))
-
-      await waitFor(() => {
-        expect(mockOnRefresh).toHaveBeenCalled()
-      })
-    })
-
-    it('should render popover menu with correct styling for different app modes', async () => {
-      // Test completion mode styling
-      const completionApp = createMockApp({ mode: AppModeEnum.COMPLETION })
-      const { unmount } = render(<AppCard app={completionApp} />)
-
-      fireEvent.click(screen.getByTestId('popover-trigger'))
-      await waitFor(() => {
-        expect(screen.getByText('app.editApp')).toBeInTheDocument()
-      })
-
-      unmount()
-
-      // Test workflow mode styling
-      const workflowApp = createMockApp({ mode: AppModeEnum.WORKFLOW })
-      render(<AppCard app={workflowApp} />)
-
-      fireEvent.click(screen.getByTestId('popover-trigger'))
-      await waitFor(() => {
-        expect(screen.getByText('app.editApp')).toBeInTheDocument()
-      })
-    })
-
-    it('should stop propagation when clicking tag selector area', () => {
-      const multiTagApp = createMockApp({
-        tags: [{ id: 'tag1', name: 'Tag 1', type: 'app', binding_count: 0 }],
-      })
-
-      render(<AppCard app={multiTagApp} />)
-
-      const tagSelector = screen.getByLabelText('tag-selector')
-      expect(tagSelector).toBeInTheDocument()
-
-      // Click on tag selector wrapper to trigger stopPropagation
-      const tagSelectorWrapper = tagSelector.closest('div')
-      if (tagSelectorWrapper)
-        fireEvent.click(tagSelectorWrapper)
-    })
-
-    it('should handle popover mouse leave', async () => {
-      render(<AppCard app={mockApp} />)
-
-      // Open popover
-      fireEvent.click(screen.getByTestId('popover-trigger'))
-      await waitFor(() => {
-        expect(screen.getByTestId('popover-content')).toBeInTheDocument()
-      })
-
-      // Trigger mouse leave on the outer popover-content
-      fireEvent.mouseLeave(screen.getByTestId('popover-content'))
-
-      await waitFor(() => {
-        expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
-      })
-    })
-
-    it('should handle operations menu mouse leave', async () => {
-      render(<AppCard app={mockApp} />)
-
-      // Open popover
-      fireEvent.click(screen.getByTestId('popover-trigger'))
-      await waitFor(() => {
-        expect(screen.getByText('app.editApp')).toBeInTheDocument()
-      })
-
-      // Find the Operations wrapper div (contains the menu items)
-      const editButton = screen.getByText('app.editApp')
-      const operationsWrapper = editButton.closest('div.relative')
-
-      // Trigger mouse leave on the Operations wrapper to call onMouseLeave
-      if (operationsWrapper)
-        fireEvent.mouseLeave(operationsWrapper)
-    })
-
-    it('should click open in explore button', async () => {
-      render(<AppCard app={mockApp} />)
-
-      fireEvent.click(screen.getByTestId('popover-trigger'))
-      await waitFor(() => {
-        const openInExploreBtn = screen.getByText('app.openInExplore')
-        fireEvent.click(openInExploreBtn)
-      })
-
-      // Verify openAsyncWindow was called with callback and options
-      await waitFor(() => {
-        expect(mockOpenAsyncWindow).toHaveBeenCalledWith(
-          expect.any(Function),
-          expect.objectContaining({ onError: expect.any(Function) }),
-        )
-      })
-    })
-
-    it('should handle open in explore via async window', async () => {
-      // Configure mockOpenAsyncWindow to actually call the callback
-      mockOpenAsyncWindow.mockImplementationOnce(async (callback: () => Promise<string>) => {
-        await callback()
-      })
-
-      render(<AppCard app={mockApp} />)
-
-      fireEvent.click(screen.getByTestId('popover-trigger'))
-      await waitFor(() => {
-        const openInExploreBtn = screen.getByText('app.openInExplore')
-        fireEvent.click(openInExploreBtn)
-      })
-
-      await waitFor(() => {
-        expect(exploreService.fetchInstalledAppList).toHaveBeenCalledWith(mockApp.id)
-      })
-    })
-
-    it('should handle open in explore API failure', async () => {
-      (exploreService.fetchInstalledAppList as Mock).mockRejectedValueOnce(new Error('API Error'))
-
-      // Configure mockOpenAsyncWindow to call the callback and trigger error
-      mockOpenAsyncWindow.mockImplementationOnce(async (callback: () => Promise<string>, options?: { onError?: (err: unknown) => void }) => {
-        try {
-          await callback()
-        }
-        catch (err) {
-          options?.onError?.(err)
-        }
-      })
-
-      render(<AppCard app={mockApp} />)
-
-      fireEvent.click(screen.getByTestId('popover-trigger'))
-      await waitFor(() => {
-        const openInExploreBtn = screen.getByText('app.openInExplore')
-        fireEvent.click(openInExploreBtn)
-      })
-
-      await waitFor(() => {
-        expect(exploreService.fetchInstalledAppList).toHaveBeenCalled()
-      })
-    })
-  })
-
-  describe('Access Control', () => {
-    it('should render operations menu correctly', async () => {
-      render(<AppCard app={mockApp} />)
-
-      fireEvent.click(screen.getByTestId('popover-trigger'))
-      await waitFor(() => {
-        expect(screen.getByText('app.editApp')).toBeInTheDocument()
-        expect(screen.getByText('app.duplicate')).toBeInTheDocument()
-        expect(screen.getByText('app.export')).toBeInTheDocument()
-        expect(screen.getByText('common.operation.delete')).toBeInTheDocument()
-      })
-    })
-  })
-
-  describe('Open in Explore - No App Found', () => {
-    it('should handle case when installed_apps is empty array', async () => {
-      (exploreService.fetchInstalledAppList as Mock).mockResolvedValueOnce({ installed_apps: [] })
-
-      // Configure mockOpenAsyncWindow to call the callback and trigger error
-      mockOpenAsyncWindow.mockImplementationOnce(async (callback: () => Promise<string>, options?: { onError?: (err: unknown) => void }) => {
-        try {
-          await callback()
-        }
-        catch (err) {
-          options?.onError?.(err)
-        }
-      })
-
-      render(<AppCard app={mockApp} />)
-
-      fireEvent.click(screen.getByTestId('popover-trigger'))
-      await waitFor(() => {
-        const openInExploreBtn = screen.getByText('app.openInExplore')
-        fireEvent.click(openInExploreBtn)
-      })
-
-      await waitFor(() => {
-        expect(exploreService.fetchInstalledAppList).toHaveBeenCalled()
-      })
-    })
-
-    it('should handle case when API throws in callback', async () => {
-      (exploreService.fetchInstalledAppList as Mock).mockRejectedValueOnce(new Error('Network error'))
-
-      // Configure mockOpenAsyncWindow to call the callback without catching
-      mockOpenAsyncWindow.mockImplementationOnce(async (callback: () => Promise<string>) => {
-        return await callback()
-      })
-
-      render(<AppCard app={mockApp} />)
-
-      fireEvent.click(screen.getByTestId('popover-trigger'))
-      await waitFor(() => {
-        const openInExploreBtn = screen.getByText('app.openInExplore')
-        fireEvent.click(openInExploreBtn)
-      })
-
-      await waitFor(() => {
-        expect(exploreService.fetchInstalledAppList).toHaveBeenCalled()
-      })
-    })
-  })
-
-  describe('Draft Trigger Apps', () => {
-    it('should not show open in explore option for apps with has_draft_trigger', async () => {
-      const draftTriggerApp = createMockApp({ has_draft_trigger: true })
-      render(<AppCard app={draftTriggerApp} />)
-
-      fireEvent.click(screen.getByTestId('popover-trigger'))
-      await waitFor(() => {
-        expect(screen.getByText('app.editApp')).toBeInTheDocument()
-        // openInExplore should not be shown for draft trigger apps
-        expect(screen.queryByText('app.openInExplore')).not.toBeInTheDocument()
-      })
-    })
-  })
-
-  describe('Non-editor User', () => {
-    it('should handle non-editor workspace users', () => {
-      // This tests the isCurrentWorkspaceEditor=true branch (default mock)
-      render(<AppCard app={mockApp} />)
-      expect(screen.getByTitle('Test App')).toBeInTheDocument()
-    })
-  })
-
-  describe('WebApp Auth Enabled', () => {
-    beforeEach(() => {
+    it('should hide the Explore action when auth is enabled and the user cannot access the app', async () => {
       mockWebappAuthEnabled = true
+      mockUserCanAccessApp = false
+      renderAppCard()
+
+      const menu = await openOperationsMenu()
+
+      expect(within(menu).queryByRole('menuitem', { name: 'app.openInExplore' })).not.toBeInTheDocument()
     })
 
-    it('should show access control option when webapp_auth is enabled', async () => {
-      render(<AppCard app={mockApp} />)
+    it('should keep the Explore action when auth is enabled and the user can access the app', async () => {
+      mockWebappAuthEnabled = true
+      mockUserCanAccessApp = true
+      renderAppCard()
 
-      fireEvent.click(screen.getByTestId('popover-trigger'))
-      await waitFor(() => {
-        expect(screen.getByText('app.accessControl')).toBeInTheDocument()
-      })
+      const menu = await openOperationsMenu()
+
+      expect(within(menu).getByRole('menuitem', { name: 'app.openInExplore' })).toBeInTheDocument()
     })
 
-    it('should click access control button', async () => {
-      render(<AppCard app={mockApp} />)
+    it('should open access control and refresh after confirmation when auth is enabled', async () => {
+      mockWebappAuthEnabled = true
+      const { onRefresh } = renderAppCard()
 
-      fireEvent.click(screen.getByTestId('popover-trigger'))
+      const menu = await openOperationsMenu()
+      fireEvent.click(within(menu).getByRole('menuitem', { name: 'app.accessControl' }))
+
+      expect(await screen.findByTestId('access-control-modal')).toBeInTheDocument()
+      fireEvent.click(screen.getByTestId('confirm-access-control-modal'))
+
+      expect(onRefresh).toHaveBeenCalledTimes(1)
       await waitFor(() => {
-        const accessControlBtn = screen.getByText('app.accessControl')
-        fireEvent.click(accessControlBtn)
-      })
-
-      await waitFor(() => {
-        expect(screen.getByTestId('access-control-modal')).toBeInTheDocument()
-      })
-    })
-
-    it('should close access control modal and call onRefresh', async () => {
-      render(<AppCard app={mockApp} onRefresh={mockOnRefresh} />)
-
-      fireEvent.click(screen.getByTestId('popover-trigger'))
-      await waitFor(() => {
-        fireEvent.click(screen.getByText('app.accessControl'))
-      })
-
-      await waitFor(() => {
-        expect(screen.getByTestId('access-control-modal')).toBeInTheDocument()
-      })
-
-      // Confirm access control
-      fireEvent.click(screen.getByTestId('confirm-access-control'))
-
-      await waitFor(() => {
-        expect(mockOnRefresh).toHaveBeenCalled()
+        expect(screen.queryByTestId('access-control-modal')).not.toBeInTheDocument()
       })
     })
 
-    it('should show open in explore when userCanAccessApp is true', async () => {
-      render(<AppCard app={mockApp} />)
+    it('should close access control without refreshing when dismissed', async () => {
+      mockWebappAuthEnabled = true
+      const { onRefresh } = renderAppCard()
 
-      fireEvent.click(screen.getByTestId('popover-trigger'))
-      await waitFor(() => {
-        expect(screen.getByText('app.openInExplore')).toBeInTheDocument()
-      })
-    })
+      const menu = await openOperationsMenu()
+      fireEvent.click(within(menu).getByRole('menuitem', { name: 'app.accessControl' }))
 
-    it('should close access control modal when onClose is called', async () => {
-      render(<AppCard app={mockApp} />)
-
-      fireEvent.click(screen.getByTestId('popover-trigger'))
-      await waitFor(() => {
-        fireEvent.click(screen.getByText('app.accessControl'))
-      })
-
-      await waitFor(() => {
-        expect(screen.getByTestId('access-control-modal')).toBeInTheDocument()
-      })
-
-      // Click close button to trigger onClose
-      fireEvent.click(screen.getByTestId('close-access-control'))
+      expect(await screen.findByTestId('access-control-modal')).toBeInTheDocument()
+      fireEvent.click(screen.getByTestId('close-access-control-modal'))
 
       await waitFor(() => {
         expect(screen.queryByTestId('access-control-modal')).not.toBeInTheDocument()
       })
+      expect(onRefresh).not.toHaveBeenCalled()
+    })
+
+    it('should upgrade runtime and redirect to the new workflow app', async () => {
+      mockWebappAuthEnabled = true
+      renderAppCard({ mode: AppModeEnum.WORKFLOW, runtime_type: 'classic' })
+
+      const menu = await openOperationsMenu()
+      fireEvent.click(within(menu).getByRole('menuitem', { name: 'app.upgradeRuntime' }))
+
+      await waitFor(() => {
+        expect(mockUpgradeAppRuntime).toHaveBeenCalledWith('test-app-id')
+      })
+      expect(mockToastSuccess).toHaveBeenCalledWith('workflow.sandboxMigrationModal.upgrade')
+      expect(mockPush).toHaveBeenCalledWith('/app/upgraded-app-id/workflow?upgraded_from=test-app-id&upgraded_from_name=Test+App')
+    })
+  })
+
+  // Delete flow should stay explicit and safe.
+  describe('Deleting', () => {
+    it('should enable confirmation only after the app name matches and then delete successfully', async () => {
+      renderAppCard()
+
+      const menu = await openOperationsMenu()
+      fireEvent.click(within(menu).getByRole('menuitem', { name: 'common.operation.delete' }))
+
+      const dialog = await screen.findByRole('alertdialog')
+      const textbox = within(dialog).getByRole('textbox')
+      const confirmButton = within(dialog).getByRole('button', { name: 'common.operation.confirm' })
+
+      expect(confirmButton).toBeDisabled()
+
+      fireEvent.change(textbox, { target: { value: 'Wrong Name' } })
+      expect(confirmButton).toBeDisabled()
+
+      fireEvent.change(textbox, { target: { value: 'Test App' } })
+      expect(confirmButton).toBeEnabled()
+
+      fireEvent.click(confirmButton)
+
+      await waitFor(() => {
+        expect(mockDeleteAppMutation).toHaveBeenCalledWith('test-app-id')
+      })
+      expect(mockToastSuccess).toHaveBeenCalledWith('app.appDeleted')
+      expect(mockOnPlanInfoChanged).toHaveBeenCalledTimes(1)
+      await waitFor(() => {
+        expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+      })
+    })
+
+    it('should surface a toast error when deletion fails', async () => {
+      mockDeleteAppMutation.mockRejectedValueOnce(new Error('Delete failed'))
+      renderAppCard()
+
+      const menu = await openOperationsMenu()
+      fireEvent.click(within(menu).getByRole('menuitem', { name: 'common.operation.delete' }))
+
+      const dialog = await screen.findByRole('alertdialog')
+      fireEvent.change(within(dialog).getByRole('textbox'), { target: { value: 'Test App' } })
+      fireEvent.click(within(dialog).getByRole('button', { name: 'common.operation.confirm' }))
+
+      await waitFor(() => {
+        expect(mockToastError).toHaveBeenCalledWith('app.appDeleteFailed: Delete failed')
+      })
+    })
+  })
+
+  describe('Switching', () => {
+    it('should close the switch modal without refreshing when dismissed', async () => {
+      const { onRefresh } = renderAppCard({ mode: AppModeEnum.CHAT })
+
+      const menu = await openOperationsMenu()
+      fireEvent.click(within(menu).getByRole('menuitem', { name: 'app.switch' }))
+
+      expect(await screen.findByTestId('switch-app-modal')).toBeInTheDocument()
+      fireEvent.click(screen.getByTestId('close-switch-modal'))
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('switch-app-modal')).not.toBeInTheDocument()
+      })
+      expect(onRefresh).not.toHaveBeenCalled()
     })
   })
 })
