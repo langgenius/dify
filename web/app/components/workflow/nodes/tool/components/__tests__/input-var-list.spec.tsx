@@ -19,6 +19,7 @@ import InputVarList from '../input-var-list'
 
 const mockUseAvailableVarList = vi.fn()
 const mockFetchNextPage = vi.fn()
+let mockLanguage = 'en_US'
 const mockApps: App[] = [
   {
     id: 'app-1',
@@ -59,7 +60,7 @@ class MockMutationObserver {
 }
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useLanguage: () => 'en_US',
+  useLanguage: () => mockLanguage,
   useModelList: () => ({
     data: [{
       provider: 'openai',
@@ -190,24 +191,33 @@ vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference
     onOpen,
     schema,
     defaultVarKindType,
+    filterVar,
   }: {
     onChange: (value: string[] | string, kind: ToolVarType) => void
     onOpen?: () => void
     schema?: { variable?: string }
     defaultVarKindType?: ToolVarType
+    filterVar?: (payload: { type: VarType }) => boolean
   }) => (
-    <button
-      type="button"
-      onClick={() => {
-        onOpen?.()
-        if (defaultVarKindType === ToolVarType.variable)
-          onChange(['node-1', 'file'], ToolVarType.variable)
-        else
-          onChange('42', defaultVarKindType || ToolVarType.constant)
-      }}
-    >
-      {`pick-${schema?.variable || 'var'}`}
-    </button>
+    <div>
+      <button
+        type="button"
+        onClick={() => {
+          onOpen?.()
+          if (defaultVarKindType === ToolVarType.variable)
+            onChange(['node-1', 'file'], ToolVarType.variable)
+          else
+            onChange('42', defaultVarKindType || ToolVarType.constant)
+        }}
+      >
+        {`pick-${schema?.variable || 'var'}`}
+      </button>
+      {filterVar && (
+        <div data-testid={`filter-${schema?.variable || 'var'}`}>
+          {`${String(filterVar({ type: VarType.file }))}:${String(filterVar({ type: VarType.arrayFile }))}:${String(filterVar({ type: VarType.string }))}`}
+        </div>
+      )}
+    </div>
   ),
 }))
 
@@ -356,6 +366,7 @@ describe('InputVarList', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockLanguage = 'en_US'
     mockUseAvailableVarList.mockReturnValue({
       availableVars: [{
         nodeId: 'node-1',
@@ -393,6 +404,9 @@ describe('InputVarList', () => {
     expect(screen.getByText('String')).toBeInTheDocument()
     expect(screen.getByText('Required')).toBeInTheDocument()
     expect(screen.getByText('query-tip')).toBeInTheDocument()
+    const availableVarConfig = mockUseAvailableVarList.mock.calls[0]?.[1] as { filterVar?: (payload: { type: VarType }) => boolean }
+    expect(availableVarConfig.filterVar?.({ type: VarType.secret })).toBe(true)
+    expect(availableVarConfig.filterVar?.({ type: VarType.file })).toBe(false)
 
     await user.type(screen.getByLabelText('workflow.nodes.http.insertVarPlaceholder'), 'hello')
 
@@ -507,6 +521,84 @@ describe('InputVarList', () => {
         provider: 'openai',
         model: 'gpt-4o',
         model_type: 'llm',
+      },
+    })
+  })
+
+  it('should render tool and select parameter labels and update existing picker values', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+
+    renderInputVarList(
+      <TestHarness
+        schema={[
+          createSchemaItem('tool', FormTypeEnum.toolSelector),
+          createSchemaItem('choice', FormTypeEnum.dynamicSelect),
+          createSchemaItem('attachment', FormTypeEnum.files),
+        ]}
+        initialValue={{
+          choice: {
+            type: ToolVarType.variable,
+            value: ['node-1', 'existing'],
+          },
+        }}
+        onChangeSpy={onChange}
+      />,
+    )
+
+    expect(screen.getByText('ToolSelector')).toBeInTheDocument()
+    expect(screen.getByText('Select')).toBeInTheDocument()
+    expect(screen.getByText('Files')).toBeInTheDocument()
+    expect(screen.getByTestId('filter-var')).toHaveTextContent('true:true:false')
+
+    await user.click(screen.getByRole('button', { name: 'pick-choice' }))
+
+    expect(onChange).toHaveBeenCalledWith({
+      choice: {
+        type: ToolVarType.variable,
+        value: ['node-1', 'file'],
+      },
+    })
+  })
+
+  it('should fall back to en_US labels and tooltips for the active language and preserve constant picker defaults', async () => {
+    mockLanguage = 'zh_Hans'
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+
+    renderInputVarList(
+      <TestHarness
+        schema={[
+          createSchemaItem('limit', FormTypeEnum.textNumber, {
+            label: {
+              en_US: 'Limit',
+              zh_Hans: '',
+            },
+            tooltip: {
+              en_US: 'Limit tooltip',
+              zh_Hans: '',
+            },
+          }),
+        ]}
+        initialValue={{
+          limit: {
+            type: ToolVarType.constant,
+            value: '5',
+          },
+        }}
+        onChangeSpy={onChange}
+      />,
+    )
+
+    expect(screen.getByText('Limit')).toBeInTheDocument()
+    expect(screen.getByText('Limit tooltip')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'pick-limit' }))
+
+    expect(onChange).toHaveBeenCalledWith({
+      limit: {
+        type: ToolVarType.constant,
+        value: '42',
       },
     })
   })

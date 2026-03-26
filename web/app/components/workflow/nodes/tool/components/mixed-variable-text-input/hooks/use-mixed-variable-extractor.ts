@@ -53,7 +53,7 @@ export const buildAssembleNestedNodeConfig = (
   }
 }
 
-const resolvePromptText = (item?: PromptItem): string => {
+export const resolvePromptText = (item?: PromptItem): string => {
   if (!item)
     return ''
   if (item.edition_type === EditionType.jinja2)
@@ -61,7 +61,7 @@ const resolvePromptText = (item?: PromptItem): string => {
   return item.text || ''
 }
 
-const getUserPromptText = (promptTemplate?: PromptTemplateItem[] | PromptItem): string => {
+export const getUserPromptText = (promptTemplate?: PromptTemplateItem[] | PromptItem): string => {
   if (!promptTemplate)
     return ''
   if (Array.isArray(promptTemplate)) {
@@ -73,7 +73,7 @@ const getUserPromptText = (promptTemplate?: PromptTemplateItem[] | PromptItem): 
   return resolvePromptText(promptTemplate)
 }
 
-const hasUserPromptTemplate = (promptTemplate: PromptTemplateItem[] | PromptItem): boolean => {
+export const hasUserPromptTemplate = (promptTemplate: PromptTemplateItem[] | PromptItem): boolean => {
   if (!Array.isArray(promptTemplate))
     return true
   return promptTemplate.some(item => !isPromptMessageContext(item) && item.role === PromptRole.user)
@@ -93,7 +93,7 @@ const applyPromptText = (item: PromptItem, text: string): PromptItem => {
   }
 }
 
-const buildPromptTemplateWithText = (
+export const buildPromptTemplateWithText = (
   promptTemplate: PromptTemplateItem[] | PromptItem,
   text: string,
 ): PromptTemplateItem[] | PromptItem => {

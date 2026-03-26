@@ -83,4 +83,17 @@ describe('Tool mixed variable placeholder', () => {
     expect(mockTextNode).toHaveBeenCalledWith('/')
     expect(mockDispatchCommand).toHaveBeenCalledWith(FOCUS_COMMAND, expect.any(FocusEvent))
   })
+
+  it('should hide slash insertion actions when variable insertion is disabled', () => {
+    render(<Placeholder disableVariableInsertion />)
+
+    expect(screen.queryByText('workflow.nodes.tool.insertPlaceholder2')).not.toBeInTheDocument()
+    expect(screen.queryByText('/')).not.toBeInTheDocument()
+  })
+
+  it('should hide the type badge when hideBadge is enabled', () => {
+    render(<Placeholder hideBadge />)
+
+    expect(screen.queryByText('String')).not.toBeInTheDocument()
+  })
 })

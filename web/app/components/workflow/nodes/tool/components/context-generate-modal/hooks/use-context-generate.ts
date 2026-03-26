@@ -47,7 +47,7 @@ const createChatMessageId = () => {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 }
 
-const buildValueSelector = (nodeId: string, variable: Var): ValueSelector => {
+export const buildValueSelector = (nodeId: string, variable: Var): ValueSelector => {
   if (!nodeId)
     return variable.variable.split('.')
   const isSys = variable.variable.startsWith('sys.')
@@ -59,7 +59,7 @@ const buildValueSelector = (nodeId: string, variable: Var): ValueSelector => {
   return [nodeId, ...variable.variable.split('.')]
 }
 
-const resolveVarSchema = (variable: Var): Record<string, unknown> | undefined => {
+export const resolveVarSchema = (variable: Var): Record<string, unknown> | undefined => {
   const children = variable.children
   if (!children || Array.isArray(children))
     return undefined
@@ -79,7 +79,7 @@ const resolveVarSchema = (variable: Var): Record<string, unknown> | undefined =>
   return schema as Record<string, unknown>
 }
 
-const toAvailableVarsPayload = (
+export const toAvailableVarsPayload = (
   availableVars: NodeOutPutVar[],
   nodeMap: Map<string, Node>,
 ): ContextGenerateAvailableVar[] => {
@@ -106,7 +106,7 @@ const toAvailableVarsPayload = (
   return results
 }
 
-const mapCodeNodeOutputs = (outputs?: Record<string, { type: string } | { type: string, children?: null }>) => {
+export const mapCodeNodeOutputs = (outputs?: Record<string, { type: string } | { type: string, children?: null }>) => {
   if (!outputs)
     return undefined
   const next: Record<string, { type: string }> = {}
@@ -118,7 +118,7 @@ const mapCodeNodeOutputs = (outputs?: Record<string, { type: string } | { type: 
   return Object.keys(next).length ? next : undefined
 }
 
-const mapCodeNodeVariables = (variables?: Array<{ variable: string, value_selector?: string[] | null }>) => {
+export const mapCodeNodeVariables = (variables?: Array<{ variable: string, value_selector?: string[] | null }>) => {
   if (!variables)
     return undefined
   return variables.map(variable => ({

@@ -5,7 +5,7 @@ import type { NestedNodeConfig } from '@/app/components/workflow/nodes/_base/typ
 import type { CodeNodeType } from '@/app/components/workflow/nodes/code/types'
 import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
 import type { ToolNodeType } from '@/app/components/workflow/nodes/tool/types'
-import type { Node, PromptItem, PromptTemplateItem } from '@/app/components/workflow/types'
+import type { Node } from '@/app/components/workflow/types'
 import { Dialog, DialogPanel, Transition, TransitionChild } from '@headlessui/react'
 import { RiCloseLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
@@ -19,7 +19,8 @@ import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { NULL_STRATEGY } from '@/app/components/workflow/nodes/_base/constants'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { useStore as useWorkflowStore } from '@/app/components/workflow/store'
-import { EditionType, isPromptMessageContext, PromptRole, VarType } from '@/app/components/workflow/types'
+import { VarType } from '@/app/components/workflow/types'
+import { getSubGraphUserPromptText, resolveSubGraphAssembleOutputSelector } from './helpers'
 import SubGraphCanvas from './sub-graph-canvas'
 
 const SubGraphModal: FC<SubGraphModalProps> = (props) => {
@@ -153,26 +154,6 @@ const SubGraphModal: FC<SubGraphModalProps> = (props) => {
       handleNestedNodeConfigChange(nestedNodeConfig)
   }, [handleNestedNodeConfigChange, nestedNodeConfig, toolParam])
 
-  const getUserPromptText = useCallback((promptTemplate?: PromptTemplateItem[] | PromptItem) => {
-    if (!promptTemplate)
-      return ''
-    const resolveText = (item?: PromptItem) => {
-      if (!item)
-        return ''
-      if (item.edition_type === EditionType.jinja2)
-        return item.jinja2_text || item.text || ''
-      return item.text || ''
-    }
-    if (Array.isArray(promptTemplate)) {
-      for (const item of promptTemplate) {
-        if (!isPromptMessageContext(item) && item.role === PromptRole.user)
-          return resolveText(item)
-      }
-      return ''
-    }
-    return resolveText(promptTemplate)
-  }, [])
-
   // TODO: handle external workflow updates while sub-graph modal is open.
   const handleSave = useCallback((subGraphNodes: Node[]) => {
     const extractorNodeData = subGraphNodes.find(node => node.id === extractorNodeId) as Node<LLMNodeType | CodeNodeType> | undefined
@@ -195,22 +176,8 @@ const SubGraphModal: FC<SubGraphModalProps> = (props) => {
       }
     }
 
-    const resolveAssembleOutputSelector = (rawSelector: unknown, outputKeys: string[]) => {
-      if (outputKeys.length === 0)
-        return null
-      const normalizedSelector = Array.isArray(rawSelector)
-        ? (rawSelector[0] === extractorNodeId ? rawSelector.slice(1) : rawSelector)
-        : []
-      const currentKey = normalizedSelector[0]
-      const fallbackKey = outputKeys.includes('result') ? 'result' : outputKeys[0]
-      const nextKey = outputKeys.includes(currentKey) ? currentKey : fallbackKey
-      if (!nextKey || nextKey === currentKey)
-        return null
-      return [nextKey, ...normalizedSelector.slice(1)]
-    }
-
     const userPromptText = isAgentVariant
-      ? getUserPromptText((extractorNodeData.data as LLMNodeType).prompt_template)
+      ? getSubGraphUserPromptText((extractorNodeData.data as LLMNodeType).prompt_template)
       : ''
     const placeholder = isAgentVariant && resolvedAgentNodeId ? `{{@${resolvedAgentNodeId}.context@}}` : ''
     const nextValue = isAgentVariant
@@ -243,7 +210,7 @@ const SubGraphModal: FC<SubGraphModalProps> = (props) => {
         let nextNestedConfig = baseNestedConfig
         if (!isAgentVariant) {
           const outputKeys = Object.keys((extractorNodeData.data as CodeNodeType).outputs || {})
-          const nextSelector = resolveAssembleOutputSelector(baseNestedConfig?.output_selector, outputKeys)
+          const nextSelector = resolveSubGraphAssembleOutputSelector(baseNestedConfig?.output_selector, outputKeys, extractorNodeId)
           if (nextSelector) {
             nextNestedConfig = {
               ...baseNestedConfig,
@@ -273,7 +240,7 @@ const SubGraphModal: FC<SubGraphModalProps> = (props) => {
     setNodes(nextNodes)
     setWorkflowNodes(nextNodes)
     setControlPromptEditorRerenderKey(Date.now())
-  }, [assemblePlaceholder, extractorNodeId, getUserPromptText, isAgentVariant, nestedNodeConfig, paramKey, reactflowStore, resolvedAgentNodeId, setControlPromptEditorRerenderKey, setWorkflowNodes, toolNodeId])
+  }, [assemblePlaceholder, extractorNodeId, isAgentVariant, nestedNodeConfig, paramKey, reactflowStore, resolvedAgentNodeId, setControlPromptEditorRerenderKey, setWorkflowNodes, toolNodeId])
 
   return (
     <Transition appear show={isOpen} as={Fragment}>
