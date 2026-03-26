@@ -16,6 +16,30 @@ def test_render_body_template_replaces_variable_values():
     assert result == "Hello World https://example.com"
 
 
+def test_render_body_template_inserts_spacing_around_url_placeholder():
+    config = EmailDeliveryConfig(
+        recipients=EmailRecipients(),
+        subject="Subject",
+        body="Approval:{{#url#}}Hi",
+    )
+
+    result = config.render_body_template(body=config.body, url="https://example.com", variable_pool=None)
+
+    assert result == "Approval: https://example.com Hi"
+
+
+def test_render_body_template_preserves_existing_whitespace_around_url_placeholder():
+    config = EmailDeliveryConfig(
+        recipients=EmailRecipients(),
+        subject="Subject",
+        body="Approval:\n{{#url#}}\n\nHi",
+    )
+
+    result = config.render_body_template(body=config.body, url="https://example.com", variable_pool=None)
+
+    assert result == "Approval:\nhttps://example.com\n\nHi"
+
+
 def test_render_markdown_body_renders_markdown_to_html():
     rendered = EmailDeliveryConfig.render_markdown_body("**Bold** and [link](https://example.com)")
 
