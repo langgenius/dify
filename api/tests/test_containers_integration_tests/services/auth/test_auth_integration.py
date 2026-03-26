@@ -140,7 +140,7 @@ class TestAuthIntegration:
         category,
         firecrawl_credentials,
     ):
-        args = {"category": category, "provider": AuthType.FIRECRAWL, "credentials": firecrawl_credentials}
+        app = flask_app_with_containers
         success_response = self._create_success_response()
 
         results = []
@@ -148,11 +148,21 @@ class TestAuthIntegration:
 
         def create_auth():
             try:
-                with (
-                    patch("services.auth.firecrawl.firecrawl.httpx.post", return_value=success_response),
-                    patch("services.auth.api_key_auth_service.encrypter.encrypt_token", return_value="encrypted_key"),
-                ):
-                    ApiKeyAuthService.create_provider_auth(tenant_id_1, args)
+                with app.app_context():
+                    # Each thread needs its own copy of args since create_provider_auth mutates credentials
+                    thread_args = {
+                        "category": category,
+                        "provider": AuthType.FIRECRAWL,
+                        "credentials": {"auth_type": "bearer", "config": {"api_key": "fc_test_key_123"}},
+                    }
+                    with (
+                        patch("services.auth.firecrawl.firecrawl.httpx.post", return_value=success_response),
+                        patch(
+                            "services.auth.api_key_auth_service.encrypter.encrypt_token",
+                            return_value="encrypted_key",
+                        ),
+                    ):
+                        ApiKeyAuthService.create_provider_auth(tenant_id_1, thread_args)
                 results.append("success")
             except Exception as e:
                 exceptions.append(e)
