@@ -37,7 +37,6 @@ from core.agent.entities import AgentToolEntity
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.helper.module_import_helper import load_single_subclass_from_source
 from core.helper.position_helper import is_filtered
-from core.plugin.entities.plugin_daemon import CredentialType
 from core.tools.__base.tool import Tool
 from core.tools.builtin_tool.provider import BuiltinToolProviderController
 from core.tools.builtin_tool.providers._positions import BuiltinToolProviderSort
@@ -326,7 +325,7 @@ class ToolManager:
                     tenant_id=tenant_id,
                     user_id=user_id,
                     credentials=dict(decrypted_credentials),
-                    credential_type=CredentialType.of(builtin_provider.credential_type),
+                    credential_type=builtin_provider.credential_type,
                     runtime_parameters={},
                     invoke_from=invoke_from,
                     tool_invoke_from=tool_invoke_from,

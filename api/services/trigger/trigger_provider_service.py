@@ -198,7 +198,7 @@ class TriggerProviderService:
                         credentials=dict(credential_encrypter.encrypt(dict(credentials)))
                         if credential_encrypter
                         else {},
-                        credential_type=credential_type.value,
+                        credential_type=credential_type,
                         credential_expires_at=credential_expires_at,
                         expires_at=expires_at,
                     )
