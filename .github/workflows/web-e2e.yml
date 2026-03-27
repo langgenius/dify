@@ -43,11 +43,11 @@ jobs:
 
       - name: Start middleware stack
         working-directory: ./e2e
-        run: pnpm e2e:middleware:up
+        run: vp run e2e:middleware:up
 
       - name: Install Playwright browser
         working-directory: ./e2e
-        run: pnpm e2e:install
+        run: vp run e2e:install
 
       - name: Run source-api and built-web Cucumber E2E tests
         working-directory: ./e2e
@@ -57,7 +57,7 @@ jobs:
           E2E_ADMIN_PASSWORD: E2eAdmin12345
           E2E_FORCE_WEB_BUILD: "1"
           E2E_INIT_PASSWORD: E2eInit12345
-        run: pnpm e2e
+        run: vp run e2e
 
       - name: Upload Cucumber report
         if: ${{ !cancelled() }}
@@ -78,4 +78,4 @@ jobs:
       - name: Stop middleware stack
         if: ${{ always() }}
         working-directory: ./e2e
-        run: pnpm e2e:middleware:down
+        run: vp run e2e:middleware:down
