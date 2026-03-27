@@ -134,7 +134,7 @@ const FileTabs = () => {
             <AlertDialogCancelButton>
               {t('operation.cancel', { ns: 'common' })}
             </AlertDialogCancelButton>
-            <AlertDialogConfirmButton destructive={false} onClick={handleConfirmClose}>
+            <AlertDialogConfirmButton onClick={handleConfirmClose}>
               {t('skillSidebar.unsavedChanges.confirmClose')}
             </AlertDialogConfirmButton>
           </AlertDialogActions>

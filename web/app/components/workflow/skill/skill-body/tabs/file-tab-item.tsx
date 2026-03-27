@@ -74,7 +74,7 @@ const FileTabItem = ({
         <span
           className={cn(
             'max-w-40 truncate text-[13px] font-normal leading-4',
-            isPreview && 'italic',
+            isPreview && 'pr-[0.5px] italic',
             isActive
               ? 'text-text-primary'
               : 'text-text-tertiary',

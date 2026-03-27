@@ -210,7 +210,9 @@ describe('FileTabs', () => {
       render(<FileTabs />)
 
       fireEvent.click(screen.getByRole('button', { name: /common\.operation\.close/i }))
-      fireEvent.click(screen.getByRole('button', { name: /workflow\.skillSidebar\.unsavedChanges\.confirmClose/i }))
+      const confirmButton = screen.getByRole('button', { name: /workflow\.skillSidebar\.unsavedChanges\.confirmClose/i })
+      expect(confirmButton.className).toContain('btn-destructive')
+      fireEvent.click(confirmButton)
 
       expect(mocks.closeTab).toHaveBeenCalledTimes(1)
       expect(mocks.closeTab).toHaveBeenCalledWith('file-1')

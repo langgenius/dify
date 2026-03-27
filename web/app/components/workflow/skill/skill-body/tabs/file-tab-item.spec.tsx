@@ -46,7 +46,7 @@ describe('FileTabItem', () => {
 
       render(<FileTabItem {...props} />)
 
-      expect(screen.getByText('readme.md')).toHaveClass('italic')
+      expect(screen.getByText('readme.md')).toHaveClass('italic', 'pr-[0.5px]')
     })
   })
 
