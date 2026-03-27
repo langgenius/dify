@@ -67,6 +67,7 @@ class CustomizedSnippetsApi(Resource):
             limit=query.limit,
             keyword=query.keyword,
             is_published=query.is_published,
+            creators=query.creators,
         )
 
         return {

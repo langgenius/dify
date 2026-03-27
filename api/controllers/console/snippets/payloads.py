@@ -1,6 +1,6 @@
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class SnippetListQuery(BaseModel):
@@ -10,6 +10,19 @@ class SnippetListQuery(BaseModel):
     limit: int = Field(default=20, ge=1, le=100)
     keyword: str | None = None
     is_published: bool | None = Field(default=None, description="Filter by published status")
+    creators: list[str] | None = Field(default=None, description="Filter by creator account IDs")
+
+    @field_validator("creators", mode="before")
+    @classmethod
+    def parse_creators(cls, value: object) -> list[str] | None:
+        """Normalize creators filter from query string or list input."""
+        if value is None:
+            return None
+        if isinstance(value, str):
+            return [creator.strip() for creator in value.split(",") if creator.strip()] or None
+        if isinstance(value, list):
+            return [str(creator).strip() for creator in value if str(creator).strip()] or None
+        return None
 
 
 class IconInfo(BaseModel):

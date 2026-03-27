@@ -49,6 +49,7 @@ class SnippetService:
         limit: int = 20,
         keyword: str | None = None,
         is_published: bool | None = None,
+        creators: list[str] | None = None,
     ) -> tuple[Sequence[CustomizedSnippet], int, bool]:
         """
         Get paginated list of snippets with optional search.
@@ -58,6 +59,7 @@ class SnippetService:
         :param limit: Number of items per page
         :param keyword: Optional search keyword for name/description
         :param is_published: Optional filter by published status (True/False/None for all)
+        :param creators: Optional filter by creator account IDs
         :return: Tuple of (snippets list, total count, has_more flag)
         """
         stmt = (
@@ -73,6 +75,9 @@ class SnippetService:
 
         if is_published is not None:
             stmt = stmt.where(CustomizedSnippet.is_published == is_published)
+
+        if creators:
+            stmt = stmt.where(CustomizedSnippet.created_by.in_(creators))
 
         # Get total count
         count_stmt = select(func.count()).select_from(stmt.subquery())
