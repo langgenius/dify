@@ -1,9 +1,14 @@
+import type { SnippetWorkflow } from '@/types/snippet'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { consoleQuery } from '@/service/client'
 
 type WorkflowRunsParams = {
   last_id?: string
   limit?: number
+}
+
+const isNotFoundError = (error: unknown) => {
+  return !!error && typeof error === 'object' && 'status' in error && error.status === 404
 }
 
 const invalidateSnippetWorkflowQueries = async (
@@ -34,13 +39,33 @@ const invalidateSnippetWorkflowQueries = async (
   ])
 }
 
-export const useSnippetDraftWorkflow = (snippetId: string) => {
-  return useQuery(consoleQuery.snippets.draftWorkflow.queryOptions({
+export const useSnippetDraftWorkflow = (
+  snippetId: string,
+  onSuccess?: (draftWorkflow: SnippetWorkflow) => void,
+) => {
+  const queryOptions = consoleQuery.snippets.draftWorkflow.queryOptions({
     input: {
       params: { snippetId },
     },
     enabled: !!snippetId,
-  }))
+  })
+
+  return useQuery({
+    ...queryOptions,
+    queryFn: async (context) => {
+      try {
+        const draftWorkflow = await queryOptions.queryFn(context)
+        onSuccess?.(draftWorkflow)
+        return draftWorkflow
+      }
+      catch (error) {
+        if (isNotFoundError(error))
+          return undefined
+
+        throw error
+      }
+    },
+  })
 }
 
 export const useSnippetDraftConfig = (snippetId: string) => {
@@ -52,22 +77,46 @@ export const useSnippetDraftConfig = (snippetId: string) => {
   }))
 }
 
-export const useSnippetPublishedWorkflow = (snippetId: string) => {
-  return useQuery(consoleQuery.snippets.publishedWorkflow.queryOptions({
+export const useSnippetPublishedWorkflow = (
+  snippetId: string,
+  onSuccess?: (publishedWorkflow: SnippetWorkflow) => void,
+) => {
+  const queryOptions = consoleQuery.snippets.publishedWorkflow.queryOptions({
     input: {
       params: { snippetId },
     },
     enabled: !!snippetId,
-  }))
+  })
+
+  return useQuery({
+    ...queryOptions,
+    queryFn: async (context) => {
+      const publishedWorkflow = await queryOptions.queryFn(context)
+      onSuccess?.(publishedWorkflow)
+      return publishedWorkflow
+    },
+  })
 }
 
-export const useSnippetDefaultBlockConfigs = (snippetId: string) => {
-  return useQuery(consoleQuery.snippets.defaultBlockConfigs.queryOptions({
+export const useSnippetDefaultBlockConfigs = (
+  snippetId: string,
+  onSuccess?: (nodesDefaultConfigs: unknown) => void,
+) => {
+  const queryOptions = consoleQuery.snippets.defaultBlockConfigs.queryOptions({
     input: {
       params: { snippetId },
     },
     enabled: !!snippetId,
-  }))
+  })
+
+  return useQuery({
+    ...queryOptions,
+    queryFn: async (context) => {
+      const nodesDefaultConfigs = await queryOptions.queryFn(context)
+      onSuccess?.(nodesDefaultConfigs)
+      return nodesDefaultConfigs
+    },
+  })
 }
 
 export const useSnippetWorkflowRuns = (snippetId: string, params: WorkflowRunsParams = {}) => {

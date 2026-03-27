@@ -4,11 +4,38 @@ import { PipelineInputVarType } from '@/models/pipeline'
 import SnippetPage from '..'
 import { useSnippetDetailStore } from '../store'
 
-const mockUseSnippetDetail = vi.fn()
+const mockUseSnippetInit = vi.fn()
 
-vi.mock('@/service/use-snippets', () => ({
-  useSnippetDetail: (snippetId: string) => mockUseSnippetDetail(snippetId),
+vi.mock('../hooks/use-snippet-init', () => ({
+  useSnippetInit: (snippetId: string) => mockUseSnippetInit(snippetId),
 }))
+
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => ({
+    replace: vi.fn(),
+    push: vi.fn(),
+  }),
+}))
+
+vi.mock('@/service/use-snippets', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/use-snippets')>()
+
+  return {
+    ...actual,
+    useUpdateSnippetMutation: () => ({
+      mutate: vi.fn(),
+      isPending: false,
+    }),
+    useExportSnippetMutation: () => ({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    }),
+    useDeleteSnippetMutation: () => ({
+      mutate: vi.fn(),
+      isPending: false,
+    }),
+  }
+})
 
 vi.mock('@/service/use-common', () => ({
   useFileUploadConfig: () => ({
@@ -122,7 +149,7 @@ describe('SnippetPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     useSnippetDetailStore.getState().reset()
-    mockUseSnippetDetail.mockReturnValue({
+    mockUseSnippetInit.mockReturnValue({
       data: mockSnippetDetail,
       isLoading: false,
     })
@@ -157,15 +184,14 @@ describe('SnippetPage', () => {
     expect(screen.getByText('snippet.publishMenuCurrentDraft')).toBeInTheDocument()
   })
 
-  it('should render a controlled not found state', () => {
-    mockUseSnippetDetail.mockReturnValue({
+  it('should render loading fallback when snippet data is unavailable', () => {
+    mockUseSnippetInit.mockReturnValue({
       data: null,
       isLoading: false,
     })
 
     render(<SnippetPage snippetId="missing-snippet" />)
 
-    expect(screen.getByText('snippet.notFoundTitle')).toBeInTheDocument()
-    expect(screen.getByText('snippet.notFoundDescription')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toBeInTheDocument()
   })
 })

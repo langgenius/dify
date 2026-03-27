@@ -1,6 +1,75 @@
-// import { useSnippetDetail } from '@/service/use-snippets'
-import { useSnippetDetail } from '@/service/use-snippets.mock'
+import { useMemo } from 'react'
+import { useWorkflowStore } from '@/app/components/workflow/store'
+import {
+  useSnippetDefaultBlockConfigs,
+  useSnippetDraftWorkflow,
+  useSnippetPublishedWorkflow,
+} from '@/service/use-snippet-workflows'
+import {
+  buildSnippetDetailPayload,
+  useSnippetApiDetail,
+} from '@/service/use-snippets'
+
+const normalizeNodesDefaultConfigs = (nodesDefaultConfigs: unknown) => {
+  if (!nodesDefaultConfigs || typeof nodesDefaultConfigs !== 'object')
+    return {}
+
+  if (!Array.isArray(nodesDefaultConfigs))
+    return nodesDefaultConfigs as Record<string, unknown>
+
+  return nodesDefaultConfigs.reduce((acc, item) => {
+    if (
+      item
+      && typeof item === 'object'
+      && 'type' in item
+      && 'config' in item
+      && typeof item.type === 'string'
+    ) {
+      acc[item.type] = item.config
+    }
+
+    return acc
+  }, {} as Record<string, unknown>)
+}
+
+const isNotFoundError = (error: unknown) => {
+  return !!error && typeof error === 'object' && 'status' in error && error.status === 404
+}
 
 export const useSnippetInit = (snippetId: string) => {
-  return useSnippetDetail(snippetId)
+  const workflowStore = useWorkflowStore()
+  const snippetApiDetail = useSnippetApiDetail(snippetId)
+  const draftWorkflowQuery = useSnippetDraftWorkflow(snippetId, (draftWorkflow) => {
+    const {
+      setDraftUpdatedAt,
+      setSyncWorkflowDraftHash,
+    } = workflowStore.getState()
+
+    setDraftUpdatedAt(draftWorkflow.updated_at)
+    setSyncWorkflowDraftHash(draftWorkflow.hash)
+  })
+  useSnippetDefaultBlockConfigs(snippetId, (nodesDefaultConfigs) => {
+    workflowStore.setState({
+      nodesDefaultConfigs: normalizeNodesDefaultConfigs(nodesDefaultConfigs),
+    })
+  })
+  useSnippetPublishedWorkflow(snippetId, (publishedWorkflow) => {
+    workflowStore.getState().setPublishedAt(publishedWorkflow.created_at)
+  })
+
+  const data = useMemo(() => {
+    if (snippetApiDetail.data && !draftWorkflowQuery.isLoading)
+      return buildSnippetDetailPayload(snippetApiDetail.data, draftWorkflowQuery.data)
+
+    if (snippetApiDetail.error && isNotFoundError(snippetApiDetail.error))
+      return null
+
+    return undefined
+  }, [draftWorkflowQuery.data, draftWorkflowQuery.isLoading, snippetApiDetail.data, snippetApiDetail.error])
+
+  return {
+    ...snippetApiDetail,
+    data,
+    isLoading: snippetApiDetail.isLoading || draftWorkflowQuery.isLoading,
+  }
 }

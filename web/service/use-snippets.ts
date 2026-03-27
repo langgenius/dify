@@ -6,12 +6,10 @@ import type {
   SnippetListItem as SnippetListItemUIModel,
 } from '@/models/snippet'
 import type {
-  CreateSnippetPayload,
   Snippet as SnippetContract,
   SnippetDSLImportResponse,
   SnippetListResponse,
   SnippetWorkflow,
-  UpdateSnippetPayload,
 } from '@/types/snippet'
 import {
   keepPreviousData,
@@ -103,7 +101,7 @@ const toSnippetCanvasData = (workflow?: SnippetWorkflow): SnippetCanvasData => {
   }
 }
 
-const toSnippetDetailPayload = (snippet: SnippetContract, workflow?: SnippetWorkflow): SnippetDetailPayload => {
+export const buildSnippetDetailPayload = (snippet: SnippetContract, workflow?: SnippetWorkflow): SnippetDetailPayload => {
   const inputFields = Array.isArray(snippet.input_fields)
     ? snippet.input_fields as SnippetInputFieldUIModel[]
     : []
@@ -211,7 +209,7 @@ export const useSnippetDetail = (snippetId: string) => {
           }),
         ])
 
-        return toSnippetDetailPayload(snippet, workflow)
+        return buildSnippetDetailPayload(snippet, workflow)
       }
       catch (error) {
         if (isNotFoundError(error))
@@ -340,11 +338,4 @@ export const useConfirmSnippetImportMutation = () => {
       })
     },
   })
-}
-
-export type {
-  CreateSnippetPayload,
-  SnippetDSLImportResponse,
-  SnippetListResponse,
-  UpdateSnippetPayload,
 }

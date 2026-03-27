@@ -2,7 +2,6 @@
 
 import type { SnippetSection } from '@/models/snippet'
 import { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import WorkflowWithDefaultContext from '@/app/components/workflow'
 import { WorkflowContextProvider } from '@/app/components/workflow/context'
@@ -22,7 +21,6 @@ const SnippetPage = ({
   snippetId,
   section = 'orchestrate',
 }: SnippetPageProps) => {
-  const { t } = useTranslation('snippet')
   const { data, isLoading } = useSnippetInit(snippetId)
   const nodesData = useMemo(() => {
     if (!data)
@@ -37,22 +35,10 @@ const SnippetPage = ({
     return initialEdges(data.graph.edges, data.graph.nodes)
   }, [data])
 
-  if (isLoading) {
+  if (!data || isLoading) {
     return (
       <div className="flex h-full items-center justify-center bg-background-body">
         <Loading />
-      </div>
-    )
-  }
-
-  if (!data) {
-    return (
-      <div className="flex h-full items-center justify-center bg-background-body px-6">
-        <div className="w-full max-w-md rounded-2xl border border-divider-subtle bg-components-card-bg p-8 text-center shadow-sm">
-          <div className="text-3xl font-semibold text-text-primary">404</div>
-          <div className="pt-3 text-text-primary system-md-semibold">{t('notFoundTitle')}</div>
-          <div className="pt-2 text-text-tertiary system-sm-regular">{t('notFoundDescription')}</div>
-        </div>
       </div>
     )
   }
