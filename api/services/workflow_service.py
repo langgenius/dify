@@ -21,6 +21,16 @@ from dify_graph.entities import GraphInitParams, WorkflowNodeExecution
 from dify_graph.entities.graph_config import NodeConfigDict
 from dify_graph.entities.pause_reason import HumanInputRequired
 from dify_graph.enums import (
+from enterprise.telemetry.draft_trace import enqueue_draft_node_execution_trace
+from enums.cloud_plan import CloudPlan
+from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
+from extensions.ext_database import db
+from extensions.ext_storage import storage
+from factories.file_factory import build_from_mapping, build_from_mappings
+from dify_graph.entities import GraphInitParams, WorkflowNodeExecution
+from dify_graph.entities.graph_config import NodeConfigDict
+from dify_graph.entities.pause_reason import HumanInputRequired
+from dify_graph.enums import (
     ErrorStrategy,
     NodeType,
     WorkflowNodeExecutionMetadataKey,
@@ -840,6 +850,13 @@ class WorkflowService:
             )
             draft_var_saver.save(process_data=node_execution.process_data, outputs=outputs)
             session.commit()
+
+        enqueue_draft_node_execution_trace(
+            execution=workflow_node_execution,
+            outputs=outputs,
+            workflow_execution_id=None,
+            user_id=account.id,
+        )
 
         return workflow_node_execution
 

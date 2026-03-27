@@ -39,6 +39,9 @@ from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLA
 from core.workflow.node_factory import LATEST_VERSION, get_node_type_classes_mapping
 from core.workflow.workflow_entry import WorkflowEntry
 from dify_graph.entities.workflow_node_execution import (
+from enterprise.telemetry.draft_trace import enqueue_draft_node_execution_trace
+from extensions.ext_database import db
+from dify_graph.entities.workflow_node_execution import (
     WorkflowNodeExecution,
     WorkflowNodeExecutionStatus,
 )
@@ -571,6 +574,13 @@ class RagPipelineService:
                 outputs=workflow_node_execution.outputs,
             )
             session.commit()
+        if workflow_node_execution_db_model is not None:
+            enqueue_draft_node_execution_trace(
+                execution=workflow_node_execution_db_model,
+                outputs=workflow_node_execution.outputs,
+                workflow_execution_id=None,
+                user_id=account.id,
+            )
         return workflow_node_execution_db_model
 
     def run_datasource_workflow_node(
@@ -1334,6 +1344,12 @@ class RagPipelineService:
                 outputs=workflow_node_execution.outputs,
             )
             session.commit()
+        enqueue_draft_node_execution_trace(
+            execution=workflow_node_execution_db_model,
+            outputs=workflow_node_execution.outputs,
+            workflow_execution_id=None,
+            user_id=current_user.id,
+        )
         return workflow_node_execution_db_model
 
     def get_recommended_plugins(self, type: str) -> dict:
