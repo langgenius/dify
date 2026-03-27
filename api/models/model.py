@@ -40,12 +40,14 @@ from .enums import (
     ConversationFromSource,
     ConversationStatus,
     CreatorUserRole,
+    CustomizeTokenStrategy,
     FeedbackFromSource,
     FeedbackRating,
     InvokeFrom,
     MessageChainType,
     MessageFileBelongsTo,
     MessageStatus,
+    PromptType,
     ProviderQuotaType,
     TagType,
 )
@@ -649,8 +651,11 @@ class AppModelConfig(TypeBase):
     agent_mode: Mapped[str | None] = mapped_column(LongText, default=None)
     sensitive_word_avoidance: Mapped[str | None] = mapped_column(LongText, default=None)
     retriever_resource: Mapped[str | None] = mapped_column(LongText, default=None)
-    prompt_type: Mapped[str] = mapped_column(
-        String(255), nullable=False, server_default=sa.text("'simple'"), default="simple"
+    prompt_type: Mapped[PromptType] = mapped_column(
+        EnumText(PromptType, length=255),
+        nullable=False,
+        server_default=sa.text("'simple'"),
+        default=PromptType.SIMPLE,
     )
     chat_prompt_config: Mapped[str | None] = mapped_column(LongText, default=None)
     completion_prompt_config: Mapped[str | None] = mapped_column(LongText, default=None)
@@ -802,7 +807,7 @@ class AppModelConfig(TypeBase):
             "dataset_query_variable": self.dataset_query_variable,
             "pre_prompt": self.pre_prompt,
             "agent_mode": self.agent_mode_dict,
-            "prompt_type": self.prompt_type,
+            "prompt_type": self.prompt_type.value if isinstance(self.prompt_type, PromptType) else self.prompt_type,
             "chat_prompt_config": self.chat_prompt_config_dict,
             "completion_prompt_config": self.completion_prompt_config_dict,
             "dataset_configs": self.dataset_configs_dict,
@@ -846,7 +851,7 @@ class AppModelConfig(TypeBase):
         self.retriever_resource = (
             json.dumps(model_config.get("retriever_resource")) if model_config.get("retriever_resource") else None
         )
-        self.prompt_type = model_config.get("prompt_type", "simple")
+        self.prompt_type = PromptType(model_config.get("prompt_type", "simple"))
         self.chat_prompt_config = (
             json.dumps(model_config.get("chat_prompt_config")) if model_config.get("chat_prompt_config") else None
         )
@@ -2084,7 +2089,9 @@ class Site(Base):
     use_icon_as_answer_icon: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
     _custom_disclaimer: Mapped[str] = mapped_column("custom_disclaimer", LongText, default="")
     customize_domain = mapped_column(String(255))
-    customize_token_strategy: Mapped[str] = mapped_column(String(255), nullable=False)
+    customize_token_strategy: Mapped[CustomizeTokenStrategy] = mapped_column(
+        EnumText(CustomizeTokenStrategy, length=255), nullable=False
+    )
     prompt_public: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
     status: Mapped[AppStatus] = mapped_column(
         EnumText(AppStatus, length=255), nullable=False, server_default=sa.text("'normal'"), default=AppStatus.NORMAL
