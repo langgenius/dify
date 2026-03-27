@@ -12,6 +12,12 @@ type AppStoreState = {
   } | null
 }
 
+type GlobalPublicState = {
+  systemFeatures: {
+    enable_collaboration_mode: boolean
+  }
+}
+
 type WorkflowStoreState = {
   activeTabId: string | null
   editorAutoFocusFileId: string | null
@@ -127,6 +133,11 @@ const mocks = vi.hoisted(() => ({
       id: 'app-1',
     },
   } as AppStoreState,
+  globalPublicState: {
+    systemFeatures: {
+      enable_collaboration_mode: true,
+    },
+  } as GlobalPublicState,
   workflowState: {
     activeTabId: 'file-1',
     editorAutoFocusFileId: null,
@@ -226,6 +237,10 @@ vi.mock('@/app/components/workflow/store', () => ({
   useWorkflowStore: () => ({
     getState: () => mocks.workflowActions,
   }),
+}))
+
+vi.mock('@/context/global-public-context', () => ({
+  useGlobalPublicStore: (selector: (state: GlobalPublicState) => unknown) => selector(mocks.globalPublicState),
 }))
 
 vi.mock('@/hooks/use-theme', () => ({
@@ -389,6 +404,7 @@ describe('FileContentPanel', () => {
     mocks.appState.appDetail = { id: 'app-1' }
     mocks.workflowState.activeTabId = 'file-1'
     mocks.workflowState.editorAutoFocusFileId = null
+    mocks.globalPublicState.systemFeatures.enable_collaboration_mode = true
     mocks.workflowState.dirtyContents = new Map<string, string>()
     mocks.workflowState.fileMetadata = new Map<string, Record<string, unknown>>()
     mocks.workflowState.dirtyMetadataIds = new Set<string>()
@@ -562,6 +578,22 @@ describe('FileContentPanel', () => {
 
       // Assert
       expect(mocks.saveFile).toHaveBeenCalledWith('file-1')
+    })
+
+    it('should disable skill collaboration when system collaboration feature is off', async () => {
+      // Arrange
+      mocks.globalPublicState.systemFeatures.enable_collaboration_mode = false
+
+      // Act
+      render(<FileContentPanel />)
+      await screen.findByTestId('code-editor')
+
+      // Assert
+      expect(mocks.useSkillCodeCollaboration).toHaveBeenCalledWith(
+        expect.objectContaining({
+          enabled: false,
+        }),
+      )
     })
 
     it('should ignore editor content updates when file is not editable', async () => {

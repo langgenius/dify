@@ -6,6 +6,7 @@ import isDeepEqual from 'fast-deep-equal'
 import { useCallback, useRef } from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useSkillCodeCollaboration } from '../../../../collaboration/skills/use-skill-code-collaboration'
 import { useSkillMarkdownCollaboration } from '../../../../collaboration/skills/use-skill-markdown-collaboration'
 import { START_TAB_ID } from '../../../constants'
@@ -21,6 +22,7 @@ import { extractFileReferenceIds } from './utils'
 export const useFileContentController = (): FileContentControllerState => {
   const appDetail = useAppStore(s => s.appDetail)
   const appId = appDetail?.id || ''
+  const isCollaborationEnabled = useGlobalPublicStore(s => s.systemFeatures.enable_collaboration_mode)
   const activeTabId = useStore(s => s.activeTabId)
   const editorAutoFocusFileId = useStore(s => s.editorAutoFocusFileId)
   const storeApi = useWorkflowStore()
@@ -67,7 +69,7 @@ export const useFileContentController = (): FileContentControllerState => {
   const originalContent = fileContent?.content ?? ''
   const currentContent = draftContent !== undefined ? draftContent : originalContent
   const initialContentRegistryRef = useRef<Map<string, string>>(new Map())
-  const canInitCollaboration = Boolean(appId && fileTabId && isEditable && !isLoading && !error)
+  const canInitCollaboration = Boolean(isCollaborationEnabled && appId && fileTabId && isEditable && !isLoading && !error)
 
   if (canInitCollaboration && fileTabId && !initialContentRegistryRef.current.has(fileTabId))
     initialContentRegistryRef.current.set(fileTabId, currentContent)

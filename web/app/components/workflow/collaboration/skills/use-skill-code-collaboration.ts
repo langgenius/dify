@@ -49,7 +49,14 @@ export const useSkillCodeCollaboration = ({
     if (!enabled || !fileId)
       return
 
-    skillCollaborationManager.openFile(appId, fileId, initialContent)
+    try {
+      skillCollaborationManager.openFile(appId, fileId, initialContent)
+    }
+    catch (error) {
+      console.error('Failed to initialize skill collaboration:', error)
+      return
+    }
+
     skillCollaborationManager.setActiveFile(appId, fileId, true)
 
     const unsubscribe = skillCollaborationManager.subscribe(fileId, (nextText) => {
