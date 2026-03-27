@@ -2,20 +2,6 @@ import json
 from unittest.mock import MagicMock, patch
 
 import pytest
-
-from core.llm_generator.output_parser.errors import OutputParserError
-from core.llm_generator.output_parser.structured_output import (
-    ResponseFormat,
-    _handle_native_json_schema,
-    _handle_prompt_based_schema,
-    _parse_structured_output,
-    _prepare_schema_for_model,
-    _set_response_format,
-    convert_boolean_to_string,
-    invoke_llm_with_structured_output,
-    remove_additional_properties,
-)
-from core.model_manager import ModelInstance
 from graphon.model_runtime.entities.llm_entities import (
     LLMResult,
     LLMResultChunk,
@@ -30,6 +16,20 @@ from graphon.model_runtime.entities.message_entities import (
     UserPromptMessage,
 )
 from graphon.model_runtime.entities.model_entities import AIModelEntity, ParameterRule, ParameterType
+
+from core.llm_generator.output_parser.errors import OutputParserError
+from core.llm_generator.output_parser.structured_output import (
+    ResponseFormat,
+    _handle_native_json_schema,
+    _handle_prompt_based_schema,
+    _parse_structured_output,
+    _prepare_schema_for_model,
+    _set_response_format,
+    convert_boolean_to_string,
+    invoke_llm_with_structured_output,
+    remove_additional_properties,
+)
+from core.model_manager import ModelInstance
 
 
 class TestStructuredOutput:

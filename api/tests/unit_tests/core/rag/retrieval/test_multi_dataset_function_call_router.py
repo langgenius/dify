@@ -1,7 +1,8 @@
 from unittest.mock import Mock
 
-from core.rag.retrieval.router.multi_dataset_function_call_router import FunctionCallMultiDatasetRouter
 from graphon.model_runtime.entities.llm_entities import LLMUsage
+
+from core.rag.retrieval.router.multi_dataset_function_call_router import FunctionCallMultiDatasetRouter
 
 
 class TestFunctionCallMultiDatasetRouter:

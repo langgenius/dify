@@ -1,10 +1,7 @@
 from unittest import mock
 
 import pytest
-
-from core.model_manager import ModelInstance
-from graphon.file import FileTransferMethod, FileType
-from graphon.file.models import File
+from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities import (
     ImagePromptMessageContent,
     PromptMessageRole,
@@ -35,6 +32,8 @@ from graphon.nodes.llm.exc import (
 )
 from graphon.runtime import VariablePool
 from graphon.variables import ArrayAnySegment, ArrayFileSegment, NoneSegment
+
+from core.model_manager import ModelInstance
 
 
 def _build_model_schema(

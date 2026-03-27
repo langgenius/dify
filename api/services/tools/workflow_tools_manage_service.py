@@ -3,6 +3,7 @@ import logging
 from datetime import datetime
 
 from pydantic import TypeAdapter
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
@@ -14,7 +15,6 @@ from core.tools.utils.workflow_configuration_sync import WorkflowToolConfigurati
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 from core.tools.workflow_as_tool.tool import WorkflowTool
 from extensions.ext_database import db
-from graphon.model_runtime.utils.encoders import jsonable_encoder
 from models.model import App
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow

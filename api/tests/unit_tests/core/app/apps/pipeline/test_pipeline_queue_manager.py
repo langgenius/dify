@@ -1,4 +1,5 @@
 import pytest
+from graphon.model_runtime.entities.llm_entities import LLMResult
 
 import core.app.apps.pipeline.pipeline_queue_manager as module
 from core.app.apps.base_app_queue_manager import PublishFrom
@@ -13,7 +14,6 @@ from core.app.entities.queue_entities import (
     QueueWorkflowPartialSuccessEvent,
     QueueWorkflowSucceededEvent,
 )
-from graphon.model_runtime.entities.llm_entities import LLMResult
 
 
 def test_publish_sets_stop_listen_and_raises_on_stopped(mocker):
