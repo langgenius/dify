@@ -27,6 +27,18 @@ export const getSnippetListMock = (): SnippetListItem[] => ([
   },
 ])
 
+const createSnippetMock = (snippetId: string): SnippetListItem => ({
+  id: snippetId,
+  name: 'Tone Rewriter',
+  description: 'Rewrites rough drafts into a concise, professional tone for internal stakeholder updates.',
+  author: 'Evan',
+  updatedAt: 'Updated 2h ago',
+  usage: 'Used 19 times',
+  icon: '🪄',
+  iconBackground: '#E0EAFF',
+  status: 'Draft',
+})
+
 const getSnippetInputFieldsMock = (): SnippetInputField[] => ([
   {
     type: PipelineInputVarType.textInput,
@@ -175,10 +187,11 @@ const getSnippetGraphMock = (): SnippetDetailPayload['graph'] => ({
   ],
 })
 
-const getSnippetDetailMock = (snippetId: string): SnippetDetailPayload | null => {
-  const snippet = getSnippetListMock().find(item => item.id === snippetId)
-  if (!snippet)
+export const getSnippetDetailMock = (snippetId: string): SnippetDetailPayload | null => {
+  if (!snippetId)
     return null
+
+  const snippet = getSnippetListMock().find(item => item.id === snippetId) ?? createSnippetMock(snippetId)
 
   const inputFields = getSnippetInputFieldsMock()
 
