@@ -163,7 +163,21 @@ const FileReferenceBlock = ({ nodeKey, resourceId }: FileReferenceBlockProps) =>
   const fileBlock = (
     <Popover
       open={open}
-      onOpenChange={setOpen}
+      onOpenChange={(nextOpen, eventDetails) => {
+        if (!nextOpen && eventDetails.reason === 'focus-out')
+          return
+
+        if (
+          !nextOpen
+          && eventDetails.reason === 'outside-press'
+          && eventDetails.event.target instanceof Node
+          && ref.current?.contains(eventDetails.event.target)
+        ) {
+          return
+        }
+
+        setOpen(nextOpen)
+      }}
     >
       <div ref={ref} className="inline-flex">
         <Tooltip>

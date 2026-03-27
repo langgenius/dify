@@ -77,7 +77,9 @@ describe('FileReferenceBlock', () => {
       )
 
       await act(async () => {
-        fireEvent.mouseDown(screen.getByText('contract.pdf'))
+        const target = screen.getByText('contract.pdf')
+        fireEvent.mouseDown(target)
+        fireEvent.click(target)
       })
 
       expect(await screen.findByText('workflow.skillEditor.referenceFiles')).toBeInTheDocument()
