@@ -7,12 +7,13 @@ import * as React from 'react'
 import { useCallback, useState } from 'react'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
+import { isClient } from '@/utils/client'
 import { basePath } from '@/utils/var'
 import CodeFileEditor from '../../../editor/code-file-editor'
 import MarkdownFileEditor from '../../../editor/markdown-file-editor'
 import { getFileLanguage } from '../../../utils/file-utils'
 
-if (typeof window !== 'undefined')
+if (isClient)
   loader.config({ paths: { vs: `${window.location.origin}${basePath}/vs` } })
 
 type FileEditorRendererProps = {
