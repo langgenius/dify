@@ -3141,11 +3141,6 @@
       "count": 1
     }
   },
-  "app/components/base/prompt-log-modal/index.tsx": {
-    "react/set-state-in-effect": {
-      "count": 1
-    }
-  },
   "app/components/base/qrcode/index.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -3203,9 +3198,6 @@
     }
   },
   "app/components/base/select/index.tsx": {
-    "react/set-state-in-effect": {
-      "count": 2
-    },
     "style/multiline-ternary": {
       "count": 2
     },
@@ -3239,11 +3231,6 @@
   "app/components/base/switch/index.stories.tsx": {
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/components/base/tab-slider/index.tsx": {
-    "react/set-state-in-effect": {
-      "count": 2
     }
   },
   "app/components/base/tag-input/index.stories.tsx": {
@@ -3326,11 +3313,6 @@
   "app/components/base/toast/index.tsx": {
     "no-barrel-files/no-barrel-files": {
       "count": 2
-    }
-  },
-  "app/components/base/video-gallery/VideoPlayer.tsx": {
-    "react/set-state-in-effect": {
-      "count": 1
     }
   },
   "app/components/base/voice-input/index.stories.tsx": {
@@ -4429,12 +4411,6 @@
   "app/components/datasets/documents/detail/metadata/hooks/use-metadata-state.ts": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 4
-    },
-    "react/set-state-in-effect": {
-      "count": 4
     }
   },
   "app/components/datasets/documents/detail/metadata/index.tsx": {
@@ -4918,11 +4894,8 @@
     }
   },
   "app/components/explore/banner/banner-item.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 1
-    },
     "react/set-state-in-effect": {
-      "count": 3
+      "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 4
@@ -5069,9 +5042,6 @@
   "app/components/goto-anything/context.tsx": {
     "react-refresh/only-export-components": {
       "count": 1
-    },
-    "react/set-state-in-effect": {
-      "count": 4
     }
   },
   "app/components/goto-anything/hooks/index.ts": {
