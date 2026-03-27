@@ -1,6 +1,3 @@
-/**
- * @vitest-environment jsdom
- */
 import type { Mock } from 'vitest'
 import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
