@@ -1,23 +1,17 @@
 import { type IWorldOptions, World, setWorldConstructor } from '@cucumber/cucumber'
-import type { Browser, BrowserContext, ConsoleMessage, Page, Response } from '@playwright/test'
-import type { AuthSessionMetadata } from '../../fixtures/auth'
-import { authStatePath } from '../../fixtures/auth'
+import type { Browser, BrowserContext, ConsoleMessage, Page } from '@playwright/test'
+import {
+  authStatePath,
+  readAuthSessionMetadata,
+  type AuthSessionMetadata,
+} from '../../fixtures/auth'
 import { baseURL, defaultLocale } from '../../test-env'
 
-export type ScenarioArtifact = {
-  kind: 'html' | 'screenshot'
-  path: string
-}
-
 export class DifyWorld extends World {
-  browser: Browser | undefined
   context: BrowserContext | undefined
   page: Page | undefined
-  appName: string | undefined
-  artifacts: ScenarioArtifact[] = []
   consoleErrors: string[] = []
   pageErrors: string[] = []
-  lastResponse: Response | undefined
   scenarioStartedAt: number | undefined
   session: AuthSessionMetadata | undefined
 
@@ -27,15 +21,12 @@ export class DifyWorld extends World {
   }
 
   resetScenarioState() {
-    this.artifacts = []
     this.consoleErrors = []
     this.pageErrors = []
-    this.lastResponse = undefined
   }
 
   async startAuthenticatedSession(browser: Browser) {
     this.resetScenarioState()
-    this.browser = browser
     this.context = await browser.newContext({
       baseURL,
       locale: defaultLocale,
@@ -51,9 +42,6 @@ export class DifyWorld extends World {
     this.page.on('pageerror', (error) => {
       this.pageErrors.push(error.message)
     })
-    this.page.on('response', (response) => {
-      this.lastResponse = response
-    })
   }
 
   getPage() {
@@ -62,11 +50,15 @@ export class DifyWorld extends World {
     return this.page
   }
 
+  async getAuthSession() {
+    this.session ??= await readAuthSessionMetadata()
+    return this.session
+  }
+
   async closeSession() {
     await this.context?.close()
     this.context = undefined
     this.page = undefined
-    this.appName = undefined
     this.session = undefined
     this.scenarioStartedAt = undefined
     this.resetScenarioState()

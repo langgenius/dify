@@ -18,8 +18,6 @@ const sanitizeForPath = (value: string) =>
   value.replaceAll(/[^a-zA-Z0-9_-]+/g, '-').replaceAll(/^-+|-+$/g, '')
 
 const writeArtifact = async (
-  world: DifyWorld,
-  kind: 'html' | 'screenshot',
   scenarioName: string,
   extension: 'html' | 'png',
   contents: Buffer | string,
@@ -29,10 +27,6 @@ const writeArtifact = async (
     `${Date.now()}-${sanitizeForPath(scenarioName || 'scenario')}.${extension}`,
   )
   await writeFile(artifactPath, contents)
-  world.artifacts.push({
-    kind,
-    path: artifactPath,
-  })
 
   return artifactPath
 }
@@ -66,11 +60,11 @@ After(async function (this: DifyWorld, { pickle, result }) {
     const screenshot = await this.page.screenshot({
       fullPage: true,
     })
-    const screenshotPath = await writeArtifact(this, 'screenshot', pickle.name, 'png', screenshot)
+    const screenshotPath = await writeArtifact(pickle.name, 'png', screenshot)
     this.attach(screenshot, 'image/png')
 
     const html = await this.page.content()
-    const htmlPath = await writeArtifact(this, 'html', pickle.name, 'html', html)
+    const htmlPath = await writeArtifact(pickle.name, 'html', html)
     this.attach(html, 'text/html')
 
     if (this.consoleErrors.length > 0)

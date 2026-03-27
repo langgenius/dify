@@ -1,6 +1,6 @@
 import { access, mkdir, rm } from 'node:fs/promises'
 import path from 'node:path'
-import { isPortReachable, waitForUrl } from '../support/process'
+import { waitForUrl } from '../support/process'
 import {
   apiDir,
   apiEnvExampleFile,
@@ -88,6 +88,25 @@ const printComposeLogs = async (services: string[]) => {
     args: ['compose', '-f', middlewareComposeFile, 'logs', ...services],
     cwd: dockerDir,
   })
+}
+
+const waitForDependency = async ({
+  description,
+  services,
+  wait,
+}: {
+  description: string
+  services: string[]
+  wait: () => Promise<void>
+}) => {
+  console.log(`Waiting for ${description}...`)
+
+  try {
+    await wait()
+  } catch (error) {
+    await printComposeLogs(services)
+    throw error
+  }
 }
 
 export const ensureWebBuild = async () => {
@@ -204,70 +223,48 @@ export const startMiddleware = async () => {
     getServiceContainerId('redis'),
   ])
 
-  console.log('Waiting for PostgreSQL and Redis health checks...')
-  await waitForCondition({
-    check: async () => {
-      const [postgresStatus, redisStatus] = await Promise.all([
-        getContainerHealth(postgresContainerId),
-        getContainerHealth(redisContainerId),
-      ])
-
-      return postgresStatus === 'healthy' && redisStatus === 'healthy'
-    },
+  await waitForDependency({
     description: 'PostgreSQL and Redis health checks',
-    intervalMs: 2_000,
-    timeoutMs: 240_000,
+    services: ['db_postgres', 'redis'],
+    wait: () =>
+      waitForCondition({
+        check: async () => {
+          const [postgresStatus, redisStatus] = await Promise.all([
+            getContainerHealth(postgresContainerId),
+            getContainerHealth(redisContainerId),
+          ])
+
+          return postgresStatus === 'healthy' && redisStatus === 'healthy'
+        },
+        description: 'PostgreSQL and Redis health checks',
+        intervalMs: 2_000,
+        timeoutMs: 240_000,
+      }),
   })
 
-  console.log('Waiting for Weaviate readiness...')
-  try {
-    await waitForUrl('http://127.0.0.1:8080/v1/.well-known/ready', 120_000, 2_000)
-  } catch (error) {
-    await printComposeLogs(['weaviate'])
-    throw error
-  }
+  await waitForDependency({
+    description: 'Weaviate readiness',
+    services: ['weaviate'],
+    wait: () => waitForUrl('http://127.0.0.1:8080/v1/.well-known/ready', 120_000, 2_000),
+  })
 
-  console.log('Waiting for sandbox health...')
-  try {
-    await waitForUrl('http://127.0.0.1:8194/health', 120_000, 2_000)
-  } catch (error) {
-    await printComposeLogs(['sandbox', 'ssrf_proxy'])
-    throw error
-  }
+  await waitForDependency({
+    description: 'sandbox health',
+    services: ['sandbox', 'ssrf_proxy'],
+    wait: () => waitForUrl('http://127.0.0.1:8194/health', 120_000, 2_000),
+  })
 
-  console.log('Waiting for plugin daemon port...')
-  try {
-    await waitForCondition({
-      check: async () => isTcpPortReachable('127.0.0.1', 5002),
-      description: 'plugin daemon port',
-      intervalMs: 2_000,
-      timeoutMs: 120_000,
-    })
-  } catch (error) {
-    await printComposeLogs(['plugin_daemon'])
-    throw error
-  }
-
-  const [weaviateReady, sandboxReady, pluginDaemonReady] = await Promise.all([
-    isPortReachable('127.0.0.1', 8080),
-    isPortReachable('127.0.0.1', 8194),
-    isTcpPortReachable('127.0.0.1', 5002),
-  ])
-
-  if (!weaviateReady) {
-    await printComposeLogs(['weaviate'])
-    throw new Error('Weaviate did not become ready in time.')
-  }
-
-  if (!sandboxReady) {
-    await printComposeLogs(['sandbox', 'ssrf_proxy'])
-    throw new Error('Sandbox did not become ready in time.')
-  }
-
-  if (!pluginDaemonReady) {
-    await printComposeLogs(['plugin_daemon'])
-    throw new Error('Plugin daemon did not become reachable in time.')
-  }
+  await waitForDependency({
+    description: 'plugin daemon port',
+    services: ['plugin_daemon'],
+    wait: () =>
+      waitForCondition({
+        check: async () => isTcpPortReachable('127.0.0.1', 5002),
+        description: 'plugin daemon port',
+        intervalMs: 2_000,
+        timeoutMs: 120_000,
+      }),
+  })
 
   console.log('Full middleware stack is ready.')
 }

@@ -11,11 +11,6 @@ type WebServerStartOptions = {
   timeoutMs: number
 }
 
-type WebServerStartResult = {
-  pid?: number
-  reusedExistingServer: boolean
-}
-
 let activeProcess: ManagedProcess | undefined
 
 const getUrlHostAndPort = (url: string) => {
@@ -36,14 +31,10 @@ export const startWebServer = async ({
   logFilePath,
   reuseExistingServer,
   timeoutMs,
-}: WebServerStartOptions): Promise<WebServerStartResult> => {
+}: WebServerStartOptions) => {
   const { host, port } = getUrlHostAndPort(baseURL)
 
-  if (reuseExistingServer && (await isPortReachable(host, port))) {
-    return {
-      reusedExistingServer: true,
-    }
-  }
+  if (reuseExistingServer && (await isPortReachable(host, port))) return
 
   activeProcess = await startLoggedProcess({
     command,
@@ -75,10 +66,7 @@ export const startWebServer = async ({
 
     try {
       await waitForUrl(baseURL, 1_000, 250)
-      return {
-        pid: activeProcess.childProcess.pid,
-        reusedExistingServer: false,
-      }
+      return
     } catch {
       // Continue polling until timeout or child exit.
     }

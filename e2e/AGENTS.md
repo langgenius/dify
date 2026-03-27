@@ -139,26 +139,12 @@ Fresh install verification:
 pnpm e2e:full
 ```
 
-Repeat authenticated regression without clearing data:
-
-```bash
-pnpm e2e:middleware:up
-pnpm e2e
-pnpm e2e:middleware:down
-```
-
 Run the Cucumber suite against an already running middleware stack:
 
 ```bash
 pnpm e2e:middleware:up
 pnpm e2e
 pnpm e2e:middleware:down
-```
-
-Interactive local debugging:
-
-```bash
-pnpm e2e:full:ui
 ```
 
 Artifacts and diagnostics:
@@ -174,5 +160,3 @@ Open the HTML report locally with:
 ```bash
 open cucumber-report/report.html
 ```
-
-`pnpm e2e:ui` and `pnpm e2e:full:ui` currently run the suite in headed mode. Cucumber does not provide a Playwright-style UI mode.

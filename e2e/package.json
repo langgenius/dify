@@ -7,13 +7,11 @@
     "e2e": "tsx ./scripts/run-cucumber.ts",
     "e2e:full": "tsx ./scripts/run-cucumber.ts --full",
     "e2e:full:headed": "tsx ./scripts/run-cucumber.ts --full --headed",
-    "e2e:full:ui": "tsx ./scripts/run-cucumber.ts --full --headed",
     "e2e:headed": "tsx ./scripts/run-cucumber.ts --headed",
     "e2e:install": "playwright install --with-deps chromium",
     "e2e:middleware:down": "tsx ./scripts/setup.ts middleware-down",
     "e2e:middleware:up": "tsx ./scripts/setup.ts middleware-up",
-    "e2e:reset": "tsx ./scripts/setup.ts reset",
-    "e2e:ui": "tsx ./scripts/run-cucumber.ts --headed"
+    "e2e:reset": "tsx ./scripts/setup.ts reset"
   },
   "devDependencies": {
     "@cucumber/cucumber": "12.7.0",
