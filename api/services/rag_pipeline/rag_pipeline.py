@@ -39,9 +39,6 @@ from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLA
 from core.workflow.node_factory import LATEST_VERSION, get_node_type_classes_mapping
 from core.workflow.workflow_entry import WorkflowEntry
 from dify_graph.entities.workflow_node_execution import (
-from enterprise.telemetry.draft_trace import enqueue_draft_node_execution_trace
-from extensions.ext_database import db
-from dify_graph.entities.workflow_node_execution import (
     WorkflowNodeExecution,
     WorkflowNodeExecutionStatus,
 )
@@ -56,6 +53,7 @@ from dify_graph.repositories.workflow_node_execution_repository import OrderConf
 from dify_graph.runtime import VariablePool
 from dify_graph.system_variable import SystemVariable
 from dify_graph.variables.variables import VariableBase
+from enterprise.telemetry.draft_trace import enqueue_draft_node_execution_trace
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account

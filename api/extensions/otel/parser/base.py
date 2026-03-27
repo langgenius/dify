@@ -15,12 +15,12 @@ from opentelemetry.trace.status import Status, StatusCode
 from pydantic import BaseModel
 
 from configs import dify_config
+from dify_graph.enums import BuiltinNodeTypes
+from dify_graph.file.models import File
+from dify_graph.graph_events import GraphNodeEventBase
+from dify_graph.nodes.base.node import Node
+from dify_graph.variables import Segment
 from extensions.otel.semconv.gen_ai import ChainAttributes, GenAIAttributes
-from graphon.enums import BuiltinNodeTypes
-from graphon.file.models import File
-from graphon.graph_events import GraphNodeEventBase
-from graphon.nodes.base.node import Node
-from graphon.variables import Segment
 
 
 def should_include_content() -> bool:

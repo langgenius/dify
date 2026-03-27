@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
-from graphon.enums import WorkflowNodeExecutionMetadataKey
+from dify_graph.enums import WorkflowNodeExecutionMetadataKey
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -292,7 +292,7 @@ class TestEnqueueDraftNodeExecutionTrace:
 def _make_llm_execution() -> MagicMock:
     """Return a WorkflowNodeExecutionModel mock that mimics a real LLM node.
 
-    The field values match what graphon/nodes/llm/node.py produces:
+    The field values match what dify_graph/nodes/llm/node.py produces:
     - process_data_dict contains model_provider, model_name, and usage
     - outputs_dict contains usage with prompt/completion breakdown
     - execution_metadata_dict contains total_tokens/total_price/currency
