@@ -401,10 +401,12 @@ class PluginMigration:
                         plugin_not_exist.append(plugin_id)
 
                 if plugin_not_exist:
-                    not_installed.append({
-                        "tenant_id": tenant_id,
-                        "plugin_not_exist": plugin_not_exist,
-                    })
+                    not_installed.append(
+                        {
+                            "tenant_id": tenant_id,
+                            "plugin_not_exist": plugin_not_exist,
+                        }
+                    )
 
                 thread_pool.submit(install, tenant_id, plugin_ids)
 
