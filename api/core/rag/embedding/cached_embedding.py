@@ -5,6 +5,8 @@ from typing import Any, cast
 
 import numpy as np
 from sqlalchemy import select
+from graphon.model_runtime.entities.model_entities import ModelPropertyKey
+from graphon.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from sqlalchemy.exc import IntegrityError
 
 from configs import dify_config
@@ -13,8 +15,6 @@ from core.model_manager import ModelInstance
 from core.rag.embedding.embedding_base import Embeddings
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from graphon.model_runtime.entities.model_entities import ModelPropertyKey
-from graphon.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from libs import helper
 from models.dataset import Embedding
 

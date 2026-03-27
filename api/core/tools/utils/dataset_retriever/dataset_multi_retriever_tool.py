@@ -1,6 +1,7 @@
 import threading
 
 from flask import Flask, current_app
+from graphon.model_runtime.entities.model_entities import ModelType
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
@@ -15,7 +16,6 @@ from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.utils.dataset_retriever.dataset_retriever_base_tool import DatasetRetrieverBaseTool
 from core.tools.utils.dataset_retriever.dataset_retriever_tool import DefaultRetrievalModelDict
 from extensions.ext_database import db
-from graphon.model_runtime.entities.model_entities import ModelType
 from models.dataset import Dataset, Document, DocumentSegment
 
 default_retrieval_model: DefaultRetrievalModelDict = {

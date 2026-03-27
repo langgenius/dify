@@ -6,11 +6,11 @@ from unittest.mock import patch
 
 import pytest
 from faker import Faker
+from graphon.file import FileType
 from sqlalchemy.orm import Session
 
 from enums.cloud_plan import CloudPlan
 from extensions.ext_redis import redis_client
-from graphon.file.enums import FileType
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import (
     ConversationFromSource,

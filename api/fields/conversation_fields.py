@@ -3,9 +3,8 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, TypeAlias
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
-
 from graphon.file import File
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 JSONValue: TypeAlias = Any
 

@@ -1,11 +1,10 @@
 from collections.abc import Sequence
 from typing import Literal
 
-from pydantic import BaseModel, Field
-
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.enums import BuiltinNodeTypes, NodeType
 from graphon.nodes.llm.entities import ModelConfig, VisionConfig
+from pydantic import BaseModel, Field
 
 
 class RerankingModelConfig(BaseModel):
