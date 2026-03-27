@@ -76,7 +76,32 @@ type GraphImportLogEntry = {
   }
 }
 
+type SetNodesAnomalyReason = 'node_count_decrease' | 'start_removed'
+
+type SetNodesAnomalyLogEntry = {
+  timestamp: number
+  appId: string | null
+  reasons: SetNodesAnomalyReason[]
+  oldCount: number
+  newCount: number
+  removedNodeIds: string[]
+  oldStartNodeIds: string[]
+  newStartNodeIds: string[]
+  oldNodeIds: string[]
+  newNodeIds: string[]
+  visibilityState: DocumentVisibilityState | 'unknown'
+  meta: {
+    leaderId: string | null
+    isLeader: boolean
+    graphViewActive: boolean | null
+    pendingInitialSync: boolean
+    isConnected: boolean
+  }
+  stack: string
+}
+
 const GRAPH_IMPORT_LOG_LIMIT = 20
+const SET_NODES_ANOMALY_LOG_LIMIT = 100
 
 const toLoroValue = (value: unknown): Value => cloneDeep(value) as Value
 const toLoroRecord = (value: unknown): Record<string, Value> => cloneDeep(value) as Record<string, Value>
@@ -101,6 +126,7 @@ export class CollaborationManager {
   private pendingGraphImportEmit = false
   private graphViewActive: boolean | null = null
   private graphImportLogs: GraphImportLogEntry[] = []
+  private setNodesAnomalyLogs: SetNodesAnomalyLogEntry[] = []
   private pendingImportLog: {
     timestamp: number
     sources: Set<'nodes' | 'edges'>
@@ -402,6 +428,7 @@ export class CollaborationManager {
     if (this.isUndoRedoInProgress)
       return
 
+    this.captureSetNodesAnomaly(oldNodes, newNodes)
     this.syncNodes(oldNodes, newNodes)
     this.doc.commit()
   }
@@ -1075,6 +1102,7 @@ export class CollaborationManager {
 
   clearGraphImportLog(): void {
     this.graphImportLogs = []
+    this.setNodesAnomalyLogs = []
     this.pendingImportLog = null
   }
 
@@ -1084,8 +1112,10 @@ export class CollaborationManager {
       appId: this.currentAppId,
       generatedAt: new Date().toISOString(),
       entries: this.graphImportLogs,
+      setNodesAnomalies: this.setNodesAnomalyLogs,
       summary: {
         logCount: this.graphImportLogs.length,
+        setNodesAnomalyCount: this.setNodesAnomalyLogs.length,
         leaderId: this.leaderId,
         isLeader: this.isLeader,
         graphViewActive: this.graphViewActive,
@@ -1114,6 +1144,55 @@ export class CollaborationManager {
     link.download = fileName
     link.click()
     URL.revokeObjectURL(url)
+  }
+
+  private captureSetNodesAnomaly(oldNodes: Node[], newNodes: Node[]): void {
+    const oldNodeIds = oldNodes.map(node => node.id)
+    const newNodeIds = newNodes.map(node => node.id)
+    const newNodeIdSet = new Set(newNodeIds)
+    const removedNodeIds = oldNodeIds.filter(nodeId => !newNodeIdSet.has(nodeId))
+
+    const oldStartNodeIds = oldNodes
+      .filter(node => (node.data as CommonNodeType | undefined)?.type === 'start')
+      .map(node => node.id)
+    const newStartNodeIds = newNodes
+      .filter(node => (node.data as CommonNodeType | undefined)?.type === 'start')
+      .map(node => node.id)
+
+    const reasons: SetNodesAnomalyReason[] = []
+    if (newNodes.length < oldNodes.length)
+      reasons.push('node_count_decrease')
+    if (oldStartNodeIds.length > 0 && newStartNodeIds.length === 0)
+      reasons.push('start_removed')
+
+    if (!reasons.length)
+      return
+
+    const stack = new Error('setNodes anomaly').stack || ''
+    const entry: SetNodesAnomalyLogEntry = {
+      timestamp: Date.now(),
+      appId: this.currentAppId,
+      reasons,
+      oldCount: oldNodes.length,
+      newCount: newNodes.length,
+      removedNodeIds,
+      oldStartNodeIds,
+      newStartNodeIds,
+      oldNodeIds,
+      newNodeIds,
+      visibilityState: typeof document === 'undefined' ? 'unknown' : document.visibilityState,
+      meta: {
+        leaderId: this.leaderId,
+        isLeader: this.isLeader,
+        graphViewActive: this.graphViewActive,
+        pendingInitialSync: this.pendingInitialSync,
+        isConnected: this.isConnected(),
+      },
+      stack,
+    }
+    this.setNodesAnomalyLogs.push(entry)
+    if (this.setNodesAnomalyLogs.length > SET_NODES_ANOMALY_LOG_LIMIT)
+      this.setNodesAnomalyLogs.splice(0, this.setNodesAnomalyLogs.length - SET_NODES_ANOMALY_LOG_LIMIT)
   }
 
   private snapshotReactFlowGraph(): { nodes: Node[], edges: Edge[] } {
