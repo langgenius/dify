@@ -3,12 +3,16 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "e2e": "playwright test",
-    "e2e:headed": "playwright test --headed",
-    "e2e:ui": "playwright test --ui",
-    "e2e:full": "bash ./scripts/run-full.sh",
-    "e2e:full:headed": "bash ./scripts/run-full.sh --headed",
-    "e2e:full:ui": "bash ./scripts/run-full.sh --ui",
+    "e2e": "bash ./scripts/run-cucumber.sh",
+    "e2e:headed": "bash ./scripts/run-cucumber.sh --headed",
+    "e2e:ui": "bash ./scripts/run-cucumber.sh --headed",
+    "e2e:full": "bash ./scripts/run-cucumber.sh --full",
+    "e2e:full:headed": "bash ./scripts/run-cucumber.sh --full --headed",
+    "e2e:full:ui": "bash ./scripts/run-cucumber.sh --full --headed",
+    "cucumber:e2e": "pnpm e2e",
+    "cucumber:e2e:headed": "pnpm e2e:headed",
+    "cucumber:e2e:full": "pnpm e2e:full",
+    "cucumber:e2e:full:headed": "pnpm e2e:full:headed",
     "e2e:install": "playwright install --with-deps chromium",
     "e2e:middleware:down": "bash ./scripts/stop-middleware.sh",
     "e2e:middleware:up": "bash ./scripts/start-middleware.sh",
@@ -16,8 +20,10 @@
     "check": "vp check --fix"
   },
   "devDependencies": {
+    "@cucumber/cucumber": "12.7.0",
     "@playwright/test": "1.51.1",
     "@types/node": "25.5.0",
+    "tsx": "4.21.0",
     "typescript": "5.9.3",
     "vite-plus": "latest"
   },

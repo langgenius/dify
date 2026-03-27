@@ -3,6 +3,7 @@ import { expect } from '@playwright/test'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { defaultBaseURL, defaultLocale } from '../test-env'
 
 export type AuthSessionMetadata = {
   adminEmail: string
@@ -27,7 +28,7 @@ export const adminCredentials = {
 const initPassword = process.env.E2E_INIT_PASSWORD || 'E2eInit12345'
 
 export const resolveBaseURL = (configuredBaseURL?: string) =>
-  configuredBaseURL || process.env.E2E_BASE_URL || 'http://127.0.0.1:3000'
+  configuredBaseURL || process.env.E2E_BASE_URL || defaultBaseURL
 
 export const readAuthSessionMetadata = async () => {
   const content = await readFile(authMetadataPath, 'utf8')
@@ -105,7 +106,7 @@ export const ensureAuthenticatedState = async (browser: Browser, configuredBaseU
 
   const context = await browser.newContext({
     baseURL,
-    locale: 'en-US',
+    locale: defaultLocale,
   })
   const page = await context.newPage()
 
