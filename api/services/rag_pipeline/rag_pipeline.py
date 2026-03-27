@@ -1422,9 +1422,7 @@ class RagPipelineService:
                 "inputs": document_pipeline_execution_log.input_data,
                 "start_node_id": document_pipeline_execution_log.datasource_node_id,
                 "datasource_type": document_pipeline_execution_log.datasource_type,
-                "datasource_info_list": [
-                    json.loads(document_pipeline_execution_log.datasource_info)
-                ],
+                "datasource_info_list": [json.loads(document_pipeline_execution_log.datasource_info)],
                 "original_document_id": document.id,
             },
             invoke_from=InvokeFrom.PUBLISHED_PIPELINE,

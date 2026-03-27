@@ -25,7 +25,6 @@ from models.provider import LoadBalancingModelConfig, ProviderCredential, Provid
 logger = logging.getLogger(__name__)
 
 
-
 class ModelLoadBalancingService:
     @staticmethod
     def _get_provider_manager(tenant_id: str) -> ProviderManager:
@@ -168,9 +167,7 @@ class ModelLoadBalancingService:
 
             try:
                 if load_balancing_config.encrypted_config:
-                    credentials: dict[str, Any] = json.loads(
-                        load_balancing_config.encrypted_config
-                    )
+                    credentials: dict[str, Any] = json.loads(load_balancing_config.encrypted_config)
                 else:
                     credentials = {}
             except (json.JSONDecodeError, ValueError):
@@ -574,9 +571,7 @@ class ModelLoadBalancingService:
             try:
                 # fix origin data
                 if load_balancing_model_config.encrypted_config:
-                    original_credentials = json.loads(
-                        load_balancing_model_config.encrypted_config
-                    )
+                    original_credentials = json.loads(load_balancing_model_config.encrypted_config)
                 else:
                     original_credentials = {}
             except (json.JSONDecodeError, ValueError):
