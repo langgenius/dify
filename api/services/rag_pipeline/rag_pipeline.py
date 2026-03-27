@@ -46,6 +46,7 @@ from core.workflow.system_variables import (
 )
 from core.workflow.variable_pool_initializer import add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
+from enterprise.telemetry.draft_trace import enqueue_draft_node_execution_trace
 from extensions.ext_database import db
 from graphon.entities.workflow_node_execution import (
     WorkflowNodeExecution,
@@ -577,6 +578,13 @@ class RagPipelineService:
                 outputs=workflow_node_execution.outputs,
             )
             session.commit()
+        if workflow_node_execution_db_model is not None:
+            enqueue_draft_node_execution_trace(
+                execution=workflow_node_execution_db_model,
+                outputs=workflow_node_execution.outputs,
+                workflow_execution_id=None,
+                user_id=account.id,
+            )
         return workflow_node_execution_db_model
 
     def run_datasource_workflow_node(
@@ -1339,6 +1347,12 @@ class RagPipelineService:
                 outputs=workflow_node_execution.outputs,
             )
             session.commit()
+        enqueue_draft_node_execution_trace(
+            execution=workflow_node_execution_db_model,
+            outputs=workflow_node_execution.outputs,
+            workflow_execution_id=None,
+            user_id=current_user.id,
+        )
         return workflow_node_execution_db_model
 
     def get_recommended_plugins(self, type: str) -> dict:
