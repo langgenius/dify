@@ -4,8 +4,7 @@ import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
-import { ToastContext } from '@/app/components/base/toast/context'
+import { toast } from '@/app/components/base/ui/toast'
 import RemoveButton from '@/app/components/workflow/nodes/_base/components/remove-button'
 import VariableTypeSelector from '@/app/components/workflow/panel/chat-variable-panel/components/variable-type-select'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
@@ -33,19 +32,21 @@ const ObjectValueItem: FC<Props> = ({
   onChange,
 }) => {
   const { t } = useTranslation()
-  const { notify } = useContext(ToastContext)
   const [isFocus, setIsFocus] = useState(false)
 
   const handleKeyChange = useCallback((index: number) => {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (!/^\w+$/.test(e.target.value)) {
+        toast.error(t('chatVariable.modal.objectKeyPatternError', { ns: 'workflow' }))
+        return
+      }
+
       const newList = produce(list, (draft: any[]) => {
-        if (!/^\w+$/.test(e.target.value))
-          return notify({ type: 'error', message: 'key is can only contain letters, numbers and underscores' })
         draft[index].key = e.target.value
       })
       onChange(newList)
     }
-  }, [list, notify, onChange])
+  }, [list, onChange, t])
 
   const handleTypeChange = useCallback((index: number) => {
     return (type: ChatVarType) => {
@@ -96,7 +97,7 @@ const ObjectValueItem: FC<Props> = ({
       {/* Key */}
       <div className="w-[120px] border-r border-gray-200">
         <input
-          className="system-xs-regular placeholder:system-xs-regular block h-7 w-full appearance-none px-2 text-text-secondary caret-primary-600 outline-none placeholder:text-components-input-text-placeholder  hover:bg-state-base-hover focus:bg-components-input-bg-active"
+          className="block h-7 w-full appearance-none px-2 text-text-secondary caret-primary-600 outline-none system-xs-regular placeholder:text-components-input-text-placeholder placeholder:system-xs-regular hover:bg-state-base-hover focus:bg-components-input-bg-active"
           placeholder={t('chatVariable.modal.objectKey', { ns: 'workflow' }) || ''}
           value={list[index].key}
           onChange={handleKeyChange(index)}
@@ -115,7 +116,7 @@ const ObjectValueItem: FC<Props> = ({
       {/* Value */}
       <div className="relative w-[230px]">
         <input
-          className="system-xs-regular placeholder:system-xs-regular block h-7 w-full appearance-none px-2 text-text-secondary caret-primary-600 outline-none placeholder:text-components-input-text-placeholder  hover:bg-state-base-hover focus:bg-components-input-bg-active"
+          className="block h-7 w-full appearance-none px-2 text-text-secondary caret-primary-600 outline-none system-xs-regular placeholder:text-components-input-text-placeholder placeholder:system-xs-regular hover:bg-state-base-hover focus:bg-components-input-bg-active"
           placeholder={t('chatVariable.modal.objectValue', { ns: 'workflow' }) || ''}
           value={list[index].value}
           onChange={handleValueChange(index)}

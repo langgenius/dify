@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
+from models.enums import FeedbackFromSource, FeedbackRating
 from models.model import App, AppMode, EndUser, Message
 from services.errors.message import (
     FirstMessageNotExistsError,
@@ -820,14 +821,14 @@ class TestMessageServiceFeedback:
             app_model=app,
             message_id="msg-123",
             user=user,
-            rating="like",
+            rating=FeedbackRating.LIKE,
             content="Good answer",
         )
 
         # Assert
-        assert result.rating == "like"
+        assert result.rating == FeedbackRating.LIKE
         assert result.content == "Good answer"
-        assert result.from_source == "user"
+        assert result.from_source == FeedbackFromSource.USER
         mock_db.session.add.assert_called_once()
         mock_db.session.commit.assert_called_once()
 
@@ -852,13 +853,13 @@ class TestMessageServiceFeedback:
             app_model=app,
             message_id="msg-123",
             user=user,
-            rating="dislike",
+            rating=FeedbackRating.DISLIKE,
             content="Bad answer",
         )
 
         # Assert
         assert result == feedback
-        assert feedback.rating == "dislike"
+        assert feedback.rating == FeedbackRating.DISLIKE
         assert feedback.content == "Bad answer"
         mock_db.session.commit.assert_called_once()
 
@@ -932,7 +933,7 @@ class TestMessageServiceSuggestedQuestions:
             )
 
     # Test 28: get_suggested_questions_after_answer - Advanced Chat success
-    @patch("services.message_service.ModelManager")
+    @patch("services.message_service.ModelManager.for_tenant")
     @patch("services.message_service.WorkflowService")
     @patch("services.message_service.AdvancedChatAppConfigManager")
     @patch("services.message_service.TokenBufferMemory")
@@ -982,7 +983,7 @@ class TestMessageServiceSuggestedQuestions:
 
     # Test 29: get_suggested_questions_after_answer - Chat app success (no override)
     @patch("services.message_service.db")
-    @patch("services.message_service.ModelManager")
+    @patch("services.message_service.ModelManager.for_tenant")
     @patch("services.message_service.TokenBufferMemory")
     @patch("services.message_service.LLMGenerator")
     @patch("services.message_service.TraceQueueManager")

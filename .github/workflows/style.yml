@@ -33,7 +33,7 @@ jobs:
 
       - name: Setup UV and Python
         if: steps.changed-files.outputs.any_changed == 'true'
-        uses: astral-sh/setup-uv@e06108dd0aef18192324c70427afc47652e63a82 # v7.5.0
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
         with:
           enable-cache: false
           python-version: "3.12"
@@ -84,20 +84,20 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         uses: ./.github/actions/setup-web
 
+      - name: Restore ESLint cache
+        if: steps.changed-files.outputs.any_changed == 'true'
+        id: eslint-cache-restore
+        uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        with:
+          path: web/.eslintcache
+          key: ${{ runner.os }}-web-eslint-${{ hashFiles('web/package.json', 'web/pnpm-lock.yaml', 'web/eslint.config.mjs', 'web/eslint.constants.mjs', 'web/plugins/eslint/**') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-web-eslint-${{ hashFiles('web/package.json', 'web/pnpm-lock.yaml', 'web/eslint.config.mjs', 'web/eslint.constants.mjs', 'web/plugins/eslint/**') }}-
+
       - name: Web style check
         if: steps.changed-files.outputs.any_changed == 'true'
         working-directory: ./web
-        run: |
-          vp run lint:ci
-        # pnpm run lint:report
-        # continue-on-error: true
-
-      # - name: Annotate Code
-      #   if: steps.changed-files.outputs.any_changed == 'true' && github.event_name == 'pull_request'
-      #   uses: DerLev/eslint-annotations@51347b3a0abfb503fc8734d5ae31c4b151297fae
-      #   with:
-      #     eslint-report: web/eslint_report.json
-      #     github-token: ${{ secrets.GITHUB_TOKEN }}
+        run: vp run lint:ci
 
       - name: Web tsslint
         if: steps.changed-files.outputs.any_changed == 'true'
@@ -113,6 +113,13 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         working-directory: ./web
         run: vp run knip
+
+      - name: Save ESLint cache
+        if: steps.changed-files.outputs.any_changed == 'true' && success() && steps.eslint-cache-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        with:
+          path: web/.eslintcache
+          key: ${{ steps.eslint-cache-restore.outputs.cache-primary-key }}
 
   superlinter:
     name: SuperLinter

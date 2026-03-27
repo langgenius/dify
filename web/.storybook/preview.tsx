@@ -7,7 +7,7 @@ import { I18nClientProvider as I18N } from '../app/components/provider/i18n'
 import commonEnUS from '../i18n/en-US/common.json'
 
 import '../app/styles/globals.css'
-import '../app/styles/markdown.scss'
+import '../app/styles/markdown.css'
 import './storybook.css'
 
 const queryClient = new QueryClient({

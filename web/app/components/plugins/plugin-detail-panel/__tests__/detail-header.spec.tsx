@@ -2,9 +2,24 @@ import type { PluginDetail } from '../../types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import * as amplitude from '@/app/components/base/amplitude'
-import Toast from '@/app/components/base/toast'
 import { PluginSource } from '../../types'
 import DetailHeader from '../detail-header'
+
+const { mockToast } = vi.hoisted(() => ({
+  mockToast: Object.assign(vi.fn(), {
+    success: vi.fn(),
+    error: vi.fn(),
+    warning: vi.fn(),
+    info: vi.fn(),
+    dismiss: vi.fn(),
+    update: vi.fn(),
+    promise: vi.fn(),
+  }),
+}))
+
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: mockToast,
+}))
 
 const {
   mockSetShowUpdatePluginModal,
@@ -79,17 +94,23 @@ vi.mock('@/service/plugins', () => ({
   uninstallPlugin: mockUninstallPlugin,
 }))
 
+vi.mock('@/service/use-plugins', () => ({
+  useInvalidateCheckInstalled: () => vi.fn(),
+}))
+
 vi.mock('@/service/use-tools', () => ({
   useAllToolProviders: () => ({ data: [] }),
   useInvalidateAllToolProviders: () => mockInvalidateAllToolProviders,
 }))
 
-vi.mock('../../install-plugin/hooks', () => ({
-  useGitHubReleases: () => ({
+vi.mock('../../install-plugin/hooks', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../install-plugin/hooks')>()
+  return {
+    ...actual,
     checkForUpdates: mockCheckForUpdates,
     fetchReleases: mockFetchReleases,
-  }),
-}))
+  }
+})
 
 // Auto upgrade settings mock
 let mockAutoUpgradeInfo: {
@@ -218,23 +239,6 @@ vi.mock('../../plugin-auth', () => ({
   PluginAuth: () => <div data-testid="plugin-auth" />,
 }))
 
-// Mock Confirm component
-vi.mock('@/app/components/base/confirm', () => ({
-  default: ({ isShow, onCancel, onConfirm, isLoading }: {
-    isShow: boolean
-    onCancel: () => void
-    onConfirm: () => void
-    isLoading: boolean
-  }) => isShow
-    ? (
-        <div data-testid="delete-confirm">
-          <button data-testid="confirm-cancel" onClick={onCancel}>Cancel</button>
-          <button data-testid="confirm-ok" onClick={onConfirm} disabled={isLoading}>Confirm</button>
-        </div>
-      )
-    : null,
-}))
-
 const createPluginDetail = (overrides: Partial<PluginDetail> = {}): PluginDetail => ({
   id: 'test-id',
   created_at: '2024-01-01',
@@ -285,7 +289,7 @@ describe('DetailHeader', () => {
     vi.clearAllMocks()
     mockAutoUpgradeInfo = null
     mockEnableMarketplace = true
-    vi.spyOn(Toast, 'notify').mockImplementation(() => ({ clear: vi.fn() }))
+    vi.clearAllMocks()
     vi.spyOn(amplitude, 'trackEvent').mockImplementation(() => {})
   })
 
@@ -801,7 +805,7 @@ describe('DetailHeader', () => {
       fireEvent.click(screen.getByTestId('remove-btn'))
 
       await waitFor(() => {
-        expect(screen.getByTestId('delete-confirm')).toBeInTheDocument()
+        expect(screen.getByRole('alertdialog')).toBeInTheDocument()
       })
     })
 
@@ -810,13 +814,13 @@ describe('DetailHeader', () => {
 
       fireEvent.click(screen.getByTestId('remove-btn'))
       await waitFor(() => {
-        expect(screen.getByTestId('delete-confirm')).toBeInTheDocument()
+        expect(screen.getByRole('alertdialog')).toBeInTheDocument()
       })
 
-      fireEvent.click(screen.getByTestId('confirm-cancel'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
       await waitFor(() => {
-        expect(screen.queryByTestId('delete-confirm')).not.toBeInTheDocument()
+        expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
       })
     })
 
@@ -825,10 +829,10 @@ describe('DetailHeader', () => {
 
       fireEvent.click(screen.getByTestId('remove-btn'))
       await waitFor(() => {
-        expect(screen.getByTestId('delete-confirm')).toBeInTheDocument()
+        expect(screen.getByRole('alertdialog')).toBeInTheDocument()
       })
 
-      fireEvent.click(screen.getByTestId('confirm-ok'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
       await waitFor(() => {
         expect(mockUninstallPlugin).toHaveBeenCalledWith('test-id')
@@ -840,10 +844,10 @@ describe('DetailHeader', () => {
 
       fireEvent.click(screen.getByTestId('remove-btn'))
       await waitFor(() => {
-        expect(screen.getByTestId('delete-confirm')).toBeInTheDocument()
+        expect(screen.getByRole('alertdialog')).toBeInTheDocument()
       })
 
-      fireEvent.click(screen.getByTestId('confirm-ok'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
       await waitFor(() => {
         expect(mockOnUpdate).toHaveBeenCalledWith(true)
@@ -861,10 +865,10 @@ describe('DetailHeader', () => {
 
       fireEvent.click(screen.getByTestId('remove-btn'))
       await waitFor(() => {
-        expect(screen.getByTestId('delete-confirm')).toBeInTheDocument()
+        expect(screen.getByRole('alertdialog')).toBeInTheDocument()
       })
 
-      fireEvent.click(screen.getByTestId('confirm-ok'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
       await waitFor(() => {
         expect(mockRefreshModelProviders).toHaveBeenCalled()
@@ -876,10 +880,10 @@ describe('DetailHeader', () => {
 
       fireEvent.click(screen.getByTestId('remove-btn'))
       await waitFor(() => {
-        expect(screen.getByTestId('delete-confirm')).toBeInTheDocument()
+        expect(screen.getByRole('alertdialog')).toBeInTheDocument()
       })
 
-      fireEvent.click(screen.getByTestId('confirm-ok'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
       await waitFor(() => {
         expect(mockInvalidateAllToolProviders).toHaveBeenCalled()
@@ -891,10 +895,10 @@ describe('DetailHeader', () => {
 
       fireEvent.click(screen.getByTestId('remove-btn'))
       await waitFor(() => {
-        expect(screen.getByTestId('delete-confirm')).toBeInTheDocument()
+        expect(screen.getByRole('alertdialog')).toBeInTheDocument()
       })
 
-      fireEvent.click(screen.getByTestId('confirm-ok'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
       await waitFor(() => {
         expect(amplitude.trackEvent).toHaveBeenCalledWith('plugin_uninstalled', expect.any(Object))

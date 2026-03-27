@@ -1,6 +1,5 @@
 import type { FC, MouseEvent } from 'react'
 import type { Resources } from './index'
-import Link from 'next/link'
 import { Fragment, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import FileIcon from '@/app/components/base/file-icon'
@@ -9,6 +8,7 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import Link from '@/next/link'
 import { useDocumentDownload } from '@/service/knowledge/use-document'
 import { downloadUrl } from '@/utils/download'
 import ProgressTooltip from './progress-tooltip'

@@ -1,5 +1,4 @@
 import ReactEcharts from 'echarts-for-react'
-import dynamic from 'next/dynamic'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import SyntaxHighlighter from 'react-syntax-highlighter'
 import {
@@ -12,6 +11,7 @@ import MarkdownMusic from '@/app/components/base/markdown-blocks/music'
 import ErrorBoundary from '@/app/components/base/markdown/error-boundary'
 import SVGBtn from '@/app/components/base/svg'
 import useTheme from '@/hooks/use-theme'
+import dynamic from '@/next/dynamic'
 import { Theme } from '@/types/app'
 import SVGRenderer from '../svg-gallery' // Assumes svg-gallery.tsx is in /base directory
 
@@ -85,12 +85,29 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
   const processedRef = useRef<boolean>(false) // Track if content was successfully processed
   const isInitialRenderRef = useRef<boolean>(true) // Track if this is initial render
   const chartInstanceRef = useRef<any>(null) // Direct reference to ECharts instance
-  const resizeTimerRef = useRef<NodeJS.Timeout | null>(null) // For debounce handling
+  const resizeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null) // For debounce handling
+  const chartReadyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const finishedEventCountRef = useRef<number>(0) // Track finished event trigger count
   const match = /language-(\w+)/.exec(className || '')
   const language = match?.[1]
   const languageShowName = getCorrectCapitalizationLanguageName(language || '')
   const isDarkMode = theme === Theme.dark
+
+  const clearResizeTimer = useCallback(() => {
+    if (!resizeTimerRef.current)
+      return
+
+    clearTimeout(resizeTimerRef.current)
+    resizeTimerRef.current = null
+  }, [])
+
+  const clearChartReadyTimer = useCallback(() => {
+    if (!chartReadyTimerRef.current)
+      return
+
+    clearTimeout(chartReadyTimerRef.current)
+    chartReadyTimerRef.current = null
+  }, [])
 
   const echartsStyle = useMemo(() => ({
     height: '350px',
@@ -104,26 +121,27 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
 
   // Debounce resize operations
   const debouncedResize = useCallback(() => {
-    if (resizeTimerRef.current)
-      clearTimeout(resizeTimerRef.current)
+    clearResizeTimer()
 
     resizeTimerRef.current = setTimeout(() => {
       if (chartInstanceRef.current)
         chartInstanceRef.current.resize()
       resizeTimerRef.current = null
     }, 200)
-  }, [])
+  }, [clearResizeTimer])
 
   // Handle ECharts instance initialization
   const handleChartReady = useCallback((instance: any) => {
     chartInstanceRef.current = instance
 
     // Force resize to ensure timeline displays correctly
-    setTimeout(() => {
+    clearChartReadyTimer()
+    chartReadyTimerRef.current = setTimeout(() => {
       if (chartInstanceRef.current)
         chartInstanceRef.current.resize()
+      chartReadyTimerRef.current = null
     }, 200)
-  }, [])
+  }, [clearChartReadyTimer])
 
   // Store event handlers in useMemo to avoid recreating them
   const echartsEvents = useMemo(() => ({
@@ -157,10 +175,20 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
 
     return () => {
       window.removeEventListener('resize', handleResize)
-      if (resizeTimerRef.current)
-        clearTimeout(resizeTimerRef.current)
+      clearResizeTimer()
+      clearChartReadyTimer()
+      chartInstanceRef.current = null
     }
-  }, [language, debouncedResize])
+  }, [language, debouncedResize, clearResizeTimer, clearChartReadyTimer])
+
+  useEffect(() => {
+    return () => {
+      clearResizeTimer()
+      clearChartReadyTimer()
+      chartInstanceRef.current = null
+      echartsRef.current = null
+    }
+  }, [clearResizeTimer, clearChartReadyTimer])
   // Process chart data when content changes
   useEffect(() => {
     // Only process echarts content

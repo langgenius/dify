@@ -7,10 +7,10 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from core.app.entities.agent_strategy import AgentStrategyInfo
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
-from dify_graph.entities.pause_reason import PauseReason
-from dify_graph.entities.workflow_start_reason import WorkflowStartReason
-from dify_graph.enums import NodeType, WorkflowNodeExecutionMetadataKey
-from dify_graph.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
+from graphon.entities.pause_reason import PauseReason
+from graphon.entities.workflow_start_reason import WorkflowStartReason
+from graphon.enums import NodeType, WorkflowNodeExecutionMetadataKey
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
 
 
 class QueueEvent(StrEnum):
@@ -335,6 +335,7 @@ class QueueNodeSucceededEvent(AppQueueEvent):
     in_loop_id: str | None = None
     """loop id if node is in loop"""
     start_at: datetime
+    finished_at: datetime | None = None
 
     inputs: Mapping[str, object] = Field(default_factory=dict)
     process_data: Mapping[str, object] = Field(default_factory=dict)
@@ -390,6 +391,7 @@ class QueueNodeExceptionEvent(AppQueueEvent):
     in_loop_id: str | None = None
     """loop id if node is in loop"""
     start_at: datetime
+    finished_at: datetime | None = None
 
     inputs: Mapping[str, object] = Field(default_factory=dict)
     process_data: Mapping[str, object] = Field(default_factory=dict)
@@ -414,6 +416,7 @@ class QueueNodeFailedEvent(AppQueueEvent):
     in_loop_id: str | None = None
     """loop id if node is in loop"""
     start_at: datetime
+    finished_at: datetime | None = None
 
     inputs: Mapping[str, object] = Field(default_factory=dict)
     process_data: Mapping[str, object] = Field(default_factory=dict)

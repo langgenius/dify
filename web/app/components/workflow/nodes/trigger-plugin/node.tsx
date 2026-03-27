@@ -2,10 +2,9 @@ import type { FC } from 'react'
 import type { PluginTriggerNodeType } from './types'
 import type { NodeProps } from '@/app/components/workflow/types'
 import * as React from 'react'
-import { useEffect, useMemo } from 'react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import NodeStatus, { NodeStatusEnum } from '@/app/components/base/node-status'
-import { useNodeDataUpdate } from '@/app/components/workflow/hooks/use-node-data-update'
 import { useNodePluginInstallation } from '@/app/components/workflow/hooks/use-node-plugin-installation'
 import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
 import useConfig from './use-config'
@@ -54,21 +53,7 @@ const Node: FC<NodeProps<PluginTriggerNodeType>> = ({
     onInstallSuccess,
     shouldDim,
   } = useNodePluginInstallation(data)
-  const { handleNodeDataUpdate } = useNodeDataUpdate()
   const showInstallButton = !isChecking && isMissing && canInstall && uniqueIdentifier
-  const shouldLock = !isChecking && isMissing && canInstall && Boolean(uniqueIdentifier)
-
-  useEffect(() => {
-    if (data._pluginInstallLocked === shouldLock && data._dimmed === shouldDim)
-      return
-    handleNodeDataUpdate({
-      id,
-      data: {
-        _pluginInstallLocked: shouldLock,
-        _dimmed: shouldDim,
-      },
-    })
-  }, [data._pluginInstallLocked, data._dimmed, handleNodeDataUpdate, id, shouldDim, shouldLock])
 
   const { t } = useTranslation()
 

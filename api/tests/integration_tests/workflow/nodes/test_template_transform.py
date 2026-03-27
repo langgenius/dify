@@ -3,12 +3,12 @@ import uuid
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.workflow.node_factory import DifyNodeFactory
-from dify_graph.enums import WorkflowNodeExecutionStatus
-from dify_graph.graph import Graph
-from dify_graph.nodes.template_transform.template_renderer import TemplateRenderError
-from dify_graph.nodes.template_transform.template_transform_node import TemplateTransformNode
-from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.system_variable import SystemVariable
+from core.workflow.system_variables import build_system_variables
+from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.graph import Graph
+from graphon.nodes.template_transform.template_transform_node import TemplateTransformNode
+from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.template_rendering import TemplateRenderError
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
@@ -66,7 +66,7 @@ def test_execute_template_transform():
 
     # construct variable pool
     variable_pool = VariablePool(
-        system_variables=SystemVariable(user_id="aaa", files=[]),
+        system_variables=build_system_variables(user_id="aaa", files=[]),
         user_inputs={},
         environment_variables=[],
         conversation_variables=[],
@@ -90,7 +90,7 @@ def test_execute_template_transform():
         config=config,
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
-        template_renderer=_SimpleJinja2Renderer(),
+        jinja2_template_renderer=_SimpleJinja2Renderer(),
     )
 
     # execute node

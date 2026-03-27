@@ -3,12 +3,12 @@ import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { useRouter } from 'next/navigation'
 import { Plan } from '@/app/components/billing/type'
 import { useAppContext } from '@/context/app-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
+import { useRouter } from '@/next/navigation'
 import { useLogout } from '@/service/use-common'
 import AppSelector from '../index'
 
@@ -53,8 +53,8 @@ vi.mock('@/service/use-common', () => ({
   useLogout: vi.fn(),
 }))
 
-vi.mock('next/navigation', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('next/navigation')>()
+vi.mock('@/next/navigation', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/next/navigation')>()
   return {
     ...actual,
     useRouter: vi.fn(),
@@ -69,6 +69,7 @@ vi.mock('@/context/i18n', () => ({
 const { mockConfig, mockEnv } = vi.hoisted(() => ({
   mockConfig: {
     IS_CLOUD_EDITION: false,
+    AMPLITUDE_API_KEY: '',
     ZENDESK_WIDGET_KEY: '',
     SUPPORT_EMAIL_ADDRESS: '',
   },
@@ -80,6 +81,8 @@ const { mockConfig, mockEnv } = vi.hoisted(() => ({
 }))
 vi.mock('@/config', () => ({
   get IS_CLOUD_EDITION() { return mockConfig.IS_CLOUD_EDITION },
+  get AMPLITUDE_API_KEY() { return mockConfig.AMPLITUDE_API_KEY },
+  get isAmplitudeEnabled() { return mockConfig.IS_CLOUD_EDITION && !!mockConfig.AMPLITUDE_API_KEY },
   get ZENDESK_WIDGET_KEY() { return mockConfig.ZENDESK_WIDGET_KEY },
   get SUPPORT_EMAIL_ADDRESS() { return mockConfig.SUPPORT_EMAIL_ADDRESS },
   IS_DEV: false,

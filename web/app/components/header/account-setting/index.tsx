@@ -1,8 +1,9 @@
 'use client'
 import type { AccountSettingTab } from '@/app/components/header/account-setting/constants'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SearchInput from '@/app/components/base/search-input'
+import { ScrollArea } from '@/app/components/base/ui/scroll-area'
 import BillingPage from '@/app/components/billing/billing-page'
 import CustomPage from '@/app/components/custom/custom-page'
 import {
@@ -20,15 +21,16 @@ import DataSourcePage from './data-source-page-new'
 import LanguagePage from './language-page'
 import MembersPage from './members-page'
 import ModelProviderPage from './model-provider-page'
+import { useResetModelProviderListExpanded } from './model-provider-page/atoms'
 
 const iconClassName = `
   w-5 h-5 mr-2
 `
 
 type IAccountSettingProps = {
-  onCancel: () => void
-  activeTab?: AccountSettingTab
-  onTabChange?: (tab: AccountSettingTab) => void
+  onCancelAction: () => void
+  activeTab: AccountSettingTab
+  onTabChangeAction: (tab: AccountSettingTab) => void
 }
 
 type GroupItem = {
@@ -40,14 +42,12 @@ type GroupItem = {
 }
 
 export default function AccountSetting({
-  onCancel,
-  activeTab = ACCOUNT_SETTING_TAB.MEMBERS,
-  onTabChange,
+  onCancelAction,
+  activeTab,
+  onTabChangeAction,
 }: IAccountSettingProps) {
-  const [activeMenu, setActiveMenu] = useState<AccountSettingTab>(activeTab)
-  useEffect(() => {
-    setActiveMenu(activeTab)
-  }, [activeTab])
+  const resetModelProviderListExpanded = useResetModelProviderListExpanded()
+  const activeMenu = activeTab
   const { t } = useTranslation()
   const { enableBilling, enableReplaceWebAppLogo } = useProviderContext()
   const { isCurrentWorkspaceDatasetOperator } = useAppContext()
@@ -130,28 +130,26 @@ export default function AccountSetting({
       ],
     },
   ]
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const [scrolled, setScrolled] = useState(false)
-  useEffect(() => {
-    const targetElement = scrollRef.current
-    const scrollHandle = (e: Event) => {
-      const userScrolled = (e.target as HTMLDivElement).scrollTop > 0
-      setScrolled(userScrolled)
-    }
-    targetElement?.addEventListener('scroll', scrollHandle)
-    return () => {
-      targetElement?.removeEventListener('scroll', scrollHandle)
-    }
-  }, [])
-
   const activeItem = [...menuItems[0].items, ...menuItems[1].items].find(item => item.key === activeMenu)
 
   const [searchValue, setSearchValue] = useState<string>('')
 
+  const handleTabChange = useCallback((tab: AccountSettingTab) => {
+    if (tab === ACCOUNT_SETTING_TAB.PROVIDER)
+      resetModelProviderListExpanded()
+
+    onTabChangeAction(tab)
+  }, [onTabChangeAction, resetModelProviderListExpanded])
+
+  const handleClose = useCallback(() => {
+    resetModelProviderListExpanded()
+    onCancelAction()
+  }, [onCancelAction, resetModelProviderListExpanded])
+
   return (
     <MenuDialog
       show
-      onClose={onCancel}
+      onClose={handleClose}
     >
       <div className="mx-auto flex h-[100vh] max-w-[1048px]">
         <div className="flex w-[44px] flex-col border-r border-divider-burn pl-4 pr-6 sm:w-[224px]">
@@ -166,21 +164,22 @@ export default function AccountSetting({
                   <div>
                     {
                       menuItem.items.map(item => (
-                        <div
+                        <button
+                          type="button"
                           key={item.key}
                           className={cn(
-                            'mb-0.5 flex h-[37px] cursor-pointer items-center rounded-lg p-1 pl-3 text-sm',
+                            'mb-0.5 flex h-[37px] w-full items-center rounded-lg p-1 pl-3 text-left text-sm',
                             activeMenu === item.key ? 'bg-state-base-active text-components-menu-item-text-active system-sm-semibold' : 'text-components-menu-item-text system-sm-medium',
                           )}
+                          aria-label={item.name}
                           title={item.name}
                           onClick={() => {
-                            setActiveMenu(item.key)
-                            onTabChange?.(item.key)
+                            handleTabChange(item.key)
                           }}
                         >
                           {activeMenu === item.key ? item.activeIcon : item.icon}
                           {!isMobile && <div className="truncate">{item.name}</div>}
-                        </div>
+                        </button>
                       ))
                     }
                   </div>
@@ -189,20 +188,27 @@ export default function AccountSetting({
             }
           </div>
         </div>
-        <div className="relative flex w-[824px]">
+        <div className="relative flex min-h-0 w-[824px]">
           <div className="fixed right-6 top-6 z-[9999] flex flex-col items-center">
             <Button
               variant="tertiary"
               size="large"
               className="px-2"
-              onClick={onCancel}
+              aria-label={t('operation.close', { ns: 'common' })}
+              onClick={handleClose}
             >
               <span className="i-ri-close-line h-5 w-5" />
             </Button>
             <div className="mt-1 text-text-tertiary system-2xs-medium-uppercase">ESC</div>
           </div>
-          <div ref={scrollRef} className="w-full overflow-y-auto bg-components-panel-bg pb-4">
-            <div className={cn('sticky top-0 z-20 mx-8 mb-[18px] flex items-center bg-components-panel-bg pb-2 pt-[27px]', scrolled && 'border-b border-divider-regular')}>
+          <ScrollArea
+            className="h-full min-h-0 flex-1 bg-components-panel-bg"
+            slotClassNames={{
+              viewport: 'overscroll-contain',
+              content: 'min-h-full pb-4',
+            }}
+          >
+            <div className="sticky top-0 z-20 mx-8 mb-[18px] flex items-center bg-components-panel-bg pb-2 pt-[27px]">
               <div className="shrink-0 text-text-primary title-2xl-semi-bold">
                 {activeItem?.name}
                 {activeItem?.description && (
@@ -228,7 +234,7 @@ export default function AccountSetting({
               {activeMenu === ACCOUNT_SETTING_TAB.CUSTOM && <CustomPage />}
               {activeMenu === ACCOUNT_SETTING_TAB.LANGUAGE && <LanguagePage />}
             </div>
-          </div>
+          </ScrollArea>
         </div>
       </div>
     </MenuDialog>

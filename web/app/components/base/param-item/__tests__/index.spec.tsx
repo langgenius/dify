@@ -17,6 +17,8 @@ describe('ParamItem', () => {
     vi.clearAllMocks()
   })
 
+  const getSlider = () => screen.getByLabelText('Test Param')
+
   describe('Rendering', () => {
     it('should render the parameter name', () => {
       render(<ParamItem {...defaultProps} />)
@@ -54,7 +56,7 @@ describe('ParamItem', () => {
       render(<ParamItem {...defaultProps} />)
 
       expect(screen.getByRole('textbox')).toBeInTheDocument()
-      expect(screen.getByRole('slider')).toBeInTheDocument()
+      expect(getSlider()).toBeInTheDocument()
     })
   })
 
@@ -74,7 +76,7 @@ describe('ParamItem', () => {
     it('should disable Slider when enable is false', () => {
       render(<ParamItem {...defaultProps} enable={false} />)
 
-      expect(screen.getByRole('slider')).toHaveAttribute('aria-disabled', 'true')
+      expect(getSlider()).toBeDisabled()
     })
 
     it('should set switch value based on enable prop', () => {
@@ -135,7 +137,7 @@ describe('ParamItem', () => {
       await user.clear(input)
 
       expect(defaultProps.onChange).toHaveBeenLastCalledWith('test_param', 0)
-      expect(screen.getByRole('slider')).toHaveAttribute('aria-valuenow', '0')
+      expect(getSlider()).toHaveAttribute('aria-valuenow', '0')
 
       await user.tab()
 
@@ -166,12 +168,12 @@ describe('ParamItem', () => {
       await user.type(input, '1.5')
 
       expect(defaultProps.onChange).toHaveBeenLastCalledWith('test_param', 1)
-      expect(screen.getByRole('slider')).toHaveAttribute('aria-valuenow', '100')
+      expect(getSlider()).toHaveAttribute('aria-valuenow', '100')
     })
 
     it('should pass scaled value to slider when max < 5', () => {
       render(<ParamItem {...defaultProps} value={0.5} />)
-      const slider = screen.getByRole('slider')
+      const slider = getSlider()
 
       // When max < 5, slider value = value * 100 = 50
       expect(slider).toHaveAttribute('aria-valuenow', '50')
@@ -179,7 +181,7 @@ describe('ParamItem', () => {
 
     it('should pass raw value to slider when max >= 5', () => {
       render(<ParamItem {...defaultProps} value={5} max={10} />)
-      const slider = screen.getByRole('slider')
+      const slider = getSlider()
 
       // When max >= 5, slider value = value = 5
       expect(slider).toHaveAttribute('aria-valuenow', '5')
@@ -212,15 +214,15 @@ describe('ParamItem', () => {
       render(<ParamItem {...defaultProps} value={0.5} min={0} />)
 
       // Slider should get value * 100 = 50, min * 100 = 0, max * 100 = 100
-      const slider = screen.getByRole('slider')
-      expect(slider).toHaveAttribute('aria-valuemax', '100')
+      const slider = getSlider()
+      expect(slider).toHaveAttribute('max', '100')
     })
 
     it('should not scale slider value when max >= 5', () => {
       render(<ParamItem {...defaultProps} value={5} min={1} max={10} />)
 
-      const slider = screen.getByRole('slider')
-      expect(slider).toHaveAttribute('aria-valuemax', '10')
+      const slider = getSlider()
+      expect(slider).toHaveAttribute('max', '10')
     })
 
     it('should expose default minimum of 0 when min is not provided', () => {

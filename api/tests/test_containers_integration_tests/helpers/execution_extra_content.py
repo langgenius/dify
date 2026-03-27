@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import timedelta
 from decimal import Decimal
 from uuid import uuid4
 
-from dify_graph.nodes.human_input.entities import FormDefinition, UserAction
+from graphon.nodes.human_input.entities import FormDefinition, UserAction
+from libs.datetime_utils import naive_utc_now
 from models.account import Account, Tenant, TenantAccountJoin
+from models.enums import ConversationFromSource, InvokeFrom
 from models.execution_extra_content import HumanInputContent
 from models.human_input import HumanInputForm, HumanInputFormStatus
 from models.model import App, Conversation, Message
@@ -78,8 +80,8 @@ def create_human_input_message_fixture(db_session) -> HumanInputMessageFixture:
         introduction="",
         system_instruction="",
         status="normal",
-        invoke_from="console",
-        from_source="console",
+        invoke_from=InvokeFrom.EXPLORE,
+        from_source=ConversationFromSource.CONSOLE,
         from_account_id=account.id,
         from_end_user_id=None,
     )
@@ -101,7 +103,7 @@ def create_human_input_message_fixture(db_session) -> HumanInputMessageFixture:
         answer_unit_price=Decimal("0.001"),
         provider_response_latency=0.5,
         currency="USD",
-        from_source="console",
+        from_source=ConversationFromSource.CONSOLE,
         from_account_id=account.id,
         workflow_run_id=workflow_run_id,
     )
@@ -116,7 +118,7 @@ def create_human_input_message_fixture(db_session) -> HumanInputMessageFixture:
         inputs=[],
         user_actions=[UserAction(id=action_id, title=action_text)],
         rendered_content="Rendered block",
-        expiration_time=datetime.utcnow() + timedelta(days=1),
+        expiration_time=naive_utc_now() + timedelta(days=1),
         node_title=node_title,
         display_in_ui=True,
     )
@@ -128,7 +130,7 @@ def create_human_input_message_fixture(db_session) -> HumanInputMessageFixture:
         form_definition=form_definition.model_dump_json(),
         rendered_content="Rendered block",
         status=HumanInputFormStatus.SUBMITTED,
-        expiration_time=datetime.utcnow() + timedelta(days=1),
+        expiration_time=naive_utc_now() + timedelta(days=1),
         selected_action_id=action_id,
     )
     db_session.add(form)

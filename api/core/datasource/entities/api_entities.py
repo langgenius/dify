@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from core.datasource.entities.datasource_entities import DatasourceParameter
 from core.tools.entities.common_entities import I18nObject
-from dify_graph.model_runtime.utils.encoders import jsonable_encoder
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 
 
 class DatasourceApiEntity(BaseModel):
