@@ -866,6 +866,54 @@ class PublishedWorkflowApi(Resource):
         }
 
 
+@console_ns.route("/apps/<uuid:app_id>/workflows/publish/evaluation")
+class EvaluationPublishedWorkflowApi(Resource):
+    @console_ns.doc("publish_evaluation_workflow")
+    @console_ns.doc(description="Publish draft workflow as evaluation workflow")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.expect(console_ns.models[PublishWorkflowPayload.__name__])
+    @console_ns.response(200, "Evaluation workflow published successfully")
+    @console_ns.response(400, "Invalid workflow or unsupported node type")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    @edit_permission_required
+    def post(self, app_model: App):
+        """
+        Publish draft workflow as evaluation workflow.
+
+        Evaluation workflows cannot include trigger or human-input nodes.
+        """
+        current_user, _ = current_account_with_tenant()
+        args = PublishWorkflowPayload.model_validate(console_ns.payload or {})
+
+        workflow_service = WorkflowService()
+        with Session(db.engine) as session:
+            workflow = workflow_service.publish_evaluation_workflow(
+                session=session,
+                app_model=app_model,
+                account=current_user,
+                marked_name=args.marked_name or "",
+                marked_comment=args.marked_comment or "",
+            )
+
+            # Keep workflow_id aligned with the latest published workflow.
+            app_model_in_session = session.get(App, app_model.id)
+            if app_model_in_session:
+                app_model_in_session.workflow_id = workflow.id
+                app_model_in_session.updated_by = current_user.id
+                app_model_in_session.updated_at = naive_utc_now()
+
+            workflow_created_at = TimestampField().format(workflow.created_at)
+            session.commit()
+
+        return {
+            "result": "success",
+            "created_at": workflow_created_at,
+        }
+
+
 @console_ns.route("/apps/<uuid:app_id>/workflows/default-workflow-block-configs")
 class DefaultBlockConfigsApi(Resource):
     @console_ns.doc("get_default_block_configs")

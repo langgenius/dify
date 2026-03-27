@@ -16,7 +16,7 @@ from core.app.file_access import DatabaseFileAccessController
 from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly, create_plugin_provider_manager
 from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.human_input_repository import FormCreateParams, HumanInputFormRepositoryImpl
-from core.trigger.constants import is_trigger_node_type
+from core.trigger.constants import TRIGGER_NODE_TYPES, is_trigger_node_type
 from core.workflow.human_input_compat import (
     DeliveryChannelConfig,
     normalize_human_input_node_data_for_graph,
@@ -92,6 +92,15 @@ class WorkflowService:
     """
     Workflow Service
     """
+
+    # Centralized unsupported node types for evaluation workflow publishing.
+    # Keep this set updated when evaluation workflow constraints change.
+    EVALUATION_UNSUPPORTED_NODE_TYPES: frozenset[str] = frozenset(
+        {
+            BuiltinNodeTypes.HUMAN_INPUT,
+            *TRIGGER_NODE_TYPES,
+        }
+    )
 
     def __init__(self, session_maker: sessionmaker | None = None):
         """Initialize WorkflowService with repository dependencies."""
@@ -393,6 +402,82 @@ class WorkflowService:
 
         # return new workflow
         return workflow
+
+    def publish_evaluation_workflow(
+        self,
+        *,
+        session: Session,
+        app_model: App,
+        account: Account,
+        marked_name: str = "",
+        marked_comment: str = "",
+    ) -> Workflow:
+        """Publish draft workflow as an evaluation workflow version.
+
+        Compared to standard publish:
+        - force published workflow type to ``evaluation``;
+        - reject graphs containing trigger or human-input nodes.
+        """
+        draft_workflow_stmt = select(Workflow).where(
+            Workflow.tenant_id == app_model.tenant_id,
+            Workflow.app_id == app_model.id,
+            Workflow.version == Workflow.VERSION_DRAFT,
+        )
+        draft_workflow = session.scalar(draft_workflow_stmt)
+        if not draft_workflow:
+            raise ValueError("No valid workflow found.")
+
+        # Validate credentials before publishing, for credential policy check
+        from services.feature_service import FeatureService
+
+        if FeatureService.get_system_features().plugin_manager.enabled:
+            self._validate_workflow_credentials(draft_workflow)
+
+        # validate graph structure
+        self.validate_graph_structure(graph=draft_workflow.graph_dict)
+        self._validate_evaluation_workflow_nodes(draft_workflow)
+
+        workflow = Workflow.new(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            type=WorkflowType.EVALUATION.value,
+            version=Workflow.version_from_datetime(naive_utc_now()),
+            graph=draft_workflow.graph,
+            created_by=account.id,
+            environment_variables=draft_workflow.environment_variables,
+            conversation_variables=draft_workflow.conversation_variables,
+            marked_name=marked_name,
+            marked_comment=marked_comment,
+            rag_pipeline_variables=draft_workflow.rag_pipeline_variables,
+            features=draft_workflow.features,
+        )
+
+        session.add(workflow)
+
+        # trigger app workflow events
+        app_published_workflow_was_updated.send(app_model, published_workflow=workflow)
+
+        return workflow
+
+    @staticmethod
+    def _validate_evaluation_workflow_nodes(workflow: Workflow) -> None:
+        """Ensure evaluation workflows do not contain unsupported node types."""
+        disallowed_nodes: list[tuple[str, str]] = []
+        for node_id, node_data in workflow.walk_nodes():
+            node_type = node_data.get("type")
+            if not isinstance(node_type, str):
+                continue
+            if node_type in WorkflowService.EVALUATION_UNSUPPORTED_NODE_TYPES:
+                disallowed_nodes.append((node_id, node_type))
+
+        if not disallowed_nodes:
+            return
+
+        formatted_nodes = ", ".join(f"{node_id}:{node_type}" for node_id, node_type in disallowed_nodes)
+        raise ValueError(
+            "Evaluation workflow cannot contain trigger or human-input nodes. "
+            f"Found disallowed nodes: {formatted_nodes}"
+        )
 
     def _validate_workflow_credentials(self, workflow: Workflow) -> None:
         """
@@ -1538,8 +1623,8 @@ def _setup_variable_pool(
             "workflow_execution_id": str(uuid.uuid4()),
         }
 
-        # Only add chatflow-specific variables for non-workflow types.
-        if workflow.type != WorkflowType.WORKFLOW:
+        # Only add chatflow-specific variables for chat-like workflow types.
+        if workflow.type not in {WorkflowType.WORKFLOW, WorkflowType.EVALUATION}:
             system_variable_values.update(
                 {
                     "query": query,
