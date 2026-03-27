@@ -18,7 +18,7 @@ import uuid
 from typing import TYPE_CHECKING, Any
 
 from core.ops.entities.trace_entity import TraceTaskName
-from enterprise.telemetry.contracts import SignalType
+from enterprise.telemetry.contracts import CaseRoute, SignalType
 from extensions.ext_storage import storage
 
 if TYPE_CHECKING:
@@ -33,11 +33,11 @@ PAYLOAD_SIZE_THRESHOLD_BYTES = 1 * 1024 * 1024
 # Routing table — authoritative mapping for all editions
 # ---------------------------------------------------------------------------
 
-_case_to_trace_task: dict | None = None
-_case_routing: dict | None = None
+_case_to_trace_task: dict[TelemetryCase, TraceTaskName] | None = None
+_case_routing: dict[TelemetryCase, CaseRoute] | None = None
 
 
-def _get_case_to_trace_task() -> dict:
+def _get_case_to_trace_task() -> dict[TelemetryCase, TraceTaskName]:
     global _case_to_trace_task
     if _case_to_trace_task is None:
         from enterprise.telemetry.contracts import TelemetryCase
@@ -57,12 +57,12 @@ def _get_case_to_trace_task() -> dict:
     return _case_to_trace_task
 
 
-def get_trace_task_to_case() -> dict:
+def get_trace_task_to_case() -> dict[TraceTaskName, TelemetryCase]:
     """Return TraceTaskName → TelemetryCase (inverse of _get_case_to_trace_task)."""
     return {v: k for k, v in _get_case_to_trace_task().items()}
 
 
-def _get_case_routing() -> dict:
+def _get_case_routing() -> dict[TelemetryCase, CaseRoute]:
     global _case_routing
     if _case_routing is None:
         from enterprise.telemetry.contracts import CaseRoute, SignalType, TelemetryCase
