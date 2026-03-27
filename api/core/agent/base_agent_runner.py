@@ -103,11 +103,16 @@ class BaseAgentRunner(AppRunner):
             inputs=cast(dict, application_generate_entity.inputs),
         )
         # get how many agent thoughts have been created
-        self.agent_thought_count = db.session.scalar(
-            select(func.count()).select_from(MessageAgentThought).where(
-                MessageAgentThought.message_id == self.message.id,
+        self.agent_thought_count = (
+            db.session.scalar(
+                select(func.count())
+                .select_from(MessageAgentThought)
+                .where(
+                    MessageAgentThought.message_id == self.message.id,
+                )
             )
-        ) or 0
+            or 0
+        )
         db.session.close()
 
         # check if model supports stream tool call

@@ -8,14 +8,13 @@ Go admin-api caller.
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from controllers.common.schema import register_schema_model
 from controllers.console.wraps import setup_required
 from controllers.inner_api import inner_api_ns
 from controllers.inner_api.wraps import enterprise_inner_api_only
-from sqlalchemy import select
-
 from extensions.ext_database import db
 from models import Account, App
 from models.account import AccountStatus

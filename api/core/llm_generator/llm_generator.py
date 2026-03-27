@@ -5,6 +5,7 @@ from collections.abc import Sequence
 from typing import Protocol, cast
 
 import json_repair
+from sqlalchemy import select
 
 from core.app.app_config.entities import ModelConfig
 from core.llm_generator.entities import RuleCodeGeneratePayload, RuleGeneratePayload, RuleStructuredOutputPayload
@@ -27,8 +28,6 @@ from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.ops.utils import measure_time
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
-from sqlalchemy import select
-
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from graphon.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
