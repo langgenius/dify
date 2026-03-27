@@ -1,9 +1,10 @@
 import type { OnMount } from '@monaco-editor/react'
 import type { AppAssetTreeView } from '@/types/app-asset'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import * as React from 'react'
 import { Theme } from '@/types/app'
-import { START_TAB_ID } from '../../constants'
-import FileContentPanel from './file-content-panel'
+import FileContentPanel from '..'
+import { START_TAB_ID } from '../../../../constants'
 
 type AppStoreState = {
   appDetail: {
@@ -62,10 +63,14 @@ type UseSkillFileDataMode = 'none' | 'content' | 'download'
 
 type UseSkillMarkdownCollaborationArgs = {
   onLocalChange: (value: string) => void
+  onRemoteChange?: (value: string) => void
+  onLeaderSync: () => void
 }
 
 type UseSkillCodeCollaborationArgs = {
-  onLocalChange: (value: string) => void
+  onLocalChange: (value: string | undefined) => void
+  onRemoteChange?: (value: string) => void
+  onLeaderSync: () => void
 }
 
 const FILE_REFERENCE_ID = '123e4567-e89b-12d3-a456-426614174000'
@@ -191,9 +196,23 @@ vi.mock('@monaco-editor/react', () => ({
 }))
 
 vi.mock('next/dynamic', () => ({
-  default: () => {
-    return ({ downloadUrl }: { downloadUrl: string }) => (
-      <div data-testid="dynamic-preview">{downloadUrl}</div>
+  default: (
+    loader: () => Promise<unknown>,
+    options?: { loading?: () => React.ReactNode },
+  ) => {
+    const LazyComponent = React.lazy(async (): Promise<{ default: React.ComponentType<Record<string, unknown>> }> => {
+      const mod = await loader()
+      if (typeof mod === 'function')
+        return { default: mod as React.ComponentType<Record<string, unknown>> }
+      if (mod && typeof mod === 'object' && 'default' in mod)
+        return mod as { default: React.ComponentType<Record<string, unknown>> }
+      return { default: () => null }
+    })
+
+    return (props: Record<string, unknown>) => (
+      <React.Suspense fallback={options?.loading ? options.loading() : null}>
+        <LazyComponent {...props} />
+      </React.Suspense>
     )
   },
 }))
@@ -213,7 +232,7 @@ vi.mock('@/hooks/use-theme', () => ({
   default: () => ({ theme: mocks.appTheme }),
 }))
 
-vi.mock('../../hooks/file-tree/data/use-skill-asset-tree', () => ({
+vi.mock('../../../../hooks/file-tree/data/use-skill-asset-tree', () => ({
   useSkillAssetNodeMap: () => ({
     data: mocks.nodeMapData,
     isLoading: mocks.nodeMapStatus.isLoading,
@@ -222,22 +241,22 @@ vi.mock('../../hooks/file-tree/data/use-skill-asset-tree', () => ({
   }),
 }))
 
-vi.mock('../../hooks/use-file-node-view-state', () => ({
+vi.mock('../../../../hooks/use-file-node-view-state', () => ({
   useFileNodeViewState: () => mocks.fileNodeViewState,
 }))
 
-vi.mock('../../hooks/use-file-type-info', () => ({
+vi.mock('../../../../hooks/use-file-type-info', () => ({
   useFileTypeInfo: () => mocks.fileTypeInfo,
 }))
 
-vi.mock('../../hooks/use-skill-file-data', () => ({
+vi.mock('../../../../hooks/use-skill-file-data', () => ({
   useSkillFileData: (appId: string, fileId: string | null, mode: UseSkillFileDataMode) => {
     mocks.useSkillFileData(appId, fileId, mode)
     return mocks.fileData
   },
 }))
 
-vi.mock('../../hooks/skill-save-context', () => ({
+vi.mock('../../../../hooks/skill-save-context', () => ({
   useSkillSaveManager: () => ({
     saveFile: mocks.saveFile,
     registerFallback: mocks.registerFallback,
@@ -245,7 +264,7 @@ vi.mock('../../hooks/skill-save-context', () => ({
   }),
 }))
 
-vi.mock('../../../collaboration/skills/use-skill-markdown-collaboration', () => ({
+vi.mock('../../../../../collaboration/skills/use-skill-markdown-collaboration', () => ({
   useSkillMarkdownCollaboration: (args: UseSkillMarkdownCollaborationArgs) => {
     mocks.useSkillMarkdownCollaboration(args)
     return {
@@ -254,7 +273,7 @@ vi.mock('../../../collaboration/skills/use-skill-markdown-collaboration', () => 
   },
 }))
 
-vi.mock('../../../collaboration/skills/use-skill-code-collaboration', () => ({
+vi.mock('../../../../../collaboration/skills/use-skill-code-collaboration', () => ({
   useSkillCodeCollaboration: (args: UseSkillCodeCollaborationArgs) => {
     mocks.useSkillCodeCollaboration(args)
     return {
@@ -263,11 +282,11 @@ vi.mock('../../../collaboration/skills/use-skill-code-collaboration', () => ({
   },
 }))
 
-vi.mock('../../start-tab', () => ({
+vi.mock('../../../../start-tab', () => ({
   default: () => <div data-testid="start-tab-content" />,
 }))
 
-vi.mock('../../editor/markdown-file-editor', () => ({
+vi.mock('../../../../editor/markdown-file-editor', () => ({
   default: ({
     value,
     onChange,
@@ -298,7 +317,7 @@ vi.mock('../../editor/markdown-file-editor', () => ({
   ),
 }))
 
-vi.mock('../../editor/code-file-editor', () => ({
+vi.mock('../../../../editor/code-file-editor', () => ({
   default: ({
     value,
     onChange,
@@ -344,20 +363,20 @@ vi.mock('../../editor/code-file-editor', () => ({
   ),
 }))
 
-vi.mock('../../viewer/media-file-preview', () => ({
+vi.mock('../../../../viewer/media-file-preview', () => ({
   default: ({ type, src }: { type: 'image' | 'video', src: string }) => (
     <div data-testid="media-preview">{`${type}|${src}`}</div>
   ),
 }))
 
-vi.mock('../../viewer/unsupported-file-download', () => ({
+vi.mock('../../../../viewer/unsupported-file-download', () => ({
   default: ({ name, size, downloadUrl }: { name: string, size?: number, downloadUrl: string }) => (
     <div data-testid="unsupported-preview">{`${name}|${String(size)}|${downloadUrl}`}</div>
   ),
 }))
 
-vi.mock('../../utils/file-utils', async () => {
-  const actual = await vi.importActual<typeof import('../../utils/file-utils')>('../../utils/file-utils')
+vi.mock('../../../../utils/file-utils', async () => {
+  const actual = await vi.importActual<typeof import('../../../../utils/file-utils')>('../../../../utils/file-utils')
   return {
     ...actual,
     getFileLanguage: (name: string) => mocks.getFileLanguage(name),
@@ -479,6 +498,7 @@ describe('FileContentPanel', () => {
 
       // Act
       render(<FileContentPanel />)
+      await screen.findByTestId('markdown-editor')
       fireEvent.click(screen.getByRole('button', { name: 'markdown-change' }))
       fireEvent.click(screen.getByRole('button', { name: 'markdown-autofocus' }))
 
@@ -497,7 +517,7 @@ describe('FileContentPanel', () => {
       expect(mocks.workflowActions.clearEditorAutoFocus).toHaveBeenCalledWith('file-1')
     })
 
-    it('should clear draft content when code editor value matches original content', () => {
+    it('should clear draft content when code editor value matches original content', async () => {
       // Arrange
       mocks.fileData.fileContent = {
         content: '',
@@ -506,6 +526,7 @@ describe('FileContentPanel', () => {
 
       // Act
       render(<FileContentPanel />)
+      await screen.findByTestId('code-editor')
       fireEvent.click(screen.getByRole('button', { name: 'code-clear' }))
 
       // Assert
@@ -520,6 +541,7 @@ describe('FileContentPanel', () => {
 
       // Act
       render(<FileContentPanel />)
+      await screen.findByTestId('code-editor')
       fireEvent.click(screen.getByRole('button', { name: 'code-mount' }))
 
       // Assert
@@ -542,7 +564,7 @@ describe('FileContentPanel', () => {
       expect(mocks.saveFile).toHaveBeenCalledWith('file-1')
     })
 
-    it('should ignore editor content updates when file is not editable', () => {
+    it('should ignore editor content updates when file is not editable', async () => {
       // Arrange
       mocks.fileTypeInfo = {
         isMarkdown: false,
@@ -557,6 +579,7 @@ describe('FileContentPanel', () => {
 
       // Act
       render(<FileContentPanel />)
+      await screen.findByTestId('code-editor')
       fireEvent.click(screen.getByRole('button', { name: 'code-change' }))
 
       // Assert
@@ -586,6 +609,78 @@ describe('FileContentPanel', () => {
 
       // Assert
       expect(mocks.saveFile).not.toHaveBeenCalled()
+    })
+
+    it('should sync draft content and metadata when collaboration receives remote markdown changes', async () => {
+      // Arrange
+      mocks.fileTypeInfo = {
+        isMarkdown: true,
+        isCodeOrText: false,
+        isImage: false,
+        isVideo: false,
+        isPdf: false,
+        isSQLite: false,
+        isEditable: true,
+        isPreviewable: true,
+      }
+      mocks.workflowState.fileMetadata = new Map<string, Record<string, unknown>>([
+        ['file-1', {}],
+      ])
+      mocks.nodeMapData = new Map<string, AppAssetTreeView>([
+        ['file-1', createNode({ name: 'prompt.md', extension: 'md' })],
+        [FILE_REFERENCE_ID, createNode({ id: FILE_REFERENCE_ID, name: 'kb.txt', extension: 'txt' })],
+      ])
+
+      // Act
+      render(<FileContentPanel />)
+      await screen.findByTestId('markdown-editor')
+      const firstCall = mocks.useSkillMarkdownCollaboration.mock.calls[0]
+      const args = firstCall?.[0] as UseSkillMarkdownCollaborationArgs | undefined
+      args?.onRemoteChange?.(`linked §[file].[app].[${FILE_REFERENCE_ID}]§`)
+
+      // Assert
+      expect(mocks.workflowActions.setDraftContent).toHaveBeenCalledWith(
+        'file-1',
+        `linked §[file].[app].[${FILE_REFERENCE_ID}]§`,
+      )
+      expect(mocks.workflowActions.setDraftMetadata).toHaveBeenCalledWith(
+        'file-1',
+        expect.objectContaining({
+          files: expect.objectContaining({
+            [FILE_REFERENCE_ID]: expect.objectContaining({ id: FILE_REFERENCE_ID }),
+          }),
+        }),
+      )
+      expect(mocks.workflowActions.pinTab).toHaveBeenCalledWith('file-1')
+    })
+
+    it('should not pin the tab when remote collaboration sync matches the original content', async () => {
+      // Arrange
+      mocks.fileTypeInfo = {
+        isMarkdown: true,
+        isCodeOrText: false,
+        isImage: false,
+        isVideo: false,
+        isPdf: false,
+        isSQLite: false,
+        isEditable: true,
+        isPreviewable: true,
+      }
+      mocks.fileData.fileContent = {
+        content: 'server-content',
+        metadata: {},
+      }
+
+      // Act
+      render(<FileContentPanel />)
+      await screen.findByTestId('markdown-editor')
+      const firstCall = mocks.useSkillMarkdownCollaboration.mock.calls[0]
+      const args = firstCall?.[0] as UseSkillMarkdownCollaborationArgs | undefined
+      args?.onRemoteChange?.('server-content')
+
+      // Assert
+      expect(mocks.workflowActions.clearDraftContent).toHaveBeenCalledWith('file-1')
+      expect(mocks.workflowActions.pinTab).not.toHaveBeenCalled()
     })
   })
 
@@ -666,6 +761,25 @@ describe('FileContentPanel', () => {
       mocks.fileData.fileContent = {
         content: 'markdown',
         metadata: '{invalid-json}',
+      }
+
+      // Act
+      render(<FileContentPanel />)
+
+      // Assert
+      await waitFor(() => {
+        expect(mocks.workflowActions.setFileMetadata).toHaveBeenCalledWith('file-1', {})
+      })
+      expect(mocks.workflowActions.clearDraftMetadata).toHaveBeenCalledWith('file-1')
+    })
+
+    it('should clear stale metadata when loaded file content has no metadata field', async () => {
+      // Arrange
+      mocks.workflowState.fileMetadata = new Map<string, Record<string, unknown>>([
+        ['file-1', { source: 'stale' }],
+      ])
+      mocks.fileData.fileContent = {
+        content: 'markdown',
       }
 
       // Act

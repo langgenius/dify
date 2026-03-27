@@ -11,6 +11,7 @@ type UseSkillMarkdownCollaborationProps = {
   initialContent: string
   baselineContent: string
   onLocalChange: (value: string) => void
+  onRemoteChange?: (value: string) => void
   onLeaderSync: () => void
 }
 
@@ -21,13 +22,15 @@ export const useSkillMarkdownCollaboration = ({
   initialContent,
   baselineContent,
   onLocalChange,
+  onRemoteChange,
   onLeaderSync,
 }: UseSkillMarkdownCollaborationProps) => {
   const storeApi = useWorkflowStore()
   const { eventEmitter } = useEventEmitterContextContext()
   const suppressNextChangeRef = useRef<string | null>(null)
-  // Keep the latest server baseline to avoid marking the editor dirty on initial sync.
   const baselineContentRef = useRef(baselineContent)
+  const onRemoteChangeRef = useRef(onRemoteChange)
+  const onLeaderSyncRef = useRef(onLeaderSync)
 
   useEffect(() => {
     suppressNextChangeRef.current = null
@@ -38,6 +41,14 @@ export const useSkillMarkdownCollaboration = ({
   }, [baselineContent])
 
   useEffect(() => {
+    onRemoteChangeRef.current = onRemoteChange
+  }, [onRemoteChange])
+
+  useEffect(() => {
+    onLeaderSyncRef.current = onLeaderSync
+  }, [onLeaderSync])
+
+  useEffect(() => {
     if (!enabled || !fileId)
       return
 
@@ -46,13 +57,18 @@ export const useSkillMarkdownCollaboration = ({
 
     const unsubscribe = skillCollaborationManager.subscribe(fileId, (nextText) => {
       suppressNextChangeRef.current = nextText
-      const state = storeApi.getState()
-      if (nextText === baselineContentRef.current) {
-        state.clearDraftContent(fileId)
+      if (onRemoteChangeRef.current) {
+        onRemoteChangeRef.current(nextText)
       }
       else {
-        state.setDraftContent(fileId, nextText)
-        state.pinTab(fileId)
+        const state = storeApi.getState()
+        if (nextText === baselineContentRef.current) {
+          state.clearDraftContent(fileId)
+        }
+        else {
+          state.setDraftContent(fileId, nextText)
+          state.pinTab(fileId)
+        }
       }
       eventEmitter?.emit({
         type: PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER,
@@ -61,7 +77,9 @@ export const useSkillMarkdownCollaboration = ({
       } as unknown as string)
     })
 
-    const unsubscribeSync = skillCollaborationManager.onSyncRequest(fileId, onLeaderSync)
+    const unsubscribeSync = skillCollaborationManager.onSyncRequest(fileId, () => {
+      onLeaderSyncRef.current()
+    })
 
     return () => {
       unsubscribe()
@@ -69,7 +87,7 @@ export const useSkillMarkdownCollaboration = ({
       skillCollaborationManager.setActiveFile(appId, fileId, false)
       skillCollaborationManager.closeFile(fileId)
     }
-  }, [appId, enabled, eventEmitter, fileId, initialContent, onLeaderSync, storeApi])
+  }, [appId, enabled, eventEmitter, fileId, initialContent, storeApi])
 
   const handleCollaborativeChange = useCallback((value: string | undefined) => {
     const nextValue = value ?? ''
