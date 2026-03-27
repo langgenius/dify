@@ -3,9 +3,8 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
-from sqlalchemy import delete, func, select
 from graphon.model_runtime.entities.model_entities import ModelType
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 
 from core.model_manager import ModelManager
 from core.rag.index_processor.constant.index_type import IndexTechniqueType

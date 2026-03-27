@@ -4,9 +4,9 @@ import pickle
 from typing import Any, cast
 
 import numpy as np
-from sqlalchemy import select
 from graphon.model_runtime.entities.model_entities import ModelPropertyKey
 from graphon.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from configs import dify_config
