@@ -9,9 +9,17 @@ from typing import Any, cast
 
 from pydantic import BaseModel, TypeAdapter
 from sqlalchemy import func, select
-
-_invitation_adapter: TypeAdapter[dict[str, str]] = TypeAdapter(dict[str, str])
 from sqlalchemy.orm import Session
+from typing_extensions import TypedDict
+
+
+class InvitationData(TypedDict):
+    account_id: str
+    email: str
+    workspace_id: str
+
+
+_invitation_adapter: TypeAdapter[InvitationData] = TypeAdapter(InvitationData)
 from werkzeug.exceptions import Unauthorized
 
 from configs import dify_config
@@ -1573,7 +1581,7 @@ class RegisterService:
     @classmethod
     def get_invitation_by_token(
         cls, token: str, workspace_id: str | None = None, email: str | None = None
-    ) -> dict[str, str] | None:
+    ) -> InvitationData | None:
         if workspace_id is not None and email is not None:
             email_hash = sha256(email.encode()).hexdigest()
             cache_key = f"member_invite_token:{workspace_id}, {email_hash}:{token}"
@@ -1592,7 +1600,7 @@ class RegisterService:
             if not data:
                 return None
 
-            invitation: dict[str, str] = _invitation_adapter.validate_json(data)
+            invitation = _invitation_adapter.validate_json(data)
             return invitation
 
     @classmethod
