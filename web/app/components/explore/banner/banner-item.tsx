@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks-extra/no-direct-set-state-in-use-effect */
 import type { FC } from 'react'
 import type { Banner } from '@/models/app'
 import { RiArrowRightLine } from '@remixicon/react'
@@ -75,9 +74,11 @@ export const BannerItem: FC<BannerItemProps> = ({
     const updateMaxWidth = () => {
       if (window.innerWidth < RESPONSIVE_BREAKPOINT && textAreaRef.current) {
         const textAreaWidth = textAreaRef.current.offsetWidth
+        // eslint-disable-next-line react/set-state-in-effect
         setMaxWidth(Math.min(textAreaWidth, MAX_RESPONSIVE_WIDTH))
       }
       else {
+        // eslint-disable-next-line react/set-state-in-effect
         setMaxWidth(undefined)
       }
     }

@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react'
 import * as React from 'react'
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext } from 'react'
 import { usePathname } from '@/next/navigation'
 import { isInWorkflowPage } from '../workflow/constants'
 
@@ -39,26 +39,8 @@ type GotoAnythingProviderProps = {
  * Provider component for GotoAnything context
  */
 export const GotoAnythingProvider: React.FC<GotoAnythingProviderProps> = ({ children }) => {
-  const [isWorkflowPage, setIsWorkflowPage] = useState(false)
-  const [isRagPipelinePage, setIsRagPipelinePage] = useState(false)
-  const pathname = usePathname()
-
-  // Update context based on current pathname using more robust route matching
-  useEffect(() => {
-    if (!pathname) {
-      setIsWorkflowPage(false)
-      setIsRagPipelinePage(false)
-      return
-    }
-
-    // Workflow pages: /app/[appId]/workflow or /workflow/[token] (shared)
-    const isWorkflow = isInWorkflowPage()
-    // RAG Pipeline pages: /datasets/[datasetId]/pipeline
-    const isRagPipeline = /^\/datasets\/[^/]+\/pipeline$/.test(pathname)
-
-    setIsWorkflowPage(isWorkflow)
-    setIsRagPipelinePage(isRagPipeline)
-  }, [pathname])
+  const isWorkflowPage = /\/workflow(\/|$)/.test(pathname || '') || isInWorkflowPage()
+  const isRagPipelinePage = /^\/datasets\/[^/]+\/pipeline$/.test(pathname || '')
 
   return (
     <GotoAnythingContext.Provider value={{ isWorkflowPage, isRagPipelinePage }}>

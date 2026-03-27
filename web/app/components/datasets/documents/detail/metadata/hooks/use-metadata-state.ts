@@ -52,13 +52,13 @@ export function useMetadataState({ docDetail, onUpdate }: UseMetadataStateOption
   // of derived editing state that cannot be expressed as pure derived values.
   useEffect(() => {
     if (docDetail?.doc_type) {
-      // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
+      // eslint-disable-next-line react/set-state-in-effect
       setEditStatus(false)
-      // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
+      // eslint-disable-next-line react/set-state-in-effect
       setShowDocTypes(false)
-      // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
+      // eslint-disable-next-line react/set-state-in-effect
       setTempDocType(docType)
-      // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
+      // eslint-disable-next-line react/set-state-in-effect
       setMetadataParams({
         documentType: docType,
         metadata: (docDetail?.doc_metadata || {}) as Record<string, string>,

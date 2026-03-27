@@ -87,10 +87,12 @@ export const useIndexingConfig = (options: UseIndexingConfigOptions) => {
       score_threshold_enabled: false,
       score_threshold: 0.5,
     })
+    // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
   }, [rerankDefaultModel, isRerankDefaultModelValid, initialRetrievalConfig])
 
   // Sync index type with props
   useEffect(() => {
+    // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
     if (initialIndexType)
       setIndexType(initialIndexType)
     else

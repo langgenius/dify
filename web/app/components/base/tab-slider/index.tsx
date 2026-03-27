@@ -1,5 +1,5 @@
 import type { FC, ReactNode } from 'react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Badge, { BadgeState } from '@/app/components/base/badge/index'
 import { useInstalledPluginList } from '@/service/use-plugins'
 import { cn } from '@/utils/classnames'
@@ -25,7 +25,7 @@ const TabSlider: FC<TabSliderProps> = ({
   options,
 }) => {
   const [activeIndex, setActiveIndex] = useState(() => options.findIndex(option => option.value === value))
-  const [sliderStyle, setSliderStyle] = useState({})
+  const [sliderStyle, setSliderStyle] = useState<Record<string, string | number>>({})
   const { data: pluginList } = useInstalledPluginList()
 
   const updateSliderStyle = (index: number) => {
@@ -39,11 +39,26 @@ const TabSlider: FC<TabSliderProps> = ({
     }
   }
 
-  useEffect(() => {
+  const prevIndexRef = useRef<number | null>(null)
+  const prevValueRef = useRef<string>(value)
+  const prevPluginCountRef = useRef<number>(pluginList?.total ?? -1)
+
+  // Sync active index when value prop changes
+  if (prevValueRef.current !== value) {
+    prevValueRef.current = value
     const newIndex = options.findIndex(option => option.value === value)
-    setActiveIndex(newIndex)
-    updateSliderStyle(newIndex)
-  }, [value, options, pluginList?.total])
+    if (newIndex !== prevIndexRef.current) {
+      prevIndexRef.current = newIndex
+      setActiveIndex(newIndex)
+      updateSliderStyle(newIndex)
+    }
+  }
+
+  // Update slider style when plugin list changes (for badge count)
+  if (prevPluginCountRef.current !== (pluginList?.total ?? -1)) {
+    prevPluginCountRef.current = pluginList?.total ?? -1
+    updateSliderStyle(activeIndex)
+  }
 
   return (
     <div
