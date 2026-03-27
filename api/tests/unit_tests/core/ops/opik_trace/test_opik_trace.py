@@ -373,9 +373,7 @@ def test_message_trace_with_end_user(trace_instance, monkeypatch):
     mock_end_user = MagicMock(spec=EndUser)
     mock_end_user.session_id = "session-id-123"
 
-    mock_query = MagicMock()
-    mock_query.where.return_value.first.return_value = mock_end_user
-    monkeypatch.setattr("core.ops.opik_trace.opik_trace.db.session.query", lambda model: mock_query)
+    monkeypatch.setattr("core.ops.opik_trace.opik_trace.db.session.get", lambda model, pk: mock_end_user)
 
     trace_instance.add_trace = MagicMock(return_value=MagicMock(id="trace_id_2"))
     trace_instance.add_span = MagicMock()
