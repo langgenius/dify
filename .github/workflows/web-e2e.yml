@@ -29,7 +29,7 @@ jobs:
 
       - name: Install E2E package dependencies
         working-directory: ./e2e
-        run: pnpm install --frozen-lockfile
+        run: vp install --frozen-lockfile
 
       - name: Setup UV and Python
         uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
