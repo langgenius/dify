@@ -3,6 +3,7 @@ from datetime import datetime
 from dateutil.parser import isoparse
 from flask import request
 from flask_restx import Resource, marshal_with
+from graphon.enums import WorkflowExecutionStatus
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
@@ -14,7 +15,6 @@ from fields.workflow_app_log_fields import (
     build_workflow_app_log_pagination_model,
     build_workflow_archived_log_pagination_model,
 )
-from graphon.enums import WorkflowExecutionStatus
 from libs.login import login_required
 from models import App
 from models.model import AppMode
