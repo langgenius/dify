@@ -49,6 +49,7 @@ from dify_graph.variable_loader import load_into_variable_pool
 from dify_graph.variables import VariableBase
 from dify_graph.variables.input_entities import VariableEntityType
 from dify_graph.variables.variables import Variable
+from enterprise.telemetry.draft_trace import enqueue_draft_node_execution_trace
 from enums.cloud_plan import CloudPlan
 from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
 from extensions.ext_database import db
@@ -840,6 +841,13 @@ class WorkflowService:
             )
             draft_var_saver.save(process_data=node_execution.process_data, outputs=outputs)
             session.commit()
+
+        enqueue_draft_node_execution_trace(
+            execution=workflow_node_execution,
+            outputs=outputs,
+            workflow_execution_id=None,
+            user_id=account.id,
+        )
 
         return workflow_node_execution
 

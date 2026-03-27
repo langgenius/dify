@@ -53,6 +53,7 @@ from dify_graph.repositories.workflow_node_execution_repository import OrderConf
 from dify_graph.runtime import VariablePool
 from dify_graph.system_variable import SystemVariable
 from dify_graph.variables.variables import VariableBase
+from enterprise.telemetry.draft_trace import enqueue_draft_node_execution_trace
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account
@@ -571,6 +572,13 @@ class RagPipelineService:
                 outputs=workflow_node_execution.outputs,
             )
             session.commit()
+        if workflow_node_execution_db_model is not None:
+            enqueue_draft_node_execution_trace(
+                execution=workflow_node_execution_db_model,
+                outputs=workflow_node_execution.outputs,
+                workflow_execution_id=None,
+                user_id=account.id,
+            )
         return workflow_node_execution_db_model
 
     def run_datasource_workflow_node(
@@ -1334,6 +1342,12 @@ class RagPipelineService:
                 outputs=workflow_node_execution.outputs,
             )
             session.commit()
+        enqueue_draft_node_execution_trace(
+            execution=workflow_node_execution_db_model,
+            outputs=workflow_node_execution.outputs,
+            workflow_execution_id=None,
+            user_id=current_user.id,
+        )
         return workflow_node_execution_db_model
 
     def get_recommended_plugins(self, type: str) -> dict:
