@@ -92,7 +92,7 @@ jobs:
 
   api-tests:
     name: API Tests
-    if: ${{ always() && needs.pre_job.outputs.should_skip != 'true' }}
+    if: ${{ always() }}
     needs:
       - pre_job
       - check-changes
@@ -102,10 +102,16 @@ jobs:
     steps:
       - name: Finalize API Tests status
         env:
+          SHOULD_SKIP_WORKFLOW: ${{ needs.pre_job.outputs.should_skip }}
           TESTS_CHANGED: ${{ needs.check-changes.outputs.api-changed }}
           RUN_RESULT: ${{ needs.api-tests-run.result }}
           SKIP_RESULT: ${{ needs.api-tests-skip.result }}
         run: |
+          if [[ "$SHOULD_SKIP_WORKFLOW" == 'true' ]]; then
+            echo "API tests were skipped because this workflow run duplicated a successful or newer run."
+            exit 0
+          fi
+
           if [[ "$TESTS_CHANGED" == 'true' ]]; then
             if [[ "$RUN_RESULT" == 'success' ]]; then
               echo "API tests ran successfully."
@@ -146,7 +152,7 @@ jobs:
 
   web-tests:
     name: Web Tests
-    if: ${{ always() && needs.pre_job.outputs.should_skip != 'true' }}
+    if: ${{ always() }}
     needs:
       - pre_job
       - check-changes
@@ -156,10 +162,16 @@ jobs:
     steps:
       - name: Finalize Web Tests status
         env:
+          SHOULD_SKIP_WORKFLOW: ${{ needs.pre_job.outputs.should_skip }}
           TESTS_CHANGED: ${{ needs.check-changes.outputs.web-changed }}
           RUN_RESULT: ${{ needs.web-tests-run.result }}
           SKIP_RESULT: ${{ needs.web-tests-skip.result }}
         run: |
+          if [[ "$SHOULD_SKIP_WORKFLOW" == 'true' ]]; then
+            echo "Web tests were skipped because this workflow run duplicated a successful or newer run."
+            exit 0
+          fi
+
           if [[ "$TESTS_CHANGED" == 'true' ]]; then
             if [[ "$RUN_RESULT" == 'success' ]]; then
               echo "Web tests ran successfully."
@@ -205,7 +217,7 @@ jobs:
 
   vdb-tests:
     name: VDB Tests
-    if: ${{ always() && needs.pre_job.outputs.should_skip != 'true' }}
+    if: ${{ always() }}
     needs:
       - pre_job
       - check-changes
@@ -215,10 +227,16 @@ jobs:
     steps:
       - name: Finalize VDB Tests status
         env:
+          SHOULD_SKIP_WORKFLOW: ${{ needs.pre_job.outputs.should_skip }}
           TESTS_CHANGED: ${{ needs.check-changes.outputs.vdb-changed }}
           RUN_RESULT: ${{ needs.vdb-tests-run.result }}
           SKIP_RESULT: ${{ needs.vdb-tests-skip.result }}
         run: |
+          if [[ "$SHOULD_SKIP_WORKFLOW" == 'true' ]]; then
+            echo "VDB tests were skipped because this workflow run duplicated a successful or newer run."
+            exit 0
+          fi
+
           if [[ "$TESTS_CHANGED" == 'true' ]]; then
             if [[ "$RUN_RESULT" == 'success' ]]; then
               echo "VDB tests ran successfully."
@@ -258,7 +276,7 @@ jobs:
 
   db-migration-test:
     name: DB Migration Test
-    if: ${{ always() && needs.pre_job.outputs.should_skip != 'true' }}
+    if: ${{ always() }}
     needs:
       - pre_job
       - check-changes
@@ -268,10 +286,16 @@ jobs:
     steps:
       - name: Finalize DB Migration Test status
         env:
+          SHOULD_SKIP_WORKFLOW: ${{ needs.pre_job.outputs.should_skip }}
           TESTS_CHANGED: ${{ needs.check-changes.outputs.migration-changed }}
           RUN_RESULT: ${{ needs.db-migration-test-run.result }}
           SKIP_RESULT: ${{ needs.db-migration-test-skip.result }}
         run: |
+          if [[ "$SHOULD_SKIP_WORKFLOW" == 'true' ]]; then
+            echo "DB migration tests were skipped because this workflow run duplicated a successful or newer run."
+            exit 0
+          fi
+
           if [[ "$TESTS_CHANGED" == 'true' ]]; then
             if [[ "$RUN_RESULT" == 'success' ]]; then
               echo "DB migration tests ran successfully."
