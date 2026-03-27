@@ -432,10 +432,11 @@ class RetrievalService:
             # Batch query dataset documents
             dataset_documents = {
                 doc.id: doc
-                for doc in db.session.query(DatasetDocument)
-                .where(DatasetDocument.id.in_(document_ids))
-                .options(load_only(DatasetDocument.id, DatasetDocument.doc_form, DatasetDocument.dataset_id))
-                .all()
+                for doc in db.session.scalars(
+                    select(DatasetDocument)
+                    .where(DatasetDocument.id.in_(document_ids))
+                    .options(load_only(DatasetDocument.id, DatasetDocument.doc_form, DatasetDocument.dataset_id))
+                ).all()
             }
 
             valid_dataset_documents = {}

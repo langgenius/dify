@@ -473,12 +473,10 @@ class TestRerankModelRunnerMultimodal:
             metadata={},
             provider="external",
         )
-        query = Mock()
-        query.where.return_value.first.return_value = SimpleNamespace(key="image-key")
         rerank_result = RerankResult(model="rerank-model", docs=[])
 
         with (
-            patch("core.rag.rerank.rerank_model.db.session.query", return_value=query),
+            patch("core.rag.rerank.rerank_model.db.session.get", return_value=SimpleNamespace(key="image-key")),
             patch("core.rag.rerank.rerank_model.storage.load_once", return_value=b"image-bytes") as mock_load_once,
             patch.object(
                 rerank_runner,
@@ -504,12 +502,10 @@ class TestRerankModelRunnerMultimodal:
             metadata={"doc_id": "img-missing", "doc_type": DocType.IMAGE},
             provider="dify",
         )
-        query = Mock()
-        query.where.return_value.first.return_value = None
         rerank_result = RerankResult(model="rerank-model", docs=[])
 
         with (
-            patch("core.rag.rerank.rerank_model.db.session.query", return_value=query),
+            patch("core.rag.rerank.rerank_model.db.session.get", return_value=None),
             patch.object(
                 rerank_runner,
                 "fetch_text_rerank",
@@ -533,8 +529,6 @@ class TestRerankModelRunnerMultimodal:
             metadata={"doc_id": "txt-1", "doc_type": DocType.TEXT},
             provider="dify",
         )
-        query_chain = Mock()
-        query_chain.where.return_value.first.return_value = SimpleNamespace(key="query-image-key")
         rerank_result = RerankResult(
             model="rerank-model",
             docs=[RerankDocument(index=0, text="text-content", score=0.77)],
@@ -542,7 +536,7 @@ class TestRerankModelRunnerMultimodal:
         mock_model_instance.invoke_multimodal_rerank.return_value = rerank_result
 
         session = MagicMock()
-        session.query.return_value = query_chain
+        session.get.return_value = SimpleNamespace(key="query-image-key")
         with (
             patch("core.rag.rerank.rerank_model.db.session", session),
             patch("core.rag.rerank.rerank_model.storage.load_once", return_value=b"query-image-bytes"),
@@ -563,10 +557,7 @@ class TestRerankModelRunnerMultimodal:
         assert "user" not in invoke_kwargs
 
     def test_fetch_multimodal_rerank_raises_when_query_image_not_found(self, rerank_runner):
-        query_chain = Mock()
-        query_chain.where.return_value.first.return_value = None
-
-        with patch("core.rag.rerank.rerank_model.db.session.query", return_value=query_chain):
+        with patch("core.rag.rerank.rerank_model.db.session.get", return_value=None):
             with pytest.raises(ValueError, match="Upload file not found for query"):
                 rerank_runner.fetch_multimodal_rerank(
                     query="missing-upload-id",

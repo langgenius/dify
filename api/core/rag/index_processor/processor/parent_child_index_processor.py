@@ -22,6 +22,8 @@ from core.rag.index_processor.constant.index_type import IndexStructureType, Ind
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor, SummaryIndexSettingDict
 from core.rag.models.document import AttachmentDocument, ChildDocument, Document, ParentChildStructureChunk
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
+from sqlalchemy import delete, select
+
 from extensions.ext_database import db
 from libs import helper
 from models import Account
@@ -177,17 +179,16 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                     child_node_ids = precomputed_child_node_ids
                 else:
                     # Fallback to original query (may fail if segments are already deleted)
-                    child_node_ids = (
-                        db.session.query(ChildChunk.index_node_id)
+                    rows = db.session.execute(
+                        select(ChildChunk.index_node_id)
                         .join(DocumentSegment, ChildChunk.segment_id == DocumentSegment.id)
                         .where(
                             DocumentSegment.dataset_id == dataset.id,
                             DocumentSegment.index_node_id.in_(node_ids),
                             ChildChunk.dataset_id == dataset.id,
                         )
-                        .all()
-                    )
-                    child_node_ids = [child_node_id[0] for child_node_id in child_node_ids if child_node_id[0]]
+                    ).all()
+                    child_node_ids = [row[0] for row in rows if row[0]]
 
                 # Delete from vector index
                 if child_node_ids:
@@ -195,18 +196,22 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
 
                 # Delete from database
                 if delete_child_chunks and child_node_ids:
-                    db.session.query(ChildChunk).where(
-                        ChildChunk.dataset_id == dataset.id, ChildChunk.index_node_id.in_(child_node_ids)
-                    ).delete(synchronize_session=False)
+                    db.session.execute(
+                        delete(ChildChunk).where(
+                            ChildChunk.dataset_id == dataset.id, ChildChunk.index_node_id.in_(child_node_ids)
+                        )
+                    )
                     db.session.commit()
             else:
                 vector.delete()
 
                 if delete_child_chunks:
                     # Use existing compound index: (tenant_id, dataset_id, ...)
-                    db.session.query(ChildChunk).where(
-                        ChildChunk.tenant_id == dataset.tenant_id, ChildChunk.dataset_id == dataset.id
-                    ).delete(synchronize_session=False)
+                    db.session.execute(
+                        delete(ChildChunk).where(
+                            ChildChunk.tenant_id == dataset.tenant_id, ChildChunk.dataset_id == dataset.id
+                        )
+                    )
                     db.session.commit()
 
     def retrieve(

@@ -188,10 +188,10 @@ class TestParagraphIndexProcessor:
         mock_keyword_cls.return_value.add_texts.assert_called_once_with(docs)
 
     def test_clean_deletes_summaries_and_vector(self, processor: ParagraphIndexProcessor, dataset: Mock) -> None:
-        segment_query = Mock()
-        segment_query.filter.return_value.all.return_value = [SimpleNamespace(id="seg-1")]
+        scalars_result = Mock()
+        scalars_result.all.return_value = [SimpleNamespace(id="seg-1")]
         session = Mock()
-        session.query.return_value = segment_query
+        session.scalars.return_value = scalars_result
 
         with (
             patch("core.rag.index_processor.processor.paragraph_index_processor.db.session", session),
@@ -531,10 +531,10 @@ class TestParagraphIndexProcessor:
             size=1,
             key="key",
         )
-        query = Mock()
-        query.where.return_value.all.return_value = [image_upload, non_image_upload]
+        scalars_result = Mock()
+        scalars_result.all.return_value = [image_upload, non_image_upload]
         session = Mock()
-        session.query.return_value = query
+        session.scalars.return_value = scalars_result
 
         with (
             patch("core.rag.index_processor.processor.paragraph_index_processor.db.session", session),
@@ -565,10 +565,10 @@ class TestParagraphIndexProcessor:
             size=1,
             key="key",
         )
-        query = Mock()
-        query.where.return_value.all.return_value = [image_upload]
+        scalars_result = Mock()
+        scalars_result.all.return_value = [image_upload]
         session = Mock()
-        session.query.return_value = query
+        session.scalars.return_value = scalars_result
 
         with (
             patch("core.rag.index_processor.processor.paragraph_index_processor.db.session", session),
