@@ -8,6 +8,9 @@ on:
       - api/Dockerfile
       - web/Dockerfile
 
+permissions:
+  contents: read
+
 concurrency:
   group: docker-build-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
