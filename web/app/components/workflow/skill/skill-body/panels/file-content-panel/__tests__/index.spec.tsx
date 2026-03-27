@@ -682,6 +682,50 @@ describe('FileContentPanel', () => {
       expect(mocks.workflowActions.clearDraftContent).toHaveBeenCalledWith('file-1')
       expect(mocks.workflowActions.pinTab).not.toHaveBeenCalled()
     })
+
+    it('should pin the tab when remote collaboration sync only dirties metadata', async () => {
+      // Arrange
+      mocks.fileTypeInfo = {
+        isMarkdown: true,
+        isCodeOrText: false,
+        isImage: false,
+        isVideo: false,
+        isPdf: false,
+        isSQLite: false,
+        isEditable: true,
+        isPreviewable: true,
+      }
+      mocks.fileData.fileContent = {
+        content: `linked §[file].[app].[${FILE_REFERENCE_ID}]§`,
+        metadata: {},
+      }
+      mocks.workflowState.fileMetadata = new Map<string, Record<string, unknown>>([
+        ['file-1', {}],
+      ])
+      mocks.nodeMapData = new Map<string, AppAssetTreeView>([
+        ['file-1', createNode({ name: 'prompt.md', extension: 'md' })],
+        [FILE_REFERENCE_ID, createNode({ id: FILE_REFERENCE_ID, name: 'kb.txt', extension: 'txt' })],
+      ])
+
+      // Act
+      render(<FileContentPanel />)
+      await screen.findByTestId('markdown-editor')
+      const firstCall = mocks.useSkillMarkdownCollaboration.mock.calls[0]
+      const args = firstCall?.[0] as UseSkillMarkdownCollaborationArgs | undefined
+      args?.onRemoteChange?.(`linked §[file].[app].[${FILE_REFERENCE_ID}]§`)
+
+      // Assert
+      expect(mocks.workflowActions.clearDraftContent).toHaveBeenCalledWith('file-1')
+      expect(mocks.workflowActions.setDraftMetadata).toHaveBeenCalledWith(
+        'file-1',
+        expect.objectContaining({
+          files: expect.objectContaining({
+            [FILE_REFERENCE_ID]: expect.objectContaining({ id: FILE_REFERENCE_ID }),
+          }),
+        }),
+      )
+      expect(mocks.workflowActions.pinTab).toHaveBeenCalledWith('file-1')
+    })
   })
 
   describe('Preview modes', () => {

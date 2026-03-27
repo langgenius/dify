@@ -86,7 +86,7 @@ export const useFileContentController = (): FileContentControllerState => {
 
   const updateFileReferenceMetadata = useCallback((content: string) => {
     if (!fileTabId)
-      return
+      return false
 
     const referenceIds = extractFileReferenceIds(content)
     const metadata = (currentMetadata || {}) as SkillFileMetadata
@@ -108,9 +108,10 @@ export const useFileContentController = (): FileContentControllerState => {
       delete nextMetadata.files
 
     if (isDeepEqual(metadata, nextMetadata))
-      return
+      return false
 
     storeApi.getState().setDraftMetadata(fileTabId, nextMetadata)
+    return true
   }, [currentMetadata, fileTabId, nodeMap, storeApi])
 
   const applyContentChange = useCallback((
@@ -130,8 +131,8 @@ export const useFileContentController = (): FileContentControllerState => {
     else
       state.setDraftContent(fileTabId, nextValue)
 
-    updateFileReferenceMetadata(nextValue)
-    if (nextValue !== originalContent || options?.pinWhenContentMatchesOriginal)
+    const didUpdateMetadata = updateFileReferenceMetadata(nextValue)
+    if (nextValue !== originalContent || didUpdateMetadata || options?.pinWhenContentMatchesOriginal)
       state.pinTab(fileTabId)
   }, [fileTabId, isEditable, originalContent, storeApi, updateFileReferenceMetadata])
 
