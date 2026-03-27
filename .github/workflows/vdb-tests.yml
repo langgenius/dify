@@ -3,6 +3,9 @@ name: Run VDB Smoke Tests
 on:
   workflow_call:
 
+permissions:
+  contents: read
+
 concurrency:
   group: vdb-tests-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
