@@ -2,6 +2,7 @@ import logging
 import os
 from datetime import datetime, timedelta
 
+from graphon.enums import BuiltinNodeTypes
 from langfuse import Langfuse
 from sqlalchemy.orm import sessionmaker
 
@@ -29,7 +30,6 @@ from core.ops.langfuse_trace.entities.langfuse_trace_entity import (
 from core.ops.utils import filter_none_values
 from core.repositories import DifyCoreRepositoryFactory
 from extensions.ext_database import db
-from graphon.enums import BuiltinNodeTypes
 from models import EndUser, WorkflowNodeExecutionTriggeredFrom
 from models.enums import MessageStatus
 

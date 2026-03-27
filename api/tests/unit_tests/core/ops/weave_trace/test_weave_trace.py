@@ -7,6 +7,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 from weave.trace_server.trace_server_interface import TraceStatus
 
 from core.ops.entities.config_entity import WeaveConfig
@@ -22,7 +23,6 @@ from core.ops.entities.trace_entity import (
 )
 from core.ops.weave_trace.entities.weave_trace_entity import WeaveTraceModel
 from core.ops.weave_trace.weave_trace import WeaveDataTrace
-from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
