@@ -52,6 +52,12 @@ class ReadyQueueProtocol(Protocol):
         ...
 
 
+class NodeExecutionProtocol(Protocol):
+    """Structural interface for persisted per-node execution state."""
+
+    execution_id: str | None
+
+
 class GraphExecutionProtocol(Protocol):
     """Structural interface for graph execution aggregate.
 
@@ -66,6 +72,11 @@ class GraphExecutionProtocol(Protocol):
     error: Exception | None
     exceptions_count: int
     pause_reasons: list[PauseReason]
+
+    @property
+    def node_executions(self) -> Mapping[str, NodeExecutionProtocol]:
+        """Return the persisted node execution state keyed by node id."""
+        ...
 
     def start(self) -> None:
         """Transition execution into the running state."""

@@ -1,5 +1,4 @@
 from collections.abc import Sequence
-from datetime import datetime
 from unittest.mock import Mock
 
 from core.app.layers.conversation_variable_persist_layer import ConversationVariablePersistenceLayer
@@ -12,6 +11,7 @@ from graphon.node_events import NodeRunResult
 from graphon.runtime.graph_runtime_state_protocol import ReadOnlyGraphRuntimeState
 from graphon.variables import StringVariable
 from graphon.variables.segments import Segment, StringSegment
+from libs.datetime_utils import naive_utc_now
 
 
 class MockReadOnlyVariablePool:
@@ -48,7 +48,7 @@ def _build_node_run_succeeded_event() -> NodeRunSucceededEvent:
         id="node-exec-id",
         node_id="assigner",
         node_type=BuiltinNodeTypes.LLM,
-        start_at=datetime.utcnow(),
+        start_at=naive_utc_now(),
         node_run_result=NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
             outputs={},

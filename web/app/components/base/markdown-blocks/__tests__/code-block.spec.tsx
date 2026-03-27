@@ -1,6 +1,6 @@
-import { createRequire } from 'node:module'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import * as echarts from 'echarts'
 import { Theme } from '@/types/app'
 
 import CodeBlock from '../code-block'
@@ -10,12 +10,21 @@ type UseThemeReturn = {
 }
 
 const mockUseTheme = vi.fn<() => UseThemeReturn>(() => ({ theme: Theme.light }))
-const require = createRequire(import.meta.url)
-const echartsCjs = require('echarts') as {
-  getInstanceByDom: (dom: HTMLDivElement | null) => {
-    resize: (opts?: { width?: string, height?: string }) => void
-  } | null
-}
+const mockEcharts = vi.hoisted(() => {
+  const state = {
+    finishedHandler: undefined as undefined | ((event?: unknown) => void),
+    echartsInstance: {
+      resize: vi.fn<(opts?: { width?: string, height?: string }) => void>(),
+      trigger: vi.fn((eventName: string, event?: unknown) => {
+        if (eventName === 'finished')
+          state.finishedHandler?.(event)
+      }),
+    },
+    getInstanceByDom: vi.fn(() => state.echartsInstance),
+  }
+
+  return state
+})
 
 let clientWidthSpy: { mockRestore: () => void } | null = null
 let clientHeightSpy: { mockRestore: () => void } | null = null
@@ -61,6 +70,42 @@ vi.mock('@/hooks/use-theme', () => ({
   default: () => mockUseTheme(),
 }))
 
+vi.mock('echarts', () => ({
+  getInstanceByDom: mockEcharts.getInstanceByDom,
+}))
+
+vi.mock('echarts-for-react', async () => {
+  const React = await vi.importActual<typeof import('react')>('react')
+
+  const MockReactEcharts = React.forwardRef(({
+    onChartReady,
+    onEvents,
+  }: {
+    onChartReady?: (instance: typeof mockEcharts.echartsInstance) => void
+    onEvents?: { finished?: (event?: unknown) => void }
+  }, ref: React.ForwardedRef<{ getEchartsInstance: () => typeof mockEcharts.echartsInstance }>) => {
+    React.useImperativeHandle(ref, () => ({
+      getEchartsInstance: () => mockEcharts.echartsInstance,
+    }))
+
+    React.useEffect(() => {
+      mockEcharts.finishedHandler = onEvents?.finished
+      onChartReady?.(mockEcharts.echartsInstance)
+      onEvents?.finished?.({})
+      return () => {
+        mockEcharts.finishedHandler = undefined
+      }
+    }, [onChartReady, onEvents])
+
+    return <div className="echarts-for-react" />
+  })
+
+  return {
+    __esModule: true,
+    default: MockReactEcharts,
+  }
+})
+
 vi.mock('@/app/components/base/mermaid', () => ({
   __esModule: true,
   default: ({ PrimitiveCode }: { PrimitiveCode: string }) => <div data-testid="mock-mermaid">{PrimitiveCode}</div>,
@@ -76,9 +121,9 @@ const findEchartsHost = async () => {
 const findEchartsInstance = async () => {
   const host = await findEchartsHost()
   await waitFor(() => {
-    expect(echartsCjs.getInstanceByDom(host)).toBeTruthy()
+    expect(echarts.getInstanceByDom(host)).toBeTruthy()
   })
-  return echartsCjs.getInstanceByDom(host)!
+  return echarts.getInstanceByDom(host)!
 }
 
 describe('CodeBlock', () => {
