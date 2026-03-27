@@ -60,7 +60,7 @@ def _dict_to_workflow_node_execution_model(data: dict[str, Any]) -> WorkflowNode
         model.triggered_from = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN
     model.node_id = data.get("node_id") or ""
     model.node_type = data.get("node_type") or ""
-    model.status = data.get("status") or "running"  # Default status if missing
+    model.status = WorkflowNodeExecutionStatus(data.get("status") or "running")
     model.title = data.get("title") or ""
     created_by_role_val = data.get("created_by_role")
     try:

@@ -10,6 +10,9 @@ import { renderWorkflowFlowComponent } from './workflow-test-env'
 let latestNodes: Node[] = []
 let latestHistoryEvent: string | undefined
 const mockGetNodesReadOnly = vi.fn()
+const mockHandleNodesCopy = vi.fn()
+const mockHandleNodesDuplicate = vi.fn()
+const mockHandleNodesDelete = vi.fn()
 
 vi.mock('../hooks', async () => {
   const actual = await vi.importActual<typeof import('../hooks')>('../hooks')
@@ -17,6 +20,11 @@ vi.mock('../hooks', async () => {
     ...actual,
     useNodesReadOnly: () => ({
       getNodesReadOnly: mockGetNodesReadOnly,
+    }),
+    useNodesInteractions: () => ({
+      handleNodesCopy: mockHandleNodesCopy,
+      handleNodesDuplicate: mockHandleNodesDuplicate,
+      handleNodesDelete: mockHandleNodesDelete,
     }),
   }
 })
@@ -73,6 +81,9 @@ describe('SelectionContextmenu', () => {
     latestHistoryEvent = undefined
     mockGetNodesReadOnly.mockReset()
     mockGetNodesReadOnly.mockReturnValue(false)
+    mockHandleNodesCopy.mockReset()
+    mockHandleNodesDuplicate.mockReset()
+    mockHandleNodesDelete.mockReset()
   })
 
   it('should not render when selectionMenu is absent', () => {
@@ -95,6 +106,40 @@ describe('SelectionContextmenu', () => {
     await waitFor(() => {
       expect(screen.getByTestId('selection-contextmenu-item-left')).toBeInTheDocument()
     })
+  })
+
+  it('should render and execute copy/duplicate/delete operations', async () => {
+    const nodes = [
+      createNode({ id: 'n1', selected: true, width: 80, height: 40 }),
+      createNode({ id: 'n2', selected: true, position: { x: 140, y: 0 }, width: 80, height: 40 }),
+    ]
+    const { store } = renderSelectionMenu({ nodes })
+
+    act(() => {
+      store.setState({ selectionMenu: { clientX: 120, clientY: 120 } })
+    })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('selection-contextmenu-item-copy')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('selection-contextmenu-item-copy'))
+    expect(mockHandleNodesCopy).toHaveBeenCalledTimes(1)
+    expect(store.getState().selectionMenu).toBeUndefined()
+
+    act(() => {
+      store.setState({ selectionMenu: { clientX: 120, clientY: 120 } })
+    })
+    fireEvent.click(screen.getByTestId('selection-contextmenu-item-duplicate'))
+    expect(mockHandleNodesDuplicate).toHaveBeenCalledTimes(1)
+    expect(store.getState().selectionMenu).toBeUndefined()
+
+    act(() => {
+      store.setState({ selectionMenu: { clientX: 120, clientY: 120 } })
+    })
+    fireEvent.click(screen.getByTestId('selection-contextmenu-item-delete'))
+    expect(mockHandleNodesDelete).toHaveBeenCalledTimes(1)
+    expect(store.getState().selectionMenu).toBeUndefined()
   })
 
   it('should close itself when only one node is selected', async () => {

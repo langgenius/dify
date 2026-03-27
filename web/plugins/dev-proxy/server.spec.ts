@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment node
+ */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { buildUpstreamUrl, createDevProxyApp, isAllowedDevOrigin, resolveDevProxyTargets } from './server'
 
