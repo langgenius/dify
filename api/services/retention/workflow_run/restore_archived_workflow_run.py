@@ -18,9 +18,21 @@ from typing import Any, cast
 import click
 from pydantic import TypeAdapter
 from sqlalchemy.dialects.postgresql import insert as pg_insert
-
-_dict_str_any_adapter: TypeAdapter[dict[str, Any]] = TypeAdapter(dict[str, Any])
 from sqlalchemy.engine import CursorResult
+from typing_extensions import TypedDict
+
+
+class _TableInfo(TypedDict, total=False):
+    row_count: int
+
+
+class ArchiveManifest(TypedDict, total=False):
+    tables: dict[str, _TableInfo]
+    schema_version: str
+
+
+_manifest_adapter: TypeAdapter[ArchiveManifest] = TypeAdapter(ArchiveManifest)
+
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from extensions.ext_database import db
@@ -241,12 +253,12 @@ class WorkflowRunRestore:
         return self.workflow_run_repo
 
     @staticmethod
-    def _load_manifest_from_zip(archive: zipfile.ZipFile) -> dict[str, Any]:
+    def _load_manifest_from_zip(archive: zipfile.ZipFile) -> ArchiveManifest:
         try:
             data = archive.read("manifest.json")
         except KeyError as e:
             raise ValueError("manifest.json missing from archive bundle") from e
-        return _dict_str_any_adapter.validate_json(data)
+        return _manifest_adapter.validate_json(data)
 
     def _restore_table_records(
         self,
@@ -334,7 +346,7 @@ class WorkflowRunRestore:
 
         return result
 
-    def _get_schema_version(self, manifest: dict[str, Any]) -> str:
+    def _get_schema_version(self, manifest: ArchiveManifest) -> str:
         schema_version = manifest.get("schema_version")
         if not schema_version:
             logger.warning("Manifest missing schema_version; defaulting to 1.0")

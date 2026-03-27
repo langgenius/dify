@@ -1,13 +1,8 @@
 import json
 import uuid
-from typing import Any
-
-from pydantic import TypeAdapter
 
 from core.plugin.impl.base import BasePluginClient
 from extensions.ext_redis import redis_client
-
-_oauth_context_adapter: TypeAdapter[dict[str, Any]] = TypeAdapter(dict[str, Any])
 
 
 class OAuthProxyService(BasePluginClient):
@@ -67,4 +62,4 @@ class OAuthProxyService(BasePluginClient):
         if not data:
             raise ValueError("context_id is invalid")
         redis_client.delete(key)
-        return _oauth_context_adapter.validate_json(data)
+        return json.loads(data)

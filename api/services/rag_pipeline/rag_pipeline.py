@@ -9,10 +9,7 @@ from typing import Any, Union, cast
 from uuid import uuid4
 
 from flask_login import current_user
-from pydantic import TypeAdapter
 from sqlalchemy import func, select
-
-_dict_str_any_adapter: TypeAdapter[dict[str, Any]] = TypeAdapter(dict[str, Any])
 from sqlalchemy.orm import Session, sessionmaker
 
 import contexts
@@ -1426,7 +1423,7 @@ class RagPipelineService:
                 "start_node_id": document_pipeline_execution_log.datasource_node_id,
                 "datasource_type": document_pipeline_execution_log.datasource_type,
                 "datasource_info_list": [
-                    _dict_str_any_adapter.validate_json(document_pipeline_execution_log.datasource_info)
+                    json.loads(document_pipeline_execution_log.datasource_info)
                 ],
                 "original_document_id": document.id,
             },

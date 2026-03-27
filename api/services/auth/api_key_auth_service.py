@@ -1,15 +1,11 @@
 import json
-from typing import Any
 
-from pydantic import TypeAdapter
 from sqlalchemy import select
 
 from core.helper import encrypter
 from extensions.ext_database import db
 from models.source import DataSourceApiKeyAuthBinding
 from services.auth.api_key_auth_factory import ApiKeyAuthFactory
-
-_credentials_adapter: TypeAdapter[dict[str, Any]] = TypeAdapter(dict[str, Any])
 
 
 class ApiKeyAuthService:
@@ -53,7 +49,7 @@ class ApiKeyAuthService:
             return None
         if not data_source_api_key_bindings.credentials:
             return None
-        credentials = _credentials_adapter.validate_json(data_source_api_key_bindings.credentials)
+        credentials = json.loads(data_source_api_key_bindings.credentials)
         return credentials
 
     @staticmethod

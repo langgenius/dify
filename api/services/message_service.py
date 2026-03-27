@@ -1,10 +1,8 @@
 from collections.abc import Sequence
-from typing import Any, Union, cast
+from typing import Union
 
 from pydantic import TypeAdapter
 from sqlalchemy.orm import sessionmaker
-
-_dict_str_any_adapter: TypeAdapter[dict[str, Any]] = TypeAdapter(dict[str, Any])
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -32,6 +30,8 @@ from services.errors.message import (
     SuggestedQuestionsAfterAnswerDisabledError,
 )
 from services.workflow_service import WorkflowService
+
+_app_model_config_adapter: TypeAdapter[AppModelConfigDict] = TypeAdapter(AppModelConfigDict)
 
 
 def _create_execution_extra_content_repository() -> ExecutionExtraContentRepository:
@@ -288,9 +288,8 @@ class MessageService:
                     .first()
                 )
             else:
-                conversation_override_model_configs = cast(
-                    AppModelConfigDict,
-                    _dict_str_any_adapter.validate_json(conversation.override_model_configs),
+                conversation_override_model_configs = _app_model_config_adapter.validate_json(
+                    conversation.override_model_configs
                 )
                 app_model_config = AppModelConfig(
                     app_id=app_model.id,

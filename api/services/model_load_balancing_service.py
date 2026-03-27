@@ -2,7 +2,6 @@ import json
 import logging
 from typing import Any, Union
 
-from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import or_, select
 
 from constants import HIDDEN_VALUE
@@ -25,7 +24,6 @@ from models.provider import LoadBalancingModelConfig, ProviderCredential, Provid
 
 logger = logging.getLogger(__name__)
 
-_encrypted_config_adapter: TypeAdapter[dict[str, Any]] = TypeAdapter(dict[str, Any])
 
 
 class ModelLoadBalancingService:
@@ -170,12 +168,12 @@ class ModelLoadBalancingService:
 
             try:
                 if load_balancing_config.encrypted_config:
-                    credentials: dict[str, Any] = _encrypted_config_adapter.validate_json(
+                    credentials: dict[str, Any] = json.loads(
                         load_balancing_config.encrypted_config
                     )
                 else:
                     credentials = {}
-            except ValidationError:
+            except (json.JSONDecodeError, ValueError):
                 credentials = {}
 
             # Get provider credential secret variables
@@ -257,10 +255,10 @@ class ModelLoadBalancingService:
 
         try:
             if load_balancing_model_config.encrypted_config:
-                credentials = _encrypted_config_adapter.validate_json(load_balancing_model_config.encrypted_config)
+                credentials = json.loads(load_balancing_model_config.encrypted_config)
             else:
                 credentials = {}
-        except ValidationError:
+        except (json.JSONDecodeError, ValueError):
             credentials = {}
 
         # Get credential form schemas from model credential schema or provider credential schema
@@ -576,12 +574,12 @@ class ModelLoadBalancingService:
             try:
                 # fix origin data
                 if load_balancing_model_config.encrypted_config:
-                    original_credentials = _encrypted_config_adapter.validate_json(
+                    original_credentials = json.loads(
                         load_balancing_model_config.encrypted_config
                     )
                 else:
                     original_credentials = {}
-            except ValidationError:
+            except (json.JSONDecodeError, ValueError):
                 original_credentials = {}
 
             # encrypt credentials
