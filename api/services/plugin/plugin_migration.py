@@ -319,8 +319,7 @@ class PluginMigration:
         with open(extracted_plugins) as f:
             for line in f:
                 data = _tenant_plugin_adapter.validate_json(line)
-                new_plugin_ids = data.get("plugins", [])
-                for plugin_id in new_plugin_ids:
+                for plugin_id in data["plugins"]:
                     if plugin_id not in plugin_ids:
                         plugin_ids.append(plugin_id)
 
@@ -392,20 +391,20 @@ class PluginMigration:
             """
             for line in f:
                 data = _tenant_plugin_adapter.validate_json(line)
-                tenant_id = data.get("tenant_id")
-                plugin_ids = data.get("plugins", [])
-                current_not_installed = {
-                    "tenant_id": tenant_id,
-                    "plugin_not_exist": [],
-                }
+                tenant_id = data["tenant_id"]
+                plugin_ids = data["plugins"]
+                plugin_not_exist: list[str] = []
                 # get plugin unique identifier
                 for plugin_id in plugin_ids:
                     unique_identifier = plugins.get(plugin_id)
                     if unique_identifier:
-                        current_not_installed["plugin_not_exist"].append(plugin_id)
+                        plugin_not_exist.append(plugin_id)
 
-                if current_not_installed["plugin_not_exist"]:
-                    not_installed.append(current_not_installed)
+                if plugin_not_exist:
+                    not_installed.append({
+                        "tenant_id": tenant_id,
+                        "plugin_not_exist": plugin_not_exist,
+                    })
 
                 thread_pool.submit(install, tenant_id, plugin_ids)
 
