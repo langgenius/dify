@@ -11,7 +11,7 @@ describe('code.tsx components', () => {
     vi.clearAllMocks()
     vi.spyOn(console, 'error').mockImplementation(() => {})
     vi.useFakeTimers({ shouldAdvanceTime: true })
-    // jsdom does not implement scrollBy; mock it to prevent stderr noise
+    // The test DOM runtime does not implement scrollBy; mock it to prevent stderr noise
     window.scrollBy = vi.fn()
   })
 

@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
+from uuid import uuid4
 
 import pytest
 from sqlalchemy.engine import Engine
@@ -13,6 +16,7 @@ from core.workflow.human_input_compat import (
     MemberRecipient,
 )
 from graphon.runtime import VariablePool
+from models.account import Account, TenantAccountJoin
 from services import human_input_delivery_test_service as service_module
 from services.human_input_delivery_test_service import (
     DeliveryTestContext,
@@ -26,13 +30,6 @@ from services.human_input_delivery_test_service import (
     HumanInputDeliveryTestService,
     _build_form_link,
 )
-
-
-@pytest.fixture
-def mock_db(monkeypatch):
-    mock_db = MagicMock()
-    monkeypatch.setattr(service_module, "db", mock_db)
-    return mock_db
 
 
 def _make_valid_email_config():
@@ -91,7 +88,7 @@ class TestDeliveryTestRegistry:
         with pytest.raises(DeliveryTestUnsupportedError, match="Delivery method does not support test send."):
             registry.dispatch(context=context, method=method)
 
-    def test_default(self, mock_db):
+    def test_default(self, flask_app_with_containers, db_session_with_containers):
         registry = DeliveryTestRegistry.default()
         assert len(registry._handlers) == 1
         assert isinstance(registry._handlers[0], EmailDeliveryTestHandler)
@@ -250,10 +247,8 @@ class TestEmailDeliveryTestHandler:
         _, kwargs = mock_mail_send.call_args
         assert kwargs["subject"] == "Notice BCC:test@example.com"
 
-    def test_resolve_recipients(self):
+    def test_resolve_recipients_external(self):
         handler = EmailDeliveryTestHandler(session_factory=MagicMock())
-
-        # Test Case 1: External Recipient
         method = EmailDeliveryMethod(
             config=EmailDeliveryConfig(
                 recipients=EmailRecipients(
@@ -265,18 +260,43 @@ class TestEmailDeliveryTestHandler:
         )
         assert handler._resolve_recipients(tenant_id="t1", method=method) == ["ext@example.com"]
 
-        # Test Case 2: Member Recipient
+    def test_resolve_recipients_member(self, flask_app_with_containers, db_session_with_containers):
+        tenant_id = str(uuid4())
+        account = Account(name="Test User", email="member@example.com")
+        db_session_with_containers.add(account)
+        db_session_with_containers.commit()
+
+        join = TenantAccountJoin(tenant_id=tenant_id, account_id=account.id)
+        db_session_with_containers.add(join)
+        db_session_with_containers.commit()
+
+        from extensions.ext_database import db
+
+        handler = EmailDeliveryTestHandler(session_factory=db.engine)
         method = EmailDeliveryMethod(
             config=EmailDeliveryConfig(
-                recipients=EmailRecipients(items=[MemberRecipient(reference_id="u1")], include_bound_group=False),
+                recipients=EmailRecipients(items=[MemberRecipient(reference_id=account.id)], include_bound_group=False),
                 subject="",
                 body="",
             )
         )
-        handler._query_workspace_member_emails = MagicMock(return_value={"u1": "u1@example.com"})
-        assert handler._resolve_recipients(tenant_id="t1", method=method) == ["u1@example.com"]
+        assert handler._resolve_recipients(tenant_id=tenant_id, method=method) == ["member@example.com"]
 
-        # Test Case 3: Whole Workspace
+    def test_resolve_recipients_whole_workspace(self, flask_app_with_containers, db_session_with_containers):
+        tenant_id = str(uuid4())
+        account1 = Account(name="User 1", email=f"u1-{uuid4()}@example.com")
+        account2 = Account(name="User 2", email=f"u2-{uuid4()}@example.com")
+        db_session_with_containers.add_all([account1, account2])
+        db_session_with_containers.commit()
+
+        for acc in [account1, account2]:
+            join = TenantAccountJoin(tenant_id=tenant_id, account_id=acc.id)
+            db_session_with_containers.add(join)
+        db_session_with_containers.commit()
+
+        from extensions.ext_database import db
+
+        handler = EmailDeliveryTestHandler(session_factory=db.engine)
         method = EmailDeliveryMethod(
             config=EmailDeliveryConfig(
                 recipients=EmailRecipients(items=[], include_bound_group=True),
@@ -284,35 +304,12 @@ class TestEmailDeliveryTestHandler:
                 body="",
             )
         )
-        handler._query_workspace_member_emails = MagicMock(
-            return_value={"u1": "u1@example.com", "u2": "u2@example.com"}
-        )
-        recipients = handler._resolve_recipients(tenant_id="t1", method=method)
-        assert set(recipients) == {"u1@example.com", "u2@example.com"}
+        recipients = handler._resolve_recipients(tenant_id=tenant_id, method=method)
+        assert set(recipients) == {account1.email, account2.email}
 
-    def test_query_workspace_member_emails(self):
-        mock_session = MagicMock()
-        mock_session_factory = MagicMock(return_value=mock_session)
-        mock_session.__enter__.return_value = mock_session
-
-        handler = EmailDeliveryTestHandler(session_factory=mock_session_factory)
-
-        # Empty user_ids
+    def test_query_workspace_member_emails_empty_ids(self):
+        handler = EmailDeliveryTestHandler(session_factory=MagicMock())
         assert handler._query_workspace_member_emails(tenant_id="t1", user_ids=[]) == {}
-
-        # user_ids is None (all)
-        mock_execute = MagicMock()
-        mock_tuples = MagicMock()
-        mock_session.execute.return_value = mock_execute
-        mock_execute.tuples.return_value = mock_tuples
-        mock_tuples.all.return_value = [("u1", "u1@example.com")]
-
-        result = handler._query_workspace_member_emails(tenant_id="t1", user_ids=None)
-        assert result == {"u1": "u1@example.com"}
-
-        # user_ids with values
-        result = handler._query_workspace_member_emails(tenant_id="t1", user_ids=["u1"])
-        assert result == {"u1": "u1@example.com"}
 
     def test_build_substitutions(self):
         context = DeliveryTestContext(
@@ -335,7 +332,6 @@ class TestEmailDeliveryTestHandler:
         assert subs["form_token"] == "token123"
         assert "form/token123" in subs["form_link"]
 
-        # Without matching recipient
         subs_no_match = EmailDeliveryTestHandler._build_substitutions(
             context=context, recipient_email="other@example.com"
         )
