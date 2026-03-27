@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from unittest.mock import MagicMock
 
 import pytest
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 
 from core.ops.entities.config_entity import LangSmithConfig
 from core.ops.entities.trace_entity import (
@@ -21,7 +22,6 @@ from core.ops.langsmith_trace.entities.langsmith_trace_entity import (
     LangSmithRunUpdateModel,
 )
 from core.ops.langsmith_trace.langsmith_trace import LangSmithDataTrace
-from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 from models import EndUser
 
 

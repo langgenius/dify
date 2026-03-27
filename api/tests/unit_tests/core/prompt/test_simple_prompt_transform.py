@@ -2,6 +2,12 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
+from graphon.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    ImagePromptMessageContent,
+    TextPromptMessageContent,
+    UserPromptMessage,
+)
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.memory.token_buffer_memory import TokenBufferMemory
@@ -18,12 +24,6 @@ from core.prompt.prompt_templates.advanced_prompt_templates import (
     CONTEXT,
 )
 from core.prompt.simple_prompt_transform import SimplePromptTransform
-from graphon.model_runtime.entities.message_entities import (
-    AssistantPromptMessage,
-    ImagePromptMessageContent,
-    TextPromptMessageContent,
-    UserPromptMessage,
-)
 from models.model import AppMode, Conversation
 
 
