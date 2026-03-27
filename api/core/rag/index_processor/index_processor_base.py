@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any, NotRequired, Optional
 from urllib.parse import unquote, urlparse
 
 import httpx
+from sqlalchemy import select
 from typing_extensions import TypedDict
 
 from configs import dify_config
@@ -26,8 +27,6 @@ from core.rag.splitter.fixed_text_splitter import (
     FixedRecursiveCharacterTextSplitter,
 )
 from core.rag.splitter.text_splitter import TextSplitter
-from sqlalchemy import select
-
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models import Account, ToolFile

@@ -4,12 +4,11 @@ import operator
 from typing import Any, cast
 
 import httpx
+from sqlalchemy import update
 
 from configs import dify_config
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
-from sqlalchemy import update
-
 from extensions.ext_database import db
 from models.dataset import Document as DocumentModel
 from services.datasource_provider_service import DatasourceProviderService

@@ -342,9 +342,7 @@ def test_search_by_file_handles_missing_and_existing_upload(vector_factory_modul
 
     mock_session = SimpleNamespace(get=lambda _model, _id: None)
     monkeypatch.setattr(vector_factory_module, "UploadFile", SimpleNamespace(id=_Field()))
-    monkeypatch.setattr(
-        vector_factory_module, "db", SimpleNamespace(session=mock_session)
-    )
+    monkeypatch.setattr(vector_factory_module, "db", SimpleNamespace(session=mock_session))
 
     assert vector.search_by_file("file-1") == []
 

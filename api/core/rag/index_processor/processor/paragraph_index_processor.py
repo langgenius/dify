@@ -8,6 +8,8 @@ from typing import Any, cast
 
 logger = logging.getLogger(__name__)
 
+from sqlalchemy import select
+
 from core.app.file_access import DatabaseFileAccessController
 from core.app.llm import deduct_llm_quota
 from core.entities.knowledge_entities import PreviewDetail
@@ -29,8 +31,6 @@ from core.rag.models.document import AttachmentDocument, Document, MultimodalGen
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.utils.text_processing_utils import remove_leading_symbols
 from core.workflow.file_reference import build_file_reference
-from sqlalchemy import select
-
 from extensions.ext_database import db
 from factories.file_factory import build_from_mapping
 from graphon.file import File, FileTransferMethod, FileType, file_manager

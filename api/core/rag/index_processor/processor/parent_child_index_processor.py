@@ -6,6 +6,8 @@ import uuid
 from collections.abc import Mapping
 from typing import Any
 
+from sqlalchemy import delete, select
+
 from configs import dify_config
 from core.db.session_factory import session_factory
 from core.entities.knowledge_entities import PreviewDetail
@@ -22,8 +24,6 @@ from core.rag.index_processor.constant.index_type import IndexStructureType, Ind
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor, SummaryIndexSettingDict
 from core.rag.models.document import AttachmentDocument, ChildDocument, Document, ParentChildStructureChunk
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from sqlalchemy import delete, select
-
 from extensions.ext_database import db
 from libs import helper
 from models import Account
