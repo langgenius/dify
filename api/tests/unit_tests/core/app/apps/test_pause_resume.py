@@ -4,19 +4,14 @@ from types import ModuleType, SimpleNamespace
 from typing import Any
 
 import graphon.nodes.human_input.entities  # noqa: F401
-from core.app.apps.advanced_chat import app_generator as adv_app_gen_module
-from core.app.apps.workflow import app_generator as wf_app_gen_module
-from core.app.entities.app_invoke_entities import InvokeFrom
-from core.workflow.node_factory import DifyNodeFactory
-from core.workflow.system_variables import build_system_variables
+from graphon.entities import WorkflowStartReason
 from graphon.entities.base_node_data import BaseNodeData, RetryConfig
 from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
 from graphon.entities.pause_reason import SchedulingPause
-from graphon.entities.workflow_start_reason import WorkflowStartReason
 from graphon.enums import BuiltinNodeTypes, NodeType, WorkflowNodeExecutionStatus
 from graphon.graph import Graph
 from graphon.graph_engine import GraphEngine
-from graphon.graph_engine.command_channels.in_memory_channel import InMemoryChannel
+from graphon.graph_engine.command_channels import InMemoryChannel
 from graphon.graph_events import (
     GraphEngineEvent,
     GraphRunPausedEvent,
@@ -30,6 +25,12 @@ from graphon.nodes.base.node import Node
 from graphon.nodes.end.entities import EndNodeData
 from graphon.nodes.start.entities import StartNodeData
 from graphon.runtime import GraphRuntimeState, VariablePool
+
+from core.app.apps.advanced_chat import app_generator as adv_app_gen_module
+from core.app.apps.workflow import app_generator as wf_app_gen_module
+from core.app.entities.app_invoke_entities import InvokeFrom
+from core.workflow.node_factory import DifyNodeFactory
+from core.workflow.system_variables import build_system_variables
 from tests.workflow_test_utils import build_test_graph_init_params
 
 if "core.ops.ops_trace_manager" not in sys.modules:
