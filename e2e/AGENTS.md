@@ -58,8 +58,8 @@ Frontend artifact behavior:
 
 ```mermaid
 flowchart TD
-  A["Start E2E run"] --> B["run-cucumber.ts orchestrates reset/middleware/API"]
-  B --> C["typed web-server manager starts or reuses frontend"]
+  A["Start E2E run"] --> B["run-cucumber.ts orchestrates setup/API/frontend"]
+  B --> C["support/web-server.ts starts or reuses frontend directly"]
   C --> D["Cucumber loads config, steps, and support modules"]
   D --> E["BeforeAll bootstraps shared auth state via /install"]
   E --> F{"Which command is running?"}
@@ -72,7 +72,8 @@ flowchart TD
 
 Ownership is split like this:
 
-- TypeScript scripts orchestrate reset, middleware, and backend startup
+- `scripts/setup.ts` is the single environment entrypoint for reset, middleware, backend, and frontend startup
+- `run-cucumber.ts` orchestrates the E2E run and Cucumber invocation
 - `support/web-server.ts` manages frontend reuse, startup, readiness, and shutdown
 - `features/support/hooks.ts` manages auth bootstrap, scenario lifecycle, and diagnostics
 - `features/support/world.ts` owns per-scenario typed context
@@ -85,7 +86,8 @@ Package layout:
 - `features/support/hooks.ts`: suite lifecycle, auth-state bootstrap, diagnostics
 - `features/support/world.ts`: shared scenario context
 - `support/web-server.ts`: typed frontend startup/reuse logic
-- `scripts/*.ts`: middleware and backend orchestration
+- `scripts/setup.ts`: reset and service lifecycle commands
+- `scripts/run-cucumber.ts`: Cucumber orchestration entrypoint
 
 Behavior depends on instance state:
 
@@ -166,7 +168,6 @@ Artifacts and diagnostics:
 - `cucumber-report/artifacts/`: failure screenshots and HTML captures
 - `.logs/cucumber-api.log`: backend startup log
 - `.logs/cucumber-web.log`: frontend startup log
-- `.logs/web-server-manager.log`: typed web-server manager log
 
 Open the HTML report locally with:
 

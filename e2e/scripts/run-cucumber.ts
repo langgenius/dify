@@ -1,11 +1,10 @@
-import { mkdir, readFile, rm } from 'node:fs/promises'
+import { mkdir, rm } from 'node:fs/promises'
 import path from 'node:path'
+import { startWebServer, stopWebServer } from '../support/web-server'
 import { waitForUrl, startLoggedProcess, stopManagedProcess } from '../support/process'
-import { apiURL } from '../test-env'
-import { e2eDir, ensureWebEnvLocal, isMainModule, runCommand } from './common'
-import { resetState } from './reset-state'
-import { startMiddleware } from './start-middleware'
-import { stopMiddleware } from './stop-middleware'
+import { apiURL, baseURL, reuseExistingWebServer } from '../test-env'
+import { e2eDir, isMainModule, runCommand } from './common'
+import { resetState, startMiddleware, stopMiddleware } from './setup'
 
 type RunOptions = {
   forwardArgs: string[]
@@ -49,40 +48,10 @@ const parseArgs = (argv: string[]): RunOptions => {
 const hasCustomTags = (forwardArgs: string[]) =>
   forwardArgs.some((arg) => arg === '--tags' || arg.startsWith('--tags='))
 
-const waitForWebReadyFile = async (readyFilePath: string, webManagerExited: () => boolean) => {
-  const deadline = Date.now() + 300_000
-
-  while (Date.now() < deadline) {
-    try {
-      const fileContent = await readFile(readyFilePath, 'utf8')
-      const readyState = JSON.parse(fileContent) as {
-        error?: string
-      }
-
-      if (readyState.error) throw new Error(readyState.error)
-
-      return
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
-        throw error
-      }
-    }
-
-    if (webManagerExited())
-      throw new Error('Web server manager exited before the web server became ready.')
-
-    await new Promise((resolve) => setTimeout(resolve, 1_000))
-  }
-
-  throw new Error('Web server did not become ready in time.')
-}
-
 const main = async () => {
   const { forwardArgs, full, headed } = parseArgs(process.argv.slice(2))
   const startMiddlewareForRun = full
   const resetStateForRun = full
-
-  await ensureWebEnvLocal()
 
   if (resetStateForRun) await resetState()
 
@@ -90,37 +59,23 @@ const main = async () => {
 
   const cucumberReportDir = path.join(e2eDir, 'cucumber-report')
   const logDir = path.join(e2eDir, '.logs')
-  const webReadyFilePath = path.join(logDir, 'web-server.ready.json')
 
   await rm(cucumberReportDir, { force: true, recursive: true })
   await mkdir(logDir, { recursive: true })
-  await rm(webReadyFilePath, { force: true })
 
   const apiProcess = await startLoggedProcess({
     command: 'npx',
-    args: ['tsx', './scripts/start-api.ts'],
+    args: ['tsx', './scripts/setup.ts', 'api'],
     cwd: e2eDir,
     label: 'api server',
     logFilePath: path.join(logDir, 'cucumber-api.log'),
-  })
-
-  const webManagerProcess = await startLoggedProcess({
-    command: 'npx',
-    args: ['tsx', './support/cli/start-web-server.ts'],
-    cwd: e2eDir,
-    env: {
-      E2E_WEB_SERVER_LOG_PATH: path.join(logDir, 'cucumber-web.log'),
-      E2E_WEB_SERVER_READY_FILE: webReadyFilePath,
-    },
-    label: 'web server manager',
-    logFilePath: path.join(logDir, 'web-server-manager.log'),
   })
 
   let cleanupPromise: Promise<void> | undefined
   const cleanup = async () => {
     if (!cleanupPromise) {
       cleanupPromise = (async () => {
-        await stopManagedProcess(webManagerProcess)
+        await stopWebServer()
         await stopManagedProcess(apiProcess)
 
         if (startMiddlewareForRun) {
@@ -152,10 +107,15 @@ const main = async () => {
       throw new Error(`API did not become ready at ${apiURL}/health.`)
     }
 
-    await waitForWebReadyFile(
-      webReadyFilePath,
-      () => webManagerProcess.childProcess.exitCode !== null,
-    )
+    await startWebServer({
+      baseURL,
+      command: 'npx',
+      args: ['tsx', './scripts/setup.ts', 'web'],
+      cwd: e2eDir,
+      logFilePath: path.join(logDir, 'cucumber-web.log'),
+      reuseExistingServer: reuseExistingWebServer,
+      timeoutMs: 300_000,
+    })
 
     const cucumberEnv: NodeJS.ProcessEnv = {
       ...process.env,
