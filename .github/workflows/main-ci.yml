@@ -10,6 +10,7 @@ on:
     branches: ["main"]
 
 permissions:
+  actions: write
   contents: write
   pull-requests: write
   checks: write
@@ -20,9 +21,24 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  pre_job:
+    name: Skip Duplicate Checks
+    runs-on: ubuntu-latest
+    outputs:
+      should_skip: ${{ steps.skip_check.outputs.should_skip || 'false' }}
+    steps:
+      - id: skip_check
+        continue-on-error: true
+        uses: fkirc/skip-duplicate-actions@f75f66ce1886f00957d99748a42c724f4330bdcf # v5.3.1
+        with:
+          cancel_others: 'true'
+          concurrent_skipping: same_content_newer
+
   # Check which paths were changed to determine which tests to run
   check-changes:
     name: Check Changed Files
+    needs: pre_job
+    if: needs.pre_job.outputs.should_skip != 'true'
     runs-on: ubuntu-latest
     outputs:
       api-changed: ${{ steps.changes.outputs.api }}
@@ -56,15 +72,19 @@ jobs:
   # Run tests in parallel while always emitting stable required checks.
   api-tests-run:
     name: Run API Tests
-    needs: check-changes
-    if: needs.check-changes.outputs.api-changed == 'true'
+    needs:
+      - pre_job
+      - check-changes
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.api-changed == 'true'
     uses: ./.github/workflows/api-tests.yml
     secrets: inherit
 
   api-tests-skip:
     name: Skip API Tests
-    needs: check-changes
-    if: needs.check-changes.outputs.api-changed != 'true'
+    needs:
+      - pre_job
+      - check-changes
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.api-changed != 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Report skipped API tests
@@ -74,6 +94,7 @@ jobs:
     name: API Tests
     if: ${{ always() }}
     needs:
+      - pre_job
       - check-changes
       - api-tests-run
       - api-tests-skip
@@ -81,10 +102,16 @@ jobs:
     steps:
       - name: Finalize API Tests status
         env:
+          SHOULD_SKIP_WORKFLOW: ${{ needs.pre_job.outputs.should_skip }}
           TESTS_CHANGED: ${{ needs.check-changes.outputs.api-changed }}
           RUN_RESULT: ${{ needs.api-tests-run.result }}
           SKIP_RESULT: ${{ needs.api-tests-skip.result }}
         run: |
+          if [[ "$SHOULD_SKIP_WORKFLOW" == 'true' ]]; then
+            echo "API tests were skipped because this workflow run duplicated a successful or newer run."
+            exit 0
+          fi
+
           if [[ "$TESTS_CHANGED" == 'true' ]]; then
             if [[ "$RUN_RESULT" == 'success' ]]; then
               echo "API tests ran successfully."
@@ -105,15 +132,19 @@ jobs:
 
   web-tests-run:
     name: Run Web Tests
-    needs: check-changes
-    if: needs.check-changes.outputs.web-changed == 'true'
+    needs:
+      - pre_job
+      - check-changes
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.web-changed == 'true'
     uses: ./.github/workflows/web-tests.yml
     secrets: inherit
 
   web-tests-skip:
     name: Skip Web Tests
-    needs: check-changes
-    if: needs.check-changes.outputs.web-changed != 'true'
+    needs:
+      - pre_job
+      - check-changes
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.web-changed != 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Report skipped web tests
@@ -123,6 +154,7 @@ jobs:
     name: Web Tests
     if: ${{ always() }}
     needs:
+      - pre_job
       - check-changes
       - web-tests-run
       - web-tests-skip
@@ -130,10 +162,16 @@ jobs:
     steps:
       - name: Finalize Web Tests status
         env:
+          SHOULD_SKIP_WORKFLOW: ${{ needs.pre_job.outputs.should_skip }}
           TESTS_CHANGED: ${{ needs.check-changes.outputs.web-changed }}
           RUN_RESULT: ${{ needs.web-tests-run.result }}
           SKIP_RESULT: ${{ needs.web-tests-skip.result }}
         run: |
+          if [[ "$SHOULD_SKIP_WORKFLOW" == 'true' ]]; then
+            echo "Web tests were skipped because this workflow run duplicated a successful or newer run."
+            exit 0
+          fi
+
           if [[ "$TESTS_CHANGED" == 'true' ]]; then
             if [[ "$RUN_RESULT" == 'success' ]]; then
               echo "Web tests ran successfully."
@@ -154,18 +192,24 @@ jobs:
 
   style-check:
     name: Style Check
+    needs: pre_job
+    if: needs.pre_job.outputs.should_skip != 'true'
     uses: ./.github/workflows/style.yml
 
   vdb-tests-run:
     name: Run VDB Tests
-    needs: check-changes
-    if: needs.check-changes.outputs.vdb-changed == 'true'
+    needs:
+      - pre_job
+      - check-changes
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.vdb-changed == 'true'
     uses: ./.github/workflows/vdb-tests.yml
 
   vdb-tests-skip:
     name: Skip VDB Tests
-    needs: check-changes
-    if: needs.check-changes.outputs.vdb-changed != 'true'
+    needs:
+      - pre_job
+      - check-changes
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.vdb-changed != 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Report skipped VDB tests
@@ -175,6 +219,7 @@ jobs:
     name: VDB Tests
     if: ${{ always() }}
     needs:
+      - pre_job
       - check-changes
       - vdb-tests-run
       - vdb-tests-skip
@@ -182,10 +227,16 @@ jobs:
     steps:
       - name: Finalize VDB Tests status
         env:
+          SHOULD_SKIP_WORKFLOW: ${{ needs.pre_job.outputs.should_skip }}
           TESTS_CHANGED: ${{ needs.check-changes.outputs.vdb-changed }}
           RUN_RESULT: ${{ needs.vdb-tests-run.result }}
           SKIP_RESULT: ${{ needs.vdb-tests-skip.result }}
         run: |
+          if [[ "$SHOULD_SKIP_WORKFLOW" == 'true' ]]; then
+            echo "VDB tests were skipped because this workflow run duplicated a successful or newer run."
+            exit 0
+          fi
+
           if [[ "$TESTS_CHANGED" == 'true' ]]; then
             if [[ "$RUN_RESULT" == 'success' ]]; then
               echo "VDB tests ran successfully."
@@ -206,14 +257,18 @@ jobs:
 
   db-migration-test-run:
     name: Run DB Migration Test
-    needs: check-changes
-    if: needs.check-changes.outputs.migration-changed == 'true'
+    needs:
+      - pre_job
+      - check-changes
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.migration-changed == 'true'
     uses: ./.github/workflows/db-migration-test.yml
 
   db-migration-test-skip:
     name: Skip DB Migration Test
-    needs: check-changes
-    if: needs.check-changes.outputs.migration-changed != 'true'
+    needs:
+      - pre_job
+      - check-changes
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.migration-changed != 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Report skipped DB migration tests
@@ -223,6 +278,7 @@ jobs:
     name: DB Migration Test
     if: ${{ always() }}
     needs:
+      - pre_job
       - check-changes
       - db-migration-test-run
       - db-migration-test-skip
@@ -230,10 +286,16 @@ jobs:
     steps:
       - name: Finalize DB Migration Test status
         env:
+          SHOULD_SKIP_WORKFLOW: ${{ needs.pre_job.outputs.should_skip }}
           TESTS_CHANGED: ${{ needs.check-changes.outputs.migration-changed }}
           RUN_RESULT: ${{ needs.db-migration-test-run.result }}
           SKIP_RESULT: ${{ needs.db-migration-test-skip.result }}
         run: |
+          if [[ "$SHOULD_SKIP_WORKFLOW" == 'true' ]]; then
+            echo "DB migration tests were skipped because this workflow run duplicated a successful or newer run."
+            exit 0
+          fi
+
           if [[ "$TESTS_CHANGED" == 'true' ]]; then
             if [[ "$RUN_RESULT" == 'success' ]]; then
               echo "DB migration tests ran successfully."

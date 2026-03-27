@@ -150,7 +150,7 @@ describe('variable-modal', () => {
 
     await user.click(screen.getByText('workflow.chatVariable.modal.editInJSON'))
     await waitFor(() => {
-      expect(screen.getByText('Loading...')).toBeInTheDocument()
+      expect(screen.getByTestId('monaco-editor')).toBeInTheDocument()
     })
     await user.click(screen.getByText('workflow.chatVariable.modal.editInForm'))
     expect(screen.getByDisplayValue('enabled')).toBeInTheDocument()
