@@ -9,12 +9,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import FileTypeIcon from '@/app/components/base/file-uploader/file-type-icon'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 import { useSelectOrDelete } from '@/app/components/base/prompt-editor/hooks'
+import {
+  Popover,
+  PopoverContent,
+} from '@/app/components/base/ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { START_TAB_ID } from '@/app/components/workflow/skill/constants'
 import { useSkillAssetNodeMap } from '@/app/components/workflow/skill/hooks/file-tree/data/use-skill-asset-tree'
@@ -162,13 +161,11 @@ const FileReferenceBlock = ({ nodeKey, resourceId }: FileReferenceBlockProps) =>
   }, [previewOpen, ref, shouldPreview, updatePreviewPosition])
 
   const fileBlock = (
-    <PortalToFollowElem
+    <Popover
       open={open}
       onOpenChange={setOpen}
-      placement="bottom-start"
-      offset={4}
     >
-      <PortalToFollowElemTrigger ref={ref} className="inline-flex">
+      <div ref={ref} className="inline-flex">
         <Tooltip>
           <TooltipTrigger
             disabled={!tooltipContent}
@@ -183,6 +180,7 @@ const FileReferenceBlock = ({ nodeKey, resourceId }: FileReferenceBlockProps) =>
                 onMouseDown={() => {
                   if (!isInteractive)
                     return
+
                   setOpen(prev => !prev)
                 }}
               >
@@ -212,14 +210,19 @@ const FileReferenceBlock = ({ nodeKey, resourceId }: FileReferenceBlockProps) =>
             <TooltipContent>{tooltipContent}</TooltipContent>
           )}
         </Tooltip>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-[1000]">
+      </div>
+      <PopoverContent
+        placement="bottom-start"
+        sideOffset={4}
+        popupClassName="rounded-none border-none bg-transparent shadow-none"
+        positionerProps={{ anchor: ref }}
+      >
         <FilePickerPanel
           onSelectNode={handleSelect}
           focusNodeId={resourceId}
         />
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      </PopoverContent>
+    </Popover>
   )
 
   if (!shouldPreview)
