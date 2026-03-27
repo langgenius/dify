@@ -1,5 +1,5 @@
-import json
 import base64
+import json
 from collections.abc import Generator
 from dataclasses import dataclass
 from os import getenv
@@ -120,7 +120,7 @@ class ApiTool(Tool):
             if not isinstance(password, str) or not password:
                 raise ToolProviderCredentialValidationError("Missing basic_password")
 
-            token = base64.b64encode(f"{username}:{password}".encode("utf-8")).decode("utf-8")
+            token = base64.b64encode(f"{username}:{password}".encode()).decode("utf-8")
             headers["Authorization"] = f"Basic {token}"
 
         elif credentials["auth_type"] == "api_key_query":

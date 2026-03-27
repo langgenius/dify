@@ -46,7 +46,9 @@ class ApiToolProviderController(ToolProviderController):
                     ProviderConfig.Option(
                         value="api_key_query", label=I18nObject(en_US="Query Param", zh_Hans="查询参数")
                     ),
-                    ProviderConfig.Option(value="basic_auth", label=I18nObject(en_US="Basic Auth", zh_Hans="Basic Auth")),
+                    ProviderConfig.Option(
+                        value="basic_auth", label=I18nObject(en_US="Basic Auth", zh_Hans="Basic Auth")
+                    ),
                 ],
                 default="none",
                 help=I18nObject(en_US="The auth type of the api provider", zh_Hans="api provider 的认证类型"),
