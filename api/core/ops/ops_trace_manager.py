@@ -883,9 +883,7 @@ class TraceTask:
         inputs = message_data.message
 
         # get message file data
-        message_file_data = db.session.scalar(
-            select(MessageFile).where(MessageFile.message_id == message_id).limit(1)
-        )
+        message_file_data = db.session.scalar(select(MessageFile).where(MessageFile.message_id == message_id).limit(1))
         file_list = []
         if message_file_data and message_file_data.url is not None:
             file_url = f"{self.file_base_url}/{message_file_data.url}" if message_file_data else ""
@@ -1173,9 +1171,7 @@ class TraceTask:
             metadata["node_execution_id"] = node_execution_id
 
         file_url = ""
-        message_file_data = db.session.scalar(
-            select(MessageFile).where(MessageFile.message_id == message_id).limit(1)
-        )
+        message_file_data = db.session.scalar(select(MessageFile).where(MessageFile.message_id == message_id).limit(1))
         if message_file_data:
             message_file_id = message_file_data.id if message_file_data else None
             type = message_file_data.type

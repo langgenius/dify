@@ -9,6 +9,7 @@ from mlflow.entities import Document, Span, SpanEvent, SpanStatusCode, SpanType
 from mlflow.tracing.constant import SpanAttributeKey, TokenUsageKey, TraceMetadataKey
 from mlflow.tracing.fluent import start_span_no_context, update_current_trace
 from mlflow.tracing.provider import detach_span_from_context, set_span_in_context
+from sqlalchemy import select
 
 from core.ops.base_trace_instance import BaseTraceInstance
 from core.ops.entities.config_entity import DatabricksConfig, MLflowConfig
@@ -23,8 +24,6 @@ from core.ops.entities.trace_entity import (
     TraceTaskName,
     WorkflowTraceInfo,
 )
-from sqlalchemy import select
-
 from extensions.ext_database import db
 from graphon.enums import BuiltinNodeTypes
 from models import EndUser
