@@ -1,0 +1,34 @@
+{
+  "name": "dify-e2e",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "e2e": "playwright test",
+    "e2e:headed": "playwright test --headed",
+    "e2e:ui": "playwright test --ui",
+    "e2e:full": "bash ./scripts/run-full.sh",
+    "e2e:full:headed": "bash ./scripts/run-full.sh --headed",
+    "e2e:full:ui": "bash ./scripts/run-full.sh --ui",
+    "e2e:install": "playwright install --with-deps chromium",
+    "e2e:middleware:down": "bash ./scripts/stop-middleware.sh",
+    "e2e:middleware:up": "bash ./scripts/start-middleware.sh",
+    "e2e:reset": "bash ./scripts/reset-state.sh",
+    "check": "vp check --fix"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.51.1",
+    "@types/node": "25.5.0",
+    "typescript": "5.9.3",
+    "vite-plus": "latest"
+  },
+  "engines": {
+    "node": "^22.22.1"
+  },
+  "packageManager": "pnpm@10.32.1",
+  "pnpm": {
+    "overrides": {
+      "vite": "npm:@voidzero-dev/vite-plus-core@latest",
+      "vitest": "npm:@voidzero-dev/vite-plus-test@latest"
+    }
+  }
+}
