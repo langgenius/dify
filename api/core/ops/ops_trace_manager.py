@@ -640,12 +640,16 @@ class TraceTask:
 
         from models.workflow import WorkflowNodeExecutionModel
 
-        rows = session.execute(
-            select(WorkflowNodeExecutionModel.outputs).where(
-                WorkflowNodeExecutionModel.tenant_id == tenant_id,
-                WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id,
+        rows = (
+            session.execute(
+                select(WorkflowNodeExecutionModel.outputs).where(
+                    WorkflowNodeExecutionModel.tenant_id == tenant_id,
+                    WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id,
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
         total_prompt = 0
         total_completion = 0
