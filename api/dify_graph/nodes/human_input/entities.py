@@ -60,6 +60,7 @@ class EmailDeliveryConfig(BaseModel):
     """Configuration for email delivery method."""
 
     URL_PLACEHOLDER: ClassVar[str] = "{{#url#}}"
+    _URL_PLACEHOLDER_PATTERN: ClassVar[re.Pattern[str]] = re.compile(re.escape("{{#url#}}"))
     _SUBJECT_NEWLINE_PATTERN: ClassVar[re.Pattern[str]] = re.compile(r"[\r\n]+")
     _ALLOWED_HTML_TAGS: ClassVar[list[str]] = [
         "a",
@@ -116,8 +117,23 @@ class EmailDeliveryConfig(BaseModel):
 
     @classmethod
     def replace_url_placeholder(cls, body: str, url: str | None) -> str:
-        """Replace the url placeholder with provided value."""
-        return body.replace(cls.URL_PLACEHOLDER, url or "")
+        """Replace the url placeholder with provided value.
+
+        If the placeholder is adjacent to non-whitespace characters, a space is
+        inserted so the resulting URL is not concatenated with surrounding text.
+        """
+        if cls.URL_PLACEHOLDER not in body:
+            return body
+        if not url:
+            return body.replace(cls.URL_PLACEHOLDER, "")
+
+        def _replace(match: re.Match[str]) -> str:
+            start, end = match.span()
+            prefix = "" if start == 0 or body[start - 1].isspace() else " "
+            suffix = "" if end == len(body) or body[end].isspace() else " "
+            return f"{prefix}{url}{suffix}"
+
+        return cls._URL_PLACEHOLDER_PATTERN.sub(_replace, body)
 
     @classmethod
     def render_body_template(
