@@ -81,6 +81,7 @@ type SetNodesAnomalyReason = 'node_count_decrease' | 'start_removed'
 type SetNodesAnomalyLogEntry = {
   timestamp: number
   appId: string | null
+  source: string
   reasons: SetNodesAnomalyReason[]
   oldCount: number
   newCount: number
@@ -97,7 +98,6 @@ type SetNodesAnomalyLogEntry = {
     pendingInitialSync: boolean
     isConnected: boolean
   }
-  stack: string
 }
 
 const GRAPH_IMPORT_LOG_LIMIT = 20
@@ -420,7 +420,7 @@ export class CollaborationManager {
     this.connect(appId, reactFlowStore)
   }
 
-  setNodes = (oldNodes: Node[], newNodes: Node[]): void => {
+  setNodes = (oldNodes: Node[], newNodes: Node[], source = 'collaboration-manager:setNodes'): void => {
     if (!this.doc)
       return
 
@@ -428,7 +428,7 @@ export class CollaborationManager {
     if (this.isUndoRedoInProgress)
       return
 
-    this.captureSetNodesAnomaly(oldNodes, newNodes)
+    this.captureSetNodesAnomaly(oldNodes, newNodes, source)
     this.syncNodes(oldNodes, newNodes)
     this.doc.commit()
   }
@@ -510,8 +510,9 @@ export class CollaborationManager {
         if (value?.value && typeof value.value === 'object' && 'selectedNodeId' in value.value && this.reactFlowStore) {
           const selectedNodeId = (value.value as { selectedNodeId?: string | null }).selectedNodeId
           if (selectedNodeId) {
-            const { setNodes } = this.reactFlowStore.getState()
-            const nodes = this.reactFlowStore.getState().getNodes()
+            const state = this.reactFlowStore.getState()
+            const { setNodes } = state
+            const nodes = state.getNodes()
             const newNodes = nodes.map((n: Node) => ({
               ...n,
               data: {
@@ -519,6 +520,7 @@ export class CollaborationManager {
                 selected: n.id === selectedNodeId,
               },
             }))
+            this.captureSetNodesAnomaly(nodes, newNodes, 'reactflow-native:undo-redo-selection-restore')
             setNodes(newNodes)
           }
         }
@@ -826,9 +828,11 @@ export class CollaborationManager {
         requestAnimationFrame(() => {
           // Get ReactFlow's native setters, not the collaborative ones
           const state = reactFlowStore.getState()
+          const previousNodes = state.getNodes()
           const updatedNodes = Array.from(this.nodesMap?.values() || []) as Node[]
           const updatedEdges = Array.from(this.edgesMap?.values() || []) as Edge[]
           // Call ReactFlow's native setters directly to avoid triggering collaboration
+          this.captureSetNodesAnomaly(previousNodes, updatedNodes, 'reactflow-native:undo-apply')
           state.setNodes(updatedNodes)
           state.setEdges(updatedEdges)
 
@@ -866,9 +870,11 @@ export class CollaborationManager {
         requestAnimationFrame(() => {
           // Get ReactFlow's native setters, not the collaborative ones
           const state = reactFlowStore.getState()
+          const previousNodes = state.getNodes()
           const updatedNodes = Array.from(this.nodesMap?.values() || []) as Node[]
           const updatedEdges = Array.from(this.edgesMap?.values() || []) as Edge[]
           // Call ReactFlow's native setters directly to avoid triggering collaboration
+          this.captureSetNodesAnomaly(previousNodes, updatedNodes, 'reactflow-native:redo-apply')
           state.setNodes(updatedNodes)
           state.setEdges(updatedEdges)
 
@@ -1007,6 +1013,7 @@ export class CollaborationManager {
             })
 
           // Call ReactFlow's native setter directly to avoid triggering collaboration
+          this.captureSetNodesAnomaly(previousNodes, updatedNodes, 'reactflow-native:import-nodes-map-subscribe')
           state.setNodes(updatedNodes)
 
           this.scheduleGraphImportEmit()
@@ -1146,7 +1153,7 @@ export class CollaborationManager {
     URL.revokeObjectURL(url)
   }
 
-  private captureSetNodesAnomaly(oldNodes: Node[], newNodes: Node[]): void {
+  private captureSetNodesAnomaly(oldNodes: Node[], newNodes: Node[], source: string): void {
     const oldNodeIds = oldNodes.map(node => node.id)
     const newNodeIds = newNodes.map(node => node.id)
     const newNodeIdSet = new Set(newNodeIds)
@@ -1168,10 +1175,10 @@ export class CollaborationManager {
     if (!reasons.length)
       return
 
-    const stack = new Error('setNodes anomaly').stack || ''
     const entry: SetNodesAnomalyLogEntry = {
       timestamp: Date.now(),
       appId: this.currentAppId,
+      source,
       reasons,
       oldCount: oldNodes.length,
       newCount: newNodes.length,
@@ -1188,7 +1195,6 @@ export class CollaborationManager {
         pendingInitialSync: this.pendingInitialSync,
         isConnected: this.isConnected(),
       },
-      stack,
     }
     this.setNodesAnomalyLogs.push(entry)
     if (this.setNodesAnomalyLogs.length > SET_NODES_ANOMALY_LOG_LIMIT)

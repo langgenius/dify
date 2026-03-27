@@ -787,7 +787,7 @@ export const useNodesInteractions = () => {
       }
 
       const { newNodes, newEdges } = computeBatchDelete(filteredDeleteSet, nodes, edges)
-      setNodes(newNodes)
+      setNodes(newNodes, true, 'nodes:perform-batch-cascade-delete')
       setEdges(newEdges)
       handleSyncWorkflowDraft()
 
@@ -2251,7 +2251,7 @@ export const useNodesInteractions = () => {
 
     const shouldBroadcast = collaborationManager.isConnected()
     setEdges(edges, shouldBroadcast)
-    setNodes(nodes, shouldBroadcast)
+    setNodes(nodes, shouldBroadcast, 'nodes:history-back')
     if (shouldBroadcast)
       collaborationManager.emitHistoryAction('undo')
     workflowStore.setState({ edgeMenu: undefined })
@@ -2276,7 +2276,7 @@ export const useNodesInteractions = () => {
 
     const shouldBroadcast = collaborationManager.isConnected()
     setEdges(edges, shouldBroadcast)
-    setNodes(nodes, shouldBroadcast)
+    setNodes(nodes, shouldBroadcast, 'nodes:history-forward')
     if (shouldBroadcast)
       collaborationManager.emitHistoryAction('redo')
     workflowStore.setState({ edgeMenu: undefined })
