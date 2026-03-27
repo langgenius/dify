@@ -183,6 +183,9 @@ class DummySessionContext:
     def __exit__(self, exc_type, exc_val, exc_tb):
         return False
 
+    def execute(self, *args, **kwargs):
+        return self
+
     def scalar(self, *args, **kwargs):
         if self._index >= len(self._values):
             return None
@@ -461,7 +464,7 @@ def test_trace_task_message_trace(trace_task_message, mock_db):
 
 def test_trace_task_workflow_trace(workflow_repo_fixture, mock_db):
     DummySessionContext.scalar_values = ["wf-app-log", "message-ref"]
-    execution = SimpleNamespace(id_="run-id")
+    execution = SimpleNamespace(id_="run-id", total_tokens=0)
     task = TraceTask(
         trace_type=TraceTaskName.WORKFLOW_TRACE, workflow_execution=execution, conversation_id="conv", user_id="user"
     )
