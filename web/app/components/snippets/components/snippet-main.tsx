@@ -9,7 +9,11 @@ import {
   RiTerminalWindowFill,
   RiTerminalWindowLine,
 } from '@remixicon/react'
-import { useEffect, useMemo, useState } from 'react'
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import AppSideBar from '@/app/components/app-sidebar'
@@ -20,6 +24,9 @@ import { toast } from '@/app/components/base/ui/toast'
 import Evaluation from '@/app/components/evaluation'
 import { WorkflowWithInnerContext } from '@/app/components/workflow'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { useConfigsMap } from '../hooks/use-configs-map'
+import { useNodesSyncDraft } from '../hooks/use-nodes-sync-draft'
+import { useSnippetRefreshDraft } from '../hooks/use-snippet-refresh-draft'
 import { useSnippetDetailStore } from '../store'
 import SnippetChildren from './snippet-children'
 
@@ -52,6 +59,12 @@ const SnippetMain = ({
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
   const [fields, setFields] = useState<SnippetInputField[]>(payload.inputFields)
+  const {
+    doSyncWorkflowDraft,
+    syncWorkflowDraftWhenPageClose,
+  } = useNodesSyncDraft(snippetId)
+  const { handleRefreshWorkflowDraft } = useSnippetRefreshDraft(snippetId)
+  const configsMap = useConfigsMap(snippetId)
   const setAppSidebarExpand = useAppStore(state => state.setAppSidebarExpand)
   const {
     editingField,
@@ -130,6 +143,15 @@ const SnippetMain = ({
     setInputPanelOpen(false)
   }
 
+  const hooksStore = useMemo(() => {
+    return {
+      doSyncWorkflowDraft,
+      syncWorkflowDraftWhenPageClose,
+      handleRefreshWorkflowDraft,
+      configsMap,
+    }
+  }, [configsMap, doSyncWorkflowDraft, handleRefreshWorkflowDraft, syncWorkflowDraftWhenPageClose])
+
   return (
     <div className="relative flex h-full overflow-hidden bg-background-body">
       <AppSideBar
@@ -166,6 +188,7 @@ const SnippetMain = ({
                   nodes={nodes}
                   edges={edges}
                   viewport={viewport ?? graph.viewport}
+                  hooksStore={hooksStore}
                 >
                   <SnippetChildren
                     fields={fields}

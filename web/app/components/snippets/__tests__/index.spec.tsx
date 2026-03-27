@@ -10,6 +10,27 @@ vi.mock('../hooks/use-snippet-init', () => ({
   useSnippetInit: (snippetId: string) => mockUseSnippetInit(snippetId),
 }))
 
+vi.mock('../hooks/use-configs-map', () => ({
+  useConfigsMap: () => ({
+    flowId: 'snippet-1',
+    flowType: 'snippet',
+    fileSettings: {},
+  }),
+}))
+
+vi.mock('../hooks/use-nodes-sync-draft', () => ({
+  useNodesSyncDraft: () => ({
+    doSyncWorkflowDraft: vi.fn(),
+    syncWorkflowDraftWhenPageClose: vi.fn(),
+  }),
+}))
+
+vi.mock('../hooks/use-snippet-refresh-draft', () => ({
+  useSnippetRefreshDraft: () => ({
+    handleRefreshWorkflowDraft: vi.fn(),
+  }),
+}))
+
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     replace: vi.fn(),
