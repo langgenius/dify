@@ -13,10 +13,10 @@ from typing import Any
 
 from sqlalchemy.orm import sessionmaker
 
-from dify_graph.enums import WorkflowNodeExecutionStatus
 from extensions.logstore.aliyun_logstore import AliyunLogStore
 from extensions.logstore.repositories import safe_float, safe_int
 from extensions.logstore.sql_escape import escape_identifier, escape_logstore_query_value
+from graphon.enums import WorkflowNodeExecutionStatus
 from models.enums import CreatorUserRole
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 from repositories.api_workflow_node_execution_repository import DifyAPIWorkflowNodeExecutionRepository
@@ -60,7 +60,7 @@ def _dict_to_workflow_node_execution_model(data: dict[str, Any]) -> WorkflowNode
         model.triggered_from = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN
     model.node_id = data.get("node_id") or ""
     model.node_type = data.get("node_type") or ""
-    model.status = data.get("status") or "running"  # Default status if missing
+    model.status = WorkflowNodeExecutionStatus(data.get("status") or "running")
     model.title = data.get("title") or ""
     created_by_role_val = data.get("created_by_role")
     try:

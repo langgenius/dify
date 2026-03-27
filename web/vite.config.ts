@@ -1,4 +1,3 @@
-import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import react from '@vitejs/plugin-react'
 import vinext from 'vinext'
@@ -6,11 +5,12 @@ import Inspect from 'vite-plugin-inspect'
 import { defineConfig } from 'vite-plus'
 import { createCodeInspectorPlugin, createForceInspectorClientInjectionPlugin } from './plugins/vite/code-inspector'
 import { customI18nHmrPlugin } from './plugins/vite/custom-i18n-hmr'
+import { getRootClientInjectTarget } from './plugins/vite/inject-target'
 import { nextStaticImageTestPlugin } from './plugins/vite/next-static-image-test'
 
-const projectRoot = path.dirname(fileURLToPath(import.meta.url))
+const projectRoot = fileURLToPath(new URL('.', import.meta.url))
 const isCI = !!process.env.CI
-const browserInitializerInjectTarget = path.resolve(projectRoot, 'app/components/browser-initializer.tsx')
+const rootClientInjectTarget = getRootClientInjectTarget(projectRoot)
 
 export default defineConfig(({ mode }) => {
   const isTest = mode === 'test'
@@ -39,17 +39,17 @@ export default defineConfig(({ mode }) => {
         : [
             Inspect(),
             createCodeInspectorPlugin({
-              injectTarget: browserInitializerInjectTarget,
+              injectTarget: rootClientInjectTarget,
             }),
             createForceInspectorClientInjectionPlugin({
-              injectTarget: browserInitializerInjectTarget,
+              injectTarget: rootClientInjectTarget,
               projectRoot,
             }),
             react(),
             vinext({ react: false }),
-            customI18nHmrPlugin({ injectTarget: browserInitializerInjectTarget }),
+            customI18nHmrPlugin({ injectTarget: rootClientInjectTarget }),
             // reactGrabOpenFilePlugin({
-            //   injectTarget: browserInitializerInjectTarget,
+            //   injectTarget: rootClientInjectTarget,
             //   projectRoot,
             // }),
           ],
@@ -75,7 +75,8 @@ export default defineConfig(({ mode }) => {
 
     // Vitest config
     test: {
-      environment: 'jsdom',
+      pool: 'threads',
+      environment: 'happy-dom',
       globals: true,
       setupFiles: ['./vitest.setup.ts'],
       coverage: {

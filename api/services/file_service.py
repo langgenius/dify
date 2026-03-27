@@ -20,10 +20,10 @@ from constants import (
     VIDEO_EXTENSIONS,
 )
 from core.rag.extractor.extract_processor import ExtractProcessor
-from dify_graph.file import helpers as file_helpers
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from extensions.storage.storage_type import StorageType
+from graphon.file import helpers as file_helpers
 from libs.datetime_utils import naive_utc_now
 from libs.helper import extract_tenant_id
 from models import Account

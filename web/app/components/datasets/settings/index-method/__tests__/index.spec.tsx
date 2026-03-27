@@ -14,6 +14,8 @@ describe('IndexMethod', () => {
     vi.clearAllMocks()
   })
 
+  const getKeywordSlider = () => screen.getByLabelText('datasetSettings.form.numberOfKeywords')
+
   describe('Rendering', () => {
     it('should render without crashing', () => {
       render(<IndexMethod {...defaultProps} />)
@@ -123,8 +125,7 @@ describe('IndexMethod', () => {
   describe('KeywordNumber', () => {
     it('should render KeywordNumber component inside Economy option', () => {
       render(<IndexMethod {...defaultProps} />)
-      // KeywordNumber has a slider
-      expect(screen.getByRole('slider')).toBeInTheDocument()
+      expect(getKeywordSlider()).toBeInTheDocument()
     })
 
     it('should pass keywordNumber to KeywordNumber component', () => {

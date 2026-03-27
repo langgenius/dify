@@ -15,6 +15,7 @@ from werkzeug.exceptions import RequestEntityTooLarge
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.file_access import DatabaseFileAccessController
 from core.tools.tool_file_manager import ToolFileManager
 from core.trigger.constants import TRIGGER_WEBHOOK_NODE_TYPE
 from core.workflow.nodes.trigger_webhook.entities import (
@@ -23,13 +24,13 @@ from core.workflow.nodes.trigger_webhook.entities import (
     WebhookData,
     WebhookParameter,
 )
-from dify_graph.entities.graph_config import NodeConfigDict
-from dify_graph.file.models import FileTransferMethod
-from dify_graph.variables.types import ArrayValidation, SegmentType
 from enums.quota_type import QuotaType
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from factories import file_factory
+from graphon.entities.graph_config import NodeConfigDict
+from graphon.file.models import FileTransferMethod
+from graphon.variables.types import ArrayValidation, SegmentType
 from models.enums import AppTriggerStatus, AppTriggerType
 from models.model import App
 from models.trigger import AppTrigger, WorkflowWebhookTrigger
@@ -46,6 +47,7 @@ except ImportError:
     magic = None  # type: ignore[assignment]
 
 logger = logging.getLogger(__name__)
+_file_access_controller = DatabaseFileAccessController()
 
 
 class WebhookService:
@@ -422,6 +424,7 @@ class WebhookService:
         return file_factory.build_from_mapping(
             mapping=mapping,
             tenant_id=webhook_trigger.tenant_id,
+            access_controller=_file_access_controller,
         )
 
     @classmethod

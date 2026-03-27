@@ -1503,10 +1503,10 @@ class TestWorkflowService:
             import uuid
             from datetime import datetime
 
-            from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
-            from dify_graph.graph_events import NodeRunSucceededEvent
-            from dify_graph.node_events import NodeRunResult
-            from dify_graph.nodes.base.node import Node
+            from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
+            from graphon.graph_events import NodeRunSucceededEvent
+            from graphon.node_events import NodeRunResult
+            from graphon.nodes.base.node import Node
 
             # Create mock node
             mock_node = MagicMock(spec=Node)
@@ -1548,12 +1548,12 @@ class TestWorkflowService:
         # Assert
         assert result is not None
         assert result.node_id == node_id
-        from dify_graph.enums import BuiltinNodeTypes
+        from graphon.enums import BuiltinNodeTypes
 
         assert result.node_type == BuiltinNodeTypes.START  # Should match the mock node type
         assert result.title == "Test Node"
         # Import the enum for comparison
-        from dify_graph.enums import WorkflowNodeExecutionStatus
+        from graphon.enums import WorkflowNodeExecutionStatus
 
         assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
         assert result.inputs is not None
@@ -1578,10 +1578,10 @@ class TestWorkflowService:
             import uuid
             from datetime import datetime
 
-            from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
-            from dify_graph.graph_events import NodeRunFailedEvent
-            from dify_graph.node_events import NodeRunResult
-            from dify_graph.nodes.base.node import Node
+            from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
+            from graphon.graph_events import NodeRunFailedEvent
+            from graphon.node_events import NodeRunResult
+            from graphon.nodes.base.node import Node
 
             # Create mock node
             mock_node = MagicMock(spec=Node)
@@ -1623,7 +1623,7 @@ class TestWorkflowService:
         assert result is not None
         assert result.node_id == node_id
         # Import the enum for comparison
-        from dify_graph.enums import WorkflowNodeExecutionStatus
+        from graphon.enums import WorkflowNodeExecutionStatus
 
         assert result.status == WorkflowNodeExecutionStatus.FAILED
         assert result.error is not None
@@ -1647,10 +1647,10 @@ class TestWorkflowService:
             import uuid
             from datetime import datetime
 
-            from dify_graph.enums import BuiltinNodeTypes, ErrorStrategy, WorkflowNodeExecutionStatus
-            from dify_graph.graph_events import NodeRunFailedEvent
-            from dify_graph.node_events import NodeRunResult
-            from dify_graph.nodes.base.node import Node
+            from graphon.enums import BuiltinNodeTypes, ErrorStrategy, WorkflowNodeExecutionStatus
+            from graphon.graph_events import NodeRunFailedEvent
+            from graphon.node_events import NodeRunResult
+            from graphon.nodes.base.node import Node
 
             # Create mock node with continue_on_error
             mock_node = MagicMock(spec=Node)
@@ -1693,7 +1693,7 @@ class TestWorkflowService:
         assert result is not None
         assert result.node_id == node_id
         # Import the enum for comparison
-        from dify_graph.enums import WorkflowNodeExecutionStatus
+        from graphon.enums import WorkflowNodeExecutionStatus
 
         assert result.status == WorkflowNodeExecutionStatus.EXCEPTION  # Should be EXCEPTION, not FAILED
         assert result.outputs is not None

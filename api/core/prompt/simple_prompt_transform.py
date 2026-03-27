@@ -10,8 +10,8 @@ from core.memory.token_buffer_memory import TokenBufferMemory
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.prompt.prompt_transform import PromptTransform
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
-from dify_graph.file import file_manager
-from dify_graph.model_runtime.entities.message_entities import (
+from graphon.file import file_manager
+from graphon.model_runtime.entities.message_entities import (
     ImagePromptMessageContent,
     PromptMessage,
     PromptMessageContentUnionTypes,
@@ -22,7 +22,7 @@ from dify_graph.model_runtime.entities.message_entities import (
 from models.model import AppMode
 
 if TYPE_CHECKING:
-    from dify_graph.file.models import File
+    from graphon.file.models import File
 
 
 class ModelMode(StrEnum):

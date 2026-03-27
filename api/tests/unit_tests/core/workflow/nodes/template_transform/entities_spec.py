@@ -1,8 +1,8 @@
 import pytest
 from pydantic import ValidationError
 
-from dify_graph.enums import ErrorStrategy
-from dify_graph.nodes.template_transform.entities import TemplateTransformNodeData
+from graphon.enums import ErrorStrategy
+from graphon.nodes.template_transform.entities import TemplateTransformNodeData
 
 
 class TestTemplateTransformNodeData:

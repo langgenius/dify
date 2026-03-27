@@ -14,8 +14,8 @@ from controllers.console.workspace.models import (
     ModelProviderModelParameterRuleApi,
     ModelProviderModelValidateApi,
 )
-from dify_graph.model_runtime.entities.model_entities import ModelType
-from dify_graph.model_runtime.errors.validate import CredentialsValidateFailedError
+from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
 
 
 def unwrap(func):

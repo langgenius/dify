@@ -4,13 +4,11 @@ from unittest.mock import MagicMock, patch
 import pytest
 from httpx import Response
 
-from factories.file_factory import (
-    File,
-    FileTransferMethod,
-    FileType,
-    FileUploadConfig,
-    build_from_mapping,
-)
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.app.file_access import DatabaseFileAccessController, FileAccessScope, bind_file_access_scope
+from core.workflow.file_reference import build_file_reference, parse_file_reference, resolve_file_record_id
+from factories.file_factory.builders import build_from_mapping as _build_from_mapping
+from graphon.file import File, FileTransferMethod, FileType, FileUploadConfig
 from models import ToolFile, UploadFile
 
 # Test Data
@@ -18,6 +16,7 @@ TEST_TENANT_ID = "test_tenant_id"
 TEST_UPLOAD_FILE_ID = str(uuid.uuid4())
 TEST_TOOL_FILE_ID = str(uuid.uuid4())
 TEST_REMOTE_URL = "http://example.com/test.jpg"
+TEST_ACCESS_CONTROLLER = DatabaseFileAccessController()
 
 # Test Config
 TEST_CONFIG = FileUploadConfig(
@@ -26,6 +25,16 @@ TEST_CONFIG = FileUploadConfig(
     allowed_file_upload_methods=[FileTransferMethod.LOCAL_FILE, FileTransferMethod.TOOL_FILE],
     number_limits=10,
 )
+
+
+def build_from_mapping(*, mapping, tenant_id, config=None, strict_type_validation=False):
+    return _build_from_mapping(
+        mapping=mapping,
+        tenant_id=tenant_id,
+        config=config,
+        strict_type_validation=strict_type_validation,
+        access_controller=TEST_ACCESS_CONTROLLER,
+    )
 
 
 # Fixtures
@@ -40,7 +49,7 @@ def mock_upload_file():
     mock.source_url = TEST_REMOTE_URL
     mock.size = 1024
     mock.key = "test_key"
-    with patch("factories.file_factory.db.session.scalar", return_value=mock, autospec=True) as m:
+    with patch("factories.file_factory.builders.db.session.scalar", return_value=mock, autospec=True) as m:
         yield m
 
 
@@ -54,7 +63,7 @@ def mock_tool_file():
     mock.mimetype = "application/pdf"
     mock.original_url = "http://example.com/tool.pdf"
     mock.size = 2048
-    with patch("factories.file_factory.db.session.scalar", return_value=mock, autospec=True):
+    with patch("factories.file_factory.builders.db.session.scalar", return_value=mock, autospec=True):
         yield mock
 
 
@@ -70,7 +79,7 @@ def mock_http_head():
             },
         )
 
-    with patch("factories.file_factory.ssrf_proxy.head", autospec=True) as mock_head:
+    with patch("factories.file_factory.remote.ssrf_proxy.head", autospec=True) as mock_head:
         mock_head.return_value = _mock_response("remote_test.jpg", 2048, "image/jpeg")
         yield mock_head
 
@@ -99,7 +108,41 @@ def test_build_from_mapping_backward_compatibility(mock_upload_file):
     assert isinstance(file, File)
     assert file.transfer_method == FileTransferMethod.LOCAL_FILE
     assert file.type == FileType.IMAGE
-    assert file.related_id == TEST_UPLOAD_FILE_ID
+    assert resolve_file_record_id(file.reference) == TEST_UPLOAD_FILE_ID
+    assert parse_file_reference(file.reference).storage_key is None
+    assert file.storage_key == "test_key"
+
+
+def test_build_from_mapping_accepts_opaque_reference_for_local_file(mock_upload_file):
+    mapping = {
+        "transfer_method": "local_file",
+        "reference": build_file_reference(record_id=TEST_UPLOAD_FILE_ID, storage_key="test_key"),
+        "type": "image",
+    }
+
+    file = build_from_mapping(mapping=mapping, tenant_id=TEST_TENANT_ID)
+
+    assert isinstance(file, File)
+    assert file.transfer_method == FileTransferMethod.LOCAL_FILE
+    assert file.type == FileType.IMAGE
+    assert resolve_file_record_id(file.reference) == TEST_UPLOAD_FILE_ID
+
+
+def test_build_from_mapping_accepts_opaque_related_id_for_tool_file(mock_tool_file):
+    mapping = {
+        "transfer_method": "tool_file",
+        "related_id": build_file_reference(record_id=TEST_TOOL_FILE_ID, storage_key="tool_file.pdf"),
+        "type": "document",
+    }
+
+    file = build_from_mapping(mapping=mapping, tenant_id=TEST_TENANT_ID)
+
+    assert isinstance(file, File)
+    assert file.transfer_method == FileTransferMethod.TOOL_FILE
+    assert file.type == FileType.DOCUMENT
+    assert resolve_file_record_id(file.reference) == TEST_TOOL_FILE_ID
+    assert parse_file_reference(file.reference).storage_key is None
+    assert file.storage_key == "tool_file.pdf"
 
 
 @pytest.mark.parametrize(
@@ -188,7 +231,7 @@ def test_build_from_remote_url_without_strict_validation(mock_http_head):
 
 def test_tool_file_not_found():
     """Test ToolFile not found in database."""
-    with patch("factories.file_factory.db.session.scalar", return_value=None, autospec=True):
+    with patch("factories.file_factory.builders.db.session.scalar", return_value=None, autospec=True):
         mapping = tool_file_mapping()
         with pytest.raises(ValueError, match=f"ToolFile {TEST_TOOL_FILE_ID} not found"):
             build_from_mapping(mapping=mapping, tenant_id=TEST_TENANT_ID)
@@ -196,7 +239,7 @@ def test_tool_file_not_found():
 
 def test_local_file_not_found():
     """Test UploadFile not found in database."""
-    with patch("factories.file_factory.db.session.scalar", return_value=None, autospec=True):
+    with patch("factories.file_factory.builders.db.session.scalar", return_value=None, autospec=True):
         mapping = local_file_mapping()
         with pytest.raises(ValueError, match="Invalid upload file"):
             build_from_mapping(mapping=mapping, tenant_id=TEST_TENANT_ID)
@@ -268,10 +311,52 @@ def test_tenant_mismatch():
     mock_file.key = "test_key"
 
     # Mock the database query to return None (no file found for this tenant)
-    with patch("factories.file_factory.db.session.scalar", return_value=None, autospec=True):
+    with patch("factories.file_factory.builders.db.session.scalar", return_value=None, autospec=True):
         mapping = local_file_mapping()
         with pytest.raises(ValueError, match="Invalid upload file"):
             build_from_mapping(mapping=mapping, tenant_id=TEST_TENANT_ID)
+
+
+def test_build_from_mapping_scopes_upload_file_to_end_user(mock_upload_file):
+    scope = FileAccessScope(
+        tenant_id=TEST_TENANT_ID,
+        user_id="end-user-id",
+        user_from=UserFrom.END_USER,
+        invoke_from=InvokeFrom.WEB_APP,
+    )
+
+    with bind_file_access_scope(scope):
+        build_from_mapping(mapping=local_file_mapping(), tenant_id=TEST_TENANT_ID)
+
+    stmt = mock_upload_file.call_args.args[0]
+    whereclause = str(stmt.whereclause)
+    assert "upload_files.created_by_role" in whereclause
+    assert "upload_files.created_by" in whereclause
+
+
+def test_build_from_mapping_scopes_tool_file_to_end_user():
+    tool_file = MagicMock(spec=ToolFile)
+    tool_file.id = TEST_TOOL_FILE_ID
+    tool_file.tenant_id = TEST_TENANT_ID
+    tool_file.name = "tool_file.pdf"
+    tool_file.file_key = "tool_file.pdf"
+    tool_file.mimetype = "application/pdf"
+    tool_file.original_url = "http://example.com/tool.pdf"
+    tool_file.size = 2048
+    scope = FileAccessScope(
+        tenant_id=TEST_TENANT_ID,
+        user_id="end-user-id",
+        user_from=UserFrom.END_USER,
+        invoke_from=InvokeFrom.WEB_APP,
+    )
+
+    with patch("factories.file_factory.builders.db.session.scalar", return_value=tool_file, autospec=True) as scalar:
+        with bind_file_access_scope(scope):
+            build_from_mapping(mapping=tool_file_mapping(), tenant_id=TEST_TENANT_ID)
+
+    stmt = scalar.call_args.args[0]
+    whereclause = str(stmt.whereclause)
+    assert "tool_files.user_id" in whereclause
 
 
 def test_disallowed_file_types(mock_upload_file):

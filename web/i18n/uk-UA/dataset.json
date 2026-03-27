@@ -176,6 +176,7 @@
   "serviceApi.enabled": "У службі",
   "serviceApi.title": "Сервісний API",
   "unavailable": "Недоступно",
+  "unknownError": "Невідома помилка",
   "updated": "Оновлено",
   "weightedScore.customized": "Налаштований",
   "weightedScore.description": "Регулюючи призначені ваги, ця стратегія перерангування визначає, чи надавати пріоритет семантичному чи ключовому відповідності.",

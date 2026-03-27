@@ -1,9 +1,10 @@
-from dify_graph.graph_events import (
+from graphon.graph_events import (
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
     NodeRunStartedEvent,
     NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
+    NodeRunVariableUpdatedEvent,
 )
 
 from .test_mock_config import MockConfigBuilder
@@ -33,6 +34,7 @@ def test_streaming_conversation_variables():
             NodeRunSucceededEvent,
             # Variable Assigner node
             NodeRunStartedEvent,
+            NodeRunVariableUpdatedEvent,
             NodeRunStreamChunkEvent,
             NodeRunSucceededEvent,
             # ANSWER node

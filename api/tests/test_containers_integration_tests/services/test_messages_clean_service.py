@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from enums.cloud_plan import CloudPlan
 from extensions.ext_redis import redis_client
+from graphon.file.enums import FileType
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import (
     ConversationFromSource,
@@ -253,7 +254,7 @@ class TestMessagesCleanServiceIntegration:
         # MessageFile
         file = MessageFile(
             message_id=message.id,
-            type="image",
+            type=FileType.IMAGE,
             transfer_method="local_file",
             url="http://example.com/test.jpg",
             belongs_to=MessageFileBelongsTo.USER,

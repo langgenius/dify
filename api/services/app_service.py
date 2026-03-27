@@ -12,10 +12,10 @@ from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
-from dify_graph.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
-from dify_graph.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from events.app_event import app_was_created
+from events.app_event import app_was_created, app_was_deleted, app_was_updated
 from extensions.ext_database import db
+from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
+from graphon.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_user
 from models import Account
@@ -92,7 +92,7 @@ class AppService:
         default_model_config = default_model_config.copy() if default_model_config else None
         if default_model_config and "model" in default_model_config:
             # get model provider
-            model_manager = ModelManager()
+            model_manager = ModelManager.for_tenant(tenant_id=account.current_tenant_id or "")
 
             # get default model instance
             try:
@@ -124,11 +124,19 @@ class AppService:
                         "completion_params": {},
                     }
             else:
-                provider, model = model_manager.get_default_provider_model_name(
-                    tenant_id=account.current_tenant_id or "", model_type=ModelType.LLM
-                )
-                default_model_config["model"]["provider"] = provider
-                default_model_config["model"]["name"] = model
+                try:
+                    provider, model = model_manager.get_default_provider_model_name(
+                        tenant_id=account.current_tenant_id or "", model_type=ModelType.LLM
+                    )
+                except Exception:
+                    logger.exception("Get default provider model failed, tenant_id: %s", tenant_id)
+                    provider = default_model_config["model"].get("provider")
+                    model = default_model_config["model"].get("name")
+
+                if provider:
+                    default_model_config["model"]["provider"] = provider
+                if model:
+                    default_model_config["model"]["name"] = model
                 default_model_dict = default_model_config["model"]
 
             default_model_config["model"] = json.dumps(default_model_dict)
@@ -197,6 +205,7 @@ class AppService:
                         tenant_id=current_user.current_tenant_id,
                         app_id=app.id,
                         agent_tool=agent_tool_entity,
+                        user_id=current_user.id,
                     )
                     manager = ToolParameterConfigurationManager(
                         tenant_id=current_user.current_tenant_id,
@@ -241,7 +250,7 @@ class AppService:
     class ArgsDict(TypedDict):
         name: str
         description: str
-        icon_type: str
+        icon_type: IconType | str | None
         icon: str
         icon_background: str
         use_icon_as_answer_icon: bool
@@ -257,7 +266,13 @@ class AppService:
         assert current_user is not None
         app.name = args["name"]
         app.description = args["description"]
-        app.icon_type = IconType(args["icon_type"]) if args["icon_type"] else None
+        icon_type = args.get("icon_type")
+        if icon_type is None:
+            resolved_icon_type = app.icon_type
+        else:
+            resolved_icon_type = IconType(icon_type)
+
+        app.icon_type = resolved_icon_type
         app.icon = args["icon"]
         app.icon_background = args["icon_background"]
         app.use_icon_as_answer_icon = args.get("use_icon_as_answer_icon", False)
@@ -265,6 +280,8 @@ class AppService:
         app.updated_by = current_user.id
         app.updated_at = naive_utc_now()
         db.session.commit()
+
+        app_was_updated.send(app)
 
         return app
 
@@ -280,6 +297,8 @@ class AppService:
         app.updated_by = current_user.id
         app.updated_at = naive_utc_now()
         db.session.commit()
+
+        app_was_updated.send(app)
 
         return app
 
@@ -298,6 +317,8 @@ class AppService:
         app.updated_at = naive_utc_now()
         db.session.commit()
 
+        app_was_updated.send(app)
+
         return app
 
     def update_app_site_status(self, app: App, enable_site: bool) -> App:
@@ -314,6 +335,8 @@ class AppService:
         app.updated_by = current_user.id
         app.updated_at = naive_utc_now()
         db.session.commit()
+
+        app_was_updated.send(app)
 
         return app
 
@@ -333,6 +356,8 @@ class AppService:
         app.updated_at = naive_utc_now()
         db.session.commit()
 
+        app_was_updated.send(app)
+
         return app
 
     def delete_app(self, app: App):
@@ -340,6 +365,8 @@ class AppService:
         Delete app
         :param app: App instance
         """
+        app_was_deleted.send(app)
+
         db.session.delete(app)
         db.session.commit()
 

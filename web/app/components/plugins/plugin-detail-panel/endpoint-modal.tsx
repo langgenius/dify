@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Button from '@/app/components/base/button'
 import Drawer from '@/app/components/base/drawer'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { cn } from '@/utils/classnames'
@@ -48,7 +48,10 @@ const EndpointModal: FC<Props> = ({
   const handleSave = () => {
     for (const field of formSchemas) {
       if (field.required && !tempCredential[field.name]) {
-        Toast.notify({ type: 'error', message: t('errorMsg.fieldRequired', { ns: 'common', field: typeof field.label === 'string' ? field.label : getValueFromI18nObject(field.label as Record<string, string>) }) })
+        toast.error(t('errorMsg.fieldRequired', {
+          ns: 'common',
+          field: typeof field.label === 'string' ? field.label : getValueFromI18nObject(field.label as Record<string, string>),
+        }))
         return
       }
     }
@@ -83,12 +86,12 @@ const EndpointModal: FC<Props> = ({
       <>
         <div className="p-4 pb-2">
           <div className="flex items-center justify-between">
-            <div className="system-xl-semibold text-text-primary">{t('detailPanel.endpointModalTitle', { ns: 'plugin' })}</div>
+            <div className="text-text-primary system-xl-semibold">{t('detailPanel.endpointModalTitle', { ns: 'plugin' })}</div>
             <ActionButton onClick={onCancel}>
               <RiCloseLine className="h-4 w-4" />
             </ActionButton>
           </div>
-          <div className="system-xs-regular mt-0.5 text-text-tertiary">{t('detailPanel.endpointModalDesc', { ns: 'plugin' })}</div>
+          <div className="mt-0.5 text-text-tertiary system-xs-regular">{t('detailPanel.endpointModalDesc', { ns: 'plugin' })}</div>
           <ReadmeEntrance pluginDetail={pluginDetail} className="px-0 pt-3" />
         </div>
         <div className="grow overflow-y-auto">
@@ -109,7 +112,7 @@ const EndpointModal: FC<Props> = ({
                       href={item.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="body-xs-regular inline-flex items-center text-text-accent-secondary"
+                      className="inline-flex items-center text-text-accent-secondary body-xs-regular"
                     >
                       {t('howToGet', { ns: 'tools' })}
                       <RiArrowRightUpLine className="ml-1 h-3 w-3" />

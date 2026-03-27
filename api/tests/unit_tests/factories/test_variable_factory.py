@@ -7,8 +7,10 @@ import pytest
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
-from dify_graph.file import File, FileTransferMethod, FileType
-from dify_graph.variables import (
+from factories import variable_factory
+from factories.variable_factory import TypeMismatchError, build_segment, build_segment_with_type
+from graphon.file import File, FileTransferMethod, FileType
+from graphon.variables import (
     ArrayNumberVariable,
     ArrayObjectVariable,
     ArrayStringVariable,
@@ -17,8 +19,8 @@ from dify_graph.variables import (
     SecretVariable,
     StringVariable,
 )
-from dify_graph.variables.exc import VariableError
-from dify_graph.variables.segments import (
+from graphon.variables.exc import VariableError
+from graphon.variables.segments import (
     ArrayAnySegment,
     ArrayFileSegment,
     ArrayNumberSegment,
@@ -33,9 +35,7 @@ from dify_graph.variables.segments import (
     Segment,
     StringSegment,
 )
-from dify_graph.variables.types import SegmentType
-from factories import variable_factory
-from factories.variable_factory import TypeMismatchError, build_segment, build_segment_with_type
+from graphon.variables.types import SegmentType
 
 
 def test_string_variable():

@@ -42,6 +42,8 @@ export const AMPLITUDE_API_KEY = getStringConfig(
   '',
 )
 
+export const isAmplitudeEnabled = IS_CLOUD_EDITION && !!AMPLITUDE_API_KEY
+
 export const IS_DEV = process.env.NODE_ENV === 'development'
 export const IS_PROD = process.env.NODE_ENV === 'production'
 
@@ -289,9 +291,6 @@ export const HITL_INPUT_REG = /\{\{(#\$output\.(?:[a-z_]\w{0,29}){1,10}#)\}\}/gi
 export const resetHITLInputReg = () => HITL_INPUT_REG.lastIndex = 0
 
 export const DISABLE_UPLOAD_IMAGE_AS_ICON = env.NEXT_PUBLIC_DISABLE_UPLOAD_IMAGE_AS_ICON
-
-export const GITHUB_ACCESS_TOKEN
-  = env.NEXT_PUBLIC_GITHUB_ACCESS_TOKEN
 
 export const SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS = '.difypkg,.difybndl'
 export const FULL_DOC_PREVIEW_LENGTH = 50

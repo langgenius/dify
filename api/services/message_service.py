@@ -12,8 +12,8 @@ from core.model_manager import ModelManager
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.ops.utils import measure_time
-from dify_graph.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
+from graphon.model_runtime.entities.model_entities import ModelType
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account
 from models.enums import FeedbackFromSource, FeedbackRating
@@ -255,7 +255,7 @@ class MessageService:
             app_model=app_model, conversation_id=message.conversation_id, user=user
         )
 
-        model_manager = ModelManager()
+        model_manager = ModelManager.for_tenant(tenant_id=app_model.tenant_id)
 
         if app_model.mode == AppMode.ADVANCED_CHAT:
             workflow_service = WorkflowService()

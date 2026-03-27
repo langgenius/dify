@@ -75,6 +75,7 @@ import pytest
 from werkzeug.exceptions import NotFound
 
 from models.dataset import Dataset
+from models.enums import TagType
 from models.model import App, Tag, TagBinding
 from services.tag_service import TagService
 
@@ -102,7 +103,7 @@ class TagServiceTestDataFactory:
     def create_tag_mock(
         tag_id: str = "tag-123",
         name: str = "Test Tag",
-        tag_type: str = "app",
+        tag_type: TagType = TagType.APP,
         tenant_id: str = "tenant-123",
         **kwargs,
     ) -> Mock:
@@ -315,7 +316,7 @@ class TestTagServiceRetrieval:
     - get_tags_by_target_id: Get all tags bound to a specific target
     """
 
-    @patch("services.tag_service.db.session", autospec=True)
+    @patch("services.tag_service.db.session")
     def test_get_tags_with_binding_counts(self, mock_db_session, factory):
         """
         Test retrieving tags with their binding counts.
@@ -372,7 +373,7 @@ class TestTagServiceRetrieval:
         # Verify database query was called
         mock_db_session.query.assert_called_once()
 
-    @patch("services.tag_service.db.session", autospec=True)
+    @patch("services.tag_service.db.session")
     def test_get_tags_with_keyword_filter(self, mock_db_session, factory):
         """
         Test retrieving tags filtered by keyword (case-insensitive).
@@ -426,7 +427,7 @@ class TestTagServiceRetrieval:
         # 2. Additional WHERE clause for keyword filtering
         assert mock_query.where.call_count >= 2, "Keyword filter should add WHERE clause"
 
-    @patch("services.tag_service.db.session", autospec=True)
+    @patch("services.tag_service.db.session")
     def test_get_target_ids_by_tag_ids(self, mock_db_session, factory):
         """
         Test retrieving target IDs by tag IDs.
@@ -482,7 +483,7 @@ class TestTagServiceRetrieval:
         # Verify both queries were executed
         assert mock_db_session.scalars.call_count == 2, "Should execute tag query and binding query"
 
-    @patch("services.tag_service.db.session", autospec=True)
+    @patch("services.tag_service.db.session")
     def test_get_target_ids_with_empty_tag_ids(self, mock_db_session, factory):
         """
         Test that empty tag_ids returns empty list.
@@ -510,7 +511,7 @@ class TestTagServiceRetrieval:
         assert results == [], "Should return empty list for empty input"
         mock_db_session.scalars.assert_not_called(), "Should not query database for empty input"
 
-    @patch("services.tag_service.db.session", autospec=True)
+    @patch("services.tag_service.db.session")
     def test_get_tag_by_tag_name(self, mock_db_session, factory):
         """
         Test retrieving tags by name.
@@ -552,7 +553,7 @@ class TestTagServiceRetrieval:
         assert len(results) == 1, "Should find exactly one tag"
         assert results[0].name == tag_name, "Tag name should match"
 
-    @patch("services.tag_service.db.session", autospec=True)
+    @patch("services.tag_service.db.session")
     def test_get_tag_by_tag_name_returns_empty_for_missing_params(self, mock_db_session, factory):
         """
         Test that missing tag_type or tag_name returns empty list.
@@ -580,7 +581,7 @@ class TestTagServiceRetrieval:
         # Verify no database queries were executed
         mock_db_session.scalars.assert_not_called(), "Should not query database for invalid input"
 
-    @patch("services.tag_service.db.session", autospec=True)
+    @patch("services.tag_service.db.session")
     def test_get_tags_by_target_id(self, mock_db_session, factory):
         """
         Test retrieving tags associated with a specific target.
@@ -653,7 +654,7 @@ class TestTagServiceCRUD:
 
     @patch("services.tag_service.current_user", autospec=True)
     @patch("services.tag_service.TagService.get_tag_by_tag_name", autospec=True)
-    @patch("services.tag_service.db.session", autospec=True)
+    @patch("services.tag_service.db.session")
     @patch("services.tag_service.uuid.uuid4", autospec=True)
     def test_save_tags(self, mock_uuid, mock_db_session, mock_get_tag_by_name, mock_current_user, factory):
         """
@@ -705,7 +706,7 @@ class TestTagServiceCRUD:
         # Verify tag attributes
         added_tag = mock_db_session.add.call_args[0][0]
         assert added_tag.name == "New Tag", "Tag name should match"
-        assert added_tag.type == "app", "Tag type should match"
+        assert added_tag.type == TagType.APP, "Tag type should match"
         assert added_tag.created_by == "user-123", "Created by should match current user"
         assert added_tag.tenant_id == "tenant-123", "Tenant ID should match current tenant"
 
@@ -742,7 +743,7 @@ class TestTagServiceCRUD:
 
     @patch("services.tag_service.current_user", autospec=True)
     @patch("services.tag_service.TagService.get_tag_by_tag_name", autospec=True)
-    @patch("services.tag_service.db.session", autospec=True)
+    @patch("services.tag_service.db.session")
     def test_update_tags(self, mock_db_session, mock_get_tag_by_name, mock_current_user, factory):
         """
         Test updating a tag name.
@@ -794,7 +795,7 @@ class TestTagServiceCRUD:
 
     @patch("services.tag_service.current_user", autospec=True)
     @patch("services.tag_service.TagService.get_tag_by_tag_name", autospec=True)
-    @patch("services.tag_service.db.session", autospec=True)
+    @patch("services.tag_service.db.session")
     def test_update_tags_raises_error_for_duplicate_name(
         self, mock_db_session, mock_get_tag_by_name, mock_current_user, factory
     ):
@@ -826,7 +827,7 @@ class TestTagServiceCRUD:
         with pytest.raises(ValueError, match="Tag name already exists"):
             TagService.update_tags(args, tag_id="tag-123")
 
-    @patch("services.tag_service.db.session", autospec=True)
+    @patch("services.tag_service.db.session")
     def test_update_tags_raises_not_found_for_missing_tag(self, mock_db_session, factory):
         """
         Test that updating a non-existent tag raises NotFound.
@@ -858,7 +859,7 @@ class TestTagServiceCRUD:
                 with pytest.raises(NotFound, match="Tag not found"):
                     TagService.update_tags(args, tag_id="nonexistent")
 
-    @patch("services.tag_service.db.session", autospec=True)
+    @patch("services.tag_service.db.session")
     def test_get_tag_binding_count(self, mock_db_session, factory):
         """
         Test getting the count of bindings for a tag.
@@ -894,7 +895,7 @@ class TestTagServiceCRUD:
         # Verify count matches expectation
         assert result == expected_count, "Binding count should match"
 
-    @patch("services.tag_service.db.session", autospec=True)
+    @patch("services.tag_service.db.session")
     def test_delete_tag(self, mock_db_session, factory):
         """
         Test deleting a tag and its bindings.
@@ -950,7 +951,7 @@ class TestTagServiceCRUD:
         # Verify transaction was committed
         mock_db_session.commit.assert_called_once(), "Should commit transaction"
 
-    @patch("services.tag_service.db.session", autospec=True)
+    @patch("services.tag_service.db.session")
     def test_delete_tag_raises_not_found(self, mock_db_session, factory):
         """
         Test that deleting a non-existent tag raises NotFound.
@@ -998,7 +999,7 @@ class TestTagServiceBindings:
 
     @patch("services.tag_service.current_user", autospec=True)
     @patch("services.tag_service.TagService.check_target_exists", autospec=True)
-    @patch("services.tag_service.db.session", autospec=True)
+    @patch("services.tag_service.db.session")
     def test_save_tag_binding(self, mock_db_session, mock_check_target, mock_current_user, factory):
         """
         Test creating tag bindings.
@@ -1049,7 +1050,7 @@ class TestTagServiceBindings:
 
     @patch("services.tag_service.current_user", autospec=True)
     @patch("services.tag_service.TagService.check_target_exists", autospec=True)
-    @patch("services.tag_service.db.session", autospec=True)
+    @patch("services.tag_service.db.session")
     def test_save_tag_binding_is_idempotent(self, mock_db_session, mock_check_target, mock_current_user, factory):
         """
         Test that saving duplicate bindings is idempotent.
@@ -1089,7 +1090,7 @@ class TestTagServiceBindings:
         mock_db_session.add.assert_not_called(), "Should not create duplicate binding"
 
     @patch("services.tag_service.TagService.check_target_exists", autospec=True)
-    @patch("services.tag_service.db.session", autospec=True)
+    @patch("services.tag_service.db.session")
     def test_delete_tag_binding(self, mock_db_session, mock_check_target, factory):
         """
         Test deleting a tag binding.
@@ -1137,7 +1138,7 @@ class TestTagServiceBindings:
         mock_db_session.commit.assert_called_once(), "Should commit transaction"
 
     @patch("services.tag_service.TagService.check_target_exists", autospec=True)
-    @patch("services.tag_service.db.session", autospec=True)
+    @patch("services.tag_service.db.session")
     def test_delete_tag_binding_does_nothing_if_not_exists(self, mock_db_session, mock_check_target, factory):
         """
         Test that deleting a non-existent binding is a no-op.
@@ -1174,7 +1175,7 @@ class TestTagServiceBindings:
         mock_db_session.commit.assert_not_called(), "Should not commit if nothing to delete"
 
     @patch("services.tag_service.current_user", autospec=True)
-    @patch("services.tag_service.db.session", autospec=True)
+    @patch("services.tag_service.db.session")
     def test_check_target_exists_for_dataset(self, mock_db_session, mock_current_user, factory):
         """
         Test validating that a dataset target exists.
@@ -1215,7 +1216,7 @@ class TestTagServiceBindings:
         mock_db_session.query.assert_called_once(), "Should query database for dataset"
 
     @patch("services.tag_service.current_user", autospec=True)
-    @patch("services.tag_service.db.session", autospec=True)
+    @patch("services.tag_service.db.session")
     def test_check_target_exists_for_app(self, mock_db_session, mock_current_user, factory):
         """
         Test validating that an app target exists.
@@ -1256,7 +1257,7 @@ class TestTagServiceBindings:
         mock_db_session.query.assert_called_once(), "Should query database for app"
 
     @patch("services.tag_service.current_user", autospec=True)
-    @patch("services.tag_service.db.session", autospec=True)
+    @patch("services.tag_service.db.session")
     def test_check_target_exists_raises_not_found_for_missing_dataset(
         self, mock_db_session, mock_current_user, factory
     ):
@@ -1288,7 +1289,7 @@ class TestTagServiceBindings:
             TagService.check_target_exists("knowledge", "nonexistent")
 
     @patch("services.tag_service.current_user", autospec=True)
-    @patch("services.tag_service.db.session", autospec=True)
+    @patch("services.tag_service.db.session")
     def test_check_target_exists_raises_not_found_for_missing_app(self, mock_db_session, mock_current_user, factory):
         """
         Test that missing app raises NotFound.

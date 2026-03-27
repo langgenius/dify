@@ -176,6 +176,7 @@
   "serviceApi.enabled": "サービス中",
   "serviceApi.title": "サービスAPI",
   "unavailable": "利用不可",
+  "unknownError": "不明なエラー",
   "updated": "更新された",
   "weightedScore.customized": "カスタマイズ",
   "weightedScore.description": "重みを調整することで、並べ替え戦略はセマンティックマッチングとキーワードマッチングのどちらを優先するかを決定します。",
