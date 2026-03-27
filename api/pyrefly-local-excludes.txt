@@ -109,6 +109,15 @@ core/trigger/debug/event_selectors.py
 core/trigger/entities/entities.py
 core/trigger/provider.py
 core/workflow/workflow_entry.py
+enterprise/telemetry/contracts.py
+enterprise/telemetry/draft_trace.py
+enterprise/telemetry/enterprise_trace.py
+enterprise/telemetry/entities/__init__.py
+enterprise/telemetry/event_handlers.py
+enterprise/telemetry/exporter.py
+enterprise/telemetry/id_generator.py
+enterprise/telemetry/metric_handler.py
+enterprise/telemetry/telemetry_log.py
 graphon/entities/workflow_execution.py
 graphon/file/file_manager.py
 graphon/graph_engine/error_handler.py

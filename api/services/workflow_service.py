@@ -27,6 +27,7 @@ from core.workflow.node_runtime import DifyHumanInputNodeRuntime, apply_dify_deb
 from core.workflow.system_variables import build_bootstrap_variables, build_system_variables, default_system_variables
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
+from enterprise.telemetry.draft_trace import enqueue_draft_node_execution_trace
 from enums.cloud_plan import CloudPlan
 from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
 from extensions.ext_database import db
@@ -848,6 +849,13 @@ class WorkflowService:
             )
             draft_var_saver.save(process_data=node_execution.process_data, outputs=outputs)
             session.commit()
+
+        enqueue_draft_node_execution_trace(
+            execution=workflow_node_execution,
+            outputs=outputs,
+            workflow_execution_id=None,
+            user_id=account.id,
+        )
 
         return workflow_node_execution
 
