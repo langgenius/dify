@@ -1,21 +1,17 @@
 import type { LexicalNode } from 'lexical'
-import type { Dispatch, SetStateAction } from 'react'
-import {
-  flip,
-  offset,
-  shift,
-  useFloating,
-} from '@floating-ui/react'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { LexicalTypeaheadMenuPlugin, MenuOption } from '@lexical/react/LexicalTypeaheadMenuPlugin'
 import {
   $insertNodes,
 } from 'lexical'
 import * as React from 'react'
-import { useCallback, useLayoutEffect, useMemo } from 'react'
-import ReactDOM from 'react-dom'
+import { useCallback, useMemo } from 'react'
 import { useBasicTypeaheadTriggerMatch } from '@/app/components/base/prompt-editor/hooks'
 import { $splitNodeContainingQuery } from '@/app/components/base/prompt-editor/utils'
+import {
+  Popover,
+  PopoverContent,
+} from '@/app/components/base/ui/popover'
 import { FilePickerPanel } from './file-picker-panel'
 import { $createFileReferenceNode } from './file-reference-block/node'
 
@@ -25,29 +21,8 @@ class FilePickerMenuOption extends MenuOption {
   }
 }
 
-type ReferenceSyncProps = {
-  anchor: HTMLElement | null
-  setReference: Dispatch<SetStateAction<HTMLElement | null>> | ((node: HTMLElement | null) => void)
-}
-
-const ReferenceSync = ({ anchor, setReference }: ReferenceSyncProps) => {
-  useLayoutEffect(() => {
-    setReference(anchor)
-  }, [anchor, setReference])
-
-  return null
-}
-
 const FilePickerBlock = () => {
   const [editor] = useLexicalComposerContext()
-  const { refs, floatingStyles, isPositioned } = useFloating({
-    placement: 'bottom-start',
-    middleware: [
-      offset(0),
-      shift({ padding: 8 }),
-      flip(),
-    ],
-  })
   const checkForTriggerMatch = useBasicTypeaheadTriggerMatch('/', {
     minLength: 0,
     maxLength: 0,
@@ -76,16 +51,20 @@ const FilePickerBlock = () => {
 
     const closeMenu = () => selectOptionAndCleanUp(options[0])
 
-    return ReactDOM.createPortal(
-      <>
-        <ReferenceSync anchor={anchorElementRef.current} setReference={refs.setReference} />
-        <div
-          ref={refs.setFloating}
-          style={{
-            ...floatingStyles,
-            visibility: isPositioned ? 'visible' : 'hidden',
-          }}
-          className="z-[1002] outline-none"
+    return (
+      <Popover
+        open
+        onOpenChange={(open) => {
+          if (!open)
+            closeMenu()
+        }}
+      >
+        <PopoverContent
+          placement="bottom-start"
+          sideOffset={4}
+          popupClassName="rounded-none border-none bg-transparent shadow-none"
+          positionerProps={{ anchor: anchorElementRef }}
+          popupProps={{ initialFocus: false, finalFocus: false }}
         >
           <FilePickerPanel
             onSelectNode={(node) => {
@@ -93,11 +72,10 @@ const FilePickerBlock = () => {
               closeMenu()
             }}
           />
-        </div>
-      </>,
-      anchorElementRef.current,
+        </PopoverContent>
+      </Popover>
     )
-  }, [floatingStyles, insertFileReference, isPositioned, options, refs])
+  }, [insertFileReference, options])
 
   return (
     <LexicalTypeaheadMenuPlugin
