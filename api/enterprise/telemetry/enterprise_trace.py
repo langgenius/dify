@@ -614,8 +614,8 @@ class EnterpriseOtelTrace:
                 "dify.moderation.flagged": info.flagged,
                 "dify.moderation.action": info.action,
                 "dify.moderation.preset_response": info.preset_response,
-                "dify.moderation.type": "unknown",
-                "dify.moderation.categories": self._maybe_json([]),
+                "dify.moderation.type": metadata.get("moderation_type", "input"),
+                "dify.moderation.categories": self._maybe_json(metadata.get("moderation_categories", [])),
                 "dify.workflow.run_id": metadata.get("workflow_run_id"),
             }
         )

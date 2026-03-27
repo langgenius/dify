@@ -626,6 +626,52 @@ class TraceTask:
         return cls._workflow_run_repo
 
     @classmethod
+    def _calculate_workflow_token_split(
+        cls, session: "Session", workflow_run_id: str, tenant_id: str
+    ) -> tuple[int, int]:
+        """Sum prompt/completion tokens across all node executions for a workflow run.
+
+        Reads from the ``outputs`` column (where LLM nodes store ``usage.prompt_tokens``
+        and ``usage.completion_tokens``) rather than ``execution_metadata``, which only
+        carries ``total_tokens``.  Projects only the ``outputs`` column to avoid loading
+        large JSON blobs unnecessarily.
+        """
+        import json
+
+        from models.workflow import WorkflowNodeExecutionModel
+
+        rows = session.execute(
+            select(WorkflowNodeExecutionModel.outputs).where(
+                WorkflowNodeExecutionModel.tenant_id == tenant_id,
+                WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id,
+            )
+        ).scalars().all()
+
+        total_prompt = 0
+        total_completion = 0
+
+        for raw in rows:
+            if not raw:
+                continue
+            try:
+                outputs = json.loads(raw) if isinstance(raw, str) else raw
+            except (ValueError, TypeError):
+                continue
+            if not isinstance(outputs, dict):
+                continue
+            usage = outputs.get("usage")
+            if not isinstance(usage, dict):
+                continue
+            prompt = usage.get("prompt_tokens")
+            if isinstance(prompt, (int, float)):
+                total_prompt += int(prompt)
+            completion = usage.get("completion_tokens")
+            if isinstance(completion, (int, float)):
+                total_completion += int(completion)
+
+        return (total_prompt, total_completion)
+
+    @classmethod
     def _get_user_id_from_metadata(cls, metadata: dict[str, Any]) -> str:
         """Extract user ID from metadata, prioritizing end_user over account.
 
@@ -659,6 +705,7 @@ class TraceTask:
         self.trace_type = trace_type
         self.message_id = message_id
         self.workflow_run_id = workflow_execution.id_ if workflow_execution else None
+        self.workflow_total_tokens: int | None = workflow_execution.total_tokens if workflow_execution else None
         self.conversation_id = conversation_id
         self.user_id = user_id
         self.timer = timer
@@ -679,7 +726,10 @@ class TraceTask:
         preprocess_map = {
             TraceTaskName.CONVERSATION_TRACE: lambda: self.conversation_trace(**self.kwargs),
             TraceTaskName.WORKFLOW_TRACE: lambda: self.workflow_trace(
-                workflow_run_id=self.workflow_run_id, conversation_id=self.conversation_id, user_id=self.user_id
+                workflow_run_id=self.workflow_run_id,
+                conversation_id=self.conversation_id,
+                user_id=self.user_id,
+                total_tokens_override=self.workflow_total_tokens,
             ),
             TraceTaskName.MESSAGE_TRACE: lambda: self.message_trace(message_id=self.message_id, **self.kwargs),
             TraceTaskName.MODERATION_TRACE: lambda: self.moderation_trace(
@@ -714,6 +764,7 @@ class TraceTask:
         workflow_run_id: str | None,
         conversation_id: str | None,
         user_id: str | None,
+        total_tokens_override: int | None = None,
     ):
         if not workflow_run_id:
             return {}
@@ -733,7 +784,7 @@ class TraceTask:
         workflow_run_version = workflow_run.version
         error = workflow_run.error or ""
 
-        total_tokens = workflow_run.total_tokens
+        total_tokens = total_tokens_override if total_tokens_override is not None else workflow_run.total_tokens
 
         file_list = workflow_run_inputs.get("sys.file") or []
         query = workflow_run_inputs.get("query") or workflow_run_inputs.get("sys.query") or ""
@@ -754,6 +805,9 @@ class TraceTask:
                     Message.workflow_run_id == workflow_run_id,
                 )
                 message_id = session.scalar(message_data_stmt)
+            prompt_tokens, completion_tokens = self._calculate_workflow_token_split(
+                session, workflow_run_id=workflow_run_id, tenant_id=tenant_id
+            )
 
         from core.telemetry.gateway import is_enterprise_telemetry_enabled
 
@@ -797,6 +851,8 @@ class TraceTask:
             workflow_run_version=workflow_run_version,
             error=error,
             total_tokens=total_tokens,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
             file_list=file_list,
             query=query,
             metadata=metadata,
