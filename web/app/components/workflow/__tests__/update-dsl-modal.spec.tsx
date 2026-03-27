@@ -209,7 +209,7 @@ describe('UpdateDSLModal', () => {
     })
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'app.newApp.Cancel' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'app.newApp.Confirm' })).toBeInTheDocument()
     }, { timeout: 1000 })
 
     fireEvent.click(screen.getByRole('button', { name: 'app.newApp.Cancel' }))
