@@ -66,7 +66,7 @@ class TestGetDynamicSelectOptionsTool:
             provider="google",
             name="API KEY 1",
             encrypted_credentials=json.dumps({"api_key": "encrypted"}),
-            credential_type="api_key",
+            credential_type="api-key",
         )
         db_session_with_containers.add(db_record)
         db_session_with_containers.commit()
