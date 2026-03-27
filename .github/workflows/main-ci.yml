@@ -10,6 +10,7 @@ on:
     branches: ["main"]
 
 permissions:
+  actions: write
   contents: write
   pull-requests: write
   checks: write
@@ -20,9 +21,24 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  pre_job:
+    name: Skip Duplicate Checks
+    runs-on: ubuntu-latest
+    outputs:
+      should_skip: ${{ steps.skip_check.outputs.should_skip || 'false' }}
+    steps:
+      - id: skip_check
+        continue-on-error: true
+        uses: fkirc/skip-duplicate-actions@f75f66ce1886f00957d99748a42c724f4330bdcf # v5.3.1
+        with:
+          cancel_others: 'true'
+          concurrent_skipping: same_content_newer
+
   # Check which paths were changed to determine which tests to run
   check-changes:
     name: Check Changed Files
+    needs: pre_job
+    if: needs.pre_job.outputs.should_skip != 'true'
     runs-on: ubuntu-latest
     outputs:
       api-changed: ${{ steps.changes.outputs.api }}
@@ -56,15 +72,19 @@ jobs:
   # Run tests in parallel while always emitting stable required checks.
   api-tests-run:
     name: Run API Tests
-    needs: check-changes
-    if: needs.check-changes.outputs.api-changed == 'true'
+    needs:
+      - pre_job
+      - check-changes
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.api-changed == 'true'
     uses: ./.github/workflows/api-tests.yml
     secrets: inherit
 
   api-tests-skip:
     name: Skip API Tests
-    needs: check-changes
-    if: needs.check-changes.outputs.api-changed != 'true'
+    needs:
+      - pre_job
+      - check-changes
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.api-changed != 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Report skipped API tests
@@ -72,8 +92,9 @@ jobs:
 
   api-tests:
     name: API Tests
-    if: ${{ always() }}
+    if: ${{ always() && needs.pre_job.outputs.should_skip != 'true' }}
     needs:
+      - pre_job
       - check-changes
       - api-tests-run
       - api-tests-skip
@@ -105,15 +126,19 @@ jobs:
 
   web-tests-run:
     name: Run Web Tests
-    needs: check-changes
-    if: needs.check-changes.outputs.web-changed == 'true'
+    needs:
+      - pre_job
+      - check-changes
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.web-changed == 'true'
     uses: ./.github/workflows/web-tests.yml
     secrets: inherit
 
   web-tests-skip:
     name: Skip Web Tests
-    needs: check-changes
-    if: needs.check-changes.outputs.web-changed != 'true'
+    needs:
+      - pre_job
+      - check-changes
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.web-changed != 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Report skipped web tests
@@ -121,8 +146,9 @@ jobs:
 
   web-tests:
     name: Web Tests
-    if: ${{ always() }}
+    if: ${{ always() && needs.pre_job.outputs.should_skip != 'true' }}
     needs:
+      - pre_job
       - check-changes
       - web-tests-run
       - web-tests-skip
@@ -154,18 +180,24 @@ jobs:
 
   style-check:
     name: Style Check
+    needs: pre_job
+    if: needs.pre_job.outputs.should_skip != 'true'
     uses: ./.github/workflows/style.yml
 
   vdb-tests-run:
     name: Run VDB Tests
-    needs: check-changes
-    if: needs.check-changes.outputs.vdb-changed == 'true'
+    needs:
+      - pre_job
+      - check-changes
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.vdb-changed == 'true'
     uses: ./.github/workflows/vdb-tests.yml
 
   vdb-tests-skip:
     name: Skip VDB Tests
-    needs: check-changes
-    if: needs.check-changes.outputs.vdb-changed != 'true'
+    needs:
+      - pre_job
+      - check-changes
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.vdb-changed != 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Report skipped VDB tests
@@ -173,8 +205,9 @@ jobs:
 
   vdb-tests:
     name: VDB Tests
-    if: ${{ always() }}
+    if: ${{ always() && needs.pre_job.outputs.should_skip != 'true' }}
     needs:
+      - pre_job
       - check-changes
       - vdb-tests-run
       - vdb-tests-skip
@@ -206,14 +239,18 @@ jobs:
 
   db-migration-test-run:
     name: Run DB Migration Test
-    needs: check-changes
-    if: needs.check-changes.outputs.migration-changed == 'true'
+    needs:
+      - pre_job
+      - check-changes
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.migration-changed == 'true'
     uses: ./.github/workflows/db-migration-test.yml
 
   db-migration-test-skip:
     name: Skip DB Migration Test
-    needs: check-changes
-    if: needs.check-changes.outputs.migration-changed != 'true'
+    needs:
+      - pre_job
+      - check-changes
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.migration-changed != 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Report skipped DB migration tests
@@ -221,8 +258,9 @@ jobs:
 
   db-migration-test:
     name: DB Migration Test
-    if: ${{ always() }}
+    if: ${{ always() && needs.pre_job.outputs.should_skip != 'true' }}
     needs:
+      - pre_job
       - check-changes
       - db-migration-test-run
       - db-migration-test-skip
