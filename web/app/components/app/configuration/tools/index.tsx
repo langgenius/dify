@@ -22,6 +22,11 @@ import {
 } from '@/app/components/base/ui/tooltip'
 import ConfigContext from '@/context/debug-configuration'
 import { useModalContext } from '@/context/modal-context'
+import {
+  findExternalDataToolVariableConflict,
+  removeExternalDataTool,
+  upsertExternalDataTool,
+} from './helpers'
 
 const Tools = () => {
   const { t } = useTranslation()
@@ -35,42 +40,20 @@ const Tools = () => {
   const [copied, setCopied] = useState(false)
 
   const handleSaveExternalDataToolModal = (externalDataTool: ExternalDataTool, index: number) => {
-    if (index > -1) {
-      setExternalDataToolsConfig([
-        ...externalDataToolsConfig.slice(0, index),
-        externalDataTool,
-        ...externalDataToolsConfig.slice(index + 1),
-      ])
-    }
-    else {
-      setExternalDataToolsConfig([...externalDataToolsConfig, externalDataTool])
-    }
+    setExternalDataToolsConfig(upsertExternalDataTool(externalDataToolsConfig, externalDataTool, index))
   }
+
   const handleValidateBeforeSaveExternalDataToolModal = (newExternalDataTool: ExternalDataTool, index: number) => {
     const promptVariables = modelConfig?.configs?.prompt_variables || []
-    for (let i = 0; i < promptVariables.length; i++) {
-      if (promptVariables[i].key === newExternalDataTool.variable) {
-        toast.error(t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: promptVariables[i].key }))
-        return false
-      }
-    }
-
-    let existedExternalDataTools = []
-    if (index > -1) {
-      existedExternalDataTools = [
-        ...externalDataToolsConfig.slice(0, index),
-        ...externalDataToolsConfig.slice(index + 1),
-      ]
-    }
-    else {
-      existedExternalDataTools = [...externalDataToolsConfig]
-    }
-
-    for (let i = 0; i < existedExternalDataTools.length; i++) {
-      if (existedExternalDataTools[i].variable === newExternalDataTool.variable) {
-        toast.error(t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: existedExternalDataTools[i].variable }))
-        return false
-      }
+    const conflictKey = findExternalDataToolVariableConflict(
+      newExternalDataTool.variable,
+      externalDataToolsConfig,
+      promptVariables,
+      index,
+    )
+    if (conflictKey) {
+      toast.error(t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: conflictKey }))
+      return false
     }
 
     return true
@@ -181,7 +164,7 @@ const Tools = () => {
                   </div>
                   <div
                     className="group/action hidden h-6 w-6 cursor-pointer items-center justify-center rounded-md hover:bg-[#FEE4E2] group-hover:flex"
-                    onClick={() => setExternalDataToolsConfig([...externalDataToolsConfig.slice(0, index), ...externalDataToolsConfig.slice(index + 1)])}
+                    onClick={() => setExternalDataToolsConfig(removeExternalDataTool(externalDataToolsConfig, index))}
                   >
                     <RiDeleteBinLine className="h-4 w-4 text-gray-500 group-hover/action:text-[#D92D20]" />
                   </div>
