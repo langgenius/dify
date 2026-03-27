@@ -2,6 +2,8 @@
 
 This package contains the repository-level end-to-end tests for Dify.
 
+This file is the canonical package guide for `e2e/`. Keep detailed workflow, architecture, debugging, and reporting documentation here. Keep `README.md` as a minimal pointer to this file so the two documents do not drift.
+
 The suite uses Cucumber for scenario definitions and Playwright as the browser execution layer.
 
 It tests:
@@ -27,6 +29,25 @@ pnpm check
 ```
 
 Use `pnpm check` as the default local verification step after editing E2E TypeScript, Cucumber support code, or feature glue. It runs formatting, linting, and type checks for this package.
+
+Common commands:
+
+```bash
+# authenticated-only regression (default excludes @fresh)
+pnpm e2e
+
+# full reset + fresh install + authenticated scenarios
+pnpm e2e:full
+
+# run a tagged subset
+pnpm e2e -- --tags @smoke
+
+# headed browser
+pnpm e2e:headed -- --tags @smoke
+
+# slow down browser actions for local debugging
+E2E_SLOW_MO=500 pnpm e2e:headed -- --tags @smoke
+```
 
 Frontend artifact behavior:
 
@@ -56,6 +77,15 @@ Ownership is split like this:
 - `features/support/hooks.ts` manages auth bootstrap, scenario lifecycle, and diagnostics
 - `features/support/world.ts` owns per-scenario typed context
 - `features/step-definitions/` holds domain-oriented glue so the official VS Code Cucumber plugin works with default conventions when `e2e/` is opened as the workspace root
+
+Package layout:
+
+- `features/`: Gherkin scenarios grouped by capability
+- `features/step-definitions/`: domain-oriented step definitions
+- `features/support/hooks.ts`: suite lifecycle, auth-state bootstrap, diagnostics
+- `features/support/world.ts`: shared scenario context
+- `support/web-server.ts`: typed frontend startup/reuse logic
+- `scripts/*.sh`: middleware and backend orchestration
 
 Behavior depends on instance state:
 
@@ -137,5 +167,11 @@ Artifacts and diagnostics:
 - `.logs/cucumber-api.log`: backend startup log
 - `.logs/cucumber-web.log`: frontend startup log
 - `.logs/web-server-manager.log`: typed web-server manager log
+
+Open the HTML report locally with:
+
+```bash
+open cucumber-report/report.html
+```
 
 `pnpm e2e:ui` and `pnpm e2e:full:ui` currently run the suite in headed mode. Cucumber does not provide a Playwright-style UI mode.

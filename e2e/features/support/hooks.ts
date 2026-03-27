@@ -4,7 +4,7 @@ import { mkdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { ensureAuthenticatedState } from '../../fixtures/auth'
-import { baseURL, cucumberHeadless } from '../../test-env'
+import { baseURL, cucumberHeadless, cucumberSlowMo } from '../../test-env'
 import type { DifyWorld } from './world'
 
 const e2eRoot = fileURLToPath(new URL('../..', import.meta.url))
@@ -42,6 +42,7 @@ BeforeAll(async () => {
 
   browser = await chromium.launch({
     headless: cucumberHeadless,
+    slowMo: cucumberSlowMo,
   })
 
   console.log(`[e2e] session cache bootstrap against ${baseURL}`)
