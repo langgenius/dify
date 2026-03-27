@@ -3,6 +3,7 @@ import type { AppAssetTreeResponse, AppAssetTreeView } from '@/types/app-asset'
 import { renderHook } from '@testing-library/react'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import {
+  getSkillAssetIndex,
   useExistingSkillNames,
   useSkillAssetNodeMap,
   useSkillAssetTreeData,
@@ -102,6 +103,30 @@ describe('useSkillAssetTree', () => {
       expect(map.size).toBe(2)
     })
 
+    it('should reuse the same selector reference and cached map for the same tree response', () => {
+      renderHook(() => useSkillAssetNodeMap())
+      renderHook(() => useSkillAssetNodeMap())
+
+      const firstOptions = mockUseQuery.mock.calls[0][0] as {
+        select: (data: AppAssetTreeResponse) => Map<string, AppAssetTreeView>
+      }
+      const secondOptions = mockUseQuery.mock.calls[1][0] as {
+        select: (data: AppAssetTreeResponse) => Map<string, AppAssetTreeView>
+      }
+      const treeData = {
+        children: [
+          createTreeNode({
+            id: 'folder-1',
+            node_type: 'folder',
+            name: 'skill-a',
+          }),
+        ],
+      } satisfies AppAssetTreeResponse
+
+      expect(firstOptions.select).toBe(secondOptions.select)
+      expect(firstOptions.select(treeData)).toBe(firstOptions.select(treeData))
+    })
+
     it('should return an empty map when tree response has no children', () => {
       renderHook(() => useSkillAssetNodeMap())
 
@@ -157,6 +182,30 @@ describe('useSkillAssetTree', () => {
       expect(names.size).toBe(2)
     })
 
+    it('should reuse the same selector reference and cached names for the same tree response', () => {
+      renderHook(() => useExistingSkillNames())
+      renderHook(() => useExistingSkillNames())
+
+      const firstOptions = mockUseQuery.mock.calls[0][0] as {
+        select: (data: AppAssetTreeResponse) => Set<string>
+      }
+      const secondOptions = mockUseQuery.mock.calls[1][0] as {
+        select: (data: AppAssetTreeResponse) => Set<string>
+      }
+      const treeData = {
+        children: [
+          createTreeNode({
+            id: 'folder-1',
+            node_type: 'folder',
+            name: 'skill-a',
+          }),
+        ],
+      } satisfies AppAssetTreeResponse
+
+      expect(firstOptions.select).toBe(secondOptions.select)
+      expect(firstOptions.select(treeData)).toBe(firstOptions.select(treeData))
+    })
+
     it('should return an empty set when tree response has no children', () => {
       renderHook(() => useExistingSkillNames())
 
@@ -167,6 +216,43 @@ describe('useSkillAssetTree', () => {
       const names = options.select({} as AppAssetTreeResponse)
 
       expect(names.size).toBe(0)
+    })
+  })
+
+  describe('getSkillAssetIndex', () => {
+    it('should share the same normalized index for the same tree response', () => {
+      const treeData = {
+        children: [
+          createTreeNode({
+            id: 'folder-1',
+            node_type: 'folder',
+            name: 'skill-a',
+            children: [
+              createTreeNode({
+                id: 'file-1',
+                node_type: 'file',
+                name: 'README.md',
+                extension: 'md',
+              }),
+            ],
+          }),
+        ],
+      } satisfies AppAssetTreeResponse
+
+      const firstIndex = getSkillAssetIndex(treeData)
+      const secondIndex = getSkillAssetIndex(treeData)
+
+      expect(firstIndex).toBe(secondIndex)
+      expect(firstIndex.nodeMap).toBe(secondIndex.nodeMap)
+      expect(firstIndex.existingSkillNames).toBe(secondIndex.existingSkillNames)
+      expect(firstIndex.nodeMap.get('file-1')?.name).toBe('README.md')
+      expect(firstIndex.existingSkillNames.has('skill-a')).toBe(true)
+    })
+
+    it('should reuse the shared empty index when tree data is missing', () => {
+      expect(getSkillAssetIndex()).toBe(getSkillAssetIndex(undefined))
+      expect(getSkillAssetIndex(null).nodeMap.size).toBe(0)
+      expect(getSkillAssetIndex(null).existingSkillNames.size).toBe(0)
     })
   })
 })
