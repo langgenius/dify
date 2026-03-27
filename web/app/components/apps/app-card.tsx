@@ -31,6 +31,7 @@ import {
 import { toast } from '@/app/components/base/ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
+import CornerMark from '@/app/components/plugins/card/base/corner-mark'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
@@ -441,11 +442,18 @@ const AppCard = ({ app, onRefresh, onlineUsers = [] }: AppCardProps) => {
       .filter(user => !!user.id)
   }, [onlineUsers])
 
+  const isSandboxApp = app.runtime_type === 'sandboxed'
+
   return (
     <>
       <div
         className="group relative col-span-1 inline-flex h-[160px] flex-col rounded-xl border-[1px] border-solid border-components-card-border bg-components-card-bg shadow-sm transition-all duration-200 ease-in-out hover:shadow-lg"
       >
+        {isSandboxApp && (
+          <div className="pointer-events-none">
+            <CornerMark text={t('sandboxBadge', { ns: 'app' })} />
+          </div>
+        )}
         <button
           type="button"
           onClick={() => getRedirection(isCurrentWorkspaceEditor, app, push)}

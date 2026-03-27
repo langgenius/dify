@@ -352,6 +352,18 @@ describe('AppCard', () => {
       expect(screen.getByTestId('app-type-icon')).toBeInTheDocument()
     })
 
+    it('should render the sandbox corner mark when the app uses sandboxed runtime', () => {
+      renderAppCard({ runtime_type: 'sandboxed' })
+
+      expect(screen.getByText('app.sandboxBadge')).toBeInTheDocument()
+    })
+
+    it('should not render the sandbox corner mark for classic runtime apps', () => {
+      renderAppCard({ runtime_type: 'classic' })
+
+      expect(screen.queryByText('app.sandboxBadge')).not.toBeInTheDocument()
+    })
+
     it('should call getRedirection when the main card button is clicked', () => {
       const { app } = renderAppCard()
 
