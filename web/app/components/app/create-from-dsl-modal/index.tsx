@@ -1,41 +1,22 @@
 'use client'
 
 import type { DocPathWithoutLang } from '@/types/doc-paths'
-import { useKeyPress } from 'ahooks'
-import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { trackEvent } from '@/app/components/base/amplitude'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import { Dialog, DialogContent } from '@/app/components/base/ui/dialog'
-import { toast } from '@/app/components/base/ui/toast'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
-import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
-import { useAppContext } from '@/context/app-context'
-import { useDocLink } from '@/context/i18n'
-import { useProviderContext } from '@/context/provider-context'
-import {
-  DSLImportMode,
-  DSLImportStatus,
-} from '@/models/app'
-import { useRouter } from '@/next/navigation'
-import {
-  importAppBundle,
-  importDSL,
-  importDSLConfirm,
-} from '@/service/apps'
-import { getRedirection } from '@/utils/app-redirection'
 import { cn } from '@/utils/classnames'
 import ShortcutsName from '../../workflow/shortcuts-name'
 import DSLConfirmModal from './dsl-confirm-modal'
 import Uploader from './uploader'
+import { useCreateFromDSLModal } from './use-create-from-dsl-modal'
 
 type CreateFromDSLModalProps = {
   show: boolean
   onSuccess?: () => void
   onClose: () => void
-  activeTab?: string
+  activeTab?: CreateFromDSLModalTab
   dslUrl?: string
   droppedFile?: File
 }
@@ -50,207 +31,38 @@ const appManagementLocalizedPathMap = {
   'zh_Hans': '/use-dify/workspace/app-management#应用导出和导入' as DocPathWithoutLang,
   'ja-JP': '/use-dify/workspace/app-management#アプリのエクスポートとインポート' as DocPathWithoutLang,
   'ja_JP': '/use-dify/workspace/app-management#アプリのエクスポートとインポート' as DocPathWithoutLang,
-}
+} satisfies Record<string, DocPathWithoutLang>
 
 const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDSLModalTab.FROM_FILE, dslUrl = '', droppedFile }: CreateFromDSLModalProps) => {
-  const { push } = useRouter()
   const { t } = useTranslation()
-  const docLink = useDocLink()
-  const [currentFile, setDSLFile] = useState<File | undefined>(droppedFile)
-  const [fileContent, setFileContent] = useState<string>()
-  const [currentTab, setCurrentTab] = useState(activeTab)
-  const [dslUrlValue, setDslUrlValue] = useState(dslUrl)
-  const [showErrorModal, setShowErrorModal] = useState(false)
-  const [versions, setVersions] = useState<{ importedVersion: string, systemVersion: string }>()
-  const [importId, setImportId] = useState<string>()
-  const [isCreating, setIsCreating] = useState(false)
-  const { handleCheckPluginDependencies } = usePluginDependencies()
-
-  const isZipFile = (file?: File) => !!file && file.name.toLowerCase().endsWith('.zip')
-
-  const readFile = (file: File) => {
-    const reader = new FileReader()
-    reader.onload = function (event) {
-      const content = event.target?.result
-      setFileContent(content as string)
-    }
-    reader.readAsText(file)
-  }
-
-  const handleFile = (file?: File) => {
-    setDSLFile(file)
-    if (file && !isZipFile(file))
-      readFile(file)
-    if (!file || isZipFile(file))
-      setFileContent('')
-  }
-
-  const { isCurrentWorkspaceEditor } = useAppContext()
-  const { plan, enableBilling } = useProviderContext()
-  const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)
-
-  const isCreatingRef = useRef(false)
-  const isMountedRef = useRef(true)
-
-  useEffect(() => {
-    if (droppedFile)
-      handleFile(droppedFile)
-  }, [droppedFile])
-
-  useEffect(() => {
-    return () => {
-      isMountedRef.current = false
-    }
-  }, [])
-
-  const onCreate = async (_e?: React.MouseEvent) => {
-    if (currentTab === CreateFromDSLModalTab.FROM_FILE && !currentFile)
-      return
-    if (currentTab === CreateFromDSLModalTab.FROM_URL && !dslUrlValue)
-      return
-    if (isCreatingRef.current)
-      return
-    isCreatingRef.current = true
-    setIsCreating(true)
-    try {
-      let response
-
-      if (currentTab === CreateFromDSLModalTab.FROM_FILE) {
-        if (isZipFile(currentFile)) {
-          response = await importAppBundle({ file: currentFile! })
-        }
-        else {
-          response = await importDSL({
-            mode: DSLImportMode.YAML_CONTENT,
-            yaml_content: fileContent || '',
-          })
-        }
-      }
-      if (currentTab === CreateFromDSLModalTab.FROM_URL) {
-        response = await importDSL({
-          mode: DSLImportMode.YAML_URL,
-          yaml_url: dslUrlValue || '',
-        })
-      }
-
-      if (!response)
-        return
-      const { id, status, app_id, app_mode, imported_dsl_version, current_dsl_version } = response
-      if (status === DSLImportStatus.COMPLETED || status === DSLImportStatus.COMPLETED_WITH_WARNINGS) {
-        // Track app creation from DSL import
-        trackEvent('create_app_with_dsl', {
-          app_mode,
-          creation_method: currentTab === CreateFromDSLModalTab.FROM_FILE ? 'dsl_file' : 'dsl_url',
-          has_warnings: status === DSLImportStatus.COMPLETED_WITH_WARNINGS,
-        })
-
-        if (onSuccess)
-          onSuccess()
-        if (onClose)
-          onClose()
-
-        toast(t(status === DSLImportStatus.COMPLETED ? 'newApp.appCreated' : 'newApp.caution', { ns: 'app' }), { type: status === DSLImportStatus.COMPLETED ? 'success' : 'warning', description: status === DSLImportStatus.COMPLETED_WITH_WARNINGS && t('newApp.appCreateDSLWarning', { ns: 'app' }) })
-        localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
-        if (app_id)
-          await handleCheckPluginDependencies(app_id)
-        getRedirection(isCurrentWorkspaceEditor, { id: app_id!, mode: app_mode }, push)
-      }
-      else if (status === DSLImportStatus.PENDING) {
-        setVersions({
-          importedVersion: imported_dsl_version ?? '',
-          systemVersion: current_dsl_version ?? '',
-        })
-        setTimeout(() => {
-          setShowErrorModal(true)
-        }, 300)
-        setImportId(id)
-      }
-      else {
-        toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
-      }
-    }
-    // eslint-disable-next-line unused-imports/no-unused-vars
-    catch (e) {
-      toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
-    }
-    finally {
-      isCreatingRef.current = false
-      if (isMountedRef.current)
-        setIsCreating(false)
-    }
-  }
-
-  useKeyPress(['meta.enter', 'ctrl.enter'], () => {
-    if (show && !isAppsFull && ((currentTab === CreateFromDSLModalTab.FROM_FILE && currentFile) || (currentTab === CreateFromDSLModalTab.FROM_URL && dslUrlValue)))
-      onCreate(undefined)
-  })
-
-  useKeyPress('esc', () => {
-    if (show && !showErrorModal)
-      onClose()
-  })
-
-  const onDSLConfirm = async () => {
-    try {
-      if (!importId)
-        return
-      const response = await importDSLConfirm({
-        import_id: importId,
-      })
-
-      const { status, app_id, app_mode } = response
-
-      if (status === DSLImportStatus.COMPLETED) {
-        if (onSuccess)
-          onSuccess()
-        if (onClose)
-          onClose()
-
-        toast.success(t('newApp.appCreated', { ns: 'app' }))
-        if (app_id)
-          await handleCheckPluginDependencies(app_id)
-        localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
-        getRedirection(isCurrentWorkspaceEditor, { id: app_id!, mode: app_mode }, push)
-      }
-      else if (status === DSLImportStatus.FAILED) {
-        toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
-      }
-    }
-    // eslint-disable-next-line unused-imports/no-unused-vars
-    catch (e) {
-      toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
-    }
-  }
-
-  const handleConfirmSuccess = () => {
-    if (onSuccess)
-      onSuccess()
-    onClose()
-  }
-
-  const tabs = [
-    {
-      key: CreateFromDSLModalTab.FROM_FILE,
-      label: t('importFromDSLFile', { ns: 'app' }),
-    },
-    {
-      key: CreateFromDSLModalTab.FROM_URL,
-      label: t('importFromDSLUrl', { ns: 'app' }),
-    },
-  ]
-
-  const buttonDisabled = useMemo(() => {
-    if (isAppsFull)
-      return true
-    if (currentTab === CreateFromDSLModalTab.FROM_FILE)
-      return !currentFile
-    if (currentTab === CreateFromDSLModalTab.FROM_URL)
-      return !dslUrlValue
-    return false
-  }, [isAppsFull, currentTab, currentFile, dslUrlValue])
-  const learnMoreLabel = t('importFromDSLModal.learnMore', {
-    ns: 'app',
-    defaultValue: t('newApp.learnMore', { ns: 'app' }),
+  const {
+    buttonDisabled,
+    currentFile,
+    currentTab,
+    docHref,
+    dslUrlValue,
+    handleConfirmSuccess,
+    handleCreate,
+    handleDSLConfirm,
+    handleFile,
+    isAppsFull,
+    isCreating,
+    isZipFile,
+    learnMoreLabel,
+    setCurrentTab,
+    setDslUrlValue,
+    setShowErrorModal,
+    showErrorModal,
+    tabs,
+    versions,
+  } = useCreateFromDSLModal({
+    show,
+    onSuccess,
+    onClose,
+    activeTab,
+    dslUrl,
+    droppedFile,
+    appManagementLocalizedPathMap,
   })
 
   return (
@@ -322,7 +134,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
           <div className="flex items-center justify-between px-6 pb-6 pt-5">
             <a
               className="flex items-center gap-1 text-text-accent system-xs-regular"
-              href={docLink('/use-dify/workspace/app-management#app-export-and-import', appManagementLocalizedPathMap)}
+              href={docHref}
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -336,7 +148,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
               <Button
                 disabled={buttonDisabled || isCreating}
                 variant="primary"
-                onClick={onCreate}
+                onClick={handleCreate}
                 className="gap-1"
                 loading={isCreating}
               >
@@ -352,7 +164,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
           file={currentFile}
           versions={versions}
           onCancel={() => setShowErrorModal(false)}
-          onConfirm={onDSLConfirm}
+          onConfirm={handleDSLConfirm}
           onSuccess={handleConfirmSuccess}
         />
       )}

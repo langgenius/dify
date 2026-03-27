@@ -138,7 +138,7 @@ export const fetchPromptTemplate = ({
   modelName,
   hasSetDataSet,
 }: { appMode: AppModeEnum, mode: ModelModeType, modelName: string, hasSetDataSet: boolean }) => {
-  return get<Promise<{ chat_prompt_config: ChatPromptConfig, completion_prompt_config: CompletionPromptConfig, stop: [] }>>('/app/prompt-templates', {
+  return get<{ chat_prompt_config: ChatPromptConfig, completion_prompt_config: CompletionPromptConfig, stop: string[] }>('/app/prompt-templates', {
     params: {
       app_mode: appMode,
       model_mode: mode,
