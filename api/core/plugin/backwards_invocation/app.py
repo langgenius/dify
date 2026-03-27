@@ -227,7 +227,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         get app
         """
         try:
-            app = db.session.query(App).where(App.id == app_id).where(App.tenant_id == tenant_id).first()
+            app = db.session.scalar(select(App).where(App.id == app_id, App.tenant_id == tenant_id).limit(1))
         except Exception:
             raise ValueError("app not found")
 

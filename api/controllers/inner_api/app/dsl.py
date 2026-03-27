@@ -14,6 +14,8 @@ from controllers.common.schema import register_schema_model
 from controllers.console.wraps import setup_required
 from controllers.inner_api import inner_api_ns
 from controllers.inner_api.wraps import enterprise_inner_api_only
+from sqlalchemy import select
+
 from extensions.ext_database import db
 from models import Account, App
 from models.account import AccountStatus
@@ -87,7 +89,7 @@ class EnterpriseAppDSLExport(Resource):
         """Export an app's DSL as YAML."""
         include_secret = request.args.get("include_secret", "false").lower() == "true"
 
-        app_model = db.session.query(App).filter_by(id=app_id).first()
+        app_model = db.session.get(App, app_id)
         if not app_model:
             return {"message": "app not found"}, 404
 
@@ -104,7 +106,7 @@ def _get_active_account(email: str) -> Account | None:
 
     Workspace membership is already validated by the Go admin-api caller.
     """
-    account = db.session.query(Account).filter_by(email=email).first()
+    account = db.session.scalar(select(Account).where(Account.email == email).limit(1))
     if account is None or account.status != AccountStatus.ACTIVE:
         return None
     return account

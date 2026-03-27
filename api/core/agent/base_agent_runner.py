@@ -4,7 +4,7 @@ import uuid
 from decimal import Decimal
 from typing import Union, cast
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from core.agent.entities import AgentEntity, AgentToolEntity
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
@@ -103,13 +103,11 @@ class BaseAgentRunner(AppRunner):
             inputs=cast(dict, application_generate_entity.inputs),
         )
         # get how many agent thoughts have been created
-        self.agent_thought_count = (
-            db.session.query(MessageAgentThought)
-            .where(
+        self.agent_thought_count = db.session.scalar(
+            select(func.count()).select_from(MessageAgentThought).where(
                 MessageAgentThought.message_id == self.message.id,
             )
-            .count()
-        )
+        ) or 0
         db.session.close()
 
         # check if model supports stream tool call

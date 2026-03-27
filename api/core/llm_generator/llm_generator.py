@@ -27,6 +27,8 @@ from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.ops.utils import measure_time
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
+from sqlalchemy import select
+
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from graphon.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
@@ -410,8 +412,8 @@ class LLMGenerator:
         model_config: ModelConfig,
         ideal_output: str | None,
     ):
-        last_run: Message | None = (
-            db.session.query(Message).where(Message.app_id == flow_id).order_by(Message.created_at.desc()).first()
+        last_run: Message | None = db.session.scalar(
+            select(Message).where(Message.app_id == flow_id).order_by(Message.created_at.desc()).limit(1)
         )
         if not last_run:
             return LLMGenerator.__instruction_modify_common(
