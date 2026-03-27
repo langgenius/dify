@@ -1,8 +1,8 @@
 from collections.abc import Sequence
 from typing import Union
 
-from pydantic import TypeAdapter
 from graphon.model_runtime.entities.model_entities import ModelType
+from pydantic import TypeAdapter
 from sqlalchemy.orm import sessionmaker
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager

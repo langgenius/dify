@@ -2,8 +2,8 @@ import json
 import logging
 from datetime import datetime
 
-from pydantic import TypeAdapter
 from graphon.model_runtime.utils.encoders import jsonable_encoder
+from pydantic import TypeAdapter
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
