@@ -7,6 +7,7 @@ from pathlib import Path
 import click
 import pandas as pd
 from celery import shared_task
+from graphon.model_runtime.entities.model_entities import ModelType
 from sqlalchemy import func
 
 from core.db.session_factory import session_factory
@@ -14,7 +15,6 @@ from core.model_manager import ModelManager
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
-from graphon.model_runtime.entities.model_entities import ModelType
 from libs import helper
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, Document, DocumentSegment

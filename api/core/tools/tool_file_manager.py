@@ -10,13 +10,13 @@ from typing import Union
 from uuid import uuid4
 
 import httpx
+from graphon.file import File, FileTransferMethod, get_file_type_by_mime_type
 
 from configs import dify_config
 from core.db.session_factory import session_factory
 from core.helper import ssrf_proxy
 from core.workflow.file_reference import build_file_reference
 from extensions.ext_storage import storage
-from graphon.file import File, FileTransferMethod, get_file_type_by_mime_type
 from models.model import MessageFile
 from models.tools import ToolFile
 
