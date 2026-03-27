@@ -4,16 +4,16 @@
   "type": "module",
   "scripts": {
     "check": "vp check --fix",
-    "e2e": "bash ./scripts/run-cucumber.sh",
-    "e2e:full": "bash ./scripts/run-cucumber.sh --full",
-    "e2e:full:headed": "bash ./scripts/run-cucumber.sh --full --headed",
-    "e2e:full:ui": "bash ./scripts/run-cucumber.sh --full --headed",
-    "e2e:headed": "bash ./scripts/run-cucumber.sh --headed",
+    "e2e": "tsx ./scripts/run-cucumber.ts",
+    "e2e:full": "tsx ./scripts/run-cucumber.ts --full",
+    "e2e:full:headed": "tsx ./scripts/run-cucumber.ts --full --headed",
+    "e2e:full:ui": "tsx ./scripts/run-cucumber.ts --full --headed",
+    "e2e:headed": "tsx ./scripts/run-cucumber.ts --headed",
     "e2e:install": "playwright install --with-deps chromium",
-    "e2e:middleware:down": "bash ./scripts/stop-middleware.sh",
-    "e2e:middleware:up": "bash ./scripts/start-middleware.sh",
-    "e2e:reset": "bash ./scripts/reset-state.sh",
-    "e2e:ui": "bash ./scripts/run-cucumber.sh --headed"
+    "e2e:middleware:down": "tsx ./scripts/stop-middleware.ts",
+    "e2e:middleware:up": "tsx ./scripts/start-middleware.ts",
+    "e2e:reset": "tsx ./scripts/reset-state.ts",
+    "e2e:ui": "tsx ./scripts/run-cucumber.ts --headed"
   },
   "devDependencies": {
     "@cucumber/cucumber": "12.7.0",

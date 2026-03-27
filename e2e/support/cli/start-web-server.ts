@@ -24,7 +24,7 @@ const cleanup = async () => {
 try {
   const result = await startWebServer({
     baseURL,
-    command: 'bash ./scripts/start-web.sh',
+    command: 'npx tsx ./scripts/start-web.ts',
     cwd: e2eRoot,
     logFilePath,
     reuseExistingServer: reuseExistingWebServer,

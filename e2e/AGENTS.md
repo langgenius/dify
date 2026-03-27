@@ -58,7 +58,7 @@ Frontend artifact behavior:
 
 ```mermaid
 flowchart TD
-  A["Start E2E run"] --> B["run-cucumber.sh orchestrates reset/middleware/API"]
+  A["Start E2E run"] --> B["run-cucumber.ts orchestrates reset/middleware/API"]
   B --> C["typed web-server manager starts or reuses frontend"]
   C --> D["Cucumber loads config, steps, and support modules"]
   D --> E["BeforeAll bootstraps shared auth state via /install"]
@@ -72,7 +72,7 @@ flowchart TD
 
 Ownership is split like this:
 
-- shell scripts orchestrate reset, middleware, and backend startup
+- TypeScript scripts orchestrate reset, middleware, and backend startup
 - `support/web-server.ts` manages frontend reuse, startup, readiness, and shutdown
 - `features/support/hooks.ts` manages auth bootstrap, scenario lifecycle, and diagnostics
 - `features/support/world.ts` owns per-scenario typed context
@@ -85,7 +85,7 @@ Package layout:
 - `features/support/hooks.ts`: suite lifecycle, auth-state bootstrap, diagnostics
 - `features/support/world.ts`: shared scenario context
 - `support/web-server.ts`: typed frontend startup/reuse logic
-- `scripts/*.sh`: middleware and backend orchestration
+- `scripts/*.ts`: middleware and backend orchestration
 
 Behavior depends on instance state:
 

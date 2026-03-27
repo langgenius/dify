@@ -31,6 +31,10 @@ jobs:
         working-directory: ./e2e
         run: vp install --frozen-lockfile
 
+      - name: Check E2E package
+        working-directory: ./e2e
+        run: pnpm check
+
       - name: Setup UV and Python
         uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
         with:
@@ -41,18 +45,6 @@ jobs:
       - name: Install API dependencies
         run: uv sync --project api --dev
 
-      - name: Prepare built web app env
-        run: |
-          cp web/.env.example web/.env.local
-          sed -i 's|http://localhost:5001|http://127.0.0.1:5001|g' web/.env.local
-
-      - name: Prepare middleware stack env
-        run: |
-          cp docker/middleware.env.example docker/middleware.env
-          cat <<'EOF' >> docker/middleware.env
-          COMPOSE_PROFILES=postgresql,weaviate
-          EOF
-
       - name: Start middleware stack
         working-directory: ./e2e
         run: pnpm e2e:middleware:up
@@ -61,7 +53,7 @@ jobs:
         working-directory: ./e2e
         run: pnpm e2e:install
 
-      - name: Run source-api and built-web E2E tests
+      - name: Run source-api and built-web Cucumber E2E tests
         working-directory: ./e2e
         env:
           E2E_ADMIN_EMAIL: e2e-admin@example.com
@@ -71,20 +63,20 @@ jobs:
           E2E_INIT_PASSWORD: E2eInit12345
         run: pnpm e2e
 
-      - name: Upload Playwright report
+      - name: Upload Cucumber report
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
-          name: playwright-report
-          path: e2e/playwright-report
+          name: cucumber-report
+          path: e2e/cucumber-report
           retention-days: 7
 
-      - name: Upload Playwright test results
+      - name: Upload E2E logs
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
-          name: playwright-test-results
-          path: e2e/test-results
+          name: e2e-logs
+          path: e2e/.logs
           retention-days: 7
 
       - name: Stop middleware stack
