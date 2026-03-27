@@ -745,8 +745,8 @@ class EnterpriseOtelTrace:
                 }
             )
 
-        attrs["dify.dataset.ids"] = self._maybe_json(dataset_ids)
-        attrs["dify.dataset.names"] = self._maybe_json(dataset_names)
+        attrs["dify.dataset.id"] = self._maybe_json(dataset_ids)
+        attrs["dify.dataset.name"] = self._maybe_json(dataset_names)
         attrs["dify.retrieval.document_count"] = len(docs)
 
         embedding_models_raw: Any = metadata.get("embedding_models")
@@ -878,7 +878,7 @@ class EnterpriseOtelTrace:
             "dify.trace_id": info.resolved_trace_id,
             "dify.tenant_id": tenant_id,
             "gen_ai.user.id": user_id,
-            "dify.app.id": app_id or "",
+            "dify.app_id": app_id or "",
             "dify.app.name": metadata.get("app_name"),
             "dify.workspace.name": metadata.get("workspace_name"),
             "dify.prompt_generation.operation_type": info.operation_type,
