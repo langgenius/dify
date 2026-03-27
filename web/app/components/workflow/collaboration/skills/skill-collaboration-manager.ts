@@ -300,8 +300,8 @@ class SkillCollaborationManager {
     return this.docs.has(fileId)
   }
 
-  requestSync(fileId: string): void {
-    this.emitSyncRequest(fileId)
+  requestSync(fileId: string): boolean {
+    return this.emitSyncRequest(fileId)
   }
 
   emitCursorUpdate(fileId: string, cursor: { start: number, end: number } | null): void {
@@ -392,15 +392,17 @@ class SkillCollaborationManager {
     })
   }
 
-  private emitSyncRequest(fileId: string): void {
+  private emitSyncRequest(fileId: string): boolean {
     if (!this.socket || !this.socket.connected)
-      return
+      return false
 
     emitWithAuthGuard(this.socket, 'collaboration_event', {
       type: 'skill_sync_request',
       data: { file_id: fileId },
       timestamp: Date.now(),
     })
+
+    return true
   }
 
   private emitSkillFileActive(fileId: string, active: boolean): void {

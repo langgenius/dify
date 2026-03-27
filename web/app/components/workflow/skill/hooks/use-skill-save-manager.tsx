@@ -48,6 +48,13 @@ type SkillSaveProviderProps = {
   children: React.ReactNode
 }
 
+type CollaborativeSaveWaiter = {
+  promise: Promise<boolean>
+  cancel: () => void
+}
+
+const COLLABORATION_SYNC_TIMEOUT_MS = 1500
+
 const normalizeMetadata = (
   rawMetadata: Record<string, unknown> | undefined,
   content: string,
@@ -167,6 +174,44 @@ export const SkillSaveProvider = ({
     patchFileContentCache(queryClient, queryKey, serialized)
   }, [appId, queryClient])
 
+  const createCollaborativeSaveWaiter = useCallback((fileId: string): CollaborativeSaveWaiter => {
+    let settled = false
+    let unsubscribe: (() => void) | null = null
+    let timeoutId: ReturnType<typeof setTimeout> | null = null
+
+    const promise = new Promise<boolean>((resolve) => {
+      const finish = (saved: boolean) => {
+        if (settled)
+          return
+        settled = true
+        if (timeoutId !== null)
+          clearTimeout(timeoutId)
+        unsubscribe?.()
+        resolve(saved)
+      }
+
+      unsubscribe = skillCollaborationManager.onAnyFileSaved((payload) => {
+        if (!payload || payload.file_id !== fileId)
+          return
+        finish(true)
+      })
+
+      timeoutId = setTimeout(() => finish(false), COLLABORATION_SYNC_TIMEOUT_MS)
+    })
+
+    return {
+      promise,
+      cancel: () => {
+        if (settled)
+          return
+        settled = true
+        if (timeoutId !== null)
+          clearTimeout(timeoutId)
+        unsubscribe?.()
+      },
+    }
+  }, [])
+
   const performSave = useCallback(async (
     fileId: string,
     options?: SaveFileOptions,
@@ -174,9 +219,21 @@ export const SkillSaveProvider = ({
     if (!appId || !fileId || fileId === START_TAB_ID)
       return { saved: false }
 
-    if (isCollaborationEnabled && skillCollaborationManager.isFileCollaborative(fileId) && !skillCollaborationManager.isLeader(fileId)) {
-      skillCollaborationManager.requestSync(fileId)
-      return { saved: false }
+    const isCollaborativeFollower = isCollaborationEnabled
+      && skillCollaborationManager.isFileCollaborative(fileId)
+      && !skillCollaborationManager.isLeader(fileId)
+
+    if (isCollaborativeFollower) {
+      const delegatedSaveWaiter = createCollaborativeSaveWaiter(fileId)
+      const didRequestSync = skillCollaborationManager.requestSync(fileId)
+      if (didRequestSync) {
+        const wasSavedByLeader = await delegatedSaveWaiter.promise
+        if (wasSavedByLeader)
+          return { saved: true }
+      }
+      else {
+        delegatedSaveWaiter.cancel()
+      }
     }
 
     const snapshot = buildSnapshot(fileId, options?.fallbackContent, options?.fallbackMetadata)
@@ -219,7 +276,7 @@ export const SkillSaveProvider = ({
     catch (error) {
       return { saved: false, error }
     }
-  }, [appId, buildSnapshot, isCollaborationEnabled, storeApi, updateCachedContent, updateFileContent])
+  }, [appId, buildSnapshot, createCollaborativeSaveWaiter, isCollaborationEnabled, storeApi, updateCachedContent, updateFileContent])
 
   const saveFile = useCallback(async (
     fileId: string,

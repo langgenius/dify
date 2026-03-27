@@ -3,15 +3,30 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { renderHook, waitFor } from '@testing-library/react'
 import { WorkflowContext } from '@/app/components/workflow/context'
 import { createWorkflowStore } from '@/app/components/workflow/store'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 import { consoleQuery } from '@/service/client'
 import { START_TAB_ID } from '../constants'
 import { useSkillSaveManager } from './skill-save-context'
 import { SkillSaveProvider } from './use-skill-save-manager'
 
-const { mockMutateAsync, mockToastSuccess, mockToastError } = vi.hoisted(() => ({
+const {
+  mockMutateAsync,
+  mockToastSuccess,
+  mockToastError,
+  mockIsFileCollaborative,
+  mockIsLeader,
+  mockRequestSync,
+  mockEmitFileSaved,
+  mockOnAnyFileSaved,
+} = vi.hoisted(() => ({
   mockMutateAsync: vi.fn(),
   mockToastSuccess: vi.fn(),
   mockToastError: vi.fn(),
+  mockIsFileCollaborative: vi.fn<(fileId: string) => boolean>(() => false),
+  mockIsLeader: vi.fn<(fileId: string) => boolean>(() => true),
+  mockRequestSync: vi.fn<(fileId: string) => boolean>(() => true),
+  mockEmitFileSaved: vi.fn<(fileId: string, content: string, metadata?: Record<string, unknown>) => void>(),
+  mockOnAnyFileSaved: vi.fn<(callback: (payload: { file_id: string, content?: string, metadata?: Record<string, unknown> }) => void) => () => void>(() => vi.fn()),
 }))
 
 vi.mock('@/service/use-app-asset', () => ({
@@ -24,6 +39,16 @@ vi.mock('@/app/components/base/ui/toast', () => ({
   toast: {
     success: mockToastSuccess,
     error: mockToastError,
+  },
+}))
+
+vi.mock('../../collaboration/skills/skill-collaboration-manager', () => ({
+  skillCollaborationManager: {
+    isFileCollaborative: (fileId: string) => mockIsFileCollaborative(fileId),
+    isLeader: (fileId: string) => mockIsLeader(fileId),
+    requestSync: (fileId: string) => mockRequestSync(fileId),
+    emitFileSaved: (fileId: string, content: string, metadata?: Record<string, unknown>) => mockEmitFileSaved(fileId, content, metadata),
+    onAnyFileSaved: (callback: (payload: { file_id: string, content?: string, metadata?: Record<string, unknown> }) => void) => mockOnAnyFileSaved(callback),
   },
 }))
 
@@ -70,7 +95,20 @@ const getCachedPayload = (queryClient: QueryClient, appId: string, fileId: strin
 describe('useSkillSaveManager', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.useRealTimers()
     mockMutateAsync.mockResolvedValue(undefined)
+    mockIsFileCollaborative.mockReturnValue(false)
+    mockIsLeader.mockReturnValue(true)
+    mockRequestSync.mockReturnValue(true)
+    mockOnAnyFileSaved.mockImplementation(() => vi.fn())
+
+    const currentFeatures = useGlobalPublicStore.getState().systemFeatures
+    useGlobalPublicStore.setState({
+      systemFeatures: {
+        ...currentFeatures,
+        enable_collaboration_mode: false,
+      },
+    })
   })
 
   it('should throw when used outside provider', () => {
@@ -122,6 +160,81 @@ describe('useSkillSaveManager', () => {
       // Assert
       expect(response.saved).toBe(false)
       expect(mockMutateAsync).not.toHaveBeenCalled()
+    })
+  })
+
+  // Scenario: follower saves should fall back to direct persistence if delegated sync cannot complete.
+  describe('Collaboration Fallback', () => {
+    it('should persist directly when sync request cannot be sent for a follower', async () => {
+      // Arrange
+      const appId = 'app-1'
+      const fileId = 'file-1'
+      const currentFeatures = useGlobalPublicStore.getState().systemFeatures
+      useGlobalPublicStore.setState({
+        systemFeatures: {
+          ...currentFeatures,
+          enable_collaboration_mode: true,
+        },
+      })
+      mockIsFileCollaborative.mockReturnValue(true)
+      mockIsLeader.mockReturnValue(false)
+      mockRequestSync.mockReturnValue(false)
+
+      const store = createWorkflowStore({})
+      const queryClient = createQueryClient()
+      const wrapper = createWrapper({ appId, store, queryClient })
+      store.getState().setDraftContent(fileId, 'draft-content')
+      const { result } = renderHook(() => useSkillSaveManager(), { wrapper })
+
+      // Act
+      const response = await result.current.saveFile(fileId)
+
+      // Assert
+      expect(response.saved).toBe(true)
+      expect(mockRequestSync).toHaveBeenCalledWith(fileId)
+      expect(mockMutateAsync).toHaveBeenCalledWith({
+        appId,
+        nodeId: fileId,
+        payload: { content: 'draft-content' },
+      })
+    })
+
+    it('should persist directly after delegated follower sync times out', async () => {
+      // Arrange
+      vi.useFakeTimers()
+
+      const appId = 'app-1'
+      const fileId = 'file-1'
+      const currentFeatures = useGlobalPublicStore.getState().systemFeatures
+      useGlobalPublicStore.setState({
+        systemFeatures: {
+          ...currentFeatures,
+          enable_collaboration_mode: true,
+        },
+      })
+      mockIsFileCollaborative.mockReturnValue(true)
+      mockIsLeader.mockReturnValue(false)
+      mockRequestSync.mockReturnValue(true)
+
+      const store = createWorkflowStore({})
+      const queryClient = createQueryClient()
+      const wrapper = createWrapper({ appId, store, queryClient })
+      store.getState().setDraftContent(fileId, 'draft-content')
+      const { result } = renderHook(() => useSkillSaveManager(), { wrapper })
+
+      // Act
+      const saveTask = result.current.saveFile(fileId)
+      await vi.advanceTimersByTimeAsync(1600)
+      const response = await saveTask
+
+      // Assert
+      expect(response.saved).toBe(true)
+      expect(mockRequestSync).toHaveBeenCalledWith(fileId)
+      expect(mockMutateAsync).toHaveBeenCalledWith({
+        appId,
+        nodeId: fileId,
+        payload: { content: 'draft-content' },
+      })
     })
   })
 
