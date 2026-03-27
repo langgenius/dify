@@ -38,6 +38,9 @@
         <img alt="LFX Contributors" src="https://insights.linuxfoundation.org/api/badge/contributors?project=langgenius-dify"></a>
     <a href="https://insights.linuxfoundation.org/project/langgenius-dify" target="_blank">
         <img alt="LFX Active Contributors" src="https://insights.linuxfoundation.org/api/badge/active-contributors?project=langgenius-dify"></a>
+    <a href="https://gitcgr.com/langgenius/dify">
+      <img src="https://gitcgr.com/badge/langgenius/dify.svg" alt="gitcgr" />
+    </a>
 </p>
 
 <p align="center">
