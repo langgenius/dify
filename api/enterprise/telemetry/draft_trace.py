@@ -43,6 +43,14 @@ def _build_node_execution_data(
     metadata = execution.execution_metadata_dict
     node_outputs = outputs if outputs is not None else execution.outputs_dict
     execution_id = workflow_execution_id or execution.workflow_run_id or execution.id
+    process_data = execution.process_data_dict or {}
+
+    # Extract token breakdown from outputs.usage (set by LLM node)
+    usage: Mapping[str, Any] = {}
+    if isinstance(node_outputs, Mapping):
+        raw_usage = node_outputs.get("usage")
+        if isinstance(raw_usage, Mapping):
+            usage = raw_usage
 
     return {
         "workflow_id": execution.workflow_id,
@@ -63,6 +71,10 @@ def _build_node_execution_data(
         "total_tokens": metadata.get(WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS, 0),
         "total_price": metadata.get(WorkflowNodeExecutionMetadataKey.TOTAL_PRICE, 0.0),
         "currency": metadata.get(WorkflowNodeExecutionMetadataKey.CURRENCY),
+        "model_provider": process_data.get("model_provider"),
+        "model_name": process_data.get("model_name"),
+        "prompt_tokens": usage.get("prompt_tokens"),
+        "completion_tokens": usage.get("completion_tokens"),
         "tool_name": (metadata.get(WorkflowNodeExecutionMetadataKey.TOOL_INFO) or {}).get("tool_name")
         if isinstance(metadata.get(WorkflowNodeExecutionMetadataKey.TOOL_INFO), dict)
         else None,
