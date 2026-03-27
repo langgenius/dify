@@ -1054,7 +1054,7 @@ class TestDatasetRetrievalTrace:
             trace_handler._dataset_retrieval_trace(make_dataset_retrieval_info())
 
         attrs = mock_emit.call_args[1]["attributes"]
-        assert "ds-001" in attrs["dify.dataset.ids"]
+        assert "ds-001" in attrs["dify.dataset.id"]
 
     def test_empty_documents_has_zero_count(self, trace_handler, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event") as mock_emit:
