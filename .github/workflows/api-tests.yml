@@ -186,8 +186,19 @@ jobs:
           : "${unit_coverage:?coverage-unit artifact not found}"
           : "${integration_coverage:?coverage-integration artifact not found}"
 
+          report_file="$(mktemp)"
           uv run --project api coverage combine "$unit_coverage" "$integration_coverage"
-          uv run --project api coverage report --show-missing | tee -a "$GITHUB_STEP_SUMMARY"
+          uv run --project api coverage report --show-missing | tee "$report_file"
+          echo "Summary: \`$(tail -n 1 "$report_file")\`" >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo ""
+            echo "<details><summary>Coverage report</summary>"
+            echo ""
+            echo '```'
+            cat "$report_file"
+            echo '```'
+            echo "</details>"
+          } >> "$GITHUB_STEP_SUMMARY"
           uv run --project api coverage xml -o coverage.xml
 
       - name: Report coverage
