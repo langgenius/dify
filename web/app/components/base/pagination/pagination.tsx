@@ -50,7 +50,7 @@ export const PrevButton = ({
       tabIndex={disabled ? '-1' : 0}
       disabled={disabled}
       data-testid={dataTestId}
-      onKeyPress={(event: React.KeyboardEvent) => {
+      onKeyDown={(event: React.KeyboardEvent) => {
         event.preventDefault()
         if (event.key === 'Enter' && !disabled)
           previous()
@@ -85,7 +85,7 @@ export const NextButton = ({
       tabIndex={disabled ? '-1' : 0}
       disabled={disabled}
       data-testid={dataTestId}
-      onKeyPress={(event: React.KeyboardEvent) => {
+      onKeyDown={(event: React.KeyboardEvent) => {
         event.preventDefault()
         if (event.key === 'Enter' && !disabled)
           next()
@@ -140,7 +140,7 @@ export const PageButton = ({
           }) || undefined
         }
         tabIndex={0}
-        onKeyPress={(event: React.KeyboardEvent) => {
+        onKeyDown={(event: React.KeyboardEvent) => {
           if (event.key === 'Enter')
             pagination.setCurrentPage(page - 1)
         }}

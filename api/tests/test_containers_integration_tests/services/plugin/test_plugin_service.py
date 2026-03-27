@@ -8,15 +8,27 @@ verification, marketplace upgrade flows, and uninstall with credential cleanup.
 from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
+from uuid import uuid4
 
 import pytest
+from sqlalchemy import select
 
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginVerification
+from models.provider import Provider, ProviderCredential, TenantPreferredModelProvider
 from services.errors.plugin import PluginInstallationForbiddenError
 from services.feature_service import PluginInstallationScope
 from services.plugin.plugin_service import PluginService
-from tests.unit_tests.services.plugin.conftest import make_features
+
+
+def _make_features(
+    restrict_to_marketplace: bool = False,
+    scope: PluginInstallationScope = PluginInstallationScope.ALL,
+) -> MagicMock:
+    features = MagicMock()
+    features.plugin_installation_permission.restrict_to_marketplace_only = restrict_to_marketplace
+    features.plugin_installation_permission.plugin_installation_scope = scope
+    return features
 
 
 class TestFetchLatestPluginVersion:
@@ -80,14 +92,14 @@ class TestFetchLatestPluginVersion:
 class TestCheckMarketplaceOnlyPermission:
     @patch("services.plugin.plugin_service.FeatureService")
     def test_raises_when_restricted(self, mock_fs):
-        mock_fs.get_system_features.return_value = make_features(restrict_to_marketplace=True)
+        mock_fs.get_system_features.return_value = _make_features(restrict_to_marketplace=True)
 
         with pytest.raises(PluginInstallationForbiddenError):
             PluginService._check_marketplace_only_permission()
 
     @patch("services.plugin.plugin_service.FeatureService")
     def test_passes_when_not_restricted(self, mock_fs):
-        mock_fs.get_system_features.return_value = make_features(restrict_to_marketplace=False)
+        mock_fs.get_system_features.return_value = _make_features(restrict_to_marketplace=False)
 
         PluginService._check_marketplace_only_permission()  # should not raise
 
@@ -95,7 +107,7 @@ class TestCheckMarketplaceOnlyPermission:
 class TestCheckPluginInstallationScope:
     @patch("services.plugin.plugin_service.FeatureService")
     def test_official_only_allows_langgenius(self, mock_fs):
-        mock_fs.get_system_features.return_value = make_features(scope=PluginInstallationScope.OFFICIAL_ONLY)
+        mock_fs.get_system_features.return_value = _make_features(scope=PluginInstallationScope.OFFICIAL_ONLY)
         verification = MagicMock()
         verification.authorized_category = PluginVerification.AuthorizedCategory.Langgenius
 
@@ -103,14 +115,14 @@ class TestCheckPluginInstallationScope:
 
     @patch("services.plugin.plugin_service.FeatureService")
     def test_official_only_rejects_third_party(self, mock_fs):
-        mock_fs.get_system_features.return_value = make_features(scope=PluginInstallationScope.OFFICIAL_ONLY)
+        mock_fs.get_system_features.return_value = _make_features(scope=PluginInstallationScope.OFFICIAL_ONLY)
 
         with pytest.raises(PluginInstallationForbiddenError):
             PluginService._check_plugin_installation_scope(None)
 
     @patch("services.plugin.plugin_service.FeatureService")
     def test_official_and_partners_allows_partner(self, mock_fs):
-        mock_fs.get_system_features.return_value = make_features(
+        mock_fs.get_system_features.return_value = _make_features(
             scope=PluginInstallationScope.OFFICIAL_AND_SPECIFIC_PARTNERS
         )
         verification = MagicMock()
@@ -120,7 +132,7 @@ class TestCheckPluginInstallationScope:
 
     @patch("services.plugin.plugin_service.FeatureService")
     def test_official_and_partners_rejects_none(self, mock_fs):
-        mock_fs.get_system_features.return_value = make_features(
+        mock_fs.get_system_features.return_value = _make_features(
             scope=PluginInstallationScope.OFFICIAL_AND_SPECIFIC_PARTNERS
         )
 
@@ -129,7 +141,7 @@ class TestCheckPluginInstallationScope:
 
     @patch("services.plugin.plugin_service.FeatureService")
     def test_none_scope_always_raises(self, mock_fs):
-        mock_fs.get_system_features.return_value = make_features(scope=PluginInstallationScope.NONE)
+        mock_fs.get_system_features.return_value = _make_features(scope=PluginInstallationScope.NONE)
         verification = MagicMock()
         verification.authorized_category = PluginVerification.AuthorizedCategory.Langgenius
 
@@ -138,7 +150,7 @@ class TestCheckPluginInstallationScope:
 
     @patch("services.plugin.plugin_service.FeatureService")
     def test_all_scope_passes_any(self, mock_fs):
-        mock_fs.get_system_features.return_value = make_features(scope=PluginInstallationScope.ALL)
+        mock_fs.get_system_features.return_value = _make_features(scope=PluginInstallationScope.ALL)
 
         PluginService._check_plugin_installation_scope(None)  # should not raise
 
@@ -209,9 +221,9 @@ class TestUpgradePluginWithMarketplace:
     @patch("services.plugin.plugin_service.dify_config")
     def test_skips_download_when_already_installed(self, mock_config, mock_installer_cls, mock_fs, mock_marketplace):
         mock_config.MARKETPLACE_ENABLED = True
-        mock_fs.get_system_features.return_value = make_features()
+        mock_fs.get_system_features.return_value = _make_features()
         installer = mock_installer_cls.return_value
-        installer.fetch_plugin_manifest.return_value = MagicMock()  # no exception = already installed
+        installer.fetch_plugin_manifest.return_value = MagicMock()
         installer.upgrade_plugin.return_value = MagicMock()
 
         PluginService.upgrade_plugin_with_marketplace("t1", "old-uid", "new-uid")
@@ -225,7 +237,7 @@ class TestUpgradePluginWithMarketplace:
     @patch("services.plugin.plugin_service.dify_config")
     def test_downloads_when_not_installed(self, mock_config, mock_installer_cls, mock_fs, mock_download):
         mock_config.MARKETPLACE_ENABLED = True
-        mock_fs.get_system_features.return_value = make_features()
+        mock_fs.get_system_features.return_value = _make_features()
         installer = mock_installer_cls.return_value
         installer.fetch_plugin_manifest.side_effect = RuntimeError("not found")
         mock_download.return_value = b"pkg-bytes"
@@ -244,7 +256,7 @@ class TestUpgradePluginWithGithub:
     @patch("services.plugin.plugin_service.FeatureService")
     @patch("services.plugin.plugin_service.PluginInstaller")
     def test_checks_marketplace_permission_and_delegates(self, mock_installer_cls, mock_fs):
-        mock_fs.get_system_features.return_value = make_features()
+        mock_fs.get_system_features.return_value = _make_features()
         installer = mock_installer_cls.return_value
         installer.upgrade_plugin.return_value = MagicMock()
 
@@ -259,7 +271,7 @@ class TestUploadPkg:
     @patch("services.plugin.plugin_service.FeatureService")
     @patch("services.plugin.plugin_service.PluginInstaller")
     def test_runs_permission_and_scope_checks(self, mock_installer_cls, mock_fs):
-        mock_fs.get_system_features.return_value = make_features()
+        mock_fs.get_system_features.return_value = _make_features()
         upload_resp = MagicMock()
         upload_resp.verification = None
         mock_installer_cls.return_value.upload_pkg.return_value = upload_resp
@@ -283,7 +295,7 @@ class TestInstallFromMarketplacePkg:
     @patch("services.plugin.plugin_service.dify_config")
     def test_downloads_when_not_cached(self, mock_config, mock_installer_cls, mock_fs, mock_download):
         mock_config.MARKETPLACE_ENABLED = True
-        mock_fs.get_system_features.return_value = make_features()
+        mock_fs.get_system_features.return_value = _make_features()
         installer = mock_installer_cls.return_value
         installer.fetch_plugin_manifest.side_effect = RuntimeError("not found")
         mock_download.return_value = b"pkg"
@@ -298,14 +310,14 @@ class TestInstallFromMarketplacePkg:
         assert result == "task-id"
         installer.install_from_identifiers.assert_called_once()
         call_args = installer.install_from_identifiers.call_args[0]
-        assert call_args[1] == ["resolved-uid"]  # uses response uid, not input
+        assert call_args[1] == ["resolved-uid"]
 
     @patch("services.plugin.plugin_service.FeatureService")
     @patch("services.plugin.plugin_service.PluginInstaller")
     @patch("services.plugin.plugin_service.dify_config")
     def test_uses_cached_when_already_downloaded(self, mock_config, mock_installer_cls, mock_fs):
         mock_config.MARKETPLACE_ENABLED = True
-        mock_fs.get_system_features.return_value = make_features()
+        mock_fs.get_system_features.return_value = _make_features()
         installer = mock_installer_cls.return_value
         installer.fetch_plugin_manifest.return_value = MagicMock()
         decode_resp = MagicMock()
@@ -317,7 +329,7 @@ class TestInstallFromMarketplacePkg:
 
         installer.install_from_identifiers.assert_called_once()
         call_args = installer.install_from_identifiers.call_args[0]
-        assert call_args[1] == ["uid-1"]  # uses original uid
+        assert call_args[1] == ["uid-1"]
 
 
 class TestUninstall:
@@ -332,26 +344,70 @@ class TestUninstall:
         assert result is True
         installer.uninstall.assert_called_once_with("t1", "install-1")
 
-    @patch("services.plugin.plugin_service.db")
     @patch("services.plugin.plugin_service.PluginInstaller")
-    def test_cleans_credentials_when_plugin_found(self, mock_installer_cls, mock_db):
+    def test_cleans_credentials_when_plugin_found(
+        self, mock_installer_cls, flask_app_with_containers, db_session_with_containers
+    ):
+        tenant_id = str(uuid4())
+        plugin_id = "org/myplugin"
+        provider_name = f"{plugin_id}/model-provider"
+
+        credential = ProviderCredential(
+            tenant_id=tenant_id,
+            provider_name=provider_name,
+            credential_name="default",
+            encrypted_config="{}",
+        )
+        db_session_with_containers.add(credential)
+        db_session_with_containers.flush()
+        credential_id = credential.id
+
+        provider = Provider(
+            tenant_id=tenant_id,
+            provider_name=provider_name,
+            credential_id=credential_id,
+        )
+        db_session_with_containers.add(provider)
+        db_session_with_containers.flush()
+        provider_id = provider.id
+
+        pref = TenantPreferredModelProvider(
+            tenant_id=tenant_id,
+            provider_name=provider_name,
+            preferred_provider_type="custom",
+        )
+        db_session_with_containers.add(pref)
+        db_session_with_containers.commit()
+
         plugin = MagicMock()
         plugin.installation_id = "install-1"
-        plugin.plugin_id = "org/myplugin"
+        plugin.plugin_id = plugin_id
         installer = mock_installer_cls.return_value
         installer.list_plugins.return_value = [plugin]
         installer.uninstall.return_value = True
 
-        # Mock Session context manager
-        mock_session = MagicMock()
-        mock_db.engine = MagicMock()
-        mock_session.scalars.return_value.all.return_value = []  # no credentials found
-
-        with patch("services.plugin.plugin_service.Session") as mock_session_cls:
-            mock_session_cls.return_value.__enter__ = MagicMock(return_value=mock_session)
-            mock_session_cls.return_value.__exit__ = MagicMock(return_value=False)
-
-            result = PluginService.uninstall("t1", "install-1")
+        with patch("services.plugin.plugin_service.dify_config") as mock_config:
+            mock_config.ENTERPRISE_ENABLED = False
+            result = PluginService.uninstall(tenant_id, "install-1")
 
         assert result is True
         installer.uninstall.assert_called_once()
+
+        db_session_with_containers.expire_all()
+
+        remaining_creds = db_session_with_containers.scalars(
+            select(ProviderCredential).where(ProviderCredential.id == credential_id)
+        ).all()
+        assert len(remaining_creds) == 0
+
+        updated_provider = db_session_with_containers.get(Provider, provider_id)
+        assert updated_provider is not None
+        assert updated_provider.credential_id is None
+
+        remaining_prefs = db_session_with_containers.scalars(
+            select(TenantPreferredModelProvider).where(
+                TenantPreferredModelProvider.tenant_id == tenant_id,
+                TenantPreferredModelProvider.provider_name == provider_name,
+            )
+        ).all()
+        assert len(remaining_prefs) == 0
