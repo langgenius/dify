@@ -6,6 +6,7 @@ import { dirname } from 'node:path'
 
 type ManagedProcessOptions = {
   command: string
+  args?: string[]
   cwd: string
   env?: NodeJS.ProcessEnv
   label: string
@@ -71,6 +72,7 @@ export const waitForUrl = async (url: string, timeoutMs: number, intervalMs = 1_
 
 export const startLoggedProcess = async ({
   command,
+  args = [],
   cwd,
   env,
   label,
@@ -79,17 +81,18 @@ export const startLoggedProcess = async ({
   await mkdir(dirname(logFilePath), { recursive: true })
 
   const logStream = createWriteStream(logFilePath, { flags: 'a' })
-  const childProcess = spawn(command, {
+  const childProcess = spawn(command, args, {
     cwd,
     env: {
       ...process.env,
       ...env,
     },
-    shell: true,
+    detached: process.platform !== 'win32',
     stdio: ['ignore', 'pipe', 'pipe'],
   })
 
-  logStream.write(`[${new Date().toISOString()}] Starting ${label}: ${command}\n`)
+  const formattedCommand = [command, ...args].join(' ')
+  logStream.write(`[${new Date().toISOString()}] Starting ${label}: ${formattedCommand}\n`)
   childProcess.stdout?.pipe(logStream, { end: false })
   childProcess.stderr?.pipe(logStream, { end: false })
 
@@ -101,18 +104,66 @@ export const startLoggedProcess = async ({
   }
 }
 
+const waitForProcessExit = (childProcess: ChildProcess, timeoutMs: number) =>
+  new Promise<void>((resolve) => {
+    if (childProcess.exitCode !== null) {
+      resolve()
+      return
+    }
+
+    const timeout = setTimeout(() => {
+      cleanup()
+      resolve()
+    }, timeoutMs)
+
+    const onExit = () => {
+      cleanup()
+      resolve()
+    }
+
+    const cleanup = () => {
+      clearTimeout(timeout)
+      childProcess.off('exit', onExit)
+    }
+
+    childProcess.once('exit', onExit)
+  })
+
+const signalManagedProcess = (childProcess: ChildProcess, signal: NodeJS.Signals) => {
+  const { pid } = childProcess
+  if (!pid) return
+
+  try {
+    if (process.platform !== 'win32') {
+      process.kill(-pid, signal)
+      return
+    }
+
+    childProcess.kill(signal)
+  } catch {
+    // Best-effort shutdown. Cleanup continues even when the process is already gone.
+  }
+}
+
 export const stopManagedProcess = async (managedProcess?: ManagedProcess) => {
   if (!managedProcess) return
 
   const { childProcess, logStream } = managedProcess
 
-  if (!childProcess.killed && childProcess.exitCode === null) {
-    childProcess.kill()
-    await new Promise<void>((resolve) => {
-      childProcess.once('exit', () => resolve())
-      setTimeout(() => resolve(), 5_000)
-    })
+  if (childProcess.exitCode === null) {
+    signalManagedProcess(childProcess, 'SIGTERM')
+    await waitForProcessExit(childProcess, 5_000)
   }
+
+  if (childProcess.exitCode === null) {
+    signalManagedProcess(childProcess, 'SIGKILL')
+    await waitForProcessExit(childProcess, 5_000)
+  }
+
+  childProcess.stdout?.unpipe(logStream)
+  childProcess.stderr?.unpipe(logStream)
+  childProcess.stdout?.destroy()
+  childProcess.stderr?.destroy()
 
   await new Promise<void>((resolve) => {
     logStream.end(() => resolve())

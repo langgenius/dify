@@ -97,14 +97,16 @@ const main = async () => {
   await rm(webReadyFilePath, { force: true })
 
   const apiProcess = await startLoggedProcess({
-    command: 'npx tsx ./scripts/start-api.ts',
+    command: 'npx',
+    args: ['tsx', './scripts/start-api.ts'],
     cwd: e2eDir,
     label: 'api server',
     logFilePath: path.join(logDir, 'cucumber-api.log'),
   })
 
   const webManagerProcess = await startLoggedProcess({
-    command: 'npx tsx ./support/cli/start-web-server.ts',
+    command: 'npx',
+    args: ['tsx', './support/cli/start-web-server.ts'],
     cwd: e2eDir,
     env: {
       E2E_WEB_SERVER_LOG_PATH: path.join(logDir, 'cucumber-web.log'),

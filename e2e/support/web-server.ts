@@ -4,6 +4,7 @@ import { isPortReachable, startLoggedProcess, stopManagedProcess, waitForUrl } f
 type WebServerStartOptions = {
   baseURL: string
   command: string
+  args?: string[]
   cwd: string
   logFilePath: string
   reuseExistingServer: boolean
@@ -30,6 +31,7 @@ const getUrlHostAndPort = (url: string) => {
 export const startWebServer = async ({
   baseURL,
   command,
+  args = [],
   cwd,
   logFilePath,
   reuseExistingServer,
@@ -45,6 +47,7 @@ export const startWebServer = async ({
 
   activeProcess = await startLoggedProcess({
     command,
+    args,
     cwd,
     label: 'web server',
     logFilePath,

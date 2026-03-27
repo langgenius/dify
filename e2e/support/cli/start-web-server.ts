@@ -21,10 +21,34 @@ const cleanup = async () => {
   await rm(readyFilePath, { force: true })
 }
 
+const waitForShutdownSignal = () =>
+  new Promise<void>((resolve) => {
+    const handleSignal = (signal: NodeJS.Signals) => {
+      process.off('SIGINT', onSigint)
+      process.off('SIGTERM', onSigterm)
+
+      void cleanup()
+        .catch(() => {
+          // Exit regardless so the parent can continue cleanup.
+        })
+        .finally(() => {
+          if (signal === 'SIGINT') process.exitCode = 130
+          resolve()
+        })
+    }
+
+    const onSigint = () => handleSignal('SIGINT')
+    const onSigterm = () => handleSignal('SIGTERM')
+
+    process.once('SIGINT', onSigint)
+    process.once('SIGTERM', onSigterm)
+  })
+
 try {
   const result = await startWebServer({
     baseURL,
-    command: 'npx tsx ./scripts/start-web.ts',
+    command: 'npx',
+    args: ['tsx', './scripts/start-web.ts'],
     cwd: e2eRoot,
     logFilePath,
     reuseExistingServer: reuseExistingWebServer,
@@ -38,19 +62,7 @@ try {
     reusedExistingServer: result.reusedExistingServer,
   })
 
-  const handleSignal = async () => {
-    await cleanup()
-    process.exit(0)
-  }
-
-  process.on('SIGINT', () => {
-    void handleSignal()
-  })
-  process.on('SIGTERM', () => {
-    void handleSignal()
-  })
-
-  await new Promise(() => {})
+  await waitForShutdownSignal()
 } catch (error) {
   await writeReadyFile({
     baseURL,
