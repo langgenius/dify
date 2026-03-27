@@ -14,6 +14,7 @@ import pytest
 
 from models.tools import BuiltinToolProvider
 from services.plugin.plugin_parameter_service import PluginParameterService
+from core.plugin.entities.plugin_daemon import CredentialType
 
 
 class TestGetDynamicSelectOptionsTool:
