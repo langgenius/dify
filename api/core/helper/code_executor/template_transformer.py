@@ -37,7 +37,7 @@ class TemplateTransformer(ABC):
 
     @classmethod
     def extract_result_str_from_response(cls, response: str):
-        result = re.search(rf"{cls._result_tag}(.*){cls._result_tag}", response, re.DOTALL)
+        result = re.search(rf"{cls._result_tag}(.*?){cls._result_tag}", response, re.DOTALL)
         if not result:
             raise ValueError(f"Failed to parse result: no result tag found in response. Response: {response[:200]}...")
         return result.group(1)

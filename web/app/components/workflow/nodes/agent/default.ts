@@ -61,7 +61,7 @@ const nodeDefault: NodeDefault<AgentNodeType> = {
           const version = payload.version
           const toolNodeVersion = payload.tool_node_version
           const mergeVersion = version || toolNodeVersion
-          schemas.forEach((schema: any) => {
+          for (const schema of schemas) {
             if (schema?.required) {
               if (schema.form === 'form' && !mergeVersion && !userSettings[schema.name]?.value) {
                 return {
@@ -88,7 +88,7 @@ const nodeDefault: NodeDefault<AgentNodeType> = {
                 }
               }
             }
-          })
+          }
         }
       }
       // multiple tools
@@ -118,7 +118,7 @@ const nodeDefault: NodeDefault<AgentNodeType> = {
             const schemas = tool.schemas || []
             const userSettings = tool.settings
             const reasoningConfig = tool.parameters
-            schemas.forEach((schema: any) => {
+            for (const schema of schemas) {
               if (schema?.required) {
                 if (schema.form === 'form' && !userSettings[schema.name]?.value) {
                   return {
@@ -133,7 +133,7 @@ const nodeDefault: NodeDefault<AgentNodeType> = {
                   }
                 }
               }
-            })
+            }
           }
           return validState
         }

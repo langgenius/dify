@@ -592,7 +592,8 @@ export const ssePost = async (
       )
     })
     .catch((e) => {
-      if (e.toString() !== 'AbortError: The user aborted a request.' && !e.toString().errorMessage.includes('TypeError: Cannot assign to read only property'))
+      const msg = (e && ((e as any).message || e.toString())) as string
+      if (msg !== 'AbortError: The user aborted a request.' && !msg.includes('TypeError: Cannot assign to read only property'))
         Toast.notify({ type: 'error', message: e })
       onError?.(e)
     })
