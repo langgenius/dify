@@ -6,7 +6,7 @@ def init_app(app: DifyApp):
     if dify_config.SENTRY_DSN:
         import sentry_sdk
         from graphon.model_runtime.errors.invoke import InvokeRateLimitError
-        from langfuse import parse_error
+        from langfuse._utils import parse_error
         from sentry_sdk.integrations.celery import CeleryIntegration
         from sentry_sdk.integrations.flask import FlaskIntegration
         from werkzeug.exceptions import HTTPException
