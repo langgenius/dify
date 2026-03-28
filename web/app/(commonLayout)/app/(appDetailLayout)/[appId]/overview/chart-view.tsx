@@ -37,7 +37,7 @@ export default function ChartView({ appId, headerRight }: IChartViewProps) {
   const appDetail = useAppStore(state => state.appDetail)
   const isChatApp = appDetail?.mode !== 'completion' && appDetail?.mode !== 'workflow'
   const isWorkflow = appDetail?.mode === 'workflow'
-  const [period, setPeriod] = useState<PeriodParams>(IS_CLOUD_EDITION
+  const [period, setPeriod] = useState<PeriodParams>(() => IS_CLOUD_EDITION
     ? { name: t('filter.period.today', { ns: 'appLog' }), query: { start: today.startOf('day').format(queryDateFormat), end: today.endOf('day').format(queryDateFormat) } }
     : { name: t('filter.period.last7days', { ns: 'appLog' }), query: { start: today.subtract(7, 'day').startOf('day').format(queryDateFormat), end: today.endOf('day').format(queryDateFormat) } },
   )

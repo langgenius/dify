@@ -105,8 +105,8 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
           {models.map((model) => {
             return (
               <ModelBar
-                {...model}
                 key={model.param}
+                {...model}
               />
             )
           })}
@@ -120,7 +120,7 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
         )}
         >
           <div className="grid grid-cols-10 gap-0.5">
-            {tools.map((tool, i) => <ToolIcon {...tool} key={tool.id + i} />)}
+            {tools.map((tool, i) => <ToolIcon key={tool.id + i} {...tool} />)}
           </div>
         </Group>
       )}
