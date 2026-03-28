@@ -1,13 +1,5 @@
 import type { MouseEvent } from 'react'
 import {
-  RiAspectRatioFill,
-  RiAspectRatioLine,
-  RiCursorLine,
-  RiFunctionAddLine,
-  RiHand,
-  RiStickyNoteAddLine,
-} from '@remixicon/react'
-import {
   memo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -26,6 +18,7 @@ import {
 import AddBlock from './add-block'
 import { useOperator } from './hooks'
 import MoreActions from './more-actions'
+import ThemeSwitcher from './theme-switcher'
 import TipPopup from './tip-popup'
 
 const Control = () => {
@@ -60,7 +53,7 @@ const Control = () => {
           )}
           onClick={addNote}
         >
-          <RiStickyNoteAddLine className="h-4 w-4" />
+          <span aria-hidden className="i-ri-sticky-note-add-line h-4 w-4" />
         </div>
       </TipPopup>
       <Divider className="my-1 w-3.5" />
@@ -73,7 +66,7 @@ const Control = () => {
           )}
           onClick={handleModePointer}
         >
-          <RiCursorLine className="h-4 w-4" />
+          <span aria-hidden className="i-ri-cursor-line h-4 w-4" />
         </div>
       </TipPopup>
       <TipPopup title={t('common.handMode', { ns: 'workflow' })} shortcuts={['h']}>
@@ -85,7 +78,7 @@ const Control = () => {
           )}
           onClick={handleModeHand}
         >
-          <RiHand className="h-4 w-4" />
+          <span aria-hidden className="i-ri-hand h-4 w-4" />
         </div>
       </TipPopup>
       <Divider className="my-1 w-3.5" />
@@ -97,7 +90,7 @@ const Control = () => {
           )}
           onClick={handleLayout}
         >
-          <RiFunctionAddLine className="h-4 w-4" />
+          <span aria-hidden className="i-ri-function-add-line h-4 w-4" />
         </div>
       </TipPopup>
       <TipPopup title={maximizeCanvas ? t('panel.minimize', { ns: 'workflow' }) : t('panel.maximize', { ns: 'workflow' })} shortcuts={['f']}>
@@ -109,10 +102,11 @@ const Control = () => {
           )}
           onClick={handleToggleMaximizeCanvas}
         >
-          {maximizeCanvas && <RiAspectRatioFill className="h-4 w-4" />}
-          {!maximizeCanvas && <RiAspectRatioLine className="h-4 w-4" />}
+          {maximizeCanvas && <span aria-hidden className="i-ri-aspect-ratio-fill h-4 w-4" />}
+          {!maximizeCanvas && <span aria-hidden className="i-ri-aspect-ratio-line h-4 w-4" />}
         </div>
       </TipPopup>
+      <ThemeSwitcher />
       <MoreActions />
     </div>
   )

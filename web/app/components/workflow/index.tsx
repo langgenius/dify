@@ -69,6 +69,7 @@ import {
   useWorkflow,
   useWorkflowReadOnly,
   useWorkflowRefreshDraft,
+  useWorkflowTheme,
 } from './hooks'
 import { HooksStoreContextProvider, useHooksStore } from './hooks-store'
 import { useWorkflowSearch } from './hooks/use-workflow-search'
@@ -118,6 +119,8 @@ const nodeTypes = {
 const edgeTypes = {
   [CUSTOM_EDGE]: CustomEdge,
 }
+const WORKFLOW_PANEL_ANIMATION_CLASS_NAME = 'workflow-panel-animation'
+const WORKFLOW_NODE_ANIMATION_CLASS_NAME = 'workflow-node-animation'
 
 export type WorkflowProps = {
   nodes: Node[]
@@ -138,6 +141,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
   const reactflow = useReactFlow()
   const [nodes, setNodes] = useNodesState(originalNodes)
   const [edges, setEdges] = useEdgesState(originalEdges)
+  const workflowTheme = useWorkflowTheme()
   const controlMode = useStore(s => s.controlMode)
   const nodeAnimation = useStore(s => s.nodeAnimation)
   const showConfirm = useStore(s => s.showConfirm)
@@ -246,7 +250,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
       if (isListening || status === WorkflowRunningStatus.Running)
         return
 
-      setTimeout(() => handleRefreshWorkflowDraft(), 500)
+      setTimeout(handleRefreshWorkflowDraft, 500)
     }
   }, [syncWorkflowDraftWhenPageClose, handleRefreshWorkflowDraft, workflowStore])
 
@@ -386,10 +390,11 @@ export const Workflow: FC<WorkflowProps> = memo(({
   return (
     <div
       id="workflow-container"
+      data-workflow-theme={workflowTheme}
       className={cn(
         'relative h-full w-full min-w-[960px]',
-        workflowReadOnly && 'workflow-panel-animation',
-        nodeAnimation && 'workflow-node-animation',
+        workflowReadOnly && WORKFLOW_PANEL_ANIMATION_CLASS_NAME,
+        nodeAnimation && WORKFLOW_NODE_ANIMATION_CLASS_NAME,
       )}
       ref={workflowContainerRef}
     >

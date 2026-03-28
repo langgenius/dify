@@ -1,3 +1,72 @@
+#workflow-container {
+  --workflow-selection-border-color: #528bff;
+  --workflow-selection-bg-color: rgb(21 94 239 / 0.05);
+}
+
+html[data-theme="light"] #workflow-container[data-workflow-theme="ocean"] {
+  --workflow-selection-border-color: #0b84d8;
+  --workflow-selection-bg-color: rgb(11 132 216 / 0.12);
+  --color-workflow-canvas-workflow-bg: #eaf5fb;
+  --color-workflow-canvas-workflow-dot-color: rgb(33 101 141 / 0.2);
+  --color-workflow-canvas-workflow-top-bar-1: rgb(234 245 251 / 0.88);
+  --color-workflow-canvas-workflow-top-bar-2: rgb(234 245 251 / 0.06);
+  --color-workflow-canvas-canvas-overlay: rgb(234 245 251 / 0.78);
+  --color-workflow-block-bg: #f7fcff;
+  --color-workflow-block-border-highlight: rgb(11 132 216 / 0.2);
+  --color-workflow-link-line-active: #0b84d8;
+  --color-workflow-link-line-handle: #0b84d8;
+  --color-workflow-link-line-normal: #9bb8cc;
+  --color-workflow-minimap-bg: #d7e8f2;
+}
+
+html[data-theme="dark"] #workflow-container[data-workflow-theme="ocean"] {
+  --workflow-selection-border-color: #56b8ff;
+  --workflow-selection-bg-color: rgb(86 184 255 / 0.14);
+  --color-workflow-canvas-workflow-bg: #11232f;
+  --color-workflow-canvas-workflow-dot-color: rgb(115 192 243 / 0.18);
+  --color-workflow-canvas-workflow-top-bar-1: rgb(17 35 47 / 0.88);
+  --color-workflow-canvas-workflow-top-bar-2: rgb(17 35 47 / 0.1);
+  --color-workflow-canvas-canvas-overlay: rgb(17 35 47 / 0.8);
+  --color-workflow-block-bg: #1a3040;
+  --color-workflow-block-border-highlight: rgb(86 184 255 / 0.25);
+  --color-workflow-link-line-active: #56b8ff;
+  --color-workflow-link-line-handle: #56b8ff;
+  --color-workflow-link-line-normal: #557086;
+  --color-workflow-minimap-bg: #1b3342;
+}
+
+html[data-theme="light"] #workflow-container[data-workflow-theme="sunset"] {
+  --workflow-selection-border-color: #ea580c;
+  --workflow-selection-bg-color: rgb(234 88 12 / 0.12);
+  --color-workflow-canvas-workflow-bg: #fff2ea;
+  --color-workflow-canvas-workflow-dot-color: rgb(197 111 68 / 0.2);
+  --color-workflow-canvas-workflow-top-bar-1: rgb(255 242 234 / 0.9);
+  --color-workflow-canvas-workflow-top-bar-2: rgb(255 242 234 / 0.06);
+  --color-workflow-canvas-canvas-overlay: rgb(255 242 234 / 0.8);
+  --color-workflow-block-bg: #fff9f5;
+  --color-workflow-block-border-highlight: rgb(234 88 12 / 0.22);
+  --color-workflow-link-line-active: #ea580c;
+  --color-workflow-link-line-handle: #ea580c;
+  --color-workflow-link-line-normal: #dab59f;
+  --color-workflow-minimap-bg: #f1dccc;
+}
+
+html[data-theme="dark"] #workflow-container[data-workflow-theme="sunset"] {
+  --workflow-selection-border-color: #ff8b4a;
+  --workflow-selection-bg-color: rgb(255 139 74 / 0.18);
+  --color-workflow-canvas-workflow-bg: #2a1b17;
+  --color-workflow-canvas-workflow-dot-color: rgb(244 170 121 / 0.18);
+  --color-workflow-canvas-workflow-top-bar-1: rgb(42 27 23 / 0.9);
+  --color-workflow-canvas-workflow-top-bar-2: rgb(42 27 23 / 0.1);
+  --color-workflow-canvas-canvas-overlay: rgb(42 27 23 / 0.82);
+  --color-workflow-block-bg: #34221d;
+  --color-workflow-block-border-highlight: rgb(255 139 74 / 0.3);
+  --color-workflow-link-line-active: #ff8b4a;
+  --color-workflow-link-line-handle: #ff8b4a;
+  --color-workflow-link-line-normal: #7d5f55;
+  --color-workflow-minimap-bg: #3a2822;
+}
+
 .workflow-panel-animation .react-flow__viewport {
   transition: transform 0.3s ease-in-out;
 }
@@ -7,14 +76,14 @@
 }
 
 #workflow-container .react-flow__nodesselection-rect {
-  border: 1px solid #528BFF;
-  background: rgba(21, 94, 239, 0.05);
+  border: 1px solid var(--workflow-selection-border-color);
+  background: var(--workflow-selection-bg-color);
   cursor: move;
 }
 
 #workflow-container .react-flow__selection {
-  border: 1px solid #528BFF;
-  background: rgba(21, 94, 239, 0.05);
+  border: 1px solid var(--workflow-selection-border-color);
+  background: var(--workflow-selection-bg-color);
 }
 
 #workflow-container .react-flow__node-custom-note {
