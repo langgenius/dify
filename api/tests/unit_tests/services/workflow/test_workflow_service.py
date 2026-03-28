@@ -3,11 +3,11 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from graphon.entities.graph_config import NodeConfigDictAdapter
+from graphon.enums import BuiltinNodeTypes
+from graphon.nodes.human_input.entities import FormInput, HumanInputNodeData, UserAction
+from graphon.nodes.human_input.enums import FormInputType
 
-from dify_graph.entities.graph_config import NodeConfigDictAdapter
-from dify_graph.enums import BuiltinNodeTypes
-from dify_graph.nodes.human_input.entities import FormInput, HumanInputNodeData, UserAction
-from dify_graph.nodes.human_input.enums import FormInputType
 from models.model import App
 from models.workflow import Workflow
 from services import workflow_service as workflow_service_module

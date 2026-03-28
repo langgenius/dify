@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+from graphon.model_runtime.errors.invoke import InvokeError
 from werkzeug.exceptions import InternalServerError, NotFound
 
 import controllers.console.explore.message as module
@@ -21,7 +22,6 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
-from dify_graph.model_runtime.errors.invoke import InvokeError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import (
     FirstMessageNotExistsError,

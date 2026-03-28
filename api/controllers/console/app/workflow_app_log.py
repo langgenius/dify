@@ -3,13 +3,13 @@ from datetime import datetime
 from dateutil.parser import isoparse
 from flask import request
 from flask_restx import Resource, marshal_with
+from graphon.enums import WorkflowExecutionStatus
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
-from dify_graph.enums import WorkflowExecutionStatus
 from extensions.ext_database import db
 from fields.workflow_app_log_fields import (
     build_workflow_app_log_pagination_model,

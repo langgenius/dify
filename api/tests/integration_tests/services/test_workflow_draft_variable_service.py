@@ -3,14 +3,14 @@ import unittest
 import uuid
 
 import pytest
+from graphon.nodes import BuiltinNodeTypes
+from graphon.variables.segments import StringSegment
+from graphon.variables.types import SegmentType
+from graphon.variables.variables import StringVariable
 from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
-from dify_graph.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
-from dify_graph.nodes import BuiltinNodeTypes
-from dify_graph.variables.segments import StringSegment
-from dify_graph.variables.types import SegmentType
-from dify_graph.variables.variables import StringVariable
+from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from extensions.storage.storage_type import StorageType

@@ -345,6 +345,9 @@ x-shared-env: &shared-api-worker-env
   BAIDU_VECTOR_DB_REPLICAS: ${BAIDU_VECTOR_DB_REPLICAS:-3}
   BAIDU_VECTOR_DB_INVERTED_INDEX_ANALYZER: ${BAIDU_VECTOR_DB_INVERTED_INDEX_ANALYZER:-DEFAULT_ANALYZER}
   BAIDU_VECTOR_DB_INVERTED_INDEX_PARSER_MODE: ${BAIDU_VECTOR_DB_INVERTED_INDEX_PARSER_MODE:-COARSE_MODE}
+  BAIDU_VECTOR_DB_AUTO_BUILD_ROW_COUNT_INCREMENT: ${BAIDU_VECTOR_DB_AUTO_BUILD_ROW_COUNT_INCREMENT:-500}
+  BAIDU_VECTOR_DB_AUTO_BUILD_ROW_COUNT_INCREMENT_RATIO: ${BAIDU_VECTOR_DB_AUTO_BUILD_ROW_COUNT_INCREMENT_RATIO:-0.05}
+  BAIDU_VECTOR_DB_REBUILD_INDEX_TIMEOUT_IN_SECONDS: ${BAIDU_VECTOR_DB_REBUILD_INDEX_TIMEOUT_IN_SECONDS:-300}
   VIKINGDB_ACCESS_KEY: ${VIKINGDB_ACCESS_KEY:-your-ak}
   VIKINGDB_SECRET_KEY: ${VIKINGDB_SECRET_KEY:-your-sk}
   VIKINGDB_REGION: ${VIKINGDB_REGION:-cn-shanghai}
@@ -728,7 +731,7 @@ services:
 
   # API service
   api:
-    image: langgenius/dify-api:1.13.2
+    image: langgenius/dify-api:1.13.3
     restart: always
     environment:
       # Use the shared environment variables.
@@ -770,7 +773,7 @@ services:
   # worker service
   # The Celery worker for processing all queues (dataset, workflow, mail, etc.)
   worker:
-    image: langgenius/dify-api:1.13.2
+    image: langgenius/dify-api:1.13.3
     restart: always
     environment:
       # Use the shared environment variables.
@@ -809,7 +812,7 @@ services:
   # worker_beat service
   # Celery beat for scheduling periodic tasks.
   worker_beat:
-    image: langgenius/dify-api:1.13.2
+    image: langgenius/dify-api:1.13.3
     restart: always
     environment:
       # Use the shared environment variables.
@@ -839,7 +842,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:1.13.2
+    image: langgenius/dify-web:1.13.3
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
@@ -952,7 +955,7 @@ services:
 
   # The DifySandbox
   sandbox:
-    image: langgenius/dify-sandbox:0.2.12
+    image: langgenius/dify-sandbox:0.2.14
     restart: always
     environment:
       # The DifySandbox configurations
@@ -976,7 +979,7 @@ services:
 
   # plugin daemon
   plugin_daemon:
-    image: langgenius/dify-plugin-daemon:0.5.4-local
+    image: langgenius/dify-plugin-daemon:0.5.3-local
     restart: always
     environment:
       # Use the shared environment variables.

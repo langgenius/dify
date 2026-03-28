@@ -288,10 +288,8 @@ describe('ConfigContent', () => {
         />,
       )
 
-      const weightedScoreSlider = screen.getAllByRole('slider')
-        .find(slider => slider.getAttribute('aria-valuemax') === '1')
-      expect(weightedScoreSlider).toBeDefined()
-      await user.click(weightedScoreSlider!)
+      const weightedScoreSlider = screen.getByLabelText('dataset.weightedScore.semantic')
+      weightedScoreSlider.focus()
       const callsBefore = onChange.mock.calls.length
       await user.keyboard('{ArrowRight}')
 

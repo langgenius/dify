@@ -2,18 +2,18 @@ import json
 from unittest.mock import MagicMock, patch
 
 import pytest
+from graphon.model_runtime.entities.llm_entities import LLMMode, LLMResult
+from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 
 from core.app.app_config.entities import ModelConfig
 from core.llm_generator.entities import RuleCodeGeneratePayload, RuleGeneratePayload, RuleStructuredOutputPayload
 from core.llm_generator.llm_generator import LLMGenerator
-from dify_graph.model_runtime.entities.llm_entities import LLMMode, LLMResult
-from dify_graph.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 
 
 class TestLLMGenerator:
     @pytest.fixture
     def mock_model_instance(self):
-        with patch("core.llm_generator.llm_generator.ModelManager") as mock_manager:
+        with patch("core.llm_generator.llm_generator.ModelManager.for_tenant") as mock_manager:
             instance = MagicMock()
             mock_manager.return_value.get_default_model_instance.return_value = instance
             mock_manager.return_value.get_model_instance.return_value = instance
@@ -98,7 +98,7 @@ class TestLLMGenerator:
         assert questions[0] == "Question 1?"
 
     def test_generate_suggested_questions_after_answer_auth_error(self, mock_model_instance):
-        with patch("core.llm_generator.llm_generator.ModelManager") as mock_manager:
+        with patch("core.llm_generator.llm_generator.ModelManager.for_tenant") as mock_manager:
             mock_manager.return_value.get_default_model_instance.side_effect = InvokeAuthorizationError("Auth failed")
             questions = LLMGenerator.generate_suggested_questions_after_answer("tenant_id", "histories")
             assert questions == []
@@ -528,7 +528,7 @@ class TestLLMGenerator:
             assert "An unexpected error occurred" in result["error"]
 
     def test_instruction_modify_common_other_node_type(self, mock_model_instance, model_config_entity):
-        with patch("core.llm_generator.llm_generator.ModelManager") as mock_manager:
+        with patch("core.llm_generator.llm_generator.ModelManager.for_tenant") as mock_manager:
             instance = MagicMock()
             mock_manager.return_value.get_model_instance.return_value = instance
             mock_response = MagicMock()

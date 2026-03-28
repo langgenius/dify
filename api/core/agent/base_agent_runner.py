@@ -4,6 +4,20 @@ import uuid
 from decimal import Decimal
 from typing import Union, cast
 
+from graphon.file import file_manager
+from graphon.model_runtime.entities import (
+    AssistantPromptMessage,
+    LLMUsage,
+    PromptMessage,
+    PromptMessageTool,
+    SystemPromptMessage,
+    TextPromptMessageContent,
+    ToolPromptMessage,
+    UserPromptMessage,
+)
+from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent, PromptMessageContentUnionTypes
+from graphon.model_runtime.entities.model_entities import ModelFeature
+from graphon.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from sqlalchemy import select
 
 from core.agent.entities import AgentEntity, AgentToolEntity
@@ -15,6 +29,7 @@ from core.app.entities.app_invoke_entities import (
     AgentChatAppGenerateEntity,
     ModelConfigWithCredentialsEntity,
 )
+from core.app.file_access import DatabaseFileAccessController
 from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.memory.token_buffer_memory import TokenBufferMemory
@@ -26,26 +41,13 @@ from core.tools.entities.tool_entities import (
 )
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.dataset_retriever_tool import DatasetRetrieverTool
-from dify_graph.file import file_manager
-from dify_graph.model_runtime.entities import (
-    AssistantPromptMessage,
-    LLMUsage,
-    PromptMessage,
-    PromptMessageTool,
-    SystemPromptMessage,
-    TextPromptMessageContent,
-    ToolPromptMessage,
-    UserPromptMessage,
-)
-from dify_graph.model_runtime.entities.message_entities import ImagePromptMessageContent, PromptMessageContentUnionTypes
-from dify_graph.model_runtime.entities.model_entities import ModelFeature
-from dify_graph.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from extensions.ext_database import db
 from factories import file_factory
 from models.enums import CreatorUserRole
 from models.model import Conversation, Message, MessageAgentThought, MessageFile
 
 logger = logging.getLogger(__name__)
+_file_access_controller = DatabaseFileAccessController()
 
 
 class BaseAgentRunner(AppRunner):
@@ -138,6 +140,7 @@ class BaseAgentRunner(AppRunner):
             tenant_id=self.tenant_id,
             app_id=self.app_config.app_id,
             agent_tool=tool,
+            user_id=self.user_id,
             invoke_from=self.application_generate_entity.invoke_from,
         )
         assert tool_entity.entity.description
@@ -524,7 +527,10 @@ class BaseAgentRunner(AppRunner):
         image_detail_config = image_detail_config or ImagePromptMessageContent.DETAIL.LOW
 
         file_objs = file_factory.build_from_message_files(
-            message_files=files, tenant_id=self.tenant_id, config=file_extra_config
+            message_files=files,
+            tenant_id=self.tenant_id,
+            config=file_extra_config,
+            access_controller=_file_access_controller,
         )
         if not file_objs:
             return UserPromptMessage(content=message.query)

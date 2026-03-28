@@ -99,7 +99,7 @@ describe('Input component', () => {
     render(<Input className={customClass} styleCss={customStyle} />)
     const input = screen.getByPlaceholderText(/input/i)
     expect(input).toHaveClass(customClass)
-    expect(input).toHaveStyle({ color: 'rgb(255, 0, 0)' })
+    expect(input).toHaveStyle({ color: 'red' })
   })
 
   it('applies large size variant correctly', () => {

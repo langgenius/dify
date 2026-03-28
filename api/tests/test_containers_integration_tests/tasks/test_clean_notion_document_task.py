@@ -12,6 +12,7 @@ from unittest.mock import Mock, patch
 import pytest
 from faker import Faker
 
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
 from services.account_service import AccountService, TenantService
@@ -114,7 +115,7 @@ class TestCleanNotionDocumentTask:
                 name=f"Notion Page {i}",
                 created_from=DocumentCreatedFrom.WEB,
                 created_by=account.id,
-                doc_form="text_model",  # Set doc_form to ensure dataset.doc_form works
+                doc_form=IndexStructureType.PARAGRAPH_INDEX,  # Set doc_form to ensure dataset.doc_form works
                 doc_language="en",
                 indexing_status=IndexingStatus.COMPLETED,
             )
@@ -261,7 +262,7 @@ class TestCleanNotionDocumentTask:
 
         # Test different index types
         # Note: Only testing text_model to avoid dependency on external services
-        index_types = ["text_model"]
+        index_types = [IndexStructureType.PARAGRAPH_INDEX]
 
         for index_type in index_types:
             # Create dataset (doc_form will be set via document creation)

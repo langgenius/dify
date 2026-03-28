@@ -7,6 +7,7 @@ from werkzeug.exceptions import NotFound
 
 from core.db.session_factory import session_factory
 from core.rag.datasource.vdb.vector_factory import Vector
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
@@ -67,7 +68,7 @@ def batch_import_annotations_task(job_id: str, content_list: list[dict], app_id:
                     dataset = Dataset(
                         id=app_id,
                         tenant_id=tenant_id,
-                        indexing_technique="high_quality",
+                        indexing_technique=IndexTechniqueType.HIGH_QUALITY,
                         embedding_model_provider=dataset_collection_binding.provider_name,
                         embedding_model=dataset_collection_binding.model_name,
                         collection_binding_id=dataset_collection_binding.id,
