@@ -177,14 +177,14 @@ jobs:
           else
             BASE_SHA=""
             HEAD_SHA=$(git rev-parse HEAD)
-            if [ -n "${{ github.event.inputs.languages }}" ]; then
-              TARGET_LANGS="${{ github.event.inputs.languages }}"
+            if [ -n "${INPUT_LANGUAGES}" ]; then
+              TARGET_LANGS="${INPUT_LANGUAGES}"
             else
               TARGET_LANGS="$DEFAULT_TARGET_LANGS"
             fi
-            SYNC_MODE="${{ github.event.inputs.mode || 'incremental' }}"
-            if [ -n "${{ github.event.inputs.files }}" ]; then
-              CHANGED_FILES="${{ github.event.inputs.files }}"
+            SYNC_MODE="${INPUT_MODE}"
+            if [ -n "${INPUT_FILES}" ]; then
+              CHANGED_FILES="${INPUT_FILES}"
             elif [ "$SYNC_MODE" = "incremental" ]; then
               BASE_SHA=$(git rev-parse HEAD~1 2>/dev/null || true)
               if [ -n "$BASE_SHA" ]; then
@@ -238,6 +238,10 @@ jobs:
           echo "Languages: ${TARGET_LANGS:-<none>}"
           echo "Mode: $SYNC_MODE"
 
+        env:
+          INPUT_FILES: ${{ github.event.inputs.files }}
+          INPUT_LANGUAGES: ${{ github.event.inputs.languages }}
+          INPUT_MODE: ${{ github.event.inputs.mode || 'incremental' }}
       - name: Run Claude Code for Translation Sync
         if: steps.context.outputs.CHANGED_FILES != ''
         uses: anthropics/claude-code-action@88c168b39e7e64da0286d812b6e9fbebb6708185 # v1.0.82
