@@ -40,7 +40,7 @@ class FirecrawlAuth(ApiKeyAuthBase):
         return f"{self.base_url.rstrip('/')}/{path.lstrip('/')}"
 
     def _post_request(self, url, data, headers):
-        return httpx.post(url, headers=headers, json=data)
+        return httpx.post(url, headers=headers, json=data, timeout=httpx.Timeout(10.0, connect=3.0))
 
     def _handle_error(self, response):
         try:
