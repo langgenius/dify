@@ -5,6 +5,14 @@ from collections.abc import Callable, Generator
 from typing import Any, TypeVar, cast
 
 import httpx
+from graphon.model_runtime.errors.invoke import (
+    InvokeAuthorizationError,
+    InvokeBadRequestError,
+    InvokeConnectionError,
+    InvokeRateLimitError,
+    InvokeServerUnavailableError,
+)
+from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
 from pydantic import BaseModel
 from yarl import URL
 
@@ -28,14 +36,6 @@ from core.trigger.errors import (
     TriggerPluginInvokeError,
     TriggerProviderCredentialValidationError,
 )
-from graphon.model_runtime.errors.invoke import (
-    InvokeAuthorizationError,
-    InvokeBadRequestError,
-    InvokeConnectionError,
-    InvokeRateLimitError,
-    InvokeServerUnavailableError,
-)
-from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
 
 plugin_daemon_inner_api_baseurl = URL(str(dify_config.PLUGIN_DAEMON_URL))
 _plugin_daemon_timeout_config = cast(

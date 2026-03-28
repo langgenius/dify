@@ -6,6 +6,8 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
+from graphon.model_runtime.entities.llm_entities import LLMUsage
+from graphon.model_runtime.entities.model_entities import ModelType
 from sqlalchemy.orm import Session
 
 from core.db.session_factory import session_factory
@@ -15,8 +17,6 @@ from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.index_processor.index_processor_base import SummaryIndexSettingDict
 from core.rag.models.document import Document
-from graphon.model_runtime.entities.llm_entities import LLMUsage
-from graphon.model_runtime.entities.model_entities import ModelType
 from libs import helper
 from models.dataset import Dataset, DocumentSegment, DocumentSegmentSummary
 from models.dataset import Document as DatasetDocument

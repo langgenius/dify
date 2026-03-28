@@ -17,9 +17,7 @@ from typing import Any
 from uuid import uuid4
 
 import pytest
-
-from graphon.file.enums import FileTransferMethod, FileType
-from graphon.file.models import File
+from graphon.file import File, FileTransferMethod, FileType
 from graphon.variables.segments import (
     ArrayFileSegment,
     ArrayNumberSegment,
@@ -31,6 +29,7 @@ from graphon.variables.segments import (
     ObjectSegment,
     StringSegment,
 )
+
 from services.variable_truncator import (
     DummyVariableTruncator,
     MaxDepthExceededError,

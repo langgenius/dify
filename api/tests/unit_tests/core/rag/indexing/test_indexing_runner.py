@@ -53,6 +53,7 @@ from typing import Any
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
+from graphon.model_runtime.entities.model_entities import ModelType
 from sqlalchemy.orm.exc import ObjectDeletedError
 
 from core.errors.error import ProviderTokenNotInitError
@@ -63,7 +64,6 @@ from core.indexing_runner import (
 )
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.models.document import ChildDocument, Document
-from graphon.model_runtime.entities.model_entities import ModelType
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, DatasetProcessRule
 from models.dataset import Document as DatasetDocument

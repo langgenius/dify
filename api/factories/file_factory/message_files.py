@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from core.app.file_access import FileAccessControllerProtocol
 from graphon.file import File, FileBelongsTo, FileTransferMethod, FileUploadConfig
+
+from core.app.file_access import FileAccessControllerProtocol
 from models import MessageFile
 
 from .builders import build_from_mapping

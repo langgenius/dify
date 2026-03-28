@@ -301,13 +301,14 @@ class TestAppGeneratorTTSPublisher:
         publisher = AppGeneratorTTSPublisher("tenant", "voice1")
         publisher.executor = MagicMock()
 
-        from core.app.entities.queue_entities import QueueAgentMessageEvent
         from graphon.model_runtime.entities.llm_entities import LLMResultChunk, LLMResultChunkDelta
         from graphon.model_runtime.entities.message_entities import (
             AssistantPromptMessage,
             ImagePromptMessageContent,
             TextPromptMessageContent,
         )
+
+        from core.app.entities.queue_entities import QueueAgentMessageEvent
 
         chunk = LLMResultChunk(
             model="model",
@@ -336,9 +337,10 @@ class TestAppGeneratorTTSPublisher:
         publisher = AppGeneratorTTSPublisher("tenant", "voice1")
         publisher.executor = MagicMock()
 
-        from core.app.entities.queue_entities import QueueAgentMessageEvent
         from graphon.model_runtime.entities.llm_entities import LLMResultChunk, LLMResultChunkDelta
         from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
+
+        from core.app.entities.queue_entities import QueueAgentMessageEvent
 
         chunk = LLMResultChunk(
             model="model",
