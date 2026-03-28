@@ -374,7 +374,6 @@ class CompletionConversationApi(Resource):
             end_datetime_utc = end_datetime_utc.replace(second=59)
             query = query.where(Conversation.created_at < end_datetime_utc)
 
-        # FIXME, the type ignore in this file
         if args.annotation_status == "annotated":
             query = (
                 query.options(selectinload(Conversation.message_annotations))  # type: ignore[arg-type]
