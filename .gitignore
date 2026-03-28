@@ -128,28 +128,28 @@ venv.bak/
 /site
 
 # type checking
-.mypy_cache/
-.dmypy.json
-dmypy.json
-pyrightconfig.json
-!api/pyrightconfig.json
+#.mypy_cache/
+#.dmypy.json
+#dmypy.json
+#pyrightconfig.json
+#!api/pyrightconfig.json
 
 # Pyre type checker
-.pyre/
-.idea/'
+#.pyre/
+#.idea/'
 
-.DS_Store
+#.DS_Store
 
 # Intellij IDEA Files
-.idea/*
-!.idea/vcs.xml
-!.idea/icon.png
-.ideaDataSources/
-*.iml
-api/.idea
+#.idea/*
+#!.idea/vcs.xml
+#!.idea/icon.png
+#.ideaDataSources/
+#*.iml
+#api/.idea
 
-api/.env
-api/storage/*
+#api/.env
+#api/storage/*
 
 docker-legacy/volumes/app/storage/*
 docker-legacy/volumes/db/data/*
@@ -201,14 +201,14 @@ sdks/python-client/build
 sdks/python-client/dist
 sdks/python-client/dify_client.egg-info
 
-.vscode/*
-!.vscode/launch.json.template
-!.vscode/README.md
-api/.vscode
+#.vscode/*
+#!.vscode/launch.json.template
+#!.vscode/README.md
+#api/.vscode
 # vscode Code History Extension
-.history
+#.history
 
-.idea/
+#.idea/
 
 # pnpm
 /.pnpm-store
@@ -221,22 +221,22 @@ mise.toml
 
 
 # AI Assistant
-.roo/
-/.claude/worktrees/
-api/.env.backup
-/clickzetta
+#.roo/
+#/.claude/worktrees/
+#api/.env.backup
+#/clickzetta
 
 # Benchmark
 scripts/stress-test/setup/config/
 scripts/stress-test/reports/
 
 # mcp
-.playwright-mcp/
-.serena/
+#.playwright-mcp/
+#.serena/
 
 # settings
-*.local.json
-*.local.md
+#*.local.json
+#*.local.md
 
 # Code Agent Folder
-.qoder/*
+#.qoder/*
