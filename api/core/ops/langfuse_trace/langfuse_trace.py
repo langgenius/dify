@@ -1,9 +1,19 @@
 import logging
 import os
+import uuid
 from datetime import datetime, timedelta
 
 from graphon.enums import BuiltinNodeTypes
 from langfuse import Langfuse
+from langfuse.api import (
+    CreateGenerationBody,
+    CreateSpanBody,
+    IngestionEvent_GenerationCreate,
+    IngestionEvent_SpanCreate,
+    IngestionEvent_TraceCreate,
+    TraceBody,
+    Usage,
+)
 from sqlalchemy.orm import sessionmaker
 
 from core.ops.base_trace_instance import BaseTraceInstance
@@ -396,10 +406,30 @@ class LangFuseDataTrace(BaseTraceInstance):
         )
         self.add_span(langfuse_span_data=name_generation_span_data)
 
+    def _build_usage(self, usage_data: dict) -> Usage | None:
+        """Convert a GenerationUsage dict to a langfuse v3 Usage object."""
+        if not usage_data:
+            return None
+        return Usage(
+            input=usage_data.get("input", 0),
+            output=usage_data.get("output", 0),
+            total=usage_data.get("total", 0),
+            unit=usage_data.get("unit"),
+            input_cost=usage_data.get("inputCost"),
+            output_cost=usage_data.get("outputCost"),
+            total_cost=usage_data.get("totalCost"),
+        )
+
     def add_trace(self, langfuse_trace_data: LangfuseTrace | None = None):
         format_trace_data = filter_none_values(langfuse_trace_data.model_dump()) if langfuse_trace_data else {}
         try:
-            self.langfuse_client.trace(**format_trace_data)
+            trace_body = TraceBody(**format_trace_data)
+            event = IngestionEvent_TraceCreate(
+                body=trace_body,
+                id=str(uuid.uuid4()),
+                timestamp=datetime.now().isoformat(),
+            )
+            self.langfuse_client.api.ingestion.batch(batch=[event])
             logger.debug("LangFuse Trace created successfully")
         except Exception as e:
             raise ValueError(f"LangFuse Failed to create trace: {str(e)}")
@@ -407,14 +437,19 @@ class LangFuseDataTrace(BaseTraceInstance):
     def add_span(self, langfuse_span_data: LangfuseSpan | None = None):
         format_span_data = filter_none_values(langfuse_span_data.model_dump()) if langfuse_span_data else {}
         try:
-            self.langfuse_client.span(**format_span_data)
+            span_body = CreateSpanBody(**format_span_data)
+            event = IngestionEvent_SpanCreate(
+                body=span_body,
+                id=str(uuid.uuid4()),
+                timestamp=datetime.now().isoformat(),
+            )
+            self.langfuse_client.api.ingestion.batch(batch=[event])
             logger.debug("LangFuse Span created successfully")
         except Exception as e:
             raise ValueError(f"LangFuse Failed to create span: {str(e)}")
 
     def update_span(self, span, langfuse_span_data: LangfuseSpan | None = None):
         format_span_data = filter_none_values(langfuse_span_data.model_dump()) if langfuse_span_data else {}
-
         span.end(**format_span_data)
 
     def add_generation(self, langfuse_generation_data: LangfuseGeneration | None = None):
@@ -422,7 +457,16 @@ class LangFuseDataTrace(BaseTraceInstance):
             filter_none_values(langfuse_generation_data.model_dump()) if langfuse_generation_data else {}
         )
         try:
-            self.langfuse_client.generation(**format_generation_data)
+            # Convert usage dict to langfuse v3 Usage object
+            usage_data = format_generation_data.pop("usage", None)
+            usage = self._build_usage(usage_data) if usage_data else None
+            gen_body = CreateGenerationBody(**format_generation_data, usage=usage)
+            event = IngestionEvent_GenerationCreate(
+                body=gen_body,
+                id=str(uuid.uuid4()),
+                timestamp=datetime.now().isoformat(),
+            )
+            self.langfuse_client.api.ingestion.batch(batch=[event])
             logger.debug("LangFuse Generation created successfully")
         except Exception as e:
             raise ValueError(f"LangFuse Failed to create generation: {str(e)}")
@@ -431,7 +475,6 @@ class LangFuseDataTrace(BaseTraceInstance):
         format_generation_data = (
             filter_none_values(langfuse_generation_data.model_dump()) if langfuse_generation_data else {}
         )
-
         generation.end(**format_generation_data)
 
     def api_check(self):
@@ -443,7 +486,7 @@ class LangFuseDataTrace(BaseTraceInstance):
 
     def get_project_key(self):
         try:
-            projects = self.langfuse_client.client.projects.get()
+            projects = self.langfuse_client.api.projects.get()
             return projects.data[0].id
         except Exception as e:
             logger.debug("LangFuse get project key failed: %s", str(e))

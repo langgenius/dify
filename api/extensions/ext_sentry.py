@@ -6,15 +6,20 @@ def init_app(app: DifyApp):
     if dify_config.SENTRY_DSN:
         import sentry_sdk
         from graphon.model_runtime.errors.invoke import InvokeRateLimitError
-        from langfuse import parse_error
         from sentry_sdk.integrations.celery import CeleryIntegration
         from sentry_sdk.integrations.flask import FlaskIntegration
         from werkzeug.exceptions import HTTPException
 
+        # Langfuse default error response string, previously from langfuse.parse_error (removed in v3)
+        _LANGFUSE_DEFAULT_ERROR = (
+            "Unexpected error occurred. Please check your request"
+            " and contact support: https://langfuse.com/support."
+        )
+
         def before_send(event, hint):
             if "exc_info" in hint:
                 _, exc_value, _ = hint["exc_info"]
-                if parse_error.defaultErrorResponse in str(exc_value):
+                if _LANGFUSE_DEFAULT_ERROR in str(exc_value):
                     return None
 
             return event
@@ -27,7 +32,7 @@ def init_app(app: DifyApp):
                 ValueError,
                 FileNotFoundError,
                 InvokeRateLimitError,
-                parse_error.defaultErrorResponse,
+                _LANGFUSE_DEFAULT_ERROR,
             ],
             traces_sample_rate=dify_config.SENTRY_TRACES_SAMPLE_RATE,
             profiles_sample_rate=dify_config.SENTRY_PROFILES_SAMPLE_RATE,

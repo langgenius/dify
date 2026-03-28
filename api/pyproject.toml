@@ -33,7 +33,7 @@ dependencies = [
     "httpx[socks]~=0.28.0",
     "jieba==0.42.1",
     "json-repair>=0.55.1",
-    "langfuse~=2.51.3",
+    "langfuse~=3.14",
     "langsmith~=0.7.16",
     "markdown~=3.10.2",
     "mlflow-skinny>=3.0.0",
