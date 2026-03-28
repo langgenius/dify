@@ -1,11 +1,11 @@
+import type { WorkflowProps } from '@/app/components/workflow'
 import {
   useCallback,
   useMemo,
 } from 'react'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { WorkflowWithInnerContext } from '@/app/components/workflow'
-import type { WorkflowProps } from '@/app/components/workflow'
-import WorkflowChildren from './workflow-children'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 import {
   useAvailableNodesMetaData,
   useConfigsMap,
@@ -18,7 +18,7 @@ import {
   useWorkflowRun,
   useWorkflowStartRun,
 } from '../hooks'
-import { useWorkflowStore } from '@/app/components/workflow/store'
+import WorkflowChildren from './workflow-children'
 
 type WorkflowMainProps = Pick<WorkflowProps, 'nodes' | 'edges' | 'viewport'>
 const WorkflowMain = ({

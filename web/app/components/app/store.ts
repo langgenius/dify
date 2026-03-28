@@ -1,6 +1,6 @@
-import { create } from 'zustand'
-import type { App, AppSSO } from '@/types/app'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
+import type { App, AppSSO } from '@/types/app'
+import { create } from 'zustand'
 
 type State = {
   appDetail?: App & Partial<AppSSO>

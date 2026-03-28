@@ -1,15 +1,15 @@
 import type { FC } from 'react'
+import type { NodeProps } from 'reactflow'
+import type { VariableAssignerNodeType } from './types'
 import {
   memo,
   useMemo,
   useRef,
 } from 'react'
-import type { NodeProps } from 'reactflow'
 import { useTranslation } from 'react-i18next'
 import NodeGroupItem from './components/node-group-item'
-import type { VariableAssignerNodeType } from './types'
 
-const i18nPrefix = 'workflow.nodes.variableAssigner'
+const i18nPrefix = 'nodes.variableAssigner'
 
 const Node: FC<NodeProps<VariableAssignerNodeType>> = (props) => {
   const { t } = useTranslation()
@@ -22,7 +22,7 @@ const Node: FC<NodeProps<VariableAssignerNodeType>> = (props) => {
       return [{
         groupEnabled: false,
         targetHandleId: 'target',
-        title: t(`${i18nPrefix}.title`),
+        title: t(`${i18nPrefix}.title`, { ns: 'workflow' }),
         type: data.output_type,
         variables: data.variables,
         variableAssignerNodeId: id,
@@ -43,7 +43,7 @@ const Node: FC<NodeProps<VariableAssignerNodeType>> = (props) => {
   }, [t, advanced_settings, data, id])
 
   return (
-    <div className='relative mb-1 space-y-0.5 px-1' ref={ref}>
+    <div className="relative mb-1 space-y-0.5 px-1" ref={ref}>
       {
         groups.map((item) => {
           return (
@@ -54,7 +54,7 @@ const Node: FC<NodeProps<VariableAssignerNodeType>> = (props) => {
           )
         })
       }
-    </div >
+    </div>
   )
 }
 

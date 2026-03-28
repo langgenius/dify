@@ -1,15 +1,16 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useBoolean } from 'ahooks'
 import type { Param } from '../../types'
+import type { MoreInfo } from '@/app/components/workflow/types'
+import { useBoolean } from 'ahooks'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import ListNoDataPlaceholder from '../../../_base/components/list-no-data-placeholder'
 import Item from './item'
 import EditParam from './update'
-import type { MoreInfo } from '@/app/components/workflow/types'
 
-const i18nPrefix = 'workflow.nodes.parameterExtractor'
+const i18nPrefix = 'nodes.parameterExtractor'
 
 type Props = {
   readonly: boolean
@@ -58,11 +59,11 @@ const List: FC<Props> = ({
 
   if (list.length === 0) {
     return (
-      <ListNoDataPlaceholder >{t(`${i18nPrefix}.extractParametersNotSet`)}</ListNoDataPlaceholder>
+      <ListNoDataPlaceholder>{t(`${i18nPrefix}.extractParametersNotSet`, { ns: 'workflow' })}</ListNoDataPlaceholder>
     )
   }
   return (
-    <div className='space-y-1'>
+    <div className="space-y-1">
       {list.map((item, index) => (
         <Item
           key={index}
@@ -73,7 +74,7 @@ const List: FC<Props> = ({
       ))}
       {isShowEditModal && (
         <EditParam
-          type='edit'
+          type="edit"
           payload={list[currEditItemIndex]}
           onSave={handleItemChange(currEditItemIndex)}
           onCancel={hideEditModal}

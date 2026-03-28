@@ -1,10 +1,10 @@
+import type { KnowledgeBaseNodeType } from '@/app/components/workflow/nodes/knowledge-base/types'
 import { useTranslation } from 'react-i18next'
-import { generateNewNode } from '@/app/components/workflow/utils'
 import {
   START_INITIAL_POSITION,
 } from '@/app/components/workflow/constants'
-import type { KnowledgeBaseNodeType } from '@/app/components/workflow/nodes/knowledge-base/types'
 import knowledgeBaseDefault from '@/app/components/workflow/nodes/knowledge-base/default'
+import { generateNewNode } from '@/app/components/workflow/utils'
 
 export const usePipelineTemplate = () => {
   const { t } = useTranslation()
@@ -14,7 +14,7 @@ export const usePipelineTemplate = () => {
     data: {
       ...knowledgeBaseDefault.defaultValue as KnowledgeBaseNodeType,
       type: knowledgeBaseDefault.metaData.type,
-      title: t(`workflow.blocks.${knowledgeBaseDefault.metaData.type}`),
+      title: t(`blocks.${knowledgeBaseDefault.metaData.type}`, { ns: 'workflow' }),
       selected: true,
     },
     position: {

@@ -1,16 +1,17 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
 import type { ModelConfig, PromptItem, Variable } from '../../../types'
-import { EditionType } from '../../../types'
-import { useWorkflowStore } from '../../../store'
+import * as React from 'react'
+import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
+import Tooltip from '@/app/components/base/tooltip'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import TypeSelector from '@/app/components/workflow/nodes/_base/components/selector'
-import Tooltip from '@/app/components/base/tooltip'
 import { PromptRole } from '@/models/debug'
+import { useWorkflowStore } from '../../../store'
+import { EditionType } from '../../../types'
 
-const i18nPrefix = 'workflow.nodes.llm'
+const i18nPrefix = 'nodes.llm'
 
 type Props = {
   instanceId: string
@@ -99,31 +100,33 @@ const ConfigPromptItem: FC<Props> = ({
       headerClassName={headerClassName}
       instanceId={instanceId}
       key={instanceId}
-      title={
-        <div className='relative left-1 flex items-center'>
+      title={(
+        <div className="relative left-1 flex items-center">
           {payload.role === PromptRole.system
-            ? (<div className='relative left-[-4px] text-xs font-semibold uppercase text-text-secondary'>
-              SYSTEM
-            </div>)
+            ? (
+                <div className="relative left-[-4px] text-xs font-semibold uppercase text-text-secondary">
+                  SYSTEM
+                </div>
+              )
             : (
-              <TypeSelector
-                value={payload.role as string}
-                allOptions={roleOptions}
-                options={canNotChooseSystemRole ? roleOptionsWithoutSystemRole : roleOptions}
-                onChange={handleChatModeMessageRoleChange}
-                triggerClassName='text-xs font-semibold text-text-secondary uppercase'
-                itemClassName='text-[13px] font-medium text-text-secondary'
-              />
-            )}
+                <TypeSelector
+                  value={payload.role as string}
+                  allOptions={roleOptions}
+                  options={canNotChooseSystemRole ? roleOptionsWithoutSystemRole : roleOptions}
+                  onChange={handleChatModeMessageRoleChange}
+                  triggerClassName="text-xs font-semibold text-text-secondary uppercase"
+                  itemClassName="text-[13px] font-medium text-text-secondary"
+                />
+              )}
 
           <Tooltip
             popupContent={
-              <div className='max-w-[180px]'>{t(`${i18nPrefix}.roleDescription.${payload.role}`)}</div>
+              <div className="max-w-[180px]">{!!payload.role && t(`${i18nPrefix}.roleDescription.${payload.role}`, { ns: 'workflow' })}</div>
             }
-            triggerClassName='w-4 h-4'
+            triggerClassName="w-4 h-4"
           />
         </div>
-      }
+      )}
       value={payload.edition_type === EditionType.jinja2 ? (payload.jinja2_text || '') : payload.text}
       onChange={onPromptChange}
       readOnly={readOnly}

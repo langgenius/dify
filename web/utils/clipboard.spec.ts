@@ -8,12 +8,30 @@
  * The implementation ensures clipboard operations work across all supported browsers
  * while gracefully handling permissions and API availability.
  */
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
+
 import { writeTextToClipboard } from './clipboard'
 
 describe('Clipboard Utilities', () => {
   describe('writeTextToClipboard', () => {
+    /**
+     * Setup global mocks required for the clipboard utility tests.
+     * We need to mock 'isSecureContext' because the modern Clipboard API
+     * is only available in secure contexts. We also provide a default mock
+     * for 'execCommand' to prevent 'is not a function' errors in fallback tests.
+     */
+    beforeAll(() => {
+      Object.defineProperty(window, 'isSecureContext', {
+        value: true,
+        writable: true,
+      })
+
+      // Provide a default mock for document.execCommand for JSDOM
+      document.execCommand = vi.fn().mockReturnValue(true)
+    })
+
     afterEach(() => {
-      jest.restoreAllMocks()
+      vi.restoreAllMocks()
     })
 
     /**
@@ -21,7 +39,7 @@ describe('Clipboard Utilities', () => {
      * When navigator.clipboard is available, should use the modern API
      */
     it('should use navigator.clipboard.writeText when available', async () => {
-      const mockWriteText = jest.fn().mockResolvedValue(undefined)
+      const mockWriteText = vi.fn().mockResolvedValue(undefined)
       Object.defineProperty(navigator, 'clipboard', {
         value: { writeText: mockWriteText },
         writable: true,
@@ -44,11 +62,11 @@ describe('Clipboard Utilities', () => {
         configurable: true,
       })
 
-      const mockExecCommand = jest.fn().mockReturnValue(true)
+      const mockExecCommand = vi.fn().mockReturnValue(true)
       document.execCommand = mockExecCommand
 
-      const appendChildSpy = jest.spyOn(document.body, 'appendChild')
-      const removeChildSpy = jest.spyOn(document.body, 'removeChild')
+      const appendChildSpy = vi.spyOn(document.body, 'appendChild')
+      const removeChildSpy = vi.spyOn(document.body, 'removeChild')
 
       await writeTextToClipboard('fallback text')
 
@@ -68,7 +86,7 @@ describe('Clipboard Utilities', () => {
         configurable: true,
       })
 
-      const mockExecCommand = jest.fn().mockReturnValue(false)
+      const mockExecCommand = vi.fn().mockReturnValue(false)
       document.execCommand = mockExecCommand
 
       await expect(writeTextToClipboard('fail text')).rejects.toThrow()
@@ -85,7 +103,7 @@ describe('Clipboard Utilities', () => {
         configurable: true,
       })
 
-      const mockExecCommand = jest.fn().mockImplementation(() => {
+      const mockExecCommand = vi.fn().mockImplementation(() => {
         throw new Error('execCommand error')
       })
       document.execCommand = mockExecCommand
@@ -104,8 +122,8 @@ describe('Clipboard Utilities', () => {
         configurable: true,
       })
 
-      document.execCommand = jest.fn().mockReturnValue(true)
-      const removeChildSpy = jest.spyOn(document.body, 'removeChild')
+      document.execCommand = vi.fn().mockReturnValue(true)
+      const removeChildSpy = vi.spyOn(document.body, 'removeChild')
 
       await writeTextToClipboard('cleanup test')
 
@@ -117,7 +135,7 @@ describe('Clipboard Utilities', () => {
      * Should handle edge case of empty clipboard content
      */
     it('should handle empty string', async () => {
-      const mockWriteText = jest.fn().mockResolvedValue(undefined)
+      const mockWriteText = vi.fn().mockResolvedValue(undefined)
       Object.defineProperty(navigator, 'clipboard', {
         value: { writeText: mockWriteText },
         writable: true,
@@ -133,7 +151,7 @@ describe('Clipboard Utilities', () => {
      * Should preserve newlines, tabs, quotes, unicode, and emojis
      */
     it('should handle special characters', async () => {
-      const mockWriteText = jest.fn().mockResolvedValue(undefined)
+      const mockWriteText = vi.fn().mockResolvedValue(undefined)
       Object.defineProperty(navigator, 'clipboard', {
         value: { writeText: mockWriteText },
         writable: true,

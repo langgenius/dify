@@ -1,26 +1,34 @@
 import type { FC } from 'react'
-import React, { useEffect, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-
 import type { HttpMethod, WebhookTriggerNodeType } from './types'
-import useConfig from './use-config'
-import ParameterTable from './components/parameter-table'
+import type { NodePanelProps } from '@/app/components/workflow/types'
+
+import copy from 'copy-to-clipboard'
+import * as React from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import InputWithCopy from '@/app/components/base/input-with-copy'
+import { SimpleSelect } from '@/app/components/base/select'
+import Tooltip from '@/app/components/base/tooltip'
+import {
+  NumberField,
+  NumberFieldControls,
+  NumberFieldDecrement,
+  NumberFieldGroup,
+  NumberFieldIncrement,
+  NumberFieldInput,
+} from '@/app/components/base/ui/number-field'
+import { toast } from '@/app/components/base/ui/toast'
+import Field from '@/app/components/workflow/nodes/_base/components/field'
+import OutputVars from '@/app/components/workflow/nodes/_base/components/output-vars'
+import Split from '@/app/components/workflow/nodes/_base/components/split'
+import { isPrivateOrLocalAddress } from '@/utils/urlValidation'
 import HeaderTable from './components/header-table'
 import ParagraphInput from './components/paragraph-input'
+import ParameterTable from './components/parameter-table'
+import { DEFAULT_STATUS_CODE, MAX_STATUS_CODE, normalizeStatusCode, useConfig } from './use-config'
 import { OutputVariablesContent } from './utils/render-output-vars'
-import Field from '@/app/components/workflow/nodes/_base/components/field'
-import Split from '@/app/components/workflow/nodes/_base/components/split'
-import OutputVars from '@/app/components/workflow/nodes/_base/components/output-vars'
-import type { NodePanelProps } from '@/app/components/workflow/types'
-import InputWithCopy from '@/app/components/base/input-with-copy'
-import { InputNumber } from '@/app/components/base/input-number'
-import { SimpleSelect } from '@/app/components/base/select'
-import Toast from '@/app/components/base/toast'
-import Tooltip from '@/app/components/base/tooltip'
-import copy from 'copy-to-clipboard'
-import { isPrivateOrLocalAddress } from '@/utils/urlValidation'
 
-const i18nPrefix = 'workflow.nodes.triggerWebhook'
+const i18nPrefix = 'nodes.triggerWebhook'
 
 const HTTP_METHODS = [
   { name: 'GET', value: 'GET' },
@@ -55,7 +63,6 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
     handleParamsChange,
     handleBodyChange,
     handleStatusCodeChange,
-    handleStatusCodeBlur,
     handleResponseBodyChange,
     generateWebhookUrl,
   } = useConfig(id, data)
@@ -70,10 +77,10 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
   }, [readOnly, inputs.webhook_url, generateWebhookUrl])
 
   return (
-    <div className='mt-2'>
-      <div className='space-y-4 px-4 pb-3 pt-2'>
+    <div className="mt-2">
+      <div className="space-y-4 px-4 pb-3 pt-2">
         {/* Webhook URL Section */}
-        <Field title={t(`${i18nPrefix}.webhookUrl`)}>
+        <Field title={t(`${i18nPrefix}.webhookUrl`, { ns: 'workflow' })}>
           <div className="space-y-1">
             <div className="flex gap-1" style={{ height: '32px' }}>
               <div className="w-26 shrink-0">
@@ -92,13 +99,10 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
               <div className="flex-1" style={{ width: '284px' }}>
                 <InputWithCopy
                   value={inputs.webhook_url || ''}
-                  placeholder={t(`${i18nPrefix}.webhookUrlPlaceholder`)}
+                  placeholder={t(`${i18nPrefix}.webhookUrlPlaceholder`, { ns: 'workflow' })}
                   readOnly
                   onCopy={() => {
-                    Toast.notify({
-                      type: 'success',
-                      message: t(`${i18nPrefix}.urlCopied`),
-                    })
+                    toast.success(t(`${i18nPrefix}.urlCopied`, { ns: 'workflow' }))
                   }}
                 />
               </div>
@@ -106,7 +110,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
             {inputs.webhook_debug_url && (
               <div className="space-y-2">
                 <Tooltip
-                  popupContent={debugUrlCopied ? t(`${i18nPrefix}.debugUrlCopied`) : t(`${i18nPrefix}.debugUrlCopy`)}
+                  popupContent={debugUrlCopied ? t(`${i18nPrefix}.debugUrlCopied`, { ns: 'workflow' }) : t(`${i18nPrefix}.debugUrlCopy`, { ns: 'workflow' })}
                   popupClassName="system-xs-regular text-text-primary bg-components-tooltip-bg border border-components-panel-border shadow-lg backdrop-blur-sm rounded-md px-1.5 py-1"
                   position="top"
                   offset={{ mainAxis: -20 }}
@@ -124,7 +128,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
                     <div className="mt-0.5 w-0.5 bg-divider-regular" style={{ height: '28px' }}></div>
                     <div className="flex-1" style={{ width: '352px', height: '32px' }}>
                       <div className="text-xs leading-4 text-text-tertiary">
-                        {t(`${i18nPrefix}.debugUrlTitle`)}
+                        {t(`${i18nPrefix}.debugUrlTitle`, { ns: 'workflow' })}
                       </div>
                       <div className="truncate text-xs leading-4 text-text-primary">
                         {inputs.webhook_debug_url}
@@ -133,8 +137,8 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
                   </div>
                 </Tooltip>
                 {isPrivateOrLocalAddress(inputs.webhook_debug_url) && (
-                  <div className="system-xs-regular mt-1 px-0 py-[2px] text-text-warning">
-                    {t(`${i18nPrefix}.debugUrlPrivateAddressWarning`)}
+                  <div className="mt-1 px-0 py-[2px] text-text-warning system-xs-regular">
+                    {t(`${i18nPrefix}.debugUrlPrivateAddressWarning`, { ns: 'workflow' })}
                   </div>
                 )}
               </div>
@@ -143,7 +147,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
         </Field>
 
         {/* Content Type */}
-        <Field title={t(`${i18nPrefix}.contentType`)}>
+        <Field title={t(`${i18nPrefix}.contentType`, { ns: 'workflow' })}>
           <div className="w-full">
             <SimpleSelect
               items={CONTENT_TYPES}
@@ -165,7 +169,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
           title="Query Parameters"
           parameters={inputs.params}
           onChange={handleParamsChange}
-          placeholder={t(`${i18nPrefix}.noQueryParameters`)}
+          placeholder={t(`${i18nPrefix}.noQueryParameters`, { ns: 'workflow' })}
         />
 
         {/* Header Parameters */}
@@ -181,41 +185,51 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
           title="Request Body Parameters"
           parameters={inputs.body}
           onChange={handleBodyChange}
-          placeholder={t(`${i18nPrefix}.noBodyParameters`)}
+          placeholder={t(`${i18nPrefix}.noBodyParameters`, { ns: 'workflow' })}
           contentType={inputs.content_type}
         />
 
         <Split />
 
         {/* Response Configuration */}
-        <Field title={t(`${i18nPrefix}.responseConfiguration`)}>
+        <Field title={t(`${i18nPrefix}.responseConfiguration`, { ns: 'workflow' })}>
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <label className="system-sm-medium text-text-tertiary">
-                {t(`${i18nPrefix}.statusCode`)}
+              <label className="text-text-tertiary system-sm-medium">
+                {t(`${i18nPrefix}.statusCode`, { ns: 'workflow' })}
               </label>
-              <InputNumber
-                value={inputs.status_code}
-                onChange={(value) => {
-                  handleStatusCodeChange(value || 200)
-                }}
+              <NumberField
+                className="w-[120px]"
+                min={DEFAULT_STATUS_CODE}
+                max={MAX_STATUS_CODE}
+                value={inputs.status_code ?? DEFAULT_STATUS_CODE}
                 disabled={readOnly}
-                wrapClassName="w-[120px]"
-                className="h-8"
-                defaultValue={200}
-                onBlur={() => {
-                  handleStatusCodeBlur(inputs.status_code)
+                onValueChange={value => value !== null && handleStatusCodeChange(value)}
+                onValueCommitted={(value, eventDetails) => {
+                  if (eventDetails.reason === 'input-blur' || eventDetails.reason === 'input-clear')
+                    handleStatusCodeChange(normalizeStatusCode(value ?? DEFAULT_STATUS_CODE))
                 }}
-              />
+              >
+                <NumberFieldGroup size="regular">
+                  <NumberFieldInput
+                    size="regular"
+                    className="h-8"
+                  />
+                  <NumberFieldControls>
+                    <NumberFieldIncrement size="regular" />
+                    <NumberFieldDecrement size="regular" />
+                  </NumberFieldControls>
+                </NumberFieldGroup>
+              </NumberField>
             </div>
             <div>
-              <label className="system-sm-medium mb-2 block text-text-tertiary">
-                {t(`${i18nPrefix}.responseBody`)}
+              <label className="mb-2 block text-text-tertiary system-sm-medium">
+                {t(`${i18nPrefix}.responseBody`, { ns: 'workflow' })}
               </label>
               <ParagraphInput
                 value={inputs.response_body}
                 onChange={handleResponseBodyChange}
-                placeholder={t(`${i18nPrefix}.responseBodyPlaceholder`)}
+                placeholder={t(`${i18nPrefix}.responseBodyPlaceholder`, { ns: 'workflow' })}
                 disabled={readOnly}
               />
             </div>
@@ -225,7 +239,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
 
       <Split />
 
-      <div className=''>
+      <div className="">
         <OutputVars
           collapsed={outputVarsCollapsed}
           onCollapse={setOutputVarsCollapsed}

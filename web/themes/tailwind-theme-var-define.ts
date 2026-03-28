@@ -89,6 +89,17 @@ const vars = {
   'components-button-indigo-bg-hover': 'var(--color-components-button-indigo-bg-hover)',
   'components-button-indigo-bg-disabled': 'var(--color-components-button-indigo-bg-disabled)',
 
+  'components-button-debug-text': 'var(--color-components-button-debug-text)',
+  'components-button-debug-text-disabled': 'var(--color-components-button-debug-text-disabled)',
+  'components-button-debug-bg': 'var(--color-components-button-debug-bg)',
+  'components-button-debug-bg-hover': 'var(--color-components-button-debug-bg-hover)',
+  'components-button-debug-bg-disabled': 'var(--color-components-button-debug-bg-disabled)',
+  'components-button-debug-border': 'var(--color-components-button-debug-border)',
+  'components-button-debug-border-hover': 'var(--color-components-button-debug-border-hover)',
+  'components-button-debug-border-disabled': 'var(--color-components-button-debug-border-disabled)',
+
+  'components-button-button-seam': 'var(--color-components-button-button-seam)',
+
   'components-checkbox-icon': 'var(--color-components-checkbox-icon)',
   'components-checkbox-icon-disabled': 'var(--color-components-checkbox-icon-disabled)',
   'components-checkbox-bg': 'var(--color-components-checkbox-bg)',
@@ -149,6 +160,7 @@ const vars = {
   'components-panel-on-panel-item-bg-destructive-hover-transparent': 'var(--color-components-panel-on-panel-item-bg-destructive-hover-transparent)',
 
   'components-panel-bg-transparent': 'var(--color-components-panel-bg-transparent)',
+  'components-panel-bg-blur-burn': 'var(--color-components-panel-bg-blur-burn)',
 
   'components-main-nav-nav-button-text': 'var(--color-components-main-nav-nav-button-text)',
   'components-main-nav-nav-button-text-active': 'var(--color-components-main-nav-nav-button-text-active)',
@@ -158,6 +170,26 @@ const vars = {
   'components-main-nav-nav-button-bg-hover': 'var(--color-components-main-nav-nav-button-bg-hover)',
 
   'components-main-nav-nav-user-border': 'var(--color-components-main-nav-nav-user-border)',
+
+  'components-main-nav-text': 'var(--color-components-main-nav-text)',
+  'components-main-nav-text-active': 'var(--color-components-main-nav-text-active)',
+  'components-main-nav-glass-edge-highlight-first': 'var(--color-components-main-nav-glass-edge-highlight-first)',
+  'components-main-nav-glass-edge-highlight-middle': 'var(--color-components-main-nav-glass-edge-highlight-middle)',
+  'components-main-nav-glass-edge-highlight-end': 'var(--color-components-main-nav-glass-edge-highlight-end)',
+
+  'components-main-nav-glass-edge-reflection-first': 'var(--color-components-main-nav-glass-edge-reflection-first)',
+  'components-main-nav-glass-edge-reflection-middle': 'var(--color-components-main-nav-glass-edge-reflection-middle)',
+  'components-main-nav-glass-edge-reflection-end': 'var(--color-components-main-nav-glass-edge-reflection-end)',
+
+  'components-main-nav-glass-surface-first': 'var(--color-components-main-nav-glass-surface-first)',
+  'components-main-nav-glass-surface-middle-1': 'var(--color-components-main-nav-glass-surface-middle-1)',
+  'components-main-nav-glass-surface-middle-2': 'var(--color-components-main-nav-glass-surface-middle-2)',
+  'components-main-nav-glass-surface-end': 'var(--color-components-main-nav-glass-surface-end)',
+
+  'components-main-nav-glass-inner-glow': 'var(--color-components-main-nav-glass-inner-glow)',
+  'components-main-nav-glass-shadow-reflection': 'var(--color-components-main-nav-glass-shadow-reflection)',
+  'components-main-nav-glass-shadow-reflection-glow': 'var(--color-components-main-nav-glass-shadow-reflection-glow)',
+  'components-main-nav-glass-text-glow': 'var(--color-components-main-nav-glass-text-glow)',
 
   'components-slider-knob': 'var(--color-components-slider-knob)',
   'components-slider-knob-hover': 'var(--color-components-slider-knob-hover)',
@@ -357,6 +389,8 @@ const vars = {
   'components-icon-bg-orange-solid': 'var(--color-components-icon-bg-orange-solid)',
   'components-icon-bg-orange-soft': 'var(--color-components-icon-bg-orange-soft)',
 
+  'components-marketplace-header-bg': 'var(--color-components-marketplace-header-bg)',
+
   'text-primary': 'var(--color-text-primary)',
   'text-secondary': 'var(--color-text-secondary)',
   'text-tertiary': 'var(--color-text-tertiary)',
@@ -418,6 +452,7 @@ const vars = {
   'background-overlay-backdrop': 'var(--color-background-overlay-backdrop)',
   'background-body-transparent': 'var(--color-background-body-transparent)',
   'background-section-burn-inverted': 'var(--color-background-section-burn-inverted)',
+  'background-default-hover-alpha-0': 'var(--color-background-default-hover-alpha-0)',
 
   'shadow-shadow-1': 'var(--color-shadow-shadow-1)',
   'shadow-shadow-3': 'var(--color-shadow-shadow-3)',
@@ -501,6 +536,18 @@ const vars = {
   'workflow-workflow-progress-bg-1': 'var(--color-workflow-workflow-progress-bg-1)',
   'workflow-workflow-progress-bg-2': 'var(--color-workflow-workflow-progress-bg-2)',
 
+  'workflow-debug-run-status-bg': 'var(--color-workflow-debug-run-status-bg)',
+  'workflow-debug-breakpoint': 'var(--color-workflow-debug-breakpoint)',
+  'workflow-debug-text': 'var(--color-workflow-debug-text)',
+  'workflow-debug-text-disabled': 'var(--color-workflow-debug-text-disabled)',
+  'workflow-debug-run-status-bg-alt': 'var(--color-workflow-debug-run-status-bg-alt)',
+
+  'workflow-test-run-run-status-bg': 'var(--color-workflow-test-run-run-status-bg)',
+  'workflow-test-run-text': 'var(--color-workflow-test-run-text)',
+  'workflow-test-run-run-status-bg-alt': 'var(--color-workflow-test-run-run-status-bg-alt)',
+  'workflow-test-run-paused-bg': 'var(--color-workflow-test-run-paused-bg)',
+  'workflow-test-run-paused-text': 'var(--color-workflow-test-run-paused-text)',
+
   'divider-subtle': 'var(--color-divider-subtle)',
   'divider-regular': 'var(--color-divider-regular)',
   'divider-deep': 'var(--color-divider-deep)',
@@ -545,6 +592,7 @@ const vars = {
   'effects-highlight-lightmode-off': 'var(--color-effects-highlight-lightmode-off)',
   'effects-image-frame': 'var(--color-effects-image-frame)',
   'effects-icon-border': 'var(--color-effects-icon-border)',
+  'effects-highlight-subtle': 'var(--color-effects-highlight-subtle)',
 
   'util-colors-orange-dark-orange-dark-50': 'var(--color-util-colors-orange-dark-orange-dark-50)',
   'util-colors-orange-dark-orange-dark-100': 'var(--color-util-colors-orange-dark-orange-dark-100)',
@@ -759,8 +807,10 @@ const vars = {
   'saas-background-inverted': 'var(--color-saas-background-inverted)',
   'saas-background-inverted-hover': 'var(--color-saas-background-inverted-hover)',
 
-  'dify-logo-dify-logo-blue': 'var(--color-dify-logo-dify-logo-blue)',
-  'dify-logo-dify-logo-black': 'var(--color-dify-logo-dify-logo-black)',
+  'dify-logo-blue': 'var(--color-dify-logo-blue)',
+  'dify-logo-black': 'var(--color-dify-logo-black)',
+  'dify-logo-outline-1': 'var(--color-dify-logo-outline-1)',
+  'dify-logo-outline-2': 'var(--color-dify-logo-outline-2)',
 
 }
 export default vars

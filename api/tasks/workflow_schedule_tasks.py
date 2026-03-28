@@ -1,15 +1,14 @@
 import logging
 
 from celery import shared_task
-from sqlalchemy.orm import sessionmaker
 
+from core.db.session_factory import session_factory
 from core.workflow.nodes.trigger_schedule.exc import (
     ScheduleExecutionError,
     ScheduleNotFoundError,
     TenantOwnerNotFoundError,
 )
 from enums.quota_type import QuotaType, unlimited
-from extensions.ext_database import db
 from models.trigger import WorkflowSchedulePlan
 from services.async_workflow_service import AsyncWorkflowService
 from services.errors.app import QuotaExceededError
@@ -33,10 +32,7 @@ def run_schedule_trigger(schedule_id: str) -> None:
         TenantOwnerNotFoundError: If no owner/admin for tenant
         ScheduleExecutionError: If workflow trigger fails
     """
-
-    session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
-
-    with session_factory() as session:
+    with session_factory.create_session() as session:
         schedule = session.get(WorkflowSchedulePlan, schedule_id)
         if not schedule:
             raise ScheduleNotFoundError(f"Schedule {schedule_id} not found")

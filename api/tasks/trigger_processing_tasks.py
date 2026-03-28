@@ -12,22 +12,23 @@ from datetime import UTC, datetime
 from typing import Any
 
 from celery import shared_task
+from graphon.enums import WorkflowExecutionStatus
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.db.session_factory import session_factory
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.entities.request import TriggerInvokeEventResponse
 from core.plugin.impl.exc import PluginInvokeError
+from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
 from core.trigger.debug.event_bus import TriggerDebugEventBus
 from core.trigger.debug.events import PluginTriggerDebugEvent, build_plugin_pool_key
 from core.trigger.entities.entities import TriggerProviderEntity
 from core.trigger.provider import PluginTriggerProviderController
 from core.trigger.trigger_manager import TriggerManager
-from core.workflow.enums import NodeType, WorkflowExecutionStatus
 from core.workflow.nodes.trigger_plugin.entities import TriggerEventNodeData
 from enums.quota_type import QuotaType, unlimited
-from extensions.ext_database import db
 from models.enums import (
     AppTriggerType,
     CreatorUserRole,
@@ -164,7 +165,7 @@ def _record_trigger_failure_log(
         elapsed_time=0.0,
         total_tokens=0,
         total_steps=0,
-        created_by_role=created_by_role.value,
+        created_by_role=created_by_role,
         created_by=created_by,
         created_at=now,
         finished_at=now,
@@ -178,8 +179,8 @@ def _record_trigger_failure_log(
         app_id=workflow.app_id,
         workflow_id=workflow.id,
         workflow_run_id=workflow_run.id,
-        created_from=WorkflowAppLogCreatedFrom.SERVICE_API.value,
-        created_by_role=created_by_role.value,
+        created_from=WorkflowAppLogCreatedFrom.SERVICE_API,
+        created_by_role=created_by_role,
         created_by=created_by,
     )
     session.add(workflow_app_log)
@@ -212,7 +213,7 @@ def _record_trigger_failure_log(
         error=error_message,
         queue_name=queue_name,
         retry_count=0,
-        created_by_role=created_by_role.value,
+        created_by_role=created_by_role,
         created_by=created_by,
         triggered_at=now,
         finished_at=now,
@@ -257,7 +258,7 @@ def dispatch_triggered_workflow(
         tenant_id=subscription.tenant_id, provider_id=TriggerProviderID(subscription.provider_id)
     )
     trigger_entity: TriggerProviderEntity = provider_controller.entity
-    with Session(db.engine) as session:
+    with session_factory.create_session() as session:
         workflows: Mapping[str, Workflow] = _get_latest_workflows_by_app_ids(session, subscribers)
 
         end_users: Mapping[str, EndUser] = EndUserService.create_end_user_batch(
@@ -278,7 +279,7 @@ def dispatch_triggered_workflow(
 
             # Find the trigger node in the workflow
             event_node = None
-            for node_id, node_config in workflow.walk_nodes(NodeType.TRIGGER_PLUGIN):
+            for node_id, node_config in workflow.walk_nodes(TRIGGER_PLUGIN_NODE_TYPE):
                 if node_id == plugin_trigger.node_id:
                     event_node = node_config
                     break

@@ -1,11 +1,12 @@
 import type { NodeDefault } from '../../types'
 import type { KnowledgeRetrievalNodeType } from './types'
-import { checkoutRerankModelConfiguredInRetrievalSettings } from './utils'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { genNodeMetaData } from '@/app/components/workflow/utils'
 import { DATASET_DEFAULT } from '@/config'
 import { RETRIEVE_TYPE } from '@/types/app'
-import { genNodeMetaData } from '@/app/components/workflow/utils'
-import { BlockEnum } from '@/app/components/workflow/types'
-const i18nPrefix = 'workflow'
+import { checkoutRerankModelConfiguredInRetrievalSettings } from './utils'
+
+const i18nPrefix = ''
 
 const metaData = genNodeMetaData({
   sort: 2,
@@ -28,17 +29,17 @@ const nodeDefault: NodeDefault<KnowledgeRetrievalNodeType> = {
     let errorMessages = ''
 
     if (!errorMessages && (!payload.dataset_ids || payload.dataset_ids.length === 0))
-      errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.nodes.knowledgeRetrieval.knowledge`) })
+      errorMessages = t(`${i18nPrefix}errorMsg.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}nodes.knowledgeRetrieval.knowledge`, { ns: 'workflow' }) })
 
     if (!errorMessages && payload.retrieval_mode === RETRIEVE_TYPE.oneWay && !payload.single_retrieval_config?.model?.provider)
-      errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t('common.modelProvider.systemReasoningModel.key') })
+      errorMessages = t(`${i18nPrefix}errorMsg.fieldRequired`, { ns: 'workflow', field: t('modelProvider.systemReasoningModel.key', { ns: 'common' }) })
 
     const { _datasets, multiple_retrieval_config, retrieval_mode } = payload
     if (retrieval_mode === RETRIEVE_TYPE.multiWay) {
       const checked = checkoutRerankModelConfiguredInRetrievalSettings(_datasets || [], multiple_retrieval_config)
 
       if (!errorMessages && !checked)
-        errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.errorMsg.fields.rerankModel`) })
+        errorMessages = t(`${i18nPrefix}errorMsg.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}errorMsg.fields.rerankModel`, { ns: 'workflow' }) })
     }
 
     return {

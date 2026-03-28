@@ -76,7 +76,7 @@ class PluginParameter(BaseModel):
     auto_generate: PluginParameterAutoGenerate | None = None
     template: PluginParameterTemplate | None = None
     required: bool = False
-    default: Union[float, int, str, bool] | None = None
+    default: Union[float, int, str, bool, list, dict] | None = None
     min: Union[float, int] | None = None
     max: Union[float, int] | None = None
     precision: int | None = None
@@ -191,7 +191,7 @@ def cast_parameter_value(typ: StrEnum, value: Any, /):
     except ValueError:
         raise
     except Exception:
-        raise ValueError(f"The tool parameter value {value} is not in correct type of {as_normal_type(typ)}.")
+        raise ValueError(f"The tool parameter value {repr(value)} is not in correct type of {as_normal_type(typ)}.")
 
 
 def init_frontend_parameter(rule: PluginParameter, type: StrEnum, value: Any):

@@ -1,13 +1,13 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
-import { fn } from 'storybook/test'
-import { useState } from 'react'
-import FileUploaderInAttachmentWrapper from './index'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import type { FileEntity } from '../types'
 import type { FileUpload } from '@/app/components/base/features/types'
+import { useState } from 'react'
+import { fn } from 'storybook/test'
 import { PreviewMode } from '@/app/components/base/features/types'
-import { TransferMethod } from '@/types/app'
 import { ToastProvider } from '@/app/components/base/toast'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { TransferMethod } from '@/types/app'
+import FileUploaderInAttachmentWrapper from './index'
 
 const SAMPLE_IMAGE = 'data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'128\' height=\'128\'><rect width=\'128\' height=\'128\' rx=\'16\' fill=\'#E0F2FE\'/><text x=\'50%\' y=\'50%\' dominant-baseline=\'middle\' text-anchor=\'middle\' font-family=\'sans-serif\' font-size=\'18\' fill=\'#1F2937\'>IMG</text></svg>'
 

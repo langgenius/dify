@@ -1,11 +1,11 @@
 import types
 
 import pytest
+from graphon.model_runtime.entities.common_entities import I18nObject
+from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.provider_entities import ConfigurateMethod
 
 from core.entities.provider_entities import CredentialConfiguration, CustomModelConfiguration
-from core.model_runtime.entities.common_entities import I18nObject
-from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.entities.provider_entities import ConfigurateMethod
 from models.provider import ProviderType
 from services.model_provider_service import ModelProviderService
 
@@ -27,7 +27,6 @@ def service_with_fake_configurations():
         description=None,
         icon_small=None,
         icon_small_dark=None,
-        icon_large=None,
         background=None,
         help=None,
         supported_model_types=[ModelType.LLM],
@@ -72,7 +71,7 @@ def service_with_fake_configurations():
             return _FakeConfigurations(fake_provider_configuration)
 
     svc = ModelProviderService()
-    svc.provider_manager = _FakeProviderManager()
+    svc._get_provider_manager = lambda tenant_id: _FakeProviderManager()
     return svc
 
 

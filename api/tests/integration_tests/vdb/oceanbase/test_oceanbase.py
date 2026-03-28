@@ -21,6 +21,7 @@ def oceanbase_vector():
             database="test",
             password="difyai123456",
             enable_hybrid_search=True,
+            batch_size=10,
         ),
     )
 

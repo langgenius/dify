@@ -2,12 +2,12 @@ import logging
 from datetime import UTC, datetime
 from typing import Any, ClassVar
 
+from graphon.graph_engine.layers import GraphEngineLayer
+from graphon.graph_events import GraphEngineEvent, GraphRunFailedEvent, GraphRunPausedEvent, GraphRunSucceededEvent
 from pydantic import TypeAdapter
-from sqlalchemy.orm import Session, sessionmaker
 
-from core.workflow.graph_engine.layers.base import GraphEngineLayer
-from core.workflow.graph_events.base import GraphEngineEvent
-from core.workflow.graph_events.graph import GraphRunFailedEvent, GraphRunPausedEvent, GraphRunSucceededEvent
+from core.db.session_factory import session_factory
+from core.workflow.system_variables import SystemVariableKey, get_system_text
 from models.enums import WorkflowTriggerStatus
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
 from tasks.workflow_cfs_scheduler.cfs_scheduler import AsyncWorkflowCFSPlanEntity
@@ -31,12 +31,11 @@ class TriggerPostLayer(GraphEngineLayer):
         cfs_plan_scheduler_entity: AsyncWorkflowCFSPlanEntity,
         start_time: datetime,
         trigger_log_id: str,
-        session_maker: sessionmaker[Session],
     ):
+        super().__init__()
         self.trigger_log_id = trigger_log_id
         self.start_time = start_time
         self.cfs_plan_scheduler_entity = cfs_plan_scheduler_entity
-        self.session_maker = session_maker
 
     def on_graph_start(self):
         pass
@@ -46,7 +45,7 @@ class TriggerPostLayer(GraphEngineLayer):
         Update trigger log with success or failure.
         """
         if isinstance(event, tuple(self._STATUS_MAP.keys())):
-            with self.session_maker() as session:
+            with session_factory.create_session() as session:
                 repo = SQLAlchemyWorkflowTriggerLogRepository(session)
                 trigger_log = repo.get_by_id(self.trigger_log_id)
                 if not trigger_log:
@@ -57,14 +56,13 @@ class TriggerPostLayer(GraphEngineLayer):
                 elapsed_time = (datetime.now(UTC) - self.start_time).total_seconds()
 
                 # Extract relevant data from result
-                if not self.graph_runtime_state:
-                    logger.exception("Graph runtime state is not set")
-                    return
-
                 outputs = self.graph_runtime_state.outputs
 
                 # BASICLY, workflow_execution_id is the same as workflow_run_id
-                workflow_run_id = self.graph_runtime_state.system_variable.workflow_execution_id
+                workflow_run_id = get_system_text(
+                    self.graph_runtime_state.variable_pool,
+                    SystemVariableKey.WORKFLOW_EXECUTION_ID,
+                )
                 assert workflow_run_id, "Workflow run id is not set"
 
                 total_tokens = self.graph_runtime_state.total_tokens

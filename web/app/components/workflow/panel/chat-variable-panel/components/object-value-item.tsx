@@ -1,12 +1,12 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import { produce } from 'immer'
-import { useContext } from 'use-context-selector'
-import { ToastContext } from '@/app/components/base/toast'
-import VariableTypeSelector from '@/app/components/workflow/panel/chat-variable-panel/components/variable-type-select'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/components/base/ui/toast'
 import RemoveButton from '@/app/components/workflow/nodes/_base/components/remove-button'
+import VariableTypeSelector from '@/app/components/workflow/panel/chat-variable-panel/components/variable-type-select'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 
 type Props = {
@@ -32,19 +32,21 @@ const ObjectValueItem: FC<Props> = ({
   onChange,
 }) => {
   const { t } = useTranslation()
-  const { notify } = useContext(ToastContext)
   const [isFocus, setIsFocus] = useState(false)
 
   const handleKeyChange = useCallback((index: number) => {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (!/^\w+$/.test(e.target.value)) {
+        toast.error(t('chatVariable.modal.objectKeyPatternError', { ns: 'workflow' }))
+        return
+      }
+
       const newList = produce(list, (draft: any[]) => {
-        if (!/^\w+$/.test(e.target.value))
-          return notify({ type: 'error', message: 'key is can only contain letters, numbers and underscores' })
         draft[index].key = e.target.value
       })
       onChange(newList)
     }
-  }, [list, notify, onChange])
+  }, [list, onChange, t])
 
   const handleTypeChange = useCallback((index: number) => {
     return (type: ChatVarType) => {
@@ -91,31 +93,31 @@ const ObjectValueItem: FC<Props> = ({
   }, [handleItemAdd, index, list.length])
 
   return (
-    <div className='group flex border-t border-gray-200'>
+    <div className="group flex border-t border-gray-200">
       {/* Key */}
-      <div className='w-[120px] border-r border-gray-200'>
+      <div className="w-[120px] border-r border-gray-200">
         <input
-          className='system-xs-regular placeholder:system-xs-regular block h-7 w-full appearance-none px-2 text-text-secondary caret-primary-600 outline-none placeholder:text-components-input-text-placeholder  hover:bg-state-base-hover focus:bg-components-input-bg-active'
-          placeholder={t('workflow.chatVariable.modal.objectKey') || ''}
+          className="block h-7 w-full appearance-none px-2 text-text-secondary caret-primary-600 outline-none system-xs-regular placeholder:text-components-input-text-placeholder placeholder:system-xs-regular hover:bg-state-base-hover focus:bg-components-input-bg-active"
+          placeholder={t('chatVariable.modal.objectKey', { ns: 'workflow' }) || ''}
           value={list[index].key}
           onChange={handleKeyChange(index)}
         />
       </div>
       {/* Type */}
-      <div className='w-[96px] border-r border-gray-200'>
+      <div className="w-[96px] border-r border-gray-200">
         <VariableTypeSelector
           inCell
           value={list[index].type}
           list={typeList}
           onSelect={handleTypeChange(index)}
-          popupClassName='w-[120px]'
+          popupClassName="w-[120px]"
         />
       </div>
       {/* Value */}
-      <div className='relative w-[230px]'>
+      <div className="relative w-[230px]">
         <input
-          className='system-xs-regular placeholder:system-xs-regular block h-7 w-full appearance-none px-2 text-text-secondary caret-primary-600 outline-none placeholder:text-components-input-text-placeholder  hover:bg-state-base-hover focus:bg-components-input-bg-active'
-          placeholder={t('workflow.chatVariable.modal.objectValue') || ''}
+          className="block h-7 w-full appearance-none px-2 text-text-secondary caret-primary-600 outline-none system-xs-regular placeholder:text-components-input-text-placeholder placeholder:system-xs-regular hover:bg-state-base-hover focus:bg-components-input-bg-active"
+          placeholder={t('chatVariable.modal.objectValue', { ns: 'workflow' }) || ''}
           value={list[index].value}
           onChange={handleValueChange(index)}
           onFocus={() => handleFocusChange()}
@@ -124,7 +126,7 @@ const ObjectValueItem: FC<Props> = ({
         />
         {list.length > 1 && !isFocus && (
           <RemoveButton
-            className='absolute right-1 top-0.5 z-10 hidden group-hover:block'
+            className="absolute right-1 top-0.5 z-10 hidden group-hover:block"
             onClick={handleItemRemove(index)}
           />
         )}

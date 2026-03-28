@@ -9,7 +9,7 @@ This module tests the mail sending functionality including:
 """
 
 import smtplib
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 
@@ -151,7 +151,7 @@ class TestSMTPIntegration:
         client.send(mail_data)
 
         # Assert
-        mock_smtp_ssl.assert_called_once_with("smtp.example.com", 465, timeout=10)
+        mock_smtp_ssl.assert_called_once_with("smtp.example.com", 465, timeout=10, local_hostname=ANY)
         mock_server.login.assert_called_once_with("user@example.com", "password123")
         mock_server.sendmail.assert_called_once()
         mock_server.quit.assert_called_once()
@@ -181,7 +181,7 @@ class TestSMTPIntegration:
         client.send(mail_data)
 
         # Assert
-        mock_smtp.assert_called_once_with("smtp.example.com", 587, timeout=10)
+        mock_smtp.assert_called_once_with("smtp.example.com", 587, timeout=10, local_hostname=ANY)
         mock_server.ehlo.assert_called()
         mock_server.starttls.assert_called_once()
         assert mock_server.ehlo.call_count == 2  # Before and after STARTTLS
@@ -213,7 +213,7 @@ class TestSMTPIntegration:
         client.send(mail_data)
 
         # Assert
-        mock_smtp.assert_called_once_with("smtp.example.com", 25, timeout=10)
+        mock_smtp.assert_called_once_with("smtp.example.com", 25, timeout=10, local_hostname=ANY)
         mock_server.login.assert_called_once()
         mock_server.sendmail.assert_called_once()
         mock_server.quit.assert_called_once()

@@ -47,20 +47,49 @@ def build_protected_resource_metadata_discovery_urls(
     """
     Build a list of URLs to try for Protected Resource Metadata discovery.
 
-    Per SEP-985, supports fallback when discovery fails at one URL.
+    Per RFC 9728 Section 5.1, supports fallback when discovery fails at one URL.
+    Priority order:
+    1. URL from WWW-Authenticate header (if provided)
+    2. Well-known URI with path: https://example.com/.well-known/oauth-protected-resource/public/mcp
+    3. Well-known URI at root: https://example.com/.well-known/oauth-protected-resource
     """
     urls = []
 
+    parsed_server_url = urlparse(server_url)
+    base_url = f"{parsed_server_url.scheme}://{parsed_server_url.netloc}"
+    path = parsed_server_url.path.rstrip("/")
+
     # First priority: URL from WWW-Authenticate header
     if www_auth_resource_metadata_url:
-        urls.append(www_auth_resource_metadata_url)
+        parsed_metadata_url = urlparse(www_auth_resource_metadata_url)
+        normalized_metadata_url = None
+        if parsed_metadata_url.scheme and parsed_metadata_url.netloc:
+            normalized_metadata_url = www_auth_resource_metadata_url
+        elif not parsed_metadata_url.scheme and parsed_metadata_url.netloc:
+            normalized_metadata_url = f"{parsed_server_url.scheme}:{www_auth_resource_metadata_url}"
+        elif (
+            not parsed_metadata_url.scheme
+            and not parsed_metadata_url.netloc
+            and parsed_metadata_url.path.startswith("/")
+        ):
+            first_segment = parsed_metadata_url.path.lstrip("/").split("/", 1)[0]
+            if first_segment == ".well-known" or "." not in first_segment:
+                normalized_metadata_url = urljoin(base_url, parsed_metadata_url.path)
+
+        if normalized_metadata_url:
+            urls.append(normalized_metadata_url)
 
     # Fallback: construct from server URL
-    parsed = urlparse(server_url)
-    base_url = f"{parsed.scheme}://{parsed.netloc}"
-    fallback_url = urljoin(base_url, "/.well-known/oauth-protected-resource")
-    if fallback_url not in urls:
-        urls.append(fallback_url)
+    # Priority 2: With path insertion (e.g., /.well-known/oauth-protected-resource/public/mcp)
+    if path:
+        path_url = f"{base_url}/.well-known/oauth-protected-resource{path}"
+        if path_url not in urls:
+            urls.append(path_url)
+
+    # Priority 3: At root (e.g., /.well-known/oauth-protected-resource)
+    root_url = f"{base_url}/.well-known/oauth-protected-resource"
+    if root_url not in urls:
+        urls.append(root_url)
 
     return urls
 
@@ -71,30 +100,34 @@ def build_oauth_authorization_server_metadata_discovery_urls(auth_server_url: st
 
     Supports both OAuth 2.0 (RFC 8414) and OpenID Connect discovery.
 
-    Per RFC 8414 section 3:
-    - If issuer has no path: https://example.com/.well-known/oauth-authorization-server
-    - If issuer has path: https://example.com/.well-known/oauth-authorization-server{path}
-
-    Example:
-    - issuer: https://example.com/oauth
-    - metadata: https://example.com/.well-known/oauth-authorization-server/oauth
+    Per RFC 8414 section 3.1 and section 5, try all possible endpoints:
+    - OAuth 2.0 with path insertion: https://example.com/.well-known/oauth-authorization-server/tenant1
+    - OpenID Connect with path insertion: https://example.com/.well-known/openid-configuration/tenant1
+    - OpenID Connect path appending: https://example.com/tenant1/.well-known/openid-configuration
+    - OAuth 2.0 at root: https://example.com/.well-known/oauth-authorization-server
+    - OpenID Connect at root: https://example.com/.well-known/openid-configuration
     """
     urls = []
     base_url = auth_server_url or server_url
 
     parsed = urlparse(base_url)
     base = f"{parsed.scheme}://{parsed.netloc}"
-    path = parsed.path.rstrip("/")  # Remove trailing slash
+    path = parsed.path.rstrip("/")
+    # OAuth 2.0 Authorization Server Metadata at root (MCP-03-26)
+    urls.append(f"{base}/.well-known/oauth-authorization-server")
 
-    # Try OpenID Connect discovery first (more common)
-    urls.append(urljoin(base + "/", ".well-known/openid-configuration"))
+    # OpenID Connect Discovery at root
+    urls.append(f"{base}/.well-known/openid-configuration")
 
-    # OAuth 2.0 Authorization Server Metadata (RFC 8414)
-    # Include the path component if present in the issuer URL
     if path:
-        urls.append(urljoin(base, f".well-known/oauth-authorization-server{path}"))
-    else:
-        urls.append(urljoin(base, ".well-known/oauth-authorization-server"))
+        # OpenID Connect Discovery with path insertion
+        urls.append(f"{base}/.well-known/openid-configuration{path}")
+
+        # OpenID Connect Discovery path appending
+        urls.append(f"{base}{path}/.well-known/openid-configuration")
+
+        # OAuth 2.0 Authorization Server Metadata with path insertion
+        urls.append(f"{base}/.well-known/oauth-authorization-server{path}")
 
     return urls
 

@@ -1,6 +1,15 @@
 from unittest.mock import Mock, patch
 
 import pytest
+from graphon.model_runtime.entities.common_entities import I18nObject
+from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.provider_entities import (
+    ConfigurateMethod,
+    CredentialFormSchema,
+    FormOption,
+    FormType,
+    ProviderEntity,
+)
 
 from core.entities.provider_configuration import ProviderConfiguration, SystemConfigurationStatus
 from core.entities.provider_entities import (
@@ -11,15 +20,6 @@ from core.entities.provider_entities import (
     QuotaUnit,
     RestrictModel,
     SystemConfiguration,
-)
-from core.model_runtime.entities.common_entities import I18nObject
-from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.entities.provider_entities import (
-    ConfigurateMethod,
-    CredentialFormSchema,
-    FormOption,
-    FormType,
-    ProviderEntity,
 )
 from models.provider import Provider, ProviderType
 
@@ -32,7 +32,6 @@ def mock_provider_entity():
         label=I18nObject(en_US="OpenAI", zh_Hans="OpenAI"),
         description=I18nObject(en_US="OpenAI provider", zh_Hans="OpenAI 提供商"),
         icon_small=I18nObject(en_US="icon.png", zh_Hans="icon.png"),
-        icon_large=I18nObject(en_US="icon.png", zh_Hans="icon.png"),
         background="background.png",
         help=None,
         supported_model_types=[ModelType.LLM],

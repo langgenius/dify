@@ -1,25 +1,24 @@
+import type {
+  KnowledgeBaseNodeType,
+  RerankingModel,
+  SummaryIndexSetting,
+} from '../types'
+import type { ValueSelector } from '@/app/components/workflow/types'
+import { produce } from 'immer'
 import {
   useCallback,
 } from 'react'
-import { produce } from 'immer'
 import { useStoreApi } from 'reactflow'
 import { useNodeDataUpdate } from '@/app/components/workflow/hooks'
-import type { ValueSelector } from '@/app/components/workflow/types'
+import { DEFAULT_WEIGHTED_SCORE, RerankingModeEnum } from '@/models/datasets'
 import {
   ChunkStructureEnum,
+  HybridSearchModeEnum,
   IndexMethodEnum,
   RetrievalSearchMethodEnum,
   WeightedScoreEnum,
 } from '../types'
-import type {
-  KnowledgeBaseNodeType,
-  RerankingModel,
-} from '../types'
-import {
-  HybridSearchModeEnum,
-} from '../types'
 import { isHighQualitySearchMethod } from '../utils'
-import { DEFAULT_WEIGHTED_SCORE, RerankingModeEnum } from '@/models/datasets'
 
 export const useConfig = (id: string) => {
   const store = useStoreApi()
@@ -248,6 +247,16 @@ export const useConfig = (id: string) => {
     })
   }, [handleNodeDataUpdate])
 
+  const handleSummaryIndexSettingChange = useCallback((summaryIndexSetting: SummaryIndexSetting) => {
+    const nodeData = getNodeData()
+    handleNodeDataUpdate({
+      summary_index_setting: {
+        ...nodeData?.data.summary_index_setting,
+        ...summaryIndexSetting,
+      },
+    })
+  }, [handleNodeDataUpdate, getNodeData])
+
   return {
     handleChunkStructureChange,
     handleIndexMethodChange,
@@ -262,5 +271,6 @@ export const useConfig = (id: string) => {
     handleScoreThresholdChange,
     handleScoreThresholdEnabledChange,
     handleInputVariableChange,
+    handleSummaryIndexSettingChange,
   }
 }

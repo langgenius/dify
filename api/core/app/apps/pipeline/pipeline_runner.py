@@ -2,29 +2,31 @@ import logging
 import time
 from typing import cast
 
+from graphon.entities import GraphInitParams
+from graphon.enums import WorkflowType
+from graphon.graph import Graph
+from graphon.graph_events import GraphEngineEvent, GraphRunFailedEvent
+from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.variable_loader import VariableLoader
+from graphon.variables.variables import RAGPipelineVariable, RAGPipelineVariableInput
+
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.pipeline.pipeline_config_manager import PipelineConfig
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import (
     InvokeFrom,
     RagPipelineGenerateEntity,
+    UserFrom,
+    build_dify_run_context,
 )
-from core.variables.variables import RAGPipelineVariable, RAGPipelineVariableInput
-from core.workflow.entities.graph_init_params import GraphInitParams
-from core.workflow.enums import WorkflowType
-from core.workflow.graph import Graph
-from core.workflow.graph_engine.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
-from core.workflow.graph_events import GraphEngineEvent, GraphRunFailedEvent
-from core.workflow.nodes.node_factory import DifyNodeFactory
-from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
-from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
-from core.workflow.variable_loader import VariableLoader
+from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
+from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
+from core.workflow.node_factory import DifyNodeFactory, get_default_root_node_id
+from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
+from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
 from models.dataset import Document, Pipeline
-from models.enums import UserFrom
 from models.model import EndUser
 from models.workflow import Workflow
 
@@ -73,9 +75,15 @@ class PipelineRunner(WorkflowBasedAppRunner):
         """
         app_config = self.application_generate_entity.app_config
         app_config = cast(PipelineConfig, app_config)
+        invoke_from = self.application_generate_entity.invoke_from
+
+        if self.application_generate_entity.single_iteration_run or self.application_generate_entity.single_loop_run:
+            invoke_from = InvokeFrom.DEBUGGER
+
+        user_from = self._resolve_user_from(invoke_from)
 
         user_id = None
-        if self.application_generate_entity.invoke_from in {InvokeFrom.WEB_APP, InvokeFrom.SERVICE_API}:
+        if invoke_from in {InvokeFrom.WEB_APP, InvokeFrom.SERVICE_API}:
             end_user = db.session.query(EndUser).where(EndUser.id == self.application_generate_entity.user_id).first()
             if end_user:
                 user_id = end_user.session_id
@@ -99,13 +107,14 @@ class PipelineRunner(WorkflowBasedAppRunner):
                 workflow=workflow,
                 single_iteration_run=self.application_generate_entity.single_iteration_run,
                 single_loop_run=self.application_generate_entity.single_loop_run,
+                user_id=self.application_generate_entity.user_id,
             )
         else:
             inputs = self.application_generate_entity.inputs
             files = self.application_generate_entity.files
 
             # Create a variable pool.
-            system_inputs = SystemVariable(
+            system_inputs = build_system_variables(
                 files=files,
                 user_id=user_id,
                 app_id=app_config.app_id,
@@ -117,7 +126,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
                 dataset_id=self.application_generate_entity.dataset_id,
                 datasource_type=self.application_generate_entity.datasource_type,
                 datasource_info=self.application_generate_entity.datasource_info,
-                invoke_from=self.application_generate_entity.invoke_from.value,
+                invoke_from=invoke_from.value,
             )
 
             rag_pipeline_variables = []
@@ -135,20 +144,28 @@ class PipelineRunner(WorkflowBasedAppRunner):
                             )
                         )
 
-            variable_pool = VariablePool(
-                system_variables=system_inputs,
-                user_inputs=inputs,
-                environment_variables=workflow.environment_variables,
-                conversation_variables=[],
-                rag_pipeline_variables=rag_pipeline_variables,
+            variable_pool = VariablePool()
+            add_variables_to_pool(
+                variable_pool,
+                build_bootstrap_variables(
+                    system_variables=system_inputs,
+                    environment_variables=workflow.environment_variables,
+                    rag_pipeline_variables=rag_pipeline_variables,
+                ),
             )
+            root_node_id = self.application_generate_entity.start_node_id or get_default_root_node_id(
+                workflow.graph_dict
+            )
+            add_node_inputs_to_pool(variable_pool, node_id=root_node_id, inputs=inputs)
             graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
 
             # init graph
             graph = self._init_rag_pipeline_graph(
                 graph_runtime_state=graph_runtime_state,
-                start_node_id=self.application_generate_entity.start_node_id,
+                start_node_id=root_node_id,
                 workflow=workflow,
+                user_from=user_from,
+                invoke_from=invoke_from,
             )
 
         # RUN WORKFLOW
@@ -159,12 +176,8 @@ class PipelineRunner(WorkflowBasedAppRunner):
             graph=graph,
             graph_config=workflow.graph_dict,
             user_id=self.application_generate_entity.user_id,
-            user_from=(
-                UserFrom.ACCOUNT
-                if self.application_generate_entity.invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER}
-                else UserFrom.END_USER
-            ),
-            invoke_from=self.application_generate_entity.invoke_from,
+            user_from=user_from,
+            invoke_from=invoke_from,
             call_depth=self.application_generate_entity.call_depth,
             graph_runtime_state=graph_runtime_state,
             variable_pool=variable_pool,
@@ -210,7 +223,12 @@ class PipelineRunner(WorkflowBasedAppRunner):
         return workflow
 
     def _init_rag_pipeline_graph(
-        self, workflow: Workflow, graph_runtime_state: GraphRuntimeState, start_node_id: str | None = None
+        self,
+        workflow: Workflow,
+        graph_runtime_state: GraphRuntimeState,
+        start_node_id: str | None = None,
+        user_from: UserFrom = UserFrom.ACCOUNT,
+        invoke_from: InvokeFrom = InvokeFrom.SERVICE_API,
     ) -> Graph:
         """
         Init pipeline graph
@@ -248,13 +266,15 @@ class PipelineRunner(WorkflowBasedAppRunner):
         # init graph
         # Create required parameters for Graph.init
         graph_init_params = GraphInitParams(
-            tenant_id=workflow.tenant_id,
-            app_id=self._app_id,
             workflow_id=workflow.id,
             graph_config=graph_config,
-            user_id=self.application_generate_entity.user_id,
-            user_from=UserFrom.ACCOUNT,
-            invoke_from=InvokeFrom.SERVICE_API,
+            run_context=build_dify_run_context(
+                tenant_id=workflow.tenant_id,
+                app_id=self._app_id,
+                user_id=self.application_generate_entity.user_id,
+                user_from=user_from,
+                invoke_from=invoke_from,
+            ),
             call_depth=0,
         )
 
@@ -262,6 +282,8 @@ class PipelineRunner(WorkflowBasedAppRunner):
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
         )
+        if start_node_id is None:
+            start_node_id = get_default_root_node_id(graph_config)
         graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id=start_node_id)
 
         if not graph:

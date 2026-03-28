@@ -4,8 +4,8 @@
  * It is intended to be used as a replacement for `next start`.
  */
 
-import { cp, mkdir, stat } from 'node:fs/promises'
 import { spawn } from 'node:child_process'
+import { cp, mkdir, stat } from 'node:fs/promises'
 import path from 'node:path'
 
 // Configuration for directories to copy

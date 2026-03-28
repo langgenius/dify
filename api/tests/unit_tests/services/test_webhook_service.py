@@ -82,19 +82,19 @@ class TestWebhookServiceUnit:
             "/webhook",
             method="POST",
             headers={"Content-Type": "multipart/form-data"},
-            data={"message": "test", "upload": file_storage},
+            data={"message": "test", "file": file_storage},
         ):
             webhook_trigger = MagicMock()
             webhook_trigger.tenant_id = "test_tenant"
 
-            with patch.object(WebhookService, "_process_file_uploads") as mock_process_files:
-                mock_process_files.return_value = {"upload": "mocked_file_obj"}
+            with patch.object(WebhookService, "_process_file_uploads", autospec=True) as mock_process_files:
+                mock_process_files.return_value = {"file": "mocked_file_obj"}
 
                 webhook_data = WebhookService.extract_webhook_data(webhook_trigger)
 
                 assert webhook_data["method"] == "POST"
                 assert webhook_data["body"]["message"] == "test"
-                assert webhook_data["files"]["upload"] == "mocked_file_obj"
+                assert webhook_data["files"]["file"] == "mocked_file_obj"
                 mock_process_files.assert_called_once()
 
     def test_extract_webhook_data_raw_text(self):
@@ -109,6 +109,72 @@ class TestWebhookServiceUnit:
 
             assert webhook_data["method"] == "POST"
             assert webhook_data["body"]["raw"] == "raw text content"
+
+    def test_extract_octet_stream_body_uses_detected_mime(self):
+        """Octet-stream uploads should rely on detected MIME type."""
+        app = Flask(__name__)
+        binary_content = b"plain text data"
+
+        with app.test_request_context(
+            "/webhook", method="POST", headers={"Content-Type": "application/octet-stream"}, data=binary_content
+        ):
+            webhook_trigger = MagicMock()
+            mock_file = MagicMock()
+            mock_file.to_dict.return_value = {"file": "data"}
+
+            with (
+                patch.object(
+                    WebhookService, "_detect_binary_mimetype", return_value="text/plain", autospec=True
+                ) as mock_detect,
+                patch.object(WebhookService, "_create_file_from_binary", autospec=True) as mock_create,
+            ):
+                mock_create.return_value = mock_file
+                body, files = WebhookService._extract_octet_stream_body(webhook_trigger)
+
+            assert body["raw"] == {"file": "data"}
+            assert files == {}
+            mock_detect.assert_called_once_with(binary_content)
+            mock_create.assert_called_once()
+            args = mock_create.call_args[0]
+            assert args[0] == binary_content
+            assert args[1] == "text/plain"
+            assert args[2] is webhook_trigger
+
+    def test_detect_binary_mimetype_uses_magic(self, monkeypatch):
+        """python-magic output should be used when available."""
+        fake_magic = MagicMock()
+        fake_magic.from_buffer.return_value = "image/png"
+        monkeypatch.setattr("services.trigger.webhook_service.magic", fake_magic)
+
+        result = WebhookService._detect_binary_mimetype(b"binary data")
+
+        assert result == "image/png"
+        fake_magic.from_buffer.assert_called_once()
+
+    def test_detect_binary_mimetype_fallback_without_magic(self, monkeypatch):
+        """Fallback MIME type should be used when python-magic is unavailable."""
+        monkeypatch.setattr("services.trigger.webhook_service.magic", None)
+
+        result = WebhookService._detect_binary_mimetype(b"binary data")
+
+        assert result == "application/octet-stream"
+
+    def test_detect_binary_mimetype_handles_magic_exception(self, monkeypatch):
+        """Fallback MIME type should be used when python-magic raises an exception."""
+        try:
+            import magic as real_magic
+        except ImportError:
+            pytest.skip("python-magic is not installed")
+
+        fake_magic = MagicMock()
+        fake_magic.from_buffer.side_effect = real_magic.MagicException("magic error")
+        monkeypatch.setattr("services.trigger.webhook_service.magic", fake_magic)
+
+        with patch("services.trigger.webhook_service.logger", autospec=True) as mock_logger:
+            result = WebhookService._detect_binary_mimetype(b"binary data")
+
+            assert result == "application/octet-stream"
+            mock_logger.debug.assert_called_once()
 
     def test_extract_webhook_data_invalid_json(self):
         """Test webhook data extraction with invalid JSON."""
@@ -181,15 +247,12 @@ class TestWebhookServiceUnit:
         assert response_data[0]["id"] == 1
         assert response_data[1]["id"] == 2
 
-    @patch("services.trigger.webhook_service.ToolFileManager")
-    @patch("services.trigger.webhook_service.file_factory")
+    @patch("services.trigger.webhook_service.ToolFileManager", autospec=True)
+    @patch("services.trigger.webhook_service.file_factory", autospec=True)
     def test_process_file_uploads_success(self, mock_file_factory, mock_tool_file_manager):
         """Test successful file upload processing."""
         # Mock ToolFileManager
-        mock_tool_file_instance = MagicMock()
-        mock_tool_file_manager.return_value = mock_tool_file_instance
-
-        # Mock file creation
+        mock_tool_file_instance = mock_tool_file_manager.return_value  # Mock file creation
         mock_tool_file = MagicMock()
         mock_tool_file.id = "test_file_id"
         mock_tool_file_instance.create_file_by_raw.return_value = mock_tool_file
@@ -221,15 +284,12 @@ class TestWebhookServiceUnit:
         assert mock_tool_file_manager.call_count == 2
         assert mock_file_factory.build_from_mapping.call_count == 2
 
-    @patch("services.trigger.webhook_service.ToolFileManager")
-    @patch("services.trigger.webhook_service.file_factory")
+    @patch("services.trigger.webhook_service.ToolFileManager", autospec=True)
+    @patch("services.trigger.webhook_service.file_factory", autospec=True)
     def test_process_file_uploads_with_errors(self, mock_file_factory, mock_tool_file_manager):
         """Test file upload processing with errors."""
         # Mock ToolFileManager
-        mock_tool_file_instance = MagicMock()
-        mock_tool_file_manager.return_value = mock_tool_file_instance
-
-        # Mock file creation
+        mock_tool_file_instance = mock_tool_file_manager.return_value  # Mock file creation
         mock_tool_file = MagicMock()
         mock_tool_file.id = "test_file_id"
         mock_tool_file_instance.create_file_by_raw.return_value = mock_tool_file
@@ -480,8 +540,8 @@ class TestWebhookServiceUnit:
 
         # Mock the WebhookService methods
         with (
-            patch.object(WebhookService, "get_webhook_trigger_and_workflow") as mock_get_trigger,
-            patch.object(WebhookService, "extract_and_validate_webhook_data") as mock_extract,
+            patch.object(WebhookService, "get_webhook_trigger_and_workflow", autospec=True) as mock_get_trigger,
+            patch.object(WebhookService, "extract_and_validate_webhook_data", autospec=True) as mock_extract,
         ):
             mock_trigger = MagicMock()
             mock_workflow = MagicMock()

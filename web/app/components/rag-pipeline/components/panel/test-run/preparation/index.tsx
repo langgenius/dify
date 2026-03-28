@@ -1,25 +1,27 @@
-import React, { useCallback, useMemo, useState } from 'react'
+import type { Datasource } from '../types'
+import * as React from 'react'
+import { useCallback, useMemo, useState } from 'react'
+import { useShallow } from 'zustand/react/shallow'
+import { trackEvent } from '@/app/components/base/amplitude'
+import LocalFile from '@/app/components/datasets/documents/create-from-pipeline/data-source/local-file'
+import OnlineDocuments from '@/app/components/datasets/documents/create-from-pipeline/data-source/online-documents'
+import OnlineDrive from '@/app/components/datasets/documents/create-from-pipeline/data-source/online-drive'
+import { useDataSourceStore, useDataSourceStoreWithSelector } from '@/app/components/datasets/documents/create-from-pipeline/data-source/store'
+import WebsiteCrawl from '@/app/components/datasets/documents/create-from-pipeline/data-source/website-crawl'
+import { useWorkflowRun } from '@/app/components/workflow/hooks'
+import { useWorkflowStore } from '@/app/components/workflow/store'
+import { DatasourceType } from '@/models/pipeline'
+import { TransferMethod } from '@/types/app'
+import Actions from './actions'
+import DataSourceOptions from './data-source-options'
+import DocumentProcessing from './document-processing'
+import FooterTips from './footer-tips'
 import {
   useOnlineDocument,
   useOnlineDrive,
   useTestRunSteps,
   useWebsiteCrawl,
 } from './hooks'
-import DataSourceOptions from './data-source-options'
-import LocalFile from '@/app/components/datasets/documents/create-from-pipeline/data-source/local-file'
-import OnlineDocuments from '@/app/components/datasets/documents/create-from-pipeline/data-source/online-documents'
-import WebsiteCrawl from '@/app/components/datasets/documents/create-from-pipeline/data-source/website-crawl'
-import OnlineDrive from '@/app/components/datasets/documents/create-from-pipeline/data-source/online-drive'
-import Actions from './actions'
-import DocumentProcessing from './document-processing'
-import { useWorkflowRun } from '@/app/components/workflow/hooks'
-import type { Datasource } from '../types'
-import { DatasourceType } from '@/models/pipeline'
-import { TransferMethod } from '@/types/app'
-import FooterTips from './footer-tips'
-import { useDataSourceStore, useDataSourceStoreWithSelector } from '@/app/components/datasets/documents/create-from-pipeline/data-source/store'
-import { useShallow } from 'zustand/react/shallow'
-import { useWorkflowStore } from '@/app/components/workflow/store'
 import StepIndicator from './step-indicator'
 
 const Preparation = () => {
@@ -52,7 +54,8 @@ const Preparation = () => {
   const datasourceType = datasource?.nodeData.provider_type
 
   const nextBtnDisabled = useMemo(() => {
-    if (!datasource) return true
+    if (!datasource)
+      return true
     if (datasourceType === DatasourceType.localFile)
       return !localFileList.length || localFileList.some(file => !file.file.id)
     if (datasourceType === DatasourceType.onlineDocument)
@@ -121,6 +124,7 @@ const Preparation = () => {
       datasource_type: datasourceType,
       datasource_info_list: datasourceInfoList,
     })
+    trackEvent('pipeline_start_action_time', { action_type: 'document_processing' })
     setIsPreparingDataSource?.(false)
   }, [dataSourceStore, datasource, datasourceType, handleRun, workflowStore])
 
@@ -152,11 +156,11 @@ const Preparation = () => {
   return (
     <>
       <StepIndicator steps={steps} currentStep={currentStep} />
-      <div className='flex grow flex-col overflow-y-auto'>
+      <div className="flex grow flex-col overflow-y-auto">
         {
           currentStep === 1 && (
             <>
-              <div className='flex flex-col gap-y-4 px-4 py-2'>
+              <div className="flex flex-col gap-y-4 px-4 py-2">
                 <DataSourceOptions
                   dataSourceNodeId={datasource?.nodeId || ''}
                   onSelect={handleSwitchDataSource}

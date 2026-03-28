@@ -3,12 +3,12 @@ from collections.abc import Mapping
 from enum import StrEnum, auto
 from typing import Any
 
+from graphon.model_runtime.entities.provider_entities import ProviderEntity
 from packaging.version import InvalidVersion, Version
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from core.agent.plugin_entities import AgentStrategyProviderEntity
 from core.datasource.entities.datasource_entities import DatasourceProviderEntity
-from core.model_runtime.entities.provider_entities import ProviderEntity
 from core.plugin.entities.base import BasePluginEntity
 from core.plugin.entities.endpoint import EndpointProviderDeclaration
 from core.tools.entities.common_entities import I18nObject

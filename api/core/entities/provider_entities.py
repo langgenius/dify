@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 from enum import StrEnum, auto
 from typing import Union
 
+from graphon.model_runtime.entities.model_entities import ModelType
 from pydantic import BaseModel, ConfigDict, Field
 
 from core.entities.parameter_entities import (
@@ -9,7 +12,6 @@ from core.entities.parameter_entities import (
     ModelSelectorScope,
     ToolSelectorScope,
 )
-from core.model_runtime.entities.model_entities import ModelType
 from core.tools.entities.common_entities import I18nObject
 
 
@@ -178,7 +180,7 @@ class BasicProviderConfig(BaseModel):
         TOOLS_SELECTOR = CommonParameterType.TOOLS_SELECTOR
 
         @classmethod
-        def value_of(cls, value: str) -> "ProviderConfig.Type":
+        def value_of(cls, value: str) -> ProviderConfig.Type:
             """
             Get value of given mode.
 

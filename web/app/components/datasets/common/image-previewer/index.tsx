@@ -1,10 +1,10 @@
+import { RiArrowLeftLine, RiArrowRightLine, RiCloseLine, RiRefreshLine } from '@remixicon/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { useHotkeys } from 'react-hotkeys-hook'
 import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
 import { formatFileSize } from '@/utils/format'
-import { RiArrowLeftLine, RiArrowRightLine, RiCloseLine, RiRefreshLine } from '@remixicon/react'
-import { createPortal } from 'react-dom'
-import { useHotkeys } from 'react-hotkeys-hook'
 
 type CachedImage = {
   blobUrl?: string
@@ -48,18 +48,21 @@ const ImagePreviewer = ({
   const fetchImage = useCallback(async (image: ImageInfo) => {
     const { url } = image
     // Skip if already cached
-    if (imageCache.has(url)) return
+    if (imageCache.has(url))
+      return
 
     try {
       const res = await fetch(url)
-      if (!res.ok) throw new Error(`Failed to load: ${url}`)
+      if (!res.ok)
+        throw new Error(`Failed to load: ${url}`)
       const blob = await res.blob()
       const blobUrl = URL.createObjectURL(blob)
 
       const img = new Image()
       img.src = blobUrl
       img.onload = () => {
-        if (!isMounted.current) return
+        if (!isMounted.current)
+          return
         imageCache.set(url, {
           blobUrl,
           status: 'loaded',
@@ -148,47 +151,47 @@ const ImagePreviewer = ({
 
   return createPortal(
     <div
-      className='image-previewer fixed inset-0 z-[10000] flex items-center justify-center bg-background-overlay-fullscreen p-5 pb-4 backdrop-blur-[6px]'
+      className="image-previewer fixed inset-0 z-[10000] flex items-center justify-center bg-background-overlay-fullscreen p-5 pb-4 backdrop-blur-[6px]"
       onClick={e => e.stopPropagation()}
       tabIndex={-1}
     >
-      <div className='absolute right-6 top-6 z-10 flex cursor-pointer flex-col items-center gap-y-1'>
+      <div className="absolute right-6 top-6 z-10 flex cursor-pointer flex-col items-center gap-y-1">
         <Button
-          variant='tertiary'
+          variant="tertiary"
           onClick={onClose}
-          className='size-9 rounded-[10px] p-0'
-          size='large'
+          className="size-9 rounded-[10px] p-0"
+          size="large"
         >
-          <RiCloseLine className='size-5' />
+          <RiCloseLine className="size-5" />
         </Button>
-        <span className='system-2xs-medium-uppercase text-text-tertiary'>
+        <span className="system-2xs-medium-uppercase text-text-tertiary">
           Esc
         </span>
       </div>
       {cachedImages[currentImage.url].status === 'loading' && (
-        <Loading type='app' />
+        <Loading type="app" />
       )}
       {cachedImages[currentImage.url].status === 'error' && (
-        <div className='system-sm-regular flex max-w-sm flex-col items-center gap-y-2 text-text-tertiary'>
+        <div className="system-sm-regular flex max-w-sm flex-col items-center gap-y-2 text-text-tertiary">
           <span>{`Failed to load image: ${currentImage.url}. Please try again.`}</span>
           <Button
-            variant='secondary'
+            variant="secondary"
             onClick={() => retryImage(currentImage)}
-            className='size-9 rounded-full p-0'
-            size='large'
+            className="size-9 rounded-full p-0"
+            size="large"
           >
-            <RiRefreshLine className='size-5' />
+            <RiRefreshLine className="size-5" />
           </Button>
         </div>
       )}
       {cachedImages[currentImage.url].status === 'loaded' && (
-        <div className='flex size-full flex-col items-center justify-center gap-y-2'>
+        <div className="flex size-full flex-col items-center justify-center gap-y-2">
           <img
             alt={currentImage.name}
             src={cachedImages[currentImage.url].blobUrl}
-            className='max-h-[calc(100%-2.5rem)] max-w-full object-contain shadow-lg ring-8 ring-effects-image-frame backdrop-blur-[5px]'
+            className="max-h-[calc(100%-2.5rem)] max-w-full object-contain shadow-lg ring-8 ring-effects-image-frame backdrop-blur-[5px]"
           />
-          <div className='system-sm-regular flex shrink-0 gap-x-2 pb-1 pt-3 text-text-tertiary'>
+          <div className="system-sm-regular flex shrink-0 gap-x-2 pb-1 pt-3 text-text-tertiary">
             <span>{currentImage.name}</span>
             <span>·</span>
             <span>{`${cachedImages[currentImage.url].width} ×  ${cachedImages[currentImage.url].height}`}</span>
@@ -198,22 +201,22 @@ const ImagePreviewer = ({
         </div>
       )}
       <Button
-        variant='secondary'
+        variant="secondary"
         onClick={prevImage}
-        className='absolute left-8 top-1/2 z-10 size-9 -translate-y-1/2 rounded-full p-0'
+        className="absolute left-8 top-1/2 z-10 size-9 -translate-y-1/2 rounded-full p-0"
         disabled={currentIndex === 0}
-        size='large'
+        size="large"
       >
-        <RiArrowLeftLine className='size-5' />
+        <RiArrowLeftLine className="size-5" />
       </Button>
       <Button
-        variant='secondary'
+        variant="secondary"
         onClick={nextImage}
-        className='absolute right-8 top-1/2 z-10 size-9 -translate-y-1/2 rounded-full p-0'
+        className="absolute right-8 top-1/2 z-10 size-9 -translate-y-1/2 rounded-full p-0"
         disabled={currentIndex === images.length - 1}
-        size='large'
+        size="large"
       >
-        <RiArrowRightLine className='size-5' />
+        <RiArrowRightLine className="size-5" />
       </Button>
     </div>,
     document.body,

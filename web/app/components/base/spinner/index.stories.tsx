@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { useState } from 'react'
 import Spinner from '.'
 
@@ -18,7 +18,9 @@ const SpinnerPlayground = ({
         className="rounded-md border border-divider-subtle bg-background-default px-3 py-1 text-xs font-medium text-text-secondary hover:bg-state-base-hover"
         onClick={() => setIsLoading(prev => !prev)}
       >
-        {isLoading ? 'Stop' : 'Start'} loading
+        {isLoading ? 'Stop' : 'Start'}
+        {' '}
+        loading
       </button>
     </div>
   )

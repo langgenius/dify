@@ -1,8 +1,8 @@
-import { produce } from 'immer'
-import type { Edge, Node } from '@/app/components/workflow/types'
-import { BlockEnum } from '@/app/components/workflow/types'
 import type { PluginTriggerNodeType } from '@/app/components/workflow/nodes/trigger-plugin/types'
+import type { Edge, Node } from '@/app/components/workflow/types'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
+import { produce } from 'immer'
+import { BlockEnum } from '@/app/components/workflow/types'
 
 export type TriggerPluginNodePayload = {
   title: string
@@ -66,7 +66,30 @@ export const sanitizeWorkflowDraftPayload = (params: WorkflowDraftSyncParams): W
   if (!graph?.nodes?.length)
     return params
 
-  const sanitizedNodes = graph.nodes.map(node => sanitizeTriggerPluginNode(node as Node<TriggerPluginNodePayload>))
+  const sanitizedNodes = graph.nodes.map((node) => {
+    // First sanitize known node types (TriggerPlugin)
+    const n = sanitizeTriggerPluginNode(node as Node<TriggerPluginNodePayload>) as Node<any>
+
+    // Normalize Start node variable json_schema: ensure dict, not string
+    if ((n.data as any)?.type === BlockEnum.Start && Array.isArray((n.data as any).variables)) {
+      const next = { ...n, data: { ...n.data } }
+      next.data.variables = (n.data as any).variables.map((v: any) => {
+        if (v && v.type === 'json_object' && typeof v.json_schema === 'string') {
+          try {
+            const obj = JSON.parse(v.json_schema)
+            return { ...v, json_schema: obj }
+          }
+          catch {
+            return v
+          }
+        }
+        return v
+      })
+      return next
+    }
+
+    return n
+  })
 
   return {
     ...params,
@@ -126,7 +149,25 @@ export const hydrateWorkflowDraftResponse = (draft: FetchWorkflowDraftResponse):
           if (node.data)
             removeTempProperties(node.data as Record<string, unknown>)
 
-          return hydrateTriggerPluginNode(node)
+          let n = hydrateTriggerPluginNode(node)
+          // Normalize Start node variable json_schema to object when loading
+          if ((n.data as any)?.type === BlockEnum.Start && Array.isArray((n.data as any).variables)) {
+            const next = { ...n, data: { ...n.data } } as Node<any>
+            next.data.variables = (n.data as any).variables.map((v: any) => {
+              if (v && v.type === 'json_object' && typeof v.json_schema === 'string') {
+                try {
+                  const obj = JSON.parse(v.json_schema)
+                  return { ...v, json_schema: obj }
+                }
+                catch {
+                  return v
+                }
+              }
+              return v
+            })
+            n = next
+          }
+          return n
         })
     }
 

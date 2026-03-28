@@ -2,6 +2,7 @@ import logging
 from typing import Any, Literal
 from uuid import UUID
 
+from graphon.model_runtime.errors.invoke import InvokeError
 from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import InternalServerError, NotFound
 
@@ -24,7 +25,6 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
-from core.model_runtime.errors.invoke import InvokeError
 from extensions.ext_database import db
 from libs import helper
 from libs.datetime_utils import naive_utc_now
@@ -40,7 +40,7 @@ from .. import console_ns
 logger = logging.getLogger(__name__)
 
 
-class CompletionMessagePayload(BaseModel):
+class CompletionMessageExplorePayload(BaseModel):
     inputs: dict[str, Any]
     query: str = ""
     files: list[dict[str, Any]] | None = None
@@ -71,7 +71,7 @@ class ChatMessagePayload(BaseModel):
             raise ValueError("must be a valid UUID") from exc
 
 
-register_schema_models(console_ns, CompletionMessagePayload, ChatMessagePayload)
+register_schema_models(console_ns, CompletionMessageExplorePayload, ChatMessagePayload)
 
 
 # define completion api for user
@@ -80,13 +80,13 @@ register_schema_models(console_ns, CompletionMessagePayload, ChatMessagePayload)
     endpoint="installed_app_completion",
 )
 class CompletionApi(InstalledAppResource):
-    @console_ns.expect(console_ns.models[CompletionMessagePayload.__name__])
+    @console_ns.expect(console_ns.models[CompletionMessageExplorePayload.__name__])
     def post(self, installed_app):
         app_model = installed_app.app
         if app_model.mode != AppMode.COMPLETION:
             raise NotCompletionAppError()
 
-        payload = CompletionMessagePayload.model_validate(console_ns.payload or {})
+        payload = CompletionMessageExplorePayload.model_validate(console_ns.payload or {})
         args = payload.model_dump(exclude_none=True)
 
         streaming = payload.response_mode == "streaming"

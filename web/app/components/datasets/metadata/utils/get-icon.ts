@@ -1,5 +1,5 @@
-import { DataType } from '../types'
 import { RiHashtag, RiTextSnippet, RiTimeLine } from '@remixicon/react'
+import { DataType } from '../types'
 
 export const getIcon = (type: DataType) => {
   return ({

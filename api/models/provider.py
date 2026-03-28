@@ -1,17 +1,20 @@
+from __future__ import annotations
+
 from datetime import datetime
 from enum import StrEnum, auto
 from functools import cached_property
 from uuid import uuid4
 
 import sqlalchemy as sa
-from sqlalchemy import DateTime, String, func, text
+from sqlalchemy import DateTime, String, func, select, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from libs.uuid_utils import uuidv7
 
 from .base import TypeBase
 from .engine import db
-from .types import LongText, StringUUID
+from .enums import CredentialSourceType, PaymentStatus
+from .types import EnumText, LongText, StringUUID
 
 
 class ProviderType(StrEnum):
@@ -19,7 +22,7 @@ class ProviderType(StrEnum):
     SYSTEM = auto()
 
     @staticmethod
-    def value_of(value: str) -> "ProviderType":
+    def value_of(value: str) -> ProviderType:
         for member in ProviderType:
             if member.value == value:
                 return member
@@ -37,7 +40,7 @@ class ProviderQuotaType(StrEnum):
     """hosted trial quota"""
 
     @staticmethod
-    def value_of(value: str) -> "ProviderQuotaType":
+    def value_of(value: str) -> ProviderQuotaType:
         for member in ProviderQuotaType:
             if member.value == value:
                 return member
@@ -67,8 +70,8 @@ class Provider(TypeBase):
     )
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     provider_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    provider_type: Mapped[str] = mapped_column(
-        String(40), nullable=False, server_default=text("'custom'"), default="custom"
+    provider_type: Mapped[ProviderType] = mapped_column(
+        EnumText(ProviderType, length=40), nullable=False, server_default=text("'custom'"), default=ProviderType.CUSTOM
     )
     is_valid: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=text("false"), default=False)
     last_used: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, init=False)
@@ -76,7 +79,7 @@ class Provider(TypeBase):
 
     quota_type: Mapped[str | None] = mapped_column(String(40), nullable=True, server_default=text("''"), default="")
     quota_limit: Mapped[int | None] = mapped_column(sa.BigInteger, nullable=True, default=None)
-    quota_used: Mapped[int] = mapped_column(sa.BigInteger, nullable=False, default=0)
+    quota_used: Mapped[int | None] = mapped_column(sa.BigInteger, nullable=True, default=0)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), init=False
@@ -94,7 +97,7 @@ class Provider(TypeBase):
     @cached_property
     def credential(self):
         if self.credential_id:
-            return db.session.query(ProviderCredential).where(ProviderCredential.id == self.credential_id).first()
+            return db.session.scalar(select(ProviderCredential).where(ProviderCredential.id == self.credential_id))
 
     @property
     def credential_name(self):
@@ -157,10 +160,8 @@ class ProviderModel(TypeBase):
     @cached_property
     def credential(self):
         if self.credential_id:
-            return (
-                db.session.query(ProviderModelCredential)
-                .where(ProviderModelCredential.id == self.credential_id)
-                .first()
+            return db.session.scalar(
+                select(ProviderModelCredential).where(ProviderModelCredential.id == self.credential_id)
             )
 
     @property
@@ -179,6 +180,7 @@ class TenantDefaultModel(TypeBase):
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="tenant_default_model_pkey"),
         sa.Index("tenant_default_model_tenant_id_provider_type_idx", "tenant_id", "provider_name", "model_type"),
+        sa.UniqueConstraint("tenant_id", "model_type", name="unique_tenant_default_model_type"),
     )
 
     id: Mapped[str] = mapped_column(
@@ -208,7 +210,7 @@ class TenantPreferredModelProvider(TypeBase):
     )
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     provider_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    preferred_provider_type: Mapped[str] = mapped_column(String(40), nullable=False)
+    preferred_provider_type: Mapped[ProviderType] = mapped_column(EnumText(ProviderType, length=40), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
@@ -236,7 +238,9 @@ class ProviderOrder(TypeBase):
     quantity: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=text("1"))
     currency: Mapped[str | None] = mapped_column(String(40))
     total_amount: Mapped[int | None] = mapped_column(sa.Integer)
-    payment_status: Mapped[str] = mapped_column(String(40), nullable=False, server_default=text("'wait_pay'"))
+    payment_status: Mapped[PaymentStatus] = mapped_column(
+        EnumText(PaymentStatus, length=40), nullable=False, server_default=text("'wait_pay'")
+    )
     paid_at: Mapped[datetime | None] = mapped_column(DateTime)
     pay_failed_at: Mapped[datetime | None] = mapped_column(DateTime)
     refunded_at: Mapped[datetime | None] = mapped_column(DateTime)
@@ -299,7 +303,9 @@ class LoadBalancingModelConfig(TypeBase):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     encrypted_config: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
     credential_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
-    credential_source_type: Mapped[str | None] = mapped_column(String(40), nullable=True, default=None)
+    credential_source_type: Mapped[CredentialSourceType | None] = mapped_column(
+        EnumText(CredentialSourceType, length=40), nullable=True, default=None
+    )
     enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=text("true"), default=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), init=False

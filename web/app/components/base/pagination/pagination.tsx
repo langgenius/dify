@@ -1,13 +1,13 @@
-import React from 'react'
-import cn from 'classnames'
-import usePagination from './hook'
 import type {
   ButtonProps,
   IPagination,
   IPaginationProps,
   PageButtonProps,
 } from './type'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/function'
+import * as React from 'react'
+import { cn } from '@/utils/classnames'
+import usePagination from './hook'
 
 const defaultState: IPagination = {
   currentPage: 0,
@@ -50,7 +50,7 @@ export const PrevButton = ({
       tabIndex={disabled ? '-1' : 0}
       disabled={disabled}
       data-testid={dataTestId}
-      onKeyPress={(event: React.KeyboardEvent) => {
+      onKeyDown={(event: React.KeyboardEvent) => {
         event.preventDefault()
         if (event.key === 'Enter' && !disabled)
           previous()
@@ -85,7 +85,7 @@ export const NextButton = ({
       tabIndex={disabled ? '-1' : 0}
       disabled={disabled}
       data-testid={dataTestId}
-      onKeyPress={(event: React.KeyboardEvent) => {
+      onKeyDown={(event: React.KeyboardEvent) => {
         event.preventDefault()
         if (event.key === 'Enter' && !disabled)
           next()
@@ -112,8 +112,8 @@ const TruncableElement = ({ prev }: ITruncableElementProps) => {
 
   return ((isPreviousTruncable && prev === true) || (isNextTruncable && !prev))
     ? (
-      <li className={truncableClassName || undefined}>{truncableText}</li>
-    )
+        <li className={truncableClassName || undefined}>{truncableText}</li>
+      )
     : null
 }
 
@@ -140,7 +140,7 @@ export const PageButton = ({
           }) || undefined
         }
         tabIndex={0}
-        onKeyPress={(event: React.KeyboardEvent) => {
+        onKeyDown={(event: React.KeyboardEvent) => {
           if (event.key === 'Enter')
             pagination.setCurrentPage(page - 1)
         }}

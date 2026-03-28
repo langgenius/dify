@@ -1,21 +1,24 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
-import { useTranslation } from 'react-i18next'
-import useSWR from 'swr'
-import dayjs from 'dayjs'
-import { RiCalendarLine } from '@remixicon/react'
-import quarterOfYear from 'dayjs/plugin/quarterOfYear'
 import type { QueryParam } from './index'
+import type { I18nKeysByPrefix } from '@/types/i18n'
+import { RiCalendarLine } from '@remixicon/react'
+import dayjs from 'dayjs'
+import quarterOfYear from 'dayjs/plugin/quarterOfYear'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
 import Chip from '@/app/components/base/chip'
 import Input from '@/app/components/base/input'
 import Sort from '@/app/components/base/sort'
-import { fetchAnnotationsCount } from '@/service/log'
+import { useAnnotationsCount } from '@/service/use-log'
+
 dayjs.extend(quarterOfYear)
 
 const today = dayjs()
 
-export const TIME_PERIOD_MAPPING: { [key: string]: { value: number; name: string } } = {
+type TimePeriodName = I18nKeysByPrefix<'appLog', 'filter.period.'>
+
+export const TIME_PERIOD_MAPPING: { [key: string]: { value: number, name: TimePeriodName } } = {
   1: { value: 0, name: 'today' },
   2: { value: 7, name: 'last7days' },
   3: { value: 28, name: 'last4weeks' },
@@ -35,26 +38,26 @@ type IFilterProps = {
 }
 
 const Filter: FC<IFilterProps> = ({ isChatMode, appId, queryParams, setQueryParams }: IFilterProps) => {
-  const { data } = useSWR({ url: `/apps/${appId}/annotations/count` }, fetchAnnotationsCount)
+  const { data, isLoading } = useAnnotationsCount(appId)
   const { t } = useTranslation()
-  if (!data)
+  if (isLoading || !data)
     return null
   return (
-    <div className='mb-2 flex flex-row flex-wrap items-center gap-2'>
+    <div className="mb-2 flex flex-row flex-wrap items-center gap-2">
       <Chip
-        className='min-w-[150px]'
-        panelClassName='w-[270px]'
-        leftIcon={<RiCalendarLine className='h-4 w-4 text-text-secondary' />}
+        className="min-w-[150px]"
+        panelClassName="w-[270px]"
+        leftIcon={<RiCalendarLine className="h-4 w-4 text-text-secondary" />}
         value={queryParams.period}
         onSelect={(item) => {
           setQueryParams({ ...queryParams, period: item.value })
         }}
         onClear={() => setQueryParams({ ...queryParams, period: '9' })}
-        items={Object.entries(TIME_PERIOD_MAPPING).map(([k, v]) => ({ value: k, name: t(`appLog.filter.period.${v.name}`) }))}
+        items={Object.entries(TIME_PERIOD_MAPPING).map(([k, v]) => ({ value: k, name: t(`filter.period.${v.name}`, { ns: 'appLog' }) }))}
       />
       <Chip
-        className='min-w-[150px]'
-        panelClassName='w-[270px]'
+        className="min-w-[150px]"
+        panelClassName="w-[270px]"
         showLeftIcon={false}
         value={queryParams.annotation_status || 'all'}
         onSelect={(item) => {
@@ -62,17 +65,17 @@ const Filter: FC<IFilterProps> = ({ isChatMode, appId, queryParams, setQueryPara
         }}
         onClear={() => setQueryParams({ ...queryParams, annotation_status: 'all' })}
         items={[
-          { value: 'all', name: t('appLog.filter.annotation.all') },
-          { value: 'annotated', name: t('appLog.filter.annotation.annotated', { count: data?.count }) },
-          { value: 'not_annotated', name: t('appLog.filter.annotation.not_annotated') },
+          { value: 'all', name: t('filter.annotation.all', { ns: 'appLog' }) },
+          { value: 'annotated', name: t('filter.annotation.annotated', { ns: 'appLog', count: data?.count }) },
+          { value: 'not_annotated', name: t('filter.annotation.not_annotated', { ns: 'appLog' }) },
         ]}
       />
       <Input
-        wrapperClassName='w-[200px]'
+        wrapperClassName="w-[200px]"
         showLeftIcon
         showClearIcon
         value={queryParams.keyword}
-        placeholder={t('common.operation.search')!}
+        placeholder={t('operation.search', { ns: 'common' })!}
         onChange={(e) => {
           setQueryParams({ ...queryParams, keyword: e.target.value })
         }}
@@ -80,13 +83,13 @@ const Filter: FC<IFilterProps> = ({ isChatMode, appId, queryParams, setQueryPara
       />
       {isChatMode && (
         <>
-          <div className='h-3.5 w-px bg-divider-regular'></div>
+          <div className="h-3.5 w-px bg-divider-regular"></div>
           <Sort
             order={queryParams.sort_by?.startsWith('-') ? '-' : ''}
             value={queryParams.sort_by?.replace('-', '') || 'created_at'}
             items={[
-              { value: 'created_at', name: t('appLog.table.header.time') },
-              { value: 'updated_at', name: t('appLog.table.header.updatedTime') },
+              { value: 'created_at', name: t('table.header.time', { ns: 'appLog' }) },
+              { value: 'updated_at', name: t('table.header.updatedTime', { ns: 'appLog' }) },
             ]}
             onSelect={(value) => {
               setQueryParams({ ...queryParams, sort_by: value as string })

@@ -1,13 +1,11 @@
+import { useClickAway } from 'ahooks'
 import {
   memo,
-  useEffect,
   useRef,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useClickAway } from 'ahooks'
+import { cn } from '@/utils/classnames'
 import Divider from '../base/divider'
-import ShortcutsName from './shortcuts-name'
-import { useStore } from './store'
 import {
   useDSL,
   useNodesInteractions,
@@ -16,7 +14,8 @@ import {
 } from './hooks'
 import AddBlock from './operator/add-block'
 import { useOperator } from './operator/hooks'
-import cn from '@/utils/classnames'
+import ShortcutsName from './shortcuts-name'
+import { useStore } from './store'
 
 const PanelContextmenu = () => {
   const { t } = useTranslation()
@@ -25,15 +24,10 @@ const PanelContextmenu = () => {
   const clipboardElements = useStore(s => s.clipboardElements)
   const setShowImportDSLModal = useStore(s => s.setShowImportDSLModal)
   const { handleNodesPaste } = useNodesInteractions()
-  const { handlePaneContextmenuCancel, handleNodeContextmenuCancel } = usePanelInteractions()
+  const { handlePaneContextmenuCancel } = usePanelInteractions()
   const { handleStartWorkflowRun } = useWorkflowStartRun()
   const { handleAddNote } = useOperator()
   const { exportCheck } = useDSL()
-
-  useEffect(() => {
-    if (panelMenu)
-      handleNodeContextmenuCancel()
-  }, [panelMenu, handleNodeContextmenuCancel])
 
   useClickAway(() => {
     handlePaneContextmenuCancel()
@@ -42,9 +36,9 @@ const PanelContextmenu = () => {
   const renderTrigger = () => {
     return (
       <div
-        className='flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover'
+        className="flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
       >
-        {t('workflow.common.addBlock')}
+        {t('common.addBlock', { ns: 'workflow' })}
       </div>
     )
   }
@@ -54,14 +48,14 @@ const PanelContextmenu = () => {
 
   return (
     <div
-      className='absolute z-[9] w-[200px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg'
+      className="absolute z-[9] w-[200px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg"
       style={{
         left: panelMenu.left,
         top: panelMenu.top,
       }}
       ref={ref}
     >
-      <div className='p-1'>
+      <div className="p-1">
         <AddBlock
           renderTrigger={renderTrigger}
           offset={{
@@ -70,28 +64,28 @@ const PanelContextmenu = () => {
           }}
         />
         <div
-          className='flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover'
+          className="flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
           onClick={(e) => {
             e.stopPropagation()
             handleAddNote()
             handlePaneContextmenuCancel()
           }}
         >
-          {t('workflow.nodes.note.addNote')}
+          {t('nodes.note.addNote', { ns: 'workflow' })}
         </div>
         <div
-          className='flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover'
+          className="flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
           onClick={() => {
             handleStartWorkflowRun()
             handlePaneContextmenuCancel()
           }}
         >
-          {t('workflow.common.run')}
+          {t('common.run', { ns: 'workflow' })}
           <ShortcutsName keys={['alt', 'r']} />
         </div>
       </div>
-      <Divider className='m-0' />
-      <div className='p-1'>
+      <Divider className="m-0" />
+      <div className="p-1">
         <div
           className={cn(
             'flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary',
@@ -104,23 +98,23 @@ const PanelContextmenu = () => {
             }
           }}
         >
-          {t('workflow.common.pasteHere')}
+          {t('common.pasteHere', { ns: 'workflow' })}
           <ShortcutsName keys={['ctrl', 'v']} />
         </div>
       </div>
-      <Divider className='m-0' />
-      <div className='p-1'>
+      <Divider className="m-0" />
+      <div className="p-1">
         <div
-          className='flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover'
+          className="flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
           onClick={() => exportCheck?.()}
         >
-          {t('app.export')}
+          {t('export', { ns: 'app' })}
         </div>
         <div
-          className='flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover'
+          className="flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
           onClick={() => setShowImportDSLModal(true)}
         >
-          {t('workflow.common.importDSL')}
+          {t('common.importDSL', { ns: 'workflow' })}
         </div>
       </div>
     </div>

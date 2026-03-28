@@ -2,9 +2,9 @@
 import type { FC } from 'react'
 import type { ToolVarInputs } from '../../types'
 import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import ToolFormItem from './item'
-import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { Tool } from '@/app/components/tools/types'
+import type { ToolWithProvider } from '@/app/components/workflow/types'
+import ToolFormItem from './item'
 
 type Props = {
   readOnly: boolean
@@ -35,7 +35,7 @@ const ToolForm: FC<Props> = ({
   extraParams,
 }) => {
   return (
-    <div className='space-y-1'>
+    <div className="space-y-1">
       {
         schema.map((schema, index) => (
           <ToolFormItem
@@ -51,7 +51,7 @@ const ToolForm: FC<Props> = ({
             showManageInputField={showManageInputField}
             onManageInputField={onManageInputField}
             extraParams={extraParams}
-            providerType='tool'
+            providerType="tool"
           />
         ))
       }

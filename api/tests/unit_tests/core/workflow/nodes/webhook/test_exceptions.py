@@ -1,6 +1,6 @@
 import pytest
+from graphon.entities.exc import BaseNodeError
 
-from core.workflow.nodes.base.exc import BaseNodeError
 from core.workflow.nodes.trigger_webhook.exc import (
     WebhookConfigError,
     WebhookNodeError,

@@ -67,12 +67,16 @@ def create_trigger_provider_encrypter_for_subscription(
 
 
 def delete_cache_for_subscription(tenant_id: str, provider_id: str, subscription_id: str):
-    cache = TriggerProviderCredentialsCache(
+    TriggerProviderCredentialsCache(
         tenant_id=tenant_id,
         provider_id=provider_id,
         credential_id=subscription_id,
-    )
-    cache.delete()
+    ).delete()
+    TriggerProviderPropertiesCache(
+        tenant_id=tenant_id,
+        provider_id=provider_id,
+        subscription_id=subscription_id,
+    ).delete()
 
 
 def create_trigger_provider_encrypter_for_properties(

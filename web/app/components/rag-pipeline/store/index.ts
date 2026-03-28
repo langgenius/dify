@@ -1,12 +1,12 @@
-import type { RAGPipelineVariables } from '@/models/pipeline'
 import type { StateCreator } from 'zustand'
+import type { InputFieldEditorProps } from '../components/panel/input-field/editor'
+import type { DataSourceItem } from '@/app/components/workflow/block-selector/types'
 import type {
   ToolWithProvider,
 } from '@/app/components/workflow/types'
-import type { DataSourceItem } from '@/app/components/workflow/block-selector/types'
-import { transformDataSourceToTool } from '@/app/components/workflow/block-selector/utils'
 import type { IconInfo } from '@/models/datasets'
-import type { InputFieldEditorProps } from '../components/panel/input-field/editor'
+import type { RAGPipelineVariables } from '@/models/pipeline'
+import { transformDataSourceToTool } from '@/app/components/workflow/block-selector/utils'
 
 export type RagPipelineSliceShape = {
   pipelineId: string

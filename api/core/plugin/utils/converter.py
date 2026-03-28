@@ -1,6 +1,7 @@
 from typing import Any
 
-from core.file.models import File
+from graphon.file import File
+
 from core.tools.entities.tool_entities import ToolSelector
 
 

@@ -3,7 +3,7 @@ import time
 from typing import TypedDict
 
 import click
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.exc import SQLAlchemyError
 
 import app
@@ -51,7 +51,7 @@ def clean_unused_datasets_task():
             try:
                 # Subquery for counting new documents
                 document_subquery_new = (
-                    db.session.query(Document.dataset_id, func.count(Document.id).label("document_count"))
+                    select(Document.dataset_id, func.count(Document.id).label("document_count"))
                     .where(
                         Document.indexing_status == "completed",
                         Document.enabled == True,
@@ -64,7 +64,7 @@ def clean_unused_datasets_task():
 
                 # Subquery for counting old documents
                 document_subquery_old = (
-                    db.session.query(Document.dataset_id, func.count(Document.id).label("document_count"))
+                    select(Document.dataset_id, func.count(Document.id).label("document_count"))
                     .where(
                         Document.indexing_status == "completed",
                         Document.enabled == True,
@@ -142,8 +142,8 @@ def clean_unused_datasets_task():
                             index_processor.clean(dataset, None)
 
                             # Update document
-                            db.session.query(Document).filter_by(dataset_id=dataset.id).update(
-                                {Document.enabled: False}
+                            db.session.execute(
+                                update(Document).where(Document.dataset_id == dataset.id).values(enabled=False)
                             )
                             db.session.commit()
                             click.echo(click.style(f"Cleaned unused dataset {dataset.id} from db success!", fg="green"))

@@ -1,13 +1,13 @@
 import json
 import logging
 from typing import Any, Literal, cast
-from uuid import UUID
 
 from flask import abort, request
 from flask_restx import Resource, marshal_with  # type: ignore
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
+from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound
 
 import services
 from controllers.common.schema import register_schema_models
@@ -16,6 +16,17 @@ from controllers.console.app.error import (
     ConversationCompletedError,
     DraftWorkflowNotExist,
     DraftWorkflowNotSync,
+)
+from controllers.console.app.workflow import (
+    RESTORE_SOURCE_WORKFLOW_MUST_BE_PUBLISHED_MESSAGE,
+    workflow_model,
+    workflow_pagination_model,
+)
+from controllers.console.app.workflow_run import (
+    workflow_run_detail_model,
+    workflow_run_node_execution_list_model,
+    workflow_run_node_execution_model,
+    workflow_run_pagination_model,
 )
 from controllers.console.datasets.wraps import get_rag_pipeline
 from controllers.console.wraps import (
@@ -27,23 +38,16 @@ from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpErr
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.model_runtime.utils.encoders import jsonable_encoder
 from extensions.ext_database import db
 from factories import variable_factory
-from fields.workflow_fields import workflow_fields, workflow_pagination_fields
-from fields.workflow_run_fields import (
-    workflow_run_detail_fields,
-    workflow_run_node_execution_fields,
-    workflow_run_node_execution_list_fields,
-    workflow_run_pagination_fields,
-)
 from libs import helper
-from libs.helper import TimestampField
+from libs.helper import TimestampField, UUIDStrOrEmpty
 from libs.login import current_account_with_tenant, current_user, login_required
 from models import Account
 from models.dataset import Pipeline
 from models.model import EndUser
-from services.errors.app import WorkflowHashNotEqualError
+from models.workflow import Workflow
+from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
 from services.rag_pipeline.pipeline_generate_service import PipelineGenerateService
 from services.rag_pipeline.rag_pipeline import RagPipelineService
@@ -110,7 +114,7 @@ class NodeIdQuery(BaseModel):
 
 
 class WorkflowRunQuery(BaseModel):
-    last_id: UUID | None = None
+    last_id: UUIDStrOrEmpty | None = None
     limit: int = Field(default=20, ge=1, le=100)
 
 
@@ -119,6 +123,10 @@ class DatasourceVariablesPayload(BaseModel):
     datasource_info: dict[str, Any]
     start_node_id: str
     start_node_title: str
+
+
+class RagPipelineRecommendedPluginQuery(BaseModel):
+    type: str = "all"
 
 
 register_schema_models(
@@ -135,6 +143,7 @@ register_schema_models(
     NodeIdQuery,
     WorkflowRunQuery,
     DatasourceVariablesPayload,
+    RagPipelineRecommendedPluginQuery,
 )
 
 
@@ -145,7 +154,7 @@ class DraftRagPipelineApi(Resource):
     @account_initialization_required
     @get_rag_pipeline
     @edit_permission_required
-    @marshal_with(workflow_fields)
+    @marshal_with(workflow_model)
     def get(self, pipeline: Pipeline):
         """
         Get draft rag pipeline's workflow
@@ -199,9 +208,12 @@ class DraftRagPipelineApi(Resource):
             abort(415)
 
         payload = DraftWorkflowSyncPayload.model_validate(payload_dict)
+        rag_pipeline_service = RagPipelineService()
 
         try:
-            environment_variables_list = payload.environment_variables or []
+            environment_variables_list = Workflow.normalize_environment_variable_mappings(
+                payload.environment_variables or [],
+            )
             environment_variables = [
                 variable_factory.build_environment_variable_from_mapping(obj) for obj in environment_variables_list
             ]
@@ -209,7 +221,6 @@ class DraftRagPipelineApi(Resource):
             conversation_variables = [
                 variable_factory.build_conversation_variable_from_mapping(obj) for obj in conversation_variables_list
             ]
-            rag_pipeline_service = RagPipelineService()
             workflow = rag_pipeline_service.sync_draft_workflow(
                 pipeline=pipeline,
                 graph=payload.graph,
@@ -355,7 +366,7 @@ class PublishedRagPipelineRunApi(Resource):
                 pipeline=pipeline,
                 user=current_user,
                 args=args,
-                invoke_from=InvokeFrom.DEBUGGER if payload.is_preview else InvokeFrom.PUBLISHED,
+                invoke_from=InvokeFrom.DEBUGGER if payload.is_preview else InvokeFrom.PUBLISHED_PIPELINE,
                 streaming=streaming,
             )
 
@@ -521,7 +532,7 @@ class RagPipelineDraftNodeRunApi(Resource):
     @edit_permission_required
     @account_initialization_required
     @get_rag_pipeline
-    @marshal_with(workflow_run_node_execution_fields)
+    @marshal_with(workflow_run_node_execution_model)
     def post(self, pipeline: Pipeline, node_id: str):
         """
         Run draft workflow node
@@ -569,7 +580,7 @@ class PublishedRagPipelineApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @get_rag_pipeline
-    @marshal_with(workflow_fields)
+    @marshal_with(workflow_model)
     def get(self, pipeline: Pipeline):
         """
         Get published pipeline
@@ -664,7 +675,7 @@ class PublishedAllRagPipelineApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @get_rag_pipeline
-    @marshal_with(workflow_pagination_fields)
+    @marshal_with(workflow_pagination_model)
     def get(self, pipeline: Pipeline):
         """
         Get published workflows
@@ -701,6 +712,36 @@ class PublishedAllRagPipelineApi(Resource):
             }
 
 
+@console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/<string:workflow_id>/restore")
+class RagPipelineDraftWorkflowRestoreApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @get_rag_pipeline
+    def post(self, pipeline: Pipeline, workflow_id: str):
+        current_user, _ = current_account_with_tenant()
+        rag_pipeline_service = RagPipelineService()
+
+        try:
+            workflow = rag_pipeline_service.restore_published_workflow_to_draft(
+                pipeline=pipeline,
+                workflow_id=workflow_id,
+                account=current_user,
+            )
+        except IsDraftWorkflowError as exc:
+            # Use a stable, predefined message to keep the 400 response consistent
+            raise BadRequest(RESTORE_SOURCE_WORKFLOW_MUST_BE_PUBLISHED_MESSAGE) from exc
+        except WorkflowNotFoundError as exc:
+            raise NotFound(str(exc)) from exc
+
+        return {
+            "result": "success",
+            "hash": workflow.unique_hash,
+            "updated_at": TimestampField().format(workflow.updated_at or workflow.created_at),
+        }
+
+
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/<string:workflow_id>")
 class RagPipelineByIdApi(Resource):
     @setup_required
@@ -708,7 +749,7 @@ class RagPipelineByIdApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @get_rag_pipeline
-    @marshal_with(workflow_fields)
+    @marshal_with(workflow_model)
     def patch(self, pipeline: Pipeline, workflow_id: str):
         """
         Update workflow attributes
@@ -830,7 +871,7 @@ class RagPipelineWorkflowRunListApi(Resource):
     @login_required
     @account_initialization_required
     @get_rag_pipeline
-    @marshal_with(workflow_run_pagination_fields)
+    @marshal_with(workflow_run_pagination_model)
     def get(self, pipeline: Pipeline):
         """
         Get workflow run list
@@ -858,7 +899,7 @@ class RagPipelineWorkflowRunDetailApi(Resource):
     @login_required
     @account_initialization_required
     @get_rag_pipeline
-    @marshal_with(workflow_run_detail_fields)
+    @marshal_with(workflow_run_detail_model)
     def get(self, pipeline: Pipeline, run_id):
         """
         Get workflow run detail
@@ -877,7 +918,7 @@ class RagPipelineWorkflowRunNodeExecutionListApi(Resource):
     @login_required
     @account_initialization_required
     @get_rag_pipeline
-    @marshal_with(workflow_run_node_execution_list_fields)
+    @marshal_with(workflow_run_node_execution_list_model)
     def get(self, pipeline: Pipeline, run_id: str):
         """
         Get workflow run node execution list
@@ -911,7 +952,7 @@ class RagPipelineWorkflowLastRunApi(Resource):
     @login_required
     @account_initialization_required
     @get_rag_pipeline
-    @marshal_with(workflow_run_node_execution_fields)
+    @marshal_with(workflow_run_node_execution_model)
     def get(self, pipeline: Pipeline, node_id: str):
         rag_pipeline_service = RagPipelineService()
         workflow = rag_pipeline_service.get_draft_workflow(pipeline=pipeline)
@@ -952,7 +993,7 @@ class RagPipelineDatasourceVariableApi(Resource):
     @account_initialization_required
     @get_rag_pipeline
     @edit_permission_required
-    @marshal_with(workflow_run_node_execution_fields)
+    @marshal_with(workflow_run_node_execution_model)
     def post(self, pipeline: Pipeline):
         """
         Set datasource variables
@@ -975,6 +1016,8 @@ class RagPipelineRecommendedPluginApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
+        query = RagPipelineRecommendedPluginQuery.model_validate(request.args.to_dict())
+
         rag_pipeline_service = RagPipelineService()
-        recommended_plugins = rag_pipeline_service.get_recommended_plugins()
+        recommended_plugins = rag_pipeline_service.get_recommended_plugins(query.type)
         return recommended_plugins

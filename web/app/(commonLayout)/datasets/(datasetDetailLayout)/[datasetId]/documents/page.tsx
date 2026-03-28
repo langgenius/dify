@@ -1,4 +1,4 @@
-import React from 'react'
+import * as React from 'react'
 import Main from '@/app/components/datasets/documents'
 
 export type IProps = {

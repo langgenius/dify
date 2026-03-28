@@ -16,7 +16,6 @@ class MilvusConfig(BaseSettings):
         description="Authentication token for Milvus, if token-based authentication is enabled",
         default=None,
     )
-
     MILVUS_USER: str | None = Field(
         description="Username for authenticating with Milvus, if username/password authentication is enabled",
         default=None,

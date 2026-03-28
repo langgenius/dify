@@ -1,0 +1,23 @@
+{
+  "actionLogs": "Journaux d’actions",
+  "circularInvocationTip": "Il y a un appel circulaire d’outils/nœuds dans le flux de travail actuel.",
+  "detail": "DÉTAIL",
+  "input": "ENTRÉE",
+  "meta.executor": "Exécuteur",
+  "meta.startTime": "Heure de début",
+  "meta.status": "Statut",
+  "meta.steps": "Étapes d'exécution",
+  "meta.time": "Temps écoulé",
+  "meta.title": "MÉTADONNÉES",
+  "meta.tokens": "Total des jetons",
+  "meta.version": "Version",
+  "result": "RÉSULTAT",
+  "resultEmpty.link": "panneau de détail",
+  "resultEmpty.tipLeft": "veuillez aller à ",
+  "resultEmpty.tipRight": " visualisez-le.",
+  "resultEmpty.title": "Cela exécute uniquement le format de sortie JSON,",
+  "resultPanel.status": "STATUT",
+  "resultPanel.time": "TEMPS ÉCOULÉ",
+  "resultPanel.tokens": "TOTAL DES JETONS",
+  "tracing": "TRACE"
+}

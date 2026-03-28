@@ -8,11 +8,11 @@ export const useSettingsDisplay = () => {
   const { t } = useTranslation()
 
   return {
-    [IndexMethodEnum.QUALIFIED]: t('datasetCreation.stepTwo.qualified'),
-    [IndexMethodEnum.ECONOMICAL]: t('datasetSettings.form.indexMethodEconomy'),
-    [RetrievalSearchMethodEnum.semantic]: t('dataset.retrieval.semantic_search.title'),
-    [RetrievalSearchMethodEnum.fullText]: t('dataset.retrieval.full_text_search.title'),
-    [RetrievalSearchMethodEnum.hybrid]: t('dataset.retrieval.hybrid_search.title'),
-    [RetrievalSearchMethodEnum.keywordSearch]: t('dataset.retrieval.keyword_search.title'),
+    [IndexMethodEnum.QUALIFIED]: t('stepTwo.qualified', { ns: 'datasetCreation' }),
+    [IndexMethodEnum.ECONOMICAL]: t('form.indexMethodEconomy', { ns: 'datasetSettings' }),
+    [RetrievalSearchMethodEnum.semantic]: t('retrieval.semantic_search.title', { ns: 'dataset' }),
+    [RetrievalSearchMethodEnum.fullText]: t('retrieval.full_text_search.title', { ns: 'dataset' }),
+    [RetrievalSearchMethodEnum.hybrid]: t('retrieval.hybrid_search.title', { ns: 'dataset' }),
+    [RetrievalSearchMethodEnum.keywordSearch]: t('retrieval.keyword_search.title', { ns: 'dataset' }),
   }
 }

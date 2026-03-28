@@ -96,7 +96,7 @@ class TestNotionExtractorAuthentication:
     def test_init_with_integration_token_fallback(self, mock_get_token, mock_config, mock_document_model):
         """Test NotionExtractor falls back to integration token when credential not found."""
         # Arrange
-        mock_get_token.return_value = None
+        mock_get_token.side_effect = Exception("No credential id found")
         mock_config.NOTION_INTEGRATION_TOKEN = "integration-token-fallback"
 
         # Act
@@ -105,7 +105,7 @@ class TestNotionExtractorAuthentication:
             notion_obj_id="page-456",
             notion_page_type="page",
             tenant_id="tenant-789",
-            credential_id="cred-123",
+            credential_id=None,
             document_model=mock_document_model,
         )
 
@@ -117,7 +117,7 @@ class TestNotionExtractorAuthentication:
     def test_init_missing_credentials_raises_error(self, mock_get_token, mock_config, mock_document_model):
         """Test NotionExtractor raises error when no credentials available."""
         # Arrange
-        mock_get_token.return_value = None
+        mock_get_token.side_effect = Exception("No credential id found")
         mock_config.NOTION_INTEGRATION_TOKEN = None
 
         # Act & Assert
@@ -127,7 +127,7 @@ class TestNotionExtractorAuthentication:
                 notion_obj_id="page-456",
                 notion_page_type="page",
                 tenant_id="tenant-789",
-                credential_id="cred-123",
+                credential_id=None,
                 document_model=mock_document_model,
             )
         assert "Must specify `integration_token`" in str(exc_info.value)

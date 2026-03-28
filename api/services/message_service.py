@@ -1,19 +1,27 @@
 import json
+from collections.abc import Sequence
 from typing import Union
+
+from graphon.model_runtime.entities.model_entities import ModelType
+from sqlalchemy.orm import sessionmaker
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.llm_generator.llm_generator import LLMGenerator
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelManager
-from core.model_runtime.entities.model_entities import ModelType
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.ops.utils import measure_time
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account
+from models.enums import FeedbackFromSource, FeedbackRating
 from models.model import App, AppMode, AppModelConfig, EndUser, Message, MessageFeedback
+from repositories.execution_extra_content_repository import ExecutionExtraContentRepository
+from repositories.sqlalchemy_execution_extra_content_repository import (
+    SQLAlchemyExecutionExtraContentRepository,
+)
 from services.conversation_service import ConversationService
 from services.errors.message import (
     FirstMessageNotExistsError,
@@ -22,6 +30,23 @@ from services.errors.message import (
     SuggestedQuestionsAfterAnswerDisabledError,
 )
 from services.workflow_service import WorkflowService
+
+
+def _create_execution_extra_content_repository() -> ExecutionExtraContentRepository:
+    session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
+    return SQLAlchemyExecutionExtraContentRepository(session_maker=session_maker)
+
+
+def attach_message_extra_contents(messages: Sequence[Message]) -> None:
+    if not messages:
+        return
+
+    repository = _create_execution_extra_content_repository()
+    extra_contents_lists = repository.get_by_message_ids([message.id for message in messages])
+
+    for index, message in enumerate(messages):
+        contents = extra_contents_lists[index] if index < len(extra_contents_lists) else []
+        message.set_extra_contents([content.model_dump(mode="json", exclude_none=True) for content in contents])
 
 
 class MessageService:
@@ -85,6 +110,8 @@ class MessageService:
         if order == "asc":
             history_messages = list(reversed(history_messages))
 
+        attach_message_extra_contents(history_messages)
+
         return InfiniteScrollPagination(data=history_messages, limit=limit, has_more=has_more)
 
     @classmethod
@@ -146,7 +173,7 @@ class MessageService:
         app_model: App,
         message_id: str,
         user: Union[Account, EndUser] | None,
-        rating: str | None,
+        rating: FeedbackRating | None,
         content: str | None,
     ):
         if not user:
@@ -171,7 +198,7 @@ class MessageService:
                 message_id=message.id,
                 rating=rating,
                 content=content,
-                from_source=("user" if isinstance(user, EndUser) else "admin"),
+                from_source=(FeedbackFromSource.USER if isinstance(user, EndUser) else FeedbackFromSource.ADMIN),
                 from_end_user_id=(user.id if isinstance(user, EndUser) else None),
                 from_account_id=(user.id if isinstance(user, Account) else None),
             )
@@ -228,7 +255,7 @@ class MessageService:
             app_model=app_model, conversation_id=message.conversation_id, user=user
         )
 
-        model_manager = ModelManager()
+        model_manager = ModelManager.for_tenant(tenant_id=app_model.tenant_id)
 
         if app_model.mode == AppMode.ADVANCED_CHAT:
             workflow_service = WorkflowService()
@@ -261,10 +288,9 @@ class MessageService:
             else:
                 conversation_override_model_configs = json.loads(conversation.override_model_configs)
                 app_model_config = AppModelConfig(
-                    id=conversation.app_model_config_id,
                     app_id=app_model.id,
                 )
-
+                app_model_config.id = conversation.app_model_config_id
                 app_model_config = app_model_config.from_model_config_dict(conversation_override_model_configs)
             if not app_model_config:
                 raise ValueError("did not find app model config")

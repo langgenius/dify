@@ -3,8 +3,8 @@ from unittest.mock import Mock, patch
 
 import jsonschema
 import pytest
+from graphon.variables.input_entities import VariableEntity, VariableEntityType
 
-from core.app.app_config.entities import VariableEntity, VariableEntityType
 from core.app.features.rate_limiting.rate_limit import RateLimitGenerator
 from core.mcp import types
 from core.mcp.server.streamable_http import (

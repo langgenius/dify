@@ -1,3 +1,5 @@
+import { act, renderHook } from '@testing-library/react'
+import { useGlobalPublicStore, useIsSystemFeaturesPending } from '@/context/global-public-context'
 /**
  * Test suite for useDocumentTitle hook
  *
@@ -11,23 +13,27 @@
  * If no page title: "[Brand Name]"
  */
 import { defaultSystemFeatures } from '@/types/feature'
-import { act, renderHook } from '@testing-library/react'
 import useDocumentTitle from './use-document-title'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 
-jest.mock('@/service/common', () => ({
-  getSystemFeatures: jest.fn(() => ({ ...defaultSystemFeatures })),
-}))
+vi.mock('@/context/global-public-context', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/context/global-public-context')>()
+  return {
+    ...actual,
+    useIsSystemFeaturesPending: vi.fn(() => false),
+  }
+})
 
 /**
  * Test behavior when system features are still loading
  * Title should remain empty to prevent flicker
  */
 describe('title should be empty if systemFeatures is pending', () => {
-  act(() => {
-    useGlobalPublicStore.setState({
-      systemFeatures: { ...defaultSystemFeatures, branding: { ...defaultSystemFeatures.branding, enabled: false } },
-      isGlobalPending: true,
+  beforeEach(() => {
+    vi.mocked(useIsSystemFeaturesPending).mockReturnValue(true)
+    act(() => {
+      useGlobalPublicStore.setState({
+        systemFeatures: { ...defaultSystemFeatures, branding: { ...defaultSystemFeatures.branding, enabled: false } },
+      })
     })
   })
   /**
@@ -52,9 +58,9 @@ describe('title should be empty if systemFeatures is pending', () => {
  */
 describe('use default branding', () => {
   beforeEach(() => {
+    vi.mocked(useIsSystemFeaturesPending).mockReturnValue(false)
     act(() => {
       useGlobalPublicStore.setState({
-        isGlobalPending: false,
         systemFeatures: { ...defaultSystemFeatures, branding: { ...defaultSystemFeatures.branding, enabled: false } },
       })
     })
@@ -84,9 +90,9 @@ describe('use default branding', () => {
  */
 describe('use specific branding', () => {
   beforeEach(() => {
+    vi.mocked(useIsSystemFeaturesPending).mockReturnValue(false)
     act(() => {
       useGlobalPublicStore.setState({
-        isGlobalPending: false,
         systemFeatures: { ...defaultSystemFeatures, branding: { ...defaultSystemFeatures.branding, enabled: true, application_title: 'Test' } },
       })
     })

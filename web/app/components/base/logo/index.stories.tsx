@@ -1,10 +1,10 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
-import { ThemeProvider } from 'next-themes'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import type { ReactNode } from 'react'
+import { ThemeProvider } from 'next-themes'
 import DifyLogo from './dify-logo'
-import LogoSite from './logo-site'
-import LogoEmbeddedChatHeader from './logo-embedded-chat-header'
 import LogoEmbeddedChatAvatar from './logo-embedded-chat-avatar'
+import LogoEmbeddedChatHeader from './logo-embedded-chat-header'
+import LogoSite from './logo-site'
 
 const meta = {
   title: 'Base/General/Logo',
@@ -37,11 +37,11 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-const ThemePreview = ({ theme, children }: { theme: 'light' | 'dark'; children: ReactNode }) => {
+const ThemePreview = ({ theme, children }: { theme: 'light' | 'dark', children: ReactNode }) => {
   return (
     <ThemeProvider attribute="data-theme" forcedTheme={theme} enableSystem={false}>
       <div
-        className={'min-w-[320px] rounded-2xl border border-divider-subtle bg-background-default-subtle p-6 shadow-sm'}
+        className="min-w-[320px] rounded-2xl border border-divider-subtle bg-background-default-subtle p-6 shadow-sm"
       >
         {children}
       </div>

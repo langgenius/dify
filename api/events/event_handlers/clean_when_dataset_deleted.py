@@ -15,4 +15,5 @@ def handle(sender: Dataset, **kwargs):
         dataset.index_struct,
         dataset.collection_binding_id,
         dataset.doc_form,
+        dataset.pipeline_id,
     )

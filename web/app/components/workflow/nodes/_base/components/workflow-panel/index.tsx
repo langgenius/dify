@@ -1,58 +1,13 @@
-import { useStore as useAppStore } from '@/app/components/app/store'
-import { Stop } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
-import Tooltip from '@/app/components/base/tooltip'
-import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import {
-  AuthCategory,
-  AuthorizedInDataSourceNode,
-  AuthorizedInNode,
-  PluginAuth,
-  PluginAuthInDataSourceNode,
-} from '@/app/components/plugins/plugin-auth'
-import { usePluginStore } from '@/app/components/plugins/plugin-detail-panel/store'
+import type { FC, ReactNode } from 'react'
 import type { SimpleSubscription } from '@/app/components/plugins/plugin-detail-panel/subscription-list'
-import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
-import BlockIcon from '@/app/components/workflow/block-icon'
-import {
-  WorkflowHistoryEvent,
-  useAvailableBlocks,
-  useNodeDataUpdate,
-  useNodesInteractions,
-  useNodesMetaData,
-  useNodesReadOnly,
-  useToolIcon,
-  useWorkflowHistory,
-} from '@/app/components/workflow/hooks'
-import { useHooksStore } from '@/app/components/workflow/hooks-store'
-import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
-import Split from '@/app/components/workflow/nodes/_base/components/split'
-import DataSourceBeforeRunForm from '@/app/components/workflow/nodes/data-source/before-run-form'
-import type { CustomRunFormProps } from '@/app/components/workflow/nodes/data-source/types'
-import { DataSourceClassification } from '@/app/components/workflow/nodes/data-source/types'
-import { useLogs } from '@/app/components/workflow/run/hooks'
-import SpecialResultPanel from '@/app/components/workflow/run/special-result-panel'
-import { useStore } from '@/app/components/workflow/store'
-import { BlockEnum, type Node, NodeRunningStatus } from '@/app/components/workflow/types'
-import {
-  canRunBySingle,
-  hasErrorHandleNode,
-  hasRetryNode,
-  isSupportCustomRunForm,
-} from '@/app/components/workflow/utils'
-import { useModalContext } from '@/context/modal-context'
-import { useAllBuiltInTools } from '@/service/use-tools'
-import { useAllTriggerPlugins } from '@/service/use-triggers'
-import { FlowType } from '@/types/common'
-import { canFindTool } from '@/utils'
-import cn from '@/utils/classnames'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import type { Node } from '@/app/components/workflow/types'
 import {
   RiCloseLine,
   RiPlayLargeLine,
 } from '@remixicon/react'
-import { debounce } from 'lodash-es'
-import type { FC, ReactNode } from 'react'
-import React, {
+import { debounce } from 'es-toolkit/compat'
+import * as React from 'react'
+import {
   cloneElement,
   memo,
   useCallback,
@@ -63,6 +18,49 @@ import React, {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
+import { useStore as useAppStore } from '@/app/components/app/store'
+import { Stop } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
+import Tooltip from '@/app/components/base/tooltip'
+import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import {
+  AuthCategory,
+  AuthorizedInDataSourceNode,
+  AuthorizedInNode,
+  PluginAuth,
+  PluginAuthInDataSourceNode,
+} from '@/app/components/plugins/plugin-auth'
+import { usePluginStore } from '@/app/components/plugins/plugin-detail-panel/store'
+import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
+import BlockIcon from '@/app/components/workflow/block-icon'
+import {
+  useAvailableBlocks,
+  useNodeDataUpdate,
+  useNodesInteractions,
+  useNodesMetaData,
+  useNodesReadOnly,
+  useToolIcon,
+  useWorkflowHistory,
+  WorkflowHistoryEvent,
+} from '@/app/components/workflow/hooks'
+import { useHooksStore } from '@/app/components/workflow/hooks-store'
+import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
+import Split from '@/app/components/workflow/nodes/_base/components/split'
+import { useLogs } from '@/app/components/workflow/run/hooks'
+import SpecialResultPanel from '@/app/components/workflow/run/special-result-panel'
+import { useStore } from '@/app/components/workflow/store'
+import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
+import {
+  canRunBySingle,
+  hasErrorHandleNode,
+  hasRetryNode,
+  isSupportCustomRunForm,
+} from '@/app/components/workflow/utils'
+import { useModalContext } from '@/context/modal-context'
+import { useAllBuiltInTools } from '@/service/use-tools'
+import { useAllTriggerPlugins } from '@/service/use-triggers'
+import { FlowType } from '@/types/common'
+import { cn } from '@/utils/classnames'
 import { useResizePanel } from '../../hooks/use-resize-panel'
 import BeforeRunForm from '../before-run-form'
 import PanelWrap from '../before-run-form/panel-wrap'
@@ -72,20 +70,19 @@ import NextStep from '../next-step'
 import PanelOperator from '../panel-operator'
 import RetryOnPanel from '../retry/retry-on-panel'
 import { DescriptionInput, TitleInput } from '../title-description-input'
+import {
+  clampNodePanelWidth,
+  getCompressedNodePanelWidth,
+  getCurrentDataSource,
+  getCurrentToolCollection,
+  getCurrentTriggerPlugin,
+  getCustomRunForm,
+  getMaxNodePanelWidth,
+} from './helpers'
 import LastRun from './last-run'
 import useLastRun from './last-run/use-last-run'
 import Tab, { TabType } from './tab'
 import { TriggerSubscription } from './trigger-subscription'
-
-const getCustomRunForm = (params: CustomRunFormProps): React.JSX.Element => {
-  const nodeType = params.payload.type
-  switch (nodeType) {
-    case BlockEnum.DataSource:
-      return <DataSourceBeforeRunForm {...params} />
-    default:
-      return <div>Custom Run Form: {nodeType} not found</div>
-  }
-}
 
 type BasePanelProps = {
   children: ReactNode
@@ -115,17 +112,13 @@ const BasePanel: FC<BasePanelProps> = ({
 
   const reservedCanvasWidth = 400 // Reserve the minimum visible width for the canvas
 
-  const maxNodePanelWidth = useMemo(() => {
-    if (!workflowCanvasWidth)
-      return 720
-
-    const available = workflowCanvasWidth - (otherPanelWidth || 0) - reservedCanvasWidth
-    return Math.max(available, 400)
-  }, [workflowCanvasWidth, otherPanelWidth])
+  const maxNodePanelWidth = useMemo(
+    () => getMaxNodePanelWidth(workflowCanvasWidth, otherPanelWidth, reservedCanvasWidth),
+    [workflowCanvasWidth, otherPanelWidth],
+  )
 
   const updateNodePanelWidth = useCallback((width: number, source: 'user' | 'system' = 'user') => {
-    // Ensure the width is within the min and max range
-    const newValue = Math.max(400, Math.min(width, maxNodePanelWidth))
+    const newValue = clampNodePanelWidth(width, maxNodePanelWidth)
 
     if (source === 'user')
       localStorage.setItem('workflow-node-panel-width', `${newValue}`)
@@ -153,15 +146,9 @@ const BasePanel: FC<BasePanelProps> = ({
   })
 
   useEffect(() => {
-    if (!workflowCanvasWidth)
-      return
-
-    // If the total width of the three exceeds the canvas, shrink the node panel to the available range (at least 400px)
-    const total = nodePanelWidth + otherPanelWidth + reservedCanvasWidth
-    if (total > workflowCanvasWidth) {
-      const target = Math.max(workflowCanvasWidth - otherPanelWidth - reservedCanvasWidth, 400)
-      debounceUpdate(target)
-    }
+    const compressedWidth = getCompressedNodePanelWidth(nodePanelWidth, workflowCanvasWidth, otherPanelWidth, reservedCanvasWidth)
+    if (compressedWidth !== undefined)
+      debounceUpdate(compressedWidth)
   }, [nodePanelWidth, otherPanelWidth, workflowCanvasWidth, debounceUpdate])
 
   const { handleNodeSelect } = useNodesInteractions()
@@ -275,21 +262,17 @@ const BasePanel: FC<BasePanelProps> = ({
 
   const storeBuildInTools = useStore(s => s.buildInTools)
   const { data: buildInTools } = useAllBuiltInTools()
-  const currToolCollection = useMemo(() => {
-    const candidates = buildInTools ?? storeBuildInTools
-    return candidates?.find(item => canFindTool(item.id, data.provider_id))
-  }, [buildInTools, storeBuildInTools, data.provider_id])
+  const currToolCollection = useMemo(
+    () => getCurrentToolCollection(buildInTools, storeBuildInTools, data.provider_id),
+    [buildInTools, storeBuildInTools, data.provider_id],
+  )
   const needsToolAuth = useMemo(() => {
     return data.type === BlockEnum.Tool && currToolCollection?.allow_delete
   }, [data.type, currToolCollection?.allow_delete])
 
   // only fetch trigger plugins when the node is a trigger plugin
   const { data: triggerPlugins = [] } = useAllTriggerPlugins(data.type === BlockEnum.TriggerPlugin)
-  const currentTriggerPlugin = useMemo(() => {
-    if (data.type !== BlockEnum.TriggerPlugin || !data.plugin_id || !triggerPlugins?.length)
-      return undefined
-    return triggerPlugins?.find(p => p.plugin_id === data.plugin_id)
-  }, [data.type, data.plugin_id, triggerPlugins])
+  const currentTriggerPlugin = useMemo(() => getCurrentTriggerPlugin(data, triggerPlugins), [data, triggerPlugins])
   const { setDetail } = usePluginStore()
 
   useEffect(() => {
@@ -312,10 +295,7 @@ const BasePanel: FC<BasePanelProps> = ({
 
   const dataSourceList = useStore(s => s.dataSourceList)
 
-  const currentDataSource = useMemo(() => {
-    if (data.type === BlockEnum.DataSource && data.provider_type !== DataSourceClassification.localFile)
-      return dataSourceList?.find(item => item.plugin_id === data.plugin_id)
-  }, [dataSourceList, data.provider_id, data.type, data.provider_type])
+  const currentDataSource = useMemo(() => getCurrentDataSource(data, dataSourceList), [data, dataSourceList])
 
   const handleAuthorizationItemClick = useCallback((credential_id: string) => {
     handleNodeDataUpdateWithSyncDraft({
@@ -362,7 +342,7 @@ const BasePanel: FC<BasePanelProps> = ({
       default:
         break
     }
-    return !pluginDetail ? null : <ReadmeEntrance pluginDetail={pluginDetail as any} className='mt-auto' />
+    return !pluginDetail ? null : <ReadmeEntrance pluginDetail={pluginDetail as any} className="mt-auto" />
   }, [data.type, currToolCollection, currentDataSource, currentTriggerPlugin])
 
   const selectedNode = useMemo(() => ({
@@ -373,7 +353,8 @@ const BasePanel: FC<BasePanelProps> = ({
     return (
       <div className={cn(
         'relative mr-1  h-full',
-      )}>
+      )}
+      >
         <div
           ref={containerRef}
           className={cn('flex h-full flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg', showSingleRunPanel ? 'overflow-hidden' : 'overflow-y-auto')}
@@ -385,7 +366,7 @@ const BasePanel: FC<BasePanelProps> = ({
             nodeName={data.title}
             onHide={hideSingleRun}
           >
-            <div className='h-0 grow overflow-y-auto pb-4'>
+            <div className="h-0 grow overflow-y-auto pb-4">
               <SpecialResultPanel {...passedLogParams} />
             </div>
           </PanelWrap>
@@ -412,7 +393,8 @@ const BasePanel: FC<BasePanelProps> = ({
     return (
       <div className={cn(
         'relative mr-1  h-full',
-      )}>
+      )}
+      >
         <div
           ref={containerRef}
           className={cn('flex h-full flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg', showSingleRunPanel ? 'overflow-hidden' : 'overflow-y-auto')}
@@ -420,20 +402,23 @@ const BasePanel: FC<BasePanelProps> = ({
             width: `${nodePanelWidth}px`,
           }}
         >
-          {isSupportCustomRunForm(data.type) ? (
-            form
-          ) : (
-            <BeforeRunForm
-              nodeName={data.title}
-              nodeType={data.type}
-              onHide={hideSingleRun}
-              onRun={handleRunWithParams}
-              {...singleRunParams!}
-              {...passedLogParams}
-              existVarValuesInForms={getExistVarValuesInForms(singleRunParams?.forms as any)}
-              filteredExistVarForms={getFilteredExistVarForms(singleRunParams?.forms as any)}
-            />
-          )}
+          {isSupportCustomRunForm(data.type)
+            ? (
+                form
+              )
+            : (
+                <BeforeRunForm
+                  nodeName={data.title}
+                  nodeType={data.type}
+                  onHide={hideSingleRun}
+                  onRun={handleRunWithParams}
+                  {...singleRunParams!}
+                  {...passedLogParams}
+                  existVarValuesInForms={getExistVarValuesInForms(singleRunParams?.forms as any)}
+                  filteredExistVarForms={getFilteredExistVarForms(singleRunParams?.forms as any)}
+                  handleAfterHumanInputStepRun={handleAfterCustomSingleRun}
+                />
+              )}
 
         </div>
       </div>
@@ -452,8 +437,9 @@ const BasePanel: FC<BasePanelProps> = ({
     >
       <div
         ref={triggerRef}
-        className='absolute -left-1 top-0 flex h-full w-1 cursor-col-resize resize-x items-center justify-center'>
-        <div className='h-10 w-0.5 rounded-sm bg-state-base-handle hover:h-full hover:bg-state-accent-solid active:h-full active:bg-state-accent-solid'></div>
+        className="absolute -left-1 top-0 flex h-full w-1 cursor-col-resize resize-x items-center justify-center"
+      >
+        <div className="h-10 w-0.5 rounded-sm bg-state-base-handle hover:h-full hover:bg-state-accent-solid active:h-full active:bg-state-accent-solid"></div>
       </div>
       <div
         ref={containerRef}
@@ -462,28 +448,28 @@ const BasePanel: FC<BasePanelProps> = ({
           width: `${nodePanelWidth}px`,
         }}
       >
-        <div className='sticky top-0 z-10 shrink-0 border-b-[0.5px] border-divider-regular bg-components-panel-bg'>
-          <div className='flex items-center px-4 pb-1 pt-4'>
+        <div className="sticky top-0 z-10 shrink-0 border-b-[0.5px] border-divider-regular bg-components-panel-bg">
+          <div className="flex items-center px-4 pb-1 pt-4">
             <BlockIcon
-              className='mr-1 shrink-0'
+              className="mr-1 shrink-0"
               type={data.type}
               toolIcon={toolIcon}
-              size='md'
+              size="md"
             />
             <TitleInput
               value={data.title || ''}
               onBlur={handleTitleBlur}
             />
-            <div className='flex shrink-0 items-center text-text-tertiary'>
+            <div className="flex shrink-0 items-center text-text-tertiary">
               {
                 isSupportSingleRun && !nodesReadOnly && (
                   <Tooltip
-                    popupContent={t('workflow.panel.runThisStep')}
-                    popupClassName='mr-1'
+                    popupContent={t('panel.runThisStep', { ns: 'workflow' })}
+                    popupClassName="mr-1"
                     disabled={isSingleRunning}
                   >
                     <div
-                      className='mr-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md hover:bg-state-base-hover'
+                      className="mr-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md hover:bg-state-base-hover"
                       onClick={() => {
                         if (isSingleRunning)
                           handleStop()
@@ -492,8 +478,9 @@ const BasePanel: FC<BasePanelProps> = ({
                       }}
                     >
                       {
-                        isSingleRunning ? <Stop className='h-4 w-4 text-text-tertiary' />
-                          : <RiPlayLargeLine className='h-4 w-4 text-text-tertiary' />
+                        isSingleRunning
+                          ? <Stop className="h-4 w-4 text-text-tertiary" />
+                          : <RiPlayLargeLine className="h-4 w-4 text-text-tertiary" />
                       }
                     </div>
                   </Tooltip>
@@ -501,16 +488,16 @@ const BasePanel: FC<BasePanelProps> = ({
               }
               <HelpLink nodeType={data.type} />
               <PanelOperator id={id} data={data} showHelpLink={false} />
-              <div className='mx-3 h-3.5 w-[1px] bg-divider-regular' />
+              <div className="mx-3 h-3.5 w-[1px] bg-divider-regular" />
               <div
-                className='flex h-6 w-6 cursor-pointer items-center justify-center'
+                className="flex h-6 w-6 cursor-pointer items-center justify-center"
                 onClick={() => handleNodeSelect(id, true)}
               >
-                <RiCloseLine className='h-4 w-4 text-text-tertiary' />
+                <RiCloseLine className="h-4 w-4 text-text-tertiary" />
               </div>
             </div>
           </div>
-          <div className='p-2'>
+          <div className="p-2">
             <DescriptionInput
               value={data.desc || ''}
               onChange={handleDescriptionChange}
@@ -519,7 +506,7 @@ const BasePanel: FC<BasePanelProps> = ({
           {
             needsToolAuth && (
               <PluginAuth
-                className='px-4 pb-2'
+                className="px-4 pb-2"
                 pluginPayload={{
                   provider: currToolCollection?.name || '',
                   providerType: currToolCollection?.type || '',
@@ -527,7 +514,7 @@ const BasePanel: FC<BasePanelProps> = ({
                   detail: currToolCollection as any,
                 }}
               >
-                <div className='flex items-center justify-between pl-4 pr-3'>
+                <div className="flex items-center justify-between pl-4 pr-3">
                   <Tab
                     value={tabType}
                     onChange={setTabType}
@@ -552,7 +539,7 @@ const BasePanel: FC<BasePanelProps> = ({
                 onJumpToDataSourcePage={handleJumpToDataSourcePage}
                 isAuthorized={currentDataSource.is_authorized}
               >
-                <div className='flex items-center justify-between pl-4 pr-3'>
+                <div className="flex items-center justify-between pl-4 pr-3">
                   <Tab
                     value={tabType}
                     onChange={setTabType}
@@ -580,7 +567,7 @@ const BasePanel: FC<BasePanelProps> = ({
           }
           {
             !needsToolAuth && !currentDataSource && !currentTriggerPlugin && (
-              <div className='flex items-center justify-between pl-4 pr-3'>
+              <div className="flex items-center justify-between pl-4 pr-3">
                 <Tab
                   value={tabType}
                   onChange={setTabType}
@@ -591,7 +578,7 @@ const BasePanel: FC<BasePanelProps> = ({
           <Split />
         </div>
         {tabType === TabType.settings && (
-          <div className='flex flex-1 flex-col overflow-y-auto'>
+          <div className="flex flex-1 flex-col overflow-y-auto">
             <div>
               {cloneElement(children as any, {
                 id,
@@ -625,12 +612,12 @@ const BasePanel: FC<BasePanelProps> = ({
             }
             {
               !!availableNextBlocks.length && (
-                <div className='border-t-[0.5px] border-divider-regular p-4'>
-                  <div className='system-sm-semibold-uppercase mb-1 flex items-center text-text-secondary'>
-                    {t('workflow.panel.nextStep').toLocaleUpperCase()}
+                <div className="border-t-[0.5px] border-divider-regular p-4">
+                  <div className="system-sm-semibold-uppercase mb-1 flex items-center text-text-secondary">
+                    {t('panel.nextStep', { ns: 'workflow' }).toLocaleUpperCase()}
                   </div>
-                  <div className='system-xs-regular mb-2 text-text-tertiary'>
-                    {t('workflow.panel.addNextStep')}
+                  <div className="system-xs-regular mb-2 text-text-tertiary">
+                    {t('panel.addNextStep', { ns: 'workflow' })}
                   </div>
                   <NextStep selectedNode={selectedNode} />
                 </div>

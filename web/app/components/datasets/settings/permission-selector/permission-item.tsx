@@ -1,5 +1,5 @@
-import React from 'react'
 import { RiCheckLine } from '@remixicon/react'
+import * as React from 'react'
 
 type PermissionItemProps = {
   leftIcon: React.ReactNode
@@ -16,14 +16,14 @@ const PermissionItem = ({
 }: PermissionItemProps) => {
   return (
     <div
-      className='flex cursor-pointer items-center gap-x-1 rounded-lg px-2 py-1 hover:bg-state-base-hover'
+      className="flex cursor-pointer items-center gap-x-1 rounded-lg px-2 py-1 hover:bg-state-base-hover"
       onClick={onClick}
     >
       {leftIcon}
-      <div className='system-md-regular grow px-1 text-text-secondary'>
+      <div className="system-md-regular grow px-1 text-text-secondary">
         {text}
       </div>
-      {isSelected && <RiCheckLine className='size-4 text-text-accent' />}
+      {isSelected && <RiCheckLine className="size-4 text-text-accent" />}
     </div>
   )
 }

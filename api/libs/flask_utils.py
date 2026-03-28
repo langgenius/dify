@@ -1,11 +1,14 @@
 import contextvars
 from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import TypeVar
+from typing import TYPE_CHECKING, TypeVar
 
 from flask import Flask, g
 
 T = TypeVar("T")
+
+if TYPE_CHECKING:
+    from models import Account, EndUser
 
 
 @contextmanager
@@ -64,3 +67,7 @@ def preserve_flask_contexts(
         finally:
             # Any cleanup can be added here if needed
             pass
+
+
+def set_login_user(user: "Account | EndUser"):
+    g._login_user = user

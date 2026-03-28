@@ -1,11 +1,11 @@
+import type { LoopStartedResponse } from '@/types/workflow'
+import { produce } from 'immer'
 import { useCallback } from 'react'
 import {
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
-import { produce } from 'immer'
 import { useWorkflowStore } from '@/app/components/workflow/store'
-import type { LoopStartedResponse } from '@/types/workflow'
 import { NodeRunningStatus } from '@/app/components/workflow/types'
 
 export const useWorkflowNodeLoopStarted = () => {
@@ -16,8 +16,8 @@ export const useWorkflowNodeLoopStarted = () => {
   const handleWorkflowNodeLoopStarted = useCallback((
     params: LoopStartedResponse,
     containerParams: {
-      clientWidth: number,
-      clientHeight: number,
+      clientWidth: number
+      clientHeight: number
     },
   ) => {
     const { data } = params

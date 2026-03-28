@@ -1,0 +1,36 @@
+{
+  "icon": {
+    "type": "element",
+    "isRootNode": true,
+    "name": "svg",
+    "attributes": {
+      "width": "40",
+      "height": "40",
+      "viewBox": "0 0 40 40",
+      "fill": "none",
+      "xmlns": "http://www.w3.org/2000/svg"
+    },
+    "children": [
+      {
+        "type": "element",
+        "name": "rect",
+        "attributes": {
+          "width": "40",
+          "height": "40",
+          "fill": "white"
+        },
+        "children": []
+      },
+      {
+        "type": "element",
+        "name": "path",
+        "attributes": {
+          "d": "M25.7926 10.1311H21.5089L29.3208 29.869H33.6045L25.7926 10.1311ZM13.4164 10.1311L5.60449 29.869H9.97273L11.5703 25.724H19.743L21.3405 29.869H25.7087L17.8969 10.1311H13.4164ZM12.9834 22.0583L15.6566 15.1217L18.3299 22.0583H12.9834Z",
+          "fill": "black"
+        },
+        "children": []
+      }
+    ]
+  },
+  "name": "AnthropicShortLight"
+}

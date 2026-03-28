@@ -1,22 +1,23 @@
+import type { ChunkStructureEnum } from '../../types'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiAddLine } from '@remixicon/react'
-import { Field } from '@/app/components/workflow/nodes/_base/components/layout'
-import type { ChunkStructureEnum } from '../../types'
-import OptionCard from '../option-card'
-import Selector from './selector'
-import { useChunkStructure } from './hooks'
 import Button from '@/app/components/base/button'
+import { Field } from '@/app/components/workflow/nodes/_base/components/layout'
+import OptionCard from '../option-card'
+import { useChunkStructure } from './hooks'
 import Instruction from './instruction'
+import Selector from './selector'
 
 type ChunkStructureProps = {
   chunkStructure?: ChunkStructureEnum
   onChunkStructureChange: (value: ChunkStructureEnum) => void
+  warningDot?: boolean
   readonly?: boolean
 }
 const ChunkStructure = ({
   chunkStructure,
   onChunkStructureChange,
+  warningDot = false,
   readonly = false,
 }: ChunkStructureProps) => {
   const { t } = useTranslation()
@@ -28,8 +29,9 @@ const ChunkStructure = ({
   return (
     <Field
       fieldTitleProps={{
-        title: t('workflow.nodes.knowledgeBase.chunkStructure'),
-        tooltip: t('workflow.nodes.knowledgeBase.chunkStructureTip.message'),
+        title: t('nodes.knowledgeBase.chunkStructure', { ns: 'workflow' }),
+        tooltip: t('nodes.knowledgeBase.chunkStructureTip.message', { ns: 'workflow' }),
+        warningDot,
         operation: chunkStructure && (
           <Selector
             options={options}
@@ -41,7 +43,7 @@ const ChunkStructure = ({
       }}
     >
       {
-        chunkStructure && (
+        !!chunkStructure && (
           <OptionCard
             {...optionMap[chunkStructure]}
             selectedId={chunkStructure}
@@ -59,15 +61,15 @@ const ChunkStructure = ({
               readonly={readonly}
               trigger={(
                 <Button
-                  className='w-full'
-                  variant='secondary-accent'
+                  className="w-full"
+                  variant="secondary-accent"
                 >
-                  <RiAddLine className='mr-1 h-4 w-4' />
-                  {t('workflow.nodes.knowledgeBase.chooseChunkStructure')}
+                  <span className="i-ri-add-line mr-1 h-4 w-4" />
+                  {t('nodes.knowledgeBase.chooseChunkStructure', { ns: 'workflow' })}
                 </Button>
               )}
             />
-            <Instruction className='mt-2' />
+            <Instruction className="mt-2" />
           </>
         )
       }

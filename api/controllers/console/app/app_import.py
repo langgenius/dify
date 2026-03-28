@@ -41,14 +41,14 @@ DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 class AppImportPayload(BaseModel):
     mode: str = Field(..., description="Import mode")
-    yaml_content: str | None = None
-    yaml_url: str | None = None
-    name: str | None = None
-    description: str | None = None
-    icon_type: str | None = None
-    icon: str | None = None
-    icon_background: str | None = None
-    app_id: str | None = None
+    yaml_content: str | None = Field(None)
+    yaml_url: str | None = Field(None)
+    name: str | None = Field(None)
+    description: str | None = Field(None)
+    icon_type: str | None = Field(None)
+    icon: str | None = Field(None)
+    icon_background: str | None = Field(None)
+    app_id: str | None = Field(None)
 
 
 console_ns.schema_model(

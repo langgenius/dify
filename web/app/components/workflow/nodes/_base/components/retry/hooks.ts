@@ -1,12 +1,12 @@
+import type { WorkflowRetryConfig } from './types'
+import type { NodeTracing } from '@/types/workflow'
 import {
   useCallback,
   useState,
 } from 'react'
-import type { WorkflowRetryConfig } from './types'
 import {
   useNodeDataUpdate,
 } from '@/app/components/workflow/hooks'
-import type { NodeTracing } from '@/types/workflow'
 
 export const useRetryConfig = (
   id: string,

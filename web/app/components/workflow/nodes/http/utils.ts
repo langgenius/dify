@@ -1,4 +1,5 @@
-import { type BodyPayload, BodyPayloadValueType } from './types'
+import type { BodyPayload } from './types'
+import { BodyPayloadValueType } from './types'
 
 export const transformToBodyPayload = (old: string, hasKey: boolean): BodyPayload => {
   if (!hasKey) {

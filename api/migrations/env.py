@@ -66,6 +66,7 @@ def run_migrations_offline():
     context.configure(
         url=url, target_metadata=get_metadata(), literal_binds=True
     )
+    logger.info("Generating offline migration SQL with url: %s", url)
 
     with context.begin_transaction():
         context.run_migrations()

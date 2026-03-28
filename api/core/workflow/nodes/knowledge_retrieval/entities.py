@@ -1,10 +1,10 @@
 from collections.abc import Sequence
 from typing import Literal
 
+from graphon.entities.base_node_data import BaseNodeData
+from graphon.enums import BuiltinNodeTypes, NodeType
+from graphon.nodes.llm.entities import ModelConfig, VisionConfig
 from pydantic import BaseModel, Field
-
-from core.workflow.nodes.base import BaseNodeData
-from core.workflow.nodes.llm.entities import ModelConfig, VisionConfig
 
 
 class RerankingModelConfig(BaseModel):
@@ -113,7 +113,7 @@ class KnowledgeRetrievalNodeData(BaseNodeData):
     Knowledge retrieval Node Data.
     """
 
-    type: str = "knowledge-retrieval"
+    type: NodeType = BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL
     query_variable_selector: list[str] | None | str = None
     query_attachment_selector: list[str] | None | str = None
     dataset_ids: list[str]

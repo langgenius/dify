@@ -1,10 +1,11 @@
 'use client'
-import AlertTriangle from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback/AlertTriangle'
-import classNames from '@/utils/classnames'
-import { RiErrorWarningFill } from '@remixicon/react'
-import { type VariantProps, cva } from 'class-variance-authority'
+import type { VariantProps } from 'class-variance-authority'
 import type { CSSProperties } from 'react'
-import React from 'react'
+import { RiErrorWarningFill } from '@remixicon/react'
+import { cva } from 'class-variance-authority'
+import * as React from 'react'
+import AlertTriangle from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback/AlertTriangle'
+import { cn } from '@/utils/classnames'
 
 export enum NodeStatusEnum {
   warning = 'warning',
@@ -26,7 +27,7 @@ const nodeStatusVariants = cva(
   },
 )
 
-const StatusIconMap: Record<NodeStatusEnum, { IconComponent: React.ElementType; message: string }> = {
+const StatusIconMap: Record<NodeStatusEnum, { IconComponent: React.ElementType, message: string }> = {
   [NodeStatusEnum.warning]: { IconComponent: AlertTriangle, message: 'Warning' },
   [NodeStatusEnum.error]: { IconComponent: RiErrorWarningFill, message: 'Error' },
 }
@@ -51,17 +52,12 @@ const NodeStatus = ({
 
   return (
     <div
-      className={classNames(
-        nodeStatusVariants({ status, className }),
-      )}
+      className={cn(nodeStatusVariants({ status, className }))}
       style={styleCss}
       {...props}
     >
       <Icon
-        className={classNames(
-          'h-3.5 w-3.5 shrink-0',
-          iconClassName,
-        )}
+        className={cn('h-3.5 w-3.5 shrink-0', iconClassName)}
       />
       <span>{message ?? defaultMessage}</span>
       {children}

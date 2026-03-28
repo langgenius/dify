@@ -1,17 +1,17 @@
+import type { OffsetOptions } from '@floating-ui/react'
+import type { Node } from '@/app/components/workflow/types'
+import { RiMoreFill } from '@remixicon/react'
 import {
   memo,
   useCallback,
   useState,
 } from 'react'
-import { RiMoreFill } from '@remixicon/react'
-import type { OffsetOptions } from '@floating-ui/react'
-import PanelOperatorPopup from './panel-operator-popup'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import type { Node } from '@/app/components/workflow/types'
+import PanelOperatorPopup from './panel-operator-popup'
 
 type PanelOperatorProps = {
   id: string
@@ -44,7 +44,7 @@ const PanelOperator = ({
 
   return (
     <PortalToFollowElem
-      placement='bottom-end'
+      placement="bottom-end"
       offset={offset}
       open={open}
       onOpenChange={handleOpenChange}
@@ -58,10 +58,10 @@ const PanelOperator = ({
             ${triggerClassName}
           `}
         >
-          <RiMoreFill className={'h-4 w-4 text-text-tertiary'} />
+          <RiMoreFill className="h-4 w-4 text-text-tertiary" />
         </div>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-[11]'>
+      <PortalToFollowElemContent className="z-[11]">
         <PanelOperatorPopup
           id={id}
           data={data}

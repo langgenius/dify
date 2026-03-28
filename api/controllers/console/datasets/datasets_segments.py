@@ -2,11 +2,14 @@ import uuid
 
 from flask import request
 from flask_restx import Resource, marshal
+from graphon.model_runtime.entities.model_entities import ModelType
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import String, cast, func, or_, select
+from sqlalchemy.dialects.postgresql import JSONB
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
+from configs import dify_config
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import ProviderNotInitializeError
@@ -24,10 +27,11 @@ from controllers.console.wraps import (
 )
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
-from core.model_runtime.entities.model_entities import ModelType
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from fields.segment_fields import child_chunk_fields, segment_fields
+from libs.helper import escape_like_pattern
 from libs.login import current_account_with_tenant, login_required
 from models.dataset import ChildChunk, DocumentSegment
 from models.model import UploadFile
@@ -36,6 +40,17 @@ from services.entities.knowledge_entities.knowledge_entities import ChildChunkUp
 from services.errors.chunk import ChildChunkDeleteIndexError as ChildChunkDeleteIndexServiceError
 from services.errors.chunk import ChildChunkIndexingError as ChildChunkIndexingServiceError
 from tasks.batch_create_segment_to_index_task import batch_create_segment_to_index_task
+
+
+def _get_segment_with_summary(segment, dataset_id):
+    """Helper function to marshal segment and add summary information."""
+    from services.summary_index_service import SummaryIndexService
+
+    segment_dict = dict(marshal(segment, segment_fields))  # type: ignore
+    # Query summary for this segment (only enabled summaries)
+    summary = SummaryIndexService.get_segment_summary(segment_id=segment.id, dataset_id=dataset_id)
+    segment_dict["summary"] = summary.summary_content if summary else None
+    return segment_dict
 
 
 class SegmentListQuery(BaseModel):
@@ -60,6 +75,7 @@ class SegmentUpdatePayload(BaseModel):
     keywords: list[str] | None = None
     regenerate_child_chunks: bool = False
     attachment_ids: list[str] | None = None
+    summary: str | None = None  # Summary content for summary index
 
 
 class BatchImportPayload(BaseModel):
@@ -87,6 +103,7 @@ register_schema_models(
     ChildChunkCreatePayload,
     ChildChunkUpdatePayload,
     ChildChunkBatchUpdatePayload,
+    ChildChunkUpdateArgs,
 )
 
 
@@ -143,7 +160,31 @@ class DatasetDocumentSegmentListApi(Resource):
             query = query.where(DocumentSegment.hit_count >= hit_count_gte)
 
         if keyword:
-            query = query.where(DocumentSegment.content.ilike(f"%{keyword}%"))
+            # Escape special characters in keyword to prevent SQL injection via LIKE wildcards
+            escaped_keyword = escape_like_pattern(keyword)
+            # Search in both content and keywords fields
+            # Use database-specific methods for JSON array search
+            if dify_config.SQLALCHEMY_DATABASE_URI_SCHEME == "postgresql":
+                # PostgreSQL: Use jsonb_array_elements_text to properly handle Unicode/Chinese text
+                keywords_condition = func.array_to_string(
+                    func.array(
+                        select(func.jsonb_array_elements_text(cast(DocumentSegment.keywords, JSONB)))
+                        .correlate(DocumentSegment)
+                        .scalar_subquery()
+                    ),
+                    ",",
+                ).ilike(f"%{escaped_keyword}%", escape="\\")
+            else:
+                # MySQL: Cast JSON to string for pattern matching
+                # MySQL stores Chinese text directly in JSON without Unicode escaping
+                keywords_condition = cast(DocumentSegment.keywords, String).ilike(f"%{escaped_keyword}%", escape="\\")
+
+            query = query.where(
+                or_(
+                    DocumentSegment.content.ilike(f"%{escaped_keyword}%", escape="\\"),
+                    keywords_condition,
+                )
+            )
 
         if args.enabled.lower() != "all":
             if args.enabled.lower() == "true":
@@ -153,8 +194,25 @@ class DatasetDocumentSegmentListApi(Resource):
 
         segments = db.paginate(select=query, page=page, per_page=limit, max_per_page=100, error_out=False)
 
+        # Query summaries for all segments in this page (batch query for efficiency)
+        segment_ids = [segment.id for segment in segments.items]
+        summaries = {}
+        if segment_ids:
+            from services.summary_index_service import SummaryIndexService
+
+            summary_records = SummaryIndexService.get_segments_summaries(segment_ids=segment_ids, dataset_id=dataset_id)
+            # Only include enabled summaries (already filtered by service)
+            summaries = {chunk_id: summary.summary_content for chunk_id, summary in summary_records.items()}
+
+        # Add summary to each segment
+        segments_with_summary = []
+        for segment in segments.items:
+            segment_dict = dict(marshal(segment, segment_fields))  # type: ignore
+            segment_dict["summary"] = summaries.get(segment.id)
+            segments_with_summary.append(segment_dict)
+
         response = {
-            "data": marshal(segments.items, segment_fields),
+            "data": segments_with_summary,
             "limit": limit,
             "total": segments.total,
             "total_pages": segments.pages,
@@ -222,10 +280,10 @@ class DatasetDocumentSegmentApi(Resource):
             DatasetService.check_dataset_permission(dataset, current_user)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
-        if dataset.indexing_technique == "high_quality":
+        if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             # check embedding model setting
             try:
-                model_manager = ModelManager()
+                model_manager = ModelManager.for_tenant(tenant_id=current_tenant_id)
                 model_manager.get_model_instance(
                     tenant_id=current_tenant_id,
                     provider=dataset.embedding_model_provider,
@@ -276,9 +334,9 @@ class DatasetDocumentSegmentAddApi(Resource):
         if not current_user.is_dataset_editor:
             raise Forbidden()
         # check embedding model setting
-        if dataset.indexing_technique == "high_quality":
+        if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             try:
-                model_manager = ModelManager()
+                model_manager = ModelManager.for_tenant(tenant_id=current_tenant_id)
                 model_manager.get_model_instance(
                     tenant_id=current_tenant_id,
                     provider=dataset.embedding_model_provider,
@@ -300,7 +358,7 @@ class DatasetDocumentSegmentAddApi(Resource):
         payload_dict = payload.model_dump(exclude_none=True)
         SegmentService.segment_create_args_validate(payload_dict, document)
         segment = SegmentService.create_segment(payload_dict, document, dataset)
-        return {"data": marshal(segment, segment_fields), "doc_form": document.doc_form}, 200
+        return {"data": _get_segment_with_summary(segment, dataset_id), "doc_form": document.doc_form}, 200
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>")
@@ -326,10 +384,10 @@ class DatasetDocumentSegmentUpdateApi(Resource):
         document = DocumentService.get_document(dataset_id, document_id)
         if not document:
             raise NotFound("Document not found.")
-        if dataset.indexing_technique == "high_quality":
+        if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             # check embedding model setting
             try:
-                model_manager = ModelManager()
+                model_manager = ModelManager.for_tenant(tenant_id=current_tenant_id)
                 model_manager.get_model_instance(
                     tenant_id=current_tenant_id,
                     provider=dataset.embedding_model_provider,
@@ -344,10 +402,10 @@ class DatasetDocumentSegmentUpdateApi(Resource):
                 raise ProviderNotInitializeError(ex.description)
             # check segment
         segment_id = str(segment_id)
-        segment = (
-            db.session.query(DocumentSegment)
+        segment = db.session.scalar(
+            select(DocumentSegment)
             .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_tenant_id)
-            .first()
+            .limit(1)
         )
         if not segment:
             raise NotFound("Segment not found.")
@@ -362,10 +420,12 @@ class DatasetDocumentSegmentUpdateApi(Resource):
         payload = SegmentUpdatePayload.model_validate(console_ns.payload or {})
         payload_dict = payload.model_dump(exclude_none=True)
         SegmentService.segment_create_args_validate(payload_dict, document)
+
+        # Update segment (summary update with change detection is handled in SegmentService.update_segment)
         segment = SegmentService.update_segment(
             SegmentUpdateArgs.model_validate(payload.model_dump(exclude_none=True)), segment, document, dataset
         )
-        return {"data": marshal(segment, segment_fields), "doc_form": document.doc_form}, 200
+        return {"data": _get_segment_with_summary(segment, dataset_id), "doc_form": document.doc_form}, 200
 
     @setup_required
     @login_required
@@ -388,10 +448,10 @@ class DatasetDocumentSegmentUpdateApi(Resource):
             raise NotFound("Document not found.")
         # check segment
         segment_id = str(segment_id)
-        segment = (
-            db.session.query(DocumentSegment)
+        segment = db.session.scalar(
+            select(DocumentSegment)
             .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_tenant_id)
-            .first()
+            .limit(1)
         )
         if not segment:
             raise NotFound("Segment not found.")
@@ -435,7 +495,7 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
         payload = BatchImportPayload.model_validate(console_ns.payload or {})
         upload_file_id = payload.upload_file_id
 
-        upload_file = db.session.query(UploadFile).where(UploadFile.id == upload_file_id).first()
+        upload_file = db.session.scalar(select(UploadFile).where(UploadFile.id == upload_file_id).limit(1))
         if not upload_file:
             raise NotFound("UploadFile not found.")
 
@@ -500,19 +560,19 @@ class ChildChunkAddApi(Resource):
             raise NotFound("Document not found.")
         # check segment
         segment_id = str(segment_id)
-        segment = (
-            db.session.query(DocumentSegment)
+        segment = db.session.scalar(
+            select(DocumentSegment)
             .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_tenant_id)
-            .first()
+            .limit(1)
         )
         if not segment:
             raise NotFound("Segment not found.")
         if not current_user.is_dataset_editor:
             raise Forbidden()
         # check embedding model setting
-        if dataset.indexing_technique == "high_quality":
+        if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             try:
-                model_manager = ModelManager()
+                model_manager = ModelManager.for_tenant(tenant_id=current_tenant_id)
                 model_manager.get_model_instance(
                     tenant_id=current_tenant_id,
                     provider=dataset.embedding_model_provider,
@@ -557,10 +617,10 @@ class ChildChunkAddApi(Resource):
             raise NotFound("Document not found.")
         # check segment
         segment_id = str(segment_id)
-        segment = (
-            db.session.query(DocumentSegment)
+        segment = db.session.scalar(
+            select(DocumentSegment)
             .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_tenant_id)
-            .first()
+            .limit(1)
         )
         if not segment:
             raise NotFound("Segment not found.")
@@ -607,10 +667,10 @@ class ChildChunkAddApi(Resource):
             raise NotFound("Document not found.")
             # check segment
         segment_id = str(segment_id)
-        segment = (
-            db.session.query(DocumentSegment)
+        segment = db.session.scalar(
+            select(DocumentSegment)
             .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_tenant_id)
-            .first()
+            .limit(1)
         )
         if not segment:
             raise NotFound("Segment not found.")
@@ -655,24 +715,24 @@ class ChildChunkUpdateApi(Resource):
             raise NotFound("Document not found.")
         # check segment
         segment_id = str(segment_id)
-        segment = (
-            db.session.query(DocumentSegment)
+        segment = db.session.scalar(
+            select(DocumentSegment)
             .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_tenant_id)
-            .first()
+            .limit(1)
         )
         if not segment:
             raise NotFound("Segment not found.")
         # check child chunk
         child_chunk_id = str(child_chunk_id)
-        child_chunk = (
-            db.session.query(ChildChunk)
+        child_chunk = db.session.scalar(
+            select(ChildChunk)
             .where(
                 ChildChunk.id == str(child_chunk_id),
                 ChildChunk.tenant_id == current_tenant_id,
                 ChildChunk.segment_id == segment.id,
                 ChildChunk.document_id == document_id,
             )
-            .first()
+            .limit(1)
         )
         if not child_chunk:
             raise NotFound("Child chunk not found.")
@@ -712,24 +772,24 @@ class ChildChunkUpdateApi(Resource):
             raise NotFound("Document not found.")
             # check segment
         segment_id = str(segment_id)
-        segment = (
-            db.session.query(DocumentSegment)
+        segment = db.session.scalar(
+            select(DocumentSegment)
             .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_tenant_id)
-            .first()
+            .limit(1)
         )
         if not segment:
             raise NotFound("Segment not found.")
         # check child chunk
         child_chunk_id = str(child_chunk_id)
-        child_chunk = (
-            db.session.query(ChildChunk)
+        child_chunk = db.session.scalar(
+            select(ChildChunk)
             .where(
                 ChildChunk.id == str(child_chunk_id),
                 ChildChunk.tenant_id == current_tenant_id,
                 ChildChunk.segment_id == segment.id,
                 ChildChunk.document_id == document_id,
             )
-            .first()
+            .limit(1)
         )
         if not child_chunk:
             raise NotFound("Child chunk not found.")

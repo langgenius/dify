@@ -3,8 +3,9 @@ import logging
 from collections.abc import Mapping
 from typing import Any, cast
 
+from graphon.variables.input_entities import VariableEntity, VariableEntityType
+
 from configs import dify_config
-from core.app.app_config.entities import VariableEntity, VariableEntityType
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.features.rate_limiting.rate_limit import RateLimitGenerator
 from core.mcp import types as mcp_types
