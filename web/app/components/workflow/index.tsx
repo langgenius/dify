@@ -15,7 +15,6 @@ import {
 } from 'ahooks'
 import { isEqual } from 'es-toolkit/predicate'
 import { setAutoFreeze } from 'immer'
-import dynamic from 'next/dynamic'
 import {
   memo,
   useCallback,
@@ -37,6 +36,7 @@ import ReactFlow, {
 } from 'reactflow'
 import { IS_DEV } from '@/config'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
+import dynamic from '@/next/dynamic'
 import {
   useAllBuiltInTools,
   useAllCustomTools,
@@ -55,6 +55,7 @@ import {
 import CustomConnectionLine from './custom-connection-line'
 import CustomEdge from './custom-edge'
 import DatasetsDetailProvider from './datasets-detail-store/provider'
+import EdgeContextmenu from './edge-contextmenu'
 import HelpLine from './help-line'
 import {
   useEdgesInteractions,
@@ -95,6 +96,7 @@ import {
 import SyncingDataModal from './syncing-data-modal'
 import {
   ControlMode,
+  WorkflowRunningStatus,
 } from './types'
 import { setupScrollToNodeListener } from './utils/node-navigation'
 import { WorkflowHistoryProvider } from './workflow-history-store'
@@ -202,6 +204,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
       setNodes(v.payload.nodes)
       store.getState().setNodes(v.payload.nodes)
       setEdges(v.payload.edges)
+      workflowStore.setState({ edgeMenu: undefined })
 
       if (v.payload.viewport)
         reactflow.setViewport(v.payload.viewport)
@@ -231,11 +234,20 @@ export const Workflow: FC<WorkflowProps> = memo(({
 
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
   const handleSyncWorkflowDraftWhenPageClose = useCallback(() => {
-    if (document.visibilityState === 'hidden')
+    if (document.visibilityState === 'hidden') {
       syncWorkflowDraftWhenPageClose()
+      return
+    }
 
-    else if (document.visibilityState === 'visible')
+    if (document.visibilityState === 'visible') {
+      const { isListening, workflowRunningData } = workflowStore.getState()
+      const status = workflowRunningData?.result?.status
+      // Avoid resetting UI state when user comes back while a run is active or listening for triggers
+      if (isListening || status === WorkflowRunningStatus.Running)
+        return
+
       setTimeout(() => handleRefreshWorkflowDraft(), 500)
+    }
   }, [syncWorkflowDraftWhenPageClose, handleRefreshWorkflowDraft, workflowStore])
 
   // Also add beforeunload handler as additional safety net for tab close
@@ -296,6 +308,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
     handleEdgeEnter,
     handleEdgeLeave,
     handleEdgesChange,
+    handleEdgeContextMenu,
   } = useEdgesInteractions()
   const {
     handleSelectionStart,
@@ -391,6 +404,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
       <Operator handleRedo={handleHistoryForward} handleUndo={handleHistoryBack} />
       <PanelContextmenu />
       <NodeContextmenu />
+      <EdgeContextmenu />
       <SelectionContextmenu />
       <HelpLine />
       {
@@ -423,6 +437,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
         onEdgeMouseEnter={handleEdgeEnter}
         onEdgeMouseLeave={handleEdgeLeave}
         onEdgesChange={handleEdgesChange}
+        onEdgeContextMenu={handleEdgeContextMenu}
         onSelectionStart={handleSelectionStart}
         onSelectionChange={handleSelectionChange}
         onSelectionDrag={handleSelectionDrag}

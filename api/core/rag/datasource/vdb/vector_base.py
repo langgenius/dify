@@ -15,11 +15,11 @@ class BaseVector(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
+    def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs) -> list[str] | None:
         raise NotImplementedError
 
     @abstractmethod
-    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
+    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs) -> list[str]:
         raise NotImplementedError
 
     @abstractmethod
@@ -27,14 +27,14 @@ class BaseVector(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def delete_by_ids(self, ids: list[str]):
+    def delete_by_ids(self, ids: list[str]) -> None:
         raise NotImplementedError
 
     def get_ids_by_metadata_field(self, key: str, value: str):
         raise NotImplementedError
 
     @abstractmethod
-    def delete_by_metadata_field(self, key: str, value: str):
+    def delete_by_metadata_field(self, key: str, value: str) -> None:
         raise NotImplementedError
 
     @abstractmethod
@@ -46,7 +46,7 @@ class BaseVector(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def delete(self):
+    def delete(self) -> None:
         raise NotImplementedError
 
     def _filter_duplicate_texts(self, texts: list[Document]) -> list[Document]:

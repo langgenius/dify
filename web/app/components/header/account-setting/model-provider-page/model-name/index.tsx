@@ -39,7 +39,7 @@ const ModelName: FC<ModelNameProps> = ({
   if (!modelItem)
     return null
   return (
-    <div className={cn('system-sm-regular flex items-center gap-0.5 overflow-hidden truncate text-ellipsis text-components-input-text-filled', className)}>
+    <div className={cn('flex items-center gap-0.5 overflow-hidden truncate text-ellipsis text-components-input-text-filled system-sm-regular', className)}>
       <div
         className="truncate"
         title={modelItem.label[language] || modelItem.label.en_US}
@@ -48,21 +48,21 @@ const ModelName: FC<ModelNameProps> = ({
       </div>
       <div className="flex items-center gap-0.5">
         {
-          showModelType && modelItem.model_type && (
+          !!(showModelType && modelItem.model_type) && (
             <ModelBadge className={modelTypeClassName}>
               {modelTypeFormat(modelItem.model_type)}
             </ModelBadge>
           )
         }
         {
-          modelItem.model_properties.mode && showMode && (
+          !!(modelItem.model_properties.mode && showMode) && (
             <ModelBadge className={modeClassName}>
               {(modelItem.model_properties.mode as string).toLocaleUpperCase()}
             </ModelBadge>
           )
         }
         {
-          showContextSize && modelItem.model_properties.context_size && (
+          !!(showContextSize && modelItem.model_properties.context_size) && (
             <ModelBadge>
               {sizeFormat(modelItem.model_properties.context_size as number)}
             </ModelBadge>

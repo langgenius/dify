@@ -1,25 +1,27 @@
 import logging
-from collections.abc import Callable, Generator, Iterable, Sequence
+from collections.abc import Callable, Generator, Iterable, Mapping, Sequence
 from typing import IO, Any, Literal, Optional, Union, cast, overload
+
+from graphon.model_runtime.callbacks.base_callback import Callback
+from graphon.model_runtime.entities.llm_entities import LLMResult
+from graphon.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
+from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelFeature, ModelType
+from graphon.model_runtime.entities.rerank_entities import RerankResult
+from graphon.model_runtime.entities.text_embedding_entities import EmbeddingResult
+from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeConnectionError, InvokeRateLimitError
+from graphon.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from graphon.model_runtime.model_providers.__base.moderation_model import ModerationModel
+from graphon.model_runtime.model_providers.__base.rerank_model import RerankModel
+from graphon.model_runtime.model_providers.__base.speech2text_model import Speech2TextModel
+from graphon.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
+from graphon.model_runtime.model_providers.__base.tts_model import TTSModel
 
 from configs import dify_config
 from core.entities.embedding_type import EmbeddingInputType
 from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
 from core.entities.provider_entities import ModelLoadBalancingConfiguration
 from core.errors.error import ProviderTokenNotInitError
-from core.model_runtime.callbacks.base_callback import Callback
-from core.model_runtime.entities.llm_entities import LLMResult
-from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
-from core.model_runtime.entities.model_entities import ModelFeature, ModelType
-from core.model_runtime.entities.rerank_entities import RerankResult
-from core.model_runtime.entities.text_embedding_entities import EmbeddingResult
-from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeConnectionError, InvokeRateLimitError
-from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from core.model_runtime.model_providers.__base.moderation_model import ModerationModel
-from core.model_runtime.model_providers.__base.rerank_model import RerankModel
-from core.model_runtime.model_providers.__base.speech2text_model import Speech2TextModel
-from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
-from core.model_runtime.model_providers.__base.tts_model import TTSModel
+from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 from core.provider_manager import ProviderManager
 from extensions.ext_redis import redis_client
 from models.provider import ProviderType
@@ -30,14 +32,17 @@ logger = logging.getLogger(__name__)
 
 class ModelInstance:
     """
-    Model instance class
+    Model instance class.
     """
 
     def __init__(self, provider_model_bundle: ProviderModelBundle, model: str):
         self.provider_model_bundle = provider_model_bundle
-        self.model = model
+        self.model_name = model
         self.provider = provider_model_bundle.configuration.provider.provider
         self.credentials = self._fetch_credentials_from_bundle(provider_model_bundle, model)
+        # Runtime LLM invocation fields.
+        self.parameters: Mapping[str, Any] = {}
+        self.stop: Sequence[str] = ()
         self.model_type_instance = self.provider_model_bundle.model_type_instance
         self.load_balancing_manager = self._get_load_balancing_manager(
             configuration=provider_model_bundle.configuration,
@@ -45,6 +50,13 @@ class ModelInstance:
             model=model,
             credentials=self.credentials,
         )
+
+    def get_model_schema(self) -> AIModelEntity:
+        """Return the resolved schema for the current model instance."""
+        model_schema = self.model_type_instance.get_model_schema(self.model_name, self.credentials)
+        if model_schema is None:
+            raise ValueError(f"model schema not found for {self.model_name}")
+        return model_schema
 
     @staticmethod
     def _fetch_credentials_from_bundle(provider_model_bundle: ProviderModelBundle, model: str):
@@ -107,7 +119,6 @@ class ModelInstance:
         tools: Sequence[PromptMessageTool] | None = None,
         stop: list[str] | None = None,
         stream: Literal[True] = True,
-        user: str | None = None,
         callbacks: list[Callback] | None = None,
     ) -> Generator: ...
 
@@ -119,7 +130,6 @@ class ModelInstance:
         tools: Sequence[PromptMessageTool] | None = None,
         stop: list[str] | None = None,
         stream: Literal[False] = False,
-        user: str | None = None,
         callbacks: list[Callback] | None = None,
     ) -> LLMResult: ...
 
@@ -131,7 +141,6 @@ class ModelInstance:
         tools: Sequence[PromptMessageTool] | None = None,
         stop: list[str] | None = None,
         stream: bool = True,
-        user: str | None = None,
         callbacks: list[Callback] | None = None,
     ) -> Union[LLMResult, Generator]: ...
 
@@ -142,7 +151,6 @@ class ModelInstance:
         tools: Sequence[PromptMessageTool] | None = None,
         stop: Sequence[str] | None = None,
         stream: bool = True,
-        user: str | None = None,
         callbacks: list[Callback] | None = None,
     ) -> Union[LLMResult, Generator]:
         """
@@ -153,7 +161,6 @@ class ModelInstance:
         :param tools: tools for tool calling
         :param stop: stop words
         :param stream: is stream response
-        :param user: unique user id
         :param callbacks: callbacks
         :return: full response or stream response chunk generator result
         """
@@ -163,14 +170,13 @@ class ModelInstance:
             Union[LLMResult, Generator],
             self._round_robin_invoke(
                 function=self.model_type_instance.invoke,
-                model=self.model,
+                model=self.model_name,
                 credentials=self.credentials,
                 prompt_messages=prompt_messages,
                 model_parameters=model_parameters,
                 tools=tools,
                 stop=stop,
                 stream=stream,
-                user=user,
                 callbacks=callbacks,
             ),
         )
@@ -191,7 +197,7 @@ class ModelInstance:
             int,
             self._round_robin_invoke(
                 function=self.model_type_instance.get_num_tokens,
-                model=self.model,
+                model=self.model_name,
                 credentials=self.credentials,
                 prompt_messages=prompt_messages,
                 tools=tools,
@@ -199,13 +205,12 @@ class ModelInstance:
         )
 
     def invoke_text_embedding(
-        self, texts: list[str], user: str | None = None, input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT
+        self, texts: list[str], input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT
     ) -> EmbeddingResult:
         """
         Invoke large language model
 
         :param texts: texts to embed
-        :param user: unique user id
         :param input_type: input type
         :return: embeddings result
         """
@@ -215,10 +220,9 @@ class ModelInstance:
             EmbeddingResult,
             self._round_robin_invoke(
                 function=self.model_type_instance.invoke,
-                model=self.model,
+                model=self.model_name,
                 credentials=self.credentials,
                 texts=texts,
-                user=user,
                 input_type=input_type,
             ),
         )
@@ -226,14 +230,12 @@ class ModelInstance:
     def invoke_multimodal_embedding(
         self,
         multimodel_documents: list[dict],
-        user: str | None = None,
         input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT,
     ) -> EmbeddingResult:
         """
         Invoke large language model
 
         :param multimodel_documents: multimodel documents to embed
-        :param user: unique user id
         :param input_type: input type
         :return: embeddings result
         """
@@ -243,10 +245,9 @@ class ModelInstance:
             EmbeddingResult,
             self._round_robin_invoke(
                 function=self.model_type_instance.invoke,
-                model=self.model,
+                model=self.model_name,
                 credentials=self.credentials,
                 multimodel_documents=multimodel_documents,
-                user=user,
                 input_type=input_type,
             ),
         )
@@ -264,7 +265,7 @@ class ModelInstance:
             list[int],
             self._round_robin_invoke(
                 function=self.model_type_instance.get_num_tokens,
-                model=self.model,
+                model=self.model_name,
                 credentials=self.credentials,
                 texts=texts,
             ),
@@ -276,7 +277,6 @@ class ModelInstance:
         docs: list[str],
         score_threshold: float | None = None,
         top_n: int | None = None,
-        user: str | None = None,
     ) -> RerankResult:
         """
         Invoke rerank model
@@ -285,7 +285,6 @@ class ModelInstance:
         :param docs: docs for reranking
         :param score_threshold: score threshold
         :param top_n: top n
-        :param user: unique user id
         :return: rerank result
         """
         if not isinstance(self.model_type_instance, RerankModel):
@@ -294,13 +293,12 @@ class ModelInstance:
             RerankResult,
             self._round_robin_invoke(
                 function=self.model_type_instance.invoke,
-                model=self.model,
+                model=self.model_name,
                 credentials=self.credentials,
                 query=query,
                 docs=docs,
                 score_threshold=score_threshold,
                 top_n=top_n,
-                user=user,
             ),
         )
 
@@ -310,7 +308,6 @@ class ModelInstance:
         docs: list[dict],
         score_threshold: float | None = None,
         top_n: int | None = None,
-        user: str | None = None,
     ) -> RerankResult:
         """
         Invoke rerank model
@@ -319,7 +316,6 @@ class ModelInstance:
         :param docs: docs for reranking
         :param score_threshold: score threshold
         :param top_n: top n
-        :param user: unique user id
         :return: rerank result
         """
         if not isinstance(self.model_type_instance, RerankModel):
@@ -328,22 +324,20 @@ class ModelInstance:
             RerankResult,
             self._round_robin_invoke(
                 function=self.model_type_instance.invoke_multimodal_rerank,
-                model=self.model,
+                model=self.model_name,
                 credentials=self.credentials,
                 query=query,
                 docs=docs,
                 score_threshold=score_threshold,
                 top_n=top_n,
-                user=user,
             ),
         )
 
-    def invoke_moderation(self, text: str, user: str | None = None) -> bool:
+    def invoke_moderation(self, text: str) -> bool:
         """
         Invoke moderation model
 
         :param text: text to moderate
-        :param user: unique user id
         :return: false if text is safe, true otherwise
         """
         if not isinstance(self.model_type_instance, ModerationModel):
@@ -352,19 +346,17 @@ class ModelInstance:
             bool,
             self._round_robin_invoke(
                 function=self.model_type_instance.invoke,
-                model=self.model,
+                model=self.model_name,
                 credentials=self.credentials,
                 text=text,
-                user=user,
             ),
         )
 
-    def invoke_speech2text(self, file: IO[bytes], user: str | None = None) -> str:
+    def invoke_speech2text(self, file: IO[bytes]) -> str:
         """
         Invoke large language model
 
         :param file: audio file
-        :param user: unique user id
         :return: text for given audio file
         """
         if not isinstance(self.model_type_instance, Speech2TextModel):
@@ -373,21 +365,18 @@ class ModelInstance:
             str,
             self._round_robin_invoke(
                 function=self.model_type_instance.invoke,
-                model=self.model,
+                model=self.model_name,
                 credentials=self.credentials,
                 file=file,
-                user=user,
             ),
         )
 
-    def invoke_tts(self, content_text: str, tenant_id: str, voice: str, user: str | None = None) -> Iterable[bytes]:
+    def invoke_tts(self, content_text: str, voice: str = "") -> Iterable[bytes]:
         """
         Invoke large language tts model
 
         :param content_text: text content to be translated
-        :param tenant_id: user tenant id
         :param voice: model timbre
-        :param user: unique user id
         :return: text for given audio file
         """
         if not isinstance(self.model_type_instance, TTSModel):
@@ -396,11 +385,9 @@ class ModelInstance:
             Iterable[bytes],
             self._round_robin_invoke(
                 function=self.model_type_instance.invoke,
-                model=self.model,
+                model=self.model_name,
                 credentials=self.credentials,
                 content_text=content_text,
-                user=user,
-                tenant_id=tenant_id,
                 voice=voice,
             ),
         )
@@ -469,15 +456,25 @@ class ModelInstance:
         if not isinstance(self.model_type_instance, TTSModel):
             raise Exception("Model type instance is not TTSModel")
         return self.model_type_instance.get_tts_model_voices(
-            model=self.model, credentials=self.credentials, language=language
+            model=self.model_name, credentials=self.credentials, language=language
         )
 
 
 class ModelManager:
-    def __init__(self):
-        self._provider_manager = ProviderManager()
+    def __init__(self, provider_manager: ProviderManager):
+        self._provider_manager = provider_manager
 
-    def get_model_instance(self, tenant_id: str, provider: str, model_type: ModelType, model: str) -> ModelInstance:
+    @classmethod
+    def for_tenant(cls, tenant_id: str, user_id: str | None = None) -> "ModelManager":
+        return cls(provider_manager=create_plugin_provider_manager(tenant_id=tenant_id, user_id=user_id))
+
+    def get_model_instance(
+        self,
+        tenant_id: str,
+        provider: str,
+        model_type: ModelType,
+        model: str,
+    ) -> ModelInstance:
         """
         Get model instance
         :param tenant_id: tenant id
@@ -493,7 +490,8 @@ class ModelManager:
             tenant_id=tenant_id, provider=provider, model_type=model_type
         )
 
-        return ModelInstance(provider_model_bundle, model)
+        model_instance = ModelInstance(provider_model_bundle, model)
+        return model_instance
 
     def get_default_provider_model_name(self, tenant_id: str, model_type: ModelType) -> tuple[str | None, str | None]:
         """

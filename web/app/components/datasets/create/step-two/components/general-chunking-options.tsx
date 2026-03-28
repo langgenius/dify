@@ -1,17 +1,17 @@
 'use client'
 
 import type { FC } from 'react'
-import type { PreProcessingRule } from '@/models/datasets'
+import type { PreProcessingRule, SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
 import {
   RiAlertFill,
   RiSearchEyeLine,
 } from '@remixicon/react'
-import Image from 'next/image'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Checkbox from '@/app/components/base/checkbox'
 import Divider from '@/app/components/base/divider'
 import Tooltip from '@/app/components/base/tooltip'
+import SummaryIndexSetting from '@/app/components/datasets/settings/summary-index-setting'
 import { IS_CE_EDITION } from '@/config'
 import { ChunkingMode } from '@/models/datasets'
 import SettingCog from '../../assets/setting-gear-mod.svg'
@@ -25,7 +25,7 @@ type TextLabelProps = {
 }
 
 const TextLabel: FC<TextLabelProps> = ({ children }) => {
-  return <label className="system-sm-semibold text-text-secondary">{children}</label>
+  return <label className="text-text-secondary system-sm-semibold">{children}</label>
 }
 
 type GeneralChunkingOptionsProps = {
@@ -52,6 +52,9 @@ type GeneralChunkingOptionsProps = {
   onReset: () => void
   // Locale
   locale: string
+  showSummaryIndexSetting?: boolean
+  summaryIndexSetting?: SummaryIndexSettingType
+  onSummaryIndexSettingChange?: (payload: SummaryIndexSettingType) => void
 }
 
 export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
@@ -74,6 +77,9 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
   onPreview,
   onReset,
   locale,
+  showSummaryIndexSetting,
+  summaryIndexSetting,
+  onSummaryIndexSettingChange,
 }) => {
   const { t } = useTranslation()
 
@@ -90,7 +96,7 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
     <OptionCard
       className="mb-2 bg-background-section"
       title={t('stepTwo.general', { ns: 'datasetCreation' })}
-      icon={<Image width={20} height={20} src={SettingCog} alt={t('stepTwo.general', { ns: 'datasetCreation' })} />}
+      icon={<img width={20} height={20} src={SettingCog.src} alt={t('stepTwo.general', { ns: 'datasetCreation' })} />}
       activeHeaderClassName="bg-dataset-option-card-blue-gradient"
       description={t('stepTwo.generalTip', { ns: 'datasetCreation' })}
       isActive={isActive}
@@ -141,11 +147,22 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
                 onClick={() => onRuleToggle(rule.id)}
               >
                 <Checkbox checked={rule.enabled} />
-                <label className="system-sm-regular ml-2 cursor-pointer text-text-secondary">
+                <label className="ml-2 cursor-pointer text-text-secondary system-sm-regular">
                   {getRuleName(rule.id)}
                 </label>
               </div>
             ))}
+            {
+              showSummaryIndexSetting && IS_CE_EDITION && (
+                <div className="mt-3">
+                  <SummaryIndexSetting
+                    entry="create-document"
+                    summaryIndexSetting={summaryIndexSetting}
+                    onSummaryIndexSettingChange={onSummaryIndexSettingChange}
+                  />
+                </div>
+              )
+            }
             {IS_CE_EDITION && (
               <>
                 <Divider type="horizontal" className="my-4 bg-divider-subtle" />
@@ -165,7 +182,7 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
                       checked={currentDocForm === ChunkingMode.qa}
                       disabled={hasCurrentDatasetDocForm}
                     />
-                    <label className="system-sm-regular ml-2 cursor-pointer text-text-secondary">
+                    <label className="ml-2 cursor-pointer text-text-secondary system-sm-regular">
                       {t('stepTwo.useQALanguage', { ns: 'datasetCreation' })}
                     </label>
                   </div>
@@ -184,7 +201,7 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
                     className="mt-2 flex h-10 items-center gap-2 rounded-xl border border-components-panel-border px-3 text-xs shadow-xs backdrop-blur-[5px]"
                   >
                     <RiAlertFill className="size-4 text-text-warning-secondary" />
-                    <span className="system-xs-medium text-text-primary">
+                    <span className="text-text-primary system-xs-medium">
                       {t('stepTwo.QATip', { ns: 'datasetCreation' })}
                     </span>
                   </div>

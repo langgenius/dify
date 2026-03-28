@@ -70,10 +70,12 @@ const PasteImageLinkButton: FC<PasteImageLinkButtonProps> = ({
 type TextGenerationImageUploaderProps = {
   settings: VisionSettings
   onFilesChange: (files: ImageFile[]) => void
+  disabled?: boolean
 }
 const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
   settings,
   onFilesChange,
+  disabled,
 }) => {
   const { t } = useTranslation()
 
@@ -93,7 +95,7 @@ const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
   const localUpload = (
     <Uploader
       onUpload={onUpload}
-      disabled={files.length >= settings.number_limits}
+      disabled={files.length >= settings.number_limits || disabled}
       limit={+settings.image_file_size_limit!}
     >
       {
@@ -115,7 +117,7 @@ const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
   const urlUpload = (
     <PasteImageLinkButton
       onUpload={onUpload}
-      disabled={files.length >= settings.number_limits}
+      disabled={files.length >= settings.number_limits || disabled}
     />
   )
 
@@ -130,7 +132,7 @@ const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
           onImageLinkLoadSuccess={onImageLinkLoadSuccess}
         />
       </div>
-      <div className={`grid gap-1 ${settings.transfer_methods.length === 2 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+      <div className={`grid gap-1 ${settings.transfer_methods.length === 2 ? 'grid-cols-2' : 'grid-cols-1'}`} data-testid="upload-actions">
         {
           settings.transfer_methods.map((method) => {
             if (method === TransferMethod.local_file)

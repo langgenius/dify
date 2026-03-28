@@ -71,6 +71,13 @@ const useBatchEditDocumentMetadata = ({
     return res
   }, [metaDataList])
 
+  const toCleanMetadataItem = (item: MetadataItemWithValue | MetadataItemWithEdit | MetadataItemInBatchEdit): MetadataItemWithValue => ({
+    id: item.id,
+    name: item.name,
+    type: item.type,
+    value: item.value ?? null,
+  })
+
   const formateToBackendList = (editedList: MetadataItemWithEdit[], addedList: MetadataItemInBatchEdit[], isApplyToAllSelectDocument: boolean) => {
     const updatedList = editedList.filter((editedItem) => {
       return editedItem.updateType === UpdateType.changeValue
@@ -92,24 +99,19 @@ const useBatchEditDocumentMetadata = ({
         .filter((item) => {
           return !removedList.find(removedItem => removedItem.id === item.id)
         })
-        .map(item => ({
-          id: item.id,
-          name: item.name,
-          type: item.type,
-          value: item.value,
-        }))
+        .map(toCleanMetadataItem)
       if (isApplyToAllSelectDocument) {
         // add missing metadata item
         updatedList.forEach((editedItem) => {
           if (!newMetadataList.find(i => i.id === editedItem.id) && !editedItem.isMultipleValue)
-            newMetadataList.push(editedItem)
+            newMetadataList.push(toCleanMetadataItem(editedItem))
         })
       }
 
       newMetadataList = newMetadataList.map((item) => {
         const editedItem = updatedList.find(i => i.id === item.id)
         if (editedItem)
-          return editedItem
+          return toCleanMetadataItem(editedItem)
         return item
       })
 

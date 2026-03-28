@@ -1,10 +1,10 @@
 import logging
 from collections.abc import Mapping
-from enum import StrEnum
 from threading import Lock
 from typing import Any
 
 import httpx
+from graphon.nodes.code.entities import CodeLanguage
 from pydantic import BaseModel
 from yarl import URL
 
@@ -38,12 +38,6 @@ class CodeExecutionResponse(BaseModel):
     code: int
     message: str
     data: Data
-
-
-class CodeLanguage(StrEnum):
-    PYTHON3 = "python3"
-    JINJA2 = "jinja2"
-    JAVASCRIPT = "javascript"
 
 
 def _build_code_executor_client() -> httpx.Client:

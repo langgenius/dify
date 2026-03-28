@@ -1,6 +1,5 @@
 import logging
 from typing import Literal
-from uuid import UUID
 
 from flask import request
 from flask_restx import Resource
@@ -15,6 +14,8 @@ from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate
 from core.app.entities.app_invoke_entities import InvokeFrom
 from fields.conversation_fields import ResultResponse
 from fields.message_fields import MessageInfiniteScrollPagination, MessageListItem
+from libs.helper import UUIDStrOrEmpty
+from models.enums import FeedbackRating
 from models.model import App, AppMode, EndUser
 from services.errors.message import (
     FirstMessageNotExistsError,
@@ -27,8 +28,8 @@ logger = logging.getLogger(__name__)
 
 
 class MessageListQuery(BaseModel):
-    conversation_id: UUID
-    first_id: UUID | None = None
+    conversation_id: UUIDStrOrEmpty
+    first_id: UUIDStrOrEmpty | None = None
     limit: int = Field(default=20, ge=1, le=100, description="Number of messages to return")
 
 
@@ -116,7 +117,7 @@ class MessageFeedbackApi(Resource):
                 app_model=app_model,
                 message_id=message_id,
                 user=end_user,
-                rating=payload.rating,
+                rating=FeedbackRating(payload.rating) if payload.rating else None,
                 content=payload.content,
             )
         except MessageNotExistsError:

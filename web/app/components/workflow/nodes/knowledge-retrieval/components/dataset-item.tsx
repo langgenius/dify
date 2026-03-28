@@ -85,6 +85,8 @@ const DatasetItem: FC<Props> = ({
           {
             editable && (
               <ActionButton
+                aria-label={t('operation.edit', { ns: 'common' })}
+                data-testid="dataset-item-edit-button"
                 onClick={(e) => {
                   e.stopPropagation()
                   showSettingsModal()
@@ -95,6 +97,8 @@ const DatasetItem: FC<Props> = ({
             )
           }
           <ActionButton
+            aria-label={t('operation.remove', { ns: 'common' })}
+            data-testid="dataset-item-remove-button"
             onClick={handleRemove}
             state={isDeleteHovered ? ActionButtonState.Destructive : ActionButtonState.Default}
             onMouseEnter={() => setIsDeleteHovered(true)}
@@ -110,7 +114,7 @@ const DatasetItem: FC<Props> = ({
         </div>
       )}
       {
-        payload.indexing_technique && (
+        !!payload.indexing_technique && (
           <Badge
             className="shrink-0 group-hover/dataset-item:hidden"
             text={formatIndexingTechniqueAndMethod(payload.indexing_technique, payload.retrieval_model_dict?.search_method)}

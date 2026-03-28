@@ -1,11 +1,11 @@
 import { RiArrowRightLine } from '@remixicon/react'
-import Link from 'next/link'
-import { useParams } from 'next/navigation'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Checkbox from '@/app/components/base/checkbox'
+import Link from '@/next/link'
+import { useParams } from '@/next/navigation'
 
 type ActionsProps = {
   disabled?: boolean

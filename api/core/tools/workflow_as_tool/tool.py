@@ -5,12 +5,12 @@ import logging
 from collections.abc import Generator, Mapping, Sequence
 from typing import Any, cast
 
-from flask import has_request_context
+from graphon.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
+from graphon.model_runtime.entities.llm_entities import LLMUsage, LLMUsageMetadata
 from sqlalchemy import select
 
+from core.app.file_access import DatabaseFileAccessController
 from core.db.session_factory import session_factory
-from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
-from core.model_runtime.entities.llm_entities import LLMUsage, LLMUsageMetadata
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.tool_entities import (
@@ -20,13 +20,15 @@ from core.tools.entities.tool_entities import (
     ToolProviderType,
 )
 from core.tools.errors import ToolInvokeError
+from core.workflow.file_reference import resolve_file_record_id
 from factories.file_factory import build_from_mapping
-from libs.login import current_user
 from models import Account, Tenant
 from models.model import App, EndUser
+from models.utils.file_input_compat import build_file_from_stored_mapping
 from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
+_file_access_controller = DatabaseFileAccessController()
 
 
 class WorkflowTool(Tool):
@@ -100,6 +102,10 @@ class WorkflowTool(Tool):
             invoke_from=self.runtime.invoke_from,
             streaming=False,
             call_depth=self.workflow_call_depth + 1,
+            # NOTE(QuantumGhost): We explicitly set `pause_state_config` to `None`
+            # because workflow pausing mechanisms (such as HumanInput) are not
+            # supported within WorkflowTool execution context.
+            pause_state_config=None,
         )
         assert isinstance(result, dict)
         data = result.get("data", {})
@@ -209,21 +215,7 @@ class WorkflowTool(Tool):
         Returns:
             Account | EndUser | None: The resolved user object, or None if resolution fails.
         """
-        if has_request_context():
-            return self._resolve_user_from_request()
-        else:
-            return self._resolve_user_from_database(user_id=user_id)
-
-    def _resolve_user_from_request(self) -> Account | EndUser | None:
-        """
-        Resolve user from Flask request context.
-        """
-        try:
-            # Note: `current_user` is a LocalProxy. Never compare it with None directly.
-            return getattr(current_user, "_get_current_object", lambda: current_user)()
-        except Exception as e:
-            logger.warning("Failed to resolve user from request context: %s", e)
-            return None
+        return self._resolve_user_from_database(user_id=user_id)
 
     def _resolve_user_from_database(self, user_id: str) -> Account | EndUser | None:
         """
@@ -300,16 +292,25 @@ class WorkflowTool(Tool):
                 file = tool_parameters.get(parameter.name)
                 if file:
                     try:
-                        file_var_list = [File.model_validate(f) for f in file]
+                        file_var_list = [
+                            build_file_from_stored_mapping(
+                                file_mapping=cast(Mapping[str, Any], f),
+                                tenant_id=str(self.runtime.tenant_id),
+                            )
+                            for f in file
+                            if isinstance(f, Mapping)
+                        ]
                         for file in file_var_list:
                             file_dict: dict[str, str | None] = {
                                 "transfer_method": file.transfer_method.value,
                                 "type": file.type.value,
                             }
                             if file.transfer_method == FileTransferMethod.TOOL_FILE:
-                                file_dict["tool_file_id"] = file.related_id
+                                file_dict["tool_file_id"] = resolve_file_record_id(file.reference)
                             elif file.transfer_method == FileTransferMethod.LOCAL_FILE:
-                                file_dict["upload_file_id"] = file.related_id
+                                file_dict["upload_file_id"] = resolve_file_record_id(file.reference)
+                            elif file.transfer_method == FileTransferMethod.DATASOURCE_FILE:
+                                file_dict["datasource_file_id"] = resolve_file_record_id(file.reference)
                             elif file.transfer_method == FileTransferMethod.REMOTE_URL:
                                 file_dict["url"] = file.generate_url()
 
@@ -337,6 +338,7 @@ class WorkflowTool(Tool):
                         file = build_from_mapping(
                             mapping=item,
                             tenant_id=str(self.runtime.tenant_id),
+                            access_controller=_file_access_controller,
                         )
                         files.append(file)
             elif isinstance(value, dict) and value.get("dify_model_identity") == FILE_MODEL_IDENTITY:
@@ -344,6 +346,7 @@ class WorkflowTool(Tool):
                 file = build_from_mapping(
                     mapping=value,
                     tenant_id=str(self.runtime.tenant_id),
+                    access_controller=_file_access_controller,
                 )
                 files.append(file)
 
@@ -352,9 +355,10 @@ class WorkflowTool(Tool):
         return result, files
 
     def _update_file_mapping(self, file_dict: dict):
+        file_id = resolve_file_record_id(file_dict.get("reference") or file_dict.get("related_id"))
         transfer_method = FileTransferMethod.value_of(file_dict.get("transfer_method"))
         if transfer_method == FileTransferMethod.TOOL_FILE:
-            file_dict["tool_file_id"] = file_dict.get("related_id")
+            file_dict["tool_file_id"] = file_id
         elif transfer_method == FileTransferMethod.LOCAL_FILE:
-            file_dict["upload_file_id"] = file_dict.get("related_id")
+            file_dict["upload_file_id"] = file_id
         return file_dict

@@ -1,18 +1,22 @@
-import re
+import logging
 import uuid
 from datetime import datetime
 from typing import Any, Literal, TypeAlias
 
 from flask import request
 from flask_restx import Resource
+from graphon.enums import WorkflowExecutionStatus
+from graphon.file import helpers as file_helpers
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, computed_field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest
 
-from controllers.common.schema import register_schema_models
+from controllers.common.helpers import FileInfo
+from controllers.common.schema import register_enum_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
+from controllers.console.workspace.models import LoadBalancingPayload
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_resource_check,
@@ -21,19 +25,38 @@ from controllers.console.wraps import (
     is_admin_or_owner_required,
     setup_required,
 )
-from core.file import helpers as file_helpers
 from core.ops.ops_trace_manager import OpsTraceManager
-from core.workflow.enums import NodeType
+from core.rag.retrieval.retrieval_methods import RetrievalMethod
+from core.trigger.constants import TRIGGER_NODE_TYPES
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant, login_required
-from models import App, Workflow
+from models import App, DatasetPermissionEnum, Workflow
 from models.model import IconType
 from services.app_dsl_service import AppDslService, ImportMode
 from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
+from services.entities.knowledge_entities.knowledge_entities import (
+    DataSource,
+    InfoList,
+    NotionIcon,
+    NotionInfo,
+    NotionPage,
+    PreProcessingRule,
+    RerankingModel,
+    Rule,
+    Segmentation,
+    WebsiteInfo,
+    WeightKeywordSetting,
+    WeightModel,
+    WeightVectorSetting,
+)
 from services.feature_service import FeatureService
 
 ALLOW_CREATE_APP_MODES = ["chat", "agent-chat", "advanced-chat", "workflow", "completion"]
+
+register_enum_models(console_ns, IconType)
+
+_logger = logging.getLogger(__name__)
 
 
 class AppListQuery(BaseModel):
@@ -68,88 +91,31 @@ class AppListQuery(BaseModel):
             raise ValueError("Invalid UUID format in tag_ids.") from exc
 
 
-# XSS prevention: patterns that could lead to XSS attacks
-# Includes: script tags, iframe tags, javascript: protocol, SVG with onload, etc.
-_XSS_PATTERNS = [
-    r"<script[^>]*>.*?</script>",  # Script tags
-    r"<iframe\b[^>]*?(?:/>|>.*?</iframe>)",  # Iframe tags (including self-closing)
-    r"javascript:",  # JavaScript protocol
-    r"<svg[^>]*?\s+onload\s*=[^>]*>",  # SVG with onload handler (attribute-aware, flexible whitespace)
-    r"<.*?on\s*\w+\s*=",  # Event handlers like onclick, onerror, etc.
-    r"<object\b[^>]*(?:\s*/>|>.*?</object\s*>)",  # Object tags (opening tag)
-    r"<embed[^>]*>",  # Embed tags (self-closing)
-    r"<link[^>]*>",  # Link tags with javascript
-]
-
-
-def _validate_xss_safe(value: str | None, field_name: str = "Field") -> str | None:
-    """
-    Validate that a string value doesn't contain potential XSS payloads.
-
-    Args:
-        value: The string value to validate
-        field_name: Name of the field for error messages
-
-    Returns:
-        The original value if safe
-
-    Raises:
-        ValueError: If the value contains XSS patterns
-    """
-    if value is None:
-        return None
-
-    value_lower = value.lower()
-    for pattern in _XSS_PATTERNS:
-        if re.search(pattern, value_lower, re.DOTALL | re.IGNORECASE):
-            raise ValueError(
-                f"{field_name} contains invalid characters or patterns. "
-                "HTML tags, JavaScript, and other potentially dangerous content are not allowed."
-            )
-
-    return value
-
-
 class CreateAppPayload(BaseModel):
     name: str = Field(..., min_length=1, description="App name")
     description: str | None = Field(default=None, description="App description (max 400 chars)", max_length=400)
     mode: Literal["chat", "agent-chat", "advanced-chat", "workflow", "completion"] = Field(..., description="App mode")
-    icon_type: str | None = Field(default=None, description="Icon type")
+    icon_type: IconType | None = Field(default=None, description="Icon type")
     icon: str | None = Field(default=None, description="Icon")
     icon_background: str | None = Field(default=None, description="Icon background color")
-
-    @field_validator("name", "description", mode="before")
-    @classmethod
-    def validate_xss_safe(cls, value: str | None, info) -> str | None:
-        return _validate_xss_safe(value, info.field_name)
 
 
 class UpdateAppPayload(BaseModel):
     name: str = Field(..., min_length=1, description="App name")
     description: str | None = Field(default=None, description="App description (max 400 chars)", max_length=400)
-    icon_type: str | None = Field(default=None, description="Icon type")
+    icon_type: IconType | None = Field(default=None, description="Icon type")
     icon: str | None = Field(default=None, description="Icon")
     icon_background: str | None = Field(default=None, description="Icon background color")
     use_icon_as_answer_icon: bool | None = Field(default=None, description="Use icon as answer icon")
     max_active_requests: int | None = Field(default=None, description="Maximum active requests")
 
-    @field_validator("name", "description", mode="before")
-    @classmethod
-    def validate_xss_safe(cls, value: str | None, info) -> str | None:
-        return _validate_xss_safe(value, info.field_name)
-
 
 class CopyAppPayload(BaseModel):
     name: str | None = Field(default=None, description="Name for the copied app")
     description: str | None = Field(default=None, description="Description for the copied app", max_length=400)
-    icon_type: str | None = Field(default=None, description="Icon type")
+    icon_type: IconType | None = Field(default=None, description="Icon type")
     icon: str | None = Field(default=None, description="Icon")
     icon_background: str | None = Field(default=None, description="Icon background color")
-
-    @field_validator("name", "description", mode="before")
-    @classmethod
-    def validate_xss_safe(cls, value: str | None, info) -> str | None:
-        return _validate_xss_safe(value, info.field_name)
 
 
 class AppExportQuery(BaseModel):
@@ -209,7 +175,7 @@ def _build_icon_url(icon_type: str | IconType | None, icon: str | None) -> str |
     if icon is None or icon_type is None:
         return None
     icon_type_value = icon_type.value if isinstance(icon_type, IconType) else str(icon_type)
-    if icon_type_value.lower() != IconType.IMAGE.value:
+    if icon_type_value.lower() != IconType.IMAGE:
         return None
     return file_helpers.get_signed_file_url(icon)
 
@@ -449,6 +415,8 @@ class AppExportResponse(ResponseModel):
     data: str
 
 
+register_enum_models(console_ns, RetrievalMethod, WorkflowExecutionStatus, DatasetPermissionEnum)
+
 register_schema_models(
     console_ns,
     AppListQuery,
@@ -472,6 +440,22 @@ register_schema_models(
     AppDetailWithSite,
     AppPagination,
     AppExportResponse,
+    Segmentation,
+    PreProcessingRule,
+    Rule,
+    WeightVectorSetting,
+    WeightKeywordSetting,
+    WeightModel,
+    RerankingModel,
+    InfoList,
+    NotionInfo,
+    FileInfo,
+    WebsiteInfo,
+    NotionPage,
+    NotionIcon,
+    RerankingModel,
+    DataSource,
+    LoadBalancingPayload,
 )
 
 
@@ -519,23 +503,22 @@ class AppListApi(Resource):
                     select(Workflow).where(
                         Workflow.version == Workflow.VERSION_DRAFT,
                         Workflow.app_id.in_(workflow_capable_app_ids),
+                        Workflow.tenant_id == current_tenant_id,
                     )
                 )
                 .scalars()
                 .all()
             )
-            trigger_node_types = {
-                NodeType.TRIGGER_WEBHOOK,
-                NodeType.TRIGGER_SCHEDULE,
-                NodeType.TRIGGER_PLUGIN,
-            }
+            trigger_node_types = TRIGGER_NODE_TYPES
             for workflow in draft_workflows:
+                node_id = None
                 try:
-                    for _, node_data in workflow.walk_nodes():
+                    for node_id, node_data in workflow.walk_nodes():
                         if node_data.get("type") in trigger_node_types:
                             draft_trigger_app_ids.add(str(workflow.app_id))
                             break
                 except Exception:
+                    _logger.exception("error while walking nodes, workflow_id=%s, node_id=%s", workflow.id, node_id)
                     continue
 
         for app in app_pagination.items:
@@ -611,7 +594,7 @@ class AppApi(Resource):
         args_dict: AppService.ArgsDict = {
             "name": args.name,
             "description": args.description or "",
-            "icon_type": args.icon_type or "",
+            "icon_type": args.icon_type,
             "icon": args.icon or "",
             "icon_background": args.icon_background or "",
             "use_icon_as_answer_icon": args.use_icon_as_answer_icon or False,
@@ -673,6 +656,19 @@ class AppCopyApi(Resource):
                 icon_background=args.icon_background,
             )
             session.commit()
+
+            # Inherit web app permission from original app
+            if result.app_id and FeatureService.get_system_features().webapp_auth.enabled:
+                try:
+                    # Get the original app's access mode
+                    original_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_model.id)
+                    access_mode = original_settings.access_mode
+                except Exception:
+                    # If original app has no settings (old app), default to public to match fallback behavior
+                    access_mode = "public"
+
+                # Apply the same access mode to the copied app
+                EnterpriseService.WebAppAuth.update_app_access_mode(result.app_id, access_mode)
 
             stmt = select(App).where(App.id == result.app_id)
             app = session.scalar(stmt)

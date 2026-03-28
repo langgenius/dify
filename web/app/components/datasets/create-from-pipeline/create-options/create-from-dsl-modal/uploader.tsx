@@ -10,7 +10,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import ActionButton from '@/app/components/base/action-button'
-import { ToastContext } from '@/app/components/base/toast'
+import { ToastContext } from '@/app/components/base/toast/context'
 import { cn } from '@/utils/classnames'
 import { formatFileSize } from '@/utils/format'
 
@@ -54,7 +54,7 @@ const Uploader: FC<Props> = ({
     setDragging(false)
     if (!e.dataTransfer)
       return
-    const files = [...e.dataTransfer.files]
+    const files = Array.from(e.dataTransfer.files)
     if (files.length > 1) {
       notify({ type: 'error', message: t('stepOne.uploader.validation.count', { ns: 'datasetCreation' }) })
       return

@@ -11,7 +11,7 @@ import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
 import Textarea from '@/app/components/base/textarea'
-import { useStore } from '@/app/components/workflow/store'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 
 type PublishAsKnowledgePipelineModalProps = {
   confirmDisabled?: boolean
@@ -28,10 +28,9 @@ const PublishAsKnowledgePipelineModal = ({
   onConfirm,
 }: PublishAsKnowledgePipelineModalProps) => {
   const { t } = useTranslation()
-  const knowledgeName = useStore(s => s.knowledgeName)
-  const knowledgeIcon = useStore(s => s.knowledgeIcon)
-  const [pipelineName, setPipelineName] = useState(knowledgeName!)
-  const [pipelineIcon, setPipelineIcon] = useState(knowledgeIcon!)
+  const workflowStore = useWorkflowStore()
+  const [pipelineName, setPipelineName] = useState(() => workflowStore.getState().knowledgeName!)
+  const [pipelineIcon, setPipelineIcon] = useState(() => workflowStore.getState().knowledgeIcon!)
   const [description, setDescription] = useState('')
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
 

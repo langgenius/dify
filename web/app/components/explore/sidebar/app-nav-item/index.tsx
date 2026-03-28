@@ -2,11 +2,11 @@
 import type { AppIconType } from '@/types/app'
 
 import { useHover } from 'ahooks'
-import { useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useRef } from 'react'
 import AppIcon from '@/app/components/base/app-icon'
 import ItemOperation from '@/app/components/explore/item-operation'
+import { useRouter } from '@/next/navigation'
 import { cn } from '@/utils/classnames'
 
 export type IAppNavItemProps = {
@@ -56,7 +56,7 @@ export default function AppNavItem({
         <>
           <div className="flex w-0 grow items-center space-x-2">
             <AppIcon size="tiny" iconType={icon_type} icon={icon} background={icon_background} imageUrl={icon_url} />
-            <div className="overflow-hidden text-ellipsis whitespace-nowrap" title={name}>{name}</div>
+            <div className="system-sm-regular truncate text-components-menu-item-text" title={name}>{name}</div>
           </div>
           <div className="h-6 shrink-0" onClick={e => e.stopPropagation()}>
             <ItemOperation

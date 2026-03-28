@@ -132,3 +132,17 @@ export type WebhookTriggerResponse = {
   node_id: string
   created_at: string
 }
+
+export type Banner = {
+  id: string
+  content: {
+    'category': string
+    'title': string
+    'description': string
+    'img-src': string
+  }
+  link: string
+  sort: number
+  status: string
+  created_at: string
+}

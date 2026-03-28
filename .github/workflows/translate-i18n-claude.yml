@@ -38,7 +38,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -48,18 +48,8 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          package_json_file: web/package.json
-          run_install: false
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 24
-          cache: pnpm
-          cache-dependency-path: ./web/pnpm-lock.yaml
+      - name: Setup web environment
+        uses: ./.github/actions/setup-web
 
       - name: Detect changed files and generate diff
         id: detect_changes
@@ -130,10 +120,13 @@ jobs:
 
       - name: Run Claude Code for Translation Sync
         if: steps.detect_changes.outputs.CHANGED_FILES != ''
-        uses: anthropics/claude-code-action@v1
+        uses: anthropics/claude-code-action@ff9acae5886d41a99ed4ec14b7dc147d55834722 # v1.0.77
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          # Allow github-actions bot to trigger this workflow via repository_dispatch
+          # See: https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
+          allowed_bots: 'github-actions[bot]'
           prompt: |
             You are a professional i18n synchronization engineer for the Dify project.
             Your task is to keep all language translations in sync with the English source (en-US).
@@ -285,6 +278,22 @@ jobs:
               - `${variable}` - Template literal
               - `<tag>content</tag>` - HTML tags
               - `_one`, `_other` - Pluralization suffixes (these are KEY suffixes, not values)
+
+              **CRITICAL: Variable names and tag names MUST stay in English - NEVER translate them**
+
+              ✅ CORRECT examples:
+              - English: "{{count}} items" → Japanese: "{{count}} 個のアイテム"
+              - English: "{{name}} updated" → Korean: "{{name}} 업데이트됨"
+              - English: "<email>{{email}}</email>" → Chinese: "<email>{{email}}</email>"
+              - English: "<CustomLink>Marketplace</CustomLink>" → Japanese: "<CustomLink>マーケットプレイス</CustomLink>"
+
+              ❌ WRONG examples (NEVER do this - will break the application):
+              - "{{count}}" → "{{カウント}}" ❌ (variable name translated to Japanese)
+              - "{{name}}" → "{{이름}}" ❌ (variable name translated to Korean)
+              - "{{email}}" → "{{邮箱}}" ❌ (variable name translated to Chinese)
+              - "<email>" → "<メール>" ❌ (tag name translated)
+              - "<CustomLink>" → "<自定义链接>" ❌ (component name translated)
+
             - Use appropriate language register (formal/informal) based on existing translations
             - Match existing translation style in each language
             - Technical terms: check existing conventions per language

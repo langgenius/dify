@@ -1,7 +1,5 @@
 'use client'
 import { RiExternalLinkLine } from '@remixicon/react'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -9,6 +7,8 @@ import Modal from '@/app/components/base/modal'
 import { useDocLink } from '@/context/i18n'
 import { useModalContextSelector } from '@/context/modal-context'
 import useTimestamp from '@/hooks/use-timestamp'
+import Link from '@/next/link'
+import { useRouter } from '@/next/navigation'
 import { useEducationVerify } from '@/service/use-education'
 import { SparklesSoftAccent } from '../components/base/icons/src/public/common'
 
@@ -25,7 +25,7 @@ const i18nPrefix = 'notice'
 const ExpireNoticeModal: React.FC<Props> = ({ expireAt, expired, onClose }) => {
   const { t } = useTranslation()
   const docLink = useDocLink()
-  const eduDocLink = docLink('/getting-started/dify-for-education')
+  const eduDocLink = docLink('/use-dify/workspace/subscription-management#dify-for-education')
   const { formatTime } = useTimestamp()
   const setShowPricingModal = useModalContextSelector(s => s.setShowPricingModal)
   const { mutateAsync } = useEducationVerify()

@@ -1,5 +1,4 @@
 import type { ProcessRuleResponse } from '@/models/datasets'
-import Image from 'next/image'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -28,10 +27,10 @@ const RuleDetail = ({
       case 'mode':
         value = !sourceData?.mode
           ? value
-          // eslint-disable-next-line sonarjs/no-nested-conditional
+
           : sourceData.mode === ProcessMode.general
             ? (t('embedding.custom', { ns: 'datasetDocuments' }) as string)
-            // eslint-disable-next-line sonarjs/no-nested-conditional
+
             : `${t('embedding.hierarchical', { ns: 'datasetDocuments' })} · ${sourceData?.rules?.parent_mode === 'paragraph'
               ? t('parentMode.paragraph', { ns: 'dataset' })
               : t('parentMode.fullDoc', { ns: 'dataset' })}`
@@ -50,7 +49,7 @@ const RuleDetail = ({
         label={t('stepTwo.indexMode', { ns: 'datasetCreation' })}
         displayedValue={t(`stepTwo.${indexingType === IndexingType.ECONOMICAL ? 'economical' : 'qualified'}`, { ns: 'datasetCreation' }) as string}
         valueIcon={(
-          <Image
+          <img
             className="size-4"
             src={
               indexingType === IndexingType.ECONOMICAL
@@ -65,12 +64,12 @@ const RuleDetail = ({
         label={t('form.retrievalSetting.title', { ns: 'datasetSettings' })}
         displayedValue={t(`retrieval.${indexingType === IndexingType.ECONOMICAL ? 'keyword_search' : retrievalMethod ?? 'semantic_search'}.title`, { ns: 'dataset' })}
         valueIcon={(
-          <Image
+          <img
             className="size-4"
             src={
               retrievalMethod === RETRIEVE_METHOD.fullText
                 ? retrievalIcon.fullText
-                // eslint-disable-next-line sonarjs/no-nested-conditional
+
                 : retrievalMethod === RETRIEVE_METHOD.hybrid
                   ? retrievalIcon.hybrid
                   : retrievalIcon.vector

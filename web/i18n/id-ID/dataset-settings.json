@@ -16,7 +16,7 @@
   "form.indexMethod": "Metode Indeks",
   "form.indexMethodChangeToEconomyDisabledTip": "Tidak tersedia untuk downgrade dari HQ ke ECO",
   "form.indexMethodEconomy": "Ekonomis",
-  "form.indexMethodEconomyTip": "Menggunakan 10 kata kunci per potongan untuk pengambilan, tidak ada token yang dikonsumsi dengan mengorbankan penurunan akurasi pengambilan.",
+  "form.indexMethodEconomyTip": "Menggunakan {{count}} kata kunci per potongan untuk pengambilan, tidak ada token yang dikonsumsi dengan mengorbankan penurunan akurasi pengambilan.",
   "form.indexMethodHighQuality": "Kualitas Tinggi",
   "form.indexMethodHighQualityTip": "Memanggil model penyematan untuk memproses dokumen untuk pengambilan yang lebih tepat membantu LLM menghasilkan jawaban berkualitas tinggi.",
   "form.me": "(Anda)",
@@ -39,6 +39,12 @@
   "form.retrievalSettings": "Pengaturan Pengambilan",
   "form.save": "Simpan",
   "form.searchModel": "Model pencarian",
+  "form.summaryAutoGen": "Pembuatan Ringkasan Otomatis",
+  "form.summaryAutoGenEnableTip": "Setelah diaktifkan, ringkasan akan dibuat secara otomatis untuk dokumen yang baru ditambahkan. Dokumen yang ada masih dapat diringkas secara manual.",
+  "form.summaryAutoGenTip": "Ringkasan dibuat secara otomatis untuk dokumen yang baru ditambahkan. Dokumen yang ada masih dapat diringkas secara manual.",
+  "form.summaryInstructions": "Instruksi",
+  "form.summaryInstructionsPlaceholder": "Jelaskan aturan atau gaya untuk ringkasan yang dibuat secara otomatis…",
+  "form.summaryModel": "Model Ringkasan",
   "form.upgradeHighQualityTip": "Setelah memutakhirkan ke mode Kualitas Tinggi, kembali ke mode Ekonomis tidak tersedia",
   "title": "Setelan pengetahuan"
 }

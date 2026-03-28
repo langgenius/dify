@@ -53,5 +53,5 @@ class BaiduObsStorage(BaseStorage):
             return False
         return True
 
-    def delete(self, filename):
+    def delete(self, filename: str):
         self.client.delete_object(bucket_name=self.bucket_name, key=filename)

@@ -55,5 +55,5 @@ class OracleOCIStorage(BaseStorage):
         except:
             return False
 
-    def delete(self, filename):
+    def delete(self, filename: str):
         self.client.delete_object(Bucket=self.bucket_name, Key=filename)

@@ -39,6 +39,12 @@
   "form.retrievalSettings": "إعدادات الاسترجاع",
   "form.save": "حفظ",
   "form.searchModel": "نموذج البحث",
+  "form.summaryAutoGen": "إنشاء الملخص التلقائي",
+  "form.summaryAutoGenEnableTip": "بمجرد التمكين، سيتم إنشاء الملخصات تلقائيًا للمستندات المضافة حديثًا. يمكن لا يزال تلخيص المستندات الموجودة يدويًا.",
+  "form.summaryAutoGenTip": "يتم إنشاء الملخصات تلقائيًا للمستندات المضافة حديثًا. يمكن لا يزال تلخيص المستندات الموجودة يدويًا.",
+  "form.summaryInstructions": "تعليمات",
+  "form.summaryInstructionsPlaceholder": "صف القواعد أو الأسلوب للملخصات المُنشأة تلقائيًا…",
+  "form.summaryModel": "نموذج الملخص",
   "form.upgradeHighQualityTip": "بمجرد الترقية إلى وضع الجودة العالية، لا يتوفر الرجوع إلى الوضع الاقتصادي",
   "title": "إعدادات المعرفة"
 }

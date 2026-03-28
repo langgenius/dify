@@ -12,7 +12,7 @@ import { wrapStructuredVarItem } from '@/app/components/workflow/utils/tool'
 import Split from '../_base/components/split'
 import useMatchSchemaType, { getMatchedSchemaType } from '../_base/components/variable/use-match-schema-type'
 import ToolForm from './components/tool-form'
-import useConfig from './use-config'
+import useConfig from './hooks/use-config'
 
 const i18nPrefix = 'nodes.tool'
 
@@ -124,20 +124,22 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
               // TODO empty object type always match `qa_structured` schema type
               return (
                 <div key={outputItem.name}>
-                  {outputItem.value?.type === 'object' ? (
-                    <StructureOutputItem
-                      rootClassName="code-sm-semibold text-text-secondary"
-                      payload={wrapStructuredVarItem(outputItem, schemaType)}
-                    />
-                  ) : (
-                    <VarItem
-                      name={outputItem.name}
-                      // eslint-disable-next-line sonarjs/no-nested-template-literals
-                      type={`${outputItem.type.toLocaleLowerCase()}${schemaType ? ` (${schemaType})` : ''}`}
-                      description={outputItem.description}
-                      isIndent={hasObjectOutput}
-                    />
-                  )}
+                  {outputItem.value?.type === 'object'
+                    ? (
+                        <StructureOutputItem
+                          rootClassName="code-sm-semibold text-text-secondary"
+                          payload={wrapStructuredVarItem(outputItem, schemaType)}
+                        />
+                      )
+                    : (
+                        <VarItem
+                          name={outputItem.name}
+
+                          type={`${outputItem.type.toLocaleLowerCase()}${schemaType ? ` (${schemaType})` : ''}`}
+                          description={outputItem.description}
+                          isIndent={hasObjectOutput}
+                        />
+                      )}
                 </div>
               )
             })}

@@ -10,8 +10,6 @@ import {
   useBoolean,
   useKeyPress,
 } from 'ahooks'
-import Link from 'next/link'
-import { useParams, useRouter } from 'next/navigation'
 import {
   memo,
   useCallback,
@@ -24,20 +22,24 @@ import Confirm from '@/app/components/base/confirm'
 import Divider from '@/app/components/base/divider'
 import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
 import PremiumBadge from '@/app/components/base/premium-badge'
-import { useToastContext } from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import {
   useChecklistBeforePublish,
 } from '@/app/components/workflow/hooks'
+import ShortcutsName from '@/app/components/workflow/shortcuts-name'
 import {
   useStore,
   useWorkflowStore,
 } from '@/app/components/workflow/store'
-import { getKeyboardKeyCodeBySystem, getKeyboardKeyNameBySystem } from '@/app/components/workflow/utils'
+import { getKeyboardKeyCodeBySystem } from '@/app/components/workflow/utils'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { useDocLink } from '@/context/i18n'
 import { useModalContextSelector } from '@/context/modal-context'
-import { useProviderContext } from '@/context/provider-context'
+import { useProviderContextSelector } from '@/context/provider-context'
 import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
+import Link from '@/next/link'
+import { useParams, useRouter } from '@/next/navigation'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import { useInvalid } from '@/service/use-base'
 import {
@@ -55,6 +57,7 @@ const Popup = () => {
   const { t } = useTranslation()
   const { datasetId } = useParams()
   const { push } = useRouter()
+  const docLink = useDocLink()
   const publishedAt = useStore(s => s.publishedAt)
   const draftUpdatedAt = useStore(s => s.draftUpdatedAt)
   const pipelineId = useStore(s => s.pipelineId)
@@ -65,7 +68,7 @@ const Popup = () => {
   const { mutateAsync: publishWorkflow } = usePublishWorkflow()
   const { notify } = useToastContext()
   const workflowStore = useWorkflowStore()
-  const { isAllowPublishAsCustomKnowledgePipelineTemplate } = useProviderContext()
+  const isAllowPublishAsCustomKnowledgePipelineTemplate = useProviderContextSelector(s => s.isAllowPublishAsCustomKnowledgePipelineTemplate)
   const setShowPricingModal = useModalContextSelector(s => s.setShowPricingModal)
   const apiReferenceUrl = useDatasetApiAccessUrl()
 
@@ -116,14 +119,14 @@ const Popup = () => {
             type: 'success',
             message: t('publishPipeline.success.message', { ns: 'datasetPipeline' }),
             children: (
-              <div className="system-xs-regular text-text-secondary">
+              <div className="text-text-secondary system-xs-regular">
                 <Trans
                   i18nKey="publishPipeline.success.tip"
                   ns="datasetPipeline"
                   components={{
                     CustomLink: (
                       <Link
-                        className="system-xs-medium text-text-accent"
+                        className="text-text-accent system-xs-medium"
                         href={`/datasets/${datasetId}/documents`}
                       >
                       </Link>
@@ -149,7 +152,7 @@ const Popup = () => {
       if (confirmVisible)
         hideConfirm()
     }
-  }, [handleCheckBeforePublish, publishWorkflow, pipelineId, notify, t, workflowStore, mutateDatasetRes, invalidPublishedPipelineInfo, showConfirm, publishedAt, confirmVisible, hidePublishing, showPublishing, hideConfirm, publishing])
+  }, [publishing, handleCheckBeforePublish, publishedAt, confirmVisible, showPublishing, publishWorkflow, pipelineId, datasetId, showConfirm, notify, t, workflowStore, mutateDatasetRes, invalidPublishedPipelineInfo, invalidDatasetList, hidePublishing, hideConfirm])
 
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.shift.p`, (e) => {
     e.preventDefault()
@@ -182,13 +185,13 @@ const Popup = () => {
         message: t('publishTemplate.success.message', { ns: 'datasetPipeline' }),
         children: (
           <div className="flex flex-col gap-y-1">
-            <span className="system-xs-regular text-text-secondary">
+            <span className="text-text-secondary system-xs-regular">
               {t('publishTemplate.success.tip', { ns: 'datasetPipeline' })}
             </span>
             <Link
-              href="https://docs.dify.ai"
+              href={docLink()}
               target="_blank"
-              className="system-xs-medium-uppercase inline-block text-text-accent"
+              className="inline-block text-text-accent system-xs-medium-uppercase"
             >
               {t('publishTemplate.success.learnMore', { ns: 'datasetPipeline' })}
             </Link>
@@ -204,15 +207,7 @@ const Popup = () => {
       hidePublishingAsCustomizedPipeline()
       hidePublishAsKnowledgePipelineModal()
     }
-  }, [
-    pipelineId,
-    publishAsCustomizedPipeline,
-    showPublishingAsCustomizedPipeline,
-    hidePublishingAsCustomizedPipeline,
-    hidePublishAsKnowledgePipelineModal,
-    notify,
-    t,
-  ])
+  }, [showPublishingAsCustomizedPipeline, publishAsCustomizedPipeline, pipelineId, notify, t, invalidCustomizedTemplateList, hidePublishingAsCustomizedPipeline, hidePublishAsKnowledgePipelineModal])
 
   const handleClickPublishAsKnowledgePipeline = useCallback(() => {
     if (!isAllowPublishAsCustomKnowledgePipelineTemplate)
@@ -224,14 +219,14 @@ const Popup = () => {
   return (
     <div className={cn('rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5', isAllowPublishAsCustomKnowledgePipelineTemplate ? 'w-[360px]' : 'w-[400px]')}>
       <div className="p-4 pt-3">
-        <div className="system-xs-medium-uppercase flex h-6 items-center text-text-tertiary">
+        <div className="flex h-6 items-center text-text-tertiary system-xs-medium-uppercase">
           {publishedAt ? t('common.latestPublished', { ns: 'workflow' }) : t('common.currentDraftUnpublished', { ns: 'workflow' })}
         </div>
         {
           publishedAt
             ? (
                 <div className="flex items-center justify-between">
-                  <div className="system-sm-medium flex items-center text-text-secondary">
+                  <div className="flex items-center text-text-secondary system-sm-medium">
                     {t('common.publishedAt', { ns: 'workflow' })}
                     {' '}
                     {formatTimeFromNow(publishedAt)}
@@ -239,7 +234,7 @@ const Popup = () => {
                 </div>
               )
             : (
-                <div className="system-sm-medium flex items-center text-text-secondary">
+                <div className="flex items-center text-text-secondary system-sm-medium">
                   {t('common.autoSaved', { ns: 'workflow' })}
                   {' '}
                   ·
@@ -259,13 +254,7 @@ const Popup = () => {
               : (
                   <div className="flex gap-1">
                     <span>{t('common.publishUpdate', { ns: 'workflow' })}</span>
-                    <div className="flex gap-0.5">
-                      {PUBLISH_SHORTCUT.map(key => (
-                        <span key={key} className="system-kbd h-4 w-4 rounded-[4px] bg-components-kbd-bg-white text-text-primary-on-surface">
-                          {getKeyboardKeyNameBySystem(key)}
-                        </span>
-                      ))}
-                    </div>
+                    <ShortcutsName keys={PUBLISH_SHORTCUT} bgColor="white" />
                   </div>
                 )
           }
@@ -316,7 +305,7 @@ const Popup = () => {
             {!isAllowPublishAsCustomKnowledgePipelineTemplate && (
               <PremiumBadge className="shrink-0 cursor-pointer select-none" size="s" color="indigo">
                 <SparklesSoft className="flex size-3 items-center text-components-premium-badge-indigo-text-stop-0" />
-                <span className="system-2xs-medium p-0.5">
+                <span className="p-0.5 system-2xs-medium">
                   {t('upgradeBtn.encourageShort', { ns: 'billing' })}
                 </span>
               </PremiumBadge>

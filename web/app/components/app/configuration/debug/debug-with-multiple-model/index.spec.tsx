@@ -7,6 +7,7 @@ import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { Inputs, ModelConfig } from '@/models/debug'
 import type { PromptVariable } from '@/types/app'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { useStore as useAppStore } from '@/app/components/app/store'
 import { DEFAULT_AGENT_SETTING, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 import { AppModeEnum, ModelModeType, Resolution, TransferMethod } from '@/types/app'
 import { APP_CHAT_WITH_MULTIPLE_MODEL } from '../types'
@@ -21,9 +22,7 @@ type PromptVariableWithMeta = Omit<PromptVariable, 'type' | 'required'> & {
 const mockUseDebugConfigurationContext = vi.fn()
 const mockUseFeaturesSelector = vi.fn()
 const mockUseEventEmitterContext = vi.fn()
-const mockUseAppStoreSelector = vi.fn()
 const mockEventEmitter = { emit: vi.fn() }
-const mockSetShowAppConfigureFeaturesModal = vi.fn()
 let capturedChatInputProps: MockChatInputAreaProps | null = null
 let modelIdCounter = 0
 let featureState: FeatureStoreState
@@ -61,10 +60,6 @@ vi.mock('@/app/components/base/features/hooks', () => ({
 
 vi.mock('@/context/event-emitter', () => ({
   useEventEmitterContextContext: () => mockUseEventEmitterContext(),
-}))
-
-vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: { setShowAppConfigureFeaturesModal: typeof mockSetShowAppConfigureFeaturesModal }) => unknown) => mockUseAppStoreSelector(selector),
 }))
 
 vi.mock('./debug-item', () => ({
@@ -191,7 +186,6 @@ describe('DebugWithMultipleModel', () => {
     featureState = createFeatureState()
     mockUseFeaturesSelector.mockImplementation(selector => selector(featureState))
     mockUseEventEmitterContext.mockReturnValue({ eventEmitter: mockEventEmitter })
-    mockUseAppStoreSelector.mockImplementation(selector => selector({ setShowAppConfigureFeaturesModal: mockSetShowAppConfigureFeaturesModal }))
     mockUseDebugConfigurationContext.mockReturnValue(createDebugConfiguration())
   })
 
@@ -438,7 +432,7 @@ describe('DebugWithMultipleModel', () => {
       expect(capturedChatInputProps?.showFileUpload).toBe(false)
       expect(capturedChatInputProps?.speechToTextConfig).toEqual(featureState.features.speech2text)
       expect(capturedChatInputProps?.visionConfig).toEqual(featureState.features.file)
-      expect(mockSetShowAppConfigureFeaturesModal).toHaveBeenCalledWith(true)
+      expect(useAppStore.getState().showAppConfigureFeaturesModal).toBe(true)
     })
 
     it('should render chat input in agent chat mode', () => {
@@ -562,8 +556,8 @@ describe('DebugWithMultipleModel', () => {
       )
 
       const twoItems = screen.getAllByTestId('debug-item')
-      expect(twoItems[0].style.width).toBe('calc(50% - 28px)')
-      expect(twoItems[1].style.width).toBe('calc(50% - 28px)')
+      expect(twoItems[0].style.width).toBe('calc(50% - 4px - 24px)')
+      expect(twoItems[1].style.width).toBe('calc(50% - 4px - 24px)')
     })
   })
 
@@ -602,13 +596,13 @@ describe('DebugWithMultipleModel', () => {
       // Assert
       expect(items).toHaveLength(2)
       expectItemLayout(items[0], {
-        width: 'calc(50% - 28px)',
+        width: 'calc(50% - 4px - 24px)',
         height: '100%',
         transform: 'translateX(0) translateY(0)',
         classes: ['mr-2'],
       })
       expectItemLayout(items[1], {
-        width: 'calc(50% - 28px)',
+        width: 'calc(50% - 4px - 24px)',
         height: '100%',
         transform: 'translateX(calc(100% + 8px)) translateY(0)',
         classes: [],
@@ -626,19 +620,19 @@ describe('DebugWithMultipleModel', () => {
       // Assert
       expect(items).toHaveLength(3)
       expectItemLayout(items[0], {
-        width: 'calc(33.3% - 21.33px)',
+        width: 'calc(33.3% - 5.33px - 16px)',
         height: '100%',
         transform: 'translateX(0) translateY(0)',
         classes: ['mr-2'],
       })
       expectItemLayout(items[1], {
-        width: 'calc(33.3% - 21.33px)',
+        width: 'calc(33.3% - 5.33px - 16px)',
         height: '100%',
         transform: 'translateX(calc(100% + 8px)) translateY(0)',
         classes: ['mr-2'],
       })
       expectItemLayout(items[2], {
-        width: 'calc(33.3% - 21.33px)',
+        width: 'calc(33.3% - 5.33px - 16px)',
         height: '100%',
         transform: 'translateX(calc(200% + 16px)) translateY(0)',
         classes: [],
@@ -661,25 +655,25 @@ describe('DebugWithMultipleModel', () => {
       // Assert
       expect(items).toHaveLength(4)
       expectItemLayout(items[0], {
-        width: 'calc(50% - 28px)',
+        width: 'calc(50% - 4px - 24px)',
         height: 'calc(50% - 4px)',
         transform: 'translateX(0) translateY(0)',
         classes: ['mr-2', 'mb-2'],
       })
       expectItemLayout(items[1], {
-        width: 'calc(50% - 28px)',
+        width: 'calc(50% - 4px - 24px)',
         height: 'calc(50% - 4px)',
         transform: 'translateX(calc(100% + 8px)) translateY(0)',
         classes: ['mb-2'],
       })
       expectItemLayout(items[2], {
-        width: 'calc(50% - 28px)',
+        width: 'calc(50% - 4px - 24px)',
         height: 'calc(50% - 4px)',
         transform: 'translateX(0) translateY(calc(100% + 8px))',
         classes: ['mr-2'],
       })
       expectItemLayout(items[3], {
-        width: 'calc(50% - 28px)',
+        width: 'calc(50% - 4px - 24px)',
         height: 'calc(50% - 4px)',
         transform: 'translateX(calc(100% + 8px)) translateY(calc(100% + 8px))',
         classes: [],

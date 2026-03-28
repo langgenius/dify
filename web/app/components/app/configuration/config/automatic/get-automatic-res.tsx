@@ -134,7 +134,6 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
     },
   ] as const
 
-  // eslint-disable-next-line sonarjs/no-nested-template-literals, sonarjs/no-nested-conditional
   const [instructionFromSessionStorage, setInstruction] = useSessionStorageState<string>(`improve-instruction-${flowId}${isBasicMode ? '' : `-${nodeId}${editorId ? `-${editorId}` : ''}`}`)
   const instruction = instructionFromSessionStorage || ''
   const [ideaOutput, setIdeaOutput] = useState<string>('')
@@ -299,7 +298,6 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
           <div>
             <ModelParameterModal
               popupClassName="!w-[520px]"
-              portalToFollowElemContentClassName="z-[1000]"
               isAdvancedMode={true}
               provider={model.provider}
               completionParams={model.completion_params}

@@ -40,6 +40,15 @@ type CommonDocReq = {
   documentId: string
 }
 
+export type DocumentDownloadResponse = {
+  url: string
+}
+
+export type DocumentDownloadZipRequest = {
+  datasetId: string
+  documentIds: string[]
+}
+
 type BatchReq = {
   datasetId: string
   batchId: string
@@ -156,6 +165,18 @@ export const pauseDocIndexing = ({ datasetId, documentId }: CommonDocReq): Promi
 
 export const resumeDocIndexing = ({ datasetId, documentId }: CommonDocReq): Promise<CommonResponse> => {
   return patch<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/processing/resume`)
+}
+
+export const fetchDocumentDownloadUrl = ({ datasetId, documentId }: CommonDocReq): Promise<DocumentDownloadResponse> => {
+  return get<DocumentDownloadResponse>(`/datasets/${datasetId}/documents/${documentId}/download`, {})
+}
+
+export const downloadDocumentsZip = ({ datasetId, documentIds }: DocumentDownloadZipRequest): Promise<Blob> => {
+  return post<Blob>(`/datasets/${datasetId}/documents/download-zip`, {
+    body: {
+      document_ids: documentIds,
+    },
+  })
 }
 
 export const preImportNotionPages = ({ url, datasetId }: { url: string, datasetId?: string }): Promise<{ notion_info: DataSourceNotionWorkspace[] }> => {

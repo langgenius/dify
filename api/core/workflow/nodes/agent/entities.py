@@ -1,17 +1,19 @@
 from enum import IntEnum, StrEnum, auto
 from typing import Any, Literal, Union
 
+from graphon.entities.base_node_data import BaseNodeData
+from graphon.enums import BuiltinNodeTypes, NodeType
 from pydantic import BaseModel
 
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.tools.entities.tool_entities import ToolSelector
-from core.workflow.nodes.base.entities import BaseNodeData
 
 
 class AgentNodeData(BaseNodeData):
-    agent_strategy_provider_name: str  # redundancy
+    type: NodeType = BuiltinNodeTypes.AGENT
+    agent_strategy_provider_name: str
     agent_strategy_name: str
-    agent_strategy_label: str  # redundancy
+    agent_strategy_label: str
     memory: MemoryConfig | None = None
     # The version of the tool parameter.
     # If this value is None, it indicates this is a previous version

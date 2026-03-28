@@ -11,11 +11,11 @@ import type { TriggerProps } from '@/app/components/header/account-setting/model
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
-import Toast from '@/app/components/base/toast'
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/app/components/base/ui/popover'
+import { toast } from '@/app/components/base/ui/toast'
 import { ModelStatusEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
   useModelList,
@@ -31,7 +31,6 @@ import TTSParamsPanel from './tts-params-panel'
 
 export type ModelParameterModalProps = {
   popupClassName?: string
-  portalToFollowElemContentClassName?: string
   isAdvancedMode: boolean
   value: any
   setModel: (model: any) => void
@@ -44,7 +43,6 @@ export type ModelParameterModalProps = {
 
 const ModelParameterModal: FC<ModelParameterModalProps> = ({
   popupClassName,
-  portalToFollowElemContentClassName,
   isAdvancedMode,
   value,
   setModel,
@@ -114,15 +112,8 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
     }
   }, [scopedModelList, value?.provider, value?.model])
 
-  const hasDeprecated = useMemo(() => {
-    return !currentProvider || !currentModel
-  }, [currentModel, currentProvider])
-  const modelDisabled = useMemo(() => {
-    return currentModel?.status !== ModelStatusEnum.active
-  }, [currentModel?.status])
-  const disabled = useMemo(() => {
-    return !isAPIKeySet || hasDeprecated || modelDisabled
-  }, [hasDeprecated, isAPIKeySet, modelDisabled])
+  const hasDeprecated = !currentProvider || !currentModel
+  const disabled = !isAPIKeySet || hasDeprecated || currentModel?.status !== ModelStatusEnum.active
 
   const handleChangeModel = async ({ provider, model }: DefaultModel) => {
     const targetProvider = scopedModelList.find(modelItem => modelItem.provider === provider)
@@ -143,14 +134,11 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
 
         const keys = Object.keys(removedDetails || {})
         if (keys.length) {
-          Toast.notify({
-            type: 'warning',
-            message: `${t('modelProvider.parametersInvalidRemoved', { ns: 'common' })}: ${keys.map(k => `${k} (${removedDetails[k]})`).join(', ')}`,
-          })
+          toast.warning(`${t('modelProvider.parametersInvalidRemoved', { ns: 'common' })}: ${keys.map(k => `${k} (${removedDetails[k]})`).join(', ')}`)
         }
       }
       catch {
-        Toast.notify({ type: 'error', message: t('error', { ns: 'common' }) })
+        toast.error(t('error', { ns: 'common' }))
       }
     }
 
@@ -187,99 +175,94 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   }
 
   return (
-    <PortalToFollowElem
+    <Popover
       open={open}
-      onOpenChange={setOpen}
-      placement={isInWorkflow ? 'left' : 'bottom-end'}
-      offset={4}
+      onOpenChange={(newOpen) => {
+        if (readonly)
+          return
+        setOpen(newOpen)
+      }}
     >
       <div className="relative">
-        <PortalToFollowElemTrigger
-          onClick={() => {
-            if (readonly)
-              return
-            setOpen(v => !v)
-          }}
-          className="block"
+        <PopoverTrigger
+          render={(
+            <button type="button" className="block w-full border-none bg-transparent p-0 text-left [color:inherit] [font:inherit]">
+              {
+                renderTrigger
+                  ? renderTrigger({
+                      open,
+                      currentProvider,
+                      currentModel,
+                      providerName: value?.provider,
+                      modelId: value?.model,
+                    })
+                  : (isAgentStrategy
+                      ? (
+                          <AgentModelTrigger
+                            disabled={disabled}
+                            hasDeprecated={hasDeprecated}
+                            currentProvider={currentProvider}
+                            currentModel={currentModel}
+                            providerName={value?.provider}
+                            modelId={value?.model}
+                            scope={scope}
+                          />
+                        )
+                      : (
+                          <Trigger
+                            isInWorkflow={isInWorkflow}
+                            currentProvider={currentProvider}
+                            currentModel={currentModel}
+                            providerName={value?.provider}
+                            modelId={value?.model}
+                          />
+                        )
+                    )
+              }
+            </button>
+          )}
+        />
+        <PopoverContent
+          placement={isInWorkflow ? 'left' : 'bottom-end'}
+          sideOffset={4}
+          popupClassName={cn(popupClassName, 'w-[389px] rounded-2xl')}
         >
-          {
-            renderTrigger
-              ? renderTrigger({
-                  open,
-                  disabled,
-                  modelDisabled,
-                  hasDeprecated,
-                  currentProvider,
-                  currentModel,
-                  providerName: value?.provider,
-                  modelId: value?.model,
-                })
-              : (isAgentStrategy
-                  ? (
-                      <AgentModelTrigger
-                        disabled={disabled}
-                        hasDeprecated={hasDeprecated}
-                        currentProvider={currentProvider}
-                        currentModel={currentModel}
-                        providerName={value?.provider}
-                        modelId={value?.model}
-                        scope={scope}
-                      />
-                    )
-                  : (
-                      <Trigger
-                        disabled={disabled}
-                        isInWorkflow={isInWorkflow}
-                        modelDisabled={modelDisabled}
-                        hasDeprecated={hasDeprecated}
-                        currentProvider={currentProvider}
-                        currentModel={currentModel}
-                        providerName={value?.provider}
-                        modelId={value?.model}
-                      />
-                    )
-                )
-          }
-        </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className={cn('z-50', portalToFollowElemContentClassName)}>
-          <div className={cn(popupClassName, 'w-[389px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg')}>
-            <div className={cn('max-h-[420px] overflow-y-auto p-4 pt-3')}>
-              <div className="relative">
-                <div className={cn('system-sm-semibold mb-1 flex h-6 items-center text-text-secondary')}>
-                  {t('modelProvider.model', { ns: 'common' }).toLocaleUpperCase()}
-                </div>
-                <ModelSelector
-                  defaultModel={(value?.provider || value?.model) ? { provider: value?.provider, model: value?.model } : undefined}
-                  modelList={scopedModelList}
-                  scopeFeatures={scopeFeatures}
-                  onSelect={handleChangeModel}
-                />
+          <div className="max-h-[420px] overflow-y-auto p-4 pt-3">
+            <div className="relative">
+              <div className="mb-1 flex h-6 items-center text-text-secondary system-sm-semibold">
+                {t('modelProvider.model', { ns: 'common' }).toLocaleUpperCase()}
               </div>
-              {(currentModel?.model_type === ModelTypeEnum.textGeneration || currentModel?.model_type === ModelTypeEnum.tts) && (
-                <div className="my-3 h-px bg-divider-subtle" />
-              )}
-              {currentModel?.model_type === ModelTypeEnum.textGeneration && (
-                <LLMParamsPanel
-                  provider={value?.provider}
-                  modelId={value?.model}
-                  completionParams={value?.completion_params || {}}
-                  onCompletionParamsChange={handleLLMParamsChange}
-                  isAdvancedMode={isAdvancedMode}
-                />
-              )}
-              {currentModel?.model_type === ModelTypeEnum.tts && (
-                <TTSParamsPanel
-                  currentModel={currentModel}
-                  language={value?.language}
-                  voice={value?.voice}
-                  onChange={handleTTSParamsChange}
-                />
-              )}
+              <ModelSelector
+                defaultModel={(value?.provider || value?.model) ? { provider: value?.provider, model: value?.model } : undefined}
+                modelList={scopedModelList}
+                scopeFeatures={scopeFeatures}
+                onSelect={handleChangeModel}
+              />
             </div>
+            {(currentModel?.model_type === ModelTypeEnum.textGeneration || currentModel?.model_type === ModelTypeEnum.tts) && (
+              <div className="my-3 h-px bg-divider-subtle" />
+            )}
+            {currentModel?.model_type === ModelTypeEnum.textGeneration && (
+              <LLMParamsPanel
+                provider={value?.provider}
+                modelId={value?.model}
+                completionParams={value?.completion_params || {}}
+                onCompletionParamsChange={handleLLMParamsChange}
+                isAdvancedMode={isAdvancedMode}
+              />
+            )}
+            {currentModel?.model_type === ModelTypeEnum.tts && (
+              <TTSParamsPanel
+                currentModel={currentModel}
+                language={value?.language}
+                voice={value?.voice}
+                onChange={handleTTSParamsChange}
+              />
+            )}
           </div>
-        </PortalToFollowElemContent>
+        </PopoverContent>
       </div>
-    </PortalToFollowElem>
+    </Popover>
   )
 }
 

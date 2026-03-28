@@ -1,10 +1,9 @@
 'use client'
 
 import type { MouseEventHandler } from 'react'
-import { RiCloseLine, RiCommandLine, RiCornerDownLeftLine } from '@remixicon/react'
+import { RiCloseLine } from '@remixicon/react'
 import { useDebounceFn, useKeyPress } from 'ahooks'
 import { noop } from 'es-toolkit/function'
-import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
@@ -12,7 +11,7 @@ import { trackEvent } from '@/app/components/base/amplitude'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
-import { ToastContext } from '@/app/components/base/toast'
+import { ToastContext } from '@/app/components/base/toast/context'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
@@ -22,12 +21,14 @@ import {
   DSLImportMode,
   DSLImportStatus,
 } from '@/models/app'
+import { useRouter } from '@/next/navigation'
 import {
   importDSL,
   importDSLConfirm,
 } from '@/service/apps'
 import { getRedirection } from '@/utils/app-redirection'
 import { cn } from '@/utils/classnames'
+import ShortcutsName from '../../workflow/shortcuts-name'
 import Uploader from './uploader'
 
 type CreateFromDSLModalProps = {
@@ -231,7 +232,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         isShow={show}
         onClose={noop}
       >
-        <div className="title-2xl-semi-bold flex items-center justify-between pb-3 pl-6 pr-5 pt-6 text-text-primary">
+        <div className="flex items-center justify-between pb-3 pl-6 pr-5 pt-6 text-text-primary title-2xl-semi-bold">
           {t('importFromDSL', { ns: 'app' })}
           <div
             className="flex h-8 w-8 cursor-pointer items-center"
@@ -240,7 +241,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
             <RiCloseLine className="h-5 w-5 text-text-tertiary" />
           </div>
         </div>
-        <div className="system-md-semibold flex h-9 items-center space-x-6 border-b border-divider-subtle px-6 text-text-tertiary">
+        <div className="flex h-9 items-center space-x-6 border-b border-divider-subtle px-6 text-text-tertiary system-md-semibold">
           {
             tabs.map(tab => (
               <div
@@ -274,7 +275,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
           {
             currentTab === CreateFromDSLModalTab.FROM_URL && (
               <div>
-                <div className="system-md-semibold mb-1 text-text-secondary">DSL URL</div>
+                <div className="mb-1 text-text-secondary system-md-semibold">DSL URL</div>
                 <Input
                   placeholder={t('importFromDSLUrlPlaceholder', { ns: 'app' }) || ''}
                   value={dslUrlValue}
@@ -298,10 +299,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
             className="gap-1"
           >
             <span>{t('newApp.Create', { ns: 'app' })}</span>
-            <div className="flex gap-0.5">
-              <RiCommandLine size={14} className="system-kbd rounded-sm bg-components-kbd-bg-white p-0.5" />
-              <RiCornerDownLeftLine size={14} className="system-kbd rounded-sm bg-components-kbd-bg-white p-0.5" />
-            </div>
+            <ShortcutsName keys={['ctrl', '↵']} bgColor="white" />
           </Button>
         </div>
       </Modal>
@@ -311,8 +309,8 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         className="w-[480px]"
       >
         <div className="flex flex-col items-start gap-2 self-stretch pb-4">
-          <div className="title-2xl-semi-bold text-text-primary">{t('newApp.appCreateDSLErrorTitle', { ns: 'app' })}</div>
-          <div className="system-md-regular flex grow flex-col text-text-secondary">
+          <div className="text-text-primary title-2xl-semi-bold">{t('newApp.appCreateDSLErrorTitle', { ns: 'app' })}</div>
+          <div className="flex grow flex-col text-text-secondary system-md-regular">
             <div>{t('newApp.appCreateDSLErrorPart1', { ns: 'app' })}</div>
             <div>{t('newApp.appCreateDSLErrorPart2', { ns: 'app' })}</div>
             <br />

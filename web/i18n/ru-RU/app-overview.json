@@ -113,7 +113,7 @@
   "overview.triggerInfo.noTriggerAdded": "Триггер не добавлен",
   "overview.triggerInfo.title": "Триггеры",
   "overview.triggerInfo.triggerStatusDescription": "Статус узла триггера отображается здесь. (Может уже существовать в черновике, вступает в силу после публикации)",
-  "overview.triggerInfo.triggersAdded": "Добавлены триггеры",
+  "overview.triggerInfo.triggersAdded": "{{count}} триггеров добавлено",
   "welcome.enterKeyTip": "введите свой ключ API OpenAI ниже",
   "welcome.firstStepTip": "Чтобы начать,",
   "welcome.getKeyTip": "Получите свой ключ API на панели инструментов OpenAI",

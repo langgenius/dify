@@ -1,13 +1,13 @@
 import type { PipelineTemplate } from '@/models/pipeline'
-import { useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import Confirm from '@/app/components/base/confirm'
 import Modal from '@/app/components/base/modal'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
+import { useRouter } from '@/next/navigation'
 import { useCreatePipelineDatasetFromCustomized } from '@/service/knowledge/use-create-dataset'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import {
@@ -16,7 +16,7 @@ import {
   useInvalidCustomizedTemplateList,
   usePipelineTemplateById,
 } from '@/service/use-pipeline'
-import { downloadFile } from '@/utils/format'
+import { downloadBlob } from '@/utils/download'
 import Actions from './actions'
 import Content from './content'
 import Details from './details'
@@ -50,10 +50,7 @@ const TemplateCard = ({
   const handleUseTemplate = useCallback(async () => {
     const { data: pipelineTemplateInfo } = await getPipelineTemplateInfo()
     if (!pipelineTemplateInfo) {
-      Toast.notify({
-        type: 'error',
-        message: t('creation.errorTip', { ns: 'datasetPipeline' }),
-      })
+      toast.error(t('creation.errorTip', { ns: 'datasetPipeline' }))
       return
     }
     const request = {
@@ -61,10 +58,7 @@ const TemplateCard = ({
     }
     await createDataset(request, {
       onSuccess: async (newDataset) => {
-        Toast.notify({
-          type: 'success',
-          message: t('creation.successTip', { ns: 'datasetPipeline' }),
-        })
+        toast.success(t('creation.successTip', { ns: 'datasetPipeline' }))
         invalidDatasetList()
         if (newDataset.pipeline_id)
           await handleCheckPluginDependencies(newDataset.pipeline_id, true)
@@ -76,10 +70,7 @@ const TemplateCard = ({
         push(`/datasets/${newDataset.dataset_id}/pipeline`)
       },
       onError: () => {
-        Toast.notify({
-          type: 'error',
-          message: t('creation.errorTip', { ns: 'datasetPipeline' }),
-        })
+        toast.error(t('creation.errorTip', { ns: 'datasetPipeline' }))
       },
     })
   }, [getPipelineTemplateInfo, createDataset, t, handleCheckPluginDependencies, push, invalidDatasetList, pipeline.name, pipeline.id, type])
@@ -108,20 +99,11 @@ const TemplateCard = ({
     await exportPipelineDSL(pipeline.id, {
       onSuccess: (res) => {
         const blob = new Blob([res.data], { type: 'application/yaml' })
-        downloadFile({
-          data: blob,
-          fileName: `${pipeline.name}.pipeline`,
-        })
-        Toast.notify({
-          type: 'success',
-          message: t('exportDSL.successTip', { ns: 'datasetPipeline' }),
-        })
+        downloadBlob({ data: blob, fileName: `${pipeline.name}.pipeline` })
+        toast.success(t('exportDSL.successTip', { ns: 'datasetPipeline' }))
       },
       onError: () => {
-        Toast.notify({
-          type: 'error',
-          message: t('exportDSL.errorTip', { ns: 'datasetPipeline' }),
-        })
+        toast.error(t('exportDSL.errorTip', { ns: 'datasetPipeline' }))
       },
     })
   }, [t, isExporting, pipeline.id, pipeline.name, exportPipelineDSL])

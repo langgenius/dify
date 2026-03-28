@@ -2,8 +2,6 @@ import type { FC } from 'react'
 import type { ImageFile, VisionSettings } from '@/types/app'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Upload03 } from '@/app/components/base/icons/src/vender/line/general'
-import { ImagePlus } from '@/app/components/base/icons/src/vender/line/images'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -33,7 +31,7 @@ const UploadOnlyFromLocal: FC<UploadOnlyFromLocalProps> = ({
             ${hovering && 'bg-gray-100'}
           `}
         >
-          <ImagePlus className="h-4 w-4 text-gray-500" />
+          <span className="i-custom-vender-line-images-image-plus h-4 w-4 text-gray-500" />
         </div>
       )}
     </Uploader>
@@ -84,13 +82,13 @@ const UploaderButton: FC<UploaderButtonProps> = ({
           disabled={disabled}
           className="relative flex h-8 w-8 items-center justify-center rounded-lg enabled:hover:bg-gray-100 disabled:cursor-not-allowed"
         >
-          <ImagePlus className="h-4 w-4 text-gray-500" />
+          <span className="i-custom-vender-line-images-image-plus h-4 w-4 text-gray-500" />
         </button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-50">
         <div className="w-[260px] rounded-lg border-[0.5px] border-gray-200 bg-white p-2 shadow-lg">
           <ImageLinkInput onUpload={handleUpload} disabled={disabled} />
-          {hasUploadFromLocal && (
+          {!!hasUploadFromLocal && (
             <>
               <div className="mt-2 flex items-center px-2 text-xs font-medium text-gray-400">
                 <div className="mr-3 h-px w-[93px] bg-gradient-to-l from-[#F3F4F6]" />
@@ -109,7 +107,7 @@ const UploaderButton: FC<UploaderButtonProps> = ({
                       hovering && 'bg-primary-50',
                     )}
                   >
-                    <Upload03 className="mr-1 h-4 w-4" />
+                    <span className="i-custom-vender-line-general-upload-03 mr-1 h-4 w-4" />
                     {t('imageUploader.uploadFromComputer', { ns: 'common' })}
                   </div>
                 )}

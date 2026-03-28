@@ -4,13 +4,14 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { useToastContext } from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import {
   DSL_EXPORT_CHECK,
 } from '@/app/components/workflow/constants'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { exportAppConfig } from '@/service/apps'
 import { fetchWorkflowDraft } from '@/service/workflow'
+import { downloadBlob } from '@/utils/download'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
 
 export const useDSL = () => {
@@ -37,13 +38,8 @@ export const useDSL = () => {
         include,
         workflowID: workflowId,
       })
-      const a = document.createElement('a')
       const file = new Blob([data], { type: 'application/yaml' })
-      const url = URL.createObjectURL(file)
-      a.href = url
-      a.download = `${appDetail.name}.yml`
-      a.click()
-      URL.revokeObjectURL(url)
+      downloadBlob({ data: file, fileName: `${appDetail.name}.yml` })
     }
     catch {
       notify({ type: 'error', message: t('exportFailed', { ns: 'app' }) })

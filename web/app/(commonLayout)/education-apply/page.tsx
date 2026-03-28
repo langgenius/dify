@@ -1,15 +1,15 @@
 'use client'
 
 import {
-  useRouter,
-  useSearchParams,
-} from 'next/navigation'
-import {
   useEffect,
   useMemo,
 } from 'react'
 import EducationApplyPage from '@/app/education-apply/education-apply-page'
 import { useProviderContext } from '@/context/provider-context'
+import {
+  useRouter,
+  useSearchParams,
+} from '@/next/navigation'
 
 export default function EducationApply() {
   const router = useRouter()

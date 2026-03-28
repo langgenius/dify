@@ -33,7 +33,7 @@ export function useMarketplaceData() {
   }, [isSearchMode, searchPluginText, activePluginType, filterPluginTags, sort])
 
   const pluginsQuery = useMarketplacePlugins(queryParams)
-  const { hasNextPage, fetchNextPage, isFetching } = pluginsQuery
+  const { hasNextPage, fetchNextPage, isFetching, isFetchingNextPage } = pluginsQuery
 
   const handlePageChange = useCallback(() => {
     if (hasNextPage && !isFetching)
@@ -50,5 +50,6 @@ export function useMarketplaceData() {
     pluginsTotal: pluginsQuery.data?.pages[0]?.total,
     page: pluginsQuery.data?.pages.length || 1,
     isLoading: collectionsQuery.isLoading || pluginsQuery.isLoading,
+    isFetchingNextPage,
   }
 }

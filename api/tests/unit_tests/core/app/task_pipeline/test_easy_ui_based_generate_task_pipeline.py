@@ -2,6 +2,8 @@ from types import SimpleNamespace
 from unittest.mock import ANY, Mock, patch
 
 import pytest
+from graphon.model_runtime.entities.llm_entities import LLMResult as RuntimeLLMResult
+from graphon.model_runtime.entities.message_entities import TextPromptMessageContent
 
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import ChatAppGenerateEntity
@@ -25,8 +27,6 @@ from core.app.entities.task_entities import (
 )
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.base.tts import AppGeneratorTTSPublisher
-from core.model_runtime.entities.llm_entities import LLMResult as RuntimeLLMResult
-from core.model_runtime.entities.message_entities import TextPromptMessageContent
 from core.ops.ops_trace_manager import TraceQueueManager
 from models.model import AppMode
 

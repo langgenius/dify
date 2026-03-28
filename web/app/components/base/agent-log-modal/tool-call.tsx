@@ -72,7 +72,7 @@ const ToolCallItem: FC<Props> = ({ toolCall, isLLM = false, isFinal, tokens, obs
             {toolName}
           </div>
           <div className="shrink-0 text-xs leading-[18px] text-text-tertiary">
-            {toolCall.time_cost && (
+            {!!toolCall.time_cost && (
               <span>{getTime(toolCall.time_cost || 0)}</span>
             )}
             {isLLM && (

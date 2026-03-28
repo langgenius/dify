@@ -1,5 +1,9 @@
+/**
+ * @deprecated Use `@/app/components/base/ui/dialog` instead.
+ * This component will be removed after migration is complete.
+ * See: https://github.com/langgenius/dify/issues/32767
+ */
 import { Dialog, DialogPanel, DialogTitle, Transition, TransitionChild } from '@headlessui/react'
-import { RiCloseLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import { Fragment } from 'react'
 import { cn } from '@/utils/classnames'
@@ -52,30 +56,31 @@ export default function Modal({
           <div className={cn('flex min-h-full items-center justify-center p-4 text-center', containerClassName)}>
             <TransitionChild>
               <DialogPanel className={cn('relative w-full max-w-[480px] rounded-2xl bg-components-panel-bg p-6 text-left align-middle shadow-xl transition-all', overflowVisible ? 'overflow-visible' : 'overflow-hidden', 'duration-100 ease-in data-[closed]:scale-95 data-[closed]:opacity-0', 'data-[enter]:scale-100 data-[enter]:opacity-100', 'data-[enter]:scale-95 data-[leave]:opacity-0', className)}>
-                {title && (
+                {!!title && (
                   <DialogTitle
                     as="h3"
-                    className="title-2xl-semi-bold text-text-primary"
+                    className="text-text-primary title-2xl-semi-bold"
                   >
                     {title}
                   </DialogTitle>
                 )}
-                {description && (
-                  <div className="body-md-regular mt-2 text-text-secondary">
+                {!!description && (
+                  <div className="mt-2 text-text-secondary body-md-regular">
                     {description}
                   </div>
                 )}
                 {closable
                   && (
                     <div className="absolute right-6 top-6 z-10 flex h-5 w-5 items-center justify-center rounded-2xl hover:cursor-pointer hover:bg-state-base-hover">
-                      <RiCloseLine
-                        className="h-4 w-4 text-text-tertiary"
+                      <span
+                        className="i-ri-close-line h-4 w-4 text-text-tertiary"
                         onClick={
                           (e) => {
                             e.stopPropagation()
                             onClose()
                           }
                         }
+                        data-testid="modal-close-button"
                       />
                     </div>
                   )}

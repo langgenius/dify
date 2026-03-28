@@ -48,7 +48,7 @@
   "runDetail.testWithParams": "اختبار مع المعلمات",
   "runDetail.title": "سجل المحادثة",
   "runDetail.workflowTitle": "تفاصيل السجل",
-  "table.empty.element.content": "راقب وتهميش تفاعلات المستخدمين النهائيين والتطبيقات الذكية هنا لتحسين دقة الذكاء الاصطناعي باستمرار.",
+  "table.empty.element.content": "راقب وتهميش تفاعلات المستخدمين النهائيين والتطبيقات الذكية هنا لتحسين دقة الذكاء الاصطناعي باستمرار. يمكنك تجربة <shareLink>المشاركة</shareLink> أو <testLink>الاختبار</testLink> لتطبيق الويب بنفسك، ثم العودة إلى هذه الصفحة.",
   "table.empty.element.title": "هل هناك أي شخص؟",
   "table.empty.noChat": "لا توجد محادثة حتى الآن",
   "table.empty.noOutput": "لا توجد مخرجات",

@@ -3,9 +3,7 @@ import type { App } from '@/types/app'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import useAccessControlStore from '@/context/access-control-store'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { AccessMode, SubjectType } from '@/models/access-control'
-import { defaultSystemFeatures } from '@/types/feature'
 import Toast from '../../base/toast'
 import AccessControlDialog from './access-control-dialog'
 import AccessControlItem from './access-control-item'
@@ -105,36 +103,17 @@ const memberSubject: Subject = {
   accountData: baseMember,
 } as Subject
 
-const resetAccessControlStore = () => {
-  useAccessControlStore.setState({
-    appId: '',
-    specificGroups: [],
-    specificMembers: [],
-    currentMenu: AccessMode.SPECIFIC_GROUPS_MEMBERS,
-    selectedGroupsForBreadcrumb: [],
-  })
-}
-
-const resetGlobalStore = () => {
-  useGlobalPublicStore.setState({
-    systemFeatures: defaultSystemFeatures,
-  })
-}
-
 beforeAll(() => {
   class MockIntersectionObserver {
     observe = vi.fn(() => undefined)
     disconnect = vi.fn(() => undefined)
     unobserve = vi.fn(() => undefined)
   }
-  // @ts-expect-error jsdom does not implement IntersectionObserver
+  // @ts-expect-error test DOM typings do not guarantee IntersectionObserver here
   globalThis.IntersectionObserver = MockIntersectionObserver
 })
 
 beforeEach(() => {
-  vi.clearAllMocks()
-  resetAccessControlStore()
-  resetGlobalStore()
   mockMutateAsync.mockResolvedValue(undefined)
   mockUseUpdateAccessMode.mockReturnValue({
     isPending: false,

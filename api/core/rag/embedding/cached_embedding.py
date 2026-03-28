@@ -4,13 +4,13 @@ import pickle
 from typing import Any, cast
 
 import numpy as np
+from graphon.model_runtime.entities.model_entities import ModelPropertyKey
+from graphon.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from sqlalchemy.exc import IntegrityError
 
 from configs import dify_config
 from core.entities.embedding_type import EmbeddingInputType
 from core.model_manager import ModelInstance
-from core.model_runtime.entities.model_entities import ModelPropertyKey
-from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from core.rag.embedding.embedding_base import Embeddings
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -21,9 +21,8 @@ logger = logging.getLogger(__name__)
 
 
 class CacheEmbedding(Embeddings):
-    def __init__(self, model_instance: ModelInstance, user: str | None = None):
+    def __init__(self, model_instance: ModelInstance):
         self._model_instance = model_instance
-        self._user = user
 
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
         """Embed search docs in batches of 10."""
@@ -35,7 +34,9 @@ class CacheEmbedding(Embeddings):
             embedding = (
                 db.session.query(Embedding)
                 .filter_by(
-                    model_name=self._model_instance.model, hash=hash, provider_name=self._model_instance.provider
+                    model_name=self._model_instance.model_name,
+                    hash=hash,
+                    provider_name=self._model_instance.provider,
                 )
                 .first()
             )
@@ -52,7 +53,7 @@ class CacheEmbedding(Embeddings):
             try:
                 model_type_instance = cast(TextEmbeddingModel, self._model_instance.model_type_instance)
                 model_schema = model_type_instance.get_model_schema(
-                    self._model_instance.model, self._model_instance.credentials
+                    self._model_instance.model_name, self._model_instance.credentials
                 )
                 max_chunks = (
                     model_schema.model_properties[ModelPropertyKey.MAX_CHUNKS]
@@ -63,7 +64,7 @@ class CacheEmbedding(Embeddings):
                     batch_texts = embedding_queue_texts[i : i + max_chunks]
 
                     embedding_result = self._model_instance.invoke_text_embedding(
-                        texts=batch_texts, user=self._user, input_type=EmbeddingInputType.DOCUMENT
+                        texts=batch_texts, input_type=EmbeddingInputType.DOCUMENT
                     )
 
                     for vector in embedding_result.embeddings:
@@ -87,7 +88,7 @@ class CacheEmbedding(Embeddings):
                         hash = helper.generate_text_hash(texts[i])
                         if hash not in cache_embeddings:
                             embedding_cache = Embedding(
-                                model_name=self._model_instance.model,
+                                model_name=self._model_instance.model_name,
                                 hash=hash,
                                 provider_name=self._model_instance.provider,
                                 embedding=pickle.dumps(n_embedding, protocol=pickle.HIGHEST_PROTOCOL),
@@ -114,7 +115,9 @@ class CacheEmbedding(Embeddings):
             embedding = (
                 db.session.query(Embedding)
                 .filter_by(
-                    model_name=self._model_instance.model, hash=file_id, provider_name=self._model_instance.provider
+                    model_name=self._model_instance.model_name,
+                    hash=file_id,
+                    provider_name=self._model_instance.provider,
                 )
                 .first()
             )
@@ -131,7 +134,7 @@ class CacheEmbedding(Embeddings):
             try:
                 model_type_instance = cast(TextEmbeddingModel, self._model_instance.model_type_instance)
                 model_schema = model_type_instance.get_model_schema(
-                    self._model_instance.model, self._model_instance.credentials
+                    self._model_instance.model_name, self._model_instance.credentials
                 )
                 max_chunks = (
                     model_schema.model_properties[ModelPropertyKey.MAX_CHUNKS]
@@ -143,7 +146,6 @@ class CacheEmbedding(Embeddings):
 
                     embedding_result = self._model_instance.invoke_multimodal_embedding(
                         multimodel_documents=batch_multimodel_documents,
-                        user=self._user,
                         input_type=EmbeddingInputType.DOCUMENT,
                     )
 
@@ -168,7 +170,7 @@ class CacheEmbedding(Embeddings):
                         file_id = multimodel_documents[i]["file_id"]
                         if file_id not in cache_embeddings:
                             embedding_cache = Embedding(
-                                model_name=self._model_instance.model,
+                                model_name=self._model_instance.model_name,
                                 hash=file_id,
                                 provider_name=self._model_instance.provider,
                                 embedding=pickle.dumps(n_embedding, protocol=pickle.HIGHEST_PROTOCOL),
@@ -190,7 +192,7 @@ class CacheEmbedding(Embeddings):
         """Embed query text."""
         # use doc embedding cache or store if not exists
         hash = helper.generate_text_hash(text)
-        embedding_cache_key = f"{self._model_instance.provider}_{self._model_instance.model}_{hash}"
+        embedding_cache_key = f"{self._model_instance.provider}_{self._model_instance.model_name}_{hash}"
         embedding = redis_client.get(embedding_cache_key)
         if embedding:
             redis_client.expire(embedding_cache_key, 600)
@@ -198,7 +200,7 @@ class CacheEmbedding(Embeddings):
             return [float(x) for x in decoded_embedding]
         try:
             embedding_result = self._model_instance.invoke_text_embedding(
-                texts=[text], user=self._user, input_type=EmbeddingInputType.QUERY
+                texts=[text], input_type=EmbeddingInputType.QUERY
             )
 
             embedding_results = embedding_result.embeddings[0]
@@ -233,7 +235,7 @@ class CacheEmbedding(Embeddings):
         """Embed multimodal documents."""
         # use doc embedding cache or store if not exists
         file_id = multimodel_document["file_id"]
-        embedding_cache_key = f"{self._model_instance.provider}_{self._model_instance.model}_{file_id}"
+        embedding_cache_key = f"{self._model_instance.provider}_{self._model_instance.model_name}_{file_id}"
         embedding = redis_client.get(embedding_cache_key)
         if embedding:
             redis_client.expire(embedding_cache_key, 600)
@@ -241,7 +243,7 @@ class CacheEmbedding(Embeddings):
             return [float(x) for x in decoded_embedding]
         try:
             embedding_result = self._model_instance.invoke_multimodal_embedding(
-                multimodel_documents=[multimodel_document], user=self._user, input_type=EmbeddingInputType.QUERY
+                multimodel_documents=[multimodel_document], input_type=EmbeddingInputType.QUERY
             )
 
             embedding_results = embedding_result.embeddings[0]

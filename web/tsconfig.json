@@ -1,8 +1,8 @@
 {
   "compilerOptions": {
     "incremental": true,
-    "target": "es2015",
-    "jsx": "preserve",
+    "target": "es2022",
+    "jsx": "react-jsx",
     "lib": [
       "dom",
       "dom.iterable",
@@ -19,7 +19,10 @@
       ]
     },
     "resolveJsonModule": true,
-    "types": ["vitest/globals", "node"],
+    "types": [
+      "vitest/globals",
+      "node"
+    ],
     "allowJs": true,
     "strict": true,
     "noEmit": true,
@@ -38,7 +41,7 @@
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
-    "app/components/develop/Prose.jsx"
+    ".next/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

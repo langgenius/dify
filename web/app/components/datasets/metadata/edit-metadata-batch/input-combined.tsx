@@ -2,7 +2,14 @@
 import type { FC } from 'react'
 import * as React from 'react'
 import Input from '@/app/components/base/input'
-import { InputNumber } from '@/app/components/base/input-number'
+import {
+  NumberField,
+  NumberFieldControls,
+  NumberFieldDecrement,
+  NumberFieldGroup,
+  NumberFieldIncrement,
+  NumberFieldInput,
+} from '@/app/components/base/ui/number-field'
 import { cn } from '@/utils/classnames'
 import Datepicker from '../base/date-picker'
 import { DataType } from '../types'
@@ -36,15 +43,23 @@ const InputCombined: FC<Props> = ({
   if (type === DataType.number) {
     return (
       <div className="grow text-[0]">
-        <InputNumber
-          className={cn(className, 'rounded-l-md')}
+        <NumberField
+          className="min-w-0"
           value={value}
-          onChange={onChange}
-          size="regular"
-          controlWrapClassName="overflow-hidden"
-          controlClassName="pt-0 pb-0"
           readOnly={readOnly}
-        />
+          onValueChange={value => onChange(value ?? 0)}
+        >
+          <NumberFieldGroup size="regular">
+            <NumberFieldInput
+              size="regular"
+              className={cn(className, 'rounded-l-md')}
+            />
+            <NumberFieldControls className="overflow-hidden">
+              <NumberFieldIncrement size="regular" className="pb-0 pt-0" />
+              <NumberFieldDecrement size="regular" className="pb-0 pt-0" />
+            </NumberFieldControls>
+          </NumberFieldGroup>
+        </NumberField>
       </div>
     )
   }

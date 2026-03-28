@@ -7,9 +7,9 @@ import {
   RiBook2Line,
 } from '@remixicon/react'
 import { flatten } from 'es-toolkit/compat'
-import { useParams, useRouter } from 'next/navigation'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useParams, useRouter } from '@/next/navigation'
 import { useDatasetDetail, useDatasetList } from '@/service/knowledge/use-dataset'
 import { basePath } from '@/utils/var'
 import Nav from '../nav'
@@ -23,6 +23,7 @@ const DatasetNav = () => {
     data: datasetList,
     fetchNextPage,
     hasNextPage,
+    isFetchingNextPage,
   } = useDatasetList({
     initialPage: 1,
     limit: 30,
@@ -93,6 +94,7 @@ const DatasetNav = () => {
       createText={t('menus.newDataset', { ns: 'common' })}
       onCreate={() => router.push(createRoute)}
       onLoadMore={handleLoadMore}
+      isLoadingMore={isFetchingNextPage}
     />
   )
 }

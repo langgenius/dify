@@ -3,6 +3,7 @@ from typing import Any
 
 from flask import make_response, redirect, request
 from flask_restx import Resource
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 from pydantic import BaseModel, model_validator
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, Forbidden
@@ -10,7 +11,6 @@ from werkzeug.exceptions import BadRequest, Forbidden
 from configs import dify_config
 from controllers.common.schema import register_schema_models
 from controllers.web.error import NotFoundError
-from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.oauth import OAuthHandler
 from core.trigger.entities.entities import SubscriptionBuilderUpdater
