@@ -22,6 +22,7 @@ vi.mock('../hooks/use-configs-map', () => ({
 vi.mock('../hooks/use-nodes-sync-draft', () => ({
   useNodesSyncDraft: () => ({
     doSyncWorkflowDraft: vi.fn(),
+    syncInputFieldsDraft: vi.fn(),
     syncWorkflowDraftWhenPageClose: vi.fn(),
   }),
 }))

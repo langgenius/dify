@@ -102,8 +102,8 @@ const toSnippetCanvasData = (workflow?: SnippetWorkflow): SnippetCanvasData => {
 }
 
 export const buildSnippetDetailPayload = (snippet: SnippetContract, workflow?: SnippetWorkflow): SnippetDetailPayload => {
-  const inputFields = Array.isArray(snippet.input_fields)
-    ? snippet.input_fields as SnippetInputFieldUIModel[]
+  const inputFields = Array.isArray(workflow?.input_fields)
+    ? workflow.input_fields as SnippetInputFieldUIModel[]
     : []
 
   return {

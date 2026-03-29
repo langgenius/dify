@@ -61,6 +61,7 @@ const SnippetMain = ({
   const [fields, setFields] = useState<SnippetInputField[]>(payload.inputFields)
   const {
     doSyncWorkflowDraft,
+    syncInputFieldsDraft,
     syncWorkflowDraftWhenPageClose,
   } = useNodesSyncDraft(snippetId)
   const { handleRefreshWorkflowDraft } = useSnippetRefreshDraft(snippetId)
@@ -100,19 +101,16 @@ const SnippetMain = ({
     setAppSidebarExpand(isMobile ? mode : localeMode)
   }, [isMobile, setAppSidebarExpand])
 
-  const primaryFields = useMemo(() => fields.slice(0, 2), [fields])
-  const secondaryFields = useMemo(() => fields.slice(2), [fields])
-
-  const handlePrimarySortChange = (newFields: SnippetInputField[]) => {
-    setFields([...newFields, ...secondaryFields])
-  }
-
-  const handleSecondarySortChange = (newFields: SnippetInputField[]) => {
-    setFields([...primaryFields, ...newFields])
+  const handleSortChange = (newFields: SnippetInputField[]) => {
+    setFields(newFields)
   }
 
   const handleRemoveField = (index: number) => {
-    setFields(current => current.filter((_, currentIndex) => currentIndex !== index))
+    const nextFields = fields.filter((_, currentIndex) => currentIndex !== index)
+    setFields(nextFields)
+    void syncInputFieldsDraft(nextFields, {
+      onRefresh: setFields,
+    })
   }
 
   const handleSubmitField = (field: SnippetInputField) => {
@@ -124,10 +122,14 @@ const SnippetMain = ({
       return
     }
 
-    if (originalVariable)
-      setFields(current => current.map(item => item.variable === originalVariable ? field : item))
-    else
-      setFields(current => [...current, field])
+    const nextFields = originalVariable
+      ? fields.map(item => item.variable === originalVariable ? field : item)
+      : [...fields, field]
+
+    setFields(nextFields)
+    void syncInputFieldsDraft(nextFields, {
+      onRefresh: setFields,
+    })
 
     closeEditor()
   }
@@ -205,8 +207,7 @@ const SnippetMain = ({
                     onCloseEditor={closeEditor}
                     onSubmitField={handleSubmitField}
                     onRemoveField={handleRemoveField}
-                    onPrimarySortChange={handlePrimarySortChange}
-                    onSecondarySortChange={handleSecondarySortChange}
+                    onSortChange={handleSortChange}
                   />
                 </WorkflowWithInnerContext>
               )}

@@ -1,4 +1,5 @@
 import type { WorkflowDataUpdater } from '@/app/components/workflow/types'
+import type { SnippetWorkflow } from '@/types/snippet'
 import { useCallback } from 'react'
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks'
 import { useWorkflowStore } from '@/app/components/workflow/store'
@@ -8,7 +9,7 @@ export const useSnippetRefreshDraft = (snippetId: string) => {
   const workflowStore = useWorkflowStore()
   const { handleUpdateWorkflowCanvas } = useWorkflowUpdate()
 
-  const handleRefreshWorkflowDraft = useCallback(() => {
+  const handleRefreshWorkflowDraft = useCallback((onSuccess?: (draftWorkflow: SnippetWorkflow) => void) => {
     const {
       setDraftUpdatedAt,
       setIsSyncingWorkflowDraft,
@@ -30,6 +31,7 @@ export const useSnippetRefreshDraft = (snippetId: string) => {
       } as WorkflowDataUpdater)
       setSyncWorkflowDraftHash(response.hash)
       setDraftUpdatedAt(response.updated_at)
+      onSuccess?.(response)
     }).finally(() => {
       setIsSyncingWorkflowDraft(false)
     })

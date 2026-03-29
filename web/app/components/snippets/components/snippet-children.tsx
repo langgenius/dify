@@ -22,8 +22,7 @@ type SnippetChildrenProps = {
   onCloseEditor: () => void
   onSubmitField: (field: SnippetInputField) => void
   onRemoveField: (index: number) => void
-  onPrimarySortChange: (fields: SnippetInputField[]) => void
-  onSecondarySortChange: (fields: SnippetInputField[]) => void
+  onSortChange: (fields: SnippetInputField[]) => void
 }
 
 const SnippetChildren = ({
@@ -41,8 +40,7 @@ const SnippetChildren = ({
   onCloseEditor,
   onSubmitField,
   onRemoveField,
-  onPrimarySortChange,
-  onSecondarySortChange,
+  onSortChange,
 }: SnippetChildrenProps) => {
   return (
     <>
@@ -66,8 +64,7 @@ const SnippetChildren = ({
         onCloseEditor={onCloseEditor}
         onSubmitField={onSubmitField}
         onRemoveField={onRemoveField}
-        onPrimarySortChange={onPrimarySortChange}
-        onSecondarySortChange={onSecondarySortChange}
+        onSortChange={onSortChange}
       />
 
       {isPublishMenuOpen && (
@@ -85,8 +82,7 @@ const SnippetChildren = ({
               onAdd={() => onOpenEditor()}
               onEdit={onOpenEditor}
               onRemove={onRemoveField}
-              onPrimarySortChange={onPrimarySortChange}
-              onSecondarySortChange={onSecondarySortChange}
+              onSortChange={onSortChange}
             />
           </div>
         </div>

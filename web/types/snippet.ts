@@ -77,6 +77,7 @@ export type SnippetWorkflow = {
   id: string
   graph: Record<string, unknown>
   features: Record<string, unknown>
+  input_fields?: SnippetInputField[]
   hash: string
   created_at: number
   updated_at: number
@@ -87,7 +88,7 @@ export type SnippetDraftSyncPayload = {
   hash?: string
   environment_variables?: Record<string, unknown>[]
   conversation_variables?: Record<string, unknown>[]
-  input_variables?: Record<string, unknown>[]
+  input_fields?: SnippetInputField[]
 }
 
 export type SnippetDraftSyncResponse = {

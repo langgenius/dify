@@ -18,8 +18,7 @@ type SnippetWorkflowPanelProps = {
   onCloseEditor: () => void
   onSubmitField: (field: SnippetInputField) => void
   onRemoveField: (index: number) => void
-  onPrimarySortChange: (fields: SnippetInputField[]) => void
-  onSecondarySortChange: (fields: SnippetInputField[]) => void
+  onSortChange: (fields: SnippetInputField[]) => void
 }
 
 const SnippetPanelOnLeft = ({
@@ -32,8 +31,7 @@ const SnippetPanelOnLeft = ({
   onCloseEditor,
   onSubmitField,
   onRemoveField,
-  onPrimarySortChange,
-  onSecondarySortChange,
+  onSortChange,
 }: SnippetWorkflowPanelProps) => {
   return (
     <div className="hidden xl:flex">
@@ -51,8 +49,7 @@ const SnippetPanelOnLeft = ({
           onAdd={() => onOpenEditor()}
           onEdit={onOpenEditor}
           onRemove={onRemoveField}
-          onPrimarySortChange={onPrimarySortChange}
-          onSecondarySortChange={onSecondarySortChange}
+          onSortChange={onSortChange}
         />
       )}
     </div>
@@ -70,8 +67,7 @@ const SnippetWorkflowPanel = ({
   onCloseEditor,
   onSubmitField,
   onRemoveField,
-  onPrimarySortChange,
-  onSecondarySortChange,
+  onSortChange,
 }: SnippetWorkflowPanelProps) => {
   const versionHistoryPanelProps = useMemo(() => {
     return {
@@ -98,8 +94,7 @@ const SnippetWorkflowPanel = ({
             onCloseEditor={onCloseEditor}
             onSubmitField={onSubmitField}
             onRemoveField={onRemoveField}
-            onPrimarySortChange={onPrimarySortChange}
-            onSecondarySortChange={onSecondarySortChange}
+            onSortChange={onSortChange}
           />
         ),
       },
@@ -113,10 +108,10 @@ const SnippetWorkflowPanel = ({
     onCloseEditor,
     onCloseInputPanel,
     onOpenEditor,
-    onPrimarySortChange,
     onRemoveField,
-    onSecondarySortChange,
+    onSortChange,
     onSubmitField,
+    snippetId,
     versionHistoryPanelProps,
   ])
 

@@ -84,6 +84,68 @@ describe('useSnippetInit', () => {
     expect(result.current.isLoading).toBe(false)
   })
 
+  it('should use draft input_fields for snippet inputs', () => {
+    mockUseSnippetApiDetail.mockReturnValue({
+      data: {
+        id: 'snippet-1',
+        name: 'Tone Rewriter',
+        description: 'A static snippet mock.',
+        type: 'node',
+        is_published: false,
+        version: '1',
+        use_count: 0,
+        icon_info: {
+          icon_type: null,
+          icon: '🪄',
+          icon_background: '#E0EAFF',
+        },
+        input_fields: [
+          {
+            label: 'Published field',
+            variable: 'published_field',
+            type: 'text-input',
+            required: true,
+          },
+        ],
+        created_at: 1_712_300_000,
+        updated_at: 1_712_300_000,
+        author: 'Evan',
+      },
+      error: null,
+      isLoading: false,
+    })
+    mockUseSnippetDraftWorkflow.mockReturnValue({
+      data: {
+        id: 'draft-1',
+        graph: {},
+        features: {},
+        input_fields: [
+          {
+            label: 'Draft field',
+            variable: 'draft_field',
+            type: 'text-input',
+            required: true,
+          },
+        ],
+        hash: 'draft-hash',
+        created_at: 1_712_300_000,
+        updated_at: 1_712_345_678,
+      },
+      isLoading: false,
+    })
+
+    const { result } = renderHook(() => useSnippetInit('snippet-1'))
+
+    expect(result.current.data?.inputFields).toEqual([
+      {
+        label: 'Draft field',
+        variable: 'draft_field',
+        type: 'text-input',
+        required: true,
+      },
+    ])
+  })
+
   it('should sync draft metadata into workflow store', () => {
     mockUseSnippetDraftWorkflow.mockImplementation((_snippetId: string, onSuccess?: (data: { updated_at: number, hash: string }) => void) => {
       onSuccess?.({

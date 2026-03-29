@@ -35,8 +35,7 @@ describe('SnippetWorkflowPanel', () => {
           onCloseEditor={vi.fn()}
           onSubmitField={vi.fn()}
           onRemoveField={vi.fn()}
-          onPrimarySortChange={vi.fn()}
-          onSecondarySortChange={vi.fn()}
+          onSortChange={vi.fn()}
         />,
       )
 
