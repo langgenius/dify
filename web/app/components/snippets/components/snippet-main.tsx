@@ -28,6 +28,8 @@ import { useConfigsMap } from '../hooks/use-configs-map'
 import { useInspectVarsCrud } from '../hooks/use-inspect-vars-crud'
 import { useNodesSyncDraft } from '../hooks/use-nodes-sync-draft'
 import { useSnippetRefreshDraft } from '../hooks/use-snippet-refresh-draft'
+import { useSnippetRun } from '../hooks/use-snippet-run'
+import { useSnippetStartRun } from '../hooks/use-snippet-start-run'
 import { useSnippetDetailStore } from '../store'
 import { useSnippetInputFieldActions } from './hooks/use-snippet-input-field-actions'
 import { useSnippetPublish } from './hooks/use-snippet-publish'
@@ -66,6 +68,13 @@ const SnippetMain = ({
     syncWorkflowDraftWhenPageClose,
   } = useNodesSyncDraft(snippetId)
   const { handleRefreshWorkflowDraft } = useSnippetRefreshDraft(snippetId)
+  const {
+    handleBackupDraft,
+    handleLoadBackupDraft,
+    handleRestoreFromPublishedWorkflow,
+    handleRun,
+    handleStopRun,
+  } = useSnippetRun(snippetId)
   const configsMap = useConfigsMap(snippetId)
   const { fetchInspectVars } = useSetWorkflowVarsWithValue({
     ...configsMap,
@@ -132,6 +141,13 @@ const SnippetMain = ({
     snippetId,
     section,
   })
+  const {
+    handleStartWorkflowRun,
+    handleWorkflowStartRunInWorkflow,
+  } = useSnippetStartRun({
+    handleRun,
+    inputFields: fields,
+  })
 
   useEffect(() => {
     reset()
@@ -148,6 +164,13 @@ const SnippetMain = ({
       doSyncWorkflowDraft,
       syncWorkflowDraftWhenPageClose,
       handleRefreshWorkflowDraft,
+      handleBackupDraft,
+      handleLoadBackupDraft,
+      handleRestoreFromPublishedWorkflow,
+      handleRun,
+      handleStopRun,
+      handleStartWorkflowRun,
+      handleWorkflowStartRunInWorkflow,
       availableNodesMetaData,
       fetchInspectVars,
       hasNodeInspectVars,
@@ -177,7 +200,14 @@ const SnippetMain = ({
     editInspectVarValue,
     fetchInspectVarValue,
     fetchInspectVars,
+    handleBackupDraft,
     handleRefreshWorkflowDraft,
+    handleLoadBackupDraft,
+    handleRestoreFromPublishedWorkflow,
+    handleRun,
+    handleStartWorkflowRun,
+    handleStopRun,
+    handleWorkflowStartRunInWorkflow,
     hasNodeInspectVars,
     hasSetInspectVar,
     invalidateConversationVarValues,

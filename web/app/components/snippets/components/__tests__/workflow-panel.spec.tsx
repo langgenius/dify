@@ -45,6 +45,7 @@ describe('SnippetWorkflowPanel', () => {
         expect(capturedPanelProps?.versionHistoryPanelProps?.restoreVersionUrl('version-1')).toBe('/snippets/snippet-1/workflows/version-1/restore')
         expect(capturedPanelProps?.versionHistoryPanelProps?.updateVersionUrl?.('version-1')).toBe('/snippets/snippet-1/workflows/version-1')
         expect(capturedPanelProps?.versionHistoryPanelProps?.latestVersionId).toBe('')
+        expect(capturedPanelProps?.components?.right).toBeTruthy()
       })
     })
   })

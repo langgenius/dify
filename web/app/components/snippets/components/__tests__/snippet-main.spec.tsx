@@ -15,6 +15,13 @@ const mockToggleInputPanel = vi.fn()
 const mockTogglePublishMenu = vi.fn()
 const mockPublishSnippetMutateAsync = vi.fn()
 const mockFetchInspectVars = vi.fn()
+const mockHandleBackupDraft = vi.fn()
+const mockHandleLoadBackupDraft = vi.fn()
+const mockHandleRestoreFromPublishedWorkflow = vi.fn()
+const mockHandleRun = vi.fn()
+const mockHandleStartWorkflowRun = vi.fn()
+const mockHandleStopRun = vi.fn()
+const mockHandleWorkflowStartRunInWorkflow = vi.fn()
 const mockInspectVarsCrud = {
   hasNodeInspectVars: vi.fn(),
   hasSetInspectVar: vi.fn(),
@@ -108,6 +115,23 @@ vi.mock('@/app/components/snippets/hooks/use-nodes-sync-draft', () => ({
 vi.mock('@/app/components/snippets/hooks/use-snippet-refresh-draft', () => ({
   useSnippetRefreshDraft: () => ({
     handleRefreshWorkflowDraft: vi.fn(),
+  }),
+}))
+
+vi.mock('@/app/components/snippets/hooks/use-snippet-run', () => ({
+  useSnippetRun: () => ({
+    handleBackupDraft: mockHandleBackupDraft,
+    handleLoadBackupDraft: mockHandleLoadBackupDraft,
+    handleRestoreFromPublishedWorkflow: mockHandleRestoreFromPublishedWorkflow,
+    handleRun: mockHandleRun,
+    handleStopRun: mockHandleStopRun,
+  }),
+}))
+
+vi.mock('@/app/components/snippets/hooks/use-snippet-start-run', () => ({
+  useSnippetStartRun: () => ({
+    handleStartWorkflowRun: mockHandleStartWorkflowRun,
+    handleWorkflowStartRunInWorkflow: mockHandleWorkflowStartRunInWorkflow,
   }),
 }))
 
@@ -302,6 +326,20 @@ describe('SnippetMain', () => {
       expect(capturedHooksStore?.invalidateSysVarValues).toBe(mockInspectVarsCrud.invalidateSysVarValues)
       expect(capturedHooksStore?.resetConversationVar).toBe(mockInspectVarsCrud.resetConversationVar)
       expect(capturedHooksStore?.invalidateConversationVarValues).toBe(mockInspectVarsCrud.invalidateConversationVarValues)
+    })
+  })
+
+  describe('Run Hooks', () => {
+    it('should pass snippet run handlers to WorkflowWithInnerContext', () => {
+      renderSnippetMain()
+
+      expect(capturedHooksStore?.handleBackupDraft).toBe(mockHandleBackupDraft)
+      expect(capturedHooksStore?.handleLoadBackupDraft).toBe(mockHandleLoadBackupDraft)
+      expect(capturedHooksStore?.handleRestoreFromPublishedWorkflow).toBe(mockHandleRestoreFromPublishedWorkflow)
+      expect(capturedHooksStore?.handleRun).toBe(mockHandleRun)
+      expect(capturedHooksStore?.handleStopRun).toBe(mockHandleStopRun)
+      expect(capturedHooksStore?.handleStartWorkflowRun).toBe(mockHandleStartWorkflowRun)
+      expect(capturedHooksStore?.handleWorkflowStartRunInWorkflow).toBe(mockHandleWorkflowStartRunInWorkflow)
     })
   })
 })
