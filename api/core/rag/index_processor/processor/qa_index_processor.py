@@ -237,7 +237,7 @@ class QAIndexProcessor(BaseIndexProcessor):
             preview.append({"question": qa_chunk.question, "answer": qa_chunk.answer})
         return {
             "chunk_structure": IndexStructureType.QA_INDEX,
-            "qa_preview": preview,
+            "preview": preview,
             "total_segments": len(qa_chunks.qa_chunks),
         }
 
