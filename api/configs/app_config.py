@@ -8,7 +8,7 @@ from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, Settings
 from libs.file_utils import search_file_upwards
 
 from .deploy import DeploymentConfig
-from .enterprise import EnterpriseFeatureConfig
+from .enterprise import EnterpriseFeatureConfig, EnterpriseTelemetryConfig
 from .extra import ExtraServiceConfig
 from .feature import FeatureConfig
 from .middleware import MiddlewareConfig
@@ -73,6 +73,8 @@ class DifyConfig(
     # Enterprise feature configs
     # **Before using, please contact business@dify.ai by email to inquire about licensing matters.**
     EnterpriseFeatureConfig,
+    # Enterprise telemetry configs
+    EnterpriseTelemetryConfig,
 ):
     model_config = SettingsConfigDict(
         # read from dotenv format config file

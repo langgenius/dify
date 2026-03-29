@@ -4,11 +4,11 @@ from datetime import datetime
 from typing import TypeAlias
 from uuid import uuid4
 
+from graphon.file import File
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from core.entities.execution_extra_content import ExecutionExtraContentDomainModel
 from fields.conversation_fields import AgentThought, JSONValue, MessageFile
-from graphon.file import File
 
 JSONValueType: TypeAlias = JSONValue
 

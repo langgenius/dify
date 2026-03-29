@@ -7,6 +7,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 from weave.trace_server.trace_server_interface import TraceStatus
 
 from core.ops.entities.config_entity import WeaveConfig
@@ -22,7 +23,6 @@ from core.ops.entities.trace_entity import (
 )
 from core.ops.weave_trace.entities.weave_trace_entity import WeaveTraceModel
 from core.ops.weave_trace.weave_trace import WeaveDataTrace
-from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -802,8 +802,8 @@ class TestMessageTrace:
     def test_basic_message_trace(self, trace_instance, monkeypatch):
         """message_trace creates message run and llm child run."""
         monkeypatch.setattr(
-            "core.ops.weave_trace.weave_trace.db.session.query",
-            lambda model: MagicMock(where=lambda: MagicMock(first=lambda: None)),
+            "core.ops.weave_trace.weave_trace.db.session.get",
+            lambda model, pk: None,
         )
 
         trace_instance.start_call = MagicMock()
@@ -823,7 +823,7 @@ class TestMessageTrace:
         trace_instance.file_base_url = "http://files.test"
 
         mock_db = MagicMock()
-        mock_db.session.query.return_value.where.return_value.first.return_value = None
+        mock_db.session.get.return_value = None
         monkeypatch.setattr("core.ops.weave_trace.weave_trace.db", mock_db)
 
         trace_instance.start_call = MagicMock()
@@ -845,7 +845,7 @@ class TestMessageTrace:
         end_user.session_id = "session-xyz"
 
         mock_db = MagicMock()
-        mock_db.session.query.return_value.where.return_value.first.return_value = end_user
+        mock_db.session.get.return_value = end_user
         monkeypatch.setattr("core.ops.weave_trace.weave_trace.db", mock_db)
 
         trace_instance.start_call = MagicMock()
@@ -865,7 +865,7 @@ class TestMessageTrace:
     def test_message_trace_no_end_user(self, trace_instance, monkeypatch):
         """message_trace handles when from_end_user_id is None."""
         mock_db = MagicMock()
-        mock_db.session.query.return_value.where.return_value.first.return_value = None
+        mock_db.session.get.return_value = None
         monkeypatch.setattr("core.ops.weave_trace.weave_trace.db", mock_db)
 
         trace_instance.start_call = MagicMock()
@@ -883,7 +883,7 @@ class TestMessageTrace:
     def test_message_trace_trace_id_fallback_to_message_id(self, trace_instance, monkeypatch):
         """trace_id falls back to message_id when trace_id is None."""
         mock_db = MagicMock()
-        mock_db.session.query.return_value.where.return_value.first.return_value = None
+        mock_db.session.get.return_value = None
         monkeypatch.setattr("core.ops.weave_trace.weave_trace.db", mock_db)
 
         trace_instance.start_call = MagicMock()
@@ -898,7 +898,7 @@ class TestMessageTrace:
     def test_message_trace_file_list_none(self, trace_instance, monkeypatch):
         """message_trace handles file_list=None gracefully."""
         mock_db = MagicMock()
-        mock_db.session.query.return_value.where.return_value.first.return_value = None
+        mock_db.session.get.return_value = None
         monkeypatch.setattr("core.ops.weave_trace.weave_trace.db", mock_db)
 
         trace_instance.start_call = MagicMock()

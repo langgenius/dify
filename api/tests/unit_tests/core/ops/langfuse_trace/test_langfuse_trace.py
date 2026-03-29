@@ -5,6 +5,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from graphon.enums import BuiltinNodeTypes
 
 from core.ops.entities.config_entity import LangfuseConfig
 from core.ops.entities.trace_entity import (
@@ -25,7 +26,6 @@ from core.ops.langfuse_trace.entities.langfuse_trace_entity import (
     UnitEnum,
 )
 from core.ops.langfuse_trace.langfuse_trace import LangFuseDataTrace
-from graphon.enums import BuiltinNodeTypes
 from models import EndUser
 from models.enums import MessageStatus
 
@@ -365,9 +365,7 @@ def test_message_trace_with_end_user(trace_instance, monkeypatch):
     mock_end_user = MagicMock(spec=EndUser)
     mock_end_user.session_id = "session-id-123"
 
-    mock_query = MagicMock()
-    mock_query.where.return_value.first.return_value = mock_end_user
-    monkeypatch.setattr("core.ops.langfuse_trace.langfuse_trace.db.session.query", lambda model: mock_query)
+    monkeypatch.setattr("core.ops.langfuse_trace.langfuse_trace.db.session.get", lambda model, pk: mock_end_user)
 
     trace_instance.add_trace = MagicMock()
     trace_instance.add_generation = MagicMock()

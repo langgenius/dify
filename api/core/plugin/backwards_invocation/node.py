@@ -1,8 +1,5 @@
-from core.plugin.backwards_invocation.base import BaseBackwardsInvocation
 from graphon.enums import BuiltinNodeTypes
-from graphon.nodes.parameter_extractor.entities import (
-    ModelConfig as ParameterExtractorModelConfig,
-)
+from graphon.nodes.llm.entities import ModelConfig as LLMModelConfig
 from graphon.nodes.parameter_extractor.entities import (
     ParameterConfig,
     ParameterExtractorNodeData,
@@ -11,9 +8,8 @@ from graphon.nodes.question_classifier.entities import (
     ClassConfig,
     QuestionClassifierNodeData,
 )
-from graphon.nodes.question_classifier.entities import (
-    ModelConfig as QuestionClassifierModelConfig,
-)
+
+from core.plugin.backwards_invocation.base import BaseBackwardsInvocation
 from services.workflow_service import WorkflowService
 
 
@@ -24,7 +20,7 @@ class PluginNodeBackwardsInvocation(BaseBackwardsInvocation):
         tenant_id: str,
         user_id: str,
         parameters: list[ParameterConfig],
-        model_config: ParameterExtractorModelConfig,
+        model_config: LLMModelConfig,
         instruction: str,
         query: str,
     ):
@@ -74,7 +70,7 @@ class PluginNodeBackwardsInvocation(BaseBackwardsInvocation):
         cls,
         tenant_id: str,
         user_id: str,
-        model_config: QuestionClassifierModelConfig,
+        model_config: LLMModelConfig,
         classes: list[ClassConfig],
         instruction: str,
         query: str,

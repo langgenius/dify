@@ -1,9 +1,10 @@
 import re
 from typing import cast
 
+from graphon.variables.input_entities import VariableEntity, VariableEntityType
+
 from core.app.app_config.entities import ExternalDataVariableEntity
 from core.external_data_tool.factory import ExternalDataToolFactory
-from graphon.variables.input_entities import VariableEntity, VariableEntityType
 from models.model import AppModelConfigDict
 
 _ALLOWED_VARIABLE_ENTITY_TYPE = frozenset(
