@@ -56,6 +56,7 @@ const SnippetChildren = ({
       />
 
       <SnippetWorkflowPanel
+        snippetId={snippetId}
         fields={fields}
         editingField={editingField}
         isEditorOpen={isEditorOpen}

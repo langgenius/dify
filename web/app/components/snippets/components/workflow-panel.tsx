@@ -8,6 +8,7 @@ import SnippetInputFieldEditor from './input-field-editor'
 import SnippetInputFieldPanel from './panel'
 
 type SnippetWorkflowPanelProps = {
+  snippetId: string
   fields: SnippetInputField[]
   editingField: SnippetInputField | null
   isEditorOpen: boolean
@@ -59,6 +60,7 @@ const SnippetPanelOnLeft = ({
 }
 
 const SnippetWorkflowPanel = ({
+  snippetId,
   fields,
   editingField,
   isEditorOpen,
@@ -71,11 +73,22 @@ const SnippetWorkflowPanel = ({
   onPrimarySortChange,
   onSecondarySortChange,
 }: SnippetWorkflowPanelProps) => {
+  const versionHistoryPanelProps = useMemo(() => {
+    return {
+      getVersionListUrl: `/snippets/${snippetId}/workflows`,
+      deleteVersionUrl: (versionId: string) => `/snippets/${snippetId}/workflows/${versionId}`,
+      restoreVersionUrl: (versionId: string) => `/snippets/${snippetId}/workflows/${versionId}/restore`,
+      updateVersionUrl: (versionId: string) => `/snippets/${snippetId}/workflows/${versionId}`,
+      latestVersionId: '',
+    }
+  }, [snippetId])
+
   const panelProps: PanelProps = useMemo(() => {
     return {
       components: {
         left: (
           <SnippetPanelOnLeft
+            snippetId={snippetId}
             fields={fields}
             editingField={editingField}
             isEditorOpen={isEditorOpen}
@@ -90,6 +103,7 @@ const SnippetWorkflowPanel = ({
           />
         ),
       },
+      versionHistoryPanelProps,
     }
   }, [
     editingField,
@@ -103,6 +117,7 @@ const SnippetWorkflowPanel = ({
     onRemoveField,
     onSecondarySortChange,
     onSubmitField,
+    versionHistoryPanelProps,
   ])
 
   return <Panel {...panelProps} />
