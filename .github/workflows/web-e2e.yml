@@ -70,8 +70,3 @@ jobs:
           name: e2e-logs
           path: e2e/.logs
           retention-days: 7
-
-      - name: Stop middleware stack
-        if: ${{ always() }}
-        working-directory: ./e2e
-        run: vp run e2e:middleware:down
