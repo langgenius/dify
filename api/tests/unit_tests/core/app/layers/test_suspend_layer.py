@@ -1,5 +1,6 @@
+from graphon.graph_events import GraphRunPausedEvent
+
 from core.app.layers.suspend_layer import SuspendLayer
-from graphon.graph_events.graph import GraphRunPausedEvent
 
 
 class TestSuspendLayer:

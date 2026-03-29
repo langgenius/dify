@@ -2,6 +2,7 @@ import json
 from collections.abc import Sequence
 from typing import Union
 
+from graphon.model_runtime.entities.model_entities import ModelType
 from sqlalchemy.orm import sessionmaker
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
@@ -13,7 +14,6 @@ from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.ops.utils import measure_time
 from extensions.ext_database import db
-from graphon.model_runtime.entities.model_entities import ModelType
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account
 from models.enums import FeedbackFromSource, FeedbackRating

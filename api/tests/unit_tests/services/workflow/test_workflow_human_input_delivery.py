@@ -3,6 +3,9 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
+from graphon.enums import BuiltinNodeTypes
+from graphon.nodes.human_input.entities import HumanInputNodeData
 from sqlalchemy.orm import sessionmaker
 
 from core.workflow.human_input_compat import (
@@ -12,9 +15,6 @@ from core.workflow.human_input_compat import (
     ExternalRecipient,
     MemberRecipient,
 )
-from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
-from graphon.enums import BuiltinNodeTypes
-from graphon.nodes.human_input.entities import HumanInputNodeData
 from services import workflow_service as workflow_service_module
 from services.workflow_service import WorkflowService
 
