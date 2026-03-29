@@ -5,6 +5,10 @@ from typing import Any, NoReturn, ParamSpec, TypeVar
 
 from flask import Response, request
 from flask_restx import Resource, fields, marshal, marshal_with
+from graphon.file import helpers as file_helpers
+from graphon.variables.segment_group import SegmentGroup
+from graphon.variables.segments import ArrayFileSegment, FileSegment, Segment
+from graphon.variables.types import SegmentType
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -20,10 +24,6 @@ from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, SYSTE
 from extensions.ext_database import db
 from factories.file_factory import build_from_mapping, build_from_mappings
 from factories.variable_factory import build_segment_with_type
-from graphon.file import helpers as file_helpers
-from graphon.variables.segment_group import SegmentGroup
-from graphon.variables.segments import ArrayFileSegment, FileSegment, Segment
-from graphon.variables.types import SegmentType
 from libs.login import current_user, login_required
 from models import App, AppMode
 from models.workflow import WorkflowDraftVariable
