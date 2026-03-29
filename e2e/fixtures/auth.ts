@@ -113,12 +113,20 @@ export const ensureAuthenticatedState = async (browser: Browser, configuredBaseU
   try {
     await page.goto(appURL(baseURL, '/install'), { waitUntil: 'networkidle' })
 
-    const usedInitPassword = await completeInitPasswordIfNeeded(page)
-    const pageState = await waitForPageState(page)
+    let usedInitPassword = await completeInitPasswordIfNeeded(page)
+    let pageState = await waitForPageState(page)
+
+    while (pageState === 'init') {
+      const completedInitPassword = await completeInitPasswordIfNeeded(page)
+      if (!completedInitPassword)
+        throw new Error(`Unable to validate initialization password for ${page.url()}`)
+
+      usedInitPassword = true
+      pageState = await waitForPageState(page)
+    }
 
     if (pageState === 'install') await completeInstall(page, baseURL)
-    else if (pageState === 'login') await completeLogin(page, baseURL)
-    else throw new Error(`Unexpected auth state "${pageState}" after initialization`)
+    else await completeLogin(page, baseURL)
 
     await expect(page.getByRole('button', { name: 'Create from Blank' })).toBeVisible({
       timeout: WAIT_TIMEOUT_MS,

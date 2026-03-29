@@ -2,6 +2,7 @@ import type { ChildProcess } from 'node:child_process'
 import { spawn } from 'node:child_process'
 import { createWriteStream, type WriteStream } from 'node:fs'
 import { mkdir } from 'node:fs/promises'
+import net from 'node:net'
 import { dirname } from 'node:path'
 
 type ManagedProcessOptions = {
@@ -26,31 +27,37 @@ export const sleep = (ms: number) =>
   })
 
 export const isPortReachable = async (host: string, port: number, timeoutMs = 1_000) => {
-  try {
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), timeoutMs)
+  return await new Promise<boolean>((resolve) => {
+    const socket = net.createConnection({
+      host,
+      port,
+    })
 
-    try {
-      const response = await fetch(`http://${host}:${port}`, {
-        signal: controller.signal,
-      })
-
-      return response.status > 0
-    } finally {
-      clearTimeout(timeout)
+    const finish = (result: boolean) => {
+      socket.removeAllListeners()
+      socket.destroy()
+      resolve(result)
     }
-  } catch {
-    return false
-  }
+
+    socket.setTimeout(timeoutMs)
+    socket.once('connect', () => finish(true))
+    socket.once('timeout', () => finish(false))
+    socket.once('error', () => finish(false))
+  })
 }
 
-export const waitForUrl = async (url: string, timeoutMs: number, intervalMs = 1_000) => {
+export const waitForUrl = async (
+  url: string,
+  timeoutMs: number,
+  intervalMs = 1_000,
+  requestTimeoutMs = Math.max(intervalMs, 1_000),
+) => {
   const deadline = Date.now() + timeoutMs
 
   while (Date.now() < deadline) {
     try {
       const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), intervalMs)
+      const timeout = setTimeout(() => controller.abort(), requestTimeoutMs)
 
       try {
         const response = await fetch(url, {

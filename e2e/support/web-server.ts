@@ -65,7 +65,7 @@ export const startWebServer = async ({
     }
 
     try {
-      await waitForUrl(baseURL, 1_000, 250)
+      await waitForUrl(baseURL, 1_000, 250, 1_000)
       return
     } catch {
       // Continue polling until timeout or child exit.
