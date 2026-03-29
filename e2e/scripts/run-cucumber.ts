@@ -124,7 +124,6 @@ const main = async () => {
 
     if (startMiddlewareForRun && !hasCustomTags(forwardArgs))
       cucumberEnv.E2E_CUCUMBER_TAGS = 'not @skip'
-    else delete cucumberEnv.E2E_CUCUMBER_TAGS
 
     const result = await runCommand({
       command: 'npx',

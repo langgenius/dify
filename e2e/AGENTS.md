@@ -34,9 +34,11 @@ Common commands:
 
 ```bash
 # authenticated-only regression (default excludes @fresh)
+# expects backend API, frontend artifact, and middleware stack to already be running
 pnpm e2e
 
 # full reset + fresh install + authenticated scenarios
+# starts required middleware/dependencies for you
 pnpm e2e:full
 
 # run a tagged subset
