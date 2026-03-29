@@ -1611,10 +1611,11 @@ def test_handle_node_run_result_raises_when_no_terminal_event(mocker, rag_pipeli
 
 
 def test_handle_node_run_result_marks_document_error_for_published_invoke(mocker, rag_pipeline_service) -> None:
-    from core.app.entities.app_invoke_entities import InvokeFrom
     from graphon.enums import WorkflowNodeExecutionStatus
     from graphon.graph_events import NodeRunFailedEvent
     from graphon.node_events.base import NodeRunResult
+
+    from core.app.entities.app_invoke_entities import InvokeFrom
 
     class FakeVariablePool:
         def __init__(self):
