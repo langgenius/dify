@@ -3,7 +3,6 @@
 import type { SnippetDetailUIModel, SnippetInputField } from '@/models/snippet'
 import SnippetInputFieldEditor from './input-field-editor'
 import SnippetInputFieldPanel from './panel'
-import PublishMenu from './publish-menu'
 import SnippetHeader from './snippet-header'
 import SnippetWorkflowPanel from './workflow-panel'
 
@@ -15,9 +14,11 @@ type SnippetChildrenProps = {
   isEditorOpen: boolean
   isInputPanelOpen: boolean
   isPublishMenuOpen: boolean
+  isPublishing: boolean
   onToggleInputPanel: () => void
-  onTogglePublishMenu: () => void
+  onPublishMenuOpenChange: (open: boolean) => void
   onCloseInputPanel: () => void
+  onPublish: () => void
   onOpenEditor: (field?: SnippetInputField | null) => void
   onCloseEditor: () => void
   onSubmitField: (field: SnippetInputField) => void
@@ -33,9 +34,11 @@ const SnippetChildren = ({
   isEditorOpen,
   isInputPanelOpen,
   isPublishMenuOpen,
+  isPublishing,
   onToggleInputPanel,
-  onTogglePublishMenu,
+  onPublishMenuOpenChange,
   onCloseInputPanel,
+  onPublish,
   onOpenEditor,
   onCloseEditor,
   onSubmitField,
@@ -49,8 +52,12 @@ const SnippetChildren = ({
       <SnippetHeader
         snippetId={snippetId}
         inputFieldCount={fields.length}
+        uiMeta={uiMeta}
+        isPublishMenuOpen={isPublishMenuOpen}
+        isPublishing={isPublishing}
         onToggleInputPanel={onToggleInputPanel}
-        onTogglePublishMenu={onTogglePublishMenu}
+        onPublishMenuOpenChange={onPublishMenuOpenChange}
+        onPublish={onPublish}
       />
 
       <SnippetWorkflowPanel
@@ -66,12 +73,6 @@ const SnippetChildren = ({
         onRemoveField={onRemoveField}
         onSortChange={onSortChange}
       />
-
-      {isPublishMenuOpen && (
-        <div className="absolute right-3 top-14 z-20">
-          <PublishMenu uiMeta={uiMeta} />
-        </div>
-      )}
 
       {isInputPanelOpen && (
         <div className="pointer-events-none absolute inset-y-3 right-3 z-30 flex justify-end">

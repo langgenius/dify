@@ -1,6 +1,7 @@
 'use client'
 
 import type { HeaderProps } from '@/app/components/workflow/header'
+import type { SnippetDetailUIModel } from '@/models/snippet'
 import {
   memo,
   useMemo,
@@ -13,15 +14,23 @@ import RunMode from './run-mode'
 type SnippetHeaderProps = {
   snippetId: string
   inputFieldCount: number
+  uiMeta: SnippetDetailUIModel
+  isPublishMenuOpen: boolean
+  isPublishing: boolean
   onToggleInputPanel: () => void
-  onTogglePublishMenu: () => void
+  onPublishMenuOpenChange: (open: boolean) => void
+  onPublish: () => void
 }
 
 const SnippetHeader = ({
   snippetId,
   inputFieldCount,
+  uiMeta,
+  isPublishMenuOpen,
+  isPublishing,
   onToggleInputPanel,
-  onTogglePublishMenu,
+  onPublishMenuOpenChange,
+  onPublish,
 }: SnippetHeaderProps) => {
   const viewHistoryProps = useMemo(() => {
     return {
@@ -34,7 +43,15 @@ const SnippetHeader = ({
       normal: {
         components: {
           left: <InputFieldButton count={inputFieldCount} onClick={onToggleInputPanel} />,
-          middle: <Publisher onClick={onTogglePublishMenu} />,
+          middle: (
+            <Publisher
+              uiMeta={uiMeta}
+              open={isPublishMenuOpen}
+              isPublishing={isPublishing}
+              onOpenChange={onPublishMenuOpenChange}
+              onPublish={onPublish}
+            />
+          ),
         },
         controls: {
           showEnvButton: false,
@@ -52,7 +69,7 @@ const SnippetHeader = ({
         viewHistoryProps,
       },
     }
-  }, [inputFieldCount, onToggleInputPanel, onTogglePublishMenu, viewHistoryProps])
+  }, [inputFieldCount, isPublishMenuOpen, isPublishing, onPublish, onPublishMenuOpenChange, onToggleInputPanel, uiMeta, viewHistoryProps])
 
   return <Header {...headerProps} />
 }

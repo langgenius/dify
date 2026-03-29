@@ -1,4 +1,5 @@
 import type { HeaderProps } from '@/app/components/workflow/header'
+import type { SnippetDetailUIModel } from '@/models/snippet'
 import { fireEvent, render, screen } from '@testing-library/react'
 import SnippetHeader from '..'
 
@@ -23,7 +24,13 @@ vi.mock('@/app/components/workflow/header', () => ({
 
 describe('SnippetHeader', () => {
   const mockToggleInputPanel = vi.fn()
-  const mockTogglePublishMenu = vi.fn()
+  const mockPublishMenuOpenChange = vi.fn()
+  const mockPublish = vi.fn()
+  const uiMeta: SnippetDetailUIModel = {
+    inputFieldCount: 1,
+    checklistCount: 2,
+    autoSavedAt: 'Auto-saved · a few seconds ago',
+  }
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -36,8 +43,12 @@ describe('SnippetHeader', () => {
         <SnippetHeader
           snippetId="snippet-1"
           inputFieldCount={3}
+          uiMeta={uiMeta}
+          isPublishMenuOpen={false}
+          isPublishing={false}
           onToggleInputPanel={mockToggleInputPanel}
-          onTogglePublishMenu={mockTogglePublishMenu}
+          onPublishMenuOpenChange={mockPublishMenuOpenChange}
+          onPublish={mockPublish}
         />,
       )
 
@@ -53,13 +64,17 @@ describe('SnippetHeader', () => {
 
   // Verifies forwarded callbacks still drive the snippet-specific controls.
   describe('User Interactions', () => {
-    it('should invoke the snippet callbacks when input and publish buttons are clicked', () => {
+    it('should invoke the snippet callbacks when input and publish trigger are clicked', () => {
       render(
         <SnippetHeader
           snippetId="snippet-1"
           inputFieldCount={1}
+          uiMeta={uiMeta}
+          isPublishMenuOpen={false}
+          isPublishing={false}
           onToggleInputPanel={mockToggleInputPanel}
-          onTogglePublishMenu={mockTogglePublishMenu}
+          onPublishMenuOpenChange={mockPublishMenuOpenChange}
+          onPublish={mockPublish}
         />,
       )
 
@@ -67,7 +82,8 @@ describe('SnippetHeader', () => {
       fireEvent.click(screen.getByRole('button', { name: /snippet\.publishButton/i }))
 
       expect(mockToggleInputPanel).toHaveBeenCalledTimes(1)
-      expect(mockTogglePublishMenu).toHaveBeenCalledTimes(1)
+      expect(mockPublishMenuOpenChange).toHaveBeenCalledTimes(1)
+      expect(mockPublishMenuOpenChange.mock.calls[0][0]).toBe(true)
     })
   })
 })

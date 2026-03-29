@@ -6,6 +6,7 @@ import SnippetPage from '..'
 import { useSnippetDetailStore } from '../store'
 
 const mockUseSnippetInit = vi.fn()
+const mockPublishSnippetMutateAsync = vi.fn()
 
 vi.mock('../hooks/use-snippet-init', () => ({
   useSnippetInit: (snippetId: string) => mockUseSnippetInit(snippetId),
@@ -30,6 +31,13 @@ vi.mock('../hooks/use-nodes-sync-draft', () => ({
 vi.mock('../hooks/use-snippet-refresh-draft', () => ({
   useSnippetRefreshDraft: () => ({
     handleRefreshWorkflowDraft: vi.fn(),
+  }),
+}))
+
+vi.mock('@/service/use-snippet-workflows', () => ({
+  usePublishSnippetWorkflowMutation: () => ({
+    mutateAsync: mockPublishSnippetMutateAsync,
+    isPending: false,
   }),
 }))
 
@@ -186,6 +194,7 @@ describe('SnippetPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     useSnippetDetailStore.getState().reset()
+    mockPublishSnippetMutateAsync.mockResolvedValue(undefined)
     mockUseSnippetInit.mockReturnValue({
       data: mockSnippetDetail,
       isLoading: false,
@@ -219,6 +228,17 @@ describe('SnippetPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /snippet\.publishButton/i }))
     expect(screen.getByText('snippet.publishMenuCurrentDraft')).toBeInTheDocument()
+  })
+
+  it('should publish the snippet when clicking publish in the menu', async () => {
+    render(<SnippetPage snippetId="snippet-1" />)
+
+    fireEvent.click(screen.getByRole('button', { name: /snippet\.publishButton/i }))
+    fireEvent.click(screen.getAllByRole('button', { name: /snippet\.publishButton/i })[1])
+
+    expect(mockPublishSnippetMutateAsync).toHaveBeenCalledWith({
+      params: { snippetId: 'snippet-1' },
+    })
   })
 
   it('should render loading fallback when snippet data is unavailable', () => {

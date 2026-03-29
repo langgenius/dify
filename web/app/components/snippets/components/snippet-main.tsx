@@ -10,6 +10,10 @@ import {
   RiTerminalWindowLine,
 } from '@remixicon/react'
 import {
+  useKeyPress,
+} from 'ahooks'
+import {
+  useCallback,
   useEffect,
   useMemo,
   useState,
@@ -25,7 +29,9 @@ import Evaluation from '@/app/components/evaluation'
 import { WorkflowWithInnerContext } from '@/app/components/workflow'
 import { useAvailableNodesMetaData } from '@/app/components/workflow-app/hooks'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { getKeyboardKeyCodeBySystem } from '@/app/components/workflow/utils'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { usePublishSnippetWorkflowMutation } from '@/service/use-snippet-workflows'
 import { useConfigsMap } from '../hooks/use-configs-map'
 import { useNodesSyncDraft } from '../hooks/use-nodes-sync-draft'
 import { useSnippetRefreshDraft } from '../hooks/use-snippet-refresh-draft'
@@ -61,6 +67,7 @@ const SnippetMain = ({
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
   const [fields, setFields] = useState<SnippetInputField[]>(payload.inputFields)
+  const publishSnippetMutation = usePublishSnippetWorkflowMutation(snippetId)
   const {
     doSyncWorkflowDraft,
     syncInputFieldsDraft,
@@ -97,8 +104,8 @@ const SnippetMain = ({
     openEditor,
     reset,
     setInputPanelOpen,
+    setPublishMenuOpen,
     toggleInputPanel,
-    togglePublishMenu,
   } = useSnippetDetailStore(useShallow(state => ({
     editingField: state.editingField,
     isEditorOpen: state.isEditorOpen,
@@ -108,8 +115,8 @@ const SnippetMain = ({
     openEditor: state.openEditor,
     reset: state.reset,
     setInputPanelOpen: state.setInputPanelOpen,
+    setPublishMenuOpen: state.setPublishMenuOpen,
     toggleInputPanel: state.toggleInputPanel,
-    togglePublishMenu: state.togglePublishMenu,
   })))
 
   useEffect(() => {
@@ -165,6 +172,27 @@ const SnippetMain = ({
     closeEditor()
     setInputPanelOpen(false)
   }
+
+  const handlePublish = useCallback(async () => {
+    try {
+      await publishSnippetMutation.mutateAsync({
+        params: { snippetId },
+      })
+      setPublishMenuOpen(false)
+      toast.success(t('publishSuccess'))
+    }
+    catch (error) {
+      toast.error(error instanceof Error ? error.message : t('publishFailed'))
+    }
+  }, [publishSnippetMutation, setPublishMenuOpen, snippetId, t])
+
+  useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.shift.p`, (e) => {
+    if (section !== 'orchestrate' || publishSnippetMutation.isPending)
+      return
+
+    e.preventDefault()
+    void handlePublish()
+  }, { exactMatch: true, useCapture: true })
 
   const hooksStore = useMemo(() => {
     return {
@@ -222,9 +250,11 @@ const SnippetMain = ({
                     isEditorOpen={isEditorOpen}
                     isInputPanelOpen={isInputPanelOpen}
                     isPublishMenuOpen={isPublishMenuOpen}
+                    isPublishing={publishSnippetMutation.isPending}
                     onToggleInputPanel={handleToggleInputPanel}
-                    onTogglePublishMenu={togglePublishMenu}
+                    onPublishMenuOpenChange={setPublishMenuOpen}
                     onCloseInputPanel={handleCloseInputPanel}
+                    onPublish={handlePublish}
                     onOpenEditor={openEditor}
                     onCloseEditor={closeEditor}
                     onSubmitField={handleSubmitField}

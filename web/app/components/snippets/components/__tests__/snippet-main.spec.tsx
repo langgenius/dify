@@ -10,8 +10,10 @@ const mockCloseEditor = vi.fn()
 const mockOpenEditor = vi.fn()
 const mockReset = vi.fn()
 const mockSetInputPanelOpen = vi.fn()
+const mockSetPublishMenuOpen = vi.fn()
 const mockToggleInputPanel = vi.fn()
 const mockTogglePublishMenu = vi.fn()
+const mockPublishSnippetMutateAsync = vi.fn()
 
 vi.mock('@/hooks/use-breakpoints', () => ({
   default: () => 'desktop',
@@ -34,6 +36,7 @@ vi.mock('@/app/components/snippets/store', () => ({
     openEditor: typeof mockOpenEditor
     reset: typeof mockReset
     setInputPanelOpen: typeof mockSetInputPanelOpen
+    setPublishMenuOpen: typeof mockSetPublishMenuOpen
     toggleInputPanel: typeof mockToggleInputPanel
     togglePublishMenu: typeof mockTogglePublishMenu
   }) => unknown) => selector({
@@ -45,8 +48,16 @@ vi.mock('@/app/components/snippets/store', () => ({
     openEditor: mockOpenEditor,
     reset: mockReset,
     setInputPanelOpen: mockSetInputPanelOpen,
+    setPublishMenuOpen: mockSetPublishMenuOpen,
     toggleInputPanel: mockToggleInputPanel,
     togglePublishMenu: mockTogglePublishMenu,
+  }),
+}))
+
+vi.mock('@/service/use-snippet-workflows', () => ({
+  usePublishSnippetWorkflowMutation: () => ({
+    mutateAsync: mockPublishSnippetMutateAsync,
+    isPending: false,
   }),
 }))
 
@@ -108,13 +119,16 @@ vi.mock('@/app/components/workflow', () => ({
 vi.mock('@/app/components/snippets/components/snippet-children', () => ({
   default: ({
     onRemoveField,
+    onPublish,
     onSubmitField,
   }: {
     onRemoveField: (index: number) => void
+    onPublish: () => void
     onSubmitField: (field: SnippetInputField) => void
   }) => (
     <div>
       <button type="button" onClick={() => onRemoveField(0)}>remove</button>
+      <button type="button" onClick={onPublish}>publish</button>
       <button
         type="button"
         onClick={() => onSubmitField({
@@ -178,6 +192,7 @@ describe('SnippetMain', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockSyncInputFieldsDraft.mockResolvedValue(undefined)
+    mockPublishSnippetMutateAsync.mockResolvedValue(undefined)
   })
 
   describe('Input Fields Sync', () => {
@@ -211,6 +226,21 @@ describe('SnippetMain', () => {
           onRefresh: expect.any(Function),
         })
       })
+    })
+  })
+
+  describe('Publish', () => {
+    it('should call the publish mutation and close the publish menu', async () => {
+      renderSnippetMain()
+
+      fireEvent.click(screen.getByRole('button', { name: 'publish' }))
+
+      await waitFor(() => {
+        expect(mockPublishSnippetMutateAsync).toHaveBeenCalledWith({
+          params: { snippetId: 'snippet-1' },
+        })
+      })
+      expect(mockSetPublishMenuOpen).toHaveBeenCalledWith(false)
     })
   })
 })
