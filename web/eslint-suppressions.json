@@ -7932,7 +7932,7 @@
   },
   "app/components/workflow/nodes/agent/default.ts": {
     "ts/no-explicit-any": {
-      "count": 3
+      "count": 1
     }
   },
   "app/components/workflow/nodes/agent/node.tsx": {
