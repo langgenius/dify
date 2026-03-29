@@ -6,9 +6,6 @@ from typing import Any, cast
 from unittest.mock import MagicMock
 
 import pytest
-from pytest_mock import MockerFixture
-
-from constants import HIDDEN_VALUE
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.entities.provider_entities import (
@@ -18,6 +15,9 @@ from graphon.model_runtime.entities.provider_entities import (
     ModelCredentialSchema,
     ProviderCredentialSchema,
 )
+from pytest_mock import MockerFixture
+
+from constants import HIDDEN_VALUE
 from models.provider import LoadBalancingModelConfig
 from services.model_load_balancing_service import ModelLoadBalancingService
 

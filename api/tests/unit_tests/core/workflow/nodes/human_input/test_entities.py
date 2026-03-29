@@ -2,14 +2,41 @@
 Unit tests for human input node entities.
 """
 
+from collections.abc import Mapping
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
+from graphon.entities import GraphInitParams
+from graphon.node_events import PauseRequestedEvent
+from graphon.node_events.node import StreamCompletedEvent
+from graphon.nodes.human_input.entities import (
+    FormInput,
+    FormInputDefault,
+    HumanInputNodeData,
+    UserAction,
+)
+from graphon.nodes.human_input.enums import (
+    ButtonStyle,
+    FormInputType,
+    HumanInputFormStatus,
+    PlaceholderType,
+    TimeoutUnit,
+)
+from graphon.nodes.human_input.human_input_node import HumanInputNode
+from graphon.runtime import GraphRuntimeState, VariablePool
 from pydantic import ValidationError
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY
-from core.repositories.human_input_repository import HumanInputFormRepository
+from core.repositories.human_input_repository import (
+    FormCreateParams,
+    HumanInputFormEntity,
+    HumanInputFormRecipientEntity,
+    HumanInputFormRepository,
+)
 from core.workflow.human_input_compat import (
     DeliveryMethodType,
     EmailDeliveryConfig,
@@ -23,24 +50,90 @@ from core.workflow.human_input_compat import (
 )
 from core.workflow.node_runtime import DifyHumanInputNodeRuntime
 from core.workflow.system_variables import build_system_variables
-from graphon.entities import GraphInitParams
-from graphon.node_events import PauseRequestedEvent
-from graphon.node_events.node import StreamCompletedEvent
-from graphon.nodes.human_input.entities import (
-    FormInput,
-    FormInputDefault,
-    HumanInputNodeData,
-    UserAction,
-)
-from graphon.nodes.human_input.enums import (
-    ButtonStyle,
-    FormInputType,
-    PlaceholderType,
-    TimeoutUnit,
-)
-from graphon.nodes.human_input.human_input_node import HumanInputNode
-from graphon.runtime import GraphRuntimeState, VariablePool
-from tests.unit_tests.core.workflow.graph_engine.human_input_test_utils import InMemoryHumanInputFormRepository
+from libs.datetime_utils import naive_utc_now
+
+
+@dataclass
+class _InMemoryFormEntity(HumanInputFormEntity):
+    form_id: str
+    rendered: str
+    token: str | None = None
+    action_id: str | None = None
+    data: Mapping[str, Any] | None = None
+    is_submitted: bool = False
+    status_value: HumanInputFormStatus = HumanInputFormStatus.WAITING
+    expiration: datetime = field(default_factory=lambda: naive_utc_now() + timedelta(days=1))
+
+    @property
+    def id(self) -> str:
+        return self.form_id
+
+    @property
+    def submission_token(self) -> str | None:
+        return self.token
+
+    @property
+    def recipients(self) -> list[HumanInputFormRecipientEntity]:
+        return []
+
+    @property
+    def rendered_content(self) -> str:
+        return self.rendered
+
+    @property
+    def selected_action_id(self) -> str | None:
+        return self.action_id
+
+    @property
+    def submitted_data(self) -> Mapping[str, Any] | None:
+        return self.data
+
+    @property
+    def submitted(self) -> bool:
+        return self.is_submitted
+
+    @property
+    def status(self) -> HumanInputFormStatus:
+        return self.status_value
+
+    @property
+    def expiration_time(self) -> datetime:
+        return self.expiration
+
+
+class InMemoryHumanInputFormRepository(HumanInputFormRepository):
+    """Minimal in-memory repository for Dify-owned HumanInputNode behavior tests."""
+
+    def __init__(self) -> None:
+        self._form_counter = 0
+        self.created_params: list[FormCreateParams] = []
+        self.created_forms: list[_InMemoryFormEntity] = []
+        self._forms_by_node_id: dict[str, _InMemoryFormEntity] = {}
+
+    def create_form(self, params: FormCreateParams) -> HumanInputFormEntity:
+        self.created_params.append(params)
+        self._form_counter += 1
+        form_id = f"form-{self._form_counter}"
+        entity = _InMemoryFormEntity(
+            form_id=form_id,
+            rendered=params.rendered_content,
+            token=f"token-{form_id}",
+        )
+        self.created_forms.append(entity)
+        self._forms_by_node_id[params.node_id] = entity
+        return entity
+
+    def get_form(self, node_id: str) -> HumanInputFormEntity | None:
+        return self._forms_by_node_id.get(node_id)
+
+    def set_submission(self, *, action_id: str, form_data: Mapping[str, Any] | None = None) -> None:
+        if not self.created_forms:
+            raise AssertionError("no form has been created to attach submission data")
+        entity = self.created_forms[-1]
+        entity.action_id = action_id
+        entity.data = form_data or {}
+        entity.is_submitted = True
+        entity.status_value = HumanInputFormStatus.SUBMITTED
 
 
 class TestDeliveryMethod:

@@ -275,7 +275,7 @@ class BuiltinToolManageService:
                         user_id=user_id,
                         provider=provider,
                         encrypted_credentials=json.dumps(encrypter.encrypt(credentials)),
-                        credential_type=api_type.value,
+                        credential_type=api_type,
                         name=name,
                         expires_at=expires_at if expires_at is not None else -1,
                     )
@@ -314,7 +314,7 @@ class BuiltinToolManageService:
             .filter_by(
                 tenant_id=tenant_id,
                 provider=provider,
-                credential_type=credential_type.value,
+                credential_type=credential_type,
             )
             .order_by(BuiltinToolProvider.created_at.desc())
             .all()
