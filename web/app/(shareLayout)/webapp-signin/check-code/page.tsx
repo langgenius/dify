@@ -12,7 +12,7 @@ import { useWebAppStore } from '@/context/web-app-context'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { sendWebAppEMailLoginCode, webAppEmailLoginWithCode } from '@/service/common'
 import { fetchAccessToken } from '@/service/share'
-import { setWebAppAccessToken, setWebAppPassport } from '@/service/webapp-auth'
+import { setWebAppPassport } from '@/service/webapp-auth'
 import { encryptVerificationCode } from '@/utils/encryption'
 
 export default function CheckCode() {
@@ -57,9 +57,6 @@ export default function CheckCode() {
       setIsLoading(true)
       const ret = await webAppEmailLoginWithCode({ email, code: encryptVerificationCode(code), token })
       if (ret.result === 'success') {
-        if (ret?.data?.access_token) {
-          setWebAppAccessToken(ret.data.access_token)
-        }
         const { access_token } = await fetchAccessToken({
           appCode: appCode!,
           userId: embeddedUserId || undefined,

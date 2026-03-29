@@ -12,7 +12,7 @@ import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { webAppLogin } from '@/service/common'
 import { fetchAccessToken } from '@/service/share'
-import { setWebAppAccessToken, setWebAppPassport } from '@/service/webapp-auth'
+import { setWebAppPassport } from '@/service/webapp-auth'
 import { encryptPassword } from '@/utils/encryption'
 
 type MailAndPasswordAuthProps = {
@@ -76,10 +76,6 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
         body: loginData,
       })
       if (res.result === 'success') {
-        if (res?.data?.access_token) {
-          setWebAppAccessToken(res.data.access_token)
-        }
-
         const { access_token } = await fetchAccessToken({
           appCode: appCode!,
           userId: embeddedUserId || undefined,

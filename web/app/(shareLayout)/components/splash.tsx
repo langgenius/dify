@@ -7,7 +7,7 @@ import Loading from '@/app/components/base/loading'
 import { useWebAppStore } from '@/context/web-app-context'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { fetchAccessToken } from '@/service/share'
-import { setWebAppAccessToken, setWebAppPassport, webAppLoginStatus, webAppLogout } from '@/service/webapp-auth'
+import { setWebAppPassport, webAppLoginStatus, webAppLogout } from '@/service/webapp-auth'
 
 const Splash: FC<PropsWithChildren> = ({ children }) => {
   const { t } = useTranslation()
@@ -39,9 +39,6 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
       setIsLoading(false)
       return
     }
-
-    if (tokenFromUrl)
-      setWebAppAccessToken(tokenFromUrl)
 
     const redirectOrFinish = () => {
       if (redirectUrl)
