@@ -319,14 +319,9 @@ class AppDslService:
                 status=ImportStatus.FAILED,
                 error=f"Invalid YAML format: {str(e)}",
             )
-
-        except Exception as e:
+        except Exception:
             logger.exception("Failed to import app")
-            return Import(
-                id=import_id,
-                status=ImportStatus.FAILED,
-                error=str(e),
-            )
+            raise
 
     def confirm_import(self, *, import_id: str, account: Account) -> Import:
         """
@@ -381,13 +376,9 @@ class AppDslService:
                 imported_dsl_version=data.get("version", "0.1.0"),
             )
 
-        except Exception as e:
+        except Exception:
             logger.exception("Error confirming import")
-            return Import(
-                id=import_id,
-                status=ImportStatus.FAILED,
-                error=str(e),
-            )
+            raise
 
     def check_dependencies(
         self,
@@ -471,7 +462,7 @@ class AppDslService:
             app.updated_by = account.id
 
             self._session.add(app)
-            self._session.commit()
+            self._session.flush()
             app_was_created.send(app, account=account)
 
         # save dependencies

@@ -1,3 +1,5 @@
+import logging
+
 from flask_restx import Resource, fields, marshal_with
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -17,11 +19,13 @@ from fields.app_fields import (
 )
 from libs.login import current_account_with_tenant, login_required
 from models.model import App
-from services.app_dsl_service import AppDslService, ImportStatus
+from services.app_dsl_service import AppDslService, Import, ImportStatus
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
 
 from .. import console_ns
+
+logger = logging.getLogger(__name__)
 
 # Register models for flask_restx to avoid dict type issues in Swagger
 # Register base model first
@@ -70,28 +74,29 @@ class AppImportApi(Resource):
         current_user, _ = current_account_with_tenant()
         args = AppImportPayload.model_validate(console_ns.payload)
 
-        # Create service with session
-        with Session(db.engine) as session:
-            import_service = AppDslService(session)
-            # Import app
-            account = current_user
-            result = import_service.import_app(
-                account=account,
-                import_mode=args.mode,
-                yaml_content=args.yaml_content,
-                yaml_url=args.yaml_url,
-                name=args.name,
-                description=args.description,
-                icon_type=args.icon_type,
-                icon=args.icon,
-                icon_background=args.icon_background,
-                app_id=args.app_id,
-            )
-            session.commit()
+        try:
+            # Create service with session and transaction
+            with Session(bind=db.engine, expire_on_commit=False) as session, session.begin():
+                import_service = AppDslService(session)
+                result = import_service.import_app(
+                    account=current_user,
+                    import_mode=args.mode,
+                    yaml_content=args.yaml_content,
+                    yaml_url=args.yaml_url,
+                    name=args.name,
+                    description=args.description,
+                    icon_type=args.icon_type,
+                    icon=args.icon,
+                    icon_background=args.icon_background,
+                    app_id=args.app_id,
+                )
+        except Exception as e:
+            logger.exception("Failed to import app")
+            result = Import(id="", status=ImportStatus.FAILED, error=str(e))
+
         if result.app_id and FeatureService.get_system_features().webapp_auth.enabled:
-            # update web app setting as private
             EnterpriseService.WebAppAuth.update_app_access_mode(result.app_id, "private")
-        # Return appropriate status code based on result
+
         status = result.status
         if status == ImportStatus.FAILED:
             return result.model_dump(mode="json"), 400
@@ -111,13 +116,14 @@ class AppImportConfirmApi(Resource):
         # Check user role first
         current_user, _ = current_account_with_tenant()
 
-        # Create service with session
-        with Session(db.engine) as session:
-            import_service = AppDslService(session)
-            # Confirm import
-            account = current_user
-            result = import_service.confirm_import(import_id=import_id, account=account)
-            session.commit()
+        try:
+            # Create service with session and transaction
+            with Session(bind=db.engine, expire_on_commit=False) as session, session.begin():
+                import_service = AppDslService(session)
+                result = import_service.confirm_import(import_id=import_id, account=current_user)
+        except Exception as e:
+            logger.exception("Failed to confirm import")
+            result = Import(id=import_id, status=ImportStatus.FAILED, error=str(e))
 
         # Return appropriate status code based on result
         if result.status == ImportStatus.FAILED:
