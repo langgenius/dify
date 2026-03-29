@@ -1,8 +1,8 @@
 from types import SimpleNamespace
 from typing import cast
 
-from graphon.model_runtime.errors.invoke import InvokeBadRequestError
 import pytest
+from graphon.model_runtime.errors.invoke import InvokeBadRequestError
 from pytest_mock import MockerFixture
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
