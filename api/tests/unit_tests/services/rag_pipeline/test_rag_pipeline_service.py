@@ -906,6 +906,7 @@ def test_retry_error_document_success(mocker, rag_pipeline_service) -> None:
 
 def test_set_datasource_variables_success(mocker, rag_pipeline_service) -> None:
     from graphon.entities.workflow_node_execution import WorkflowNodeExecution
+
     from models.dataset import Pipeline
 
     # 1. Setup mocks
