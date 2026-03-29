@@ -2,7 +2,7 @@
 
 import type { NavIcon } from '@/app/components/app-sidebar/nav-link'
 import type { WorkflowProps } from '@/app/components/workflow'
-import type { SnippetDetailPayload, SnippetInputField, SnippetSection } from '@/models/snippet'
+import type { SnippetDetailPayload, SnippetSection } from '@/models/snippet'
 import {
   RiFlaskFill,
   RiFlaskLine,
@@ -10,32 +10,25 @@ import {
   RiTerminalWindowLine,
 } from '@remixicon/react'
 import {
-  useKeyPress,
-} from 'ahooks'
-import {
-  useCallback,
   useEffect,
   useMemo,
-  useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useShallow } from 'zustand/react/shallow'
 import AppSideBar from '@/app/components/app-sidebar'
 import NavLink from '@/app/components/app-sidebar/nav-link'
 import SnippetInfo from '@/app/components/app-sidebar/snippet-info'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { toast } from '@/app/components/base/ui/toast'
 import Evaluation from '@/app/components/evaluation'
 import { WorkflowWithInnerContext } from '@/app/components/workflow'
 import { useAvailableNodesMetaData } from '@/app/components/workflow-app/hooks'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { getKeyboardKeyCodeBySystem } from '@/app/components/workflow/utils'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import { usePublishSnippetWorkflowMutation } from '@/service/use-snippet-workflows'
 import { useConfigsMap } from '../hooks/use-configs-map'
 import { useNodesSyncDraft } from '../hooks/use-nodes-sync-draft'
 import { useSnippetRefreshDraft } from '../hooks/use-snippet-refresh-draft'
 import { useSnippetDetailStore } from '../store'
+import { useSnippetInputFieldActions } from './hooks/use-snippet-input-field-actions'
+import { useSnippetPublish } from './hooks/use-snippet-publish'
 import SnippetChildren from './snippet-children'
 
 type SnippetMainProps = {
@@ -66,11 +59,8 @@ const SnippetMain = ({
   const { graph, snippet, uiMeta } = payload
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
-  const [fields, setFields] = useState<SnippetInputField[]>(payload.inputFields)
-  const publishSnippetMutation = usePublishSnippetWorkflowMutation(snippetId)
   const {
     doSyncWorkflowDraft,
-    syncInputFieldsDraft,
     syncWorkflowDraftWhenPageClose,
   } = useNodesSyncDraft(snippetId)
   const { handleRefreshWorkflowDraft } = useSnippetRefreshDraft(snippetId)
@@ -95,29 +85,32 @@ const SnippetMain = ({
     }
   }, [workflowAvailableNodesMetaData])
   const setAppSidebarExpand = useAppStore(state => state.setAppSidebarExpand)
+  const reset = useSnippetDetailStore(state => state.reset)
   const {
     editingField,
+    fields,
     isEditorOpen,
     isInputPanelOpen,
-    isPublishMenuOpen,
-    closeEditor,
     openEditor,
-    reset,
-    setInputPanelOpen,
+    closeEditor,
+    handleCloseInputPanel,
+    handleRemoveField,
+    handleSortChange,
+    handleSubmitField,
+    handleToggleInputPanel,
+  } = useSnippetInputFieldActions({
+    snippetId,
+    initialFields: payload.inputFields,
+  })
+  const {
+    handlePublish,
+    isPublishMenuOpen,
+    isPublishing,
     setPublishMenuOpen,
-    toggleInputPanel,
-  } = useSnippetDetailStore(useShallow(state => ({
-    editingField: state.editingField,
-    isEditorOpen: state.isEditorOpen,
-    isInputPanelOpen: state.isInputPanelOpen,
-    isPublishMenuOpen: state.isPublishMenuOpen,
-    closeEditor: state.closeEditor,
-    openEditor: state.openEditor,
-    reset: state.reset,
-    setInputPanelOpen: state.setInputPanelOpen,
-    setPublishMenuOpen: state.setPublishMenuOpen,
-    toggleInputPanel: state.toggleInputPanel,
-  })))
+  } = useSnippetPublish({
+    snippetId,
+    section,
+  })
 
   useEffect(() => {
     reset()
@@ -128,71 +121,6 @@ const SnippetMain = ({
     const mode = isMobile ? 'collapse' : 'expand'
     setAppSidebarExpand(isMobile ? mode : localeMode)
   }, [isMobile, setAppSidebarExpand])
-
-  const handleSortChange = (newFields: SnippetInputField[]) => {
-    setFields(newFields)
-  }
-
-  const handleRemoveField = (index: number) => {
-    const nextFields = fields.filter((_, currentIndex) => currentIndex !== index)
-    setFields(nextFields)
-    void syncInputFieldsDraft(nextFields, {
-      onRefresh: setFields,
-    })
-  }
-
-  const handleSubmitField = (field: SnippetInputField) => {
-    const originalVariable = editingField?.variable
-    const duplicated = fields.some(item => item.variable === field.variable && item.variable !== originalVariable)
-
-    if (duplicated) {
-      toast.error(t('inputFieldPanel.error.variableDuplicate', { ns: 'datasetPipeline' }))
-      return
-    }
-
-    const nextFields = originalVariable
-      ? fields.map(item => item.variable === originalVariable ? field : item)
-      : [...fields, field]
-
-    setFields(nextFields)
-    void syncInputFieldsDraft(nextFields, {
-      onRefresh: setFields,
-    })
-
-    closeEditor()
-  }
-
-  const handleToggleInputPanel = () => {
-    if (isInputPanelOpen)
-      closeEditor()
-    toggleInputPanel()
-  }
-
-  const handleCloseInputPanel = () => {
-    closeEditor()
-    setInputPanelOpen(false)
-  }
-
-  const handlePublish = useCallback(async () => {
-    try {
-      await publishSnippetMutation.mutateAsync({
-        params: { snippetId },
-      })
-      setPublishMenuOpen(false)
-      toast.success(t('publishSuccess'))
-    }
-    catch (error) {
-      toast.error(error instanceof Error ? error.message : t('publishFailed'))
-    }
-  }, [publishSnippetMutation, setPublishMenuOpen, snippetId, t])
-
-  useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.shift.p`, (e) => {
-    if (section !== 'orchestrate' || publishSnippetMutation.isPending)
-      return
-
-    e.preventDefault()
-    void handlePublish()
-  }, { exactMatch: true, useCapture: true })
 
   const hooksStore = useMemo(() => {
     return {
@@ -250,7 +178,7 @@ const SnippetMain = ({
                     isEditorOpen={isEditorOpen}
                     isInputPanelOpen={isInputPanelOpen}
                     isPublishMenuOpen={isPublishMenuOpen}
-                    isPublishing={publishSnippetMutation.isPending}
+                    isPublishing={isPublishing}
                     onToggleInputPanel={handleToggleInputPanel}
                     onPublishMenuOpenChange={setPublishMenuOpen}
                     onCloseInputPanel={handleCloseInputPanel}
