@@ -180,5 +180,5 @@ jobs:
                - PR body: summarize files, languages, sync mode, and verification commands
             8. If there are no translation changes after verification, do not create a branch, commit, or PR.
           claude_args: |
-            --max-turns 40
+            --max-turns 80
             --allowedTools "Read,Edit,Bash(git *),Bash(git:*),Bash(gh *),Bash(gh:*),Bash(pnpm *),Bash(pnpm:*),Bash(date *),Bash(date:*),Glob,Grep"
