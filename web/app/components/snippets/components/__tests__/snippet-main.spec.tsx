@@ -14,6 +14,24 @@ const mockSetPublishMenuOpen = vi.fn()
 const mockToggleInputPanel = vi.fn()
 const mockTogglePublishMenu = vi.fn()
 const mockPublishSnippetMutateAsync = vi.fn()
+const mockFetchInspectVars = vi.fn()
+const mockInspectVarsCrud = {
+  hasNodeInspectVars: vi.fn(),
+  hasSetInspectVar: vi.fn(),
+  fetchInspectVarValue: vi.fn(),
+  editInspectVarValue: vi.fn(),
+  renameInspectVarName: vi.fn(),
+  appendNodeInspectVars: vi.fn(),
+  deleteInspectVar: vi.fn(),
+  deleteNodeInspectorVars: vi.fn(),
+  deleteAllInspectorVars: vi.fn(),
+  isInspectVarEdited: vi.fn(),
+  resetToLastRunVar: vi.fn(),
+  invalidateSysVarValues: vi.fn(),
+  resetConversationVar: vi.fn(),
+  invalidateConversationVarValues: vi.fn(),
+}
+let capturedHooksStore: Record<string, unknown> | undefined
 
 vi.mock('@/hooks/use-breakpoints', () => ({
   default: () => 'desktop',
@@ -69,6 +87,16 @@ vi.mock('@/app/components/snippets/hooks/use-configs-map', () => ({
   }),
 }))
 
+vi.mock('@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars', () => ({
+  useSetWorkflowVarsWithValue: () => ({
+    fetchInspectVars: mockFetchInspectVars,
+  }),
+}))
+
+vi.mock('@/app/components/snippets/hooks/use-inspect-vars-crud', () => ({
+  useInspectVarsCrud: () => mockInspectVarsCrud,
+}))
+
 vi.mock('@/app/components/snippets/hooks/use-nodes-sync-draft', () => ({
   useNodesSyncDraft: () => ({
     doSyncWorkflowDraft: vi.fn(),
@@ -111,9 +139,19 @@ vi.mock('@/app/components/evaluation', () => ({
 }))
 
 vi.mock('@/app/components/workflow', () => ({
-  WorkflowWithInnerContext: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="workflow-inner-context">{children}</div>
-  ),
+  WorkflowWithInnerContext: ({
+    children,
+    hooksStore,
+  }: {
+    children: React.ReactNode
+    hooksStore?: Record<string, unknown>
+  }) => {
+    capturedHooksStore = hooksStore
+
+    return (
+      <div data-testid="workflow-inner-context">{children}</div>
+    )
+  },
 }))
 
 vi.mock('@/app/components/snippets/components/snippet-children', () => ({
@@ -193,6 +231,7 @@ describe('SnippetMain', () => {
     vi.clearAllMocks()
     mockSyncInputFieldsDraft.mockResolvedValue(undefined)
     mockPublishSnippetMutateAsync.mockResolvedValue(undefined)
+    capturedHooksStore = undefined
   })
 
   describe('Input Fields Sync', () => {
@@ -241,6 +280,28 @@ describe('SnippetMain', () => {
         })
       })
       expect(mockSetPublishMenuOpen).toHaveBeenCalledWith(false)
+    })
+  })
+
+  describe('Inspect Vars', () => {
+    it('should pass inspect vars handlers to WorkflowWithInnerContext', () => {
+      renderSnippetMain()
+
+      expect(capturedHooksStore?.fetchInspectVars).toBe(mockFetchInspectVars)
+      expect(capturedHooksStore?.hasNodeInspectVars).toBe(mockInspectVarsCrud.hasNodeInspectVars)
+      expect(capturedHooksStore?.hasSetInspectVar).toBe(mockInspectVarsCrud.hasSetInspectVar)
+      expect(capturedHooksStore?.fetchInspectVarValue).toBe(mockInspectVarsCrud.fetchInspectVarValue)
+      expect(capturedHooksStore?.editInspectVarValue).toBe(mockInspectVarsCrud.editInspectVarValue)
+      expect(capturedHooksStore?.renameInspectVarName).toBe(mockInspectVarsCrud.renameInspectVarName)
+      expect(capturedHooksStore?.appendNodeInspectVars).toBe(mockInspectVarsCrud.appendNodeInspectVars)
+      expect(capturedHooksStore?.deleteInspectVar).toBe(mockInspectVarsCrud.deleteInspectVar)
+      expect(capturedHooksStore?.deleteNodeInspectorVars).toBe(mockInspectVarsCrud.deleteNodeInspectorVars)
+      expect(capturedHooksStore?.deleteAllInspectorVars).toBe(mockInspectVarsCrud.deleteAllInspectorVars)
+      expect(capturedHooksStore?.isInspectVarEdited).toBe(mockInspectVarsCrud.isInspectVarEdited)
+      expect(capturedHooksStore?.resetToLastRunVar).toBe(mockInspectVarsCrud.resetToLastRunVar)
+      expect(capturedHooksStore?.invalidateSysVarValues).toBe(mockInspectVarsCrud.invalidateSysVarValues)
+      expect(capturedHooksStore?.resetConversationVar).toBe(mockInspectVarsCrud.resetConversationVar)
+      expect(capturedHooksStore?.invalidateConversationVarValues).toBe(mockInspectVarsCrud.invalidateConversationVarValues)
     })
   })
 })

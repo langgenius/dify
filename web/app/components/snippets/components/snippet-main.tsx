@@ -21,9 +21,11 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import Evaluation from '@/app/components/evaluation'
 import { WorkflowWithInnerContext } from '@/app/components/workflow'
 import { useAvailableNodesMetaData } from '@/app/components/workflow-app/hooks'
+import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars'
 import { BlockEnum } from '@/app/components/workflow/types'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useConfigsMap } from '../hooks/use-configs-map'
+import { useInspectVarsCrud } from '../hooks/use-inspect-vars-crud'
 import { useNodesSyncDraft } from '../hooks/use-nodes-sync-draft'
 import { useSnippetRefreshDraft } from '../hooks/use-snippet-refresh-draft'
 import { useSnippetDetailStore } from '../store'
@@ -65,6 +67,25 @@ const SnippetMain = ({
   } = useNodesSyncDraft(snippetId)
   const { handleRefreshWorkflowDraft } = useSnippetRefreshDraft(snippetId)
   const configsMap = useConfigsMap(snippetId)
+  const { fetchInspectVars } = useSetWorkflowVarsWithValue({
+    ...configsMap,
+  })
+  const {
+    hasNodeInspectVars,
+    hasSetInspectVar,
+    fetchInspectVarValue,
+    editInspectVarValue,
+    renameInspectVarName,
+    appendNodeInspectVars,
+    deleteInspectVar,
+    deleteNodeInspectorVars,
+    deleteAllInspectorVars,
+    isInspectVarEdited,
+    resetToLastRunVar,
+    invalidateSysVarValues,
+    resetConversationVar,
+    invalidateConversationVarValues,
+  } = useInspectVarsCrud(snippetId)
   const workflowAvailableNodesMetaData = useAvailableNodesMetaData()
   const availableNodesMetaData = useMemo(() => {
     const nodes = workflowAvailableNodesMetaData.nodes.filter(node =>
@@ -128,9 +149,45 @@ const SnippetMain = ({
       syncWorkflowDraftWhenPageClose,
       handleRefreshWorkflowDraft,
       availableNodesMetaData,
+      fetchInspectVars,
+      hasNodeInspectVars,
+      hasSetInspectVar,
+      fetchInspectVarValue,
+      editInspectVarValue,
+      renameInspectVarName,
+      appendNodeInspectVars,
+      deleteInspectVar,
+      deleteNodeInspectorVars,
+      deleteAllInspectorVars,
+      isInspectVarEdited,
+      resetToLastRunVar,
+      invalidateSysVarValues,
+      resetConversationVar,
+      invalidateConversationVarValues,
       configsMap,
     }
-  }, [availableNodesMetaData, configsMap, doSyncWorkflowDraft, handleRefreshWorkflowDraft, syncWorkflowDraftWhenPageClose])
+  }, [
+    appendNodeInspectVars,
+    availableNodesMetaData,
+    configsMap,
+    deleteAllInspectorVars,
+    deleteInspectVar,
+    deleteNodeInspectorVars,
+    doSyncWorkflowDraft,
+    editInspectVarValue,
+    fetchInspectVarValue,
+    fetchInspectVars,
+    handleRefreshWorkflowDraft,
+    hasNodeInspectVars,
+    hasSetInspectVar,
+    invalidateConversationVarValues,
+    invalidateSysVarValues,
+    isInspectVarEdited,
+    renameInspectVarName,
+    resetConversationVar,
+    resetToLastRunVar,
+    syncWorkflowDraftWhenPageClose,
+  ])
 
   return (
     <div className="relative flex h-full overflow-hidden bg-background-body">
