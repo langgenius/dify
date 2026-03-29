@@ -23,7 +23,6 @@ Install Playwright browsers once:
 
 ```bash
 cd e2e
-pnpm install
 pnpm e2e:install
 pnpm check
 ```

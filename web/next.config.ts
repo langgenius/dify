@@ -1,16 +1,20 @@
 import type { NextConfig } from '@/next'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import createMDX from '@next/mdx'
 import { codeInspectorPlugin } from 'code-inspector-plugin'
 import { env } from './env'
 
 const isDev = process.env.NODE_ENV === 'development'
+const projectRoot = path.dirname(fileURLToPath(import.meta.url))
+const workspaceRoot = path.resolve(projectRoot, '..')
 const withMDX = createMDX()
 
 const nextConfig: NextConfig = {
   basePath: env.NEXT_PUBLIC_BASE_PATH,
   transpilePackages: ['@t3-oss/env-core', '@t3-oss/env-nextjs', 'echarts', 'zrender'],
   turbopack: {
-    root: process.cwd(),
+    root: workspaceRoot,
     rules: codeInspectorPlugin({
       bundler: 'turbopack',
     }),

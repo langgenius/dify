@@ -27,7 +27,7 @@ For example, use `vp install` instead of `pnpm install` and `vp test` instead of
 First, install the dependencies:
 
 ```bash
-pnpm install
+pnpm --dir .. install
 ```
 
 Then, configure the environment variables.

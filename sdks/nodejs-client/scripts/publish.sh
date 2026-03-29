@@ -67,6 +67,7 @@ divider() {
 # ============================================================================
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+REPO_ROOT="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null || cd "$SCRIPT_DIR/../../.." && pwd)"
 
 DRY_RUN=false
 SKIP_TESTS=false
@@ -171,7 +172,7 @@ main() {
     step "Step 3/6: Installing dependencies..."
     
     if command -v pnpm &> /dev/null; then
-        pnpm install --frozen-lockfile 2>/dev/null || pnpm install
+        pnpm --dir "$REPO_ROOT" install --frozen-lockfile 2>/dev/null || pnpm --dir "$REPO_ROOT" install
     else
         npm ci 2>/dev/null || npm install
     fi

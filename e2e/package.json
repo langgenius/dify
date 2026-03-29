@@ -20,15 +20,5 @@
     "tsx": "4.21.0",
     "typescript": "5.9.3",
     "vite-plus": "latest"
-  },
-  "engines": {
-    "node": "^22.22.1"
-  },
-  "packageManager": "pnpm@10.32.1",
-  "pnpm": {
-    "overrides": {
-      "vite": "npm:@voidzero-dev/vite-plus-core@latest",
-      "vitest": "npm:@voidzero-dev/vite-plus-test@latest"
-    }
   }
 }
