@@ -79,6 +79,13 @@ vi.mock('@/hooks/use-breakpoints', () => ({
   MediaType: { mobile: 'mobile', desktop: 'desktop' },
 }))
 
+vi.mock('@/app/components/rag-pipeline/components/panel/input-field/hooks', () => ({
+  useFloatingRight: () => ({
+    floatingRight: false,
+    floatingRightWidth: 400,
+  }),
+}))
+
 vi.mock('@/app/components/workflow', () => ({
   default: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="workflow-default-context">{children}</div>

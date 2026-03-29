@@ -74,9 +74,16 @@ const SnippetChildren = ({
         onSortChange={onSortChange}
       />
 
-      {isInputPanelOpen && (
-        <div className="pointer-events-none absolute inset-y-3 right-3 z-30 flex justify-end">
-          <div className="pointer-events-auto h-full xl:hidden">
+      {(isInputPanelOpen || isEditorOpen) && (
+        <div className="pointer-events-none absolute bottom-1 right-1 top-14 z-30 flex justify-end">
+          <div className="pointer-events-auto flex h-full xl:hidden">
+            {isEditorOpen && (
+              <SnippetInputFieldEditor
+                field={editingField}
+                onClose={onCloseEditor}
+                onSubmit={onSubmitField}
+              />
+            )}
             <SnippetInputFieldPanel
               fields={fields}
               onClose={onCloseInputPanel}
@@ -89,17 +96,6 @@ const SnippetChildren = ({
         </div>
       )}
 
-      {isEditorOpen && (
-        <div className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center bg-black/10 px-3 xl:hidden">
-          <div className="pointer-events-auto w-full max-w-md">
-            <SnippetInputFieldEditor
-              field={editingField}
-              onClose={onCloseEditor}
-              onSubmit={onSubmitField}
-            />
-          </div>
-        </div>
-      )}
     </>
   )
 }
