@@ -177,6 +177,11 @@
       "count": 2
     }
   },
+  "app/(commonLayout)/snippets/[snippetId]/page.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "app/(humanInputLayout)/form/[token]/form.tsx": {
     "react/set-state-in-effect": {
       "count": 1
@@ -4917,6 +4922,11 @@
       "count": 2
     }
   },
+  "app/components/evaluation/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "app/components/explore/banner/banner-item.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
@@ -6684,6 +6694,11 @@
     },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
+    }
+  },
+  "app/components/snippets/components/snippet-main.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
     }
   },
   "app/components/tools/edit-custom-collection-modal/config-credentials.tsx": {
@@ -10485,6 +10500,11 @@
   "service/use-endpoints.ts": {
     "ts/no-explicit-any": {
       "count": 7
+    }
+  },
+  "service/use-evaluation.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 2
     }
   },
   "service/use-flow.ts": {

@@ -1148,6 +1148,7 @@
   "tabs.sources": "数据源",
   "tabs.start": "开始",
   "tabs.startDisabledTip": "触发节点与用户输入节点互斥。",
+  "tabs.startNotSupportedTip": "Snippet 暂不支持 Start 标签。",
   "tabs.tools": "工具",
   "tabs.transform": "转换",
   "tabs.usePlugin": "选择工具",

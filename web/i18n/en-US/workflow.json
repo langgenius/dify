@@ -1148,6 +1148,7 @@
   "tabs.sources": "Sources",
   "tabs.start": "Start",
   "tabs.startDisabledTip": "Trigger node and user input node are mutually exclusive.",
+  "tabs.startNotSupportedTip": "The Start tab is not supported in snippets.",
   "tabs.tools": "Tools",
   "tabs.transform": "Transform",
   "tabs.usePlugin": "Select tool",

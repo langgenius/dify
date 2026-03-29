@@ -30,7 +30,9 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import SearchBox from '@/app/components/plugins/marketplace/search-box'
+import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
+import { FlowType } from '@/types/common'
 import { BlockEnum, isTriggerNode } from '../types'
 import { useTabs } from './hooks'
 import Snippets from './snippets'
@@ -89,6 +91,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
 }) => {
   const { t } = useTranslation()
   const nodes = useNodes()
+  const flowType = useHooksStore(s => s.configsMap?.flowType)
   const [searchText, setSearchText] = useState('')
   const [snippetsLoading, setSnippetsLoading] = useState(() => Boolean(openFromProps) && defaultActiveTab === TabsEnum.Snippets)
   const [tags, setTags] = useState<string[]>([])
@@ -122,6 +125,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
   // Default rule: user input option is only available when no Start node nor Trigger node exists on canvas.
   const defaultAllowUserInputSelection = !hasUserInputNode && !hasTriggerNode
   const canSelectUserInput = allowUserInputSelection ?? defaultAllowUserInputSelection
+  const disableStartTab = flowType === FlowType.snippet
   const {
     activeTab,
     setActiveTab,
@@ -133,6 +137,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
     noStart: !showStartTab,
     defaultActiveTab,
     hasUserInputNode,
+    disableStartTab,
     forceEnableStartTab,
   })
   const open = openFromProps === undefined ? localOpen : openFromProps

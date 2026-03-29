@@ -23,6 +23,8 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import { toast } from '@/app/components/base/ui/toast'
 import Evaluation from '@/app/components/evaluation'
 import { WorkflowWithInnerContext } from '@/app/components/workflow'
+import { useAvailableNodesMetaData } from '@/app/components/workflow-app/hooks'
+import { BlockEnum } from '@/app/components/workflow/types'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useConfigsMap } from '../hooks/use-configs-map'
 import { useNodesSyncDraft } from '../hooks/use-nodes-sync-draft'
@@ -66,6 +68,25 @@ const SnippetMain = ({
   } = useNodesSyncDraft(snippetId)
   const { handleRefreshWorkflowDraft } = useSnippetRefreshDraft(snippetId)
   const configsMap = useConfigsMap(snippetId)
+  const workflowAvailableNodesMetaData = useAvailableNodesMetaData()
+  const availableNodesMetaData = useMemo(() => {
+    const nodes = workflowAvailableNodesMetaData.nodes.filter(node =>
+      node.metaData.type !== BlockEnum.HumanInput && node.metaData.type !== BlockEnum.End)
+
+    if (!workflowAvailableNodesMetaData.nodesMap)
+      return { nodes }
+
+    const {
+      [BlockEnum.HumanInput]: _humanInput,
+      [BlockEnum.End]: _end,
+      ...nodesMap
+    } = workflowAvailableNodesMetaData.nodesMap
+
+    return {
+      nodes,
+      nodesMap,
+    }
+  }, [workflowAvailableNodesMetaData])
   const setAppSidebarExpand = useAppStore(state => state.setAppSidebarExpand)
   const {
     editingField,
@@ -150,9 +171,10 @@ const SnippetMain = ({
       doSyncWorkflowDraft,
       syncWorkflowDraftWhenPageClose,
       handleRefreshWorkflowDraft,
+      availableNodesMetaData,
       configsMap,
     }
-  }, [configsMap, doSyncWorkflowDraft, handleRefreshWorkflowDraft, syncWorkflowDraftWhenPageClose])
+  }, [availableNodesMetaData, configsMap, doSyncWorkflowDraft, handleRefreshWorkflowDraft, syncWorkflowDraftWhenPageClose])
 
   return (
     <div className="relative flex h-full overflow-hidden bg-background-body">
@@ -190,7 +212,7 @@ const SnippetMain = ({
                   nodes={nodes}
                   edges={edges}
                   viewport={viewport ?? graph.viewport}
-                  hooksStore={hooksStore}
+                  hooksStore={hooksStore as any}
                 >
                   <SnippetChildren
                     snippetId={snippetId}

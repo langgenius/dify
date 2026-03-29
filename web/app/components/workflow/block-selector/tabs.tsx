@@ -34,6 +34,7 @@ export type TabsProps = {
     key: TabsEnum
     name: string
     disabled?: boolean
+    disabledTip?: string
   }>
   filterElem: React.ReactNode
   noBlocks?: boolean
@@ -225,7 +226,7 @@ const Tabs: FC<TabsProps> = ({
                   tab={tab}
                   activeTab={activeTab}
                   onActiveTabChange={onActiveTabChange}
-                  disabledTip={disabledTip}
+                  disabledTip={tab.disabledTip || disabledTip}
                 />
               ))
             }
