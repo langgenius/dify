@@ -39,6 +39,10 @@ jobs:
         with:
           files: |
             web/**
+            package.json
+            pnpm-lock.yaml
+            pnpm-workspace.yaml
+            .nvmrc
       - name: Check api inputs
         if: github.event_name != 'merge_group'
         id: api-changes

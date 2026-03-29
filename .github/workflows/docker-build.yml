@@ -6,7 +6,12 @@ on:
       - "main"
     paths:
       - api/Dockerfile
+      - web/docker/**
       - web/Dockerfile
+      - package.json
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - .nvmrc
 
 concurrency:
   group: docker-build-${{ github.head_ref || github.run_id }}
@@ -20,16 +25,20 @@ jobs:
         include:
           - service_name: "api-amd64"
             platform: linux/amd64
-            context: "api"
+            context: "{{defaultContext}}:api"
+            file: "api/Dockerfile"
           - service_name: "api-arm64"
             platform: linux/arm64
-            context: "api"
+            context: "{{defaultContext}}:api"
+            file: "api/Dockerfile"
           - service_name: "web-amd64"
             platform: linux/amd64
-            context: "web"
+            context: "{{defaultContext}}"
+            file: "web/Dockerfile"
           - service_name: "web-arm64"
             platform: linux/arm64
-            context: "web"
+            context: "{{defaultContext}}"
+            file: "web/Dockerfile"
     steps:
       - name: Set up QEMU
         uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4.0.0
@@ -41,8 +50,8 @@ jobs:
         uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7.0.0
         with:
           push: false
-          context: "{{defaultContext}}:${{ matrix.context }}"
-          file: "${{ matrix.file }}"
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
           platforms: ${{ matrix.platform }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

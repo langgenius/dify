@@ -58,6 +58,10 @@ jobs:
               - '.github/workflows/api-tests.yml'
             web:
               - 'web/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - '.nvmrc'
               - '.github/workflows/web-tests.yml'
               - '.github/actions/setup-web/**'
             e2e:
@@ -66,6 +70,10 @@ jobs:
               - 'api/uv.lock'
               - 'e2e/**'
               - 'web/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - '.nvmrc'
               - 'docker/docker-compose.middleware.yaml'
               - 'docker/middleware.env.example'
               - '.github/workflows/web-e2e.yml'
