@@ -8,6 +8,7 @@ import SnippetHeader from './snippet-header'
 import SnippetWorkflowPanel from './workflow-panel'
 
 type SnippetChildrenProps = {
+  snippetId: string
   fields: SnippetInputField[]
   uiMeta: SnippetDetailUIModel
   editingField: SnippetInputField | null
@@ -26,6 +27,7 @@ type SnippetChildrenProps = {
 }
 
 const SnippetChildren = ({
+  snippetId,
   fields,
   uiMeta,
   editingField,
@@ -47,6 +49,7 @@ const SnippetChildren = ({
       <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-24 bg-gradient-to-b from-background-body to-transparent" />
 
       <SnippetHeader
+        snippetId={snippetId}
         inputFieldCount={fields.length}
         onToggleInputPanel={onToggleInputPanel}
         onTogglePublishMenu={onTogglePublishMenu}

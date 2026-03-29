@@ -191,6 +191,7 @@ const SnippetMain = ({
                   hooksStore={hooksStore}
                 >
                   <SnippetChildren
+                    snippetId={snippetId}
                     fields={fields}
                     uiMeta={uiMeta}
                     editingField={editingField}

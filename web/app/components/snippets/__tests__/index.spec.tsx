@@ -1,3 +1,4 @@
+import type { HeaderProps } from '@/app/components/workflow/header'
 import type { SnippetDetailPayload } from '@/models/snippet'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { PipelineInputVarType } from '@/models/pipeline'
@@ -79,6 +80,20 @@ vi.mock('@/app/components/workflow', () => ({
       {children}
     </div>
   ),
+}))
+
+vi.mock('@/app/components/workflow/header', () => ({
+  default: (props: HeaderProps) => {
+    const CustomRunMode = props.normal?.runAndHistoryProps?.components?.RunMode
+
+    return (
+      <div data-testid="workflow-header">
+        {props.normal?.components?.left}
+        {CustomRunMode && <CustomRunMode text={props.normal?.runAndHistoryProps?.runButtonText} />}
+        {props.normal?.components?.middle}
+      </div>
+    )
+  },
 }))
 
 vi.mock('@/app/components/workflow/context', () => ({
