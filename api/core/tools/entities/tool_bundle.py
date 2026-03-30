@@ -29,3 +29,5 @@ class ApiToolBundle(BaseModel):
     openapi: dict
     # output schema
     output_schema: Mapping[str, object] = Field(default_factory=dict)
+    # whether this operation supports streaming response
+    streaming: bool = Field(default=False)

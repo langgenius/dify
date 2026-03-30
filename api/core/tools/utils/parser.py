@@ -202,6 +202,9 @@ class ApiBasedToolSchemaParser:
 
                 interface["operation"]["operationId"] = f"{path}_{interface['method']}"
 
+            # Extract x-dify-streaming extension field
+            streaming = bool(interface["operation"].get("x-dify-streaming", False))
+
             bundles.append(
                 ApiToolBundle(
                     server_url=server_url + interface["path"],
@@ -214,6 +217,7 @@ class ApiBasedToolSchemaParser:
                     author="",
                     icon=None,
                     openapi=interface["operation"],
+                    streaming=streaming,
                 )
             )
 
