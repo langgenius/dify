@@ -68,11 +68,11 @@ RUN addgroup -S -g ${dify_uid} dify && \
     chown -R dify:dify /app
 
 
-WORKDIR /app/web
+WORKDIR /app
 
-COPY --from=builder --chown=dify:dify /app/web/public ./public
+COPY --from=builder --chown=dify:dify /app/web/public ./web/public
 COPY --from=builder --chown=dify:dify /app/web/.next/standalone ./
-COPY --from=builder --chown=dify:dify /app/web/.next/static ./.next/static
+COPY --from=builder --chown=dify:dify /app/web/.next/static ./web/.next/static
 
 COPY --chown=dify:dify --chmod=755 web/docker/entrypoint.sh ./entrypoint.sh
 
