@@ -1,7 +1,10 @@
+import * as jestDomMatchers from '@testing-library/jest-dom/matchers'
 import { act, cleanup } from '@testing-library/react'
 import * as React from 'react'
 import '@testing-library/jest-dom/vitest'
 import 'vitest-canvas-mock'
+
+expect.extend(jestDomMatchers)
 
 // Suppress act() warnings from @headlessui/react internal Transition component
 // These warnings are caused by Headless UI's internal async state updates, not our code

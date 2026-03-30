@@ -8,6 +8,7 @@ associates with the node span.
 """
 
 import logging
+from contextvars import Token
 from dataclasses import dataclass
 from typing import cast, final
 
@@ -35,7 +36,7 @@ logger = logging.getLogger(__name__)
 @dataclass(slots=True)
 class _NodeSpanContext:
     span: "Span"
-    token: object
+    token: Token[context_api.Context]
 
 
 @final
