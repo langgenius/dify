@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { emailRegex } from '@/config'
 import { useLocale } from '@/context/i18n'
 import Link from '@/next/link'
@@ -35,18 +35,15 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
 
   const handleEmailPasswordLogin = async () => {
     if (!email) {
-      Toast.notify({ type: 'error', message: t('error.emailEmpty', { ns: 'login' }) })
+      toast.error(t('error.emailEmpty', { ns: 'login' }))
       return
     }
     if (!emailRegex.test(email)) {
-      Toast.notify({
-        type: 'error',
-        message: t('error.emailInValid', { ns: 'login' }),
-      })
+      toast.error(t('error.emailInValid', { ns: 'login' }))
       return
     }
     if (!password?.trim()) {
-      Toast.notify({ type: 'error', message: t('error.passwordEmpty', { ns: 'login' }) })
+      toast.error(t('error.passwordEmpty', { ns: 'login' }))
       return
     }
 
@@ -83,18 +80,12 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
         }
       }
       else {
-        Toast.notify({
-          type: 'error',
-          message: res.data,
-        })
+        toast.error(res.data)
       }
     }
     catch (error) {
       if ((error as ResponseError).code === 'authentication_failed') {
-        Toast.notify({
-          type: 'error',
-          message: t('error.invalidEmailOrPassword', { ns: 'login' }),
-        })
+        toast.error(t('error.invalidEmailOrPassword', { ns: 'login' }))
       }
     }
     finally {

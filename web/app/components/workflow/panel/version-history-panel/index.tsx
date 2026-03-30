@@ -7,10 +7,10 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import VersionInfoModal from '@/app/components/app/app-publisher/version-info-modal'
 import Divider from '@/app/components/base/divider'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { useSelector as useAppContextSelector } from '@/context/app-context'
-import { useDeleteWorkflow, useInvalidAllLastRun, useResetWorkflowVersionHistory, useUpdateWorkflow, useWorkflowVersionHistory } from '@/service/use-workflow'
-import { useDSL, useNodesSyncDraft, useWorkflowRun } from '../../hooks'
+import { useDeleteWorkflow, useInvalidAllLastRun, useResetWorkflowVersionHistory, useRestoreWorkflow, useUpdateWorkflow, useWorkflowVersionHistory } from '@/service/use-workflow'
+import { useDSL, useWorkflowRefreshDraft, useWorkflowRun } from '../../hooks'
 import { useHooksStore } from '../../hooks-store'
 import { useStore, useWorkflowStore } from '../../store'
 import { VersionHistoryContextMenuOptions, WorkflowVersion, WorkflowVersionFilterOptions } from '../../types'
@@ -27,12 +27,14 @@ const INITIAL_PAGE = 1
 export type VersionHistoryPanelProps = {
   getVersionListUrl?: string
   deleteVersionUrl?: (versionId: string) => string
+  restoreVersionUrl: (versionId: string) => string
   updateVersionUrl?: (versionId: string) => string
   latestVersionId?: string
 }
 export const VersionHistoryPanel = ({
   getVersionListUrl,
   deleteVersionUrl,
+  restoreVersionUrl,
   updateVersionUrl,
   latestVersionId,
 }: VersionHistoryPanelProps) => {
@@ -43,8 +45,8 @@ export const VersionHistoryPanel = ({
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [editModalOpen, setEditModalOpen] = useState(false)
   const workflowStore = useWorkflowStore()
-  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { handleRestoreFromPublishedWorkflow, handleLoadBackupDraft } = useWorkflowRun()
+  const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
   const { handleExportDSL } = useDSL()
   const setShowWorkflowVersionHistoryPanel = useStore(s => s.setShowWorkflowVersionHistoryPanel)
   const currentVersion = useStore(s => s.currentVersion)
@@ -118,10 +120,7 @@ export const VersionHistoryPanel = ({
         break
       case VersionHistoryContextMenuOptions.copyId:
         copy(item.id)
-        Toast.notify({
-          type: 'success',
-          message: t('versionHistory.action.copyIdSuccess', { ns: 'workflow' }),
-        })
+        toast.success(t('versionHistory.action.copyIdSuccess', { ns: 'workflow' }))
         break
       case VersionHistoryContextMenuOptions.exportDSL:
         handleExportDSL?.(false, item.id)
@@ -144,32 +143,27 @@ export const VersionHistoryPanel = ({
   }, [])
 
   const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
+  const { mutateAsync: restoreWorkflow } = useRestoreWorkflow()
 
-  const handleRestore = useCallback((item: VersionHistory) => {
+  const handleRestore = useCallback(async (item: VersionHistory) => {
     setShowWorkflowVersionHistoryPanel(false)
-    handleRestoreFromPublishedWorkflow(item)
-    workflowStore.setState({ isRestoring: false })
-    workflowStore.setState({ backupDraft: undefined })
-    handleSyncWorkflowDraft(true, false, {
-      onSuccess: () => {
-        Toast.notify({
-          type: 'success',
-          message: t('versionHistory.action.restoreSuccess', { ns: 'workflow' }),
-        })
-        deleteAllInspectVars()
-        invalidAllLastRun()
-      },
-      onError: () => {
-        Toast.notify({
-          type: 'error',
-          message: t('versionHistory.action.restoreFailure', { ns: 'workflow' }),
-        })
-      },
-      onSettled: () => {
-        resetWorkflowVersionHistory()
-      },
-    })
-  }, [setShowWorkflowVersionHistoryPanel, handleRestoreFromPublishedWorkflow, workflowStore, handleSyncWorkflowDraft, deleteAllInspectVars, invalidAllLastRun, t, resetWorkflowVersionHistory])
+    try {
+      await restoreWorkflow(restoreVersionUrl(item.id))
+      setCurrentVersion(item)
+      workflowStore.setState({ isRestoring: false })
+      workflowStore.setState({ backupDraft: undefined })
+      handleRefreshWorkflowDraft()
+      toast.success(t('versionHistory.action.restoreSuccess', { ns: 'workflow' }))
+      deleteAllInspectVars()
+      invalidAllLastRun()
+    }
+    catch {
+      toast.error(t('versionHistory.action.restoreFailure', { ns: 'workflow' }))
+    }
+    finally {
+      resetWorkflowVersionHistory()
+    }
+  }, [setShowWorkflowVersionHistoryPanel, setCurrentVersion, workflowStore, restoreWorkflow, restoreVersionUrl, handleRefreshWorkflowDraft, deleteAllInspectVars, invalidAllLastRun, t, resetWorkflowVersionHistory])
 
   const { mutateAsync: deleteWorkflow } = useDeleteWorkflow()
 
@@ -177,19 +171,13 @@ export const VersionHistoryPanel = ({
     await deleteWorkflow(deleteVersionUrl?.(id) || '', {
       onSuccess: () => {
         setDeleteConfirmOpen(false)
-        Toast.notify({
-          type: 'success',
-          message: t('versionHistory.action.deleteSuccess', { ns: 'workflow' }),
-        })
+        toast.success(t('versionHistory.action.deleteSuccess', { ns: 'workflow' }))
         resetWorkflowVersionHistory()
         deleteAllInspectVars()
         invalidAllLastRun()
       },
       onError: () => {
-        Toast.notify({
-          type: 'error',
-          message: t('versionHistory.action.deleteFailure', { ns: 'workflow' }),
-        })
+        toast.error(t('versionHistory.action.deleteFailure', { ns: 'workflow' }))
       },
       onSettled: () => {
         setDeleteConfirmOpen(false)
@@ -207,17 +195,11 @@ export const VersionHistoryPanel = ({
     }, {
       onSuccess: () => {
         setEditModalOpen(false)
-        Toast.notify({
-          type: 'success',
-          message: t('versionHistory.action.updateSuccess', { ns: 'workflow' }),
-        })
+        toast.success(t('versionHistory.action.updateSuccess', { ns: 'workflow' }))
         resetWorkflowVersionHistory()
       },
       onError: () => {
-        Toast.notify({
-          type: 'error',
-          message: t('versionHistory.action.updateFailure', { ns: 'workflow' }),
-        })
+        toast.error(t('versionHistory.action.updateFailure', { ns: 'workflow' }))
       },
       onSettled: () => {
         setEditModalOpen(false)

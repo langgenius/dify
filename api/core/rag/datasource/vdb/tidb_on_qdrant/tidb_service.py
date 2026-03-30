@@ -9,6 +9,7 @@ from configs import dify_config
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.dataset import TidbAuthBinding
+from models.enums import TidbAuthBindingStatus
 
 
 class TidbService:
@@ -170,7 +171,7 @@ class TidbService:
                 userPrefix = item["userPrefix"]
                 if state == "ACTIVE" and len(userPrefix) > 0:
                     cluster_info = tidb_serverless_list_map[item["clusterId"]]
-                    cluster_info.status = "ACTIVE"
+                    cluster_info.status = TidbAuthBindingStatus.ACTIVE
                     cluster_info.account = f"{userPrefix}.root"
                     db.session.add(cluster_info)
             db.session.commit()

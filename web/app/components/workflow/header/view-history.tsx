@@ -73,15 +73,18 @@ const ViewHistory = ({
         <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
           {
             withText && (
-              <div className={cn(
-                'flex h-8 items-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 shadow-xs',
-                'cursor-pointer text-[13px] font-medium text-components-button-secondary-text hover:bg-components-button-secondary-bg-hover',
-                open && 'bg-components-button-secondary-bg-hover',
-              )}
+              <button
+                type="button"
+                aria-label={t('common.showRunHistory', { ns: 'workflow' })}
+                className={cn(
+                  'flex h-8 items-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 shadow-xs',
+                  'cursor-pointer text-[13px] font-medium text-components-button-secondary-text hover:bg-components-button-secondary-bg-hover',
+                  open && 'bg-components-button-secondary-bg-hover',
+                )}
               >
                 <span className="i-custom-vender-line-time-clock-play mr-1 h-4 w-4" />
                 {t('common.showRunHistory', { ns: 'workflow' })}
-              </div>
+              </button>
             )
           }
           {
@@ -89,14 +92,16 @@ const ViewHistory = ({
               <Tooltip
                 popupContent={t('common.viewRunHistory', { ns: 'workflow' })}
               >
-                <div
+                <button
+                  type="button"
+                  aria-label={t('common.viewRunHistory', { ns: 'workflow' })}
                   className={cn('group flex h-7 w-7 cursor-pointer items-center justify-center rounded-md hover:bg-state-accent-hover', open && 'bg-state-accent-hover')}
                   onClick={() => {
                     onClearLogAndMessageModal?.()
                   }}
                 >
                   <span className={cn('i-custom-vender-line-time-clock-play', 'h-4 w-4 group-hover:text-components-button-secondary-accent-text', open ? 'text-components-button-secondary-accent-text' : 'text-components-button-ghost-text')} />
-                </div>
+                </button>
               </Tooltip>
             )
           }
@@ -110,7 +115,9 @@ const ViewHistory = ({
           >
             <div className="sticky top-0 flex items-center justify-between bg-components-panel-bg px-4 pt-3 text-base font-semibold text-text-primary">
               <div className="grow">{t('common.runHistory', { ns: 'workflow' })}</div>
-              <div
+              <button
+                type="button"
+                aria-label={t('operation.close', { ns: 'common' })}
                 className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center"
                 onClick={() => {
                   onClearLogAndMessageModal?.()
@@ -118,7 +125,7 @@ const ViewHistory = ({
                 }}
               >
                 <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
-              </div>
+              </button>
             </div>
             {
               isLoading && (

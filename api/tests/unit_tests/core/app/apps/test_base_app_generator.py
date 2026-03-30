@@ -1,9 +1,7 @@
-from unittest.mock import MagicMock
-
 import pytest
+from graphon.variables.input_entities import VariableEntity, VariableEntityType
 
 from core.app.apps.base_app_generator import BaseAppGenerator
-from dify_graph.variables.input_entities import VariableEntity, VariableEntityType
 
 
 def test_validate_inputs_with_zero():
@@ -403,11 +401,11 @@ class TestBaseAppGeneratorExtras:
 
         monkeypatch.setattr(
             "core.app.apps.base_app_generator.file_factory.build_from_mapping",
-            lambda mapping, tenant_id, config, strict_type_validation=False: "file-object",
+            lambda mapping, tenant_id, config, strict_type_validation=False, access_controller=None: "file-object",
         )
         monkeypatch.setattr(
             "core.app.apps.base_app_generator.file_factory.build_from_mappings",
-            lambda mappings, tenant_id, config: ["file-1", "file-2"],
+            lambda mappings, tenant_id, config, access_controller=None: ["file-1", "file-2"],
         )
 
         user_inputs = {
@@ -478,8 +476,9 @@ class TestBaseAppGeneratorExtras:
         assert converted[1] == "event: ping\n\n"
 
     def test_get_draft_var_saver_factory_debugger(self):
+        from graphon.enums import BuiltinNodeTypes
+
         from core.app.entities.app_invoke_entities import InvokeFrom
-        from dify_graph.enums import BuiltinNodeTypes
         from models import Account
 
         base_app_generator = BaseAppGenerator()
@@ -489,7 +488,6 @@ class TestBaseAppGeneratorExtras:
 
         factory = base_app_generator._get_draft_var_saver_factory(InvokeFrom.DEBUGGER, account)
         saver = factory(
-            session=MagicMock(),
             app_id="app-id",
             node_id="node-id",
             node_type=BuiltinNodeTypes.START,

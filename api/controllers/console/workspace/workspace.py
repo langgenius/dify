@@ -7,6 +7,7 @@ from sqlalchemy import select
 from werkzeug.exceptions import Unauthorized
 
 import services
+from configs import dify_config
 from controllers.common.errors import (
     FilenameNotExistsError,
     FileTooLargeError,
@@ -29,6 +30,7 @@ from libs.helper import TimestampField
 from libs.login import current_account_with_tenant, login_required
 from models.account import Tenant, TenantStatus
 from services.account_service import TenantService
+from services.billing_service import BillingService, SubscriptionPlan
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
 from services.file_service import FileService
@@ -108,9 +110,29 @@ class TenantListApi(Resource):
         current_user, current_tenant_id = current_account_with_tenant()
         tenants = TenantService.get_join_tenants(current_user)
         tenant_dicts = []
+        is_enterprise_only = dify_config.ENTERPRISE_ENABLED and not dify_config.BILLING_ENABLED
+        is_saas = dify_config.EDITION == "CLOUD" and dify_config.BILLING_ENABLED
+        tenant_plans: dict[str, SubscriptionPlan] = {}
+
+        if is_saas:
+            tenant_ids = [tenant.id for tenant in tenants]
+            if tenant_ids:
+                tenant_plans = BillingService.get_plan_bulk(tenant_ids)
+                if not tenant_plans:
+                    logger.warning("get_plan_bulk returned empty result, falling back to legacy feature path")
 
         for tenant in tenants:
-            features = FeatureService.get_features(tenant.id)
+            plan: str = CloudPlan.SANDBOX
+            if is_saas:
+                tenant_plan = tenant_plans.get(tenant.id)
+                if tenant_plan:
+                    plan = tenant_plan["plan"] or CloudPlan.SANDBOX
+                else:
+                    features = FeatureService.get_features(tenant.id)
+                    plan = features.billing.subscription.plan or CloudPlan.SANDBOX
+            elif not is_enterprise_only:
+                features = FeatureService.get_features(tenant.id)
+                plan = features.billing.subscription.plan or CloudPlan.SANDBOX
 
             # Create a dictionary with tenant attributes
             tenant_dict = {
@@ -118,7 +140,7 @@ class TenantListApi(Resource):
                 "name": tenant.name,
                 "status": tenant.status,
                 "created_at": tenant.created_at,
-                "plan": features.billing.subscription.plan if features.billing.enabled else CloudPlan.SANDBOX,
+                "plan": plan,
                 "current": tenant.id == current_tenant_id if current_tenant_id else False,
             }
 
@@ -198,7 +220,7 @@ class SwitchWorkspaceApi(Resource):
         except Exception:
             raise AccountNotLinkTenantError("Account not link tenant")
 
-        new_tenant = db.session.query(Tenant).get(args.tenant_id)  # Get new tenant
+        new_tenant = db.session.get(Tenant, args.tenant_id)  # Get new tenant
         if new_tenant is None:
             raise ValueError("Tenant not found")
 

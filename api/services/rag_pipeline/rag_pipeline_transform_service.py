@@ -9,6 +9,7 @@ from flask_login import current_user
 
 from constants import DOCUMENT_EXTENSIONS
 from core.plugin.impl.plugin import PluginInstaller
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
 from factories import variable_factory
@@ -79,9 +80,9 @@ class RagPipelineTransformService:
         pipeline = self._create_pipeline(pipeline_yaml)
 
         # save chunk structure to dataset
-        if doc_form == "hierarchical_model":
+        if doc_form == IndexStructureType.PARENT_CHILD_INDEX:
             dataset.chunk_structure = "hierarchical_model"
-        elif doc_form == "text_model":
+        elif doc_form == IndexStructureType.PARAGRAPH_INDEX:
             dataset.chunk_structure = "text_model"
         else:
             raise ValueError("Unsupported doc form")
@@ -101,38 +102,38 @@ class RagPipelineTransformService:
 
     def _get_transform_yaml(self, doc_form: str, datasource_type: str, indexing_technique: str | None):
         pipeline_yaml = {}
-        if doc_form == "text_model":
+        if doc_form == IndexStructureType.PARAGRAPH_INDEX:
             match datasource_type:
                 case DataSourceType.UPLOAD_FILE:
-                    if indexing_technique == "high_quality":
+                    if indexing_technique == IndexTechniqueType.HIGH_QUALITY:
                         # get graph from transform.file-general-high-quality.yml
                         with open(f"{Path(__file__).parent}/transform/file-general-high-quality.yml") as f:
                             pipeline_yaml = yaml.safe_load(f)
-                    if indexing_technique == "economy":
+                    if indexing_technique == IndexTechniqueType.ECONOMY:
                         # get graph from transform.file-general-economy.yml
                         with open(f"{Path(__file__).parent}/transform/file-general-economy.yml") as f:
                             pipeline_yaml = yaml.safe_load(f)
                 case DataSourceType.NOTION_IMPORT:
-                    if indexing_technique == "high_quality":
+                    if indexing_technique == IndexTechniqueType.HIGH_QUALITY:
                         # get graph from transform.notion-general-high-quality.yml
                         with open(f"{Path(__file__).parent}/transform/notion-general-high-quality.yml") as f:
                             pipeline_yaml = yaml.safe_load(f)
-                    if indexing_technique == "economy":
+                    if indexing_technique == IndexTechniqueType.ECONOMY:
                         # get graph from transform.notion-general-economy.yml
                         with open(f"{Path(__file__).parent}/transform/notion-general-economy.yml") as f:
                             pipeline_yaml = yaml.safe_load(f)
                 case DataSourceType.WEBSITE_CRAWL:
-                    if indexing_technique == "high_quality":
+                    if indexing_technique == IndexTechniqueType.HIGH_QUALITY:
                         # get graph from transform.website-crawl-general-high-quality.yml
                         with open(f"{Path(__file__).parent}/transform/website-crawl-general-high-quality.yml") as f:
                             pipeline_yaml = yaml.safe_load(f)
-                    if indexing_technique == "economy":
+                    if indexing_technique == IndexTechniqueType.ECONOMY:
                         # get graph from transform.website-crawl-general-economy.yml
                         with open(f"{Path(__file__).parent}/transform/website-crawl-general-economy.yml") as f:
                             pipeline_yaml = yaml.safe_load(f)
                 case _:
                     raise ValueError("Unsupported datasource type")
-        elif doc_form == "hierarchical_model":
+        elif doc_form == IndexStructureType.PARENT_CHILD_INDEX:
             match datasource_type:
                 case DataSourceType.UPLOAD_FILE:
                     # get graph from transform.file-parentchild.yml
@@ -169,11 +170,11 @@ class RagPipelineTransformService:
     ):
         knowledge_configuration_dict = node.get("data", {})
 
-        if indexing_technique == "high_quality":
+        if indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             knowledge_configuration.embedding_model = dataset.embedding_model
             knowledge_configuration.embedding_model_provider = dataset.embedding_model_provider
         if retrieval_model:
-            if indexing_technique == "economy":
+            if indexing_technique == IndexTechniqueType.ECONOMY:
                 retrieval_model.search_method = RetrievalMethod.KEYWORD_SEARCH
             knowledge_configuration.retrieval_model = retrieval_model
         else:
