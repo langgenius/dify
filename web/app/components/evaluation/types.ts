@@ -1,5 +1,10 @@
 export type EvaluationResourceType = 'workflow' | 'pipeline' | 'snippet'
 
+export type EvaluationResourceProps = {
+  resourceType: EvaluationResourceType
+  resourceId: string
+}
+
 export type MetricKind = 'builtin' | 'custom-workflow'
 
 export type BatchTestTab = 'input-fields' | 'history'

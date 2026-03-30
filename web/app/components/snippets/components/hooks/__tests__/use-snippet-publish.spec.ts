@@ -54,7 +54,6 @@ describe('useSnippetPublish', () => {
     it('should publish the snippet, close the menu, and show success feedback', async () => {
       const { result } = renderHook(() => useSnippetPublish({
         snippetId: 'snippet-1',
-        section: 'orchestrate',
       }))
 
       await act(async () => {
@@ -73,7 +72,6 @@ describe('useSnippetPublish', () => {
 
       const { result } = renderHook(() => useSnippetPublish({
         snippetId: 'snippet-1',
-        section: 'orchestrate',
       }))
 
       await act(async () => {
@@ -89,7 +87,6 @@ describe('useSnippetPublish', () => {
     it('should trigger publish on ctrl+shift+p in the orchestrate section', async () => {
       renderHook(() => useSnippetPublish({
         snippetId: 'snippet-1',
-        section: 'orchestrate',
       }))
 
       const event = new KeyboardEvent('keydown')
@@ -110,7 +107,6 @@ describe('useSnippetPublish', () => {
     it('should ignore the shortcut outside the orchestrate section', () => {
       renderHook(() => useSnippetPublish({
         snippetId: 'snippet-1',
-        section: 'evaluation',
       }))
 
       const event = new KeyboardEvent('keydown')
