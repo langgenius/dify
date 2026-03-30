@@ -1,3 +1,4 @@
+import json
 import logging
 from collections.abc import Mapping
 from typing import Any, Union
@@ -30,7 +31,6 @@ from services.plugin.plugin_service import PluginService
 
 logger = logging.getLogger(__name__)
 
-_icon_adapter: TypeAdapter[dict[str, str]] = TypeAdapter(dict[str, str])
 _mcp_tools_adapter: TypeAdapter[list[MCPTool]] = TypeAdapter(list[MCPTool])
 
 
@@ -53,9 +53,9 @@ class ToolTransformService:
         elif provider_type in {ToolProviderType.API, ToolProviderType.WORKFLOW}:
             try:
                 if isinstance(icon, str):
-                    return _icon_adapter.validate_json(icon)
+                    return json.loads(icon)
                 return icon
-            except (ValidationError, ValueError):
+            except (json.JSONDecodeError, ValueError):
                 return {"background": "#252525", "content": "\ud83d\ude01"}
         elif provider_type == ToolProviderType.MCP:
             return icon
