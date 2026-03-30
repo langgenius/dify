@@ -1,142 +1,165 @@
+"""Testcontainers integration tests for plugin_permission_required decorator."""
+
 from __future__ import annotations
 
-import importlib
 from types import SimpleNamespace
+from unittest.mock import patch
+from uuid import uuid4
 
 import pytest
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
 from controllers.console.workspace import plugin_permission_required
-from models.account import TenantPluginPermission
+from models.account import Tenant, TenantPluginPermission
 
 
-class _SessionStub:
-    def __init__(self, permission):
-        self._permission = permission
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc, tb):
-        return False
-
-    def query(self, *_args, **_kwargs):
-        return self
-
-    def where(self, *_args, **_kwargs):
-        return self
-
-    def first(self):
-        return self._permission
+def _create_tenant(db_session: Session) -> Tenant:
+    tenant = Tenant(name="test-tenant", status="normal", plan="basic")
+    db_session.add(tenant)
+    db_session.commit()
+    db_session.expire_all()
+    return tenant
 
 
-def _workspace_module():
-    return importlib.import_module(plugin_permission_required.__module__)
-
-
-def _patch_session(monkeypatch: pytest.MonkeyPatch, permission):
-    module = _workspace_module()
-    monkeypatch.setattr(module, "Session", lambda *_args, **_kwargs: _SessionStub(permission))
-    monkeypatch.setattr(module, "db", SimpleNamespace(engine=object()))
-
-
-def test_plugin_permission_allows_without_permission(monkeypatch: pytest.MonkeyPatch) -> None:
-    user = SimpleNamespace(is_admin_or_owner=False)
-    module = _workspace_module()
-    monkeypatch.setattr(module, "current_account_with_tenant", lambda: (user, "t1"))
-    _patch_session(monkeypatch, None)
-
-    @plugin_permission_required()
-    def handler():
-        return "ok"
-
-    assert handler() == "ok"
-
-
-def test_plugin_permission_install_nobody_forbidden(monkeypatch: pytest.MonkeyPatch) -> None:
-    user = SimpleNamespace(is_admin_or_owner=True)
-    permission = SimpleNamespace(
-        install_permission=TenantPluginPermission.InstallPermission.NOBODY,
-        debug_permission=TenantPluginPermission.DebugPermission.EVERYONE,
+def _create_permission(
+    db_session: Session,
+    tenant_id: str,
+    install: TenantPluginPermission.InstallPermission = TenantPluginPermission.InstallPermission.EVERYONE,
+    debug: TenantPluginPermission.DebugPermission = TenantPluginPermission.DebugPermission.EVERYONE,
+) -> TenantPluginPermission:
+    perm = TenantPluginPermission(
+        tenant_id=tenant_id,
+        install_permission=install,
+        debug_permission=debug,
     )
-    module = _workspace_module()
-    monkeypatch.setattr(module, "current_account_with_tenant", lambda: (user, "t1"))
-    _patch_session(monkeypatch, permission)
-
-    @plugin_permission_required(install_required=True)
-    def handler():
-        return "ok"
-
-    with pytest.raises(Forbidden):
-        handler()
+    db_session.add(perm)
+    db_session.commit()
+    db_session.expire_all()
+    return perm
 
 
-def test_plugin_permission_install_admin_requires_admin(monkeypatch: pytest.MonkeyPatch) -> None:
-    user = SimpleNamespace(is_admin_or_owner=False)
-    permission = SimpleNamespace(
-        install_permission=TenantPluginPermission.InstallPermission.ADMINS,
-        debug_permission=TenantPluginPermission.DebugPermission.EVERYONE,
-    )
-    module = _workspace_module()
-    monkeypatch.setattr(module, "current_account_with_tenant", lambda: (user, "t1"))
-    _patch_session(monkeypatch, permission)
+class TestPluginPermissionRequired:
+    def test_allows_without_permission(self, db_session_with_containers: Session):
+        tenant = _create_tenant(db_session_with_containers)
+        user = SimpleNamespace(is_admin_or_owner=False)
 
-    @plugin_permission_required(install_required=True)
-    def handler():
-        return "ok"
+        with patch(
+            "controllers.console.workspace.current_account_with_tenant",
+            return_value=(user, tenant.id),
+        ):
 
-    with pytest.raises(Forbidden):
-        handler()
+            @plugin_permission_required()
+            def handler():
+                return "ok"
 
+            assert handler() == "ok"
 
-def test_plugin_permission_install_admin_allows_admin(monkeypatch: pytest.MonkeyPatch) -> None:
-    user = SimpleNamespace(is_admin_or_owner=True)
-    permission = SimpleNamespace(
-        install_permission=TenantPluginPermission.InstallPermission.ADMINS,
-        debug_permission=TenantPluginPermission.DebugPermission.EVERYONE,
-    )
-    module = _workspace_module()
-    monkeypatch.setattr(module, "current_account_with_tenant", lambda: (user, "t1"))
-    _patch_session(monkeypatch, permission)
+    def test_install_nobody_forbidden(self, db_session_with_containers: Session):
+        tenant = _create_tenant(db_session_with_containers)
+        _create_permission(
+            db_session_with_containers,
+            tenant.id,
+            install=TenantPluginPermission.InstallPermission.NOBODY,
+            debug=TenantPluginPermission.DebugPermission.EVERYONE,
+        )
+        user = SimpleNamespace(is_admin_or_owner=True)
 
-    @plugin_permission_required(install_required=True)
-    def handler():
-        return "ok"
+        with patch(
+            "controllers.console.workspace.current_account_with_tenant",
+            return_value=(user, tenant.id),
+        ):
 
-    assert handler() == "ok"
+            @plugin_permission_required(install_required=True)
+            def handler():
+                return "ok"
 
+            with pytest.raises(Forbidden):
+                handler()
 
-def test_plugin_permission_debug_nobody_forbidden(monkeypatch: pytest.MonkeyPatch) -> None:
-    user = SimpleNamespace(is_admin_or_owner=True)
-    permission = SimpleNamespace(
-        install_permission=TenantPluginPermission.InstallPermission.EVERYONE,
-        debug_permission=TenantPluginPermission.DebugPermission.NOBODY,
-    )
-    module = _workspace_module()
-    monkeypatch.setattr(module, "current_account_with_tenant", lambda: (user, "t1"))
-    _patch_session(monkeypatch, permission)
+    def test_install_admin_requires_admin(self, db_session_with_containers: Session):
+        tenant = _create_tenant(db_session_with_containers)
+        _create_permission(
+            db_session_with_containers,
+            tenant.id,
+            install=TenantPluginPermission.InstallPermission.ADMINS,
+            debug=TenantPluginPermission.DebugPermission.EVERYONE,
+        )
+        user = SimpleNamespace(is_admin_or_owner=False)
 
-    @plugin_permission_required(debug_required=True)
-    def handler():
-        return "ok"
+        with patch(
+            "controllers.console.workspace.current_account_with_tenant",
+            return_value=(user, tenant.id),
+        ):
 
-    with pytest.raises(Forbidden):
-        handler()
+            @plugin_permission_required(install_required=True)
+            def handler():
+                return "ok"
 
+            with pytest.raises(Forbidden):
+                handler()
 
-def test_plugin_permission_debug_admin_requires_admin(monkeypatch: pytest.MonkeyPatch) -> None:
-    user = SimpleNamespace(is_admin_or_owner=False)
-    permission = SimpleNamespace(
-        install_permission=TenantPluginPermission.InstallPermission.EVERYONE,
-        debug_permission=TenantPluginPermission.DebugPermission.ADMINS,
-    )
-    module = _workspace_module()
-    monkeypatch.setattr(module, "current_account_with_tenant", lambda: (user, "t1"))
-    _patch_session(monkeypatch, permission)
+    def test_install_admin_allows_admin(self, db_session_with_containers: Session):
+        tenant = _create_tenant(db_session_with_containers)
+        _create_permission(
+            db_session_with_containers,
+            tenant.id,
+            install=TenantPluginPermission.InstallPermission.ADMINS,
+            debug=TenantPluginPermission.DebugPermission.EVERYONE,
+        )
+        user = SimpleNamespace(is_admin_or_owner=True)
 
-    @plugin_permission_required(debug_required=True)
-    def handler():
-        return "ok"
+        with patch(
+            "controllers.console.workspace.current_account_with_tenant",
+            return_value=(user, tenant.id),
+        ):
 
-    with pytest.raises(Forbidden):
-        handler()
+            @plugin_permission_required(install_required=True)
+            def handler():
+                return "ok"
+
+            assert handler() == "ok"
+
+    def test_debug_nobody_forbidden(self, db_session_with_containers: Session):
+        tenant = _create_tenant(db_session_with_containers)
+        _create_permission(
+            db_session_with_containers,
+            tenant.id,
+            install=TenantPluginPermission.InstallPermission.EVERYONE,
+            debug=TenantPluginPermission.DebugPermission.NOBODY,
+        )
+        user = SimpleNamespace(is_admin_or_owner=True)
+
+        with patch(
+            "controllers.console.workspace.current_account_with_tenant",
+            return_value=(user, tenant.id),
+        ):
+
+            @plugin_permission_required(debug_required=True)
+            def handler():
+                return "ok"
+
+            with pytest.raises(Forbidden):
+                handler()
+
+    def test_debug_admin_requires_admin(self, db_session_with_containers: Session):
+        tenant = _create_tenant(db_session_with_containers)
+        _create_permission(
+            db_session_with_containers,
+            tenant.id,
+            install=TenantPluginPermission.InstallPermission.EVERYONE,
+            debug=TenantPluginPermission.DebugPermission.ADMINS,
+        )
+        user = SimpleNamespace(is_admin_or_owner=False)
+
+        with patch(
+            "controllers.console.workspace.current_account_with_tenant",
+            return_value=(user, tenant.id),
+        ):
+
+            @plugin_permission_required(debug_required=True)
+            def handler():
+                return "ok"
+
+            with pytest.raises(Forbidden):
+                handler()
