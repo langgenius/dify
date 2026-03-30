@@ -27,7 +27,7 @@ const Evaluation = ({
   return (
     <div className="flex h-full min-h-0 flex-col bg-background-default xl:flex-row">
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto flex min-h-full max-w-[748px] flex-col px-6 py-4">
+        <div className="flex min-h-full max-w-[748px] flex-col px-6 py-4">
           <SectionHeader
             title={t('title')}
             description={(

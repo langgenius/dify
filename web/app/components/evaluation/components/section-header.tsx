@@ -31,7 +31,7 @@ const SectionHeader = ({
   return (
     <div className={cn('flex flex-wrap items-start justify-between gap-3', className)}>
       <div>
-        <div className={cn('text-text-primary system-md-semibold', titleClassName)}>{title}</div>
+        <div className={cn('text-text-primary system-xl-semibold', titleClassName)}>{title}</div>
         {description && <div className={cn('mt-1 text-text-tertiary system-sm-regular', descriptionClassName)}>{description}</div>}
       </div>
       {action}
@@ -58,7 +58,7 @@ export const InlineSectionHeader = ({
                   className="flex h-4 w-4 items-center justify-center text-text-quaternary transition-colors hover:text-text-tertiary"
                   aria-label={title}
                 >
-                  <span aria-hidden="true" className="i-ri-information-line h-3.5 w-3.5" />
+                  <span aria-hidden="true" className="i-ri-question-line h-3.5 w-3.5" />
                 </button>
               )}
             />

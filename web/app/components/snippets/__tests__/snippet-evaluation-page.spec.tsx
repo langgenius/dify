@@ -1,8 +1,9 @@
-import type { Snippet } from '@/types/snippet'
+import type { SnippetDetailPayload } from '@/models/snippet'
 import { render, screen } from '@testing-library/react'
 import SnippetEvaluationPage from '../snippet-evaluation-page'
 
 const mockUseSnippetApiDetail = vi.fn()
+const mockGetSnippetDetailMock = vi.fn()
 const mockSetAppSidebarExpand = vi.fn()
 
 vi.mock('@/service/use-snippets', async (importOriginal) => {
@@ -31,6 +32,10 @@ vi.mock('@/next/navigation', () => ({
     replace: vi.fn(),
     push: vi.fn(),
   }),
+}))
+
+vi.mock('@/service/use-snippets.mock', () => ({
+  getSnippetDetailMock: (snippetId: string) => mockGetSnippetDetailMock(snippetId),
 }))
 
 vi.mock('@/hooks/use-breakpoints', () => ({
@@ -69,38 +74,49 @@ vi.mock('@/app/components/evaluation', () => ({
   default: ({ resourceId }: { resourceId: string }) => <div data-testid="evaluation">{resourceId}</div>,
 }))
 
-const mockSnippetApiDetail: Snippet = {
-  id: 'snippet-1',
-  name: 'Tone Rewriter',
-  description: 'A static snippet mock.',
-  type: 'node',
-  is_published: false,
-  version: 'draft',
-  use_count: 19,
-  icon_info: {
-    icon_type: 'emoji',
+const mockSnippetDetail: SnippetDetailPayload = {
+  snippet: {
+    id: 'snippet-1',
+    name: 'Tone Rewriter',
+    description: 'A static snippet mock.',
+    author: 'Evan',
+    updatedAt: '2024-03-24',
+    usage: '19',
     icon: '🪄',
-    icon_background: '#E0EAFF',
+    iconBackground: '#E0EAFF',
   },
-  input_fields: [],
-  created_at: 1_711_609_600,
-  updated_at: 1_711_616_800,
-  author: 'Evan',
+  graph: {
+    nodes: [],
+    edges: [],
+    viewport: {
+      x: 0,
+      y: 0,
+      zoom: 1,
+    },
+  },
+  inputFields: [],
+  uiMeta: {
+    inputFieldCount: 0,
+    checklistCount: 0,
+    autoSavedAt: '2024-03-24 12:00',
+  },
 }
 
 describe('SnippetEvaluationPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseSnippetApiDetail.mockReturnValue({
-      data: mockSnippetApiDetail,
+      data: undefined,
       isLoading: false,
     })
+    mockGetSnippetDetailMock.mockReturnValue(mockSnippetDetail)
   })
 
-  it('should fetch evaluation route data independently from snippet init', () => {
+  it('should render evaluation with mock snippet detail data', () => {
     render(<SnippetEvaluationPage snippetId="snippet-1" />)
 
-    expect(mockUseSnippetApiDetail).toHaveBeenCalledWith('snippet-1')
+    expect(mockGetSnippetDetailMock).toHaveBeenCalledWith('snippet-1')
+    expect(mockUseSnippetApiDetail).not.toHaveBeenCalled()
     expect(screen.getByTestId('app-sidebar')).toBeInTheDocument()
     expect(screen.getByTestId('evaluation')).toHaveTextContent('snippet-1')
   })
