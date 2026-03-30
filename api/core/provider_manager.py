@@ -324,7 +324,7 @@ class ProviderManager:
 
                 default_model = TenantDefaultModel(
                     tenant_id=tenant_id,
-                    model_type=model_type.to_origin_model_type(),
+                    model_type=model_type,
                     provider_name=available_model.provider.provider,
                     model_name=available_model.model,
                 )
@@ -405,7 +405,7 @@ class ProviderManager:
             # create default model
             default_model = TenantDefaultModel(
                 tenant_id=tenant_id,
-                model_type=model_type.to_origin_model_type(),
+                model_type=model_type,
                 provider_name=provider,
                 model_name=model,
             )
@@ -823,7 +823,7 @@ class ProviderManager:
             custom_model_configurations.append(
                 CustomModelConfiguration(
                     model=provider_model_record.model_name,
-                    model_type=ModelType.value_of(provider_model_record.model_type),
+                    model_type=provider_model_record.model_type,
                     credentials=provider_model_credentials,
                     current_credential_id=provider_model_record.credential_id,
                     current_credential_name=provider_model_record.credential_name,
@@ -1203,7 +1203,7 @@ class ProviderManager:
             model_settings.append(
                 ModelSettings(
                     model=provider_model_setting.model_name,
-                    model_type=ModelType.value_of(provider_model_setting.model_type),
+                    model_type=provider_model_setting.model_type,
                     enabled=provider_model_setting.enabled,
                     load_balancing_enabled=provider_model_setting.load_balancing_enabled,
                     load_balancing_configs=load_balancing_configs if len(load_balancing_configs) > 1 else [],

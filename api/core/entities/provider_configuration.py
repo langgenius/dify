@@ -970,7 +970,7 @@ class ProviderConfiguration(BaseModel):
                     tenant_id=self.tenant_id,
                     provider_name=self.provider.provider,
                     model_name=model,
-                    model_type=model_type.to_origin_model_type(),
+                    model_type=model_type,
                     encrypted_config=json.dumps(credentials),
                     credential_name=credential_name,
                 )
@@ -983,7 +983,7 @@ class ProviderConfiguration(BaseModel):
                         tenant_id=self.tenant_id,
                         provider_name=self.provider.provider,
                         model_name=model,
-                        model_type=model_type.to_origin_model_type(),
+                        model_type=model_type,
                         credential_id=credential.id,
                         is_valid=True,
                     )
@@ -1171,7 +1171,7 @@ class ProviderConfiguration(BaseModel):
                     tenant_id=self.tenant_id,
                     provider_name=self.provider.provider,
                     model_name=model,
-                    model_type=model_type.to_origin_model_type(),
+                    model_type=model_type,
                     is_valid=True,
                     credential_id=credential_id,
                 )
@@ -1286,7 +1286,7 @@ class ProviderConfiguration(BaseModel):
                 model_setting = ProviderModelSetting(
                     tenant_id=self.tenant_id,
                     provider_name=self.provider.provider,
-                    model_type=model_type.to_origin_model_type(),
+                    model_type=model_type,
                     model_name=model,
                     enabled=True,
                 )
@@ -1312,7 +1312,7 @@ class ProviderConfiguration(BaseModel):
                 model_setting = ProviderModelSetting(
                     tenant_id=self.tenant_id,
                     provider_name=self.provider.provider,
-                    model_type=model_type.to_origin_model_type(),
+                    model_type=model_type,
                     model_name=model,
                     enabled=False,
                 )
@@ -1364,7 +1364,7 @@ class ProviderConfiguration(BaseModel):
                 model_setting = ProviderModelSetting(
                     tenant_id=self.tenant_id,
                     provider_name=self.provider.provider,
-                    model_type=model_type.to_origin_model_type(),
+                    model_type=model_type,
                     model_name=model,
                     load_balancing_enabled=True,
                 )
@@ -1391,7 +1391,7 @@ class ProviderConfiguration(BaseModel):
                 model_setting = ProviderModelSetting(
                     tenant_id=self.tenant_id,
                     provider_name=self.provider.provider,
-                    model_type=model_type.to_origin_model_type(),
+                    model_type=model_type,
                     model_name=model,
                     load_balancing_enabled=False,
                 )
