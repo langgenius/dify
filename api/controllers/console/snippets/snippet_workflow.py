@@ -135,10 +135,6 @@ class SnippetDraftWorkflowApi(Resource):
         payload = SnippetDraftSyncPayload.model_validate(console_ns.payload or {})
 
         try:
-            environment_variables_list = payload.environment_variables or []
-            environment_variables = [
-                variable_factory.build_environment_variable_from_mapping(obj) for obj in environment_variables_list
-            ]
             conversation_variables_list = payload.conversation_variables or []
             conversation_variables = [
                 variable_factory.build_conversation_variable_from_mapping(obj) for obj in conversation_variables_list
@@ -149,12 +145,13 @@ class SnippetDraftWorkflowApi(Resource):
                 graph=payload.graph,
                 unique_hash=payload.hash,
                 account=current_user,
-                environment_variables=environment_variables,
                 conversation_variables=conversation_variables,
                 input_fields=payload.input_fields,
             )
         except WorkflowHashNotEqualError:
             raise DraftWorkflowNotSync()
+        except ValueError as e:
+            return {"message": str(e)}, 400
 
         return {
             "result": "success",

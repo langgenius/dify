@@ -71,7 +71,6 @@ class SnippetDraftSyncPayload(BaseModel):
 
     graph: dict[str, Any]
     hash: str | None = None
-    environment_variables: list[dict[str, Any]] | None = None
     conversation_variables: list[dict[str, Any]] | None = None
     input_fields: list[dict[str, Any]] | None = None
 

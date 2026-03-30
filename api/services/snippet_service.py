@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.workflow.node_factory import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from extensions.ext_database import db
-from graphon.enums import NodeType
+from graphon.enums import BuiltinNodeTypes, NodeType
 from graphon.variables.variables import VariableBase
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account
@@ -26,6 +26,15 @@ from services.errors.app import WorkflowHashNotEqualError
 
 logger = logging.getLogger(__name__)
 
+# Node types not allowed in snippet workflows (sync, publish, DSL import).
+SNIPPET_FORBIDDEN_NODE_TYPES: frozenset[str] = frozenset(
+    {
+        BuiltinNodeTypes.START,
+        BuiltinNodeTypes.HUMAN_INPUT,
+        BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL,
+    }
+)
+
 
 class SnippetService:
     """Service for managing customized snippets."""
@@ -38,6 +47,29 @@ class SnippetService:
             session_maker
         )
         self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
+
+    @staticmethod
+    def validate_snippet_graph_forbidden_nodes(graph: Mapping[str, Any]) -> None:
+        """Reject graphs that contain node types not allowed in snippets."""
+        nodes = graph.get("nodes") or []
+        disallowed: list[tuple[str, str]] = []
+        for node in nodes:
+            if not isinstance(node, dict):
+                continue
+            node_data = node.get("data") or {}
+            node_type = node_data.get("type")
+            if not isinstance(node_type, str):
+                continue
+            if node_type in SNIPPET_FORBIDDEN_NODE_TYPES:
+                node_id = node.get("id")
+                disallowed.append((str(node_id) if node_id is not None else "?", node_type))
+        if not disallowed:
+            return
+        detail = ", ".join(f"{nid}:{t}" for nid, t in disallowed)
+        raise ValueError(
+            "Snippet workflow cannot contain start, human-input, or knowledge-retrieval nodes. "
+            f"Found: {detail}"
+        )
 
     # --- CRUD Operations ---
 
@@ -276,23 +308,25 @@ class SnippetService:
         graph: dict,
         unique_hash: str | None,
         account: Account,
-        environment_variables: Sequence[VariableBase],
         conversation_variables: Sequence[VariableBase],
         input_fields: list[dict] | None = None,
     ) -> Workflow:
         """
         Sync draft workflow for snippet.
 
+        Snippet workflows do not persist environment variables (always empty).
+
         :param snippet: CustomizedSnippet instance
         :param graph: Workflow graph configuration
         :param unique_hash: Hash for conflict detection
         :param account: Account making the change
-        :param environment_variables: Environment variables
         :param conversation_variables: Conversation variables
         :param input_fields: Input fields for snippet
         :return: Synced Workflow
         :raises WorkflowHashNotEqualError: If hash mismatch
         """
+        SnippetService.validate_snippet_graph_forbidden_nodes(graph)
+
         workflow = self.get_draft_workflow(snippet=snippet)
 
         if workflow and workflow.unique_hash != unique_hash:
@@ -308,7 +342,7 @@ class SnippetService:
                 version="draft",
                 graph=json.dumps(graph),
                 created_by=account.id,
-                environment_variables=environment_variables,
+                environment_variables=[],
                 conversation_variables=conversation_variables,
             )
             db.session.add(workflow)
@@ -318,7 +352,7 @@ class SnippetService:
             workflow.graph = json.dumps(graph)
             workflow.updated_by = account.id
             workflow.updated_at = datetime.now(UTC).replace(tzinfo=None)
-            workflow.environment_variables = environment_variables
+            workflow.environment_variables = []
             workflow.conversation_variables = conversation_variables
 
         # Update snippet's input_fields if provided
@@ -356,6 +390,8 @@ class SnippetService:
         if not draft_workflow:
             raise ValueError("No valid workflow found.")
 
+        SnippetService.validate_snippet_graph_forbidden_nodes(draft_workflow.graph_dict)
+
         # Create new published workflow
         workflow = Workflow.new(
             tenant_id=snippet.tenant_id,
@@ -365,8 +401,9 @@ class SnippetService:
             graph=draft_workflow.graph,
             features=draft_workflow.features,
             created_by=account.id,
-            environment_variables=draft_workflow.environment_variables,
+            environment_variables=[],
             conversation_variables=draft_workflow.conversation_variables,
+            rag_pipeline_variables=draft_workflow.rag_pipeline_variables,
             marked_name="",
             marked_comment="",
         )

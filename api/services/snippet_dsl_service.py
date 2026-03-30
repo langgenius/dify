@@ -22,7 +22,7 @@ from models import Account
 from models.snippet import CustomizedSnippet, SnippetType
 from models.workflow import Workflow
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
-from services.snippet_service import SnippetService
+from services.snippet_service import SNIPPET_FORBIDDEN_NODE_TYPES, SnippetService
 
 logger = logging.getLogger(__name__)
 
@@ -31,13 +31,6 @@ CHECK_DEPENDENCIES_REDIS_KEY_PREFIX = "snippet_check_dependencies:"
 IMPORT_INFO_REDIS_EXPIRY = 10 * 60  # 10 minutes
 DSL_MAX_SIZE = 10 * 1024 * 1024  # 10MB
 CURRENT_DSL_VERSION = "0.1.0"
-
-# List of node types that are not allowed in snippets
-FORBIDDEN_NODE_TYPES = [
-    BuiltinNodeTypes.START,
-    BuiltinNodeTypes.HUMAN_INPUT,
-]
-
 
 class ImportMode(StrEnum):
     YAML_CONTENT = "yaml-content"
@@ -230,7 +223,7 @@ class SnippetDslService:
                     if not node_data:
                         continue
                     node_type = node_data.get("type", "")
-                    if node_type in FORBIDDEN_NODE_TYPES:
+                    if node_type in SNIPPET_FORBIDDEN_NODE_TYPES:
                         forbidden_nodes_found.append(node_type)
                 
                 if forbidden_nodes_found:
@@ -427,12 +420,8 @@ class SnippetDslService:
         # Create or update draft workflow
         if workflow_data:
             graph = workflow_data.get("graph", {})
-            environment_variables_list = workflow_data.get("environment_variables", [])
             conversation_variables_list = workflow_data.get("conversation_variables", [])
 
-            environment_variables = [
-                variable_factory.build_environment_variable_from_mapping(obj) for obj in environment_variables_list
-            ]
             conversation_variables = [
                 variable_factory.build_conversation_variable_from_mapping(obj) for obj in conversation_variables_list
             ]
@@ -447,7 +436,6 @@ class SnippetDslService:
                 graph=graph,
                 unique_hash=unique_hash,
                 account=account,
-                environment_variables=environment_variables,
                 conversation_variables=conversation_variables,
                 input_fields=input_fields,
             )
@@ -494,6 +482,8 @@ class SnippetDslService:
         """
         workflow_dict = workflow.to_dict(include_secret=include_secret)
         # Filter workspace related data from nodes
+        workflow_dict["environment_variables"] = []
+
         for node in workflow_dict.get("graph", {}).get("nodes", []):
             node_data = node.get("data", {})
             if not node_data:
