@@ -194,6 +194,7 @@ class TestDecodeJwtToken:
             mode=AppMode.CHAT.value,
             name="test-app",
             enable_site=enable_site,
+            enable_api=True,
         )
         db_session.add(app_model)
         db_session.commit()
