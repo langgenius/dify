@@ -1,51 +1,18 @@
 import type { ModelAndParameter } from '../configuration/debug/types'
-import type { CollaborationUpdate } from '@/app/components/workflow/collaboration/types/collaboration'
 import type { InputVar, Variable } from '@/app/components/workflow/types'
-import type { InstalledApp } from '@/models/explore'
 import type { PublishWorkflowParams } from '@/types/workflow'
-
-import { useKeyPress } from 'ahooks'
-import {
-  memo,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react'
+import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import EmbeddedModal from '@/app/components/app/overview/embedded'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import { trackEvent } from '@/app/components/base/amplitude'
 import Button from '@/app/components/base/button'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { toast } from '@/app/components/base/ui/toast'
-import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
-import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
-import { WorkflowContext } from '@/app/components/workflow/context'
-import { useGlobalPublicStore } from '@/context/global-public-context'
-import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
-import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
-import { AccessMode } from '@/models/access-control'
-import { useAppWhiteListSubjects, useGetUserCanAccessApp } from '@/service/access-control'
-import { fetchAppDetailDirect } from '@/service/apps'
-import { consoleClient } from '@/service/client'
-import { fetchInstalledAppList } from '@/service/explore'
-import { useInvalidateAppWorkflow } from '@/service/use-workflow'
-import { fetchPublishedWorkflow } from '@/service/workflow'
-import { AppModeEnum } from '@/types/app'
-import { basePath } from '@/utils/var'
-import { getKeyboardKeyCodeBySystem } from '../../workflow/utils'
 import AccessControl from '../app-access-control'
 import AppPublisherMenuContent from './menu-content'
-
-type InstalledAppsResponse = {
-  installed_apps?: InstalledApp[]
-}
+import { useAppPublisher } from './use-app-publisher'
 
 export type AppPublisherProps = {
   disabled?: boolean
@@ -95,219 +62,46 @@ const AppPublisher = ({
   hasHumanInputNode = false,
 }: AppPublisherProps) => {
   const { t } = useTranslation()
-
-  const [published, setPublished] = useState(false)
-  const [open, setOpen] = useState(false)
-  const [showAppAccessControl, setShowAppAccessControl] = useState(false)
-
-  const [embeddingModalOpen, setEmbeddingModalOpen] = useState(false)
-  const [publishingToMarketplace, setPublishingToMarketplace] = useState(false)
-
-  const workflowStore = useContext(WorkflowContext)
-  const appDetail = useAppStore(state => state.appDetail)
-  const setAppDetail = useAppStore(s => s.setAppDetail)
-  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
-  const { formatTimeFromNow } = useFormatTimeFromNow()
-  const { app_base_url: appBaseURL = '', access_token: accessToken = '' } = appDetail?.site ?? {}
-
-  const appMode = (appDetail?.mode !== AppModeEnum.COMPLETION && appDetail?.mode !== AppModeEnum.WORKFLOW) ? AppModeEnum.CHAT : appDetail.mode
-  const appURL = `${appBaseURL}${basePath}/${appMode}/${accessToken}`
-  const isChatApp = [AppModeEnum.CHAT, AppModeEnum.AGENT_CHAT, AppModeEnum.COMPLETION].includes(appDetail?.mode || AppModeEnum.CHAT)
-
-  const { data: userCanAccessApp, isLoading: isGettingUserCanAccessApp, refetch } = useGetUserCanAccessApp({ appId: appDetail?.id, enabled: false })
-  const { data: appAccessSubjects, isLoading: isGettingAppWhiteListSubjects } = useAppWhiteListSubjects(appDetail?.id, open && systemFeatures.webapp_auth.enabled && appDetail?.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS)
-  const invalidateAppWorkflow = useInvalidateAppWorkflow()
-  const openAsyncWindow = useAsyncWindowOpen()
-
-  const isAppAccessSet = useMemo(() => {
-    if (appDetail && appAccessSubjects) {
-      return !(appDetail.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS && appAccessSubjects.groups?.length === 0 && appAccessSubjects.members?.length === 0)
-    }
-    return true
-  }, [appAccessSubjects, appDetail])
-
-  const noAccessPermission = useMemo(() => Boolean(
-    systemFeatures.webapp_auth.enabled
-    && appDetail
-    && appDetail.access_mode !== AccessMode.EXTERNAL_MEMBERS
-    && !userCanAccessApp?.result,
-  ), [systemFeatures, appDetail, userCanAccessApp])
-  const disabledFunctionButton = useMemo(() => (!publishedAt || missingStartNode || noAccessPermission), [publishedAt, missingStartNode, noAccessPermission])
-
-  const disabledFunctionTooltip = useMemo(() => {
-    if (!publishedAt)
-      return t('notPublishedYet', { ns: 'app' })
-    if (missingStartNode)
-      return t('noUserInputNode', { ns: 'app' })
-    if (noAccessPermission)
-      return t('noAccessPermission', { ns: 'app' })
-  }, [missingStartNode, noAccessPermission, publishedAt, t])
-
-  useEffect(() => {
-    if (systemFeatures.webapp_auth.enabled && open && appDetail)
-      refetch()
-  }, [open, appDetail, refetch, systemFeatures])
-
-  const handlePublish = useCallback(async (params?: ModelAndParameter | PublishWorkflowParams) => {
-    try {
-      await onPublish?.(params)
-      setPublished(true)
-
-      const appId = appDetail?.id
-      const socket = appId ? webSocketClient.getSocket(appId) : null
-      if (appId)
-        invalidateAppWorkflow(appId)
-      else
-        console.warn('[app-publisher] missing appId, skip workflow invalidate and socket emit')
-      if (socket) {
-        const timestamp = Date.now()
-        socket.emit('collaboration_event', {
-          type: 'app_publish_update',
-          data: {
-            action: 'published',
-            timestamp,
-          },
-          timestamp,
-        })
-      }
-      else if (appId) {
-        console.warn('[app-publisher] socket not ready, skip collaboration_event emit', { appId })
-      }
-
-      trackEvent('app_published_time', { action_mode: 'app', app_id: appDetail?.id, app_name: appDetail?.name })
-    }
-    catch (error) {
-      console.warn('[app-publisher] publish failed', error)
-      setPublished(false)
-    }
-  }, [appDetail, onPublish, invalidateAppWorkflow])
-
-  const handleRestore = useCallback(async () => {
-    try {
-      await onRestore?.()
-      setOpen(false)
-    }
-    catch { }
-  }, [onRestore])
-
-  const handleTrigger = useCallback(() => {
-    const state = !open
-
-    if (disabled) {
-      setOpen(false)
-      return
-    }
-
-    onToggle?.(state)
-    setOpen(state)
-
-    if (state)
-      setPublished(false)
-  }, [disabled, onToggle, open])
-
-  const handleOpenInExplore = useCallback(async () => {
-    await openAsyncWindow(async () => {
-      if (!appDetail?.id)
-        throw new Error('App not found')
-      const response = (await fetchInstalledAppList(appDetail?.id)) as InstalledAppsResponse
-      const installedApps = response?.installed_apps
-      if (installedApps?.length)
-        return `${basePath}/explore/installed/${installedApps[0].id}`
-      throw new Error('No app found in Explore')
-    }, {
-      onError: (err) => {
-        toast.error(`${err.message || err}`)
-      },
-    })
-  }, [appDetail?.id, openAsyncWindow])
-
-  const handleAccessControlUpdate = useCallback(async () => {
-    if (!appDetail)
-      return
-    try {
-      const res = await fetchAppDetailDirect({ url: '/apps', id: appDetail.id })
-      setAppDetail(res)
-    }
-    finally {
-      setShowAppAccessControl(false)
-    }
-  }, [appDetail, setAppDetail])
-
-  const handlePublishToMarketplace = useCallback(async () => {
-    if (!appDetail?.id || publishingToMarketplace)
-      return
-    setPublishingToMarketplace(true)
-    try {
-      const result = await consoleClient.apps.publishToCreatorsPlatform({
-        params: { appId: appDetail.id },
-      })
-      window.open(result.redirect_url, '_blank')
-    }
-    catch (error: any) {
-      toast.error(error.message || t('common.publishToMarketplaceFailed', { ns: 'workflow' }))
-    }
-    finally {
-      setPublishingToMarketplace(false)
-    }
-  }, [appDetail?.id, publishingToMarketplace, t])
-
-  useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.shift.p`, (e) => {
-    e.preventDefault()
-    if (publishDisabled || published || publishLoading)
-      return
-    handlePublish()
-  }, { exactMatch: true, useCapture: true })
-
-  useEffect(() => {
-    const appId = appDetail?.id
-    if (!appId)
-      return
-
-    const unsubscribe = collaborationManager.onAppPublishUpdate((update: CollaborationUpdate) => {
-      const action = typeof update.data.action === 'string' ? update.data.action : undefined
-      if (action === 'published') {
-        invalidateAppWorkflow(appId)
-        fetchPublishedWorkflow(`/apps/${appId}/workflows/publish`)
-          .then((publishedWorkflow) => {
-            if (publishedWorkflow?.created_at)
-              workflowStore?.getState().setPublishedAt(publishedWorkflow.created_at)
-          })
-          .catch((error) => {
-            console.warn('[app-publisher] refresh published workflow failed', error)
-          })
-      }
-    })
-
-    return unsubscribe
-  }, [appDetail?.id, invalidateAppWorkflow, workflowStore])
-
-  const hasPublishedVersion = !!publishedAt
-  const workflowToolDisabled = !hasPublishedVersion || !workflowToolAvailable
-  const workflowToolMessage = workflowToolDisabled ? t('common.workflowAsToolDisabledHint', { ns: 'workflow' }) : undefined
-  const upgradeHighlightStyle = useMemo(() => ({
-    background: 'linear-gradient(97deg, var(--components-input-border-active-prompt-1, rgba(11, 165, 236, 0.95)) -3.64%, var(--components-input-border-active-prompt-2, rgba(21, 90, 239, 0.95)) 45.14%)',
-    WebkitBackgroundClip: 'text',
-    backgroundClip: 'text',
-    WebkitTextFillColor: 'transparent',
-  }), [])
+  const state = useAppPublisher({
+    disabled,
+    publishDisabled,
+    publishedAt,
+    draftUpdatedAt,
+    debugWithMultipleModel,
+    multipleModelConfigs,
+    onPublish,
+    onRestore,
+    onToggle,
+    crossAxisOffset,
+    toolPublished,
+    inputs,
+    outputs,
+    onRefreshData,
+    workflowToolAvailable,
+    missingStartNode,
+    hasTriggerNode,
+    startNodeLimitExceeded,
+    publishLoading,
+    hasHumanInputNode,
+  })
 
   return (
     <>
       <PortalToFollowElem
-        open={open}
-        onOpenChange={setOpen}
+        open={state.open}
+        onOpenChange={state.setOpen}
         placement="bottom-end"
         offset={{
           mainAxis: 4,
-          crossAxis: crossAxisOffset,
+          crossAxis: state.crossAxisOffset,
         }}
       >
-        <PortalToFollowElemTrigger onClick={handleTrigger}>
+        <PortalToFollowElemTrigger onClick={state.handleTrigger}>
           <Button
             variant="primary"
             className="py-2 pl-3 pr-2"
-            disabled={disabled || publishLoading}
-            loading={publishLoading}
+            disabled={state.disabled || state.publishLoading}
+            loading={state.publishLoading}
           >
             {t('common.publish', { ns: 'workflow' })}
             <span className="i-ri-arrow-down-s-line h-4 w-4 text-components-button-primary-text" />
@@ -315,55 +109,58 @@ const AppPublisher = ({
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className="z-[11]">
           <AppPublisherMenuContent
-            publishedAt={publishedAt}
-            draftUpdatedAt={draftUpdatedAt}
-            debugWithMultipleModel={debugWithMultipleModel}
-            multipleModelConfigs={multipleModelConfigs}
-            publishDisabled={publishDisabled}
-            publishLoading={publishLoading}
-            toolPublished={toolPublished}
-            inputs={inputs}
-            outputs={outputs}
-            onRefreshData={onRefreshData}
-            workflowToolAvailable={workflowToolAvailable}
-            hasTriggerNode={hasTriggerNode}
-            missingStartNode={missingStartNode}
-            startNodeLimitExceeded={startNodeLimitExceeded}
-            hasHumanInputNode={hasHumanInputNode}
-            appDetail={appDetail}
-            appURL={appURL}
-            disabledFunctionButton={disabledFunctionButton}
-            disabledFunctionTooltip={disabledFunctionTooltip}
-            formatTimeFromNow={formatTimeFromNow}
-            isAppAccessSet={isAppAccessSet}
-            isChatApp={isChatApp}
-            isGettingAppWhiteListSubjects={isGettingAppWhiteListSubjects}
-            isGettingUserCanAccessApp={isGettingUserCanAccessApp}
-            onOpenEmbedding={() => {
-              setEmbeddingModalOpen(true)
-              handleTrigger()
-            }}
-            onOpenInExplore={handleOpenInExplore}
-            onPublish={handlePublish}
-            onPublishToMarketplace={handlePublishToMarketplace}
-            onRestore={handleRestore}
-            onShowAppAccessControl={() => setShowAppAccessControl(true)}
-            published={published}
-            publishingToMarketplace={publishingToMarketplace}
-            systemFeatures={systemFeatures}
-            upgradeHighlightStyle={upgradeHighlightStyle}
-            workflowToolDisabled={workflowToolDisabled}
-            workflowToolMessage={workflowToolMessage}
+            publishedAt={state.publishedAt}
+            draftUpdatedAt={state.draftUpdatedAt}
+            debugWithMultipleModel={state.debugWithMultipleModel}
+            multipleModelConfigs={state.multipleModelConfigs}
+            publishDisabled={state.publishDisabled}
+            publishLoading={state.publishLoading}
+            toolPublished={state.toolPublished}
+            inputs={state.inputs}
+            outputs={state.outputs}
+            onRefreshData={state.onRefreshData}
+            workflowToolAvailable={state.workflowToolAvailable}
+            hasTriggerNode={state.hasTriggerNode}
+            missingStartNode={state.missingStartNode}
+            startNodeLimitExceeded={state.startNodeLimitExceeded}
+            hasHumanInputNode={state.hasHumanInputNode}
+            appDetail={state.appDetail}
+            appURL={state.appURL}
+            disabledFunctionButton={state.disabledFunctionButton}
+            disabledFunctionTooltip={state.disabledFunctionTooltip}
+            formatTimeFromNow={state.formatTimeFromNow}
+            isAppAccessSet={state.isAppAccessSet}
+            isChatApp={state.isChatApp}
+            isGettingAppWhiteListSubjects={state.isGettingAppWhiteListSubjects}
+            isGettingUserCanAccessApp={state.isGettingUserCanAccessApp}
+            onOpenEmbedding={state.handleOpenEmbedding}
+            onOpenInExplore={state.handleOpenInExplore}
+            onPublish={state.handlePublish}
+            onPublishToMarketplace={state.handlePublishToMarketplace}
+            onRestore={state.handleRestore}
+            onShowAppAccessControl={state.showAppAccessControlModal}
+            published={state.published}
+            publishingToMarketplace={state.publishingToMarketplace}
+            systemFeatures={state.systemFeatures}
+            upgradeHighlightStyle={state.upgradeHighlightStyle}
+            workflowToolDisabled={state.workflowToolDisabled}
+            workflowToolMessage={state.workflowToolMessage}
           />
         </PortalToFollowElemContent>
         <EmbeddedModal
-          siteInfo={appDetail?.site}
-          isShow={embeddingModalOpen}
-          onClose={() => setEmbeddingModalOpen(false)}
-          appBaseUrl={appBaseURL}
-          accessToken={accessToken}
+          siteInfo={state.appDetail?.site}
+          isShow={state.embeddingModalOpen}
+          onClose={state.closeEmbeddingModal}
+          appBaseUrl={state.appBaseURL}
+          accessToken={state.accessToken}
         />
-        {showAppAccessControl && <AccessControl app={appDetail!} onConfirm={handleAccessControlUpdate} onClose={() => { setShowAppAccessControl(false) }} />}
+        {state.showAppAccessControl && state.appDetail && (
+          <AccessControl
+            app={state.appDetail}
+            onConfirm={state.handleAccessControlUpdate}
+            onClose={state.closeAppAccessControl}
+          />
+        )}
       </PortalToFollowElem>
     </>
   )

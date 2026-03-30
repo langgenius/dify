@@ -1,31 +1,17 @@
 'use client'
 import type { FC } from 'react'
-import type { FeedbackType, IChatItem } from '@/app/components/base/chat/chat/type'
+import type { FeedbackType } from '@/app/components/base/chat/chat/type'
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
 import type { SiteInfo } from '@/models/share'
-import {
-  RiPlayList2Line,
-  RiSparklingFill,
-} from '@remixicon/react'
-import { useBoolean } from 'ahooks'
-import copy from 'copy-to-clipboard'
+import type { AppSourceType } from '@/service/share'
 import * as React from 'react'
-import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import { useChatContext } from '@/app/components/base/chat/chat/context'
 import Loading from '@/app/components/base/loading'
 import { Markdown } from '@/app/components/base/markdown'
-import { toast } from '@/app/components/base/ui/toast'
-import { useParams } from '@/next/navigation'
-import { fetchTextGenerationMessage } from '@/service/debug'
-import { AppSourceType, fetchMoreLikeThis, submitHumanInputForm, updateFeedback } from '@/service/share'
-import { submitHumanInputForm as submitHumanInputFormService } from '@/service/workflow'
 import { cn } from '@/utils/classnames'
 import GenerationItemActionBar from './action-bar'
+import { useGenerationItem } from './use-generation-item'
 import WorkflowContent from './workflow-content'
-
-const MAX_DEPTH = 3
 
 export type IGenerationItemProps = {
   isWorkflow?: boolean
@@ -90,142 +76,28 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   inSidePanel,
 }) => {
   const { t } = useTranslation()
-  const params = useParams()
-  const isTop = depth === 1
-  const isTryApp = appSourceType === AppSourceType.tryApp
-  const [completionRes, setCompletionRes] = useState('')
-  const [childMessageId, setChildMessageId] = useState<string | null>(null)
-  const [childFeedback, setChildFeedback] = useState<FeedbackType>({
-    rating: null,
-  })
-  const {
-    config,
-  } = useChatContext()
-
-  const setCurrentLogItem = useAppStore(s => s.setCurrentLogItem)
-  const setShowPromptLogModal = useAppStore(s => s.setShowPromptLogModal)
-
-  const handleFeedback = async (childFeedback: FeedbackType) => {
-    await updateFeedback({ url: `/messages/${childMessageId}/feedbacks`, body: { rating: childFeedback.rating } }, appSourceType, installedAppId)
-    setChildFeedback(childFeedback)
-  }
-
-  const [isQuerying, { setTrue: startQuerying, setFalse: stopQuerying }] = useBoolean(false)
-
-  const childProps: IGenerationItemProps = {
-    isInWebApp,
-    content: completionRes,
-    messageId: childMessageId,
-    depth: depth + 1,
-    moreLikeThis: true,
-    onFeedback: handleFeedback,
-    isLoading: isQuerying,
-    feedback: childFeedback,
-    onSave,
-    isShowTextToSpeech,
-    isMobile,
+  const state = useGenerationItem({
     appSourceType,
-    installedAppId,
+    content,
     controlClearMoreLikeThis,
+    depth,
+    installedAppId,
+    isInWebApp,
+    isLoading,
+    isMobile,
+    isShowTextToSpeech,
     isWorkflow,
+    messageId,
+    onRetry,
+    onSave,
     siteInfo,
     taskId,
-    isError: false,
-    onRetry,
-  }
-
-  const handleMoreLikeThis = async () => {
-    if (isQuerying || !messageId) {
-      toast.warning(t('errorMessage.waitForResponse', { ns: 'appDebug' }))
-      return
-    }
-    startQuerying()
-    const res: any = await fetchMoreLikeThis(messageId as string, appSourceType, installedAppId)
-    setCompletionRes(res.answer)
-    setChildFeedback({
-      rating: null,
-    })
-    setChildMessageId(res.id)
-    stopQuerying()
-  }
-
-  useEffect(() => {
-    if (controlClearMoreLikeThis) {
-      setChildMessageId(null)
-      setCompletionRes('')
-    }
-  }, [controlClearMoreLikeThis])
-
-  // regeneration clear child
-  useEffect(() => {
-    if (isLoading)
-      setChildMessageId(null)
-  }, [isLoading])
-
-  const handleOpenLogModal = async () => {
-    const data = await fetchTextGenerationMessage({
-      appId: params.appId as string,
-      messageId: messageId!,
-    })
-    const assistantFiles = data.message_files?.filter(file => file.belongs_to === 'assistant') || []
-    const normalizedMessage = typeof data.message === 'string'
-      ? { role: 'user', text: data.message }
-      : data.message
-    const baseLog = Array.isArray(normalizedMessage) ? normalizedMessage : [normalizedMessage]
-    const log = Array.isArray(normalizedMessage)
-      ? [
-          ...normalizedMessage,
-          ...(normalizedMessage.length > 0 && normalizedMessage[normalizedMessage.length - 1].role !== 'assistant'
-            ? [
-                {
-                  role: 'assistant',
-                  text: data.answer || '',
-                  files: assistantFiles,
-                },
-              ]
-            : []),
-        ]
-      : baseLog
-    const logItem: IChatItem = {
-      id: data.id || messageId || '',
-      content: data.answer || '',
-      isAnswer: true,
-      log,
-      message_files: data.message_files,
-    }
-    setCurrentLogItem(logItem)
-    setShowPromptLogModal(true)
-  }
-
-  const [currentTab, setCurrentTab] = useState<string>('DETAIL')
-  const switchTab = async (tab: string) => {
-    setCurrentTab(tab)
-  }
-  useEffect(() => {
-    if (workflowProcessData?.resultText || !!workflowProcessData?.files?.length || (workflowProcessData?.humanInputFormDataList && workflowProcessData?.humanInputFormDataList.length > 0) || (workflowProcessData?.humanInputFilledFormDataList && workflowProcessData?.humanInputFilledFormDataList.length > 0))
-      switchTab('RESULT')
-    else
-      switchTab('DETAIL')
-  }, [workflowProcessData?.files?.length, workflowProcessData?.resultText, workflowProcessData?.humanInputFormDataList, workflowProcessData?.humanInputFilledFormDataList])
-  const handleSubmitHumanInputForm = useCallback(async (formToken: string, formData: { inputs: Record<string, string>, action: string }) => {
-    if (appSourceType === AppSourceType.installedApp)
-      await submitHumanInputFormService(formToken, formData)
-    else
-      await submitHumanInputForm(formToken, formData)
-  }, [appSourceType])
-
-  const handleCopy = useCallback(() => {
-    const copyContent = isWorkflow ? workflowProcessData?.resultText : content
-    if (typeof copyContent === 'string')
-      copy(copyContent)
-    else
-      copy(JSON.stringify(copyContent))
-    toast.success(t('actionMsg.copySuccessfully', { ns: 'common' }))
-  }, [content, isWorkflow, t, workflowProcessData?.resultText])
+    workflowProcessData,
+  })
 
   return (
     <>
-      <div className={cn('relative', !isTop && 'mt-3', className)}>
+      <div className={cn('relative', !state.isTop && 'mt-3', className)}>
         {isLoading && (
           <div className={cn('flex h-10 items-center', !inSidePanel && 'rounded-2xl border-t border-divider-subtle bg-chat-bubble-bg')}><Loading type="area" /></div>
         )}
@@ -238,26 +110,24 @@ const GenerationItem: FC<IGenerationItemProps> = ({
             )}
             >
               {workflowProcessData && (
-                <>
-                  <WorkflowContent
-                    content={content}
-                    currentTab={currentTab}
-                    hideProcessDetail={hideProcessDetail}
-                    isError={isError}
-                    onSubmitHumanInputForm={handleSubmitHumanInputForm}
-                    onSwitchTab={switchTab}
-                    siteInfo={siteInfo}
-                    taskId={taskId}
-                    workflowProcessData={workflowProcessData}
-                  />
-                </>
+                <WorkflowContent
+                  content={content}
+                  currentTab={state.currentTab}
+                  hideProcessDetail={hideProcessDetail}
+                  isError={isError}
+                  onSubmitHumanInputForm={state.handleSubmitHumanInputForm}
+                  onSwitchTab={state.setCurrentTab}
+                  siteInfo={siteInfo}
+                  taskId={taskId}
+                  workflowProcessData={workflowProcessData}
+                />
               )}
               {!workflowProcessData && taskId && (
                 <div className={cn('sticky left-0 top-0 flex w-full items-center rounded-t-2xl bg-components-actionbar-bg p-4 pb-3 text-text-accent-secondary system-2xs-medium-uppercase', isError && 'text-text-destructive')}>
-                  <RiPlayList2Line className="mr-1 h-3 w-3" />
+                  <span className="i-ri-play-list-2-line mr-1 h-3 w-3" aria-hidden="true" />
                   <span>{t('generation.execution', { ns: 'share' })}</span>
                   <span className="px-1">·</span>
-                  <span>{`${taskId}${depth > 1 ? `-${depth - 1}` : ''}`}</span>
+                  <span>{state.taskLabel}</span>
                 </div>
               )}
               {isError && (
@@ -272,7 +142,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
             {/* meta data */}
             <div className={cn(
               'relative mt-1 h-4 px-4 text-text-quaternary system-xs-regular',
-              isMobile && ((childMessageId || isQuerying) && depth < MAX_DEPTH) && 'pl-10',
+              isMobile && state.showChildItem && 'pl-10',
             )}
             >
               {!isWorkflow && (
@@ -286,31 +156,31 @@ const GenerationItem: FC<IGenerationItemProps> = ({
               <div className="absolute bottom-1 right-2 flex items-center">
                 <GenerationItemActionBar
                   appSourceType={appSourceType}
-                  currentTab={currentTab}
+                  currentTab={state.currentTab}
                   depth={depth}
                   feedback={feedback}
                   isError={isError}
                   isInWebApp={isInWebApp}
                   isResponding={isResponding}
                   isShowTextToSpeech={isShowTextToSpeech}
-                  isTryApp={isTryApp}
+                  isTryApp={state.isTryApp}
                   isWorkflow={isWorkflow}
                   messageId={messageId}
                   moreLikeThis={moreLikeThis}
-                  onCopy={handleCopy}
+                  onCopy={state.handleCopy}
                   onFeedback={onFeedback}
-                  onMoreLikeThis={handleMoreLikeThis}
-                  onOpenLogModal={handleOpenLogModal}
+                  onMoreLikeThis={state.handleMoreLikeThis}
+                  onOpenLogModal={state.handleOpenLogModal}
                   onRetry={onRetry}
                   onSave={onSave}
                   supportFeedback={supportFeedback}
-                  voice={config?.text_to_speech?.voice}
+                  voice={state.config?.text_to_speech?.voice}
                   workflowProcessData={workflowProcessData}
                 />
               </div>
             </div>
             {/* more like this elements */}
-            {!isTop && (
+            {!state.isTop && (
               <div className={cn(
                 'absolute top-[-32px] flex h-[33px] w-4 justify-center',
                 isMobile ? 'left-[17px]' : 'left-[50%] translate-x-[-50%]',
@@ -322,15 +192,15 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                   isMobile ? 'top-[3.5px]' : 'top-2',
                 )}
                 >
-                  <RiSparklingFill className="h-3 w-3 text-text-primary-on-surface" />
+                  <span className="i-ri-sparkling-fill h-3 w-3 text-text-primary-on-surface" aria-hidden="true" />
                 </div>
               </div>
             )}
           </>
         )}
       </div>
-      {((childMessageId || isQuerying) && depth < MAX_DEPTH) && (
-        <GenerationItem {...childProps} />
+      {state.showChildItem && (
+        <GenerationItem {...state.childProps} />
       )}
     </>
   )
