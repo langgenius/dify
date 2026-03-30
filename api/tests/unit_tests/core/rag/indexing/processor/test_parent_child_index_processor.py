@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 
 from core.entities.knowledge_entities import PreviewDetail
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.index_processor.processor.parent_child_index_processor import ParentChildIndexProcessor
 from core.rag.models.document import AttachmentDocument, ChildDocument, Document
 from services.entities.knowledge_entities.knowledge_entities import ParentMode
@@ -19,7 +20,7 @@ class TestParentChildIndexProcessor:
         dataset = Mock()
         dataset.id = "dataset-1"
         dataset.tenant_id = "tenant-1"
-        dataset.indexing_technique = "high_quality"
+        dataset.indexing_technique = IndexTechniqueType.HIGH_QUALITY
         dataset.is_multimodal = True
         return dataset
 
@@ -307,7 +308,8 @@ class TestParentChildIndexProcessor:
             "core.rag.index_processor.processor.parent_child_index_processor.RetrievalService.retrieve"
         ) as mock_retrieve:
             mock_retrieve.return_value = [ok_result, low_result]
-            docs = processor.retrieve("semantic_search", "query", dataset, 3, 0.5, {})
+            reranking_model = {"reranking_provider_name": "", "reranking_model_name": ""}
+            docs = processor.retrieve("semantic_search", "query", dataset, 3, 0.5, reranking_model)
 
         assert len(docs) == 1
         assert docs[0].page_content == "keep"

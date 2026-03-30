@@ -8,6 +8,7 @@ from controllers.console.apikey import (
     BaseApiKeyResource,
     _get_resource,
 )
+from models.enums import ApiTokenType
 
 
 @pytest.fixture
@@ -45,14 +46,14 @@ def bypass_permissions():
 
 
 class DummyApiKeyListResource(BaseApiKeyListResource):
-    resource_type = "app"
+    resource_type = ApiTokenType.APP
     resource_model = MagicMock()
     resource_id_field = "app_id"
     token_prefix = "app-"
 
 
 class DummyApiKeyResource(BaseApiKeyResource):
-    resource_type = "app"
+    resource_type = ApiTokenType.APP
     resource_model = MagicMock()
     resource_id_field = "app_id"
 
@@ -114,7 +115,7 @@ class TestBaseApiKeyResource:
 
     def test_delete_key_not_found(self, tenant_context_admin, db_mock):
         resource = DummyApiKeyResource()
-        db_mock.session.query.return_value.where.return_value.first.return_value = None
+        db_mock.session.scalar.return_value = None
 
         with patch("controllers.console.apikey._get_resource"):
             with pytest.raises(Exception) as exc_info:
@@ -125,7 +126,7 @@ class TestBaseApiKeyResource:
 
     def test_delete_success(self, tenant_context_admin, db_mock):
         resource = DummyApiKeyResource()
-        db_mock.session.query.return_value.where.return_value.first.return_value = MagicMock()
+        db_mock.session.scalar.return_value = MagicMock()
 
         with (
             patch("controllers.console.apikey._get_resource"),

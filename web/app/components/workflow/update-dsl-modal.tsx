@@ -1,16 +1,11 @@
 'use client'
 
 import type { MouseEventHandler } from 'react'
-import type {
-  CommonNodeType,
-  Node,
-} from './types'
 import {
   RiAlertFill,
   RiCloseLine,
   RiFileDownloadLine,
 } from '@remixicon/react'
-import { load as yamlLoad } from 'js-yaml'
 import {
   memo,
   useCallback,
@@ -18,13 +13,11 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import Uploader from '@/app/components/app/create-from-dsl-modal/uploader'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
-import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
-import { ToastContext } from '@/app/components/base/toast/context'
+import { toast } from '@/app/components/base/ui/toast'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import {
@@ -36,12 +29,13 @@ import {
   importDSLConfirm,
 } from '@/service/apps'
 import { fetchWorkflowDraft } from '@/service/workflow'
-import { AppModeEnum } from '@/types/app'
 import { WORKFLOW_DATA_UPDATE } from './constants'
 import {
-  BlockEnum,
-  SupportUploadFileTypes,
-} from './types'
+  getImportNotificationPayload,
+  isImportCompleted,
+  normalizeWorkflowFeatures,
+  validateDSLContent,
+} from './update-dsl-modal.helpers'
 import {
   initialEdges,
   initialNodes,
@@ -59,7 +53,6 @@ const UpdateDSLModal = ({
   onImport,
 }: UpdateDSLModalProps) => {
   const { t } = useTranslation()
-  const { notify } = useContext(ToastContext)
   const appDetail = useAppStore(s => s.appDetail)
   const [currentFile, setDSLFile] = useState<File>()
   const [fileContent, setFileContent] = useState<string>()
@@ -98,38 +91,13 @@ const UpdateDSLModal = ({
     } = await fetchWorkflowDraft(`/apps/${app_id}/workflows/draft`)
 
     const { nodes, edges, viewport } = graph
-    const newFeatures = {
-      file: {
-        image: {
-          enabled: !!features.file_upload?.image?.enabled,
-          number_limits: features.file_upload?.image?.number_limits || 3,
-          transfer_methods: features.file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
-        },
-        enabled: !!(features.file_upload?.enabled || features.file_upload?.image?.enabled),
-        allowed_file_types: features.file_upload?.allowed_file_types || [SupportUploadFileTypes.image],
-        allowed_file_extensions: features.file_upload?.allowed_file_extensions || FILE_EXTS[SupportUploadFileTypes.image].map(ext => `.${ext}`),
-        allowed_file_upload_methods: features.file_upload?.allowed_file_upload_methods || features.file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
-        number_limits: features.file_upload?.number_limits || features.file_upload?.image?.number_limits || 3,
-      },
-      opening: {
-        enabled: !!features.opening_statement,
-        opening_statement: features.opening_statement,
-        suggested_questions: features.suggested_questions,
-      },
-      suggested: features.suggested_questions_after_answer || { enabled: false },
-      speech2text: features.speech_to_text || { enabled: false },
-      text2speech: features.text_to_speech || { enabled: false },
-      citation: features.retriever_resource || { enabled: false },
-      moderation: features.sensitive_word_avoidance || { enabled: false },
-    }
-
     eventEmitter?.emit({
       type: WORKFLOW_DATA_UPDATE,
       payload: {
         nodes: initialNodes(nodes, edges),
         edges: initialEdges(edges, nodes),
         viewport,
-        features: newFeatures,
+        features: normalizeWorkflowFeatures(features),
         hash,
         conversation_variables: conversation_variables || [],
         environment_variables: environment_variables || [],
@@ -137,87 +105,70 @@ const UpdateDSLModal = ({
     } as any)
   }, [eventEmitter])
 
-  const validateDSLContent = (content: string): boolean => {
-    try {
-      const data = yamlLoad(content) as any
-      const nodes = data?.workflow?.graph?.nodes ?? []
-      const invalidNodes = appDetail?.mode === AppModeEnum.ADVANCED_CHAT
-        ? [
-            BlockEnum.End,
-            BlockEnum.TriggerWebhook,
-            BlockEnum.TriggerSchedule,
-            BlockEnum.TriggerPlugin,
-          ]
-        : [BlockEnum.Answer]
-      const hasInvalidNode = nodes.some((node: Node<CommonNodeType>) => {
-        return invalidNodes.includes(node?.data?.type)
-      })
-      if (hasInvalidNode) {
-        notify({ type: 'error', message: t('common.importFailure', { ns: 'workflow' }) })
-        return false
-      }
-      return true
-    }
-    catch {
-      notify({ type: 'error', message: t('common.importFailure', { ns: 'workflow' }) })
-      return false
-    }
-  }
-
   const isCreatingRef = useRef(false)
+  const handleCompletedImport = useCallback(async (status: DSLImportStatus, appId?: string) => {
+    if (!appId) {
+      toast.error(t('common.importFailure', { ns: 'workflow' }))
+      return
+    }
+
+    await handleWorkflowUpdate(appId)
+    onImport?.()
+    const payload = getImportNotificationPayload(status, t)
+    toast[payload.type](payload.message, payload.children ? { description: payload.children } : undefined)
+    await handleCheckPluginDependencies(appId)
+    setLoading(false)
+    onCancel()
+  }, [handleCheckPluginDependencies, handleWorkflowUpdate, onCancel, onImport, t])
+
+  const handlePendingImport = useCallback((id: string, importedVersion?: string | null, currentVersion?: string | null) => {
+    setShow(false)
+    setTimeout(() => {
+      setShowErrorModal(true)
+    }, 300)
+    setVersions({
+      importedVersion: importedVersion ?? '',
+      systemVersion: currentVersion ?? '',
+    })
+    setImportId(id)
+  }, [])
+
   const handleImport: MouseEventHandler = useCallback(async () => {
     if (isCreatingRef.current)
       return
     isCreatingRef.current = true
-    if (!currentFile)
+    if (!currentFile) {
+      isCreatingRef.current = false
       return
+    }
     try {
-      if (appDetail && fileContent && validateDSLContent(fileContent)) {
+      if (appDetail && fileContent && validateDSLContent(fileContent, appDetail.mode)) {
         setLoading(true)
         const response = await importDSL({ mode: DSLImportMode.YAML_CONTENT, yaml_content: fileContent, app_id: appDetail.id })
         const { id, status, app_id, imported_dsl_version, current_dsl_version } = response
 
-        if (status === DSLImportStatus.COMPLETED || status === DSLImportStatus.COMPLETED_WITH_WARNINGS) {
-          if (!app_id) {
-            notify({ type: 'error', message: t('common.importFailure', { ns: 'workflow' }) })
-            return
-          }
-          handleWorkflowUpdate(app_id)
-          if (onImport)
-            onImport()
-          notify({
-            type: status === DSLImportStatus.COMPLETED ? 'success' : 'warning',
-            message: t(status === DSLImportStatus.COMPLETED ? 'common.importSuccess' : 'common.importWarning', { ns: 'workflow' }),
-            children: status === DSLImportStatus.COMPLETED_WITH_WARNINGS && t('common.importWarningDetails', { ns: 'workflow' }),
-          })
-          await handleCheckPluginDependencies(app_id)
-          setLoading(false)
-          onCancel()
+        if (isImportCompleted(status)) {
+          await handleCompletedImport(status, app_id)
         }
         else if (status === DSLImportStatus.PENDING) {
-          setShow(false)
-          setTimeout(() => {
-            setShowErrorModal(true)
-          }, 300)
-          setVersions({
-            importedVersion: imported_dsl_version ?? '',
-            systemVersion: current_dsl_version ?? '',
-          })
-          setImportId(id)
+          handlePendingImport(id, imported_dsl_version, current_dsl_version)
         }
         else {
           setLoading(false)
-          notify({ type: 'error', message: t('common.importFailure', { ns: 'workflow' }) })
+          toast.error(t('common.importFailure', { ns: 'workflow' }))
         }
+      }
+      else if (fileContent) {
+        toast.error(t('common.importFailure', { ns: 'workflow' }))
       }
     }
     // eslint-disable-next-line unused-imports/no-unused-vars
     catch (e) {
       setLoading(false)
-      notify({ type: 'error', message: t('common.importFailure', { ns: 'workflow' }) })
+      toast.error(t('common.importFailure', { ns: 'workflow' }))
     }
     isCreatingRef.current = false
-  }, [currentFile, fileContent, onCancel, notify, t, appDetail, onImport, handleWorkflowUpdate, handleCheckPluginDependencies])
+  }, [currentFile, fileContent, t, appDetail, handleCompletedImport, handlePendingImport])
 
   const onUpdateDSLConfirm: MouseEventHandler = async () => {
     try {
@@ -229,28 +180,18 @@ const UpdateDSLModal = ({
 
       const { status, app_id } = response
 
-      if (status === DSLImportStatus.COMPLETED) {
-        if (!app_id) {
-          notify({ type: 'error', message: t('common.importFailure', { ns: 'workflow' }) })
-          return
-        }
-        handleWorkflowUpdate(app_id)
-        await handleCheckPluginDependencies(app_id)
-        if (onImport)
-          onImport()
-        notify({ type: 'success', message: t('common.importSuccess', { ns: 'workflow' }) })
-        setLoading(false)
-        onCancel()
+      if (isImportCompleted(status)) {
+        await handleCompletedImport(status, app_id)
       }
       else if (status === DSLImportStatus.FAILED) {
         setLoading(false)
-        notify({ type: 'error', message: t('common.importFailure', { ns: 'workflow' }) })
+        toast.error(t('common.importFailure', { ns: 'workflow' }))
       }
     }
     // eslint-disable-next-line unused-imports/no-unused-vars
     catch (e) {
       setLoading(false)
-      notify({ type: 'error', message: t('common.importFailure', { ns: 'workflow' }) })
+      toast.error(t('common.importFailure', { ns: 'workflow' }))
     }
   }
 
@@ -262,7 +203,7 @@ const UpdateDSLModal = ({
         onClose={onCancel}
       >
         <div className="mb-3 flex items-center justify-between">
-          <div className="title-2xl-semi-bold text-text-primary">{t('common.importDSL', { ns: 'workflow' })}</div>
+          <div className="text-text-primary title-2xl-semi-bold">{t('common.importDSL', { ns: 'workflow' })}</div>
           <div className="flex h-[22px] w-[22px] cursor-pointer items-center justify-center" onClick={onCancel}>
             <RiCloseLine className="h-[18px] w-[18px] text-text-tertiary" />
           </div>
@@ -273,7 +214,7 @@ const UpdateDSLModal = ({
             <RiAlertFill className="h-4 w-4 shrink-0 text-text-warning-secondary" />
           </div>
           <div className="flex grow flex-col items-start gap-0.5 py-1">
-            <div className="system-xs-medium whitespace-pre-line text-text-primary">{t('common.importDSLTip', { ns: 'workflow' })}</div>
+            <div className="whitespace-pre-line text-text-primary system-xs-medium">{t('common.importDSLTip', { ns: 'workflow' })}</div>
             <div className="flex items-start gap-1 self-stretch pb-0.5 pt-1">
               <Button
                 size="small"
@@ -290,7 +231,7 @@ const UpdateDSLModal = ({
           </div>
         </div>
         <div>
-          <div className="system-md-semibold pt-2 text-text-primary">
+          <div className="pt-2 text-text-primary system-md-semibold">
             {t('common.chooseDSL', { ns: 'workflow' })}
           </div>
           <div className="flex w-full flex-col items-start justify-center gap-4 self-stretch py-4">
@@ -319,8 +260,8 @@ const UpdateDSLModal = ({
         className="w-[480px]"
       >
         <div className="flex flex-col items-start gap-2 self-stretch pb-4">
-          <div className="title-2xl-semi-bold text-text-primary">{t('newApp.appCreateDSLErrorTitle', { ns: 'app' })}</div>
-          <div className="system-md-regular flex grow flex-col text-text-secondary">
+          <div className="text-text-primary title-2xl-semi-bold">{t('newApp.appCreateDSLErrorTitle', { ns: 'app' })}</div>
+          <div className="flex grow flex-col text-text-secondary system-md-regular">
             <div>{t('newApp.appCreateDSLErrorPart1', { ns: 'app' })}</div>
             <div>{t('newApp.appCreateDSLErrorPart2', { ns: 'app' })}</div>
             <br />

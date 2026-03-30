@@ -9,10 +9,12 @@ from flask_login import current_user
 
 from constants import DOCUMENT_EXTENSIONS
 from core.plugin.impl.plugin import PluginInstaller
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
 from factories import variable_factory
 from models.dataset import Dataset, Document, DocumentPipelineExecutionLog, Pipeline
+from models.enums import DatasetRuntimeMode, DataSourceType
 from models.model import UploadFile
 from models.workflow import Workflow, WorkflowType
 from services.entities.knowledge_entities.rag_pipeline_entities import KnowledgeConfiguration, RetrievalSetting
@@ -27,7 +29,7 @@ class RagPipelineTransformService:
         dataset = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
         if not dataset:
             raise ValueError("Dataset not found")
-        if dataset.pipeline_id and dataset.runtime_mode == "rag_pipeline":
+        if dataset.pipeline_id and dataset.runtime_mode == DatasetRuntimeMode.RAG_PIPELINE:
             return {
                 "pipeline_id": dataset.pipeline_id,
                 "dataset_id": dataset_id,
@@ -78,14 +80,14 @@ class RagPipelineTransformService:
         pipeline = self._create_pipeline(pipeline_yaml)
 
         # save chunk structure to dataset
-        if doc_form == "hierarchical_model":
+        if doc_form == IndexStructureType.PARENT_CHILD_INDEX:
             dataset.chunk_structure = "hierarchical_model"
-        elif doc_form == "text_model":
+        elif doc_form == IndexStructureType.PARAGRAPH_INDEX:
             dataset.chunk_structure = "text_model"
         else:
             raise ValueError("Unsupported doc form")
 
-        dataset.runtime_mode = "rag_pipeline"
+        dataset.runtime_mode = DatasetRuntimeMode.RAG_PIPELINE
         dataset.pipeline_id = pipeline.id
 
         # deal document data
@@ -100,48 +102,48 @@ class RagPipelineTransformService:
 
     def _get_transform_yaml(self, doc_form: str, datasource_type: str, indexing_technique: str | None):
         pipeline_yaml = {}
-        if doc_form == "text_model":
+        if doc_form == IndexStructureType.PARAGRAPH_INDEX:
             match datasource_type:
-                case "upload_file":
-                    if indexing_technique == "high_quality":
+                case DataSourceType.UPLOAD_FILE:
+                    if indexing_technique == IndexTechniqueType.HIGH_QUALITY:
                         # get graph from transform.file-general-high-quality.yml
                         with open(f"{Path(__file__).parent}/transform/file-general-high-quality.yml") as f:
                             pipeline_yaml = yaml.safe_load(f)
-                    if indexing_technique == "economy":
+                    if indexing_technique == IndexTechniqueType.ECONOMY:
                         # get graph from transform.file-general-economy.yml
                         with open(f"{Path(__file__).parent}/transform/file-general-economy.yml") as f:
                             pipeline_yaml = yaml.safe_load(f)
-                case "notion_import":
-                    if indexing_technique == "high_quality":
+                case DataSourceType.NOTION_IMPORT:
+                    if indexing_technique == IndexTechniqueType.HIGH_QUALITY:
                         # get graph from transform.notion-general-high-quality.yml
                         with open(f"{Path(__file__).parent}/transform/notion-general-high-quality.yml") as f:
                             pipeline_yaml = yaml.safe_load(f)
-                    if indexing_technique == "economy":
+                    if indexing_technique == IndexTechniqueType.ECONOMY:
                         # get graph from transform.notion-general-economy.yml
                         with open(f"{Path(__file__).parent}/transform/notion-general-economy.yml") as f:
                             pipeline_yaml = yaml.safe_load(f)
-                case "website_crawl":
-                    if indexing_technique == "high_quality":
+                case DataSourceType.WEBSITE_CRAWL:
+                    if indexing_technique == IndexTechniqueType.HIGH_QUALITY:
                         # get graph from transform.website-crawl-general-high-quality.yml
                         with open(f"{Path(__file__).parent}/transform/website-crawl-general-high-quality.yml") as f:
                             pipeline_yaml = yaml.safe_load(f)
-                    if indexing_technique == "economy":
+                    if indexing_technique == IndexTechniqueType.ECONOMY:
                         # get graph from transform.website-crawl-general-economy.yml
                         with open(f"{Path(__file__).parent}/transform/website-crawl-general-economy.yml") as f:
                             pipeline_yaml = yaml.safe_load(f)
                 case _:
                     raise ValueError("Unsupported datasource type")
-        elif doc_form == "hierarchical_model":
+        elif doc_form == IndexStructureType.PARENT_CHILD_INDEX:
             match datasource_type:
-                case "upload_file":
+                case DataSourceType.UPLOAD_FILE:
                     # get graph from transform.file-parentchild.yml
                     with open(f"{Path(__file__).parent}/transform/file-parentchild.yml") as f:
                         pipeline_yaml = yaml.safe_load(f)
-                case "notion_import":
+                case DataSourceType.NOTION_IMPORT:
                     # get graph from transform.notion-parentchild.yml
                     with open(f"{Path(__file__).parent}/transform/notion-parentchild.yml") as f:
                         pipeline_yaml = yaml.safe_load(f)
-                case "website_crawl":
+                case DataSourceType.WEBSITE_CRAWL:
                     # get graph from transform.website-crawl-parentchild.yml
                     with open(f"{Path(__file__).parent}/transform/website-crawl-parentchild.yml") as f:
                         pipeline_yaml = yaml.safe_load(f)
@@ -168,11 +170,11 @@ class RagPipelineTransformService:
     ):
         knowledge_configuration_dict = node.get("data", {})
 
-        if indexing_technique == "high_quality":
+        if indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             knowledge_configuration.embedding_model = dataset.embedding_model
             knowledge_configuration.embedding_model_provider = dataset.embedding_model_provider
         if retrieval_model:
-            if indexing_technique == "economy":
+            if indexing_technique == IndexTechniqueType.ECONOMY:
                 retrieval_model.search_method = RetrievalMethod.KEYWORD_SEARCH
             knowledge_configuration.retrieval_model = retrieval_model
         else:
@@ -287,7 +289,7 @@ class RagPipelineTransformService:
         db.session.flush()
 
         dataset.pipeline_id = pipeline.id
-        dataset.runtime_mode = "rag_pipeline"
+        dataset.runtime_mode = DatasetRuntimeMode.RAG_PIPELINE
         dataset.updated_by = current_user.id
         dataset.updated_at = datetime.now(UTC).replace(tzinfo=None)
         db.session.add(dataset)
@@ -310,8 +312,8 @@ class RagPipelineTransformService:
             data_source_info_dict = document.data_source_info_dict
             if not data_source_info_dict:
                 continue
-            if document.data_source_type == "upload_file":
-                document.data_source_type = "local_file"
+            if document.data_source_type == DataSourceType.UPLOAD_FILE:
+                document.data_source_type = DataSourceType.LOCAL_FILE
                 file_id = data_source_info_dict.get("upload_file_id")
                 if file_id:
                     file = db.session.query(UploadFile).where(UploadFile.id == file_id).first()
@@ -331,7 +333,7 @@ class RagPipelineTransformService:
                         document_pipeline_execution_log = DocumentPipelineExecutionLog(
                             document_id=document.id,
                             pipeline_id=dataset.pipeline_id,
-                            datasource_type="local_file",
+                            datasource_type=DataSourceType.LOCAL_FILE,
                             datasource_info=data_source_info,
                             input_data={},
                             created_by=document.created_by,
@@ -340,8 +342,8 @@ class RagPipelineTransformService:
                         document_pipeline_execution_log.created_at = document.created_at
                         db.session.add(document)
                         db.session.add(document_pipeline_execution_log)
-            elif document.data_source_type == "notion_import":
-                document.data_source_type = "online_document"
+            elif document.data_source_type == DataSourceType.NOTION_IMPORT:
+                document.data_source_type = DataSourceType.ONLINE_DOCUMENT
                 data_source_info = json.dumps(
                     {
                         "workspace_id": data_source_info_dict.get("notion_workspace_id"),
@@ -359,7 +361,7 @@ class RagPipelineTransformService:
                 document_pipeline_execution_log = DocumentPipelineExecutionLog(
                     document_id=document.id,
                     pipeline_id=dataset.pipeline_id,
-                    datasource_type="online_document",
+                    datasource_type=DataSourceType.ONLINE_DOCUMENT,
                     datasource_info=data_source_info,
                     input_data={},
                     created_by=document.created_by,
@@ -368,8 +370,7 @@ class RagPipelineTransformService:
                 document_pipeline_execution_log.created_at = document.created_at
                 db.session.add(document)
                 db.session.add(document_pipeline_execution_log)
-            elif document.data_source_type == "website_crawl":
-                document.data_source_type = "website_crawl"
+            elif document.data_source_type == DataSourceType.WEBSITE_CRAWL:
                 data_source_info = json.dumps(
                     {
                         "source_url": data_source_info_dict.get("url"),
@@ -388,7 +389,7 @@ class RagPipelineTransformService:
                 document_pipeline_execution_log = DocumentPipelineExecutionLog(
                     document_id=document.id,
                     pipeline_id=dataset.pipeline_id,
-                    datasource_type="website_crawl",
+                    datasource_type=DataSourceType.WEBSITE_CRAWL,
                     datasource_info=data_source_info,
                     input_data={},
                     created_by=document.created_by,

@@ -6,7 +6,7 @@ import { useFile, useFileSizeLimit } from '../hooks'
 
 const mockNotify = vi.fn()
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useParams: () => ({ token: undefined }),
 }))
 

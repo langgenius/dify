@@ -9,7 +9,7 @@ import DocumentTableRow from '../document-table-row'
 const mockPush = vi.fn()
 let mockSearchParams = ''
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
   }),

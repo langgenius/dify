@@ -420,8 +420,6 @@ export const useNodesInteractions = () => {
         return
       if (node.data.type === BlockEnum.DataSourceEmpty)
         return
-      if (node.data._pluginInstallLocked)
-        return
       handleNodeSelect(node.id)
     },
     [handleNodeSelect],
@@ -1822,19 +1820,26 @@ export const useNodesInteractions = () => {
           newChildren.push(newLoopStartNode!)
         }
         else {
-          // single node paste
+          // Paste a single regular node. Loop/Iteration nodes are handled above.
           const selectedNode = nodes.find(node => node.selected)
+          let pastedToNestedBlock = false
+
           if (selectedNode) {
+            // Keep this list aligned with availableBlocksFilter(inContainer)
+            // in use-available-blocks.ts.
             const commonNestedDisallowPasteNodes = [
-              // end node only can be placed outermost layer
               BlockEnum.End,
+              BlockEnum.Iteration,
+              BlockEnum.Loop,
+              BlockEnum.DataSource,
+              BlockEnum.KnowledgeBase,
+              BlockEnum.HumanInput,
             ]
 
-            // handle disallow paste node
             if (commonNestedDisallowPasteNodes.includes(nodeToPaste.data.type))
               return
 
-            // handle paste to nested block
+            // If a Loop/Iteration container is selected, paste into it as a child.
             if (selectedNode.data.type === BlockEnum.Iteration || selectedNode.data.type === BlockEnum.Loop) {
               const isIteration = selectedNode.data.type === BlockEnum.Iteration
 
@@ -1849,11 +1854,25 @@ export const useNodesInteractions = () => {
                 x: newNode.position.x,
                 y: newNode.position.y,
               }
-              // set position base on parent node
+              // Rebase position into the selected container coordinate system.
               newNode.position = getNestedNodePosition(newNode, selectedNode)
-              // update parent children array like native add
+
+              // Mirror native add behavior by appending parent._children.
               parentChildrenToAppend.push({ parentId: selectedNode.id, childId: newNode.id, childType: newNode.data.type })
+
+              pastedToNestedBlock = true
             }
+          }
+
+          // Clear loop/iteration metadata when pasting outside nested blocks (fixes #29835)
+          // This ensures nodes copied from inside Loop/Iteration are properly independent
+          // when pasted outside
+          if (!pastedToNestedBlock) {
+            newNode.data.isInLoop = false
+            newNode.data.loop_id = undefined
+            newNode.data.isInIteration = false
+            newNode.data.iteration_id = undefined
+            newNode.parentId = undefined
           }
         }
 

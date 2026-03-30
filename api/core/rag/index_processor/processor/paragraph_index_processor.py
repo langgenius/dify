@@ -8,12 +8,25 @@ from typing import Any, cast
 
 logger = logging.getLogger(__name__)
 
+from graphon.file import File, FileTransferMethod, FileType, file_manager
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+from graphon.model_runtime.entities.message_entities import (
+    ImagePromptMessageContent,
+    PromptMessage,
+    PromptMessageContentUnionTypes,
+    TextPromptMessageContent,
+    UserPromptMessage,
+)
+from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
+
+from core.app.file_access import DatabaseFileAccessController
 from core.app.llm import deduct_llm_quota
 from core.entities.knowledge_entities import PreviewDetail
 from core.llm_generator.prompts import DEFAULT_GENERATOR_SUMMARY_PROMPT
 from core.model_manager import ModelInstance
-from core.provider_manager import ProviderManager
+from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 from core.rag.cleaner.clean_processor import CleanProcessor
+from core.rag.data_post_processor.data_post_processor import RerankingModelDict
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.datasource.vdb.vector_factory import Vector
@@ -21,21 +34,12 @@ from core.rag.docstore.dataset_docstore import DatasetDocumentStore
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.extractor.extract_processor import ExtractProcessor
 from core.rag.index_processor.constant.doc_type import DocType
-from core.rag.index_processor.constant.index_type import IndexStructureType
-from core.rag.index_processor.index_processor_base import BaseIndexProcessor
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
+from core.rag.index_processor.index_processor_base import BaseIndexProcessor, SummaryIndexSettingDict
 from core.rag.models.document import AttachmentDocument, Document, MultimodalGeneralStructureChunk
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.utils.text_processing_utils import remove_leading_symbols
-from dify_graph.file import File, FileTransferMethod, FileType, file_manager
-from dify_graph.model_runtime.entities.llm_entities import LLMResult, LLMUsage
-from dify_graph.model_runtime.entities.message_entities import (
-    ImagePromptMessageContent,
-    PromptMessage,
-    PromptMessageContentUnionTypes,
-    TextPromptMessageContent,
-    UserPromptMessage,
-)
-from dify_graph.model_runtime.entities.model_entities import ModelFeature, ModelType
+from core.workflow.file_reference import build_file_reference
 from extensions.ext_database import db
 from factories.file_factory import build_from_mapping
 from libs import helper
@@ -46,6 +50,8 @@ from models.dataset import Document as DatasetDocument
 from services.account_service import AccountService
 from services.entities.knowledge_entities.knowledge_entities import Rule
 from services.summary_index_service import SummaryIndexService
+
+_file_access_controller = DatabaseFileAccessController()
 
 
 class ParagraphIndexProcessor(BaseIndexProcessor):
@@ -116,7 +122,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         with_keywords: bool = True,
         **kwargs,
     ) -> None:
-        if dataset.indexing_technique == "high_quality":
+        if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             vector = Vector(dataset)
             vector.create(documents)
             if multimodal_documents and dataset.is_multimodal:
@@ -154,7 +160,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                 # Delete all summaries for the dataset
                 SummaryIndexService.delete_summaries_for_segments(dataset, None)
 
-        if dataset.indexing_technique == "high_quality":
+        if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             vector = Vector(dataset)
             if node_ids:
                 vector.delete_by_ids(node_ids)
@@ -175,7 +181,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         dataset: Dataset,
         top_k: int,
         score_threshold: float,
-        reranking_model: dict,
+        reranking_model: RerankingModelDict,
     ) -> list[Document]:
         # Set search parameters.
         results = RetrievalService.retrieve(
@@ -252,12 +258,12 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             doc_store = DatasetDocumentStore(dataset=dataset, user_id=document.created_by, document_id=document.id)
             # add document segments
             doc_store.add_documents(docs=documents, save_child=False)
-            if dataset.indexing_technique == "high_quality":
+            if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
                 vector = Vector(dataset)
                 vector.create(documents)
                 if all_multimodal_documents and dataset.is_multimodal:
                     vector.create_multimodal(all_multimodal_documents)
-            elif dataset.indexing_technique == "economy":
+            elif dataset.indexing_technique == IndexTechniqueType.ECONOMY:
                 keyword = Keyword(dataset)
                 keyword.add_texts(documents)
 
@@ -278,7 +284,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         self,
         tenant_id: str,
         preview_texts: list[PreviewDetail],
-        summary_index_setting: dict,
+        summary_index_setting: SummaryIndexSettingDict,
         doc_language: str | None = None,
     ) -> list[PreviewDetail]:
         """
@@ -362,7 +368,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
     def generate_summary(
         tenant_id: str,
         text: str,
-        summary_index_setting: dict | None = None,
+        summary_index_setting: SummaryIndexSettingDict | None = None,
         segment_id: str | None = None,
         document_language: str | None = None,
     ) -> tuple[str, LLMUsage]:
@@ -409,7 +415,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                 # If default prompt doesn't have {language} placeholder, use it as-is
                 pass
 
-        provider_manager = ProviderManager()
+        provider_manager = create_plugin_provider_manager(tenant_id=tenant_id)
         provider_model_bundle = provider_manager.get_provider_model_bundle(
             tenant_id, model_provider_name, ModelType.LLM
         )
@@ -554,6 +560,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                 file_obj = build_from_mapping(
                     mapping=mapping,
                     tenant_id=tenant_id,
+                    access_controller=_file_access_controller,
                 )
                 file_objects.append(file_obj)
             except Exception as e:
@@ -603,11 +610,12 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                     filename=upload_file.name,
                     extension="." + upload_file.extension,
                     mime_type=upload_file.mime_type,
-                    tenant_id=tenant_id,
                     type=FileType.IMAGE,
                     transfer_method=FileTransferMethod.LOCAL_FILE,
                     remote_url=upload_file.source_url,
-                    related_id=upload_file.id,
+                    reference=build_file_reference(
+                        record_id=str(upload_file.id),
+                    ),
                     size=upload_file.size,
                     storage_key=upload_file.key,
                 )

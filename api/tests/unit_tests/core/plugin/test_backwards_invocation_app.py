@@ -332,27 +332,21 @@ class TestPluginAppBackwardsInvocation:
             PluginAppBackwardsInvocation._get_user("uid")
 
     def test_get_app_returns_app(self, mocker):
-        query_chain = MagicMock()
-        query_chain.where.return_value = query_chain
         app_obj = MagicMock(id="app")
-        query_chain.first.return_value = app_obj
-        db = SimpleNamespace(session=MagicMock(query=MagicMock(return_value=query_chain)))
+        db = SimpleNamespace(session=MagicMock(scalar=MagicMock(return_value=app_obj)))
         mocker.patch("core.plugin.backwards_invocation.app.db", db)
 
         assert PluginAppBackwardsInvocation._get_app("app", "tenant") is app_obj
 
     def test_get_app_raises_when_missing(self, mocker):
-        query_chain = MagicMock()
-        query_chain.where.return_value = query_chain
-        query_chain.first.return_value = None
-        db = SimpleNamespace(session=MagicMock(query=MagicMock(return_value=query_chain)))
+        db = SimpleNamespace(session=MagicMock(scalar=MagicMock(return_value=None)))
         mocker.patch("core.plugin.backwards_invocation.app.db", db)
 
         with pytest.raises(ValueError, match="app not found"):
             PluginAppBackwardsInvocation._get_app("app", "tenant")
 
     def test_get_app_raises_when_query_fails(self, mocker):
-        db = SimpleNamespace(session=MagicMock(query=MagicMock(side_effect=RuntimeError("db down"))))
+        db = SimpleNamespace(session=MagicMock(scalar=MagicMock(side_effect=RuntimeError("db down"))))
         mocker.patch("core.plugin.backwards_invocation.app.db", db)
 
         with pytest.raises(ValueError, match="app not found"):

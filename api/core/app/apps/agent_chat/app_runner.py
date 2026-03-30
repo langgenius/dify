@@ -1,6 +1,9 @@
 import logging
 from typing import cast
 
+from graphon.model_runtime.entities.llm_entities import LLMMode
+from graphon.model_runtime.entities.model_entities import ModelFeature, ModelPropertyKey
+from graphon.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from sqlalchemy import select
 
 from core.agent.cot_chat_agent_runner import CotChatAgentRunner
@@ -15,9 +18,6 @@ from core.app.entities.queue_entities import QueueAnnotationReplyEvent
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.moderation.base import ModerationError
-from dify_graph.model_runtime.entities.llm_entities import LLMMode
-from dify_graph.model_runtime.entities.model_entities import ModelFeature, ModelPropertyKey
-from dify_graph.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from extensions.ext_database import db
 from models.model import App, Conversation, Message
 

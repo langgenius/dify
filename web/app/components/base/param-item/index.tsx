@@ -1,9 +1,16 @@
 'use client'
 import type { FC } from 'react'
-import Slider from '@/app/components/base/slider'
 import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
-import { InputNumber } from '../input-number'
+import { Slider } from '@/app/components/base/ui/slider'
+import {
+  NumberField,
+  NumberFieldControls,
+  NumberFieldDecrement,
+  NumberFieldGroup,
+  NumberFieldIncrement,
+  NumberFieldInput,
+} from '../ui/number-field'
 
 type Props = {
   className?: string
@@ -36,7 +43,7 @@ const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1,
               }}
             />
           )}
-          <span className="system-sm-semibold mr-1 text-text-secondary">{name}</span>
+          <span className="mr-1 text-text-secondary system-sm-semibold">{name}</span>
           {!noTooltip && (
             <Tooltip
               triggerClassName="w-4 h-4 shrink-0"
@@ -47,20 +54,22 @@ const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1,
       </div>
       <div className="mt-1 flex items-center">
         <div className="mr-3 flex shrink-0 items-center">
-          <InputNumber
+          <NumberField
             disabled={!enable}
-            type="number"
             min={min}
             max={max}
             step={step}
-            amount={step}
-            size="regular"
             value={value}
-            onChange={(value) => {
-              onChange(id, value)
-            }}
-            className="w-[72px]"
-          />
+            onValueChange={nextValue => onChange(id, nextValue ?? min)}
+          >
+            <NumberFieldGroup size="regular">
+              <NumberFieldInput size="regular" className="w-[72px]" />
+              <NumberFieldControls>
+                <NumberFieldIncrement size="regular" />
+                <NumberFieldDecrement size="regular" />
+              </NumberFieldControls>
+            </NumberFieldGroup>
+          </NumberField>
         </div>
         <div className="flex grow items-center">
           <Slider
@@ -69,7 +78,8 @@ const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1,
             value={max < 5 ? value * 100 : value}
             min={min < 1 ? min * 100 : min}
             max={max < 5 ? max * 100 : max}
-            onChange={value => onChange(id, value / (max < 5 ? 100 : 1))}
+            onValueChange={value => onChange(id, value / (max < 5 ? 100 : 1))}
+            aria-label={name}
           />
         </div>
       </div>

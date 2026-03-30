@@ -1,6 +1,8 @@
 import json
 from unittest.mock import MagicMock
 
+from graphon.entities import WorkflowNodeExecution
+from graphon.enums import WorkflowNodeExecutionStatus
 from opentelemetry.trace import Link, StatusCode
 
 from core.ops.aliyun_trace.entities.semconv import (
@@ -24,8 +26,6 @@ from core.ops.aliyun_trace.utils import (
     serialize_json_data,
 )
 from core.rag.models.document import Document
-from dify_graph.entities import WorkflowNodeExecution
-from dify_graph.enums import WorkflowNodeExecutionStatus
 from models import EndUser
 
 
@@ -45,11 +45,8 @@ def test_get_user_id_from_message_data_with_end_user(monkeypatch):
     end_user_data = MagicMock(spec=EndUser)
     end_user_data.session_id = "session_id"
 
-    mock_query = MagicMock()
-    mock_query.where.return_value.first.return_value = end_user_data
-
     mock_session = MagicMock()
-    mock_session.query.return_value = mock_query
+    mock_session.get.return_value = end_user_data
 
     from core.ops.aliyun_trace.utils import db
 
@@ -63,11 +60,8 @@ def test_get_user_id_from_message_data_end_user_not_found(monkeypatch):
     message_data.from_account_id = "account_id"
     message_data.from_end_user_id = "end_user_id"
 
-    mock_query = MagicMock()
-    mock_query.where.return_value.first.return_value = None
-
     mock_session = MagicMock()
-    mock_session.query.return_value = mock_query
+    mock_session.get.return_value = None
 
     from core.ops.aliyun_trace.utils import db
 

@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from typing import Any, Union, cast
 from urllib.parse import urlparse
 
+from graphon.enums import WorkflowNodeExecutionStatus
 from openinference.semconv.trace import (
     MessageAttributes,
     OpenInferenceMimeTypeValues,
@@ -181,10 +182,6 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         arize_phoenix_config: ArizeConfig | PhoenixConfig,
     ):
         super().__init__(arize_phoenix_config)
-        import logging
-
-        logging.basicConfig()
-        logging.getLogger().setLevel(logging.DEBUG)
         self.arize_phoenix_config = arize_phoenix_config
         self.tracer, self.processor = setup_tracer(arize_phoenix_config)
         self.project = arize_phoenix_config.project
@@ -275,8 +272,8 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         )
 
         # Get all executions for this workflow run
-        workflow_node_executions = workflow_node_execution_repository.get_by_workflow_run(
-            workflow_run_id=trace_info.workflow_run_id
+        workflow_node_executions = workflow_node_execution_repository.get_by_workflow_execution(
+            workflow_execution_id=trace_info.workflow_run_id
         )
 
         try:
@@ -304,7 +301,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                         "app_name": node_execution.title,
                         "status": node_execution.status,
                         "status_message": node_execution.error or "",
-                        "level": "ERROR" if node_execution.status == "failed" else "DEFAULT",
+                        "level": "ERROR" if node_execution.status == WorkflowNodeExecutionStatus.FAILED else "DEFAULT",
                     }
                 )
 
@@ -365,7 +362,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                         llm_attributes.update(self._construct_llm_attributes(process_data.get("prompts", [])))
                         node_span.set_attributes(llm_attributes)
                 finally:
-                    if node_execution.status == "failed":
+                    if node_execution.status == WorkflowNodeExecutionStatus.FAILED:
                         set_span_status(node_span, node_execution.error)
                     else:
                         set_span_status(node_span)
@@ -413,9 +410,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
 
         # Add end user data if available
         if trace_info.message_data.from_end_user_id:
-            end_user_data: EndUser | None = (
-                db.session.query(EndUser).where(EndUser.id == trace_info.message_data.from_end_user_id).first()
-            )
+            end_user_data: EndUser | None = db.session.get(EndUser, trace_info.message_data.from_end_user_id)
             if end_user_data is not None:
                 metadata["end_user_id"] = end_user_data.session_id
 

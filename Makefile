@@ -74,6 +74,12 @@ type-check:
 	@uv --directory api run mypy --exclude-gitignore --exclude 'tests/' --exclude 'migrations/' --check-untyped-defs --disable-error-code=import-untyped .
 	@echo "✅ Type checks complete"
 
+type-check-core:
+	@echo "📝 Running core type checks (basedpyright + mypy)..."
+	@./dev/basedpyright-check $(PATH_TO_CHECK)
+	@uv --directory api run mypy --exclude-gitignore --exclude 'tests/' --exclude 'migrations/' --check-untyped-defs --disable-error-code=import-untyped .
+	@echo "✅ Core type checks complete"
+
 test:
 	@echo "🧪 Running backend unit tests..."
 	@if [ -n "$(TARGET_TESTS)" ]; then \
@@ -133,6 +139,7 @@ help:
 	@echo "  make check          - Check code with ruff"
 	@echo "  make lint           - Format, fix, and lint code (ruff, imports, dotenv)"
 	@echo "  make type-check     - Run type checks (basedpyright, pyrefly, mypy)"
+	@echo "  make type-check-core - Run core type checks (basedpyright, mypy)"
 	@echo "  make test           - Run backend unit tests (or TARGET_TESTS=./api/tests/<target_tests>)"
 	@echo ""
 	@echo "Docker Build Targets:"

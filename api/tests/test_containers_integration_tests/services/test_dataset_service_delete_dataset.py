@@ -3,8 +3,10 @@
 from unittest.mock import patch
 from uuid import uuid4
 
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document
+from models.enums import DataSourceType, DocumentCreatedFrom
 from services.dataset_service import DatasetService
 
 
@@ -58,7 +60,7 @@ class DatasetDeleteIntegrationDataFactory:
         dataset = Dataset(
             tenant_id=tenant_id,
             name=f"dataset-{uuid4()}",
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             indexing_technique=indexing_technique,
             index_struct=index_struct,
             created_by=created_by,
@@ -77,17 +79,17 @@ class DatasetDeleteIntegrationDataFactory:
         tenant_id: str,
         dataset_id: str,
         created_by: str,
-        doc_form: str = "text_model",
+        doc_form: str = IndexStructureType.PARAGRAPH_INDEX,
     ) -> Document:
         """Persist a document so dataset.doc_form resolves through the real document path."""
         document = Document(
             tenant_id=tenant_id,
             dataset_id=dataset_id,
             position=1,
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             batch=f"batch-{uuid4()}",
             name="Document",
-            created_from="upload_file",
+            created_from=DocumentCreatedFrom.WEB,
             created_by=created_by,
             doc_form=doc_form,
         )
@@ -107,7 +109,7 @@ class TestDatasetServiceDeleteDataset:
             db_session_with_containers,
             tenant_id=tenant.id,
             created_by=owner.id,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             chunk_structure=None,
             index_struct='{"type": "paragraph"}',
             collection_binding_id=str(uuid4()),
@@ -118,7 +120,7 @@ class TestDatasetServiceDeleteDataset:
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             created_by=owner.id,
-            doc_form="text_model",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
         )
 
         # Act
@@ -206,7 +208,7 @@ class TestDatasetServiceDeleteDataset:
             db_session_with_containers,
             tenant_id=tenant.id,
             created_by=owner.id,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             chunk_structure=None,
             index_struct='{"type": "paragraph"}',
             collection_binding_id=str(uuid4()),

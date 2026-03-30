@@ -14,6 +14,8 @@ describe('IndexMethod', () => {
     vi.clearAllMocks()
   })
 
+  const getKeywordSlider = () => screen.getByLabelText('datasetSettings.form.numberOfKeywords')
+
   describe('Rendering', () => {
     it('should render without crashing', () => {
       render(<IndexMethod {...defaultProps} />)
@@ -123,21 +125,20 @@ describe('IndexMethod', () => {
   describe('KeywordNumber', () => {
     it('should render KeywordNumber component inside Economy option', () => {
       render(<IndexMethod {...defaultProps} />)
-      // KeywordNumber has a slider
-      expect(screen.getByRole('slider')).toBeInTheDocument()
+      expect(getKeywordSlider()).toBeInTheDocument()
     })
 
     it('should pass keywordNumber to KeywordNumber component', () => {
       render(<IndexMethod {...defaultProps} keywordNumber={25} />)
-      const input = screen.getByRole('spinbutton')
-      expect(input).toHaveValue(25)
+      const input = screen.getByRole('textbox')
+      expect(input).toHaveValue('25')
     })
 
     it('should call onKeywordNumberChange when KeywordNumber changes', () => {
       const handleKeywordChange = vi.fn()
       render(<IndexMethod {...defaultProps} onKeywordNumberChange={handleKeywordChange} />)
 
-      const input = screen.getByRole('spinbutton')
+      const input = screen.getByRole('textbox')
       fireEvent.change(input, { target: { value: '30' } })
 
       expect(handleKeywordChange).toHaveBeenCalled()
@@ -190,16 +191,16 @@ describe('IndexMethod', () => {
       expect(screen.getByText(/stepTwo\.qualified/)).toBeInTheDocument()
     })
 
-    it('should handle keywordNumber of 0', () => {
+    it('should handle minimum keywordNumber', () => {
       render(<IndexMethod {...defaultProps} keywordNumber={0} />)
-      const input = screen.getByRole('spinbutton')
-      expect(input).toHaveValue(0)
+      const input = screen.getByRole('textbox')
+      expect(input).toHaveValue('0')
     })
 
     it('should handle max keywordNumber', () => {
       render(<IndexMethod {...defaultProps} keywordNumber={50} />)
-      const input = screen.getByRole('spinbutton')
-      expect(input).toHaveValue(50)
+      const input = screen.getByRole('textbox')
+      expect(input).toHaveValue('50')
     })
   })
 })
