@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
+from sqlalchemy.orm import Session
 
 from controllers.console.app import app_import as app_import_module
 from services.app_dsl_service import ImportStatus
@@ -51,9 +52,13 @@ class TestAppImportApi:
         )
         monkeypatch.setattr(app_import_module, "current_account_with_tenant", lambda: (SimpleNamespace(id="u1"), "t1"))
 
-        with app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}):
+        with (
+            app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}),
+            patch.object(Session, "commit", wraps=Session.commit) as commit_spy,
+        ):
             response, status = method()
 
+        commit_spy.assert_called_once()
         assert status == 400
         assert response["status"] == ImportStatus.FAILED
 
@@ -69,9 +74,13 @@ class TestAppImportApi:
         )
         monkeypatch.setattr(app_import_module, "current_account_with_tenant", lambda: (SimpleNamespace(id="u1"), "t1"))
 
-        with app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}):
+        with (
+            app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}),
+            patch.object(Session, "commit", wraps=Session.commit) as commit_spy,
+        ):
             response, status = method()
 
+        commit_spy.assert_called_once()
         assert status == 202
         assert response["status"] == ImportStatus.PENDING
 
@@ -89,9 +98,13 @@ class TestAppImportApi:
         monkeypatch.setattr(app_import_module.EnterpriseService.WebAppAuth, "update_app_access_mode", update_access)
         monkeypatch.setattr(app_import_module, "current_account_with_tenant", lambda: (SimpleNamespace(id="u1"), "t1"))
 
-        with app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}):
+        with (
+            app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}),
+            patch.object(Session, "commit", wraps=Session.commit) as commit_spy,
+        ):
             response, status = method()
 
+        commit_spy.assert_called_once()
         update_access.assert_called_once_with("app-123", "private")
         assert status == 200
         assert response["status"] == ImportStatus.COMPLETED
@@ -113,9 +126,13 @@ class TestAppImportConfirmApi:
         )
         monkeypatch.setattr(app_import_module, "current_account_with_tenant", lambda: (SimpleNamespace(id="u1"), "t1"))
 
-        with app.test_request_context("/console/api/apps/imports/import-1/confirm", method="POST"):
+        with (
+            app.test_request_context("/console/api/apps/imports/import-1/confirm", method="POST"),
+            patch.object(Session, "commit", wraps=Session.commit) as commit_spy,
+        ):
             response, status = method(import_id="import-1")
 
+        commit_spy.assert_called_once()
         assert status == 400
         assert response["status"] == ImportStatus.FAILED
 
