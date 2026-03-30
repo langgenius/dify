@@ -6,10 +6,9 @@ from typing import Any
 from flask import abort, request
 from flask_restx import Resource, fields, marshal_with
 from graphon.enums import NodeType
-from graphon.file import File
 from graphon.graph_engine.manager import GraphEngineManager
 from graphon.model_runtime.utils.encoders import jsonable_encoder
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, ValidationError, field_validator
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound
 
@@ -39,6 +38,7 @@ from extensions.ext_redis import redis_client
 from factories import file_factory, variable_factory
 from fields.member_fields import simple_account_fields
 from fields.workflow_fields import workflow_fields, workflow_pagination_fields
+from graphon.file import File
 from libs import helper
 from libs.datetime_utils import naive_utc_now
 from libs.helper import TimestampField, uuid_value
@@ -268,22 +268,18 @@ class DraftWorkflowApi(Resource):
 
         content_type = request.headers.get("Content-Type", "")
 
-        payload_data: dict[str, Any] | None = None
         if "application/json" in content_type:
             payload_data = request.get_json(silent=True)
             if not isinstance(payload_data, dict):
                 return {"message": "Invalid JSON data"}, 400
+            args_model = SyncDraftWorkflowPayload.model_validate(payload_data)
         elif "text/plain" in content_type:
             try:
-                payload_data = json.loads(request.data.decode("utf-8"))
-            except json.JSONDecodeError:
-                return {"message": "Invalid JSON data"}, 400
-            if not isinstance(payload_data, dict):
+                args_model = SyncDraftWorkflowPayload.model_validate_json(request.data)
+            except (ValueError, ValidationError):
                 return {"message": "Invalid JSON data"}, 400
         else:
             abort(415)
-
-        args_model = SyncDraftWorkflowPayload.model_validate(payload_data)
         args = args_model.model_dump()
         workflow_service = WorkflowService()
 

@@ -11,6 +11,7 @@ from tcvectordb.model import index as vdb_index  # type: ignore
 from tcvectordb.model.document import AnnSearch, Filter, KeywordSearch, WeightedRerank  # type: ignore
 
 from configs import dify_config
+from core.rag.datasource.vdb.field import parse_metadata_json
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
@@ -286,13 +287,10 @@ class TencentVector(BaseVector):
             return docs
 
         for result in res[0]:
-            meta = result.get(self.field_metadata)
-            if isinstance(meta, str):
-                # Compatible with version 1.1.3 and below.
-                meta = json.loads(meta)
-                score = 1 - result.get("score", 0.0)
-            else:
-                score = result.get("score", 0.0)
+            raw_meta = result.get(self.field_metadata)
+            # Compatible with version 1.1.3 and below: str means old driver.
+            score = (1 - result.get("score", 0.0)) if isinstance(raw_meta, str) else result.get("score", 0.0)
+            meta = parse_metadata_json(raw_meta)
             if score >= score_threshold:
                 meta["score"] = score
                 doc = Document(page_content=result.get(self.field_text), metadata=meta)
