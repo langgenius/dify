@@ -24,7 +24,7 @@ prepare-docker:
 # Step 2: Prepare web environment
 prepare-web:
 	@echo "🌐 Setting up web environment..."
-	@cp -n web/.env.example web/.env 2>/dev/null || echo "Web .env already exists"
+	@cp -n web/.env.example web/.env.local 2>/dev/null || echo "Web .env.local already exists"
 	@pnpm install
 	@echo "✅ Web environment prepared (not started)"
 
