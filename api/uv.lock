@@ -1809,7 +1809,7 @@ dev = [
     { name = "types-pywin32", specifier = "~=311.0.0" },
     { name = "types-pyyaml", specifier = "~=6.0.12" },
     { name = "types-redis", specifier = ">=4.6.0.20241004" },
-    { name = "types-regex", specifier = "~=2026.2.28" },
+    { name = "types-regex", specifier = "~=2026.3.32" },
     { name = "types-setuptools", specifier = ">=80.9.0" },
     { name = "types-shapely", specifier = "~=2.1.0" },
     { name = "types-simplejson", specifier = ">=3.20.0" },
@@ -7042,11 +7042,11 @@ wheels = [
 
 [[package]]
 name = "types-regex"
-version = "2026.2.28.20260301"
+version = "2026.3.32.20260329"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/3a/ed/106958cb686316113b748ed4209fa363fd92b15759d5409c3930fed36606/types_regex-2026.2.28.20260301.tar.gz", hash = "sha256:644c231db3f368908320170c14905731a7ae5fabdac0f60f5d6d12ecdd3bc8dd", size = 13157, upload-time = "2026-03-01T04:11:13.559Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f2/d8/a3aca5775c573e56d201bbd76a827b84d851a4bce28e189e5acb9c7a0d15/types_regex-2026.3.32.20260329.tar.gz", hash = "sha256:12653e44694cb3e3ccdc39bab3d433d2a83fec1c01220e6871fd6f3cf434675c", size = 13111, upload-time = "2026-03-29T04:27:04.759Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c7/bb/9bc26fcf5155bd25efeca35f8ba6bffb8b3c9da2baac8bf40067606418f3/types_regex-2026.2.28.20260301-py3-none-any.whl", hash = "sha256:7da7a1fe67528238176a5844fd435ca90617cf605341308686afbc579fdea5c0", size = 11130, upload-time = "2026-03-01T04:11:11.454Z" },
+    { url = "https://files.pythonhosted.org/packages/89/f4/a1db307e56753c49fb15fc88d70fadeb3f38897b28cab645cddd18054c79/types_regex-2026.3.32.20260329-py3-none-any.whl", hash = "sha256:861d0893bcfe08a57eb7486a502014e29dc2721d46dd5130798fbccafdb31cc0", size = 11128, upload-time = "2026-03-29T04:27:03.854Z" },
 ]
 
 [[package]]
