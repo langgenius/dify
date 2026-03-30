@@ -9,6 +9,7 @@ import type {
   JudgmentConditionGroup,
   MetricOption,
 } from './types'
+import type { NodeInfo } from '@/types/evaluation'
 import { getComparisonOperators, getDefaultOperator, getEvaluationMockConfig } from './mock'
 
 export type EvaluationStoreResources = Record<string, EvaluationResourceState>
@@ -41,13 +42,14 @@ export const getConditionValue = (
   return typeof previousValue === 'string' ? previousValue : null
 }
 
-export const createBuiltinMetric = (metric: MetricOption): EvaluationMetric => ({
+export const createBuiltinMetric = (metric: MetricOption, nodeInfoList: NodeInfo[] = []): EvaluationMetric => ({
   id: createId('metric'),
   optionId: metric.id,
   kind: 'builtin',
   label: metric.label,
   description: metric.description,
   badges: metric.badges,
+  nodeInfoList,
 })
 
 export const createCustomMetricMapping = (): CustomMetricMapping => ({
@@ -88,12 +90,9 @@ export const createConditionGroup = (resourceType: EvaluationResourceType): Judg
 })
 
 export const buildInitialState = (resourceType: EvaluationResourceType): EvaluationResourceState => {
-  const config = getEvaluationMockConfig(resourceType)
-  const defaultMetric = config.builtinMetrics[0]
-
   return {
     judgeModelId: null,
-    metrics: defaultMetric ? [createBuiltinMetric(defaultMetric)] : [],
+    metrics: [],
     conditions: [createConditionGroup(resourceType)],
     activeBatchTab: 'input-fields',
     uploadedFileName: null,

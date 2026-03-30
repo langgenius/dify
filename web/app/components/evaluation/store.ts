@@ -3,6 +3,7 @@ import type {
   EvaluationResourceState,
   EvaluationResourceType,
 } from './types'
+import type { NodeInfo } from '@/types/evaluation'
 import { create } from 'zustand'
 import { getDefaultOperator, getEvaluationMockConfig } from './mock'
 import {
@@ -16,7 +17,6 @@ import {
   createCustomMetricMapping,
   getAllowedOperators as getAllowedOperatorsFromUtils,
   getConditionValue,
-  getResourceState,
   isCustomMetricConfigured as isCustomMetricConfiguredFromUtils,
   isEvaluationRunnable as isEvaluationRunnableFromUtils,
   requiresConditionValue as requiresConditionValueFromUtils,
@@ -29,7 +29,7 @@ type EvaluationStore = {
   resources: Record<string, EvaluationResourceState>
   ensureResource: (resourceType: EvaluationResourceType, resourceId: string) => void
   setJudgeModel: (resourceType: EvaluationResourceType, resourceId: string, judgeModelId: string) => void
-  addBuiltinMetric: (resourceType: EvaluationResourceType, resourceId: string, optionId: string) => void
+  addBuiltinMetric: (resourceType: EvaluationResourceType, resourceId: string, optionId: string, nodeInfoList?: NodeInfo[]) => void
   addCustomMetric: (resourceType: EvaluationResourceType, resourceId: string) => void
   removeMetric: (resourceType: EvaluationResourceType, resourceId: string, metricId: string) => void
   setCustomMetricWorkflow: (resourceType: EvaluationResourceType, resourceId: string, metricId: string, workflowId: string) => void
@@ -85,21 +85,23 @@ export const useEvaluationStore = create<EvaluationStore>((set, get) => ({
       })),
     }))
   },
-  addBuiltinMetric: (resourceType, resourceId, optionId) => {
+  addBuiltinMetric: (resourceType, resourceId, optionId, nodeInfoList = []) => {
     const option = getEvaluationMockConfig(resourceType).builtinMetrics.find(metric => metric.id === optionId)
     if (!option)
       return
 
     set((state) => {
-      const { resource } = getResourceState(state.resources, resourceType, resourceId)
-
-      if (resource.metrics.some(metric => metric.optionId === optionId && metric.kind === 'builtin'))
-        return state
-
       return {
         resources: updateResourceState(state.resources, resourceType, resourceId, currentResource => ({
           ...currentResource,
-          metrics: [...currentResource.metrics, createBuiltinMetric(option)],
+          metrics: currentResource.metrics.some(metric => metric.optionId === optionId && metric.kind === 'builtin')
+            ? currentResource.metrics.map(metric => metric.optionId === optionId && metric.kind === 'builtin'
+                ? {
+                    ...metric,
+                    nodeInfoList,
+                  }
+                : metric)
+            : [...currentResource.metrics, createBuiltinMetric(option, nodeInfoList)],
         })),
       }
     })

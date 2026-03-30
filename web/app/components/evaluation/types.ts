@@ -1,3 +1,5 @@
+import type { NodeInfo } from '@/types/evaluation'
+
 export type EvaluationResourceType = 'workflow' | 'pipeline' | 'snippet'
 
 export type EvaluationResourceProps = {
@@ -78,6 +80,7 @@ export type EvaluationMetric = {
   label: string
   description: string
   badges: string[]
+  nodeInfoList?: NodeInfo[]
   customConfig?: CustomMetricConfig
 }
 

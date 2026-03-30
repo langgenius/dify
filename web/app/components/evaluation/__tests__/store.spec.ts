@@ -51,6 +51,30 @@ describe('evaluation store', () => {
     expect(useEvaluationStore.getState().resources['workflow:app-2'].metrics.some(metric => metric.id === addedMetric!.id)).toBe(false)
   })
 
+  it('should upsert builtin metric node selections', () => {
+    const resourceType = 'workflow'
+    const resourceId = 'app-4'
+    const store = useEvaluationStore.getState()
+    const config = getEvaluationMockConfig(resourceType)
+    const metricId = config.builtinMetrics[0].id
+
+    store.ensureResource(resourceType, resourceId)
+    store.addBuiltinMetric(resourceType, resourceId, metricId, [
+      { node_id: 'node-1', title: 'Answer Node', type: 'answer' },
+    ])
+
+    store.addBuiltinMetric(resourceType, resourceId, metricId, [
+      { node_id: 'node-2', title: 'Retriever Node', type: 'retriever' },
+    ])
+
+    const metric = useEvaluationStore.getState().resources['workflow:app-4'].metrics.find(item => item.optionId === metricId)
+
+    expect(metric?.nodeInfoList).toEqual([
+      { node_id: 'node-2', title: 'Retriever Node', type: 'retriever' },
+    ])
+    expect(useEvaluationStore.getState().resources['workflow:app-4'].metrics.filter(item => item.optionId === metricId)).toHaveLength(1)
+  })
+
   it('should update condition groups and adapt operators to field types', () => {
     const resourceType = 'pipeline'
     const resourceId = 'dataset-1'

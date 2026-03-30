@@ -36,7 +36,7 @@ const MetricSection = ({
           </div>
         )}
         {resource.metrics.map(metric => (
-          <div key={metric.id} className="rounded-xl border border-divider-subtle bg-components-card-bg p-4">
+          <div key={metric.id} className="rounded-2xl border border-divider-subtle bg-components-card-bg p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="text-text-primary system-sm-semibold">{metric.label}</div>
@@ -46,6 +46,22 @@ const MetricSection = ({
                     <Badge key={badge} className={badge === 'Workflow' ? 'badge-accent' : ''}>{badge}</Badge>
                   ))}
                 </div>
+                {metric.kind === 'builtin' && (
+                  <div className="mt-3 rounded-xl bg-background-default-subtle px-3 py-2">
+                    <div className="text-text-secondary system-2xs-medium-uppercase">{t('metrics.nodesLabel')}</div>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {metric.nodeInfoList?.length
+                        ? metric.nodeInfoList.map(nodeInfo => (
+                            <Badge key={nodeInfo.node_id} className="badge-accent">
+                              {nodeInfo.title}
+                            </Badge>
+                          ))
+                        : (
+                            <span className="text-text-tertiary system-xs-regular">{t('metrics.nodesAll')}</span>
+                          )}
+                    </div>
+                  </div>
+                )}
               </div>
               <Button
                 size="small"
@@ -68,7 +84,6 @@ const MetricSection = ({
         <MetricSelector
           resourceType={resourceType}
           resourceId={resourceId}
-          triggerStyle="text"
         />
       </div>
     </section>
