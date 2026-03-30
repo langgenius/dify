@@ -231,3 +231,39 @@ def test_text_property_with_escaped_unicode(mock_response, json_content, descrip
     # The text should be valid JSON that can be parsed back to proper Unicode
     parsed = json.loads(response.text)
     assert isinstance(parsed, dict), f"Invalid JSON for {description}"
+
+
+@pytest.mark.parametrize(
+    "content_type",
+    [
+        "application/pdf",
+        "application/zip",
+        "application/gzip",
+        "application/x-gzip",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "application/vnd.ms-excel",
+        "application/vnd.ms-powerpoint",
+        "application/x-tar",
+        "application/x-rar",
+        "application/x-7z-compressed",
+        "application/wasm",
+    ],
+)
+def test_known_binary_types_skip_heuristic(mock_response, content_type):
+    """Test that known binary MIME types are identified as files even when content is UTF-8 decodable.
+
+    Regression test for https://github.com/langgenius/dify/issues/33897
+    PDFs without a binary marker comment (e.g. Copper PDF) have UTF-8-decodable content
+    containing '<' in dictionary syntax (<< /Type /Catalog), which previously triggered
+    the text_markers heuristic and caused the response to be misidentified as text.
+    """
+    # Simulate a Copper PDF without binary marker — valid UTF-8, contains '<'
+    pdf_content = b"%PDF-1.5\r\n1 0 obj\r\n<< /Type /Catalog /Pages 2 0 R >>\r\nendobj\r\n"
+    mock_response.headers = {"content-type": content_type}
+    type(mock_response).content = PropertyMock(return_value=pdf_content)
+    response = Response(mock_response)
+    assert response.is_file, (
+        f"Known binary type {content_type} should be identified as a file "
+        "even when content is UTF-8 decodable and contains text markers"
+    )

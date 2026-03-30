@@ -148,6 +148,27 @@ class Response:
 
         # For application types, try to detect if it's a text-based format
         if content_type.startswith("application/"):
+            # Known binary application types — trust Content-Type, skip heuristic byte-sampling.
+            # Must be checked before the text-type substring check below, because types like
+            # "vnd.openxmlformats-officedocument.spreadsheetml.sheet" contain "xml" as a
+            # substring and would otherwise be misidentified as text.
+            known_binary_subtypes = (
+                "pdf",
+                "zip",
+                "gzip",
+                "x-gzip",
+                "msword",
+                "vnd.openxmlformats",
+                "vnd.ms-excel",
+                "vnd.ms-powerpoint",
+                "x-tar",
+                "x-rar",
+                "x-7z-compressed",
+                "wasm",
+            )
+            if any(subtype in content_type for subtype in known_binary_subtypes):
+                return True
+
             # Common text-based application types
             if any(
                 text_type in content_type
