@@ -6,6 +6,7 @@ from functools import cached_property
 from uuid import uuid4
 
 import sqlalchemy as sa
+from graphon.model_runtime.entities.model_entities import ModelType
 from sqlalchemy import DateTime, String, func, select, text
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -13,8 +14,6 @@ from libs.uuid_utils import uuidv7
 
 from .base import TypeBase
 from .engine import db
-from graphon.model_runtime.entities.model_entities import ModelType
-
 from .enums import CredentialSourceType, PaymentStatus
 from .types import EnumText, LongText, StringUUID
 
