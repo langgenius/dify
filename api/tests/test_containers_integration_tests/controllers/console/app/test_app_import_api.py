@@ -29,22 +29,6 @@ class _Result:
         return {"status": self.status, "app_id": self.app_id}
 
 
-class _SessionContext:
-    def __init__(self, session):
-        self._session = session
-
-    def __enter__(self):
-        return self._session
-
-    def __exit__(self, exc_type, exc, tb):
-        return False
-
-
-def _install_session(monkeypatch: pytest.MonkeyPatch, session: MagicMock) -> None:
-    monkeypatch.setattr(app_import_module, "Session", lambda *_: _SessionContext(session))
-    monkeypatch.setattr(app_import_module, "db", SimpleNamespace(engine=object()))
-
-
 def _install_features(monkeypatch: pytest.MonkeyPatch, enabled: bool) -> None:
     features = SimpleNamespace(webapp_auth=SimpleNamespace(enabled=enabled))
     monkeypatch.setattr(app_import_module.FeatureService, "get_system_features", lambda: features)
@@ -59,8 +43,6 @@ class TestAppImportApi:
         api = app_import_module.AppImportApi()
         method = _unwrap(api.post)
 
-        session = MagicMock()
-        _install_session(monkeypatch, session)
         _install_features(monkeypatch, enabled=False)
         monkeypatch.setattr(
             app_import_module.AppDslService,
@@ -72,7 +54,6 @@ class TestAppImportApi:
         with app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}):
             response, status = method()
 
-        session.commit.assert_called_once()
         assert status == 400
         assert response["status"] == ImportStatus.FAILED
 
@@ -80,8 +61,6 @@ class TestAppImportApi:
         api = app_import_module.AppImportApi()
         method = _unwrap(api.post)
 
-        session = MagicMock()
-        _install_session(monkeypatch, session)
         _install_features(monkeypatch, enabled=False)
         monkeypatch.setattr(
             app_import_module.AppDslService,
@@ -93,7 +72,6 @@ class TestAppImportApi:
         with app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}):
             response, status = method()
 
-        session.commit.assert_called_once()
         assert status == 202
         assert response["status"] == ImportStatus.PENDING
 
@@ -101,8 +79,6 @@ class TestAppImportApi:
         api = app_import_module.AppImportApi()
         method = _unwrap(api.post)
 
-        session = MagicMock()
-        _install_session(monkeypatch, session)
         _install_features(monkeypatch, enabled=True)
         monkeypatch.setattr(
             app_import_module.AppDslService,
@@ -116,7 +92,6 @@ class TestAppImportApi:
         with app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}):
             response, status = method()
 
-        session.commit.assert_called_once()
         update_access.assert_called_once_with("app-123", "private")
         assert status == 200
         assert response["status"] == ImportStatus.COMPLETED
@@ -131,8 +106,6 @@ class TestAppImportConfirmApi:
         api = app_import_module.AppImportConfirmApi()
         method = _unwrap(api.post)
 
-        session = MagicMock()
-        _install_session(monkeypatch, session)
         monkeypatch.setattr(
             app_import_module.AppDslService,
             "confirm_import",
@@ -143,7 +116,6 @@ class TestAppImportConfirmApi:
         with app.test_request_context("/console/api/apps/imports/import-1/confirm", method="POST"):
             response, status = method(import_id="import-1")
 
-        session.commit.assert_called_once()
         assert status == 400
         assert response["status"] == ImportStatus.FAILED
 
@@ -157,8 +129,6 @@ class TestAppImportCheckDependenciesApi:
         api = app_import_module.AppImportCheckDependenciesApi()
         method = _unwrap(api.get)
 
-        session = MagicMock()
-        _install_session(monkeypatch, session)
         monkeypatch.setattr(
             app_import_module.AppDslService,
             "check_dependencies",
