@@ -48,7 +48,9 @@ def load_user_from_request(request_from_flask_login):
                         account.current_tenant = tenant
                         return account
 
-    if request.blueprint in {"console", "inner_api"}:
+    # Support both Blueprint-based routes and FastOpenAPI routes (which have no blueprint)
+    is_console_api = request.blueprint in {"console", "inner_api"} or request.path.startswith("/console/api/")
+    if is_console_api:
         if not auth_token:
             raise Unauthorized("Invalid Authorization token.")
         decoded = PassportService().verify(auth_token)
@@ -115,7 +117,18 @@ def on_user_logged_in(_sender, user):
 
 @login_manager.unauthorized_handler
 def unauthorized_handler():
-    """Handle unauthorized requests."""
+    """Handle unauthorized requests.
+
+    For FastOpenAPI routes (no blueprint), we raise Unauthorized exception
+    which will be caught and serialized properly by the framework.
+    For traditional Blueprint-based routes, we return a Response object.
+    """
+    # Check if this is a FastOpenAPI route (no blueprint but console API path)
+    if request.blueprint is None and request.path.startswith("/console/api/"):
+        # Raise exception - FastOpenAPI will handle serialization
+        raise Unauthorized("Unauthorized.")
+
+    # Traditional Blueprint routes - return Response object
     return Response(
         json.dumps({"code": "unauthorized", "message": "Unauthorized."}),
         status=401,
