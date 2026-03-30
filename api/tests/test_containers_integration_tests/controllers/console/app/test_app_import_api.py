@@ -54,7 +54,7 @@ class TestAppImportApi:
 
         with (
             app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}),
-            patch.object(Session, "commit", wraps=Session.commit) as commit_spy,
+            patch.object(Session, "commit") as commit_spy,
         ):
             response, status = method()
 
@@ -76,7 +76,7 @@ class TestAppImportApi:
 
         with (
             app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}),
-            patch.object(Session, "commit", wraps=Session.commit) as commit_spy,
+            patch.object(Session, "commit") as commit_spy,
         ):
             response, status = method()
 
@@ -100,7 +100,7 @@ class TestAppImportApi:
 
         with (
             app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}),
-            patch.object(Session, "commit", wraps=Session.commit) as commit_spy,
+            patch.object(Session, "commit") as commit_spy,
         ):
             response, status = method()
 
@@ -128,7 +128,7 @@ class TestAppImportConfirmApi:
 
         with (
             app.test_request_context("/console/api/apps/imports/import-1/confirm", method="POST"),
-            patch.object(Session, "commit", wraps=Session.commit) as commit_spy,
+            patch.object(Session, "commit") as commit_spy,
         ):
             response, status = method(import_id="import-1")
 
