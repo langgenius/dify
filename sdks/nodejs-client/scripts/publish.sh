@@ -64,6 +64,21 @@ divider() {
     echo -e "${DIM}─────────────────────────────────────────────────────────────────${NC}"
 }
 
+run_npm() {
+    env \
+        -u npm_config_npm_globalconfig \
+        -u NPM_CONFIG_NPM_GLOBALCONFIG \
+        -u npm_config_verify_deps_before_run \
+        -u NPM_CONFIG_VERIFY_DEPS_BEFORE_RUN \
+        -u npm_config__jsr_registry \
+        -u NPM_CONFIG__JSR_REGISTRY \
+        -u npm_config_catalog \
+        -u NPM_CONFIG_CATALOG \
+        -u npm_config_overrides \
+        -u NPM_CONFIG_OVERRIDES \
+        npm "$@"
+}
+
 # ============================================================================
 # Configuration
 # ============================================================================
@@ -126,7 +141,7 @@ main() {
         error "npm is not installed"
         exit 1
     fi
-    NPM_VERSION=$(npm -v)
+    NPM_VERSION=$(run_npm -v)
     success "npm: v$NPM_VERSION"
 
     if ! command -v pnpm &> /dev/null; then
@@ -138,11 +153,11 @@ main() {
     success "pnpm: v$PNPM_VERSION"
 
     # Check npm login status
-    if ! npm whoami &> /dev/null; then
+    if ! run_npm whoami &> /dev/null; then
         error "Not logged in to npm. Run 'npm login' first."
         exit 1
     fi
-    NPM_USER=$(npm whoami)
+    NPM_USER=$(run_npm whoami)
     success "Logged in as: ${BOLD}$NPM_USER${NC}"
 
     # ========================================================================
@@ -157,11 +172,11 @@ main() {
     success "Version: ${BOLD}$PACKAGE_VERSION${NC}"
 
     # Check if version already exists on npm
-    if npm view "$PACKAGE_NAME@$PACKAGE_VERSION" version &> /dev/null; then
+    if run_npm view "$PACKAGE_NAME@$PACKAGE_VERSION" version &> /dev/null; then
         error "Version $PACKAGE_VERSION already exists on npm!"
         echo ""
         info "Current published versions:"
-        npm view "$PACKAGE_NAME" versions --json 2>/dev/null | tail -5
+        run_npm view "$PACKAGE_NAME" versions --json 2>/dev/null | tail -5
         echo ""
         warning "Please update the version in package.json before publishing."
         exit 1
