@@ -34,8 +34,7 @@ from services.summary_index_service import SummaryIndexService
 
 def _marshal_segment_with_summary(segment, dataset_id: str) -> dict:
     """Marshal a single segment and enrich it with summary content."""
-    marshalled = marshal(segment, segment_fields)
-    segment_dict: dict = {k: v for k, v in marshalled.items()}
+    segment_dict = dict(marshal(segment, segment_fields))  # type: ignore[arg-type]
     summary = SummaryIndexService.get_segment_summary(segment_id=segment.id, dataset_id=dataset_id)
     segment_dict["summary"] = summary.summary_content if summary else None
     return segment_dict
@@ -51,8 +50,7 @@ def _marshal_segments_with_summary(segments, dataset_id: str) -> list[dict]:
 
     result = []
     for segment in segments:
-        marshalled = marshal(segment, segment_fields)
-        segment_dict: dict = {k: v for k, v in marshalled.items()}
+        segment_dict = dict(marshal(segment, segment_fields))  # type: ignore[arg-type]
         segment_dict["summary"] = summaries.get(segment.id)
         result.append(segment_dict)
     return result
