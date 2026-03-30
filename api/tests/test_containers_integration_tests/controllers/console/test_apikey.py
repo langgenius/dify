@@ -4,10 +4,9 @@ from __future__ import annotations
 
 import pytest
 from flask.testing import FlaskClient
-from sqlalchemy import delete, select
+from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
-from models.enums import ApiTokenType
 from models.model import ApiToken, App, AppMode
 from tests.test_containers_integration_tests.controllers.console.helpers import (
     authenticate_console_client,
@@ -135,17 +134,16 @@ class TestAppApiKeyResource:
         headers = authenticate_console_client(test_client_with_containers, account)
 
         # Create a key first as owner
-        create_resp = test_client_with_containers.post(
-            f"/console/api/apps/{app.id}/api-keys", headers=headers
-        )
+        create_resp = test_client_with_containers.post(f"/console/api/apps/{app.id}/api-keys", headers=headers)
         assert create_resp.json is not None
         key_id = create_resp.json["id"]
 
         # Create a non-admin account in the same tenant
+        import uuid
+
+        from libs.datetime_utils import naive_utc_now
         from models import Account, TenantAccountJoin
         from models.account import AccountStatus
-        from libs.datetime_utils import naive_utc_now
-        import uuid
 
         member = Account(
             email=f"member-{uuid.uuid4()}@example.com",
