@@ -67,9 +67,7 @@ class TestAppImportApi:
             "import_app",
             lambda *_args, **_kwargs: _Result(ImportStatus.FAILED, app_id=None),
         )
-        monkeypatch.setattr(
-            app_import_module, "current_account_with_tenant", lambda: (SimpleNamespace(id="u1"), "t1")
-        )
+        monkeypatch.setattr(app_import_module, "current_account_with_tenant", lambda: (SimpleNamespace(id="u1"), "t1"))
 
         with app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}):
             response, status = method()
@@ -90,9 +88,7 @@ class TestAppImportApi:
             "import_app",
             lambda *_args, **_kwargs: _Result(ImportStatus.PENDING),
         )
-        monkeypatch.setattr(
-            app_import_module, "current_account_with_tenant", lambda: (SimpleNamespace(id="u1"), "t1")
-        )
+        monkeypatch.setattr(app_import_module, "current_account_with_tenant", lambda: (SimpleNamespace(id="u1"), "t1"))
 
         with app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}):
             response, status = method()
@@ -114,12 +110,8 @@ class TestAppImportApi:
             lambda *_args, **_kwargs: _Result(ImportStatus.COMPLETED, app_id="app-123"),
         )
         update_access = MagicMock()
-        monkeypatch.setattr(
-            app_import_module.EnterpriseService.WebAppAuth, "update_app_access_mode", update_access
-        )
-        monkeypatch.setattr(
-            app_import_module, "current_account_with_tenant", lambda: (SimpleNamespace(id="u1"), "t1")
-        )
+        monkeypatch.setattr(app_import_module.EnterpriseService.WebAppAuth, "update_app_access_mode", update_access)
+        monkeypatch.setattr(app_import_module, "current_account_with_tenant", lambda: (SimpleNamespace(id="u1"), "t1"))
 
         with app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}):
             response, status = method()
@@ -146,9 +138,7 @@ class TestAppImportConfirmApi:
             "confirm_import",
             lambda *_args, **_kwargs: _Result(ImportStatus.FAILED),
         )
-        monkeypatch.setattr(
-            app_import_module, "current_account_with_tenant", lambda: (SimpleNamespace(id="u1"), "t1")
-        )
+        monkeypatch.setattr(app_import_module, "current_account_with_tenant", lambda: (SimpleNamespace(id="u1"), "t1"))
 
         with app.test_request_context("/console/api/apps/imports/import-1/confirm", method="POST"):
             response, status = method(import_id="import-1")
