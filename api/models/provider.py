@@ -60,7 +60,7 @@ class Provider(TypeBase):
     credential_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
 
     quota_type: Mapped[ProviderQuotaType | None] = mapped_column(
-        EnumText(ProviderQuotaType, length=40), nullable=True, server_default=text("''"), default=""
+        EnumText(ProviderQuotaType, length=40), nullable=True, server_default=text("''"), default=None
     )
     quota_limit: Mapped[int | None] = mapped_column(sa.BigInteger, nullable=True, default=None)
     quota_used: Mapped[int | None] = mapped_column(sa.BigInteger, nullable=True, default=0)
