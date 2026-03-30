@@ -62,7 +62,7 @@
   "metrics.custom.warningBadge": "Needs setup",
   "metrics.custom.workflowLabel": "Evaluation Workflow",
   "metrics.custom.workflowPlaceholder": "Select a workflow",
-  "metrics.description": "Combine built-in metrics with custom evaluator workflows.",
+  "metrics.description": "Choose from built-in metrics like Groundedness and Correctness to evaluate your workflow outputs.",
   "metrics.groups.operations": "Operations",
   "metrics.groups.quality": "Quality",
   "metrics.noResults": "No metrics match your search.",

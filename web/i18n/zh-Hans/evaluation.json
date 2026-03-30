@@ -62,7 +62,7 @@
   "metrics.custom.warningBadge": "待配置",
   "metrics.custom.workflowLabel": "评测工作流",
   "metrics.custom.workflowPlaceholder": "选择工作流",
-  "metrics.description": "组合内置指标和自定义评测工作流。",
+  "metrics.description": "从内置指标中选择，如 Groundedness 和 Correctness ，以评估您的工作流输出。",
   "metrics.groups.operations": "运行",
   "metrics.groups.quality": "质量",
   "metrics.noResults": "没有匹配的指标。",
