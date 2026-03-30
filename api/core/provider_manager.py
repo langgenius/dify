@@ -626,9 +626,8 @@ class ProviderManager:
                 if provider_record.provider_type != ProviderType.SYSTEM:
                     continue
 
-                provider_quota_to_provider_record_dict[ProviderQuotaType.value_of(provider_record.quota_type)] = (
-                    provider_record
-                )
+                if provider_record.quota_type is not None:
+                    provider_quota_to_provider_record_dict[provider_record.quota_type] = provider_record
 
             for quota in configuration.quotas:
                 if quota.quota_type in (ProviderQuotaType.TRIAL, ProviderQuotaType.PAID):
@@ -641,7 +640,7 @@ class ProviderManager:
                                 # TODO: Use provider name with prefix after the data migration.
                                 provider_name=ModelProviderID(provider_name).provider_name,
                                 provider_type=ProviderType.SYSTEM,
-                                quota_type=quota.quota_type,
+                                quota_type=quota.quota_type,  # type: ignore[arg-type]
                                 quota_limit=0,  # type: ignore
                                 quota_used=0,
                                 is_valid=True,
@@ -921,9 +920,8 @@ class ProviderManager:
             if provider_record.provider_type != ProviderType.SYSTEM:
                 continue
 
-            quota_type_to_provider_records_dict[ProviderQuotaType.value_of(provider_record.quota_type)] = (
-                provider_record
-            )
+            if provider_record.quota_type is not None:
+                quota_type_to_provider_records_dict[provider_record.quota_type] = provider_record  # type: ignore[index]
         quota_configurations = []
 
         if dify_config.EDITION == "CLOUD":
