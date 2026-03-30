@@ -137,7 +137,7 @@ class AppTriggerEnableApi(Resource):
         assert current_user.current_tenant_id is not None
 
         trigger_id = args.trigger_id
-        with sessionmaker(db.engine).begin() as session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             # Find the trigger using select
             trigger = session.execute(
                 select(AppTrigger).where(
@@ -152,9 +152,6 @@ class AppTriggerEnableApi(Resource):
 
             # Update status based on enable_trigger boolean
             trigger.status = AppTriggerStatus.ENABLED if args.enable_trigger else AppTriggerStatus.DISABLED
-
-            session.flush()
-            session.refresh(trigger)
 
         # Add computed icon field
         url_prefix = dify_config.CONSOLE_API_URL + "/console/api/workspaces/current/tool-provider/builtin/"

@@ -69,7 +69,7 @@ class ConversationVariablesApi(Resource):
         page_size = 100
         stmt = stmt.limit(page_size).offset((page - 1) * page_size)
 
-        with sessionmaker(db.engine).begin() as session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             rows = session.scalars(stmt).all()
 
         return {
