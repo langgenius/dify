@@ -405,35 +405,36 @@ class TestNotionMetadataAndCredentialMethods:
 
         class FakeDocumentModel:
             data_source_info = "data_source_info"
+            id = "id"
 
-        update_calls = []
+        execute_calls = []
 
-        class FakeQuery:
-            def filter_by(self, **kwargs):
+        class FakeUpdateStmt:
+            def where(self, *args):
                 return self
 
-            def update(self, payload):
-                update_calls.append(payload)
+            def values(self, **kwargs):
+                return self
 
         class FakeSession:
             committed = False
 
-            def query(self, model):
-                assert model is FakeDocumentModel
-                return FakeQuery()
+            def execute(self, stmt):
+                execute_calls.append(stmt)
 
             def commit(self):
                 self.committed = True
 
         fake_db = SimpleNamespace(session=FakeSession())
         monkeypatch.setattr(notion_extractor, "DocumentModel", FakeDocumentModel)
+        monkeypatch.setattr(notion_extractor, "update", lambda model: FakeUpdateStmt())
         monkeypatch.setattr(notion_extractor, "db", fake_db)
         monkeypatch.setattr(extractor, "get_notion_last_edited_time", lambda: "2026-01-01T00:00:00.000Z")
 
         doc_model = SimpleNamespace(id="doc-1", data_source_info_dict={"source": "notion"})
         extractor.update_last_edited_time(doc_model)
 
-        assert update_calls
+        assert execute_calls
         assert fake_db.session.committed is True
 
     def test_get_notion_last_edited_time_uses_page_and_database_urls(self, mocker: MockerFixture):

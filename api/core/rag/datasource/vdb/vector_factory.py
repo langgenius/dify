@@ -277,7 +277,7 @@ class Vector:
         return self._vector_processor.search_by_vector(query_vector, **kwargs)
 
     def search_by_file(self, file_id: str, **kwargs: Any) -> list[Document]:
-        upload_file: UploadFile | None = db.session.query(UploadFile).where(UploadFile.id == file_id).first()
+        upload_file: UploadFile | None = db.session.get(UploadFile, file_id)
 
         if not upload_file:
             return []

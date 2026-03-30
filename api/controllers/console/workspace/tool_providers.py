@@ -832,7 +832,8 @@ class ToolOAuthCallback(Resource):
         tool_provider = ToolProviderID(provider)
         plugin_id = tool_provider.plugin_id
         provider_name = tool_provider.provider_name
-        user_id, tenant_id = context.get("user_id"), context.get("tenant_id")
+        user_id: str = context["user_id"]
+        tenant_id: str = context["tenant_id"]
 
         oauth_handler = OAuthHandler()
         oauth_client_params = BuiltinToolManageService.get_oauth_client(tenant_id, provider)
