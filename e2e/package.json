@@ -14,11 +14,11 @@
     "e2e:reset": "tsx ./scripts/setup.ts reset"
   },
   "devDependencies": {
-    "@cucumber/cucumber": "12.7.0",
-    "@playwright/test": "1.58.2",
-    "@types/node": "25.5.0",
-    "tsx": "4.21.0",
-    "typescript": "5.9.3",
-    "vite-plus": "latest"
+    "@cucumber/cucumber": "catalog:",
+    "@playwright/test": "catalog:",
+    "@types/node": "catalog:",
+    "tsx": "catalog:",
+    "typescript": "catalog:",
+    "vite-plus": "catalog:"
   }
 }
