@@ -22,6 +22,13 @@ import uuid
 from time import time
 
 import pytest
+from graphon.entities.pause_reason import SchedulingPause
+from graphon.enums import WorkflowExecutionStatus
+from graphon.graph_engine.entities.commands import GraphEngineCommand
+from graphon.graph_engine.layers.base import GraphEngineLayerNotInitializedError
+from graphon.graph_events import GraphRunPausedEvent
+from graphon.model_runtime.entities.llm_entities import LLMUsage
+from graphon.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper, VariablePool
 from sqlalchemy import Engine, delete, select
 from sqlalchemy.orm import Session
 
@@ -31,16 +38,7 @@ from core.app.layers.pause_state_persist_layer import (
     PauseStatePersistenceLayer,
     WorkflowResumptionContext,
 )
-from dify_graph.entities.pause_reason import SchedulingPause
-from dify_graph.enums import WorkflowExecutionStatus
-from dify_graph.graph_engine.entities.commands import GraphEngineCommand
-from dify_graph.graph_engine.layers.base import GraphEngineLayerNotInitializedError
-from dify_graph.graph_events.graph import GraphRunPausedEvent
-from dify_graph.model_runtime.entities.llm_entities import LLMUsage
-from dify_graph.runtime.graph_runtime_state import GraphRuntimeState
-from dify_graph.runtime.graph_runtime_state_protocol import ReadOnlyGraphRuntimeState
-from dify_graph.runtime.read_only_wrappers import ReadOnlyGraphRuntimeStateWrapper
-from dify_graph.runtime.variable_pool import SystemVariable, VariablePool
+from core.workflow.system_variables import build_system_variables
 from extensions.ext_storage import storage
 from libs.datetime_utils import naive_utc_now
 from models import Account
@@ -212,7 +210,7 @@ class TestPauseStatePersistenceLayerTestContainers:
         execution_id = workflow_run_id or getattr(self, "test_workflow_run_id", None) or str(uuid.uuid4())
 
         # Create variable pool
-        variable_pool = VariablePool(system_variables=SystemVariable(workflow_execution_id=execution_id))
+        variable_pool = VariablePool(system_variables=build_system_variables(workflow_execution_id=execution_id))
         if variables:
             for (node_id, var_key), value in variables.items():
                 variable_pool.add([node_id, var_key], value)
@@ -544,7 +542,7 @@ class TestPauseStatePersistenceLayerTestContainers:
         layer.initialize(graph_runtime_state, command_channel)
 
         # Import other event types
-        from dify_graph.graph_events.graph import (
+        from graphon.graph_events import (
             GraphRunFailedEvent,
             GraphRunStartedEvent,
             GraphRunSucceededEvent,

@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { BaseForm } from '@/app/components/base/form/components/base'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import Modal from '@/app/components/base/modal/modal'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
 import { useUpdateTriggerSubscription } from '@/service/use-triggers'
 import { ReadmeShowType } from '../../../readme-panel/store'
@@ -94,18 +94,12 @@ export const ManualEditModal = ({ onClose, subscription, pluginDetail }: Props) 
       },
       {
         onSuccess: () => {
-          Toast.notify({
-            type: 'success',
-            message: t('subscription.list.item.actions.edit.success', { ns: 'pluginTrigger' }),
-          })
+          toast.success(t('subscription.list.item.actions.edit.success', { ns: 'pluginTrigger' }))
           refetch?.()
           onClose()
         },
         onError: (error: unknown) => {
-          Toast.notify({
-            type: 'error',
-            message: getErrorMessage(error, t('subscription.list.item.actions.edit.error', { ns: 'pluginTrigger' })),
-          })
+          toast.error(getErrorMessage(error, t('subscription.list.item.actions.edit.error', { ns: 'pluginTrigger' })))
         },
       },
     )

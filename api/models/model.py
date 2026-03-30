@@ -3,16 +3,20 @@ from __future__ import annotations
 import json
 import re
 import uuid
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from datetime import datetime
 from decimal import Decimal
 from enum import StrEnum, auto
+from functools import lru_cache
 from typing import TYPE_CHECKING, Any, Literal, NotRequired, cast
 from uuid import uuid4
 
 import sqlalchemy as sa
 from flask import request
 from flask_login import UserMixin  # type: ignore[import-untyped]
+from graphon.enums import WorkflowExecutionStatus
+from graphon.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
+from graphon.file import helpers as file_helpers
 from sqlalchemy import BigInteger, Float, Index, PrimaryKeyConstraint, String, exists, func, select, text
 from sqlalchemy.orm import Mapped, Session, mapped_column
 from typing_extensions import TypedDict
@@ -20,29 +24,32 @@ from typing_extensions import TypedDict
 from configs import dify_config
 from constants import DEFAULT_FILE_NUMBER_LIMITS
 from core.tools.signature import sign_tool_file
-from dify_graph.enums import WorkflowExecutionStatus
-from dify_graph.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
-from dify_graph.file import helpers as file_helpers
 from extensions.storage.storage_type import StorageType
 from libs.helper import generate_string  # type: ignore[import-not-found]
 from libs.uuid_utils import uuidv7
+from models.utils.file_input_compat import build_file_from_input_mapping
 
 from .account import Account, Tenant
 from .base import Base, TypeBase, gen_uuidv4_string
 from .engine import db
 from .enums import (
+    ApiTokenType,
     AppMCPServerStatus,
     AppStatus,
     BannerStatus,
     ConversationFromSource,
     ConversationStatus,
     CreatorUserRole,
+    CustomizeTokenStrategy,
     FeedbackFromSource,
     FeedbackRating,
     InvokeFrom,
     MessageChainType,
     MessageFileBelongsTo,
     MessageStatus,
+    PromptType,
+    ProviderQuotaType,
+    TagType,
 )
 from .provider_ids import GenericProviderID
 from .types import EnumText, LongText, StringUUID
@@ -52,6 +59,32 @@ if TYPE_CHECKING:
 
 
 # --- TypedDict definitions for structured dict return types ---
+
+
+@lru_cache(maxsize=1)
+def _get_file_access_controller():
+    from core.app.file_access import DatabaseFileAccessController
+
+    return DatabaseFileAccessController()
+
+
+def _resolve_app_tenant_id(app_id: str) -> str:
+    resolved_tenant_id = db.session.scalar(select(App.tenant_id).where(App.id == app_id))
+    if not resolved_tenant_id:
+        raise ValueError(f"Unable to resolve tenant_id for app {app_id}")
+    return resolved_tenant_id
+
+
+def _build_app_tenant_resolver(app_id: str, owner_tenant_id: str | None = None) -> Callable[[], str]:
+    resolved_tenant_id = owner_tenant_id
+
+    def resolve_owner_tenant_id() -> str:
+        nonlocal resolved_tenant_id
+        if resolved_tenant_id is None:
+            resolved_tenant_id = _resolve_app_tenant_id(app_id)
+        return resolved_tenant_id
+
+    return resolve_owner_tenant_id
 
 
 class EnabledConfig(TypedDict):
@@ -586,7 +619,9 @@ class AppModelConfig(TypeBase):
     __tablename__ = "app_model_configs"
     __table_args__ = (sa.PrimaryKeyConstraint("id", name="app_model_config_pkey"), sa.Index("app_app_id_idx", "app_id"))
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
+    )
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     provider: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
     model_id: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
@@ -616,8 +651,11 @@ class AppModelConfig(TypeBase):
     agent_mode: Mapped[str | None] = mapped_column(LongText, default=None)
     sensitive_word_avoidance: Mapped[str | None] = mapped_column(LongText, default=None)
     retriever_resource: Mapped[str | None] = mapped_column(LongText, default=None)
-    prompt_type: Mapped[str] = mapped_column(
-        String(255), nullable=False, server_default=sa.text("'simple'"), default="simple"
+    prompt_type: Mapped[PromptType] = mapped_column(
+        EnumText(PromptType, length=255),
+        nullable=False,
+        server_default=sa.text("'simple'"),
+        default=PromptType.SIMPLE,
     )
     chat_prompt_config: Mapped[str | None] = mapped_column(LongText, default=None)
     completion_prompt_config: Mapped[str | None] = mapped_column(LongText, default=None)
@@ -769,7 +807,7 @@ class AppModelConfig(TypeBase):
             "dataset_query_variable": self.dataset_query_variable,
             "pre_prompt": self.pre_prompt,
             "agent_mode": self.agent_mode_dict,
-            "prompt_type": self.prompt_type,
+            "prompt_type": self.prompt_type.value if isinstance(self.prompt_type, PromptType) else self.prompt_type,
             "chat_prompt_config": self.chat_prompt_config_dict,
             "completion_prompt_config": self.completion_prompt_config_dict,
             "dataset_configs": self.dataset_configs_dict,
@@ -813,7 +851,7 @@ class AppModelConfig(TypeBase):
         self.retriever_resource = (
             json.dumps(model_config.get("retriever_resource")) if model_config.get("retriever_resource") else None
         )
-        self.prompt_type = model_config.get("prompt_type", "simple")
+        self.prompt_type = PromptType(model_config.get("prompt_type", "simple"))
         self.chat_prompt_config = (
             json.dumps(model_config.get("chat_prompt_config")) if model_config.get("chat_prompt_config") else None
         )
@@ -935,7 +973,9 @@ class AccountTrialAppRecord(Base):
 class ExporleBanner(TypeBase):
     __tablename__ = "exporle_banners"
     __table_args__ = (sa.PrimaryKeyConstraint("id", name="exporler_banner_pkey"),)
-    id: Mapped[str] = mapped_column(StringUUID, default=gen_uuidv4_string, init=False)
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=gen_uuidv4_string, default_factory=gen_uuidv4_string, init=False
+    )
     content: Mapped[dict[str, Any]] = mapped_column(sa.JSON, nullable=False)
     link: Mapped[str] = mapped_column(String(255), nullable=False)
     sort: Mapped[int] = mapped_column(sa.Integer, nullable=False)
@@ -1050,23 +1090,26 @@ class Conversation(Base):
     @property
     def inputs(self) -> dict[str, Any]:
         inputs = self._inputs.copy()
+        # Compatibility bridge: stored input payloads may come from before or after the
+        # graph-layer file refactor. Newer rows may omit `tenant_id`, so keep tenant
+        # resolution at the SQLAlchemy model boundary instead of pushing ownership back
+        # into `graphon.file.File`.
+        tenant_resolver = _build_app_tenant_resolver(
+            app_id=self.app_id,
+            owner_tenant_id=cast(str | None, getattr(self, "_owner_tenant_id", None)),
+        )
 
         # Convert file mapping to File object
         for key, value in inputs.items():
-            # NOTE: It's not the best way to implement this, but it's the only way to avoid circular import for now.
-            from factories import file_factory
-
             if (
                 isinstance(value, dict)
                 and cast(dict[str, Any], value).get("dify_model_identity") == FILE_MODEL_IDENTITY
             ):
                 value_dict = cast(dict[str, Any], value)
-                if value_dict["transfer_method"] == FileTransferMethod.TOOL_FILE:
-                    value_dict["tool_file_id"] = value_dict["related_id"]
-                elif value_dict["transfer_method"] in [FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL]:
-                    value_dict["upload_file_id"] = value_dict["related_id"]
-                tenant_id = cast(str, value_dict.get("tenant_id", ""))
-                inputs[key] = file_factory.build_from_mapping(mapping=value_dict, tenant_id=tenant_id)
+                inputs[key] = build_file_from_input_mapping(
+                    file_mapping=value_dict,
+                    tenant_resolver=tenant_resolver,
+                )
             elif isinstance(value, list):
                 value_list = cast(list[Any], value)
                 if all(
@@ -1079,15 +1122,12 @@ class Conversation(Base):
                         if not isinstance(item, dict):
                             continue
                         item_dict = cast(dict[str, Any], item)
-                        if item_dict["transfer_method"] == FileTransferMethod.TOOL_FILE:
-                            item_dict["tool_file_id"] = item_dict["related_id"]
-                        elif item_dict["transfer_method"] in [
-                            FileTransferMethod.LOCAL_FILE,
-                            FileTransferMethod.REMOTE_URL,
-                        ]:
-                            item_dict["upload_file_id"] = item_dict["related_id"]
-                        tenant_id = cast(str, item_dict.get("tenant_id", ""))
-                        file_list.append(file_factory.build_from_mapping(mapping=item_dict, tenant_id=tenant_id))
+                        file_list.append(
+                            build_file_from_input_mapping(
+                                file_mapping=item_dict,
+                                tenant_resolver=tenant_resolver,
+                            )
+                        )
                     inputs[key] = file_list
 
         return inputs
@@ -1395,21 +1435,23 @@ class Message(Base):
     @property
     def inputs(self) -> dict[str, Any]:
         inputs = self._inputs.copy()
+        # Compatibility bridge: message inputs are persisted as JSON and must remain
+        # readable across file payload shape changes. Do not assume `tenant_id`
+        # is serialized into each file mapping going forward.
+        tenant_resolver = _build_app_tenant_resolver(
+            app_id=self.app_id,
+            owner_tenant_id=cast(str | None, getattr(self, "_owner_tenant_id", None)),
+        )
         for key, value in inputs.items():
-            # NOTE: It's not the best way to implement this, but it's the only way to avoid circular import for now.
-            from factories import file_factory
-
             if (
                 isinstance(value, dict)
                 and cast(dict[str, Any], value).get("dify_model_identity") == FILE_MODEL_IDENTITY
             ):
                 value_dict = cast(dict[str, Any], value)
-                if value_dict["transfer_method"] == FileTransferMethod.TOOL_FILE:
-                    value_dict["tool_file_id"] = value_dict["related_id"]
-                elif value_dict["transfer_method"] in [FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL]:
-                    value_dict["upload_file_id"] = value_dict["related_id"]
-                tenant_id = cast(str, value_dict.get("tenant_id", ""))
-                inputs[key] = file_factory.build_from_mapping(mapping=value_dict, tenant_id=tenant_id)
+                inputs[key] = build_file_from_input_mapping(
+                    file_mapping=value_dict,
+                    tenant_resolver=tenant_resolver,
+                )
             elif isinstance(value, list):
                 value_list = cast(list[Any], value)
                 if all(
@@ -1422,15 +1464,12 @@ class Message(Base):
                         if not isinstance(item, dict):
                             continue
                         item_dict = cast(dict[str, Any], item)
-                        if item_dict["transfer_method"] == FileTransferMethod.TOOL_FILE:
-                            item_dict["tool_file_id"] = item_dict["related_id"]
-                        elif item_dict["transfer_method"] in [
-                            FileTransferMethod.LOCAL_FILE,
-                            FileTransferMethod.REMOTE_URL,
-                        ]:
-                            item_dict["upload_file_id"] = item_dict["related_id"]
-                        tenant_id = cast(str, item_dict.get("tenant_id", ""))
-                        file_list.append(file_factory.build_from_mapping(mapping=item_dict, tenant_id=tenant_id))
+                        file_list.append(
+                            build_file_from_input_mapping(
+                                file_mapping=item_dict,
+                                tenant_resolver=tenant_resolver,
+                            )
+                        )
                     inputs[key] = file_list
         return inputs
 
@@ -1605,6 +1644,7 @@ class Message(Base):
                         "upload_file_id": message_file.upload_file_id,
                     },
                     tenant_id=current_app.tenant_id,
+                    access_controller=_get_file_access_controller(),
                 )
             elif message_file.transfer_method == FileTransferMethod.REMOTE_URL:
                 if message_file.url is None:
@@ -1618,6 +1658,7 @@ class Message(Base):
                         "url": message_file.url,
                     },
                     tenant_id=current_app.tenant_id,
+                    access_controller=_get_file_access_controller(),
                 )
             elif message_file.transfer_method == FileTransferMethod.TOOL_FILE:
                 if message_file.upload_file_id is None:
@@ -1632,6 +1673,7 @@ class Message(Base):
                 file = file_factory.build_from_mapping(
                     mapping=mapping,
                     tenant_id=current_app.tenant_id,
+                    access_controller=_get_file_access_controller(),
                 )
             else:
                 raise ValueError(
@@ -1782,7 +1824,7 @@ class MessageFile(TypeBase):
         StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
     )
     message_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    type: Mapped[str] = mapped_column(String(255), nullable=False)
+    type: Mapped[FileType] = mapped_column(EnumText(FileType, length=255), nullable=False)
     transfer_method: Mapped[FileTransferMethod] = mapped_column(
         EnumText(FileTransferMethod, length=255), nullable=False
     )
@@ -1844,7 +1886,9 @@ class AppAnnotationHitHistory(TypeBase):
         sa.Index("app_annotation_hit_histories_message_idx", "message_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
+    )
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     annotation_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     source: Mapped[str] = mapped_column(LongText, nullable=False)
@@ -2045,7 +2089,9 @@ class Site(Base):
     use_icon_as_answer_icon: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
     _custom_disclaimer: Mapped[str] = mapped_column("custom_disclaimer", LongText, default="")
     customize_domain = mapped_column(String(255))
-    customize_token_strategy: Mapped[str] = mapped_column(String(255), nullable=False)
+    customize_token_strategy: Mapped[CustomizeTokenStrategy] = mapped_column(
+        EnumText(CustomizeTokenStrategy, length=255), nullable=False
+    )
     prompt_public: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
     status: Mapped[AppStatus] = mapped_column(
         EnumText(AppStatus, length=255), nullable=False, server_default=sa.text("'normal'"), default=AppStatus.NORMAL
@@ -2094,7 +2140,7 @@ class ApiToken(Base):  # bug: this uses setattr so idk the field.
     id = mapped_column(StringUUID, default=lambda: str(uuid4()))
     app_id = mapped_column(StringUUID, nullable=True)
     tenant_id = mapped_column(StringUUID, nullable=True)
-    type = mapped_column(String(16), nullable=False)
+    type: Mapped[ApiTokenType] = mapped_column(EnumText(ApiTokenType, length=16), nullable=False)
     token: Mapped[str] = mapped_column(String(255), nullable=False)
     last_used_at = mapped_column(sa.DateTime, nullable=True)
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
@@ -2404,7 +2450,7 @@ class Tag(TypeBase):
         StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
     )
     tenant_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
-    type: Mapped[str] = mapped_column(String(16), nullable=False)
+    type: Mapped[TagType] = mapped_column(EnumText(TagType, length=16), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
@@ -2489,7 +2535,9 @@ class TenantCreditPool(TypeBase):
         StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
     )
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    pool_type: Mapped[str] = mapped_column(String(40), nullable=False, default="trial", server_default="trial")
+    pool_type: Mapped[ProviderQuotaType] = mapped_column(
+        EnumText(ProviderQuotaType, length=40), nullable=False, default=ProviderQuotaType.TRIAL, server_default="trial"
+    )
     quota_limit: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
     quota_used: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(

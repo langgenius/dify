@@ -13,4 +13,4 @@ PYTEST_XDIST_ARGS="${PYTEST_XDIST_ARGS:--n auto}"
 pytest --timeout "${PYTEST_TIMEOUT}" ${PYTEST_XDIST_ARGS} api/tests/unit_tests --ignore=api/tests/unit_tests/controllers
 
 # Run controller tests sequentially to avoid import race conditions
-pytest --timeout "${PYTEST_TIMEOUT}" api/tests/unit_tests/controllers
+pytest --timeout "${PYTEST_TIMEOUT}" --cov-append api/tests/unit_tests/controllers

@@ -6,6 +6,19 @@ from concurrent.futures import ThreadPoolExecutor
 from enum import StrEnum
 from typing import Any, ClassVar
 
+from graphon.enums import NodeType
+from graphon.file import File
+from graphon.nodes import BuiltinNodeTypes
+from graphon.nodes.variable_assigner.common.helpers import get_updated_variables
+from graphon.variable_loader import VariableLoader
+from graphon.variables import Segment, StringSegment, VariableBase
+from graphon.variables.consts import SELECTORS_LENGTH
+from graphon.variables.segments import (
+    ArrayFileSegment,
+    FileSegment,
+)
+from graphon.variables.types import SegmentType
+from graphon.variables.utils import dumps_with_segments
 from sqlalchemy import Engine, orm, select
 from sqlalchemy.dialects.mysql import insert as mysql_insert
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -14,21 +27,15 @@ from sqlalchemy.sql.expression import and_, or_
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.file_access import DatabaseFileAccessController
 from core.trigger.constants import is_trigger_node_type
-from dify_graph.constants import CONVERSATION_VARIABLE_NODE_ID, ENVIRONMENT_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
-from dify_graph.enums import NodeType, SystemVariableKey
-from dify_graph.file.models import File
-from dify_graph.nodes import BuiltinNodeTypes
-from dify_graph.nodes.variable_assigner.common.helpers import get_updated_variables
-from dify_graph.variable_loader import VariableLoader
-from dify_graph.variables import Segment, StringSegment, VariableBase
-from dify_graph.variables.consts import SELECTORS_LENGTH
-from dify_graph.variables.segments import (
-    ArrayFileSegment,
-    FileSegment,
+from core.workflow.system_variables import SystemVariableKey
+from core.workflow.variable_prefixes import (
+    CONVERSATION_VARIABLE_NODE_ID,
+    ENVIRONMENT_VARIABLE_NODE_ID,
+    RAG_PIPELINE_VARIABLE_NODE_ID,
+    SYSTEM_VARIABLE_NODE_ID,
 )
-from dify_graph.variables.types import SegmentType
-from dify_graph.variables.utils import dumps_with_segments
 from extensions.ext_storage import storage
 from factories.file_factory import StorageKeyLoader
 from factories.variable_factory import build_segment, segment_to_variable
@@ -36,6 +43,7 @@ from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 from models import Account, App, Conversation
 from models.enums import ConversationFromSource, DraftVariableType
+from models.utils.file_input_compat import build_file_from_stored_mapping
 from models.workflow import Workflow, WorkflowDraftVariable, WorkflowDraftVariableFile, is_system_variable_editable
 from repositories.factory import DifyAPIRepositoryFactory
 from services.file_service import FileService
@@ -71,7 +79,7 @@ class UpdateNotSupportedError(WorkflowDraftVariableError):
 class DraftVarLoader(VariableLoader):
     # This implements the VariableLoader interface for loading draft variables.
     #
-    # ref: dify_graph.variable_loader.VariableLoader
+    # ref: graphon.variable_loader.VariableLoader
 
     # Database engine used for loading variables.
     _engine: Engine
@@ -120,7 +128,11 @@ class DraftVarLoader(VariableLoader):
             elif isinstance(value, ArrayFileSegment):
                 files.extend(value.value)
         with Session(bind=self._engine) as session:
-            storage_key_loader = StorageKeyLoader(session, tenant_id=self._tenant_id)
+            storage_key_loader = StorageKeyLoader(
+                session,
+                tenant_id=self._tenant_id,
+                access_controller=DatabaseFileAccessController(),
+            )
             storage_key_loader.load_storage_keys(files)
 
         offloaded_draft_vars = []
@@ -174,7 +186,7 @@ class DraftVarLoader(VariableLoader):
             return (draft_var.node_id, draft_var.name), variable
 
         deserialized = json.loads(content)
-        segment = WorkflowDraftVariable.build_segment_with_type(variable_file.value_type, deserialized)
+        segment = draft_var.build_segment_from_serialized_value(variable_file.value_type, deserialized)
         variable = segment_to_variable(
             segment=segment,
             selector=draft_var.get_selector(),
@@ -838,6 +850,12 @@ class DraftVariableSaver:
         self._user = user
         self._enclosing_node_id = enclosing_node_id
 
+    def _resolve_app_tenant_id(self) -> str:
+        tenant_id = self._session.scalar(select(App.tenant_id).where(App.id == self._app_id))
+        if not tenant_id:
+            raise ValueError(f"Unable to resolve tenant_id for app {self._app_id}")
+        return tenant_id
+
     def _create_dummy_output_variable(self):
         return WorkflowDraftVariable.new_node_variable(
             app_id=self._app_id,
@@ -892,27 +910,18 @@ class DraftVariableSaver:
         for name, value in output.items():
             value_seg = _build_segment_for_serialized_values(value)
             node_id, name = self._normalize_variable_for_start_node(name)
-            # If node_id is not `sys`, it means that the variable is a user-defined input field
-            # in `Start` node.
-            if node_id != SYSTEM_VARIABLE_NODE_ID:
-                draft_vars.append(
-                    WorkflowDraftVariable.new_node_variable(
-                        app_id=self._app_id,
-                        user_id=self._user.id,
-                        node_id=self._node_id,
-                        name=name,
-                        node_execution_id=self._node_execution_id,
-                        value=value_seg,
-                        visible=True,
-                        editable=True,
-                    )
-                )
-                has_non_sys_variables = True
-            else:
+            if node_id == SYSTEM_VARIABLE_NODE_ID:
                 if name == SystemVariableKey.FILES:
                     # Here we know the type of variable must be `array[file]`, we
-                    # just build files from the value.
-                    files = [File.model_validate(v) for v in value]
+                    # just rebuild files from the serialized payload.
+                    tenant_id = self._resolve_app_tenant_id()
+                    files = [
+                        build_file_from_stored_mapping(
+                            file_mapping=v,
+                            tenant_id=tenant_id,
+                        )
+                        for v in value
+                    ]
                     if files:
                         value_seg = WorkflowDraftVariable.build_segment_with_type(SegmentType.ARRAY_FILE, files)
                     else:
@@ -928,15 +937,47 @@ class DraftVariableSaver:
                         editable=self._should_variable_be_editable(node_id, name),
                     )
                 )
+            elif node_id == CONVERSATION_VARIABLE_NODE_ID:
+                draft_vars.append(
+                    WorkflowDraftVariable.new_conversation_variable(
+                        app_id=self._app_id,
+                        user_id=self._user.id,
+                        name=name,
+                        value=value_seg,
+                    )
+                )
+                has_non_sys_variables = True
+            else:
+                draft_vars.append(
+                    WorkflowDraftVariable.new_node_variable(
+                        app_id=self._app_id,
+                        user_id=self._user.id,
+                        node_id=node_id,
+                        name=name,
+                        node_execution_id=self._node_execution_id,
+                        value=value_seg,
+                        visible=self._should_variable_be_visible(node_id, self._node_type, name),
+                        editable=self._should_variable_be_editable(node_id, name),
+                    )
+                )
+                has_non_sys_variables = True
         if not has_non_sys_variables:
             draft_vars.append(self._create_dummy_output_variable())
         return draft_vars
 
     def _normalize_variable_for_start_node(self, name: str) -> tuple[str, str]:
-        if not name.startswith(f"{SYSTEM_VARIABLE_NODE_ID}."):
-            return self._node_id, name
-        _, name_ = name.split(".", maxsplit=1)
-        return SYSTEM_VARIABLE_NODE_ID, name_
+        for reserved_node_id in (
+            SYSTEM_VARIABLE_NODE_ID,
+            ENVIRONMENT_VARIABLE_NODE_ID,
+            CONVERSATION_VARIABLE_NODE_ID,
+            RAG_PIPELINE_VARIABLE_NODE_ID,
+        ):
+            prefix = f"{reserved_node_id}."
+            if name.startswith(prefix):
+                _, name_ = name.split(".", maxsplit=1)
+                return reserved_node_id, name_
+
+        return self._node_id, name
 
     def _build_variables_from_mapping(self, output: Mapping[str, Any]) -> list[WorkflowDraftVariable]:
         draft_vars = []

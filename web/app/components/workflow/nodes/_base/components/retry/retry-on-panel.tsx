@@ -3,8 +3,8 @@ import type {
 } from '@/app/components/workflow/types'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import Slider from '@/app/components/base/slider'
 import Switch from '@/app/components/base/switch'
+import { Slider } from '@/app/components/base/ui/slider'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import { useRetryConfig } from './hooks'
 import s from './style.module.css'
@@ -70,9 +70,10 @@ const RetryOnPanel = ({
                 <Slider
                   className="mr-3 w-[108px]"
                   value={retry_config?.max_retries || 3}
-                  onChange={handleMaxRetriesChange}
+                  onValueChange={handleMaxRetriesChange}
                   min={1}
                   max={10}
+                  aria-label={t('nodes.common.retry.maxRetries', { ns: 'workflow' })}
                 />
                 <Input
                   type="number"
@@ -91,9 +92,10 @@ const RetryOnPanel = ({
                 <Slider
                   className="mr-3 w-[108px]"
                   value={retry_config?.retry_interval || 1000}
-                  onChange={handleRetryIntervalChange}
+                  onValueChange={handleRetryIntervalChange}
                   min={100}
                   max={5000}
+                  aria-label={t('nodes.common.retry.retryInterval', { ns: 'workflow' })}
                 />
                 <Input
                   type="number"

@@ -1,4 +1,3 @@
-from datetime import datetime
 from io import BytesIO
 from unittest.mock import MagicMock, patch
 
@@ -26,6 +25,7 @@ from controllers.console.workspace.workspace import (
     WorkspacePermissionApi,
 )
 from enums.cloud_plan import CloudPlan
+from libs.datetime_utils import naive_utc_now
 from models.account import TenantStatus
 
 
@@ -44,13 +44,13 @@ class TestTenantListApi:
             id="t1",
             name="Tenant 1",
             status="active",
-            created_at=datetime.utcnow(),
+            created_at=naive_utc_now(),
         )
         tenant2 = MagicMock(
             id="t2",
             name="Tenant 2",
             status="active",
-            created_at=datetime.utcnow(),
+            created_at=naive_utc_now(),
         )
 
         with (
@@ -97,13 +97,13 @@ class TestTenantListApi:
             id="t1",
             name="Tenant 1",
             status="active",
-            created_at=datetime.utcnow(),
+            created_at=naive_utc_now(),
         )
         tenant2 = MagicMock(
             id="t2",
             name="Tenant 2",
             status="active",
-            created_at=datetime.utcnow(),
+            created_at=naive_utc_now(),
         )
 
         features_t2 = MagicMock()
@@ -152,13 +152,13 @@ class TestTenantListApi:
             id="t1",
             name="Tenant 1",
             status="active",
-            created_at=datetime.utcnow(),
+            created_at=naive_utc_now(),
         )
         tenant2 = MagicMock(
             id="t2",
             name="Tenant 2",
             status="active",
-            created_at=datetime.utcnow(),
+            created_at=naive_utc_now(),
         )
 
         features = MagicMock()
@@ -204,7 +204,7 @@ class TestTenantListApi:
             id="t1",
             name="Tenant",
             status="active",
-            created_at=datetime.utcnow(),
+            created_at=naive_utc_now(),
         )
 
         features = MagicMock()
@@ -243,13 +243,13 @@ class TestTenantListApi:
             id="t1",
             name="Tenant 1",
             status="active",
-            created_at=datetime.utcnow(),
+            created_at=naive_utc_now(),
         )
         tenant2 = MagicMock(
             id="t2",
             name="Tenant 2",
             status="active",
-            created_at=datetime.utcnow(),
+            created_at=naive_utc_now(),
         )
 
         with (
@@ -305,7 +305,7 @@ class TestWorkspaceListApi:
         api = WorkspaceListApi()
         method = unwrap(api.get)
 
-        tenant = MagicMock(id="t1", name="T", status="active", created_at=datetime.utcnow())
+        tenant = MagicMock(id="t1", name="T", status="active", created_at=naive_utc_now())
 
         paginate_result = MagicMock(
             items=[tenant],
@@ -331,7 +331,7 @@ class TestWorkspaceListApi:
             id="t1",
             name="T",
             status="active",
-            created_at=datetime.utcnow(),
+            created_at=naive_utc_now(),
         )
 
         paginate_result = MagicMock(
@@ -449,12 +449,12 @@ class TestSwitchWorkspaceApi:
                 "controllers.console.workspace.workspace.current_account_with_tenant", return_value=(MagicMock(), "t1")
             ),
             patch("controllers.console.workspace.workspace.TenantService.switch_tenant"),
-            patch("controllers.console.workspace.workspace.db.session.query") as query_mock,
+            patch("controllers.console.workspace.workspace.db.session.get") as get_mock,
             patch(
                 "controllers.console.workspace.workspace.WorkspaceService.get_tenant_info", return_value={"id": "t2"}
             ),
         ):
-            query_mock.return_value.get.return_value = tenant
+            get_mock.return_value = tenant
             result = method(api)
 
         assert result["result"] == "success"
@@ -488,9 +488,9 @@ class TestSwitchWorkspaceApi:
                 return_value=(MagicMock(), "t1"),
             ),
             patch("controllers.console.workspace.workspace.TenantService.switch_tenant"),
-            patch("controllers.console.workspace.workspace.db.session.query") as query_mock,
+            patch("controllers.console.workspace.workspace.db.session.get") as get_mock,
         ):
-            query_mock.return_value.get.return_value = None
+            get_mock.return_value = None
 
             with pytest.raises(ValueError):
                 method(api)
