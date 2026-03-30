@@ -15,7 +15,7 @@
   },
   "devDependencies": {
     "@cucumber/cucumber": "12.7.0",
-    "@playwright/test": "1.51.1",
+    "@playwright/test": "1.58.2",
     "@types/node": "25.5.0",
     "tsx": "4.21.0",
     "typescript": "5.9.3",

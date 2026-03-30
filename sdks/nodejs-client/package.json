@@ -54,17 +54,17 @@
     "publish:npm": "./scripts/publish.sh"
   },
   "dependencies": {
-    "axios": "^1.13.6"
+    "axios": "^1.14.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@types/node": "^25.4.0",
-    "@typescript-eslint/eslint-plugin": "^8.57.0",
-    "@typescript-eslint/parser": "^8.57.0",
-    "@vitest/coverage-v8": "4.0.18",
-    "eslint": "^10.0.3",
+    "@types/node": "^25.5.0",
+    "@typescript-eslint/eslint-plugin": "^8.57.2",
+    "@typescript-eslint/parser": "^8.57.2",
+    "@vitest/coverage-v8": "4.1.2",
+    "eslint": "^10.1.0",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.18"
+    "vitest": "^4.1.2"
   }
 }
