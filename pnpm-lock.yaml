@@ -622,7 +622,11 @@ overrides:
 
 importers:
 
-  .: {}
+  .:
+    devDependencies:
+      taze:
+        specifier: 'catalog:'
+        version: 19.10.0
 
   e2e:
     devDependencies:
@@ -1198,9 +1202,6 @@ importers:
       tailwindcss:
         specifier: 'catalog:'
         version: 3.4.19(tsx@4.21.0)(yaml@2.8.3)
-      taze:
-        specifier: 'catalog:'
-        version: 19.10.0
       tsx:
         specifier: 'catalog:'
         version: 4.21.0
