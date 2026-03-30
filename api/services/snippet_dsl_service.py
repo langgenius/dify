@@ -14,10 +14,10 @@ from sqlalchemy.orm import Session
 
 from core.helper import ssrf_proxy
 from core.plugin.entities.plugin import PluginDependency
-from graphon.enums import BuiltinNodeTypes
-from graphon.model_runtime.utils.encoders import jsonable_encoder
 from extensions.ext_redis import redis_client
 from factories import variable_factory
+from graphon.enums import BuiltinNodeTypes
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 from models import Account
 from models.snippet import CustomizedSnippet, SnippetType
 from models.workflow import Workflow
@@ -449,7 +449,7 @@ class SnippetDslService:
                 account=account,
                 environment_variables=environment_variables,
                 conversation_variables=conversation_variables,
-                input_variables=input_fields,
+                input_fields=input_fields,
             )
 
         self._session.commit()

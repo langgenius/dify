@@ -8,9 +8,9 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.workflow.node_factory import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
+from extensions.ext_database import db
 from graphon.enums import NodeType
 from graphon.variables.variables import VariableBase
-from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account
 from models.enums import WorkflowRunTriggeredFrom
@@ -278,7 +278,7 @@ class SnippetService:
         account: Account,
         environment_variables: Sequence[VariableBase],
         conversation_variables: Sequence[VariableBase],
-        input_variables: list[dict] | None = None,
+        input_fields: list[dict] | None = None,
     ) -> Workflow:
         """
         Sync draft workflow for snippet.
@@ -289,7 +289,7 @@ class SnippetService:
         :param account: Account making the change
         :param environment_variables: Environment variables
         :param conversation_variables: Conversation variables
-        :param input_variables: Input variables for snippet
+        :param input_fields: Input fields for snippet
         :return: Synced Workflow
         :raises WorkflowHashNotEqualError: If hash mismatch
         """
@@ -322,8 +322,8 @@ class SnippetService:
             workflow.conversation_variables = conversation_variables
 
         # Update snippet's input_fields if provided
-        if input_variables is not None:
-            snippet.input_fields = json.dumps(input_variables)
+        if input_fields is not None:
+            snippet.input_fields = json.dumps(input_fields)
             snippet.updated_by = account.id
             snippet.updated_at = datetime.now(UTC).replace(tzinfo=None)
 

@@ -34,10 +34,10 @@ from controllers.console.wraps import (
 )
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
-from graphon.graph_engine.manager import GraphEngineManager
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from factories import variable_factory
+from graphon.graph_engine.manager import GraphEngineManager
 from libs import helper
 from libs.helper import TimestampField
 from libs.login import current_account_with_tenant, login_required
@@ -151,7 +151,7 @@ class SnippetDraftWorkflowApi(Resource):
                 account=current_user,
                 environment_variables=environment_variables,
                 conversation_variables=conversation_variables,
-                input_variables=payload.input_variables,
+                input_fields=payload.input_fields,
             )
         except WorkflowHashNotEqualError:
             raise DraftWorkflowNotSync()
