@@ -29,7 +29,9 @@ COPY sdks/nodejs-client/package.json /app/sdks/nodejs-client/
 # Use packageManager from package.json
 RUN corepack install
 
-RUN pnpm install --frozen-lockfile
+# Install only the web workspace to keep image builds from pulling in
+# unrelated workspace dependencies such as e2e tooling.
+RUN pnpm install --filter ./web... --frozen-lockfile
 
 # build resources
 FROM base AS builder
