@@ -517,9 +517,7 @@ class TestBillingServiceQuotaOperations:
         expected = {"reservation_id": "rid-1", "available": 99, "reserved": 1}
         mock_send_request.return_value = expected
 
-        result = BillingService.quota_reserve(
-            tenant_id="t1", feature_key="trigger_event", request_id="req-1", amount=1
-        )
+        result = BillingService.quota_reserve(tenant_id="t1", feature_key="trigger_event", request_id="req-1", amount=1)
 
         assert result == expected
         mock_send_request.assert_called_once_with(
@@ -574,9 +572,7 @@ class TestBillingServiceQuotaOperations:
         expected = {"available": 100, "reserved": 0, "released": 1}
         mock_send_request.return_value = expected
 
-        result = BillingService.quota_release(
-            tenant_id="t1", feature_key="trigger_event", reservation_id="rid-1"
-        )
+        result = BillingService.quota_release(tenant_id="t1", feature_key="trigger_event", reservation_id="rid-1")
 
         assert result == expected
         mock_send_request.assert_called_once_with(
