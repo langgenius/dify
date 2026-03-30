@@ -3,6 +3,7 @@ from typing import Literal
 
 from flask import request
 from flask_restx import Resource, fields, marshal_with
+from graphon.model_runtime.errors.invoke import InvokeError
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import exists, func, select
 from werkzeug.exceptions import InternalServerError, NotFound
@@ -26,7 +27,6 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from extensions.ext_database import db
 from fields.raws import FilesContainedField
-from graphon.model_runtime.errors.invoke import InvokeError
 from libs.helper import TimestampField, uuid_value
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from libs.login import current_account_with_tenant, login_required

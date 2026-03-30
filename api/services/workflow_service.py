@@ -5,33 +5,6 @@ import uuid
 from collections.abc import Callable, Generator, Mapping, Sequence
 from typing import Any, cast
 
-from sqlalchemy import exists, select
-from sqlalchemy.orm import Session, sessionmaker
-
-from configs import dify_config
-from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
-from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
-from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
-from core.app.file_access import DatabaseFileAccessController
-from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly, create_plugin_provider_manager
-from core.repositories import DifyCoreRepositoryFactory
-from core.repositories.human_input_repository import FormCreateParams, HumanInputFormRepositoryImpl
-from core.trigger.constants import is_trigger_node_type
-from core.workflow.human_input_compat import (
-    DeliveryChannelConfig,
-    normalize_human_input_node_data_for_graph,
-    parse_human_input_delivery_methods,
-)
-from core.workflow.node_factory import LATEST_VERSION, get_node_type_classes_mapping, is_start_node_type
-from core.workflow.node_runtime import DifyHumanInputNodeRuntime, apply_dify_debug_email_recipient
-from core.workflow.system_variables import build_bootstrap_variables, build_system_variables, default_system_variables
-from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
-from core.workflow.workflow_entry import WorkflowEntry
-from enums.cloud_plan import CloudPlan
-from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
-from extensions.ext_database import db
-from extensions.ext_storage import storage
-from factories.file_factory import build_from_mapping, build_from_mappings
 from graphon.entities import GraphInitParams, WorkflowNodeExecution
 from graphon.entities.graph_config import NodeConfigDict
 from graphon.entities.pause_reason import HumanInputRequired
@@ -57,6 +30,34 @@ from graphon.variable_loader import load_into_variable_pool
 from graphon.variables import VariableBase
 from graphon.variables.input_entities import VariableEntityType
 from graphon.variables.variables import Variable
+from sqlalchemy import exists, select
+from sqlalchemy.orm import Session, sessionmaker
+
+from configs import dify_config
+from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
+from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
+from core.app.file_access import DatabaseFileAccessController
+from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly, create_plugin_provider_manager
+from core.repositories import DifyCoreRepositoryFactory
+from core.repositories.human_input_repository import FormCreateParams, HumanInputFormRepositoryImpl
+from core.trigger.constants import is_trigger_node_type
+from core.workflow.human_input_compat import (
+    DeliveryChannelConfig,
+    normalize_human_input_node_data_for_graph,
+    parse_human_input_delivery_methods,
+)
+from core.workflow.node_factory import LATEST_VERSION, get_node_type_classes_mapping, is_start_node_type
+from core.workflow.node_runtime import DifyHumanInputNodeRuntime, apply_dify_debug_email_recipient
+from core.workflow.system_variables import build_bootstrap_variables, build_system_variables, default_system_variables
+from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
+from core.workflow.workflow_entry import WorkflowEntry
+from enterprise.telemetry.draft_trace import enqueue_draft_node_execution_trace
+from enums.cloud_plan import CloudPlan
+from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
+from extensions.ext_database import db
+from extensions.ext_storage import storage
+from factories.file_factory import build_from_mapping, build_from_mappings
 from libs.datetime_utils import naive_utc_now
 from models import Account
 from models.human_input import HumanInputFormRecipient, RecipientType
@@ -849,6 +850,13 @@ class WorkflowService:
             draft_var_saver.save(process_data=node_execution.process_data, outputs=outputs)
             session.commit()
 
+        enqueue_draft_node_execution_trace(
+            execution=workflow_node_execution,
+            outputs=outputs,
+            workflow_execution_id=None,
+            user_id=account.id,
+        )
+
         return workflow_node_execution
 
     def get_human_input_form_preview(
@@ -1110,7 +1118,7 @@ class WorkflowService:
                 continue
             try:
                 payload = json.loads(recipient.recipient_payload)
-            except Exception:
+            except (json.JSONDecodeError, ValueError):
                 logger.exception("Failed to parse human input recipient payload for delivery test.")
                 continue
             email = payload.get("email")
