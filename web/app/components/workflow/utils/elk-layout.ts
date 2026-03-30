@@ -18,9 +18,6 @@ import {
   BlockEnum,
 } from '@/app/components/workflow/types'
 
-// Although the file name refers to Dagre, the implementation now relies on ELK's layered algorithm.
-// Keep the export signatures unchanged to minimise the blast radius while we migrate the layout stack.
-
 const elk = new ELK()
 
 const DEFAULT_NODE_WIDTH = 244
@@ -41,7 +38,6 @@ const ROOT_LAYOUT_OPTIONS = {
   // === Port Configuration ===
   'elk.portConstraints': 'FIXED_ORDER',
   'elk.layered.considerModelOrder.strategy': 'PREFER_EDGES',
-  'elk.port.side': 'SOUTH',
 
   // === Node Placement - Best quality ===
   'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX',
@@ -278,32 +274,16 @@ const collectLayout = (graph: ElkNode, predicate: (id: string) => boolean): Layo
   }
 }
 
-/**
- * Build If/Else node with ELK native Ports instead of dummy nodes
- * This is the recommended approach for handling multiple branches
- */
-const buildIfElseWithPorts = (
-  ifElseNode: Node,
-  edges: Edge[],
-): { node: ElkNodeShape, portMap: Map<string, string> } | null => {
-  const childEdges = edges.filter(edge => edge.source === ifElseNode.id)
-
-  if (childEdges.length <= 1)
-    return null
-
-  // Sort child edges according to case order
-  const sortedChildEdges = [...childEdges].sort((edgeA, edgeB) => {
+const sortIfElseOutEdges = (ifElseNode: Node, outEdges: Edge[]): Edge[] => {
+  return [...outEdges].sort((edgeA, edgeB) => {
     const handleA = edgeA.sourceHandle
     const handleB = edgeB.sourceHandle
 
     if (handleA && handleB) {
       const cases = (ifElseNode.data as IfElseNodeType).cases || []
-      const isAElse = handleA === 'false'
-      const isBElse = handleB === 'false'
-
-      if (isAElse)
+      if (handleA === 'false')
         return 1
-      if (isBElse)
+      if (handleB === 'false')
         return -1
 
       const indexA = cases.findIndex((c: CaseItem) => c.case_id === handleA)
@@ -315,67 +295,20 @@ const buildIfElseWithPorts = (
 
     return 0
   })
-
-  // Create ELK ports for each branch
-  const ports: ElkPortShape[] = sortedChildEdges.map((edge, index) => ({
-    id: `${ifElseNode.id}-port-${edge.sourceHandle || index}`,
-    layoutOptions: {
-      'port.side': 'EAST', // Ports on the right side (matching 'RIGHT' direction)
-      'port.index': String(index),
-    },
-  }))
-
-  // Build port mapping: sourceHandle -> portId
-  const portMap = new Map<string, string>()
-  sortedChildEdges.forEach((edge, index) => {
-    const portId = `${ifElseNode.id}-port-${edge.sourceHandle || index}`
-    portMap.set(edge.id, portId)
-  })
-
-  return {
-    node: {
-      id: ifElseNode.id,
-      width: ifElseNode.width ?? DEFAULT_NODE_WIDTH,
-      height: ifElseNode.height ?? DEFAULT_NODE_HEIGHT,
-      ports,
-      layoutOptions: {
-        'elk.portConstraints': 'FIXED_ORDER',
-      },
-    },
-    portMap,
-  }
 }
 
-/**
- * Build Human Input node with ELK native Ports for multiple branches
- * Handles user actions as branches with __timeout as the last fixed branch
- */
-const buildHumanInputWithPorts = (
-  humanInputNode: Node,
-  edges: Edge[],
-): { node: ElkNodeShape, portMap: Map<string, string> } | null => {
-  const childEdges = edges.filter(edge => edge.source === humanInputNode.id)
-
-  if (childEdges.length <= 1)
-    return null
-
-  // Sort child edges: user actions first (by order), then __timeout last
-  const sortedChildEdges = [...childEdges].sort((edgeA, edgeB) => {
+const sortHumanInputOutEdges = (humanInputNode: Node, outEdges: Edge[]): Edge[] => {
+  return [...outEdges].sort((edgeA, edgeB) => {
     const handleA = edgeA.sourceHandle
     const handleB = edgeB.sourceHandle
 
     if (handleA && handleB) {
       const userActions = (humanInputNode.data as HumanInputNodeType).user_actions || []
-      const isATimeout = handleA === '__timeout'
-      const isBTimeout = handleB === '__timeout'
-
-      // __timeout should always be last
-      if (isATimeout)
+      if (handleA === '__timeout')
         return 1
-      if (isBTimeout)
+      if (handleB === '__timeout')
         return -1
 
-      // Sort by user_actions order
       const indexA = userActions.findIndex(action => action.id === handleA)
       const indexB = userActions.findIndex(action => action.id === handleB)
 
@@ -385,35 +318,6 @@ const buildHumanInputWithPorts = (
 
     return 0
   })
-
-  // Create ELK ports for each branch
-  const ports: ElkPortShape[] = sortedChildEdges.map((edge, index) => ({
-    id: `${humanInputNode.id}-port-${edge.sourceHandle || index}`,
-    layoutOptions: {
-      'port.side': 'EAST',
-      'port.index': String(index),
-    },
-  }))
-
-  // Build port mapping: edge.id -> portId
-  const portMap = new Map<string, string>()
-  sortedChildEdges.forEach((edge, index) => {
-    const portId = `${humanInputNode.id}-port-${edge.sourceHandle || index}`
-    portMap.set(edge.id, portId)
-  })
-
-  return {
-    node: {
-      id: humanInputNode.id,
-      width: humanInputNode.width ?? DEFAULT_NODE_WIDTH,
-      height: humanInputNode.height ?? DEFAULT_NODE_HEIGHT,
-      ports,
-      layoutOptions: {
-        'elk.portConstraints': 'FIXED_ORDER',
-      },
-    },
-    portMap,
-  }
 }
 
 const normaliseBounds = (layout: LayoutResult): LayoutResult => {
@@ -448,58 +352,87 @@ const normaliseBounds = (layout: LayoutResult): LayoutResult => {
   }
 }
 
-export const getLayoutByDagre = async (originNodes: Node[], originEdges: Edge[]): Promise<LayoutResult> => {
+export const getLayoutByELK = async (originNodes: Node[], originEdges: Edge[]): Promise<LayoutResult> => {
   edgeCounter = 0
   const nodes = cloneDeep(originNodes).filter(node => !node.parentId && node.type === CUSTOM_NODE)
   const edges = cloneDeep(originEdges).filter(edge => (!edge.data?.isInIteration && !edge.data?.isInLoop))
 
-  const elkNodes: ElkNodeShape[] = []
-  const elkEdges: ElkEdgeShape[] = []
-
-  // Track which edges have been processed for If/Else nodes with ports
-  const edgeToPortMap = new Map<string, string>()
-
-  // Build nodes with ports for If/Else and Human Input nodes
-  nodes.forEach((node) => {
-    if (node.data.type === BlockEnum.IfElse) {
-      const portsResult = buildIfElseWithPorts(node, edges)
-      if (portsResult) {
-        // Use node with ports
-        elkNodes.push(portsResult.node)
-        // Store port mappings for edges
-        portsResult.portMap.forEach((portId, edgeId) => {
-          edgeToPortMap.set(edgeId, portId)
-        })
-      }
-      else {
-        // No multiple branches, use normal node
-        elkNodes.push(toElkNode(node))
-      }
-    }
-    else if (node.data.type === BlockEnum.HumanInput) {
-      const portsResult = buildHumanInputWithPorts(node, edges)
-      if (portsResult) {
-        // Use node with ports
-        elkNodes.push(portsResult.node)
-        // Store port mappings for edges
-        portsResult.portMap.forEach((portId, edgeId) => {
-          edgeToPortMap.set(edgeId, portId)
-        })
-      }
-      else {
-        // No multiple branches, use normal node
-        elkNodes.push(toElkNode(node))
-      }
-    }
-    else {
-      elkNodes.push(toElkNode(node))
-    }
+  const outEdgesByNode = new Map<string, Edge[]>()
+  const inEdgesByNode = new Map<string, Edge[]>()
+  edges.forEach((edge) => {
+    if (!outEdgesByNode.has(edge.source))
+      outEdgesByNode.set(edge.source, [])
+    outEdgesByNode.get(edge.source)!.push(edge)
+    if (!inEdgesByNode.has(edge.target))
+      inEdgesByNode.set(edge.target, [])
+    inEdgesByNode.get(edge.target)!.push(edge)
   })
 
-  // Build edges with port connections
-  edges.forEach((edge) => {
-    const sourcePort = edgeToPortMap.get(edge.id)
-    elkEdges.push(createEdge(edge.source, edge.target, sourcePort))
+  const elkNodes: ElkNodeShape[] = []
+  const elkEdges: ElkEdgeShape[] = []
+  const sourcePortMap = new Map<string, string>()
+  const targetPortMap = new Map<string, string>()
+  const sortedOutEdgesByNode = new Map<string, Edge[]>()
+
+  nodes.forEach((node) => {
+    const inEdges = inEdgesByNode.get(node.id) || []
+    let outEdges = outEdgesByNode.get(node.id) || []
+
+    if (node.data.type === BlockEnum.IfElse)
+      outEdges = sortIfElseOutEdges(node, outEdges)
+    else if (node.data.type === BlockEnum.HumanInput)
+      outEdges = sortHumanInputOutEdges(node, outEdges)
+
+    sortedOutEdgesByNode.set(node.id, outEdges)
+
+    const ports: ElkPortShape[] = []
+
+    inEdges.forEach((edge, index) => {
+      const portId = `${node.id}-in-${index}`
+      ports.push({
+        id: portId,
+        layoutOptions: {
+          'elk.port.side': 'WEST',
+          'elk.port.index': String(index),
+        },
+      })
+      targetPortMap.set(edge.id, portId)
+    })
+
+    outEdges.forEach((edge, index) => {
+      const portId = `${node.id}-out-${edge.sourceHandle || index}`
+      ports.push({
+        id: portId,
+        layoutOptions: {
+          'elk.port.side': 'EAST',
+          'elk.port.index': String(index),
+        },
+      })
+      sourcePortMap.set(edge.id, portId)
+    })
+
+    elkNodes.push({
+      id: node.id,
+      width: node.width ?? DEFAULT_NODE_WIDTH,
+      height: node.height ?? DEFAULT_NODE_HEIGHT,
+      ...(ports.length > 0 && {
+        ports,
+        layoutOptions: { 'elk.portConstraints': 'FIXED_ORDER' },
+      }),
+    })
+  })
+
+  // Build edges in sorted per-node order so PREFER_EDGES aligns with port order
+  nodes.forEach((node) => {
+    const outEdges = sortedOutEdgesByNode.get(node.id) || []
+    outEdges.forEach((edge) => {
+      elkEdges.push(createEdge(
+        edge.source,
+        edge.target,
+        sourcePortMap.get(edge.id),
+        targetPortMap.get(edge.id),
+      ))
+    })
   })
 
   const graph = {
