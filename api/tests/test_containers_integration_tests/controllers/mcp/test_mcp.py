@@ -1,3 +1,7 @@
+"""Testcontainers integration tests for controllers.mcp.mcp endpoints."""
+
+from __future__ import annotations
+
 import types
 from unittest.mock import MagicMock, patch
 
@@ -12,24 +16,6 @@ def unwrap(func):
     while hasattr(func, "__wrapped__"):
         func = func.__wrapped__
     return func
-
-
-@pytest.fixture(autouse=True)
-def mock_db():
-    module.db = types.SimpleNamespace(engine=object())
-
-
-@pytest.fixture
-def fake_session():
-    session = MagicMock()
-    session.__enter__.return_value = session
-    session.__exit__.return_value = False
-    return session
-
-
-@pytest.fixture(autouse=True)
-def mock_session(fake_session):
-    module.Session = MagicMock(return_value=fake_session)
 
 
 @pytest.fixture(autouse=True)
