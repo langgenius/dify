@@ -4,7 +4,7 @@ from collections.abc import Sequence
 from typing import Any
 
 from graphon.model_runtime.entities.model_entities import ModelType
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 
 from core.model_manager import ModelManager
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
@@ -63,10 +63,8 @@ class DatasetDocumentStore:
         return output
 
     def add_documents(self, docs: Sequence[Document], allow_update: bool = True, save_child: bool = False):
-        max_position = (
-            db.session.query(func.max(DocumentSegment.position))
-            .where(DocumentSegment.document_id == self._document_id)
-            .scalar()
+        max_position = db.session.scalar(
+            select(func.max(DocumentSegment.position)).where(DocumentSegment.document_id == self._document_id)
         )
 
         if max_position is None:
@@ -155,12 +153,14 @@ class DatasetDocumentStore:
                 )
                 if save_child and doc.children:
                     # delete the existing child chunks
-                    db.session.query(ChildChunk).where(
-                        ChildChunk.tenant_id == self._dataset.tenant_id,
-                        ChildChunk.dataset_id == self._dataset.id,
-                        ChildChunk.document_id == self._document_id,
-                        ChildChunk.segment_id == segment_document.id,
-                    ).delete()
+                    db.session.execute(
+                        delete(ChildChunk).where(
+                            ChildChunk.tenant_id == self._dataset.tenant_id,
+                            ChildChunk.dataset_id == self._dataset.id,
+                            ChildChunk.document_id == self._document_id,
+                            ChildChunk.segment_id == segment_document.id,
+                        )
+                    )
                     # add new child chunks
                     for position, child in enumerate(doc.children, start=1):
                         child_segment = ChildChunk(
