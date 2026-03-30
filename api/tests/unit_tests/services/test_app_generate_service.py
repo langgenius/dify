@@ -221,6 +221,11 @@ class TestGenerate:
             "services.app_generate_service.rate_limit_context",
             _noop_rate_limit_context,
         )
+        mocker.patch.object(
+            AppGenerateService,
+            "_prepare_generate_args",
+            side_effect=lambda **kwargs: dict(kwargs["args"]),
+        )
 
     # -- COMPLETION ---------------------------------------------------------
     def test_completion_mode(self, mocker):
@@ -443,6 +448,11 @@ class TestGenerateBilling:
             "services.app_generate_service.rate_limit_context",
             _noop_rate_limit_context,
         )
+        mocker.patch.object(
+            AppGenerateService,
+            "_prepare_generate_args",
+            side_effect=lambda **kwargs: dict(kwargs["args"]),
+        )
 
     def test_billing_enabled_consumes_quota(self, mocker, monkeypatch):
         monkeypatch.setattr(ags_module.dify_config, "BILLING_ENABLED", True)
@@ -543,6 +553,67 @@ class TestGenerateBilling:
         )
         # exit is called in finally block for non-streaming
         assert len(exit_calls) >= 1
+
+
+class TestPrepareGenerateArgs:
+    def test_message_based_mode_prepares_debugger_files(self, mocker):
+        app = _make_app(AppMode.CHAT)
+        user = _make_user()
+        conversation = MagicMock(id="conv-1")
+        app_model_config = MagicMock()
+        app_model_config.to_dict.return_value = {"feature": "base"}
+        validated_config = {"feature": "override"}
+
+        mocker.patch("services.app_generate_service.ConversationService.get_conversation", return_value=conversation)
+        mocker.patch(
+            "services.app_generate_service.MessageBasedAppGenerator._get_app_model_config",
+            return_value=app_model_config,
+        )
+        mocker.patch(
+            "services.app_generate_service.ChatAppConfigManager.config_validate",
+            return_value=validated_config,
+        )
+        mocker.patch("services.app_generate_service.FileUploadConfigManager.convert", return_value="cfg")
+        prepare_mock = mocker.patch(
+            "services.app_generate_service.prepare_request_file_args",
+            return_value={"prepared": True},
+        )
+
+        result = AppGenerateService._prepare_generate_args(
+            app_model=app,
+            user=user,
+            args={"conversation_id": "conv-1", "files": [{"id": "file-1"}], "model_config": {"x": 1}},
+            invoke_from=InvokeFrom.DEBUGGER,
+        )
+
+        assert result == {"prepared": True}
+        assert validated_config["retriever_resource"] == {"enabled": True}
+        prepare_mock.assert_called_once()
+        assert prepare_mock.call_args.kwargs["file_upload_config"] == "cfg"
+
+    def test_workflow_mode_prepares_service_api_files_with_strict_validation(self, mocker):
+        app = _make_app(AppMode.WORKFLOW)
+        user = _make_user()
+        workflow = _make_workflow()
+        workflow.features_dict = {"file_upload": {"enabled": True}}
+
+        mocker.patch("services.app_generate_service.FileUploadConfigManager.convert", return_value="cfg")
+        prepare_mock = mocker.patch(
+            "services.app_generate_service.prepare_request_file_args",
+            return_value={"prepared": True},
+        )
+
+        result = AppGenerateService._prepare_generate_args(
+            app_model=app,
+            user=user,
+            args={"inputs": {}, "files": [{"id": "file-1"}]},
+            invoke_from=InvokeFrom.SERVICE_API,
+            workflow=workflow,
+        )
+
+        assert result == {"prepared": True}
+        prepare_mock.assert_called_once()
+        assert prepare_mock.call_args.kwargs["strict_type_validation"] is True
 
 
 # ---------------------------------------------------------------------------

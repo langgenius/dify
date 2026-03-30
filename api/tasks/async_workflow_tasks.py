@@ -30,6 +30,7 @@ from models.trigger import WorkflowTriggerLog
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
+from services.app_generate_service import AppGenerateService
 from services.errors.app import WorkflowNotFoundError
 from services.workflow.entities import (
     TriggerData,
@@ -150,6 +151,13 @@ def _execute_workflow_common(
             # If workflow_id was specified, add it to args
             if trigger_data.workflow_id:
                 args["workflow_id"] = str(trigger_data.workflow_id)
+            args = AppGenerateService._prepare_generate_args(
+                app_model=app_model,
+                user=user,
+                args=args,
+                invoke_from=InvokeFrom.SERVICE_API,
+                workflow=workflow,
+            )
 
             pause_config = PauseStateLayerConfig(
                 session_factory=session_factory.get_session_maker(),

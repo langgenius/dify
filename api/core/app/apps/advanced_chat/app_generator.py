@@ -41,13 +41,19 @@ from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueMa
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
 from core.app.entities.task_entities import ChatbotAppBlockingResponse, ChatbotAppStreamResponse
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, PauseStatePersistenceLayer
+from core.app.request_files import (
+    PREPARED_FILE_UPLOAD_CONFIG_ARG_KEY,
+    PREPARED_FILES_ARG_KEY,
+    deserialize_prepared_file_upload_config,
+    deserialize_prepared_files,
+)
 from core.helper.trace_id_helper import extract_external_trace_id_from_args
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.prompt.utils.get_thread_messages_length import get_thread_messages_length
 from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from extensions.ext_database import db
-from factories import file_factory
+from factories import file_factory as _legacy_file_factory
 from libs.flask_utils import preserve_flask_contexts
 from models import Account, App, Conversation, EndUser, Message, Workflow, WorkflowNodeExecutionTriggeredFrom
 from models.enums import WorkflowRunTriggeredFrom
@@ -58,6 +64,7 @@ from services.workflow_draft_variable_service import (
 )
 
 logger = logging.getLogger(__name__)
+file_factory = _legacy_file_factory
 
 
 class AdvancedChatAppGenerator(MessageBasedAppGenerator):
@@ -146,26 +153,25 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 app_model=app_model, conversation_id=conversation_id, user=user
             )
 
-        # parse files
-        # TODO(QuantumGhost): Move file parsing logic to the API controller layer
-        # for better separation of concerns.
-        #
-        # For implementation reference, see the `_parse_file` function and
-        # `DraftWorkflowNodeRunApi` class which handle this properly.
-        with self._bind_file_access_scope(tenant_id=app_model.tenant_id, user=user, invoke_from=invoke_from):
-            files = args["files"] if args.get("files") else []
+        if args.get(PREPARED_FILES_ARG_KEY):
+            file_objs = deserialize_prepared_files(args.get("files"))
+            file_extra_config = deserialize_prepared_file_upload_config(args.get(PREPARED_FILE_UPLOAD_CONFIG_ARG_KEY))
+        else:
             file_extra_config = FileUploadConfigManager.convert(workflow.features_dict, is_vision=False)
-            if file_extra_config:
-                file_objs = file_factory.build_from_mappings(
-                    mappings=files,
-                    tenant_id=app_model.tenant_id,
-                    config=file_extra_config,
-                    access_controller=self._file_access_controller,
-                )
-            else:
-                file_objs = []
+            with self._bind_file_access_scope(tenant_id=app_model.tenant_id, user=user, invoke_from=invoke_from):
+                files = args.get("files") or []
+                if file_extra_config:
+                    file_objs = file_factory.build_from_mappings(
+                        mappings=files,
+                        tenant_id=app_model.tenant_id,
+                        config=file_extra_config,
+                        access_controller=self._file_access_controller,
+                    )
+                else:
+                    file_objs = []
 
-            # convert to app config
+        # convert to app config
+        with self._bind_file_access_scope(tenant_id=app_model.tenant_id, user=user, invoke_from=invoke_from):
             app_config = AdvancedChatAppConfigManager.get_app_config(app_model=app_model, workflow=workflow)
 
             # get tracing instance

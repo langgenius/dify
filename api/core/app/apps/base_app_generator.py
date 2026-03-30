@@ -1,5 +1,5 @@
 from collections.abc import Generator, Mapping, Sequence
-from contextlib import AbstractContextManager, nullcontext
+from contextlib import AbstractContextManager
 from typing import TYPE_CHECKING, Any, Union, final
 
 from graphon.enums import NodeType
@@ -12,8 +12,9 @@ from core.app.apps.draft_variable_saver import (
     DraftVariableSaverFactory,
     NoopDraftVariableSaver,
 )
-from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from core.app.file_access import DatabaseFileAccessController, FileAccessScope, bind_file_access_scope
+from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.file_access import DatabaseFileAccessController
+from core.app.request_files import bind_request_file_access_scope
 from extensions.ext_database import db
 from factories import file_factory
 from libs.orjson import orjson_dumps
@@ -68,20 +69,10 @@ class BaseAppGenerator:
         user: Account | EndUser,
         invoke_from: InvokeFrom,
     ) -> AbstractContextManager[None]:
-        """Bind request-scoped file ownership markers for downstream file lookups."""
-
-        user_id = getattr(user, "id", None)
-        if not isinstance(user_id, str) or not user_id:
-            return nullcontext()
-
-        user_from = UserFrom.ACCOUNT if isinstance(user, Account) else UserFrom.END_USER
-        return bind_file_access_scope(
-            FileAccessScope(
-                tenant_id=tenant_id,
-                user_id=user_id,
-                user_from=user_from,
-                invoke_from=invoke_from,
-            )
+        return bind_request_file_access_scope(
+            tenant_id=tenant_id,
+            user=user,
+            invoke_from=invoke_from,
         )
 
     def _prepare_user_inputs(
