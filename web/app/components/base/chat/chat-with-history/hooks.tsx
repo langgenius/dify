@@ -149,7 +149,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     if (appId) {
       setConversationIdInfo((prev) => {
         const prevAppConversations = prev?.[appId || '']
-        const base = typeof prevAppConversations === 'object' && prevAppConversations
+        const base = (typeof prevAppConversations === 'object' && prevAppConversations)
           ? prevAppConversations
           : {}
         return {
