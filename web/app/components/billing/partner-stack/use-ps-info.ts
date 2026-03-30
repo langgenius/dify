@@ -63,7 +63,7 @@ const usePSInfo = () => {
       }
       setBind()
     }
-  }, [psPartnerKey, psClickId, mutateAsync, hasBind, setBind, domain])
+  }, [psPartnerKey, psClickId, hasBind, domain, setBind, mutateAsync])
   return {
     psPartnerKey,
     psClickId,

@@ -158,6 +158,15 @@ class FeedbackFromSource(StrEnum):
     ADMIN = "admin"
 
 
+class CustomizeTokenStrategy(StrEnum):
+    """Site token customization strategy"""
+
+    MUST = "must"
+    ALLOW = "allow"
+    NOT_ALLOW = "not_allow"
+    UUID = "uuid"
+
+
 class FeedbackRating(StrEnum):
     """MessageFeedback rating"""
 
@@ -220,6 +229,13 @@ class DatasetMetadataType(StrEnum):
     STRING = "string"
     NUMBER = "number"
     TIME = "time"
+
+
+class SegmentType(StrEnum):
+    """Document segment type"""
+
+    AUTOMATIC = "automatic"
+    CUSTOMIZED = "customized"
 
 
 class SegmentStatus(StrEnum):
@@ -307,6 +323,13 @@ class MessageChainType(StrEnum):
     SYSTEM = "system"
 
 
+class PromptType(StrEnum):
+    """Prompt configuration type"""
+
+    SIMPLE = "simple"
+    ADVANCED = "advanced"
+
+
 class ProviderQuotaType(StrEnum):
     PAID = "paid"
     """hosted paid quota"""
@@ -323,3 +346,10 @@ class ProviderQuotaType(StrEnum):
             if member.value == value:
                 return member
         raise ValueError(f"No matching enum found for value '{value}'")
+
+
+class ApiTokenType(StrEnum):
+    """API Token type"""
+
+    APP = "app"
+    DATASET = "dataset"

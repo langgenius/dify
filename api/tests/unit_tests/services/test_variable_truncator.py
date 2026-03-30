@@ -16,10 +16,8 @@ from typing import Any
 from uuid import uuid4
 
 import pytest
-
-from dify_graph.file.enums import FileTransferMethod, FileType
-from dify_graph.file.models import File
-from dify_graph.variables.segments import (
+from graphon.file import File, FileTransferMethod, FileType
+from graphon.variables.segments import (
     ArrayFileSegment,
     ArrayNumberSegment,
     ArraySegment,
@@ -30,6 +28,7 @@ from dify_graph.variables.segments import (
     ObjectSegment,
     StringSegment,
 )
+
 from services.variable_truncator import (
     DummyVariableTruncator,
     MaxDepthExceededError,

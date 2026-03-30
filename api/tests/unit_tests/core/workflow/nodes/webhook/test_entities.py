@@ -324,7 +324,7 @@ def test_webhook_body_parameter_edge_cases():
 
 def test_webhook_data_inheritance():
     """Test WebhookData inherits from BaseNodeData correctly."""
-    from dify_graph.entities.base_node_data import BaseNodeData
+    from graphon.entities.base_node_data import BaseNodeData
 
     # Test that WebhookData is a subclass of BaseNodeData
     assert issubclass(WebhookData, BaseNodeData)

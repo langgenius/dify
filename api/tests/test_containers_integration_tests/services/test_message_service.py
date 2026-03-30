@@ -4,7 +4,7 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
-from models.enums import FeedbackRating
+from models.enums import ConversationFromSource, FeedbackRating, InvokeFrom
 from models.model import MessageFeedback
 from services.app_service import AppService
 from services.errors.message import (
@@ -25,7 +25,7 @@ class TestMessageService:
         """Mock setup for external service dependencies."""
         with (
             patch("services.account_service.FeatureService") as mock_account_feature_service,
-            patch("services.message_service.ModelManager") as mock_model_manager,
+            patch("services.message_service.ModelManager.for_tenant") as mock_model_manager,
             patch("services.message_service.WorkflowService") as mock_workflow_service,
             patch("services.message_service.AdvancedChatAppConfigManager") as mock_app_config_manager,
             patch("services.message_service.LLMGenerator") as mock_llm_generator,
@@ -149,8 +149,8 @@ class TestMessageService:
             system_instruction="",
             system_instruction_tokens=0,
             status="normal",
-            invoke_from="console",
-            from_source="console",
+            invoke_from=InvokeFrom.EXPLORE,
+            from_source=ConversationFromSource.CONSOLE,
             from_end_user_id=None,
             from_account_id=account.id,
         )
@@ -187,8 +187,8 @@ class TestMessageService:
             provider_response_latency=0,
             total_price=0,
             currency="USD",
-            invoke_from="console",
-            from_source="console",
+            invoke_from=InvokeFrom.EXPLORE,
+            from_source=ConversationFromSource.CONSOLE,
             from_end_user_id=None,
             from_account_id=account.id,
         )

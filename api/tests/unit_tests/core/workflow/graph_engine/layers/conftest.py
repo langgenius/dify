@@ -5,12 +5,11 @@ Shared fixtures for ObservabilityLayer tests.
 from unittest.mock import MagicMock, patch
 
 import pytest
+from graphon.enums import BuiltinNodeTypes
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from opentelemetry.trace import set_tracer_provider
-
-from dify_graph.enums import BuiltinNodeTypes
 
 
 @pytest.fixture
@@ -62,8 +61,9 @@ def mock_llm_node():
 @pytest.fixture
 def mock_tool_node():
     """Create a mock Tool Node with tool-specific attributes."""
+    from graphon.nodes.tool.entities import ToolNodeData
+
     from core.tools.entities.tool_entities import ToolProviderType
-    from dify_graph.nodes.tool.entities import ToolNodeData
 
     node = MagicMock()
     node.id = "test-tool-node-id"
@@ -117,8 +117,8 @@ def mock_result_event():
     """Create a mock result event with NodeRunResult."""
     from datetime import datetime
 
-    from dify_graph.graph_events.node import NodeRunSucceededEvent
-    from dify_graph.node_events.base import NodeRunResult
+    from graphon.graph_events import NodeRunSucceededEvent
+    from graphon.node_events import NodeRunResult
 
     node_run_result = NodeRunResult(
         inputs={"query": "test query"},

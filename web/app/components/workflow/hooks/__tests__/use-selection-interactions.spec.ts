@@ -200,8 +200,8 @@ describe('useSelectionInteractions', () => {
     })
 
     expect(store.getState().selectionMenu).toEqual({
-      top: 150,
-      left: 200,
+      clientX: 300,
+      clientY: 200,
     })
     expect(store.getState().nodeMenu).toBeUndefined()
     expect(store.getState().panelMenu).toBeUndefined()
@@ -210,7 +210,7 @@ describe('useSelectionInteractions', () => {
 
   it('handleSelectionContextmenuCancel should clear selectionMenu', () => {
     const { result, store } = renderSelectionInteractions({
-      selectionMenu: { top: 50, left: 60 },
+      selectionMenu: { clientX: 50, clientY: 60 },
     })
 
     act(() => {

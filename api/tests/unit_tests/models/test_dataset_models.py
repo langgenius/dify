@@ -15,6 +15,7 @@ from datetime import UTC, datetime
 from unittest.mock import patch
 from uuid import uuid4
 
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from models.dataset import (
     AppDatasetJoin,
     ChildChunk,
@@ -67,14 +68,14 @@ class TestDatasetModelValidation:
             data_source_type=DataSourceType.UPLOAD_FILE,
             created_by=str(uuid4()),
             description="Test description",
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             embedding_model="text-embedding-ada-002",
             embedding_model_provider="openai",
         )
 
         # Assert
         assert dataset.description == "Test description"
-        assert dataset.indexing_technique == "high_quality"
+        assert dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY
         assert dataset.embedding_model == "text-embedding-ada-002"
         assert dataset.embedding_model_provider == "openai"
 
@@ -86,21 +87,21 @@ class TestDatasetModelValidation:
             name="High Quality Dataset",
             data_source_type=DataSourceType.UPLOAD_FILE,
             created_by=str(uuid4()),
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
         )
         dataset_economy = Dataset(
             tenant_id=str(uuid4()),
             name="Economy Dataset",
             data_source_type=DataSourceType.UPLOAD_FILE,
             created_by=str(uuid4()),
-            indexing_technique="economy",
+            indexing_technique=IndexTechniqueType.ECONOMY,
         )
 
         # Assert
-        assert dataset_high_quality.indexing_technique == "high_quality"
-        assert dataset_economy.indexing_technique == "economy"
-        assert "high_quality" in Dataset.INDEXING_TECHNIQUE_LIST
-        assert "economy" in Dataset.INDEXING_TECHNIQUE_LIST
+        assert dataset_high_quality.indexing_technique == IndexTechniqueType.HIGH_QUALITY
+        assert dataset_economy.indexing_technique == IndexTechniqueType.ECONOMY
+        assert IndexTechniqueType.HIGH_QUALITY in Dataset.INDEXING_TECHNIQUE_LIST
+        assert IndexTechniqueType.ECONOMY in Dataset.INDEXING_TECHNIQUE_LIST
 
     def test_dataset_provider_validation(self):
         """Test dataset provider values."""
@@ -983,7 +984,7 @@ class TestModelIntegration:
             name="Test Dataset",
             data_source_type=DataSourceType.UPLOAD_FILE,
             created_by=created_by,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
         )
         dataset.id = dataset_id
 
@@ -1019,7 +1020,7 @@ class TestModelIntegration:
         assert document.dataset_id == dataset_id
         assert segment.dataset_id == dataset_id
         assert segment.document_id == document_id
-        assert dataset.indexing_technique == "high_quality"
+        assert dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY
         assert document.word_count == 100
         assert segment.status == SegmentStatus.COMPLETED
 

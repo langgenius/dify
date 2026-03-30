@@ -1,14 +1,15 @@
 import logging
 
+from graphon.model_runtime.entities.model_entities import ModelType
+
 from core.model_manager import ModelInstance, ModelManager
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.index_processor.constant.doc_type import DocType
-from core.rag.index_processor.constant.index_type import IndexStructureType
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.rag.models.document import AttachmentDocument, Document
-from dify_graph.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
 from models import UploadFile
 from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentSegment, SegmentAttachmentBinding
@@ -45,9 +46,9 @@ class VectorService:
                 if not processing_rule:
                     raise ValueError("No processing rule found.")
                 # get embedding model instance
-                if dataset.indexing_technique == "high_quality":
+                if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
                     # check embedding model setting
-                    model_manager = ModelManager()
+                    model_manager = ModelManager.for_tenant(tenant_id=dataset.tenant_id)
 
                     if dataset.embedding_model_provider:
                         embedding_model_instance = model_manager.get_model_instance(
@@ -112,7 +113,7 @@ class VectorService:
                 "dataset_id": segment.dataset_id,
             },
         )
-        if dataset.indexing_technique == "high_quality":
+        if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             # update vector index
             vector = Vector(dataset=dataset)
             vector.delete_by_ids([segment.index_node_id])
@@ -197,7 +198,7 @@ class VectorService:
                 "dataset_id": child_segment.dataset_id,
             },
         )
-        if dataset.indexing_technique == "high_quality":
+        if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             # save vector index
             vector = Vector(dataset=dataset)
             vector.add_texts([child_document], duplicate_check=True)
@@ -237,7 +238,7 @@ class VectorService:
             delete_node_ids.append(update_child_chunk.index_node_id)
         for delete_child_chunk in delete_child_chunks:
             delete_node_ids.append(delete_child_chunk.index_node_id)
-        if dataset.indexing_technique == "high_quality":
+        if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             # update vector index
             vector = Vector(dataset=dataset)
             if delete_node_ids:
@@ -252,7 +253,7 @@ class VectorService:
 
     @classmethod
     def update_multimodel_vector(cls, segment: DocumentSegment, attachment_ids: list[str], dataset: Dataset):
-        if dataset.indexing_technique != "high_quality":
+        if dataset.indexing_technique != IndexTechniqueType.HIGH_QUALITY:
             return
 
         attachments = segment.attachments

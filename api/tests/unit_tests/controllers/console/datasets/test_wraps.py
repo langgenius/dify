@@ -26,12 +26,9 @@ class TestGetRagPipeline:
             return_value=(Mock(), "tenant-1"),
         )
 
-        mock_query = Mock()
-        mock_query.where.return_value.first.return_value = None
-
         mocker.patch(
-            "controllers.console.datasets.wraps.db.session.query",
-            return_value=mock_query,
+            "controllers.console.datasets.wraps.db.session.scalar",
+            return_value=None,
         )
 
         with pytest.raises(PipelineNotFoundError):
@@ -51,12 +48,9 @@ class TestGetRagPipeline:
             return_value=(Mock(), "tenant-1"),
         )
 
-        mock_query = Mock()
-        mock_query.where.return_value.first.return_value = pipeline
-
         mocker.patch(
-            "controllers.console.datasets.wraps.db.session.query",
-            return_value=mock_query,
+            "controllers.console.datasets.wraps.db.session.scalar",
+            return_value=pipeline,
         )
 
         result = dummy_view(pipeline_id="pipeline-1")
@@ -76,12 +70,9 @@ class TestGetRagPipeline:
             return_value=(Mock(), "tenant-1"),
         )
 
-        mock_query = Mock()
-        mock_query.where.return_value.first.return_value = pipeline
-
         mocker.patch(
-            "controllers.console.datasets.wraps.db.session.query",
-            return_value=mock_query,
+            "controllers.console.datasets.wraps.db.session.scalar",
+            return_value=pipeline,
         )
 
         result = dummy_view(pipeline_id="pipeline-1")
@@ -100,18 +91,15 @@ class TestGetRagPipeline:
             return_value=(Mock(), "tenant-1"),
         )
 
-        def where_side_effect(*args, **kwargs):
-            assert args[0].right.value == "123"
-            return Mock(first=lambda: pipeline)
-
-        mock_query = Mock()
-        mock_query.where.side_effect = where_side_effect
-
-        mocker.patch(
-            "controllers.console.datasets.wraps.db.session.query",
-            return_value=mock_query,
+        mock_scalar = mocker.patch(
+            "controllers.console.datasets.wraps.db.session.scalar",
+            return_value=pipeline,
         )
 
         result = dummy_view(pipeline_id=123)
 
         assert result is pipeline
+        # Verify the pipeline_id was cast to string in the where clause
+        stmt = mock_scalar.call_args[0][0]
+        where_clauses = stmt.whereclause.clauses
+        assert where_clauses[0].right.value == "123"

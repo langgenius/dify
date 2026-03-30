@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "lib": ["ES2023", "DOM"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "allowJs": false,
+    "resolveJsonModule": true,
+    "noEmit": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "types": ["node", "@playwright/test", "@cucumber/cucumber"],
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true
+  },
+  "include": ["./**/*.ts"],
+  "exclude": [
+    "./node_modules",
+    "./playwright-report",
+    "./test-results",
+    "./.auth",
+    "./cucumber-report",
+    "./.logs"
+  ]
+}

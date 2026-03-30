@@ -5,6 +5,7 @@ import click
 from celery import shared_task
 
 from core.rag.datasource.vdb.vector_factory import Vector
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from models.dataset import Dataset
 from services.dataset_service import DatasetCollectionBindingService
 
@@ -26,7 +27,7 @@ def delete_annotation_index_task(annotation_id: str, app_id: str, tenant_id: str
         dataset = Dataset(
             id=app_id,
             tenant_id=tenant_id,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             collection_binding_id=dataset_collection_binding.id,
         )
 

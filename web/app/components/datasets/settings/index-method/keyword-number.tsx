@@ -1,7 +1,6 @@
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import Slider from '@/app/components/base/slider'
 import Tooltip from '@/app/components/base/tooltip'
 import {
   NumberField,
@@ -11,6 +10,7 @@ import {
   NumberFieldIncrement,
   NumberFieldInput,
 } from '@/app/components/base/ui/number-field'
+import { Slider } from '@/app/components/base/ui/slider'
 
 const MIN_KEYWORD_NUMBER = 0
 const MAX_KEYWORD_NUMBER = 50
@@ -47,7 +47,8 @@ const KeyWordNumber = ({
         value={keywordNumber}
         min={MIN_KEYWORD_NUMBER}
         max={MAX_KEYWORD_NUMBER}
-        onChange={onKeywordNumberChange}
+        onValueChange={onKeywordNumberChange}
+        aria-label={t('form.numberOfKeywords', { ns: 'datasetSettings' })}
       />
       <NumberField
         className="w-12 shrink-0"

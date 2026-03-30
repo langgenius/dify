@@ -5,6 +5,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 
 from core.ops.entities.config_entity import OpikConfig
 from core.ops.entities.trace_entity import (
@@ -18,7 +19,6 @@ from core.ops.entities.trace_entity import (
     WorkflowTraceInfo,
 )
 from core.ops.opik_trace.opik_trace import OpikDataTrace, prepare_opik_uuid, wrap_dict, wrap_metadata
-from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 from models import EndUser
 from models.enums import MessageStatus
 
@@ -199,7 +199,7 @@ def test_workflow_trace_with_message_id(trace_instance, monkeypatch):
     node_other.metadata = {WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS.value: 10}
 
     repo = MagicMock()
-    repo.get_by_workflow_run.return_value = [node_llm, node_other]
+    repo.get_by_workflow_execution.return_value = [node_llm, node_other]
 
     mock_factory = MagicMock()
     mock_factory.create_workflow_node_execution_repository.return_value = repo
@@ -253,7 +253,7 @@ def test_workflow_trace_no_message_id(trace_instance, monkeypatch):
     monkeypatch.setattr("core.ops.opik_trace.opik_trace.sessionmaker", lambda bind: lambda: MagicMock())
     monkeypatch.setattr("core.ops.opik_trace.opik_trace.db", MagicMock(engine="engine"))
     repo = MagicMock()
-    repo.get_by_workflow_run.return_value = []
+    repo.get_by_workflow_execution.return_value = []
     mock_factory = MagicMock()
     mock_factory.create_workflow_node_execution_repository.return_value = repo
     monkeypatch.setattr("core.ops.opik_trace.opik_trace.DifyCoreRepositoryFactory", mock_factory)
@@ -373,9 +373,7 @@ def test_message_trace_with_end_user(trace_instance, monkeypatch):
     mock_end_user = MagicMock(spec=EndUser)
     mock_end_user.session_id = "session-id-123"
 
-    mock_query = MagicMock()
-    mock_query.where.return_value.first.return_value = mock_end_user
-    monkeypatch.setattr("core.ops.opik_trace.opik_trace.db.session.query", lambda model: mock_query)
+    monkeypatch.setattr("core.ops.opik_trace.opik_trace.db.session.get", lambda model, pk: mock_end_user)
 
     trace_instance.add_trace = MagicMock(return_value=MagicMock(id="trace_id_2"))
     trace_instance.add_span = MagicMock()
@@ -657,7 +655,7 @@ def test_workflow_trace_usage_extraction_error_fixed(trace_instance, monkeypatch
     node.outputs = {}
 
     repo = MagicMock()
-    repo.get_by_workflow_run.return_value = [node]
+    repo.get_by_workflow_execution.return_value = [node]
     mock_factory = MagicMock()
     mock_factory.create_workflow_node_execution_repository.return_value = repo
     monkeypatch.setattr("core.ops.opik_trace.opik_trace.DifyCoreRepositoryFactory", mock_factory)
