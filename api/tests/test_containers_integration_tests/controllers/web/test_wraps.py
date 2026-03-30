@@ -5,8 +5,10 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
+from uuid import uuid4
 
 import pytest
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, NotFound, Unauthorized
 
 from controllers.web.error import WebAppAuthAccessDeniedError, WebAppAuthRequiredError
@@ -183,6 +185,44 @@ class TestDecodeJwtToken:
     def app(self, flask_app_with_containers):
         return flask_app_with_containers
 
+    def _create_app_site_enduser(self, db_session: Session, *, enable_site: bool = True):
+        from models.model import App, AppMode, EndUser, Site
+        from models.model import CustomizeTokenStrategy
+
+        tenant_id = str(uuid4())
+        app_model = App(
+            tenant_id=tenant_id,
+            mode=AppMode.CHAT.value,
+            name="test-app",
+            enable_site=enable_site,
+        )
+        db_session.add(app_model)
+        db_session.commit()
+        db_session.expire_all()
+
+        site = Site(
+            app_id=app_model.id,
+            title="test-site",
+            default_language="en-US",
+            customize_token_strategy=CustomizeTokenStrategy.NOT_ALLOW,
+            code="code1",
+        )
+        db_session.add(site)
+        db_session.commit()
+        db_session.expire_all()
+
+        end_user = EndUser(
+            tenant_id=tenant_id,
+            app_id=app_model.id,
+            type="browser",
+            session_id="sess-1",
+        )
+        db_session.add(end_user)
+        db_session.commit()
+        db_session.expire_all()
+
+        return app_model, site, end_user
+
     @patch("controllers.web.wraps._validate_user_accessibility")
     @patch("controllers.web.wraps._validate_webapp_token")
     @patch("controllers.web.wraps.EnterpriseService.WebAppAuth.get_app_access_mode_by_id")
@@ -190,10 +230,8 @@ class TestDecodeJwtToken:
     @patch("controllers.web.wraps.FeatureService.get_system_features")
     @patch("controllers.web.wraps.PassportService")
     @patch("controllers.web.wraps.extract_webapp_passport")
-    @patch("controllers.web.wraps.db")
     def test_happy_path(
         self,
-        mock_db: MagicMock,
         mock_extract: MagicMock,
         mock_passport_cls: MagicMock,
         mock_features: MagicMock,
@@ -202,32 +240,23 @@ class TestDecodeJwtToken:
         mock_validate_token: MagicMock,
         mock_validate_user: MagicMock,
         app,
+        db_session_with_containers: Session,
     ) -> None:
+        app_model, site, end_user = self._create_app_site_enduser(db_session_with_containers)
+
         mock_extract.return_value = "jwt-token"
         mock_passport_cls.return_value.verify.return_value = {
-            "app_code": "code1",
-            "app_id": "app-1",
-            "end_user_id": "eu-1",
+            "app_code": site.code,
+            "app_id": app_model.id,
+            "end_user_id": end_user.id,
         }
         mock_features.return_value = SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False))
 
-        app_model = SimpleNamespace(id="app-1", enable_site=True)
-        site = SimpleNamespace(code="code1")
-        end_user = SimpleNamespace(id="eu-1", session_id="sess-1")
+        with app.test_request_context("/", headers={"X-App-Code": site.code}):
+            result_app, result_user = decode_jwt_token()
 
-        session_mock = MagicMock()
-        session_mock.scalar.side_effect = [app_model, site, end_user]
-        session_ctx = MagicMock()
-        session_ctx.__enter__ = MagicMock(return_value=session_mock)
-        session_ctx.__exit__ = MagicMock(return_value=False)
-        mock_db.engine = "engine"
-
-        with patch("controllers.web.wraps.Session", return_value=session_ctx):
-            with app.test_request_context("/", headers={"X-App-Code": "code1"}):
-                result_app, result_user = decode_jwt_token()
-
-        assert result_app.id == "app-1"
-        assert result_user.id == "eu-1"
+        assert result_app.id == app_model.id
+        assert result_user.id == end_user.id
 
     @patch("controllers.web.wraps.FeatureService.get_system_features")
     @patch("controllers.web.wraps.extract_webapp_passport")
@@ -242,136 +271,100 @@ class TestDecodeJwtToken:
     @patch("controllers.web.wraps.FeatureService.get_system_features")
     @patch("controllers.web.wraps.PassportService")
     @patch("controllers.web.wraps.extract_webapp_passport")
-    @patch("controllers.web.wraps.db")
     def test_missing_app_raises_not_found(
         self,
-        mock_db: MagicMock,
         mock_extract: MagicMock,
         mock_passport_cls: MagicMock,
         mock_features: MagicMock,
         app,
     ) -> None:
+        non_existent_id = str(uuid4())
         mock_extract.return_value = "jwt-token"
         mock_passport_cls.return_value.verify.return_value = {
             "app_code": "code1",
-            "app_id": "app-1",
-            "end_user_id": "eu-1",
+            "app_id": non_existent_id,
+            "end_user_id": str(uuid4()),
         }
         mock_features.return_value = SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False))
 
-        session_mock = MagicMock()
-        session_mock.scalar.return_value = None
-        session_ctx = MagicMock()
-        session_ctx.__enter__ = MagicMock(return_value=session_mock)
-        session_ctx.__exit__ = MagicMock(return_value=False)
-        mock_db.engine = "engine"
-
-        with patch("controllers.web.wraps.Session", return_value=session_ctx):
-            with app.test_request_context("/", headers={"X-App-Code": "code1"}):
-                with pytest.raises(NotFound):
-                    decode_jwt_token()
+        with app.test_request_context("/", headers={"X-App-Code": "code1"}):
+            with pytest.raises(NotFound):
+                decode_jwt_token()
 
     @patch("controllers.web.wraps.FeatureService.get_system_features")
     @patch("controllers.web.wraps.PassportService")
     @patch("controllers.web.wraps.extract_webapp_passport")
-    @patch("controllers.web.wraps.db")
     def test_disabled_site_raises_bad_request(
         self,
-        mock_db: MagicMock,
         mock_extract: MagicMock,
         mock_passport_cls: MagicMock,
         mock_features: MagicMock,
         app,
+        db_session_with_containers: Session,
     ) -> None:
+        app_model, site, end_user = self._create_app_site_enduser(
+            db_session_with_containers, enable_site=False
+        )
+
         mock_extract.return_value = "jwt-token"
         mock_passport_cls.return_value.verify.return_value = {
-            "app_code": "code1",
-            "app_id": "app-1",
-            "end_user_id": "eu-1",
+            "app_code": site.code,
+            "app_id": app_model.id,
+            "end_user_id": end_user.id,
         }
         mock_features.return_value = SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False))
 
-        app_model = SimpleNamespace(id="app-1", enable_site=False)
-
-        session_mock = MagicMock()
-        session_mock.scalar.side_effect = [app_model, SimpleNamespace(code="code1"), None]
-        session_ctx = MagicMock()
-        session_ctx.__enter__ = MagicMock(return_value=session_mock)
-        session_ctx.__exit__ = MagicMock(return_value=False)
-        mock_db.engine = "engine"
-
-        with patch("controllers.web.wraps.Session", return_value=session_ctx):
-            with app.test_request_context("/", headers={"X-App-Code": "code1"}):
-                with pytest.raises(BadRequest, match="Site is disabled"):
-                    decode_jwt_token()
+        with app.test_request_context("/", headers={"X-App-Code": site.code}):
+            with pytest.raises(BadRequest, match="Site is disabled"):
+                decode_jwt_token()
 
     @patch("controllers.web.wraps.FeatureService.get_system_features")
     @patch("controllers.web.wraps.PassportService")
     @patch("controllers.web.wraps.extract_webapp_passport")
-    @patch("controllers.web.wraps.db")
     def test_missing_end_user_raises_not_found(
         self,
-        mock_db: MagicMock,
         mock_extract: MagicMock,
         mock_passport_cls: MagicMock,
         mock_features: MagicMock,
         app,
+        db_session_with_containers: Session,
     ) -> None:
+        app_model, site, _ = self._create_app_site_enduser(db_session_with_containers)
+        non_existent_eu = str(uuid4())
+
         mock_extract.return_value = "jwt-token"
         mock_passport_cls.return_value.verify.return_value = {
-            "app_code": "code1",
-            "app_id": "app-1",
-            "end_user_id": "eu-1",
+            "app_code": site.code,
+            "app_id": app_model.id,
+            "end_user_id": non_existent_eu,
         }
         mock_features.return_value = SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False))
 
-        app_model = SimpleNamespace(id="app-1", enable_site=True)
-        site = SimpleNamespace(code="code1")
-
-        session_mock = MagicMock()
-        session_mock.scalar.side_effect = [app_model, site, None]
-        session_ctx = MagicMock()
-        session_ctx.__enter__ = MagicMock(return_value=session_mock)
-        session_ctx.__exit__ = MagicMock(return_value=False)
-        mock_db.engine = "engine"
-
-        with patch("controllers.web.wraps.Session", return_value=session_ctx):
-            with app.test_request_context("/", headers={"X-App-Code": "code1"}):
-                with pytest.raises(NotFound):
-                    decode_jwt_token()
+        with app.test_request_context("/", headers={"X-App-Code": site.code}):
+            with pytest.raises(NotFound):
+                decode_jwt_token()
 
     @patch("controllers.web.wraps.FeatureService.get_system_features")
     @patch("controllers.web.wraps.PassportService")
     @patch("controllers.web.wraps.extract_webapp_passport")
-    @patch("controllers.web.wraps.db")
     def test_user_id_mismatch_raises_unauthorized(
         self,
-        mock_db: MagicMock,
         mock_extract: MagicMock,
         mock_passport_cls: MagicMock,
         mock_features: MagicMock,
         app,
+        db_session_with_containers: Session,
     ) -> None:
+        app_model, site, end_user = self._create_app_site_enduser(db_session_with_containers)
+
         mock_extract.return_value = "jwt-token"
         mock_passport_cls.return_value.verify.return_value = {
-            "app_code": "code1",
-            "app_id": "app-1",
-            "end_user_id": "eu-1",
+            "app_code": site.code,
+            "app_id": app_model.id,
+            "end_user_id": end_user.id,
         }
         mock_features.return_value = SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False))
 
-        app_model = SimpleNamespace(id="app-1", enable_site=True)
-        site = SimpleNamespace(code="code1")
-        end_user = SimpleNamespace(id="eu-1", session_id="sess-1")
-
-        session_mock = MagicMock()
-        session_mock.scalar.side_effect = [app_model, site, end_user]
-        session_ctx = MagicMock()
-        session_ctx.__enter__ = MagicMock(return_value=session_mock)
-        session_ctx.__exit__ = MagicMock(return_value=False)
-        mock_db.engine = "engine"
-
-        with patch("controllers.web.wraps.Session", return_value=session_ctx):
-            with app.test_request_context("/", headers={"X-App-Code": "code1"}):
-                with pytest.raises(Unauthorized, match="expired"):
-                    decode_jwt_token(user_id="different-user")
+        with app.test_request_context("/", headers={"X-App-Code": site.code}):
+            with pytest.raises(Unauthorized, match="expired"):
+                decode_jwt_token(user_id="different-user")
