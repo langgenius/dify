@@ -10,11 +10,11 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
 from controllers.console.workspace import plugin_permission_required
-from models.account import Tenant, TenantPluginPermission
+from models.account import Tenant, TenantPluginPermission, TenantStatus
 
 
 def _create_tenant(db_session: Session) -> Tenant:
-    tenant = Tenant(name="test-tenant", status="normal", plan="basic")
+    tenant = Tenant(name="test-tenant", status=TenantStatus.NORMAL, plan="basic")
     db_session.add(tenant)
     db_session.commit()
     db_session.expire_all()
@@ -162,3 +162,24 @@ class TestPluginPermissionRequired:
 
             with pytest.raises(Forbidden):
                 handler()
+
+    def test_debug_admin_allows_admin(self, db_session_with_containers: Session):
+        tenant = _create_tenant(db_session_with_containers)
+        _create_permission(
+            db_session_with_containers,
+            tenant.id,
+            install=TenantPluginPermission.InstallPermission.EVERYONE,
+            debug=TenantPluginPermission.DebugPermission.ADMINS,
+        )
+        user = SimpleNamespace(is_admin_or_owner=True)
+
+        with patch(
+            "controllers.console.workspace.current_account_with_tenant",
+            return_value=(user, tenant.id),
+        ):
+
+            @plugin_permission_required(debug_required=True)
+            def handler():
+                return "ok"
+
+            assert handler() == "ok"
