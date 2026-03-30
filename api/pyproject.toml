@@ -29,7 +29,7 @@ dependencies = [
     "google-cloud-aiplatform>=1.123.0",
     "googleapis-common-protos>=1.65.0",
     "graphon>=0.1.2",
-    "gunicorn~=25.1.0",
+    "gunicorn~=25.3.0",
     "httpx[socks]~=0.28.0",
     "jieba==0.42.1",
     "json-repair>=0.55.1",
