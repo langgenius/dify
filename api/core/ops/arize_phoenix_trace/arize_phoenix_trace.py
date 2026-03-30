@@ -19,7 +19,7 @@ from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExport
 from opentelemetry.sdk import trace as trace_sdk
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
-from opentelemetry.semconv.trace import SpanAttributes as OTELSpanAttributes
+from opentelemetry.semconv.attributes import exception_attributes
 from opentelemetry.trace import Span, Status, StatusCode, set_span_in_context, use_span
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 from opentelemetry.util.types import AttributeValue
@@ -134,10 +134,10 @@ def set_span_status(current_span: Span, error: Exception | str | None = None):
             if not exception_message:
                 exception_message = repr(error)
             attributes: dict[str, AttributeValue] = {
-                OTELSpanAttributes.EXCEPTION_TYPE: exception_type,
-                OTELSpanAttributes.EXCEPTION_MESSAGE: exception_message,
-                OTELSpanAttributes.EXCEPTION_ESCAPED: False,
-                OTELSpanAttributes.EXCEPTION_STACKTRACE: error_string,
+                exception_attributes.EXCEPTION_TYPE: exception_type,
+                exception_attributes.EXCEPTION_MESSAGE: exception_message,
+                exception_attributes.EXCEPTION_ESCAPED: False,
+                exception_attributes.EXCEPTION_STACKTRACE: error_string,
             }
             current_span.add_event(name="exception", attributes=attributes)
     else:

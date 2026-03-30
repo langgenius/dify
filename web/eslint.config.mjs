@@ -56,6 +56,7 @@ export default antfu(
       },
     },
     e18e: false,
+    pnpm: false,
   },
   {
     plugins: {
