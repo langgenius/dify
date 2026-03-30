@@ -48,8 +48,7 @@ jobs:
         run: uv run --directory api --dev lint-imports
 
       - name: Run Ty Type Checks
-        if: steps.changed-files.outputs.any_changed == 'true'
-        run: make type-check-core
+        run: uv add pyrefly --directory api --dev && uv run pyrefly check --directory api
 
         
       - name: Dotenv check
