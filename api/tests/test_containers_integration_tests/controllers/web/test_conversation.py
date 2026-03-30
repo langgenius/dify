@@ -43,8 +43,7 @@ class TestConversationListApi:
                 ConversationListApi().get(_completion_app(), _end_user())
 
     @patch("controllers.web.conversation.WebConversationService.pagination_by_last_id")
-    @patch("controllers.web.conversation.db")
-    def test_happy_path(self, mock_db: MagicMock, mock_paginate: MagicMock, app) -> None:
+    def test_happy_path(self, mock_paginate: MagicMock, app) -> None:
         conv_id = str(uuid4())
         conv = SimpleNamespace(
             id=conv_id,
@@ -56,17 +55,8 @@ class TestConversationListApi:
             updated_at=1700000000,
         )
         mock_paginate.return_value = SimpleNamespace(limit=20, has_more=False, data=[conv])
-        mock_db.engine = "engine"
 
-        session_mock = MagicMock()
-        session_ctx = MagicMock()
-        session_ctx.__enter__ = MagicMock(return_value=session_mock)
-        session_ctx.__exit__ = MagicMock(return_value=False)
-
-        with (
-            app.test_request_context("/conversations?limit=20"),
-            patch("controllers.web.conversation.Session", return_value=session_ctx),
-        ):
+        with app.test_request_context("/conversations?limit=20"):
             result = ConversationListApi().get(_chat_app(), _end_user())
 
         assert result["limit"] == 20
