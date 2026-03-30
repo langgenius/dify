@@ -8,32 +8,42 @@ on:
       - api/Dockerfile
       - web/Dockerfile
 
+permissions:
+  contents: read
+
 concurrency:
   group: docker-build-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
 jobs:
-  build-docker:
+  check-changes:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include:
-          - service_name: "api-amd64"
-            platform: linux/amd64
-            context: "api"
-          - service_name: "api-arm64"
-            platform: linux/arm64
-            context: "api"
-          - service_name: "web-amd64"
-            platform: linux/amd64
-            context: "web"
-          - service_name: "web-arm64"
-            platform: linux/arm64
-            context: "web"
+    outputs:
+      api: ${{ steps.changes.outputs.api }}
+      web: ${{ steps.changes.outputs.web }}
     steps:
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4.0.0
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 2
+          persist-credentials: false
 
+      - name: Check changed files
+        id: changes
+        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+        with:
+          filters: |
+            api:
+              - 'api/Dockerfile'
+            web:
+              - 'web/Dockerfile'
+
+  build-api:
+    name: Build API Docker Image
+    needs: check-changes
+    if: needs.check-changes.outputs.api == 'true'
+    runs-on: ubuntu-latest
+    steps:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
 
@@ -41,8 +51,27 @@ jobs:
         uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7.0.0
         with:
           push: false
-          context: "{{defaultContext}}:${{ matrix.context }}"
-          file: "${{ matrix.file }}"
-          platforms: ${{ matrix.platform }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          context: "{{defaultContext}}:api"
+          file: Dockerfile
+          platforms: linux/amd64
+          cache-from: type=gha,scope=api-pr
+          cache-to: type=gha,mode=max,scope=api-pr
+
+  build-web:
+    name: Build Web Docker Image
+    needs: check-changes
+    if: needs.check-changes.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
+
+      - name: Build Docker Image
+        uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7.0.0
+        with:
+          push: false
+          context: "{{defaultContext}}:web"
+          file: Dockerfile
+          platforms: linux/amd64
+          cache-from: type=gha,scope=web-pr
+          cache-to: type=gha,mode=max,scope=web-pr
