@@ -246,6 +246,8 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
             {/* Readonly User Query */}
             <div className="mt-4">
               <Editor
+                instanceId={`${id}-memory-query-prompt-editor`}
+                nodeId={id}
                 title={(
                   <div className="flex items-center space-x-1">
                     <div className="text-xs font-semibold uppercase text-text-secondary">user</div>
@@ -267,6 +269,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
                 nodesOutputVars={availableVars}
                 availableNodes={availableNodesWithParent}
                 isSupportFileVar
+                isSupportSandbox={isSupportSandbox}
               />
 
               {inputs.memory.query_prompt_template && !inputs.memory.query_prompt_template.includes('{{#sys.query#}}') && (
