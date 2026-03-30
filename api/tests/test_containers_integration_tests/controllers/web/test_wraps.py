@@ -231,9 +231,7 @@ class TestDecodeJwtToken:
 
     @patch("controllers.web.wraps.FeatureService.get_system_features")
     @patch("controllers.web.wraps.extract_webapp_passport")
-    def test_missing_token_raises_unauthorized(
-        self, mock_extract: MagicMock, mock_features: MagicMock, app
-    ) -> None:
+    def test_missing_token_raises_unauthorized(self, mock_extract: MagicMock, mock_features: MagicMock, app) -> None:
         mock_features.return_value = SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False))
         mock_extract.return_value = None
 
