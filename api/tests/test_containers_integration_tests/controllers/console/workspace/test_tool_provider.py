@@ -64,10 +64,15 @@ def _mock_user_tenant():
 
 
 @pytest.fixture
-def client(flask_app_with_containers):
-    flask_app = flask_app_with_containers
+def client():
+    from flask import Flask
+
+    flask_app = Flask(__name__)
+    flask_app.config["TESTING"] = True
+    flask_app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
     api = Api(flask_app)
     api.add_resource(ToolProviderMCPApi, "/console/api/workspaces/current/tool-provider/mcp")
+    db.init_app(flask_app)
     with flask_app.app_context():
         configure_session_factory(db.engine)
     return flask_app.test_client()
