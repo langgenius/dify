@@ -8,8 +8,8 @@ from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.variables.segments import StringSegment
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from core.workflow.nodes.knowledge_index.entities import DocMetadata, KnowledgeIndexNodeData
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
+from core.workflow.nodes.knowledge_index.entities import DocMetadata, KnowledgeIndexNodeData
 from core.workflow.nodes.knowledge_index.exc import KnowledgeIndexNodeError
 from core.workflow.nodes.knowledge_index.knowledge_index_node import KnowledgeIndexNode
 from core.workflow.nodes.knowledge_index.protocols import (
