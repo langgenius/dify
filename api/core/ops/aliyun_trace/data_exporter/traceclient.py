@@ -16,6 +16,12 @@ from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExport
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.sdk.util.instrumentation import InstrumentationScope
+from opentelemetry.semconv._incubating.attributes.deployment_attributes import (  # type: ignore[import-untyped]
+    DEPLOYMENT_ENVIRONMENT,
+)
+from opentelemetry.semconv._incubating.attributes.host_attributes import (  # type: ignore[import-untyped]
+    HOST_NAME,
+)
 from opentelemetry.semconv.attributes import service_attributes
 from opentelemetry.trace import Link, SpanContext, TraceFlags
 
@@ -47,8 +53,8 @@ class TraceClient:
             attributes={
                 service_attributes.SERVICE_NAME: service_name,
                 service_attributes.SERVICE_VERSION: f"dify-{dify_config.project.version}-{dify_config.COMMIT_SHA}",
-                "deployment.environment": f"{dify_config.DEPLOY_ENV}-{dify_config.EDITION}",
-                "host.name": socket.gethostname(),
+                DEPLOYMENT_ENVIRONMENT: f"{dify_config.DEPLOY_ENV}-{dify_config.EDITION}",
+                HOST_NAME: socket.gethostname(),
                 ACS_ARMS_SERVICE_FEATURE: "genai_app",
             }
         )

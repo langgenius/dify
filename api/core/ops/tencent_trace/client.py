@@ -26,6 +26,12 @@ from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExport
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.semconv._incubating.attributes.deployment_attributes import (  # type: ignore[import-untyped]
+    DEPLOYMENT_ENVIRONMENT,
+)
+from opentelemetry.semconv._incubating.attributes.host_attributes import (  # type: ignore[import-untyped]
+    HOST_NAME,
+)
 from opentelemetry.semconv.attributes import service_attributes
 from opentelemetry.trace import SpanKind
 from opentelemetry.util.types import AttributeValue
@@ -75,8 +81,8 @@ class TencentTraceClient:
             attributes={
                 service_attributes.SERVICE_NAME: service_name,
                 service_attributes.SERVICE_VERSION: f"dify-{dify_config.project.version}-{dify_config.COMMIT_SHA}",
-                "deployment.environment": f"{dify_config.DEPLOY_ENV}-{dify_config.EDITION}",
-                "host.name": socket.gethostname(),
+                DEPLOYMENT_ENVIRONMENT: f"{dify_config.DEPLOY_ENV}-{dify_config.EDITION}",
+                HOST_NAME: socket.gethostname(),
                 "telemetry.sdk.language": "python",
                 "telemetry.sdk.name": "opentelemetry",
                 "telemetry.sdk.version": _get_opentelemetry_sdk_version(),
