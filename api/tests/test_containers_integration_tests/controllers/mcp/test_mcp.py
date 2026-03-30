@@ -62,6 +62,7 @@ class DummyResult:
         return {"jsonrpc": "2.0", "result": "ok", "id": 1}
 
 
+@pytest.mark.usefixtures("flask_req_ctx_with_containers")
 class TestMCPAppApi:
     @patch.object(module, "handle_mcp_request", return_value=DummyResult(), autospec=True)
     def test_success_request(self, mock_handle):
