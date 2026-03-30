@@ -16,13 +16,13 @@ from zoneinfo import available_timezones
 
 from flask import Response, stream_with_context
 from flask_restx import fields
+from graphon.file import helpers as file_helpers
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 from pydantic import BaseModel
 from pydantic.functional_validators import AfterValidator
 
 from configs import dify_config
 from core.app.features.rate_limiting.rate_limit import RateLimitGenerator
-from dify_graph.file import helpers as file_helpers
-from dify_graph.model_runtime.utils.encoders import jsonable_encoder
 from extensions.ext_redis import redis_client
 
 if TYPE_CHECKING:
@@ -172,6 +172,18 @@ def normalize_uuid(value: str | UUID) -> str:
         return uuid_value(value)
     except ValueError as exc:
         raise ValueError("must be a valid UUID") from exc
+
+
+def parse_uuid_str_or_none(value: str | None) -> str | None:
+    """
+    Return None for missing/empty UUID-like values.
+
+    Keep non-empty values unchanged to avoid changing behavior in paths that
+    currently pass placeholder IDs in tests/mocks.
+    """
+    if value is None or not str(value).strip():
+        return None
+    return str(value)
 
 
 UUIDStrOrEmpty = Annotated[str, AfterValidator(normalize_uuid)]

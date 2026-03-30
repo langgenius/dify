@@ -1,15 +1,18 @@
+import logging
 import sys
 import urllib.parse
 from dataclasses import dataclass
 from typing import NotRequired
 
 import httpx
-from pydantic import TypeAdapter
+from pydantic import TypeAdapter, ValidationError
 
 if sys.version_info >= (3, 12):
     from typing import TypedDict
 else:
     from typing_extensions import TypedDict
+
+logger = logging.getLogger(__name__)
 
 JsonObject = dict[str, object]
 JsonObjectList = list[JsonObject]
@@ -25,13 +28,14 @@ class AccessTokenResponse(TypedDict, total=False):
 class GitHubEmailRecord(TypedDict, total=False):
     email: str
     primary: bool
+    verified: bool
 
 
 class GitHubRawUserInfo(TypedDict):
     id: int | str
     login: str
-    name: NotRequired[str]
-    email: NotRequired[str]
+    name: NotRequired[str | None]
+    email: NotRequired[str | None]
 
 
 class GoogleRawUserInfo(TypedDict):
@@ -127,18 +131,52 @@ class GitHubOAuth(OAuth):
         response.raise_for_status()
         user_info = GITHUB_RAW_USER_INFO_ADAPTER.validate_python(_json_object(response))
 
-        email_response = httpx.get(self._EMAIL_INFO_URL, headers=headers)
-        email_info = GITHUB_EMAIL_RECORDS_ADAPTER.validate_python(_json_list(email_response))
-        primary_email = next((email for email in email_info if email.get("primary") is True), None)
+        # Only call the /user/emails endpoint when the profile email is absent,
+        # i.e. the user has "Keep my email addresses private" enabled.
+        resolved_email = user_info.get("email") or ""
+        if not resolved_email:
+            resolved_email = self._get_email_from_emails_endpoint(headers)
 
-        return {**user_info, "email": primary_email.get("email", "") if primary_email else ""}
+        return {**user_info, "email": resolved_email}
+
+    @staticmethod
+    def _get_email_from_emails_endpoint(headers: dict[str, str]) -> str:
+        """Fetch the best available email from GitHub's /user/emails endpoint.
+
+        Prefers the primary email, then falls back to any verified email.
+        Returns an empty string when no usable email is found.
+        """
+        try:
+            email_response = httpx.get(GitHubOAuth._EMAIL_INFO_URL, headers=headers)
+            email_response.raise_for_status()
+            email_records = GITHUB_EMAIL_RECORDS_ADAPTER.validate_python(_json_list(email_response))
+        except (httpx.HTTPStatusError, ValidationError):
+            logger.warning("Failed to retrieve email from GitHub /user/emails endpoint", exc_info=True)
+            return ""
+
+        primary = next((r for r in email_records if r.get("primary") is True), None)
+        if primary:
+            return primary.get("email", "")
+
+        # No primary email; try any verified email as a fallback.
+        verified = next((r for r in email_records if r.get("verified") is True), None)
+        if verified:
+            return verified.get("email", "")
+
+        return ""
 
     def _transform_user_info(self, raw_info: JsonObject) -> OAuthUserInfo:
         payload = GITHUB_RAW_USER_INFO_ADAPTER.validate_python(raw_info)
-        email = payload.get("email")
+        email = payload.get("email") or ""
         if not email:
-            email = f"{payload['id']}+{payload['login']}@users.noreply.github.com"
-        return OAuthUserInfo(id=str(payload["id"]), name=str(payload.get("name", "")), email=email)
+            # When no email is available from the profile or /user/emails endpoint,
+            # fall back to GitHub's noreply address so sign-in can still proceed.
+            # Use only the numeric ID (not the login) so the address stays stable
+            # even if the user renames their GitHub account.
+            github_id = payload["id"]
+            email = f"{github_id}@users.noreply.github.com"
+            logger.info("GitHub user %s has no public email; using noreply address", payload["login"])
+        return OAuthUserInfo(id=str(payload["id"]), name=str(payload.get("name") or ""), email=email)
 
 
 class GoogleOAuth(OAuth):

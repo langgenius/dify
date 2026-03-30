@@ -214,7 +214,6 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
           <div className="mb-4">
             <ModelParameterModal
               popupClassName="!w-[520px]"
-              portalToFollowElemContentClassName="z-[1000]"
               isAdvancedMode={true}
               provider={model.provider}
               completionParams={model.completion_params}

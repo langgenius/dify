@@ -1,6 +1,7 @@
 import json
 
-from dify_graph.file import File, FileTransferMethod, FileType, FileUploadConfig
+from graphon.file import File, FileTransferMethod, FileType, FileUploadConfig
+
 from models.workflow import Workflow
 
 

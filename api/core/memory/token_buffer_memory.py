@@ -1,13 +1,7 @@
 from collections.abc import Sequence
 
-from sqlalchemy import select
-from sqlalchemy.orm import sessionmaker
-
-from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
-from core.model_manager import ModelInstance
-from core.prompt.utils.extract_thread_messages import extract_thread_messages
-from dify_graph.file import file_manager
-from dify_graph.model_runtime.entities import (
+from graphon.file import file_manager
+from graphon.model_runtime.entities import (
     AssistantPromptMessage,
     ImagePromptMessageContent,
     PromptMessage,
@@ -15,13 +9,22 @@ from dify_graph.model_runtime.entities import (
     TextPromptMessageContent,
     UserPromptMessage,
 )
-from dify_graph.model_runtime.entities.message_entities import PromptMessageContentUnionTypes
+from graphon.model_runtime.entities.message_entities import PromptMessageContentUnionTypes
+from sqlalchemy import select
+from sqlalchemy.orm import sessionmaker
+
+from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
+from core.app.file_access import DatabaseFileAccessController
+from core.model_manager import ModelInstance
+from core.prompt.utils.extract_thread_messages import extract_thread_messages
 from extensions.ext_database import db
 from factories import file_factory
 from models.model import AppMode, Conversation, Message, MessageFile
 from models.workflow import Workflow
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.factory import DifyAPIRepositoryFactory
+
+_file_access_controller = DatabaseFileAccessController()
 
 
 class TokenBufferMemory:
@@ -85,7 +88,10 @@ class TokenBufferMemory:
             # Build files directly without filtering by belongs_to
             file_objs = [
                 file_factory.build_from_message_file(
-                    message_file=message_file, tenant_id=app_record.tenant_id, config=file_extra_config
+                    message_file=message_file,
+                    tenant_id=app_record.tenant_id,
+                    config=file_extra_config,
+                    access_controller=_file_access_controller,
                 )
                 for message_file in message_files
             ]

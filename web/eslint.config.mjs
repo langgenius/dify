@@ -1,8 +1,14 @@
 // @ts-check
-import antfu, { GLOB_TESTS, GLOB_TS, GLOB_TSX, isInEditorEnv, isInGitHooksOrLintStaged } from '@antfu/eslint-config'
+
+import antfu, { GLOB_MARKDOWN, GLOB_MARKDOWN_CODE, GLOB_TESTS, GLOB_TS, GLOB_TSX, isInEditorEnv, isInGitHooksOrLintStaged } from '@antfu/eslint-config'
+import pluginReact from '@eslint-react/eslint-plugin'
 import pluginQuery from '@tanstack/eslint-plugin-query'
+import md from 'eslint-markdown'
 import tailwindcss from 'eslint-plugin-better-tailwindcss'
 import hyoban from 'eslint-plugin-hyoban'
+import markdownPreferences from 'eslint-plugin-markdown-preferences'
+import noBarrelFiles from 'eslint-plugin-no-barrel-files'
+import { reactRefresh } from 'eslint-plugin-react-refresh'
 import sonar from 'eslint-plugin-sonarjs'
 import storybook from 'eslint-plugin-storybook'
 import {
@@ -20,29 +26,24 @@ process.env.TAILWIND_MODE ??= 'ESLINT'
 
 const disableRuleAutoFix = !(isInEditorEnv() || isInGitHooksOrLintStaged())
 
+const plugins = pluginReact.configs.all.plugins
+
 export default antfu(
   {
-    react: {
-      // This react compiler rules are pretty slow
-      // We can wait for https://github.com/Rel1cx/eslint-react/issues/1237
-      reactCompiler: false,
+    react: false,
+    nextjs: {
       overrides: {
-        'react/no-context-provider': 'off',
-        'react/no-forward-ref': 'off',
-        'react/no-use-context': 'off',
-
-        // prefer react-hooks-extra/no-direct-set-state-in-use-effect
-        'react-hooks/set-state-in-effect': 'off',
-        'react-hooks-extra/no-direct-set-state-in-use-effect': 'error',
+        'next/no-img-element': 'off',
       },
     },
-    nextjs: true,
     ignores: ['public', 'types/doc-paths.ts', 'eslint-suppressions.json'],
     typescript: {
       overrides: {
         'ts/consistent-type-definitions': ['error', 'type'],
         'ts/no-explicit-any': 'error',
+        'ts/no-redeclare': 'off',
       },
+      erasableOnly: true,
     },
     test: {
       overrides: {
@@ -55,11 +56,66 @@ export default antfu(
       },
     },
     e18e: false,
+    pnpm: false,
+  },
+  {
+    plugins: {
+      'react': plugins?.['@eslint-react'],
+      'react-dom': plugins?.['@eslint-react/dom'],
+      'react-naming-convention': plugins?.['@eslint-react/naming-convention'],
+      'react-rsc': plugins?.['@eslint-react/rsc'],
+      'react-web-api': plugins?.['@eslint-react/web-api'],
+    },
+  },
+  {
+    files: [GLOB_TS, GLOB_TSX],
+    rules: {
+      ...pluginReact.configs['recommended-typescript'].rules,
+      'react/prefer-namespace-import': 'error',
+      'react/set-state-in-effect': 'error',
+      'react/no-unnecessary-use-prefix': 'error',
+    },
+  },
+  {
+    files: [...GLOB_TESTS, GLOB_MARKDOWN_CODE, 'vitest.setup.ts', 'test/i18n-mock.ts'],
+    rules: {
+      'react/component-hook-factories': 'off',
+      'react/no-unnecessary-use-prefix': 'off',
+    },
+  },
+  {
+    plugins: {
+      'no-barrel-files': noBarrelFiles,
+    },
+    ignores: ['next/**'],
+    rules: {
+      'no-barrel-files/no-barrel-files': 'error',
+    },
+  },
+  reactRefresh.configs.next(),
+  markdownPreferences.configs.standard,
+  {
+    files: [GLOB_MARKDOWN],
+    plugins: { md },
+    rules: {
+      'md/no-url-trailing-slash': 'error',
+      'markdown-preferences/prefer-link-reference-definitions': [
+        'error',
+        {
+          minLinks: 1,
+        },
+      ],
+      'markdown-preferences/ordered-list-marker-sequence': [
+        'error',
+        { increment: 'never' },
+      ],
+      'markdown-preferences/definitions-last': 'error',
+      'markdown-preferences/sort-definitions': 'error',
+    },
   },
   {
     rules: {
       'node/prefer-global/process': 'off',
-      'next/no-img-element': 'off',
     },
   },
   {
@@ -121,7 +177,7 @@ export default antfu(
     },
   },
   {
-    files: ['**/package.json'],
+    files: ['package.json'],
     rules: {
       'hyoban/no-dependency-version-prefix': 'error',
     },
@@ -170,3 +226,10 @@ export default antfu(
         'tailwindcss/no-unnecessary-whitespace',
       ]
     : [])
+  .renamePlugins({
+    '@eslint-react': 'react',
+    '@eslint-react/dom': 'react-dom',
+    '@eslint-react/naming-convention': 'react-naming-convention',
+    '@eslint-react/rsc': 'react-rsc',
+    '@eslint-react/web-api': 'react-web-api',
+  })

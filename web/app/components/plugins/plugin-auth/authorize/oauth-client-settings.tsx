@@ -157,7 +157,7 @@ const OAuthClientSettings = ({
         )
       }
       containerClassName="pt-0"
-      wrapperClassName="!z-[101]"
+      wrapperClassName="!z-[1002]"
       clickOutsideNotClose={true}
     >
       {pluginPayload.detail && (

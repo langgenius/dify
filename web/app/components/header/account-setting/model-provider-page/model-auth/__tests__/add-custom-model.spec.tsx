@@ -43,7 +43,7 @@ vi.mock('@/app/components/base/tooltip', () => ({
   ),
 }))
 
-// Mock portal components to avoid async/jsdom issues (consistent with sibling tests)
+// Mock portal components to avoid async test DOM issues (consistent with sibling tests)
 vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
   PortalToFollowElem: ({ children, open }: { children: React.ReactNode, open: boolean, onOpenChange: (open: boolean) => void }) => (
     <div data-testid="portal" data-open={open}>

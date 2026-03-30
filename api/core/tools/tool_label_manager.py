@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
 from core.tools.__base.tool_provider import ToolProviderController
 from core.tools.builtin_tool.provider import BuiltinToolProviderController
@@ -31,14 +31,14 @@ class ToolLabelManager:
             raise ValueError("Unsupported tool type")
 
         # delete old labels
-        db.session.query(ToolLabelBinding).where(ToolLabelBinding.tool_id == provider_id).delete()
+        db.session.execute(delete(ToolLabelBinding).where(ToolLabelBinding.tool_id == provider_id))
 
         # insert new labels
         for label in labels:
             db.session.add(
                 ToolLabelBinding(
                     tool_id=provider_id,
-                    tool_type=controller.provider_type.value,
+                    tool_type=controller.provider_type,
                     label_name=label,
                 )
             )
@@ -58,7 +58,7 @@ class ToolLabelManager:
             raise ValueError("Unsupported tool type")
         stmt = select(ToolLabelBinding.label_name).where(
             ToolLabelBinding.tool_id == provider_id,
-            ToolLabelBinding.tool_type == controller.provider_type.value,
+            ToolLabelBinding.tool_type == controller.provider_type,
         )
         labels = db.session.scalars(stmt).all()
 

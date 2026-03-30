@@ -9,6 +9,7 @@ from celery import shared_task
 from sqlalchemy import or_, select
 
 from core.db.session_factory import session_factory
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from models.dataset import Dataset, DocumentSegment, DocumentSegmentSummary
 from models.dataset import Document as DatasetDocument
 from services.summary_index_service import SummaryIndexService
@@ -52,7 +53,7 @@ def regenerate_summary_index_task(
                 return
 
             # Only regenerate summary index for high_quality indexing technique
-            if dataset.indexing_technique != "high_quality":
+            if dataset.indexing_technique != IndexTechniqueType.HIGH_QUALITY:
                 logger.info(
                     click.style(
                         f"Skipping summary regeneration for dataset {dataset_id}: "
@@ -106,7 +107,7 @@ def regenerate_summary_index_task(
                         ),
                         DatasetDocument.enabled == True,  # Document must be enabled
                         DatasetDocument.archived == False,  # Document must not be archived
-                        DatasetDocument.doc_form != "qa_model",  # Skip qa_model documents
+                        DatasetDocument.doc_form != IndexStructureType.QA_INDEX,  # Skip qa_model documents
                     )
                     .order_by(DocumentSegment.document_id.asc(), DocumentSegment.position.asc())
                     .all()
@@ -209,7 +210,7 @@ def regenerate_summary_index_task(
 
                 for dataset_document in dataset_documents:
                     # Skip qa_model documents
-                    if dataset_document.doc_form == "qa_model":
+                    if dataset_document.doc_form == IndexStructureType.QA_INDEX:
                         continue
 
                     try:

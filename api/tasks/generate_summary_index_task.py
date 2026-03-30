@@ -7,6 +7,7 @@ import click
 from celery import shared_task
 
 from core.db.session_factory import session_factory
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from models.dataset import Dataset, DocumentSegment
 from models.dataset import Document as DatasetDocument
 from services.summary_index_service import SummaryIndexService
@@ -59,7 +60,7 @@ def generate_summary_index_task(dataset_id: str, document_id: str, segment_ids: 
                 return
 
             # Only generate summary index for high_quality indexing technique
-            if dataset.indexing_technique != "high_quality":
+            if dataset.indexing_technique != IndexTechniqueType.HIGH_QUALITY:
                 logger.info(
                     click.style(
                         f"Skipping summary generation for dataset {dataset_id}: "

@@ -6,6 +6,11 @@ import { RETRIEVE_METHOD } from '@/types/app'
 import { IndexingType } from '../../../../create/step-two'
 import { useFormState } from '../use-form-state'
 
+const { mockToastSuccess, mockToastError } = vi.hoisted(() => ({
+  mockToastSuccess: vi.fn(),
+  mockToastError: vi.fn(),
+}))
+
 // Mock contexts
 const mockMutateDatasets = vi.fn()
 const mockInvalidDatasetList = vi.fn()
@@ -122,9 +127,10 @@ vi.mock('@/app/components/datasets/common/check-rerank-model', () => ({
   isReRankModelSelected: () => true,
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
-  default: {
-    notify: vi.fn(),
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    success: mockToastSuccess,
+    error: mockToastError,
   },
 }))
 
@@ -423,7 +429,7 @@ describe('useFormState', () => {
 
   describe('handleSave', () => {
     it('should show error toast when name is empty', async () => {
-      const Toast = await import('@/app/components/base/toast')
+      const { toast } = await import('@/app/components/base/ui/toast')
       const { result } = renderHook(() => useFormState())
 
       act(() => {
@@ -434,14 +440,11 @@ describe('useFormState', () => {
         await result.current.handleSave()
       })
 
-      expect(Toast.default.notify).toHaveBeenCalledWith({
-        type: 'error',
-        message: expect.any(String),
-      })
+      expect(toast.error).toHaveBeenCalledWith(expect.any(String))
     })
 
     it('should show error toast when name is whitespace only', async () => {
-      const Toast = await import('@/app/components/base/toast')
+      const { toast } = await import('@/app/components/base/ui/toast')
       const { result } = renderHook(() => useFormState())
 
       act(() => {
@@ -452,10 +455,7 @@ describe('useFormState', () => {
         await result.current.handleSave()
       })
 
-      expect(Toast.default.notify).toHaveBeenCalledWith({
-        type: 'error',
-        message: expect.any(String),
-      })
+      expect(toast.error).toHaveBeenCalledWith(expect.any(String))
     })
 
     it('should call updateDatasetSetting with correct params', async () => {
@@ -477,7 +477,7 @@ describe('useFormState', () => {
     })
 
     it('should show success toast on successful save', async () => {
-      const Toast = await import('@/app/components/base/toast')
+      const { toast } = await import('@/app/components/base/ui/toast')
       const { result } = renderHook(() => useFormState())
 
       await act(async () => {
@@ -485,10 +485,7 @@ describe('useFormState', () => {
       })
 
       await waitFor(() => {
-        expect(Toast.default.notify).toHaveBeenCalledWith({
-          type: 'success',
-          message: expect.any(String),
-        })
+        expect(toast.success).toHaveBeenCalledWith(expect.any(String))
       })
     })
 
@@ -553,7 +550,7 @@ describe('useFormState', () => {
 
     it('should show error toast on save failure', async () => {
       const { updateDatasetSetting } = await import('@/service/datasets')
-      const Toast = await import('@/app/components/base/toast')
+      const { toast } = await import('@/app/components/base/ui/toast')
       vi.mocked(updateDatasetSetting).mockRejectedValueOnce(new Error('Network error'))
 
       const { result } = renderHook(() => useFormState())
@@ -562,10 +559,7 @@ describe('useFormState', () => {
         await result.current.handleSave()
       })
 
-      expect(Toast.default.notify).toHaveBeenCalledWith({
-        type: 'error',
-        message: expect.any(String),
-      })
+      expect(toast.error).toHaveBeenCalledWith(expect.any(String))
     })
 
     it('should include partial_member_list when permission is partialMembers', async () => {
