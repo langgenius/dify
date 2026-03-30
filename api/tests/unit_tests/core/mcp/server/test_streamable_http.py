@@ -469,10 +469,8 @@ class TestUtilityFunctions:
         assert "count" in parameters
         assert parameters["count"]["type"] == "number"
 
-        # FILE type should be skipped - it creates empty dict but gets filtered later
-        # Check that it doesn't have any meaningful content
-        if "upload" in parameters:
-            assert parameters["upload"] == {}
+        # FILE type is skipped entirely via `continue` — key should not exist
+        assert "upload" not in parameters
 
         # CHECKBOX maps to boolean
         assert parameters["enabled"]["type"] == "boolean"
