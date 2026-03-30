@@ -37,6 +37,11 @@ type MockInlineCreateNodeResult = {
 
 type MockTreeApi = {
   deselectAll: () => void
+  dragNode?: {
+    id: string
+    parent: { id: string, isRoot?: boolean } | null
+  } | null
+  get: (id: string | null) => { id: string, children?: Array<{ id: string }> } | undefined
   state: {
     nodes: {
       drag: {
@@ -89,6 +94,12 @@ function createNode(overrides: Partial<AppAssetTreeView> = {}): AppAssetTreeView
 function createTreeApiMock(): MockTreeApi {
   return {
     deselectAll: vi.fn(),
+    dragNode: null,
+    get: vi.fn((id: string | null) => {
+      if (id === 'root')
+        return undefined
+      return id ? { id, children: [] } : undefined
+    }),
     state: {
       nodes: {
         drag: {
@@ -439,6 +450,25 @@ describe('FileTree', () => {
       expect(mocks.rootDropHandlers.handleRootDragOver).toHaveBeenCalledTimes(1)
       expect(mocks.rootDropHandlers.handleRootDragLeave).toHaveBeenCalledTimes(1)
       expect(mocks.rootDropHandlers.handleRootDrop).toHaveBeenCalledTimes(1)
+    })
+
+    it('should commit internal move when dropping in root blank area', () => {
+      mocks.treeApi.dragDestinationIndex = 2
+      mocks.treeApi.dragNode = {
+        id: 'file-1',
+        parent: { id: 'folder-1', isRoot: false },
+      }
+      mocks.treeApi.state.nodes.drag = {
+        id: 'file-1',
+        destinationParentId: 'root',
+        destinationIndex: 2,
+      }
+
+      render(<FileTree />)
+
+      fireEvent.drop(getTreeDropZone())
+
+      expect(mocks.executeMoveNode).toHaveBeenCalledWith('file-1', null)
     })
   })
 

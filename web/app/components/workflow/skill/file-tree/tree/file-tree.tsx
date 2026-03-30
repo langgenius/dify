@@ -41,6 +41,13 @@ type DragInsertTarget = {
   parentId: string | null
   index: number
 }
+type CommitInternalMoveArgs = {
+  nodeId: string
+  draggedNode: NodeApi<TreeNodeData>
+  parentId: string | null
+  index: number
+  parentNode?: NodeApi<TreeNodeData> | null
+}
 
 const normalizeParentId = (node: NodeApi<TreeNodeData> | null | undefined) => {
   if (!node || node.isRoot)
@@ -185,6 +192,35 @@ const FileTree = ({ className }: FileTreeProps) => {
   const { executeMoveNode } = useNodeMove()
   const { executeReorderNode } = useNodeReorder()
 
+  const commitInternalMove = useCallback(({
+    nodeId,
+    draggedNode,
+    parentId,
+    index,
+    parentNode,
+  }: CommitInternalMoveArgs) => {
+    const tree = treeRef.current
+    const destinationIndex = tree?.dragDestinationIndex
+    const isInsertLine = destinationIndex !== null && destinationIndex !== undefined
+    const targetParentId = parentId ?? null
+    const sourceParentId = normalizeParentId(draggedNode.parent)
+
+    if (isInsertLine && sourceParentId === targetParentId) {
+      const siblingIds = getSiblingIds(parentNode, tree)
+      const afterNodeId = getAfterNodeIdForReorder(
+        siblingIds,
+        nodeId,
+        destinationIndex ?? index,
+      )
+      if (afterNodeId !== undefined) {
+        executeReorderNode(nodeId, afterNodeId)
+        return
+      }
+    }
+
+    executeMoveNode(nodeId, targetParentId)
+  }, [executeMoveNode, executeReorderNode])
+
   const syncDragInsertTarget = useCallback(() => {
     const tree = treeRef.current
     if (!tree)
@@ -231,28 +267,43 @@ const FileTree = ({ className }: FileTreeProps) => {
     if (!nodeId || !draggedNode)
       return
 
+    commitInternalMove({
+      nodeId,
+      draggedNode,
+      parentId,
+      index,
+      parentNode,
+    })
+  }, [commitInternalMove])
+
+  const handleTreeDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    handleRootDrop(e)
+
     const tree = treeRef.current
-    const destinationIndex = tree?.dragDestinationIndex
-    const isInsertLine = destinationIndex !== null && destinationIndex !== undefined
-    const targetParentId = parentId ?? null
-    const sourceParentId = normalizeParentId(draggedNode.parent)
+    const dragTarget = dragInsertTargetRef.current
+    if (!tree || !dragTarget)
+      return
 
-    if (isInsertLine && sourceParentId === targetParentId) {
-      const siblingIds = getSiblingIds(parentNode, tree)
-      const afterNodeId = getAfterNodeIdForReorder(
-        siblingIds,
-        nodeId,
-        destinationIndex ?? index,
-      )
-      if (afterNodeId !== undefined) {
-        executeReorderNode(nodeId, afterNodeId)
-        return
-      }
-    }
+    const targetElement = e.target as HTMLElement | null
+    if (targetElement?.closest('[role="treeitem"]'))
+      return
 
-    // parentId from react-arborist is null for root, otherwise folder ID
-    executeMoveNode(nodeId, targetParentId)
-  }, [executeMoveNode, executeReorderNode, treeRef])
+    const draggedNode = tree.dragNode
+    if (!draggedNode)
+      return
+
+    const parentNode = dragTarget.parentId === null
+      ? tree.root
+      : tree.get(dragTarget.parentId)
+
+    commitInternalMove({
+      nodeId: draggedNode.id,
+      draggedNode,
+      parentId: dragTarget.parentId,
+      index: dragTarget.index,
+      parentNode,
+    })
+  }, [commitInternalMove, handleRootDrop])
 
   // react-arborist disableDrop callback - returns true to prevent drop
   const handleDisableDrop = useCallback((args: {
@@ -387,7 +438,7 @@ const FileTree = ({ className }: FileTreeProps) => {
           onDragEnter={handleRootDragEnter}
           onDragOver={handleRootDragOver}
           onDragLeave={handleRootDragLeave}
-          onDrop={handleRootDrop}
+          onDrop={handleTreeDrop}
         >
           <Tree<TreeNodeData>
             ref={treeRef}
