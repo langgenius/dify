@@ -162,6 +162,13 @@ const EditCustomCollectionModal: FC<Props> = ({
         delete draft.credentials.basic_username
         delete draft.credentials.basic_password
       }
+      if (
+        draft.credentials.auth_type !== AuthType.apiKeyHeader
+        && draft.credentials.auth_type !== AuthType.apiKeyQuery
+        && draft.credentials.auth_type !== AuthType.apiKey
+      ) {
+        delete draft.credentials.api_key_value
+      }
 
       draft.labels = labels
     })

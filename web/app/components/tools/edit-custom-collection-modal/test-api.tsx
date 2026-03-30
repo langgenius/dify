@@ -61,6 +61,13 @@ const TestApi: FC<Props> = ({
       delete credentials.basic_username
       delete credentials.basic_password
     }
+    if (
+      credentials.auth_type !== AuthType.apiKeyHeader
+      && credentials.auth_type !== AuthType.apiKeyQuery
+      && credentials.auth_type !== AuthType.apiKey
+    ) {
+      delete credentials.api_key_value
+    }
     const data = {
       provider_name: customCollection.provider,
       tool_name: toolName,

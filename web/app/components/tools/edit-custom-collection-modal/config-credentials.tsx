@@ -193,7 +193,7 @@ const ConfigCredential: FC<Props> = ({
                 <div>
                   <div className="system-sm-medium py-2 text-text-primary">{t('createTool.authMethod.basic.username', { ns: 'tools' })}</div>
                   <Input
-                    value={tempCredential.basic_username}
+                    value={tempCredential.basic_username ?? ''}
                     onChange={e => setTempCredential({ ...tempCredential, basic_username: e.target.value })}
                     placeholder={t('createTool.authMethod.basic.usernamePlaceholder', { ns: 'tools' })!}
                   />
@@ -201,7 +201,7 @@ const ConfigCredential: FC<Props> = ({
                 <div>
                   <div className="system-sm-medium py-2 text-text-primary">{t('createTool.authMethod.basic.password', { ns: 'tools' })}</div>
                   <Input
-                    value={tempCredential.basic_password}
+                    value={tempCredential.basic_password ?? ''}
                     onChange={e => setTempCredential({ ...tempCredential, basic_password: e.target.value })}
                     placeholder={t('createTool.authMethod.basic.passwordPlaceholder', { ns: 'tools' })!}
                     type="password"
