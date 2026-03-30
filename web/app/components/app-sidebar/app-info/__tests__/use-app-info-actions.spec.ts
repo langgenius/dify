@@ -2,26 +2,42 @@ import { act, renderHook } from '@testing-library/react'
 import { AppModeEnum } from '@/types/app'
 import { useAppInfoActions } from '../use-app-info-actions'
 
-const mockNotify = vi.fn()
-const mockReplace = vi.fn()
-const mockOnPlanInfoChanged = vi.fn()
-const mockInvalidateAppList = vi.fn()
-const mockSetAppDetail = vi.fn()
-const mockUpdateAppInfo = vi.fn()
-const mockCopyApp = vi.fn()
-const mockExportAppConfig = vi.fn()
-const mockDeleteApp = vi.fn()
-const mockFetchWorkflowDraft = vi.fn()
-const mockDownloadBlob = vi.fn()
-
-let mockAppDetail: Record<string, unknown> | undefined = {
-  id: 'app-1',
-  name: 'Test App',
-  mode: AppModeEnum.CHAT,
-  icon: '🤖',
-  icon_type: 'emoji',
-  icon_background: '#FFEAD5',
-}
+const {
+  mockAppDetail,
+  mockCopyApp,
+  mockDeleteApp,
+  mockDownloadBlob,
+  mockExportAppConfig,
+  mockFetchWorkflowDraft,
+  mockInvalidateAppList,
+  mockNotify,
+  mockOnPlanInfoChanged,
+  mockReplace,
+  mockSetAppDetail,
+  mockUpdateAppInfo,
+} = vi.hoisted(() => ({
+  mockAppDetail: {
+    current: {
+      id: 'app-1',
+      name: 'Test App',
+      mode: 'chat',
+      icon: '🤖',
+      icon_type: 'emoji',
+      icon_background: '#FFEAD5',
+    } as Record<string, unknown> | undefined,
+  },
+  mockCopyApp: vi.fn(),
+  mockDeleteApp: vi.fn(),
+  mockDownloadBlob: vi.fn(),
+  mockExportAppConfig: vi.fn(),
+  mockFetchWorkflowDraft: vi.fn(),
+  mockInvalidateAppList: vi.fn(),
+  mockNotify: vi.fn(),
+  mockOnPlanInfoChanged: vi.fn(),
+  mockReplace: vi.fn(),
+  mockSetAppDetail: vi.fn(),
+  mockUpdateAppInfo: vi.fn(),
+}))
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ replace: mockReplace }),
@@ -33,7 +49,7 @@ vi.mock('@/context/provider-context', () => ({
 
 vi.mock('@/app/components/app/store', () => ({
   useStore: (selector: (state: Record<string, unknown>) => unknown) => selector({
-    appDetail: mockAppDetail,
+    appDetail: mockAppDetail.current,
     setAppDetail: mockSetAppDetail,
   }),
 }))
@@ -80,7 +96,7 @@ vi.mock('@/config', () => ({
 describe('useAppInfoActions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockAppDetail = {
+    mockAppDetail.current = {
       id: 'app-1',
       name: 'Test App',
       mode: AppModeEnum.CHAT,
@@ -93,7 +109,7 @@ describe('useAppInfoActions', () => {
   describe('Initial state', () => {
     it('should return initial state correctly', () => {
       const { result } = renderHook(() => useAppInfoActions({}))
-      expect(result.current.appDetail).toEqual(mockAppDetail)
+      expect(result.current.appDetail).toEqual(mockAppDetail.current)
       expect(result.current.panelOpen).toBe(false)
       expect(result.current.activeModal).toBeNull()
       expect(result.current.secretEnvList).toEqual([])
@@ -161,7 +177,7 @@ describe('useAppInfoActions', () => {
 
   describe('onEdit', () => {
     it('should update app info and close modal on success', async () => {
-      const updatedApp = { ...mockAppDetail, name: 'Updated' }
+      const updatedApp = { ...mockAppDetail.current, name: 'Updated' }
       mockUpdateAppInfo.mockResolvedValue(updatedApp)
 
       const { result } = renderHook(() => useAppInfoActions({}))
@@ -179,7 +195,7 @@ describe('useAppInfoActions', () => {
 
       expect(mockUpdateAppInfo).toHaveBeenCalled()
       expect(mockSetAppDetail).toHaveBeenCalledWith(updatedApp)
-      expect(mockNotify).toHaveBeenCalledWith({ type: 'success', message: 'app.editDone' })
+      expect(mockNotify).toHaveBeenCalledWith('app.editDone', { type: 'success' })
     })
 
     it('should notify error on edit failure', async () => {
@@ -198,11 +214,11 @@ describe('useAppInfoActions', () => {
         })
       })
 
-      expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: 'app.editFailed' })
+      expect(mockNotify).toHaveBeenCalledWith('app.editFailed', { type: 'error' })
     })
 
     it('should not call updateAppInfo when appDetail is undefined', async () => {
-      mockAppDetail = undefined
+      mockAppDetail.current = undefined
 
       const { result } = renderHook(() => useAppInfoActions({}))
 
@@ -238,7 +254,7 @@ describe('useAppInfoActions', () => {
       })
 
       expect(mockCopyApp).toHaveBeenCalled()
-      expect(mockNotify).toHaveBeenCalledWith({ type: 'success', message: 'app.newApp.appCreated' })
+      expect(mockNotify).toHaveBeenCalledWith('app.newApp.appCreated', { type: 'success' })
       expect(mockOnPlanInfoChanged).toHaveBeenCalled()
     })
 
@@ -256,13 +272,13 @@ describe('useAppInfoActions', () => {
         })
       })
 
-      expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: 'app.newApp.appCreateFailed' })
+      expect(mockNotify).toHaveBeenCalledWith('app.newApp.appCreateFailed', { type: 'error' })
     })
   })
 
   describe('onCopy - early return', () => {
     it('should not call copyApp when appDetail is undefined', async () => {
-      mockAppDetail = undefined
+      mockAppDetail.current = undefined
 
       const { result } = renderHook(() => useAppInfoActions({}))
 
@@ -302,13 +318,13 @@ describe('useAppInfoActions', () => {
         await result.current.onExport()
       })
 
-      expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: 'app.exportFailed' })
+      expect(mockNotify).toHaveBeenCalledWith('app.exportFailed', { type: 'error' })
     })
   })
 
   describe('onExport - early return', () => {
     it('should not export when appDetail is undefined', async () => {
-      mockAppDetail = undefined
+      mockAppDetail.current = undefined
 
       const { result } = renderHook(() => useAppInfoActions({}))
 
@@ -334,7 +350,7 @@ describe('useAppInfoActions', () => {
     })
 
     it('should open export warning modal for workflow mode', async () => {
-      mockAppDetail = { ...mockAppDetail, mode: AppModeEnum.WORKFLOW }
+      mockAppDetail.current = { ...mockAppDetail.current, mode: AppModeEnum.WORKFLOW }
 
       const { result } = renderHook(() => useAppInfoActions({}))
 
@@ -346,7 +362,7 @@ describe('useAppInfoActions', () => {
     })
 
     it('should open export warning modal for advanced_chat mode', async () => {
-      mockAppDetail = { ...mockAppDetail, mode: AppModeEnum.ADVANCED_CHAT }
+      mockAppDetail.current = { ...mockAppDetail.current, mode: AppModeEnum.ADVANCED_CHAT }
 
       const { result } = renderHook(() => useAppInfoActions({}))
 
@@ -360,7 +376,7 @@ describe('useAppInfoActions', () => {
 
   describe('exportCheck - early return', () => {
     it('should not do anything when appDetail is undefined', async () => {
-      mockAppDetail = undefined
+      mockAppDetail.current = undefined
 
       const { result } = renderHook(() => useAppInfoActions({}))
 
@@ -374,7 +390,7 @@ describe('useAppInfoActions', () => {
 
   describe('handleConfirmExport', () => {
     it('should export directly when no secret env variables', async () => {
-      mockAppDetail = { ...mockAppDetail, mode: AppModeEnum.WORKFLOW }
+      mockAppDetail.current = { ...mockAppDetail.current, mode: AppModeEnum.WORKFLOW }
       mockFetchWorkflowDraft.mockResolvedValue({
         environment_variables: [{ value_type: 'string' }],
       })
@@ -390,7 +406,7 @@ describe('useAppInfoActions', () => {
     })
 
     it('should set secret env list when secret variables exist', async () => {
-      mockAppDetail = { ...mockAppDetail, mode: AppModeEnum.WORKFLOW }
+      mockAppDetail.current = { ...mockAppDetail.current, mode: AppModeEnum.WORKFLOW }
       const secretVars = [{ value_type: 'secret', key: 'API_KEY' }]
       mockFetchWorkflowDraft.mockResolvedValue({
         environment_variables: secretVars,
@@ -414,13 +430,13 @@ describe('useAppInfoActions', () => {
         await result.current.handleConfirmExport()
       })
 
-      expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: 'app.exportFailed' })
+      expect(mockNotify).toHaveBeenCalledWith('app.exportFailed', { type: 'error' })
     })
   })
 
   describe('handleConfirmExport - early return', () => {
     it('should not do anything when appDetail is undefined', async () => {
-      mockAppDetail = undefined
+      mockAppDetail.current = undefined
 
       const { result } = renderHook(() => useAppInfoActions({}))
 
@@ -460,14 +476,14 @@ describe('useAppInfoActions', () => {
       })
 
       expect(mockDeleteApp).toHaveBeenCalledWith('app-1')
-      expect(mockNotify).toHaveBeenCalledWith({ type: 'success', message: 'app.appDeleted' })
+      expect(mockNotify).toHaveBeenCalledWith('app.appDeleted', { type: 'success' })
       expect(mockInvalidateAppList).toHaveBeenCalled()
       expect(mockReplace).toHaveBeenCalledWith('/apps')
       expect(mockSetAppDetail).toHaveBeenCalledWith()
     })
 
     it('should not delete when appDetail is undefined', async () => {
-      mockAppDetail = undefined
+      mockAppDetail.current = undefined
 
       const { result } = renderHook(() => useAppInfoActions({}))
 
@@ -479,7 +495,7 @@ describe('useAppInfoActions', () => {
     })
 
     it('should notify error on delete failure', async () => {
-      mockDeleteApp.mockRejectedValue({ message: 'cannot delete' })
+      mockDeleteApp.mockRejectedValue(new Error('cannot delete'))
 
       const { result } = renderHook(() => useAppInfoActions({}))
 
@@ -487,10 +503,7 @@ describe('useAppInfoActions', () => {
         await result.current.onConfirmDelete()
       })
 
-      expect(mockNotify).toHaveBeenCalledWith({
-        type: 'error',
-        message: expect.stringContaining('app.appDeleteFailed'),
-      })
+      expect(mockNotify).toHaveBeenCalledWith('app.appDeleteFailed: cannot delete', { type: 'error' })
     })
   })
 })
