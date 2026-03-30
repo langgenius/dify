@@ -459,6 +459,51 @@ class WorkflowService:
 
         return workflow
 
+    def convert_published_workflow_type(
+        self,
+        *,
+        session: Session,
+        app_model: App,
+        target_type: WorkflowType,
+        account: Account,
+    ) -> Workflow:
+        """
+        Convert a published workflow type in-place.
+
+        This endpoint only supports conversion between standard workflow and evaluation workflow.
+        """
+        if target_type not in {WorkflowType.WORKFLOW, WorkflowType.EVALUATION}:
+            raise ValueError("target_type must be either 'workflow' or 'evaluation'")
+
+        if not app_model.workflow_id:
+            raise WorkflowNotFoundError("Published workflow not found")
+
+        stmt = select(Workflow).where(
+            Workflow.tenant_id == app_model.tenant_id,
+            Workflow.app_id == app_model.id,
+            Workflow.id == app_model.workflow_id,
+        )
+        workflow = session.scalar(stmt)
+        if not workflow:
+            raise WorkflowNotFoundError("Published workflow not found")
+
+        if workflow.version == Workflow.VERSION_DRAFT:
+            raise IsDraftWorkflowError("Current effective workflow cannot be a draft version.")
+
+        if workflow.type == target_type:
+            return workflow
+
+        if target_type == WorkflowType.EVALUATION:
+            self._validate_evaluation_workflow_nodes(workflow)
+
+        workflow.type = target_type
+        workflow.updated_by = account.id
+        workflow.updated_at = naive_utc_now()
+
+        app_published_workflow_was_updated.send(app_model, published_workflow=workflow)
+
+        return workflow
+
     @staticmethod
     def _validate_evaluation_workflow_nodes(workflow: Workflow) -> None:
         """Ensure evaluation workflows do not contain unsupported node types."""

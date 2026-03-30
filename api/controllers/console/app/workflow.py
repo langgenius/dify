@@ -1,7 +1,7 @@
 import json
 import logging
 from collections.abc import Sequence
-from typing import Any
+from typing import Any, Literal
 
 from flask import abort, request
 from flask_restx import Resource, fields, marshal_with
@@ -45,7 +45,7 @@ from libs.helper import TimestampField, uuid_value
 from libs.login import current_account_with_tenant, login_required
 from models import App
 from models.model import AppMode
-from models.workflow import Workflow
+from models.workflow import Workflow, WorkflowType
 from services.app_generate_service import AppGenerateService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
@@ -165,6 +165,10 @@ class WorkflowUpdatePayload(BaseModel):
     marked_comment: str | None = Field(default=None, max_length=100)
 
 
+class WorkflowTypeConvertQuery(BaseModel):
+    target_type: Literal["workflow", "evaluation"]
+
+
 class DraftWorkflowTriggerRunPayload(BaseModel):
     node_id: str
 
@@ -188,6 +192,7 @@ reg(DefaultBlockConfigQuery)
 reg(ConvertToWorkflowPayload)
 reg(WorkflowListQuery)
 reg(WorkflowUpdatePayload)
+reg(WorkflowTypeConvertQuery)
 reg(DraftWorkflowTriggerRunPayload)
 reg(DraftWorkflowTriggerRunAllPayload)
 
@@ -1081,6 +1086,51 @@ class DraftWorkflowRestoreApi(Resource):
         return {
             "result": "success",
             "hash": workflow.unique_hash,
+            "updated_at": TimestampField().format(workflow.updated_at or workflow.created_at),
+        }
+
+
+@console_ns.route("/apps/<uuid:app_id>/workflows/convert-type")
+class WorkflowTypeConvertApi(Resource):
+    @console_ns.doc("convert_published_workflow_type")
+    @console_ns.doc(description="Convert current effective published workflow type in-place")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.expect(console_ns.models[WorkflowTypeConvertQuery.__name__])
+    @console_ns.response(200, "Workflow type converted successfully")
+    @console_ns.response(400, "Invalid workflow type or unsupported workflow graph")
+    @console_ns.response(404, "Workflow not found")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    @edit_permission_required
+    def post(self, app_model: App):
+        current_user, _ = current_account_with_tenant()
+        args = WorkflowTypeConvertQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        target_type = WorkflowType.value_of(args.target_type)
+
+        workflow_service = WorkflowService()
+        with Session(db.engine) as session:
+            try:
+                workflow = workflow_service.convert_published_workflow_type(
+                    session=session,
+                    app_model=app_model,
+                    target_type=target_type,
+                    account=current_user,
+                )
+            except WorkflowNotFoundError as exc:
+                raise NotFound(str(exc)) from exc
+            except IsDraftWorkflowError as exc:
+                raise BadRequest(str(exc)) from exc
+            except ValueError as exc:
+                raise BadRequest(str(exc)) from exc
+
+            session.commit()
+
+        return {
+            "result": "success",
+            "workflow_id": workflow.id,
+            "type": workflow.type.value,
             "updated_at": TimestampField().format(workflow.updated_at or workflow.created_at),
         }
 
