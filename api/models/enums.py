@@ -158,6 +158,15 @@ class FeedbackFromSource(StrEnum):
     ADMIN = "admin"
 
 
+class CustomizeTokenStrategy(StrEnum):
+    """Site token customization strategy"""
+
+    MUST = "must"
+    ALLOW = "allow"
+    NOT_ALLOW = "not_allow"
+    UUID = "uuid"
+
+
 class FeedbackRating(StrEnum):
     """MessageFeedback rating"""
 
@@ -312,6 +321,13 @@ class MessageChainType(StrEnum):
     """Message chain type"""
 
     SYSTEM = "system"
+
+
+class PromptType(StrEnum):
+    """Prompt configuration type"""
+
+    SIMPLE = "simple"
+    ADVANCED = "advanced"
 
 
 class ProviderQuotaType(StrEnum):

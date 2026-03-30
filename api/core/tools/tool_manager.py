@@ -8,6 +8,7 @@ from threading import Lock
 from typing import TYPE_CHECKING, Any, Literal, Optional, Protocol, TypedDict, Union, cast
 
 import sqlalchemy as sa
+from graphon.runtime import VariablePool
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from yarl import URL
@@ -25,7 +26,6 @@ from core.tools.plugin_tool.tool import PluginTool
 from core.tools.utils.uuid_utils import is_valid_uuid
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 from extensions.ext_database import db
-from graphon.runtime.variable_pool import VariablePool
 from models.provider_ids import ToolProviderID
 from services.enterprise.plugin_manager_service import PluginCredentialType
 from services.tools.mcp_tools_manage_service import MCPToolManageService
@@ -33,11 +33,12 @@ from services.tools.mcp_tools_manage_service import MCPToolManageService
 if TYPE_CHECKING:
     pass
 
+from graphon.model_runtime.utils.encoders import jsonable_encoder
+
 from core.agent.entities import AgentToolEntity
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.helper.module_import_helper import load_single_subclass_from_source
 from core.helper.position_helper import is_filtered
-from core.plugin.entities.plugin_daemon import CredentialType
 from core.tools.__base.tool import Tool
 from core.tools.builtin_tool.provider import BuiltinToolProviderController
 from core.tools.builtin_tool.providers._positions import BuiltinToolProviderSort
@@ -57,7 +58,6 @@ from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
 from core.tools.utils.encryption import create_provider_encrypter, create_tool_provider_encrypter
 from core.tools.workflow_as_tool.tool import WorkflowTool
-from graphon.model_runtime.utils.encoders import jsonable_encoder
 from models.tools import ApiToolProvider, BuiltinToolProvider, WorkflowToolProvider
 from services.tools.tools_transform_service import ToolTransformService
 
@@ -255,11 +255,11 @@ class ToolManager:
                     if builtin_provider is None:
                         raise ToolProviderNotFoundError(f"no default provider for {provider_id}")
             else:
-                builtin_provider = (
-                    db.session.query(BuiltinToolProvider)
+                builtin_provider = db.session.scalar(
+                    select(BuiltinToolProvider)
                     .where(BuiltinToolProvider.tenant_id == tenant_id, (BuiltinToolProvider.provider == provider_id))
                     .order_by(BuiltinToolProvider.is_default.desc(), BuiltinToolProvider.created_at.asc())
-                    .first()
+                    .limit(1)
                 )
 
                 if builtin_provider is None:
@@ -326,7 +326,7 @@ class ToolManager:
                     tenant_id=tenant_id,
                     user_id=user_id,
                     credentials=dict(decrypted_credentials),
-                    credential_type=CredentialType.of(builtin_provider.credential_type),
+                    credential_type=builtin_provider.credential_type,
                     runtime_parameters={},
                     invoke_from=invoke_from,
                     tool_invoke_from=tool_invoke_from,
@@ -818,13 +818,13 @@ class ToolManager:
 
         :return: the provider controller, the credentials
         """
-        provider: ApiToolProvider | None = (
-            db.session.query(ApiToolProvider)
+        provider: ApiToolProvider | None = db.session.scalar(
+            select(ApiToolProvider)
             .where(
                 ApiToolProvider.id == provider_id,
                 ApiToolProvider.tenant_id == tenant_id,
             )
-            .first()
+            .limit(1)
         )
 
         if provider is None:
@@ -874,13 +874,13 @@ class ToolManager:
         get api provider
         """
         provider_name = provider
-        provider_obj: ApiToolProvider | None = (
-            db.session.query(ApiToolProvider)
+        provider_obj: ApiToolProvider | None = db.session.scalar(
+            select(ApiToolProvider)
             .where(
                 ApiToolProvider.tenant_id == tenant_id,
                 ApiToolProvider.name == provider,
             )
-            .first()
+            .limit(1)
         )
 
         if provider_obj is None:
@@ -968,10 +968,10 @@ class ToolManager:
     @classmethod
     def generate_workflow_tool_icon_url(cls, tenant_id: str, provider_id: str) -> EmojiIconDict:
         try:
-            workflow_provider: WorkflowToolProvider | None = (
-                db.session.query(WorkflowToolProvider)
+            workflow_provider: WorkflowToolProvider | None = db.session.scalar(
+                select(WorkflowToolProvider)
                 .where(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == provider_id)
-                .first()
+                .limit(1)
             )
 
             if workflow_provider is None:
@@ -985,10 +985,10 @@ class ToolManager:
     @classmethod
     def generate_api_tool_icon_url(cls, tenant_id: str, provider_id: str) -> EmojiIconDict:
         try:
-            api_provider: ApiToolProvider | None = (
-                db.session.query(ApiToolProvider)
+            api_provider: ApiToolProvider | None = db.session.scalar(
+                select(ApiToolProvider)
                 .where(ApiToolProvider.tenant_id == tenant_id, ApiToolProvider.id == provider_id)
-                .first()
+                .limit(1)
             )
 
             if api_provider is None:

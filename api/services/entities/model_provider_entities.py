@@ -1,6 +1,15 @@
 from collections.abc import Sequence
 from enum import StrEnum
 
+from graphon.model_runtime.entities.common_entities import I18nObject
+from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.provider_entities import (
+    ConfigurateMethod,
+    ModelCredentialSchema,
+    ProviderCredentialSchema,
+    ProviderHelpEntity,
+    SimpleProviderEntity,
+)
 from pydantic import BaseModel, ConfigDict, model_validator
 
 from configs import dify_config
@@ -14,15 +23,6 @@ from core.entities.provider_entities import (
     ProviderQuotaType,
     QuotaConfiguration,
     UnaddedModelConfiguration,
-)
-from graphon.model_runtime.entities.common_entities import I18nObject
-from graphon.model_runtime.entities.model_entities import ModelType
-from graphon.model_runtime.entities.provider_entities import (
-    ConfigurateMethod,
-    ModelCredentialSchema,
-    ProviderCredentialSchema,
-    ProviderHelpEntity,
-    SimpleProviderEntity,
 )
 from models.provider import ProviderType
 

@@ -6,6 +6,8 @@ from uuid import uuid4
 
 import pytest
 from flask import Flask, current_app
+from graphon.model_runtime.entities.llm_entities import LLMUsage
+from graphon.model_runtime.entities.model_entities import ModelFeature
 from sqlalchemy import column
 
 from core.app.app_config.entities import (
@@ -35,8 +37,6 @@ from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.workflow.nodes.knowledge_retrieval import exc
 from core.workflow.nodes.knowledge_retrieval.retrieval import KnowledgeRetrievalRequest
-from graphon.model_runtime.entities.llm_entities import LLMUsage
-from graphon.model_runtime.entities.model_entities import ModelFeature
 from models.dataset import Dataset
 from models.enums import CreatorUserRole
 
@@ -3971,11 +3971,10 @@ class TestDatasetRetrievalAdditionalHelpers:
                 )
 
     def test_get_metadata_filter_condition(self, retrieval: DatasetRetrieval) -> None:
-        db_query = Mock()
-        db_query.where.return_value = db_query
-        db_query.all.return_value = [SimpleNamespace(dataset_id="d1", id="doc-1")]
+        scalars_result = Mock()
+        scalars_result.all.return_value = [SimpleNamespace(dataset_id="d1", id="doc-1")]
 
-        with patch("core.rag.retrieval.dataset_retrieval.db.session.query", return_value=db_query):
+        with patch("core.rag.retrieval.dataset_retrieval.db.session.scalars", return_value=scalars_result):
             mapping, condition = retrieval.get_metadata_filter_condition(
                 dataset_ids=["d1"],
                 query="python",
@@ -3991,7 +3990,7 @@ class TestDatasetRetrievalAdditionalHelpers:
 
         automatic_filters = [{"condition": "contains", "metadata_name": "author", "value": "Alice"}]
         with (
-            patch("core.rag.retrieval.dataset_retrieval.db.session.query", return_value=db_query),
+            patch("core.rag.retrieval.dataset_retrieval.db.session.scalars", return_value=scalars_result),
             patch.object(retrieval, "_automatic_metadata_filter_func", return_value=automatic_filters),
         ):
             mapping, condition = retrieval.get_metadata_filter_condition(
@@ -4012,7 +4011,7 @@ class TestDatasetRetrievalAdditionalHelpers:
             logical_operator="and",
             conditions=[AppCondition(name="author", comparison_operator="contains", value="{{name}}")],
         )
-        with patch("core.rag.retrieval.dataset_retrieval.db.session.query", return_value=db_query):
+        with patch("core.rag.retrieval.dataset_retrieval.db.session.scalars", return_value=scalars_result):
             mapping, condition = retrieval.get_metadata_filter_condition(
                 dataset_ids=["d1"],
                 query="python",
@@ -4027,7 +4026,7 @@ class TestDatasetRetrievalAdditionalHelpers:
         assert condition is not None
         assert condition.conditions[0].value == "Alice"
 
-        with patch("core.rag.retrieval.dataset_retrieval.db.session.query", return_value=db_query):
+        with patch("core.rag.retrieval.dataset_retrieval.db.session.scalars", return_value=scalars_result):
             with pytest.raises(ValueError, match="Invalid metadata filtering mode"):
                 retrieval.get_metadata_filter_condition(
                     dataset_ids=["d1"],

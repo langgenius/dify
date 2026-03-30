@@ -8,6 +8,18 @@ from typing import Any, cast
 
 logger = logging.getLogger(__name__)
 
+from graphon.file import File, FileTransferMethod, FileType, file_manager
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+from graphon.model_runtime.entities.message_entities import (
+    ImagePromptMessageContent,
+    PromptMessage,
+    PromptMessageContentUnionTypes,
+    TextPromptMessageContent,
+    UserPromptMessage,
+)
+from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
+from sqlalchemy import select
+
 from core.app.file_access import DatabaseFileAccessController
 from core.app.llm import deduct_llm_quota
 from core.entities.knowledge_entities import PreviewDetail
@@ -31,16 +43,6 @@ from core.tools.utils.text_processing_utils import remove_leading_symbols
 from core.workflow.file_reference import build_file_reference
 from extensions.ext_database import db
 from factories.file_factory import build_from_mapping
-from graphon.file import File, FileTransferMethod, FileType, file_manager
-from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
-from graphon.model_runtime.entities.message_entities import (
-    ImagePromptMessageContent,
-    PromptMessage,
-    PromptMessageContentUnionTypes,
-    TextPromptMessageContent,
-    UserPromptMessage,
-)
-from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
 from libs import helper
 from models import UploadFile
 from models.account import Account
@@ -144,14 +146,12 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         if delete_summaries:
             if node_ids:
                 # Find segments by index_node_id
-                segments = (
-                    db.session.query(DocumentSegment)
-                    .filter(
+                segments = db.session.scalars(
+                    select(DocumentSegment).where(
                         DocumentSegment.dataset_id == dataset.id,
                         DocumentSegment.index_node_id.in_(node_ids),
                     )
-                    .all()
-                )
+                ).all()
                 segment_ids = [segment.id for segment in segments]
                 if segment_ids:
                     SummaryIndexService.delete_summaries_for_segments(dataset, segment_ids)
@@ -536,11 +536,9 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
 
         # Get unique IDs for database query
         unique_upload_file_ids = list(set(upload_file_id_list))
-        upload_files = (
-            db.session.query(UploadFile)
-            .where(UploadFile.id.in_(unique_upload_file_ids), UploadFile.tenant_id == tenant_id)
-            .all()
-        )
+        upload_files = db.session.scalars(
+            select(UploadFile).where(UploadFile.id.in_(unique_upload_file_ids), UploadFile.tenant_id == tenant_id)
+        ).all()
 
         # Create File objects from UploadFile records
         file_objects = []

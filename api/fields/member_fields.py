@@ -3,9 +3,8 @@ from __future__ import annotations
 from datetime import datetime
 
 from flask_restx import fields
-from pydantic import BaseModel, ConfigDict, computed_field, field_validator
-
 from graphon.file import helpers as file_helpers
+from pydantic import BaseModel, ConfigDict, computed_field, field_validator
 
 simple_account_fields = {
     "id": fields.String,
