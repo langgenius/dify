@@ -161,7 +161,7 @@ class WeaviateVector(BaseVector):
             try:
                 self._client.close()
             except Exception:
-                pass
+                logger.debug("Failed to close stale Weaviate client (collection=%s)", self._collection_name)
             self._client = self._init_client(self._config)
 
     def get_type(self) -> str:
