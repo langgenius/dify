@@ -2,18 +2,18 @@ import logging
 from collections.abc import Mapping
 from typing import Any
 
-from core.trigger.constants import TRIGGER_WEBHOOK_NODE_TYPE
-from core.workflow.file_reference import resolve_file_record_id
-from core.workflow.variable_prefixes import SYSTEM_VARIABLE_NODE_ID
-from factories.variable_factory import build_segment_with_type
-from graphon.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from graphon.enums import NodeExecutionType
+from graphon.enums import NodeExecutionType, WorkflowNodeExecutionStatus
 from graphon.file import FileTransferMethod
 from graphon.node_events import NodeRunResult
 from graphon.nodes.base.node import Node
 from graphon.nodes.protocols import FileReferenceFactoryProtocol
 from graphon.variables.types import SegmentType
 from graphon.variables.variables import FileVariable
+
+from core.trigger.constants import TRIGGER_WEBHOOK_NODE_TYPE
+from core.workflow.file_reference import resolve_file_record_id
+from core.workflow.variable_prefixes import SYSTEM_VARIABLE_NODE_ID
+from factories.variable_factory import build_segment_with_type
 
 from .entities import ContentType, WebhookData
 

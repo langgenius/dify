@@ -109,7 +109,7 @@ beforeAll(() => {
     disconnect = vi.fn(() => undefined)
     unobserve = vi.fn(() => undefined)
   }
-  // @ts-expect-error jsdom does not implement IntersectionObserver
+  // @ts-expect-error test DOM typings do not guarantee IntersectionObserver here
   globalThis.IntersectionObserver = MockIntersectionObserver
 })
 

@@ -1,13 +1,19 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from datetime import datetime
 from types import SimpleNamespace
 
 import pytest
+from graphon.enums import BuiltinNodeTypes
+from graphon.runtime import GraphRuntimeState, VariablePool
 
 from core.app.app_config.entities import AppAdditionalFeatures, WorkflowUIBasedAppConfig
-from core.app.apps.advanced_chat.generate_task_pipeline import AdvancedChatAppGenerateTaskPipeline
+from core.app.apps.advanced_chat.generate_task_pipeline import (
+    AdvancedChatAppGenerateTaskPipeline,
+    ConversationSnapshot,
+    MessageSnapshot,
+    WorkflowSnapshot,
+)
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
 from core.app.entities.queue_entities import (
     QueueAdvancedChatMessageEndEvent,
@@ -43,8 +49,7 @@ from core.app.entities.task_entities import (
 )
 from core.base.tts.app_generator_tts_publisher import AudioTrunk
 from core.workflow.system_variables import build_system_variables
-from graphon.enums import BuiltinNodeTypes
-from graphon.runtime import GraphRuntimeState, VariablePool
+from libs.datetime_utils import naive_utc_now
 from models.enums import MessageStatus
 from models.model import AppMode, EndUser
 from tests.workflow_test_utils import build_test_variable_pool
@@ -73,15 +78,15 @@ def _make_pipeline():
         workflow_run_id="run-id",
     )
 
-    message = SimpleNamespace(
+    message = MessageSnapshot(
         id="message-id",
         query="hello",
-        created_at=datetime.utcnow(),
+        created_at=naive_utc_now(),
         status=MessageStatus.NORMAL,
         answer="",
     )
-    conversation = SimpleNamespace(id="conv-id", mode=AppMode.ADVANCED_CHAT)
-    workflow = SimpleNamespace(id="workflow-id", tenant_id="tenant", features_dict={})
+    conversation = ConversationSnapshot(id="conv-id", mode=AppMode.ADVANCED_CHAT)
+    workflow = WorkflowSnapshot(id="workflow-id", tenant_id="tenant", features_dict={})
     user = EndUser(tenant_id="tenant", type="session", name="tester", session_id="session")
 
     pipeline = AdvancedChatAppGenerateTaskPipeline(
@@ -257,7 +262,7 @@ class TestAdvancedChatGenerateTaskPipeline:
             node_id="node",
             node_type=BuiltinNodeTypes.LLM,
             node_title="LLM",
-            start_at=datetime.utcnow(),
+            start_at=naive_utc_now(),
             node_run_index=1,
         )
         iter_next = QueueIterationNextEvent(
@@ -273,7 +278,7 @@ class TestAdvancedChatGenerateTaskPipeline:
             node_id="node",
             node_type=BuiltinNodeTypes.LLM,
             node_title="LLM",
-            start_at=datetime.utcnow(),
+            start_at=naive_utc_now(),
             node_run_index=1,
         )
         loop_start = QueueLoopStartEvent(
@@ -281,7 +286,7 @@ class TestAdvancedChatGenerateTaskPipeline:
             node_id="node",
             node_type=BuiltinNodeTypes.LLM,
             node_title="LLM",
-            start_at=datetime.utcnow(),
+            start_at=naive_utc_now(),
             node_run_index=1,
         )
         loop_next = QueueLoopNextEvent(
@@ -297,7 +302,7 @@ class TestAdvancedChatGenerateTaskPipeline:
             node_id="node",
             node_type=BuiltinNodeTypes.LLM,
             node_title="LLM",
-            start_at=datetime.utcnow(),
+            start_at=naive_utc_now(),
             node_run_index=1,
         )
 
@@ -360,7 +365,7 @@ class TestAdvancedChatGenerateTaskPipeline:
             node_execution_id="exec",
             node_id="node",
             node_type=BuiltinNodeTypes.LLM,
-            start_at=datetime.utcnow(),
+            start_at=naive_utc_now(),
             inputs={},
             outputs={},
             process_data={},
@@ -370,7 +375,7 @@ class TestAdvancedChatGenerateTaskPipeline:
             node_execution_id="exec",
             node_id="node",
             node_type=BuiltinNodeTypes.LLM,
-            start_at=datetime.utcnow(),
+            start_at=naive_utc_now(),
             inputs={},
             outputs={},
             process_data={},
@@ -473,7 +478,7 @@ class TestAdvancedChatGenerateTaskPipeline:
             node_id="node",
             node_type=BuiltinNodeTypes.LLM,
             node_title="title",
-            expiration_time=datetime.utcnow(),
+            expiration_time=naive_utc_now(),
         )
 
         assert list(pipeline._handle_human_input_form_filled_event(filled_event)) == ["filled"]
@@ -591,7 +596,7 @@ class TestAdvancedChatGenerateTaskPipeline:
             node_execution_id="exec",
             node_id="node",
             node_type=BuiltinNodeTypes.LLM,
-            start_at=datetime.utcnow(),
+            start_at=naive_utc_now(),
             inputs={},
             outputs={},
             process_data={},

@@ -556,8 +556,8 @@ describe('DebugWithMultipleModel', () => {
       )
 
       const twoItems = screen.getAllByTestId('debug-item')
-      expect(twoItems[0].style.width).toBe('calc(50% - 28px)')
-      expect(twoItems[1].style.width).toBe('calc(50% - 28px)')
+      expect(twoItems[0].style.width).toBe('calc(50% - 4px - 24px)')
+      expect(twoItems[1].style.width).toBe('calc(50% - 4px - 24px)')
     })
   })
 
@@ -596,13 +596,13 @@ describe('DebugWithMultipleModel', () => {
       // Assert
       expect(items).toHaveLength(2)
       expectItemLayout(items[0], {
-        width: 'calc(50% - 28px)',
+        width: 'calc(50% - 4px - 24px)',
         height: '100%',
         transform: 'translateX(0) translateY(0)',
         classes: ['mr-2'],
       })
       expectItemLayout(items[1], {
-        width: 'calc(50% - 28px)',
+        width: 'calc(50% - 4px - 24px)',
         height: '100%',
         transform: 'translateX(calc(100% + 8px)) translateY(0)',
         classes: [],
@@ -620,19 +620,19 @@ describe('DebugWithMultipleModel', () => {
       // Assert
       expect(items).toHaveLength(3)
       expectItemLayout(items[0], {
-        width: 'calc(33.3% - 21.33px)',
+        width: 'calc(33.3% - 5.33px - 16px)',
         height: '100%',
         transform: 'translateX(0) translateY(0)',
         classes: ['mr-2'],
       })
       expectItemLayout(items[1], {
-        width: 'calc(33.3% - 21.33px)',
+        width: 'calc(33.3% - 5.33px - 16px)',
         height: '100%',
         transform: 'translateX(calc(100% + 8px)) translateY(0)',
         classes: ['mr-2'],
       })
       expectItemLayout(items[2], {
-        width: 'calc(33.3% - 21.33px)',
+        width: 'calc(33.3% - 5.33px - 16px)',
         height: '100%',
         transform: 'translateX(calc(200% + 16px)) translateY(0)',
         classes: [],
@@ -655,25 +655,25 @@ describe('DebugWithMultipleModel', () => {
       // Assert
       expect(items).toHaveLength(4)
       expectItemLayout(items[0], {
-        width: 'calc(50% - 28px)',
+        width: 'calc(50% - 4px - 24px)',
         height: 'calc(50% - 4px)',
         transform: 'translateX(0) translateY(0)',
         classes: ['mr-2', 'mb-2'],
       })
       expectItemLayout(items[1], {
-        width: 'calc(50% - 28px)',
+        width: 'calc(50% - 4px - 24px)',
         height: 'calc(50% - 4px)',
         transform: 'translateX(calc(100% + 8px)) translateY(0)',
         classes: ['mb-2'],
       })
       expectItemLayout(items[2], {
-        width: 'calc(50% - 28px)',
+        width: 'calc(50% - 4px - 24px)',
         height: 'calc(50% - 4px)',
         transform: 'translateX(0) translateY(calc(100% + 8px))',
         classes: ['mr-2'],
       })
       expectItemLayout(items[3], {
-        width: 'calc(50% - 28px)',
+        width: 'calc(50% - 4px - 24px)',
         height: 'calc(50% - 4px)',
         transform: 'translateX(calc(100% + 8px)) translateY(calc(100% + 8px))',
         classes: [],
