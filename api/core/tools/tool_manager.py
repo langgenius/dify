@@ -255,11 +255,11 @@ class ToolManager:
                     if builtin_provider is None:
                         raise ToolProviderNotFoundError(f"no default provider for {provider_id}")
             else:
-                builtin_provider = (
-                    db.session.query(BuiltinToolProvider)
+                builtin_provider = db.session.scalar(
+                    select(BuiltinToolProvider)
                     .where(BuiltinToolProvider.tenant_id == tenant_id, (BuiltinToolProvider.provider == provider_id))
                     .order_by(BuiltinToolProvider.is_default.desc(), BuiltinToolProvider.created_at.asc())
-                    .first()
+                    .limit(1)
                 )
 
                 if builtin_provider is None:
@@ -818,13 +818,13 @@ class ToolManager:
 
         :return: the provider controller, the credentials
         """
-        provider: ApiToolProvider | None = (
-            db.session.query(ApiToolProvider)
+        provider: ApiToolProvider | None = db.session.scalar(
+            select(ApiToolProvider)
             .where(
                 ApiToolProvider.id == provider_id,
                 ApiToolProvider.tenant_id == tenant_id,
             )
-            .first()
+            .limit(1)
         )
 
         if provider is None:
@@ -872,13 +872,13 @@ class ToolManager:
         get api provider
         """
         provider_name = provider
-        provider_obj: ApiToolProvider | None = (
-            db.session.query(ApiToolProvider)
+        provider_obj: ApiToolProvider | None = db.session.scalar(
+            select(ApiToolProvider)
             .where(
                 ApiToolProvider.tenant_id == tenant_id,
                 ApiToolProvider.name == provider,
             )
-            .first()
+            .limit(1)
         )
 
         if provider_obj is None:
@@ -964,10 +964,10 @@ class ToolManager:
     @classmethod
     def generate_workflow_tool_icon_url(cls, tenant_id: str, provider_id: str) -> EmojiIconDict:
         try:
-            workflow_provider: WorkflowToolProvider | None = (
-                db.session.query(WorkflowToolProvider)
+            workflow_provider: WorkflowToolProvider | None = db.session.scalar(
+                select(WorkflowToolProvider)
                 .where(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == provider_id)
-                .first()
+                .limit(1)
             )
 
             if workflow_provider is None:
@@ -981,10 +981,10 @@ class ToolManager:
     @classmethod
     def generate_api_tool_icon_url(cls, tenant_id: str, provider_id: str) -> EmojiIconDict:
         try:
-            api_provider: ApiToolProvider | None = (
-                db.session.query(ApiToolProvider)
+            api_provider: ApiToolProvider | None = db.session.scalar(
+                select(ApiToolProvider)
                 .where(ApiToolProvider.tenant_id == tenant_id, ApiToolProvider.id == provider_id)
-                .first()
+                .limit(1)
             )
 
             if api_provider is None:
