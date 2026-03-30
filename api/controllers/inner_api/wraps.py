@@ -23,7 +23,11 @@ def billing_inner_api_only(view: Callable[P, R]):
 
         # get header 'X-Inner-Api-Key'
         inner_api_key = request.headers.get("X-Inner-Api-Key")
-        if not inner_api_key or not hmac.compare_digest(inner_api_key, dify_config.INNER_API_KEY or ""):
+        if (
+            not inner_api_key
+            or not dify_config.INNER_API_KEY
+            or not hmac.compare_digest(inner_api_key, dify_config.INNER_API_KEY)
+        ):
             abort(401)
 
         return view(*args, **kwargs)
@@ -39,7 +43,11 @@ def enterprise_inner_api_only(view: Callable[P, R]):
 
         # get header 'X-Inner-Api-Key'
         inner_api_key = request.headers.get("X-Inner-Api-Key")
-        if not inner_api_key or not hmac.compare_digest(inner_api_key, dify_config.INNER_API_KEY or ""):
+        if (
+            not inner_api_key
+            or not dify_config.INNER_API_KEY
+            or not hmac.compare_digest(inner_api_key, dify_config.INNER_API_KEY)
+        ):
             abort(401)
 
         return view(*args, **kwargs)
