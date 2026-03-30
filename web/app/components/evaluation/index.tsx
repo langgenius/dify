@@ -3,11 +3,12 @@
 import type { EvaluationResourceProps } from './types'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useDocLink } from '@/context/i18n'
 import BatchTestPanel from './components/batch-test-panel'
 import ConditionsSection from './components/conditions-section'
 import JudgeModelSelector from './components/judge-model-selector'
 import MetricSection from './components/metric-section'
-import SectionHeader from './components/section-header'
+import SectionHeader, { InlineSectionHeader } from './components/section-header'
 import { useEvaluationStore } from './store'
 
 const Evaluation = ({
@@ -15,6 +16,8 @@ const Evaluation = ({
   resourceId,
 }: EvaluationResourceProps) => {
   const { t } = useTranslation('evaluation')
+  const { t: tCommon } = useTranslation('common')
+  const docLink = useDocLink()
   const ensureResource = useEvaluationStore(state => state.ensureResource)
 
   useEffect(() => {
@@ -22,22 +25,41 @@ const Evaluation = ({
   }, [ensureResource, resourceId, resourceType])
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-background-body xl:flex-row">
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 xl:px-8">
-        <div className="mx-auto max-w-5xl space-y-6">
-          <SectionHeader title={t('title')} description={t('description')} />
-          <section className="rounded-2xl border border-divider-subtle bg-components-card-bg p-5">
-            <SectionHeader title={t('judgeModel.title')} description={t('judgeModel.description')} />
-            <div className="mt-4 max-w-[360px]">
+    <div className="flex h-full min-h-0 flex-col bg-background-default xl:flex-row">
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="mx-auto flex min-h-full max-w-[748px] flex-col px-6 py-4">
+          <SectionHeader
+            title={t('title')}
+            description={(
+              <>
+                {t('description')}
+                {' '}
+                <a
+                  className="text-text-accent"
+                  href={docLink()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {tCommon('operation.learnMore')}
+                </a>
+              </>
+            )}
+            descriptionClassName="max-w-[700px]"
+          />
+          <section className="max-w-[700px] py-4">
+            <InlineSectionHeader title={t('judgeModel.title')} tooltip={t('judgeModel.description')} />
+            <div className="mt-1.5">
               <JudgeModelSelector resourceType={resourceType} resourceId={resourceId} />
             </div>
           </section>
+          <div className="max-w-[700px] border-b border-divider-subtle" />
           <MetricSection resourceType={resourceType} resourceId={resourceId} />
+          <div className="max-w-[700px] border-b border-divider-subtle" />
           <ConditionsSection resourceType={resourceType} resourceId={resourceId} />
         </div>
       </div>
 
-      <div className="h-[420px] shrink-0 xl:h-auto xl:w-[360px]">
+      <div className="h-[420px] shrink-0 border-t border-divider-subtle xl:h-auto xl:w-[450px] xl:border-l xl:border-t-0">
         <BatchTestPanel resourceType={resourceType} resourceId={resourceId} />
       </div>
     </div>

@@ -7,7 +7,7 @@ import Button from '@/app/components/base/button'
 import { useEvaluationResource, useEvaluationStore } from '../store'
 import CustomMetricEditor from './custom-metric-editor'
 import MetricSelector from './metric-selector'
-import SectionHeader from './section-header'
+import { InlineSectionHeader } from './section-header'
 
 const MetricSection = ({
   resourceType,
@@ -16,17 +16,27 @@ const MetricSection = ({
   const { t } = useTranslation('evaluation')
   const resource = useEvaluationResource(resourceType, resourceId)
   const removeMetric = useEvaluationStore(state => state.removeMetric)
+  const hasMetrics = resource.metrics.length > 0
 
   return (
-    <section className="rounded-2xl border border-divider-subtle bg-components-card-bg p-5">
-      <SectionHeader
+    <section className="max-w-[700px] py-4">
+      <InlineSectionHeader
         title={t('metrics.title')}
-        description={t('metrics.description')}
-        action={<MetricSelector resourceType={resourceType} resourceId={resourceId} />}
+        tooltip={t('metrics.description')}
       />
-      <div className="mt-4 space-y-3">
+      <div className="mt-2 space-y-3">
+        {!hasMetrics && (
+          <div className="flex items-center gap-5 rounded-xl bg-background-section px-3 py-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg shadow-md">
+              <span aria-hidden="true" className="i-ri-bar-chart-horizontal-line h-6 w-6 text-text-primary" />
+            </div>
+            <div className="text-text-tertiary system-xs-regular">
+              {t('metrics.description')}
+            </div>
+          </div>
+        )}
         {resource.metrics.map(metric => (
-          <div key={metric.id} className="rounded-2xl border border-divider-subtle p-4">
+          <div key={metric.id} className="rounded-xl border border-divider-subtle bg-components-card-bg p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="text-text-primary system-sm-semibold">{metric.label}</div>
@@ -55,6 +65,11 @@ const MetricSection = ({
             )}
           </div>
         ))}
+        <MetricSelector
+          resourceType={resourceType}
+          resourceId={resourceId}
+          triggerStyle="text"
+        />
       </div>
     </section>
   )

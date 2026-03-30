@@ -16,10 +16,19 @@ import { cn } from '@/utils/classnames'
 import { getEvaluationMockConfig } from '../mock'
 import { useEvaluationResource, useEvaluationStore } from '../store'
 
+type MetricSelectorProps = EvaluationResourceProps & {
+  triggerVariant?: 'primary' | 'warning' | 'secondary' | 'secondary-accent' | 'ghost' | 'ghost-accent' | 'tertiary'
+  triggerClassName?: string
+  triggerStyle?: 'button' | 'text'
+}
+
 const MetricSelector = ({
   resourceType,
   resourceId,
-}: EvaluationResourceProps) => {
+  triggerVariant = 'secondary',
+  triggerClassName,
+  triggerStyle = 'button',
+}: MetricSelectorProps) => {
   const { t } = useTranslation('evaluation')
   const config = getEvaluationMockConfig(resourceType)
   const metricGroupLabels = {
@@ -90,10 +99,23 @@ const MetricSelector = ({
 
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
-      <PopoverTrigger className="btn btn-medium btn-secondary inline-flex items-center">
-        <span aria-hidden="true" className="i-ri-add-line mr-1 h-4 w-4" />
-        {t('metrics.add')}
-      </PopoverTrigger>
+      <PopoverTrigger
+        render={(
+          triggerStyle === 'text'
+            ? (
+                <button type="button" className={cn('inline-flex items-center text-text-accent system-sm-medium', triggerClassName)}>
+                  <span aria-hidden="true" className="i-ri-add-line mr-1 h-4 w-4" />
+                  {t('metrics.add')}
+                </button>
+              )
+            : (
+                <Button variant={triggerVariant} className={triggerClassName}>
+                  <span aria-hidden="true" className="i-ri-add-line mr-1 h-4 w-4" />
+                  {t('metrics.add')}
+                </Button>
+              )
+        )}
+      />
       <PopoverContent popupClassName="w-[360px] p-3">
         <div className="space-y-3">
           <Input

@@ -35,7 +35,7 @@ const JudgeModelSelector = ({
       modelList={modelList}
       onSelect={model => setJudgeModel(resourceType, resourceId, encodeModelSelection(model.provider, model.model))}
       showDeprecatedWarnIcon
-      triggerClassName="h-11"
+      triggerClassName="h-8 w-full rounded-lg"
     />
   )
 }
