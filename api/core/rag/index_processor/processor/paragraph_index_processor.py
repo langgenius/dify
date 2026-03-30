@@ -18,6 +18,7 @@ from graphon.model_runtime.entities.message_entities import (
     UserPromptMessage,
 )
 from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
+from sqlalchemy import select
 
 from core.app.file_access import DatabaseFileAccessController
 from core.app.llm import deduct_llm_quota
@@ -145,14 +146,12 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         if delete_summaries:
             if node_ids:
                 # Find segments by index_node_id
-                segments = (
-                    db.session.query(DocumentSegment)
-                    .filter(
+                segments = db.session.scalars(
+                    select(DocumentSegment).where(
                         DocumentSegment.dataset_id == dataset.id,
                         DocumentSegment.index_node_id.in_(node_ids),
                     )
-                    .all()
-                )
+                ).all()
                 segment_ids = [segment.id for segment in segments]
                 if segment_ids:
                     SummaryIndexService.delete_summaries_for_segments(dataset, segment_ids)
@@ -537,11 +536,9 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
 
         # Get unique IDs for database query
         unique_upload_file_ids = list(set(upload_file_id_list))
-        upload_files = (
-            db.session.query(UploadFile)
-            .where(UploadFile.id.in_(unique_upload_file_ids), UploadFile.tenant_id == tenant_id)
-            .all()
-        )
+        upload_files = db.session.scalars(
+            select(UploadFile).where(UploadFile.id.in_(unique_upload_file_ids), UploadFile.tenant_id == tenant_id)
+        ).all()
 
         # Create File objects from UploadFile records
         file_objects = []

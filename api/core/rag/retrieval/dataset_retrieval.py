@@ -1340,7 +1340,7 @@ class DatasetRetrieval:
         metadata_filtering_conditions: MetadataFilteringCondition | None,
         inputs: dict,
     ) -> tuple[dict[str, list[str]] | None, MetadataCondition | None]:
-        document_query = db.session.query(DatasetDocument).where(
+        document_query = select(DatasetDocument).where(
             DatasetDocument.dataset_id.in_(dataset_ids),
             DatasetDocument.indexing_status == "completed",
             DatasetDocument.enabled == True,
@@ -1411,7 +1411,7 @@ class DatasetRetrieval:
                 document_query = document_query.where(and_(*filters))
             else:
                 document_query = document_query.where(or_(*filters))
-        documents = document_query.all()
+        documents = db.session.scalars(document_query).all()
         # group by dataset_id
         metadata_filter_document_ids = defaultdict(list) if documents else None  # type: ignore
         for document in documents:

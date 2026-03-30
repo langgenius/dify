@@ -12,7 +12,9 @@ import click
 import sqlalchemy as sa
 import tqdm
 from flask import Flask, current_app
+from pydantic import TypeAdapter
 from sqlalchemy.orm import Session
+from typing_extensions import TypedDict
 
 from core.agent.entities import AgentToolEntity
 from core.helper import marketplace
@@ -31,6 +33,14 @@ from services.plugin.plugin_service import PluginService
 logger = logging.getLogger(__name__)
 
 excluded_providers = ["time", "audio", "code", "webscraper"]
+
+
+class _TenantPluginRecord(TypedDict):
+    tenant_id: str
+    plugins: list[str]
+
+
+_tenant_plugin_adapter: TypeAdapter[_TenantPluginRecord] = TypeAdapter(_TenantPluginRecord)
 
 
 class PluginMigration:
@@ -308,9 +318,8 @@ class PluginMigration:
         logger.info("Extracting unique plugins from %s", extracted_plugins)
         with open(extracted_plugins) as f:
             for line in f:
-                data = json.loads(line)
-                new_plugin_ids = data.get("plugins", [])
-                for plugin_id in new_plugin_ids:
+                data = _tenant_plugin_adapter.validate_json(line)
+                for plugin_id in data["plugins"]:
                     if plugin_id not in plugin_ids:
                         plugin_ids.append(plugin_id)
 
@@ -381,21 +390,23 @@ class PluginMigration:
             Read line by line, and install plugins for each tenant.
             """
             for line in f:
-                data = json.loads(line)
-                tenant_id = data.get("tenant_id")
-                plugin_ids = data.get("plugins", [])
-                current_not_installed = {
-                    "tenant_id": tenant_id,
-                    "plugin_not_exist": [],
-                }
+                data = _tenant_plugin_adapter.validate_json(line)
+                tenant_id = data["tenant_id"]
+                plugin_ids = data["plugins"]
+                plugin_not_exist: list[str] = []
                 # get plugin unique identifier
                 for plugin_id in plugin_ids:
                     unique_identifier = plugins.get(plugin_id)
                     if unique_identifier:
-                        current_not_installed["plugin_not_exist"].append(plugin_id)
+                        plugin_not_exist.append(plugin_id)
 
-                if current_not_installed["plugin_not_exist"]:
-                    not_installed.append(current_not_installed)
+                if plugin_not_exist:
+                    not_installed.append(
+                        {
+                            "tenant_id": tenant_id,
+                            "plugin_not_exist": plugin_not_exist,
+                        }
+                    )
 
                 thread_pool.submit(install, tenant_id, plugin_ids)
 
