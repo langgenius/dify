@@ -7,14 +7,15 @@ from typing import TYPE_CHECKING, ParamSpec, TypeVar, Union
 from urllib.parse import quote
 
 from flask import Response, request
-from flask_restx import Resource, fields
+from flask_restx import Resource, fields, marshal
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import BadRequest, NotFound
+from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
+from controllers.console.app.workflow import WorkflowListQuery
 from controllers.console.wraps import (
     account_initialization_required,
     edit_permission_required,
@@ -23,6 +24,7 @@ from controllers.console.wraps import (
 from core.evaluation.entities.evaluation_entity import EvaluationCategory, EvaluationConfigData, EvaluationRunRequest
 from extensions.ext_database import db
 from extensions.ext_storage import storage
+from fields.member_fields import simple_account_fields
 from graphon.file import helpers as file_helpers
 from libs.helper import TimestampField
 from libs.login import current_account_with_tenant, login_required
@@ -36,6 +38,7 @@ from services.errors.evaluation import (
     EvaluationNotFoundError,
 )
 from services.evaluation_service import EvaluationService
+from services.workflow_service import WorkflowService
 
 if TYPE_CHECKING:
     from models.evaluation import EvaluationRun, EvaluationRunItem
@@ -124,6 +127,33 @@ evaluation_detail_fields = {
 }
 
 evaluation_detail_model = console_ns.model("EvaluationDetail", evaluation_detail_fields)
+
+available_evaluation_workflow_list_fields = {
+    "id": fields.String,
+    "app_id": fields.String,
+    "app_name": fields.String,
+    "type": fields.String,
+    "version": fields.String,
+    "marked_name": fields.String,
+    "marked_comment": fields.String,
+    "hash": fields.String,
+    "created_by": fields.Nested(simple_account_fields),
+    "created_at": TimestampField,
+    "updated_by": fields.Nested(simple_account_fields, allow_null=True),
+    "updated_at": TimestampField,
+}
+
+available_evaluation_workflow_pagination_fields = {
+    "items": fields.List(fields.Nested(available_evaluation_workflow_list_fields)),
+    "page": fields.Integer,
+    "limit": fields.Integer,
+    "has_more": fields.Boolean,
+}
+
+available_evaluation_workflow_pagination_model = console_ns.model(
+    "AvailableEvaluationWorkflowPagination",
+    available_evaluation_workflow_pagination_fields,
+)
 
 
 def get_evaluation_target(view_func: Callable[P, R]):
@@ -599,6 +629,81 @@ class EvaluationVersionApi(Resource):
         return {
             "graph": graph,
         }
+
+
+@console_ns.route("/workspaces/current/available-evaluation-workflows")
+class AvailableEvaluationWorkflowsApi(Resource):
+    @console_ns.expect(console_ns.models[WorkflowListQuery.__name__])
+    @console_ns.doc("list_available_evaluation_workflows")
+    @console_ns.doc(description="List published evaluation workflows in the current workspace (all apps)")
+    @console_ns.response(
+        200,
+        "Available evaluation workflows retrieved",
+        available_evaluation_workflow_pagination_model,
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    def get(self):
+        """List published evaluation-type workflows for the current tenant (cross-app)."""
+        current_user, current_tenant_id = current_account_with_tenant()
+
+        args = WorkflowListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        page = args.page
+        limit = args.limit
+        user_id = args.user_id
+        named_only = args.named_only
+        keyword = args.keyword
+
+        if user_id and user_id != current_user.id:
+            raise Forbidden()
+
+        workflow_service = WorkflowService()
+        with Session(db.engine) as session:
+            workflows, has_more = workflow_service.list_published_evaluation_workflows(
+                session=session,
+                tenant_id=current_tenant_id,
+                page=page,
+                limit=limit,
+                user_id=user_id,
+                named_only=named_only,
+                keyword=keyword,
+            )
+
+            app_ids = {w.app_id for w in workflows}
+            if app_ids:
+                apps = session.scalars(select(App).where(App.id.in_(app_ids))).all()
+                app_names = {a.id: a.name for a in apps}
+            else:
+                app_names = {}
+
+        items = []
+        for wf in workflows:
+            items.append(
+                {
+                    "id": wf.id,
+                    "app_id": wf.app_id,
+                    "app_name": app_names.get(wf.app_id, ""),
+                    "type": wf.type.value,
+                    "version": wf.version,
+                    "marked_name": wf.marked_name,
+                    "marked_comment": wf.marked_comment,
+                    "hash": wf.unique_hash,
+                    "created_by": wf.created_by_account,
+                    "created_at": wf.created_at,
+                    "updated_by": wf.updated_by_account,
+                    "updated_at": wf.updated_at,
+                }
+            )
+
+        return (
+            marshal(
+                {"items": items, "page": page, "limit": limit, "has_more": has_more},
+                available_evaluation_workflow_pagination_fields,
+            ),
+            200,
+        )
 
 
 # ---- Serialization Helpers ----

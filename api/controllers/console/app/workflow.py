@@ -158,6 +158,7 @@ class WorkflowListQuery(BaseModel):
     limit: int = Field(default=10, ge=1, le=100)
     user_id: str | None = None
     named_only: bool = False
+    keyword: str | None = Field(default=None, max_length=255)
 
 
 class WorkflowUpdatePayload(BaseModel):

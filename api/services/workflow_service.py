@@ -5,7 +5,7 @@ import uuid
 from collections.abc import Callable, Generator, Mapping, Sequence
 from typing import Any, cast
 
-from sqlalchemy import exists, select
+from sqlalchemy import and_, exists, or_, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
@@ -58,6 +58,7 @@ from graphon.variables import VariableBase
 from graphon.variables.input_entities import VariableEntityType
 from graphon.variables.variables import Variable
 from libs.datetime_utils import naive_utc_now
+from libs.helper import escape_like_pattern
 from models import Account
 from models.human_input import HumanInputFormRecipient, RecipientType
 from models.model import App, AppMode
@@ -231,6 +232,59 @@ class WorkflowService:
 
         if named_only:
             stmt = stmt.where(Workflow.marked_name != "")
+
+        workflows = session.scalars(stmt).all()
+
+        has_more = len(workflows) > limit
+        if has_more:
+            workflows = workflows[:-1]
+
+        return workflows, has_more
+
+    def list_published_evaluation_workflows(
+        self,
+        *,
+        session: Session,
+        tenant_id: str,
+        page: int,
+        limit: int,
+        user_id: str | None,
+        named_only: bool = False,
+        keyword: str | None = None,
+    ) -> tuple[Sequence[Workflow], bool]:
+        """
+        List published evaluation-type workflows for a tenant (cross-app), excluding draft rows.
+
+        When ``keyword`` is non-empty, match workflows whose marked name or parent app name contains
+        the substring (case-insensitive, LIKE wildcards escaped).
+        """
+        stmt = select(Workflow).where(
+            Workflow.tenant_id == tenant_id,
+            Workflow.type == WorkflowType.EVALUATION,
+            Workflow.version != Workflow.VERSION_DRAFT,
+        )
+
+        if user_id:
+            stmt = stmt.where(Workflow.created_by == user_id)
+
+        if named_only:
+            stmt = stmt.where(Workflow.marked_name != "")
+
+        keyword_stripped = keyword.strip() if keyword else ""
+        if keyword_stripped:
+            escaped = escape_like_pattern(keyword_stripped)
+            pattern = f"%{escaped}%"
+            stmt = stmt.join(
+                App,
+                and_(Workflow.app_id == App.id, App.tenant_id == tenant_id),
+            ).where(
+                or_(
+                    Workflow.marked_name.ilike(pattern, escape="\\"),
+                    App.name.ilike(pattern, escape="\\"),
+                )
+            )
+
+        stmt = stmt.order_by(Workflow.created_at.desc()).limit(limit + 1).offset((page - 1) * limit)
 
         workflows = session.scalars(stmt).all()
 
