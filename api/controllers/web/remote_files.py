@@ -11,9 +11,9 @@ from controllers.common.errors import (
     UnsupportedFileTypeError,
 )
 from core.helper import ssrf_proxy
-from dify_graph.file import helpers as file_helpers
 from extensions.ext_database import db
 from fields.file_fields import FileWithSignedUrl, RemoteFileInfo
+from graphon.file import helpers as file_helpers
 from services.file_service import FileService
 
 from ..common.schema import register_schema_models

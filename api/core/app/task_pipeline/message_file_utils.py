@@ -1,8 +1,8 @@
 from typing import TypedDict
 
 from core.tools.signature import sign_tool_file
-from dify_graph.file import helpers as file_helpers
-from dify_graph.file.enums import FileTransferMethod
+from graphon.file import helpers as file_helpers
+from graphon.file.enums import FileTransferMethod
 from models.model import MessageFile, UploadFile
 
 MAX_TOOL_FILE_EXTENSION_LENGTH = 10

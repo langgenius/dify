@@ -4,6 +4,7 @@ from unittest.mock import patch
 import pytest
 from faker import Faker
 
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.workflow.nodes.knowledge_retrieval.retrieval import KnowledgeRetrievalRequest
 from models.dataset import Dataset, Document
@@ -38,7 +39,7 @@ class TestGetAvailableDatasetsIntegration:
             provider="dify",
             data_source_type=DataSourceType.UPLOAD_FILE,
             created_by=account.id,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
         )
         db_session_with_containers.add(dataset)
         db_session_with_containers.flush()
@@ -55,7 +56,7 @@ class TestGetAvailableDatasetsIntegration:
                 name=f"Document {i}",
                 created_from=DocumentCreatedFrom.WEB,
                 created_by=account.id,
-                doc_form="text_model",
+                doc_form=IndexStructureType.PARAGRAPH_INDEX,
                 doc_language="en",
                 indexing_status=IndexingStatus.COMPLETED,
                 enabled=True,
@@ -112,7 +113,7 @@ class TestGetAvailableDatasetsIntegration:
                 created_from=DocumentCreatedFrom.WEB,
                 name=f"Archived Document {i}",
                 created_by=account.id,
-                doc_form="text_model",
+                doc_form=IndexStructureType.PARAGRAPH_INDEX,
                 indexing_status=IndexingStatus.COMPLETED,
                 enabled=True,
                 archived=True,  # Archived
@@ -165,7 +166,7 @@ class TestGetAvailableDatasetsIntegration:
                 created_from=DocumentCreatedFrom.WEB,
                 name=f"Disabled Document {i}",
                 created_by=account.id,
-                doc_form="text_model",
+                doc_form=IndexStructureType.PARAGRAPH_INDEX,
                 indexing_status=IndexingStatus.COMPLETED,
                 enabled=False,  # Disabled
                 archived=False,
@@ -218,7 +219,7 @@ class TestGetAvailableDatasetsIntegration:
                 created_from=DocumentCreatedFrom.WEB,
                 name=f"Document {status}",
                 created_by=account.id,
-                doc_form="text_model",
+                doc_form=IndexStructureType.PARAGRAPH_INDEX,
                 indexing_status=status,  # Not completed
                 enabled=True,
                 archived=False,
@@ -336,7 +337,7 @@ class TestGetAvailableDatasetsIntegration:
                 created_from=DocumentCreatedFrom.WEB,
                 name=f"Document for {dataset.name}",
                 created_by=account.id,
-                doc_form="text_model",
+                doc_form=IndexStructureType.PARAGRAPH_INDEX,
                 indexing_status=IndexingStatus.COMPLETED,
                 enabled=True,
                 archived=False,
@@ -416,7 +417,7 @@ class TestGetAvailableDatasetsIntegration:
                 created_from=DocumentCreatedFrom.WEB,
                 name=f"Document {i}",
                 created_by=account.id,
-                doc_form="text_model",
+                doc_form=IndexStructureType.PARAGRAPH_INDEX,
                 indexing_status=IndexingStatus.COMPLETED,
                 enabled=True,
                 archived=False,
@@ -459,7 +460,7 @@ class TestKnowledgeRetrievalIntegration:
             provider="dify",
             data_source_type=DataSourceType.UPLOAD_FILE,
             created_by=account.id,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
         )
         db_session_with_containers.add(dataset)
 
@@ -476,7 +477,7 @@ class TestKnowledgeRetrievalIntegration:
             indexing_status=IndexingStatus.COMPLETED,
             enabled=True,
             archived=False,
-            doc_form="text_model",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
         )
         db_session_with_containers.add(document)
         db_session_with_containers.commit()

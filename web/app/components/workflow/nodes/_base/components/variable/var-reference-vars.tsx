@@ -17,15 +17,19 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { VAR_SHOW_NAME_MAP } from '@/app/components/workflow/constants'
 import PickerStructurePanel from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/picker'
 import { VariableIconWithColor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 import { VarType } from '@/app/components/workflow/types'
 import { cn } from '@/utils/classnames'
-import { checkKeys } from '@/utils/var'
 import { Type } from '../../../llm/types'
 import ManageInputField from './manage-input-field'
-import { isSpecialVar, varTypeToStructType } from './utils'
+import { varTypeToStructType } from './utils'
+import {
+  filterReferenceVars,
+  getValueSelector,
+  getVariableCategory,
+  getVariableDisplayName,
+} from './var-reference-vars.helpers'
 
 type ItemProps = {
   nodeId: string
@@ -84,17 +88,10 @@ const Item: FC<ItemProps> = ({
     }
   }, [isFlat, isInCodeGeneratorInstructionEditor, itemData.variable])
 
-  const varName = useMemo(() => {
-    if (VAR_SHOW_NAME_MAP[itemData.variable])
-      return VAR_SHOW_NAME_MAP[itemData.variable]
-
-    if (!isFlat)
-      return itemData.variable
-    if (itemData.variable === 'current')
-      return isInCodeGeneratorInstructionEditor ? 'current_code' : 'current_prompt'
-
-    return itemData.variable
-  }, [isFlat, isInCodeGeneratorInstructionEditor, itemData.variable])
+  const varName = useMemo(
+    () => getVariableDisplayName(itemData.variable, !!isFlat, isInCodeGeneratorInstructionEditor),
+    [isFlat, isInCodeGeneratorInstructionEditor, itemData.variable],
+  )
 
   const objStructuredOutput: StructuredOutput | null = useMemo(() => {
     if (!isObj)
@@ -150,30 +147,26 @@ const Item: FC<ItemProps> = ({
   const handleChosen = (e: React.MouseEvent) => {
     e.stopPropagation()
     e.nativeEvent.stopImmediatePropagation()
-    if (!isSupportFileVar && isFile)
-      return
+    const valueSelector = getValueSelector({
+      itemData,
+      isFlat,
+      isSupportFileVar,
+      isFile,
+      isSys,
+      isEnv,
+      isChatVar,
+      isRagVariable,
+      nodeId,
+      objPath,
+    })
 
-    if (isFlat) {
-      onChange([itemData.variable], itemData)
-    }
-    else if (isSys || isEnv || isChatVar || isRagVariable) { // system variable | environment variable | conversation variable
-      onChange([...objPath, ...itemData.variable.split('.')], itemData)
-    }
-    else {
-      onChange([nodeId, ...objPath, itemData.variable], itemData)
-    }
+    if (valueSelector)
+      onChange(valueSelector, itemData)
   }
-  const variableCategory = useMemo(() => {
-    if (isEnv)
-      return 'environment'
-    if (isChatVar)
-      return 'conversation'
-    if (isLoopVar)
-      return 'loop'
-    if (isRagVariable)
-      return 'rag'
-    return 'system'
-  }, [isEnv, isChatVar, isSys, isLoopVar, isRagVariable])
+  const variableCategory = useMemo(
+    () => getVariableCategory({ isEnv, isChatVar, isLoopVar, isRagVariable }),
+    [isEnv, isChatVar, isLoopVar, isRagVariable],
+  )
   return (
     <PortalToFollowElem
       open={open}
@@ -290,30 +283,7 @@ const VarReferenceVars: FC<Props> = ({
     }
   }
 
-  const filteredVars = vars.filter((v) => {
-    const children = v.vars.filter(v => checkKeys([v.variable], false).isValid || isSpecialVar(v.variable.split('.')[0]))
-    return children.length > 0
-  }).filter((node) => {
-    if (!searchText)
-      return node
-    const children = node.vars.filter((v) => {
-      const searchTextLower = searchText.toLowerCase()
-      return v.variable.toLowerCase().includes(searchTextLower) || node.title.toLowerCase().includes(searchTextLower)
-    })
-    return children.length > 0
-  }).map((node) => {
-    let vars = node.vars.filter(v => checkKeys([v.variable], false).isValid || isSpecialVar(v.variable.split('.')[0]))
-    if (searchText) {
-      const searchTextLower = searchText.toLowerCase()
-      if (!node.title.toLowerCase().includes(searchTextLower))
-        vars = vars.filter(v => v.variable.toLowerCase().includes(searchText.toLowerCase()))
-    }
-
-    return {
-      ...node,
-      vars,
-    }
-  })
+  const filteredVars = useMemo(() => filterReferenceVars(vars, searchText), [vars, searchText])
 
   return (
     <>

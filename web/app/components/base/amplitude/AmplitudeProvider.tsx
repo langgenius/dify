@@ -5,15 +5,10 @@ import * as amplitude from '@amplitude/analytics-browser'
 import { sessionReplayPlugin } from '@amplitude/plugin-session-replay-browser'
 import * as React from 'react'
 import { useEffect } from 'react'
-import { AMPLITUDE_API_KEY, IS_CLOUD_EDITION } from '@/config'
+import { AMPLITUDE_API_KEY, isAmplitudeEnabled } from '@/config'
 
 export type IAmplitudeProps = {
   sessionReplaySampleRate?: number
-}
-
-// Check if Amplitude should be enabled
-export const isAmplitudeEnabled = () => {
-  return IS_CLOUD_EDITION && !!AMPLITUDE_API_KEY
 }
 
 // Map URL pathname to English page name for consistent Amplitude tracking
@@ -59,7 +54,7 @@ const AmplitudeProvider: FC<IAmplitudeProps> = ({
 }) => {
   useEffect(() => {
     // Only enable in Saas edition with valid API key
-    if (!isAmplitudeEnabled())
+    if (!isAmplitudeEnabled)
       return
 
     // Initialize Amplitude

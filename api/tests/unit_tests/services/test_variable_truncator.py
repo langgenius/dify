@@ -17,9 +17,9 @@ from uuid import uuid4
 
 import pytest
 
-from dify_graph.file.enums import FileTransferMethod, FileType
-from dify_graph.file.models import File
-from dify_graph.variables.segments import (
+from graphon.file.enums import FileTransferMethod, FileType
+from graphon.file.models import File
+from graphon.variables.segments import (
     ArrayFileSegment,
     ArrayNumberSegment,
     ArraySegment,

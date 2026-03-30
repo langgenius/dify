@@ -18,7 +18,7 @@ from core.prompt.prompt_templates.advanced_prompt_templates import (
     CONTEXT,
 )
 from core.prompt.simple_prompt_transform import SimplePromptTransform
-from dify_graph.model_runtime.entities.message_entities import (
+from graphon.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     ImagePromptMessageContent,
     TextPromptMessageContent,

@@ -15,8 +15,8 @@ import pytest
 from sqlalchemy import Engine, delete, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from dify_graph.nodes.human_input.entities import FormDefinition, UserAction
-from dify_graph.nodes.human_input.enums import HumanInputFormStatus
+from graphon.nodes.human_input.entities import FormDefinition, UserAction
+from graphon.nodes.human_input.enums import HumanInputFormStatus
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import ConversationFromSource, InvokeFrom
 from models.execution_extra_content import ExecutionExtraContent, HumanInputContent
@@ -270,7 +270,7 @@ def _create_recipient(
 
 
 def _create_delivery(session: Session, *, form_id: str) -> HumanInputDelivery:
-    from dify_graph.nodes.human_input.enums import DeliveryMethodType
+    from core.workflow.human_input_compat import DeliveryMethodType
     from models.human_input import ConsoleDeliveryPayload
 
     delivery = HumanInputDelivery(

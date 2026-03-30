@@ -20,9 +20,9 @@ from controllers.web.error import (
 from controllers.web.wraps import WebApiResource
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
-from dify_graph.model_runtime.errors.invoke import InvokeError
 from fields.conversation_fields import ResultResponse
 from fields.message_fields import SuggestedQuestionsResponse, WebMessageInfiniteScrollPagination, WebMessageListItem
+from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.helper import uuid_value
 from models.enums import FeedbackRating

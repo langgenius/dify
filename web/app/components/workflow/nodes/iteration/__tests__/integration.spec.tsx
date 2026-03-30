@@ -3,7 +3,7 @@ import type { IterationNodeType } from '../types'
 import type { PanelProps } from '@/types/workflow'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { ErrorHandleMode } from '@/app/components/workflow/types'
 import { BlockEnum, VarType } from '../../../types'
 import AddBlock from '../add-block'
@@ -14,6 +14,15 @@ import useConfig from '../use-config'
 const mockHandleNodeAdd = vi.fn()
 const mockHandleNodeIterationRerender = vi.fn()
 let mockNodesReadOnly = false
+
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
+    warning: vi.fn(),
+    info: vi.fn(),
+  },
+}))
 
 vi.mock('reactflow', async () => {
   const actual = await vi.importActual<typeof import('reactflow')>('reactflow')
@@ -102,7 +111,7 @@ vi.mock('../use-config', () => ({
 }))
 
 const mockUseConfig = vi.mocked(useConfig)
-const mockToastNotify = vi.spyOn(Toast, 'notify').mockImplementation(() => ({}))
+const mockToastWarning = vi.mocked(toast.warning)
 
 const createData = (overrides: Partial<IterationNodeType> = {}): IterationNodeType => ({
   title: 'Iteration',
@@ -191,11 +200,7 @@ describe('iteration path', () => {
     expect(screen.getByRole('button', { name: 'select-block' })).toBeInTheDocument()
     expect(screen.getByTestId('iteration-background-iteration-node')).toBeInTheDocument()
     expect(mockHandleNodeIterationRerender).toHaveBeenCalledWith('iteration-node')
-    expect(mockToastNotify).toHaveBeenCalledWith({
-      type: 'warning',
-      message: 'workflow.nodes.iteration.answerNodeWarningDesc',
-      duration: 5000,
-    })
+    expect(mockToastWarning).toHaveBeenCalledWith('workflow.nodes.iteration.answerNodeWarningDesc')
   })
 
   it('should wire panel input, output, parallel, numeric, error mode, and flatten actions', async () => {

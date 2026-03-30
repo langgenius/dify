@@ -11,10 +11,8 @@ from models.model import AppMode
 
 def test_get_app_model_injects_model(monkeypatch: pytest.MonkeyPatch) -> None:
     app_model = SimpleNamespace(id="app-1", mode=AppMode.CHAT.value, status="normal", tenant_id="t1")
-    query = SimpleNamespace(where=lambda *_args, **_kwargs: query, first=lambda: app_model)
-
     monkeypatch.setattr(wraps_module, "current_account_with_tenant", lambda: (None, "t1"))
-    monkeypatch.setattr(wraps_module.db, "session", SimpleNamespace(query=lambda *_args, **_kwargs: query))
+    monkeypatch.setattr(wraps_module.db, "session", SimpleNamespace(scalar=lambda *_args, **_kwargs: app_model))
 
     @wraps_module.get_app_model
     def handler(app_model):
@@ -25,10 +23,8 @@ def test_get_app_model_injects_model(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_get_app_model_rejects_wrong_mode(monkeypatch: pytest.MonkeyPatch) -> None:
     app_model = SimpleNamespace(id="app-1", mode=AppMode.CHAT.value, status="normal", tenant_id="t1")
-    query = SimpleNamespace(where=lambda *_args, **_kwargs: query, first=lambda: app_model)
-
     monkeypatch.setattr(wraps_module, "current_account_with_tenant", lambda: (None, "t1"))
-    monkeypatch.setattr(wraps_module.db, "session", SimpleNamespace(query=lambda *_args, **_kwargs: query))
+    monkeypatch.setattr(wraps_module.db, "session", SimpleNamespace(scalar=lambda *_args, **_kwargs: app_model))
 
     @wraps_module.get_app_model(mode=[AppMode.COMPLETION])
     def handler(app_model):
