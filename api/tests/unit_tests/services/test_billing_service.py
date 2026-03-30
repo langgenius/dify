@@ -505,6 +505,87 @@ class TestBillingServiceUsageCalculation:
         )
 
 
+class TestBillingServiceQuotaOperations:
+    """Unit tests for quota reserve/commit/release operations."""
+
+    @pytest.fixture
+    def mock_send_request(self):
+        with patch.object(BillingService, "_send_request") as mock:
+            yield mock
+
+    def test_quota_reserve_success(self, mock_send_request):
+        expected = {"reservation_id": "rid-1", "available": 99, "reserved": 1}
+        mock_send_request.return_value = expected
+
+        result = BillingService.quota_reserve(
+            tenant_id="t1", feature_key="trigger_event", request_id="req-1", amount=1
+        )
+
+        assert result == expected
+        mock_send_request.assert_called_once_with(
+            "POST",
+            "/quota/reserve",
+            json={"tenant_id": "t1", "feature_key": "trigger_event", "request_id": "req-1", "amount": 1},
+        )
+
+    def test_quota_reserve_with_meta(self, mock_send_request):
+        mock_send_request.return_value = {"reservation_id": "rid-2"}
+        meta = {"source": "webhook"}
+
+        BillingService.quota_reserve(
+            tenant_id="t1", feature_key="trigger_event", request_id="req-2", amount=1, meta=meta
+        )
+
+        call_json = mock_send_request.call_args[1]["json"]
+        assert call_json["meta"] == {"source": "webhook"}
+
+    def test_quota_commit_success(self, mock_send_request):
+        expected = {"available": 98, "reserved": 0, "refunded": 0}
+        mock_send_request.return_value = expected
+
+        result = BillingService.quota_commit(
+            tenant_id="t1", feature_key="trigger_event", reservation_id="rid-1", actual_amount=1
+        )
+
+        assert result == expected
+        mock_send_request.assert_called_once_with(
+            "POST",
+            "/quota/commit",
+            json={
+                "tenant_id": "t1",
+                "feature_key": "trigger_event",
+                "reservation_id": "rid-1",
+                "actual_amount": 1,
+            },
+        )
+
+    def test_quota_commit_with_meta(self, mock_send_request):
+        mock_send_request.return_value = {}
+        meta = {"reason": "partial"}
+
+        BillingService.quota_commit(
+            tenant_id="t1", feature_key="trigger_event", reservation_id="rid-1", actual_amount=1, meta=meta
+        )
+
+        call_json = mock_send_request.call_args[1]["json"]
+        assert call_json["meta"] == {"reason": "partial"}
+
+    def test_quota_release_success(self, mock_send_request):
+        expected = {"available": 100, "reserved": 0, "released": 1}
+        mock_send_request.return_value = expected
+
+        result = BillingService.quota_release(
+            tenant_id="t1", feature_key="trigger_event", reservation_id="rid-1"
+        )
+
+        assert result == expected
+        mock_send_request.assert_called_once_with(
+            "POST",
+            "/quota/release",
+            json={"tenant_id": "t1", "feature_key": "trigger_event", "reservation_id": "rid-1"},
+        )
+
+
 class TestBillingServiceRateLimitEnforcement:
     """Unit tests for rate limit enforcement mechanisms.
 
