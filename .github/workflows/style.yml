@@ -48,7 +48,7 @@ jobs:
         run: uv run --directory api --dev lint-imports
 
       - name: Run Ty Type Checks
-        run: uv add pyrefly --dev && uv run pyrefly check --directory api
+        run: uv add pyrefly --dev && cd api && uv run pyrefly check
 
         
       - name: Dotenv check
