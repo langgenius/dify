@@ -186,8 +186,7 @@ class TestDecodeJwtToken:
         return flask_app_with_containers
 
     def _create_app_site_enduser(self, db_session: Session, *, enable_site: bool = True):
-        from models.model import App, AppMode, EndUser, Site
-        from models.model import CustomizeTokenStrategy
+        from models.model import App, AppMode, CustomizeTokenStrategy, EndUser, Site
 
         tenant_id = str(uuid4())
         app_model = App(
@@ -302,9 +301,7 @@ class TestDecodeJwtToken:
         app,
         db_session_with_containers: Session,
     ) -> None:
-        app_model, site, end_user = self._create_app_site_enduser(
-            db_session_with_containers, enable_site=False
-        )
+        app_model, site, end_user = self._create_app_site_enduser(db_session_with_containers, enable_site=False)
 
         mock_extract.return_value = "jwt-token"
         mock_passport_cls.return_value.verify.return_value = {
