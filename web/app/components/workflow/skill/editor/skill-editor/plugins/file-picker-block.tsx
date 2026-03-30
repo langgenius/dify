@@ -14,6 +14,7 @@ import {
 } from '@/app/components/base/ui/popover'
 import { FilePickerPanel } from './file-picker-panel'
 import { $createFileReferenceNode } from './file-reference-block/node'
+import { useEditorBlur } from './hooks/use-editor-blur'
 
 class FilePickerMenuOption extends MenuOption {
   constructor() {
@@ -29,6 +30,8 @@ const FilePickerBlock = () => {
   })
 
   const options = useMemo(() => [new FilePickerMenuOption()], [])
+
+  const { blurHidden } = useEditorBlur(editor)
 
   const insertFileReference = useCallback((resourceId: string) => {
     editor.update(() => {
@@ -46,6 +49,8 @@ const FilePickerBlock = () => {
     anchorElementRef: React.RefObject<HTMLElement | null>,
     { selectOptionAndCleanUp }: { selectOptionAndCleanUp: (option: MenuOption) => void },
   ) => {
+    if (blurHidden)
+      return null
     if (!anchorElementRef.current)
       return null
 
@@ -75,7 +80,7 @@ const FilePickerBlock = () => {
         </PopoverContent>
       </Popover>
     )
-  }, [insertFileReference, options])
+  }, [blurHidden, insertFileReference, options])
 
   return (
     <LexicalTypeaheadMenuPlugin

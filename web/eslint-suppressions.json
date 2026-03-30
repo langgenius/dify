@@ -148,20 +148,11 @@
     "erasable-syntax-only/enums": {
       "count": 1
     },
-    "style/indent": {
-      "count": 175
-    },
     "ts/no-explicit-any": {
       "count": 5
-    },
-    "unused-imports/no-unused-imports": {
-      "count": 1
     }
   },
   "app/account/(commonLayout)/account-page/index.tsx": {
-    "style/indent": {
-      "count": 93
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -369,9 +360,6 @@
   },
   "app/components/app/app-publisher/index.tsx": {
     "no-restricted-imports": {
-      "count": 2
-    },
-    "ts/no-explicit-any": {
       "count": 1
     }
   },
@@ -391,9 +379,6 @@
     }
   },
   "app/components/app/configuration/config-prompt/advanced-prompt-input.tsx": {
-    "perfectionist/sort-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -412,19 +397,13 @@
     }
   },
   "app/components/app/configuration/config-prompt/simple-prompt-input.tsx": {
-    "perfectionist/sort-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 3
     }
   },
   "app/components/app/configuration/config-var/config-modal/index.tsx": {
     "no-restricted-imports": {
-      "count": 2
-    },
-    "ts/no-explicit-any": {
-      "count": 6
+      "count": 1
     }
   },
   "app/components/app/configuration/config-var/config-modal/type-select.tsx": {
@@ -435,9 +414,6 @@
   "app/components/app/configuration/config-var/index.tsx": {
     "no-restricted-imports": {
       "count": 2
-    },
-    "react-refresh/only-export-components": {
-      "count": 1
     }
   },
   "app/components/app/configuration/config-var/select-var-type.tsx": {
@@ -639,9 +615,6 @@
     }
   },
   "app/components/app/configuration/dataset-config/settings-modal/index.tsx": {
-    "perfectionist/sort-imports": {
-      "count": 1
-    },
     "react/set-state-in-effect": {
       "count": 2
     },
@@ -708,9 +681,6 @@
     }
   },
   "app/components/app/configuration/debug/index.tsx": {
-    "perfectionist/sort-imports": {
-      "count": 1
-    },
     "react/set-state-in-effect": {
       "count": 2
     },
@@ -720,26 +690,6 @@
   },
   "app/components/app/configuration/debug/types.ts": {
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/app/configuration/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "perfectionist/sort-imports": {
-      "count": 1
-    },
-    "react/set-state-in-effect": {
-      "count": 1
-    },
-    "style/multiline-ternary": {
-      "count": 2
-    },
-    "ts/no-explicit-any": {
-      "count": 24
-    },
-    "unused-imports/no-unused-imports": {
       "count": 1
     }
   },
@@ -755,19 +705,6 @@
   },
   "app/components/app/configuration/prompt-value-panel/utils.ts": {
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/app/configuration/tools/external-data-tool-modal.tsx": {
-    "perfectionist/sort-imports": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
-  "app/components/app/configuration/tools/index.tsx": {
-    "perfectionist/sort-imports": {
       "count": 1
     }
   },
@@ -798,16 +735,7 @@
     "erasable-syntax-only/enums": {
       "count": 1
     },
-    "perfectionist/sort-imports": {
-      "count": 2
-    },
     "react-refresh/only-export-components": {
-      "count": 1
-    },
-    "react/set-state-in-effect": {
-      "count": 2
-    },
-    "unused-imports/no-unused-imports": {
       "count": 1
     }
   },
@@ -828,9 +756,6 @@
   },
   "app/components/app/log/list.tsx": {
     "no-restricted-imports": {
-      "count": 1
-    },
-    "perfectionist/sort-imports": {
       "count": 1
     },
     "react/set-state-in-effect": {
@@ -889,9 +814,6 @@
     "no-restricted-imports": {
       "count": 3
     },
-    "perfectionist/sort-imports": {
-      "count": 1
-    },
     "react/set-state-in-effect": {
       "count": 3
     },
@@ -908,25 +830,13 @@
     "no-restricted-imports": {
       "count": 2
     },
-    "perfectionist/sort-imports": {
-      "count": 1
-    },
     "react/set-state-in-effect": {
-      "count": 1
-    },
-    "unused-imports/no-unused-imports": {
       "count": 1
     }
   },
   "app/components/app/text-generate/item/index.tsx": {
     "react-refresh/only-export-components": {
       "count": 1
-    },
-    "react/set-state-in-effect": {
-      "count": 3
-    },
-    "ts/no-explicit-any": {
-      "count": 3
     }
   },
   "app/components/app/text-generate/item/result-tab.tsx": {
@@ -962,11 +872,6 @@
   "app/components/app/workflow-log/trigger-by-display.tsx": {
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/components/apps/app-card.tsx": {
-    "perfectionist/sort-imports": {
-      "count": 2
     }
   },
   "app/components/apps/list.tsx": {
@@ -4018,11 +3923,6 @@
     }
   },
   "app/components/tools/workflow-tool/confirm-modal/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "app/components/tools/workflow-tool/index.tsx": {
     "no-restricted-imports": {
       "count": 1
     }

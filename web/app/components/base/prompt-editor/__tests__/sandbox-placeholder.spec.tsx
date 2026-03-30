@@ -1,5 +1,4 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { CLEAR_HIDE_MENU_TIMEOUT } from '../plugins/workflow-variable-block'
 import SandboxPlaceholder from '../sandbox-placeholder'
 
 const mocks = vi.hoisted(() => {
@@ -100,7 +99,6 @@ describe('SandboxPlaceholder', () => {
       expect(mocks.selectEnd).toHaveBeenCalledTimes(1)
       expect(mocks.createTextNode).toHaveBeenCalledWith('/')
       expect(mocks.insertNodes).toHaveBeenCalledWith([{ text: '/' }])
-      expect(mocks.editor.dispatchCommand).toHaveBeenCalledWith(CLEAR_HIDE_MENU_TIMEOUT, undefined)
     })
 
     it('should insert at-sign and clear the hide timeout when clicking tools', () => {
@@ -113,7 +111,6 @@ describe('SandboxPlaceholder', () => {
       expect(mocks.selectEnd).toHaveBeenCalledTimes(1)
       expect(mocks.createTextNode).toHaveBeenCalledWith('@')
       expect(mocks.insertNodes).toHaveBeenCalledWith([{ text: '@' }])
-      expect(mocks.editor.dispatchCommand).toHaveBeenCalledWith(CLEAR_HIDE_MENU_TIMEOUT, undefined)
     })
 
     it('should not trigger editor insertion when placeholder is not editable', () => {

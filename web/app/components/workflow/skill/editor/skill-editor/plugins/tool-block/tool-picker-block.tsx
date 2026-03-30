@@ -21,6 +21,7 @@ import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-for
 import ToolPicker from '@/app/components/workflow/block-selector/tool-picker'
 import { START_TAB_ID } from '@/app/components/workflow/skill/constants'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import { useEditorBlur } from '../hooks/use-editor-blur'
 import { $createToolBlockNode } from './node'
 import { useToolBlockContext } from './tool-block-context'
 import { $createToolGroupBlockNode } from './tool-group-block-node'
@@ -51,6 +52,8 @@ const ToolPickerBlock = ({ scope = 'all', enableAutoDefault = false }: ToolPicke
   )
   const isUsingExternalMetadata = Boolean(onMetadataChange)
   const [queryString, setQueryString] = useState('')
+
+  const { blurHidden } = useEditorBlur(editor)
 
   const canUseAutoByType = useCallback(
     (type: string) => ![FormTypeEnum.modelSelector, FormTypeEnum.appSelector].includes(type as FormTypeEnum),
@@ -159,6 +162,8 @@ const ToolPickerBlock = ({ scope = 'all', enableAutoDefault = false }: ToolPicke
     anchorElementRef: React.RefObject<HTMLElement | null>,
     { selectOptionAndCleanUp }: { selectOptionAndCleanUp: (option: MenuOption) => void },
   ) => {
+    if (blurHidden)
+      return null
     if (!anchorElementRef.current)
       return null
 
@@ -199,7 +204,7 @@ const ToolPickerBlock = ({ scope = 'all', enableAutoDefault = false }: ToolPicke
       />,
       anchorElementRef.current,
     )
-  }, [insertTools, options, queryString, scope])
+  }, [blurHidden, insertTools, options, queryString, scope])
 
   return (
     <LexicalTypeaheadMenuPlugin

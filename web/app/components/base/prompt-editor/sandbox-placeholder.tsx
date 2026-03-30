@@ -5,7 +5,6 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
 import { $createCustomTextNode } from './plugins/custom-text/node'
-import { CLEAR_HIDE_MENU_TIMEOUT } from './plugins/workflow-variable-block'
 
 type SandboxPlaceholderTokenProps = {
   actionLabel?: string
@@ -74,7 +73,6 @@ const SandboxPlaceholder: FC<SandboxPlaceholderProps> = ({
       editor.update(() => {
         $getRoot().selectEnd()
         $insertNodes([$createCustomTextNode(trigger)])
-        editor.dispatchCommand(CLEAR_HIDE_MENU_TIMEOUT, undefined)
       })
     })
   }, [editor])
