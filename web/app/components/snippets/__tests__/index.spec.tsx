@@ -1,44 +1,16 @@
-import type { HeaderProps } from '@/app/components/workflow/header'
 import type { SnippetDetailPayload } from '@/models/snippet'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { PipelineInputVarType } from '@/models/pipeline'
+import { render, screen } from '@testing-library/react'
 import SnippetPage from '..'
-import { useSnippetDetailStore } from '../store'
 
 const mockUseSnippetInit = vi.fn()
-const mockPublishSnippetMutateAsync = vi.fn()
+const mockSetAppSidebarExpand = vi.fn()
 
 vi.mock('../hooks/use-snippet-init', () => ({
   useSnippetInit: (snippetId: string) => mockUseSnippetInit(snippetId),
 }))
 
-vi.mock('../hooks/use-configs-map', () => ({
-  useConfigsMap: () => ({
-    flowId: 'snippet-1',
-    flowType: 'snippet',
-    fileSettings: {},
-  }),
-}))
-
-vi.mock('../hooks/use-nodes-sync-draft', () => ({
-  useNodesSyncDraft: () => ({
-    doSyncWorkflowDraft: vi.fn(),
-    syncInputFieldsDraft: vi.fn(),
-    syncWorkflowDraftWhenPageClose: vi.fn(),
-  }),
-}))
-
-vi.mock('../hooks/use-snippet-refresh-draft', () => ({
-  useSnippetRefreshDraft: () => ({
-    handleRefreshWorkflowDraft: vi.fn(),
-  }),
-}))
-
-vi.mock('@/service/use-snippet-workflows', () => ({
-  usePublishSnippetWorkflowMutation: () => ({
-    mutateAsync: mockPublishSnippetMutateAsync,
-    isPending: false,
-  }),
+vi.mock('../components/snippet-main', () => ({
+  default: ({ snippetId }: { snippetId: string }) => <div data-testid="snippet-main">{snippetId}</div>,
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -48,41 +20,14 @@ vi.mock('@/next/navigation', () => ({
   }),
 }))
 
-vi.mock('@/service/use-snippets', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/use-snippets')>()
-
-  return {
-    ...actual,
-    useUpdateSnippetMutation: () => ({
-      mutate: vi.fn(),
-      isPending: false,
-    }),
-    useExportSnippetMutation: () => ({
-      mutateAsync: vi.fn(),
-      isPending: false,
-    }),
-    useDeleteSnippetMutation: () => ({
-      mutate: vi.fn(),
-      isPending: false,
-    }),
-  }
-})
-
-vi.mock('@/service/use-common', () => ({
-  useFileUploadConfig: () => ({
-    data: undefined,
-  }),
-}))
-
 vi.mock('@/hooks/use-breakpoints', () => ({
   default: () => 'desktop',
   MediaType: { mobile: 'mobile', desktop: 'desktop' },
 }))
 
-vi.mock('@/app/components/rag-pipeline/components/panel/input-field/hooks', () => ({
-  useFloatingRight: () => ({
-    floatingRight: false,
-    floatingRightWidth: 400,
+vi.mock('@/app/components/app/store', () => ({
+  useStore: (selector: (state: { setAppSidebarExpand: typeof mockSetAppSidebarExpand }) => unknown) => selector({
+    setAppSidebarExpand: mockSetAppSidebarExpand,
   }),
 }))
 
@@ -90,26 +35,6 @@ vi.mock('@/app/components/workflow', () => ({
   default: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="workflow-default-context">{children}</div>
   ),
-  WorkflowWithInnerContext: ({ children, viewport }: { children: React.ReactNode, viewport?: { zoom?: number } }) => (
-    <div data-testid="workflow-inner-context">
-      <span data-testid="workflow-viewport-zoom">{viewport?.zoom ?? 'none'}</span>
-      {children}
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/header', () => ({
-  default: (props: HeaderProps) => {
-    const CustomRunMode = props.normal?.runAndHistoryProps?.components?.RunMode
-
-    return (
-      <div data-testid="workflow-header">
-        {props.normal?.components?.left}
-        {CustomRunMode && <CustomRunMode text={props.normal?.runAndHistoryProps?.runButtonText} />}
-        {props.normal?.components?.middle}
-      </div>
-    )
-  },
 }))
 
 vi.mock('@/app/components/workflow/context', () => ({
@@ -117,6 +42,16 @@ vi.mock('@/app/components/workflow/context', () => ({
     <div data-testid="workflow-context-provider">{children}</div>
   ),
 }))
+
+vi.mock('@/app/components/workflow/utils', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/components/workflow/utils')>()
+
+  return {
+    ...actual,
+    initialNodes: (nodes: unknown[]) => nodes,
+    initialEdges: (edges: unknown[]) => edges,
+  }
+})
 
 vi.mock('@/app/components/app-sidebar', () => ({
   default: ({
@@ -139,27 +74,12 @@ vi.mock('@/app/components/app-sidebar/nav-link', () => ({
   ),
 }))
 
-vi.mock('@/app/components/workflow/panel', () => ({
-  default: ({ components }: { components?: { left?: React.ReactNode, right?: React.ReactNode } }) => (
-    <div data-testid="workflow-panel">
-      <div data-testid="workflow-panel-left">{components?.left}</div>
-      <div data-testid="workflow-panel-right">{components?.right}</div>
-    </div>
-  ),
+vi.mock('@/app/components/app-sidebar/snippet-info', () => ({
+  default: () => <div data-testid="snippet-info" />,
 }))
 
-vi.mock('@/app/components/workflow/utils', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/app/components/workflow/utils')>()
-
-  return {
-    ...actual,
-    initialNodes: (nodes: unknown[]) => nodes,
-    initialEdges: (edges: unknown[]) => edges,
-  }
-})
-
-vi.mock('react-sortablejs', () => ({
-  ReactSortable: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+vi.mock('@/app/components/evaluation', () => ({
+  default: ({ resourceId }: { resourceId: string }) => <div data-testid="evaluation">{resourceId}</div>,
 }))
 
 const mockSnippetDetail: SnippetDetailPayload = {
@@ -179,20 +99,10 @@ const mockSnippetDetail: SnippetDetailPayload = {
     nodes: [],
     edges: [],
   },
-  inputFields: [
-    {
-      type: PipelineInputVarType.textInput,
-      label: 'Blog URL',
-      variable: 'blog_url',
-      required: true,
-      options: [],
-      placeholder: 'Paste a source article URL',
-      max_length: 256,
-    },
-  ],
+  inputFields: [],
   uiMeta: {
-    inputFieldCount: 1,
-    checklistCount: 2,
+    inputFieldCount: 0,
+    checklistCount: 0,
     autoSavedAt: 'Auto-saved · a few seconds ago',
   },
 }
@@ -200,55 +110,23 @@ const mockSnippetDetail: SnippetDetailPayload = {
 describe('SnippetPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    useSnippetDetailStore.getState().reset()
-    mockPublishSnippetMutateAsync.mockResolvedValue(undefined)
     mockUseSnippetInit.mockReturnValue({
       data: mockSnippetDetail,
       isLoading: false,
     })
   })
 
-  it('should render the snippet detail shell', () => {
+  it('should render the orchestrate route shell with independent main content', () => {
     render(<SnippetPage snippetId="snippet-1" />)
 
-    expect(screen.getByText('Tone Rewriter')).toBeInTheDocument()
-    expect(screen.getByText('A static snippet mock.')).toBeInTheDocument()
     expect(screen.getByTestId('app-sidebar')).toBeInTheDocument()
+    expect(screen.getByTestId('snippet-info')).toBeInTheDocument()
     expect(screen.getByTestId('workflow-context-provider')).toBeInTheDocument()
     expect(screen.getByTestId('workflow-default-context')).toBeInTheDocument()
-    expect(screen.getByTestId('workflow-inner-context')).toBeInTheDocument()
-    expect(screen.getByTestId('workflow-viewport-zoom').textContent).toBe('1')
+    expect(screen.getByTestId('snippet-main')).toHaveTextContent('snippet-1')
   })
 
-  it('should open the input field panel and editor', () => {
-    render(<SnippetPage snippetId="snippet-1" />)
-
-    fireEvent.click(screen.getAllByRole('button', { name: /snippet\.inputFieldButton/i })[0])
-    expect(screen.getAllByText('snippet.panelTitle').length).toBeGreaterThan(0)
-
-    fireEvent.click(screen.getAllByRole('button', { name: /datasetPipeline\.inputFieldPanel\.addInputField/i })[0])
-    expect(screen.getAllByText('datasetPipeline.inputFieldPanel.addInputField').length).toBeGreaterThan(1)
-  })
-
-  it('should toggle the publish menu', () => {
-    render(<SnippetPage snippetId="snippet-1" />)
-
-    fireEvent.click(screen.getByRole('button', { name: /snippet\.publishButton/i }))
-    expect(screen.getByText('snippet.publishMenuCurrentDraft')).toBeInTheDocument()
-  })
-
-  it('should publish the snippet when clicking publish in the menu', async () => {
-    render(<SnippetPage snippetId="snippet-1" />)
-
-    fireEvent.click(screen.getByRole('button', { name: /snippet\.publishButton/i }))
-    fireEvent.click(screen.getAllByRole('button', { name: /snippet\.publishButton/i })[1])
-
-    expect(mockPublishSnippetMutateAsync).toHaveBeenCalledWith({
-      params: { snippetId: 'snippet-1' },
-    })
-  })
-
-  it('should render loading fallback when snippet data is unavailable', () => {
+  it('should render loading fallback when orchestrate data is unavailable', () => {
     mockUseSnippetInit.mockReturnValue({
       data: null,
       isLoading: false,

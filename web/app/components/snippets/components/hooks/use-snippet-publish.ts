@@ -1,4 +1,3 @@
-import type { SnippetSection } from '@/models/snippet'
 import { useKeyPress } from 'ahooks'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -10,12 +9,10 @@ import { useSnippetDetailStore } from '../../store'
 
 type UseSnippetPublishOptions = {
   snippetId: string
-  section: SnippetSection
 }
 
 export const useSnippetPublish = ({
   snippetId,
-  section,
 }: UseSnippetPublishOptions) => {
   const { t } = useTranslation('snippet')
   const publishSnippetMutation = usePublishSnippetWorkflowMutation(snippetId)
@@ -41,7 +38,7 @@ export const useSnippetPublish = ({
   }, [publishSnippetMutation, setPublishMenuOpen, snippetId, t])
 
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.shift.p`, (event) => {
-    if (section !== 'orchestrate' || publishSnippetMutation.isPending)
+    if (publishSnippetMutation.isPending)
       return
 
     event.preventDefault()

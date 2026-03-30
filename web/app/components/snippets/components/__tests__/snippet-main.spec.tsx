@@ -1,10 +1,9 @@
 import type { WorkflowProps } from '@/app/components/workflow'
-import type { SnippetDetailPayload, SnippetInputField, SnippetSection } from '@/models/snippet'
+import type { SnippetDetailPayload, SnippetInputField } from '@/models/snippet'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { PipelineInputVarType } from '@/models/pipeline'
 import SnippetMain from '../snippet-main'
 
-const mockSetAppSidebarExpand = vi.fn()
 const mockSyncInputFieldsDraft = vi.fn()
 const mockCloseEditor = vi.fn()
 const mockOpenEditor = vi.fn()
@@ -39,17 +38,6 @@ const mockInspectVarsCrud = {
   invalidateConversationVarValues: vi.fn(),
 }
 let capturedHooksStore: Record<string, unknown> | undefined
-
-vi.mock('@/hooks/use-breakpoints', () => ({
-  default: () => 'desktop',
-  MediaType: { mobile: 'mobile', desktop: 'desktop' },
-}))
-
-vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: { setAppSidebarExpand: typeof mockSetAppSidebarExpand }) => unknown) => selector({
-    setAppSidebarExpand: mockSetAppSidebarExpand,
-  }),
-}))
 
 vi.mock('@/app/components/snippets/store', () => ({
   useSnippetDetailStore: (selector: (state: {
@@ -135,33 +123,6 @@ vi.mock('@/app/components/snippets/hooks/use-snippet-start-run', () => ({
   }),
 }))
 
-vi.mock('@/app/components/app-sidebar', () => ({
-  default: ({
-    renderHeader,
-    renderNavigation,
-  }: {
-    renderHeader?: (modeState: string) => React.ReactNode
-    renderNavigation?: (modeState: string) => React.ReactNode
-  }) => (
-    <div data-testid="app-sidebar">
-      <div>{renderHeader?.('expand')}</div>
-      <div>{renderNavigation?.('expand')}</div>
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/app-sidebar/nav-link', () => ({
-  default: ({ name }: { name: string }) => <div>{name}</div>,
-}))
-
-vi.mock('@/app/components/app-sidebar/snippet-info', () => ({
-  default: () => <div data-testid="snippet-info" />,
-}))
-
-vi.mock('@/app/components/evaluation', () => ({
-  default: () => <div data-testid="evaluation" />,
-}))
-
 vi.mock('@/app/components/workflow', () => ({
   WorkflowWithInnerContext: ({
     children,
@@ -237,12 +198,11 @@ const payload: SnippetDetailPayload = {
   },
 }
 
-const renderSnippetMain = (section: SnippetSection = 'orchestrate') => {
+const renderSnippetMain = () => {
   return render(
     <SnippetMain
       payload={payload}
       snippetId="snippet-1"
-      section={section}
       nodes={[] as WorkflowProps['nodes']}
       edges={[] as WorkflowProps['edges']}
       viewport={{ x: 0, y: 0, zoom: 1 }}

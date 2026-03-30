@@ -1,11 +1,11 @@
-import SnippetPage from '@/app/components/snippets'
+import SnippetEvaluationPage from '@/app/components/snippets/snippet-evaluation-page'
 
 const Page = async (props: {
   params: Promise<{ snippetId: string }>
 }) => {
   const { snippetId } = await props.params
 
-  return <SnippetPage snippetId={snippetId} section="evaluation" />
+  return <SnippetEvaluationPage snippetId={snippetId} />
 }
 
 export default Page

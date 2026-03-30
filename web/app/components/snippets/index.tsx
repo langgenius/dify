@@ -1,6 +1,5 @@
 'use client'
 
-import type { SnippetSection } from '@/models/snippet'
 import { useMemo } from 'react'
 import Loading from '@/app/components/base/loading'
 import WorkflowWithDefaultContext from '@/app/components/workflow'
@@ -9,18 +8,23 @@ import {
   initialEdges,
   initialNodes,
 } from '@/app/components/workflow/utils'
+import SnippetLayout from './components/snippet-layout'
 import SnippetMain from './components/snippet-main'
 import { useSnippetInit } from './hooks/use-snippet-init'
 
 type SnippetPageProps = {
   snippetId: string
-  section?: SnippetSection
 }
 
-const SnippetPage = ({
-  snippetId,
-  section = 'orchestrate',
-}: SnippetPageProps) => {
+const SnippetPageLoading = () => {
+  return (
+    <div className="flex h-full items-center justify-center bg-background-body">
+      <Loading />
+    </div>
+  )
+}
+
+const SnippetPage = ({ snippetId }: SnippetPageProps) => {
   const { data, isLoading } = useSnippetInit(snippetId)
   const nodesData = useMemo(() => {
     if (!data)
@@ -36,35 +40,36 @@ const SnippetPage = ({
   }, [data])
 
   if (!data || isLoading) {
-    return (
-      <div className="flex h-full items-center justify-center bg-background-body">
-        <Loading />
-      </div>
-    )
+    return <SnippetPageLoading />
   }
 
   return (
-    <WorkflowWithDefaultContext
-      edges={edgesData}
-      nodes={nodesData}
+    <SnippetLayout
+      snippetId={snippetId}
+      snippet={data.snippet}
+      section="orchestrate"
     >
-      <SnippetMain
-        key={snippetId}
-        snippetId={snippetId}
-        section={section}
-        payload={data}
-        nodes={nodesData}
+      <WorkflowWithDefaultContext
         edges={edgesData}
-        viewport={data.graph.viewport}
-      />
-    </WorkflowWithDefaultContext>
+        nodes={nodesData}
+      >
+        <SnippetMain
+          key={snippetId}
+          snippetId={snippetId}
+          payload={data}
+          nodes={nodesData}
+          edges={edgesData}
+          viewport={data.graph.viewport}
+        />
+      </WorkflowWithDefaultContext>
+    </SnippetLayout>
   )
 }
 
-const SnippetPageWrapper = (props: SnippetPageProps) => {
+const SnippetPageWrapper = ({ snippetId }: SnippetPageProps) => {
   return (
     <WorkflowContextProvider>
-      <SnippetPage {...props} />
+      <SnippetPage snippetId={snippetId} />
     </WorkflowContextProvider>
   )
 }

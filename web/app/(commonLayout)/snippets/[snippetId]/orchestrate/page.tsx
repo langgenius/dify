@@ -5,7 +5,7 @@ const Page = async (props: {
 }) => {
   const { snippetId } = await props.params
 
-  return <SnippetPage snippetId={snippetId} section="orchestrate" />
+  return <SnippetPage snippetId={snippetId} />
 }
 
 export default Page
