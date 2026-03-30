@@ -12,6 +12,10 @@ type DownloadResponse = {
   download_url: string
 }
 
+type FileContentResponse = {
+  content: string
+}
+
 type Deferred<T> = {
   promise: Promise<T>
   resolve: (value: T) => void
@@ -30,12 +34,16 @@ const createDeferred = <T,>(): Deferred<T> => {
 
 const {
   mockGetFileDownloadUrl,
+  mockGetFileContent,
   mockDownloadUrl,
+  mockDownloadBlob,
   mockToastSuccess,
   mockToastError,
 } = vi.hoisted(() => ({
   mockGetFileDownloadUrl: vi.fn<(request: DownloadRequest) => Promise<DownloadResponse>>(),
+  mockGetFileContent: vi.fn<(request: DownloadRequest) => Promise<FileContentResponse>>(),
   mockDownloadUrl: vi.fn<(payload: { url: string, fileName?: string }) => void>(),
+  mockDownloadBlob: vi.fn<(payload: { data: Blob, fileName: string }) => void>(),
   mockToastSuccess: vi.fn(),
   mockToastError: vi.fn(),
 }))
@@ -44,12 +52,14 @@ vi.mock('@/service/client', () => ({
   consoleClient: {
     appAsset: {
       getFileDownloadUrl: mockGetFileDownloadUrl,
+      getFileContent: mockGetFileContent,
     },
   },
 }))
 
 vi.mock('@/utils/download', () => ({
   downloadUrl: mockDownloadUrl,
+  downloadBlob: mockDownloadBlob,
 }))
 
 vi.mock('@/app/components/base/ui/toast', () => ({
@@ -63,6 +73,7 @@ describe('useDownloadOperation', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockGetFileDownloadUrl.mockResolvedValue({ download_url: 'https://example.com/file.txt' })
+    mockGetFileContent.mockResolvedValue({ content: '{"content":"# Skill\\n\\nOriginal markdown"}' })
   })
 
   // Scenario: hook should no-op when required identifiers are missing.
@@ -86,9 +97,9 @@ describe('useDownloadOperation', () => {
     })
   })
 
-  // Scenario: successful downloads should fetch URL and trigger browser download.
+  // Scenario: successful downloads should unwrap text files and keep binary downloads on URL flow.
   describe('Success', () => {
-    it('should download file when API call succeeds', async () => {
+    it('should download text file from raw content when file is markdown', async () => {
       const onClose = vi.fn()
       const { result } = renderHook(() => useDownloadOperation({
         appId: 'app-1',
@@ -102,29 +113,59 @@ describe('useDownloadOperation', () => {
       })
 
       expect(onClose).toHaveBeenCalledTimes(1)
+      expect(mockGetFileContent).toHaveBeenCalledWith({
+        params: {
+          appId: 'app-1',
+          nodeId: 'node-1',
+        },
+      })
+      expect(mockGetFileDownloadUrl).not.toHaveBeenCalled()
+      expect(mockDownloadBlob).toHaveBeenCalledWith(expect.objectContaining({
+        fileName: 'notes.md',
+      }))
+      const downloadedBlob = mockDownloadBlob.mock.calls[0][0].data
+      await expect(downloadedBlob.text()).resolves.toBe('# Skill\n\nOriginal markdown')
+      expect(mockToastSuccess).not.toHaveBeenCalled()
+      expect(mockToastError).not.toHaveBeenCalled()
+      expect(result.current.isDownloading).toBe(false)
+    })
+
+    it('should download binary file from download url when file is not text', async () => {
+      const onClose = vi.fn()
+      const { result } = renderHook(() => useDownloadOperation({
+        appId: 'app-1',
+        nodeId: 'node-1',
+        fileName: 'diagram.png',
+        onClose,
+      }))
+
+      await act(async () => {
+        await result.current.handleDownload()
+      })
+
       expect(mockGetFileDownloadUrl).toHaveBeenCalledWith({
         params: {
           appId: 'app-1',
           nodeId: 'node-1',
         },
       })
+      expect(mockGetFileContent).not.toHaveBeenCalled()
       expect(mockDownloadUrl).toHaveBeenCalledWith({
         url: 'https://example.com/file.txt',
-        fileName: 'notes.md',
+        fileName: 'diagram.png',
       })
-      expect(mockToastSuccess).not.toHaveBeenCalled()
-      expect(mockToastError).not.toHaveBeenCalled()
-      expect(result.current.isDownloading).toBe(false)
+      expect(mockDownloadBlob).not.toHaveBeenCalled()
     })
 
     it('should set isDownloading true while download request is pending', async () => {
-      const deferred = createDeferred<DownloadResponse>()
-      mockGetFileDownloadUrl.mockReturnValueOnce(deferred.promise)
+      const deferred = createDeferred<FileContentResponse>()
+      mockGetFileContent.mockReturnValueOnce(deferred.promise)
       const onClose = vi.fn()
 
       const { result } = renderHook(() => useDownloadOperation({
         appId: 'app-2',
         nodeId: 'node-2',
+        fileName: 'notes.md',
         onClose,
       }))
 
@@ -137,15 +178,14 @@ describe('useDownloadOperation', () => {
       })
 
       await act(async () => {
-        deferred.resolve({ download_url: 'https://example.com/slow.txt' })
+        deferred.resolve({ content: '{"content":"slow"}' })
         await deferred.promise
       })
 
       expect(onClose).toHaveBeenCalledTimes(1)
-      expect(mockDownloadUrl).toHaveBeenCalledWith({
-        url: 'https://example.com/slow.txt',
-        fileName: undefined,
-      })
+      expect(mockDownloadBlob).toHaveBeenCalledWith(expect.objectContaining({
+        fileName: 'notes.md',
+      }))
       expect(result.current.isDownloading).toBe(false)
     })
   })
