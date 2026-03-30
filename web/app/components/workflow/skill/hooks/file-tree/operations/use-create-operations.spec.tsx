@@ -1,6 +1,6 @@
 import type { StoreApi } from 'zustand'
 import type { SkillEditorSliceShape, UploadStatus } from '@/app/components/workflow/store/workflow/skill-editor/types'
-import type { BatchUploadNodeInput } from '@/types/app-asset'
+import type { AppAssetNode, BatchUploadNodeInput } from '@/types/app-asset'
 import { act, renderHook } from '@testing-library/react'
 import { useCreateOperations } from './use-create-operations'
 
@@ -28,7 +28,7 @@ const mocks = vi.hoisted(() => ({
   createFolderPending: false,
   uploadPending: false,
   batchPending: false,
-  uploadMutateAsync: vi.fn<(payload: UploadMutationPayload) => Promise<void>>(),
+  uploadMutateAsync: vi.fn<(payload: UploadMutationPayload) => Promise<AppAssetNode | undefined>>(),
   batchMutateAsync: vi.fn<(payload: BatchUploadMutationPayload) => Promise<unknown>>(),
   prepareSkillUploadFile: vi.fn<(file: File) => Promise<File>>(),
   emitTreeUpdate: vi.fn<() => void>(),
@@ -87,6 +87,16 @@ const createInputChangeEvent = (files: File[] | null) => {
     },
   } as unknown as React.ChangeEvent<HTMLInputElement>
 }
+
+const createUploadedNode = (id: string, name: string): AppAssetNode => ({
+  id,
+  node_type: 'file',
+  name,
+  parent_id: null,
+  order: 0,
+  extension: name.split('.').pop() || '',
+  size: 1,
+})
 
 const withRelativePath = (file: File, relativePath: string): File => {
   Object.defineProperty(file, 'webkitRelativePath', {
@@ -243,6 +253,34 @@ describe('useCreateOperations', () => {
       expect(mocks.emitTreeUpdate).toHaveBeenCalledTimes(1)
       expect(event.target.value).toBe('')
       expect(onClose).toHaveBeenCalledTimes(1)
+    })
+
+    it('should report successfully uploaded nodes to onFilesUploaded', async () => {
+      const { storeApi } = createStoreApi()
+      const onClose = vi.fn()
+      const onFilesUploaded = vi.fn()
+      const first = new File(['first'], 'first.md', { type: 'text/markdown' })
+      const second = new File(['second'], 'second.txt', { type: 'text/plain' })
+      const event = createInputChangeEvent([first, second])
+      const uploadedFirst = createUploadedNode('11111111-1111-1111-1111-111111111111', 'first.md')
+      const uploadedSecond = createUploadedNode('22222222-2222-2222-2222-222222222222', 'second.txt')
+      mocks.uploadMutateAsync
+        .mockResolvedValueOnce(uploadedFirst)
+        .mockResolvedValueOnce(uploadedSecond)
+
+      const { result } = renderHook(() => useCreateOperations({
+        parentId: 'folder-success',
+        appId: 'app-success',
+        storeApi,
+        onClose,
+        onFilesUploaded,
+      }))
+
+      await act(async () => {
+        await result.current.handleFileChange(event)
+      })
+
+      expect(onFilesUploaded).toHaveBeenCalledWith([uploadedFirst, uploadedSecond])
     })
 
     it('should set partial_error when some file uploads fail but still emit updates for uploaded files', async () => {

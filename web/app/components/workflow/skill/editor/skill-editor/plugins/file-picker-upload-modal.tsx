@@ -30,6 +30,7 @@ type FilePickerUploadModalProps = {
   isOpen: boolean
   onClose: () => void
   defaultFolderId?: string
+  onUploadedFiles?: (resourceIds: string[]) => void
 }
 
 type AddFileMode = 'create' | 'upload'
@@ -133,6 +134,7 @@ const FilePickerUploadModal = ({
   isOpen,
   onClose,
   defaultFolderId,
+  onUploadedFiles,
 }: FilePickerUploadModalProps) => {
   const { t } = useTranslation('workflow')
   const appDetail = useAppStore(s => s.appDetail)
@@ -191,6 +193,7 @@ const FilePickerUploadModal = ({
     appId,
     storeApi,
     onClose: noop,
+    onFilesUploaded: uploadedNodes => onUploadedFiles?.(uploadedNodes.map(node => node.id)),
   })
   const isCreatingFile = uploadFile.isPending
   const isBusy = isCreating || isCreatingFile
@@ -252,18 +255,19 @@ const FilePickerUploadModal = ({
     try {
       const emptyBlob = new Blob([''], { type: 'text/plain' })
       const file = new File([emptyBlob], trimmedFileName)
-      await uploadFile.mutateAsync({
+      const createdFile = await uploadFile.mutateAsync({
         appId,
         file,
         parentId: toApiParentId(effectiveUploadFolderId),
       })
       emitTreeUpdate()
+      onUploadedFiles?.([createdFile.id])
       onClose()
     }
     catch {
       toast.error(t('skillSidebar.menu.createError'))
     }
-  }, [appId, canCreate, effectiveUploadFolderId, emitTreeUpdate, onClose, t, trimmedFileName, uploadFile])
+  }, [appId, canCreate, effectiveUploadFolderId, emitTreeUpdate, onClose, onUploadedFiles, t, trimmedFileName, uploadFile])
   const modeLabel = t('skillEditor.uploadIn')
 
   return (

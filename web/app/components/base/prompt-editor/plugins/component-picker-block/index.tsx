@@ -26,6 +26,7 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import { LexicalTypeaheadMenuPlugin } from '@lexical/react/LexicalTypeaheadMenuPlugin'
 import { mergeRegister } from '@lexical/utils'
 import {
+  $createTextNode,
   $getRoot,
   $getSelection,
   $insertNodes,
@@ -228,16 +229,41 @@ const ComponentPicker = ({
     [editor],
   )
 
-  const handleSelectFileReference = useCallback((resourceId: string) => {
-    editor.update(() => {
-      const match = checkForTriggerMatch(triggerString, editor)
-      const nodeToRemove = match ? $splitNodeContainingQuery(match) : null
-      if (nodeToRemove)
-        nodeToRemove.remove()
+  const removeTriggerText = useCallback(() => {
+    const match = getMatchFromSelection()
+    if (!match)
+      return
 
-      $insertNodes([$createFileReferenceNode({ resourceId })])
+    const nodeToRemove = $splitNodeContainingQuery(match)
+    if (nodeToRemove)
+      nodeToRemove.remove()
+  }, [getMatchFromSelection])
+
+  const insertFileReferences = useCallback((resourceIds: string[]) => {
+    if (!resourceIds.length)
+      return
+
+    editor.focus(() => {
+      editor.update(() => {
+        removeTriggerText()
+        if (!$isRangeSelection($getSelection()))
+          $getRoot().selectEnd()
+
+        const fileNodes = resourceIds.flatMap((resourceId, index) => {
+          const node = $createFileReferenceNode({ resourceId })
+          if (index === resourceIds.length - 1)
+            return [node]
+
+          return [node, $createTextNode(' ')]
+        })
+        $insertNodes(fileNodes)
+      })
     })
-  }, [checkForTriggerMatch, editor, triggerString])
+  }, [editor, removeTriggerText])
+
+  const handleSelectFileReference = useCallback((resourceId: string) => {
+    insertFileReferences([resourceId])
+  }, [insertFileReferences])
 
   const handleSelectWorkflowVariable = useCallback((variables: string[]) => {
     editor.update(() => {
@@ -448,6 +474,9 @@ const ComponentPicker = ({
                       showHeader={false}
                       showAddFiles
                       onAddFiles={() => {
+                        editor.update(() => {
+                          removeTriggerText()
+                        })
                         setFileUploadModalKey(key => key + 1)
                         setIsFileUploadModalOpen(true)
                         handleClose()
@@ -566,7 +595,7 @@ const ComponentPicker = ({
         }
       </>
     )
-  }, [blurHidden, isAgentTrigger, isSupportSandbox, triggerString, allFlattenOptions.length, workflowVariableBlock?.show, workflowVariableBlock?.showManageInputField, workflowVariableBlock?.onManageInputField, workflowVariableBlock?.agentNodes, floatingStyles, isPositioned, refs, agentNodes, handleSelectAgent, handleClose, useExternalSearch, queryString, workflowVariableOptions, isSupportFileVar, showAssembleVariables, handleSelectAssembleVariables, currentBlock?.generatorType, t, activeTab, handleSelectWorkflowVariable, handleSelectFileReference, contextBlock?.show, contextBlock?.selectable, handleSelectContext, agentBlock?.show])
+  }, [isAgentTrigger, blurHidden, isSupportSandbox, triggerString, allFlattenOptions.length, workflowVariableBlock?.show, workflowVariableBlock?.showManageInputField, workflowVariableBlock?.onManageInputField, workflowVariableBlock?.agentNodes, floatingStyles, isPositioned, refs, agentNodes, handleSelectAgent, handleClose, useExternalSearch, queryString, workflowVariableOptions, isSupportFileVar, showAssembleVariables, handleSelectAssembleVariables, currentBlock?.generatorType, t, activeTab, handleSelectWorkflowVariable, handleSelectFileReference, contextBlock?.show, contextBlock?.selectable, handleSelectContext, agentBlock?.show, editor, removeTriggerText])
 
   return (
     <>
@@ -589,6 +618,7 @@ const ComponentPicker = ({
           key={fileUploadModalKey}
           isOpen={isFileUploadModalOpen}
           onClose={() => setIsFileUploadModalOpen(false)}
+          onUploadedFiles={insertFileReferences}
         />
       )}
     </>

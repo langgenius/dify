@@ -2,7 +2,7 @@
 
 import type { StoreApi } from 'zustand'
 import type { SkillEditorSliceShape } from '@/app/components/workflow/store/workflow/skill-editor/types'
-import type { BatchUploadNodeInput } from '@/types/app-asset'
+import type { AppAssetNode, BatchUploadNodeInput } from '@/types/app-asset'
 import { useCallback, useRef } from 'react'
 import {
   useBatchUpload,
@@ -17,6 +17,7 @@ type UseCreateOperationsOptions = {
   appId: string
   storeApi: StoreApi<SkillEditorSliceShape>
   onClose: () => void
+  onFilesUploaded?: (nodes: AppAssetNode[]) => void
 }
 
 const getRelativePath = (file: File) => {
@@ -28,6 +29,7 @@ export function useCreateOperations({
   appId,
   storeApi,
   onClose,
+  onFilesUploaded,
 }: UseCreateOperationsOptions) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const folderInputRef = useRef<HTMLInputElement>(null)
@@ -62,21 +64,27 @@ export function useCreateOperations({
 
     try {
       const uploadFiles = await Promise.all(files.map(file => prepareSkillUploadFile(file)))
-      await Promise.all(
+      const uploadedNodes = (await Promise.all(
         uploadFiles.map(async (file) => {
           try {
-            await uploadFileAsync({ appId, file, parentId })
+            const node = await uploadFileAsync({ appId, file, parentId })
             progress.uploaded++
+            return node
           }
           catch {
             progress.failed++
+            return null
           }
-          storeApi.getState().setUploadProgress({ uploaded: progress.uploaded, total, failed: progress.failed })
+          finally {
+            storeApi.getState().setUploadProgress({ uploaded: progress.uploaded, total, failed: progress.failed })
+          }
         }),
-      )
+      )).filter((node): node is AppAssetNode => !!node)
 
       storeApi.getState().setUploadStatus(progress.failed > 0 ? 'partial_error' : 'success')
       storeApi.getState().setUploadProgress({ uploaded: progress.uploaded, total, failed: progress.failed })
+      if (uploadedNodes.length > 0)
+        onFilesUploaded?.(uploadedNodes)
     }
     catch {
       storeApi.getState().setUploadStatus('partial_error')
@@ -87,7 +95,7 @@ export function useCreateOperations({
       e.target.value = ''
       onClose()
     }
-  }, [appId, uploadFileAsync, onClose, parentId, storeApi, emitTreeUpdate])
+  }, [appId, uploadFileAsync, onClose, onFilesUploaded, parentId, storeApi, emitTreeUpdate])
 
   const handleFolderChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
