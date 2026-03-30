@@ -1,8 +1,11 @@
+"""Testcontainers integration tests for controllers.console.workspace.tool_providers endpoints."""
+
+from __future__ import annotations
+
 import json
 from unittest.mock import MagicMock, patch
 
 import pytest
-from flask import Flask
 from flask_restx import Api
 from werkzeug.exceptions import Forbidden
 
@@ -61,17 +64,13 @@ def _mock_user_tenant():
 
 
 @pytest.fixture
-def client():
-    app = Flask(__name__)
-    app.config["TESTING"] = True
-    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
-    api = Api(app)
+def client(flask_app_with_containers):
+    flask_app = flask_app_with_containers
+    api = Api(flask_app)
     api.add_resource(ToolProviderMCPApi, "/console/api/workspaces/current/tool-provider/mcp")
-    db.init_app(app)
-    # Configure session factory used by controller code
-    with app.app_context():
+    with flask_app.app_context():
         configure_session_factory(db.engine)
-    return app.test_client()
+    return flask_app.test_client()
 
 
 @patch(
@@ -156,6 +155,10 @@ class TestUtils:
 
 
 class TestToolProviderListApi:
+    @pytest.fixture
+    def app(self, flask_app_with_containers):
+        return flask_app_with_containers
+
     def test_get_success(self, app):
         api = ToolProviderListApi()
         method = unwrap(api.get)
@@ -175,6 +178,10 @@ class TestToolProviderListApi:
 
 
 class TestBuiltinProviderApis:
+    @pytest.fixture
+    def app(self, flask_app_with_containers):
+        return flask_app_with_containers
+
     def test_list_tools(self, app):
         api = ToolBuiltinProviderListToolsApi()
         method = unwrap(api.get)
@@ -379,6 +386,10 @@ class TestBuiltinProviderApis:
 
 
 class TestApiProviderApis:
+    @pytest.fixture
+    def app(self, flask_app_with_containers):
+        return flask_app_with_containers
+
     def test_add(self, app):
         api = ToolApiProviderAddApi()
         method = unwrap(api.post)
@@ -502,6 +513,10 @@ class TestApiProviderApis:
 
 
 class TestWorkflowApis:
+    @pytest.fixture
+    def app(self, flask_app_with_containers):
+        return flask_app_with_containers
+
     def test_create(self, app):
         api = ToolWorkflowProviderCreateApi()
         method = unwrap(api.post)
@@ -587,6 +602,10 @@ class TestWorkflowApis:
 
 
 class TestLists:
+    @pytest.fixture
+    def app(self, flask_app_with_containers):
+        return flask_app_with_containers
+
     def test_builtin_list(self, app):
         api = ToolBuiltinListApi()
         method = unwrap(api.get)
@@ -649,6 +668,10 @@ class TestLists:
 
 
 class TestLabels:
+    @pytest.fixture
+    def app(self, flask_app_with_containers):
+        return flask_app_with_containers
+
     def test_labels(self, app):
         api = ToolLabelsApi()
         method = unwrap(api.get)
@@ -664,6 +687,10 @@ class TestLabels:
 
 
 class TestOAuth:
+    @pytest.fixture
+    def app(self, flask_app_with_containers):
+        return flask_app_with_containers
+
     def test_oauth_no_client(self, app):
         api = ToolPluginOAuthApi()
         method = unwrap(api.get)
@@ -692,6 +719,10 @@ class TestOAuth:
 
 
 class TestOAuthCustomClient:
+    @pytest.fixture
+    def app(self, flask_app_with_containers):
+        return flask_app_with_containers
+
     def test_save_custom_client(self, app):
         api = ToolOAuthCustomClient()
         method = unwrap(api.post)
