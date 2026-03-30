@@ -19,14 +19,17 @@ It tests:
 - `uv`
 - Docker
 
+Run the following commands from the repository root.
+
 Install Playwright browsers once:
 
 ```bash
-cd e2e
 pnpm install
-pnpm e2e:install
-pnpm check
+pnpm -C e2e e2e:install
+pnpm -C e2e check
 ```
+
+`pnpm install` is resolved through the repository workspace and uses the shared root lockfile plus `pnpm-workspace.yaml`.
 
 Use `pnpm check` as the default local verification step after editing E2E TypeScript, Cucumber support code, or feature glue. It runs formatting, linting, and type checks for this package.
 
@@ -35,20 +38,20 @@ Common commands:
 ```bash
 # authenticated-only regression (default excludes @fresh)
 # expects backend API, frontend artifact, and middleware stack to already be running
-pnpm e2e
+pnpm -C e2e e2e
 
 # full reset + fresh install + authenticated scenarios
 # starts required middleware/dependencies for you
-pnpm e2e:full
+pnpm -C e2e e2e:full
 
 # run a tagged subset
-pnpm e2e -- --tags @smoke
+pnpm -C e2e e2e -- --tags @smoke
 
 # headed browser
-pnpm e2e:headed -- --tags @smoke
+pnpm -C e2e e2e:headed -- --tags @smoke
 
 # slow down browser actions for local debugging
-E2E_SLOW_MO=500 pnpm e2e:headed -- --tags @smoke
+E2E_SLOW_MO=500 pnpm -C e2e e2e:headed -- --tags @smoke
 ```
 
 Frontend artifact behavior:
@@ -101,7 +104,7 @@ Because of that, the `@fresh` install scenario only runs in the `pnpm e2e:full*`
 Reset all persisted E2E state:
 
 ```bash
-pnpm e2e:reset
+pnpm -C e2e e2e:reset
 ```
 
 This removes:
@@ -117,7 +120,7 @@ This removes:
 Start the full middleware stack:
 
 ```bash
-pnpm e2e:middleware:up
+pnpm -C e2e e2e:middleware:up
 ```
 
 Stop the full middleware stack:
