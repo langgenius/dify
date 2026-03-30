@@ -6,7 +6,6 @@ import json
 from unittest.mock import MagicMock, patch
 
 import pytest
-from flask_restx import Api
 from werkzeug.exceptions import Forbidden
 
 from controllers.console.workspace.tool_providers import (
@@ -42,8 +41,6 @@ from controllers.console.workspace.tool_providers import (
     ToolWorkflowProviderUpdateApi,
     is_valid_url,
 )
-from core.db.session_factory import configure_session_factory
-from extensions.ext_database import db
 from services.tools.mcp_tools_manage_service import ReconnectResult
 
 
@@ -64,18 +61,8 @@ def _mock_user_tenant():
 
 
 @pytest.fixture
-def client():
-    from flask import Flask
-
-    flask_app = Flask(__name__)
-    flask_app.config["TESTING"] = True
-    flask_app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
-    api = Api(flask_app)
-    api.add_resource(ToolProviderMCPApi, "/console/api/workspaces/current/tool-provider/mcp")
-    db.init_app(flask_app)
-    with flask_app.app_context():
-        configure_session_factory(db.engine)
-    return flask_app.test_client()
+def client(flask_app_with_containers):
+    return flask_app_with_containers.test_client()
 
 
 @patch(
@@ -156,7 +143,7 @@ class TestUtils:
         assert not is_valid_url("")
         assert not is_valid_url("ftp://example.com")
         assert not is_valid_url("not-a-url")
-        assert not is_valid_url(None)
+        assert not is_valid_url(None)  # type: ignore[arg-type]
 
 
 class TestToolProviderListApi:
