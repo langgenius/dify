@@ -1,4 +1,4 @@
-"""Unit tests for controllers.web.wraps — JWT auth decorator and validation helpers."""
+"""Testcontainers integration tests for controllers.web.wraps — JWT auth decorator and validation helpers."""
 
 from __future__ import annotations
 
@@ -7,7 +7,6 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
-from flask import Flask
 from werkzeug.exceptions import BadRequest, NotFound, Unauthorized
 
 from controllers.web.error import WebAppAuthAccessDeniedError, WebAppAuthRequiredError
@@ -18,12 +17,8 @@ from controllers.web.wraps import (
 )
 
 
-# ---------------------------------------------------------------------------
-# _validate_webapp_token
-# ---------------------------------------------------------------------------
 class TestValidateWebappToken:
     def test_enterprise_enabled_and_app_auth_requires_webapp_source(self) -> None:
-        """When both flags are true, a non-webapp source must raise."""
         decoded = {"token_source": "other"}
         with pytest.raises(WebAppAuthRequiredError):
             _validate_webapp_token(decoded, app_web_auth_enabled=True, system_webapp_auth_enabled=True)
@@ -38,7 +33,6 @@ class TestValidateWebappToken:
             _validate_webapp_token(decoded, app_web_auth_enabled=True, system_webapp_auth_enabled=True)
 
     def test_public_app_rejects_webapp_source(self) -> None:
-        """When auth is not required, a webapp-sourced token must be rejected."""
         decoded = {"token_source": "webapp"}
         with pytest.raises(Unauthorized):
             _validate_webapp_token(decoded, app_web_auth_enabled=False, system_webapp_auth_enabled=False)
@@ -52,18 +46,13 @@ class TestValidateWebappToken:
         _validate_webapp_token(decoded, app_web_auth_enabled=False, system_webapp_auth_enabled=False)
 
     def test_system_enabled_but_app_public(self) -> None:
-        """system_webapp_auth_enabled=True but app is public — webapp source rejected."""
         decoded = {"token_source": "webapp"}
         with pytest.raises(Unauthorized):
             _validate_webapp_token(decoded, app_web_auth_enabled=False, system_webapp_auth_enabled=True)
 
 
-# ---------------------------------------------------------------------------
-# _validate_user_accessibility
-# ---------------------------------------------------------------------------
 class TestValidateUserAccessibility:
     def test_skips_when_auth_disabled(self) -> None:
-        """No checks when system or app auth is disabled."""
         _validate_user_accessibility(
             decoded={},
             app_code="code",
@@ -123,7 +112,6 @@ class TestValidateUserAccessibility:
     def test_external_auth_type_checks_sso_update_time(
         self, mock_perm_check: MagicMock, mock_sso_time: MagicMock
     ) -> None:
-        # granted_at is before SSO update time → denied
         mock_sso_time.return_value = datetime.now(UTC)
         old_granted = int((datetime.now(UTC) - timedelta(hours=1)).timestamp())
         decoded = {"user_id": "u1", "auth_type": "external", "granted_at": old_granted}
@@ -164,7 +152,6 @@ class TestValidateUserAccessibility:
         recent_granted = int(datetime.now(UTC).timestamp())
         decoded = {"user_id": "u1", "auth_type": "external", "granted_at": recent_granted}
         settings = SimpleNamespace(access_mode="public")
-        # Should not raise
         _validate_user_accessibility(
             decoded=decoded,
             app_code="code",
@@ -191,10 +178,11 @@ class TestValidateUserAccessibility:
             )
 
 
-# ---------------------------------------------------------------------------
-# decode_jwt_token
-# ---------------------------------------------------------------------------
 class TestDecodeJwtToken:
+    @pytest.fixture
+    def app(self, flask_app_with_containers):
+        return flask_app_with_containers
+
     @patch("controllers.web.wraps._validate_user_accessibility")
     @patch("controllers.web.wraps._validate_webapp_token")
     @patch("controllers.web.wraps.EnterpriseService.WebAppAuth.get_app_access_mode_by_id")
@@ -213,7 +201,7 @@ class TestDecodeJwtToken:
         mock_access_mode: MagicMock,
         mock_validate_token: MagicMock,
         mock_validate_user: MagicMock,
-        app: Flask,
+        app,
     ) -> None:
         mock_extract.return_value = "jwt-token"
         mock_passport_cls.return_value.verify.return_value = {
@@ -227,7 +215,6 @@ class TestDecodeJwtToken:
         site = SimpleNamespace(code="code1")
         end_user = SimpleNamespace(id="eu-1", session_id="sess-1")
 
-        # Configure session mock to return correct objects via scalar()
         session_mock = MagicMock()
         session_mock.scalar.side_effect = [app_model, site, end_user]
         session_ctx = MagicMock()
@@ -245,7 +232,7 @@ class TestDecodeJwtToken:
     @patch("controllers.web.wraps.FeatureService.get_system_features")
     @patch("controllers.web.wraps.extract_webapp_passport")
     def test_missing_token_raises_unauthorized(
-        self, mock_extract: MagicMock, mock_features: MagicMock, app: Flask
+        self, mock_extract: MagicMock, mock_features: MagicMock, app
     ) -> None:
         mock_features.return_value = SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False))
         mock_extract.return_value = None
@@ -264,7 +251,7 @@ class TestDecodeJwtToken:
         mock_extract: MagicMock,
         mock_passport_cls: MagicMock,
         mock_features: MagicMock,
-        app: Flask,
+        app,
     ) -> None:
         mock_extract.return_value = "jwt-token"
         mock_passport_cls.return_value.verify.return_value = {
@@ -275,7 +262,7 @@ class TestDecodeJwtToken:
         mock_features.return_value = SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False))
 
         session_mock = MagicMock()
-        session_mock.scalar.return_value = None  # No app found
+        session_mock.scalar.return_value = None
         session_ctx = MagicMock()
         session_ctx.__enter__ = MagicMock(return_value=session_mock)
         session_ctx.__exit__ = MagicMock(return_value=False)
@@ -296,7 +283,7 @@ class TestDecodeJwtToken:
         mock_extract: MagicMock,
         mock_passport_cls: MagicMock,
         mock_features: MagicMock,
-        app: Flask,
+        app,
     ) -> None:
         mock_extract.return_value = "jwt-token"
         mock_passport_cls.return_value.verify.return_value = {
@@ -309,7 +296,6 @@ class TestDecodeJwtToken:
         app_model = SimpleNamespace(id="app-1", enable_site=False)
 
         session_mock = MagicMock()
-        # scalar calls: app_model, site (code found), then end_user
         session_mock.scalar.side_effect = [app_model, SimpleNamespace(code="code1"), None]
         session_ctx = MagicMock()
         session_ctx.__enter__ = MagicMock(return_value=session_mock)
@@ -331,7 +317,7 @@ class TestDecodeJwtToken:
         mock_extract: MagicMock,
         mock_passport_cls: MagicMock,
         mock_features: MagicMock,
-        app: Flask,
+        app,
     ) -> None:
         mock_extract.return_value = "jwt-token"
         mock_passport_cls.return_value.verify.return_value = {
@@ -345,7 +331,7 @@ class TestDecodeJwtToken:
         site = SimpleNamespace(code="code1")
 
         session_mock = MagicMock()
-        session_mock.scalar.side_effect = [app_model, site, None]  # end_user is None
+        session_mock.scalar.side_effect = [app_model, site, None]
         session_ctx = MagicMock()
         session_ctx.__enter__ = MagicMock(return_value=session_mock)
         session_ctx.__exit__ = MagicMock(return_value=False)
@@ -366,7 +352,7 @@ class TestDecodeJwtToken:
         mock_extract: MagicMock,
         mock_passport_cls: MagicMock,
         mock_features: MagicMock,
-        app: Flask,
+        app,
     ) -> None:
         mock_extract.return_value = "jwt-token"
         mock_passport_cls.return_value.verify.return_value = {
