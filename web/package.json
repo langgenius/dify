@@ -220,7 +220,7 @@
     "eslint-plugin-react-refresh": "0.5.2",
     "eslint-plugin-sonarjs": "4.0.2",
     "eslint-plugin-storybook": "10.3.1",
-    "happy-dom": "20.8.8",
+    "happy-dom": "20.8.9",
     "hono": "4.12.8",
     "husky": "9.1.7",
     "iconify-import-svg": "0.1.2",

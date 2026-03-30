@@ -49,7 +49,7 @@ jobs:
 
       - name: Run Type Checks
         if: steps.changed-files.outputs.any_changed == 'true'
-        run: make type-check
+        run: make type-check-core
 
       - name: Dotenv check
         if: steps.changed-files.outputs.any_changed == 'true'
