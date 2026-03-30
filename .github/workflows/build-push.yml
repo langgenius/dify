@@ -24,7 +24,7 @@ env:
 
 jobs:
   build:
-    runs-on: ${{ matrix.platform == 'linux/arm64' && 'arm64_runner' || 'ubuntu-latest' }}
+    runs-on: ${{ matrix.runs_on }}
     if: github.repository == 'langgenius/dify'
     strategy:
       matrix:
@@ -35,24 +35,28 @@ jobs:
             build_context: "{{defaultContext}}:api"
             file: "Dockerfile"
             platform: linux/amd64
+            runs_on: ubuntu-latest
           - service_name: "build-api-arm64"
             image_name_env: "DIFY_API_IMAGE_NAME"
             artifact_context: "api"
             build_context: "{{defaultContext}}:api"
             file: "Dockerfile"
             platform: linux/arm64
+            runs_on: ubuntu-24.04-arm
           - service_name: "build-web-amd64"
             image_name_env: "DIFY_WEB_IMAGE_NAME"
             artifact_context: "web"
             build_context: "{{defaultContext}}"
             file: "web/Dockerfile"
             platform: linux/amd64
+            runs_on: ubuntu-latest
           - service_name: "build-web-arm64"
             image_name_env: "DIFY_WEB_IMAGE_NAME"
             artifact_context: "web"
             build_context: "{{defaultContext}}"
             file: "web/Dockerfile"
             platform: linux/arm64
+            runs_on: ubuntu-24.04-arm
 
     steps:
       - name: Prepare
@@ -65,9 +69,6 @@ jobs:
         with:
           username: ${{ env.DOCKERHUB_USER }}
           password: ${{ env.DOCKERHUB_TOKEN }}
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4.0.0
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
