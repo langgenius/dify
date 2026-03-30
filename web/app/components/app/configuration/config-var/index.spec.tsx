@@ -1,15 +1,25 @@
 import type { ReactNode } from 'react'
 import type { IConfigVarProps } from './index'
+import type DebugConfigurationContext from '@/context/debug-configuration'
 import type { ExternalDataTool } from '@/models/common'
 import type { PromptVariable } from '@/models/debug'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import * as React from 'react'
 import { vi } from 'vitest'
 import { toast } from '@/app/components/base/ui/toast'
-import DebugConfigurationContext from '@/context/debug-configuration'
 import { AppModeEnum } from '@/types/app'
 
 import ConfigVar, { ADD_EXTERNAL_DATA_TOOL } from './index'
+
+const mockUseContext = vi.fn()
+
+vi.mock('use-context-selector', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('use-context-selector')>()
+  return {
+    ...actual,
+    useContext: (context: unknown) => mockUseContext(context),
+  }
+})
 
 const toastErrorSpy = vi.spyOn(toast, 'error').mockReturnValue('toast-error')
 
@@ -97,11 +107,8 @@ const renderConfigVar = (props: Partial<IConfigVarProps> = {}, debugOverrides: P
     ...props,
   }
 
-  return render(
-    <DebugConfigurationContext.Provider value={createDebugConfigValue(debugOverrides)}>
-      <ConfigVar {...mergedProps} />
-    </DebugConfigurationContext.Provider>,
-  )
+  mockUseContext.mockReturnValue(createDebugConfigValue(debugOverrides))
+  return render(<ConfigVar {...mergedProps} />)
 }
 
 describe('ConfigVar', () => {
@@ -142,6 +149,19 @@ describe('ConfigVar', () => {
       })
 
       expect(onPromptVariablesChange).toHaveBeenCalledWith([secondVar, firstVar])
+    })
+
+    it('should hide editing affordances in readonly mode', () => {
+      renderConfigVar({
+        promptVariables: [createPromptVariable({ key: 'readonly', name: 'Readonly' })],
+        readonly: true,
+      })
+
+      const item = screen.getByTitle('readonly · Readonly')
+      const itemContainer = item.closest('div.group')
+      expect(itemContainer).not.toBeNull()
+      expect(screen.queryByText('common.operation.add')).not.toBeInTheDocument()
+      expect(itemContainer!.className).toContain('cursor-not-allowed')
     })
   })
 
@@ -208,6 +228,85 @@ describe('ConfigVar', () => {
       expect(addedVariables[0]).toBe(existingVar)
       expect(addedVariables[1].type).toBe('api')
       expect(onPromptVariablesChange).toHaveBeenLastCalledWith([existingVar])
+    })
+
+    it('should validate and save external data tool edits from the modal callback', async () => {
+      const onPromptVariablesChange = vi.fn()
+      const existingVar = createPromptVariable({
+        config: { region: 'us' },
+        key: 'api_var',
+        name: 'API Var',
+        type: 'api',
+      })
+
+      renderConfigVar({
+        promptVariables: [existingVar],
+        onPromptVariablesChange,
+      })
+
+      const item = screen.getByTitle('api_var · API Var')
+      const itemContainer = item.closest('div.group')
+      expect(itemContainer).not.toBeNull()
+      const actionButtons = itemContainer!.querySelectorAll('div.h-6.w-6')
+      fireEvent.click(actionButtons[0])
+
+      const modalState = setShowExternalDataToolModal.mock.calls[0][0]
+      expect(modalState.onValidateBeforeSaveCallback?.({
+        label: 'Updated API Var',
+        type: 'api',
+        variable: 'updated_api_var',
+      })).toBe(true)
+
+      act(() => {
+        modalState.onSaveCallback?.({
+          config: { region: 'eu' },
+          enabled: false,
+          icon: 'updated-icon',
+          icon_background: '#fff',
+          label: 'Updated API Var',
+          type: 'api',
+          variable: 'updated_api_var',
+        })
+      })
+
+      expect(onPromptVariablesChange).toHaveBeenCalledWith([
+        expect.objectContaining({
+          config: { region: 'eu' },
+          enabled: false,
+          icon: 'updated-icon',
+          icon_background: '#fff',
+          key: 'updated_api_var',
+          name: 'Updated API Var',
+          required: false,
+          type: 'api',
+        }),
+      ])
+    })
+
+    it('should reject duplicated external data tool keys before saving', async () => {
+      const onPromptVariablesChange = vi.fn()
+      const existingVar = createPromptVariable({ key: 'existing', name: 'Existing' })
+      const apiVar = createPromptVariable({ key: 'api_var', name: 'API Var', type: 'api' })
+
+      renderConfigVar({
+        promptVariables: [existingVar, apiVar],
+        onPromptVariablesChange,
+      })
+
+      const item = screen.getByTitle('api_var · API Var')
+      const itemContainer = item.closest('div.group')
+      expect(itemContainer).not.toBeNull()
+      const actionButtons = itemContainer!.querySelectorAll('div.h-6.w-6')
+      fireEvent.click(actionButtons[0])
+
+      const modalState = setShowExternalDataToolModal.mock.calls[0][0]
+      expect(modalState.onValidateBeforeSaveCallback?.({
+        label: 'Duplicated API Var',
+        type: 'api',
+        variable: 'existing',
+      })).toBe(false)
+      expect(toastErrorSpy).toHaveBeenCalled()
+      expect(onPromptVariablesChange).not.toHaveBeenCalled()
     })
   })
 

@@ -29,6 +29,36 @@ import {
 dayjs.extend(utc)
 dayjs.extend(timezone)
 
+vi.mock('react-i18next', async () => {
+  const React = await vi.importActual<typeof import('react')>('react')
+  return {
+    useTranslation: (defaultNs?: string) => ({
+      t: (key: string, options?: Record<string, unknown>) => {
+        const ns = (options?.ns as string | undefined) ?? defaultNs
+        const fullKey = ns ? `${ns}.${key}` : key
+        const params = { ...options }
+        delete params.ns
+        const suffix = Object.keys(params).length > 0 ? `:${JSON.stringify(params)}` : ''
+        return `${fullKey}${suffix}`
+      },
+      i18n: {
+        language: 'en',
+        changeLanguage: vi.fn(),
+      },
+    }),
+    Trans: ({ i18nKey, components }: {
+      i18nKey: string
+      components?: Record<string, React.ReactElement>
+    }) => {
+      const timezoneComponent = components?.setTimezone
+      if (timezoneComponent && React.isValidElement(timezoneComponent))
+        return React.createElement(timezoneComponent.type, timezoneComponent.props, i18nKey)
+
+      return React.createElement('span', { 'data-i18n-key': i18nKey }, i18nKey)
+    },
+  }
+})
+
 // Mock app context
 const mockTimezone = 'America/New_York'
 vi.mock('@/context/app-context', () => ({
@@ -93,16 +123,20 @@ vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
   },
 }))
 
+let latestFilteredMinutes: string[] = []
+
 // Mock TimePicker component - simplified stateless mock
 vi.mock('@/app/components/base/date-and-time-picker/time-picker', () => ({
-  default: ({ value, onChange, onClear, renderTrigger }: {
+  default: ({ value, onChange, onClear, renderTrigger, minuteFilter }: {
     value: { format: (f: string) => string }
     onChange: (v: unknown) => void
     onClear: () => void
+    minuteFilter?: (minutes: string[]) => string[]
     title?: string
     renderTrigger: (params: { inputElem: React.ReactNode, onClick: () => void, isOpen: boolean }) => React.ReactNode
   }) => {
     const inputElem = <span data-testid="time-input">{value.format('HH:mm')}</span>
+    latestFilteredMinutes = minuteFilter?.(['00', '07', '15', '30', '45']) ?? []
 
     return (
       <div data-testid="time-picker">
@@ -112,6 +146,7 @@ vi.mock('@/app/components/base/date-and-time-picker/time-picker', () => ({
           isOpen: false,
         })}
         <div data-testid="time-picker-dropdown">
+          <div data-testid="filtered-minutes">{latestFilteredMinutes.join(',')}</div>
           <button
             data-testid="time-picker-set"
             onClick={() => {
@@ -320,6 +355,7 @@ describe('auto-update-setting', () => {
     vi.clearAllMocks()
     mockPortalOpen = false
     forcePortalContentVisible = false
+    latestFilteredMinutes = []
     mockPluginsData.plugins = []
   })
 
@@ -1459,9 +1495,10 @@ describe('auto-update-setting', () => {
 
         // Act
         render(<AutoUpdateSetting {...defaultProps} payload={payload} />)
+        fireEvent.click(screen.getByText('autoUpdate.changeTimezone'))
 
-        // Assert - timezone Trans component is rendered
-        expect(screen.getByText('autoUpdate.changeTimezone')).toBeInTheDocument()
+        // Assert
+        expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: 'language' })
       })
     })
 
@@ -1473,9 +1510,8 @@ describe('auto-update-setting', () => {
         // Act
         render(<AutoUpdateSetting {...defaultProps} payload={payload} />)
 
-        // The minuteFilter is passed to TimePicker internally
-        // We verify the component renders correctly
-        expect(screen.getByTestId('time-picker')).toBeInTheDocument()
+        // Assert
+        expect(screen.getByTestId('filtered-minutes')).toHaveTextContent('00,15,30,45')
       })
 
       it('handleChange should preserve other config values', () => {
