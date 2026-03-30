@@ -33,7 +33,6 @@ from controllers.console.workspace.tool_providers import (
     ToolOAuthCustomClient,
     ToolPluginOAuthApi,
     ToolProviderListApi,
-    ToolProviderMCPApi,
     ToolWorkflowListApi,
     ToolWorkflowProviderCreateApi,
     ToolWorkflowProviderDeleteApi,
