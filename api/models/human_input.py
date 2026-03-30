@@ -3,14 +3,11 @@ from enum import StrEnum
 from typing import Annotated, Literal, Self, final
 
 import sqlalchemy as sa
+from graphon.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from dify_graph.nodes.human_input.enums import (
-    DeliveryMethodType,
-    HumanInputFormKind,
-    HumanInputFormStatus,
-)
+from core.workflow.human_input_compat import DeliveryMethodType
 from libs.helper import generate_string
 
 from .base import Base, DefaultFieldsMixin

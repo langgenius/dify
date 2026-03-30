@@ -43,6 +43,17 @@ def valid_config():
 
 
 class TestModelConfigManager:
+    @staticmethod
+    def _patch_model_assembly(mocker, *, provider_entities, model_list):
+        assembly = MagicMock()
+        assembly.model_provider_factory.get_providers.return_value = provider_entities
+        assembly.provider_manager.get_configurations.return_value.get_models.return_value = model_list
+        mocker.patch(
+            "core.app.app_config.easy_ui_based_app.model_config.manager.create_plugin_model_assembly",
+            return_value=assembly,
+        )
+        return assembly
+
     # ==========================================================
     # convert
     # ==========================================================
@@ -97,11 +108,11 @@ class TestModelConfigManager:
     # ==========================================================
 
     def test_validate_and_set_defaults_success(self, mocker, valid_config, provider_entities, valid_model_list):
-        mock_factory = mocker.patch("core.app.app_config.easy_ui_based_app.model_config.manager.ModelProviderFactory")
-        mock_factory.return_value.get_providers.return_value = provider_entities
-
-        mock_pm = mocker.patch("core.app.app_config.easy_ui_based_app.model_config.manager.ProviderManager")
-        mock_pm.return_value.get_configurations.return_value.get_models.return_value = valid_model_list
+        self._patch_model_assembly(
+            mocker,
+            provider_entities=provider_entities,
+            model_list=valid_model_list,
+        )
 
         updated_config, keys = ModelConfigManager.validate_and_set_defaults("tenant1", valid_config)
 
@@ -118,51 +129,39 @@ class TestModelConfigManager:
 
     def test_validate_and_set_defaults_missing_provider(self, mocker, provider_entities):
         config = {"model": {"name": "gpt-4", "completion_params": {}}}
-
-        mock_factory = mocker.patch("core.app.app_config.easy_ui_based_app.model_config.manager.ModelProviderFactory")
-        mock_factory.return_value.get_providers.return_value = provider_entities
+        self._patch_model_assembly(mocker, provider_entities=provider_entities, model_list=[])
 
         with pytest.raises(ValueError, match="model.provider is required"):
             ModelConfigManager.validate_and_set_defaults("tenant1", config)
 
     def test_validate_and_set_defaults_invalid_provider(self, mocker, provider_entities):
         config = {"model": {"provider": "invalid/provider", "name": "gpt-4", "completion_params": {}}}
-
-        mock_factory = mocker.patch("core.app.app_config.easy_ui_based_app.model_config.manager.ModelProviderFactory")
-        mock_factory.return_value.get_providers.return_value = provider_entities
+        self._patch_model_assembly(mocker, provider_entities=provider_entities, model_list=[])
 
         with pytest.raises(ValueError, match="model.provider is required"):
             ModelConfigManager.validate_and_set_defaults("tenant1", config)
 
     def test_validate_and_set_defaults_missing_name(self, mocker, provider_entities):
         config = {"model": {"provider": "openai/gpt", "completion_params": {}}}
-
-        mock_factory = mocker.patch("core.app.app_config.easy_ui_based_app.model_config.manager.ModelProviderFactory")
-        mock_factory.return_value.get_providers.return_value = provider_entities
+        self._patch_model_assembly(mocker, provider_entities=provider_entities, model_list=[])
 
         with pytest.raises(ValueError, match="model.name is required"):
             ModelConfigManager.validate_and_set_defaults("tenant1", config)
 
     def test_validate_and_set_defaults_empty_models(self, mocker, provider_entities):
         config = {"model": {"provider": "openai/gpt", "name": "gpt-4", "completion_params": {}}}
-
-        mock_factory = mocker.patch("core.app.app_config.easy_ui_based_app.model_config.manager.ModelProviderFactory")
-        mock_factory.return_value.get_providers.return_value = provider_entities
-
-        mock_pm = mocker.patch("core.app.app_config.easy_ui_based_app.model_config.manager.ProviderManager")
-        mock_pm.return_value.get_configurations.return_value.get_models.return_value = []
+        self._patch_model_assembly(mocker, provider_entities=provider_entities, model_list=[])
 
         with pytest.raises(ValueError, match="must be in the specified model list"):
             ModelConfigManager.validate_and_set_defaults("tenant1", config)
 
     def test_validate_and_set_defaults_invalid_model_name(self, mocker, provider_entities, valid_model_list):
         config = {"model": {"provider": "openai/gpt", "name": "invalid", "completion_params": {}}}
-
-        mock_factory = mocker.patch("core.app.app_config.easy_ui_based_app.model_config.manager.ModelProviderFactory")
-        mock_factory.return_value.get_providers.return_value = provider_entities
-
-        mock_pm = mocker.patch("core.app.app_config.easy_ui_based_app.model_config.manager.ProviderManager")
-        mock_pm.return_value.get_configurations.return_value.get_models.return_value = valid_model_list
+        self._patch_model_assembly(
+            mocker,
+            provider_entities=provider_entities,
+            model_list=valid_model_list,
+        )
 
         with pytest.raises(ValueError, match="must be in the specified model list"):
             ModelConfigManager.validate_and_set_defaults("tenant1", config)
@@ -173,12 +172,7 @@ class TestModelConfigManager:
         model.model_properties = {}
 
         config = {"model": {"provider": "openai/gpt", "name": "gpt-4", "completion_params": {}}}
-
-        mock_factory = mocker.patch("core.app.app_config.easy_ui_based_app.model_config.manager.ModelProviderFactory")
-        mock_factory.return_value.get_providers.return_value = provider_entities
-
-        mock_pm = mocker.patch("core.app.app_config.easy_ui_based_app.model_config.manager.ProviderManager")
-        mock_pm.return_value.get_configurations.return_value.get_models.return_value = [model]
+        self._patch_model_assembly(mocker, provider_entities=provider_entities, model_list=[model])
 
         updated_config, _ = ModelConfigManager.validate_and_set_defaults("tenant1", config)
 
@@ -186,12 +180,11 @@ class TestModelConfigManager:
 
     def test_validate_and_set_defaults_missing_completion_params(self, mocker, provider_entities, valid_model_list):
         config = {"model": {"provider": "openai/gpt", "name": "gpt-4"}}
-
-        mock_factory = mocker.patch("core.app.app_config.easy_ui_based_app.model_config.manager.ModelProviderFactory")
-        mock_factory.return_value.get_providers.return_value = provider_entities
-
-        mock_pm = mocker.patch("core.app.app_config.easy_ui_based_app.model_config.manager.ProviderManager")
-        mock_pm.return_value.get_configurations.return_value.get_models.return_value = valid_model_list
+        self._patch_model_assembly(
+            mocker,
+            provider_entities=provider_entities,
+            model_list=valid_model_list,
+        )
 
         with pytest.raises(ValueError, match="completion_params is required"):
             ModelConfigManager.validate_and_set_defaults("tenant1", config)
@@ -212,16 +205,9 @@ class TestModelConfigManager:
         # Mock ModelProviderID to return formatted provider
         mock_provider_id = mocker.patch("core.app.app_config.easy_ui_based_app.model_config.manager.ModelProviderID")
         mock_provider_id.return_value = "openai/gpt"
-
-        # Mock provider factory
-        mock_factory = mocker.patch("core.app.app_config.easy_ui_based_app.model_config.manager.ModelProviderFactory")
         provider_entity = MagicMock()
         provider_entity.provider = "openai/gpt"
-        mock_factory.return_value.get_providers.return_value = [provider_entity]
-
-        # Mock provider manager
-        mock_pm = mocker.patch("core.app.app_config.easy_ui_based_app.model_config.manager.ProviderManager")
-        mock_pm.return_value.get_configurations.return_value.get_models.return_value = valid_model_list
+        self._patch_model_assembly(mocker, provider_entities=[provider_entity], model_list=valid_model_list)
 
         updated_config, _ = ModelConfigManager.validate_and_set_defaults("tenant1", config)
 

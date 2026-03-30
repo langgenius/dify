@@ -2,6 +2,7 @@ import json
 import logging
 from datetime import datetime
 
+from graphon.entities.graph_config import NodeConfigDict
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -13,7 +14,6 @@ from core.workflow.nodes.trigger_schedule.entities import (
     VisualConfig,
 )
 from core.workflow.nodes.trigger_schedule.exc import ScheduleConfigError, ScheduleNotFoundError
-from dify_graph.entities.graph_config import NodeConfigDict
 from libs.schedule_utils import calculate_next_run_at, convert_12h_to_24h
 from models.account import Account, TenantAccountJoin
 from models.trigger import WorkflowSchedulePlan

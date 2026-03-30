@@ -3,7 +3,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react'
 import dayjs, { isDayjsObject } from '../../utils/dayjs'
 import TimePicker from '../index'
 
-// Mock scrollIntoView since jsdom doesn't implement it
+// Mock scrollIntoView since the test DOM runtime doesn't implement it
 beforeAll(() => {
   Element.prototype.scrollIntoView = vi.fn()
 })

@@ -2,13 +2,13 @@ from collections.abc import Sequence
 from enum import StrEnum, auto
 from typing import Any, Literal
 
+from graphon.file import FileUploadConfig
+from graphon.model_runtime.entities.llm_entities import LLMMode
+from graphon.model_runtime.entities.message_entities import PromptMessageRole
+from graphon.variables.input_entities import VariableEntity as WorkflowVariableEntity
 from pydantic import BaseModel, Field
 
 from core.rag.data_post_processor.data_post_processor import RerankingModelDict, WeightsDict
-from dify_graph.file import FileUploadConfig
-from dify_graph.model_runtime.entities.llm_entities import LLMMode
-from dify_graph.model_runtime.entities.message_entities import PromptMessageRole
-from dify_graph.variables.input_entities import VariableEntity as WorkflowVariableEntity
 from models.model import AppMode
 
 

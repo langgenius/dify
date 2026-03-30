@@ -2,10 +2,10 @@ from unittest.mock import Mock, patch
 from uuid import uuid4
 
 import pytest
+from graphon.model_runtime.entities.model_entities import ModelType
 from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
-from dify_graph.model_runtime.entities.model_entities import ModelType
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, ExternalKnowledgeBindings
 from models.enums import DataSourceType
@@ -363,7 +363,7 @@ class TestDatasetServiceUpdateDataset:
 
         with (
             patch("services.dataset_service.current_user", user),
-            patch("services.dataset_service.ModelManager") as mock_model_manager,
+            patch("services.dataset_service.ModelManager.for_tenant") as mock_model_manager,
             patch(
                 "services.dataset_service.DatasetCollectionBindingService.get_dataset_collection_binding"
             ) as mock_get_binding,
@@ -458,7 +458,7 @@ class TestDatasetServiceUpdateDataset:
 
         with (
             patch("services.dataset_service.current_user", user),
-            patch("services.dataset_service.ModelManager") as mock_model_manager,
+            patch("services.dataset_service.ModelManager.for_tenant") as mock_model_manager,
             patch(
                 "services.dataset_service.DatasetCollectionBindingService.get_dataset_collection_binding"
             ) as mock_get_binding,
@@ -544,7 +544,7 @@ class TestDatasetServiceUpdateDataset:
 
         with (
             patch("services.dataset_service.current_user", user),
-            patch("services.dataset_service.ModelManager") as mock_model_manager,
+            patch("services.dataset_service.ModelManager.for_tenant") as mock_model_manager,
         ):
             mock_model_manager.return_value.get_model_instance.side_effect = Exception("No Embedding Model available")
 

@@ -88,6 +88,7 @@ class ModelConfigResource(Resource):
                         tenant_id=current_tenant_id,
                         app_id=app_model.id,
                         agent_tool=agent_tool_entity,
+                        user_id=current_user.id,
                     )
                     manager = ToolParameterConfigurationManager(
                         tenant_id=current_tenant_id,
@@ -127,6 +128,7 @@ class ModelConfigResource(Resource):
                             tenant_id=current_tenant_id,
                             app_id=app_model.id,
                             agent_tool=agent_tool_entity,
+                            user_id=current_user.id,
                         )
                     except Exception:
                         continue

@@ -4,6 +4,7 @@ import time
 from abc import ABC, abstractmethod
 from typing import Any
 
+from graphon.model_runtime.entities.model_entities import ModelType
 from sqlalchemy import select
 
 from configs import dify_config
@@ -14,7 +15,6 @@ from core.rag.embedding.cached_embedding import CacheEmbedding
 from core.rag.embedding.embedding_base import Embeddings
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.models.document import Document
-from dify_graph.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
@@ -303,7 +303,7 @@ class Vector:
             redis_client.delete(collection_exist_cache_key)
 
     def _get_embeddings(self) -> Embeddings:
-        model_manager = ModelManager()
+        model_manager = ModelManager.for_tenant(tenant_id=self._dataset.tenant_id)
 
         embedding_model = model_manager.get_model_instance(
             tenant_id=self._dataset.tenant_id,

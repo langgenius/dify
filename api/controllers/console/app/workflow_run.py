@@ -1,8 +1,10 @@
 from datetime import UTC, datetime, timedelta
-from typing import Literal, cast
+from typing import Literal, TypedDict, cast
 
 from flask import request
 from flask_restx import Resource, fields, marshal_with
+from graphon.entities.pause_reason import HumanInputRequired
+from graphon.enums import WorkflowExecutionStatus
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
@@ -12,8 +14,7 @@ from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from controllers.web.error import NotFoundError
-from dify_graph.entities.pause_reason import HumanInputRequired
-from dify_graph.enums import WorkflowExecutionStatus
+from core.workflow.human_input_forms import load_form_tokens_by_form_id as _load_form_tokens_by_form_id
 from extensions.ext_database import db
 from fields.end_user_fields import simple_end_user_fields
 from fields.member_fields import simple_account_fields
@@ -170,6 +171,23 @@ console_ns.schema_model(
     WorkflowRunCountQuery.__name__,
     WorkflowRunCountQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
 )
+
+
+class HumanInputPauseTypeResponse(TypedDict):
+    type: Literal["human_input"]
+    form_id: str
+    backstage_input_url: str | None
+
+
+class PausedNodeResponse(TypedDict):
+    node_id: str
+    node_title: str
+    pause_type: HumanInputPauseTypeResponse
+
+
+class WorkflowPauseDetailsResponse(TypedDict):
+    paused_at: str | None
+    paused_nodes: list[PausedNodeResponse]
 
 
 @console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflow-runs")
@@ -489,18 +507,22 @@ class ConsoleWorkflowPauseDetailsApi(Resource):
         # Check if workflow is suspended
         is_paused = workflow_run.status == WorkflowExecutionStatus.PAUSED
         if not is_paused:
-            return {
+            empty_response: WorkflowPauseDetailsResponse = {
                 "paused_at": None,
                 "paused_nodes": [],
-            }, 200
+            }
+            return empty_response, 200
 
         pause_entity = workflow_run_repo.get_workflow_pause(workflow_run_id)
         pause_reasons = pause_entity.get_pause_reasons() if pause_entity else []
+        form_tokens_by_form_id = _load_form_tokens_by_form_id(
+            [reason.form_id for reason in pause_reasons if isinstance(reason, HumanInputRequired)]
+        )
 
         # Build response
         paused_at = pause_entity.paused_at if pause_entity else None
-        paused_nodes = []
-        response = {
+        paused_nodes: list[PausedNodeResponse] = []
+        response: WorkflowPauseDetailsResponse = {
             "paused_at": paused_at.isoformat() + "Z" if paused_at else None,
             "paused_nodes": paused_nodes,
         }
@@ -514,7 +536,9 @@ class ConsoleWorkflowPauseDetailsApi(Resource):
                         "pause_type": {
                             "type": "human_input",
                             "form_id": reason.form_id,
-                            "backstage_input_url": _build_backstage_input_url(reason.form_token),
+                            "backstage_input_url": _build_backstage_input_url(
+                                form_tokens_by_form_id.get(reason.form_id)
+                            ),
                         },
                     }
                 )

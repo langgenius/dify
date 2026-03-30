@@ -8,11 +8,23 @@ from typing import Any, cast
 
 logger = logging.getLogger(__name__)
 
+from graphon.file import File, FileTransferMethod, FileType, file_manager
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+from graphon.model_runtime.entities.message_entities import (
+    ImagePromptMessageContent,
+    PromptMessage,
+    PromptMessageContentUnionTypes,
+    TextPromptMessageContent,
+    UserPromptMessage,
+)
+from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
+
+from core.app.file_access import DatabaseFileAccessController
 from core.app.llm import deduct_llm_quota
 from core.entities.knowledge_entities import PreviewDetail
 from core.llm_generator.prompts import DEFAULT_GENERATOR_SUMMARY_PROMPT
 from core.model_manager import ModelInstance
-from core.provider_manager import ProviderManager
+from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 from core.rag.cleaner.clean_processor import CleanProcessor
 from core.rag.data_post_processor.data_post_processor import RerankingModelDict
 from core.rag.datasource.keyword.keyword_factory import Keyword
@@ -27,16 +39,7 @@ from core.rag.index_processor.index_processor_base import BaseIndexProcessor, Su
 from core.rag.models.document import AttachmentDocument, Document, MultimodalGeneralStructureChunk
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.utils.text_processing_utils import remove_leading_symbols
-from dify_graph.file import File, FileTransferMethod, FileType, file_manager
-from dify_graph.model_runtime.entities.llm_entities import LLMResult, LLMUsage
-from dify_graph.model_runtime.entities.message_entities import (
-    ImagePromptMessageContent,
-    PromptMessage,
-    PromptMessageContentUnionTypes,
-    TextPromptMessageContent,
-    UserPromptMessage,
-)
-from dify_graph.model_runtime.entities.model_entities import ModelFeature, ModelType
+from core.workflow.file_reference import build_file_reference
 from extensions.ext_database import db
 from factories.file_factory import build_from_mapping
 from libs import helper
@@ -47,6 +50,8 @@ from models.dataset import Document as DatasetDocument
 from services.account_service import AccountService
 from services.entities.knowledge_entities.knowledge_entities import Rule
 from services.summary_index_service import SummaryIndexService
+
+_file_access_controller = DatabaseFileAccessController()
 
 
 class ParagraphIndexProcessor(BaseIndexProcessor):
@@ -410,7 +415,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                 # If default prompt doesn't have {language} placeholder, use it as-is
                 pass
 
-        provider_manager = ProviderManager()
+        provider_manager = create_plugin_provider_manager(tenant_id=tenant_id)
         provider_model_bundle = provider_manager.get_provider_model_bundle(
             tenant_id, model_provider_name, ModelType.LLM
         )
@@ -555,6 +560,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                 file_obj = build_from_mapping(
                     mapping=mapping,
                     tenant_id=tenant_id,
+                    access_controller=_file_access_controller,
                 )
                 file_objects.append(file_obj)
             except Exception as e:
@@ -604,11 +610,12 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                     filename=upload_file.name,
                     extension="." + upload_file.extension,
                     mime_type=upload_file.mime_type,
-                    tenant_id=tenant_id,
                     type=FileType.IMAGE,
                     transfer_method=FileTransferMethod.LOCAL_FILE,
                     remote_url=upload_file.source_url,
-                    related_id=upload_file.id,
+                    reference=build_file_reference(
+                        record_id=str(upload_file.id),
+                    ),
                     size=upload_file.size,
                     storage_key=upload_file.key,
                 )

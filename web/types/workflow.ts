@@ -455,12 +455,13 @@ export type PanelProps = {
 export type NodeRunResult = NodeTracing
 
 // Var Inspect
-export enum VarInInspectType {
-  conversation = 'conversation',
-  environment = 'env',
-  node = 'node',
-  system = 'sys',
-}
+export const VarInInspectType = {
+  conversation: 'conversation',
+  environment: 'env',
+  node: 'node',
+  system: 'sys',
+} as const
+export type VarInInspectType = typeof VarInInspectType[keyof typeof VarInInspectType]
 
 export type FullContent = {
   size_bytes: number

@@ -141,7 +141,7 @@ export default function ShortcutsPopupPlugin({
   const portalRef = useRef<HTMLDivElement | null>(null)
   const lastSelectionRef = useRef<Range | null>(null)
 
-  /* v8 ignore next -- defensive non-browser fallback; this client-only plugin runs where document exists (browser/jsdom). @preserve */
+  /* v8 ignore next -- defensive non-browser fallback; this client-only plugin runs where document exists (browser/test DOM runtime). @preserve */
   const containerEl = useMemo(() => container ?? (typeof document !== 'undefined' ? document.body : null), [container])
   const useContainer = !!containerEl && containerEl !== document.body
 
@@ -210,7 +210,7 @@ export default function ShortcutsPopupPlugin({
 
       if (rect.width === 0 && rect.height === 0) {
         const root = editor.getRootElement()
-        /* v8 ignore next 10 -- zero-size rect recovery depends on browser layout/selection geometry; deterministic reproduction in jsdom is unreliable. @preserve */
+        /* v8 ignore next 10 -- zero-size rect recovery depends on browser layout/selection geometry; deterministic reproduction in the test DOM runtime is unreliable. @preserve */
         if (root) {
           const sc = range.startContainer
           const node = sc.nodeType === Node.ELEMENT_NODE

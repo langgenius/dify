@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from services.knowledge_service import ExternalDatasetTestService
+from services.knowledge_service import BedrockRetrievalSetting, ExternalDatasetTestService
 
 
 class TestKnowledgeService:
@@ -24,7 +24,7 @@ class TestKnowledgeService:
         mock_client = MagicMock()
         mock_boto_client.return_value = mock_client
 
-        retrieval_setting = {"top_k": 4, "score_threshold": 0.5}
+        retrieval_setting = BedrockRetrievalSetting(top_k=4, score_threshold=0.5)
         query = "test query"
         knowledge_id = "kb-123"
 
@@ -87,7 +87,10 @@ class TestKnowledgeService:
         mock_client.retrieve.return_value = {"ResponseMetadata": {"HTTPStatusCode": 200}, "retrievalResults": []}
 
         # Act
-        result = cast(dict[str, Any], ExternalDatasetTestService.knowledge_retrieval({"top_k": 1}, "query", "kb"))
+        result = cast(
+            dict[str, Any],
+            ExternalDatasetTestService.knowledge_retrieval(BedrockRetrievalSetting(top_k=1), "query", "kb"),
+        )
 
         # Assert
         assert result["records"] == []
@@ -104,7 +107,10 @@ class TestKnowledgeService:
         mock_client.retrieve.return_value = {"ResponseMetadata": {"HTTPStatusCode": 500}}
 
         # Act
-        result = cast(dict[str, Any], ExternalDatasetTestService.knowledge_retrieval({"top_k": 1}, "query", "kb"))
+        result = cast(
+            dict[str, Any],
+            ExternalDatasetTestService.knowledge_retrieval(BedrockRetrievalSetting(top_k=1), "query", "kb"),
+        )
 
         # Assert
         assert result["records"] == []
@@ -114,7 +120,7 @@ class TestKnowledgeService:
         with patch("services.knowledge_service.boto3.client") as mock_boto:
             mock_boto.side_effect = Exception("client init failed")
             with pytest.raises(Exception) as exc_info:
-                ExternalDatasetTestService.knowledge_retrieval({"top_k": 1}, "query", "kb")
+                ExternalDatasetTestService.knowledge_retrieval(BedrockRetrievalSetting(top_k=1), "query", "kb")
             assert "client init failed" in str(exc_info.value)
 
     # ===== Edge Cases =====
@@ -139,7 +145,10 @@ class TestKnowledgeService:
 
         # Act
         # retrieval_setting missing "score_threshold"
-        result = cast(dict[str, Any], ExternalDatasetTestService.knowledge_retrieval({"top_k": 1}, "query", "kb"))
+        result = cast(
+            dict[str, Any],
+            ExternalDatasetTestService.knowledge_retrieval(BedrockRetrievalSetting(top_k=1), "query", "kb"),
+        )
 
         # Assert
         assert len(result["records"]) == 1
