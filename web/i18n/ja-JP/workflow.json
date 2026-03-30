@@ -818,7 +818,7 @@
   "nodes.loop.setLoopVariables": "ループスコープ内で変数を設定",
   "nodes.loop.totalLoopCount": "総ループ回数：{{count}}",
   "nodes.loop.variableName": "変数名",
-  "nodes.note.addNote": "コメントを追加",
+  "nodes.note.addNote": "メモを追加",
   "nodes.note.editor.bold": "太字",
   "nodes.note.editor.bulletList": "リスト",
   "nodes.note.editor.enterUrl": "リンク入力中...",
