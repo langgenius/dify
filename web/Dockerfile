@@ -40,7 +40,7 @@ COPY --from=packages /app/ .
 COPY . .
 
 WORKDIR /app/web
-ENV NODE_OPTIONS="--max-old-space-size=4096"
+ENV NODE_OPTIONS="--max-old-space-size=8192"
 RUN pnpm build
 
 
