@@ -499,9 +499,9 @@ class TriggerOAuthCallbackApi(Resource):
         provider_id = TriggerProviderID(provider)
         plugin_id = provider_id.plugin_id
         provider_name = provider_id.provider_name
-        user_id = context.get("user_id")
-        tenant_id = context.get("tenant_id")
-        subscription_builder_id = context.get("subscription_builder_id")
+        user_id: str = context["user_id"]
+        tenant_id: str = context["tenant_id"]
+        subscription_builder_id: str = context["subscription_builder_id"]
 
         # Get OAuth client configuration
         oauth_client_params = TriggerProviderService.get_oauth_client(
