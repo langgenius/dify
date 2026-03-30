@@ -76,7 +76,7 @@ dependencies = [
     "sqlalchemy~=2.0.29",
     "starlette==1.0.0",
     "tiktoken~=0.12.0",
-    "transformers~=5.3.0",
+    "transformers~=5.4.0",
     "unstructured[docx,epub,md,ppt,pptx]~=0.21.5",
     "pypandoc~=1.13",
     "yarl~=1.23.0",
