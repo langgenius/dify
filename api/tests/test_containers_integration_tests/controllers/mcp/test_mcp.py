@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import types
 from unittest.mock import MagicMock, patch
+from uuid import uuid4
 
 import pytest
 from flask import Response
@@ -30,8 +31,13 @@ def fake_payload(data):
     module.mcp_ns.payload = data
 
 
+_TENANT_ID = str(uuid4())
+_APP_ID = str(uuid4())
+_SERVER_ID = str(uuid4())
+
+
 class DummyServer:
-    def __init__(self, status, app_id="app-1", tenant_id="tenant-1", server_id="srv-1"):
+    def __init__(self, status, app_id=_APP_ID, tenant_id=_TENANT_ID, server_id=_SERVER_ID):
         self.status = status
         self.app_id = app_id
         self.tenant_id = tenant_id
@@ -40,8 +46,8 @@ class DummyServer:
 
 class DummyApp:
     def __init__(self, mode, workflow=None, app_model_config=None):
-        self.id = "app-1"
-        self.tenant_id = "tenant-1"
+        self.id = _APP_ID
+        self.tenant_id = _TENANT_ID
         self.mode = mode
         self.workflow = workflow
         self.app_model_config = app_model_config
