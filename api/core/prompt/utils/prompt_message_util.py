@@ -1,7 +1,6 @@
 from collections.abc import Sequence
 from typing import Any, cast
 
-from core.prompt.simple_prompt_transform import ModelMode
 from graphon.model_runtime.entities import (
     AssistantPromptMessage,
     AudioPromptMessageContent,
@@ -11,6 +10,8 @@ from graphon.model_runtime.entities import (
     PromptMessageRole,
     TextPromptMessageContent,
 )
+
+from core.prompt.simple_prompt_transform import ModelMode
 
 
 class PromptMessageUtil:

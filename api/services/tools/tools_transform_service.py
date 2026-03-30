@@ -423,7 +423,7 @@ class ToolTransformService:
             id=provider.id,
             name=provider.name,
             provider=provider.provider,
-            credential_type=CredentialType.of(provider.credential_type),
+            credential_type=provider.credential_type,
             is_default=provider.is_default,
             credentials=credentials,
         )
