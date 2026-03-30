@@ -5,7 +5,7 @@ import { CUSTOM_ITERATION_START_NODE } from '../../nodes/iteration-start/constan
 import { CUSTOM_LOOP_START_NODE } from '../../nodes/loop-start/constants'
 import { BlockEnum } from '../../types'
 
-type ElkChild = Record<string, unknown> & { id: string, width?: number, height?: number, x?: number, y?: number, children?: ElkChild[], ports?: Array<{ id: string }>, layoutOptions?: Record<string, string> }
+type ElkChild = Record<string, unknown> & { id: string, width?: number, height?: number, x?: number, y?: number, children?: ElkChild[], ports?: Array<{ id: string, layoutOptions?: Record<string, string> }>, layoutOptions?: Record<string, string> }
 type ElkGraph = Record<string, unknown> & { id: string, children?: ElkChild[], edges?: Array<Record<string, unknown>> }
 
 let layoutCallArgs: ElkGraph | null = null
@@ -32,7 +32,7 @@ vi.mock('elkjs/lib/elk.bundled.js', () => {
   }
 })
 
-const { getLayoutByDagre, getLayoutForChildNodes } = await import('../elk-layout')
+const { getLayoutByELK, getLayoutForChildNodes } = await import('../elk-layout')
 
 function makeWorkflowNode(overrides: Omit<Partial<Node>, 'data'> & { data?: Partial<CommonNodeType> & Record<string, unknown> } = {}): Node {
   return createNode({
@@ -51,7 +51,7 @@ beforeEach(() => {
   mockReturnOverride = null
 })
 
-describe('getLayoutByDagre', () => {
+describe('getLayoutByELK', () => {
   it('should return layout for simple linear graph', async () => {
     const nodes = [
       makeWorkflowNode({ id: 'a', data: { type: BlockEnum.Start, title: '', desc: '' } }),
@@ -59,7 +59,7 @@ describe('getLayoutByDagre', () => {
     ]
     const edges = [makeWorkflowEdge({ source: 'a', target: 'b' })]
 
-    const result = await getLayoutByDagre(nodes, edges)
+    const result = await getLayoutByELK(nodes, edges)
 
     expect(result.nodes.size).toBe(2)
     expect(result.nodes.has('a')).toBe(true)
@@ -74,7 +74,7 @@ describe('getLayoutByDagre', () => {
       makeWorkflowNode({ id: 'child', data: { type: BlockEnum.Code, title: '', desc: '' }, parentId: 'a' }),
     ]
 
-    const result = await getLayoutByDagre(nodes, [])
+    const result = await getLayoutByELK(nodes, [])
     expect(result.nodes.size).toBe(1)
     expect(result.nodes.has('child')).toBe(false)
   })
@@ -85,7 +85,7 @@ describe('getLayoutByDagre', () => {
       makeWorkflowNode({ id: 'iter-start', type: CUSTOM_ITERATION_START_NODE, data: { type: BlockEnum.IterationStart, title: '', desc: '' } }),
     ]
 
-    const result = await getLayoutByDagre(nodes, [])
+    const result = await getLayoutByELK(nodes, [])
     expect(result.nodes.size).toBe(1)
   })
 
@@ -98,7 +98,7 @@ describe('getLayoutByDagre', () => {
       makeWorkflowEdge({ source: 'a', target: 'b', data: { isInIteration: true, iteration_id: 'iter-1' } }),
     ]
 
-    await getLayoutByDagre(nodes, edges)
+    await getLayoutByELK(nodes, edges)
     expect(layoutCallArgs!.edges).toHaveLength(0)
   })
 
@@ -107,7 +107,7 @@ describe('getLayoutByDagre', () => {
     Reflect.deleteProperty(node, 'width')
     Reflect.deleteProperty(node, 'height')
 
-    const result = await getLayoutByDagre([node], [])
+    const result = await getLayoutByELK([node], [])
     expect(result.nodes.size).toBe(1)
     const info = result.nodes.get('a')!
     expect(info.width).toBe(244)
@@ -133,13 +133,13 @@ describe('getLayoutByDagre', () => {
       makeWorkflowEdge({ id: 'e2', source: 'if-1', target: 'c', sourceHandle: 'false' }),
     ]
 
-    await getLayoutByDagre(nodes, edges)
+    await getLayoutByELK(nodes, edges)
     const ifElkNode = layoutCallArgs!.children!.find((c: ElkChild) => c.id === 'if-1')!
     expect(ifElkNode.ports).toHaveLength(2)
     expect(ifElkNode.layoutOptions!['elk.portConstraints']).toBe('FIXED_ORDER')
   })
 
-  it('should use normal node for IfElse with single branch', async () => {
+  it('should build ports for IfElse even with single branch', async () => {
     const nodes = [
       makeWorkflowNode({
         id: 'if-1',
@@ -149,9 +149,10 @@ describe('getLayoutByDagre', () => {
     ]
     const edges = [makeWorkflowEdge({ source: 'if-1', target: 'b', sourceHandle: 'case-1' })]
 
-    await getLayoutByDagre(nodes, edges)
+    await getLayoutByELK(nodes, edges)
     const ifElkNode = layoutCallArgs!.children!.find((c: ElkChild) => c.id === 'if-1')!
-    expect(ifElkNode.ports).toBeUndefined()
+    expect(ifElkNode.ports).toHaveLength(1)
+    expect(ifElkNode.ports![0].layoutOptions!['elk.port.side']).toBe('EAST')
   })
 
   it('should build ports for HumanInput nodes with multiple branches', async () => {
@@ -168,12 +169,12 @@ describe('getLayoutByDagre', () => {
       makeWorkflowEdge({ id: 'e2', source: 'hi-1', target: 'c', sourceHandle: '__timeout' }),
     ]
 
-    await getLayoutByDagre(nodes, edges)
+    await getLayoutByELK(nodes, edges)
     const hiElkNode = layoutCallArgs!.children!.find((c: ElkChild) => c.id === 'hi-1')!
     expect(hiElkNode.ports).toHaveLength(2)
   })
 
-  it('should use normal node for HumanInput with single branch', async () => {
+  it('should build ports for HumanInput even with single branch', async () => {
     const nodes = [
       makeWorkflowNode({
         id: 'hi-1',
@@ -183,20 +184,21 @@ describe('getLayoutByDagre', () => {
     ]
     const edges = [makeWorkflowEdge({ source: 'hi-1', target: 'b', sourceHandle: 'action-1' })]
 
-    await getLayoutByDagre(nodes, edges)
+    await getLayoutByELK(nodes, edges)
     const hiElkNode = layoutCallArgs!.children!.find((c: ElkChild) => c.id === 'hi-1')!
-    expect(hiElkNode.ports).toBeUndefined()
+    expect(hiElkNode.ports).toHaveLength(1)
+    expect(hiElkNode.ports![0].layoutOptions!['elk.port.side']).toBe('EAST')
   })
 
   it('should normalise bounds so minX and minY start at 0', async () => {
     const nodes = [makeWorkflowNode({ id: 'a', data: { type: BlockEnum.Start, title: '', desc: '' } })]
-    const result = await getLayoutByDagre(nodes, [])
+    const result = await getLayoutByELK(nodes, [])
     expect(result.bounds.minX).toBe(0)
     expect(result.bounds.minY).toBe(0)
   })
 
   it('should return empty layout when no nodes match filter', async () => {
-    const result = await getLayoutByDagre([], [])
+    const result = await getLayoutByELK([], [])
     expect(result.nodes.size).toBe(0)
     expect(result.bounds).toEqual({ minX: 0, minY: 0, maxX: 0, maxY: 0 })
   })
@@ -225,7 +227,7 @@ describe('getLayoutByDagre', () => {
       makeWorkflowEdge({ id: 'e-b', source: 'if-1', target: 'y', sourceHandle: 'case-b' }),
     ]
 
-    await getLayoutByDagre(nodes, edges)
+    await getLayoutByELK(nodes, edges)
     const ifNode = layoutCallArgs!.children!.find((c: ElkChild) => c.id === 'if-1')!
     const portIds = ifNode.ports!.map((p: { id: string }) => p.id)
     expect(portIds[portIds.length - 1]).toContain('false')
@@ -247,7 +249,7 @@ describe('getLayoutByDagre', () => {
       makeWorkflowEdge({ id: 'e-a2', source: 'hi-1', target: 'y', sourceHandle: 'a2' }),
     ]
 
-    await getLayoutByDagre(nodes, edges)
+    await getLayoutByELK(nodes, edges)
     const hiNode = layoutCallArgs!.children!.find((c: ElkChild) => c.id === 'hi-1')!
     const portIds = hiNode.ports!.map((p: { id: string }) => p.id)
     expect(portIds[portIds.length - 1]).toContain('__timeout')
@@ -267,7 +269,7 @@ describe('getLayoutByDagre', () => {
       makeWorkflowEdge({ id: 'e2', source: 'if-1', target: 'c', sourceHandle: 'false' }),
     ]
 
-    await getLayoutByDagre(nodes, edges)
+    await getLayoutByELK(nodes, edges)
     const portEdges = layoutCallArgs!.edges!.filter((e: Record<string, unknown>) => e.sourcePort)
     expect(portEdges.length).toBeGreaterThan(0)
   })
@@ -286,7 +288,7 @@ describe('getLayoutByDagre', () => {
     Reflect.deleteProperty(e1, 'sourceHandle')
     Reflect.deleteProperty(e2, 'sourceHandle')
 
-    const result = await getLayoutByDagre(nodes, [e1, e2])
+    const result = await getLayoutByELK(nodes, [e1, e2])
     expect(result.nodes.size).toBeGreaterThan(0)
   })
 
@@ -299,7 +301,7 @@ describe('getLayoutByDagre', () => {
     })
 
     const nodes = [makeWorkflowNode({ id: 'a', data: { type: BlockEnum.Start, title: '', desc: '' } })]
-    const result = await getLayoutByDagre(nodes, [])
+    const result = await getLayoutByELK(nodes, [])
     const info = result.nodes.get('a')!
     expect(info.x).toBe(0)
     expect(info.y).toBe(0)
@@ -326,7 +328,7 @@ describe('getLayoutByDagre', () => {
       makeWorkflowNode({ id: 'a', data: { type: BlockEnum.Start, title: '', desc: '' } }),
       makeWorkflowNode({ id: 'b', data: { type: BlockEnum.Code, title: '', desc: '' } }),
     ]
-    const result = await getLayoutByDagre(nodes, [])
+    const result = await getLayoutByELK(nodes, [])
     expect(result.nodes.get('a')!.layer).toBe(0)
     expect(result.nodes.get('b')!.layer).toBe(1)
   })
@@ -354,7 +356,7 @@ describe('getLayoutByDagre', () => {
       makeWorkflowNode({ id: 'nested-1', data: { type: BlockEnum.Code, title: '', desc: '' } }),
       makeWorkflowNode({ id: 'nested-2', data: { type: BlockEnum.Code, title: '', desc: '' } }),
     ]
-    const result = await getLayoutByDagre(nodes, [])
+    const result = await getLayoutByELK(nodes, [])
     expect(result.nodes.has('nested-1')).toBe(true)
     expect(result.nodes.has('nested-2')).toBe(true)
   })
@@ -372,7 +374,7 @@ describe('getLayoutByDagre', () => {
       makeWorkflowNode({ id: 'visible', data: { type: BlockEnum.Start, title: '', desc: '' } }),
       makeWorkflowNode({ id: 'also-visible', data: { type: BlockEnum.Code, title: '', desc: '' } }),
     ]
-    const result = await getLayoutByDagre(nodes, [])
+    const result = await getLayoutByELK(nodes, [])
     expect(result.nodes.size).toBe(2)
   })
 
@@ -390,7 +392,7 @@ describe('getLayoutByDagre', () => {
       makeWorkflowEdge({ id: 'e2', source: 'if-1', target: 'c', sourceHandle: 'other-unknown' }),
     ]
 
-    await getLayoutByDagre(nodes, edges)
+    await getLayoutByELK(nodes, edges)
     const ifNode = layoutCallArgs!.children!.find((c: ElkChild) => c.id === 'if-1')!
     expect(ifNode.ports).toHaveLength(2)
   })
@@ -409,7 +411,7 @@ describe('getLayoutByDagre', () => {
       makeWorkflowEdge({ id: 'e2', source: 'hi-1', target: 'c', sourceHandle: 'another-unknown' }),
     ]
 
-    await getLayoutByDagre(nodes, edges)
+    await getLayoutByELK(nodes, edges)
     const hiNode = layoutCallArgs!.children!.find((c: ElkChild) => c.id === 'hi-1')!
     expect(hiNode.ports).toHaveLength(2)
   })
@@ -428,7 +430,7 @@ describe('getLayoutByDagre', () => {
     Reflect.deleteProperty(e1, 'sourceHandle')
     Reflect.deleteProperty(e2, 'sourceHandle')
 
-    await getLayoutByDagre(nodes, [e1, e2])
+    await getLayoutByELK(nodes, [e1, e2])
     const ifNode = layoutCallArgs!.children!.find((c: ElkChild) => c.id === 'if-1')!
     expect(ifNode.ports).toHaveLength(2)
   })
@@ -447,7 +449,7 @@ describe('getLayoutByDagre', () => {
     Reflect.deleteProperty(e1, 'sourceHandle')
     Reflect.deleteProperty(e2, 'sourceHandle')
 
-    await getLayoutByDagre(nodes, [e1, e2])
+    await getLayoutByELK(nodes, [e1, e2])
     const hiNode = layoutCallArgs!.children!.find((c: ElkChild) => c.id === 'hi-1')!
     expect(hiNode.ports).toHaveLength(2)
   })
@@ -463,7 +465,7 @@ describe('getLayoutByDagre', () => {
       makeWorkflowEdge({ id: 'e2', source: 'if-1', target: 'c', sourceHandle: 'false' }),
     ]
 
-    await getLayoutByDagre(nodes, edges)
+    await getLayoutByELK(nodes, edges)
     const ifNode = layoutCallArgs!.children!.find((c: ElkChild) => c.id === 'if-1')!
     expect(ifNode.ports).toHaveLength(2)
   })
@@ -479,7 +481,7 @@ describe('getLayoutByDagre', () => {
       makeWorkflowEdge({ id: 'e2', source: 'hi-1', target: 'c', sourceHandle: '__timeout' }),
     ]
 
-    await getLayoutByDagre(nodes, edges)
+    await getLayoutByELK(nodes, edges)
     const hiNode = layoutCallArgs!.children!.find((c: ElkChild) => c.id === 'hi-1')!
     expect(hiNode.ports).toHaveLength(2)
   })
@@ -492,7 +494,7 @@ describe('getLayoutByDagre', () => {
       makeWorkflowEdge({ source: 'x', target: 'y', data: { isInLoop: true, loop_id: 'loop-1' } }),
     ]
 
-    await getLayoutByDagre(nodes, edges)
+    await getLayoutByELK(nodes, edges)
     expect(layoutCallArgs!.edges).toHaveLength(0)
   })
 })
