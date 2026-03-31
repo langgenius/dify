@@ -22,7 +22,7 @@ const MetricSection = ({
         title={t('metrics.title')}
         tooltip={t('metrics.description')}
       />
-      <div className="mt-2 space-y-3">
+      <div className="mt-1 space-y-1">
         {!hasMetrics && <MetricSectionEmptyState description={t('metrics.description')} />}
         {resource.metrics.map(metric => (
           <MetricCard
@@ -30,14 +30,16 @@ const MetricSection = ({
             resourceType={resourceType}
             resourceId={resourceId}
             metric={metric}
-            nodesLabel={t('metrics.nodesLabel')}
             nodesAllLabel={t('metrics.nodesAll')}
             removeLabel={t('metrics.remove')}
+            customWarningLabel={t('metrics.custom.warningBadge')}
           />
         ))}
         <MetricSelector
           resourceType={resourceType}
           resourceId={resourceId}
+          triggerStyle="text"
+          triggerClassName="rounded-md px-3 py-2 hover:bg-state-base-hover-alt"
         />
       </div>
     </section>

@@ -2,7 +2,6 @@
 
 import type { CustomMetricMapping, EvaluationMetric, EvaluationResourceProps, EvaluationResourceType } from '../types'
 import { useTranslation } from 'react-i18next'
-import Badge from '@/app/components/base/badge'
 import Button from '@/app/components/base/button'
 import {
   Select,
@@ -13,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/app/components/base/ui/select'
+import { cn } from '@/utils/classnames'
 import { getEvaluationMockConfig } from '../mock'
 import { isCustomMetricConfigured, useEvaluationStore } from '../store'
 import { groupFieldOptions } from '../utils'
@@ -40,9 +40,9 @@ function MappingRow({
   const config = getEvaluationMockConfig(resourceType)
 
   return (
-    <div className="grid gap-2 rounded-xl border border-divider-subtle bg-components-card-bg p-3 xl:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto]">
+    <div className="grid gap-2 rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-card-bg p-3 xl:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto]">
       <Select value={mapping.sourceFieldId ?? ''} onValueChange={value => onUpdate({ sourceFieldId: value })}>
-        <SelectTrigger>
+        <SelectTrigger className="bg-transparent hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt">
           <SelectValue placeholder={t('metrics.custom.sourcePlaceholder')} />
         </SelectTrigger>
         <SelectContent>
@@ -60,7 +60,7 @@ function MappingRow({
         <span aria-hidden="true" className="i-ri-arrow-down-s-line h-4 w-4 -rotate-90" />
       </div>
       <Select value={mapping.targetVariableId ?? ''} onValueChange={value => onUpdate({ targetVariableId: value })}>
-        <SelectTrigger>
+        <SelectTrigger className="bg-transparent hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt">
           <SelectValue placeholder={t('metrics.custom.targetPlaceholder')} />
         </SelectTrigger>
         <SelectContent>
@@ -94,55 +94,59 @@ const CustomMetricEditorCard = ({
     return null
 
   return (
-    <div className="mt-4 rounded-xl border border-divider-subtle bg-background-default-subtle p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="text-text-primary system-sm-semibold">{t('metrics.custom.title')}</div>
-          <div className="mt-1 text-text-tertiary system-xs-regular">{t('metrics.custom.description')}</div>
-        </div>
-        {!isConfigured && <Badge className="badge-warning">{t('metrics.custom.warningBadge')}</Badge>}
-      </div>
-      <div className="mt-4 grid gap-4 xl:grid-cols-[220px_minmax(0,1fr)]">
-        <div>
-          <div className="mb-2 text-text-secondary system-xs-medium-uppercase">{t('metrics.custom.workflowLabel')}</div>
-          <Select value={metric.customConfig.workflowId ?? ''} onValueChange={value => value && setCustomMetricWorkflow(resourceType, resourceId, metric.id, value)}>
-            <SelectTrigger>
-              <SelectValue placeholder={t('metrics.custom.workflowPlaceholder')} />
-            </SelectTrigger>
-            <SelectContent>
-              {config.workflowOptions.map(option => (
-                <SelectItem key={option.id} value={option.id}>{option.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {selectedWorkflow && <div className="mt-2 text-text-tertiary system-xs-regular">{selectedWorkflow.description}</div>}
-        </div>
-        <div>
-          <div className="mb-2 flex items-center justify-between">
-            <div className="text-text-secondary system-xs-medium-uppercase">{t('metrics.custom.mappingTitle')}</div>
-            <Button size="small" variant="ghost" onClick={() => addCustomMetricMapping(resourceType, resourceId, metric.id)}>
-              <span aria-hidden="true" className="i-ri-add-line mr-1 h-4 w-4" />
-              {t('metrics.custom.addMapping')}
-            </Button>
-          </div>
-          <div className="space-y-2">
-            {metric.customConfig.mappings.map(mapping => (
-              <MappingRow
-                key={mapping.id}
-                resourceType={resourceType}
-                mapping={mapping}
-                targetOptions={selectedWorkflow?.targetVariables ?? []}
-                onUpdate={patch => updateCustomMetricMapping(resourceType, resourceId, metric.id, mapping.id, patch)}
-                onRemove={() => removeCustomMetricMapping(resourceType, resourceId, metric.id, mapping.id)}
-              />
-            ))}
-          </div>
-          {!isConfigured && (
-            <div className="mt-3 rounded-xl border border-divider-subtle bg-background-default-subtle px-3 py-2 text-text-tertiary system-xs-regular">
-              {t('metrics.custom.mappingWarning')}
+    <div className="px-3 pb-3 pt-1">
+      <Select value={metric.customConfig.workflowId ?? ''} onValueChange={value => value && setCustomMetricWorkflow(resourceType, resourceId, metric.id, value)}>
+        <SelectTrigger className="h-auto rounded-lg bg-components-input-bg-normal p-1 hover:bg-components-input-bg-normal focus-visible:bg-components-input-bg-normal">
+          <div className="flex min-w-0 items-center gap-2">
+            <div className="flex h-6 w-6 shrink-0 items-center justify-center">
+              <div className="flex h-5 w-5 items-center justify-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-subtle">
+                <span aria-hidden="true" className="i-ri-equalizer-2-line h-3.5 w-3.5 text-text-tertiary" />
+              </div>
             </div>
-          )}
+            <div className="min-w-0 flex-1 px-1 py-1 text-left">
+              <div className={cn('truncate system-sm-regular', selectedWorkflow ? 'text-text-secondary' : 'text-components-input-text-placeholder')}>
+                {selectedWorkflow?.label ?? t('metrics.custom.workflowPlaceholder')}
+              </div>
+            </div>
+          </div>
+        </SelectTrigger>
+        <SelectContent>
+          {config.workflowOptions.map(option => (
+            <SelectItem key={option.id} value={option.id}>{option.label}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      <div className="mt-4">
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <div className="text-text-secondary system-xs-medium-uppercase">{t('metrics.custom.mappingTitle')}</div>
+          <Button
+            size="small"
+            variant="ghost"
+            className="text-text-accent"
+            onClick={() => addCustomMetricMapping(resourceType, resourceId, metric.id)}
+          >
+            <span aria-hidden="true" className="i-ri-add-line mr-1 h-4 w-4" />
+            {t('metrics.custom.addMapping')}
+          </Button>
         </div>
+        <div className="space-y-2">
+          {metric.customConfig.mappings.map(mapping => (
+            <MappingRow
+              key={mapping.id}
+              resourceType={resourceType}
+              mapping={mapping}
+              targetOptions={selectedWorkflow?.targetVariables ?? []}
+              onUpdate={patch => updateCustomMetricMapping(resourceType, resourceId, metric.id, mapping.id, patch)}
+              onRemove={() => removeCustomMetricMapping(resourceType, resourceId, metric.id, mapping.id)}
+            />
+          ))}
+        </div>
+        {!isConfigured && (
+          <div className="mt-3 rounded-lg bg-background-section px-3 py-2 text-text-tertiary system-xs-regular">
+            {t('metrics.custom.mappingWarning')}
+          </div>
+        )}
       </div>
     </div>
   )

@@ -86,8 +86,8 @@ describe('MetricSection', () => {
       renderMetricSection()
 
       expect(screen.getByText('Custom Evaluator')).toBeInTheDocument()
-      expect(screen.getByText('evaluation.metrics.custom.title')).toBeInTheDocument()
       expect(screen.getByText('evaluation.metrics.custom.warningBadge')).toBeInTheDocument()
+      expect(screen.getByText('evaluation.metrics.custom.workflowPlaceholder')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'evaluation.metrics.custom.addMapping' })).toBeInTheDocument()
     })
   })
