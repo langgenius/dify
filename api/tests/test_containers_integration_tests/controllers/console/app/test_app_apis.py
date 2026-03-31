@@ -1,7 +1,4 @@
-"""
-Additional tests to improve coverage for low-coverage modules in controllers/console/app.
-Target: increase coverage for files with <75% coverage.
-"""
+"""Testcontainers integration tests for controllers/console/app endpoints."""
 
 from __future__ import annotations
 
@@ -70,26 +67,12 @@ def _unwrap(func):
     return func
 
 
-class _ConnContext:
-    def __init__(self, rows):
-        self._rows = rows
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc, tb):
-        return False
-
-    def execute(self, _query, _args):
-        return self._rows
-
-
-# ========== Completion Tests ==========
 class TestCompletionEndpoints:
-    """Tests for completion API endpoints."""
+    @pytest.fixture
+    def app(self, flask_app_with_containers):
+        return flask_app_with_containers
 
     def test_completion_create_payload(self):
-        """Test completion creation payload."""
         payload = CompletionMessagePayload(inputs={"prompt": "test"}, model_config={})
         assert payload.inputs == {"prompt": "test"}
 
@@ -209,7 +192,9 @@ class TestCompletionEndpoints:
 
 
 class TestAppEndpoints:
-    """Tests for app endpoints."""
+    @pytest.fixture
+    def app(self, flask_app_with_containers):
+        return flask_app_with_containers
 
     def test_app_put_should_preserve_icon_type_when_payload_omits_it(self, app, monkeypatch):
         api = app_module.AppApi()
@@ -250,12 +235,12 @@ class TestAppEndpoints:
             )
 
 
-# ========== OpsTrace Tests ==========
 class TestOpsTraceEndpoints:
-    """Tests for ops_trace endpoint."""
+    @pytest.fixture
+    def app(self, flask_app_with_containers):
+        return flask_app_with_containers
 
     def test_ops_trace_query_basic(self):
-        """Test ops_trace query."""
         query = TraceProviderQuery(tracing_provider="langfuse")
         assert query.tracing_provider == "langfuse"
 
@@ -310,12 +295,12 @@ class TestOpsTraceEndpoints:
                 method(app_id="app-1")
 
 
-# ========== Site Tests ==========
 class TestSiteEndpoints:
-    """Tests for site endpoint."""
+    @pytest.fixture
+    def app(self, flask_app_with_containers):
+        return flask_app_with_containers
 
     def test_site_response_structure(self):
-        """Test site response structure."""
         payload = AppSiteUpdatePayload(title="My Site", description="Test site")
         assert payload.title == "My Site"
 
@@ -369,27 +354,22 @@ class TestSiteEndpoints:
         assert result is site
 
 
-# ========== Workflow Tests ==========
 class TestWorkflowEndpoints:
-    """Tests for workflow endpoints."""
-
     def test_workflow_copy_payload(self):
-        """Test workflow copy payload."""
         payload = SyncDraftWorkflowPayload(graph={}, features={})
         assert payload.graph == {}
 
     def test_workflow_mode_query(self):
-        """Test workflow mode query."""
         payload = AdvancedChatWorkflowRunPayload(inputs={}, query="hi")
         assert payload.query == "hi"
 
 
-# ========== Workflow App Log Tests ==========
 class TestWorkflowAppLogEndpoints:
-    """Tests for workflow app log endpoints."""
+    @pytest.fixture
+    def app(self, flask_app_with_containers):
+        return flask_app_with_containers
 
     def test_workflow_app_log_query(self):
-        """Test workflow app log query."""
         query = WorkflowAppLogQuery(keyword="test", page=1, limit=20)
         assert query.keyword == "test"
 
@@ -427,12 +407,12 @@ class TestWorkflowAppLogEndpoints:
         assert result == {"items": [], "total": 0}
 
 
-# ========== Workflow Draft Variable Tests ==========
 class TestWorkflowDraftVariableEndpoints:
-    """Tests for workflow draft variable endpoints."""
+    @pytest.fixture
+    def app(self, flask_app_with_containers):
+        return flask_app_with_containers
 
     def test_workflow_variable_creation(self):
-        """Test workflow variable creation."""
         payload = WorkflowDraftVariableUpdatePayload(name="var1", value="test")
         assert payload.name == "var1"
 
@@ -472,12 +452,12 @@ class TestWorkflowDraftVariableEndpoints:
         assert result == {"items": [], "total": 0}
 
 
-# ========== Workflow Statistic Tests ==========
 class TestWorkflowStatisticEndpoints:
-    """Tests for workflow statistic endpoints."""
+    @pytest.fixture
+    def app(self, flask_app_with_containers):
+        return flask_app_with_containers
 
     def test_workflow_statistic_time_range(self):
-        """Test workflow statistic time range query."""
         query = WorkflowStatisticQuery(start="2024-01-01", end="2024-12-31")
         assert query.start == "2024-01-01"
 
@@ -541,12 +521,12 @@ class TestWorkflowStatisticEndpoints:
         assert response.get_json() == {"data": [{"date": "2024-01-02"}]}
 
 
-# ========== Workflow Trigger Tests ==========
 class TestWorkflowTriggerEndpoints:
-    """Tests for workflow trigger endpoints."""
+    @pytest.fixture
+    def app(self, flask_app_with_containers):
+        return flask_app_with_containers
 
     def test_webhook_trigger_payload(self):
-        """Test webhook trigger payload."""
         payload = Parser(node_id="node-1")
         assert payload.node_id == "node-1"
 
@@ -578,22 +558,13 @@ class TestWorkflowTriggerEndpoints:
         assert result is trigger
 
 
-# ========== Wraps Tests ==========
 class TestWrapsEndpoints:
-    """Tests for wraps utility functions."""
-
     def test_get_app_model_context(self):
-        """Test get_app_model wrapper context."""
-        # These are decorator functions, so we test their availability
         assert hasattr(wraps_module, "get_app_model")
 
 
-# ========== MCP Server Tests ==========
 class TestMCPServerEndpoints:
-    """Tests for MCP server endpoints."""
-
     def test_mcp_server_connection(self):
-        """Test MCP server connection."""
         payload = MCPServerCreatePayload(parameters={"url": "http://localhost:3000"})
         assert payload.parameters["url"] == "http://localhost:3000"
 
@@ -602,22 +573,14 @@ class TestMCPServerEndpoints:
         assert payload.status == "active"
 
 
-# ========== Error Handling Tests ==========
 class TestErrorHandling:
-    """Tests for error handling in various endpoints."""
-
     def test_annotation_list_query_validation(self):
-        """Test annotation list query validation."""
         with pytest.raises(ValueError):
             annotation_module.AnnotationListQuery(page=0)
 
 
-# ========== Integration-like Tests ==========
 class TestPayloadIntegration:
-    """Integration tests for payload handling."""
-
     def test_multiple_payload_types(self):
-        """Test handling of multiple payload types."""
         payloads = [
             annotation_module.AnnotationReplyPayload(
                 score_threshold=0.5, embedding_provider_name="openai", embedding_model_name="text-embedding-3-small"

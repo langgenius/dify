@@ -1,3 +1,7 @@
+"""Testcontainers integration tests for controllers.console.workspace.trigger_providers endpoints."""
+
+from __future__ import annotations
+
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -40,6 +44,10 @@ def mock_user():
 
 
 class TestTriggerProviderApis:
+    @pytest.fixture
+    def app(self, flask_app_with_containers):
+        return flask_app_with_containers
+
     def test_icon_success(self, app):
         api = TriggerProviderIconApi()
         method = unwrap(api.get)
@@ -84,6 +92,10 @@ class TestTriggerProviderApis:
 
 
 class TestTriggerSubscriptionListApi:
+    @pytest.fixture
+    def app(self, flask_app_with_containers):
+        return flask_app_with_containers
+
     def test_list_success(self, app):
         api = TriggerSubscriptionListApi()
         method = unwrap(api.get)
@@ -115,6 +127,10 @@ class TestTriggerSubscriptionListApi:
 
 
 class TestTriggerSubscriptionBuilderApis:
+    @pytest.fixture
+    def app(self, flask_app_with_containers):
+        return flask_app_with_containers
+
     def test_create_builder(self, app):
         api = TriggerSubscriptionBuilderCreateApi()
         method = unwrap(api.post)
@@ -219,6 +235,10 @@ class TestTriggerSubscriptionBuilderApis:
 
 
 class TestTriggerSubscriptionCrud:
+    @pytest.fixture
+    def app(self, flask_app_with_containers):
+        return flask_app_with_containers
+
     def test_update_rename_only(self, app):
         api = TriggerSubscriptionUpdateApi()
         method = unwrap(api.post)
@@ -321,6 +341,10 @@ class TestTriggerSubscriptionCrud:
 
 
 class TestTriggerOAuthApis:
+    @pytest.fixture
+    def app(self, flask_app_with_containers):
+        return flask_app_with_containers
+
     def test_oauth_authorize_success(self, app):
         api = TriggerOAuthAuthorizeApi()
         method = unwrap(api.get)
@@ -455,6 +479,10 @@ class TestTriggerOAuthApis:
 
 
 class TestTriggerOAuthClientManageApi:
+    @pytest.fixture
+    def app(self, flask_app_with_containers):
+        return flask_app_with_containers
+
     def test_get_client(self, app):
         api = TriggerOAuthClientManageApi()
         method = unwrap(api.get)
@@ -527,6 +555,10 @@ class TestTriggerOAuthClientManageApi:
 
 
 class TestTriggerSubscriptionVerifyApi:
+    @pytest.fixture
+    def app(self, flask_app_with_containers):
+        return flask_app_with_containers
+
     def test_verify_success(self, app):
         api = TriggerSubscriptionVerifyApi()
         method = unwrap(api.post)
