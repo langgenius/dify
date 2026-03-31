@@ -17,7 +17,7 @@ import { getEvaluationMockConfig } from '../mock'
 import { isCustomMetricConfigured, useEvaluationStore } from '../store'
 import { groupFieldOptions } from '../utils'
 
-type CustomMetricEditorProps = EvaluationResourceProps & {
+type CustomMetricEditorCardProps = EvaluationResourceProps & {
   metric: EvaluationMetric
 }
 
@@ -76,11 +76,11 @@ function MappingRow({
   )
 }
 
-const CustomMetricEditor = ({
+const CustomMetricEditorCard = ({
   resourceType,
   resourceId,
   metric,
-}: CustomMetricEditorProps) => {
+}: CustomMetricEditorCardProps) => {
   const { t } = useTranslation('evaluation')
   const config = getEvaluationMockConfig(resourceType)
   const setCustomMetricWorkflow = useEvaluationStore(state => state.setCustomMetricWorkflow)
@@ -148,4 +148,4 @@ const CustomMetricEditor = ({
   )
 }
 
-export default CustomMetricEditor
+export default CustomMetricEditorCard
