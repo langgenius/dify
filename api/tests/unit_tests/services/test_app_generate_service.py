@@ -23,9 +23,9 @@ import pytest
 
 import services.app_generate_service as ags_module
 from core.app.entities.app_invoke_entities import InvokeFrom
+from enums.quota_type import QuotaType
 from models.model import AppMode
 from services.app_generate_service import AppGenerateService
-from enums.quota_type import QuotaType
 from services.errors.app import WorkflowIdFormatError, WorkflowNotFoundError
 
 
