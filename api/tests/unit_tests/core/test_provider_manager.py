@@ -48,7 +48,7 @@ def test__to_model_settings(mocker: MockerFixture, mock_provider_entity):
         tenant_id="tenant_id",
         provider_name="openai",
         model_name="gpt-4",
-        model_type="text-generation",
+        model_type="llm",
         enabled=True,
         load_balancing_enabled=True,
     )
@@ -61,7 +61,7 @@ def test__to_model_settings(mocker: MockerFixture, mock_provider_entity):
             tenant_id="tenant_id",
             provider_name="openai",
             model_name="gpt-4",
-            model_type="text-generation",
+            model_type="llm",
             name="__inherit__",
             encrypted_config=None,
             enabled=True,
@@ -70,7 +70,7 @@ def test__to_model_settings(mocker: MockerFixture, mock_provider_entity):
             tenant_id="tenant_id",
             provider_name="openai",
             model_name="gpt-4",
-            model_type="text-generation",
+            model_type="llm",
             name="first",
             encrypted_config='{"openai_api_key": "fake_key"}',
             enabled=True,
@@ -110,7 +110,7 @@ def test__to_model_settings_only_one_lb(mocker: MockerFixture, mock_provider_ent
         tenant_id="tenant_id",
         provider_name="openai",
         model_name="gpt-4",
-        model_type="text-generation",
+        model_type="llm",
         enabled=True,
         load_balancing_enabled=True,
     )
@@ -121,7 +121,7 @@ def test__to_model_settings_only_one_lb(mocker: MockerFixture, mock_provider_ent
             tenant_id="tenant_id",
             provider_name="openai",
             model_name="gpt-4",
-            model_type="text-generation",
+            model_type="llm",
             name="__inherit__",
             encrypted_config=None,
             enabled=True,
@@ -157,7 +157,7 @@ def test__to_model_settings_lb_disabled(mocker: MockerFixture, mock_provider_ent
         tenant_id="tenant_id",
         provider_name="openai",
         model_name="gpt-4",
-        model_type="text-generation",
+        model_type="llm",
         enabled=True,
         load_balancing_enabled=False,
     )
@@ -168,7 +168,7 @@ def test__to_model_settings_lb_disabled(mocker: MockerFixture, mock_provider_ent
             tenant_id="tenant_id",
             provider_name="openai",
             model_name="gpt-4",
-            model_type="text-generation",
+            model_type="llm",
             name="__inherit__",
             encrypted_config=None,
             enabled=True,
@@ -177,7 +177,7 @@ def test__to_model_settings_lb_disabled(mocker: MockerFixture, mock_provider_ent
             tenant_id="tenant_id",
             provider_name="openai",
             model_name="gpt-4",
-            model_type="text-generation",
+            model_type="llm",
             name="first",
             encrypted_config='{"openai_api_key": "fake_key"}',
             enabled=True,
@@ -270,7 +270,7 @@ def test_get_default_model_uses_injected_runtime_for_existing_default_record(moc
         tenant_id="tenant-id",
         provider_name="openai",
         model_name="gpt-4",
-        model_type=ModelType.LLM.to_origin_model_type(),
+        model_type=ModelType.LLM,
     )
     mock_session = Mock()
     mock_session.scalar.return_value = existing_default_model
@@ -449,7 +449,7 @@ def test_update_default_model_record_updates_existing_record(mocker: MockerFixtu
         tenant_id="tenant-id",
         provider_name="anthropic",
         model_name="claude-3-sonnet",
-        model_type=ModelType.LLM.to_origin_model_type(),
+        model_type=ModelType.LLM,
     )
     mock_session = Mock()
     mock_session.scalar.return_value = existing_default_model
@@ -487,7 +487,7 @@ def test_update_default_model_record_creates_record_with_origin_model_type(mocke
     assert created_default_model.tenant_id == "tenant-id"
     assert created_default_model.provider_name == "openai"
     assert created_default_model.model_name == "gpt-4"
-    assert created_default_model.model_type == ModelType.LLM.to_origin_model_type()
+    assert created_default_model.model_type == ModelType.LLM
     mock_session.commit.assert_called_once()
 
 

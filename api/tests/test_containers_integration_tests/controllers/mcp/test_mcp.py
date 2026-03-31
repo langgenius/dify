@@ -1,5 +1,10 @@
+"""Testcontainers integration tests for controllers.mcp.mcp endpoints."""
+
+from __future__ import annotations
+
 import types
 from unittest.mock import MagicMock, patch
+from uuid import uuid4
 
 import pytest
 from flask import Response
@@ -15,24 +20,6 @@ def unwrap(func):
 
 
 @pytest.fixture(autouse=True)
-def mock_db():
-    module.db = types.SimpleNamespace(engine=object())
-
-
-@pytest.fixture
-def fake_session():
-    session = MagicMock()
-    session.__enter__.return_value = session
-    session.__exit__.return_value = False
-    return session
-
-
-@pytest.fixture(autouse=True)
-def mock_session(fake_session):
-    module.Session = MagicMock(return_value=fake_session)
-
-
-@pytest.fixture(autouse=True)
 def mock_mcp_ns():
     fake_ns = types.SimpleNamespace()
     fake_ns.payload = None
@@ -44,8 +31,13 @@ def fake_payload(data):
     module.mcp_ns.payload = data
 
 
+_TENANT_ID = str(uuid4())
+_APP_ID = str(uuid4())
+_SERVER_ID = str(uuid4())
+
+
 class DummyServer:
-    def __init__(self, status, app_id="app-1", tenant_id="tenant-1", server_id="srv-1"):
+    def __init__(self, status, app_id=_APP_ID, tenant_id=_TENANT_ID, server_id=_SERVER_ID):
         self.status = status
         self.app_id = app_id
         self.tenant_id = tenant_id
@@ -54,8 +46,8 @@ class DummyServer:
 
 class DummyApp:
     def __init__(self, mode, workflow=None, app_model_config=None):
-        self.id = "app-1"
-        self.tenant_id = "tenant-1"
+        self.id = _APP_ID
+        self.tenant_id = _TENANT_ID
         self.mode = mode
         self.workflow = workflow
         self.app_model_config = app_model_config
@@ -76,6 +68,7 @@ class DummyResult:
         return {"jsonrpc": "2.0", "result": "ok", "id": 1}
 
 
+@pytest.mark.usefixtures("flask_req_ctx_with_containers")
 class TestMCPAppApi:
     @patch.object(module, "handle_mcp_request", return_value=DummyResult(), autospec=True)
     def test_success_request(self, mock_handle):

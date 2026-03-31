@@ -202,7 +202,7 @@ class TestProviderModel:
         # Assert
         assert provider.provider_type == ProviderType.CUSTOM
         assert provider.is_valid is False
-        assert provider.quota_type == ""
+        assert provider.quota_type is None
         assert provider.quota_limit is None
         assert provider.quota_used == 0
         assert provider.credential_id is None

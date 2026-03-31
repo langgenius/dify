@@ -9,14 +9,6 @@
       "count": 1
     }
   },
-  "__tests__/check-i18n.test.ts": {
-    "regexp/no-unused-capturing-group": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
   "__tests__/document-detail-navigation-fix.test.tsx": {
     "no-console": {
       "count": 10

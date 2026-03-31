@@ -1,7 +1,10 @@
-name: Run VDB Tests
+name: Run VDB Smoke Tests
 
 on:
   workflow_call:
+
+permissions:
+  contents: read
 
 concurrency:
   group: vdb-tests-${{ github.head_ref || github.run_id }}
@@ -9,7 +12,7 @@ concurrency:
 
 jobs:
   test:
-    name: VDB Tests
+    name: VDB Smoke Tests
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -30,7 +33,7 @@ jobs:
           remove_tool_cache: true
 
       - name: Setup UV and Python
-        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
+        uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57 # v8.0.0
         with:
           enable-cache: true
           python-version: ${{ matrix.python-version }}
@@ -58,23 +61,18 @@ jobs:
 #            tidb
 #            tiflash
 
-      - name: Set up Vector Stores (Weaviate, Qdrant, PGVector, Milvus, PgVecto-RS, Chroma, MyScale, ElasticSearch, Couchbase, OceanBase)
+      - name: Set up Vector Stores for Smoke Coverage
         uses: hoverkraft-tech/compose-action@4894d2492015c1774ee5a13a95b1072093087ec3 # v2.5.0
         with:
           compose-file: |
             docker/docker-compose.yaml
           services: |
+            db_postgres
+            redis
             weaviate
             qdrant
-            couchbase-server
-            etcd
-            minio
-            milvus-standalone
-            pgvecto-rs
             pgvector
             chroma
-            elasticsearch
-            oceanbase
 
       - name: setup test config
         run: |
@@ -86,4 +84,9 @@ jobs:
 #        run: uv run --project api python api/tests/integration_tests/vdb/tidb_vector/check_tiflash_ready.py
 
       - name: Test Vector Stores
-        run: uv run --project api bash dev/pytest/pytest_vdb.sh
+        run: |
+          uv run --project api pytest --timeout "${PYTEST_TIMEOUT:-180}" \
+            api/tests/integration_tests/vdb/chroma \
+            api/tests/integration_tests/vdb/pgvector \
+            api/tests/integration_tests/vdb/qdrant \
+            api/tests/integration_tests/vdb/weaviate

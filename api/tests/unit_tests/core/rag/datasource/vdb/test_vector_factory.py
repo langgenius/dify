@@ -340,15 +340,13 @@ def test_search_by_file_handles_missing_and_existing_upload(vector_factory_modul
     vector._embeddings = MagicMock()
     vector._vector_processor = MagicMock()
 
+    mock_session = SimpleNamespace(get=lambda _model, _id: None)
     monkeypatch.setattr(vector_factory_module, "UploadFile", SimpleNamespace(id=_Field()))
-    monkeypatch.setattr(
-        vector_factory_module, "db", SimpleNamespace(session=SimpleNamespace(query=lambda _model: upload_query))
-    )
+    monkeypatch.setattr(vector_factory_module, "db", SimpleNamespace(session=mock_session))
 
-    upload_query.first.return_value = None
     assert vector.search_by_file("file-1") == []
 
-    upload_query.first.return_value = SimpleNamespace(key="blob-key")
+    mock_session.get = lambda _model, _id: SimpleNamespace(key="blob-key")
     monkeypatch.setattr(vector_factory_module.storage, "load_once", MagicMock(return_value=b"file-bytes"))
     vector._embeddings.embed_multimodal_query.return_value = [0.3, 0.4]
     vector._vector_processor.search_by_vector.return_value = ["hit"]
