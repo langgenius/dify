@@ -317,7 +317,7 @@ def test_init_inherit_config_should_create_and_persist_inherit_configuration(
     assert inherit_config.tenant_id == "tenant-1"
     assert inherit_config.provider_name == "openai"
     assert inherit_config.model_name == "gpt-4o-mini"
-    assert inherit_config.model_type == "text-generation"
+    assert inherit_config.model_type == "llm"
     assert inherit_config.name == "__inherit__"
     mock_db.session.add.assert_called_once_with(inherit_config)
     mock_db.session.commit.assert_called_once()

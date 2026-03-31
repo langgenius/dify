@@ -174,6 +174,7 @@ class MCPAppApi(Resource):
             required=variable.get("required", False),
             max_length=variable.get("max_length"),
             options=variable.get("options") or [],
+            json_schema=variable.get("json_schema"),
         )
 
     def _parse_mcp_request(self, args: dict) -> mcp_types.ClientRequest | mcp_types.ClientNotification:
