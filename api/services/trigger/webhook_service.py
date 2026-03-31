@@ -28,7 +28,6 @@ from core.workflow.nodes.trigger_webhook.entities import (
     WebhookParameter,
 )
 from enums.quota_type import QuotaType
-from services.quota_service import QuotaService
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from factories import file_factory
@@ -39,6 +38,7 @@ from models.workflow import Workflow
 from services.async_workflow_service import AsyncWorkflowService
 from services.end_user_service import EndUserService
 from services.errors.app import QuotaExceededError
+from services.quota_service import QuotaService
 from services.trigger.app_trigger_service import AppTriggerService
 from services.workflow.entities import WebhookTriggerData
 
