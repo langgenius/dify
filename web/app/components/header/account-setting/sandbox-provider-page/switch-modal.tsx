@@ -39,7 +39,7 @@ const SwitchModal = ({
 
   return (
     <Dialog open onOpenChange={open => !open && onClose()}>
-      <DialogContent className="w-[480px]">
+      <DialogContent backdropProps={{ forceRender: true }} className="w-[480px]">
         <DialogCloseButton />
         <DialogTitle className="text-text-primary title-2xl-semi-bold">
           {t('sandboxProvider.switchModal.title', { ns: 'common' })}

@@ -154,7 +154,7 @@ function ConfigModal({ provider, onClose }: ConfigModalProps) {
 
   return (
     <Dialog open onOpenChange={open => !open && onClose()}>
-      <DialogContent className="w-[480px]">
+      <DialogContent backdropProps={{ forceRender: true }} className="w-[480px]">
         <DialogCloseButton />
 
         {/* Header */}
