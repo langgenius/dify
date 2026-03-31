@@ -83,7 +83,8 @@ const OnlineUserAvatar = ({
 const OnlineUsers = () => {
   const { t } = useTranslation()
   const appId = useStore(s => s.appId)
-  const { onlineUsers, cursors, isEnabled: isCollaborationEnabled } = useCollaboration(appId as string)
+  const isWorkflowCollaborationEnabled = useStore(s => !s.isRestoring && !s.historyWorkflowData)
+  const { onlineUsers, cursors, isEnabled: isCollaborationEnabled } = useCollaboration(appId as string, undefined, isWorkflowCollaborationEnabled)
   const { userProfile } = useAppContext()
   const reactFlow = useReactFlow()
   const [dropdownOpen, setDropdownOpen] = useState(false)

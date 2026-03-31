@@ -38,7 +38,7 @@ import {
   TextNode,
 } from 'lexical'
 import * as React from 'react'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { WorkflowContext } from '@/app/components/workflow/context'
 import { HooksStoreContext } from '@/app/components/workflow/hooks-store/provider'
 import { FileReferenceNode } from '@/app/components/workflow/skill/editor/skill-editor/plugins/file-reference-block/node'
@@ -344,10 +344,12 @@ const PromptEditorContent: FC<PromptEditorContentProps> = ({
 
   const [floatingAnchorElem, setFloatingAnchorElem] = useState<HTMLDivElement | null>(null)
 
-  const onRef = (floatingAnchorElement: HTMLDivElement | null) => {
-    if (floatingAnchorElement !== null)
-      setFloatingAnchorElem(floatingAnchorElement)
-  }
+  const onRef = useCallback((floatingAnchorElement: HTMLDivElement | null) => {
+    if (floatingAnchorElement === null)
+      return
+
+    setFloatingAnchorElem(prev => prev === floatingAnchorElement ? prev : floatingAnchorElement)
+  }, [])
 
   return (
     <LexicalComposer initialConfig={{ ...initialConfig, editable }}>

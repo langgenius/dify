@@ -28,15 +28,17 @@ const initialState: CollaborationViewState = {
   isLeader: false,
 }
 
-export function useCollaboration(appId: string, reactFlowStore?: ReactFlowStore) {
+export function useCollaboration(appId: string, reactFlowStore?: ReactFlowStore, enabled = true) {
   const [state, setState] = useState<CollaborationViewState>(initialState)
 
   const cursorServiceRef = useRef<CursorService | null>(null)
   const lastDisconnectReasonRef = useRef<string | null>(null)
-  const isCollaborationEnabled = useGlobalPublicStore(s => s.systemFeatures.enable_collaboration_mode)
+  const isCollaborationFeatureEnabled = useGlobalPublicStore(s => s.systemFeatures.enable_collaboration_mode)
+  const isCollaborationEnabled = isCollaborationFeatureEnabled && enabled
 
   useEffect(() => {
     if (!appId || !isCollaborationEnabled) {
+      lastDisconnectReasonRef.current = null
       Promise.resolve().then(() => {
         setState(initialState)
       })
@@ -109,14 +111,16 @@ export function useCollaboration(appId: string, reactFlowStore?: ReactFlowStore)
   }, [appId, isCollaborationEnabled])
 
   useEffect(() => {
-    if (!reactFlowStore)
+    if (!isCollaborationEnabled || !reactFlowStore) {
+      collaborationManager.setReactFlowStore(null)
       return
+    }
 
     collaborationManager.setReactFlowStore(reactFlowStore)
     return () => {
       collaborationManager.setReactFlowStore(null)
     }
-  }, [reactFlowStore])
+  }, [isCollaborationEnabled, reactFlowStore])
 
   const prevIsConnected = useRef(false)
   useEffect(() => {

@@ -14,9 +14,12 @@ const mockGetNodes = vi.fn()
 const mockSetNodes = vi.fn()
 const mockGetEdges = vi.fn()
 const mockSetEdges = vi.fn()
+const mockUseCollaboration = vi.fn()
 
 const workflowUiState = {
   appId: 'app-1',
+  isRestoring: false,
+  historyWorkflowData: undefined as Record<string, unknown> | undefined,
 }
 
 const hookFns = {
@@ -97,14 +100,17 @@ vi.mock('@/app/components/workflow/collaboration', () => ({
     onWorkflowUpdate: vi.fn(() => vi.fn()),
     onSyncRequest: vi.fn(() => vi.fn()),
   },
-  useCollaboration: () => ({
-    startCursorTracking: mockStartCursorTracking,
-    stopCursorTracking: mockStopCursorTracking,
-    onlineUsers: [],
-    cursors: {},
-    isConnected: false,
-    isEnabled: false,
-  }),
+  useCollaboration: (...args: unknown[]) => {
+    mockUseCollaboration(...args)
+    return {
+      startCursorTracking: mockStartCursorTracking,
+      stopCursorTracking: mockStopCursorTracking,
+      onlineUsers: [],
+      cursors: {},
+      isConnected: false,
+      isEnabled: false,
+    }
+  },
 }))
 
 vi.mock('@/app/components/workflow/block-selector/context/mcp-tool-availability-context', () => ({
@@ -215,6 +221,8 @@ describe('WorkflowMain', () => {
     capturedContextProps = null
     mockGetNodes.mockReturnValue([])
     mockGetEdges.mockReturnValue([])
+    workflowUiState.isRestoring = false
+    workflowUiState.historyWorkflowData = undefined
   })
 
   it('should render the inner workflow context with children and forwarded graph props', () => {
@@ -330,5 +338,40 @@ describe('WorkflowMain', () => {
       fetchInspectVars: hookFns.fetchInspectVars,
       configsMap: { flowId: 'app-1', flowType: 'app-flow', fileSettings: { enabled: true } },
     })
+  })
+
+  it.each([
+    {
+      description: 'the workflow is restoring',
+      workflowState: {
+        isRestoring: true,
+        historyWorkflowData: undefined,
+      },
+    },
+    {
+      description: 'viewing workflow history',
+      workflowState: {
+        isRestoring: false,
+        historyWorkflowData: { id: 'history-1' },
+      },
+    },
+  ])('should disable collaboration when $description', ({ workflowState }) => {
+    Object.assign(workflowUiState, workflowState)
+
+    render(
+      <WorkflowMain
+        nodes={[]}
+        edges={[]}
+        viewport={{ x: 0, y: 0, zoom: 1 }}
+      />,
+    )
+
+    expect(mockUseCollaboration).toHaveBeenCalledWith(
+      'app-1',
+      expect.objectContaining({
+        getState: expect.any(Function),
+      }),
+      false,
+    )
   })
 })

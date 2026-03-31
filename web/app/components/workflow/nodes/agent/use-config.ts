@@ -129,9 +129,7 @@ const useConfig = (id: string, payload: AgentNodeType) => {
     return res
   }
 
-  const formattingLegacyData = () => {
-    if (inputs.version || inputs.tool_node_version)
-      return inputs
+  const formattingLegacyData = useCallback(() => {
     const newData = produce(inputs, (draft) => {
       const schemas = currentStrategy?.parameters || []
       Object.keys(draft.agent_parameters || {}).forEach((key) => {
@@ -144,15 +142,17 @@ const useConfig = (id: string, payload: AgentNodeType) => {
       draft.tool_node_version = '2'
     })
     return newData
-  }
+  }, [currentStrategy?.parameters, inputs])
+
+  const shouldFormatLegacyData = Boolean(currentStrategy) && !readOnly && !inputs.version && !inputs.tool_node_version
 
   // formatting legacy data
   useEffect(() => {
-    if (!currentStrategy)
+    if (!shouldFormatLegacyData)
       return
     const newData = formattingLegacyData()
     setInputs(newData)
-  }, [currentStrategy])
+  }, [formattingLegacyData, setInputs, shouldFormatLegacyData])
 
   // vars
 

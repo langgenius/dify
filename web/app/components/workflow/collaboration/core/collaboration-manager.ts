@@ -1,4 +1,3 @@
-import type { Value } from 'loro-crdt'
 import type { Socket } from 'socket.io-client'
 import type {
   CommonNodeType,
@@ -16,11 +15,18 @@ import type {
   RestoreIntentData,
   RestoreRequestData,
 } from '../types/collaboration'
+import type {
+  LoroDocInstance,
+  LoroListInstance,
+  LoroMapInstance,
+  UndoManagerInstance,
+  Value,
+} from './loro-web'
 import { cloneDeep } from 'es-toolkit/object'
 import { isEqual } from 'es-toolkit/predicate'
-import { LoroDoc, LoroList, LoroMap, UndoManager } from 'loro-crdt'
 import { CRDTProvider } from './crdt-provider'
 import { EventEmitter } from './event-emitter'
+import initLoro, { LoroDoc, LoroList, LoroMap, UndoManager } from './loro-web'
 import { emitWithAuthGuard, webSocketClient } from './websocket-manager'
 
 type NodePanelPresenceEventData = {
@@ -105,12 +111,28 @@ const SET_NODES_ANOMALY_LOG_LIMIT = 100
 
 const toLoroValue = (value: unknown): Value => cloneDeep(value) as Value
 const toLoroRecord = (value: unknown): Record<string, Value> => cloneDeep(value) as Record<string, Value>
+
+let loroInitializationPromise: Promise<void> | null = null
+
+const ensureLoroReady = async (): Promise<void> => {
+  if (!loroInitializationPromise) {
+    loroInitializationPromise = Promise.resolve(initLoro())
+      .then(() => undefined)
+      .catch((error) => {
+        loroInitializationPromise = null
+        throw error
+      })
+  }
+
+  await loroInitializationPromise
+}
+
 export class CollaborationManager {
-  private doc: LoroDoc | null = null
-  private undoManager: UndoManager | null = null
+  private doc: LoroDocInstance | null = null
+  private undoManager: UndoManagerInstance | null = null
   private provider: CRDTProvider | null = null
-  private nodesMap: LoroMap<Record<string, Value>> | null = null
-  private edgesMap: LoroMap<Record<string, Value>> | null = null
+  private nodesMap: LoroMapInstance<Record<string, Value>> | null = null
+  private edgesMap: LoroMapInstance<Record<string, Value>> | null = null
   private eventEmitter = new EventEmitter()
   private currentAppId: string | null = null
   private reactFlowStore: ReactFlowStore | null = null
@@ -127,6 +149,7 @@ export class CollaborationManager {
   private graphViewActive: boolean | null = null
   private graphImportLogs: GraphImportLogEntry[] = []
   private setNodesAnomalyLogs: SetNodesAnomalyLogEntry[] = []
+  private connectionInitializationPromise: Promise<void> | null = null
   private pendingImportLog: {
     timestamp: number
     sources: Set<'nodes' | 'edges'>
@@ -191,13 +214,13 @@ export class CollaborationManager {
     emitWithAuthGuard(socket, 'graph_event', payload, { onUnauthorized: this.handleSessionUnauthorized })
   }
 
-  private getNodeContainer(nodeId: string): LoroMap<Record<string, Value>> {
+  private getNodeContainer(nodeId: string): LoroMapInstance<Record<string, Value>> {
     if (!this.nodesMap)
       throw new Error('Nodes map not initialized')
 
     let container = this.nodesMap.get(nodeId) as unknown
 
-    const isMapContainer = (value: unknown): value is LoroMap<Record<string, Value>> & LoroContainer => {
+    const isMapContainer = (value: unknown): value is LoroMapInstance<Record<string, Value>> & LoroContainer => {
       return !!value && typeof (value as LoroContainer).kind === 'function' && (value as LoroContainer).kind?.() === 'Map'
     }
 
@@ -207,27 +230,27 @@ export class CollaborationManager {
       const attached = (newContainer as LoroContainer).getAttached?.() ?? newContainer
       container = attached
       if (previousValue && typeof previousValue === 'object')
-        this.populateNodeContainer(container as LoroMap<Record<string, Value>>, previousValue as Node)
+        this.populateNodeContainer(container as LoroMapInstance<Record<string, Value>>, previousValue as Node)
     }
     else {
       const attached = (container as LoroContainer).getAttached?.() ?? container
       container = attached
     }
 
-    return container as LoroMap<Record<string, Value>>
+    return container as LoroMapInstance<Record<string, Value>>
   }
 
-  private ensureDataContainer(nodeContainer: LoroMap<Record<string, Value>>): LoroMap<Record<string, Value>> {
+  private ensureDataContainer(nodeContainer: LoroMapInstance<Record<string, Value>>): LoroMapInstance<Record<string, Value>> {
     let dataContainer = nodeContainer.get('data') as unknown
 
     if (!dataContainer || typeof (dataContainer as LoroContainer).kind !== 'function' || (dataContainer as LoroContainer).kind?.() !== 'Map')
       dataContainer = nodeContainer.setContainer('data', new LoroMap())
 
     const attached = (dataContainer as LoroContainer).getAttached?.() ?? dataContainer
-    return attached as LoroMap<Record<string, Value>>
+    return attached as LoroMapInstance<Record<string, Value>>
   }
 
-  private ensureList(nodeContainer: LoroMap<Record<string, Value>>, key: string): LoroList<unknown> {
+  private ensureList(nodeContainer: LoroMapInstance<Record<string, Value>>, key: string): LoroListInstance<unknown> {
     const dataContainer = this.ensureDataContainer(nodeContainer)
     let list = dataContainer.get(key) as unknown
 
@@ -235,7 +258,7 @@ export class CollaborationManager {
       list = dataContainer.setContainer(key, new LoroList())
 
     const attached = (list as LoroContainer).getAttached?.() ?? list
-    return attached as LoroList<unknown>
+    return attached as LoroListInstance<unknown>
   }
 
   private exportNode(nodeId: string): Node {
@@ -247,7 +270,7 @@ export class CollaborationManager {
     }
   }
 
-  private populateNodeContainer(container: LoroMap<Record<string, Value>>, node: Node): void {
+  private populateNodeContainer(container: LoroMapInstance<Record<string, Value>>, node: Node): void {
     const listFields = new Set(['variables', 'prompt_template', 'parameters'])
     container.set('id', node.id)
     container.set('type', node.type)
@@ -325,7 +348,7 @@ export class CollaborationManager {
     return (syncDataAllowList.has(key) || !key.startsWith('_')) && key !== 'selected'
   }
 
-  private syncList(nodeContainer: LoroMap<Record<string, Value>>, key: string, desired: Array<unknown>): void {
+  private syncList(nodeContainer: LoroMapInstance<Record<string, Value>>, key: string, desired: Array<unknown>): void {
     const list = this.ensureList(nodeContainer, key)
     const current = list.toJSON() as Array<unknown>
     const target = Array.isArray(desired) ? desired : []
@@ -471,71 +494,107 @@ export class CollaborationManager {
     if (reactFlowStore)
       this.reactFlowStore = reactFlowStore
 
+    if (this.connectionInitializationPromise) {
+      try {
+        await this.connectionInitializationPromise
+        return connectionId
+      }
+      catch (error) {
+        this.activeConnections.delete(connectionId)
+        throw error
+      }
+    }
+
+    const initializationPromise = this.initializeConnection(appId)
+    this.connectionInitializationPromise = initializationPromise
+
+    try {
+      await initializationPromise
+    }
+    catch (error) {
+      this.activeConnections.delete(connectionId)
+      throw error
+    }
+    finally {
+      if (this.connectionInitializationPromise === initializationPromise)
+        this.connectionInitializationPromise = null
+    }
+
+    return connectionId
+  }
+
+  private async initializeConnection(appId: string): Promise<void> {
     const socket = webSocketClient.connect(appId)
 
     // Setup event listeners BEFORE any other operations
     this.setupSocketEventListeners(socket)
 
-    this.doc = new LoroDoc()
-    this.nodesMap = this.doc.getMap('nodes') as LoroMap<Record<string, Value>>
-    this.edgesMap = this.doc.getMap('edges') as LoroMap<Record<string, Value>>
+    try {
+      await ensureLoroReady()
 
-    // Initialize UndoManager for collaborative undo/redo
-    this.undoManager = new UndoManager(this.doc, {
-      maxUndoSteps: 100,
-      mergeInterval: 500, // Merge operations within 500ms
-      excludeOriginPrefixes: [], // Don't exclude anything - let UndoManager track all local operations
-      onPush: (_isUndo, _range, _event) => {
-        // Store current selection state when an operation is pushed
-        const selectedNode = this.reactFlowStore?.getState().getNodes().find((n: Node) => n.data?.selected)
+      this.doc = new LoroDoc()
+      this.nodesMap = this.doc.getMap('nodes') as LoroMapInstance<Record<string, Value>>
+      this.edgesMap = this.doc.getMap('edges') as LoroMapInstance<Record<string, Value>>
 
-        // Emit event to update UI button states when new operation is pushed
-        setTimeout(() => {
-          this.eventEmitter.emit('undoRedoStateChange', {
-            canUndo: this.undoManager?.canUndo() || false,
-            canRedo: this.undoManager?.canRedo() || false,
-          })
-        }, 0)
+      // Initialize UndoManager for collaborative undo/redo
+      this.undoManager = new UndoManager(this.doc, {
+        maxUndoSteps: 100,
+        mergeInterval: 500, // Merge operations within 500ms
+        excludeOriginPrefixes: [], // Don't exclude anything - let UndoManager track all local operations
+        onPush: (_isUndo, _range, _event) => {
+          // Store current selection state when an operation is pushed
+          const selectedNode = this.reactFlowStore?.getState().getNodes().find((n: Node) => n.data?.selected)
 
-        return {
-          value: {
-            selectedNodeId: selectedNode?.id || null,
-            timestamp: Date.now(),
-          },
-          cursors: [],
-        }
-      },
-      onPop: (_isUndo, value, _counterRange) => {
-        // Restore selection state when undoing/redoing
-        if (value?.value && typeof value.value === 'object' && 'selectedNodeId' in value.value && this.reactFlowStore) {
-          const selectedNodeId = (value.value as { selectedNodeId?: string | null }).selectedNodeId
-          if (selectedNodeId) {
-            const state = this.reactFlowStore.getState()
-            const { setNodes } = state
-            const nodes = state.getNodes()
-            const newNodes = nodes.map((n: Node) => ({
-              ...n,
-              data: {
-                ...n.data,
-                selected: n.id === selectedNodeId,
-              },
-            }))
-            this.captureSetNodesAnomaly(nodes, newNodes, 'reactflow-native:undo-redo-selection-restore')
-            setNodes(newNodes)
+          // Emit event to update UI button states when new operation is pushed
+          setTimeout(() => {
+            this.eventEmitter.emit('undoRedoStateChange', {
+              canUndo: this.undoManager?.canUndo() || false,
+              canRedo: this.undoManager?.canRedo() || false,
+            })
+          }, 0)
+
+          return {
+            value: {
+              selectedNodeId: selectedNode?.id || null,
+              timestamp: Date.now(),
+            },
+            cursors: [],
           }
-        }
-      },
-    })
+        },
+        onPop: (_isUndo, value, _counterRange) => {
+          // Restore selection state when undoing/redoing
+          if (value?.value && typeof value.value === 'object' && 'selectedNodeId' in value.value && this.reactFlowStore) {
+            const selectedNodeId = (value.value as { selectedNodeId?: string | null }).selectedNodeId
+            if (selectedNodeId) {
+              const state = this.reactFlowStore.getState()
+              const { setNodes } = state
+              const nodes = state.getNodes()
+              const newNodes = nodes.map((n: Node) => ({
+                ...n,
+                data: {
+                  ...n.data,
+                  selected: n.id === selectedNodeId,
+                },
+              }))
+              this.captureSetNodesAnomaly(nodes, newNodes, 'reactflow-native:undo-redo-selection-restore')
+              setNodes(newNodes)
+            }
+          }
+        },
+      })
 
-    this.provider = new CRDTProvider(socket, this.doc, this.handleSessionUnauthorized)
+      this.provider = new CRDTProvider(socket, this.doc, this.handleSessionUnauthorized)
 
-    this.setupSubscriptions()
+      this.setupSubscriptions()
 
-    // Force user_connect if already connected
-    if (socket.connected)
-      emitWithAuthGuard(socket, 'user_connect', { workflow_id: appId }, { onUnauthorized: this.handleSessionUnauthorized })
-
-    return connectionId
+      // Force user_connect if already connected
+      if (socket.connected)
+        emitWithAuthGuard(socket, 'user_connect', { workflow_id: appId }, { onUnauthorized: this.handleSessionUnauthorized })
+    }
+    catch (error) {
+      this.forceDisconnect()
+      throw error
+    }
   }
 
   disconnect = (connectionId?: string): void => {
@@ -564,6 +623,7 @@ export class CollaborationManager {
     this.onlineUsers = []
     this.isUndoRedoInProgress = false
     this.rejoinInProgress = false
+    this.connectionInitializationPromise = null
     this.clearGraphImportLog()
 
     // Only reset leader status when actually disconnecting

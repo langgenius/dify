@@ -65,7 +65,8 @@ const SkillMain = dynamic(() => import('@/app/components/workflow/skill/main'), 
 
 const CollaborationSession = () => {
   const appId = useStore(s => s.appId)
-  useCollaboration(appId || '')
+  const isCollaborationSessionEnabled = useStore(s => !s.isRestoring && !s.historyWorkflowData)
+  useCollaboration(appId || '', undefined, isCollaborationSessionEnabled)
   return null
 }
 

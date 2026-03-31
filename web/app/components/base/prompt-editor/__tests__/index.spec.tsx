@@ -365,6 +365,22 @@ describe('PromptEditor', () => {
       expect(() => unmount()).not.toThrow()
     })
 
+    it('should rerender rapidly without triggering a ref update loop', () => {
+      const { rerender } = render(
+        <React.StrictMode>
+          <PromptEditor value="first" />
+        </React.StrictMode>,
+      )
+
+      expect(() => {
+        rerender(
+          <React.StrictMode>
+            <PromptEditor value="second" />
+          </React.StrictMode>,
+        )
+      }).not.toThrow()
+    })
+
     it('should render hitl block when show=true', () => {
       render(
         <PromptEditor

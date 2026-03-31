@@ -19,6 +19,7 @@ const mockUseSubscription = vi.fn()
 const mockCollaborationSetNodes = vi.fn()
 const mockCollaborationSetEdges = vi.fn()
 const mockEmitGraphViewActive = vi.fn()
+const mockUseCollaboration = vi.fn()
 
 let appStoreState: {
   appDetail?: {
@@ -63,6 +64,8 @@ let searchParamsValue: string | null = null
 const workflowUiState = {
   appId: 'app-1',
   isResponding: false,
+  isRestoring: false,
+  historyWorkflowData: undefined as Record<string, unknown> | undefined,
   showUpgradeRuntimeModal: false,
   setShowUpgradeRuntimeModal: mockSetShowUpgradeRuntimeModal,
 }
@@ -145,7 +148,7 @@ vi.mock('@/context/event-emitter', () => ({
 }))
 
 vi.mock('@/app/components/workflow/collaboration', () => ({
-  useCollaboration: () => undefined,
+  useCollaboration: (...args: unknown[]) => mockUseCollaboration(...args),
 }))
 
 vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', () => ({
@@ -293,6 +296,8 @@ describe('WorkflowApp', () => {
     mockInitialEdges.mockReturnValue([{ id: 'edge-1' }])
     mockGetWorkflowRunAndTraceUrl.mockReturnValue({ runUrl: '/runs/run-1' })
     mockSyncWorkflowDraftImmediately.mockResolvedValue(undefined)
+    workflowUiState.isRestoring = false
+    workflowUiState.historyWorkflowData = undefined
   })
 
   it('should render the loading shell while workflow data is still loading', () => {
@@ -426,5 +431,28 @@ describe('WorkflowApp', () => {
     expect(mockSetInputs).not.toHaveBeenCalled()
     expect(mockSetShowInputsPanel).not.toHaveBeenCalled()
     expect(mockSetShowDebugAndPreviewPanel).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    {
+      description: 'the workflow is restoring',
+      workflowState: {
+        isRestoring: true,
+        historyWorkflowData: undefined,
+      },
+    },
+    {
+      description: 'a historical workflow version is selected',
+      workflowState: {
+        isRestoring: false,
+        historyWorkflowData: { id: 'history-1' },
+      },
+    },
+  ])('should disable the collaboration session when $description', ({ workflowState }) => {
+    Object.assign(workflowUiState, workflowState)
+
+    render(<WorkflowApp />)
+
+    expect(mockUseCollaboration).toHaveBeenCalledWith('app-1', undefined, false)
   })
 })

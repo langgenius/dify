@@ -1,13 +1,13 @@
-import type { LoroDoc } from 'loro-crdt'
 import type { Socket } from 'socket.io-client'
+import type { LoroDocInstance } from './loro-web'
 import { emitWithAuthGuard } from './websocket-manager'
 
 export class CRDTProvider {
-  private doc: LoroDoc
+  private doc: LoroDocInstance
   private socket: Socket
   private onUnauthorized?: () => void
 
-  constructor(socket: Socket, doc: LoroDoc, onUnauthorized?: () => void) {
+  constructor(socket: Socket, doc: LoroDocInstance, onUnauthorized?: () => void) {
     this.socket = socket
     this.doc = doc
     this.onUnauthorized = onUnauthorized

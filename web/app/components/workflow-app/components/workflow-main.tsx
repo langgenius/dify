@@ -50,6 +50,7 @@ const WorkflowMain = ({
   const featuresStore = useFeaturesStore()
   const workflowStore = useWorkflowStore()
   const appId = useStore(s => s.appId)
+  const isWorkflowCollaborationEnabled = useStore(s => !s.isRestoring && !s.historyWorkflowData)
   const containerRef = useRef<HTMLDivElement>(null)
   const reactFlow = useReactFlow()
 
@@ -68,7 +69,7 @@ const WorkflowMain = ({
     cursors,
     isConnected,
     isEnabled: isCollaborationEnabled,
-  } = useCollaboration(appId || '', reactFlowStore)
+  } = useCollaboration(appId || '', reactFlowStore, isWorkflowCollaborationEnabled)
   const myUserId = useMemo(
     () => (isCollaborationEnabled && isConnected ? 'current-user' : null),
     [isCollaborationEnabled, isConnected],

@@ -1,8 +1,8 @@
-import type { LoroMap } from 'loro-crdt'
+import type { LoroDocInstance, LoroMapInstance } from '../loro-web'
 import type { Node } from '@/app/components/workflow/types'
-import { LoroDoc } from 'loro-crdt'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { CollaborationManager } from '../collaboration-manager'
+import initLoro, { LoroDoc } from '../loro-web'
 
 const NODE_ID = 'node-1'
 const LLM_NODE_ID = 'llm-node'
@@ -74,9 +74,9 @@ type ParameterExtractorNodeData = {
 }
 
 type CollaborationManagerInternals = {
-  doc: LoroDoc
-  nodesMap: LoroMap
-  edgesMap: LoroMap
+  doc: LoroDocInstance
+  nodesMap: LoroMapInstance
+  edgesMap: LoroMapInstance
   syncNodes: (oldNodes: Node[], newNodes: Node[]) => void
 }
 
@@ -159,7 +159,7 @@ const createParameterExtractorNode = (parameters: ParameterItem[]): Node<Paramet
 const getManagerInternals = (manager: CollaborationManager): CollaborationManagerInternals =>
   manager as unknown as CollaborationManagerInternals
 
-const getManager = (doc: LoroDoc) => {
+const getManager = (doc: LoroDocInstance) => {
   const manager = new CollaborationManager()
   const internals = getManagerInternals(manager)
   internals.doc = doc
@@ -176,6 +176,10 @@ const syncNodes = (manager: CollaborationManager, previous: Node[], next: Node[]
 }
 
 const exportNodes = (manager: CollaborationManager) => manager.getNodes()
+
+beforeAll(async () => {
+  await initLoro()
+})
 
 describe('Loro merge behavior smoke test', () => {
   it('inspects concurrent edits after merge', () => {

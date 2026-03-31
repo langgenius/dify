@@ -102,8 +102,9 @@ const BasePanel: FC<BasePanelProps> = ({
   const { t } = useTranslation()
   const language = useLanguage()
   const appId = useStore(s => s.appId)
+  const isWorkflowCollaborationEnabled = useStore(s => !s.isRestoring && !s.historyWorkflowData)
   const { userProfile } = useAppContext()
-  const { isConnected, nodePanelPresence } = useCollaboration(appId as string)
+  const { isConnected, nodePanelPresence } = useCollaboration(appId as string, undefined, isWorkflowCollaborationEnabled)
   const { showMessageLogModal } = useAppStore(useShallow(state => ({
     showMessageLogModal: state.showMessageLogModal,
   })))

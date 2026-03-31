@@ -1,13 +1,13 @@
-import type { LoroMap } from 'loro-crdt'
+import type { LoroDocInstance, LoroMapInstance } from '../loro-web'
 import type {
   NodePanelPresenceMap,
   NodePanelPresenceUser,
 } from '@/app/components/workflow/collaboration/types/collaboration'
 import type { CommonNodeType, Edge, Node } from '@/app/components/workflow/types'
-import { LoroDoc } from 'loro-crdt'
 import { Position } from 'reactflow'
 import { CollaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { BlockEnum } from '@/app/components/workflow/types'
+import initLoro, { LoroDoc } from '../loro-web'
 
 const NODE_ID = '1760342909316'
 
@@ -88,12 +88,12 @@ type LLMNodeDataWithUnknownTemplate = Omit<LLMNodeData, 'prompt_template'> & {
   prompt_template: unknown
 }
 
-type ManagerDoc = LoroDoc | { commit: () => void }
+type ManagerDoc = LoroDocInstance | { commit: () => void }
 
 type CollaborationManagerInternals = {
   doc: ManagerDoc
-  nodesMap: LoroMap
-  edgesMap: LoroMap
+  nodesMap: LoroMapInstance
+  edgesMap: LoroMapInstance
   syncNodes: (oldNodes: Node[], newNodes: Node[]) => void
   syncEdges: (oldEdges: Edge[], newEdges: Edge[]) => void
   applyNodePanelPresenceUpdate: (update: NodePanelPresenceEventData) => void
@@ -245,6 +245,10 @@ const setupManager = (): { manager: CollaborationManager, internals: Collaborati
   internals.edgesMap = doc.getMap('edges')
   return { manager, internals }
 }
+
+beforeAll(async () => {
+  await initLoro()
+})
 
 describe('CollaborationManager syncNodes', () => {
   let manager: CollaborationManager

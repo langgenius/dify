@@ -88,7 +88,8 @@ const BaseNode: FC<BaseNodeProps> = ({
   const resolvedWorkflowStore = workflowStore ?? fallbackWorkflowStoreRef.current
   const appId = useZustandStore(resolvedWorkflowStore, s => s.appId)
   const controlMode = useZustandStore(resolvedWorkflowStore, s => s.controlMode)
-  const { nodePanelPresence } = useCollaboration(appId as string)
+  const isWorkflowCollaborationEnabled = useZustandStore(resolvedWorkflowStore, s => !s.isRestoring && !s.historyWorkflowData)
+  const { nodePanelPresence } = useCollaboration(appId as string, undefined, isWorkflowCollaborationEnabled)
   const { shouldDim: pluginDimmed, isChecking: pluginIsChecking, isMissing: pluginIsMissing, canInstall: pluginCanInstall, uniqueIdentifier: pluginUniqueIdentifier } = useNodePluginInstallation(data)
   const pluginInstallLocked = !pluginIsChecking && pluginIsMissing && pluginCanInstall && Boolean(pluginUniqueIdentifier)
 
