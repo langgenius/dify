@@ -1,10 +1,10 @@
 name: Translate i18n Files with Claude Code
 
+# Note: claude-code-action doesn't support push events directly.
+# Push events are bridged by trigger-i18n-sync.yml via repository_dispatch.
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'web/i18n/en-US/*.json'
+  repository_dispatch:
+    types: [i18n-sync]
   workflow_dispatch:
     inputs:
       files:
@@ -30,7 +30,7 @@ permissions:
 
 concurrency:
   group: translate-i18n-${{ github.event_name }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'push' }}
+  cancel-in-progress: false
 
 jobs:
   translate:
@@ -67,19 +67,20 @@ jobs:
             }
           " web/i18n-config/languages.ts | sed 's/[[:space:]]*$//')
 
-          if [ "${{ github.event_name }}" = "push" ]; then
-            BASE_SHA="${{ github.event.before }}"
-            if [ -z "$BASE_SHA" ] || [ "$BASE_SHA" = "0000000000000000000000000000000000000000" ]; then
-              BASE_SHA=$(git rev-parse HEAD~1 2>/dev/null || true)
-            fi
-            HEAD_SHA="${{ github.sha }}"
-            if [ -n "$BASE_SHA" ]; then
-              CHANGED_FILES=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" -- 'web/i18n/en-US/*.json' 2>/dev/null | sed -n 's@^.*/@@p' | sed 's/\.json$//' | tr '\n' ' ' | sed 's/[[:space:]]*$//')
-            else
-              CHANGED_FILES=$(find web/i18n/en-US -maxdepth 1 -type f -name '*.json' -print | sed -n 's@^.*/@@p' | sed 's/\.json$//' | sort | tr '\n' ' ' | sed 's/[[:space:]]*$//')
-            fi
+          if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+            BASE_SHA="${{ github.event.client_payload.base_sha }}"
+            HEAD_SHA="${{ github.event.client_payload.head_sha }}"
+            CHANGED_FILES="${{ github.event.client_payload.changed_files }}"
             TARGET_LANGS="$DEFAULT_TARGET_LANGS"
-            SYNC_MODE="incremental"
+            SYNC_MODE="${{ github.event.client_payload.sync_mode || 'incremental' }}"
+
+            if [ -n "${{ github.event.client_payload.diff_base64 }}" ]; then
+              printf '%s' '${{ github.event.client_payload.diff_base64 }}' | base64 -d > /tmp/i18n-diff.txt
+              DIFF_AVAILABLE="true"
+            else
+              : > /tmp/i18n-diff.txt
+              DIFF_AVAILABLE="false"
+            fi
           else
             BASE_SHA=""
             HEAD_SHA=$(git rev-parse HEAD)
@@ -104,6 +105,18 @@ jobs:
             else
               CHANGED_FILES=""
             fi
+
+            if [ "$SYNC_MODE" = "incremental" ] && [ -n "$BASE_SHA" ]; then
+              git diff "$BASE_SHA" "$HEAD_SHA" -- 'web/i18n/en-US/*.json' > /tmp/i18n-diff.txt 2>/dev/null || : > /tmp/i18n-diff.txt
+            else
+              : > /tmp/i18n-diff.txt
+            fi
+
+            if [ -s /tmp/i18n-diff.txt ]; then
+              DIFF_AVAILABLE="true"
+            else
+              DIFF_AVAILABLE="false"
+            fi
           fi
 
           FILE_ARGS=""
@@ -123,6 +136,7 @@ jobs:
             echo "CHANGED_FILES=$CHANGED_FILES"
             echo "TARGET_LANGS=$TARGET_LANGS"
             echo "SYNC_MODE=$SYNC_MODE"
+            echo "DIFF_AVAILABLE=$DIFF_AVAILABLE"
             echo "FILE_ARGS=$FILE_ARGS"
             echo "LANG_ARGS=$LANG_ARGS"
           } >> "$GITHUB_OUTPUT"
@@ -156,6 +170,7 @@ jobs:
             - Head SHA: `${{ steps.context.outputs.HEAD_SHA }}`
             - Scoped file args: `${{ steps.context.outputs.FILE_ARGS }}`
             - Scoped language args: `${{ steps.context.outputs.LANG_ARGS }}`
+            - Full English diff available: `${{ steps.context.outputs.DIFF_AVAILABLE }}`
 
             Tool rules:
             - Use Read for repository files.
@@ -173,6 +188,9 @@ jobs:
                - Do not touch unrelated i18n files.
                - Do not modify `${{ github.workspace }}/web/i18n/en-US/`.
             3. Detect English changes per file.
+               - Treat the current English JSON files under `${{ github.workspace }}/web/i18n/en-US/` plus the scoped `i18n:check` result as the primary source of truth.
+               - Use `/tmp/i18n-diff.txt` only as supporting context to understand what changed between `Base SHA` and `Head SHA`.
+               - Never rely on diff alone when deciding final keys or values.
                - Read the current English JSON file for each file in scope.
                - If sync mode is `incremental` and `Base SHA` is not empty, run:
                  `git -C ${{ github.workspace }} show <Base SHA>:web/i18n/en-US/<file>.json`
@@ -182,7 +200,7 @@ jobs:
                  - ADD: key only in current
                  - UPDATE: key exists in both and the English value changed
                  - DELETE: key only in previous
-               - Do not rely on a truncated diff file.
+               - If `/tmp/i18n-diff.txt` is available, read it before translating so wording changes are grounded in the full English patch, but resolve any ambiguity by trusting the actual English files and scoped checks.
             4. Run a scoped pre-check before editing:
                - `pnpm --dir ${{ github.workspace }}/web run i18n:check ${{ steps.context.outputs.FILE_ARGS }} ${{ steps.context.outputs.LANG_ARGS }}`
                - Use this command as the source of truth for missing and extra keys inside the current scope.
