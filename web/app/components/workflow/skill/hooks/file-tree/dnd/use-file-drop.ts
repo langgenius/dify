@@ -10,8 +10,8 @@ import { toast } from '@/app/components/base/ui/toast'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useUploadFileWithPresignedUrl } from '@/service/use-app-asset'
 import { ROOT_ID } from '../../../constants'
-import { prepareSkillUploadFile } from '../../../utils/skill-upload-utils'
 import { useSkillTreeUpdateEmitter } from '../data/use-skill-tree-collaboration'
+import { uploadFilesWithStatus } from '../operations/upload-files-with-status'
 
 type FileDropTarget = {
   folderId: string | null
@@ -78,21 +78,24 @@ export function useFileDrop() {
       return
 
     try {
-      const uploadFiles = await Promise.all(files.map(file => prepareSkillUploadFile(file)))
-      await Promise.all(
-        uploadFiles.map(file =>
-          uploadFile.mutateAsync({
-            appId,
-            file,
-            parentId: targetFolderId,
-          }),
-        ),
-      )
+      const result = await uploadFilesWithStatus({
+        files,
+        appId,
+        parentId: targetFolderId,
+        storeApi,
+        uploadFile: uploadFile.mutateAsync,
+      })
 
-      emitTreeUpdate()
-      toast.success(t('skillSidebar.menu.filesUploaded', { count: files.length }))
+      if (result.uploaded > 0)
+        emitTreeUpdate()
+
+      if (result.status === 'success')
+        toast.success(t('skillSidebar.menu.filesUploaded', { count: result.uploaded }))
+      else if (result.uploaded === 0)
+        toast.error(t('skillSidebar.menu.uploadError'))
     }
     catch {
+      storeApi.getState().setUploadStatus('partial_error')
       toast.error(t('skillSidebar.menu.uploadError'))
     }
   }, [appId, uploadFile, t, storeApi, emitTreeUpdate])

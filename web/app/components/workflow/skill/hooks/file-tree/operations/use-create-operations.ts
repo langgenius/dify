@@ -11,6 +11,7 @@ import {
 } from '@/service/use-app-asset'
 import { prepareSkillUploadFile } from '../../../utils/skill-upload-utils'
 import { useSkillTreeUpdateEmitter } from '../data/use-skill-tree-collaboration'
+import { uploadFilesWithStatus } from './upload-files-with-status'
 
 type UseCreateOperationsOptions = {
   parentId: string | null
@@ -55,42 +56,25 @@ export function useCreateOperations({
       onClose()
       return
     }
-
-    const total = files.length
-    const progress = { uploaded: 0, failed: 0 }
-
-    storeApi.getState().setUploadStatus('uploading')
-    storeApi.getState().setUploadProgress({ uploaded: 0, total, failed: 0 })
+    let uploadedCount = 0
 
     try {
-      const uploadFiles = await Promise.all(files.map(file => prepareSkillUploadFile(file)))
-      const uploadedNodes = (await Promise.all(
-        uploadFiles.map(async (file) => {
-          try {
-            const node = await uploadFileAsync({ appId, file, parentId })
-            progress.uploaded++
-            return node
-          }
-          catch {
-            progress.failed++
-            return null
-          }
-          finally {
-            storeApi.getState().setUploadProgress({ uploaded: progress.uploaded, total, failed: progress.failed })
-          }
-        }),
-      )).filter((node): node is AppAssetNode => !!node)
-
-      storeApi.getState().setUploadStatus(progress.failed > 0 ? 'partial_error' : 'success')
-      storeApi.getState().setUploadProgress({ uploaded: progress.uploaded, total, failed: progress.failed })
-      if (uploadedNodes.length > 0)
-        onFilesUploaded?.(uploadedNodes)
+      const result = await uploadFilesWithStatus({
+        files,
+        appId,
+        parentId,
+        storeApi,
+        uploadFile: uploadFileAsync,
+      })
+      uploadedCount = result.uploaded
+      if (result.uploadedNodes.length > 0)
+        onFilesUploaded?.(result.uploadedNodes)
     }
     catch {
       storeApi.getState().setUploadStatus('partial_error')
     }
     finally {
-      if (progress.uploaded > 0)
+      if (uploadedCount > 0)
         emitTreeUpdate()
       e.target.value = ''
       onClose()

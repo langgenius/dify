@@ -4,8 +4,8 @@ import { act, renderHook } from '@testing-library/react'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { WorkflowContext } from '@/app/components/workflow/context'
 import { createWorkflowStore } from '@/app/components/workflow/store'
-import { ROOT_ID } from '../../../constants'
-import { useFileDrop } from './use-file-drop'
+import { ROOT_ID } from '../../../../constants'
+import { useFileDrop } from '../use-file-drop'
 
 const {
   mockUploadMutateAsync,
@@ -28,11 +28,11 @@ vi.mock('@/service/use-app-asset', () => ({
   }),
 }))
 
-vi.mock('../../../utils/skill-upload-utils', () => ({
+vi.mock('../../../../utils/skill-upload-utils', () => ({
   prepareSkillUploadFile: mockPrepareSkillUploadFile,
 }))
 
-vi.mock('../data/use-skill-tree-collaboration', () => ({
+vi.mock('../../data/use-skill-tree-collaboration', () => ({
   useSkillTreeUpdateEmitter: () => mockEmitTreeUpdate,
 }))
 
@@ -61,9 +61,9 @@ type MockDragEvent = {
 
 const createWrapper = (store: ReturnType<typeof createWorkflowStore>) => {
   return ({ children }: { children: ReactNode }) => (
-    <WorkflowContext.Provider value={store}>
+    <WorkflowContext value={store}>
       {children}
-    </WorkflowContext.Provider>
+    </WorkflowContext>
   )
 }
 
@@ -116,7 +116,6 @@ describe('useFileDrop', () => {
     mockUploadMutateAsync.mockResolvedValue(undefined)
   })
 
-  // Scenario: drag-over updates upload drag state for valid external file drags.
   describe('Drag Over', () => {
     it('should set upload drag state when file drag enters root target', () => {
       const store = createWorkflowStore({})
@@ -155,7 +154,6 @@ describe('useFileDrop', () => {
     })
   })
 
-  // Scenario: directory drops are rejected and do not trigger upload mutations.
   describe('Folder Drop Rejection', () => {
     it('should reject dropped folders and show an error toast', async () => {
       const store = createWorkflowStore({})
@@ -175,6 +173,7 @@ describe('useFileDrop', () => {
       expect(mockToastError).toHaveBeenCalledWith('workflow.skillSidebar.menu.folderDropNotSupported')
       expect(store.getState().currentDragType).toBeNull()
       expect(store.getState().dragOverFolderId).toBeNull()
+      expect(store.getState().uploadStatus).toBe('idle')
     })
 
     it('should upload valid files while rejecting directories in a mixed drop payload', async () => {
@@ -206,9 +205,8 @@ describe('useFileDrop', () => {
     })
   })
 
-  // Scenario: successful drops upload prepared files and emit collaboration updates.
   describe('Upload Success', () => {
-    it('should upload dropped files and show success toast when upload succeeds', async () => {
+    it('should write upload success state when dropped files upload succeeds', async () => {
       const store = createWorkflowStore({})
       const { result } = renderHook(() => useFileDrop(), { wrapper: createWrapper(store) })
       const firstFile = new File(['alpha'], 'alpha.md', { type: 'text/markdown' })
@@ -240,12 +238,40 @@ describe('useFileDrop', () => {
       })
       expect(mockEmitTreeUpdate).toHaveBeenCalledTimes(1)
       expect(mockToastSuccess).toHaveBeenCalledWith('workflow.skillSidebar.menu.filesUploaded:{"count":2}')
+      expect(store.getState().uploadStatus).toBe('success')
+      expect(store.getState().uploadProgress).toEqual({ uploaded: 2, total: 2, failed: 0 })
     })
   })
 
-  // Scenario: failed uploads surface an error toast and skip collaboration updates.
   describe('Upload Error', () => {
-    it('should show error toast when upload fails', async () => {
+    it('should write partial error state when only part of the dropped files fail', async () => {
+      const store = createWorkflowStore({})
+      const { result } = renderHook(() => useFileDrop(), { wrapper: createWrapper(store) })
+      const firstFile = new File(['ok'], 'ok.md', { type: 'text/markdown' })
+      const secondFile = new File(['failed'], 'failed.md', { type: 'text/markdown' })
+      const event = createDragEvent({
+        items: [
+          createDataTransferItem({ file: firstFile }),
+          createDataTransferItem({ file: secondFile }),
+        ],
+      })
+      mockUploadMutateAsync
+        .mockResolvedValueOnce(undefined)
+        .mockRejectedValueOnce(new Error('upload failed'))
+
+      await act(async () => {
+        await result.current.handleDrop(event as unknown as React.DragEvent, 'folder-err')
+      })
+
+      expect(mockUploadMutateAsync).toHaveBeenCalledTimes(2)
+      expect(mockEmitTreeUpdate).toHaveBeenCalledTimes(1)
+      expect(mockToastSuccess).not.toHaveBeenCalled()
+      expect(mockToastError).not.toHaveBeenCalled()
+      expect(store.getState().uploadStatus).toBe('partial_error')
+      expect(store.getState().uploadProgress).toEqual({ uploaded: 1, total: 2, failed: 1 })
+    })
+
+    it('should write partial error state and show error toast when all dropped files fail', async () => {
       const store = createWorkflowStore({})
       const { result } = renderHook(() => useFileDrop(), { wrapper: createWrapper(store) })
       const file = new File(['content'], 'failed.md', { type: 'text/markdown' })
@@ -261,6 +287,8 @@ describe('useFileDrop', () => {
       expect(mockUploadMutateAsync).toHaveBeenCalledTimes(1)
       expect(mockEmitTreeUpdate).not.toHaveBeenCalled()
       expect(mockToastError).toHaveBeenCalledWith('workflow.skillSidebar.menu.uploadError')
+      expect(store.getState().uploadStatus).toBe('partial_error')
+      expect(store.getState().uploadProgress).toEqual({ uploaded: 0, total: 1, failed: 1 })
     })
   })
 })
