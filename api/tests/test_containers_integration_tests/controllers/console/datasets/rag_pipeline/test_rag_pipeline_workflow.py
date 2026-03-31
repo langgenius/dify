@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from datetime import datetime
 from unittest.mock import MagicMock, patch
+from uuid import uuid4
 
 import pytest
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, Forbidden, HTTPException, NotFound
 
 import services
@@ -388,15 +390,27 @@ class TestPublishedPipelineApis:
     def app(self, flask_app_with_containers):
         return flask_app_with_containers
 
-    def test_publish_success(self, app):
+    def test_publish_success(self, app, db_session_with_containers: Session):
+        from models.dataset import Pipeline
+
         api = PublishedRagPipelineApi()
         method = unwrap(api.post)
 
-        pipeline = MagicMock()
+        tenant_id = str(uuid4())
+        pipeline = Pipeline(
+            tenant_id=tenant_id,
+            name="test-pipeline",
+            description="test",
+            created_by=str(uuid4()),
+        )
+        db_session_with_containers.add(pipeline)
+        db_session_with_containers.commit()
+        db_session_with_containers.expire_all()
+
         user = MagicMock(id="u1")
 
         workflow = MagicMock(
-            id="w1",
+            id=str(uuid4()),
             created_at=naive_utc_now(),
         )
 
