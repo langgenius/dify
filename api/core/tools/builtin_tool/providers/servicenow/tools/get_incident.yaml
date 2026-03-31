@@ -1,0 +1,27 @@
+identity:
+  name: get_incident
+  author: Dify
+  label:
+    en_US: Get Incident
+    zh_Hans: 获取事件
+    pt_BR: Obter incidente
+description:
+  human:
+    en_US: Retrieve an incident from ServiceNow by number or sys_id.
+    zh_Hans: 通过编号或 sys_id 获取 ServiceNow 事件。
+    pt_BR: Recupere um incidente do ServiceNow por número ou sys_id.
+  llm: Retrieve a ServiceNow incident by incident number or sys_id.
+parameters:
+  - name: incident_number_or_sys_id
+    type: string
+    required: true
+    label:
+      en_US: Incident Number or Sys ID
+      zh_Hans: 事件编号或 Sys ID
+      pt_BR: Número do incidente ou Sys ID
+    human_description:
+      en_US: Incident number (for example INC0010001) or sys_id.
+      zh_Hans: 事件编号（例如 INC0010001）或 sys_id。
+      pt_BR: Número do incidente (por exemplo INC0010001) ou sys_id.
+    llm_description: Incident number (INC...) or 32-character sys_id.
+    form: llm

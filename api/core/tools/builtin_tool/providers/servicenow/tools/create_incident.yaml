@@ -1,0 +1,118 @@
+identity:
+  name: create_incident
+  author: Dify
+  label:
+    en_US: Create Incident
+    zh_Hans: 创建事件
+    pt_BR: Criar incidente
+description:
+  human:
+    en_US: Create an incident in ServiceNow.
+    zh_Hans: 在 ServiceNow 中创建事件。
+    pt_BR: Crie um incidente no ServiceNow.
+  llm: Create a ServiceNow incident and return the created incident payload.
+parameters:
+  - name: short_description
+    type: string
+    required: true
+    label:
+      en_US: Short Description
+      zh_Hans: 简短描述
+      pt_BR: Descrição curta
+    human_description:
+      en_US: A short summary for the incident.
+      zh_Hans: 事件简短摘要。
+      pt_BR: Um resumo curto para o incidente.
+    llm_description: The short description for the incident.
+    form: llm
+  - name: description
+    type: string
+    required: false
+    label:
+      en_US: Description
+      zh_Hans: 详细描述
+      pt_BR: Descrição
+    human_description:
+      en_US: Detailed description for the incident.
+      zh_Hans: 事件详细描述。
+      pt_BR: Descrição detalhada do incidente.
+    llm_description: Detailed description of the incident.
+    form: llm
+  - name: category
+    type: string
+    required: false
+    label:
+      en_US: Category
+      zh_Hans: 分类
+      pt_BR: Categoria
+    human_description:
+      en_US: Incident category.
+      zh_Hans: 事件分类。
+      pt_BR: Categoria do incidente.
+    llm_description: Category field in ServiceNow incident.
+    form: llm
+  - name: subcategory
+    type: string
+    required: false
+    label:
+      en_US: Subcategory
+      zh_Hans: 子分类
+      pt_BR: Subcategoria
+    human_description:
+      en_US: Incident subcategory.
+      zh_Hans: 事件子分类。
+      pt_BR: Subcategoria do incidente.
+    llm_description: Subcategory field in ServiceNow incident.
+    form: llm
+  - name: urgency
+    type: string
+    required: false
+    label:
+      en_US: Urgency
+      zh_Hans: 紧急程度
+      pt_BR: Urgência
+    human_description:
+      en_US: Incident urgency level.
+      zh_Hans: 事件紧急程度。
+      pt_BR: Nível de urgência do incidente.
+    llm_description: Urgency value (for example 1, 2, or 3).
+    form: llm
+  - name: impact
+    type: string
+    required: false
+    label:
+      en_US: Impact
+      zh_Hans: 影响程度
+      pt_BR: Impacto
+    human_description:
+      en_US: Incident impact level.
+      zh_Hans: 事件影响程度。
+      pt_BR: Nível de impacto do incidente.
+    llm_description: Impact value (for example 1, 2, or 3).
+    form: llm
+  - name: caller_id
+    type: string
+    required: false
+    label:
+      en_US: Caller ID
+      zh_Hans: 报告人
+      pt_BR: Solicitante
+    human_description:
+      en_US: Caller identifier in ServiceNow.
+      zh_Hans: ServiceNow 中的报告人标识。
+      pt_BR: Identificador do solicitante no ServiceNow.
+    llm_description: Caller identifier value.
+    form: llm
+  - name: assignment_group
+    type: string
+    required: false
+    label:
+      en_US: Assignment Group
+      zh_Hans: 指派组
+      pt_BR: Grupo de atribuição
+    human_description:
+      en_US: Assignment group identifier in ServiceNow.
+      zh_Hans: ServiceNow 中的指派组标识。
+      pt_BR: Identificador do grupo de atribuição no ServiceNow.
+    llm_description: Assignment group identifier value.
+    form: llm

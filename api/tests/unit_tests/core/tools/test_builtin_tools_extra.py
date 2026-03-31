@@ -17,6 +17,10 @@ from core.tools.builtin_tool.providers.audio.tools.asr import ASRTool
 from core.tools.builtin_tool.providers.audio.tools.tts import TTSTool
 from core.tools.builtin_tool.providers.code.code import CodeToolProvider
 from core.tools.builtin_tool.providers.code.tools.simple_code import SimpleCode
+from core.tools.builtin_tool.providers.servicenow.servicenow import ServiceNowToolProvider
+from core.tools.builtin_tool.providers.servicenow.tools.create_incident import ServiceNowCreateIncidentTool
+from core.tools.builtin_tool.providers.servicenow.tools.get_incident import ServiceNowGetIncidentTool
+from core.tools.builtin_tool.providers.servicenow.tools.update_incident import ServiceNowUpdateIncidentTool
 from core.tools.builtin_tool.providers.time.time import WikiPediaProvider
 from core.tools.builtin_tool.providers.time.tools.current_time import CurrentTimeTool
 from core.tools.builtin_tool.providers.time.tools.localtime_to_timestamp import LocaltimeToTimestampTool
@@ -28,7 +32,7 @@ from core.tools.builtin_tool.providers.webscraper.webscraper import WebscraperPr
 from core.tools.builtin_tool.tool import BuiltinTool
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolEntity, ToolIdentity, ToolInvokeMessage
-from core.tools.errors import ToolInvokeError
+from core.tools.errors import ToolInvokeError, ToolProviderCredentialValidationError
 
 
 def _build_builtin_tool(tool_cls: type[BuiltinTool]) -> BuiltinTool:
@@ -305,6 +309,117 @@ def test_tts_tool_get_available_models_and_runtime_parameters(monkeypatch):
     assert runtime_parameters[0].required is True
     assert runtime_parameters[0].options[0].value == "provider-a#model-a"
     assert runtime_parameters[1].name == "voice#provider-a#model-a"
+
+
+def test_servicenow_provider_validate_credentials(monkeypatch):
+    monkeypatch.setattr(
+        "core.tools.builtin_tool.providers.servicenow._client.ssrf_proxy.get",
+        lambda *args, **kwargs: SimpleNamespace(status_code=200, json=lambda: {"result": []}),
+    )
+    ServiceNowToolProvider._validate_credentials(
+        object.__new__(ServiceNowToolProvider),
+        "u",
+        {
+            "instance_url": "https://example.service-now.com",
+            "username": "demo",
+            "password": "secret",
+        },
+    )
+
+
+def test_servicenow_provider_validate_credentials_raises(monkeypatch):
+    monkeypatch.setattr(
+        "core.tools.builtin_tool.providers.servicenow._client.ssrf_proxy.get",
+        lambda *args, **kwargs: SimpleNamespace(
+            status_code=401,
+            json=lambda: {"error": {"message": "Unauthorized"}},
+        ),
+    )
+    with pytest.raises(ToolProviderCredentialValidationError, match="Unauthorized"):
+        ServiceNowToolProvider._validate_credentials(
+            object.__new__(ServiceNowToolProvider),
+            "u",
+            {
+                "instance_url": "https://example.service-now.com",
+                "username": "demo",
+                "password": "secret",
+            },
+        )
+
+
+def _build_servicenow_tool(tool_cls: type[BuiltinTool]) -> BuiltinTool:
+    tool = _build_builtin_tool(tool_cls)
+    tool.runtime.credentials = {
+        "instance_url": "https://example.service-now.com",
+        "username": "demo",
+        "password": "secret",
+    }
+    return tool
+
+
+def test_servicenow_create_incident_tool(monkeypatch):
+    monkeypatch.setattr(
+        "core.tools.builtin_tool.providers.servicenow._client.ssrf_proxy.post",
+        lambda *args, **kwargs: SimpleNamespace(
+            status_code=201,
+            json=lambda: {"result": {"sys_id": "a" * 32, "number": "INC0010001"}},
+        ),
+    )
+    create_tool = _build_servicenow_tool(ServiceNowCreateIncidentTool)
+    message = list(create_tool.invoke(user_id="u", tool_parameters={"short_description": "Network down"}))[0]
+    assert message.type == ToolInvokeMessage.MessageType.JSON
+    assert message.message.json_object["incident"]["number"] == "INC0010001"
+
+
+def test_servicenow_get_incident_tool(monkeypatch):
+    calls = {"count": 0}
+
+    def _mock_get(*args, **kwargs):
+        calls["count"] += 1
+        if calls["count"] == 1:
+            return SimpleNamespace(
+                status_code=200,
+                json=lambda: {"result": [{"sys_id": "b" * 32, "number": "INC0010002"}]},
+            )
+        return SimpleNamespace(
+            status_code=200,
+            json=lambda: {"result": {"sys_id": "b" * 32, "number": "INC0010002"}},
+        )
+
+    monkeypatch.setattr("core.tools.builtin_tool.providers.servicenow._client.ssrf_proxy.get", _mock_get)
+    get_tool = _build_servicenow_tool(ServiceNowGetIncidentTool)
+    message = list(get_tool.invoke(user_id="u", tool_parameters={"incident_number_or_sys_id": "INC0010002"}))[0]
+    assert message.type == ToolInvokeMessage.MessageType.JSON
+    assert message.message.json_object["incident"]["sys_id"] == "b" * 32
+
+
+def test_servicenow_update_incident_tool(monkeypatch):
+    monkeypatch.setattr(
+        "core.tools.builtin_tool.providers.servicenow._client.ssrf_proxy.get",
+        lambda *args, **kwargs: SimpleNamespace(
+            status_code=200,
+            json=lambda: {"result": [{"sys_id": "c" * 32, "number": "INC0010003"}]},
+        ),
+    )
+    monkeypatch.setattr(
+        "core.tools.builtin_tool.providers.servicenow._client.ssrf_proxy.patch",
+        lambda *args, **kwargs: SimpleNamespace(
+            status_code=200,
+            json=lambda: {"result": {"sys_id": "c" * 32, "state": "2"}},
+        ),
+    )
+    update_tool = _build_servicenow_tool(ServiceNowUpdateIncidentTool)
+    message = list(
+        update_tool.invoke(
+            user_id="u",
+            tool_parameters={
+                "incident_number_or_sys_id": "INC0010003",
+                "state": "2",
+            },
+        )
+    )[0]
+    assert message.type == ToolInvokeMessage.MessageType.JSON
+    assert message.message.json_object["incident"]["state"] == "2"
 
 
 def test_provider_classes_and_builtin_sort(monkeypatch):

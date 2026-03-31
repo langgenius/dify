@@ -1,0 +1,44 @@
+identity:
+  author: Dify
+  name: servicenow
+  label:
+    en_US: ServiceNow
+    zh_Hans: ServiceNow
+    pt_BR: ServiceNow
+  description:
+    en_US: ServiceNow incident management toolkit.
+    zh_Hans: ServiceNow 事件管理工具集。
+    pt_BR: Kit de ferramentas para gerenciamento de incidentes no ServiceNow.
+  icon: icon.svg
+  tags:
+    - productivity
+credentials_for_provider:
+  instance_url:
+    type: text-input
+    required: true
+    label:
+      en_US: Instance URL
+      zh_Hans: 实例地址
+      pt_BR: URL da instância
+    placeholder:
+      en_US: https://instance.service-now.com
+      zh_Hans: https://instance.service-now.com
+      pt_BR: https://instance.service-now.com
+    help:
+      en_US: ServiceNow instance base URL.
+      zh_Hans: ServiceNow 实例基础地址。
+      pt_BR: URL base da instância do ServiceNow.
+  username:
+    type: text-input
+    required: true
+    label:
+      en_US: Username
+      zh_Hans: 用户名
+      pt_BR: Usuário
+  password:
+    type: secret-input
+    required: true
+    label:
+      en_US: Password
+      zh_Hans: 密码
+      pt_BR: Senha
