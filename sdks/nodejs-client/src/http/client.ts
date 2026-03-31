@@ -164,11 +164,24 @@ const parseRetryAfterSeconds = (headerValue?: string): number | undefined => {
   return undefined;
 };
 
-const isNodeReadable = (value: unknown): value is Readable => {
+const isPipeableStream = (value: unknown): value is { pipe: (destination: unknown) => unknown } => {
   if (!value || typeof value !== "object") {
     return false;
   }
   return typeof (value as { pipe?: unknown }).pipe === "function";
+};
+
+const toNodeReadable = (value: unknown): Readable | null => {
+  if (value instanceof Readable) {
+    return value;
+  }
+  if (!isPipeableStream(value)) {
+    return null;
+  }
+  const readable = new Readable({
+    read() {},
+  });
+  return readable.wrap(value as NodeJS.ReadableStream);
 };
 
 const isBinaryBody = (
@@ -183,11 +196,10 @@ const isBinaryBody = (
   return ArrayBuffer.isView(value);
 };
 
-const isJsonBody = (value: unknown): value is JsonValue =>
+const isJsonBody = (value: unknown): value is Exclude<JsonValue, string> =>
   value === null ||
   typeof value === "boolean" ||
   typeof value === "number" ||
-  typeof value === "string" ||
   Array.isArray(value) ||
   isRecord(value);
 
@@ -249,13 +261,14 @@ const prepareRequestBody = (
 
   if (isFormData(data)) {
     if ("getHeaders" in data && typeof data.getHeaders === "function") {
-      if (!isNodeReadable(data)) {
+      const readable = toNodeReadable(data);
+      if (!readable) {
         throw new FileUploadError(
           "Legacy FormData must be a readable stream when used with fetch"
         );
       }
       return {
-        body: Readable.toWeb(data) as BodyInit,
+        body: Readable.toWeb(readable) as BodyInit,
         headers: getFormDataHeaders(data),
         duplex: "half",
         replayable: false,
@@ -268,9 +281,18 @@ const prepareRequestBody = (
     };
   }
 
-  if (isNodeReadable(data)) {
+  if (typeof data === "string") {
     return {
-      body: Readable.toWeb(data) as BodyInit,
+      body: data,
+      headers: {},
+      replayable: true,
+    };
+  }
+
+  const readable = toNodeReadable(data);
+  if (readable) {
+    return {
+      body: Readable.toWeb(readable) as BodyInit,
       headers: {},
       duplex: "half",
       replayable: false,
@@ -299,11 +321,7 @@ const prepareRequestBody = (
     };
   }
 
-  return {
-    body: String(data),
-    headers: {},
-    replayable: true,
-  };
+  throw new ValidationError("Unsupported request body type");
 };
 
 const createTimeoutContext = (timeoutMs: number): TimeoutContext => {
@@ -344,10 +362,17 @@ const parseResponseBody = async <TResponseType extends HttpResponseType>(
   }
 
   const text = await response.text();
-  return parseJsonLikeText(
-    text,
-    response.headers.get("content-type")
-  ) as ResponseDataFor<TResponseType>;
+  try {
+    return parseJsonLikeText(
+      text,
+      response.headers.get("content-type")
+    ) as ResponseDataFor<TResponseType>;
+  } catch (error) {
+    if (!response.ok && error instanceof SyntaxError) {
+      return text as ResponseDataFor<TResponseType>;
+    }
+    throw error;
+  }
 };
 
 const mapHttpError = (
@@ -487,7 +512,7 @@ export class HttpClient {
       validateParams(query as Record<string, unknown>);
     }
 
-    if (isRecord(data) && !Array.isArray(data) && !isFormData(data) && !isNodeReadable(data)) {
+    if (isRecord(data) && !Array.isArray(data) && !isFormData(data) && !isPipeableStream(data)) {
       validateParams(data);
     }
 

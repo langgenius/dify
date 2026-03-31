@@ -1,4 +1,4 @@
-import { Readable } from "node:stream";
+import { Readable, Stream } from "node:stream";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   APIError,
@@ -212,6 +212,40 @@ describe("HttpClient", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("accepts legacy pipeable streams that are not Readable instances", async () => {
+    const fetchMock = stubFetch();
+    fetchMock.mockResolvedValueOnce(jsonResponse("ok", { status: 200 }));
+    const client = new HttpClient({ apiKey: "test" });
+
+    const legacyStream = new Stream() as Stream &
+      NodeJS.ReadableStream & {
+        append: ReturnType<typeof vi.fn>;
+        getHeaders: () => Record<string, string>;
+      };
+    legacyStream.readable = true;
+    legacyStream.pause = () => legacyStream;
+    legacyStream.resume = () => legacyStream;
+    legacyStream.append = vi.fn();
+    legacyStream.getHeaders = () => ({
+      "content-type": "multipart/form-data; boundary=test",
+    });
+    queueMicrotask(() => {
+      legacyStream.emit("data", Buffer.from("chunk"));
+      legacyStream.emit("end");
+    });
+
+    await client.requestRaw({
+      method: "POST",
+      path: "/files/upload",
+      data: legacyStream as unknown as FormData,
+    });
+
+    const [, init] = getFetchCall(fetchMock);
+    expect((init as RequestInit & { duplex?: string } | undefined)?.duplex).toBe(
+      "half"
+    );
+  });
+
   it("returns buffers for byte responses", async () => {
     const fetchMock = stubFetch();
     fetchMock.mockResolvedValueOnce(
@@ -399,6 +433,45 @@ describe("HttpClient", () => {
     });
 
     expect(response.data).toBe("plain text");
+  });
+
+  it("keeps invalid json error bodies as API errors", async () => {
+    const fetchMock = stubFetch();
+    fetchMock.mockResolvedValueOnce(
+      textResponse("{invalid", {
+        status: 500,
+        headers: { "content-type": "application/json", "x-request-id": "req-500" },
+      })
+    );
+    const client = new HttpClient({ apiKey: "test", maxRetries: 0 });
+
+    await expect(
+      client.requestRaw({ method: "GET", path: "/meta" })
+    ).rejects.toMatchObject({
+      name: "APIError",
+      statusCode: 500,
+      requestId: "req-500",
+      responseBody: "{invalid",
+    });
+  });
+
+  it("sends raw string bodies without additional json encoding", async () => {
+    const fetchMock = stubFetch();
+    fetchMock.mockResolvedValueOnce(jsonResponse("ok", { status: 200 }));
+    const client = new HttpClient({ apiKey: "test" });
+
+    await client.requestRaw({
+      method: "POST",
+      path: "/meta",
+      data: '{"pre":"serialized"}',
+      headers: { "Content-Type": "application/custom+json" },
+    });
+
+    const [, init] = getFetchCall(fetchMock);
+    expect(init?.body).toBe('{"pre":"serialized"}');
+    expect(toHeaderRecord(init?.headers)).toMatchObject({
+      "content-type": "application/custom+json",
+    });
   });
 
   it("preserves explicit user-agent headers", async () => {

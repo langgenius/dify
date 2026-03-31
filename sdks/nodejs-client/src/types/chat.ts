@@ -20,3 +20,9 @@ export type ChatMessageRequest = {
 export type ChatMessageResponse = JsonObject;
 
 export type ChatStreamEvent = StreamEvent<JsonObject>;
+
+export type ConversationSortBy =
+  | "created_at"
+  | "-created_at"
+  | "updated_at"
+  | "-updated_at";

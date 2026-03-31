@@ -1,5 +1,9 @@
 import { DifyClient } from "./base";
-import type { ChatMessageRequest, ChatMessageResponse } from "../types/chat";
+import type {
+  ChatMessageRequest,
+  ChatMessageResponse,
+  ConversationSortBy,
+} from "../types/chat";
 import type {
   AnnotationCreateRequest,
   AnnotationListOptions,
@@ -135,7 +139,7 @@ export class ChatClient extends DifyClient {
     user: string,
     lastId?: string | null,
     limit?: number | null,
-    sortBy?: string | null
+    sortBy?: ConversationSortBy | null
   ): Promise<DifyResponse<JsonObject>> {
     ensureNonEmptyString(user, "user");
     ensureOptionalString(lastId, "lastId");
