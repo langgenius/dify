@@ -10,7 +10,7 @@ import {
   validateParams,
 } from "./validation";
 
-const makeLongString = (length) => "a".repeat(length);
+const makeLongString = (length: number) => "a".repeat(length);
 
 describe("validation utilities", () => {
   it("ensureNonEmptyString throws on empty or whitespace", () => {
@@ -19,9 +19,7 @@ describe("validation utilities", () => {
   });
 
   it("ensureNonEmptyString throws on overly long strings", () => {
-    expect(() =>
-      ensureNonEmptyString(makeLongString(10001), "name")
-    ).toThrow();
+    expect(() => ensureNonEmptyString(makeLongString(10001), "name")).toThrow();
   });
 
   it("ensureOptionalString ignores undefined and validates when set", () => {
@@ -73,7 +71,6 @@ describe("validation utilities", () => {
     expect(() => validateParams({ rating: "bad" })).toThrow();
     expect(() => validateParams({ page: 1.1 })).toThrow();
     expect(() => validateParams({ files: "bad" })).toThrow();
-    // Empty strings are allowed for optional params (e.g., keyword: "" means no filter)
     expect(() => validateParams({ keyword: "" })).not.toThrow();
     expect(() => validateParams({ name: makeLongString(10001) })).toThrow();
     expect(() =>
