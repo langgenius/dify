@@ -127,34 +127,22 @@ class TestAppApiKeyResource:
         test_client_with_containers: FlaskClient,
     ) -> None:
         """A non-admin member cannot delete API keys."""
-        from models.account import TenantAccountRole
+        from models.account import TenantAccountJoin, TenantAccountRole
 
-        account, tenant = create_console_account_and_tenant(db_session_with_containers)
-        app = create_console_app(db_session_with_containers, tenant.id, account.id, AppMode.CHAT)
-        headers = authenticate_console_client(test_client_with_containers, account)
+        # Owner creates app and a key
+        owner, tenant = create_console_account_and_tenant(db_session_with_containers)
+        app = create_console_app(db_session_with_containers, tenant.id, owner.id, AppMode.CHAT)
+        owner_headers = authenticate_console_client(test_client_with_containers, owner)
 
-        # Create a key first as owner
-        create_resp = test_client_with_containers.post(f"/console/api/apps/{app.id}/api-keys", headers=headers)
+        create_resp = test_client_with_containers.post(
+            f"/console/api/apps/{app.id}/api-keys", headers=owner_headers
+        )
         assert create_resp.json is not None
         key_id = create_resp.json["id"]
 
-        # Create a non-admin account in the same tenant
-        import uuid
-
-        from libs.datetime_utils import naive_utc_now
-        from models import Account, TenantAccountJoin
-        from models.account import AccountStatus
-
-        member = Account(
-            email=f"member-{uuid.uuid4()}@example.com",
-            name="Member User",
-            interface_language="en-US",
-            status=AccountStatus.ACTIVE,
-        )
-        member.initialized_at = naive_utc_now()
-        db_session_with_containers.add(member)
-        db_session_with_containers.commit()
-
+        # Create a fully initialised member via the helper (gives them their own tenant),
+        # then join them to the owner's tenant as NORMAL and switch context.
+        member, _member_tenant = create_console_account_and_tenant(db_session_with_containers)
         db_session_with_containers.add(
             TenantAccountJoin(
                 tenant_id=tenant.id,
@@ -163,10 +151,15 @@ class TestAppApiKeyResource:
                 current=True,
             )
         )
+        # Mark the member's own tenant join as non-current
+        own_join = db_session_with_containers.query(TenantAccountJoin).filter_by(
+            tenant_id=_member_tenant.id, account_id=member.id
+        ).first()
+        if own_join:
+            own_join.current = False
         db_session_with_containers.commit()
+
         member.set_tenant_id(tenant.id)
-        member.timezone = "UTC"
-        db_session_with_containers.commit()
 
         member_headers = authenticate_console_client(test_client_with_containers, member)
         resp = test_client_with_containers.delete(
