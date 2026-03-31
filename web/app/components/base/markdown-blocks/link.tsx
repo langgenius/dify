@@ -4,13 +4,11 @@
  * Handles special rendering for "abbr:" type links for interactive chat actions.
  */
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
 import { useChatContext } from '@/app/components/base/chat/chat/context'
 import { isValidUrl } from './utils'
 
 const Link = ({ node, children, ...props }: any) => {
   const { onSend } = useChatContext()
-  const { t } = useTranslation()
   const commonClassName = 'cursor-pointer underline !decoration-primary-700 decoration-dashed'
   if (node.properties?.href && node.properties.href?.toString().startsWith('abbr')) {
     const hidden_text = decodeURIComponent(node.properties.href.toString().split('abbr:')[1])
@@ -32,13 +30,13 @@ const Link = ({ node, children, ...props }: any) => {
             targetElement.scrollIntoView({ behavior: 'smooth' })
         }
       }
-      return <a href={href} onClick={handleClick} className={commonClassName}>{children || t('operation.view', { ns: 'common' })}</a>
+      return <a href={href} onClick={handleClick} className={commonClassName}>{children || 'ScrollView'}</a>
     }
 
     if (!href || !isValidUrl(href))
       return <span>{children}</span>
 
-    return <a href={href} target="_blank" rel="noopener noreferrer" className={commonClassName}>{children || t('operation.download', { ns: 'common' })}</a>
+    return <a href={href} target="_blank" rel="noopener noreferrer" className={commonClassName}>{children || 'Download'}</a>
   }
 }
 
