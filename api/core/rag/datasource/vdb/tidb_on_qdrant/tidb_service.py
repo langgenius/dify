@@ -114,9 +114,7 @@ class TidbService:
         :return: The response from the API.
         """
 
-        response = _tidb_http_client.get(
-            f"{api_url}/clusters/{cluster_id}", auth=DigestAuth(public_key, private_key)
-        )
+        response = _tidb_http_client.get(f"{api_url}/clusters/{cluster_id}", auth=DigestAuth(public_key, private_key))
 
         if response.status_code == 200:
             return response.json()
