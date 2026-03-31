@@ -682,10 +682,10 @@ def test_dummy_variable_truncator_methods():
 from typing import Any
 
 import pytest
-
 from graphon.nodes.variable_assigner.common.helpers import UpdatedVariable
 from graphon.variables.segments import IntegerSegment, ObjectSegment, StringSegment
 from graphon.variables.types import SegmentType
+
 from services import variable_truncator as truncator_module
 from services.variable_truncator import BaseTruncator, TruncationResult, VariableTruncator
 

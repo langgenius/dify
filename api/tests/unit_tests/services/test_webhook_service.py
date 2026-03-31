@@ -570,6 +570,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from flask import Flask
+from graphon.variables.types import SegmentType
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import RequestEntityTooLarge
 
@@ -579,7 +580,6 @@ from core.workflow.nodes.trigger_webhook.entities import (
     WebhookData,
     WebhookParameter,
 )
-from graphon.variables.types import SegmentType
 from models.enums import AppTriggerStatus
 from models.model import App
 from models.trigger import WorkflowWebhookTrigger
