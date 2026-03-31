@@ -26,6 +26,29 @@ class SubscriptionPlan(TypedDict):
     expiration_date: int
 
 
+class QuotaReserveResult(TypedDict):
+    reservation_id: str
+    available: int
+    reserved: int
+
+
+class QuotaCommitResult(TypedDict):
+    available: int
+    reserved: int
+    refunded: int
+
+
+class QuotaReleaseResult(TypedDict):
+    available: int
+    reserved: int
+    released: int
+
+
+_quota_reserve_adapter = TypeAdapter(QuotaReserveResult)
+_quota_commit_adapter = TypeAdapter(QuotaCommitResult)
+_quota_release_adapter = TypeAdapter(QuotaReleaseResult)
+
+
 class BillingService:
     base_url = os.environ.get("BILLING_API_URL", "BILLING_API_URL")
     secret_key = os.environ.get("BILLING_API_SECRET_KEY", "BILLING_API_SECRET_KEY")
@@ -46,19 +69,21 @@ class BillingService:
 
     @classmethod
     def get_tenant_feature_plan_usage_info(cls, tenant_id: str):
+        """Deprecated: Use get_quota_info instead."""
         params = {"tenant_id": tenant_id}
-        usage_info = cls._send_request("GET", "/quota/info", params=params)
+        usage_info = cls._send_request("GET", "/tenant-feature-usage/info", params=params)
         return usage_info
+
+    @classmethod
+    def get_quota_info(cls, tenant_id: str):
+        params = {"tenant_id": tenant_id}
+        return cls._send_request("GET", "/quota/info", params=params)
 
     @classmethod
     def quota_reserve(
         cls, tenant_id: str, feature_key: str, request_id: str, amount: int = 1, meta: dict | None = None
-    ) -> dict:
-        """Reserve quota before task execution.
-
-        Returns:
-            {"reservation_id": "uuid", "available": int, "reserved": int}
-        """
+    ) -> QuotaReserveResult:
+        """Reserve quota before task execution."""
         payload: dict = {
             "tenant_id": tenant_id,
             "feature_key": feature_key,
@@ -67,17 +92,13 @@ class BillingService:
         }
         if meta:
             payload["meta"] = meta
-        return cls._send_request("POST", "/quota/reserve", json=payload)
+        return _quota_reserve_adapter.validate_python(cls._send_request("POST", "/quota/reserve", json=payload))
 
     @classmethod
     def quota_commit(
         cls, tenant_id: str, feature_key: str, reservation_id: str, actual_amount: int, meta: dict | None = None
-    ) -> dict:
-        """Commit a reservation with actual consumption.
-
-        Returns:
-            {"available": int, "reserved": int, "refunded": int}
-        """
+    ) -> QuotaCommitResult:
+        """Commit a reservation with actual consumption."""
         payload: dict = {
             "tenant_id": tenant_id,
             "feature_key": feature_key,
@@ -86,23 +107,21 @@ class BillingService:
         }
         if meta:
             payload["meta"] = meta
-        return cls._send_request("POST", "/quota/commit", json=payload)
+        return _quota_commit_adapter.validate_python(cls._send_request("POST", "/quota/commit", json=payload))
 
     @classmethod
-    def quota_release(cls, tenant_id: str, feature_key: str, reservation_id: str) -> dict:
-        """Release a reservation (cancel, return frozen quota).
-
-        Returns:
-            {"available": int, "reserved": int, "released": int}
-        """
-        return cls._send_request(
-            "POST",
-            "/quota/release",
-            json={
-                "tenant_id": tenant_id,
-                "feature_key": feature_key,
-                "reservation_id": reservation_id,
-            },
+    def quota_release(cls, tenant_id: str, feature_key: str, reservation_id: str) -> QuotaReleaseResult:
+        """Release a reservation (cancel, return frozen quota)."""
+        return _quota_release_adapter.validate_python(
+            cls._send_request(
+                "POST",
+                "/quota/release",
+                json={
+                    "tenant_id": tenant_id,
+                    "feature_key": feature_key,
+                    "reservation_id": reservation_id,
+                },
+            )
         )
 
     @classmethod

@@ -4,7 +4,8 @@ from unittest.mock import patch
 
 import pytest
 
-from enums.quota_type import QuotaCharge, QuotaType, unlimited
+from enums.quota_type import QuotaType
+from services.quota_service import QuotaCharge, unlimited
 
 
 class TestQuotaType:
@@ -186,43 +187,43 @@ class TestQuotaType:
 
     def test_get_remaining_normal(self):
         with patch("services.billing_service.BillingService") as mock_bs:
-            mock_bs.get_tenant_feature_plan_usage_info.return_value = {"trigger_event": {"limit": 100, "usage": 30}}
+            mock_bs.get_quota_info.return_value = {"trigger_event": {"limit": 100, "usage": 30}}
             assert QuotaType.TRIGGER.get_remaining("t1") == 70
 
     def test_get_remaining_unlimited(self):
         with patch("services.billing_service.BillingService") as mock_bs:
-            mock_bs.get_tenant_feature_plan_usage_info.return_value = {"trigger_event": {"limit": -1, "usage": 0}}
+            mock_bs.get_quota_info.return_value = {"trigger_event": {"limit": -1, "usage": 0}}
             assert QuotaType.TRIGGER.get_remaining("t1") == -1
 
     def test_get_remaining_over_limit_returns_zero(self):
         with patch("services.billing_service.BillingService") as mock_bs:
-            mock_bs.get_tenant_feature_plan_usage_info.return_value = {"trigger_event": {"limit": 10, "usage": 15}}
+            mock_bs.get_quota_info.return_value = {"trigger_event": {"limit": 10, "usage": 15}}
             assert QuotaType.TRIGGER.get_remaining("t1") == 0
 
     def test_get_remaining_exception_returns_neg1(self):
         with patch("services.billing_service.BillingService") as mock_bs:
-            mock_bs.get_tenant_feature_plan_usage_info.side_effect = RuntimeError
+            mock_bs.get_quota_info.side_effect = RuntimeError
             assert QuotaType.TRIGGER.get_remaining("t1") == -1
 
     def test_get_remaining_empty_response(self):
         with patch("services.billing_service.BillingService") as mock_bs:
-            mock_bs.get_tenant_feature_plan_usage_info.return_value = {}
+            mock_bs.get_quota_info.return_value = {}
             assert QuotaType.TRIGGER.get_remaining("t1") == 0
 
     def test_get_remaining_non_dict_response(self):
         with patch("services.billing_service.BillingService") as mock_bs:
-            mock_bs.get_tenant_feature_plan_usage_info.return_value = "invalid"
+            mock_bs.get_quota_info.return_value = "invalid"
             assert QuotaType.TRIGGER.get_remaining("t1") == 0
 
     def test_get_remaining_feature_not_in_response(self):
         with patch("services.billing_service.BillingService") as mock_bs:
-            mock_bs.get_tenant_feature_plan_usage_info.return_value = {"other_feature": {"limit": 100, "usage": 0}}
+            mock_bs.get_quota_info.return_value = {"other_feature": {"limit": 100, "usage": 0}}
             remaining = QuotaType.TRIGGER.get_remaining("t1")
             assert remaining == 0
 
     def test_get_remaining_non_dict_feature_info(self):
         with patch("services.billing_service.BillingService") as mock_bs:
-            mock_bs.get_tenant_feature_plan_usage_info.return_value = {"trigger_event": "not_a_dict"}
+            mock_bs.get_quota_info.return_value = {"trigger_event": "not_a_dict"}
             assert QuotaType.TRIGGER.get_remaining("t1") == 0
 
 

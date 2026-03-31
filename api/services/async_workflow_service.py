@@ -13,7 +13,8 @@ from celery.result import AsyncResult
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from enums.quota_type import QuotaType, unlimited
+from enums.quota_type import QuotaType
+from services.quota_service import unlimited
 from extensions.ext_database import db
 from models.account import Account
 from models.enums import CreatorUserRole, WorkflowTriggerStatus

@@ -415,7 +415,7 @@ class TestBillingServiceUsageCalculation:
             yield mock
 
     def test_get_tenant_feature_plan_usage_info(self, mock_send_request):
-        """Test retrieval of tenant feature plan usage information."""
+        """Test retrieval of tenant feature plan usage information (legacy endpoint)."""
         # Arrange
         tenant_id = "tenant-123"
         expected_response = {"features": {"trigger": {"used": 50, "limit": 100}, "workflow": {"used": 20, "limit": 50}}}
@@ -423,6 +423,20 @@ class TestBillingServiceUsageCalculation:
 
         # Act
         result = BillingService.get_tenant_feature_plan_usage_info(tenant_id)
+
+        # Assert
+        assert result == expected_response
+        mock_send_request.assert_called_once_with("GET", "/tenant-feature-usage/info", params={"tenant_id": tenant_id})
+
+    def test_get_quota_info(self, mock_send_request):
+        """Test retrieval of quota info from new endpoint."""
+        # Arrange
+        tenant_id = "tenant-123"
+        expected_response = {"trigger_event": {"limit": 100, "usage": 30}, "api_rate_limit": {"limit": -1, "usage": 0}}
+        mock_send_request.return_value = expected_response
+
+        # Act
+        result = BillingService.get_quota_info(tenant_id)
 
         # Assert
         assert result == expected_response
@@ -526,8 +540,19 @@ class TestBillingServiceQuotaOperations:
             json={"tenant_id": "t1", "feature_key": "trigger_event", "request_id": "req-1", "amount": 1},
         )
 
+    def test_quota_reserve_coerces_string_to_int(self, mock_send_request):
+        """Test that TypeAdapter coerces string values to int."""
+        mock_send_request.return_value = {"reservation_id": "rid-str", "available": "99", "reserved": "1"}
+
+        result = BillingService.quota_reserve(tenant_id="t1", feature_key="trigger_event", request_id="req-s", amount=1)
+
+        assert result["available"] == 99
+        assert isinstance(result["available"], int)
+        assert result["reserved"] == 1
+        assert isinstance(result["reserved"], int)
+
     def test_quota_reserve_with_meta(self, mock_send_request):
-        mock_send_request.return_value = {"reservation_id": "rid-2"}
+        mock_send_request.return_value = {"reservation_id": "rid-2", "available": 98, "reserved": 1}
         meta = {"source": "webhook"}
 
         BillingService.quota_reserve(
@@ -557,8 +582,21 @@ class TestBillingServiceQuotaOperations:
             },
         )
 
+    def test_quota_commit_coerces_string_to_int(self, mock_send_request):
+        """Test that TypeAdapter coerces string values to int."""
+        mock_send_request.return_value = {"available": "97", "reserved": "0", "refunded": "1"}
+
+        result = BillingService.quota_commit(
+            tenant_id="t1", feature_key="trigger_event", reservation_id="rid-s", actual_amount=1
+        )
+
+        assert result["available"] == 97
+        assert isinstance(result["available"], int)
+        assert result["refunded"] == 1
+        assert isinstance(result["refunded"], int)
+
     def test_quota_commit_with_meta(self, mock_send_request):
-        mock_send_request.return_value = {}
+        mock_send_request.return_value = {"available": 97, "reserved": 0, "refunded": 0}
         meta = {"reason": "partial"}
 
         BillingService.quota_commit(
@@ -580,6 +618,17 @@ class TestBillingServiceQuotaOperations:
             "/quota/release",
             json={"tenant_id": "t1", "feature_key": "trigger_event", "reservation_id": "rid-1"},
         )
+
+    def test_quota_release_coerces_string_to_int(self, mock_send_request):
+        """Test that TypeAdapter coerces string values to int."""
+        mock_send_request.return_value = {"available": "100", "reserved": "0", "released": "1"}
+
+        result = BillingService.quota_release(tenant_id="t1", feature_key="trigger_event", reservation_id="rid-s")
+
+        assert result["available"] == 100
+        assert isinstance(result["available"], int)
+        assert result["released"] == 1
+        assert isinstance(result["released"], int)
 
 
 class TestBillingServiceRateLimitEnforcement:

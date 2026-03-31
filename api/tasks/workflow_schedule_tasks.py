@@ -8,7 +8,8 @@ from core.workflow.nodes.trigger_schedule.exc import (
     ScheduleNotFoundError,
     TenantOwnerNotFoundError,
 )
-from enums.quota_type import QuotaType, unlimited
+from enums.quota_type import QuotaType
+from services.quota_service import unlimited
 from models.trigger import WorkflowSchedulePlan
 from services.async_workflow_service import AsyncWorkflowService
 from services.errors.app import QuotaExceededError

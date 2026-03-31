@@ -1,83 +1,8 @@
 import logging
 import uuid
-from dataclasses import dataclass, field
 from enum import StrEnum, auto
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class QuotaCharge:
-    """
-    Result of a quota reservation (Reserve phase).
-
-    Lifecycle:
-        charge = QuotaType.TRIGGER.consume(tenant_id)  # Reserve
-        try:
-            do_work()
-            charge.commit()   # Confirm consumption
-        except:
-            charge.refund()   # Release frozen quota
-
-    If neither commit() nor refund() is called, the billing system's
-    cleanup CronJob will auto-release the reservation within ~75 seconds.
-    """
-
-    success: bool
-    charge_id: str | None  # reservation_id
-    _quota_type: "QuotaType"
-    _tenant_id: str | None = None
-    _feature_key: str | None = None
-    _amount: int = 0
-    _committed: bool = field(default=False, repr=False)
-
-    def commit(self, actual_amount: int | None = None) -> None:
-        """
-        Confirm the consumption with actual amount.
-
-        Args:
-            actual_amount: Actual amount consumed. Defaults to the reserved amount.
-                           If less than reserved, the difference is refunded automatically.
-        """
-        if self._committed or not self.charge_id or not self._tenant_id or not self._feature_key:
-            return
-
-        try:
-            from services.billing_service import BillingService
-
-            amount = actual_amount if actual_amount is not None else self._amount
-            BillingService.quota_commit(
-                tenant_id=self._tenant_id,
-                feature_key=self._feature_key,
-                reservation_id=self.charge_id,
-                actual_amount=amount,
-            )
-            self._committed = True
-            logger.debug(
-                "Committed %s quota for tenant %s, reservation_id: %s, amount: %d",
-                self._quota_type.value,
-                self._tenant_id,
-                self.charge_id,
-                amount,
-            )
-        except Exception:
-            logger.exception("Failed to commit quota, reservation_id: %s", self.charge_id)
-
-    def refund(self) -> None:
-        """
-        Release the reserved quota (cancel the charge).
-
-        Safe to call even if:
-        - charge failed or was disabled (charge_id is None)
-        - already committed (Release after Commit is a no-op)
-        - already refunded (idempotent)
-
-        This method guarantees no exceptions will be raised.
-        """
-        if not self.charge_id or not self._tenant_id or not self._feature_key:
-            return
-
-        self._quota_type.release(self.charge_id, self._tenant_id, self._feature_key)
 
 
 class QuotaType(StrEnum):
@@ -99,7 +24,7 @@ class QuotaType(StrEnum):
             case _:
                 raise ValueError(f"Invalid quota type: {self}")
 
-    def consume(self, tenant_id: str, amount: int = 1) -> QuotaCharge:
+    def consume(self, tenant_id: str, amount: int = 1):
         """
         Consume quota using Reserve + immediate Commit.
 
@@ -125,7 +50,7 @@ class QuotaType(StrEnum):
             charge.commit()
         return charge
 
-    def reserve(self, tenant_id: str, amount: int = 1) -> QuotaCharge:
+    def reserve(self, tenant_id: str, amount: int = 1):
         """
         Reserve quota before task execution (Reserve phase only).
 
@@ -147,6 +72,7 @@ class QuotaType(StrEnum):
         from configs import dify_config
         from services.billing_service import BillingService
         from services.errors.app import QuotaExceededError
+        from services.quota_service import QuotaCharge, unlimited
 
         if not dify_config.BILLING_ENABLED:
             logger.debug("Billing disabled, allowing request for %s", tenant_id)
@@ -245,7 +171,7 @@ class QuotaType(StrEnum):
         from services.billing_service import BillingService
 
         try:
-            usage_info = BillingService.get_tenant_feature_plan_usage_info(tenant_id)
+            usage_info = BillingService.get_quota_info(tenant_id)
             if isinstance(usage_info, dict):
                 feature_info = usage_info.get(self.billing_key, {})
                 if isinstance(feature_info, dict):
@@ -258,7 +184,3 @@ class QuotaType(StrEnum):
         except Exception:
             logger.exception("Failed to get remaining quota for %s, feature %s", tenant_id, self.value)
             return -1
-
-
-def unlimited() -> QuotaCharge:
-    return QuotaCharge(success=True, charge_id=None, _quota_type=QuotaType.UNLIMITED)
