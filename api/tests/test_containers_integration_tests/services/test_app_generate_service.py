@@ -36,6 +36,7 @@ class TestAppGenerateService:
             ) as mock_message_based_generator,
             patch("services.account_service.FeatureService", autospec=True) as mock_account_feature_service,
             patch("services.app_generate_service.dify_config", autospec=True) as mock_dify_config,
+            patch("services.quota_service.dify_config", autospec=True) as mock_quota_dify_config,
             patch("configs.dify_config", autospec=True) as mock_global_dify_config,
         ):
             # Setup default mock returns for billing service
@@ -107,6 +108,8 @@ class TestAppGenerateService:
             mock_dify_config.APP_DEFAULT_ACTIVE_REQUESTS = 100
             mock_dify_config.APP_DAILY_RATE_LIMIT = 1000
 
+            mock_quota_dify_config.BILLING_ENABLED = False
+
             mock_global_dify_config.BILLING_ENABLED = False
             mock_global_dify_config.APP_MAX_ACTIVE_REQUESTS = 100
             mock_global_dify_config.APP_DAILY_RATE_LIMIT = 1000
@@ -124,6 +127,7 @@ class TestAppGenerateService:
                 "message_based_generator": mock_message_based_generator,
                 "account_feature_service": mock_account_feature_service,
                 "dify_config": mock_dify_config,
+                "quota_dify_config": mock_quota_dify_config,
                 "global_dify_config": mock_global_dify_config,
             }
 
@@ -471,6 +475,7 @@ class TestAppGenerateService:
 
         # Set BILLING_ENABLED to True for this test
         mock_external_service_dependencies["dify_config"].BILLING_ENABLED = True
+        mock_external_service_dependencies["quota_dify_config"].BILLING_ENABLED = True
         mock_external_service_dependencies["global_dify_config"].BILLING_ENABLED = True
 
         # Setup test arguments

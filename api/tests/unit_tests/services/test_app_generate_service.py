@@ -25,6 +25,7 @@ import services.app_generate_service as ags_module
 from core.app.entities.app_invoke_entities import InvokeFrom
 from models.model import AppMode
 from services.app_generate_service import AppGenerateService
+from enums.quota_type import QuotaType
 from services.errors.app import WorkflowIdFormatError, WorkflowNotFoundError
 
 
@@ -467,7 +468,7 @@ class TestGenerateBilling:
             invoke_from=InvokeFrom.SERVICE_API,
             streaming=False,
         )
-        reserve_mock.assert_called_once_with("tenant-id")
+        reserve_mock.assert_called_once_with(QuotaType.WORKFLOW, "tenant-id")
         quota_charge.commit.assert_called_once()
 
     def test_billing_quota_exceeded_raises_rate_limit_error(self, mocker, monkeypatch):
