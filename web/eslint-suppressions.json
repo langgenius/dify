@@ -6692,9 +6692,6 @@
     },
     "tailwindcss/no-unnecessary-whitespace": {
       "count": 2
-    },
-    "ts/no-explicit-any": {
-      "count": 1
     }
   },
   "app/components/tools/edit-custom-collection-modal/index.tsx": {
@@ -6709,9 +6706,6 @@
     },
     "tailwindcss/no-unnecessary-whitespace": {
       "count": 2
-    },
-    "ts/no-explicit-any": {
-      "count": 2
     }
   },
   "app/components/tools/edit-custom-collection-modal/test-api.tsx": {
@@ -6719,9 +6713,6 @@
       "count": 6
     },
     "tailwindcss/no-unnecessary-whitespace": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
       "count": 1
     }
   },
@@ -6889,9 +6880,6 @@
   "app/components/tools/types.ts": {
     "erasable-syntax-only/enums": {
       "count": 5
-    },
-    "ts/no-explicit-any": {
-      "count": 4
     }
   },
   "app/components/tools/workflow-tool/confirm-modal/index.tsx": {
