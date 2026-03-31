@@ -29,7 +29,6 @@ from core.trigger.provider import PluginTriggerProviderController
 from core.trigger.trigger_manager import TriggerManager
 from core.workflow.nodes.trigger_plugin.entities import TriggerEventNodeData
 from enums.quota_type import QuotaType
-from services.quota_service import unlimited
 from models.enums import (
     AppTriggerType,
     CreatorUserRole,
@@ -43,6 +42,7 @@ from models.workflow import Workflow, WorkflowAppLog, WorkflowAppLogCreatedFrom,
 from services.async_workflow_service import AsyncWorkflowService
 from services.end_user_service import EndUserService
 from services.errors.app import QuotaExceededError
+from services.quota_service import unlimited
 from services.trigger.app_trigger_service import AppTriggerService
 from services.trigger.trigger_provider_service import TriggerProviderService
 from services.trigger.trigger_request_service import TriggerHttpRequestCachingService
