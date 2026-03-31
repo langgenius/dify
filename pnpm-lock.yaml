@@ -249,9 +249,6 @@ catalogs:
     autoprefixer:
       specifier: 10.4.27
       version: 10.4.27
-    axios:
-      specifier: ^1.14.0
-      version: 1.14.0
     class-variance-authority:
       specifier: 0.7.1
       version: 0.7.1
@@ -573,6 +570,7 @@ overrides:
   array.prototype.flatmap: npm:@nolyfill/array.prototype.flatmap@^1.0.44
   array.prototype.tosorted: npm:@nolyfill/array.prototype.tosorted@^1.0.44
   assert: npm:@nolyfill/assert@^1.0.26
+  axios: 1.14.0
   brace-expansion@<2.0.2: 2.0.2
   canvas: ^3.2.2
   devalue@<5.3.2: 5.3.2
@@ -652,7 +650,7 @@ importers:
   sdks/nodejs-client:
     dependencies:
       axios:
-        specifier: 'catalog:'
+        specifier: 1.14.0
         version: 1.14.0
     devDependencies:
       '@eslint/js':
