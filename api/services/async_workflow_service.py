@@ -22,7 +22,7 @@ from models.trigger import WorkflowTriggerLog, WorkflowTriggerLogDict
 from models.workflow import Workflow
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
 from services.errors.app import QuotaExceededError, WorkflowNotFoundError, WorkflowQuotaLimitError
-from services.quota_service import unlimited
+from services.quota_service import QuotaService, unlimited
 from services.workflow.entities import AsyncTriggerResponse, TriggerData, WorkflowTaskData
 from services.workflow.queue_dispatcher import QueueDispatcherManager, QueuePriority
 from services.workflow_service import WorkflowService
@@ -135,7 +135,7 @@ class AsyncWorkflowService:
         # 7. Reserve quota (commit after successful dispatch)
         quota_charge = unlimited()
         try:
-            quota_charge = QuotaType.WORKFLOW.reserve(trigger_data.tenant_id)
+            quota_charge = QuotaService.reserve(QuotaType.WORKFLOW, trigger_data.tenant_id)
         except QuotaExceededError as e:
             # Update trigger log status
             trigger_log.status = WorkflowTriggerStatus.RATE_LIMITED

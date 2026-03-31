@@ -28,6 +28,7 @@ from core.workflow.nodes.trigger_webhook.entities import (
     WebhookParameter,
 )
 from enums.quota_type import QuotaType
+from services.quota_service import QuotaService
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from factories import file_factory
@@ -784,7 +785,7 @@ class WebhookService:
 
                 # reserve quota before triggering workflow execution
                 try:
-                    quota_charge = QuotaType.TRIGGER.reserve(webhook_trigger.tenant_id)
+                    quota_charge = QuotaService.reserve(QuotaType.TRIGGER, webhook_trigger.tenant_id)
                 except QuotaExceededError:
                     AppTriggerService.mark_tenant_triggers_rate_limited(webhook_trigger.tenant_id)
                     logger.info(

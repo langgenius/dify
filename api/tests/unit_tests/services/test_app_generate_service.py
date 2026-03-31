@@ -448,7 +448,7 @@ class TestGenerateBilling:
         monkeypatch.setattr(ags_module.dify_config, "BILLING_ENABLED", True)
         quota_charge = MagicMock()
         reserve_mock = mocker.patch(
-            "services.app_generate_service.QuotaType.WORKFLOW.reserve",
+            "services.app_generate_service.QuotaService.reserve",
             return_value=quota_charge,
         )
         mocker.patch(
@@ -476,7 +476,7 @@ class TestGenerateBilling:
 
         monkeypatch.setattr(ags_module.dify_config, "BILLING_ENABLED", True)
         mocker.patch(
-            "services.app_generate_service.QuotaType.WORKFLOW.reserve",
+            "services.app_generate_service.QuotaService.reserve",
             side_effect=QuotaExceededError(feature="workflow", tenant_id="t", required=1),
         )
 
@@ -493,7 +493,7 @@ class TestGenerateBilling:
         monkeypatch.setattr(ags_module.dify_config, "BILLING_ENABLED", True)
         quota_charge = MagicMock()
         mocker.patch(
-            "services.app_generate_service.QuotaType.WORKFLOW.reserve",
+            "services.app_generate_service.QuotaService.reserve",
             return_value=quota_charge,
         )
         mocker.patch(

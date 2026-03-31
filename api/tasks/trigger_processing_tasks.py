@@ -42,7 +42,7 @@ from models.workflow import Workflow, WorkflowAppLog, WorkflowAppLogCreatedFrom,
 from services.async_workflow_service import AsyncWorkflowService
 from services.end_user_service import EndUserService
 from services.errors.app import QuotaExceededError
-from services.quota_service import unlimited
+from services.quota_service import QuotaService, unlimited
 from services.trigger.app_trigger_service import AppTriggerService
 from services.trigger.trigger_provider_service import TriggerProviderService
 from services.trigger.trigger_request_service import TriggerHttpRequestCachingService
@@ -302,7 +302,7 @@ def dispatch_triggered_workflow(
             # reserve quota before invoking trigger
             quota_charge = unlimited()
             try:
-                quota_charge = QuotaType.TRIGGER.reserve(subscription.tenant_id)
+                quota_charge = QuotaService.reserve(QuotaType.TRIGGER, subscription.tenant_id)
             except QuotaExceededError:
                 AppTriggerService.mark_tenant_triggers_rate_limited(subscription.tenant_id)
                 logger.info(

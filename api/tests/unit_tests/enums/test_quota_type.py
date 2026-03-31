@@ -1,11 +1,11 @@
-"""Unit tests for QuotaType and QuotaCharge."""
+"""Unit tests for QuotaType, QuotaService, and QuotaCharge."""
 
 from unittest.mock import patch
 
 import pytest
 
 from enums.quota_type import QuotaType
-from services.quota_service import QuotaCharge, unlimited
+from services.quota_service import QuotaCharge, QuotaService, unlimited
 
 
 class TestQuotaType:
@@ -19,31 +19,33 @@ class TestQuotaType:
         with pytest.raises(ValueError, match="Invalid quota type"):
             _ = QuotaType.UNLIMITED.billing_key
 
+
+class TestQuotaService:
     def test_reserve_billing_disabled(self):
         with (
-            patch("configs.dify_config") as mock_cfg,
+            patch("services.quota_service.dify_config") as mock_cfg,
             patch("services.billing_service.BillingService"),
         ):
             mock_cfg.BILLING_ENABLED = False
-            charge = QuotaType.TRIGGER.reserve("t1")
+            charge = QuotaService.reserve(QuotaType.TRIGGER, "t1")
             assert charge.success is True
             assert charge.charge_id is None
 
     def test_reserve_zero_amount_raises(self):
-        with patch("configs.dify_config") as mock_cfg:
+        with patch("services.quota_service.dify_config") as mock_cfg:
             mock_cfg.BILLING_ENABLED = True
             with pytest.raises(ValueError, match="greater than 0"):
-                QuotaType.TRIGGER.reserve("t1", amount=0)
+                QuotaService.reserve(QuotaType.TRIGGER, "t1", amount=0)
 
     def test_reserve_success(self):
         with (
-            patch("configs.dify_config") as mock_cfg,
+            patch("services.quota_service.dify_config") as mock_cfg,
             patch("services.billing_service.BillingService") as mock_bs,
         ):
             mock_cfg.BILLING_ENABLED = True
             mock_bs.quota_reserve.return_value = {"reservation_id": "rid-1", "available": 99}
 
-            charge = QuotaType.TRIGGER.reserve("t1", amount=1)
+            charge = QuotaService.reserve(QuotaType.TRIGGER, "t1", amount=1)
 
             assert charge.success is True
             assert charge.charge_id == "rid-1"
@@ -56,175 +58,175 @@ class TestQuotaType:
         from services.errors.app import QuotaExceededError
 
         with (
-            patch("configs.dify_config") as mock_cfg,
+            patch("services.quota_service.dify_config") as mock_cfg,
             patch("services.billing_service.BillingService") as mock_bs,
         ):
             mock_cfg.BILLING_ENABLED = True
             mock_bs.quota_reserve.return_value = {}
 
             with pytest.raises(QuotaExceededError):
-                QuotaType.TRIGGER.reserve("t1")
+                QuotaService.reserve(QuotaType.TRIGGER, "t1")
 
     def test_reserve_quota_exceeded_propagates(self):
         from services.errors.app import QuotaExceededError
 
         with (
-            patch("configs.dify_config") as mock_cfg,
+            patch("services.quota_service.dify_config") as mock_cfg,
             patch("services.billing_service.BillingService") as mock_bs,
         ):
             mock_cfg.BILLING_ENABLED = True
             mock_bs.quota_reserve.side_effect = QuotaExceededError(feature="trigger", tenant_id="t1", required=1)
 
             with pytest.raises(QuotaExceededError):
-                QuotaType.TRIGGER.reserve("t1")
+                QuotaService.reserve(QuotaType.TRIGGER, "t1")
 
     def test_reserve_api_exception_returns_unlimited(self):
         with (
-            patch("configs.dify_config") as mock_cfg,
+            patch("services.quota_service.dify_config") as mock_cfg,
             patch("services.billing_service.BillingService") as mock_bs,
         ):
             mock_cfg.BILLING_ENABLED = True
             mock_bs.quota_reserve.side_effect = RuntimeError("network")
 
-            charge = QuotaType.TRIGGER.reserve("t1")
+            charge = QuotaService.reserve(QuotaType.TRIGGER, "t1")
             assert charge.success is True
             assert charge.charge_id is None
 
     def test_consume_calls_reserve_and_commit(self):
         with (
-            patch("configs.dify_config") as mock_cfg,
+            patch("services.quota_service.dify_config") as mock_cfg,
             patch("services.billing_service.BillingService") as mock_bs,
         ):
             mock_cfg.BILLING_ENABLED = True
             mock_bs.quota_reserve.return_value = {"reservation_id": "rid-c"}
             mock_bs.quota_commit.return_value = {}
 
-            charge = QuotaType.TRIGGER.consume("t1")
+            charge = QuotaService.consume(QuotaType.TRIGGER, "t1")
             assert charge.success is True
             mock_bs.quota_commit.assert_called_once()
 
     def test_check_billing_disabled(self):
-        with patch("configs.dify_config") as mock_cfg:
+        with patch("services.quota_service.dify_config") as mock_cfg:
             mock_cfg.BILLING_ENABLED = False
-            assert QuotaType.TRIGGER.check("t1") is True
+            assert QuotaService.check(QuotaType.TRIGGER, "t1") is True
 
     def test_check_zero_amount_raises(self):
-        with patch("configs.dify_config") as mock_cfg:
+        with patch("services.quota_service.dify_config") as mock_cfg:
             mock_cfg.BILLING_ENABLED = True
             with pytest.raises(ValueError, match="greater than 0"):
-                QuotaType.TRIGGER.check("t1", amount=0)
+                QuotaService.check(QuotaType.TRIGGER, "t1", amount=0)
 
     def test_check_sufficient_quota(self):
         with (
-            patch("configs.dify_config") as mock_cfg,
-            patch.object(QuotaType.TRIGGER, "get_remaining", return_value=100),
+            patch("services.quota_service.dify_config") as mock_cfg,
+            patch.object(QuotaService, "get_remaining", return_value=100),
         ):
             mock_cfg.BILLING_ENABLED = True
-            assert QuotaType.TRIGGER.check("t1", amount=50) is True
+            assert QuotaService.check(QuotaType.TRIGGER, "t1", amount=50) is True
 
     def test_check_insufficient_quota(self):
         with (
-            patch("configs.dify_config") as mock_cfg,
-            patch.object(QuotaType.TRIGGER, "get_remaining", return_value=5),
+            patch("services.quota_service.dify_config") as mock_cfg,
+            patch.object(QuotaService, "get_remaining", return_value=5),
         ):
             mock_cfg.BILLING_ENABLED = True
-            assert QuotaType.TRIGGER.check("t1", amount=10) is False
+            assert QuotaService.check(QuotaType.TRIGGER, "t1", amount=10) is False
 
     def test_check_unlimited_quota(self):
         with (
-            patch("configs.dify_config") as mock_cfg,
-            patch.object(QuotaType.TRIGGER, "get_remaining", return_value=-1),
+            patch("services.quota_service.dify_config") as mock_cfg,
+            patch.object(QuotaService, "get_remaining", return_value=-1),
         ):
             mock_cfg.BILLING_ENABLED = True
-            assert QuotaType.TRIGGER.check("t1", amount=999) is True
+            assert QuotaService.check(QuotaType.TRIGGER, "t1", amount=999) is True
 
     def test_check_exception_returns_true(self):
         with (
-            patch("configs.dify_config") as mock_cfg,
-            patch.object(QuotaType.TRIGGER, "get_remaining", side_effect=RuntimeError),
+            patch("services.quota_service.dify_config") as mock_cfg,
+            patch.object(QuotaService, "get_remaining", side_effect=RuntimeError),
         ):
             mock_cfg.BILLING_ENABLED = True
-            assert QuotaType.TRIGGER.check("t1") is True
+            assert QuotaService.check(QuotaType.TRIGGER, "t1") is True
 
     def test_release_billing_disabled(self):
         with (
-            patch("configs.dify_config") as mock_cfg,
+            patch("services.quota_service.dify_config") as mock_cfg,
             patch("services.billing_service.BillingService") as mock_bs,
         ):
             mock_cfg.BILLING_ENABLED = False
-            QuotaType.TRIGGER.release("rid-1", "t1", "trigger_event")
+            QuotaService.release(QuotaType.TRIGGER, "rid-1", "t1", "trigger_event")
             mock_bs.quota_release.assert_not_called()
 
     def test_release_empty_reservation(self):
         with (
-            patch("configs.dify_config") as mock_cfg,
+            patch("services.quota_service.dify_config") as mock_cfg,
             patch("services.billing_service.BillingService") as mock_bs,
         ):
             mock_cfg.BILLING_ENABLED = True
-            QuotaType.TRIGGER.release("", "t1", "trigger_event")
+            QuotaService.release(QuotaType.TRIGGER, "", "t1", "trigger_event")
             mock_bs.quota_release.assert_not_called()
 
     def test_release_success(self):
         with (
-            patch("configs.dify_config") as mock_cfg,
+            patch("services.quota_service.dify_config") as mock_cfg,
             patch("services.billing_service.BillingService") as mock_bs,
         ):
             mock_cfg.BILLING_ENABLED = True
             mock_bs.quota_release.return_value = {}
-            QuotaType.TRIGGER.release("rid-1", "t1", "trigger_event")
+            QuotaService.release(QuotaType.TRIGGER, "rid-1", "t1", "trigger_event")
             mock_bs.quota_release.assert_called_once_with(
                 tenant_id="t1", feature_key="trigger_event", reservation_id="rid-1"
             )
 
     def test_release_exception_swallowed(self):
         with (
-            patch("configs.dify_config") as mock_cfg,
+            patch("services.quota_service.dify_config") as mock_cfg,
             patch("services.billing_service.BillingService") as mock_bs,
         ):
             mock_cfg.BILLING_ENABLED = True
             mock_bs.quota_release.side_effect = RuntimeError("fail")
-            QuotaType.TRIGGER.release("rid-1", "t1", "trigger_event")
+            QuotaService.release(QuotaType.TRIGGER, "rid-1", "t1", "trigger_event")
 
     def test_get_remaining_normal(self):
         with patch("services.billing_service.BillingService") as mock_bs:
             mock_bs.get_quota_info.return_value = {"trigger_event": {"limit": 100, "usage": 30}}
-            assert QuotaType.TRIGGER.get_remaining("t1") == 70
+            assert QuotaService.get_remaining(QuotaType.TRIGGER, "t1") == 70
 
     def test_get_remaining_unlimited(self):
         with patch("services.billing_service.BillingService") as mock_bs:
             mock_bs.get_quota_info.return_value = {"trigger_event": {"limit": -1, "usage": 0}}
-            assert QuotaType.TRIGGER.get_remaining("t1") == -1
+            assert QuotaService.get_remaining(QuotaType.TRIGGER, "t1") == -1
 
     def test_get_remaining_over_limit_returns_zero(self):
         with patch("services.billing_service.BillingService") as mock_bs:
             mock_bs.get_quota_info.return_value = {"trigger_event": {"limit": 10, "usage": 15}}
-            assert QuotaType.TRIGGER.get_remaining("t1") == 0
+            assert QuotaService.get_remaining(QuotaType.TRIGGER, "t1") == 0
 
     def test_get_remaining_exception_returns_neg1(self):
         with patch("services.billing_service.BillingService") as mock_bs:
             mock_bs.get_quota_info.side_effect = RuntimeError
-            assert QuotaType.TRIGGER.get_remaining("t1") == -1
+            assert QuotaService.get_remaining(QuotaType.TRIGGER, "t1") == -1
 
     def test_get_remaining_empty_response(self):
         with patch("services.billing_service.BillingService") as mock_bs:
             mock_bs.get_quota_info.return_value = {}
-            assert QuotaType.TRIGGER.get_remaining("t1") == 0
+            assert QuotaService.get_remaining(QuotaType.TRIGGER, "t1") == 0
 
     def test_get_remaining_non_dict_response(self):
         with patch("services.billing_service.BillingService") as mock_bs:
             mock_bs.get_quota_info.return_value = "invalid"
-            assert QuotaType.TRIGGER.get_remaining("t1") == 0
+            assert QuotaService.get_remaining(QuotaType.TRIGGER, "t1") == 0
 
     def test_get_remaining_feature_not_in_response(self):
         with patch("services.billing_service.BillingService") as mock_bs:
             mock_bs.get_quota_info.return_value = {"other_feature": {"limit": 100, "usage": 0}}
-            remaining = QuotaType.TRIGGER.get_remaining("t1")
+            remaining = QuotaService.get_remaining(QuotaType.TRIGGER, "t1")
             assert remaining == 0
 
     def test_get_remaining_non_dict_feature_info(self):
         with patch("services.billing_service.BillingService") as mock_bs:
             mock_bs.get_quota_info.return_value = {"trigger_event": "not_a_dict"}
-            assert QuotaType.TRIGGER.get_remaining("t1") == 0
+            assert QuotaService.get_remaining(QuotaType.TRIGGER, "t1") == 0
 
 
 class TestQuotaCharge:
@@ -310,7 +312,7 @@ class TestQuotaCharge:
             charge.commit()
 
     def test_refund_success(self):
-        with patch.object(QuotaType.TRIGGER, "release") as mock_rel:
+        with patch.object(QuotaService, "release") as mock_rel:
             charge = QuotaCharge(
                 success=True,
                 charge_id="rid-1",
@@ -319,16 +321,16 @@ class TestQuotaCharge:
                 _feature_key="trigger_event",
             )
             charge.refund()
-            mock_rel.assert_called_once_with("rid-1", "t1", "trigger_event")
+            mock_rel.assert_called_once_with(QuotaType.TRIGGER, "rid-1", "t1", "trigger_event")
 
     def test_refund_no_charge_id_noop(self):
-        with patch.object(QuotaType.TRIGGER, "release") as mock_rel:
+        with patch.object(QuotaService, "release") as mock_rel:
             charge = QuotaCharge(success=True, charge_id=None, _quota_type=QuotaType.TRIGGER)
             charge.refund()
             mock_rel.assert_not_called()
 
     def test_refund_no_tenant_id_noop(self):
-        with patch.object(QuotaType.TRIGGER, "release") as mock_rel:
+        with patch.object(QuotaService, "release") as mock_rel:
             charge = QuotaCharge(
                 success=True,
                 charge_id="rid-1",

@@ -24,7 +24,7 @@ from models.model import Account, App, AppMode, EndUser
 from models.workflow import Workflow, WorkflowRun
 from services.errors.app import QuotaExceededError, WorkflowIdFormatError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
-from services.quota_service import unlimited
+from services.quota_service import QuotaService, unlimited
 from services.workflow_service import WorkflowService
 from tasks.app_generate.workflow_execute_task import AppExecutionParams, workflow_based_app_execution_task
 
@@ -107,7 +107,7 @@ class AppGenerateService:
         quota_charge = unlimited()
         if dify_config.BILLING_ENABLED:
             try:
-                quota_charge = QuotaType.WORKFLOW.reserve(app_model.tenant_id)
+                quota_charge = QuotaService.reserve(QuotaType.WORKFLOW, app_model.tenant_id)
             except QuotaExceededError:
                 raise InvokeRateLimitError(f"Workflow execution quota limit reached for tenant {app_model.tenant_id}")
 

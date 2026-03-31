@@ -602,9 +602,9 @@ def test_schedule_trigger_creates_trigger_log(
     )
 
     # Mock quota to avoid rate limiting
-    from enums import quota_type
+    from services import quota_service
 
-    monkeypatch.setattr(quota_type.QuotaType.TRIGGER, "consume", lambda _tenant_id: quota_type.unlimited())
+    monkeypatch.setattr(quota_service.QuotaService, "reserve", lambda *_args, **_kwargs: quota_service.unlimited())
 
     # Execute schedule trigger
     workflow_schedule_tasks.run_schedule_trigger(plan.id)
