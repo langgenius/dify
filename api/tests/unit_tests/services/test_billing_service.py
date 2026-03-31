@@ -38,7 +38,7 @@ class TestBillingServiceSendRequest:
     @pytest.fixture
     def mock_httpx_request(self):
         """Mock httpx.request for testing."""
-        with patch("services.billing_service.httpx.request") as mock_request:
+        with patch("services.billing_service._http_client.request") as mock_request:
             yield mock_request
 
     @pytest.fixture

@@ -47,6 +47,20 @@ from graphon.model_runtime.errors.invoke import (
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
 
 
+@pytest.fixture(autouse=True)
+def _patch_shared_httpx_client():
+    """Make BasePluginClient's module-level httpx client delegate to patched httpx.request/stream.
+
+    After refactor, code uses core.plugin.impl.base._httpx_client directly.
+    Patch its request/stream to route through module-level httpx so existing mocks still apply.
+    """
+    with (
+        patch("core.plugin.impl.base._httpx_client.request", side_effect=lambda **kw: httpx.request(**kw)),
+        patch("core.plugin.impl.base._httpx_client.stream", side_effect=lambda **kw: httpx.stream(**kw)),
+    ):
+        yield
+
+
 class TestPluginRuntimeExecution:
     """Unit tests for plugin execution functionality.
 

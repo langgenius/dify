@@ -1,5 +1,6 @@
 from unittest.mock import MagicMock, patch
 
+import httpx
 import pytest
 from sqlalchemy.orm import Session
 
@@ -71,6 +72,8 @@ class TestDatasourceProviderService:
     @pytest.fixture(autouse=True)
     def patch_externals(self):
         with (
+            patch("core.plugin.impl.base._httpx_client.request", side_effect=lambda **kw: httpx.request(**kw)),
+            patch("core.plugin.impl.base._httpx_client.stream", side_effect=lambda **kw: httpx.stream(**kw)),
             patch("httpx.request") as mock_httpx,
             patch("services.datasource_provider_service.dify_config") as mock_cfg,
             patch("services.datasource_provider_service.encrypter") as mock_enc,
@@ -78,6 +81,7 @@ class TestDatasourceProviderService:
             patch("services.datasource_provider_service.generate_incremental_name") as mock_genname,
             patch("services.datasource_provider_service.OAuthHandler") as mock_oauth,
         ):
+
             mock_cfg.CONSOLE_API_URL = "http://localhost"
             mock_enc.encrypt_token.return_value = "enc_tok"
             mock_enc.decrypt_token.return_value = "dec_tok"
