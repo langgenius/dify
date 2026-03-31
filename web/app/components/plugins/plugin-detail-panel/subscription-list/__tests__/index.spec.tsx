@@ -3,8 +3,16 @@ import type { TriggerSubscription } from '@/app/components/workflow/block-select
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { TriggerCredentialTypeEnum } from '@/app/components/workflow/block-selector/types'
+import { createReactI18nextMock } from '@/test/i18n-mock'
 import { SubscriptionList } from '../index'
 import { SubscriptionListMode } from '../types'
+
+vi.mock('react-i18next', () => createReactI18nextMock({
+  'errorBoundary.title': 'Something went wrong',
+  'errorBoundary.message': 'An unexpected error occurred while rendering this component.',
+  'errorBoundary.tryAgain': 'Try Again',
+  'errorBoundary.reloadPage': 'Reload Page',
+}))
 
 const mockRefetch = vi.fn()
 let mockSubscriptionListError: Error | null = null
