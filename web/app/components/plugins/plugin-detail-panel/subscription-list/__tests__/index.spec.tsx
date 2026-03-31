@@ -217,12 +217,12 @@ describe('SubscriptionList', () => {
   })
 
   describe('Edge Cases', () => {
-    it('should render error boundary fallback when an error occurs', () => {
+    it('should render error boundary fallback when an error occurs', async () => {
       mockSubscriptionListError = new Error('boom')
 
       render(<SubscriptionList />)
 
-      expect(screen.getByText('Something went wrong')).toBeInTheDocument()
+      expect(await screen.findByText('Something went wrong')).toBeInTheDocument()
     })
   })
 })
