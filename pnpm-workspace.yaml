@@ -2,7 +2,11 @@ trustPolicy: no-downgrade
 minimumReleaseAge: 1440
 blockExoticSubdeps: true
 strictDepBuilds: true
-
+allowBuilds:
+  '@parcel/watcher': false
+  canvas: false
+  esbuild: false
+  sharp: false
 packages:
   - web
   - e2e
