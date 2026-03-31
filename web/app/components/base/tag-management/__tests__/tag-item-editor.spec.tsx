@@ -107,6 +107,17 @@ describe('TagItemEditor', () => {
       expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
     })
 
+    it('should exit edit mode without calling update when submitted name is unchanged', async () => {
+      const user = userEvent.setup()
+      render(<TagItemEditor tag={baseTag} />)
+
+      await user.click(screen.getByTestId('tag-item-editor-edit-button') as HTMLElement)
+      await user.keyboard('{Enter}')
+
+      expect(updateTag).not.toHaveBeenCalled()
+      expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    })
+
     it('should show validation error and skip update when name is empty', async () => {
       const user = userEvent.setup()
       render(<TagItemEditor tag={baseTag} />)
@@ -231,6 +242,30 @@ describe('TagItemEditor', () => {
         message: 'common.actionMsg.modifiedUnsuccessfully',
       })
       expect(useTagStore.getState().tagList.find(tag => tag.id === 'tag-1')).toBeDefined()
+    })
+
+    it('should prevent duplicate delete requests while pending', async () => {
+      const user = userEvent.setup()
+      let resolveDelete!: () => void
+      vi.mocked(deleteTag).mockImplementation(() => new Promise((resolve) => {
+        resolveDelete = () => resolve(undefined)
+      }))
+
+      const removableTag: Tag = { ...baseTag, binding_count: 0 }
+      act(() => {
+        useTagStore.setState({ tagList: [removableTag, anotherTag] })
+      })
+      render(<TagItemEditor tag={removableTag} />)
+
+      const removeButton = screen.getByTestId('tag-item-editor-remove-button')
+      await user.click(removeButton as HTMLElement)
+      await user.click(removeButton as HTMLElement)
+
+      expect(deleteTag).toHaveBeenCalledTimes(1)
+
+      await act(async () => {
+        resolveDelete()
+      })
     })
   })
 })

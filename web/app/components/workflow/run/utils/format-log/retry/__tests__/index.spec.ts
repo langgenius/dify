@@ -1,0 +1,22 @@
+import type { NodeTracing } from '@/types/workflow'
+import format from '..'
+import graphToLogStruct from '../../graph-to-log-struct'
+
+describe('retry', () => {
+  // retry nodeId:1 3 times.
+  const steps = graphToLogStruct('start -> (retry, retryNode, 3)')
+  const [startNode, retryNode, ...retryDetail] = steps
+  const result = format(steps as NodeTracing[])
+  it('should have no retry status nodes', () => {
+    expect(result.find(item => item.status === 'retry')).toBeUndefined()
+  })
+  it('should put retry nodes in retryDetail', () => {
+    expect(result).toEqual([
+      startNode,
+      {
+        ...retryNode,
+        retryDetail,
+      },
+    ])
+  })
+})

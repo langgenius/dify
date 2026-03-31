@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import type { KnowledgeBaseNodeType } from './types'
 import type { NodePanelProps, Var } from '@/app/components/workflow/types'
+import { useQuery } from '@tanstack/react-query'
 import {
   memo,
   useCallback,
@@ -19,16 +20,22 @@ import {
 } from '@/app/components/workflow/nodes/_base/components/layout'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import { IS_CE_EDITION } from '@/config'
+import { consoleQuery } from '@/service/client'
 import Split from '../_base/components/split'
 import ChunkStructure from './components/chunk-structure'
 import EmbeddingModel from './components/embedding-model'
 import IndexMethod from './components/index-method'
 import RetrievalSetting from './components/retrieval-setting'
 import { useConfig } from './hooks/use-config'
+import { useEmbeddingModelStatus } from './hooks/use-embedding-model-status'
 import {
   ChunkStructureEnum,
   IndexMethodEnum,
 } from './types'
+import {
+  getKnowledgeBaseValidationIssue,
+  KnowledgeBaseValidationIssueCode,
+} from './utils'
 
 const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
   id,
@@ -38,6 +45,22 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
   const { nodesReadOnly } = useNodesReadOnly()
   const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
   const { data: rerankModelList } = useModelList(ModelTypeEnum.rerank)
+  const chunkStructure = data.chunk_structure
+  const indexChunkVariableSelector = data.index_chunk_variable_selector
+  const indexingTechnique = data.indexing_technique
+  const embeddingModel = data.embedding_model
+  const retrievalModel = data.retrieval_model
+  const retrievalSearchMethod = retrievalModel?.search_method
+  const retrievalRerankingEnable = retrievalModel?.reranking_enable
+  const embeddingModelProvider = data.embedding_model_provider
+  const { data: embeddingProviderModelList } = useQuery(
+    consoleQuery.modelProviders.models.queryOptions({
+      input: { params: { provider: embeddingModelProvider || '' } },
+      enabled: indexingTechnique === IndexMethodEnum.QUALIFIED && !!embeddingModelProvider,
+      refetchOnWindowFocus: false,
+      select: response => response.data,
+    }),
+  )
 
   const {
     handleChunkStructureChange,
@@ -108,6 +131,49 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
     })
   }, [data.embedding_model_provider, data.embedding_model, data.retrieval_model?.reranking_enable, data.retrieval_model?.reranking_model, data.indexing_technique, embeddingModelList, rerankModelList])
 
+  const validationPayload = useMemo(() => {
+    return {
+      chunk_structure: chunkStructure,
+      index_chunk_variable_selector: indexChunkVariableSelector,
+      indexing_technique: indexingTechnique,
+      embedding_model: embeddingModel,
+      embedding_model_provider: embeddingModelProvider,
+      retrieval_model: {
+        search_method: retrievalSearchMethod,
+        reranking_enable: retrievalRerankingEnable,
+        reranking_model: retrievalModel?.reranking_model,
+      },
+      _embeddingModelList: embeddingModelList,
+      _embeddingProviderModelList: embeddingProviderModelList,
+      _rerankModelList: rerankModelList,
+    }
+  }, [
+    chunkStructure,
+    indexChunkVariableSelector,
+    indexingTechnique,
+    embeddingModel,
+    embeddingModelProvider,
+    retrievalSearchMethod,
+    retrievalRerankingEnable,
+    retrievalModel?.reranking_model,
+    embeddingModelList,
+    embeddingProviderModelList,
+    rerankModelList,
+  ])
+
+  const validationIssue = useMemo(() => {
+    return getKnowledgeBaseValidationIssue(validationPayload)
+  }, [validationPayload])
+  const { status: embeddingModelStatus } = useEmbeddingModelStatus({
+    embeddingModel,
+    embeddingModelProvider,
+    embeddingModelList,
+  })
+
+  const chunkStructureWarning = validationIssue?.code === KnowledgeBaseValidationIssueCode.chunkStructureRequired
+  const chunksInputWarning = validationIssue?.code === KnowledgeBaseValidationIssueCode.chunksVariableRequired
+  const embeddingModelWarning = indexingTechnique === IndexMethodEnum.QUALIFIED && embeddingModelStatus !== 'active'
+
   return (
     <div>
       <Group
@@ -117,6 +183,7 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
         <ChunkStructure
           chunkStructure={data.chunk_structure}
           onChunkStructureChange={handleChunkStructureChange}
+          warningDot={chunkStructureWarning}
           readonly={nodesReadOnly}
         />
       </Group>
@@ -131,6 +198,7 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
                 fieldTitleProps: {
                   title: t('nodes.knowledgeBase.chunksInput', { ns: 'workflow' }),
                   tooltip: t('nodes.knowledgeBase.chunksInputTip', { ns: 'workflow' }),
+                  warningDot: chunksInputWarning,
                 },
               }}
             >
@@ -163,6 +231,7 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
                       embeddingModel={data.embedding_model}
                       embeddingModelProvider={data.embedding_model_provider}
                       onEmbeddingModelChange={handleEmbeddingModelChange}
+                      warningDot={embeddingModelWarning}
                       readonly={nodesReadOnly}
                     />
                   )

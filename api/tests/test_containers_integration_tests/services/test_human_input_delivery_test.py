@@ -3,14 +3,14 @@ import uuid
 from unittest.mock import MagicMock
 
 import pytest
+from graphon.enums import BuiltinNodeTypes
+from graphon.nodes.human_input.entities import HumanInputNodeData
 
-from dify_graph.enums import NodeType
-from dify_graph.nodes.human_input.entities import (
+from core.workflow.human_input_compat import (
     EmailDeliveryConfig,
     EmailDeliveryMethod,
     EmailRecipients,
     ExternalRecipient,
-    HumanInputNodeData,
 )
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.model import App, AppMode
@@ -54,7 +54,7 @@ def _create_app_with_draft_workflow(session, *, delivery_method_id: uuid.UUID) -
         enabled=True,
         config=EmailDeliveryConfig(
             recipients=EmailRecipients(
-                whole_workspace=False,
+                include_bound_group=False,
                 items=[ExternalRecipient(email="recipient@example.com")],
             ),
             subject="Test {{recipient_email}}",
@@ -68,7 +68,7 @@ def _create_app_with_draft_workflow(session, *, delivery_method_id: uuid.UUID) -
         inputs=[],
         user_actions=[],
     ).model_dump(mode="json")
-    node_data["type"] = NodeType.HUMAN_INPUT.value
+    node_data["type"] = BuiltinNodeTypes.HUMAN_INPUT
     graph = json.dumps({"nodes": [{"id": "human-node", "data": node_data}], "edges": []})
 
     workflow = Workflow.new(

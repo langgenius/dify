@@ -423,15 +423,6 @@ def test_table_to_markdown_and_parse_helpers(monkeypatch):
     markdown = extractor._table_to_markdown(table, {})
     assert markdown == "| H1 | H2 |\n| --- | --- |\n| A | B |"
 
-    class FakeRunElement:
-        def __init__(self, blips):
-            self._blips = blips
-
-        def xpath(self, pattern):
-            if pattern == ".//a:blip":
-                return self._blips
-            return []
-
     class FakeBlip:
         def __init__(self, image_id):
             self.image_id = image_id
@@ -439,11 +430,31 @@ def test_table_to_markdown_and_parse_helpers(monkeypatch):
         def get(self, key):
             return self.image_id
 
+    class FakeRunChild:
+        def __init__(self, blips, text=""):
+            self._blips = blips
+            self.text = text
+            self.tag = qn("w:r")
+
+        def xpath(self, pattern):
+            if pattern == ".//a:blip":
+                return self._blips
+            return []
+
+    class FakeRun:
+        def __init__(self, element, paragraph):
+            # Mirror the subset used by _parse_cell_paragraph
+            self.element = element
+            self.text = getattr(element, "text", "")
+
+    # Patch we.Run so our lightweight child objects work with the extractor
+    monkeypatch.setattr(we, "Run", FakeRun)
+
     image_part = object()
     paragraph = SimpleNamespace(
-        runs=[
-            SimpleNamespace(element=FakeRunElement([FakeBlip(None), FakeBlip("ext"), FakeBlip("int")]), text=""),
-            SimpleNamespace(element=FakeRunElement([]), text="plain"),
+        _element=[
+            FakeRunChild([FakeBlip(None), FakeBlip("ext"), FakeBlip("int")], text=""),
+            FakeRunChild([], text="plain"),
         ],
         part=SimpleNamespace(
             rels={
@@ -452,6 +463,7 @@ def test_table_to_markdown_and_parse_helpers(monkeypatch):
             }
         ),
     )
+
     image_map = {"ext": "EXT-IMG", image_part: "INT-IMG"}
     assert extractor._parse_cell_paragraph(paragraph, image_map) == "EXT-IMGINT-IMGplain"
 
@@ -625,3 +637,83 @@ def test_parse_docx_covers_drawing_shapes_hyperlink_error_and_table_branch(monke
     assert "BrokenLink" in content
     assert "TABLE-MARKDOWN" in content
     logger_exception.assert_called_once()
+
+
+def test_parse_cell_paragraph_hyperlink_in_table_cell_http():
+    doc = Document()
+    table = doc.add_table(rows=1, cols=1)
+    cell = table.cell(0, 0)
+    p = cell.paragraphs[0]
+
+    # Build modern hyperlink inside table cell
+    r_id = "rIdHttp1"
+    hyperlink = OxmlElement("w:hyperlink")
+    hyperlink.set(qn("r:id"), r_id)
+
+    run_elem = OxmlElement("w:r")
+    t = OxmlElement("w:t")
+    t.text = "Dify"
+    run_elem.append(t)
+    hyperlink.append(run_elem)
+    p._p.append(hyperlink)
+
+    # Relationship for external http link
+    doc.part.rels.add_relationship(
+        "http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink",
+        "https://dify.ai",
+        r_id,
+        is_external=True,
+    )
+
+    with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as tmp:
+        doc.save(tmp.name)
+        tmp_path = tmp.name
+
+    try:
+        reopened = Document(tmp_path)
+        para = reopened.tables[0].cell(0, 0).paragraphs[0]
+        extractor = object.__new__(WordExtractor)
+        out = extractor._parse_cell_paragraph(para, {})
+        assert out == "[Dify](https://dify.ai)"
+    finally:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
+
+
+def test_parse_cell_paragraph_hyperlink_in_table_cell_mailto():
+    doc = Document()
+    table = doc.add_table(rows=1, cols=1)
+    cell = table.cell(0, 0)
+    p = cell.paragraphs[0]
+
+    r_id = "rIdMail1"
+    hyperlink = OxmlElement("w:hyperlink")
+    hyperlink.set(qn("r:id"), r_id)
+
+    run_elem = OxmlElement("w:r")
+    t = OxmlElement("w:t")
+    t.text = "john@test.com"
+    run_elem.append(t)
+    hyperlink.append(run_elem)
+    p._p.append(hyperlink)
+
+    doc.part.rels.add_relationship(
+        "http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink",
+        "mailto:john@test.com",
+        r_id,
+        is_external=True,
+    )
+
+    with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as tmp:
+        doc.save(tmp.name)
+        tmp_path = tmp.name
+
+    try:
+        reopened = Document(tmp_path)
+        para = reopened.tables[0].cell(0, 0).paragraphs[0]
+        extractor = object.__new__(WordExtractor)
+        out = extractor._parse_cell_paragraph(para, {})
+        assert out == "[john@test.com](mailto:john@test.com)"
+    finally:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)

@@ -1,19 +1,15 @@
-from core.plugin.backwards_invocation.base import BaseBackwardsInvocation
-from dify_graph.enums import NodeType
-from dify_graph.nodes.parameter_extractor.entities import (
-    ModelConfig as ParameterExtractorModelConfig,
-)
-from dify_graph.nodes.parameter_extractor.entities import (
+from graphon.enums import BuiltinNodeTypes
+from graphon.nodes.llm.entities import ModelConfig as LLMModelConfig
+from graphon.nodes.parameter_extractor.entities import (
     ParameterConfig,
     ParameterExtractorNodeData,
 )
-from dify_graph.nodes.question_classifier.entities import (
+from graphon.nodes.question_classifier.entities import (
     ClassConfig,
     QuestionClassifierNodeData,
 )
-from dify_graph.nodes.question_classifier.entities import (
-    ModelConfig as QuestionClassifierModelConfig,
-)
+
+from core.plugin.backwards_invocation.base import BaseBackwardsInvocation
 from services.workflow_service import WorkflowService
 
 
@@ -24,7 +20,7 @@ class PluginNodeBackwardsInvocation(BaseBackwardsInvocation):
         tenant_id: str,
         user_id: str,
         parameters: list[ParameterConfig],
-        model_config: ParameterExtractorModelConfig,
+        model_config: LLMModelConfig,
         instruction: str,
         query: str,
     ):
@@ -52,7 +48,7 @@ class PluginNodeBackwardsInvocation(BaseBackwardsInvocation):
             instruction=instruction,  # instruct with variables are not supported
         )
         node_data_dict = node_data.model_dump()
-        node_data_dict["type"] = NodeType.PARAMETER_EXTRACTOR
+        node_data_dict["type"] = BuiltinNodeTypes.PARAMETER_EXTRACTOR
         execution = workflow_service.run_free_workflow_node(
             node_data_dict,
             tenant_id=tenant_id,
@@ -74,7 +70,7 @@ class PluginNodeBackwardsInvocation(BaseBackwardsInvocation):
         cls,
         tenant_id: str,
         user_id: str,
-        model_config: QuestionClassifierModelConfig,
+        model_config: LLMModelConfig,
         classes: list[ClassConfig],
         instruction: str,
         query: str,

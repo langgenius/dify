@@ -8,7 +8,7 @@ import TabItem from '../tab/item'
 import Uploader from '../uploader'
 
 const mockPush = vi.fn()
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
   }),
@@ -1612,9 +1612,7 @@ describe('Uploader', () => {
       if (!dropArea)
         return
 
-      fireEvent.drop(dropArea, {
-        dataTransfer: null,
-      })
+      fireEvent.drop(dropArea)
 
       expect(updateFile).not.toHaveBeenCalled()
     })

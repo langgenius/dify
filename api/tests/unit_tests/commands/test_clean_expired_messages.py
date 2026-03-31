@@ -26,9 +26,9 @@ def test_absolute_mode_calls_from_time_range():
     end_before = datetime.datetime(2024, 2, 1, 0, 0, 0)
 
     with (
-        patch("commands.create_message_clean_policy", return_value=policy),
-        patch("commands.MessagesCleanService.from_time_range", return_value=service) as mock_from_time_range,
-        patch("commands.MessagesCleanService.from_days") as mock_from_days,
+        patch("commands.retention.create_message_clean_policy", return_value=policy),
+        patch("commands.retention.MessagesCleanService.from_time_range", return_value=service) as mock_from_time_range,
+        patch("commands.retention.MessagesCleanService.from_days") as mock_from_days,
     ):
         clean_expired_messages.callback(
             batch_size=200,
@@ -46,6 +46,7 @@ def test_absolute_mode_calls_from_time_range():
         end_before=end_before,
         batch_size=200,
         dry_run=True,
+        task_label="custom",
     )
     mock_from_days.assert_not_called()
 
@@ -55,9 +56,9 @@ def test_relative_mode_before_days_only_calls_from_days():
     service = _mock_service()
 
     with (
-        patch("commands.create_message_clean_policy", return_value=policy),
-        patch("commands.MessagesCleanService.from_days", return_value=service) as mock_from_days,
-        patch("commands.MessagesCleanService.from_time_range") as mock_from_time_range,
+        patch("commands.retention.create_message_clean_policy", return_value=policy),
+        patch("commands.retention.MessagesCleanService.from_days", return_value=service) as mock_from_days,
+        patch("commands.retention.MessagesCleanService.from_time_range") as mock_from_time_range,
     ):
         clean_expired_messages.callback(
             batch_size=500,
@@ -74,6 +75,7 @@ def test_relative_mode_before_days_only_calls_from_days():
         days=30,
         batch_size=500,
         dry_run=False,
+        task_label="before-30",
     )
     mock_from_time_range.assert_not_called()
 
@@ -84,10 +86,10 @@ def test_relative_mode_with_from_days_ago_calls_from_time_range():
     fixed_now = datetime.datetime(2024, 8, 20, 12, 0, 0)
 
     with (
-        patch("commands.create_message_clean_policy", return_value=policy),
-        patch("commands.MessagesCleanService.from_time_range", return_value=service) as mock_from_time_range,
-        patch("commands.MessagesCleanService.from_days") as mock_from_days,
-        patch("commands.naive_utc_now", return_value=fixed_now),
+        patch("commands.retention.create_message_clean_policy", return_value=policy),
+        patch("commands.retention.MessagesCleanService.from_time_range", return_value=service) as mock_from_time_range,
+        patch("commands.retention.MessagesCleanService.from_days") as mock_from_days,
+        patch("commands.retention.naive_utc_now", return_value=fixed_now),
     ):
         clean_expired_messages.callback(
             batch_size=1000,
@@ -105,6 +107,7 @@ def test_relative_mode_with_from_days_ago_calls_from_time_range():
         end_before=fixed_now - datetime.timedelta(days=30),
         batch_size=1000,
         dry_run=False,
+        task_label="60to30",
     )
     mock_from_days.assert_not_called()
 

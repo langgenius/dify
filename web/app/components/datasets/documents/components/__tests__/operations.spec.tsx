@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import Operations from '../operations'
 
 const mockPush = vi.fn()
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
   }),
@@ -117,9 +117,8 @@ describe('Operations', () => {
 
     it('should render disabled switch when embeddingAvailable is false in list scene', () => {
       render(<Operations {...defaultProps} embeddingAvailable={false} scene="list" />)
-      // Switch component uses opacity-50 class when disabled
-      const disabledSwitch = document.querySelector('.\\!opacity-50')
-      expect(disabledSwitch).toBeInTheDocument()
+      const disabledSwitch = screen.getByRole('switch')
+      expect(disabledSwitch).toHaveAttribute('aria-disabled', 'true')
     })
   })
 

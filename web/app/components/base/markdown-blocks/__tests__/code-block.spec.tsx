@@ -1,6 +1,6 @@
-import { createRequire } from 'node:module'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import * as echarts from 'echarts'
 import { Theme } from '@/types/app'
 
 import CodeBlock from '../code-block'
@@ -10,17 +10,28 @@ type UseThemeReturn = {
 }
 
 const mockUseTheme = vi.fn<() => UseThemeReturn>(() => ({ theme: Theme.light }))
-const require = createRequire(import.meta.url)
-const echartsCjs = require('echarts') as {
-  getInstanceByDom: (dom: HTMLDivElement | null) => {
-    resize: (opts?: { width?: string, height?: string }) => void
-  } | null
-}
+const mockEcharts = vi.hoisted(() => {
+  const state = {
+    finishedHandler: undefined as undefined | ((event?: unknown) => void),
+    echartsInstance: {
+      resize: vi.fn<(opts?: { width?: string, height?: string }) => void>(),
+      trigger: vi.fn((eventName: string, event?: unknown) => {
+        if (eventName === 'finished')
+          state.finishedHandler?.(event)
+      }),
+    },
+    getInstanceByDom: vi.fn(() => state.echartsInstance),
+  }
+
+  return state
+})
 
 let clientWidthSpy: { mockRestore: () => void } | null = null
 let clientHeightSpy: { mockRestore: () => void } | null = null
 let offsetWidthSpy: { mockRestore: () => void } | null = null
 let offsetHeightSpy: { mockRestore: () => void } | null = null
+let consoleErrorSpy: ReturnType<typeof vi.spyOn> | null = null
+let consoleWarnSpy: ReturnType<typeof vi.spyOn> | null = null
 
 type AudioContextCtor = new () => unknown
 type WindowWithLegacyAudio = Window & {
@@ -59,6 +70,47 @@ vi.mock('@/hooks/use-theme', () => ({
   default: () => mockUseTheme(),
 }))
 
+vi.mock('echarts', () => ({
+  getInstanceByDom: mockEcharts.getInstanceByDom,
+}))
+
+vi.mock('echarts-for-react', async () => {
+  const React = await vi.importActual<typeof import('react')>('react')
+
+  const MockReactEcharts = React.forwardRef(({
+    onChartReady,
+    onEvents,
+  }: {
+    onChartReady?: (instance: typeof mockEcharts.echartsInstance) => void
+    onEvents?: { finished?: (event?: unknown) => void }
+  }, ref: React.ForwardedRef<{ getEchartsInstance: () => typeof mockEcharts.echartsInstance }>) => {
+    React.useImperativeHandle(ref, () => ({
+      getEchartsInstance: () => mockEcharts.echartsInstance,
+    }))
+
+    React.useEffect(() => {
+      mockEcharts.finishedHandler = onEvents?.finished
+      onChartReady?.(mockEcharts.echartsInstance)
+      onEvents?.finished?.({})
+      return () => {
+        mockEcharts.finishedHandler = undefined
+      }
+    }, [onChartReady, onEvents])
+
+    return <div className="echarts-for-react" />
+  })
+
+  return {
+    __esModule: true,
+    default: MockReactEcharts,
+  }
+})
+
+vi.mock('@/app/components/base/mermaid', () => ({
+  __esModule: true,
+  default: ({ PrimitiveCode }: { PrimitiveCode: string }) => <div data-testid="mock-mermaid">{PrimitiveCode}</div>,
+}))
+
 const findEchartsHost = async () => {
   await waitFor(() => {
     expect(document.querySelector('.echarts-for-react')).toBeInTheDocument()
@@ -69,15 +121,17 @@ const findEchartsHost = async () => {
 const findEchartsInstance = async () => {
   const host = await findEchartsHost()
   await waitFor(() => {
-    expect(echartsCjs.getInstanceByDom(host)).toBeTruthy()
+    expect(echarts.getInstanceByDom(host)).toBeTruthy()
   })
-  return echartsCjs.getInstanceByDom(host)!
+  return echarts.getInstanceByDom(host)!
 }
 
 describe('CodeBlock', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseTheme.mockReturnValue({ theme: Theme.light })
+    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     clientWidthSpy = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(900)
     clientHeightSpy = vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(400)
     offsetWidthSpy = vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(900)
@@ -93,6 +147,10 @@ describe('CodeBlock', () => {
 
   afterEach(() => {
     vi.useRealTimers()
+    consoleErrorSpy?.mockRestore()
+    consoleWarnSpy?.mockRestore()
+    consoleErrorSpy = null
+    consoleWarnSpy = null
     clientWidthSpy?.mockRestore()
     clientHeightSpy?.mockRestore()
     offsetWidthSpy?.mockRestore()
@@ -159,6 +217,12 @@ describe('CodeBlock', () => {
     //   expect(await screen.findByTestId('classic')).toBeInTheDocument()
     //   expect(screen.getByText('Mermaid')).toBeInTheDocument()
     // })
+    it('should render mermaid block when language is mermaid', async () => {
+      render(<CodeBlock className="language-mermaid">{'graph TD; A-->B;'}</CodeBlock>)
+
+      expect(screen.getByText('Mermaid')).toBeInTheDocument()
+      expect(await screen.findByTestId('mock-mermaid')).toHaveTextContent('graph TD; A-->B;')
+    })
 
     it('should render abc section header when language is abc', () => {
       render(<CodeBlock className="language-abc">X:1\nT:test</CodeBlock>)
@@ -348,6 +412,16 @@ describe('CodeBlock', () => {
     it('should cleanup echarts resize listener without pending timer on unmount', async () => {
       const { unmount } = render(<CodeBlock className="language-echarts">{'{"a":1}'}</CodeBlock>)
       await findEchartsHost()
+
+      unmount()
+    })
+
+    it('should cleanup echarts resize listener when no debounce timer is pending', async () => {
+      const { rerender, unmount } = render(<CodeBlock className="language-echarts">{'{"a":1}'}</CodeBlock>)
+      await findEchartsHost()
+
+      rerender(<CodeBlock className="language-javascript">const x = 1;</CodeBlock>)
+      rerender(<CodeBlock className="language-echarts">{'{"a":2}'}</CodeBlock>)
 
       unmount()
     })

@@ -6,13 +6,13 @@ import json
 import logging
 from typing import Union
 
+from graphon.entities import WorkflowExecution
+from graphon.enums import WorkflowExecutionStatus, WorkflowType
+from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
-from dify_graph.entities import WorkflowExecution
-from dify_graph.enums import WorkflowExecutionStatus, WorkflowType
-from dify_graph.repositories.workflow_execution_repository import WorkflowExecutionRepository
-from dify_graph.workflow_type_encoder import WorkflowRuntimeTypeConverter
+from core.repositories.factory import WorkflowExecutionRepository
 from libs.helper import extract_tenant_id
 from models import (
     Account,
@@ -146,7 +146,9 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
 
         # No sequence number generation needed anymore
 
-        db_model.type = domain_model.workflow_type
+        from models.workflow import WorkflowType as ModelWorkflowType
+
+        db_model.type = ModelWorkflowType(domain_model.workflow_type.value)
         db_model.version = domain_model.workflow_version
         db_model.graph = json.dumps(domain_model.graph) if domain_model.graph else None
         db_model.inputs = json.dumps(domain_model.inputs) if domain_model.inputs else None

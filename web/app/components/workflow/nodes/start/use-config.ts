@@ -4,7 +4,7 @@ import { useBoolean } from 'ahooks'
 import { produce } from 'immer'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import {
   useIsChatMode,
   useNodesReadOnly,
@@ -97,10 +97,7 @@ const useConfig = (id: string, payload: StartNodeType) => {
     }
 
     if (errorMsgKey && typeName) {
-      Toast.notify({
-        type: 'error',
-        message: t(errorMsgKey, { ns: 'appDebug', key: t(typeName, { ns: 'appDebug' }) }),
-      })
+      toast.error(t(errorMsgKey, { ns: 'appDebug', key: t(typeName, { ns: 'appDebug' }) }))
       return false
     }
     setInputs(newInputs)

@@ -4,23 +4,23 @@ from unittest.mock import Mock, patch
 import pandas as pd
 import pytest
 from docx.oxml.text.paragraph import CT_P
-
-from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from dify_graph.entities import GraphInitParams
-from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
-from dify_graph.file import File, FileTransferMethod
-from dify_graph.node_events import NodeRunResult
-from dify_graph.nodes.document_extractor import DocumentExtractorNode, DocumentExtractorNodeData
-from dify_graph.nodes.document_extractor.node import (
+from graphon.entities import GraphInitParams
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
+from graphon.file import File, FileTransferMethod
+from graphon.node_events import NodeRunResult
+from graphon.nodes.document_extractor import DocumentExtractorNode, DocumentExtractorNodeData
+from graphon.nodes.document_extractor.node import (
     _extract_text_from_docx,
     _extract_text_from_excel,
     _extract_text_from_pdf,
     _extract_text_from_plain_text,
     _normalize_docx_zip,
 )
-from dify_graph.variables import ArrayFileSegment
-from dify_graph.variables.segments import ArrayStringSegment
-from dify_graph.variables.variables import StringVariable
+from graphon.variables import ArrayFileSegment
+from graphon.variables.segments import ArrayStringSegment
+from graphon.variables.variables import StringVariable
+
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
@@ -183,14 +183,14 @@ def test_run_extract_text(
     mock_response.raise_for_status = Mock()
     document_extractor_node._http_client.get = Mock(return_value=mock_response)
 
-    monkeypatch.setattr("dify_graph.file.file_manager.download", mock_download)
+    monkeypatch.setattr("graphon.file.file_manager.download", mock_download)
 
     if mime_type == "application/pdf":
         mock_pdf_extract = Mock(return_value=expected_text[0])
-        monkeypatch.setattr("dify_graph.nodes.document_extractor.node._extract_text_from_pdf", mock_pdf_extract)
+        monkeypatch.setattr("graphon.nodes.document_extractor.node._extract_text_from_pdf", mock_pdf_extract)
     elif mime_type.startswith("application/vnd.openxmlformats"):
         mock_docx_extract = Mock(return_value=expected_text[0])
-        monkeypatch.setattr("dify_graph.nodes.document_extractor.node._extract_text_from_docx", mock_docx_extract)
+        monkeypatch.setattr("graphon.nodes.document_extractor.node._extract_text_from_docx", mock_docx_extract)
 
     result = document_extractor_node._run()
 
@@ -250,7 +250,7 @@ def test_extract_text_from_docx(mock_document):
 
 
 def test_node_type(document_extractor_node):
-    assert document_extractor_node.node_type == NodeType.DOCUMENT_EXTRACTOR
+    assert document_extractor_node.node_type == BuiltinNodeTypes.DOCUMENT_EXTRACTOR
 
 
 @patch("pandas.ExcelFile")

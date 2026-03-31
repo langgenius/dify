@@ -5,9 +5,10 @@ like stopping tasks, handling both legacy Redis flag mechanism and
 new GraphEngine command channel mechanism.
 """
 
+from graphon.graph_engine.manager import GraphEngineManager
+
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
-from dify_graph.graph_engine.manager import GraphEngineManager
 from extensions.ext_redis import redis_client
 from models.model import AppMode
 

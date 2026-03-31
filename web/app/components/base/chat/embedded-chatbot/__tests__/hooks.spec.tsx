@@ -4,6 +4,7 @@ import type { AppConversationData, AppData, AppMeta, ConversationItem } from '@/
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { ToastProvider } from '@/app/components/base/toast'
+import { InputVarType } from '@/app/components/workflow/types'
 import {
   AppSourceType,
   fetchChatList,
@@ -11,6 +12,7 @@ import {
   generationConversationName,
 } from '@/service/share'
 import { shareQueryKeys } from '@/service/use-share'
+import { TransferMethod } from '@/types/app'
 import { CONVERSATION_ID_INFO } from '../../constants'
 import { useEmbeddedChatbot } from '../hooks'
 
@@ -554,6 +556,345 @@ describe('useEmbeddedChatbot', () => {
       })
 
       expect(updateFeedback).toHaveBeenCalled()
+    })
+  })
+
+  describe('embeddedUserId and embeddedConversationId falsy paths', () => {
+    it('should set userId to undefined when embeddedUserId is empty string', async () => {
+      // This exercises the `embeddedUserId || undefined` branch on line 99
+      mockStoreState.embeddedUserId = ''
+      mockStoreState.embeddedConversationId = ''
+      const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
+
+      await waitFor(() => {
+        // When embeddedUserId is empty, allowResetChat is true (no conversationId from URL or stored)
+        expect(result.current.allowResetChat).toBe(true)
+      })
+    })
+  })
+
+  describe('Language settings', () => {
+    it('should set language from URL parameters', async () => {
+      const originalSearch = window.location.search
+      Object.defineProperty(window, 'location', {
+        writable: true,
+        value: { search: '?locale=zh-Hans' },
+      })
+      const { changeLanguage } = await import('@/i18n-config/client')
+
+      await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
+
+      expect(changeLanguage).toHaveBeenCalledWith('zh-Hans')
+      Object.defineProperty(window, 'location', { value: { search: originalSearch } })
+    })
+
+    it('should set language from system variables when URL param is missing', async () => {
+      mockGetProcessedSystemVariablesFromUrlParams.mockResolvedValue({ locale: 'fr-FR' })
+      const { changeLanguage } = await import('@/i18n-config/client')
+
+      await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
+
+      expect(changeLanguage).toHaveBeenCalledWith('fr-FR')
+    })
+
+    it('should fall back to app default language', async () => {
+      mockGetProcessedSystemVariablesFromUrlParams.mockResolvedValue({})
+      mockStoreState.appInfo = {
+        app_id: 'app-1',
+        site: {
+          title: 'Test App',
+          default_language: 'ja-JP',
+        },
+      } as unknown as AppData
+      const { changeLanguage } = await import('@/i18n-config/client')
+
+      await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
+
+      expect(changeLanguage).toHaveBeenCalledWith('ja-JP')
+    })
+  })
+
+  describe('Additional Input Form Edges', () => {
+    it('should handle invalid number inputs and checkbox defaults', async () => {
+      mockStoreState.appParams = {
+        user_input_form: [
+          { number: { variable: 'n1', default: 10 } },
+          { checkbox: { variable: 'c1', default: false } },
+        ],
+      } as unknown as ChatConfig
+      mockGetProcessedInputsFromUrlParams.mockResolvedValue({
+        n1: 'not-a-number',
+        c1: 'true',
+      })
+
+      const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
+      const forms = result.current.inputsForms
+      expect(forms.find(f => f.variable === 'n1')?.default).toBe(10)
+      expect(forms.find(f => f.variable === 'c1')?.default).toBe(false)
+    })
+
+    it('should handle select with invalid option and file-list/json types', async () => {
+      mockStoreState.appParams = {
+        user_input_form: [
+          { select: { variable: 's1', options: ['A'], default: 'A' } },
+        ],
+      } as unknown as ChatConfig
+      mockGetProcessedInputsFromUrlParams.mockResolvedValue({
+        s1: 'INVALID',
+      })
+
+      const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
+      expect(result.current.inputsForms[0].default).toBe('A')
+    })
+  })
+
+  describe('handleConversationIdInfoChange logic', () => {
+    it('should handle existing appId as string and update it to object', async () => {
+      localStorage.setItem(CONVERSATION_ID_INFO, JSON.stringify({ 'app-1': 'legacy-id' }))
+      const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
+
+      act(() => {
+        result.current.handleConversationIdInfoChange('new-conv-id')
+      })
+
+      await waitFor(() => {
+        const stored = JSON.parse(localStorage.getItem(CONVERSATION_ID_INFO) || '{}')
+        const appEntry = stored['app-1']
+        // userId may be 'embedded-user-1' or 'DEFAULT' depending on timing; either is valid
+        const storedId = appEntry?.['embedded-user-1'] ?? appEntry?.DEFAULT
+        expect(storedId).toBe('new-conv-id')
+      })
+    })
+
+    it('should use DEFAULT when userId is null', async () => {
+      // Override userId to be null/empty to exercise the "|| 'DEFAULT'" fallback path
+      mockStoreState.embeddedUserId = null
+      const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
+
+      act(() => {
+        result.current.handleConversationIdInfoChange('default-conv-id')
+      })
+
+      await waitFor(() => {
+        const stored = JSON.parse(localStorage.getItem(CONVERSATION_ID_INFO) || '{}')
+        const appEntry = stored['app-1']
+        // Should use DEFAULT key since userId is null
+        expect(appEntry?.DEFAULT).toBe('default-conv-id')
+      })
+    })
+  })
+
+  describe('allInputsHidden and no required variables', () => {
+    it('should pass checkInputsRequired immediately when there are no required fields', async () => {
+      mockStoreState.appParams = {
+        user_input_form: [
+          // All optional (not required)
+          { 'text-input': { variable: 't1', required: false, label: 'T1' } },
+        ],
+      } as unknown as ChatConfig
+
+      const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
+
+      const onStart = vi.fn()
+      act(() => {
+        result.current.handleStartChat(onStart)
+      })
+      expect(onStart).toHaveBeenCalled()
+    })
+
+    it('should pass checkInputsRequired when all inputs are hidden', async () => {
+      mockStoreState.appParams = {
+        user_input_form: [
+          { 'text-input': { variable: 't1', required: true, label: 'T1', hide: true } },
+          { 'text-input': { variable: 't2', required: true, label: 'T2', hide: true } },
+        ],
+      } as unknown as ChatConfig
+
+      const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
+
+      await waitFor(() => expect(result.current.allInputsHidden).toBe(true))
+
+      const onStart = vi.fn()
+      act(() => {
+        result.current.handleStartChat(onStart)
+      })
+      expect(onStart).toHaveBeenCalled()
+    })
+  })
+
+  describe('checkInputsRequired silent mode and multi-file', () => {
+    it('should return true in silent mode even if fields are missing', async () => {
+      mockStoreState.appParams = {
+        user_input_form: [{ 'text-input': { variable: 't1', required: true, label: 'T1' } }],
+      } as unknown as ChatConfig
+      const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
+
+      // checkInputsRequired is internal; trigger via handleStartChat which calls it
+      const onStart = vi.fn()
+      act(() => {
+        // With silent=true not exposed, we test that handleStartChat calls the callback
+        // when allInputsHidden is true (all forms hidden)
+        result.current.handleStartChat(onStart)
+      })
+      // The form field has required=true but silent mode through allInputsHidden=false,
+      // so the callback is NOT called (validation blocked it)
+      // This exercises the silent=false path with empty field -> notify -> return false
+      expect(onStart).not.toHaveBeenCalled()
+    })
+
+    it('should handle multi-file uploading status', async () => {
+      mockStoreState.appParams = {
+        user_input_form: [{ 'file-list': { variable: 'files', required: true, type: InputVarType.multiFiles } }],
+      } as unknown as ChatConfig
+      const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
+
+      act(() => {
+        result.current.handleNewConversationInputsChange({
+          files: [
+            { transferMethod: TransferMethod.local_file, uploadedId: 'ok' },
+            { transferMethod: TransferMethod.local_file, uploadedId: null },
+          ],
+        })
+      })
+
+      // handleStartChat returns void, but we just verify no callback fires (file upload pending)
+      const onStart = vi.fn()
+      act(() => {
+        result.current.handleStartChat(onStart)
+      })
+      expect(onStart).not.toHaveBeenCalled()
+    })
+
+    it('should detect single-file upload still in progress', async () => {
+      mockStoreState.appParams = {
+        user_input_form: [{ 'file-list': { variable: 'f1', required: true, type: InputVarType.singleFile } }],
+      } as unknown as ChatConfig
+      const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
+
+      act(() => {
+        // Single file (not array) transfer that hasn't finished uploading
+        result.current.handleNewConversationInputsChange({
+          f1: { transferMethod: TransferMethod.local_file, uploadedId: null },
+        })
+      })
+
+      const onStart = vi.fn()
+      act(() => {
+        result.current.handleStartChat(onStart)
+      })
+      expect(onStart).not.toHaveBeenCalled()
+    })
+
+    it('should skip validation for hasEmptyInput when fileIsUploading already set', async () => {
+      // Two required fields: first passes but starts uploading, second would be empty — should be skipped
+      mockStoreState.appParams = {
+        user_input_form: [
+          { 'file-list': { variable: 'f1', required: true, type: InputVarType.multiFiles } },
+          { 'text-input': { variable: 't1', required: true, label: 'T1' } },
+        ],
+      } as unknown as ChatConfig
+      const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
+
+      act(() => {
+        result.current.handleNewConversationInputsChange({
+          f1: [{ transferMethod: TransferMethod.local_file, uploadedId: null }],
+          t1: '', // empty but should be skipped because fileIsUploading is set first
+        })
+      })
+
+      const onStart = vi.fn()
+      act(() => {
+        result.current.handleStartChat(onStart)
+      })
+      expect(onStart).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('getFormattedChatList edge cases', () => {
+    it('should handle messages with no message_files and no agent_thoughts', async () => {
+      // Ensure a currentConversationId is set so appChatListData is fetched
+      localStorage.setItem(CONVERSATION_ID_INFO, JSON.stringify({ 'app-1': { DEFAULT: 'conversation-1' } }))
+      mockFetchConversations.mockResolvedValue(
+        createConversationData({ data: [createConversationItem({ id: 'conversation-1' })] }),
+      )
+      mockFetchChatList.mockResolvedValue({
+        data: [{
+          id: 'msg-no-files',
+          query: 'Q',
+          answer: 'A',
+          // no message_files, no agent_thoughts — exercises the || [] fallback branches
+        }],
+      })
+
+      const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
+      await waitFor(() => expect(result.current.appPrevChatList.length).toBeGreaterThan(0), { timeout: 3000 })
+
+      const chatList = result.current.appPrevChatList
+      const question = chatList.find((m: unknown) => (m as Record<string, unknown>).id === 'question-msg-no-files')
+      expect(question).toBeDefined()
+    })
+  })
+
+  describe('currentConversationItem from pinned list', () => {
+    it('should find currentConversationItem from pinned list when not in main list', async () => {
+      const pinnedData = createConversationData({
+        data: [createConversationItem({ id: 'pinned-conv', name: 'Pinned' })],
+      })
+      mockFetchConversations.mockImplementation(async (_a: unknown, _b: unknown, _c: unknown, pinned?: boolean) => {
+        return pinned ? pinnedData : createConversationData({ data: [] })
+      })
+      mockFetchChatList.mockResolvedValue({ data: [] })
+      localStorage.setItem(CONVERSATION_ID_INFO, JSON.stringify({ 'app-1': { DEFAULT: 'pinned-conv' } }))
+
+      const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
+
+      await waitFor(() => {
+        expect(result.current.pinnedConversationList.length).toBeGreaterThan(0)
+      }, { timeout: 3000 })
+      await waitFor(() => {
+        expect(result.current.currentConversationItem?.id).toBe('pinned-conv')
+      }, { timeout: 3000 })
+    })
+  })
+
+  describe('newConversation updates existing item', () => {
+    it('should update an existing conversation in the list when its id matches', async () => {
+      const initialItem = createConversationItem({ id: 'conversation-1', name: 'Old Name' })
+      const renamedItem = createConversationItem({ id: 'conversation-1', name: 'New Generated Name' })
+      mockFetchConversations.mockResolvedValue(createConversationData({ data: [initialItem] }))
+      mockGenerationConversationName.mockResolvedValue(renamedItem)
+
+      const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
+
+      await waitFor(() => expect(result.current.conversationList.length).toBeGreaterThan(0))
+
+      act(() => {
+        result.current.handleNewConversationCompleted('conversation-1')
+      })
+
+      await waitFor(() => {
+        const match = result.current.conversationList.find(c => c.id === 'conversation-1')
+        expect(match?.name).toBe('New Generated Name')
+      })
+    })
+  })
+
+  describe('currentConversationLatestInputs', () => {
+    it('should return inputs from latest chat message when conversation has data', async () => {
+      const convId = 'conversation-with-inputs'
+      localStorage.setItem(CONVERSATION_ID_INFO, JSON.stringify({ 'app-1': { DEFAULT: convId } }))
+      mockFetchConversations.mockResolvedValue(
+        createConversationData({ data: [createConversationItem({ id: convId })] }),
+      )
+      mockFetchChatList.mockResolvedValue({
+        data: [{ id: 'm1', query: 'Q', answer: 'A', inputs: { key1: 'val1' } }],
+      })
+
+      const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
+
+      await waitFor(() => expect(result.current.currentConversationItem?.id).toBe(convId), { timeout: 3000 })
+      // After item is resolved, currentConversationInputs should be populated
+      await waitFor(() => expect(result.current.currentConversationInputs).toBeDefined(), { timeout: 3000 })
     })
   })
 })

@@ -139,4 +139,23 @@ describe('AgentLogModal', () => {
 
     expect(mockProps.onCancel).toHaveBeenCalledTimes(1)
   })
+
+  it('should ignore click-away before mounted state is set', () => {
+    vi.mocked(fetchAgentLogDetail).mockReturnValue(new Promise(() => {}))
+    let invoked = false
+    vi.mocked(useClickAway).mockImplementation((callback) => {
+      if (!invoked) {
+        invoked = true
+        callback(new Event('click'))
+      }
+    })
+
+    render(
+      <ToastContext.Provider value={{ notify: vi.fn(), close: vi.fn() } as React.ComponentProps<typeof ToastContext.Provider>['value']}>
+        <AgentLogModal {...mockProps} />
+      </ToastContext.Provider>,
+    )
+
+    expect(mockProps.onCancel).not.toHaveBeenCalled()
+  })
 })

@@ -34,7 +34,6 @@ class TestTryPreUninstallPlugin:
                 "POST",
                 "/pre-uninstall-plugin",
                 json={"tenant_id": "tenant-123", "plugin_unique_identifier": "com.example.my_plugin"},
-                raise_for_status=True,
                 timeout=dify_config.ENTERPRISE_REQUEST_TIMEOUT,
             )
 
@@ -62,7 +61,6 @@ class TestTryPreUninstallPlugin:
                 "POST",
                 "/pre-uninstall-plugin",
                 json={"tenant_id": "tenant-456", "plugin_unique_identifier": "com.example.other_plugin"},
-                raise_for_status=True,
                 timeout=dify_config.ENTERPRISE_REQUEST_TIMEOUT,
             )
             mock_logger.exception.assert_called_once()
@@ -87,7 +85,6 @@ class TestTryPreUninstallPlugin:
                 "POST",
                 "/pre-uninstall-plugin",
                 json={"tenant_id": "tenant-789", "plugin_unique_identifier": "com.example.failing_plugin"},
-                raise_for_status=True,
                 timeout=dify_config.ENTERPRISE_REQUEST_TIMEOUT,
             )
             mock_logger.exception.assert_called_once()

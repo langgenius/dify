@@ -1,14 +1,14 @@
 'use client'
 import type { MailRegisterResponse } from '@/service/use-common'
 import Cookies from 'js-cookie'
-import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { validPassword } from '@/config'
+import { useRouter, useSearchParams } from '@/next/navigation'
 import { useMailRegister } from '@/service/use-common'
 import { cn } from '@/utils/classnames'
 import { sendGAEvent } from '@/utils/gtag'
@@ -37,10 +37,7 @@ const ChangePasswordForm = () => {
   const { mutateAsync: register, isPending } = useMailRegister()
 
   const showErrorMessage = useCallback((message: string) => {
-    Toast.notify({
-      type: 'error',
-      message,
-    })
+    toast.error(message)
   }, [])
 
   const valid = useCallback(() => {
@@ -82,10 +79,7 @@ const ChangePasswordForm = () => {
         })
         Cookies.remove('utm_info') // Clean up: remove utm_info cookie
 
-        Toast.notify({
-          type: 'success',
-          message: t('api.actionSuccess', { ns: 'common' }),
-        })
+        toast.success(t('api.actionSuccess', { ns: 'common' }))
         router.replace('/apps')
       }
     }
