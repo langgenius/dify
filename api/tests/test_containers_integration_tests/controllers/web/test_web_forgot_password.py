@@ -1,22 +1,18 @@
+"""Testcontainers integration tests for controllers.web.forgot_password endpoints."""
+
+from __future__ import annotations
+
 import base64
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
-from flask import Flask
 
 from controllers.web.forgot_password import (
     ForgotPasswordCheckApi,
     ForgotPasswordResetApi,
     ForgotPasswordSendEmailApi,
 )
-
-
-@pytest.fixture
-def app():
-    flask_app = Flask(__name__)
-    flask_app.config["TESTING"] = True
-    return flask_app
 
 
 @pytest.fixture(autouse=True)
@@ -33,6 +29,10 @@ def _patch_wraps():
 
 
 class TestForgotPasswordSendEmailApi:
+    @pytest.fixture
+    def app(self, flask_app_with_containers):
+        return flask_app_with_containers
+
     @patch("controllers.web.forgot_password.AccountService.send_reset_password_email")
     @patch("controllers.web.forgot_password.AccountService.get_account_by_email_with_case_fallback")
     @patch("controllers.web.forgot_password.AccountService.is_email_send_ip_limit", return_value=False)
@@ -69,6 +69,10 @@ class TestForgotPasswordSendEmailApi:
 
 
 class TestForgotPasswordCheckApi:
+    @pytest.fixture
+    def app(self, flask_app_with_containers):
+        return flask_app_with_containers
+
     @patch("controllers.web.forgot_password.AccountService.reset_forgot_password_error_rate_limit")
     @patch("controllers.web.forgot_password.AccountService.generate_reset_password_token")
     @patch("controllers.web.forgot_password.AccountService.revoke_reset_password_token")
@@ -143,6 +147,10 @@ class TestForgotPasswordCheckApi:
 
 
 class TestForgotPasswordResetApi:
+    @pytest.fixture
+    def app(self, flask_app_with_containers):
+        return flask_app_with_containers
+
     @patch("controllers.web.forgot_password.ForgotPasswordResetApi._update_existing_account")
     @patch("controllers.web.forgot_password.AccountService.get_account_by_email_with_case_fallback")
     @patch("controllers.web.forgot_password.Session")

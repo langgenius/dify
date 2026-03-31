@@ -1,3 +1,7 @@
+"""Testcontainers integration tests for controllers.console.datasets.data_source endpoints."""
+
+from __future__ import annotations
+
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
@@ -46,6 +50,10 @@ def mock_engine():
 
 
 class TestDataSourceApi:
+    @pytest.fixture
+    def app(self, flask_app_with_containers):
+        return flask_app_with_containers
+
     def test_get_success(self, app, patch_tenant):
         api = DataSourceApi()
         method = unwrap(api.get)
@@ -179,6 +187,10 @@ class TestDataSourceApi:
 
 
 class TestDataSourceNotionListApi:
+    @pytest.fixture
+    def app(self, flask_app_with_containers):
+        return flask_app_with_containers
+
     def test_get_credential_not_found(self, app, patch_tenant):
         api = DataSourceNotionListApi()
         method = unwrap(api.get)
@@ -310,6 +322,10 @@ class TestDataSourceNotionListApi:
 
 
 class TestDataSourceNotionApi:
+    @pytest.fixture
+    def app(self, flask_app_with_containers):
+        return flask_app_with_containers
+
     def test_get_preview_success(self, app, patch_tenant):
         api = DataSourceNotionApi()
         method = unwrap(api.get)
@@ -364,6 +380,10 @@ class TestDataSourceNotionApi:
 
 
 class TestDataSourceNotionDatasetSyncApi:
+    @pytest.fixture
+    def app(self, flask_app_with_containers):
+        return flask_app_with_containers
+
     def test_get_success(self, app, patch_tenant):
         api = DataSourceNotionDatasetSyncApi()
         method = unwrap(api.get)
@@ -403,6 +423,10 @@ class TestDataSourceNotionDatasetSyncApi:
 
 
 class TestDataSourceNotionDocumentSyncApi:
+    @pytest.fixture
+    def app(self, flask_app_with_containers):
+        return flask_app_with_containers
+
     def test_get_success(self, app, patch_tenant):
         api = DataSourceNotionDocumentSyncApi()
         method = unwrap(api.get)

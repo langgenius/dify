@@ -133,15 +133,19 @@ export const useSyncWebsite = () => {
 }
 
 const useDocumentDetailKey = [NAME_SPACE, 'documentDetail', 'withoutMetaData']
+type DocumentDetailRefetchInterval = UseQueryOptions<DocumentDetailResponse>['refetchInterval']
+
 export const useDocumentDetail = (payload: {
   datasetId: string
   documentId: string
   params: { metadata: MetadataType }
+  refetchInterval?: DocumentDetailRefetchInterval
 }) => {
-  const { datasetId, documentId, params } = payload
+  const { datasetId, documentId, params, refetchInterval } = payload
   return useQuery<DocumentDetailResponse>({
     queryKey: [...useDocumentDetailKey, 'withoutMetaData', datasetId, documentId, params],
     queryFn: () => get<DocumentDetailResponse>(`/datasets/${datasetId}/documents/${documentId}`, { params }),
+    refetchInterval,
   })
 }
 
