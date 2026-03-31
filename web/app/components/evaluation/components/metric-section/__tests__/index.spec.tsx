@@ -48,14 +48,17 @@ describe('MetricSection', () => {
   // Verify the extracted builtin metric card presentation and removal flow.
   describe('Builtin Metric Card', () => {
     it('should render node badges for a builtin metric and remove it when delete is clicked', () => {
+      // Arrange
       act(() => {
         useEvaluationStore.getState().addBuiltinMetric(resourceType, resourceId, 'answer-correctness', [
           { node_id: 'node-answer', title: 'Answer Node', type: 'llm' },
         ])
       })
 
+      // Act
       renderMetricSection()
 
+      // Assert
       expect(screen.getByText('Answer Correctness')).toBeInTheDocument()
       expect(screen.getByText('Answer Node')).toBeInTheDocument()
 
@@ -66,13 +69,39 @@ describe('MetricSection', () => {
     })
 
     it('should render the all-nodes label when a builtin metric has no node selection', () => {
+      // Arrange
       act(() => {
         useEvaluationStore.getState().addBuiltinMetric(resourceType, resourceId, 'answer-correctness', [])
       })
 
+      // Act
       renderMetricSection()
 
+      // Assert
       expect(screen.getByText('evaluation.metrics.nodesAll')).toBeInTheDocument()
+    })
+
+    it('should collapse and expand the node section when the metric header is clicked', () => {
+      // Arrange
+      act(() => {
+        useEvaluationStore.getState().addBuiltinMetric(resourceType, resourceId, 'answer-correctness', [
+          { node_id: 'node-answer', title: 'Answer Node', type: 'llm' },
+        ])
+      })
+
+      // Act
+      renderMetricSection()
+
+      const toggleButton = screen.getByRole('button', { name: 'evaluation.metrics.collapseNodes' })
+      fireEvent.click(toggleButton)
+
+      // Assert
+      expect(screen.queryByText('Answer Node')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'evaluation.metrics.expandNodes' })).toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole('button', { name: 'evaluation.metrics.expandNodes' }))
+
+      expect(screen.getByText('Answer Node')).toBeInTheDocument()
     })
   })
 

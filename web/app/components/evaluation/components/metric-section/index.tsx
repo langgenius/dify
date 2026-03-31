@@ -30,9 +30,6 @@ const MetricSection = ({
             resourceType={resourceType}
             resourceId={resourceId}
             metric={metric}
-            nodesAllLabel={t('metrics.nodesAll')}
-            removeLabel={t('metrics.remove')}
-            customWarningLabel={t('metrics.custom.warningBadge')}
           />
         ))}
         <MetricSelector
