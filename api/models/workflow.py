@@ -8,6 +8,19 @@ from typing import TYPE_CHECKING, Any, Optional, TypedDict, Union, cast
 from uuid import uuid4
 
 import sqlalchemy as sa
+from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
+from graphon.entities.pause_reason import HumanInputRequired, PauseReason, PauseReasonType, SchedulingPause
+from graphon.enums import (
+    BuiltinNodeTypes,
+    NodeType,
+    WorkflowExecutionStatus,
+    WorkflowNodeExecutionMetadataKey,
+    WorkflowNodeExecutionStatus,
+)
+from graphon.file import File
+from graphon.file.constants import maybe_file_object
+from graphon.variables import utils as variable_utils
+from graphon.variables.variables import FloatVariable, IntegerVariable, RAGPipelineVariable, StringVariable
 from sqlalchemy import (
     DateTime,
     Index,
@@ -24,17 +37,11 @@ from sqlalchemy.orm import Mapped, mapped_column
 from typing_extensions import deprecated
 
 from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
-from dify_graph.constants import (
+from core.workflow.human_input_compat import normalize_node_config_for_graph
+from core.workflow.variable_prefixes import (
     CONVERSATION_VARIABLE_NODE_ID,
     SYSTEM_VARIABLE_NODE_ID,
 )
-from dify_graph.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
-from dify_graph.entities.pause_reason import HumanInputRequired, PauseReason, PauseReasonType, SchedulingPause
-from dify_graph.enums import BuiltinNodeTypes, NodeType, WorkflowExecutionStatus, WorkflowNodeExecutionMetadataKey
-from dify_graph.file.constants import maybe_file_object
-from dify_graph.file.models import File
-from dify_graph.variables import utils as variable_utils
-from dify_graph.variables.variables import FloatVariable, IntegerVariable, RAGPipelineVariable, StringVariable
 from extensions.ext_storage import Storage
 from factories.variable_factory import TypeMismatchError, build_segment_with_type
 from libs.datetime_utils import naive_utc_now
@@ -46,9 +53,10 @@ if TYPE_CHECKING:
     from .model import AppMode, UploadFile
 
 
+from graphon.variables import SecretVariable, Segment, SegmentType, VariableBase
+
 from constants import DEFAULT_FILE_NUMBER_LIMITS, HIDDEN_VALUE
 from core.helper import encrypter
-from dify_graph.variables import SecretVariable, Segment, SegmentType, VariableBase
 from factories import variable_factory
 from libs import helper
 
@@ -57,11 +65,21 @@ from .base import Base, DefaultFieldsMixin, TypeBase
 from .engine import db
 from .enums import CreatorUserRole, DraftVariableType, ExecutionOffLoadType, WorkflowRunTriggeredFrom
 from .types import EnumText, LongText, StringUUID
+from .utils.file_input_compat import build_file_from_stored_mapping
 
 logger = logging.getLogger(__name__)
 
 SerializedWorkflowValue = dict[str, Any]
 SerializedWorkflowVariables = dict[str, SerializedWorkflowValue]
+
+
+def _resolve_workflow_app_tenant_id(app_id: str) -> str:
+    from .model import App
+
+    tenant_id = db.session.scalar(select(App.tenant_id).where(App.id == app_id))
+    if not tenant_id:
+        raise ValueError(f"Unable to resolve tenant_id for app {app_id}")
+    return tenant_id
 
 
 class WorkflowContentDict(TypedDict):
@@ -273,7 +291,7 @@ class Workflow(Base):  # bug
             node_config: dict[str, Any] = next(filter(lambda node: node["id"] == node_id, nodes))
         except StopIteration:
             raise NodeNotFoundError(node_id)
-        return NodeConfigDictAdapter.validate_python(node_config)
+        return NodeConfigDictAdapter.validate_python(normalize_node_config_for_graph(node_config))
 
     @staticmethod
     def get_node_type_from_node_config(node_config: NodeConfigDict) -> NodeType:
@@ -418,7 +436,7 @@ class Workflow(Base):  # bug
             "selected": false,
         }
 
-        For specific node type, refer to `dify_graph.nodes`
+        For specific node type, refer to `graphon.nodes`
         """
         graph_dict = self.graph_dict
         if "nodes" not in graph_dict:
@@ -930,7 +948,7 @@ class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offlo
     inputs: Mapped[str | None] = mapped_column(LongText)
     process_data: Mapped[str | None] = mapped_column(LongText)
     outputs: Mapped[str | None] = mapped_column(LongText)
-    status: Mapped[str] = mapped_column(String(255))
+    status: Mapped[WorkflowNodeExecutionStatus] = mapped_column(EnumText(WorkflowNodeExecutionStatus, length=255))
     error: Mapped[str | None] = mapped_column(LongText)
     elapsed_time: Mapped[float] = mapped_column(sa.Float, server_default=sa.text("0"))
     execution_metadata: Mapped[str | None] = mapped_column(LongText)
@@ -1449,8 +1467,6 @@ class WorkflowDraftVariable(Base):
 
     # From `VARIABLE_PATTERN`, we may conclude that the length of a top level variable is less than
     # 80 chars.
-    #
-    # ref: api/dify_graph/entities/variable_pool.py:18
     name: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     description: Mapped[str] = mapped_column(
         sa.String(255),
@@ -1565,10 +1581,9 @@ class WorkflowDraftVariable(Base):
 
     def _loads_value(self) -> Segment:
         value = json.loads(self.value)
-        return self.build_segment_with_type(self.value_type, value)
+        return self.build_segment_from_serialized_value(self.value_type, value)
 
-    @staticmethod
-    def rebuild_file_types(value: Any):
+    def _rebuild_file_types(self, value: Any):
         # NOTE(QuantumGhost): Temporary workaround for structured data handling.
         # By this point, `output` has been converted to dict by
         # `WorkflowEntry.handle_special_values`, so we need to
@@ -1582,13 +1597,72 @@ class WorkflowDraftVariable(Base):
         if isinstance(value, dict):
             if not maybe_file_object(value):
                 return cast(Any, value)
-            return File.model_validate(value)
+            tenant_id = _resolve_workflow_app_tenant_id(self.app_id)
+            return build_file_from_stored_mapping(
+                file_mapping=cast(dict[str, Any], value),
+                tenant_id=tenant_id,
+            )
         elif isinstance(value, list) and value:
             value_list = cast(list[Any], value)
             first: Any = value_list[0]
             if not maybe_file_object(first):
                 return cast(Any, value)
-            file_list: list[File] = [File.model_validate(cast(dict[str, Any], i)) for i in value_list]
+            tenant_id = _resolve_workflow_app_tenant_id(self.app_id)
+            file_list: list[File] = []
+            for item in value_list:
+                file_list.append(
+                    build_file_from_stored_mapping(
+                        file_mapping=cast(dict[str, Any], item),
+                        tenant_id=tenant_id,
+                    )
+                )
+            return cast(Any, file_list)
+        else:
+            return cast(Any, value)
+
+    def build_segment_from_serialized_value(self, segment_type: SegmentType, value: Any) -> Segment:
+        # Persisted draft variable rows may contain historical file payloads.
+        # Rebuild them through the file factory so tenant ownership, signed URLs,
+        # and storage-backed metadata come from canonical records instead of the
+        # serialized JSON blob.
+        if segment_type == SegmentType.FILE:
+            if isinstance(value, File):
+                return build_segment_with_type(segment_type, value)
+            elif isinstance(value, dict):
+                file = self._rebuild_file_types(value)
+                return build_segment_with_type(segment_type, file)
+            else:
+                raise TypeMismatchError(f"expected dict or File for FileSegment, got {type(value)}")
+        if segment_type == SegmentType.ARRAY_FILE:
+            if not isinstance(value, list):
+                raise TypeMismatchError(f"expected list for ArrayFileSegment, got {type(value)}")
+            file_list = self._rebuild_file_types(value)
+            return build_segment_with_type(segment_type=segment_type, value=file_list)
+
+        return build_segment_with_type(segment_type=segment_type, value=value)
+
+    @staticmethod
+    def rebuild_file_types(value: Any):
+        # Keep the class-level fallback for callers that only need lightweight
+        # structural reconstruction. Persisted draft-variable payloads should go
+        # through `build_segment_from_serialized_value()` so file metadata is
+        # rebuilt from canonical storage records.
+        if isinstance(value, dict):
+            if not maybe_file_object(value):
+                return cast(Any, value)
+            normalized_file = dict(value)
+            normalized_file.pop("tenant_id", None)
+            return File.model_validate(normalized_file)
+        elif isinstance(value, list) and value:
+            value_list = cast(list[Any], value)
+            first: Any = value_list[0]
+            if not maybe_file_object(first):
+                return cast(Any, value)
+            file_list: list[File] = []
+            for item in value_list:
+                normalized_file = dict(cast(dict[str, Any], item))
+                normalized_file.pop("tenant_id", None)
+                file_list.append(File.model_validate(normalized_file))
             return cast(Any, file_list)
         else:
             return cast(Any, value)

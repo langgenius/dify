@@ -2,8 +2,11 @@ from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
+from graphon.graph_events import GraphRunFailedEvent, GraphRunSucceededEvent
+from graphon.runtime import VariablePool
+
 from core.app.layers.trigger_post_layer import TriggerPostLayer
-from dify_graph.graph_events.graph import GraphRunFailedEvent, GraphRunSucceededEvent
+from core.workflow.system_variables import build_system_variables
 from models.enums import WorkflowTriggerStatus
 
 
@@ -19,7 +22,7 @@ class TestTriggerPostLayer:
         )
         runtime_state = SimpleNamespace(
             outputs={"answer": "ok"},
-            system_variable=SimpleNamespace(workflow_execution_id="run-1"),
+            variable_pool=VariablePool(system_variables=build_system_variables(workflow_execution_id="run-1")),
             total_tokens=12,
         )
 
@@ -58,7 +61,7 @@ class TestTriggerPostLayer:
     def test_on_event_handles_missing_trigger_log(self):
         runtime_state = SimpleNamespace(
             outputs={},
-            system_variable=SimpleNamespace(workflow_execution_id="run-1"),
+            variable_pool=VariablePool(system_variables=build_system_variables(workflow_execution_id="run-1")),
             total_tokens=0,
         )
 
@@ -89,7 +92,7 @@ class TestTriggerPostLayer:
     def test_on_event_ignores_non_status_events(self):
         runtime_state = SimpleNamespace(
             outputs={},
-            system_variable=SimpleNamespace(workflow_execution_id="run-1"),
+            variable_pool=VariablePool(system_variables=build_system_variables(workflow_execution_id="run-1")),
             total_tokens=0,
         )
 

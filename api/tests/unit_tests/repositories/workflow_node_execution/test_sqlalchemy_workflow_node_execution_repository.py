@@ -6,13 +6,13 @@ from datetime import datetime
 from typing import Any
 from unittest.mock import MagicMock, Mock
 
+from graphon.entities import WorkflowNodeExecution
+from graphon.enums import BuiltinNodeTypes
 from sqlalchemy.orm import sessionmaker
 
 from core.repositories.sqlalchemy_workflow_node_execution_repository import (
     SQLAlchemyWorkflowNodeExecutionRepository,
 )
-from dify_graph.entities.workflow_node_execution import WorkflowNodeExecution
-from dify_graph.enums import BuiltinNodeTypes
 from models import Account, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 
 

@@ -7,16 +7,17 @@ from __future__ import annotations
 
 from collections.abc import Generator
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import timedelta
 from decimal import Decimal
 from uuid import uuid4
 
 import pytest
+from graphon.nodes.human_input.entities import FormDefinition, UserAction
+from graphon.nodes.human_input.enums import HumanInputFormStatus
 from sqlalchemy import Engine, delete, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from dify_graph.nodes.human_input.entities import FormDefinition, UserAction
-from dify_graph.nodes.human_input.enums import HumanInputFormStatus
+from libs.datetime_utils import naive_utc_now
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import ConversationFromSource, InvokeFrom
 from models.execution_extra_content import ExecutionExtraContent, HumanInputContent
@@ -174,7 +175,7 @@ def _create_submitted_form(
     action_title: str = "Approve",
     node_title: str = "Approval",
 ) -> HumanInputForm:
-    expiration_time = datetime.utcnow() + timedelta(days=1)
+    expiration_time = naive_utc_now() + timedelta(days=1)
     form_definition = FormDefinition(
         form_content="content",
         inputs=[],
@@ -207,7 +208,7 @@ def _create_waiting_form(
     workflow_run_id: str,
     default_values: dict | None = None,
 ) -> HumanInputForm:
-    expiration_time = datetime.utcnow() + timedelta(days=1)
+    expiration_time = naive_utc_now() + timedelta(days=1)
     form_definition = FormDefinition(
         form_content="content",
         inputs=[],
@@ -270,7 +271,7 @@ def _create_recipient(
 
 
 def _create_delivery(session: Session, *, form_id: str) -> HumanInputDelivery:
-    from dify_graph.nodes.human_input.enums import DeliveryMethodType
+    from core.workflow.human_input_compat import DeliveryMethodType
     from models.human_input import ConsoleDeliveryPayload
 
     delivery = HumanInputDelivery(

@@ -9,7 +9,7 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import useTheme from '@/hooks/use-theme'
@@ -112,10 +112,7 @@ const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({
   const generateSchema = useCallback(async () => {
     const { output, error } = await generateStructuredOutputRules({ instruction, model_config: model! })
     if (error) {
-      Toast.notify({
-        type: 'error',
-        message: error,
-      })
+      toast.error(error)
       setSchema(null)
       setView(GeneratorView.promptEditor)
       return

@@ -399,7 +399,7 @@ class TestRetrievalServiceInternals:
         assert exceptions == []
         vector_instance.search_by_file.assert_not_called()
 
-    @patch("core.rag.datasource.retrieval_service.ModelManager")
+    @patch("core.rag.datasource.retrieval_service.ModelManager.for_tenant")
     @patch("core.rag.datasource.retrieval_service.DataPostProcessor")
     @patch("core.rag.datasource.retrieval_service.Vector")
     @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
@@ -451,9 +451,10 @@ class TestRetrievalServiceInternals:
         assert all_documents == reranked_docs
         assert exceptions == []
         processor_instance.invoke.assert_called_once()
+        mock_model_manager_class.assert_called_once_with(tenant_id=internal_dataset.tenant_id)
         model_manager.check_model_support_vision.assert_called_once()
 
-    @patch("core.rag.datasource.retrieval_service.ModelManager")
+    @patch("core.rag.datasource.retrieval_service.ModelManager.for_tenant")
     @patch("core.rag.datasource.retrieval_service.DataPostProcessor")
     @patch("core.rag.datasource.retrieval_service.Vector")
     @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
@@ -503,6 +504,7 @@ class TestRetrievalServiceInternals:
 
         assert all_documents == original_docs
         assert exceptions == []
+        mock_model_manager_class.assert_called_once_with(tenant_id=internal_dataset.tenant_id)
         processor_instance.invoke.assert_not_called()
 
     @patch("core.rag.datasource.retrieval_service.DataPostProcessor")
@@ -712,13 +714,13 @@ class TestRetrievalServiceInternals:
             dataset_id="dataset-id",
         )
 
-        dataset_query = Mock()
-        dataset_query.where.return_value.options.return_value.all.return_value = [
+        scalars_result = Mock()
+        scalars_result.all.return_value = [
             dataset_doc_parent,
             dataset_doc_text,
             dataset_doc_parent_summary,
         ]
-        monkeypatch.setattr(retrieval_service_module.db.session, "query", Mock(return_value=dataset_query))
+        monkeypatch.setattr(retrieval_service_module.db.session, "scalars", Mock(return_value=scalars_result))
         monkeypatch.setattr(retrieval_service_module, "RetrievalChildChunk", _SimpleRetrievalChildChunk)
         monkeypatch.setattr(retrieval_service_module, "RetrievalSegments", _SimpleRetrievalSegment)
 
@@ -880,7 +882,7 @@ class TestRetrievalServiceInternals:
     def test_format_retrieval_documents_rolls_back_and_raises_when_db_fails(self, monkeypatch):
         rollback = Mock()
         monkeypatch.setattr(retrieval_service_module.db.session, "rollback", rollback)
-        monkeypatch.setattr(retrieval_service_module.db.session, "query", Mock(side_effect=RuntimeError("db error")))
+        monkeypatch.setattr(retrieval_service_module.db.session, "scalars", Mock(side_effect=RuntimeError("db error")))
 
         documents = [Document(page_content="content", metadata={"document_id": "doc-1"}, provider="dify")]
 

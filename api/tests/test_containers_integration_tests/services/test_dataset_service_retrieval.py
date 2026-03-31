@@ -15,6 +15,7 @@ from uuid import uuid4
 
 from sqlalchemy.orm import Session
 
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import (
     AppDatasetJoin,
@@ -102,7 +103,7 @@ class DatasetRetrievalTestDataFactory:
             name=name,
             description="desc",
             data_source_type=DataSourceType.UPLOAD_FILE,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             created_by=created_by,
             permission=permission,
             provider="vendor",

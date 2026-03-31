@@ -26,8 +26,13 @@ vi.mock('@/service/workflow', () => ({
   submitHumanInputForm: (...args: any[]) => mockSubmitHumanInputForm(...args),
 }))
 
-vi.mock('@/app/components/base/toast/context', () => ({
-  useToastContext: () => ({ notify: mockNotify }),
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
+    warning: vi.fn(),
+    info: (...args: any[]) => mockNotify(...args),
+  },
 }))
 
 vi.mock('reactflow', () => ({
@@ -96,7 +101,7 @@ describe('useChat – handleSend', () => {
       expect(returned).toBe(false)
     })
 
-    expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'info' }))
+    expect(mockNotify).toHaveBeenCalledWith('appDebug.errorMessage.waitForResponse')
   })
 
   it('should set isResponding to true after sending', () => {

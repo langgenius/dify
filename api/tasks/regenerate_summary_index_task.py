@@ -9,7 +9,7 @@ from celery import shared_task
 from sqlalchemy import or_, select
 
 from core.db.session_factory import session_factory
-from core.rag.index_processor.constant.index_type import IndexStructureType
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from models.dataset import Dataset, DocumentSegment, DocumentSegmentSummary
 from models.dataset import Document as DatasetDocument
 from services.summary_index_service import SummaryIndexService
@@ -53,7 +53,7 @@ def regenerate_summary_index_task(
                 return
 
             # Only regenerate summary index for high_quality indexing technique
-            if dataset.indexing_technique != "high_quality":
+            if dataset.indexing_technique != IndexTechniqueType.HIGH_QUALITY:
                 logger.info(
                     click.style(
                         f"Skipping summary regeneration for dataset {dataset_id}: "

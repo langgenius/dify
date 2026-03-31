@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import GenericTable from '../generic-table'
@@ -50,7 +50,18 @@ const advancedColumns = [
 describe('GenericTable', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.useRealTimers()
   })
+
+  const selectOption = async (triggerName: string, optionName: string) => {
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: triggerName }))
+    })
+
+    await act(async () => {
+      fireEvent.click(await screen.findByRole('option', { name: optionName }))
+    })
+  }
 
   it('should render an empty editable row and append a configured row when typing into the virtual row', async () => {
     const onChange = vi.fn()
@@ -143,11 +154,11 @@ describe('GenericTable', () => {
       <ControlledTable />,
     )
 
-    await user.click(screen.getByRole('button', { name: 'Choose method' }))
-    await user.click(await screen.findByText('POST'))
+    await selectOption('Choose method', 'POST')
 
     await waitFor(() => {
       expect(onChange).toHaveBeenCalledWith([{ method: 'post', preview: '' }])
+      expect(screen.getByRole('button', { name: 'POST' })).toBeInTheDocument()
     })
 
     onChange.mockClear()

@@ -7,6 +7,7 @@ from sqlalchemy import select
 
 from core.db.session_factory import session_factory
 from core.rag.datasource.vdb.vector_factory import Vector
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
@@ -64,7 +65,7 @@ def enable_annotation_reply_task(
                         old_dataset = Dataset(
                             id=app_id,
                             tenant_id=tenant_id,
-                            indexing_technique="high_quality",
+                            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
                             embedding_model_provider=old_dataset_collection_binding.provider_name,
                             embedding_model=old_dataset_collection_binding.model_name,
                             collection_binding_id=old_dataset_collection_binding.id,
@@ -93,7 +94,7 @@ def enable_annotation_reply_task(
             dataset = Dataset(
                 id=app_id,
                 tenant_id=tenant_id,
-                indexing_technique="high_quality",
+                indexing_technique=IndexTechniqueType.HIGH_QUALITY,
                 embedding_model_provider=embedding_provider_name,
                 embedding_model=embedding_model_name,
                 collection_binding_id=dataset_collection_binding.id,

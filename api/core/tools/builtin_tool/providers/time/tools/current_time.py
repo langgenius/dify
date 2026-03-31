@@ -2,7 +2,7 @@ from collections.abc import Generator
 from datetime import UTC, datetime
 from typing import Any
 
-from pytz import timezone as pytz_timezone
+from pytz import timezone as pytz_timezone  # type: ignore[import-untyped]
 
 from core.tools.builtin_tool.tool import BuiltinTool
 from core.tools.entities.tool_entities import ToolInvokeMessage

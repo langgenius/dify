@@ -3,6 +3,7 @@ import time
 from collections.abc import Mapping
 from typing import Any
 
+from graphon.model_runtime.entities.provider_entities import FormType
 from sqlalchemy.orm import Session
 
 from configs import dify_config
@@ -14,7 +15,6 @@ from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.datasource import PluginDatasourceManager
 from core.plugin.impl.oauth import OAuthHandler
 from core.tools.utils.encryption import ProviderConfigCache, ProviderConfigEncrypter, create_provider_encrypter
-from dify_graph.model_runtime.entities.provider_entities import FormType
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.oauth import DatasourceOauthParamConfig, DatasourceOauthTenantParamConfig, DatasourceProvider

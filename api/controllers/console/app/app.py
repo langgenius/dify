@@ -5,6 +5,8 @@ from typing import Any, Literal, TypeAlias
 
 from flask import request
 from flask_restx import Resource
+from graphon.enums import WorkflowExecutionStatus
+from graphon.file import helpers as file_helpers
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, computed_field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -26,8 +28,6 @@ from controllers.console.wraps import (
 from core.ops.ops_trace_manager import OpsTraceManager
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.trigger.constants import TRIGGER_NODE_TYPES
-from dify_graph.enums import WorkflowExecutionStatus
-from dify_graph.file import helpers as file_helpers
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant, login_required
 from models import App, DatasetPermissionEnum, Workflow

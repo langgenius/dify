@@ -10,11 +10,18 @@ from unittest.mock import MagicMock, Mock
 
 import psycopg2.errors
 import pytest
+from graphon.entities import WorkflowNodeExecution
+from graphon.enums import (
+    BuiltinNodeTypes,
+    WorkflowNodeExecutionMetadataKey,
+    WorkflowNodeExecutionStatus,
+)
 from sqlalchemy import Engine, create_engine
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
+from core.repositories.factory import OrderConfig
 from core.repositories.sqlalchemy_workflow_node_execution_repository import (
     SQLAlchemyWorkflowNodeExecutionRepository,
     _deterministic_json_dump,
@@ -22,13 +29,6 @@ from core.repositories.sqlalchemy_workflow_node_execution_repository import (
     _find_first,
     _replace_or_append_offload,
 )
-from dify_graph.entities import WorkflowNodeExecution
-from dify_graph.enums import (
-    BuiltinNodeTypes,
-    WorkflowNodeExecutionMetadataKey,
-    WorkflowNodeExecutionStatus,
-)
-from dify_graph.repositories.workflow_node_execution_repository import OrderConfig
 from models import Account, EndUser
 from models.enums import ExecutionOffLoadType
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload, WorkflowNodeExecutionTriggeredFrom
@@ -768,5 +768,5 @@ def test_get_by_workflow_run_maps_to_domain(monkeypatch: pytest.MonkeyPatch) -> 
         lambda max_workers: FakeExecutor(),
     )
 
-    result = repo.get_by_workflow_run("run", order_config=None)
+    result = repo.get_by_workflow_execution("run", order_config=None)
     assert result == ["domain:db1", "domain:db2"]

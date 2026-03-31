@@ -14,7 +14,7 @@ import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import ActionButton from '../../base/action-button'
 import Confirm from '../../base/confirm'
 import Tooltip from '../../base/tooltip'
-import { useGitHubReleases } from '../install-plugin/hooks'
+import { checkForUpdates, fetchReleases } from '../install-plugin/hooks'
 import PluginInfo from '../plugin-page/plugin-info'
 import { PluginSource } from '../types'
 
@@ -54,7 +54,6 @@ const Action: FC<Props> = ({
     setTrue: showDeleting,
     setFalse: hideDeleting,
   }] = useBoolean(false)
-  const { checkForUpdates, fetchReleases } = useGitHubReleases()
   const { setShowUpdatePluginModal } = useModalContext()
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
 

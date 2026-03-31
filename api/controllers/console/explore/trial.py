@@ -3,6 +3,8 @@ from typing import Any, Literal, cast
 
 from flask import request
 from flask_restx import Resource, fields, marshal, marshal_with
+from graphon.graph_engine.manager import GraphEngineManager
+from graphon.model_runtime.errors.invoke import InvokeError
 from pydantic import BaseModel
 from sqlalchemy import select
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
@@ -42,8 +44,6 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
-from dify_graph.graph_engine.manager import GraphEngineManager
-from dify_graph.model_runtime.errors.invoke import InvokeError
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from fields.app_fields import (
