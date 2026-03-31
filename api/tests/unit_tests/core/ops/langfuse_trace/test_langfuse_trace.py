@@ -521,11 +521,11 @@ def test_generate_name_trace(trace_instance):
 def test_add_trace_success(trace_instance):
     data = LangfuseTrace(id="t1", name="trace")
     trace_instance.add_trace(data)
-    trace_instance.langfuse_client.trace.assert_called_once()
+    trace_instance.langfuse_client.api.ingestion.batch.assert_called_once()
 
 
 def test_add_trace_error(trace_instance):
-    trace_instance.langfuse_client.trace.side_effect = Exception("error")
+    trace_instance.langfuse_client.api.ingestion.batch.side_effect = Exception("error")
     data = LangfuseTrace(id="t1", name="trace")
     with pytest.raises(ValueError, match="LangFuse Failed to create trace: error"):
         trace_instance.add_trace(data)
@@ -534,11 +534,11 @@ def test_add_trace_error(trace_instance):
 def test_add_span_success(trace_instance):
     data = LangfuseSpan(id="s1", name="span", trace_id="t1")
     trace_instance.add_span(data)
-    trace_instance.langfuse_client.span.assert_called_once()
+    trace_instance.langfuse_client.api.ingestion.batch.assert_called_once()
 
 
 def test_add_span_error(trace_instance):
-    trace_instance.langfuse_client.span.side_effect = Exception("error")
+    trace_instance.langfuse_client.api.ingestion.batch.side_effect = Exception("error")
     data = LangfuseSpan(id="s1", name="span", trace_id="t1")
     with pytest.raises(ValueError, match="LangFuse Failed to create span: error"):
         trace_instance.add_span(data)
@@ -554,11 +554,11 @@ def test_update_span(trace_instance):
 def test_add_generation_success(trace_instance):
     data = LangfuseGeneration(id="g1", name="gen", trace_id="t1")
     trace_instance.add_generation(data)
-    trace_instance.langfuse_client.generation.assert_called_once()
+    trace_instance.langfuse_client.api.ingestion.batch.assert_called_once()
 
 
 def test_add_generation_error(trace_instance):
-    trace_instance.langfuse_client.generation.side_effect = Exception("error")
+    trace_instance.langfuse_client.api.ingestion.batch.side_effect = Exception("error")
     data = LangfuseGeneration(id="g1", name="gen", trace_id="t1")
     with pytest.raises(ValueError, match="LangFuse Failed to create generation: error"):
         trace_instance.add_generation(data)
@@ -585,12 +585,12 @@ def test_api_check_error(trace_instance):
 def test_get_project_key_success(trace_instance):
     mock_data = MagicMock()
     mock_data.id = "proj-1"
-    trace_instance.langfuse_client.client.projects.get.return_value = MagicMock(data=[mock_data])
+    trace_instance.langfuse_client.api.projects.get.return_value = MagicMock(data=[mock_data])
     assert trace_instance.get_project_key() == "proj-1"
 
 
 def test_get_project_key_error(trace_instance):
-    trace_instance.langfuse_client.client.projects.get.side_effect = Exception("fail")
+    trace_instance.langfuse_client.api.projects.get.side_effect = Exception("fail")
     with pytest.raises(ValueError, match="LangFuse get project key failed: fail"):
         trace_instance.get_project_key()
 

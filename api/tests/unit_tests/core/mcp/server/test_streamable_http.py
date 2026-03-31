@@ -415,12 +415,44 @@ class TestUtilityFunctions:
                 label="Upload",
                 required=False,
             ),
+            VariableEntity(
+                type=VariableEntityType.CHECKBOX,
+                variable="enabled",
+                description="Enable flag",
+                label="Enabled",
+                required=False,
+            ),
+            VariableEntity(
+                type=VariableEntityType.JSON_OBJECT,
+                variable="config",
+                description="Config object",
+                label="Config",
+                required=True,
+            ),
+            VariableEntity(
+                type=VariableEntityType.JSON_OBJECT,
+                variable="schema_config",
+                description="Config with schema",
+                label="Schema Config",
+                required=False,
+                json_schema={
+                    "properties": {
+                        "host": {"type": "string"},
+                        "port": {"type": "number"},
+                    },
+                    "required": ["host"],
+                    "additionalProperties": False,
+                },
+            ),
         ]
 
         parameters_dict: dict[str, str] = {
             "name": "Enter your name",
             "category": "Select category",
             "count": "Enter count",
+            "enabled": "Enable flag",
+            "config": "Config object",
+            "schema_config": "Config with schema",
         }
 
         parameters, required = convert_input_form_to_parameters(user_input_form, parameters_dict)
@@ -437,20 +469,35 @@ class TestUtilityFunctions:
         assert "count" in parameters
         assert parameters["count"]["type"] == "number"
 
-        # FILE type should be skipped - it creates empty dict but gets filtered later
-        # Check that it doesn't have any meaningful content
-        if "upload" in parameters:
-            assert parameters["upload"] == {}
+        # FILE type is skipped entirely via `continue` — key should not exist
+        assert "upload" not in parameters
+
+        # CHECKBOX maps to boolean
+        assert parameters["enabled"]["type"] == "boolean"
+
+        # JSON_OBJECT without json_schema maps to object
+        assert parameters["config"]["type"] == "object"
+        assert "properties" not in parameters["config"]
+
+        # JSON_OBJECT with json_schema forwards schema keys
+        assert parameters["schema_config"]["type"] == "object"
+        assert parameters["schema_config"]["properties"] == {
+            "host": {"type": "string"},
+            "port": {"type": "number"},
+        }
+        assert parameters["schema_config"]["required"] == ["host"]
+        assert parameters["schema_config"]["additionalProperties"] is False
 
         # Check required fields
         assert "name" in required
         assert "count" in required
+        assert "config" in required
         assert "category" not in required
 
     # Note: _get_request_id function has been removed as request_id is now passed as parameter
 
     def test_convert_input_form_to_parameters_jsonschema_validation_ok(self):
-        """Current schema uses 'number' for numeric fields; it should be a valid JSON Schema."""
+        """Generated schema with all supported types should be valid JSON Schema."""
         user_input_form = [
             VariableEntity(
                 type=VariableEntityType.NUMBER,
@@ -466,11 +513,27 @@ class TestUtilityFunctions:
                 label="Name",
                 required=False,
             ),
+            VariableEntity(
+                type=VariableEntityType.CHECKBOX,
+                variable="enabled",
+                description="Toggle",
+                label="Enabled",
+                required=False,
+            ),
+            VariableEntity(
+                type=VariableEntityType.JSON_OBJECT,
+                variable="metadata",
+                description="Metadata",
+                label="Metadata",
+                required=False,
+            ),
         ]
 
         parameters_dict = {
             "count": "Enter count",
             "name": "Enter your name",
+            "enabled": "Toggle flag",
+            "metadata": "Metadata object",
         }
 
         parameters, required = convert_input_form_to_parameters(user_input_form, parameters_dict)
@@ -485,9 +548,12 @@ class TestUtilityFunctions:
         # 1) The schema itself must be valid
         jsonschema.Draft202012Validator.check_schema(schema)
 
-        # 2) Both float and integer instances should pass validation
+        # 2) Validate instances with all types
         jsonschema.validate(instance={"count": 3.14, "name": "alice"}, schema=schema)
-        jsonschema.validate(instance={"count": 2, "name": "bob"}, schema=schema)
+        jsonschema.validate(
+            instance={"count": 2, "enabled": True, "metadata": {"key": "val"}},
+            schema=schema,
+        )
 
     def test_legacy_float_type_schema_is_invalid(self):
         """Legacy/buggy behavior: using 'float' should produce an invalid JSON Schema."""
