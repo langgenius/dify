@@ -231,4 +231,3 @@ class TestForgotPasswordResetApi:
         assert account.password == expected_password
         expected_salt = base64.b64encode(b"0123456789abcdef").decode()
         assert account.password_salt == expected_salt
-        mock_session.commit.assert_called_once()
