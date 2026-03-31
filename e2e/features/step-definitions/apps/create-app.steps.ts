@@ -26,9 +26,10 @@ When('I confirm app creation', async function (this: DifyWorld) {
 
 When('I select the {string} app type', async function (this: DifyWorld, appType: string) {
   const dialog = this.getPage().getByRole('dialog')
+  const appTypeCard = dialog.locator('.cursor-pointer', { hasText: appType })
 
-  await expect(dialog.getByText(appType, { exact: true }).first()).toBeVisible()
-  await dialog.getByText(appType, { exact: true }).first().click()
+  await expect(appTypeCard).toBeVisible()
+  await appTypeCard.click()
 })
 
 When('I expand the beginner app types', async function (this: DifyWorld) {

@@ -19,7 +19,7 @@ When('I sign out', async function (this: DifyWorld) {
 
 Then('I should be on the sign-in page', async function (this: DifyWorld) {
   await expect(this.getPage()).toHaveURL(/\/signin/)
-  await expect(this.getPage().getByRole('button', { name: 'Sign In' })).toBeVisible({
+  await expect(this.getPage().getByRole('button', { name: /^Sign in$/i })).toBeVisible({
     timeout: 30_000,
   })
 })
