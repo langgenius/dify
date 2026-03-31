@@ -1,7 +1,7 @@
 import dataclasses
 import json
 import logging
-from collections.abc import Mapping, Sequence
+from collections.abc import AbstractSet, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from enum import StrEnum
 from typing import Any, ClassVar
@@ -270,12 +270,20 @@ class WorkflowDraftVariableService:
         return query.all()
 
     def list_variables_without_values(
-        self, app_id: str, page: int, limit: int, user_id: str
+        self,
+        app_id: str,
+        page: int,
+        limit: int,
+        user_id: str,
+        *,
+        exclude_node_ids: AbstractSet[str] | None = None,
     ) -> WorkflowDraftVariableList:
         criteria = [
             WorkflowDraftVariable.app_id == app_id,
             WorkflowDraftVariable.user_id == user_id,
         ]
+        if exclude_node_ids:
+            criteria.append(WorkflowDraftVariable.node_id.notin_(list(exclude_node_ids)))
         total = None
         query = self._session.query(WorkflowDraftVariable).where(*criteria)
         if page == 1:

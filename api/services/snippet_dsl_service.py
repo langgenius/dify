@@ -15,7 +15,6 @@ from sqlalchemy.orm import Session
 from core.helper import ssrf_proxy
 from core.plugin.entities.plugin import PluginDependency
 from extensions.ext_redis import redis_client
-from factories import variable_factory
 from graphon.enums import BuiltinNodeTypes
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from models import Account
@@ -31,6 +30,7 @@ CHECK_DEPENDENCIES_REDIS_KEY_PREFIX = "snippet_check_dependencies:"
 IMPORT_INFO_REDIS_EXPIRY = 10 * 60  # 10 minutes
 DSL_MAX_SIZE = 10 * 1024 * 1024  # 10MB
 CURRENT_DSL_VERSION = "0.1.0"
+
 
 class ImportMode(StrEnum):
     YAML_CONTENT = "yaml-content"
@@ -420,11 +420,6 @@ class SnippetDslService:
         # Create or update draft workflow
         if workflow_data:
             graph = workflow_data.get("graph", {})
-            conversation_variables_list = workflow_data.get("conversation_variables", [])
-
-            conversation_variables = [
-                variable_factory.build_conversation_variable_from_mapping(obj) for obj in conversation_variables_list
-            ]
 
             snippet_service = SnippetService()
             # Get existing workflow hash if exists
@@ -436,7 +431,6 @@ class SnippetDslService:
                 graph=graph,
                 unique_hash=unique_hash,
                 account=account,
-                conversation_variables=conversation_variables,
                 input_fields=input_fields,
             )
 
@@ -483,6 +477,7 @@ class SnippetDslService:
         workflow_dict = workflow.to_dict(include_secret=include_secret)
         # Filter workspace related data from nodes
         workflow_dict["environment_variables"] = []
+        workflow_dict["conversation_variables"] = []
 
         for node in workflow_dict.get("graph", {}).get("nodes", []):
             node_data = node.get("data", {})

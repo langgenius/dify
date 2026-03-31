@@ -71,7 +71,10 @@ class SnippetDraftSyncPayload(BaseModel):
 
     graph: dict[str, Any]
     hash: str | None = None
-    conversation_variables: list[dict[str, Any]] | None = None
+    conversation_variables: list[dict[str, Any]] | None = Field(
+        default=None,
+        description="Ignored. Snippet workflows do not persist conversation variables.",
+    )
     input_fields: list[dict[str, Any]] | None = None
 
 

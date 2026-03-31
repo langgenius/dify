@@ -121,7 +121,7 @@ from .explore import (
 )
 
 # Import snippet controllers
-from .snippets import snippet_workflow
+from .snippets import snippet_workflow, snippet_workflow_draft_variable
 
 # Import tag controllers
 from .tag import tags
@@ -210,6 +210,7 @@ __all__ = [
     "setup",
     "site",
     "snippet_workflow",
+    "snippet_workflow_draft_variable",
     "snippets",
     "spec",
     "statistic",

@@ -36,7 +36,6 @@ from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from factories import variable_factory
 from graphon.graph_engine.manager import GraphEngineManager
 from libs import helper
 from libs.helper import TimestampField
@@ -117,6 +116,8 @@ class SnippetDraftWorkflowApi(Resource):
         if not workflow:
             raise DraftWorkflowNotExist()
 
+        db.session.expunge(workflow)
+        workflow.conversation_variables = []
         return workflow
 
     @console_ns.doc("sync_snippet_draft_workflow")
@@ -135,17 +136,12 @@ class SnippetDraftWorkflowApi(Resource):
         payload = SnippetDraftSyncPayload.model_validate(console_ns.payload or {})
 
         try:
-            conversation_variables_list = payload.conversation_variables or []
-            conversation_variables = [
-                variable_factory.build_conversation_variable_from_mapping(obj) for obj in conversation_variables_list
-            ]
             snippet_service = SnippetService()
             workflow = snippet_service.sync_draft_workflow(
                 snippet=snippet,
                 graph=payload.graph,
                 unique_hash=payload.hash,
                 account=current_user,
-                conversation_variables=conversation_variables,
                 input_fields=payload.input_fields,
             )
         except WorkflowHashNotEqualError:

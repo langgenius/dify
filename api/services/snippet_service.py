@@ -10,7 +10,6 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.workflow.node_factory import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from extensions.ext_database import db
 from graphon.enums import BuiltinNodeTypes, NodeType
-from graphon.variables.variables import VariableBase
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account
 from models.enums import WorkflowRunTriggeredFrom
@@ -308,19 +307,18 @@ class SnippetService:
         graph: dict,
         unique_hash: str | None,
         account: Account,
-        conversation_variables: Sequence[VariableBase],
         input_fields: list[dict] | None = None,
     ) -> Workflow:
         """
         Sync draft workflow for snippet.
 
-        Snippet workflows do not persist environment variables (always empty).
+        Snippet workflows do not persist environment variables (always empty) or
+        conversation variables (always empty).
 
         :param snippet: CustomizedSnippet instance
         :param graph: Workflow graph configuration
         :param unique_hash: Hash for conflict detection
         :param account: Account making the change
-        :param conversation_variables: Conversation variables
         :param input_fields: Input fields for snippet
         :return: Synced Workflow
         :raises WorkflowHashNotEqualError: If hash mismatch
@@ -343,7 +341,7 @@ class SnippetService:
                 graph=json.dumps(graph),
                 created_by=account.id,
                 environment_variables=[],
-                conversation_variables=conversation_variables,
+                conversation_variables=[],
             )
             db.session.add(workflow)
             db.session.flush()
@@ -353,7 +351,7 @@ class SnippetService:
             workflow.updated_by = account.id
             workflow.updated_at = datetime.now(UTC).replace(tzinfo=None)
             workflow.environment_variables = []
-            workflow.conversation_variables = conversation_variables
+            workflow.conversation_variables = []
 
         # Update snippet's input_fields if provided
         if input_fields is not None:
@@ -402,7 +400,7 @@ class SnippetService:
             features=draft_workflow.features,
             created_by=account.id,
             environment_variables=[],
-            conversation_variables=draft_workflow.conversation_variables,
+            conversation_variables=[],
             rag_pipeline_variables=draft_workflow.rag_pipeline_variables,
             marked_name="",
             marked_comment="",
