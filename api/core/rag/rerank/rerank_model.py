@@ -1,5 +1,8 @@
 import base64
 
+from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.rerank_entities import RerankResult
+
 from core.model_manager import ModelInstance, ModelManager
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.query_type import QueryType
@@ -7,8 +10,6 @@ from core.rag.models.document import Document
 from core.rag.rerank.rerank_base import BaseRerankRunner
 from extensions.ext_database import db
 from extensions.ext_storage import storage
-from graphon.model_runtime.entities.model_entities import ModelType
-from graphon.model_runtime.entities.rerank_entities import RerankResult
 from models.model import UploadFile
 
 
@@ -133,9 +134,7 @@ class RerankModelRunner(BaseRerankRunner):
             ):
                 if document.metadata.get("doc_type") == DocType.IMAGE:
                     # Query file info within db.session context to ensure thread-safe access
-                    upload_file = (
-                        db.session.query(UploadFile).where(UploadFile.id == document.metadata["doc_id"]).first()
-                    )
+                    upload_file = db.session.get(UploadFile, document.metadata["doc_id"])
                     if upload_file:
                         blob = storage.load_once(upload_file.key)
                         document_file_base64 = base64.b64encode(blob).decode()
@@ -168,7 +167,7 @@ class RerankModelRunner(BaseRerankRunner):
             return rerank_result, unique_documents
         elif query_type == QueryType.IMAGE_QUERY:
             # Query file info within db.session context to ensure thread-safe access
-            upload_file = db.session.query(UploadFile).where(UploadFile.id == query).first()
+            upload_file = db.session.get(UploadFile, query)
             if upload_file:
                 blob = storage.load_once(upload_file.key)
                 file_query = base64.b64encode(blob).decode()

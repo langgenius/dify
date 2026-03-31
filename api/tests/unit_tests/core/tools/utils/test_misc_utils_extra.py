@@ -263,7 +263,7 @@ def test_single_dataset_retriever_non_economy_run_sorts_context_and_resources():
     )
     db_session = Mock()
     db_session.scalar.side_effect = [dataset, lookup_doc_low, lookup_doc_high]
-    db_session.query.return_value.filter_by.return_value.first.return_value = dataset
+    db_session.get.return_value = dataset
 
     tool = SingleDatasetRetrieverTool(
         tenant_id="tenant-1",
@@ -444,7 +444,7 @@ def test_multi_dataset_retriever_run_orders_segments_and_returns_resources():
     )
     db_session = Mock()
     db_session.scalars.return_value.all.return_value = [segment_for_node_2, segment_for_node_1]
-    db_session.query.return_value.filter_by.return_value.first.side_effect = [
+    db_session.get.side_effect = [
         SimpleNamespace(id="dataset-2", name="Dataset Two"),
         SimpleNamespace(id="dataset-1", name="Dataset One"),
     ]

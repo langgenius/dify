@@ -2,7 +2,7 @@ import { useCallback } from 'react'
 import { useReactFlow, useStoreApi } from 'reactflow'
 import { useWorkflowStore } from '../store'
 import {
-  getLayoutByDagre,
+  getLayoutByELK,
   getLayoutForChildNodes,
 } from '../utils'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
@@ -49,7 +49,7 @@ export const useWorkflowOrganize = () => {
       nodes,
       getContainerSizeChanges(parentNodes, childLayoutsMap),
     )
-    const layout = await getLayoutByDagre(nodesWithUpdatedSizes, edges)
+    const layout = await getLayoutByELK(nodesWithUpdatedSizes, edges)
     const nextNodes = applyLayoutToNodes({
       nodes: nodesWithUpdatedSizes,
       layout,

@@ -8,6 +8,19 @@ from typing import TYPE_CHECKING, Any, Optional, TypedDict, Union, cast
 from uuid import uuid4
 
 import sqlalchemy as sa
+from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
+from graphon.entities.pause_reason import HumanInputRequired, PauseReason, PauseReasonType, SchedulingPause
+from graphon.enums import (
+    BuiltinNodeTypes,
+    NodeType,
+    WorkflowExecutionStatus,
+    WorkflowNodeExecutionMetadataKey,
+    WorkflowNodeExecutionStatus,
+)
+from graphon.file import File
+from graphon.file.constants import maybe_file_object
+from graphon.variables import utils as variable_utils
+from graphon.variables.variables import FloatVariable, IntegerVariable, RAGPipelineVariable, StringVariable
 from sqlalchemy import (
     DateTime,
     Index,
@@ -31,13 +44,6 @@ from core.workflow.variable_prefixes import (
 )
 from extensions.ext_storage import Storage
 from factories.variable_factory import TypeMismatchError, build_segment_with_type
-from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
-from graphon.entities.pause_reason import HumanInputRequired, PauseReason, PauseReasonType, SchedulingPause
-from graphon.enums import BuiltinNodeTypes, NodeType, WorkflowExecutionStatus, WorkflowNodeExecutionMetadataKey
-from graphon.file.constants import maybe_file_object
-from graphon.file.models import File
-from graphon.variables import utils as variable_utils
-from graphon.variables.variables import FloatVariable, IntegerVariable, RAGPipelineVariable, StringVariable
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 
@@ -47,10 +53,11 @@ if TYPE_CHECKING:
     from .model import AppMode, UploadFile
 
 
+from graphon.variables import SecretVariable, Segment, SegmentType, VariableBase
+
 from constants import DEFAULT_FILE_NUMBER_LIMITS, HIDDEN_VALUE
 from core.helper import encrypter
 from factories import variable_factory
-from graphon.variables import SecretVariable, Segment, SegmentType, VariableBase
 from libs import helper
 
 from .account import Account
@@ -941,7 +948,7 @@ class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offlo
     inputs: Mapped[str | None] = mapped_column(LongText)
     process_data: Mapped[str | None] = mapped_column(LongText)
     outputs: Mapped[str | None] = mapped_column(LongText)
-    status: Mapped[str] = mapped_column(String(255))
+    status: Mapped[WorkflowNodeExecutionStatus] = mapped_column(EnumText(WorkflowNodeExecutionStatus, length=255))
     error: Mapped[str | None] = mapped_column(LongText)
     elapsed_time: Mapped[float] = mapped_column(sa.Float, server_default=sa.text("0"))
     execution_metadata: Mapped[str | None] = mapped_column(LongText)
@@ -1460,8 +1467,6 @@ class WorkflowDraftVariable(Base):
 
     # From `VARIABLE_PATTERN`, we may conclude that the length of a top level variable is less than
     # 80 chars.
-    #
-    # ref: api/graphon/entities/variable_pool.py:18
     name: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     description: Mapped[str] = mapped_column(
         sa.String(255),

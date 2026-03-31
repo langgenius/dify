@@ -7,6 +7,14 @@ from collections.abc import Sequence
 from json import JSONDecodeError
 from typing import TYPE_CHECKING, Any, cast
 
+from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.provider_entities import (
+    ConfigurateMethod,
+    CredentialFormSchema,
+    FormType,
+    ProviderEntity,
+)
+from graphon.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -33,14 +41,6 @@ from core.helper.position_helper import is_filtered
 from extensions import ext_hosting_provider
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from graphon.model_runtime.entities.model_entities import ModelType
-from graphon.model_runtime.entities.provider_entities import (
-    ConfigurateMethod,
-    CredentialFormSchema,
-    FormType,
-    ProviderEntity,
-)
-from graphon.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from models.provider import (
     LoadBalancingModelConfig,
     Provider,
@@ -306,7 +306,7 @@ class ProviderManager:
         """
         stmt = select(TenantDefaultModel).where(
             TenantDefaultModel.tenant_id == tenant_id,
-            TenantDefaultModel.model_type == model_type.to_origin_model_type(),
+            TenantDefaultModel.model_type == model_type,
         )
         default_model = db.session.scalar(stmt)
 
@@ -324,7 +324,7 @@ class ProviderManager:
 
                 default_model = TenantDefaultModel(
                     tenant_id=tenant_id,
-                    model_type=model_type.to_origin_model_type(),
+                    model_type=model_type,
                     provider_name=available_model.provider.provider,
                     model_name=available_model.model,
                 )
@@ -391,7 +391,7 @@ class ProviderManager:
             raise ValueError(f"Model {model} does not exist.")
         stmt = select(TenantDefaultModel).where(
             TenantDefaultModel.tenant_id == tenant_id,
-            TenantDefaultModel.model_type == model_type.to_origin_model_type(),
+            TenantDefaultModel.model_type == model_type,
         )
         default_model = db.session.scalar(stmt)
 
@@ -405,7 +405,7 @@ class ProviderManager:
             # create default model
             default_model = TenantDefaultModel(
                 tenant_id=tenant_id,
-                model_type=model_type.to_origin_model_type(),
+                model_type=model_type,
                 provider_name=provider,
                 model_name=model,
             )
@@ -626,9 +626,8 @@ class ProviderManager:
                 if provider_record.provider_type != ProviderType.SYSTEM:
                     continue
 
-                provider_quota_to_provider_record_dict[ProviderQuotaType.value_of(provider_record.quota_type)] = (
-                    provider_record
-                )
+                if provider_record.quota_type is not None:
+                    provider_quota_to_provider_record_dict[provider_record.quota_type] = provider_record
 
             for quota in configuration.quotas:
                 if quota.quota_type in (ProviderQuotaType.TRIAL, ProviderQuotaType.PAID):
@@ -641,7 +640,7 @@ class ProviderManager:
                                 # TODO: Use provider name with prefix after the data migration.
                                 provider_name=ModelProviderID(provider_name).provider_name,
                                 provider_type=ProviderType.SYSTEM,
-                                quota_type=quota.quota_type,
+                                quota_type=quota.quota_type,  # type: ignore[arg-type]
                                 quota_limit=0,  # type: ignore
                                 quota_used=0,
                                 is_valid=True,
@@ -823,7 +822,7 @@ class ProviderManager:
             custom_model_configurations.append(
                 CustomModelConfiguration(
                     model=provider_model_record.model_name,
-                    model_type=ModelType.value_of(provider_model_record.model_type),
+                    model_type=provider_model_record.model_type,
                     credentials=provider_model_credentials,
                     current_credential_id=provider_model_record.credential_id,
                     current_credential_name=provider_model_record.credential_name,
@@ -921,9 +920,8 @@ class ProviderManager:
             if provider_record.provider_type != ProviderType.SYSTEM:
                 continue
 
-            quota_type_to_provider_records_dict[ProviderQuotaType.value_of(provider_record.quota_type)] = (
-                provider_record
-            )
+            if provider_record.quota_type is not None:
+                quota_type_to_provider_records_dict[provider_record.quota_type] = provider_record  # type: ignore[index]
         quota_configurations = []
 
         if dify_config.EDITION == "CLOUD":
@@ -1203,7 +1201,7 @@ class ProviderManager:
             model_settings.append(
                 ModelSettings(
                     model=provider_model_setting.model_name,
-                    model_type=ModelType.value_of(provider_model_setting.model_type),
+                    model_type=provider_model_setting.model_type,
                     enabled=provider_model_setting.enabled,
                     load_balancing_enabled=provider_model_setting.load_balancing_enabled,
                     load_balancing_configs=load_balancing_configs if len(load_balancing_configs) > 1 else [],

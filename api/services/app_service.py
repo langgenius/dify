@@ -4,6 +4,8 @@ from typing import Any, TypedDict, cast
 
 import sqlalchemy as sa
 from flask_sqlalchemy.pagination import Pagination
+from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
+from graphon.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 
 from configs import dify_config
 from constants.model_template import default_app_templates
@@ -12,10 +14,8 @@ from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
-from events.app_event import app_was_created
+from events.app_event import app_was_created, app_was_deleted, app_was_updated
 from extensions.ext_database import db
-from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
-from graphon.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_user
 from models import Account
@@ -291,6 +291,8 @@ class AppService:
         app.updated_at = naive_utc_now()
         db.session.commit()
 
+        app_was_updated.send(app)
+
         return app
 
     def update_app_name(self, app: App, name: str) -> App:
@@ -305,6 +307,8 @@ class AppService:
         app.updated_by = current_user.id
         app.updated_at = naive_utc_now()
         db.session.commit()
+
+        app_was_updated.send(app)
 
         return app
 
@@ -323,6 +327,8 @@ class AppService:
         app.updated_at = naive_utc_now()
         db.session.commit()
 
+        app_was_updated.send(app)
+
         return app
 
     def update_app_site_status(self, app: App, enable_site: bool) -> App:
@@ -339,6 +345,8 @@ class AppService:
         app.updated_by = current_user.id
         app.updated_at = naive_utc_now()
         db.session.commit()
+
+        app_was_updated.send(app)
 
         return app
 
@@ -358,6 +366,8 @@ class AppService:
         app.updated_at = naive_utc_now()
         db.session.commit()
 
+        app_was_updated.send(app)
+
         return app
 
     def delete_app(self, app: App):
@@ -365,6 +375,8 @@ class AppService:
         Delete app
         :param app: App instance
         """
+        app_was_deleted.send(app)
+
         db.session.delete(app)
         db.session.commit()
 

@@ -6,6 +6,8 @@ import codecs
 import re
 from typing import Any
 
+from graphon.model_runtime.model_providers.__base.tokenizers.gpt2_tokenizer import GPT2Tokenizer
+
 from core.model_manager import ModelInstance
 from core.rag.splitter.text_splitter import (
     TS,
@@ -15,7 +17,6 @@ from core.rag.splitter.text_splitter import (
     Set,
     Union,
 )
-from graphon.model_runtime.model_providers.__base.tokenizers.gpt2_tokenizer import GPT2Tokenizer
 
 
 class EnhanceRecursiveCharacterTextSplitter(RecursiveCharacterTextSplitter):

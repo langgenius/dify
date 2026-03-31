@@ -1,0 +1,95 @@
+name: Run Full VDB Tests
+
+on:
+  schedule:
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vdb-tests-full-${{ github.ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Full VDB Tests
+    if: github.repository == 'langgenius/dify'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version:
+          - "3.12"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Free Disk Space
+        uses: endersonmenezes/free-disk-space@7901478139cff6e9d44df5972fd8ab8fcade4db1 # v3.2.2
+        with:
+          remove_dotnet: true
+          remove_haskell: true
+          remove_tool_cache: true
+
+      - name: Setup UV and Python
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
+        with:
+          enable-cache: true
+          python-version: ${{ matrix.python-version }}
+          cache-dependency-glob: api/uv.lock
+
+      - name: Check UV lockfile
+        run: uv lock --project api --check
+
+      - name: Install dependencies
+        run: uv sync --project api --dev
+
+      - name: Set up dotenvs
+        run: |
+          cp docker/.env.example docker/.env
+          cp docker/middleware.env.example docker/middleware.env
+
+      - name: Expose Service Ports
+        run: sh .github/workflows/expose_service_ports.sh
+
+#      - name: Set up Vector Store (TiDB)
+#        uses: hoverkraft-tech/compose-action@v2.0.2
+#        with:
+#          compose-file: docker/tidb/docker-compose.yaml
+#          services: |
+#            tidb
+#            tiflash
+
+      - name: Set up Full Vector Store Matrix
+        uses: hoverkraft-tech/compose-action@4894d2492015c1774ee5a13a95b1072093087ec3 # v2.5.0
+        with:
+          compose-file: |
+            docker/docker-compose.yaml
+          services: |
+            weaviate
+            qdrant
+            couchbase-server
+            etcd
+            minio
+            milvus-standalone
+            pgvecto-rs
+            pgvector
+            chroma
+            elasticsearch
+            oceanbase
+
+      - name: setup test config
+        run: |
+          echo $(pwd)
+          ls -lah .
+          cp api/tests/integration_tests/.env.example api/tests/integration_tests/.env
+
+#      - name: Check VDB Ready (TiDB)
+#        run: uv run --project api python api/tests/integration_tests/vdb/tidb_vector/check_tiflash_ready.py
+
+      - name: Test Vector Stores
+        run: uv run --project api bash dev/pytest/pytest_vdb.sh

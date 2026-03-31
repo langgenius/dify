@@ -4,13 +4,13 @@ from unittest.mock import MagicMock
 
 import pytest
 import yaml
+from graphon.enums import BuiltinNodeTypes
 
 from core.trigger.constants import (
     TRIGGER_PLUGIN_NODE_TYPE,
     TRIGGER_SCHEDULE_NODE_TYPE,
     TRIGGER_WEBHOOK_NODE_TYPE,
 )
-from graphon.enums import BuiltinNodeTypes
 from models import Account, AppMode
 from models.model import IconType
 from services import app_dsl_service
