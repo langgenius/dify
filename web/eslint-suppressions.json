@@ -9,14 +9,6 @@
       "count": 1
     }
   },
-  "__tests__/check-i18n.test.ts": {
-    "regexp/no-unused-capturing-group": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
   "__tests__/document-detail-navigation-fix.test.tsx": {
     "no-console": {
       "count": 10
@@ -6318,11 +6310,6 @@
       "count": 1
     }
   },
-  "app/components/rag-pipeline/components/chunk-card-list/types.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    }
-  },
   "app/components/rag-pipeline/components/conversion.tsx": {
     "no-restricted-imports": {
       "count": 2
@@ -6477,11 +6464,6 @@
   },
   "app/components/rag-pipeline/components/panel/test-run/result/tabs/tab.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/rag-pipeline/components/panel/test-run/types.ts": {
-    "erasable-syntax-only/enums": {
       "count": 1
     }
   },
@@ -9351,11 +9333,6 @@
       "count": 1
     }
   },
-  "app/components/workflow/note-node/types.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    }
-  },
   "app/components/workflow/operator/add-block.tsx": {
     "ts/no-explicit-any": {
       "count": 1
@@ -9961,11 +9938,6 @@
     },
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/components/workflow/variable-inspect/types.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 2
     }
   },
   "app/components/workflow/variable-inspect/utils.tsx": {
@@ -10587,11 +10559,6 @@
       "count": 3
     }
   },
-  "types/model-provider.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    }
-  },
   "types/pipeline.tsx": {
     "ts/no-explicit-any": {
       "count": 3
@@ -10603,9 +10570,6 @@
     }
   },
   "types/workflow.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 17
     }

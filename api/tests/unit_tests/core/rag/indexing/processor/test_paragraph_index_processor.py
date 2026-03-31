@@ -2,14 +2,14 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, ImagePromptMessageContent
+from graphon.model_runtime.entities.model_entities import ModelFeature
 
 from core.entities.knowledge_entities import PreviewDetail
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.index_processor.processor.paragraph_index_processor import ParagraphIndexProcessor
 from core.rag.models.document import AttachmentDocument, Document
-from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
-from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, ImagePromptMessageContent
-from graphon.model_runtime.entities.model_entities import ModelFeature
 
 
 class TestParagraphIndexProcessor:
@@ -188,10 +188,10 @@ class TestParagraphIndexProcessor:
         mock_keyword_cls.return_value.add_texts.assert_called_once_with(docs)
 
     def test_clean_deletes_summaries_and_vector(self, processor: ParagraphIndexProcessor, dataset: Mock) -> None:
-        segment_query = Mock()
-        segment_query.filter.return_value.all.return_value = [SimpleNamespace(id="seg-1")]
+        scalars_result = Mock()
+        scalars_result.all.return_value = [SimpleNamespace(id="seg-1")]
         session = Mock()
-        session.query.return_value = segment_query
+        session.scalars.return_value = scalars_result
 
         with (
             patch("core.rag.index_processor.processor.paragraph_index_processor.db.session", session),
@@ -531,10 +531,10 @@ class TestParagraphIndexProcessor:
             size=1,
             key="key",
         )
-        query = Mock()
-        query.where.return_value.all.return_value = [image_upload, non_image_upload]
+        scalars_result = Mock()
+        scalars_result.all.return_value = [image_upload, non_image_upload]
         session = Mock()
-        session.query.return_value = query
+        session.scalars.return_value = scalars_result
 
         with (
             patch("core.rag.index_processor.processor.paragraph_index_processor.db.session", session),
@@ -565,10 +565,10 @@ class TestParagraphIndexProcessor:
             size=1,
             key="key",
         )
-        query = Mock()
-        query.where.return_value.all.return_value = [image_upload]
+        scalars_result = Mock()
+        scalars_result.all.return_value = [image_upload]
         session = Mock()
-        session.query.return_value = query
+        session.scalars.return_value = scalars_result
 
         with (
             patch("core.rag.index_processor.processor.paragraph_index_processor.db.session", session),

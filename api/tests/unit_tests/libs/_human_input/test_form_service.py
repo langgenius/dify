@@ -2,10 +2,9 @@
 Unit tests for FormService.
 """
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pytest
-
 from graphon.nodes.human_input.entities import (
     FormInput,
     UserAction,
@@ -14,6 +13,7 @@ from graphon.nodes.human_input.enums import (
     FormInputType,
     TimeoutUnit,
 )
+
 from libs.datetime_utils import naive_utc_now
 
 from .support import (
@@ -142,7 +142,7 @@ class TestFormService:
 
         # Manually expire the form by modifying expiry time
         form = form_service.get_form_by_id("form-123")
-        form.expires_at = datetime.utcnow() - timedelta(hours=1)
+        form.expires_at = naive_utc_now() - timedelta(hours=1)
         form_service.repository.save(form)
 
         # Should raise FormExpiredError
@@ -227,7 +227,7 @@ class TestFormService:
 
         # Manually expire the form
         form = form_service.get_form_by_id("form-123")
-        form.expires_at = datetime.utcnow() - timedelta(hours=1)
+        form.expires_at = naive_utc_now() - timedelta(hours=1)
         form_service.repository.save(form)
 
         # Try to submit expired form
