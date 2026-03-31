@@ -198,7 +198,7 @@ describe('Link component', () => {
 
     render(<Link node={node} />)
 
-    expect(screen.getByText('Download')).toBeInTheDocument()
+    expect(screen.getByText('common.operation.download')).toBeInTheDocument()
   })
 
   it('renders default text for hash link if children not provided', () => {
@@ -210,6 +210,6 @@ describe('Link component', () => {
 
     render(<Link node={node} />)
 
-    expect(screen.getByText('ScrollView')).toBeInTheDocument()
+    expect(screen.getByText('common.operation.view')).toBeInTheDocument()
   })
 })
