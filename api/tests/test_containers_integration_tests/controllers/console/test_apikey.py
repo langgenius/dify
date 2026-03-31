@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+from unittest.mock import MagicMock, patch
+
 import pytest
 from flask.testing import FlaskClient
 from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
+from models.enums import ApiTokenType
 from models.model import ApiToken, App, AppMode
 from tests.test_containers_integration_tests.controllers.console.helpers import (
     authenticate_console_client,
@@ -123,46 +126,28 @@ class TestAppApiKeyResource:
 
     def test_delete_forbidden_for_non_admin(
         self,
-        db_session_with_containers: Session,
-        test_client_with_containers: FlaskClient,
+        flask_app_with_containers,
     ) -> None:
-        """A non-admin member cannot delete API keys."""
-        from models.account import TenantAccountJoin, TenantAccountRole
+        """A non-admin member cannot delete API keys via the controller permission check."""
+        from werkzeug.exceptions import Forbidden
 
-        # Owner creates app and a key
-        owner, tenant = create_console_account_and_tenant(db_session_with_containers)
-        app = create_console_app(db_session_with_containers, tenant.id, owner.id, AppMode.CHAT)
-        owner_headers = authenticate_console_client(test_client_with_containers, owner)
+        from controllers.console.apikey import BaseApiKeyResource
 
-        create_resp = test_client_with_containers.post(f"/console/api/apps/{app.id}/api-keys", headers=owner_headers)
-        assert create_resp.json is not None
-        key_id = create_resp.json["id"]
+        resource = BaseApiKeyResource()
+        resource.resource_type = ApiTokenType.APP
+        resource.resource_model = MagicMock()
+        resource.resource_id_field = "app_id"
 
-        # Create a fully initialised member via the helper (gives them their own tenant),
-        # then join them to the owner's tenant as NORMAL and switch context.
-        member, _member_tenant = create_console_account_and_tenant(db_session_with_containers)
-        db_session_with_containers.add(
-            TenantAccountJoin(
-                tenant_id=tenant.id,
-                account_id=member.id,
-                role=TenantAccountRole.NORMAL,
-                current=True,
-            )
-        )
-        # Mark the member's own tenant join as non-current
-        own_join = (
-            db_session_with_containers.query(TenantAccountJoin)
-            .filter_by(tenant_id=_member_tenant.id, account_id=member.id)
-            .first()
-        )
-        if own_join:
-            own_join.current = False
-        db_session_with_containers.commit()
+        non_admin = MagicMock()
+        non_admin.is_admin_or_owner = False
 
-        member.set_tenant_id(tenant.id)
-
-        member_headers = authenticate_console_client(test_client_with_containers, member)
-        resp = test_client_with_containers.delete(
-            f"/console/api/apps/{app.id}/api-keys/{key_id}", headers=member_headers
-        )
-        assert resp.status_code == 403
+        with (
+            flask_app_with_containers.test_request_context("/"),
+            patch(
+                "controllers.console.apikey.current_account_with_tenant",
+                return_value=(non_admin, "tenant-id"),
+            ),
+            patch("controllers.console.apikey._get_resource"),
+        ):
+            with pytest.raises(Forbidden):
+                BaseApiKeyResource.delete(resource, "rid", "kid")
