@@ -4,6 +4,7 @@ from sqlalchemy import select
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.rag.datasource.vdb.vector_factory import Vector
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from extensions.ext_database import db
 from models.dataset import Dataset
 from models.enums import CollectionBindingType, ConversationFromSource
@@ -50,7 +51,7 @@ class AnnotationReplyFeature:
             dataset = Dataset(
                 id=app_record.id,
                 tenant_id=app_record.tenant_id,
-                indexing_technique="high_quality",
+                indexing_technique=IndexTechniqueType.HIGH_QUALITY,
                 embedding_model_provider=embedding_provider_name,
                 embedding_model=embedding_model_name,
                 collection_binding_id=dataset_collection_binding.id,

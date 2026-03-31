@@ -5,6 +5,7 @@ import uuid
 from datetime import datetime, timedelta
 from typing import cast
 
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 from opik import Opik, Trace
 from opik.id_helpers import uuid4_to_uuid7
 from sqlalchemy.orm import sessionmaker
@@ -23,7 +24,6 @@ from core.ops.entities.trace_entity import (
     WorkflowTraceInfo,
 )
 from core.repositories import DifyCoreRepositoryFactory
-from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 from extensions.ext_database import db
 from models import EndUser, MessageFile, WorkflowNodeExecutionTriggeredFrom
 
@@ -176,8 +176,8 @@ class OpikDataTrace(BaseTraceInstance):
         )
 
         # Get all executions for this workflow run
-        workflow_node_executions = workflow_node_execution_repository.get_by_workflow_run(
-            workflow_run_id=trace_info.workflow_run_id
+        workflow_node_executions = workflow_node_execution_repository.get_by_workflow_execution(
+            workflow_execution_id=trace_info.workflow_run_id
         )
 
         for node_execution in workflow_node_executions:
@@ -288,9 +288,7 @@ class OpikDataTrace(BaseTraceInstance):
         metadata["file_list"] = file_list
 
         if message_data.from_end_user_id:
-            end_user_data: EndUser | None = (
-                db.session.query(EndUser).where(EndUser.id == message_data.from_end_user_id).first()
-            )
+            end_user_data: EndUser | None = db.session.get(EndUser, message_data.from_end_user_id)
             if end_user_data is not None:
                 end_user_id = end_user_data.session_id
                 metadata["end_user_id"] = end_user_id

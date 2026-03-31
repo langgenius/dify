@@ -181,10 +181,12 @@ vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', (
   ),
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
-  __esModule: true,
-  default: {
-    notify: (payload: unknown) => mockToastNotify(payload),
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    success: (message: string) => mockToastNotify({ type: 'success', message }),
+    error: (message: string) => mockToastNotify({ type: 'error', message }),
+    warning: (message: string) => mockToastNotify({ type: 'warning', message }),
+    info: (message: string) => mockToastNotify({ type: 'info', message }),
   },
 }))
 

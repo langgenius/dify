@@ -1,18 +1,19 @@
 from unittest.mock import MagicMock
 
+from graphon.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    SystemPromptMessage,
+    ToolPromptMessage,
+    UserPromptMessage,
+)
+from graphon.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+
 from core.app.entities.app_invoke_entities import (
     ModelConfigWithCredentialsEntity,
 )
 from core.entities.provider_configuration import ProviderModelBundle
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
-from dify_graph.model_runtime.entities.message_entities import (
-    AssistantPromptMessage,
-    SystemPromptMessage,
-    ToolPromptMessage,
-    UserPromptMessage,
-)
-from dify_graph.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from models.model import Conversation
 
 

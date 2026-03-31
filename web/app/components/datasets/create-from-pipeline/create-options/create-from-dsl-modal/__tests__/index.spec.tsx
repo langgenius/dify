@@ -1612,9 +1612,7 @@ describe('Uploader', () => {
       if (!dropArea)
         return
 
-      fireEvent.drop(dropArea, {
-        dataTransfer: null,
-      })
+      fireEvent.drop(dropArea)
 
       expect(updateFile).not.toHaveBeenCalled()
     })

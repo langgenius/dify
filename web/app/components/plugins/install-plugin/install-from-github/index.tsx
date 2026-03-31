@@ -12,7 +12,7 @@ import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-ico
 import { cn } from '@/utils/classnames'
 import { InstallStepFromGitHub } from '../../types'
 import Installed from '../base/installed'
-import { useGitHubReleases } from '../hooks'
+import { fetchReleases } from '../hooks'
 import useHideLogic from '../hooks/use-hide-logic'
 import useRefreshPluginList from '../hooks/use-refresh-plugin-list'
 import { convertRepoToUrl, parseGitHubUrl } from '../utils'
@@ -31,7 +31,6 @@ type InstallFromGitHubProps = {
 const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, onClose, onSuccess }) => {
   const { t } = useTranslation()
   const { getIconUrl } = useGetIcon()
-  const { fetchReleases } = useGitHubReleases()
   const { refreshPluginList } = useRefreshPluginList()
 
   const {

@@ -6,18 +6,18 @@ from typing import Any, cast
 from unittest.mock import MagicMock
 
 import pytest
-from pytest_mock import MockerFixture
-
-from constants import HIDDEN_VALUE
-from dify_graph.model_runtime.entities.common_entities import I18nObject
-from dify_graph.model_runtime.entities.model_entities import ModelType
-from dify_graph.model_runtime.entities.provider_entities import (
+from graphon.model_runtime.entities.common_entities import I18nObject
+from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.provider_entities import (
     CredentialFormSchema,
     FieldModelSchema,
     FormType,
     ModelCredentialSchema,
     ProviderCredentialSchema,
 )
+from pytest_mock import MockerFixture
+
+from constants import HIDDEN_VALUE
 from models.provider import LoadBalancingModelConfig
 from services.model_load_balancing_service import ModelLoadBalancingService
 
@@ -69,9 +69,13 @@ def _load_balancing_model_config(**kwargs: Any) -> LoadBalancingModelConfig:
 def service(mocker: MockerFixture) -> ModelLoadBalancingService:
     # Arrange
     provider_manager = MagicMock()
-    mocker.patch("services.model_load_balancing_service.ProviderManager", return_value=provider_manager)
+    mocker.patch("services.model_load_balancing_service.create_plugin_provider_manager", return_value=provider_manager)
+    model_assembly = SimpleNamespace(provider_manager=provider_manager, model_provider_factory=MagicMock())
+    mocker.patch("services.model_load_balancing_service.create_plugin_model_assembly", return_value=model_assembly)
     svc = ModelLoadBalancingService()
     svc.provider_manager = provider_manager
+    svc.model_assembly = model_assembly
+    svc._get_provider_manager = lambda _tenant_id: provider_manager  # type: ignore[method-assign]
     return svc
 
 
@@ -313,7 +317,7 @@ def test_init_inherit_config_should_create_and_persist_inherit_configuration(
     assert inherit_config.tenant_id == "tenant-1"
     assert inherit_config.provider_name == "openai"
     assert inherit_config.model_name == "gpt-4o-mini"
-    assert inherit_config.model_type == "text-generation"
+    assert inherit_config.model_type == "llm"
     assert inherit_config.name == "__inherit__"
     mock_db.session.add.assert_called_once_with(inherit_config)
     mock_db.session.commit.assert_called_once()
@@ -666,6 +670,9 @@ def test_validate_load_balancing_credentials_should_delegate_to_custom_validate_
     assert mock_validate.call_count == 2
     assert mock_validate.call_args_list[0].kwargs["load_balancing_model_config"] is existing_config
     assert mock_validate.call_args_list[1].kwargs["load_balancing_model_config"] is None
+    shared_model_provider_factory = service.model_assembly.model_provider_factory
+    assert mock_validate.call_args_list[0].kwargs["model_provider_factory"] is shared_model_provider_factory
+    assert mock_validate.call_args_list[1].kwargs["model_provider_factory"] is shared_model_provider_factory
 
 
 def test_custom_credentials_validate_should_replace_hidden_secret_with_original_value_and_encrypt(
@@ -708,7 +715,6 @@ def test_custom_credentials_validate_should_handle_invalid_original_json_and_val
     load_balancing_model_config = _load_balancing_model_config(encrypted_config="not-json")
     mock_factory = MagicMock()
     mock_factory.model_credentials_validate.return_value = {"api_key": "validated"}
-    mocker.patch("services.model_load_balancing_service.ModelProviderFactory", return_value=mock_factory)
     mock_encrypt = mocker.patch(
         "services.model_load_balancing_service.encrypter.encrypt_token",
         side_effect=lambda tenant_id, value: f"enc:{value}",
@@ -722,6 +728,7 @@ def test_custom_credentials_validate_should_handle_invalid_original_json_and_val
         model="gpt-4o-mini",
         credentials={"api_key": "plain"},
         load_balancing_model_config=load_balancing_model_config,
+        model_provider_factory=mock_factory,
         validate=True,
     )
 
@@ -740,7 +747,6 @@ def test_custom_credentials_validate_should_validate_with_provider_schema_when_m
     provider_configuration = _build_provider_configuration(provider_schema=_build_provider_credential_schema())
     mock_factory = MagicMock()
     mock_factory.provider_credentials_validate.return_value = {"api_key": "provider-validated"}
-    mocker.patch("services.model_load_balancing_service.ModelProviderFactory", return_value=mock_factory)
     mocker.patch(
         "services.model_load_balancing_service.encrypter.encrypt_token",
         side_effect=lambda tenant_id, value: f"enc:{value}",
@@ -753,6 +759,7 @@ def test_custom_credentials_validate_should_validate_with_provider_schema_when_m
         model_type=ModelType.LLM,
         model="gpt-4o-mini",
         credentials={"api_key": "plain"},
+        model_provider_factory=mock_factory,
         validate=True,
     )
 

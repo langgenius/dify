@@ -3,6 +3,7 @@ import logging
 from collections.abc import Callable, Sequence
 from typing import Any, Union
 
+from graphon.variables.types import SegmentType
 from sqlalchemy import asc, desc, func, or_, select
 from sqlalchemy.orm import Session
 
@@ -10,7 +11,6 @@ from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.db.session_factory import session_factory
 from core.llm_generator.llm_generator import LLMGenerator
-from dify_graph.variables.types import SegmentType
 from extensions.ext_database import db
 from factories import variable_factory
 from libs.datetime_utils import naive_utc_now

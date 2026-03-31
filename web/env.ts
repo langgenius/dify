@@ -67,10 +67,6 @@ const clientSchema = {
   NEXT_PUBLIC_ENABLE_WEBSITE_JINAREADER: coercedBoolean.default(true),
   NEXT_PUBLIC_ENABLE_WEBSITE_WATERCRAWL: coercedBoolean.default(false),
   /**
-   * Github Access Token, used for invoking Github API
-   */
-  NEXT_PUBLIC_GITHUB_ACCESS_TOKEN: z.string().optional(),
-  /**
    * The maximum number of tokens for segmentation
    */
   NEXT_PUBLIC_INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: coercedNumber.default(4000),
@@ -171,7 +167,6 @@ export const env = createEnv({
     NEXT_PUBLIC_ENABLE_WEBSITE_FIRECRAWL: isServer ? process.env.NEXT_PUBLIC_ENABLE_WEBSITE_FIRECRAWL : getRuntimeEnvFromBody('enableWebsiteFirecrawl'),
     NEXT_PUBLIC_ENABLE_WEBSITE_JINAREADER: isServer ? process.env.NEXT_PUBLIC_ENABLE_WEBSITE_JINAREADER : getRuntimeEnvFromBody('enableWebsiteJinareader'),
     NEXT_PUBLIC_ENABLE_WEBSITE_WATERCRAWL: isServer ? process.env.NEXT_PUBLIC_ENABLE_WEBSITE_WATERCRAWL : getRuntimeEnvFromBody('enableWebsiteWatercrawl'),
-    NEXT_PUBLIC_GITHUB_ACCESS_TOKEN: isServer ? process.env.NEXT_PUBLIC_GITHUB_ACCESS_TOKEN : getRuntimeEnvFromBody('githubAccessToken'),
     NEXT_PUBLIC_INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: isServer ? process.env.NEXT_PUBLIC_INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH : getRuntimeEnvFromBody('indexingMaxSegmentationTokensLength'),
     NEXT_PUBLIC_IS_MARKETPLACE: isServer ? process.env.NEXT_PUBLIC_IS_MARKETPLACE : getRuntimeEnvFromBody('isMarketplace'),
     NEXT_PUBLIC_LOOP_NODE_MAX_COUNT: isServer ? process.env.NEXT_PUBLIC_LOOP_NODE_MAX_COUNT : getRuntimeEnvFromBody('loopNodeMaxCount'),
