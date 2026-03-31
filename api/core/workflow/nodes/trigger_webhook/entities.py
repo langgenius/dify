@@ -8,24 +8,20 @@ from pydantic import BaseModel, Field, field_validator
 
 from core.trigger.constants import TRIGGER_WEBHOOK_NODE_TYPE
 
-_WEBHOOK_HEADER_ALLOWED_TYPES = frozenset(
-    {
-        SegmentType.STRING,
-    }
-)
+_WEBHOOK_HEADER_ALLOWED_TYPES: frozenset[SegmentType] = frozenset((SegmentType.STRING,))
 
-_WEBHOOK_QUERY_PARAMETER_ALLOWED_TYPES = frozenset(
-    {
+_WEBHOOK_QUERY_PARAMETER_ALLOWED_TYPES: frozenset[SegmentType] = frozenset(
+    (
         SegmentType.STRING,
         SegmentType.NUMBER,
         SegmentType.BOOLEAN,
-    }
+    )
 )
 
 _WEBHOOK_PARAMETER_ALLOWED_TYPES = _WEBHOOK_HEADER_ALLOWED_TYPES | _WEBHOOK_QUERY_PARAMETER_ALLOWED_TYPES
 
-_WEBHOOK_BODY_ALLOWED_TYPES = frozenset(
-    {
+_WEBHOOK_BODY_ALLOWED_TYPES: frozenset[SegmentType] = frozenset(
+    (
         SegmentType.STRING,
         SegmentType.NUMBER,
         SegmentType.BOOLEAN,
@@ -35,7 +31,7 @@ _WEBHOOK_BODY_ALLOWED_TYPES = frozenset(
         SegmentType.ARRAY_BOOLEAN,
         SegmentType.ARRAY_OBJECT,
         SegmentType.FILE,
-    }
+    )
 )
 
 

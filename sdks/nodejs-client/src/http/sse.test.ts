@@ -6,10 +6,10 @@ describe("sse parsing", () => {
   it("parses event and data lines", async () => {
     const stream = Readable.from([
       "event: message\n",
-      "data: {\"answer\":\"hi\"}\n",
+      'data: {"answer":"hi"}\n',
       "\n",
     ]);
-    const events = [];
+    const events: Array<{ event?: string; data: unknown; raw: string }> = [];
     for await (const event of parseSseStream(stream)) {
       events.push(event);
     }
@@ -20,7 +20,7 @@ describe("sse parsing", () => {
 
   it("handles multi-line data payloads", async () => {
     const stream = Readable.from(["data: line1\n", "data: line2\n", "\n"]);
-    const events = [];
+    const events: Array<{ event?: string; data: unknown; raw: string }> = [];
     for await (const event of parseSseStream(stream)) {
       events.push(event);
     }
@@ -28,10 +28,28 @@ describe("sse parsing", () => {
     expect(events[0].data).toBe("line1\nline2");
   });
 
+  it("ignores comments and flushes the last event without a trailing separator", async () => {
+    const stream = Readable.from([
+      Buffer.from(": keep-alive\n"),
+      Uint8Array.from(Buffer.from('event: message\ndata: {"delta":"hi"}\n')),
+    ]);
+    const events: Array<{ event?: string; data: unknown; raw: string }> = [];
+    for await (const event of parseSseStream(stream)) {
+      events.push(event);
+    }
+    expect(events).toEqual([
+      {
+        event: "message",
+        data: { delta: "hi" },
+        raw: '{"delta":"hi"}',
+      },
+    ]);
+  });
+
   it("createSseStream exposes toText", async () => {
     const stream = Readable.from([
-      "data: {\"answer\":\"hello\"}\n\n",
-      "data: {\"delta\":\" world\"}\n\n",
+      'data: {"answer":"hello"}\n\n',
+      'data: {"delta":" world"}\n\n',
     ]);
     const sseStream = createSseStream(stream, {
       status: 200,
@@ -72,5 +90,6 @@ describe("sse parsing", () => {
     });
     expect(binary.status).toBe(200);
     expect(binary.headers["content-type"]).toBe("audio/mpeg");
+    expect(binary.toReadable()).toBe(stream);
   });
 });

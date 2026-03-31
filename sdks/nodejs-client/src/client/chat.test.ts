@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ChatClient } from "./chat";
 import { ValidationError } from "../errors/dify-error";
+import { ChatClient } from "./chat";
 import { createHttpClientWithSpies } from "../../tests/test-utils";
 
 describe("ChatClient", () => {
@@ -156,13 +156,13 @@ describe("ChatClient", () => {
     });
   });
 
-  it("requires name when autoGenerate is false", async () => {
+  it("requires name when autoGenerate is false", () => {
     const { client } = createHttpClientWithSpies();
     const chat = new ChatClient(client);
 
-    expect(() =>
-      chat.renameConversation("conv", "", "user", false)
-    ).toThrow(ValidationError);
+    expect(() => chat.renameConversation("conv", "", "user", false)).toThrow(
+      ValidationError
+    );
   });
 
   it("deletes conversations", async () => {
