@@ -53,9 +53,6 @@
     "publish:check": "./scripts/publish.sh --dry-run",
     "publish:npm": "./scripts/publish.sh"
   },
-  "dependencies": {
-    "axios": "catalog:"
-  },
   "devDependencies": {
     "@eslint/js": "catalog:",
     "@types/node": "catalog:",

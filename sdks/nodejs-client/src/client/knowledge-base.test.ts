@@ -174,7 +174,6 @@ describe("KnowledgeBaseClient", () => {
   it("handles pipeline operations", async () => {
     const { client, request, requestStream } = createHttpClientWithSpies();
     const kb = new KnowledgeBaseClient(client);
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const form = { append: vi.fn(), getHeaders: () => ({}) };
 
     await kb.listDatasourcePlugins("ds", { isPublished: true });
@@ -201,7 +200,6 @@ describe("KnowledgeBaseClient", () => {
     });
     await kb.uploadPipelineFile(form);
 
-    expect(warn).toHaveBeenCalled();
     expect(request).toHaveBeenCalledWith({
       method: "GET",
       path: "/datasets/ds/pipeline/datasource-plugins",

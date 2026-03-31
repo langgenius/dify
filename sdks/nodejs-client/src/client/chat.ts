@@ -9,7 +9,11 @@ import type {
 import type {
   DifyResponse,
   DifyStream,
+  JsonObject,
+  JsonValue,
   QueryParams,
+  SuccessResponse,
+  SuggestedQuestionsResponse,
 } from "../types/common";
 import {
   ensureNonEmptyString,
@@ -22,20 +26,20 @@ export class ChatClient extends DifyClient {
     request: ChatMessageRequest
   ): Promise<DifyResponse<ChatMessageResponse> | DifyStream<ChatMessageResponse>>;
   createChatMessage(
-    inputs: Record<string, unknown>,
+    inputs: JsonObject,
     query: string,
     user: string,
     stream?: boolean,
     conversationId?: string | null,
-    files?: Array<Record<string, unknown>> | null
+    files?: ChatMessageRequest["files"]
   ): Promise<DifyResponse<ChatMessageResponse> | DifyStream<ChatMessageResponse>>;
   createChatMessage(
-    inputOrRequest: ChatMessageRequest | Record<string, unknown>,
+    inputOrRequest: ChatMessageRequest | JsonObject,
     query?: string,
     user?: string,
     stream = false,
     conversationId?: string | null,
-    files?: Array<Record<string, unknown>> | null
+    files?: ChatMessageRequest["files"]
   ): Promise<DifyResponse<ChatMessageResponse> | DifyStream<ChatMessageResponse>> {
     let payload: ChatMessageRequest;
     let shouldStream = stream;
@@ -46,8 +50,8 @@ export class ChatClient extends DifyClient {
     } else {
       ensureNonEmptyString(query, "query");
       ensureNonEmptyString(user, "user");
-      payload = {
-        inputs: inputOrRequest as Record<string, unknown>,
+        payload = {
+        inputs: inputOrRequest,
         query,
         user,
         response_mode: stream ? "streaming" : "blocking",
@@ -79,10 +83,10 @@ export class ChatClient extends DifyClient {
   stopChatMessage(
     taskId: string,
     user: string
-  ): Promise<DifyResponse<ChatMessageResponse>> {
+  ): Promise<DifyResponse<SuccessResponse>> {
     ensureNonEmptyString(taskId, "taskId");
     ensureNonEmptyString(user, "user");
-    return this.http.request<ChatMessageResponse>({
+    return this.http.request<SuccessResponse>({
       method: "POST",
       path: `/chat-messages/${taskId}/stop`,
       data: { user },
@@ -92,17 +96,17 @@ export class ChatClient extends DifyClient {
   stopMessage(
     taskId: string,
     user: string
-  ): Promise<DifyResponse<ChatMessageResponse>> {
+  ): Promise<DifyResponse<SuccessResponse>> {
     return this.stopChatMessage(taskId, user);
   }
 
   getSuggested(
     messageId: string,
     user: string
-  ): Promise<DifyResponse<ChatMessageResponse>> {
+  ): Promise<DifyResponse<SuggestedQuestionsResponse>> {
     ensureNonEmptyString(messageId, "messageId");
     ensureNonEmptyString(user, "user");
-    return this.http.request<ChatMessageResponse>({
+    return this.http.request<SuggestedQuestionsResponse>({
       method: "GET",
       path: `/messages/${messageId}/suggested`,
       query: { user },
@@ -114,7 +118,7 @@ export class ChatClient extends DifyClient {
   getAppFeedbacks(
     page?: number,
     limit?: number
-  ): Promise<DifyResponse<Record<string, unknown>>> {
+  ): Promise<DifyResponse<JsonObject>> {
     ensureOptionalInt(page, "page");
     ensureOptionalInt(limit, "limit");
     return this.http.request({
@@ -131,8 +135,8 @@ export class ChatClient extends DifyClient {
     user: string,
     lastId?: string | null,
     limit?: number | null,
-    sortByOrPinned?: string | boolean | null
-  ): Promise<DifyResponse<Record<string, unknown>>> {
+    sortBy?: string | null
+  ): Promise<DifyResponse<JsonObject>> {
     ensureNonEmptyString(user, "user");
     ensureOptionalString(lastId, "lastId");
     ensureOptionalInt(limit, "limit");
@@ -144,10 +148,8 @@ export class ChatClient extends DifyClient {
     if (limit) {
       params.limit = limit;
     }
-    if (typeof sortByOrPinned === "string") {
-      params.sort_by = sortByOrPinned;
-    } else if (typeof sortByOrPinned === "boolean") {
-      params.pinned = sortByOrPinned;
+    if (sortBy) {
+      params.sort_by = sortBy;
     }
 
     return this.http.request({
@@ -162,7 +164,7 @@ export class ChatClient extends DifyClient {
     conversationId: string,
     firstId?: string | null,
     limit?: number | null
-  ): Promise<DifyResponse<Record<string, unknown>>> {
+  ): Promise<DifyResponse<JsonObject>> {
     ensureNonEmptyString(user, "user");
     ensureNonEmptyString(conversationId, "conversationId");
     ensureOptionalString(firstId, "firstId");
@@ -189,18 +191,18 @@ export class ChatClient extends DifyClient {
     name: string,
     user: string,
     autoGenerate?: boolean
-  ): Promise<DifyResponse<Record<string, unknown>>>;
+  ): Promise<DifyResponse<JsonObject>>;
   renameConversation(
     conversationId: string,
     user: string,
     options?: { name?: string | null; autoGenerate?: boolean }
-  ): Promise<DifyResponse<Record<string, unknown>>>;
+  ): Promise<DifyResponse<JsonObject>>;
   renameConversation(
     conversationId: string,
     nameOrUser: string,
     userOrOptions?: string | { name?: string | null; autoGenerate?: boolean },
     autoGenerate?: boolean
-  ): Promise<DifyResponse<Record<string, unknown>>> {
+  ): Promise<DifyResponse<JsonObject>> {
     ensureNonEmptyString(conversationId, "conversationId");
 
     let name: string | null | undefined;
@@ -222,7 +224,7 @@ export class ChatClient extends DifyClient {
       ensureNonEmptyString(name, "name");
     }
 
-    const payload: Record<string, unknown> = {
+    const payload: JsonObject = {
       user,
       auto_generate: resolvedAutoGenerate,
     };
@@ -240,7 +242,7 @@ export class ChatClient extends DifyClient {
   deleteConversation(
     conversationId: string,
     user: string
-  ): Promise<DifyResponse<Record<string, unknown>>> {
+  ): Promise<DifyResponse<SuccessResponse>> {
     ensureNonEmptyString(conversationId, "conversationId");
     ensureNonEmptyString(user, "user");
     return this.http.request({
@@ -256,7 +258,7 @@ export class ChatClient extends DifyClient {
     lastId?: string | null,
     limit?: number | null,
     variableName?: string | null
-  ): Promise<DifyResponse<Record<string, unknown>>> {
+  ): Promise<DifyResponse<JsonObject>> {
     ensureNonEmptyString(conversationId, "conversationId");
     ensureNonEmptyString(user, "user");
     ensureOptionalString(lastId, "lastId");
@@ -279,8 +281,8 @@ export class ChatClient extends DifyClient {
     conversationId: string,
     variableId: string,
     user: string,
-    value: unknown
-  ): Promise<DifyResponse<Record<string, unknown>>> {
+    value: JsonValue
+  ): Promise<DifyResponse<JsonObject>> {
     ensureNonEmptyString(conversationId, "conversationId");
     ensureNonEmptyString(variableId, "variableId");
     ensureNonEmptyString(user, "user");
