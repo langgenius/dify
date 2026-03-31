@@ -1,6 +1,7 @@
+from graphon.model_runtime.entities.model_entities import ModelType
+
 from core.model_manager import ModelManager
 from core.moderation.base import Moderation, ModerationAction, ModerationInputsResult, ModerationOutputsResult
-from graphon.model_runtime.entities.model_entities import ModelType
 
 
 class OpenAIModeration(Moderation):

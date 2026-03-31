@@ -1,0 +1,68 @@
+name: Web Full-Stack E2E
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-e2e-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Web Full-Stack E2E
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Setup web dependencies
+        uses: ./.github/actions/setup-web
+
+      - name: Setup UV and Python
+        uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57 # v8.0.0
+        with:
+          enable-cache: true
+          python-version: "3.12"
+          cache-dependency-glob: api/uv.lock
+
+      - name: Install API dependencies
+        run: uv sync --project api --dev
+
+      - name: Install Playwright browser
+        working-directory: ./e2e
+        run: vp run e2e:install
+
+      - name: Run isolated source-api and built-web Cucumber E2E tests
+        working-directory: ./e2e
+        env:
+          E2E_ADMIN_EMAIL: e2e-admin@example.com
+          E2E_ADMIN_NAME: E2E Admin
+          E2E_ADMIN_PASSWORD: E2eAdmin12345
+          E2E_FORCE_WEB_BUILD: "1"
+          E2E_INIT_PASSWORD: E2eInit12345
+        run: vp run e2e:full
+
+      - name: Upload Cucumber report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: cucumber-report
+          path: e2e/cucumber-report
+          retention-days: 7
+
+      - name: Upload E2E logs
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: e2e-logs
+          path: e2e/.logs
+          retention-days: 7

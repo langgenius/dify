@@ -4,6 +4,7 @@ from typing import Any, Literal, cast
 
 from flask import abort, request
 from flask_restx import Resource, marshal_with  # type: ignore
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound
@@ -39,7 +40,6 @@ from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
 from factories import variable_factory
-from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs import helper
 from libs.helper import TimestampField, UUIDStrOrEmpty
 from libs.login import current_account_with_tenant, current_user, login_required
@@ -53,6 +53,7 @@ from services.rag_pipeline.pipeline_generate_service import PipelineGenerateServ
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 from services.rag_pipeline.rag_pipeline_manage_service import RagPipelineManageService
 from services.rag_pipeline.rag_pipeline_transform_service import RagPipelineTransformService
+from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
 
 logger = logging.getLogger(__name__)
 
@@ -781,7 +782,38 @@ class RagPipelineByIdApi(Resource):
             # Commit the transaction in the controller
             session.commit()
 
-        return workflow
+            return workflow
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @get_rag_pipeline
+    def delete(self, pipeline: Pipeline, workflow_id: str):
+        """
+        Delete a published workflow version that is not currently active on the pipeline.
+        """
+        if pipeline.workflow_id == workflow_id:
+            abort(400, description=f"Cannot delete workflow that is currently in use by pipeline '{pipeline.id}'")
+
+        workflow_service = WorkflowService()
+
+        with Session(db.engine) as session:
+            try:
+                workflow_service.delete_workflow(
+                    session=session,
+                    workflow_id=workflow_id,
+                    tenant_id=pipeline.tenant_id,
+                )
+                session.commit()
+            except WorkflowInUseError as e:
+                abort(400, description=str(e))
+            except DraftWorkflowDeletionError as e:
+                abort(400, description=str(e))
+            except ValueError as e:
+                raise NotFound(str(e))
+
+        return None, 204
 
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/published/processing/parameters")

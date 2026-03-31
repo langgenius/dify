@@ -6,9 +6,6 @@ from typing import Any, cast
 from unittest.mock import MagicMock
 
 import pytest
-from pytest_mock import MockerFixture
-
-from constants import HIDDEN_VALUE
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.entities.provider_entities import (
@@ -18,6 +15,9 @@ from graphon.model_runtime.entities.provider_entities import (
     ModelCredentialSchema,
     ProviderCredentialSchema,
 )
+from pytest_mock import MockerFixture
+
+from constants import HIDDEN_VALUE
 from models.provider import LoadBalancingModelConfig
 from services.model_load_balancing_service import ModelLoadBalancingService
 
@@ -317,7 +317,7 @@ def test_init_inherit_config_should_create_and_persist_inherit_configuration(
     assert inherit_config.tenant_id == "tenant-1"
     assert inherit_config.provider_name == "openai"
     assert inherit_config.model_name == "gpt-4o-mini"
-    assert inherit_config.model_type == "text-generation"
+    assert inherit_config.model_type == "llm"
     assert inherit_config.name == "__inherit__"
     mock_db.session.add.assert_called_once_with(inherit_config)
     mock_db.session.commit.assert_called_once()
