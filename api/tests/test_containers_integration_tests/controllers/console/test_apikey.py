@@ -134,9 +134,7 @@ class TestAppApiKeyResource:
         app = create_console_app(db_session_with_containers, tenant.id, owner.id, AppMode.CHAT)
         owner_headers = authenticate_console_client(test_client_with_containers, owner)
 
-        create_resp = test_client_with_containers.post(
-            f"/console/api/apps/{app.id}/api-keys", headers=owner_headers
-        )
+        create_resp = test_client_with_containers.post(f"/console/api/apps/{app.id}/api-keys", headers=owner_headers)
         assert create_resp.json is not None
         key_id = create_resp.json["id"]
 
@@ -152,9 +150,11 @@ class TestAppApiKeyResource:
             )
         )
         # Mark the member's own tenant join as non-current
-        own_join = db_session_with_containers.query(TenantAccountJoin).filter_by(
-            tenant_id=_member_tenant.id, account_id=member.id
-        ).first()
+        own_join = (
+            db_session_with_containers.query(TenantAccountJoin)
+            .filter_by(tenant_id=_member_tenant.id, account_id=member.id)
+            .first()
+        )
         if own_join:
             own_join.current = False
         db_session_with_containers.commit()
