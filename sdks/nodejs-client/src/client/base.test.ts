@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { DifyClient } from "./base";
 import { ValidationError } from "../errors/dify-error";
+import { DifyClient } from "./base";
 import { createHttpClientWithSpies } from "../../tests/test-utils";
 
 describe("DifyClient base", () => {
@@ -103,7 +103,7 @@ describe("DifyClient base", () => {
     });
   });
 
-  it("filePreview uses arraybuffer response", async () => {
+  it("filePreview uses bytes response", async () => {
     const { client, request } = createHttpClientWithSpies();
     const dify = new DifyClient(client);
 
@@ -113,7 +113,7 @@ describe("DifyClient base", () => {
       method: "GET",
       path: "/files/file/preview",
       query: { user: "user", as_attachment: "true" },
-      responseType: "arraybuffer",
+      responseType: "bytes",
     });
   });
 
@@ -162,11 +162,11 @@ describe("DifyClient base", () => {
         streaming: false,
         voice: "voice",
       },
-      responseType: "arraybuffer",
+      responseType: "bytes",
     });
   });
 
-  it("textToAudio requires text or message id", async () => {
+  it("textToAudio requires text or message id", () => {
     const { client } = createHttpClientWithSpies();
     const dify = new DifyClient(client);
 
