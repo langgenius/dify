@@ -84,5 +84,12 @@ export default defineConfig(({ mode }) => {
         reporter: isCI ? ['json', 'json-summary'] : ['text', 'json', 'json-summary'],
       },
     },
+
+    tasks: {
+      'type-check': {
+        command: 'tsc --noEmit',
+        input: [{ auto: true }, '!**/*.tsbuildinfo'],
+      },
+    },
   }
 })

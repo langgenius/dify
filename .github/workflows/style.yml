@@ -106,12 +106,12 @@ jobs:
       - name: Web tsslint
         if: steps.changed-files.outputs.any_changed == 'true'
         working-directory: ./web
-        run: vp run lint:tss
+        run: vp run lint:tss --cache
 
       - name: Web type check
         if: steps.changed-files.outputs.any_changed == 'true'
         working-directory: ./web
-        run: vp run type-check
+        run: vp run type-check --cache
 
       - name: Web dead code check
         if: steps.changed-files.outputs.any_changed == 'true'
