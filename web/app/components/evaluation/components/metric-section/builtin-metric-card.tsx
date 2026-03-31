@@ -1,21 +1,30 @@
 'use client'
 
 import type { EvaluationMetric, EvaluationResourceProps } from '../../types'
+import type { NodeInfo } from '@/types/evaluation'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/app/components/base/ui/dropdown-menu'
 import { cn } from '@/utils/classnames'
 import { useEvaluationStore } from '../../store'
-import { getMetricVisual, getNodeVisual, getToneClasses } from '../metric-selector/utils'
+import { dedupeNodeInfoList, getMetricVisual, getNodeVisual, getToneClasses } from '../metric-selector/utils'
 
 type BuiltinMetricCardProps = EvaluationResourceProps & {
   metric: EvaluationMetric
+  availableNodeInfoList?: NodeInfo[]
 }
 
 const BuiltinMetricCard = ({
   resourceType,
   resourceId,
   metric,
+  availableNodeInfoList = [],
 }: BuiltinMetricCardProps) => {
   const { t } = useTranslation('evaluation')
   const updateBuiltinMetric = useEvaluationStore(state => state.addBuiltinMetric)
@@ -23,6 +32,12 @@ const BuiltinMetricCard = ({
   const [isExpanded, setIsExpanded] = useState(true)
   const metricVisual = getMetricVisual(metric.optionId)
   const metricToneClasses = getToneClasses(metricVisual.tone)
+  const selectedNodeInfoList = metric.nodeInfoList ?? []
+  const selectedNodeIdSet = new Set(selectedNodeInfoList.map(nodeInfo => nodeInfo.node_id))
+  const selectableNodeInfoList = selectedNodeInfoList.length > 0
+    ? availableNodeInfoList.filter(nodeInfo => !selectedNodeIdSet.has(nodeInfo.node_id))
+    : []
+  const shouldShowAddNode = selectableNodeInfoList.length > 0
 
   return (
     <div className="group overflow-hidden rounded-xl border border-components-panel-border hover:bg-background-section">
@@ -59,8 +74,8 @@ const BuiltinMetricCard = ({
 
       {isExpanded && (
         <div className="flex flex-wrap gap-1 px-3 pb-3 pt-1">
-          {metric.nodeInfoList?.length
-            ? metric.nodeInfoList.map((nodeInfo) => {
+          {selectedNodeInfoList.length
+            ? selectedNodeInfoList.map((nodeInfo) => {
                 const nodeVisual = getNodeVisual(nodeInfo)
                 const nodeToneClasses = getToneClasses(nodeVisual.tone)
 
@@ -81,7 +96,7 @@ const BuiltinMetricCard = ({
                         resourceType,
                         resourceId,
                         metric.optionId,
-                        metric.nodeInfoList?.filter(item => item.node_id !== nodeInfo.node_id) ?? [],
+                        selectedNodeInfoList.filter(item => item.node_id !== nodeInfo.node_id),
                       )}
                     >
                       <span aria-hidden="true" className="i-ri-close-line h-3.5 w-3.5" />
@@ -92,6 +107,50 @@ const BuiltinMetricCard = ({
             : (
                 <span className="px-1 text-text-tertiary system-xs-regular">{t('metrics.nodesAll')}</span>
               )}
+
+          {shouldShowAddNode && (
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={(
+                  <button
+                    type="button"
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-background-default-hover text-text-tertiary transition-colors hover:bg-state-base-hover"
+                  />
+                )}
+              >
+                <span aria-hidden="true" className="i-ri-add-line h-4 w-4 shrink-0" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                placement="bottom-start"
+                popupClassName="w-[252px] rounded-md border-[0.5px] border-components-panel-border py-1 shadow-[0px_12px_16px_-4px_rgba(9,9,11,0.08),0px_4px_6px_-2px_rgba(9,9,11,0.03)]"
+              >
+                {selectableNodeInfoList.map((nodeInfo) => {
+                  const nodeVisual = getNodeVisual(nodeInfo)
+                  const nodeToneClasses = getToneClasses(nodeVisual.tone)
+
+                  return (
+                    <DropdownMenuItem
+                      key={nodeInfo.node_id}
+                      className="h-auto gap-0 rounded-md px-3 py-1.5"
+                      onClick={() => updateBuiltinMetric(
+                        resourceType,
+                        resourceId,
+                        metric.optionId,
+                        dedupeNodeInfoList([...selectedNodeInfoList, nodeInfo]),
+                      )}
+                    >
+                      <div className="flex min-w-0 flex-1 items-center gap-2.5 pr-1">
+                        <div className={cn('flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-md border-[0.45px] border-divider-subtle shadow-xs shadow-shadow-shadow-3', nodeToneClasses.solid)}>
+                          <span aria-hidden="true" className={cn(nodeVisual.icon, 'h-3.5 w-3.5')} />
+                        </div>
+                        <span className="truncate text-text-secondary system-sm-medium">{nodeInfo.title}</span>
+                      </div>
+                    </DropdownMenuItem>
+                  )
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       )}
     </div>

@@ -31,7 +31,13 @@ describe('MetricSection', () => {
 
     mockUseEvaluationNodeInfoMutation.mockReturnValue({
       isPending: false,
-      mutate: vi.fn(),
+      mutate: (_input: unknown, options?: { onSuccess?: (data: Record<string, Array<{ node_id: string, title: string, type: string }>>) => void }) => {
+        options?.onSuccess?.({
+          'answer-correctness': [
+            { node_id: 'node-answer', title: 'Answer Node', type: 'llm' },
+          ],
+        })
+      },
     })
   })
 
@@ -102,6 +108,65 @@ describe('MetricSection', () => {
       fireEvent.click(screen.getByRole('button', { name: 'evaluation.metrics.expandNodes' }))
 
       expect(screen.getByText('Answer Node')).toBeInTheDocument()
+    })
+
+    it('should show only unselected nodes in the add-node dropdown and append the selected node', () => {
+      // Arrange
+      mockUseEvaluationNodeInfoMutation.mockReturnValue({
+        isPending: false,
+        mutate: (_input: unknown, options?: { onSuccess?: (data: Record<string, Array<{ node_id: string, title: string, type: string }>>) => void }) => {
+          options?.onSuccess?.({
+            'answer-correctness': [
+              { node_id: 'node-1', title: 'LLM 1', type: 'llm' },
+              { node_id: 'node-2', title: 'LLM 2', type: 'llm' },
+            ],
+          })
+        },
+      })
+
+      act(() => {
+        useEvaluationStore.getState().addBuiltinMetric(resourceType, resourceId, 'answer-correctness', [
+          { node_id: 'node-1', title: 'LLM 1', type: 'llm' },
+        ])
+      })
+
+      // Act
+      renderMetricSection()
+
+      fireEvent.click(screen.getByRole('button', { name: 'evaluation.metrics.addNode' }))
+
+      // Assert
+      expect(screen.queryByRole('menuitem', { name: 'LLM 1' })).not.toBeInTheDocument()
+      fireEvent.click(screen.getByRole('menuitem', { name: 'LLM 2' }))
+
+      expect(screen.getByText('LLM 2')).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'evaluation.metrics.addNode' })).not.toBeInTheDocument()
+    })
+
+    it('should hide the add-node button when the builtin metric already targets all nodes', () => {
+      // Arrange
+      mockUseEvaluationNodeInfoMutation.mockReturnValue({
+        isPending: false,
+        mutate: (_input: unknown, options?: { onSuccess?: (data: Record<string, Array<{ node_id: string, title: string, type: string }>>) => void }) => {
+          options?.onSuccess?.({
+            'answer-correctness': [
+              { node_id: 'node-1', title: 'LLM 1', type: 'llm' },
+              { node_id: 'node-2', title: 'LLM 2', type: 'llm' },
+            ],
+          })
+        },
+      })
+
+      act(() => {
+        useEvaluationStore.getState().addBuiltinMetric(resourceType, resourceId, 'answer-correctness', [])
+      })
+
+      // Act
+      renderMetricSection()
+
+      // Assert
+      expect(screen.getByText('evaluation.metrics.nodesAll')).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'evaluation.metrics.addNode' })).not.toBeInTheDocument()
     })
   })
 
