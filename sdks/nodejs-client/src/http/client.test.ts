@@ -43,6 +43,14 @@ const jsonResponse = (
     },
   });
 
+const textResponse = (body: string, init: ResponseInit = {}): Response =>
+  new Response(body, {
+    ...init,
+    headers: {
+      ...(init.headers ?? {}),
+    },
+  });
+
 describe("HttpClient", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -154,6 +162,39 @@ describe("HttpClient", () => {
     expect(toHeaderRecord(init?.headers)["content-type"]).toBeUndefined();
   });
 
+  it("returns buffers for byte responses", async () => {
+    const fetchMock = stubFetch();
+    fetchMock.mockResolvedValueOnce(
+      new Response(Uint8Array.from([1, 2, 3]), {
+        status: 200,
+        headers: { "content-type": "application/octet-stream" },
+      })
+    );
+
+    const client = new HttpClient({ apiKey: "test" });
+    const response = await client.request<Buffer, "bytes">({
+      method: "GET",
+      path: "/files/file-1/preview",
+      responseType: "bytes",
+    });
+
+    expect(Buffer.isBuffer(response.data)).toBe(true);
+    expect(Array.from(response.data.values())).toEqual([1, 2, 3]);
+  });
+
+  it("returns null for empty no-content responses", async () => {
+    const fetchMock = stubFetch();
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }));
+
+    const client = new HttpClient({ apiKey: "test" });
+    const response = await client.requestRaw({
+      method: "GET",
+      path: "/meta",
+    });
+
+    expect(response.data).toBeNull();
+  });
+
   it("maps 401 and 429 errors", async () => {
     const fetchMock = stubFetch();
     fetchMock
@@ -208,6 +249,19 @@ describe("HttpClient", () => {
     ).rejects.toBeInstanceOf(NetworkError);
   });
 
+  it("maps unknown transport failures to NetworkError", async () => {
+    const fetchMock = stubFetch();
+    fetchMock.mockRejectedValueOnce("boom");
+    const client = new HttpClient({ apiKey: "test", maxRetries: 0 });
+
+    await expect(
+      client.requestRaw({ method: "GET", path: "/meta" })
+    ).rejects.toMatchObject({
+      name: "NetworkError",
+      message: "Unexpected network error",
+    });
+  });
+
   it("retries on timeout errors", async () => {
     const fetchMock = stubFetch();
     fetchMock
@@ -217,6 +271,26 @@ describe("HttpClient", () => {
 
     await client.requestRaw({ method: "GET", path: "/meta" });
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not retry non-replayable readable request bodies", async () => {
+    const fetchMock = stubFetch();
+    fetchMock.mockRejectedValueOnce(new Error("network"));
+    const client = new HttpClient({ apiKey: "test", maxRetries: 2, retryDelay: 0 });
+
+    await expect(
+      client.requestRaw({
+        method: "POST",
+        path: "/chat-messages",
+        data: Readable.from(["chunk"]),
+      })
+    ).rejects.toBeInstanceOf(NetworkError);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [, init] = getFetchCall(fetchMock);
+    expect((init as RequestInit & { duplex?: string } | undefined)?.duplex).toBe(
+      "half"
+    );
   });
 
   it("validates query parameters before request", async () => {
@@ -237,6 +311,41 @@ describe("HttpClient", () => {
     await expect(
       client.requestRaw({ method: "GET", path: "/meta" })
     ).rejects.toBeInstanceOf(APIError);
+  });
+
+  it("uses plain text bodies when json parsing is not possible", async () => {
+    const fetchMock = stubFetch();
+    fetchMock.mockResolvedValueOnce(
+      textResponse("plain text", {
+        status: 200,
+        headers: { "content-type": "text/plain" },
+      })
+    );
+    const client = new HttpClient({ apiKey: "test" });
+
+    const response = await client.requestRaw({
+      method: "GET",
+      path: "/info",
+    });
+
+    expect(response.data).toBe("plain text");
+  });
+
+  it("preserves explicit user-agent headers", async () => {
+    const fetchMock = stubFetch();
+    fetchMock.mockResolvedValueOnce(jsonResponse({ ok: true }, { status: 200 }));
+    const client = new HttpClient({ apiKey: "test" });
+
+    await client.requestRaw({
+      method: "GET",
+      path: "/meta",
+      headers: { "User-Agent": "custom-agent" },
+    });
+
+    const [, init] = getFetchCall(fetchMock);
+    expect(toHeaderRecord(init?.headers)).toMatchObject({
+      "user-agent": "custom-agent",
+    });
   });
 
   it("logs requests and responses when enableLogging is true", async () => {

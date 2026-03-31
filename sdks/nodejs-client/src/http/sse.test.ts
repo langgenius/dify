@@ -28,6 +28,24 @@ describe("sse parsing", () => {
     expect(events[0].data).toBe("line1\nline2");
   });
 
+  it("ignores comments and flushes the last event without a trailing separator", async () => {
+    const stream = Readable.from([
+      Buffer.from(": keep-alive\n"),
+      Uint8Array.from(Buffer.from('event: message\ndata: {"delta":"hi"}\n')),
+    ]);
+    const events: Array<{ event?: string; data: unknown; raw: string }> = [];
+    for await (const event of parseSseStream(stream)) {
+      events.push(event);
+    }
+    expect(events).toEqual([
+      {
+        event: "message",
+        data: { delta: "hi" },
+        raw: '{"delta":"hi"}',
+      },
+    ]);
+  });
+
   it("createSseStream exposes toText", async () => {
     const stream = Readable.from([
       'data: {"answer":"hello"}\n\n',
@@ -72,5 +90,6 @@ describe("sse parsing", () => {
     });
     expect(binary.status).toBe(200);
     expect(binary.headers["content-type"]).toBe("audio/mpeg");
+    expect(binary.toReadable()).toBe(stream);
   });
 });

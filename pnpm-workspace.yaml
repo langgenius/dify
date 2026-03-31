@@ -146,7 +146,7 @@ catalog:
   "@typescript/native-preview": 7.0.0-dev.20260329.1
   "@vitejs/plugin-react": 6.0.1
   "@vitejs/plugin-rsc": 0.5.21
-  "@vitest/coverage-v8": 4.1.2
+  "@vitest/coverage-v8": 4.1.1
   abcjs: 6.6.2
   agentation: 3.0.2
   ahooks: 3.9.7
