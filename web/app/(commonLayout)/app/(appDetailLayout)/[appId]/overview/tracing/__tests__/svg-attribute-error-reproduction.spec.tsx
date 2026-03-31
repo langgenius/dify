@@ -1,5 +1,7 @@
+/* eslint-disable hyoban/prefer-tailwind-icons */
 import { render } from '@testing-library/react'
 import * as React from 'react'
+
 import { OpikIconBig } from '@/app/components/base/icons/src/public/tracing'
 import iconData from '@/app/components/base/icons/src/public/tracing/OpikIconBig.json'
 import { normalizeAttrs } from '@/app/components/base/icons/utils'

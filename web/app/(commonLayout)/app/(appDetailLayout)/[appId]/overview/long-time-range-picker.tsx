@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { PeriodParams } from '@/app/components/app/overview/app-chart'
+import type { PeriodParams } from '@/app/components/app/overview/chart/types'
 import type { Item } from '@/app/components/base/select'
 import type { I18nKeysByPrefix } from '@/types/i18n'
 import dayjs from 'dayjs'

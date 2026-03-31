@@ -1,5 +1,5 @@
 'use client'
-import type { PeriodParams } from '@/app/components/app/overview/app-chart'
+import type { PeriodParams } from '@/app/components/app/overview/chart/types'
 import type { I18nKeysByPrefix } from '@/types/i18n'
 import dayjs from 'dayjs'
 import quarterOfYear from 'dayjs/plugin/quarterOfYear'
@@ -7,7 +7,7 @@ import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { TIME_PERIOD_MAPPING as LONG_TIME_PERIOD_MAPPING } from '@/app/components/app/log/filter'
-import { AvgResponseTime, AvgSessionInteractions, AvgUserInteractions, ConversationsChart, CostChart, EndUsersChart, MessagesChart, TokenPerSecond, UserSatisfactionRate, WorkflowCostChart, WorkflowDailyTerminalsChart, WorkflowMessagesChart } from '@/app/components/app/overview/app-chart'
+import { AvgResponseTime, AvgSessionInteractions, AvgUserInteractions, ConversationsChart, CostChart, EndUsersChart, MessagesChart, TokenPerSecond, UserSatisfactionRate, WorkflowCostChart, WorkflowDailyTerminalsChart, WorkflowMessagesChart } from '@/app/components/app/overview/chart/metrics'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { IS_CLOUD_EDITION } from '@/config'
 import LongTimeRangePicker from './long-time-range-picker'
@@ -37,10 +37,11 @@ export default function ChartView({ appId, headerRight }: IChartViewProps) {
   const appDetail = useAppStore(state => state.appDetail)
   const isChatApp = appDetail?.mode !== 'completion' && appDetail?.mode !== 'workflow'
   const isWorkflow = appDetail?.mode === 'workflow'
-  const [period, setPeriod] = useState<PeriodParams>(IS_CLOUD_EDITION
-    ? { name: t('filter.period.today', { ns: 'appLog' }), query: { start: today.startOf('day').format(queryDateFormat), end: today.endOf('day').format(queryDateFormat) } }
-    : { name: t('filter.period.last7days', { ns: 'appLog' }), query: { start: today.subtract(7, 'day').startOf('day').format(queryDateFormat), end: today.endOf('day').format(queryDateFormat) } },
-  )
+  const [period, setPeriod] = useState<PeriodParams>(() => (
+    IS_CLOUD_EDITION
+      ? { name: t('filter.period.today', { ns: 'appLog' }), query: { start: today.startOf('day').format(queryDateFormat), end: today.endOf('day').format(queryDateFormat) } }
+      : { name: t('filter.period.last7days', { ns: 'appLog' }), query: { start: today.subtract(7, 'day').startOf('day').format(queryDateFormat), end: today.endOf('day').format(queryDateFormat) } }
+  ))
 
   if (!appDetail)
     return null

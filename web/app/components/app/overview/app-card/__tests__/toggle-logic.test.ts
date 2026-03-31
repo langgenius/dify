@@ -11,6 +11,15 @@ const mockGetWorkflowEntryNode = getWorkflowEntryNode as MockedFunction<typeof g
 
 // Mock entry node for testing (truthy value)
 const mockEntryNode = { id: 'start-node', data: { type: 'start' } } as Node
+type WorkflowState = {
+  graph?: {
+    nodes?: Array<{
+      data: {
+        type: string
+      }
+    }>
+  }
+} | null | undefined
 
 describe('App Card Toggle Logic', () => {
   beforeEach(() => {
@@ -20,14 +29,14 @@ describe('App Card Toggle Logic', () => {
   // Helper function that mirrors the actual logic from app-card.tsx
   const calculateToggleState = (
     appMode: string,
-    currentWorkflow: any,
+    currentWorkflow: WorkflowState,
     isCurrentWorkspaceEditor: boolean,
     isCurrentWorkspaceManager: boolean,
     cardType: 'webapp' | 'api',
   ) => {
     const isWorkflowApp = appMode === 'workflow'
     const appUnpublished = isWorkflowApp && !currentWorkflow?.graph
-    const hasEntryNode = mockGetWorkflowEntryNode(currentWorkflow?.graph?.nodes || [])
+    const hasEntryNode = mockGetWorkflowEntryNode((currentWorkflow?.graph?.nodes || []) as Node[])
     const missingEntryNode = isWorkflowApp && !hasEntryNode
     const hasInsufficientPermissions = cardType === 'webapp' ? !isCurrentWorkspaceEditor : !isCurrentWorkspaceManager
     const toggleDisabled = hasInsufficientPermissions || appUnpublished || missingEntryNode

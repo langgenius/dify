@@ -1,9 +1,8 @@
 'use client'
 import type { FC } from 'react'
-import type { PeriodParamsWithTimeRange, TimeRange } from '@/app/components/app/overview/app-chart'
+import type { PeriodParamsWithTimeRange, TimeRange } from '@/app/components/app/overview/chart/types'
 import type { Item } from '@/app/components/base/select'
 import type { I18nKeysByPrefix } from '@/types/i18n'
-import { RiArrowDownSLine, RiCheckLine } from '@remixicon/react'
 import dayjs from 'dayjs'
 import * as React from 'react'
 import { useCallback } from 'react'
@@ -46,10 +45,10 @@ const RangeSelector: FC<Props> = ({
     return (
       <div className={cn('flex h-8 cursor-pointer items-center space-x-1.5 rounded-lg bg-components-input-bg-normal pl-3 pr-2', isOpen && 'bg-state-base-hover-alt')}>
         <div className="text-components-input-text-filled system-sm-regular">{isCustomRange ? t('filter.period.custom', { ns: 'appLog' }) : item?.name}</div>
-        <RiArrowDownSLine className={cn('size-4 text-text-quaternary', isOpen && 'text-text-secondary')} />
+        <span className={cn('i-ri-arrow-down-s-line size-4 text-text-quaternary', isOpen && 'text-text-secondary')} aria-hidden="true" />
       </div>
     )
-  }, [isCustomRange])
+  }, [isCustomRange, t])
 
   const renderOption = useCallback(({ item, selected }: { item: Item, selected: boolean }) => {
     return (
@@ -60,7 +59,7 @@ const RangeSelector: FC<Props> = ({
               'absolute left-2 top-[9px] flex items-center text-text-accent',
             )}
           >
-            <RiCheckLine className="h-4 w-4" aria-hidden="true" />
+            <span className="i-ri-check-line h-4 w-4" aria-hidden="true" />
           </span>
         )}
         <span className={cn('block truncate system-md-regular')}>{item.name}</span>

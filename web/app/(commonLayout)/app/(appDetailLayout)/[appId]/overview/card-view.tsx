@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { IAppCardProps } from '@/app/components/app/overview/app-card'
+import type { IAppCardProps } from '@/app/components/app/overview/app-card/types'
 import type { BlockEnum } from '@/app/components/workflow/types'
 import type { UpdateAppSiteCodeResponse } from '@/models/app'
 import type { App } from '@/types/app'

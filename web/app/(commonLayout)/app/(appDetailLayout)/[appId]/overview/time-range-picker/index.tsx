@@ -1,12 +1,11 @@
 'use client'
 import type { Dayjs } from 'dayjs'
 import type { FC } from 'react'
-import type { PeriodParams, PeriodParamsWithTimeRange } from '@/app/components/app/overview/app-chart'
+import type { PeriodParams, PeriodParamsWithTimeRange } from '@/app/components/app/overview/chart/types'
 import type { I18nKeysByPrefix } from '@/types/i18n'
 import dayjs from 'dayjs'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
-import { HourglassShape } from '@/app/components/base/icons/src/vender/other'
 import { useLocale } from '@/context/i18n'
 import { formatToLocalTime } from '@/utils/format'
 import DatePicker from './date-picker'
@@ -80,7 +79,7 @@ const TimeRangePicker: FC<Props> = ({
         ranges={ranges}
         onSelect={handleRangeChange}
       />
-      <HourglassShape className="h-3.5 w-2 text-components-input-bg-normal" />
+      <span className="i-custom-vender-other-hourglass-shape h-3.5 w-2 text-components-input-bg-normal" aria-hidden="true" />
       <DatePicker
         start={start}
         end={end}

@@ -1,8 +1,7 @@
 'use client'
 
 import type { IGenerationItemProps } from './index'
-import type { FeedbackType, IChatItem } from '@/app/components/base/chat/chat/type'
-import type { WorkflowProcess } from '@/app/components/base/chat/types'
+import type { FeedbackType } from '@/app/components/base/chat/chat/type'
 import { useBoolean } from 'ahooks'
 import copy from 'copy-to-clipboard'
 import { useCallback, useMemo, useState } from 'react'
@@ -19,57 +18,12 @@ import {
   updateFeedback,
 } from '@/service/share'
 import { submitHumanInputForm as submitHumanInputFormService } from '@/service/workflow'
-
-const MAX_DEPTH = 3
-
-const getCurrentTab = (workflowProcessData?: WorkflowProcess) => {
-  if (
-    workflowProcessData?.resultText
-    || !!workflowProcessData?.files?.length
-    || !!workflowProcessData?.humanInputFormDataList?.length
-    || !!workflowProcessData?.humanInputFilledFormDataList?.length
-  ) {
-    return 'RESULT'
-  }
-
-  return 'DETAIL'
-}
-
-const buildLogItem = ({
-  answer,
-  data,
-  messageId,
-}: {
-  answer?: string
-  data: Awaited<ReturnType<typeof fetchTextGenerationMessage>>
-  messageId?: string | null
-}): IChatItem => {
-  const assistantFiles = data.message_files?.filter(file => file.belongs_to === 'assistant') || []
-  const normalizedMessage = typeof data.message === 'string'
-    ? { role: 'user', text: data.message }
-    : data.message
-  const baseLog = Array.isArray(normalizedMessage) ? normalizedMessage : [normalizedMessage]
-  const log = Array.isArray(normalizedMessage)
-    ? [
-        ...normalizedMessage,
-        ...(normalizedMessage.length > 0 && normalizedMessage[normalizedMessage.length - 1].role !== 'assistant'
-          ? [{
-              role: 'assistant',
-              text: answer || '',
-              files: assistantFiles,
-            }]
-          : []),
-      ]
-    : baseLog
-
-  return {
-    id: data.id || messageId || '',
-    content: answer || '',
-    isAnswer: true,
-    log,
-    message_files: data.message_files,
-  }
-}
+import {
+  buildLogItem,
+  getCurrentTab,
+  getWorkflowTabSignature,
+  MAX_GENERATION_ITEM_DEPTH,
+} from './use-generation-item-utils'
 
 type UseGenerationItemParams = Pick<
   IGenerationItemProps,
@@ -107,13 +61,6 @@ type MoreLikeThisResponse = {
   answer?: string
   id?: string
 }
-
-const getWorkflowTabSignature = (workflowProcessData?: WorkflowProcess) => JSON.stringify({
-  filesLength: workflowProcessData?.files?.length ?? 0,
-  humanInputFilledFormDataListLength: workflowProcessData?.humanInputFilledFormDataList?.length ?? 0,
-  humanInputFormDataListLength: workflowProcessData?.humanInputFormDataList?.length ?? 0,
-  resultText: workflowProcessData?.resultText ?? '',
-})
 
 export const useGenerationItem = ({
   appSourceType,
@@ -297,7 +244,7 @@ export const useGenerationItem = ({
     isTop,
     isTryApp,
     setCurrentTab,
-    showChildItem: (childMessageId || isQuerying) && depth < MAX_DEPTH,
+    showChildItem: (childMessageId || isQuerying) && depth < MAX_GENERATION_ITEM_DEPTH,
     taskLabel,
   }
 }
