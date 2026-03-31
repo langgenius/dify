@@ -90,7 +90,6 @@ describe("WorkflowClient", () => {
     const { client, request } = createHttpClientWithSpies();
     const workflow = new WorkflowClient(client);
 
-    // Use createdByEndUserSessionId to filter by user session (backend API parameter)
     await workflow.getLogs({
       keyword: "k",
       status: "succeeded",
