@@ -33,6 +33,7 @@ vi.mock('@/context/dataset-detail', () => ({
         embedding_available: true,
         data_source_type: DataSourceType.FILE,
         runtime_mode: 'rag',
+        is_published: true,
       },
     }
     return selector(mockState as MockState)
@@ -144,6 +145,7 @@ vi.mock('../components/documents-header', () => ({
   default: ({
     datasetId,
     embeddingAvailable,
+    canAddDocument,
     onInputChange,
     onAddDocument,
     onStatusFilterChange,
@@ -153,6 +155,7 @@ vi.mock('../components/documents-header', () => ({
     datasetId: string
     dataSourceType?: string
     embeddingAvailable: boolean
+    canAddDocument: boolean
     isFreePlan: boolean
     statusFilterValue: string
     sortValue: string
@@ -176,6 +179,7 @@ vi.mock('../components/documents-header', () => ({
     <div data-testid="documents-header">
       <span data-testid="header-dataset-id">{datasetId}</span>
       <span data-testid="header-embedding-available">{String(embeddingAvailable)}</span>
+      <span data-testid="header-can-add-document">{String(canAddDocument)}</span>
       <input
         data-testid="search-input"
         onChange={e => onInputChange(e.target.value)}
@@ -278,6 +282,7 @@ describe('Documents', () => {
           embedding_available: true,
           data_source_type: DataSourceType.FILE,
           runtime_mode: 'rag',
+          is_published: true,
         },
       }
       return selector(mockState as MockState)
@@ -294,6 +299,7 @@ describe('Documents', () => {
       render(<Documents {...defaultProps} />)
       expect(screen.getByTestId('header-dataset-id')).toHaveTextContent('test-dataset-id')
       expect(screen.getByTestId('header-embedding-available')).toHaveTextContent('true')
+      expect(screen.getByTestId('header-can-add-document')).toHaveTextContent('true')
     })
 
     it('should render document list when documents exist', () => {
@@ -362,6 +368,7 @@ describe('Documents', () => {
             embedding_available: true,
             data_source_type: DataSourceType.NOTION,
             runtime_mode: 'rag',
+            is_published: true,
           },
         }
         return selector(mockState as MockState)
@@ -466,6 +473,7 @@ describe('Documents', () => {
             embedding_available: true,
             data_source_type: DataSourceType.FILE,
             runtime_mode: 'rag_pipeline',
+            is_published: true,
           },
         }
         return selector(mockState as MockState)
@@ -478,6 +486,30 @@ describe('Documents', () => {
       expect(mockPush).toHaveBeenCalledWith('/datasets/test-dataset-id/documents/create-from-pipeline')
     })
 
+    it('should not navigate to create page when rag pipeline is unpublished', () => {
+      vi.mocked(useDatasetDetailContextWithSelector).mockImplementation((selector: MockSelector) => {
+        const mockState = {
+          dataset: {
+            id: 'test-dataset-id',
+            name: 'Test Dataset',
+            embedding_available: true,
+            data_source_type: DataSourceType.FILE,
+            runtime_mode: 'rag_pipeline',
+            is_published: false,
+          },
+        }
+        return selector(mockState as MockState)
+      })
+
+      render(<Documents {...defaultProps} />)
+
+      expect(screen.getByTestId('header-can-add-document')).toHaveTextContent('false')
+
+      screen.getByTestId('add-document-btn').click()
+
+      expect(mockPush).not.toHaveBeenCalled()
+    })
+
     it('should navigate from empty element add button', () => {
       vi.mocked(useDatasetDetailContextWithSelector).mockImplementation((selector: MockSelector) => {
         const mockState = {
@@ -487,6 +519,7 @@ describe('Documents', () => {
             embedding_available: true,
             data_source_type: DataSourceType.FILE,
             runtime_mode: 'rag',
+            is_published: true,
           },
         }
         return selector(mockState as MockState)
@@ -649,6 +682,7 @@ describe('Documents', () => {
             embedding_available: false,
             data_source_type: DataSourceType.FILE,
             runtime_mode: 'rag',
+            is_published: true,
           },
         }
         return selector(mockState as MockState)

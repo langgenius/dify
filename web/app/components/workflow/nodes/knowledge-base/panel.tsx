@@ -20,11 +20,14 @@ import {
 } from '@/app/components/workflow/nodes/_base/components/layout'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import { IS_CE_EDITION } from '@/config'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { consoleQuery } from '@/service/client'
+import { useDatasetMetaData } from '@/service/knowledge/use-metadata'
 import Split from '../_base/components/split'
 import ChunkStructure from './components/chunk-structure'
 import EmbeddingModel from './components/embedding-model'
 import IndexMethod from './components/index-method'
+import MetadataSection from './components/metadata-section'
 import RetrievalSetting from './components/retrieval-setting'
 import { useConfig } from './hooks/use-config'
 import { useEmbeddingModelStatus } from './hooks/use-embedding-model-status'
@@ -62,6 +65,10 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
     }),
   )
 
+  // Get datasetId from context and fetch metadata
+  const datasetId = useDatasetDetailContextWithSelector(s => s.dataset?.id)
+  const { data: metadataList } = useDatasetMetaData(datasetId || '')
+
   const {
     handleChunkStructureChange,
     handleIndexMethodChange,
@@ -76,6 +83,7 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
     handleScoreThresholdChange,
     handleScoreThresholdEnabledChange,
     handleInputVariableChange,
+    handleDocMetadataChange,
     handleSummaryIndexSettingChange,
   } = useConfig(id)
 
@@ -278,6 +286,17 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
                 />
               </div>
             </BoxGroup>
+            {(metadataList?.doc_metadata?.length ?? 0) > 0 && (
+              <BoxGroup>
+                <MetadataSection
+                  nodeId={id}
+                  userMetadata={metadataList?.doc_metadata || []}
+                  docMetadata={data.doc_metadata}
+                  onDocMetadataChange={handleDocMetadataChange}
+                  readonly={nodesReadOnly}
+                />
+              </BoxGroup>
+            )}
           </>
         )
       }

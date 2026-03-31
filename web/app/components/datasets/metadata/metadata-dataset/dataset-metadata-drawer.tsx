@@ -63,6 +63,13 @@ const Item: FC<ItemProps> = ({
     hideDeleteConfirm()
     onDelete?.()
   }, [hideDeleteConfirm, onDelete])
+  const handleDeleteClick = useCallback(() => {
+    if (payload.isReferencedByPipeline) {
+      Toast.notify({ type: 'error', message: t(`${i18nPrefix}.deleteDisabledByPipeline`, { ns: 'dataset' }) })
+      return
+    }
+    showDeleteConfirm()
+  }, [payload.isReferencedByPipeline, showDeleteConfirm, t])
 
   return (
     <div
@@ -75,24 +82,28 @@ const Item: FC<ItemProps> = ({
     >
       <div
         className={cn(
-          'flex h-8 items-center justify-between  px-2',
+          'flex h-8 items-center justify-between px-2',
           disabled && 'opacity-30', // not include border and bg
         )}
       >
         <div className="flex h-full items-center space-x-1 text-text-tertiary">
           <Icon className="size-4 shrink-0" />
-          <div className="system-sm-medium max-w-[250px] truncate text-text-primary">{payload.name}</div>
-          <div className="system-xs-regular shrink-0">{payload.type}</div>
+          <div className="max-w-[250px] truncate text-text-primary system-sm-medium">{payload.name}</div>
+          <div className="shrink-0 system-xs-regular">{payload.type}</div>
         </div>
         {(!readonly || disabled) && (
-          <div className="system-xs-regular ml-2 shrink-0 text-text-tertiary group-hover/item:hidden">
+          <div className="ml-2 shrink-0 text-text-tertiary system-xs-regular group-hover/item:hidden">
             {disabled ? t(`${i18nPrefix}.disabled`, { ns: 'dataset' }) : t(`${i18nPrefix}.values`, { ns: 'dataset', num: payload.count || 0 })}
           </div>
         )}
         <div className="ml-2 hidden items-center space-x-1 text-text-tertiary group-hover/item:flex">
           <RiEditLine className="size-4 cursor-pointer" onClick={handleRename} />
-          <div ref={deleteBtnRef} className="hover:text-text-destructive">
-            <RiDeleteBinLine className="size-4 cursor-pointer" onClick={showDeleteConfirm} />
+          <div
+            ref={deleteBtnRef}
+            data-testid={`metadata-delete-${payload.id}`}
+            className="hover:text-text-destructive"
+          >
+            <RiDeleteBinLine className="size-4 cursor-pointer" onClick={handleDeleteClick} />
           </div>
         </div>
         {isShowDeleteConfirm && (
@@ -177,7 +188,7 @@ const DatasetMetadataDrawer: FC<Props> = ({
       panelClassName="px-4 block !max-w-[420px] my-2 rounded-l-2xl"
     >
       <div className="h-full overflow-y-auto">
-        <div className="system-sm-regular text-text-tertiary">{t(`${i18nPrefix}.description`, { ns: 'dataset' })}</div>
+        <div className="text-text-tertiary system-sm-regular">{t(`${i18nPrefix}.description`, { ns: 'dataset' })}</div>
         <CreateModal
           open={open}
           setOpen={setOpen}
@@ -207,7 +218,7 @@ const DatasetMetadataDrawer: FC<Props> = ({
             value={isBuiltInEnabled}
             onChange={onIsBuiltInEnabledChange}
           />
-          <div className="system-sm-semibold ml-2 mr-0.5 text-text-secondary">{t(`${i18nPrefix}.builtIn`, { ns: 'dataset' })}</div>
+          <div className="ml-2 mr-0.5 text-text-secondary system-sm-semibold">{t(`${i18nPrefix}.builtIn`, { ns: 'dataset' })}</div>
           <Tooltip popupContent={<div className="max-w-[100px]">{t(`${i18nPrefix}.builtInDescription`, { ns: 'dataset' })}</div>} />
         </div>
 

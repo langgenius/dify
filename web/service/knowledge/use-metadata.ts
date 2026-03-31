@@ -7,11 +7,32 @@ import { useDocumentListKey, useInvalidDocumentList } from './use-document'
 
 const NAME_SPACE = 'dataset-metadata'
 
+type DatasetMetadataResponse = {
+  doc_metadata: MetadataItemWithValueLength[]
+  built_in_field_enabled: boolean
+}
+
+type DatasetMetadataApiItem = MetadataItemWithValueLength & {
+  is_referenced_by_pipeline?: boolean
+}
+
+type DatasetMetadataApiResponse = {
+  doc_metadata: DatasetMetadataApiItem[]
+  built_in_field_enabled: boolean
+}
+
 export const useDatasetMetaData = (datasetId: string) => {
-  return useQuery<{ doc_metadata: MetadataItemWithValueLength[], built_in_field_enabled: boolean }>({
+  return useQuery<DatasetMetadataResponse>({
     queryKey: [NAME_SPACE, 'dataset', datasetId],
-    queryFn: () => {
-      return get<{ doc_metadata: MetadataItemWithValueLength[], built_in_field_enabled: boolean }>(`/datasets/${datasetId}/metadata`)
+    queryFn: async () => {
+      const response = await get<DatasetMetadataApiResponse>(`/datasets/${datasetId}/metadata`)
+      return {
+        ...response,
+        doc_metadata: response.doc_metadata.map(item => ({
+          ...item,
+          isReferencedByPipeline: item.is_referenced_by_pipeline,
+        })),
+      }
     },
   })
 }

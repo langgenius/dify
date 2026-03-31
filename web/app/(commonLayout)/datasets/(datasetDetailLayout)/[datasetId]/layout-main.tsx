@@ -57,7 +57,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
 
   const { data: relatedApps } = useDatasetRelatedApps(datasetId)
 
-  const isButtonDisabledWithPipeline = useMemo(() => {
+  const isHitTestingDisabled = useMemo(() => {
     if (!datasetRes)
       return true
     if (datasetRes.provider === 'external')
@@ -74,7 +74,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         href: `/datasets/${datasetId}/hitTesting`,
         icon: RiFocus2Line,
         selectedIcon: RiFocus2Fill,
-        disabled: isButtonDisabledWithPipeline,
+        disabled: isHitTestingDisabled,
       },
       {
         name: t('datasetMenus.settings', { ns: 'common' }),
@@ -98,12 +98,12 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         href: `/datasets/${datasetId}/documents`,
         icon: RiFileTextLine,
         selectedIcon: RiFileTextFill,
-        disabled: isButtonDisabledWithPipeline,
+        disabled: false,
       })
     }
 
     return baseNavigation
-  }, [t, datasetId, isButtonDisabledWithPipeline, datasetRes?.provider])
+  }, [t, datasetId, isHitTestingDisabled, datasetRes?.provider])
 
   useDocumentTitle(datasetRes?.name || t('menus.datasets', { ns: 'common' }))
 

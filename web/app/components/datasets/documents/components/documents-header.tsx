@@ -24,6 +24,7 @@ type DocumentsHeaderProps = {
   datasetId: string
   dataSourceType?: DataSourceType
   embeddingAvailable: boolean
+  canAddDocument: boolean
   isFreePlan: boolean
 
   // Filter & sort
@@ -55,6 +56,7 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
   datasetId,
   dataSourceType,
   embeddingAvailable,
+  canAddDocument,
   isFreePlan,
   statusFilterValue,
   sortValue,
@@ -81,6 +83,7 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
 
   const isDataSourceNotion = dataSourceType === DataSourceType.NOTION
   const isDataSourceWeb = dataSourceType === DataSourceType.WEB
+  const showUnpublishedWarning = embeddingAvailable && !canAddDocument
 
   const statusFilterItems: Item[] = useMemo(() => [
     { value: 'all', name: t('list.index.all', { ns: 'datasetDocuments' }) as string },
@@ -168,6 +171,12 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
               description={t('embeddingModelNotAvailable', { ns: 'dataset' })}
             />
           )}
+          {showUnpublishedWarning && (
+            <StatusWithAction
+              type="warning"
+              description={t('common.currentDraftUnpublished', { ns: 'workflow' })}
+            />
+          )}
           {embeddingAvailable && (
             <Button variant="secondary" className="shrink-0" onClick={showEditMetadataModal}>
               <RiDraftLine className="mr-1 size-4" />
@@ -187,7 +196,7 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
             />
           )}
           {embeddingAvailable && (
-            <Button variant="primary" onClick={onAddDocument} className="shrink-0">
+            <Button variant="primary" onClick={onAddDocument} className="shrink-0" disabled={!canAddDocument}>
               <PlusIcon className="mr-2 h-4 w-4 stroke-current" />
               {addButtonText}
             </Button>

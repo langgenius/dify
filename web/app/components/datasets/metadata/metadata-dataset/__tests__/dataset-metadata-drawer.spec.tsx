@@ -488,6 +488,34 @@ describe('DatasetMetadataDrawer', () => {
       if (cancelBtn)
         fireEvent.click(cancelBtn)
     })
+
+    it('should show error toast when deleting metadata referenced by a pipeline', async () => {
+      const onRemove = vi.fn().mockResolvedValue({})
+      render(
+        <DatasetMetadataDrawer
+          {...defaultProps}
+          onRemove={onRemove}
+          userMetadata={[
+            { id: '1', name: 'field_one', type: DataType.string, count: 5, isReferencedByPipeline: true },
+          ]}
+        />,
+      )
+
+      await waitFor(() => {
+        expect(screen.getByRole('dialog')).toBeInTheDocument()
+      })
+
+      const deleteContainer = screen.getByTestId('metadata-delete-1')
+      const deleteIcon = deleteContainer.querySelector('svg')
+      if (deleteIcon)
+        fireEvent.click(deleteIcon)
+
+      expect(mockToastNotify).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'error' }),
+      )
+      expect(onRemove).not.toHaveBeenCalled()
+      expect(screen.queryByText('dataset.metadata.datasetMetadata.deleteTitle')).not.toBeInTheDocument()
+    })
   })
 
   describe('Props', () => {

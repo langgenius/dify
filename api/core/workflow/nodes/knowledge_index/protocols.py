@@ -34,6 +34,9 @@ class IndexProcessorProtocol(Protocol):
         chunks: Mapping[str, Any],
         batch: Any,
         summary_index_setting: dict | None = None,
+        doc_metadata: Mapping[str, Any] | None = None,
+        metadata_binding_ids: list[str] | None = None,
+        user_id: str | None = None,
     ) -> dict[str, Any]: ...
 
     def get_preview_output(

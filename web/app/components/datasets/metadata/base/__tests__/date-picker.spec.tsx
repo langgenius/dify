@@ -182,6 +182,23 @@ describe('WrappedDatePicker', () => {
 
       expect(screen.getByTestId('date-picker-wrapper')).toBeInTheDocument()
     })
+
+    it('should not allow changing or clearing the date when readonly', () => {
+      const handleChange = vi.fn()
+      const timestamp = Math.floor(Date.now() / 1000)
+      const { container } = render(
+        <WrappedDatePicker value={timestamp} onChange={handleChange} readonly />,
+      )
+
+      fireEvent.click(screen.getByTestId('select-date'))
+      fireEvent.click(screen.getByTestId('clear-date'))
+
+      const closeIcon = container.querySelector('.cursor-pointer.hover\\:text-components-input-text-filled')
+      if (closeIcon)
+        fireEvent.click(closeIcon)
+
+      expect(handleChange).not.toHaveBeenCalled()
+    })
   })
 
   describe('Styling', () => {
