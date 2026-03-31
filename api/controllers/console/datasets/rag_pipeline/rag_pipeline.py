@@ -85,7 +85,7 @@ class CustomizedPipelineTemplateApi(Resource):
     @account_initialization_required
     @enterprise_license_required
     def post(self, template_id: str):
-        with sessionmaker(db.engine).begin() as session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             template = (
                 session.query(PipelineCustomizedTemplate).where(PipelineCustomizedTemplate.id == template_id).first()
             )

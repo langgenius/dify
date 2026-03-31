@@ -159,7 +159,7 @@ class DataSourceApi(Resource):
     @account_initialization_required
     def patch(self, binding_id, action: Literal["enable", "disable"]):
         binding_id = str(binding_id)
-        with sessionmaker(db.engine).begin() as session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             data_source_binding = session.execute(
                 select(DataSourceOauthBinding).filter_by(id=binding_id)
             ).scalar_one_or_none()
