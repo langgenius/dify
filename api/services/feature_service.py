@@ -312,7 +312,10 @@ class FeatureService:
             features.apps.limit = billing_info["apps"]["limit"]
 
         if "vector_space" in billing_info:
-            features.vector_space.size = billing_info["vector_space"]["size"]
+            # NOTE (hj24): billing API returns vector_space.size as float (e.g. 0.0)
+            # but LimitationModel.size is int; truncate here for compatibility
+            features.vector_space.size = int(billing_info["vector_space"]["size"])
+            # NOTE END
             features.vector_space.limit = billing_info["vector_space"]["limit"]
 
         if "documents_upload_quota" in billing_info:
