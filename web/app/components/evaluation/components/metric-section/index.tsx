@@ -38,8 +38,7 @@ const MetricSection = ({
         <MetricSelector
           resourceType={resourceType}
           resourceId={resourceId}
-          triggerStyle="text"
-          triggerClassName="rounded-md px-3 py-2 hover:bg-state-base-hover-alt"
+          triggerClassName="rounded-md px-3 py-2"
         />
       </div>
     </section>
