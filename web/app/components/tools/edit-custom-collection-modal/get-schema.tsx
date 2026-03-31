@@ -32,7 +32,7 @@ const GetSchema: FC<Props> = ({
     }
     setIsParsing(true)
     try {
-      const { schema } = await importSchemaFromURL(importUrl) as any
+      const { schema } = await importSchemaFromURL(importUrl)
       setImportUrl('')
       onChange(schema)
     }

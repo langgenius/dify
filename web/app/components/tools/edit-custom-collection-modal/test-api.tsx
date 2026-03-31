@@ -76,8 +76,8 @@ const TestApi: FC<Props> = ({
       schema: customCollection.schema,
       parameters: parametersValue,
     }
-    const res = await testAPIAvailable(data) as any
-    setResult(res.error || res.result)
+    const res = await testAPIAvailable(data)
+    setResult(res.error ?? res.result ?? '')
     setTesting(false)
   }
 

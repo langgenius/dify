@@ -60,7 +60,7 @@ export type Collection = {
   icon_dark?: string | Emoji
   label: LocalizedText
   type: CollectionType | string
-  team_credentials: Record<string, any>
+  team_credentials: Record<string, unknown>
   is_team_authorization: boolean
   allow_delete: boolean
   labels: string[]
@@ -132,17 +132,17 @@ export type Event = {
   description: LocalizedText
   parameters: TriggerParameter[]
   labels: string[]
-  output_schema: Record<string, any>
+  output_schema: Record<string, unknown>
 }
 
 export type Tool = {
   name: string
   author: string
   label: LocalizedText
-  description: any
+  description: unknown
   parameters: ToolParameter[]
   labels: string[]
-  output_schema: Record<string, any>
+  output_schema: Record<string, unknown>
 }
 
 export type ToolCredential = {
@@ -168,7 +168,7 @@ export type CustomCollectionBackend = {
   schema: string
   privacy_policy: string
   custom_disclaimer: string
-  tools?: ParamItem[]
+  tools?: CustomParamSchema[]
   id: string
   labels: string[]
 }
