@@ -34,7 +34,7 @@ import { hasStringProperty, isRecord } from "../internal/type-guards";
 
 const DEFAULT_USER_AGENT = "dify-client-node";
 
-export type HttpResponseType = "json" | "bytes" | "stream";
+export type HttpResponseType = "json" | "bytes" | "stream" | "arraybuffer";
 
 export type HttpRequestBody =
   | JsonValue
@@ -50,7 +50,7 @@ export type HttpRequestBody =
 export type ResponseDataFor<TResponseType extends HttpResponseType> =
   TResponseType extends "stream"
     ? Readable
-    : TResponseType extends "bytes"
+    : TResponseType extends "bytes" | "arraybuffer"
       ? Buffer
       : JsonValue | string | null;
 
@@ -248,6 +248,19 @@ const prepareRequestBody = (
   }
 
   if (isFormData(data)) {
+    if ("getHeaders" in data && typeof data.getHeaders === "function") {
+      if (!isNodeReadable(data)) {
+        throw new FileUploadError(
+          "Legacy FormData must be a readable stream when used with fetch"
+        );
+      }
+      return {
+        body: Readable.toWeb(data) as BodyInit,
+        headers: getFormDataHeaders(data),
+        duplex: "half",
+        replayable: false,
+      };
+    }
     return {
       body: data as BodyInit,
       headers: getFormDataHeaders(data),
@@ -321,7 +334,7 @@ const parseResponseBody = async <TResponseType extends HttpResponseType>(
     ) as ResponseDataFor<TResponseType>;
   }
 
-  if (responseType === "bytes") {
+  if (responseType === "bytes" || responseType === "arraybuffer") {
     const bytes = Buffer.from(await response.arrayBuffer());
     return bytes as ResponseDataFor<TResponseType>;
   }

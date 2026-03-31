@@ -1,3 +1,4 @@
+import { Readable } from "node:stream";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { BASE_URL, ChatClient, DifyClient, WorkflowClient, routes } from "./index";
 
@@ -93,7 +94,13 @@ describe("File uploads", () => {
   const OriginalFormData = globalThis.FormData;
 
   beforeAll(() => {
-    globalThis.FormData = class FormDataMock {
+    globalThis.FormData = class FormDataMock extends Readable {
+      constructor() {
+        super();
+      }
+
+      _read() {}
+
       append() {}
 
       getHeaders() {
@@ -113,7 +120,7 @@ describe("File uploads", () => {
     vi.unstubAllGlobals();
   });
 
-  it("does not override multipart boundary headers for FormData", async () => {
+  it("does not override multipart boundary headers for legacy FormData", async () => {
     const fetchMock = stubFetch();
     const difyClient = new DifyClient("test");
     const form = new globalThis.FormData();
@@ -128,7 +135,8 @@ describe("File uploads", () => {
       Authorization: "Bearer test",
       "content-type": "multipart/form-data; boundary=test",
     });
-    expect(init.body).toBe(form);
+    expect(init.body).not.toBe(form);
+    expect((init as RequestInit & { duplex?: string }).duplex).toBe("half");
   });
 });
 

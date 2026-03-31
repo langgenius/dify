@@ -162,6 +162,56 @@ describe("HttpClient", () => {
     expect(toHeaderRecord(init?.headers)["content-type"]).toBeUndefined();
   });
 
+  it("sends legacy form-data as a readable request body", async () => {
+    const fetchMock = stubFetch();
+    fetchMock.mockResolvedValueOnce(jsonResponse("ok", { status: 200 }));
+
+    const client = new HttpClient({ apiKey: "test" });
+    const legacyForm = Object.assign(Readable.from(["chunk"]), {
+      append: vi.fn(),
+      getHeaders: () => ({
+        "content-type": "multipart/form-data; boundary=test",
+      }),
+    });
+
+    await client.requestRaw({
+      method: "POST",
+      path: "/files/upload",
+      data: legacyForm,
+    });
+
+    const [, init] = getFetchCall(fetchMock);
+    expect(toHeaderRecord(init?.headers)).toMatchObject({
+      authorization: "Bearer test",
+      "content-type": "multipart/form-data; boundary=test",
+    });
+    expect((init as RequestInit & { duplex?: string } | undefined)?.duplex).toBe(
+      "half"
+    );
+    expect(init?.body).not.toBe(legacyForm);
+  });
+
+  it("rejects legacy form-data objects that are not readable streams", async () => {
+    const fetchMock = stubFetch();
+    const client = new HttpClient({ apiKey: "test" });
+    const legacyForm = {
+      append: vi.fn(),
+      getHeaders: () => ({
+        "content-type": "multipart/form-data; boundary=test",
+      }),
+    };
+
+    await expect(
+      client.requestRaw({
+        method: "POST",
+        path: "/files/upload",
+        data: legacyForm,
+      })
+    ).rejects.toBeInstanceOf(FileUploadError);
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("returns buffers for byte responses", async () => {
     const fetchMock = stubFetch();
     fetchMock.mockResolvedValueOnce(
@@ -180,6 +230,26 @@ describe("HttpClient", () => {
 
     expect(Buffer.isBuffer(response.data)).toBe(true);
     expect(Array.from(response.data.values())).toEqual([1, 2, 3]);
+  });
+
+  it("keeps arraybuffer as a backward-compatible binary alias", async () => {
+    const fetchMock = stubFetch();
+    fetchMock.mockResolvedValueOnce(
+      new Response(Uint8Array.from([4, 5, 6]), {
+        status: 200,
+        headers: { "content-type": "application/octet-stream" },
+      })
+    );
+
+    const client = new HttpClient({ apiKey: "test" });
+    const response = await client.request<Buffer, "arraybuffer">({
+      method: "GET",
+      path: "/files/file-1/preview",
+      responseType: "arraybuffer",
+    });
+
+    expect(Buffer.isBuffer(response.data)).toBe(true);
+    expect(Array.from(response.data.values())).toEqual([4, 5, 6]);
   });
 
   it("returns null for empty no-content responses", async () => {
