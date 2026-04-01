@@ -31,7 +31,7 @@ RUN corepack install
 
 # Install only the web workspace to keep image builds from pulling in
 # unrelated workspace dependencies such as e2e tooling.
-RUN pnpm install --filter ./web... --frozen-lockfile
+RUN VITE_GIT_HOOKS=0 pnpm install --filter ./web... --frozen-lockfile
 
 # build resources
 FROM base AS builder

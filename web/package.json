@@ -40,7 +40,6 @@
     "lint:quiet": "vp run lint --quiet",
     "lint:tss": "tsslint --project tsconfig.json",
     "preinstall": "npx only-allow pnpm",
-    "prepare": "cd ../ && node -e \"if (process.env.NODE_ENV !== 'production'){process.exit(1)} \" || husky ./web/.husky",
     "refactor-component": "node ./scripts/refactor-component.js",
     "start": "node ./scripts/copy-and-start.mjs",
     "start:vinext": "vinext start",
@@ -219,10 +218,8 @@
     "eslint-plugin-storybook": "catalog:",
     "happy-dom": "catalog:",
     "hono": "catalog:",
-    "husky": "catalog:",
     "iconify-import-svg": "catalog:",
     "knip": "catalog:",
-    "lint-staged": "catalog:",
     "postcss": "catalog:",
     "postcss-js": "catalog:",
     "react-server-dom-webpack": "catalog:",
@@ -238,8 +235,5 @@
     "vite-plus": "catalog:",
     "vitest": "catalog:",
     "vitest-canvas-mock": "catalog:"
-  },
-  "lint-staged": {
-    "*": "eslint --fix --pass-on-unpruned-suppressions"
   }
 }
