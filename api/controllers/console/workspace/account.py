@@ -8,7 +8,7 @@ from flask import request
 from flask_restx import Resource, fields, marshal_with
 from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
 from constants.languages import supported_language
@@ -519,7 +519,7 @@ class EducationAutoCompleteApi(Resource):
     @cloud_edition_billing_enabled
     @marshal_with(data_fields)
     def get(self):
-        payload = request.args.to_dict(flat=True)  # type: ignore
+        payload = request.args.to_dict(flat=True)
         args = EducationAutocompleteQuery.model_validate(payload)
 
         return BillingService.EducationIdentity.autocomplete(args.keywords, args.page, args.limit)
@@ -562,7 +562,7 @@ class ChangeEmailSendEmailApi(Resource):
 
             user_email = current_user.email
         else:
-            with Session(db.engine) as session:
+            with sessionmaker(db.engine).begin() as session:
                 account = AccountService.get_account_by_email_with_case_fallback(args.email, session=session)
             if account is None:
                 raise AccountNotFound()

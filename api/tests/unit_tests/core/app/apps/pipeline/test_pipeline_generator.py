@@ -345,7 +345,7 @@ def test_generate_raises_when_workflow_not_found(generator, mocker):
     mocker.patch.object(module, "preserve_flask_contexts", _dummy_preserve)
 
     session = MagicMock()
-    session.query.return_value.where.return_value.first.return_value = None
+    session.get.return_value = None
     mocker.patch.object(module.db, "session", session)
 
     with pytest.raises(ValueError):

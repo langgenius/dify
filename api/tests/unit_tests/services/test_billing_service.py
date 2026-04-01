@@ -38,7 +38,7 @@ class TestBillingServiceSendRequest:
     @pytest.fixture
     def mock_httpx_request(self):
         """Mock httpx.request for testing."""
-        with patch("services.billing_service.httpx.request") as mock_request:
+        with patch("services.billing_service._http_client.request") as mock_request:
             yield mock_request
 
     @pytest.fixture
@@ -865,15 +865,10 @@ class TestBillingServiceAccountManagement:
         mock_join = MagicMock(spec=TenantAccountJoin)
         mock_join.role = TenantAccountRole.OWNER
 
-        mock_query = MagicMock()
-        mock_query.where.return_value.first.return_value = mock_join
-        mock_db_session.query.return_value = mock_query
+        mock_db_session.scalar.return_value = mock_join
 
         # Act - should not raise exception
         BillingService.is_tenant_owner_or_admin(current_user)
-
-        # Assert
-        mock_db_session.query.assert_called_once()
 
     def test_is_tenant_owner_or_admin_admin(self, mock_db_session):
         """Test tenant owner/admin check for admin role."""
@@ -885,15 +880,10 @@ class TestBillingServiceAccountManagement:
         mock_join = MagicMock(spec=TenantAccountJoin)
         mock_join.role = TenantAccountRole.ADMIN
 
-        mock_query = MagicMock()
-        mock_query.where.return_value.first.return_value = mock_join
-        mock_db_session.query.return_value = mock_query
+        mock_db_session.scalar.return_value = mock_join
 
         # Act - should not raise exception
         BillingService.is_tenant_owner_or_admin(current_user)
-
-        # Assert
-        mock_db_session.query.assert_called_once()
 
     def test_is_tenant_owner_or_admin_normal_user_raises_error(self, mock_db_session):
         """Test tenant owner/admin check raises error for normal user."""
@@ -905,9 +895,7 @@ class TestBillingServiceAccountManagement:
         mock_join = MagicMock(spec=TenantAccountJoin)
         mock_join.role = TenantAccountRole.NORMAL
 
-        mock_query = MagicMock()
-        mock_query.where.return_value.first.return_value = mock_join
-        mock_db_session.query.return_value = mock_query
+        mock_db_session.scalar.return_value = mock_join
 
         # Act & Assert
         with pytest.raises(ValueError) as exc_info:
@@ -921,9 +909,7 @@ class TestBillingServiceAccountManagement:
         current_user.id = "account-123"
         current_user.current_tenant_id = "tenant-456"
 
-        mock_query = MagicMock()
-        mock_query.where.return_value.first.return_value = None
-        mock_db_session.query.return_value = mock_query
+        mock_db_session.scalar.return_value = None
 
         # Act & Assert
         with pytest.raises(ValueError) as exc_info:
@@ -1135,9 +1121,7 @@ class TestBillingServiceEdgeCases:
         mock_join.role = TenantAccountRole.EDITOR  # Editor is not privileged
 
         with patch("services.billing_service.db.session") as mock_session:
-            mock_query = MagicMock()
-            mock_query.where.return_value.first.return_value = mock_join
-            mock_session.query.return_value = mock_query
+            mock_session.scalar.return_value = mock_join
 
             # Act & Assert
             with pytest.raises(ValueError) as exc_info:
@@ -1155,9 +1139,7 @@ class TestBillingServiceEdgeCases:
         mock_join.role = TenantAccountRole.DATASET_OPERATOR  # Dataset operator is not privileged
 
         with patch("services.billing_service.db.session") as mock_session:
-            mock_query = MagicMock()
-            mock_query.where.return_value.first.return_value = mock_join
-            mock_session.query.return_value = mock_query
+            mock_session.scalar.return_value = mock_join
 
             # Act & Assert
             with pytest.raises(ValueError) as exc_info:

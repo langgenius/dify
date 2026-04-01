@@ -38,6 +38,7 @@ from core.ops.entities.trace_entity import (
     TraceTaskName,
     WorkflowTraceInfo,
 )
+from core.ops.utils import JSON_DICT_ADAPTER
 from core.repositories import DifyCoreRepositoryFactory
 from extensions.ext_database import db
 from models.model import EndUser, MessageFile
@@ -469,7 +470,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                 llm_attributes[SpanAttributes.LLM_PROVIDER] = trace_info.message_data.model_provider
 
             if trace_info.message_data and trace_info.message_data.message_metadata:
-                metadata_dict = json.loads(trace_info.message_data.message_metadata)
+                metadata_dict = JSON_DICT_ADAPTER.validate_json(trace_info.message_data.message_metadata)
                 if model_params := metadata_dict.get("model_parameters"):
                     llm_attributes[SpanAttributes.LLM_INVOCATION_PARAMETERS] = json.dumps(model_params)
 

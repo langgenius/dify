@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { getRetryDelayMs, shouldRetry } from "./retry";
 import { NetworkError, RateLimitError, TimeoutError } from "../errors/dify-error";
 
-const withMockedRandom = (value, fn) => {
+const withMockedRandom = (value: number, fn: () => void): void => {
   const original = Math.random;
   Math.random = () => value;
   try {

@@ -102,12 +102,12 @@ class TestDataSourceApi:
 
         with (
             app.test_request_context("/"),
-            patch("controllers.console.datasets.data_source.Session") as mock_session_class,
+            patch("controllers.console.datasets.data_source.sessionmaker") as mock_session_class,
             patch("controllers.console.datasets.data_source.db.session.add"),
             patch("controllers.console.datasets.data_source.db.session.commit"),
         ):
             mock_session = MagicMock()
-            mock_session_class.return_value.__enter__.return_value = mock_session
+            mock_session_class.return_value.begin.return_value.__enter__.return_value = mock_session
             mock_session.execute.return_value.scalar_one_or_none.return_value = binding
 
             response, status = method(api, "b1", "enable")
@@ -123,12 +123,12 @@ class TestDataSourceApi:
 
         with (
             app.test_request_context("/"),
-            patch("controllers.console.datasets.data_source.Session") as mock_session_class,
+            patch("controllers.console.datasets.data_source.sessionmaker") as mock_session_class,
             patch("controllers.console.datasets.data_source.db.session.add"),
             patch("controllers.console.datasets.data_source.db.session.commit"),
         ):
             mock_session = MagicMock()
-            mock_session_class.return_value.__enter__.return_value = mock_session
+            mock_session_class.return_value.begin.return_value.__enter__.return_value = mock_session
             mock_session.execute.return_value.scalar_one_or_none.return_value = binding
 
             response, status = method(api, "b1", "disable")
@@ -142,10 +142,10 @@ class TestDataSourceApi:
 
         with (
             app.test_request_context("/"),
-            patch("controllers.console.datasets.data_source.Session") as mock_session_class,
+            patch("controllers.console.datasets.data_source.sessionmaker") as mock_session_class,
         ):
             mock_session = MagicMock()
-            mock_session_class.return_value.__enter__.return_value = mock_session
+            mock_session_class.return_value.begin.return_value.__enter__.return_value = mock_session
             mock_session.execute.return_value.scalar_one_or_none.return_value = None
 
             with pytest.raises(NotFound):
@@ -159,10 +159,10 @@ class TestDataSourceApi:
 
         with (
             app.test_request_context("/"),
-            patch("controllers.console.datasets.data_source.Session") as mock_session_class,
+            patch("controllers.console.datasets.data_source.sessionmaker") as mock_session_class,
         ):
             mock_session = MagicMock()
-            mock_session_class.return_value.__enter__.return_value = mock_session
+            mock_session_class.return_value.begin.return_value.__enter__.return_value = mock_session
             mock_session.execute.return_value.scalar_one_or_none.return_value = binding
 
             with pytest.raises(ValueError):
@@ -176,10 +176,10 @@ class TestDataSourceApi:
 
         with (
             app.test_request_context("/"),
-            patch("controllers.console.datasets.data_source.Session") as mock_session_class,
+            patch("controllers.console.datasets.data_source.sessionmaker") as mock_session_class,
         ):
             mock_session = MagicMock()
-            mock_session_class.return_value.__enter__.return_value = mock_session
+            mock_session_class.return_value.begin.return_value.__enter__.return_value = mock_session
             mock_session.execute.return_value.scalar_one_or_none.return_value = binding
 
             with pytest.raises(ValueError):
@@ -282,7 +282,7 @@ class TestDataSourceNotionListApi:
                 "controllers.console.datasets.data_source.DatasetService.get_dataset",
                 return_value=dataset,
             ),
-            patch("controllers.console.datasets.data_source.Session") as mock_session_class,
+            patch("controllers.console.datasets.data_source.sessionmaker") as mock_session_class,
             patch(
                 "core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime",
                 return_value=MagicMock(
@@ -292,7 +292,7 @@ class TestDataSourceNotionListApi:
             ),
         ):
             mock_session = MagicMock()
-            mock_session_class.return_value.__enter__.return_value = mock_session
+            mock_session_class.return_value.begin.return_value.__enter__.return_value = mock_session
             mock_session.scalars.return_value.all.return_value = [document]
 
             response, status = method(api)
@@ -315,7 +315,7 @@ class TestDataSourceNotionListApi:
                 "controllers.console.datasets.data_source.DatasetService.get_dataset",
                 return_value=dataset,
             ),
-            patch("controllers.console.datasets.data_source.Session"),
+            patch("controllers.console.datasets.data_source.sessionmaker"),
         ):
             with pytest.raises(ValueError):
                 method(api)
