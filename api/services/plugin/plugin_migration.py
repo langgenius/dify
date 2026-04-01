@@ -15,6 +15,7 @@ from flask import Flask, current_app
 from pydantic import TypeAdapter
 from sqlalchemy.orm import sessionmaker
 
+
 from core.agent.entities import AgentToolEntity
 from core.helper import marketplace
 from core.plugin.entities.plugin import PluginInstallationSource

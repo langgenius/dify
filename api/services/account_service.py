@@ -12,6 +12,7 @@ from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 
+
 class InvitationData(TypedDict):
     account_id: str
     email: str

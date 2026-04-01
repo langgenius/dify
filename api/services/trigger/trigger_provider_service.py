@@ -678,7 +678,6 @@ class TriggerProviderService:
             if enabled is not None:
                 custom_client.enabled = enabled
 
-
         return {"result": "success"}
 
     @classmethod
