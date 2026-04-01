@@ -15,11 +15,13 @@ def test_get_pipeline_templates(mocker) -> None:
         position=1,
         chunk_structure="general",
     )
-    query_mock = mocker.Mock()
-    query_mock.where.return_value.all.return_value = [built_in_template]
+    scalars_mock = mocker.Mock()
+    scalars_mock.all.return_value = [built_in_template]
+    session_mock = mocker.Mock()
+    session_mock.scalars.return_value = scalars_mock
     mocker.patch(
-        "services.rag_pipeline.pipeline_template.database.database_retrieval.db.session.query",
-        return_value=query_mock,
+        "services.rag_pipeline.pipeline_template.database.database_retrieval.db",
+        new=SimpleNamespace(session=session_mock),
     )
     retrieval = DatabasePipelineTemplateRetrieval()
 
@@ -43,8 +45,8 @@ def test_get_pipeline_templates(mocker) -> None:
 
 
 def test_get_pipeline_template_detail_returns_detail(mocker) -> None:
-    query_mock = mocker.Mock()
-    query_mock.where.return_value.first.return_value = SimpleNamespace(
+    session_mock = mocker.Mock()
+    session_mock.get.return_value = SimpleNamespace(
         id="tpl-1",
         name="Template 1",
         icon={"background": "#fff"},
@@ -53,8 +55,8 @@ def test_get_pipeline_template_detail_returns_detail(mocker) -> None:
         yaml_content="workflow:\n  graph:\n    nodes: []",
     )
     mocker.patch(
-        "services.rag_pipeline.pipeline_template.database.database_retrieval.db.session.query",
-        return_value=query_mock,
+        "services.rag_pipeline.pipeline_template.database.database_retrieval.db",
+        new=SimpleNamespace(session=session_mock),
     )
     retrieval = DatabasePipelineTemplateRetrieval()
 
@@ -72,11 +74,11 @@ def test_get_pipeline_template_detail_returns_detail(mocker) -> None:
 
 
 def test_get_pipeline_template_detail_returns_none_when_not_found(mocker) -> None:
-    query_mock = mocker.Mock()
-    query_mock.where.return_value.first.return_value = None
+    session_mock = mocker.Mock()
+    session_mock.get.return_value = None
     mocker.patch(
-        "services.rag_pipeline.pipeline_template.database.database_retrieval.db.session.query",
-        return_value=query_mock,
+        "services.rag_pipeline.pipeline_template.database.database_retrieval.db",
+        new=SimpleNamespace(session=session_mock),
     )
     retrieval = DatabasePipelineTemplateRetrieval()
 

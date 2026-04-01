@@ -83,11 +83,14 @@ def test_generate_updates_document_status_and_returns_event_stream(mocker) -> No
 def test_update_document_status_updates_existing_document(mocker) -> None:
     document = SimpleNamespace(indexing_status="completed")
 
-    query_mock = mocker.Mock()
-    query_mock.where.return_value.first.return_value = document
-    mocker.patch("services.rag_pipeline.pipeline_generate_service.db.session.query", return_value=query_mock)
-    add_mock = mocker.patch("services.rag_pipeline.pipeline_generate_service.db.session.add")
-    commit_mock = mocker.patch("services.rag_pipeline.pipeline_generate_service.db.session.commit")
+    session_mock = mocker.Mock()
+    session_mock.get.return_value = document
+    add_mock = session_mock.add
+    commit_mock = session_mock.commit
+    mocker.patch(
+        "services.rag_pipeline.pipeline_generate_service.db",
+        new=SimpleNamespace(session=session_mock),
+    )
 
     PipelineGenerateService.update_document_status("doc-1")
 
@@ -97,11 +100,14 @@ def test_update_document_status_updates_existing_document(mocker) -> None:
 
 
 def test_update_document_status_skips_when_document_missing(mocker) -> None:
-    query_mock = mocker.Mock()
-    query_mock.where.return_value.first.return_value = None
-    mocker.patch("services.rag_pipeline.pipeline_generate_service.db.session.query", return_value=query_mock)
-    add_mock = mocker.patch("services.rag_pipeline.pipeline_generate_service.db.session.add")
-    commit_mock = mocker.patch("services.rag_pipeline.pipeline_generate_service.db.session.commit")
+    session_mock = mocker.Mock()
+    session_mock.get.return_value = None
+    add_mock = session_mock.add
+    commit_mock = session_mock.commit
+    mocker.patch(
+        "services.rag_pipeline.pipeline_generate_service.db",
+        new=SimpleNamespace(session=session_mock),
+    )
 
     PipelineGenerateService.update_document_status("missing")
 

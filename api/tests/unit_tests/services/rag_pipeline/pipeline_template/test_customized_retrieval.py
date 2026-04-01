@@ -17,11 +17,13 @@ def test_get_pipeline_templates(mocker) -> None:
         position=2,
         chunk_structure="parent-child",
     )
-    query_mock = mocker.Mock()
-    query_mock.where.return_value.order_by.return_value.all.return_value = [customized_template]
+    scalars_mock = mocker.Mock()
+    scalars_mock.all.return_value = [customized_template]
+    session_mock = mocker.Mock()
+    session_mock.scalars.return_value = scalars_mock
     mocker.patch(
-        "services.rag_pipeline.pipeline_template.customized.customized_retrieval.db.session.query",
-        return_value=query_mock,
+        "services.rag_pipeline.pipeline_template.customized.customized_retrieval.db",
+        new=SimpleNamespace(session=session_mock),
     )
     retrieval = CustomizedPipelineTemplateRetrieval()
 
@@ -43,8 +45,8 @@ def test_get_pipeline_templates(mocker) -> None:
 
 
 def test_get_pipeline_template_detail_returns_detail(mocker) -> None:
-    query_mock = mocker.Mock()
-    query_mock.where.return_value.first.return_value = SimpleNamespace(
+    session_mock = mocker.Mock()
+    session_mock.get.return_value = SimpleNamespace(
         id="tpl-1",
         name="Custom Template",
         icon={"background": "#fff"},
@@ -54,8 +56,8 @@ def test_get_pipeline_template_detail_returns_detail(mocker) -> None:
         created_user_name="creator",
     )
     mocker.patch(
-        "services.rag_pipeline.pipeline_template.customized.customized_retrieval.db.session.query",
-        return_value=query_mock,
+        "services.rag_pipeline.pipeline_template.customized.customized_retrieval.db",
+        new=SimpleNamespace(session=session_mock),
     )
     retrieval = CustomizedPipelineTemplateRetrieval()
 
@@ -74,11 +76,11 @@ def test_get_pipeline_template_detail_returns_detail(mocker) -> None:
 
 
 def test_get_pipeline_template_detail_returns_none_when_not_found(mocker) -> None:
-    query_mock = mocker.Mock()
-    query_mock.where.return_value.first.return_value = None
+    session_mock = mocker.Mock()
+    session_mock.get.return_value = None
     mocker.patch(
-        "services.rag_pipeline.pipeline_template.customized.customized_retrieval.db.session.query",
-        return_value=query_mock,
+        "services.rag_pipeline.pipeline_template.customized.customized_retrieval.db",
+        new=SimpleNamespace(session=session_mock),
     )
     retrieval = CustomizedPipelineTemplateRetrieval()
 
