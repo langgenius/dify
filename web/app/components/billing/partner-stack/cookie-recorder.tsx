@@ -11,7 +11,7 @@ const PartnerStackCookieRecorder = () => {
     if (!IS_CLOUD_EDITION)
       return
     saveOrUpdate()
-  }, [])
+  }, [saveOrUpdate])
 
   return null
 }
