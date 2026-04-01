@@ -268,7 +268,7 @@ class TestWorkflowService:
         Provides mock implementations of:
         - session.add(): Adding new records
         - session.commit(): Committing transactions
-        - session.query(): Querying database
+        - session.scalar(): Scalar queries
         - session.execute(): Executing SQL statements
         """
         with patch("services.workflow_service.db") as mock_db:
@@ -276,7 +276,7 @@ class TestWorkflowService:
             mock_db.session = mock_session
             mock_session.add = MagicMock()
             mock_session.commit = MagicMock()
-            mock_session.query = MagicMock()
+            mock_session.scalar = MagicMock()
             mock_session.execute = MagicMock()
             yield mock_db
 
@@ -338,10 +338,8 @@ class TestWorkflowService:
         app = TestWorkflowAssociatedDataFactory.create_app_mock()
         mock_workflow = TestWorkflowAssociatedDataFactory.create_workflow_mock()
 
-        # Mock database query
-        mock_query = MagicMock()
-        mock_db_session.session.query.return_value = mock_query
-        mock_query.where.return_value.first.return_value = mock_workflow
+        # Mock db.session.scalar() used by get_draft_workflow
+        mock_db_session.session.scalar.return_value = mock_workflow
 
         result = workflow_service.get_draft_workflow(app)
 
@@ -351,10 +349,8 @@ class TestWorkflowService:
         """Test get_draft_workflow returns None when no draft exists."""
         app = TestWorkflowAssociatedDataFactory.create_app_mock()
 
-        # Mock database query to return None
-        mock_query = MagicMock()
-        mock_db_session.session.query.return_value = mock_query
-        mock_query.where.return_value.first.return_value = None
+        # Mock db.session.scalar() to return None
+        mock_db_session.session.scalar.return_value = None
 
         result = workflow_service.get_draft_workflow(app)
 
@@ -366,10 +362,8 @@ class TestWorkflowService:
         workflow_id = "workflow-123"
         mock_workflow = TestWorkflowAssociatedDataFactory.create_workflow_mock(version="v1")
 
-        # Mock database query
-        mock_query = MagicMock()
-        mock_db_session.session.query.return_value = mock_query
-        mock_query.where.return_value.first.return_value = mock_workflow
+        # Mock db.session.scalar() used by get_published_workflow_by_id
+        mock_db_session.session.scalar.return_value = mock_workflow
 
         result = workflow_service.get_draft_workflow(app, workflow_id=workflow_id)
 
@@ -384,10 +378,8 @@ class TestWorkflowService:
         workflow_id = "workflow-123"
         mock_workflow = TestWorkflowAssociatedDataFactory.create_workflow_mock(workflow_id=workflow_id, version="v1")
 
-        # Mock database query
-        mock_query = MagicMock()
-        mock_db_session.session.query.return_value = mock_query
-        mock_query.where.return_value.first.return_value = mock_workflow
+        # Mock db.session.scalar() used by get_published_workflow_by_id
+        mock_db_session.session.scalar.return_value = mock_workflow
 
         result = workflow_service.get_published_workflow_by_id(app, workflow_id)
 
@@ -406,10 +398,8 @@ class TestWorkflowService:
             workflow_id=workflow_id, version=Workflow.VERSION_DRAFT
         )
 
-        # Mock database query
-        mock_query = MagicMock()
-        mock_db_session.session.query.return_value = mock_query
-        mock_query.where.return_value.first.return_value = mock_workflow
+        # Mock db.session.scalar() used by get_published_workflow_by_id
+        mock_db_session.session.scalar.return_value = mock_workflow
 
         with pytest.raises(IsDraftWorkflowError):
             workflow_service.get_published_workflow_by_id(app, workflow_id)
@@ -419,10 +409,8 @@ class TestWorkflowService:
         app = TestWorkflowAssociatedDataFactory.create_app_mock()
         workflow_id = "nonexistent-workflow"
 
-        # Mock database query to return None
-        mock_query = MagicMock()
-        mock_db_session.session.query.return_value = mock_query
-        mock_query.where.return_value.first.return_value = None
+        # Mock db.session.scalar() to return None
+        mock_db_session.session.scalar.return_value = None
 
         result = workflow_service.get_published_workflow_by_id(app, workflow_id)
 
@@ -434,10 +422,8 @@ class TestWorkflowService:
         app = TestWorkflowAssociatedDataFactory.create_app_mock(workflow_id=workflow_id)
         mock_workflow = TestWorkflowAssociatedDataFactory.create_workflow_mock(workflow_id=workflow_id, version="v1")
 
-        # Mock database query
-        mock_query = MagicMock()
-        mock_db_session.session.query.return_value = mock_query
-        mock_query.where.return_value.first.return_value = mock_workflow
+        # Mock db.session.scalar() used by get_published_workflow
+        mock_db_session.session.scalar.return_value = mock_workflow
 
         result = workflow_service.get_published_workflow(app)
 
@@ -466,11 +452,9 @@ class TestWorkflowService:
         graph = TestWorkflowAssociatedDataFactory.create_valid_workflow_graph()
         features = {"file_upload": {"enabled": False}}
 
-        # Mock get_draft_workflow to return None (no existing draft)
+        # Mock db.session.scalar() to return None (no existing draft)
         # This simulates the first time a workflow is created for an app
-        mock_query = MagicMock()
-        mock_db_session.session.query.return_value = mock_query
-        mock_query.where.return_value.first.return_value = None
+        mock_db_session.session.scalar.return_value = None
 
         with (
             patch.object(workflow_service, "validate_features_structure"),
@@ -504,12 +488,10 @@ class TestWorkflowService:
         features = {"file_upload": {"enabled": False}}
         unique_hash = "test-hash-123"
 
-        # Mock existing draft workflow
+        # Mock existing draft workflow via db.session.scalar()
         mock_workflow = TestWorkflowAssociatedDataFactory.create_workflow_mock(unique_hash=unique_hash)
 
-        mock_query = MagicMock()
-        mock_db_session.session.query.return_value = mock_query
-        mock_query.where.return_value.first.return_value = mock_workflow
+        mock_db_session.session.scalar.return_value = mock_workflow
 
         with (
             patch.object(workflow_service, "validate_features_structure"),
@@ -545,12 +527,10 @@ class TestWorkflowService:
         graph = TestWorkflowAssociatedDataFactory.create_valid_workflow_graph()
         features = {}
 
-        # Mock existing draft workflow with different hash
+        # Mock existing draft workflow with different hash via db.session.scalar()
         mock_workflow = TestWorkflowAssociatedDataFactory.create_workflow_mock(unique_hash="old-hash")
 
-        mock_query = MagicMock()
-        mock_db_session.session.query.return_value = mock_query
-        mock_query.where.return_value.first.return_value = mock_workflow
+        mock_db_session.session.scalar.return_value = mock_workflow
 
         with pytest.raises(WorkflowHashNotEqualError):
             workflow_service.sync_draft_workflow(

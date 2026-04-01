@@ -6,6 +6,7 @@ from uuid import uuid4
 
 import yaml
 from flask_login import current_user
+from sqlalchemy import select
 
 from constants import DOCUMENT_EXTENSIONS
 from core.plugin.impl.plugin import PluginInstaller
@@ -26,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 class RagPipelineTransformService:
     def transform_dataset(self, dataset_id: str):
-        dataset = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
+        dataset = db.session.get(Dataset, dataset_id)
         if not dataset:
             raise ValueError("Dataset not found")
         if dataset.pipeline_id and dataset.runtime_mode == DatasetRuntimeMode.RAG_PIPELINE:
@@ -306,7 +307,7 @@ class RagPipelineTransformService:
         jina_node_id = "1752491761974"
         firecrawl_node_id = "1752565402678"
 
-        documents = db.session.query(Document).where(Document.dataset_id == dataset.id).all()
+        documents = db.session.scalars(select(Document).where(Document.dataset_id == dataset.id)).all()
 
         for document in documents:
             data_source_info_dict = document.data_source_info_dict
@@ -316,7 +317,7 @@ class RagPipelineTransformService:
                 document.data_source_type = DataSourceType.LOCAL_FILE
                 file_id = data_source_info_dict.get("upload_file_id")
                 if file_id:
-                    file = db.session.query(UploadFile).where(UploadFile.id == file_id).first()
+                    file = db.session.get(UploadFile, file_id)
                     if file:
                         data_source_info = json.dumps(
                             {

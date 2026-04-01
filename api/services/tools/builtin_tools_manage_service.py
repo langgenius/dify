@@ -332,12 +332,11 @@ class BuiltinToolManageService:
         get builtin tool provider credentials
         """
         with db.session.no_autoflush:
-            providers = (
-                db.session.query(BuiltinToolProvider)
-                .filter_by(tenant_id=tenant_id, provider=provider_name)
+            providers = db.session.scalars(
+                select(BuiltinToolProvider)
+                .where(BuiltinToolProvider.tenant_id == tenant_id, BuiltinToolProvider.provider == provider_name)
                 .order_by(BuiltinToolProvider.is_default.desc(), BuiltinToolProvider.created_at.asc())
-                .all()
-            )
+            ).all()
 
             if len(providers) == 0:
                 return []
