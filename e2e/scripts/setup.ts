@@ -1,4 +1,4 @@
-import { access, mkdir, rm } from 'node:fs/promises'
+import { access, mkdir, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { waitForUrl } from '../support/process'
 import {
@@ -34,6 +34,15 @@ const hasReusableWebBuild = async () => {
     return true
   } catch {
     return false
+  }
+}
+
+const ensureWebClaudeFile = async () => {
+  const webClaudePath = path.join(webDir, 'CLAUDE.md')
+  try {
+    await access(webClaudePath)
+  } catch {
+    await writeFile(webClaudePath, 'AGENTS.md\n', 'utf8')
   }
 }
 
@@ -124,6 +133,7 @@ const waitForDependency = async ({
 
 export const ensureWebBuild = async () => {
   await ensureWebEnvLocal()
+  await ensureWebClaudeFile()
 
   if (process.env.E2E_FORCE_WEB_BUILD === '1') {
     await runCommandOrThrow({
