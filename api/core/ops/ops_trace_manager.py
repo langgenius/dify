@@ -13,7 +13,7 @@ from cachetools import LRUCache
 from flask import current_app
 from pydantic import TypeAdapter
 from sqlalchemy import select
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.helper.encrypter import batch_decrypt_token, encrypt_token, obfuscated_token
 from core.ops.entities.config_entity import (

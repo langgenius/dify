@@ -615,7 +615,6 @@ class ProviderConfiguration(BaseModel):
             )
             lb_credentials_cache.delete()
 
-
     def delete_provider_credential(self, credential_id: str):
         """
         Delete a saved provider credential (by credential_id).
@@ -984,7 +983,6 @@ class ProviderConfiguration(BaseModel):
                     )
                     session.add(provider_model_record)
 
-
                 provider_model_credentials_cache = ProviderCredentialsCache(
                     tenant_id=self.tenant_id,
                     identity_id=provider_model_record.id,
@@ -1126,7 +1124,6 @@ class ProviderConfiguration(BaseModel):
                         cache_type=ProviderCredentialsCacheType.PROVIDER,
                     )
                     provider_model_credentials_cache.delete()
-
 
             except Exception:
                 session.rollback()

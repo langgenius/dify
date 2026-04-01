@@ -9,7 +9,7 @@ from graphon.entities.workflow_node_execution import (
 )
 from graphon.nodes import BuiltinNodeTypes
 from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
 from core.ops.base_trace_instance import BaseTraceInstance
 from core.ops.entities.config_entity import TencentConfig

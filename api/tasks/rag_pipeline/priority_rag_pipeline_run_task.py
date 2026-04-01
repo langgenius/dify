@@ -11,7 +11,7 @@ import click
 from celery import shared_task  # type: ignore
 from flask import current_app, g
 from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity
