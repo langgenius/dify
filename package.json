@@ -2,7 +2,7 @@
   "name": "dify",
   "private": true,
   "scripts": {
-    "prepare": "command -v git >/dev/null 2>&1 || exit 0; git rev-parse --git-dir >/dev/null 2>&1 || exit 0; vp config"
+    "prepare": "vp config"
   },
   "devDependencies": {
     "taze": "catalog:",
