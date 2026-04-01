@@ -159,9 +159,10 @@ class DataSourceApi(Resource):
     @account_initialization_required
     def patch(self, binding_id, action: Literal["enable", "disable"]):
         binding_id = str(binding_id)
+        current_user, current_tenant_id = current_account_with_tenant()
         with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             data_source_binding = session.execute(
-                select(DataSourceOauthBinding).filter_by(id=binding_id)
+                select(DataSourceOauthBinding).filter_by(id=binding_id, tenant_id=current_tenant_id)
             ).scalar_one_or_none()
         if data_source_binding is None:
             raise NotFound("Data source binding not found.")
