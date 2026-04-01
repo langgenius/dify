@@ -69,7 +69,7 @@ def client(flask_app_with_containers):
     return_value=(MagicMock(id="u1"), "t1"),
     autospec=True,
 )
-@patch("controllers.console.workspace.tool_providers.Session", autospec=True)
+@patch("controllers.console.workspace.tool_providers.sessionmaker", autospec=True)
 @patch("controllers.console.workspace.tool_providers.MCPToolManageService._reconnect_with_url", autospec=True)
 @pytest.mark.usefixtures("_mock_cache", "_mock_user_tenant")
 def test_create_mcp_provider_populates_tools(mock_reconnect, mock_session, mock_current_account_with_tenant, client):
@@ -88,7 +88,7 @@ def test_create_mcp_provider_populates_tools(mock_reconnect, mock_session, mock_
     create_result.id = "provider-1"
     svc.create_provider.return_value = create_result
     svc.get_provider.return_value = MagicMock(id="provider-1", tenant_id="t1")  # used by reload path
-    mock_session.return_value.__enter__.return_value = MagicMock()
+    mock_session.return_value.begin.return_value.__enter__.return_value = MagicMock()
     # Patch MCPToolManageService constructed inside controller
     with patch("controllers.console.workspace.tool_providers.MCPToolManageService", return_value=svc, autospec=True):
         payload = {

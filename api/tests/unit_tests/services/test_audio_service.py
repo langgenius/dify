@@ -421,11 +421,8 @@ class TestAudioServiceTTS:
             answer="Message answer text",
         )
 
-        # Mock database query
-        mock_query = MagicMock()
-        mock_db_session.query.return_value = mock_query
-        mock_query.where.return_value = mock_query
-        mock_query.first.return_value = message
+        # Mock database lookup
+        mock_db_session.get.return_value = message
 
         # Mock ModelManager
         mock_model_manager = mock_model_manager_class.return_value
@@ -568,11 +565,8 @@ class TestAudioServiceTTS:
         # Arrange
         app = factory.create_app_mock()
 
-        # Mock database query returning None
-        mock_query = MagicMock()
-        mock_db_session.query.return_value = mock_query
-        mock_query.where.return_value = mock_query
-        mock_query.first.return_value = None
+        # Mock database lookup returning None
+        mock_db_session.get.return_value = None
 
         # Act
         result = AudioService.transcript_tts(
@@ -594,11 +588,8 @@ class TestAudioServiceTTS:
             status=MessageStatus.NORMAL,
         )
 
-        # Mock database query
-        mock_query = MagicMock()
-        mock_db_session.query.return_value = mock_query
-        mock_query.where.return_value = mock_query
-        mock_query.first.return_value = message
+        # Mock database lookup
+        mock_db_session.get.return_value = message
 
         # Act
         result = AudioService.transcript_tts(
