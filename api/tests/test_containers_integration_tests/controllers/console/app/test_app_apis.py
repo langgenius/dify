@@ -383,14 +383,21 @@ class TestWorkflowAppLogEndpoints:
 
         monkeypatch.setattr(workflow_app_log_module, "db", SimpleNamespace(engine=MagicMock()))
 
-        class DummySession:
+        class DummySessionCtx:
             def __enter__(self):
                 return "session"
 
             def __exit__(self, exc_type, exc, tb):
                 return False
 
-        monkeypatch.setattr(workflow_app_log_module, "Session", lambda *args, **kwargs: DummySession())
+        class DummySessionMaker:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            def begin(self):
+                return DummySessionCtx()
+
+        monkeypatch.setattr(workflow_app_log_module, "sessionmaker", DummySessionMaker)
 
         def fake_get_paginate(self, **_kwargs):
             return {"items": [], "total": 0}
@@ -423,12 +430,19 @@ class TestWorkflowDraftVariableEndpoints:
         monkeypatch.setattr(workflow_draft_variable_module, "db", SimpleNamespace(engine=MagicMock()))
         monkeypatch.setattr(workflow_draft_variable_module, "current_user", SimpleNamespace(id="user-1"))
 
-        class DummySession:
+        class DummySessionCtx:
             def __enter__(self):
                 return "session"
 
             def __exit__(self, exc_type, exc, tb):
                 return False
+
+        class DummySessionMaker:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            def begin(self):
+                return DummySessionCtx()
 
         class DummyDraftService:
             def __init__(self, session):
@@ -437,7 +451,7 @@ class TestWorkflowDraftVariableEndpoints:
             def list_variables_without_values(self, **_kwargs):
                 return {"items": [], "total": 0}
 
-        monkeypatch.setattr(workflow_draft_variable_module, "Session", lambda *args, **kwargs: DummySession())
+        monkeypatch.setattr(workflow_draft_variable_module, "sessionmaker", DummySessionMaker)
 
         class DummyWorkflowService:
             def is_workflow_exist(self, *args, **kwargs):
@@ -543,14 +557,21 @@ class TestWorkflowTriggerEndpoints:
         session = MagicMock()
         session.query.return_value.where.return_value.first.return_value = trigger
 
-        class DummySession:
+        class DummySessionCtx:
             def __enter__(self):
                 return session
 
             def __exit__(self, exc_type, exc, tb):
                 return False
 
-        monkeypatch.setattr(workflow_trigger_module, "Session", lambda *_args, **_kwargs: DummySession())
+        class DummySessionMaker:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            def begin(self):
+                return DummySessionCtx()
+
+        monkeypatch.setattr(workflow_trigger_module, "sessionmaker", DummySessionMaker)
 
         with app.test_request_context("/?node_id=node-1"):
             result = method(app_model=SimpleNamespace(id="app-1"))

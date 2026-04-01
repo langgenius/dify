@@ -9,6 +9,7 @@ from psycopg import sql as psql
 from pydantic import BaseModel, model_validator
 
 from configs import dify_config
+from core.rag.datasource.vdb.field import parse_metadata_json
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
@@ -217,8 +218,7 @@ class HologresVector(BaseVector):
             text = row[2]
             meta = row[3]
 
-            if isinstance(meta, str):
-                meta = json.loads(meta)
+            meta = parse_metadata_json(meta)
 
             # Convert distance to similarity score (consistent with pgvector)
             score = 1 - distance
@@ -265,8 +265,7 @@ class HologresVector(BaseVector):
             meta = row[2]
             score = row[-1]  # score is the last column from return_score
 
-            if isinstance(meta, str):
-                meta = json.loads(meta)
+            meta = parse_metadata_json(meta)
 
             meta["score"] = score
             docs.append(Document(page_content=text, metadata=meta))

@@ -1,0 +1,171 @@
+name: Trigger i18n Sync on Push
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'web/i18n/en-US/*.json'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: trigger-i18n-sync-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  trigger:
+    if: github.repository == 'langgenius/dify'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed files and build structured change set
+        id: detect
+        shell: bash
+        run: |
+          BASE_SHA="${{ github.event.before }}"
+          if [ -z "$BASE_SHA" ] || [ "$BASE_SHA" = "0000000000000000000000000000000000000000" ]; then
+            BASE_SHA=$(git rev-parse HEAD~1 2>/dev/null || true)
+          fi
+          HEAD_SHA="${{ github.sha }}"
+
+          if [ -n "$BASE_SHA" ]; then
+            CHANGED_FILES=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" -- 'web/i18n/en-US/*.json' 2>/dev/null | sed -n 's@^.*/@@p' | sed 's/\.json$//' | tr '\n' ' ' | sed 's/[[:space:]]*$//')
+          else
+            CHANGED_FILES=$(find web/i18n/en-US -maxdepth 1 -type f -name '*.json' -print | sed -n 's@^.*/@@p' | sed 's/\.json$//' | sort | tr '\n' ' ' | sed 's/[[:space:]]*$//')
+          fi
+
+          export BASE_SHA HEAD_SHA CHANGED_FILES
+          node <<'NODE'
+          const { execFileSync } = require('node:child_process')
+          const fs = require('node:fs')
+          const path = require('node:path')
+
+          const repoRoot = process.cwd()
+          const baseSha = process.env.BASE_SHA || ''
+          const headSha = process.env.HEAD_SHA || ''
+          const files = (process.env.CHANGED_FILES || '').split(/\s+/).filter(Boolean)
+
+          const englishPath = fileStem => path.join(repoRoot, 'web', 'i18n', 'en-US', `${fileStem}.json`)
+
+          const readCurrentJson = (fileStem) => {
+            const filePath = englishPath(fileStem)
+            if (!fs.existsSync(filePath))
+              return null
+
+            return JSON.parse(fs.readFileSync(filePath, 'utf8'))
+          }
+
+          const readBaseJson = (fileStem) => {
+            if (!baseSha)
+              return null
+
+            try {
+              const relativePath = `web/i18n/en-US/${fileStem}.json`
+              const content = execFileSync('git', ['show', `${baseSha}:${relativePath}`], { encoding: 'utf8' })
+              return JSON.parse(content)
+            }
+            catch (error) {
+              return null
+            }
+          }
+
+          const compareJson = (beforeValue, afterValue) => JSON.stringify(beforeValue) === JSON.stringify(afterValue)
+
+          const changes = {}
+
+          for (const fileStem of files) {
+            const beforeJson = readBaseJson(fileStem) || {}
+            const afterJson = readCurrentJson(fileStem) || {}
+            const added = {}
+            const updated = {}
+            const deleted = []
+
+            for (const [key, value] of Object.entries(afterJson)) {
+              if (!(key in beforeJson)) {
+                added[key] = value
+                continue
+              }
+
+              if (!compareJson(beforeJson[key], value)) {
+                updated[key] = {
+                  before: beforeJson[key],
+                  after: value,
+                }
+              }
+            }
+
+            for (const key of Object.keys(beforeJson)) {
+              if (!(key in afterJson))
+                deleted.push(key)
+            }
+
+            changes[fileStem] = {
+              fileDeleted: readCurrentJson(fileStem) === null,
+              added,
+              updated,
+              deleted,
+            }
+          }
+
+          fs.writeFileSync(
+            '/tmp/i18n-changes.json',
+            JSON.stringify({
+              baseSha,
+              headSha,
+              files,
+              changes,
+            })
+          )
+          NODE
+
+          if [ -n "$CHANGED_FILES" ]; then
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          echo "base_sha=$BASE_SHA" >> "$GITHUB_OUTPUT"
+          echo "head_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
+          echo "changed_files=$CHANGED_FILES" >> "$GITHUB_OUTPUT"
+
+      - name: Trigger i18n sync workflow
+        if: steps.detect.outputs.has_changes == 'true'
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        env:
+          BASE_SHA: ${{ steps.detect.outputs.base_sha }}
+          HEAD_SHA: ${{ steps.detect.outputs.head_sha }}
+          CHANGED_FILES: ${{ steps.detect.outputs.changed_files }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs')
+
+            const changesJson = fs.readFileSync('/tmp/i18n-changes.json', 'utf8')
+            const changesBase64 = Buffer.from(changesJson).toString('base64')
+            const maxEmbeddedChangesChars = 48000
+            const changesEmbedded = changesBase64.length <= maxEmbeddedChangesChars
+
+            if (!changesEmbedded) {
+              console.log(`Structured change set too large to embed safely (${changesBase64.length} chars). Downstream workflow will regenerate it from git history.`)
+            }
+
+            await github.rest.repos.createDispatchEvent({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              event_type: 'i18n-sync',
+              client_payload: {
+                changed_files: process.env.CHANGED_FILES,
+                changes_base64: changesEmbedded ? changesBase64 : '',
+                changes_embedded: changesEmbedded,
+                sync_mode: 'incremental',
+                base_sha: process.env.BASE_SHA,
+                head_sha: process.env.HEAD_SHA,
+              },
+            })

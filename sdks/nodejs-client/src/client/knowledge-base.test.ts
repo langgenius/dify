@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { FileUploadError, ValidationError } from "../errors/dify-error";
 import { KnowledgeBaseClient } from "./knowledge-base";
 import { createHttpClientWithSpies } from "../../tests/test-utils";
 
@@ -174,7 +175,6 @@ describe("KnowledgeBaseClient", () => {
   it("handles pipeline operations", async () => {
     const { client, request, requestStream } = createHttpClientWithSpies();
     const kb = new KnowledgeBaseClient(client);
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const form = { append: vi.fn(), getHeaders: () => ({}) };
 
     await kb.listDatasourcePlugins("ds", { isPublished: true });
@@ -201,7 +201,6 @@ describe("KnowledgeBaseClient", () => {
     });
     await kb.uploadPipelineFile(form);
 
-    expect(warn).toHaveBeenCalled();
     expect(request).toHaveBeenCalledWith({
       method: "GET",
       path: "/datasets/ds/pipeline/datasource-plugins",
@@ -245,5 +244,23 @@ describe("KnowledgeBaseClient", () => {
       path: "/datasets/pipeline/file-upload",
       data: form,
     });
+  });
+
+  it("validates form-data and optional array filters", async () => {
+    const { client } = createHttpClientWithSpies();
+    const kb = new KnowledgeBaseClient(client);
+
+    await expect(kb.createDocumentByFile("ds", {})).rejects.toBeInstanceOf(
+      FileUploadError
+    );
+    await expect(
+      kb.listSegments("ds", "doc", { status: ["ok", 1] as unknown as string[] })
+    ).rejects.toBeInstanceOf(ValidationError);
+    await expect(
+      kb.hitTesting("ds", {
+        query: "q",
+        attachment_ids: ["att-1", 2] as unknown as string[],
+      })
+    ).rejects.toBeInstanceOf(ValidationError);
   });
 });

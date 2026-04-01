@@ -79,7 +79,7 @@ class TestAuthIntegration:
 
     @patch("services.auth.api_key_auth_service.encrypter.encrypt_token")
     @patch("services.auth.firecrawl.firecrawl.httpx.post")
-    @patch("services.auth.jina.jina.httpx.post")
+    @patch("services.auth.jina.jina._http_client.post")
     def test_multi_tenant_isolation(
         self,
         mock_jina_http,

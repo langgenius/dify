@@ -1386,7 +1386,7 @@ class ConversationVariable(TypeBase):
 
 
 # Only `sys.query` and `sys.files` could be modified.
-_EDITABLE_SYSTEM_VARIABLE = frozenset(["query", "files"])
+_EDITABLE_SYSTEM_VARIABLE = frozenset(("query", "files"))
 
 
 class WorkflowDraftVariable(Base):
