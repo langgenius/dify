@@ -4,6 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any, NotRequired
 
 from flask import Flask, current_app
+from graphon.model_runtime.entities.model_entities import ModelType
 from sqlalchemy import select
 from sqlalchemy.orm import Session, load_only
 from typing_extensions import TypedDict
@@ -24,7 +25,6 @@ from core.rag.rerank.rerank_type import RerankMode
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.signature import sign_upload_file
 from extensions.ext_database import db
-from graphon.model_runtime.entities.model_entities import ModelType
 from models.dataset import (
     ChildChunk,
     Dataset,
@@ -432,10 +432,11 @@ class RetrievalService:
             # Batch query dataset documents
             dataset_documents = {
                 doc.id: doc
-                for doc in db.session.query(DatasetDocument)
-                .where(DatasetDocument.id.in_(document_ids))
-                .options(load_only(DatasetDocument.id, DatasetDocument.doc_form, DatasetDocument.dataset_id))
-                .all()
+                for doc in db.session.scalars(
+                    select(DatasetDocument)
+                    .where(DatasetDocument.id.in_(document_ids))
+                    .options(load_only(DatasetDocument.id, DatasetDocument.doc_form, DatasetDocument.dataset_id))
+                ).all()
             }
 
             valid_dataset_documents = {}

@@ -13,6 +13,7 @@ import VarReferencePicker from '../../../_base/components/variable/var-reference
 import useAvailableVarList from '../../../_base/hooks/use-available-var-list'
 import { BodyPayloadValueType, BodyType } from '../../types'
 import KeyValue from '../key-value'
+import { isSupportedHttpBodyVariable } from './supported-body-vars'
 
 const UNIQUE_ID_PREFIX = 'key-value-'
 
@@ -58,7 +59,7 @@ const EditBody: FC<Props> = ({
   const { availableVars, availableNodes } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
     filterVar: (varPayload: Var) => {
-      return [VarType.string, VarType.number, VarType.secret, VarType.arrayNumber, VarType.arrayString].includes(varPayload.type)
+      return isSupportedHttpBodyVariable(varPayload.type)
     },
   })
 

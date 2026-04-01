@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
+from graphon.variables.input_entities import VariableEntity, VariableEntityType
 from pydantic import Field
 from sqlalchemy.orm import Session
 
@@ -23,7 +24,6 @@ from core.tools.entities.tool_entities import (
 from core.tools.utils.workflow_configuration_sync import WorkflowToolConfigurationUtils
 from core.tools.workflow_as_tool.tool import WorkflowTool
 from extensions.ext_database import db
-from graphon.variables.input_entities import VariableEntity, VariableEntityType
 from models.account import Account
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider

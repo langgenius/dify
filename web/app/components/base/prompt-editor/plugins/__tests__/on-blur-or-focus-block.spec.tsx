@@ -3,13 +3,10 @@ import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { act, render, waitFor } from '@testing-library/react'
 import {
   BLUR_COMMAND,
-  COMMAND_PRIORITY_EDITOR,
   FOCUS_COMMAND,
-  KEY_ESCAPE_COMMAND,
 } from 'lexical'
 import OnBlurBlock from '../on-blur-or-focus-block'
 import { CaptureEditorPlugin } from '../test-utils'
-import { CLEAR_HIDE_MENU_TIMEOUT } from '../workflow-variable-block'
 
 const renderOnBlurBlock = (props?: {
   onBlur?: () => void
@@ -75,7 +72,7 @@ describe('OnBlurBlock', () => {
       expect(onFocus).toHaveBeenCalledTimes(1)
     })
 
-    it('should call onBlur and dispatch escape after delay when blur target is not var-search-input', async () => {
+    it('should call onBlur when blur target is not var-search-input', async () => {
       const onBlur = vi.fn()
       const { getEditor } = renderOnBlurBlock({ onBlur })
 
@@ -85,14 +82,6 @@ describe('OnBlurBlock', () => {
 
       const editor = getEditor()
       expect(editor).not.toBeNull()
-      vi.useFakeTimers()
-
-      const onEscape = vi.fn(() => true)
-      const unregister = editor!.registerCommand(
-        KEY_ESCAPE_COMMAND,
-        onEscape,
-        COMMAND_PRIORITY_EDITOR,
-      )
 
       let handled = false
       act(() => {
@@ -101,18 +90,9 @@ describe('OnBlurBlock', () => {
 
       expect(handled).toBe(true)
       expect(onBlur).toHaveBeenCalledTimes(1)
-      expect(onEscape).not.toHaveBeenCalled()
-
-      act(() => {
-        vi.advanceTimersByTime(200)
-      })
-
-      expect(onEscape).toHaveBeenCalledTimes(1)
-      unregister()
-      vi.useRealTimers()
     })
 
-    it('should dispatch delayed escape when onBlur callback is not provided', async () => {
+    it('should handle blur when onBlur callback is not provided', async () => {
       const { getEditor } = renderOnBlurBlock()
 
       await waitFor(() => {
@@ -121,28 +101,16 @@ describe('OnBlurBlock', () => {
 
       const editor = getEditor()
       expect(editor).not.toBeNull()
-      vi.useFakeTimers()
 
-      const onEscape = vi.fn(() => true)
-      const unregister = editor!.registerCommand(
-        KEY_ESCAPE_COMMAND,
-        onEscape,
-        COMMAND_PRIORITY_EDITOR,
-      )
-
+      let handled = false
       act(() => {
-        editor!.dispatchCommand(BLUR_COMMAND, createBlurEvent(document.createElement('div')))
-      })
-      act(() => {
-        vi.advanceTimersByTime(200)
+        handled = editor!.dispatchCommand(BLUR_COMMAND, createBlurEvent(document.createElement('div')))
       })
 
-      expect(onEscape).toHaveBeenCalledTimes(1)
-      unregister()
-      vi.useRealTimers()
+      expect(handled).toBe(true)
     })
 
-    it('should skip onBlur and delayed escape when blur target is var-search-input', async () => {
+    it('should skip onBlur when blur target is var-search-input', async () => {
       const onBlur = vi.fn()
       const { getEditor } = renderOnBlurBlock({ onBlur })
 
@@ -152,31 +120,17 @@ describe('OnBlurBlock', () => {
 
       const editor = getEditor()
       expect(editor).not.toBeNull()
-      vi.useFakeTimers()
 
       const target = document.createElement('input')
       target.classList.add('var-search-input')
-
-      const onEscape = vi.fn(() => true)
-      const unregister = editor!.registerCommand(
-        KEY_ESCAPE_COMMAND,
-        onEscape,
-        COMMAND_PRIORITY_EDITOR,
-      )
 
       let handled = false
       act(() => {
         handled = editor!.dispatchCommand(BLUR_COMMAND, createBlurEvent(target))
       })
-      act(() => {
-        vi.advanceTimersByTime(200)
-      })
 
       expect(handled).toBe(true)
       expect(onBlur).not.toHaveBeenCalled()
-      expect(onEscape).not.toHaveBeenCalled()
-      unregister()
-      vi.useRealTimers()
     })
 
     it('should handle focus command when onFocus callback is not provided', async () => {
@@ -198,59 +152,6 @@ describe('OnBlurBlock', () => {
     })
   })
 
-  describe('Clear timeout command', () => {
-    it('should clear scheduled escape timeout when clear command is dispatched', async () => {
-      const { getEditor } = renderOnBlurBlock({ onBlur: vi.fn() })
-
-      await waitFor(() => {
-        expect(getEditor()).not.toBeNull()
-      })
-
-      const editor = getEditor()
-      expect(editor).not.toBeNull()
-      vi.useFakeTimers()
-
-      const onEscape = vi.fn(() => true)
-      const unregister = editor!.registerCommand(
-        KEY_ESCAPE_COMMAND,
-        onEscape,
-        COMMAND_PRIORITY_EDITOR,
-      )
-
-      act(() => {
-        editor!.dispatchCommand(BLUR_COMMAND, createBlurEvent(document.createElement('div')))
-      })
-      act(() => {
-        editor!.dispatchCommand(CLEAR_HIDE_MENU_TIMEOUT, undefined)
-      })
-      act(() => {
-        vi.advanceTimersByTime(200)
-      })
-
-      expect(onEscape).not.toHaveBeenCalled()
-      unregister()
-      vi.useRealTimers()
-    })
-
-    it('should handle clear command when no timeout is scheduled', async () => {
-      const { getEditor } = renderOnBlurBlock()
-
-      await waitFor(() => {
-        expect(getEditor()).not.toBeNull()
-      })
-
-      const editor = getEditor()
-      expect(editor).not.toBeNull()
-
-      let handled = false
-      act(() => {
-        handled = editor!.dispatchCommand(CLEAR_HIDE_MENU_TIMEOUT, undefined)
-      })
-
-      expect(handled).toBe(true)
-    })
-  })
-
   describe('Lifecycle cleanup', () => {
     it('should unregister commands when component unmounts', async () => {
       const { getEditor, unmount } = renderOnBlurBlock()
@@ -266,16 +167,13 @@ describe('OnBlurBlock', () => {
 
       let blurHandled = true
       let focusHandled = true
-      let clearHandled = true
       act(() => {
         blurHandled = editor!.dispatchCommand(BLUR_COMMAND, createBlurEvent(document.createElement('div')))
         focusHandled = editor!.dispatchCommand(FOCUS_COMMAND, createFocusEvent())
-        clearHandled = editor!.dispatchCommand(CLEAR_HIDE_MENU_TIMEOUT, undefined)
       })
 
       expect(blurHandled).toBe(false)
       expect(focusHandled).toBe(false)
-      expect(clearHandled).toBe(false)
     })
   })
 })

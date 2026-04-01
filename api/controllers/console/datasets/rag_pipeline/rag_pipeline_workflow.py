@@ -4,8 +4,9 @@ from typing import Any, Literal, cast
 
 from flask import abort, request
 from flask_restx import Resource, marshal_with  # type: ignore
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound
 
 import services
@@ -39,7 +40,6 @@ from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
 from factories import variable_factory
-from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs import helper
 from libs.helper import TimestampField, UUIDStrOrEmpty
 from libs.login import current_account_with_tenant, current_user, login_required
@@ -53,6 +53,7 @@ from services.rag_pipeline.pipeline_generate_service import PipelineGenerateServ
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 from services.rag_pipeline.rag_pipeline_manage_service import RagPipelineManageService
 from services.rag_pipeline.rag_pipeline_transform_service import RagPipelineTransformService
+from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
 
 logger = logging.getLogger(__name__)
 
@@ -607,7 +608,7 @@ class PublishedRagPipelineApi(Resource):
         # The role of the current user in the ta table must be admin, owner, or editor
         current_user, _ = current_account_with_tenant()
         rag_pipeline_service = RagPipelineService()
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             pipeline = session.merge(pipeline)
             workflow = rag_pipeline_service.publish_workflow(
                 session=session,
@@ -618,8 +619,6 @@ class PublishedRagPipelineApi(Resource):
             pipeline.workflow_id = workflow.id
             session.add(pipeline)
             workflow_created_at = TimestampField().format(workflow.created_at)
-
-            session.commit()
 
         return {
             "result": "success",
@@ -694,7 +693,7 @@ class PublishedAllRagPipelineApi(Resource):
                 raise Forbidden()
 
         rag_pipeline_service = RagPipelineService()
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             workflows, has_more = rag_pipeline_service.get_all_published_workflow(
                 session=session,
                 pipeline=pipeline,
@@ -766,7 +765,7 @@ class RagPipelineByIdApi(Resource):
         rag_pipeline_service = RagPipelineService()
 
         # Create a session and manage the transaction
-        with Session(db.engine, expire_on_commit=False) as session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             workflow = rag_pipeline_service.update_workflow(
                 session=session,
                 workflow_id=workflow_id,
@@ -778,10 +777,37 @@ class RagPipelineByIdApi(Resource):
             if not workflow:
                 raise NotFound("Workflow not found")
 
-            # Commit the transaction in the controller
-            session.commit()
+            return workflow
 
-        return workflow
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @get_rag_pipeline
+    def delete(self, pipeline: Pipeline, workflow_id: str):
+        """
+        Delete a published workflow version that is not currently active on the pipeline.
+        """
+        if pipeline.workflow_id == workflow_id:
+            abort(400, description=f"Cannot delete workflow that is currently in use by pipeline '{pipeline.id}'")
+
+        workflow_service = WorkflowService()
+
+        with sessionmaker(db.engine).begin() as session:
+            try:
+                workflow_service.delete_workflow(
+                    session=session,
+                    workflow_id=workflow_id,
+                    tenant_id=pipeline.tenant_id,
+                )
+            except WorkflowInUseError as e:
+                abort(400, description=str(e))
+            except DraftWorkflowDeletionError as e:
+                abort(400, description=str(e))
+            except ValueError as e:
+                raise NotFound(str(e))
+
+        return None, 204
 
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/published/processing/parameters")

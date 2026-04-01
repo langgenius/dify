@@ -7,6 +7,7 @@ from flask_login import current_user
 from pydantic import TypeAdapter
 from sqlalchemy import select
 
+from core.helper.http_client_pooling import get_pooled_http_client
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models.source import DataSourceOauthBinding
@@ -36,6 +37,13 @@ class NotionSourceInfo(TypedDict):
 SOURCE_INFO_STORAGE_ADAPTER = TypeAdapter(dict[str, object])
 NOTION_SOURCE_INFO_ADAPTER = TypeAdapter(NotionSourceInfo)
 NOTION_PAGE_SUMMARY_ADAPTER = TypeAdapter(NotionPageSummary)
+
+
+# Reuse a small pooled client for OAuth data source flows.
+_http_client: httpx.Client = get_pooled_http_client(
+    "oauth:notion",
+    lambda: httpx.Client(limits=httpx.Limits(max_keepalive_connections=50, max_connections=100)),
+)
 
 
 class OAuthDataSource:
@@ -75,7 +83,7 @@ class NotionOAuth(OAuthDataSource):
         data = {"code": code, "grant_type": "authorization_code", "redirect_uri": self.redirect_uri}
         headers = {"Accept": "application/json"}
         auth = (self.client_id, self.client_secret)
-        response = httpx.post(self._TOKEN_URL, data=data, auth=auth, headers=headers)
+        response = _http_client.post(self._TOKEN_URL, data=data, auth=auth, headers=headers)
 
         response_json = response.json()
         access_token = response_json.get("access_token")
@@ -268,7 +276,7 @@ class NotionOAuth(OAuthDataSource):
                 "Notion-Version": "2022-06-28",
             }
 
-            response = httpx.post(url=self._NOTION_PAGE_SEARCH, json=data, headers=headers)
+            response = _http_client.post(url=self._NOTION_PAGE_SEARCH, json=data, headers=headers)
             response_json = response.json()
 
             results.extend(response_json.get("results", []))
@@ -283,7 +291,7 @@ class NotionOAuth(OAuthDataSource):
             "Authorization": f"Bearer {access_token}",
             "Notion-Version": "2022-06-28",
         }
-        response = httpx.get(url=f"{self._NOTION_BLOCK_SEARCH}/{block_id}", headers=headers)
+        response = _http_client.get(url=f"{self._NOTION_BLOCK_SEARCH}/{block_id}", headers=headers)
         response_json = response.json()
         if response.status_code != 200:
             message = response_json.get("message", "unknown error")
@@ -299,7 +307,7 @@ class NotionOAuth(OAuthDataSource):
             "Authorization": f"Bearer {access_token}",
             "Notion-Version": "2022-06-28",
         }
-        response = httpx.get(url=self._NOTION_BOT_USER, headers=headers)
+        response = _http_client.get(url=self._NOTION_BOT_USER, headers=headers)
         response_json = response.json()
         if "object" in response_json and response_json["object"] == "user":
             user_type = response_json["type"]
@@ -323,7 +331,7 @@ class NotionOAuth(OAuthDataSource):
                 "Authorization": f"Bearer {access_token}",
                 "Notion-Version": "2022-06-28",
             }
-            response = httpx.post(url=self._NOTION_PAGE_SEARCH, json=data, headers=headers)
+            response = _http_client.post(url=self._NOTION_PAGE_SEARCH, json=data, headers=headers)
             response_json = response.json()
 
             results.extend(response_json.get("results", []))

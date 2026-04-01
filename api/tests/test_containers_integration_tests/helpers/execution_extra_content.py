@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import timedelta
 from decimal import Decimal
 from uuid import uuid4
 
 from graphon.nodes.human_input.entities import FormDefinition, UserAction
+
+from libs.datetime_utils import naive_utc_now
 from models.account import Account, Tenant, TenantAccountJoin
 from models.enums import ConversationFromSource, InvokeFrom
 from models.execution_extra_content import HumanInputContent
@@ -117,7 +119,7 @@ def create_human_input_message_fixture(db_session) -> HumanInputMessageFixture:
         inputs=[],
         user_actions=[UserAction(id=action_id, title=action_text)],
         rendered_content="Rendered block",
-        expiration_time=datetime.utcnow() + timedelta(days=1),
+        expiration_time=naive_utc_now() + timedelta(days=1),
         node_title=node_title,
         display_in_ui=True,
     )
@@ -129,7 +131,7 @@ def create_human_input_message_fixture(db_session) -> HumanInputMessageFixture:
         form_definition=form_definition.model_dump_json(),
         rendered_content="Rendered block",
         status=HumanInputFormStatus.SUBMITTED,
-        expiration_time=datetime.utcnow() + timedelta(days=1),
+        expiration_time=naive_utc_now() + timedelta(days=1),
         selected_action_id=action_id,
     )
     db_session.add(form)

@@ -142,7 +142,7 @@ describe('EndpointCard', () => {
     failureFlags.disable = false
     failureFlags.delete = false
     failureFlags.update = false
-    // Polyfill document.execCommand for copy-to-clipboard in jsdom
+    // Polyfill document.execCommand for copy-to-clipboard in the test DOM runtime
     if (typeof document.execCommand !== 'function') {
       document.execCommand = vi.fn().mockReturnValue(true)
     }

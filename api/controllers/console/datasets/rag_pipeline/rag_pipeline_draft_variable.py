@@ -3,8 +3,9 @@ from typing import Any, NoReturn
 
 from flask import Response, request
 from flask_restx import Resource, marshal, marshal_with
+from graphon.variables.types import SegmentType
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import Forbidden
 
 from controllers.common.schema import register_schema_models
@@ -26,7 +27,6 @@ from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, SYSTE
 from extensions.ext_database import db
 from factories.file_factory import build_from_mapping, build_from_mappings
 from factories.variable_factory import build_segment_with_type
-from graphon.variables.types import SegmentType
 from libs.login import current_user, login_required
 from models import Account
 from models.dataset import Pipeline
@@ -96,7 +96,7 @@ class RagPipelineVariableCollectionApi(Resource):
             raise DraftWorkflowNotExist()
 
         # fetch draft workflow by app_model
-        with Session(bind=db.engine, expire_on_commit=False) as session:
+        with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
             draft_var_srv = WorkflowDraftVariableService(
                 session=session,
             )
@@ -143,7 +143,7 @@ class RagPipelineNodeVariableCollectionApi(Resource):
     @marshal_with(workflow_draft_variable_list_model)
     def get(self, pipeline: Pipeline, node_id: str):
         validate_node_id(node_id)
-        with Session(bind=db.engine, expire_on_commit=False) as session:
+        with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
             draft_var_srv = WorkflowDraftVariableService(
                 session=session,
             )
@@ -289,7 +289,7 @@ class RagPipelineVariableResetApi(Resource):
 
 
 def _get_variable_list(pipeline: Pipeline, node_id) -> WorkflowDraftVariableList:
-    with Session(bind=db.engine, expire_on_commit=False) as session:
+    with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
         draft_var_srv = WorkflowDraftVariableService(
             session=session,
         )

@@ -9,10 +9,17 @@ from pydantic import BaseModel, ValidationError
 
 from constants import UUID_NIL
 from core.app.app_config.entities import AppAdditionalFeatures, WorkflowUIBasedAppConfig
-from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator, _refresh_model
+from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
+from core.app.apps.advanced_chat.generate_task_pipeline import (
+    ConversationSnapshot,
+    MessageSnapshot,
+    WorkflowSnapshot,
+)
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
 from core.ops.ops_trace_manager import TraceQueueManager
+from libs.datetime_utils import naive_utc_now
+from models.enums import MessageStatus
 from models.model import AppMode
 
 
@@ -363,8 +370,15 @@ class TestAdvancedChatAppGeneratorInternals:
             workflow_run_id="run-id",
         )
 
+        workflow = SimpleNamespace(id="wf-1", tenant_id="tenant", features={"feature": True}, features_dict={})
         conversation = SimpleNamespace(id="conv-1", mode=AppMode.ADVANCED_CHAT, override_model_configs=None)
-        message = SimpleNamespace(id="msg-1")
+        message = SimpleNamespace(
+            id="msg-1",
+            query="hello",
+            created_at=naive_utc_now(),
+            status=MessageStatus.NORMAL,
+            answer="",
+        )
         db_session = SimpleNamespace(commit=MagicMock(), refresh=MagicMock(), close=MagicMock())
         captured: dict[str, object] = {}
         thread_data: dict[str, object] = {}
@@ -394,19 +408,6 @@ class TestAdvancedChatAppGeneratorInternals:
                 thread_data["started"] = True
 
         monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.threading.Thread", _Thread)
-        monkeypatch.setattr("core.app.apps.advanced_chat.app_generator._refresh_model", lambda session, model: model)
-
-        class _Session:
-            def __init__(self, *args, **kwargs):
-                _ = args, kwargs
-
-            def __enter__(self):
-                return self
-
-            def __exit__(self, exc_type, exc, tb):
-                return False
-
-        monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.Session", _Session)
         monkeypatch.setattr(
             "core.app.apps.advanced_chat.app_generator.db", SimpleNamespace(engine=object(), session=db_session)
         )
@@ -424,7 +425,7 @@ class TestAdvancedChatAppGeneratorInternals:
         pause_state_config = SimpleNamespace(session_factory="session-factory", state_owner_user_id="owner")
 
         response = generator._generate(
-            workflow=SimpleNamespace(features={"feature": True}),
+            workflow=workflow,
             user=SimpleNamespace(id="user"),
             invoke_from=InvokeFrom.WEB_APP,
             application_generate_entity=application_generate_entity,
@@ -444,6 +445,9 @@ class TestAdvancedChatAppGeneratorInternals:
         db_session.refresh.assert_called_once_with(conversation)
         db_session.close.assert_called_once()
         assert captured["draft_var_saver_factory"] == "draft-factory"
+        assert isinstance(captured["workflow"], WorkflowSnapshot)
+        assert isinstance(captured["conversation"], ConversationSnapshot)
+        assert isinstance(captured["message"], MessageSnapshot)
 
     def test_generate_internal_flow_with_existing_records_skips_init(self, monkeypatch):
         generator = AdvancedChatAppGenerator()
@@ -464,8 +468,15 @@ class TestAdvancedChatAppGeneratorInternals:
             workflow_run_id="run-id",
         )
 
+        workflow = SimpleNamespace(id="wf-2", tenant_id="tenant", features={}, features_dict={})
         conversation = SimpleNamespace(id="conv-2", mode=AppMode.ADVANCED_CHAT, override_model_configs=None)
-        message = SimpleNamespace(id="msg-2")
+        message = SimpleNamespace(
+            id="msg-2",
+            query="hello",
+            created_at=naive_utc_now(),
+            status=MessageStatus.NORMAL,
+            answer="",
+        )
         db_session = SimpleNamespace(close=MagicMock(), commit=MagicMock(), refresh=MagicMock())
         init_records = MagicMock()
         thread_data: dict[str, object] = {}
@@ -491,19 +502,6 @@ class TestAdvancedChatAppGeneratorInternals:
                 thread_data["started"] = True
 
         monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.threading.Thread", _Thread)
-        monkeypatch.setattr("core.app.apps.advanced_chat.app_generator._refresh_model", lambda session, model: model)
-
-        class _Session:
-            def __init__(self, *args, **kwargs):
-                _ = args, kwargs
-
-            def __enter__(self):
-                return self
-
-            def __exit__(self, exc_type, exc, tb):
-                return False
-
-        monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.Session", _Session)
         monkeypatch.setattr(
             "core.app.apps.advanced_chat.app_generator.db", SimpleNamespace(engine=object(), session=db_session)
         )
@@ -519,7 +517,7 @@ class TestAdvancedChatAppGeneratorInternals:
         )
 
         response = generator._generate(
-            workflow=SimpleNamespace(features={}),
+            workflow=workflow,
             user=SimpleNamespace(id="user"),
             invoke_from=InvokeFrom.WEB_APP,
             application_generate_entity=application_generate_entity,
@@ -940,10 +938,16 @@ class TestAdvancedChatAppGeneratorInternals:
         with pytest.raises(GenerateTaskStoppedError):
             generator._handle_advanced_chat_response(
                 application_generate_entity=application_generate_entity,
-                workflow=SimpleNamespace(),
+                workflow=WorkflowSnapshot(id="wf", tenant_id="tenant", features_dict={}),
                 queue_manager=SimpleNamespace(),
-                conversation=SimpleNamespace(id="conv", mode=AppMode.ADVANCED_CHAT),
-                message=SimpleNamespace(id="msg"),
+                conversation=ConversationSnapshot(id="conv", mode=AppMode.ADVANCED_CHAT),
+                message=MessageSnapshot(
+                    id="msg",
+                    query="hello",
+                    created_at=naive_utc_now(),
+                    status=MessageStatus.NORMAL,
+                    answer="",
+                ),
                 user=SimpleNamespace(),
                 draft_var_saver_factory=lambda **kwargs: None,
                 stream=False,
@@ -981,41 +985,22 @@ class TestAdvancedChatAppGeneratorInternals:
         with pytest.raises(ValueError, match="other error"):
             generator._handle_advanced_chat_response(
                 application_generate_entity=application_generate_entity,
-                workflow=SimpleNamespace(),
+                workflow=WorkflowSnapshot(id="wf", tenant_id="tenant", features_dict={}),
                 queue_manager=SimpleNamespace(),
-                conversation=SimpleNamespace(id="conv", mode=AppMode.ADVANCED_CHAT),
-                message=SimpleNamespace(id="msg"),
+                conversation=ConversationSnapshot(id="conv", mode=AppMode.ADVANCED_CHAT),
+                message=MessageSnapshot(
+                    id="msg",
+                    query="hello",
+                    created_at=naive_utc_now(),
+                    status=MessageStatus.NORMAL,
+                    answer="",
+                ),
                 user=SimpleNamespace(),
                 draft_var_saver_factory=lambda **kwargs: None,
                 stream=False,
             )
 
         logger_exception.assert_called_once()
-
-    def test_refresh_model_returns_detached_model(self, monkeypatch):
-        source_model = SimpleNamespace(id="source-id")
-        detached_model = SimpleNamespace(id="source-id", detached=True)
-
-        class _Session:
-            def __init__(self, *args, **kwargs):
-                _ = args, kwargs
-
-            def __enter__(self):
-                return self
-
-            def __exit__(self, exc_type, exc, tb):
-                return False
-
-            def get(self, model_type, model_id):
-                _ = model_type
-                return detached_model if model_id == "source-id" else None
-
-        monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.Session", _Session)
-        monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.db", SimpleNamespace(engine=object()))
-
-        refreshed = _refresh_model(session=SimpleNamespace(), model=source_model)
-
-        assert refreshed is detached_model
 
     def test_generate_worker_handles_invoke_auth_error(self, monkeypatch):
         generator = AdvancedChatAppGenerator()

@@ -174,7 +174,7 @@ const Right = ({
           {currentNodeVar?.var && (
             <>
               {
-                [VarInInspectType.environment, VarInInspectType.conversation, VarInInspectType.system].includes(currentNodeVar.nodeType as VarInInspectType) && (
+                ([VarInInspectType.environment, VarInInspectType.conversation, VarInInspectType.system] as VarInInspectType[]).includes(currentNodeVar.nodeType as VarInInspectType) && (
                   <VariableIconWithColor
                     variableCategory={currentNodeVar.nodeType as VarInInspectType}
                     className="size-4"

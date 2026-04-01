@@ -426,11 +426,10 @@ class TidbOnQdrantVectorFactory(AbstractVectorFactory):
                     TIDB_ON_QDRANT_API_KEY = f"{tidb_auth_binding.account}:{tidb_auth_binding.password}"
 
                 else:
-                    idle_tidb_auth_binding = (
-                        db.session.query(TidbAuthBinding)
+                    idle_tidb_auth_binding = db.session.scalar(
+                        select(TidbAuthBinding)
                         .where(TidbAuthBinding.active == False, TidbAuthBinding.status == "ACTIVE")
                         .limit(1)
-                        .one_or_none()
                     )
                     if idle_tidb_auth_binding:
                         idle_tidb_auth_binding.active = True

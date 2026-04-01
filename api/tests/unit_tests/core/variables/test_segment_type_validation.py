@@ -9,9 +9,7 @@ from dataclasses import dataclass
 from typing import Any
 
 import pytest
-
-from graphon.file.enums import FileTransferMethod, FileType
-from graphon.file.models import File
+from graphon.file import File, FileTransferMethod, FileType
 from graphon.variables.segment_group import SegmentGroup
 from graphon.variables.segments import (
     ArrayFileSegment,

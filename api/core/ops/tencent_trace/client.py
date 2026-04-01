@@ -26,7 +26,13 @@ from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExport
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.semconv.resource import ResourceAttributes
+from opentelemetry.semconv._incubating.attributes.deployment_attributes import (  # type: ignore[import-untyped]
+    DEPLOYMENT_ENVIRONMENT,
+)
+from opentelemetry.semconv._incubating.attributes.host_attributes import (  # type: ignore[import-untyped]
+    HOST_NAME,
+)
+from opentelemetry.semconv.attributes import service_attributes
 from opentelemetry.trace import SpanKind
 from opentelemetry.util.types import AttributeValue
 
@@ -73,13 +79,13 @@ class TencentTraceClient:
 
         self.resource = Resource(
             attributes={
-                ResourceAttributes.SERVICE_NAME: service_name,
-                ResourceAttributes.SERVICE_VERSION: f"dify-{dify_config.project.version}-{dify_config.COMMIT_SHA}",
-                ResourceAttributes.DEPLOYMENT_ENVIRONMENT: f"{dify_config.DEPLOY_ENV}-{dify_config.EDITION}",
-                ResourceAttributes.HOST_NAME: socket.gethostname(),
-                ResourceAttributes.TELEMETRY_SDK_LANGUAGE: "python",
-                ResourceAttributes.TELEMETRY_SDK_NAME: "opentelemetry",
-                ResourceAttributes.TELEMETRY_SDK_VERSION: _get_opentelemetry_sdk_version(),
+                service_attributes.SERVICE_NAME: service_name,
+                service_attributes.SERVICE_VERSION: f"dify-{dify_config.project.version}-{dify_config.COMMIT_SHA}",
+                DEPLOYMENT_ENVIRONMENT: f"{dify_config.DEPLOY_ENV}-{dify_config.EDITION}",
+                HOST_NAME: socket.gethostname(),
+                "telemetry.sdk.language": "python",
+                "telemetry.sdk.name": "opentelemetry",
+                "telemetry.sdk.version": _get_opentelemetry_sdk_version(),
             }
         )
         # Prepare gRPC endpoint/metadata
