@@ -1,4 +1,3 @@
-import json
 import logging
 import os
 from datetime import datetime, timedelta
@@ -25,6 +24,7 @@ from core.ops.entities.trace_entity import (
     TraceTaskName,
     WorkflowTraceInfo,
 )
+from core.ops.utils import JSON_DICT_ADAPTER
 from extensions.ext_database import db
 from models import EndUser
 from models.workflow import WorkflowNodeExecutionModel
@@ -153,7 +153,7 @@ class MLflowDataTrace(BaseTraceInstance):
                     inputs = node.process_data  # contains request URL
 
                 if not inputs:
-                    inputs = json.loads(node.inputs) if node.inputs else {}
+                    inputs = JSON_DICT_ADAPTER.validate_json(node.inputs) if node.inputs else {}
 
                 node_span = start_span_no_context(
                     name=node.title,
@@ -180,7 +180,7 @@ class MLflowDataTrace(BaseTraceInstance):
 
                 # End node span
                 finished_at = node.created_at + timedelta(seconds=node.elapsed_time)
-                outputs = json.loads(node.outputs) if node.outputs else {}
+                outputs = JSON_DICT_ADAPTER.validate_json(node.outputs) if node.outputs else {}
                 if node.node_type == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
                     outputs = self._parse_knowledge_retrieval_outputs(outputs)
                 elif node.node_type == BuiltinNodeTypes.LLM:
@@ -216,8 +216,8 @@ class MLflowDataTrace(BaseTraceInstance):
             return {}, {}
 
         try:
-            data = json.loads(node.process_data)
-        except (json.JSONDecodeError, TypeError):
+            data = JSON_DICT_ADAPTER.validate_json(node.process_data)
+        except (ValueError, TypeError):
             return {}, {}
 
         inputs = self._parse_prompts(data.get("prompts"))

@@ -8,6 +8,7 @@ _import_err_msg = (
     "please run `pip install alibabacloud_gpdb20160503 alibabacloud_tea_openapi`"
 )
 
+from core.rag.datasource.vdb.field import parse_metadata_json
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 
@@ -257,7 +258,7 @@ class AnalyticdbVectorOpenAPI:
         documents = []
         for match in response.body.matches.match:
             if match.score >= score_threshold:
-                metadata = json.loads(match.metadata.get("metadata_"))
+                metadata = parse_metadata_json(match.metadata.get("metadata_"))
                 metadata["score"] = match.score
                 doc = Document(
                     page_content=match.metadata.get("page_content"),
@@ -294,7 +295,7 @@ class AnalyticdbVectorOpenAPI:
         documents = []
         for match in response.body.matches.match:
             if match.score >= score_threshold:
-                metadata = json.loads(match.metadata.get("metadata_"))
+                metadata = parse_metadata_json(match.metadata.get("metadata_"))
                 metadata["score"] = match.score
                 doc = Document(
                     page_content=match.metadata.get("page_content"),

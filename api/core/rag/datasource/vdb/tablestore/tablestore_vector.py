@@ -9,7 +9,7 @@ from pydantic import BaseModel, model_validator
 from tablestore import BatchGetRowRequest, TableInBatchGetRowItem
 
 from configs import dify_config
-from core.rag.datasource.vdb.field import Field
+from core.rag.datasource.vdb.field import Field, parse_metadata_json
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
@@ -73,7 +73,8 @@ class TableStoreVector(BaseVector):
         for item in table_result:
             if item.is_ok and item.row:
                 kv = {k: v for k, v, _ in item.row.attribute_columns}
-                docs.append(Document(page_content=kv[Field.CONTENT_KEY], metadata=json.loads(kv[Field.METADATA_KEY])))
+                metadata = parse_metadata_json(kv[Field.METADATA_KEY])
+                docs.append(Document(page_content=kv[Field.CONTENT_KEY], metadata=metadata))
         return docs
 
     def get_type(self) -> str:
@@ -311,7 +312,7 @@ class TableStoreVector(BaseVector):
                 metadata_str = ots_column_map.get(Field.METADATA_KEY)
 
                 vector = json.loads(vector_str) if vector_str else None
-                metadata = json.loads(metadata_str) if metadata_str else {}
+                metadata = parse_metadata_json(metadata_str)
 
                 metadata["score"] = search_hit.score
 
@@ -371,7 +372,7 @@ class TableStoreVector(BaseVector):
                 ots_column_map[col[0]] = col[1]
 
             metadata_str = ots_column_map.get(Field.METADATA_KEY)
-            metadata = json.loads(metadata_str) if metadata_str else {}
+            metadata = parse_metadata_json(metadata_str)
 
             vector_str = ots_column_map.get(Field.VECTOR)
             vector = json.loads(vector_str) if vector_str else None

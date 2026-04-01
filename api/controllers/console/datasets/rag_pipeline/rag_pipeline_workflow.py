@@ -5,7 +5,7 @@ from typing import Any, Literal, cast
 from flask import abort, request
 from flask_restx import Resource, marshal_with  # type: ignore
 from graphon.model_runtime.utils.encoders import jsonable_encoder
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound
 
@@ -186,29 +186,14 @@ class DraftRagPipelineApi(Resource):
 
         if "application/json" in content_type:
             payload_dict = console_ns.payload or {}
+            payload = DraftWorkflowSyncPayload.model_validate(payload_dict)
         elif "text/plain" in content_type:
             try:
-                data = json.loads(request.data.decode("utf-8"))
-                if "graph" not in data or "features" not in data:
-                    raise ValueError("graph or features not found in data")
-
-                if not isinstance(data.get("graph"), dict):
-                    raise ValueError("graph is not a dict")
-
-                payload_dict = {
-                    "graph": data.get("graph"),
-                    "features": data.get("features"),
-                    "hash": data.get("hash"),
-                    "environment_variables": data.get("environment_variables"),
-                    "conversation_variables": data.get("conversation_variables"),
-                    "rag_pipeline_variables": data.get("rag_pipeline_variables"),
-                }
-            except json.JSONDecodeError:
+                payload = DraftWorkflowSyncPayload.model_validate_json(request.data)
+            except (ValueError, ValidationError):
                 return {"message": "Invalid JSON data"}, 400
         else:
             abort(415)
-
-        payload = DraftWorkflowSyncPayload.model_validate(payload_dict)
         rag_pipeline_service = RagPipelineService()
 
         try:
