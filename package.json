@@ -1,11 +1,15 @@
 {
   "name": "dify",
   "private": true,
+  "scripts": {
+    "prepare": "vp config"
+  },
+  "devDependencies": {
+    "taze": "catalog:",
+    "vite-plus": "catalog:"
+  },
   "engines": {
     "node": "^22.22.1"
   },
-  "packageManager": "pnpm@10.33.0",
-  "devDependencies": {
-    "taze": "catalog:"
-  }
+  "packageManager": "pnpm@10.33.0"
 }
