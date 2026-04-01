@@ -112,7 +112,7 @@ const TagInput: FC<TagInputProps> = ({
             {!isSpecialMode && !focused && <span className="i-ri-add-line h-3.5 w-3.5 text-text-placeholder group-hover/tag-add:text-text-secondary" />}
             <AutosizeInput
               inputClassName={cn(
-                'appearance-none text-text-primary caret-[#295EFF] outline-none placeholder:text-text-placeholder group-hover/tag-add:placeholder:text-text-secondary',
+                'appearance-none text-text-primary caret-[#295EFF] outline-hidden placeholder:text-text-placeholder group-hover/tag-add:placeholder:text-text-secondary',
                 isSpecialMode ? 'bg-transparent' : '',
                 inputClassName,
               )}

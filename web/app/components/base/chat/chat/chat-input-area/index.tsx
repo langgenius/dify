@@ -222,7 +222,7 @@ const ChatInputArea = ({
               <Textarea
                 ref={ref => textareaRef.current = ref as any}
                 className={cn(
-                  'w-full resize-none bg-transparent p-1 leading-6 text-text-primary outline-none body-lg-regular',
+                  'w-full resize-none bg-transparent p-1 leading-6 text-text-primary outline-hidden body-lg-regular',
                 )}
                 placeholder={decode(t(readonly ? 'chat.inputDisabledPlaceholder' : 'chat.inputPlaceholder', { ns: 'common', botName }) || '')}
                 autoFocus

@@ -133,7 +133,7 @@ const TagItemEditor: FC<TagItemEditorProps> = ({
         )}
         {isEditing && (
           <input
-            className="shrink-0 appearance-none caret-primary-600 outline-none placeholder:text-text-quaternary"
+            className="shrink-0 appearance-none caret-primary-600 outline-hidden placeholder:text-text-quaternary"
             autoFocus
             value={name}
             onChange={e => setName(e.target.value)}

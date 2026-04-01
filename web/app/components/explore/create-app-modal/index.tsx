@@ -117,7 +117,7 @@ const CreateAppModal = ({
       <Modal
         isShow={show}
         onClose={noop}
-        className="relative !max-w-[480px] px-8"
+        className="relative max-w-[480px]! px-8"
       >
         <div className="absolute right-4 top-4 cursor-pointer p-2" onClick={onHide}>
           <RiCloseLine className="h-4 w-4 text-text-tertiary" />

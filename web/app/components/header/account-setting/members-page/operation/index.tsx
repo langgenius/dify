@@ -102,8 +102,8 @@ const Operation = ({
           <ChevronDownIcon className={cn('h-4 w-4 shrink-0 group-hover:block', open ? 'block' : 'hidden')} />
         </div>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-[1002]">
-        <div className={cn('inline-flex flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm')}>
+      <PortalToFollowElemContent className="z-1002">
+        <div className={cn('inline-flex flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs')}>
           <div className="p-1">
             {
               roleList.map(role => (

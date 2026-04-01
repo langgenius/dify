@@ -136,7 +136,7 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
 
       <Modal
         closable
-        className="!w-[362px] !p-0"
+        className="w-[362px]! p-0!"
         isShow={isShowAvatarPicker}
         onClose={() => setIsShowAvatarPicker(false)}
       >
@@ -156,7 +156,7 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
 
       <Modal
         closable
-        className="!w-[362px] !p-6"
+        className="w-[362px]! p-6!"
         isShow={isShowDeleteConfirm}
         onClose={() => setIsShowDeleteConfirm(false)}
       >

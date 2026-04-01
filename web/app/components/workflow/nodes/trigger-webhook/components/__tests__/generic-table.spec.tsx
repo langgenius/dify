@@ -81,7 +81,7 @@ describe('GenericTable', () => {
     expect(onChange).toHaveBeenLastCalledWith([{ name: 'my_key', enabled: false }])
   })
 
-  it('should skip intermediate empty rows and blur the current input when enter is pressed', () => {
+  it('should skip intermediate empty rows and blur-sm the current input when enter is pressed', () => {
     render(
       <GenericTable
         title="Headers"
@@ -100,7 +100,7 @@ describe('GenericTable', () => {
     expect(inputs).toHaveLength(3)
     expect(screen.getAllByRole('button', { name: 'Delete row' })).toHaveLength(2)
 
-    const blurSpy = vi.spyOn(inputs[0], 'blur')
+    const blurSpy = vi.spyOn(inputs[0], 'blur-sm')
     fireEvent.keyDown(inputs[0], { key: 'Enter' })
     expect(blurSpy).toHaveBeenCalledTimes(1)
   })

@@ -183,7 +183,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
     <Modal
       isShow
       onClose={noop}
-      className="!w-[640px] !max-w-none !p-8 !pb-6"
+      className="w-[640px]! max-w-none! p-8! pb-6!"
     >
       <div className="mb-2 text-xl font-semibold text-text-primary">
         {`${action} ${t('variableConfig.apiBasedVar', { ns: 'appDebug' })}`}
@@ -211,13 +211,13 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
           <input
             value={localeData.label || ''}
             onChange={e => handleValueChange({ label: e.target.value })}
-            className="mr-2 block h-9 grow appearance-none rounded-lg bg-components-input-bg-normal px-3 text-sm text-components-input-text-filled outline-none"
+            className="mr-2 block h-9 grow appearance-none rounded-lg bg-components-input-bg-normal px-3 text-sm text-components-input-text-filled outline-hidden"
             placeholder={t('feature.tools.modal.name.placeholder', { ns: 'appDebug' }) || ''}
           />
           <AppIcon
             size="large"
             onClick={() => { setShowEmojiPicker(true) }}
-            className="!h-9 !w-9 cursor-pointer rounded-lg border-[0.5px] border-components-panel-border"
+            className="h-9! w-9! cursor-pointer rounded-lg border-[0.5px] border-components-panel-border"
             icon={localeData.icon}
             background={localeData.icon_background}
           />
@@ -230,7 +230,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
         <input
           value={localeData.variable || ''}
           onChange={e => handleValueChange({ variable: e.target.value })}
-          className="block h-9 w-full appearance-none rounded-lg bg-components-input-bg-normal px-3 text-sm text-components-input-text-filled outline-none"
+          className="block h-9 w-full appearance-none rounded-lg bg-components-input-bg-normal px-3 text-sm text-components-input-text-filled outline-hidden"
           placeholder={t('feature.tools.modal.variableName.placeholder', { ns: 'appDebug' }) || ''}
         />
       </div>

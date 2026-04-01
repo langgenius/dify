@@ -163,7 +163,7 @@ const Question: FC<QuestionProps> = ({
         <div className={cn('mr-2 gap-1', isEditing ? 'hidden' : 'flex')}>
           <div
             data-testid="action-container"
-            className="absolute hidden gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm group-hover:flex"
+            className="absolute hidden gap-0.5 radius-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs group-hover:flex"
             style={{ right: contentWidth + 8 }}
           >
             <ActionButton
@@ -209,7 +209,7 @@ const Question: FC<QuestionProps> = ({
                   <div className="max-h-[158px] overflow-y-auto overflow-x-hidden pr-1">
                     <Textarea
                       className={cn(
-                        'w-full resize-none bg-transparent p-0 leading-7 text-text-primary outline-none body-lg-regular',
+                        'w-full resize-none bg-transparent p-0 leading-7 text-text-primary outline-hidden body-lg-regular',
                       )}
                       autoFocus
                       minRows={1}

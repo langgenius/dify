@@ -227,7 +227,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
                   showBatchModal={showBatchModal}
                   embedding={embedding}
                 />
-                <Divider type="vertical" className="!mx-3 !h-[14px] !bg-divider-regular" />
+                <Divider type="vertical" className="mx-3! h-[14px]! bg-divider-regular!" />
               </>
             )}
             {documentDetail && (
@@ -247,7 +247,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
               detail={operationsDetail}
               datasetId={datasetId}
               onUpdate={handleOperate}
-              className="!w-[200px]"
+              className="w-[200px]!"
             />
             <button
               type="button"
@@ -290,7 +290,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
                       )}
                 </div>
               )}
-          <FloatRightContainer showClose isOpen={showMetadata} onClose={() => setShowMetadata(false)} isMobile={isMobile} panelClassName="!justify-start" footer={null}>
+          <FloatRightContainer showClose isOpen={showMetadata} onClose={() => setShowMetadata(false)} isMobile={isMobile} panelClassName="justify-start!" footer={null}>
             <Metadata
               className="mr-2 mt-3"
               datasetId={datasetId}

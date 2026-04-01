@@ -48,13 +48,13 @@ function ComplianceDocActionVisual({
         aria-hidden
         data-disabled={isPending || undefined}
         className={cn(
-          'btn btn-small btn-secondary pointer-events-none flex items-center gap-[1px]',
+          'btn btn-small btn-secondary pointer-events-none flex items-center gap-px',
           isPending && 'cursor-not-allowed',
         )}
       >
         <span className="i-ri-arrow-down-circle-line size-[14px] text-components-button-secondary-text-disabled" />
         <span className="px-[3px] text-components-button-secondary-text system-xs-medium">{downloadText}</span>
-        {isPending && <Spinner loading={true} className="!ml-1 !h-3 !w-3 !border-2 !text-text-tertiary" />}
+        {isPending && <Spinner loading={true} className="ml-1! h-3! w-3! border-2! text-text-tertiary!" />}
       </div>
     )
   }
@@ -68,7 +68,7 @@ function ComplianceDocActionVisual({
         disabled={!canShowUpgradeTooltip}
         render={(
           <PremiumBadge color="blue" allowHover={true}>
-            <SparklesSoft className="flex h-3.5 w-3.5 items-center py-[1px] pl-[3px] text-components-premium-badge-indigo-text-stop-0" />
+            <SparklesSoft className="flex h-3.5 w-3.5 items-center py-px pl-[3px] text-components-premium-badge-indigo-text-stop-0" />
             <div className="px-1 system-xs-medium">
               {upgradeText}
             </div>
@@ -182,7 +182,7 @@ export default function Compliance() {
         />
       </DropdownMenuSubTrigger>
       <DropdownMenuSubContent
-        popupClassName="w-[337px] divide-y divide-divider-subtle !bg-components-panel-bg-blur !py-0 backdrop-blur-sm"
+        popupClassName="w-[337px] divide-y divide-divider-subtle bg-components-panel-bg-blur! py-0! backdrop-blur-xs"
       >
         <DropdownMenuGroup className="py-1">
           <ComplianceDocRowItem

@@ -240,7 +240,7 @@ const FireCrawl: FC<Props> = ({
         </OptionsWrap>
 
         {!isInit && (
-          <div className="relative left-[-16px] mt-3 w-[calc(100%_+_32px)] rounded-b-xl">
+          <div className="relative left-[-16px] mt-3 w-[calc(100%+32px)] rounded-b-xl">
             {isRunning
               && (
                 <Crawling

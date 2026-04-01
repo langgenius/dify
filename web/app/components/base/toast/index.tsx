@@ -37,7 +37,7 @@ const Toast = ({
     <div className={cn(
       className,
       // Keep legacy toast above highPriority modals until overlay migration completes.
-      'fixed z-[1101] mx-8 my-4 w-[360px] grow overflow-hidden rounded-xl',
+      'fixed z-1101 mx-8 my-4 w-[360px] grow overflow-hidden rounded-xl',
       'border border-components-panel-border-subtle bg-components-panel-bg-blur shadow-sm',
       'top-0',
       'right-0',
@@ -73,7 +73,7 @@ const Toast = ({
         </div>
         {close
           && (
-            <ActionButton data-testid="toast-close-button" className="z-[1000]" onClick={close}>
+            <ActionButton data-testid="toast-close-button" className="z-1000" onClick={close}>
               <span className="i-ri-close-line h-4 w-4 shrink-0 text-text-tertiary" />
             </ActionButton>
           )}

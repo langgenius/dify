@@ -27,7 +27,7 @@ const SchemaModal: FC<Props> = ({
       isShow={isShow}
       onClose={onClose}
       className="max-w-[960px] p-0"
-      wrapperClassName="z-[9999]"
+      wrapperClassName="z-9999"
     >
       <div className="pb-6">
         {/* Header */}

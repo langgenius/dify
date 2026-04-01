@@ -152,7 +152,7 @@ const TestRunMenu = forwardRef<TestRunMenuRef, TestRunMenuProps>(({
           {children}
         </div>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-[12]">
+      <PortalToFollowElemContent className="z-12">
         <div className="w-[284px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-1 shadow-lg">
           <div className="mb-2 px-3 pt-2 text-sm font-medium text-text-primary">
             {t('common.chooseStartNodeToRun', { ns: 'workflow' })}

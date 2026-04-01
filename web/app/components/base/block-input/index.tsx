@@ -118,7 +118,7 @@ const BlockInput: FC<IBlockInputProps> = ({
   }
 
   const placeholder = ''
-  const editAreaClassName = 'focus:outline-none bg-transparent text-sm'
+  const editAreaClassName = 'focus:outline-hidden bg-transparent text-sm'
 
   const textAreaContent = (
     <div className={cn(readonly ? 'max-h-[180px] pb-5' : 'h-[180px]', 'overflow-y-auto')} onClick={() => !readonly && setIsEditing(true)}>

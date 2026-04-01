@@ -201,12 +201,12 @@ describe('Line', () => {
 
     it('should handle Tailwind utility classes', () => {
       const { container } = render(
-        <Line className="absolute right-[-1px] top-1/2 -translate-y-1/2" />,
+        <Line className="absolute -right-px top-1/2 -translate-y-1/2" />,
       )
 
       const svg = container.querySelector('svg')
       expect(svg).toHaveClass('absolute')
-      expect(svg).toHaveClass('right-[-1px]')
+      expect(svg).toHaveClass('-right-px')
       expect(svg).toHaveClass('top-1/2')
       expect(svg).toHaveClass('-translate-y-1/2')
     })
@@ -528,7 +528,7 @@ describe('Empty', () => {
       expect(cards.length).toBe(16)
     })
 
-    it('should have rounded corners on cards', () => {
+    it('should have rounded-sm corners on cards', () => {
       const { container } = render(<Empty />)
 
       const cards = container.querySelectorAll('.rounded-xl')

@@ -78,8 +78,8 @@ const ApiBasedExtensionModal: FC<ApiBasedExtensionModalProps> = ({
     <Modal
       isShow
       onClose={noop}
-      wrapperClassName="z-[1002]"
-      className="!w-[640px] !max-w-none !p-8 !pb-6"
+      wrapperClassName="z-1002"
+      className="w-[640px]! max-w-none! p-8! pb-6!"
     >
       <div className="mb-2 text-xl font-semibold text-text-primary">
         {
@@ -95,7 +95,7 @@ const ApiBasedExtensionModal: FC<ApiBasedExtensionModalProps> = ({
         <input
           value={localeData.name || ''}
           onChange={e => handleDataChange('name', e.target.value)}
-          className="block h-9 w-full appearance-none rounded-lg bg-components-input-bg-normal px-3 text-sm text-text-primary outline-none"
+          className="block h-9 w-full appearance-none rounded-lg bg-components-input-bg-normal px-3 text-sm text-text-primary outline-hidden"
           placeholder={t('apiBasedExtension.modal.name.placeholder', { ns: 'common' }) || ''}
         />
       </div>
@@ -115,7 +115,7 @@ const ApiBasedExtensionModal: FC<ApiBasedExtensionModalProps> = ({
         <input
           value={localeData.api_endpoint || ''}
           onChange={e => handleDataChange('api_endpoint', e.target.value)}
-          className="block h-9 w-full appearance-none rounded-lg bg-components-input-bg-normal px-3 text-sm text-text-primary outline-none"
+          className="block h-9 w-full appearance-none rounded-lg bg-components-input-bg-normal px-3 text-sm text-text-primary outline-hidden"
           placeholder={t('apiBasedExtension.modal.apiEndpoint.placeholder', { ns: 'common' }) || ''}
         />
       </div>
@@ -127,7 +127,7 @@ const ApiBasedExtensionModal: FC<ApiBasedExtensionModalProps> = ({
           <input
             value={localeData.api_key || ''}
             onChange={e => handleDataChange('api_key', e.target.value)}
-            className="mr-2 block h-9 grow appearance-none rounded-lg bg-components-input-bg-normal px-3 text-sm text-text-primary outline-none"
+            className="mr-2 block h-9 grow appearance-none rounded-lg bg-components-input-bg-normal px-3 text-sm text-text-primary outline-hidden"
             placeholder={t('apiBasedExtension.modal.apiKey.placeholder', { ns: 'common' }) || ''}
           />
         </div>

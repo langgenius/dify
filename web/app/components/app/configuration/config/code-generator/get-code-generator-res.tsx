@@ -203,7 +203,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
     <Modal
       isShow={isShow}
       onClose={onClose}
-      className="min-w-[1140px] !p-0"
+      className="min-w-[1140px] p-0!"
     >
       <div className="relative flex h-[680px] flex-wrap">
         <div className="h-full w-[570px] shrink-0 overflow-y-auto border-r border-divider-regular p-6">
@@ -213,7 +213,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
           </div>
           <div className="mb-4">
             <ModelParameterModal
-              popupClassName="!w-[520px]"
+              popupClassName="w-[520px]!"
               isAdvancedMode={true}
               provider={model.provider}
               completionParams={model.completion_params}

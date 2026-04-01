@@ -164,7 +164,7 @@ const Authorized = ({
         >
           {renderTrigger(mergedIsOpen)}
         </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className="z-[1002]">
+        <PortalToFollowElemContent className="z-1002">
           <div className={cn(
             'w-[360px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]',
             popupClassName,
@@ -198,14 +198,14 @@ const Authorized = ({
                     />
                     {
                       index !== items.length - 1 && (
-                        <div className="h-[1px] bg-divider-subtle"></div>
+                        <div className="h-px bg-divider-subtle"></div>
                       )
                     }
                   </Fragment>
                 ))
               }
             </div>
-            <div className="h-[1px] bg-divider-subtle"></div>
+            <div className="h-px bg-divider-subtle"></div>
             {
               isModelCredential && !notAllowCustomCredential && !hideAddAction && (
                 <div

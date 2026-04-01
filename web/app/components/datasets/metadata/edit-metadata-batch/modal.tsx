@@ -116,7 +116,7 @@ const EditMetadataBatchModal: FC<Props> = ({
       isShow
       closable
       onClose={onHide}
-      className="!max-w-[640px]"
+      className="max-w-[640px]!"
     >
       <div className="mt-1 text-text-accent system-xs-medium">{t(`${i18nPrefix}.editDocumentsNum`, { ns: 'dataset', num: documentNum })}</div>
       <div className="max-h-[305px] overflow-y-auto overflow-x-hidden">

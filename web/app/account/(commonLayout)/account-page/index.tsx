@@ -155,13 +155,13 @@ export default function AccountPage() {
       <div className="pb-3 pt-2">
         <h4 className="text-text-primary title-2xl-semi-bold">{t('account.myAccount', { ns: 'common' })}</h4>
       </div>
-      <div className="mb-8 flex items-center rounded-xl bg-gradient-to-r from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1 p-6">
+      <div className="mb-8 flex items-center rounded-xl bg-linear-to-r from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1 p-6">
         <AvatarWithEdit avatar={userProfile.avatar_url} name={userProfile.name} onSave={mutateUserProfile} size="3xl" />
         <div className="ml-4">
           <p className="text-text-primary system-xl-semibold">
             {userProfile.name}
             {isEducationAccount && (
-              <PremiumBadge size="s" color="blue" className="ml-1 !px-2">
+              <PremiumBadge size="s" color="blue" className="ml-1 px-2!">
                 <RiGraduationCapFill className="mr-1 h-3 w-3" />
                 <span className="system-2xs-medium">EDU</span>
               </PremiumBadge>
@@ -205,7 +205,7 @@ export default function AccountPage() {
           </div>
         )
       }
-      <div className="mb-6 border-[1px] border-divider-subtle" />
+      <div className="mb-6 border border-divider-subtle" />
       <div className="mb-8">
         <div className={titleClassName}>{t('account.langGeniusAccount', { ns: 'common' })}</div>
         <div className={descriptionClassName}>{t('account.langGeniusAccountTip', { ns: 'common' })}</div>
@@ -224,7 +224,7 @@ export default function AccountPage() {
           <Modal
             isShow
             onClose={() => setEditNameModalVisible(false)}
-            className="!w-[420px] !p-6"
+            className="w-[420px]! p-6!"
           >
             <div className="mb-6 text-text-primary title-2xl-semi-bold">{t('account.editName', { ns: 'common' })}</div>
             <div className={titleClassName}>{t('account.name', { ns: 'common' })}</div>
@@ -254,7 +254,7 @@ export default function AccountPage() {
               setEditPasswordModalVisible(false)
               resetPasswordForm()
             }}
-            className="!w-[420px] !p-6"
+            className="w-[420px]! p-6!"
           >
             <div className="mb-6 text-text-primary title-2xl-semi-bold">{userProfile.is_password_set ? t('account.resetPassword', { ns: 'common' }) : t('account.setPassword', { ns: 'common' })}</div>
             {userProfile.is_password_set && (

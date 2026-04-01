@@ -97,7 +97,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
 
   const renderEmptyState = () => (
     <div className="flex h-full flex-col items-center justify-center rounded-tl-2xl bg-background-body px-4 py-3">
-      <div className={cn(docStyle.commonIcon, docStyle.targetIcon, '!h-14 !w-14 !bg-text-quaternary')} />
+      <div className={cn(docStyle.commonIcon, docStyle.targetIcon, 'h-14! w-14! bg-text-quaternary!')} />
       <div className="mt-3 text-[13px] text-text-quaternary">
         {t('hit.emptyTip', { ns: 'datasetHitTesting' })}
       </div>
@@ -153,7 +153,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
         )}
       </div>
       <FloatRightContainer
-        panelClassName="!justify-start !overflow-y-auto"
+        panelClassName="justify-start! overflow-y-auto!"
         showClose
         isMobile={isMobile}
         isOpen={isShowRightPanel}
@@ -186,7 +186,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
         onClose={() => setIsShowModifyRetrievalModal(false)}
         footer={null}
         mask={isMobile}
-        panelClassName="mt-16 mx-2 sm:mr-2 mb-3 !p-0 !max-w-[640px] rounded-xl"
+        panelClassName="mt-16 mx-2 sm:mr-2 mb-3 p-0! max-w-[640px]! rounded-xl"
       >
         <ModifyRetrievalModal
           indexMethod={currentDataset?.indexing_technique || ''}

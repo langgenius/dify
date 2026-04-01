@@ -58,7 +58,7 @@ const EmptyDatasetCreationModal = ({
     <Modal
       isShow={show}
       onClose={onHide}
-      className={cn(s.modal, '!max-w-[520px]', 'px-8')}
+      className={cn(s.modal, 'max-w-[520px]!', 'px-8')}
     >
       <div className={s.modalHeader}>
         <div className={s.title}>{t('stepOne.modal.title', { ns: 'datasetCreation' })}</div>

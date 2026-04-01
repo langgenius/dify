@@ -335,7 +335,7 @@ const ModelModal: FC<ModelModalProps> = ({
             showCredentialLabel && (
               <div className="mb-3 mt-6 flex items-center text-text-tertiary system-xs-medium-uppercase">
                 {t('modelProvider.auth.modelCredential', { ns: 'common' })}
-                <div className="ml-2 h-px grow bg-gradient-to-r from-divider-regular to-background-gradient-mask-transparent" />
+                <div className="ml-2 h-px grow bg-linear-to-r from-divider-regular to-background-gradient-mask-transparent" />
               </div>
             )
           }

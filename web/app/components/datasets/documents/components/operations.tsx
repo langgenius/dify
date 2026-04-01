@@ -199,7 +199,7 @@ const Operations = ({
             ? (
                 <Tooltip
                   popupContent={t('list.action.enableWarning', { ns: 'datasetDocuments' })}
-                  popupClassName="!font-semibold"
+                  popupClassName="font-semibold!"
                 >
                   <div>
                     <Switch value={false} onChange={noop} disabled={true} size="md" />
@@ -207,7 +207,7 @@ const Operations = ({
                 </Tooltip>
               )
             : <Switch value={enabled} onChange={v => handleSwitch(v ? 'enable' : 'disable')} size="md" />}
-          <Divider className="!ml-4 !mr-2 !h-3" type="vertical" />
+          <Divider className="ml-4! mr-2! h-3!" type="vertical" />
         </>
       )}
       {embeddingAvailable && (
@@ -329,9 +329,9 @@ const Operations = ({
                 <RiMoreFill className="h-4 w-4 text-components-button-secondary-text" />
               </div>
             )}
-            btnClassName={open => cn(isListScene ? s.actionIconWrapperList : s.actionIconWrapperDetail, open ? '!hover:bg-state-base-hover !shadow-none' : '!bg-transparent')}
-            popupClassName="!w-full"
-            className={`!z-20 flex h-fit !w-[200px] justify-end ${className}`}
+            btnClassName={open => cn(isListScene ? s.actionIconWrapperList : s.actionIconWrapperDetail, open ? '!hover:bg-state-base-hover shadow-none!' : 'bg-transparent!')}
+            popupClassName="w-full!"
+            className={`z-20! flex h-fit w-[200px]! justify-end ${className}`}
           />
         </>
       )}

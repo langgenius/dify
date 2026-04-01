@@ -53,7 +53,7 @@ const ConfirmAddVar: FC<IConfirmAddVarProps> = ({
           >
             {VarIcon}
           </div>
-          <div className="grow-1">
+          <div className="grow">
             <div className="text-sm font-medium text-text-primary">{t('autoAddVar', { ns: 'appDebug' })}</div>
             <div className="mt-[15px] flex max-h-[66px] flex-wrap space-x-1 overflow-y-auto px-1">
               {varNameArr.map(name => (

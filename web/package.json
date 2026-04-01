@@ -175,6 +175,8 @@
     "@storybook/addon-themes": "catalog:",
     "@storybook/nextjs-vite": "catalog:",
     "@storybook/react": "catalog:",
+    "@tailwindcss/postcss": "catalog:",
+    "@tailwindcss/vite": "catalog:",
     "@tanstack/eslint-plugin-query": "catalog:",
     "@tanstack/react-devtools": "catalog:",
     "@tanstack/react-form-devtools": "catalog:",

@@ -95,7 +95,7 @@ const EditAnnotationModal: FC<Props> = ({
       <Drawer
         isShow={isShow}
         onHide={onHide}
-        maxWidthClassName="!max-w-[480px]"
+        maxWidthClassName="max-w-[480px]!"
         title={t('editModal.title', { ns: 'appAnnotation' }) as string}
         body={(
           <div>

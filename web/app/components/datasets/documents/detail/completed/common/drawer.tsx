@@ -105,7 +105,7 @@ const Drawer = ({
   const overlayPointerEvents = modal && open ? 'pointer-events-auto' : 'pointer-events-none'
 
   const content = (
-    <div className="pointer-events-none fixed inset-0 z-[9999]">
+    <div className="pointer-events-none fixed inset-0 z-9999">
       {showOverlay && (
         <div
           onClick={modal ? onClose : undefined}

@@ -143,7 +143,7 @@ describe('CustomizedPagination', () => {
       expect(screen.getByText('/')).toBeInTheDocument()
     })
 
-    it('should confirm input on blur', () => {
+    it('should confirm input on blur-sm', () => {
       vi.useFakeTimers()
       const onChange = vi.fn()
       render(<CustomizedPagination {...defaultProps} current={0} onChange={onChange} />)

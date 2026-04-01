@@ -151,7 +151,7 @@ export default function AccountSetting({
       show
       onClose={handleClose}
     >
-      <div className="mx-auto flex h-[100vh] max-w-[1048px]">
+      <div className="mx-auto flex h-screen max-w-[1048px]">
         <div className="flex w-[44px] flex-col border-r border-divider-burn pl-4 pr-6 sm:w-[224px]">
           <div className="mb-8 mt-6 px-3 py-2 text-text-primary title-2xl-semi-bold">{t('userProfile.settings', { ns: 'common' })}</div>
           <div className="w-full">
@@ -189,7 +189,7 @@ export default function AccountSetting({
           </div>
         </div>
         <div className="relative flex min-h-0 w-[824px]">
-          <div className="fixed right-6 top-6 z-[9999] flex flex-col items-center">
+          <div className="fixed right-6 top-6 z-9999 flex flex-col items-center">
             <Button
               variant="tertiary"
               size="large"

@@ -87,7 +87,7 @@ const AgentLogDetail: FC<AgentLogDetailProps> = ({
         <div
           className={cn(
             'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] font-semibold leading-[18px] text-text-tertiary',
-            currentTab === 'DETAIL' && '!border-[rgb(21,94,239)] text-text-secondary',
+            currentTab === 'DETAIL' && 'border-[rgb(21,94,239)]! text-text-secondary',
           )}
           data-active={currentTab === 'DETAIL'}
           onClick={() => switchTab('DETAIL')}
@@ -97,7 +97,7 @@ const AgentLogDetail: FC<AgentLogDetailProps> = ({
         <div
           className={cn(
             'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] font-semibold leading-[18px] text-text-tertiary',
-            currentTab === 'TRACING' && '!border-[rgb(21,94,239)] text-text-secondary',
+            currentTab === 'TRACING' && 'border-[rgb(21,94,239)]! text-text-secondary',
           )}
           data-active={currentTab === 'TRACING'}
           onClick={() => switchTab('TRACING')}
@@ -106,7 +106,7 @@ const AgentLogDetail: FC<AgentLogDetailProps> = ({
         </div>
       </div>
       {/* panel detail */}
-      <div className={cn('h-0 grow overflow-y-auto rounded-b-2xl bg-components-panel-bg', currentTab !== 'DETAIL' && '!bg-background-section')}>
+      <div className={cn('h-0 grow overflow-y-auto rounded-b-2xl bg-components-panel-bg', currentTab !== 'DETAIL' && 'bg-background-section!')}>
         {loading && (
           <div className="flex h-full items-center justify-center bg-components-panel-bg">
             <Loading />

@@ -38,12 +38,12 @@ const WorkplaceSelector = () => {
             <MenuButton className={cn(
               `
                 group flex w-full cursor-pointer items-center
-                p-0.5 hover:bg-state-base-hover ${open && 'bg-state-base-hover'} rounded-[10px]
+                p-0.5 hover:bg-state-base-hover ${open && 'bg-state-base-hover'} radius-lg
               `,
             )}
             >
               <div className="mr-1.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-components-icon-bg-blue-solid text-[13px] max-[800px]:mr-0">
-                <span className="h-6 bg-gradient-to-r from-components-avatar-shape-fill-stop-0 to-components-avatar-shape-fill-stop-100 bg-clip-text align-middle font-semibold uppercase leading-6 text-shadow-shadow-1 opacity-90">{currentWorkspace?.name[0]?.toLocaleUpperCase()}</span>
+                <span className="h-6 bg-linear-to-r from-components-avatar-shape-fill-stop-0 to-components-avatar-shape-fill-stop-100 bg-clip-text align-middle font-semibold uppercase leading-6 text-shadow-shadow-1 opacity-90">{currentWorkspace?.name[0]?.toLocaleUpperCase()}</span>
               </div>
               <div className="flex min-w-0 items-center">
                 <div className="min-w-0 max-w-[149px] truncate text-text-secondary system-sm-medium max-[800px]:hidden">{currentWorkspace?.name}</div>
@@ -63,7 +63,7 @@ const WorkplaceSelector = () => {
                 anchor="bottom start"
                 className={cn(
                   `
-                    shadows-shadow-lg absolute left-[-15px] z-[1000] mt-1 flex max-h-[400px] w-[280px] flex-col items-start overflow-y-auto
+                    shadows-shadow-lg absolute left-[-15px] z-1000 mt-1 flex max-h-[400px] w-[280px] flex-col items-start overflow-y-auto
                     rounded-xl bg-components-panel-bg-blur backdrop-blur-[5px]
                   `,
                 )}
@@ -76,7 +76,7 @@ const WorkplaceSelector = () => {
                     workspaces.map(workspace => (
                       <div className="flex items-center gap-2 self-stretch rounded-lg py-1 pl-3 pr-2 hover:bg-state-base-hover" key={workspace.id} onClick={() => handleSwitchWorkspace(workspace.id)}>
                         <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-components-icon-bg-blue-solid text-[13px]">
-                          <span className="h-6 bg-gradient-to-r from-components-avatar-shape-fill-stop-0 to-components-avatar-shape-fill-stop-100 bg-clip-text align-middle font-semibold uppercase leading-6 text-shadow-shadow-1 opacity-90">{workspace?.name[0]?.toLocaleUpperCase()}</span>
+                          <span className="h-6 bg-linear-to-r from-components-avatar-shape-fill-stop-0 to-components-avatar-shape-fill-stop-100 bg-clip-text align-middle font-semibold uppercase leading-6 text-shadow-shadow-1 opacity-90">{workspace?.name[0]?.toLocaleUpperCase()}</span>
                         </div>
                         <div className="line-clamp-1 grow cursor-pointer overflow-hidden text-ellipsis text-text-secondary system-md-regular">{workspace.name}</div>
                         <PlanBadge plan={workspace.plan as Plan} />
