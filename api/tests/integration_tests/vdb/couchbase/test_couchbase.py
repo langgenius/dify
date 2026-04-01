@@ -1,3 +1,4 @@
+import re
 import subprocess
 import time
 
@@ -7,8 +8,13 @@ from tests.integration_tests.vdb.test_vector_store import (
     setup_mock_redis,
 )
 
+# Only allow safe Docker container name characters: alphanumeric, hyphens, underscores, and dots
+_SAFE_CONTAINER_NAME_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_.\-]*$")
+
 
 def wait_for_healthy_container(service_name="couchbase-server", timeout=300):
+    if not _SAFE_CONTAINER_NAME_RE.match(service_name):
+        raise ValueError(f"Invalid container name: {service_name!r}. Only alphanumeric characters, hyphens, underscores, and dots are allowed.")
     start_time = time.time()
     while time.time() - start_time < timeout:
         result = subprocess.run(
