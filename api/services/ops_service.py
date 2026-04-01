@@ -18,9 +18,9 @@ class OpsService:
         :return:
         """
         trace_config_data: TraceAppConfig | None = db.session.scalar(
-            select(TraceAppConfig).where(
-                TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider
-            ).limit(1)
+            select(TraceAppConfig)
+            .where(TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider)
+            .limit(1)
         )
 
         if not trace_config_data:
@@ -185,9 +185,9 @@ class OpsService:
 
         # check if trace config already exists
         trace_config_data: TraceAppConfig | None = db.session.scalar(
-            select(TraceAppConfig).where(
-                TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider
-            ).limit(1)
+            select(TraceAppConfig)
+            .where(TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider)
+            .limit(1)
         )
 
         if trace_config_data:
@@ -227,9 +227,9 @@ class OpsService:
 
         # check if trace config already exists
         current_trace_config = db.session.scalar(
-            select(TraceAppConfig).where(
-                TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider
-            ).limit(1)
+            select(TraceAppConfig)
+            .where(TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider)
+            .limit(1)
         )
 
         if not current_trace_config:
@@ -264,9 +264,9 @@ class OpsService:
         :return:
         """
         trace_config = db.session.scalar(
-            select(TraceAppConfig).where(
-                TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider
-            ).limit(1)
+            select(TraceAppConfig)
+            .where(TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider)
+            .limit(1)
         )
 
         if not trace_config:

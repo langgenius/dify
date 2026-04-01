@@ -77,9 +77,7 @@ class MessageService:
 
         if first_id:
             first_message = db.session.scalar(
-                select(Message)
-                .where(Message.conversation_id == conversation.id, Message.id == first_id)
-                .limit(1)
+                select(Message).where(Message.conversation_id == conversation.id, Message.id == first_id).limit(1)
             )
 
             if not first_message:
@@ -157,9 +155,7 @@ class MessageService:
                 .limit(fetch_limit)
             ).all()
         else:
-            history_messages = db.session.scalars(
-                stmt.order_by(Message.created_at.desc()).limit(fetch_limit)
-            ).all()
+            history_messages = db.session.scalars(stmt.order_by(Message.created_at.desc()).limit(fetch_limit)).all()
 
         has_more = False
         if len(history_messages) > limit:
