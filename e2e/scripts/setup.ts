@@ -23,6 +23,19 @@ import {
 } from './common'
 
 const buildIdPath = path.join(webDir, '.next', 'BUILD_ID')
+const standaloneServerPath = path.join(webDir, '.next', 'standalone', 'web', 'server.js')
+
+const hasReusableWebBuild = async () => {
+  try {
+    await Promise.all([
+      access(buildIdPath),
+      access(standaloneServerPath),
+    ])
+    return true
+  } catch {
+    return false
+  }
+}
 
 const middlewareDataPaths = [
   path.join(dockerDir, 'volumes', 'db', 'data'),
@@ -121,16 +134,17 @@ export const ensureWebBuild = async () => {
     return
   }
 
-  try {
-    await access(buildIdPath)
+  if (await hasReusableWebBuild()) {
     console.log('Reusing existing web build artifact.')
-  } catch {
-    await runCommandOrThrow({
-      command: 'pnpm',
-      args: ['run', 'build'],
-      cwd: webDir,
-    })
+    return
   }
+
+  console.log('Web build artifact is missing required files. Running fresh build.')
+  await runCommandOrThrow({
+    command: 'pnpm',
+    args: ['run', 'build'],
+    cwd: webDir,
+  })
 }
 
 export const startWeb = async () => {

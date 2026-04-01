@@ -98,6 +98,14 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-web-eslint-${{ hashFiles('web/package.json', 'pnpm-lock.yaml', 'web/eslint.config.mjs', 'web/eslint.constants.mjs', 'web/plugins/eslint/**') }}-
 
+      - name: Ensure CLAUDE.md exists for lint
+        if: steps.changed-files.outputs.any_changed == 'true'
+        working-directory: ./web
+        run: |
+          if [ ! -f CLAUDE.md ]; then
+            printf 'AGENTS.md\n' > CLAUDE.md
+          fi
+
       - name: Web style check
         if: steps.changed-files.outputs.any_changed == 'true'
         working-directory: ./web
