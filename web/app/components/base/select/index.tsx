@@ -9,7 +9,7 @@ import { Combobox, ComboboxButton, ComboboxInput, ComboboxOption, ComboboxOption
 import { ChevronDownIcon, ChevronUpIcon, XMarkIcon } from '@heroicons/react/20/solid'
 import { RiCheckLine, RiLoader4Line } from '@remixicon/react'
 import * as React from 'react'
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   PortalToFollowElem,
@@ -78,14 +78,9 @@ const Select: FC<ISelectProps> = ({
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
 
-  const [selectedItem, setSelectedItem] = useState<Item | null>(null)
-  // Ensure selectedItem is properly set when defaultValue or items change
-  useEffect(() => {
-    let defaultSelect = null
-    // Handle cases where defaultValue might be undefined, null, or empty string
-    defaultSelect = (defaultValue && items.find((item: Item) => item.value === defaultValue)) || null
-    setSelectedItem(defaultSelect)
-  }, [defaultValue, items])
+  const [selectedItem, setSelectedItem] = useState<Item | null>(
+    () => (defaultValue && items.find((item: Item) => item.value === defaultValue)) || null,
+  )
 
   const filteredItems: Item[]
     = query === ''
@@ -205,18 +200,16 @@ const SimpleSelect: FC<ISelectProps> = ({
 
   const [selectedItem, setSelectedItem] = useState<Item | null>(null)
 
-  // Enhanced: Preserve user selection, only reset when necessary
-  useEffect(() => {
-    // Only reset if no current selection or current selection is invalid
-    const isCurrentSelectionValid = selectedItem && items.some(item => item.value === selectedItem.value)
-
-    if (!isCurrentSelectionValid) {
-      let defaultSelect = null
-      // Handle cases where defaultValue might be undefined, null, or empty string
-      defaultSelect = items.find((item: Item) => item.value === defaultValue) ?? null
+  const prevItemsRef = useRef(items)
+  // Reset selection when items change and current selection is no longer valid
+  if (prevItemsRef.current !== items) {
+    prevItemsRef.current = items
+    if (!selectedItem || !items.some(item => item.value === selectedItem.value)) {
+      const defaultSelect = items.find((item: Item) => item.value === defaultValue) ?? null
+      // Only update if different to avoid unnecessary re-renders
       setSelectedItem(defaultSelect)
     }
-  }, [defaultValue, items, selectedItem])
+  }
 
   const listboxRef = useRef<HTMLDivElement>(null)
 

@@ -50,8 +50,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, srcs }) => {
   const progressRef = useRef<HTMLDivElement>(null)
   const volumeRef = useRef<HTMLDivElement>(null)
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const [isSmallSize, setIsSmallSize] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
+  const [isSmallSize, setIsSmallSize] = useState(false)
 
   useEffect(() => {
     const video = videoRef.current
@@ -81,6 +81,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, srcs }) => {
       video.removeEventListener('timeupdate', setVideoTime)
       video.removeEventListener('ended', handleEnded)
     }
+    // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
   }, [src, srcs])
 
   useEffect(() => {
@@ -194,19 +195,22 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, srcs }) => {
       document.removeEventListener('mousemove', handleGlobalMouseMove)
       document.removeEventListener('mouseup', handleGlobalMouseUp)
     }
+    // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
   }, [isDragging, updateVideoProgress])
 
-  const checkSize = useCallback(() => {
-    /* v8 ignore next 2 -- container ref may be null before first paint or after unmount while resize events are in flight. @preserve */
-    if (containerRef.current)
-      setIsSmallSize(containerRef.current.offsetWidth < 400)
-  }, [])
-
   useEffect(() => {
-    checkSize()
-    window.addEventListener('resize', checkSize)
-    return () => window.removeEventListener('resize', checkSize)
-  }, [checkSize])
+    // Use ResizeObserver to detect container size changes
+    const container = containerRef.current
+    if (!container)
+      return
+
+    const observer = new ResizeObserver(() => {
+      // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
+      setIsSmallSize(container.offsetWidth < 400)
+    })
+    observer.observe(container)
+    return () => observer.disconnect()
+  }, [])
 
   const handleVolumeChange = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const volumeBar = volumeRef.current

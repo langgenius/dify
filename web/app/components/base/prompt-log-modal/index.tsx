@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import { useClickAway } from 'ahooks'
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { CopyFeedbackNew } from '@/app/components/base/copy-feedback'
 import Card from './card'
 
@@ -16,16 +16,12 @@ const PromptLogModal: FC<PromptLogModalProps> = ({
   onCancel,
 }) => {
   const ref = useRef(null)
-  const [mounted, setMounted] = useState(false)
+  const [mounted] = useState(() => true)
 
   useClickAway(() => {
     if (mounted)
       onCancel()
   }, ref)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
 
   if (!currentLogItem || !currentLogItem.log)
     return null
