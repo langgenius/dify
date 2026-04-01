@@ -970,8 +970,10 @@ class TestDatasetTagBindingApiPost:
             result = api.post(_=None)
 
         assert result == ("", 204)
+        from services.tag_service import TagBindingCreatePayload
+
         mock_tag_svc.save_tag_binding.assert_called_once_with(
-            {"tag_ids": ["tag-1"], "target_id": "ds-1", "type": "knowledge"}
+            TagBindingCreatePayload(tag_ids=["tag-1"], target_id="ds-1", type="knowledge")
         )
 
     @patch("controllers.service_api.dataset.dataset.current_user")
@@ -1019,8 +1021,10 @@ class TestDatasetTagUnbindingApiPost:
             result = api.post(_=None)
 
         assert result == ("", 204)
+        from services.tag_service import TagBindingDeletePayload
+
         mock_tag_svc.delete_tag_binding.assert_called_once_with(
-            {"tag_id": "tag-1", "target_id": "ds-1", "type": "knowledge"}
+            TagBindingDeletePayload(tag_id="tag-1", target_id="ds-1", type="knowledge")
         )
 
     @patch("controllers.service_api.dataset.dataset.current_user")
