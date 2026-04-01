@@ -6681,9 +6681,6 @@
   "app/components/tools/edit-custom-collection-modal/config-credentials.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 7
     }
   },
   "app/components/tools/edit-custom-collection-modal/get-schema.tsx": {
