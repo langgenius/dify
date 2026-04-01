@@ -10,7 +10,7 @@ from graphon.variables.segment_group import SegmentGroup
 from graphon.variables.segments import ArrayFileSegment, FileSegment, Segment
 from graphon.variables.types import SegmentType
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 
 from controllers.console import console_ns
 from controllers.console.app.error import (
@@ -244,7 +244,7 @@ class WorkflowVariableCollectionApi(Resource):
             raise DraftWorkflowNotExist()
 
         # fetch draft workflow by app_model
-        with Session(bind=db.engine, expire_on_commit=False) as session:
+        with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
             draft_var_srv = WorkflowDraftVariableService(
                 session=session,
             )
@@ -298,7 +298,7 @@ class NodeVariableCollectionApi(Resource):
     @marshal_with(workflow_draft_variable_list_model)
     def get(self, app_model: App, node_id: str):
         validate_node_id(node_id)
-        with Session(bind=db.engine, expire_on_commit=False) as session:
+        with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
             draft_var_srv = WorkflowDraftVariableService(
                 session=session,
             )
@@ -465,7 +465,7 @@ class VariableResetApi(Resource):
 
 
 def _get_variable_list(app_model: App, node_id) -> WorkflowDraftVariableList:
-    with Session(bind=db.engine, expire_on_commit=False) as session:
+    with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
         draft_var_srv = WorkflowDraftVariableService(
             session=session,
         )
