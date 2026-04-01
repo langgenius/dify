@@ -219,7 +219,6 @@
     "hono": "catalog:",
     "iconify-import-svg": "catalog:",
     "knip": "catalog:",
-    "lint-staged": "catalog:",
     "postcss": "catalog:",
     "postcss-js": "catalog:",
     "react-server-dom-webpack": "catalog:",
@@ -235,8 +234,5 @@
     "vite-plus": "catalog:",
     "vitest": "catalog:",
     "vitest-canvas-mock": "catalog:"
-  },
-  "lint-staged": {
-    "*": "eslint --fix --pass-on-unpruned-suppressions"
   }
 }
