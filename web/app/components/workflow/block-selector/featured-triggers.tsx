@@ -266,10 +266,14 @@ function FeaturedTriggerUninstalledItem({
                   <div className="truncate text-text-secondary system-sm-medium">{label}</div>
                 </div>
               </div>
-              <div className="ml-auto flex h-full items-center gap-1 pl-1">
-                <span className={`text-text-tertiary system-xs-regular ${actionOpen ? 'hidden' : 'group-hover:hidden'}`}>{installCountLabel}</span>
+              <div className="ml-auto inline-grid h-full shrink-0 items-center pl-1">
+                <span
+                  className={`col-start-1 row-start-1 text-text-tertiary system-xs-regular ${actionOpen || isActionHovered ? 'invisible' : 'group-hover:invisible'}`}
+                >
+                  {installCountLabel}
+                </span>
                 <div
-                  className={`flex h-full items-center gap-1 text-components-button-secondary-accent-text system-xs-medium [&_.action-btn]:h-6 [&_.action-btn]:min-h-0 [&_.action-btn]:w-6 [&_.action-btn]:rounded-lg [&_.action-btn]:p-0 ${actionOpen ? '' : 'hidden group-hover:flex'}`}
+                  className={`col-start-1 row-start-1 flex h-full items-center gap-1 justify-self-end text-components-button-secondary-accent-text system-xs-medium [&_.action-btn]:h-6 [&_.action-btn]:min-h-0 [&_.action-btn]:w-6 [&_.action-btn]:rounded-lg [&_.action-btn]:p-0 ${actionOpen || isActionHovered ? 'visible' : 'invisible group-hover:visible'}`}
                   onMouseEnter={() => setIsActionHovered(true)}
                   onMouseLeave={() => {
                     if (!actionOpen)
