@@ -3,7 +3,7 @@ minimumReleaseAge: 1440
 blockExoticSubdeps: true
 strictDepBuilds: true
 allowBuilds:
-  '@parcel/watcher': false
+  "@parcel/watcher": false
   canvas: false
   esbuild: false
   sharp: false
@@ -202,6 +202,7 @@ catalog:
   mermaid: 11.13.0
   mime: 4.1.0
   mitt: 3.0.1
+  motion: 12.38.0
   negotiator: 1.0.0
   next: 16.2.1
   next-themes: 0.4.6
