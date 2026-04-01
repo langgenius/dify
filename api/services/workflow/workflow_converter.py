@@ -221,19 +221,23 @@ class WorkflowConverter:
     def _convert_to_app_config(self, app_model: App, app_model_config: AppModelConfig) -> EasyUIBasedAppConfig:
         app_mode_enum = AppMode.value_of(app_model.mode)
         app_config: EasyUIBasedAppConfig
-        if app_mode_enum == AppMode.AGENT_CHAT or app_model.is_agent:
-            app_model.mode = AppMode.AGENT_CHAT
-            app_config = AgentChatAppConfigManager.get_app_config(
-                app_model=app_model, app_model_config=app_model_config
-            )
-        elif app_mode_enum == AppMode.CHAT:
-            app_config = ChatAppConfigManager.get_app_config(app_model=app_model, app_model_config=app_model_config)
-        elif app_mode_enum == AppMode.COMPLETION:
-            app_config = CompletionAppConfigManager.get_app_config(
-                app_model=app_model, app_model_config=app_model_config
-            )
-        else:
-            raise ValueError("Invalid app mode")
+        # Normalize legacy apps: if is_agent flag is set but mode is not AGENT_CHAT,
+        # treat as AGENT_CHAT for backward compatibility.
+        effective_mode = AppMode.AGENT_CHAT if app_model.is_agent and app_mode_enum != AppMode.AGENT_CHAT else app_mode_enum
+        match effective_mode:
+            case AppMode.AGENT_CHAT:
+                app_model.mode = AppMode.AGENT_CHAT
+                app_config = AgentChatAppConfigManager.get_app_config(
+                    app_model=app_model, app_model_config=app_model_config
+                )
+            case AppMode.CHAT:
+                app_config = ChatAppConfigManager.get_app_config(app_model=app_model, app_model_config=app_model_config)
+            case AppMode.COMPLETION:
+                app_config = CompletionAppConfigManager.get_app_config(
+                    app_model=app_model, app_model_config=app_model_config
+                )
+            case AppMode.WORKFLOW | AppMode.ADVANCED_CHAT | AppMode.CHANNEL | AppMode.RAG_PIPELINE:
+                raise ValueError("Invalid app mode")
 
         return app_config
 
@@ -637,10 +641,13 @@ class WorkflowConverter:
         :param app_model: App instance
         :return: AppMode
         """
-        if app_model.mode == AppMode.COMPLETION:
-            return AppMode.WORKFLOW
-        else:
-            return AppMode.ADVANCED_CHAT
+        match app_model.mode:
+            case AppMode.COMPLETION:
+                return AppMode.WORKFLOW
+            case AppMode.CHAT | AppMode.AGENT_CHAT:
+                return AppMode.ADVANCED_CHAT
+            case AppMode.WORKFLOW | AppMode.ADVANCED_CHAT | AppMode.CHANNEL | AppMode.RAG_PIPELINE:
+                raise ValueError(f"Cannot convert app mode {app_model.mode} to workflow")
 
     def _get_api_based_extension(self, tenant_id: str, api_based_extension_id: str):
         """
