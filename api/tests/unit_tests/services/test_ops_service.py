@@ -12,28 +12,27 @@ class TestOpsService:
     @patch("services.ops_service.OpsTraceManager")
     def test_get_tracing_app_config_no_config(self, mock_ops_trace_manager, mock_db):
         # Arrange
-        mock_db.session.query.return_value.where.return_value.first.return_value = None
+        mock_db.session.scalar.return_value = None
 
         # Act
         result = OpsService.get_tracing_app_config("app_id", "arize")
 
         # Assert
         assert result is None
-        mock_db.session.query.assert_called_with(TraceAppConfig)
 
     @patch("services.ops_service.db")
     @patch("services.ops_service.OpsTraceManager")
     def test_get_tracing_app_config_no_app(self, mock_ops_trace_manager, mock_db):
         # Arrange
         trace_config = MagicMock(spec=TraceAppConfig)
-        mock_db.session.query.return_value.where.return_value.first.side_effect = [trace_config, None]
+        mock_db.session.scalar.return_value = trace_config
+        mock_db.session.get.return_value = None
 
         # Act
         result = OpsService.get_tracing_app_config("app_id", "arize")
 
         # Assert
         assert result is None
-        assert mock_db.session.query.call_count == 2
 
     @patch("services.ops_service.db")
     @patch("services.ops_service.OpsTraceManager")
@@ -43,7 +42,8 @@ class TestOpsService:
         trace_config.tracing_config = None
         app = MagicMock(spec=App)
         app.tenant_id = "tenant_id"
-        mock_db.session.query.return_value.where.return_value.first.side_effect = [trace_config, app]
+        mock_db.session.scalar.return_value = trace_config
+        mock_db.session.get.return_value = app
 
         # Act & Assert
         with pytest.raises(ValueError, match="Tracing config cannot be None."):
@@ -72,7 +72,8 @@ class TestOpsService:
         trace_config.to_dict.return_value = {"tracing_config": {"project_url": default_url}}
         app = MagicMock(spec=App)
         app.tenant_id = "tenant_id"
-        mock_db.session.query.return_value.where.return_value.first.side_effect = [trace_config, app]
+        mock_db.session.scalar.return_value = trace_config
+        mock_db.session.get.return_value = app
 
         mock_ops_trace_manager.decrypt_tracing_config.return_value = {}
         mock_ops_trace_manager.obfuscated_decrypt_token.return_value = {}
@@ -97,7 +98,8 @@ class TestOpsService:
         trace_config.to_dict.return_value = {"tracing_config": {"project_url": "success_url"}}
         app = MagicMock(spec=App)
         app.tenant_id = "tenant_id"
-        mock_db.session.query.return_value.where.return_value.first.side_effect = [trace_config, app]
+        mock_db.session.scalar.return_value = trace_config
+        mock_db.session.get.return_value = app
 
         mock_ops_trace_manager.decrypt_tracing_config.return_value = {}
         mock_ops_trace_manager.obfuscated_decrypt_token.return_value = {}
@@ -118,7 +120,8 @@ class TestOpsService:
         trace_config.to_dict.return_value = {"tracing_config": {"project_url": "https://api.langfuse.com/project/key"}}
         app = MagicMock(spec=App)
         app.tenant_id = "tenant_id"
-        mock_db.session.query.return_value.where.return_value.first.side_effect = [trace_config, app]
+        mock_db.session.scalar.return_value = trace_config
+        mock_db.session.get.return_value = app
 
         mock_ops_trace_manager.decrypt_tracing_config.return_value = {"host": "https://api.langfuse.com"}
         mock_ops_trace_manager.obfuscated_decrypt_token.return_value = {"host": "https://api.langfuse.com"}
@@ -139,7 +142,8 @@ class TestOpsService:
         trace_config.to_dict.return_value = {"tracing_config": {"project_url": "https://api.langfuse.com/"}}
         app = MagicMock(spec=App)
         app.tenant_id = "tenant_id"
-        mock_db.session.query.return_value.where.return_value.first.side_effect = [trace_config, app]
+        mock_db.session.scalar.return_value = trace_config
+        mock_db.session.get.return_value = app
 
         mock_ops_trace_manager.decrypt_tracing_config.return_value = {"host": "https://api.langfuse.com"}
         mock_ops_trace_manager.obfuscated_decrypt_token.return_value = {"host": "https://api.langfuse.com"}
@@ -189,7 +193,7 @@ class TestOpsService:
         mock_ops_trace_manager.check_trace_config_is_effective.return_value = True
         mock_ops_trace_manager.get_trace_config_project_url.side_effect = Exception("error")
         mock_ops_trace_manager.get_trace_config_project_key.side_effect = Exception("error")
-        mock_db.session.query.return_value.where.return_value.first.return_value = MagicMock(spec=TraceAppConfig)
+        mock_db.session.scalar.return_value = MagicMock(spec=TraceAppConfig)
 
         # Act
         result = OpsService.create_tracing_app_config("app_id", provider, config)
@@ -206,7 +210,8 @@ class TestOpsService:
         mock_ops_trace_manager.get_trace_config_project_key.return_value = "key"
         app = MagicMock(spec=App)
         app.tenant_id = "tenant_id"
-        mock_db.session.query.return_value.where.return_value.first.side_effect = [None, app]
+        mock_db.session.scalar.return_value = None
+        mock_db.session.get.return_value = app
         mock_ops_trace_manager.encrypt_tracing_config.return_value = {}
 
         # Act
@@ -223,7 +228,7 @@ class TestOpsService:
         # Arrange
         provider = TracingProviderEnum.ARIZE
         mock_ops_trace_manager.check_trace_config_is_effective.return_value = True
-        mock_db.session.query.return_value.where.return_value.first.return_value = MagicMock(spec=TraceAppConfig)
+        mock_db.session.scalar.return_value = MagicMock(spec=TraceAppConfig)
 
         # Act
         result = OpsService.create_tracing_app_config("app_id", provider, {})
@@ -237,7 +242,8 @@ class TestOpsService:
         # Arrange
         provider = TracingProviderEnum.ARIZE
         mock_ops_trace_manager.check_trace_config_is_effective.return_value = True
-        mock_db.session.query.return_value.where.return_value.first.side_effect = [None, None]
+        mock_db.session.scalar.return_value = None
+        mock_db.session.get.return_value = None
 
         # Act
         result = OpsService.create_tracing_app_config("app_id", provider, {})
@@ -253,7 +259,8 @@ class TestOpsService:
         mock_ops_trace_manager.check_trace_config_is_effective.return_value = True
         app = MagicMock(spec=App)
         app.tenant_id = "tenant_id"
-        mock_db.session.query.return_value.where.return_value.first.side_effect = [None, app]
+        mock_db.session.scalar.return_value = None
+        mock_db.session.get.return_value = app
         mock_ops_trace_manager.encrypt_tracing_config.return_value = {}
 
         # Act
@@ -274,7 +281,8 @@ class TestOpsService:
         mock_ops_trace_manager.get_trace_config_project_url.return_value = "http://project_url"
         app = MagicMock(spec=App)
         app.tenant_id = "tenant_id"
-        mock_db.session.query.return_value.where.return_value.first.side_effect = [None, app]
+        mock_db.session.scalar.return_value = None
+        mock_db.session.get.return_value = app
         mock_ops_trace_manager.encrypt_tracing_config.return_value = {"encrypted": "config"}
 
         # Act
@@ -297,7 +305,7 @@ class TestOpsService:
     def test_update_tracing_app_config_no_config(self, mock_ops_trace_manager, mock_db):
         # Arrange
         provider = TracingProviderEnum.ARIZE
-        mock_db.session.query.return_value.where.return_value.first.return_value = None
+        mock_db.session.scalar.return_value = None
 
         # Act
         result = OpsService.update_tracing_app_config("app_id", provider, {})
@@ -311,7 +319,8 @@ class TestOpsService:
         # Arrange
         provider = TracingProviderEnum.ARIZE
         current_config = MagicMock(spec=TraceAppConfig)
-        mock_db.session.query.return_value.where.return_value.first.side_effect = [current_config, None]
+        mock_db.session.scalar.return_value = current_config
+        mock_db.session.get.return_value = None
 
         # Act
         result = OpsService.update_tracing_app_config("app_id", provider, {})
@@ -327,7 +336,8 @@ class TestOpsService:
         current_config = MagicMock(spec=TraceAppConfig)
         app = MagicMock(spec=App)
         app.tenant_id = "tenant_id"
-        mock_db.session.query.return_value.where.return_value.first.side_effect = [current_config, app]
+        mock_db.session.scalar.return_value = current_config
+        mock_db.session.get.return_value = app
         mock_ops_trace_manager.decrypt_tracing_config.return_value = {}
         mock_ops_trace_manager.check_trace_config_is_effective.return_value = False
 
@@ -344,7 +354,8 @@ class TestOpsService:
         current_config.to_dict.return_value = {"some": "data"}
         app = MagicMock(spec=App)
         app.tenant_id = "tenant_id"
-        mock_db.session.query.return_value.where.return_value.first.side_effect = [current_config, app]
+        mock_db.session.scalar.return_value = current_config
+        mock_db.session.get.return_value = app
         mock_ops_trace_manager.decrypt_tracing_config.return_value = {}
         mock_ops_trace_manager.check_trace_config_is_effective.return_value = True
 
@@ -358,7 +369,7 @@ class TestOpsService:
     @patch("services.ops_service.db")
     def test_delete_tracing_app_config_no_config(self, mock_db):
         # Arrange
-        mock_db.session.query.return_value.where.return_value.first.return_value = None
+        mock_db.session.scalar.return_value = None
 
         # Act
         result = OpsService.delete_tracing_app_config("app_id", "arize")
@@ -370,7 +381,7 @@ class TestOpsService:
     def test_delete_tracing_app_config_success(self, mock_db):
         # Arrange
         trace_config = MagicMock(spec=TraceAppConfig)
-        mock_db.session.query.return_value.where.return_value.first.return_value = trace_config
+        mock_db.session.scalar.return_value = trace_config
 
         # Act
         result = OpsService.delete_tracing_app_config("app_id", "arize")
