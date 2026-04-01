@@ -8,7 +8,6 @@ import logging
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Literal
 
-from graphon.entities import GraphInitParams
 from graphon.entities.graph_config import NodeConfigDict
 from graphon.enums import (
     BuiltinNodeTypes,
@@ -17,14 +16,7 @@ from graphon.enums import (
 )
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.model_runtime.utils.encoders import jsonable_encoder
-from graphon.node_events import NodeRunResult
-from graphon.nodes.base import LLMUsageTrackingMixin
 from graphon.nodes.base.node import Node
-from graphon.variables import (
-    ArrayFileSegment,
-    FileSegment,
-    StringSegment,
-)
 from graphon.variables.segments import ArrayObjectSegment
 
 from core.app.app_config.entities import DatasetRetrieveConfigEntity
@@ -32,6 +24,14 @@ from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunC
 from core.rag.data_post_processor.data_post_processor import RerankingModelDict, WeightsDict
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.workflow.file_reference import parse_file_reference
+from graphon.entities import GraphInitParams
+from graphon.node_events import NodeRunResult
+from graphon.nodes.base import LLMUsageTrackingMixin
+from graphon.variables import (
+    ArrayFileSegment,
+    FileSegment,
+    StringSegment,
+)
 
 from .entities import (
     Condition,

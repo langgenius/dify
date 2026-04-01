@@ -1,7 +1,6 @@
 import logging
 from typing import cast
 
-from graphon.file import File
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 from sqlalchemy import select
 
@@ -18,6 +17,7 @@ from core.model_manager import ModelInstance
 from core.moderation.base import ModerationError
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from extensions.ext_database import db
+from graphon.file import File
 from models.model import App, Conversation, Message
 
 logger = logging.getLogger(__name__)

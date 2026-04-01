@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING, Any
 
 from graphon.entities.graph_config import NodeConfigDict
 from graphon.enums import NodeExecutionType, WorkflowNodeExecutionStatus
-from graphon.node_events import NodeRunResult
 from graphon.nodes.base.node import Node
 from graphon.nodes.base.template import Template
 
@@ -13,6 +12,7 @@ from core.rag.index_processor.index_processor_base import SummaryIndexSettingDic
 from core.rag.summary_index.summary_index import SummaryIndex
 from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
 from core.workflow.system_variables import SystemVariableKey, get_system_segment, get_system_text
+from graphon.node_events import NodeRunResult
 
 from .entities import KnowledgeIndexNodeData
 from .exc import (

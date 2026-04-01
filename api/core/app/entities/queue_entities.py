@@ -3,7 +3,6 @@ from datetime import datetime
 from enum import StrEnum, auto
 from typing import Any
 
-from graphon.entities import WorkflowStartReason
 from graphon.entities.pause_reason import PauseReason
 from graphon.enums import NodeType, WorkflowNodeExecutionMetadataKey
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
@@ -11,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from core.app.entities.agent_strategy import AgentStrategyInfo
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
+from graphon.entities import WorkflowStartReason
 
 
 class QueueEvent(StrEnum):

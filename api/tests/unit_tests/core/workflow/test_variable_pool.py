@@ -2,9 +2,6 @@ import uuid
 from collections import defaultdict
 
 import pytest
-from graphon.file import File, FileTransferMethod, FileType
-from graphon.runtime import VariablePool
-from graphon.variables import FileSegment, StringSegment
 from graphon.variables.segments import (
     ArrayAnySegment,
     ArrayFileSegment,
@@ -35,6 +32,9 @@ from core.workflow.variable_prefixes import (
     SYSTEM_VARIABLE_NODE_ID,
 )
 from factories.variable_factory import build_segment, segment_to_variable
+from graphon.file import File, FileTransferMethod, FileType
+from graphon.runtime import VariablePool
+from graphon.variables import FileSegment, StringSegment
 
 
 @pytest.fixture

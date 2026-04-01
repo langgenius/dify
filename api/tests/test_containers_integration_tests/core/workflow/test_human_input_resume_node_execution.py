@@ -5,9 +5,6 @@ from unittest.mock import MagicMock
 
 import pytest
 from graphon.enums import WorkflowType
-from graphon.graph import Graph
-from graphon.graph_engine import GraphEngine
-from graphon.graph_engine.command_channels import InMemoryChannel
 from graphon.nodes.end.end_node import EndNode
 from graphon.nodes.end.entities import EndNodeData
 from graphon.nodes.human_input.entities import HumanInputNodeData, UserAction
@@ -15,7 +12,6 @@ from graphon.nodes.human_input.enums import HumanInputFormStatus
 from graphon.nodes.human_input.human_input_node import HumanInputNode
 from graphon.nodes.start.entities import StartNodeData
 from graphon.nodes.start.start_node import StartNode
-from graphon.runtime import GraphRuntimeState, VariablePool
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
@@ -27,6 +23,10 @@ from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchem
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.node_runtime import DifyHumanInputNodeRuntime
 from core.workflow.system_variables import build_system_variables
+from graphon.graph import Graph
+from graphon.graph_engine import GraphEngine
+from graphon.graph_engine.command_channels import InMemoryChannel
+from graphon.runtime import GraphRuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
 from models import Account
 from models.account import Tenant, TenantAccountJoin, TenantAccountRole

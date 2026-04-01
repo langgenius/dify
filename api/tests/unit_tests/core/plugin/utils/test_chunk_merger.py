@@ -1,12 +1,12 @@
 from collections.abc import Generator
 
 import pytest
-from graphon.file import File, FileTransferMethod, FileType
 
 from core.agent.entities import AgentInvokeMessage
 from core.plugin.utils.chunk_merger import FileChunk, merge_blob_chunks
 from core.plugin.utils.converter import convert_parameters_to_plugin_format
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter, ToolSelector
+from graphon.file import File, FileTransferMethod, FileType
 
 
 class TestChunkMerger:

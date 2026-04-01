@@ -7,9 +7,10 @@ from typing import Any, Protocol, cast
 from uuid import uuid4
 
 from graphon.enums import BuiltinNodeTypes
-from graphon.variables import build_segment, segment_to_variable
 from graphon.variables.segments import Segment
 from graphon.variables.variables import RAGPipelineVariableInput, Variable
+
+from graphon.variables import build_segment, segment_to_variable
 
 from .variable_prefixes import (
     CONVERSATION_VARIABLE_NODE_ID,

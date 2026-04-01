@@ -4,7 +4,6 @@ import os
 import time
 from typing import Union
 
-from graphon.entities import WorkflowExecution
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
@@ -12,6 +11,7 @@ from sqlalchemy.orm import sessionmaker
 from core.repositories.factory import WorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from extensions.logstore.aliyun_logstore import AliyunLogStore
+from graphon.entities import WorkflowExecution
 from libs.helper import extract_tenant_id
 from models import (
     Account,

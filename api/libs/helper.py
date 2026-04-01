@@ -16,7 +16,6 @@ from zoneinfo import available_timezones
 
 from flask import Response, stream_with_context
 from flask_restx import fields
-from graphon.file import helpers as file_helpers
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from pydantic import BaseModel
 from pydantic.functional_validators import AfterValidator
@@ -24,6 +23,7 @@ from pydantic.functional_validators import AfterValidator
 from configs import dify_config
 from core.app.features.rate_limiting.rate_limit import RateLimitGenerator
 from extensions.ext_redis import redis_client
+from graphon.file import helpers as file_helpers
 
 if TYPE_CHECKING:
     from models import Account

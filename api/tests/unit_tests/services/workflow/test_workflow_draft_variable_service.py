@@ -5,7 +5,6 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from graphon.enums import BuiltinNodeTypes
-from graphon.file import File, FileTransferMethod, FileType
 from graphon.variables.segments import StringSegment
 from graphon.variables.types import SegmentType
 from sqlalchemy import Engine
@@ -17,6 +16,7 @@ from core.workflow.variable_prefixes import (
     ENVIRONMENT_VARIABLE_NODE_ID,
     SYSTEM_VARIABLE_NODE_ID,
 )
+from graphon.file import File, FileTransferMethod, FileType
 from libs.uuid_utils import uuidv7
 from models.account import Account
 from models.enums import DraftVariableType

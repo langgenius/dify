@@ -9,9 +9,6 @@ from decimal import Decimal
 from unittest.mock import MagicMock, PropertyMock
 
 import pytest
-from graphon.entities import (
-    WorkflowNodeExecution,
-)
 from graphon.enums import (
     BuiltinNodeTypes,
     WorkflowNodeExecutionMetadataKey,
@@ -23,6 +20,9 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
 from core.repositories.factory import OrderConfig
+from graphon.entities import (
+    WorkflowNodeExecution,
+)
 from models.account import Account, Tenant
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 

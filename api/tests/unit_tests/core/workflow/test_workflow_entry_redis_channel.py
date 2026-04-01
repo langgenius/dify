@@ -2,11 +2,10 @@
 
 from unittest.mock import MagicMock, patch
 
-from graphon.graph_engine.command_channels import RedisChannel
-from graphon.runtime import GraphRuntimeState, VariablePool
-
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.workflow.workflow_entry import WorkflowEntry
+from graphon.graph_engine.command_channels import RedisChannel
+from graphon.runtime import GraphRuntimeState, VariablePool
 
 
 class TestWorkflowEntryRedisChannel:

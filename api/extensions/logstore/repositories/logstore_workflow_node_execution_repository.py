@@ -13,7 +13,6 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Any, Union
 
-from graphon.entities import WorkflowNodeExecution
 from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
@@ -25,6 +24,7 @@ from core.repositories.factory import OrderConfig, WorkflowNodeExecutionReposito
 from extensions.logstore.aliyun_logstore import AliyunLogStore
 from extensions.logstore.repositories import safe_float, safe_int
 from extensions.logstore.sql_escape import escape_identifier
+from graphon.entities import WorkflowNodeExecution
 from libs.helper import extract_tenant_id
 from models import (
     Account,

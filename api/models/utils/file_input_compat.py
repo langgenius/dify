@@ -4,9 +4,8 @@ from collections.abc import Callable, Mapping
 from functools import lru_cache
 from typing import Any
 
-from graphon.file import File, FileTransferMethod
-
 from core.workflow.file_reference import parse_file_reference
+from graphon.file import File, FileTransferMethod
 
 
 @lru_cache(maxsize=1)

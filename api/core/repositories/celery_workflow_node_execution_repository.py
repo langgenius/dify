@@ -9,7 +9,6 @@ import logging
 from collections.abc import Sequence
 from typing import Union
 
-from graphon.entities import WorkflowNodeExecution
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
@@ -17,6 +16,7 @@ from core.repositories.factory import (
     OrderConfig,
     WorkflowNodeExecutionRepository,
 )
+from graphon.entities import WorkflowNodeExecution
 from libs.helper import extract_tenant_id
 from models import Account, CreatorUserRole, EndUser
 from models.workflow import WorkflowNodeExecutionTriggeredFrom

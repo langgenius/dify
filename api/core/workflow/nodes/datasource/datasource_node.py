@@ -8,7 +8,6 @@ from graphon.enums import (
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
-from graphon.node_events import NodeRunResult, StreamCompletedEvent
 from graphon.nodes.base.node import Node
 from graphon.nodes.base.variable_template_parser import VariableTemplateParser
 
@@ -18,6 +17,7 @@ from core.datasource.entities.datasource_entities import DatasourceProviderType
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.workflow.file_reference import resolve_file_record_id
 from core.workflow.system_variables import SystemVariableKey, get_system_segment
+from graphon.node_events import NodeRunResult, StreamCompletedEvent
 
 from .entities import DatasourceNodeData, DatasourceParameter, OnlineDriveDownloadFileParam
 from .exc import DatasourceNodeError

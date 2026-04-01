@@ -8,7 +8,6 @@ from typing import Any
 import orjson
 from flask import request
 from graphon.entities.graph_config import NodeConfigDict
-from graphon.file import FileTransferMethod
 from graphon.variables.types import ArrayValidation, SegmentType
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -31,6 +30,7 @@ from enums.quota_type import QuotaType
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from factories import file_factory
+from graphon.file import FileTransferMethod
 from models.enums import AppTriggerStatus, AppTriggerType
 from models.model import App
 from models.trigger import AppTrigger, WorkflowWebhookTrigger

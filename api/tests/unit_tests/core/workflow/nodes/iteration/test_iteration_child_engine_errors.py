@@ -2,17 +2,17 @@ from collections.abc import Mapping
 from typing import Any
 
 import pytest
-from graphon.entities import GraphInitParams
 from graphon.nodes.iteration.exc import IterationGraphNotFoundError
 from graphon.nodes.iteration.iteration_node import IterationNode
+
+from core.workflow.system_variables import default_system_variables
+from graphon.entities import GraphInitParams
 from graphon.runtime import (
     ChildEngineBuilderNotConfiguredError,
     ChildGraphNotFoundError,
     GraphRuntimeState,
     VariablePool,
 )
-
-from core.workflow.system_variables import default_system_variables
 from tests.workflow_test_utils import build_test_graph_init_params
 
 

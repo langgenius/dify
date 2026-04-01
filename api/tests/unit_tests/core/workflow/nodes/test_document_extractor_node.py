@@ -4,11 +4,7 @@ from unittest.mock import Mock, patch
 import pandas as pd
 import pytest
 from docx.oxml.text.paragraph import CT_P
-from graphon.entities import GraphInitParams
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
-from graphon.file import File, FileTransferMethod
-from graphon.node_events import NodeRunResult
-from graphon.nodes.document_extractor import DocumentExtractorNode, DocumentExtractorNodeData
 from graphon.nodes.document_extractor.node import (
     _extract_text_from_docx,
     _extract_text_from_excel,
@@ -16,11 +12,15 @@ from graphon.nodes.document_extractor.node import (
     _extract_text_from_plain_text,
     _normalize_docx_zip,
 )
-from graphon.variables import ArrayFileSegment
 from graphon.variables.segments import ArrayStringSegment
 from graphon.variables.variables import StringVariable
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from graphon.entities import GraphInitParams
+from graphon.file import File, FileTransferMethod
+from graphon.node_events import NodeRunResult
+from graphon.nodes.document_extractor import DocumentExtractorNode, DocumentExtractorNodeData
+from graphon.variables import ArrayFileSegment
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
