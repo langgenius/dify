@@ -22,7 +22,6 @@ web/node_modules
 web/dist
 web/build
 web/coverage
-web/.husky
 web/.next
 web/.pnpm-store
 web/.vscode
