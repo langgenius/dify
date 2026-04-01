@@ -18,7 +18,6 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
-from flask import Flask
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
@@ -35,8 +34,6 @@ from controllers.service_api.dataset.dataset import (
 from controllers.service_api.dataset.error import DatasetInUseError, DatasetNameDuplicateError, InvalidActionError
 from models.account import Account
 from models.dataset import DatasetPermissionEnum
-from models.enums import TagType
-
 
 # ---------------------------------------------------------------------------
 # Pydantic model validation tests
