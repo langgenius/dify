@@ -30,6 +30,18 @@ from .exceptions import AgentNodeError, AgentVariableTypeError, ToolFileNotFound
 
 _file_access_controller = DatabaseFileAccessController()
 
+# Plugin agent strategies often return the full model reply in a single TEXT frame when the
+# upstream LLM call is non-streaming. Downstream workflow SSE then looks like "one message at
+# the end". Split large frames so clients still receive incremental `message` events.
+_AGENT_SINGLE_TEXT_STREAM_CHUNK_SIZE = 64
+
+
+def _split_text_for_agent_stream(text: str) -> list[str]:
+    max_len = _AGENT_SINGLE_TEXT_STREAM_CHUNK_SIZE
+    if len(text) <= max_len:
+        return [text]
+    return [text[i : i + max_len] for i in range(0, len(text), max_len)]
+
 
 class AgentMessageTransformer:
     def transform(
@@ -125,12 +137,14 @@ class AgentMessageTransformer:
                 )
             elif message.type == ToolInvokeMessage.MessageType.TEXT:
                 assert isinstance(message.message, ToolInvokeMessage.TextMessage)
-                text += message.message.text
-                yield StreamChunkEvent(
-                    selector=[node_id, "text"],
-                    chunk=message.message.text,
-                    is_final=False,
-                )
+                raw_text = message.message.text
+                text += raw_text
+                for piece in _split_text_for_agent_stream(raw_text):
+                    yield StreamChunkEvent(
+                        selector=[node_id, "text"],
+                        chunk=piece,
+                        is_final=False,
+                    )
             elif message.type == ToolInvokeMessage.MessageType.JSON:
                 assert isinstance(message.message, ToolInvokeMessage.JsonMessage)
                 if node_type == BuiltinNodeTypes.AGENT:
