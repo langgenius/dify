@@ -132,7 +132,7 @@ class AudioService:
                 uuid.UUID(message_id)
             except ValueError:
                 return None
-            message = db.session.query(Message).where(Message.id == message_id).first()
+            message = db.session.get(Message, message_id)
             if message is None:
                 return None
             if message.answer == "" and message.status in {MessageStatus.NORMAL, MessageStatus.PAUSED}:

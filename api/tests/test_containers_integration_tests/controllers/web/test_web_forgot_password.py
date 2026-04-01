@@ -37,7 +37,7 @@ class TestForgotPasswordSendEmailApi:
     @patch("controllers.web.forgot_password.AccountService.get_account_by_email_with_case_fallback")
     @patch("controllers.web.forgot_password.AccountService.is_email_send_ip_limit", return_value=False)
     @patch("controllers.web.forgot_password.extract_remote_ip", return_value="127.0.0.1")
-    @patch("controllers.web.forgot_password.Session")
+    @patch("controllers.web.forgot_password.sessionmaker")
     def test_should_normalize_email_before_sending(
         self,
         mock_session_cls,
@@ -51,7 +51,7 @@ class TestForgotPasswordSendEmailApi:
         mock_get_account.return_value = mock_account
         mock_send_mail.return_value = "token-123"
         mock_session = MagicMock()
-        mock_session_cls.return_value.__enter__.return_value = mock_session
+        mock_session_cls.return_value.begin.return_value.__enter__.return_value = mock_session
 
         with patch("controllers.web.forgot_password.db", SimpleNamespace(engine="engine")):
             with app.test_request_context(
@@ -153,7 +153,7 @@ class TestForgotPasswordResetApi:
 
     @patch("controllers.web.forgot_password.ForgotPasswordResetApi._update_existing_account")
     @patch("controllers.web.forgot_password.AccountService.get_account_by_email_with_case_fallback")
-    @patch("controllers.web.forgot_password.Session")
+    @patch("controllers.web.forgot_password.sessionmaker")
     @patch("controllers.web.forgot_password.AccountService.revoke_reset_password_token")
     @patch("controllers.web.forgot_password.AccountService.get_reset_password_data")
     def test_should_fetch_account_with_fallback(
@@ -169,7 +169,7 @@ class TestForgotPasswordResetApi:
         mock_account = MagicMock()
         mock_get_account.return_value = mock_account
         mock_session = MagicMock()
-        mock_session_cls.return_value.__enter__.return_value = mock_session
+        mock_session_cls.return_value.begin.return_value.__enter__.return_value = mock_session
 
         with patch("controllers.web.forgot_password.db", SimpleNamespace(engine="engine")):
             with app.test_request_context(
@@ -190,7 +190,7 @@ class TestForgotPasswordResetApi:
 
     @patch("controllers.web.forgot_password.hash_password", return_value=b"hashed-value")
     @patch("controllers.web.forgot_password.secrets.token_bytes", return_value=b"0123456789abcdef")
-    @patch("controllers.web.forgot_password.Session")
+    @patch("controllers.web.forgot_password.sessionmaker")
     @patch("controllers.web.forgot_password.AccountService.revoke_reset_password_token")
     @patch("controllers.web.forgot_password.AccountService.get_reset_password_data")
     @patch("controllers.web.forgot_password.AccountService.get_account_by_email_with_case_fallback")
@@ -208,7 +208,7 @@ class TestForgotPasswordResetApi:
         account = MagicMock()
         mock_get_account.return_value = account
         mock_session = MagicMock()
-        mock_session_cls.return_value.__enter__.return_value = mock_session
+        mock_session_cls.return_value.begin.return_value.__enter__.return_value = mock_session
 
         with patch("controllers.web.forgot_password.db", SimpleNamespace(engine="engine")):
             with app.test_request_context(
@@ -231,4 +231,3 @@ class TestForgotPasswordResetApi:
         assert account.password == expected_password
         expected_salt = base64.b64encode(b"0123456789abcdef").decode()
         assert account.password_salt == expected_salt
-        mock_session.commit.assert_called_once()

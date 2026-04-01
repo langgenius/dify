@@ -81,7 +81,7 @@ def deduct_llm_quota(*, tenant_id: str, model_instance: ModelInstance, usage: LL
                         # TODO: Use provider name with prefix after the data migration.
                         Provider.provider_name == ModelProviderID(model_instance.provider).provider_name,
                         Provider.provider_type == ProviderType.SYSTEM.value,
-                        Provider.quota_type == system_configuration.current_quota_type.value,
+                        Provider.quota_type == system_configuration.current_quota_type,
                         Provider.quota_limit > Provider.quota_used,
                     )
                     .values(
