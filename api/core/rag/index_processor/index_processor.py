@@ -40,7 +40,9 @@ class IndexProcessor:
         # - QA processor: {"qa_preview": [...]} (no "preview" key)
         for item in preview.get("preview", []):
             if "content" in item and "child_chunks" in item:
-                data.preview.append(PreviewItem(content=item["content"], child_chunks=item["child_chunks"], summary=None))
+                data.preview.append(
+                    PreviewItem(content=item["content"], child_chunks=item["child_chunks"], summary=None)
+                )
             elif "question" in item and "answer" in item:
                 data.qa_preview.append(QaPreview(question=item["question"], answer=item["answer"]))
             elif "content" in item:

@@ -13,4 +13,3 @@ class TestIndexProcessor:
         assert len(preview.qa_preview) == 1
         assert preview.qa_preview[0].question == "Q1"
         assert preview.qa_preview[0].answer == "A1"
-
