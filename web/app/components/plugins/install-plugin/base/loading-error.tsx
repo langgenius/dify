@@ -16,7 +16,7 @@ const LoadingError: FC = () => {
         checked={false}
         disabled
       />
-      <div className="hover:bg-components-panel-on-panel-item-bg-hover relative grow rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-4 pb-3 shadow-xs">
+      <div className="relative grow rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-4 pb-3 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover">
         <div className="flex">
           <div
             className="relative flex h-10 w-10 items-center justify-center gap-2 rounded-[10px] border-[0.5px]
@@ -30,10 +30,10 @@ const LoadingError: FC = () => {
             </div>
           </div>
           <div className="ml-3 grow">
-            <div className="system-md-semibold flex h-5 items-center text-text-destructive">
+            <div className="flex h-5 items-center text-text-destructive system-md-semibold">
               {t('installModal.pluginLoadError', { ns: 'plugin' })}
             </div>
-            <div className="system-xs-regular mt-0.5 text-text-tertiary">
+            <div className="mt-0.5 text-text-tertiary system-xs-regular">
               {t('installModal.pluginLoadErrorDesc', { ns: 'plugin' })}
             </div>
           </div>
