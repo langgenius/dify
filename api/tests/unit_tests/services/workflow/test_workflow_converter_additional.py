@@ -809,14 +809,12 @@ def test_get_api_based_extension_should_raise_when_extension_not_found(
     converter: WorkflowConverter,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    query_mock = MagicMock()
-    query_mock.where.return_value = query_mock
-    query_mock.first.return_value = None
-    db_session = SimpleNamespace(query=MagicMock(return_value=query_mock))
+    db_session = SimpleNamespace(scalar=MagicMock(return_value=None))
     monkeypatch.setattr(converter_module, "db", SimpleNamespace(session=db_session))
 
     with pytest.raises(ValueError, match="API Based Extension not found"):
         converter._get_api_based_extension(tenant_id="tenant-1", api_based_extension_id="ext-1")
+    db_session.scalar.assert_called_once()
 
 
 def test_get_api_based_extension_should_return_entity_when_found(
@@ -824,12 +822,10 @@ def test_get_api_based_extension_should_return_entity_when_found(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     extension = SimpleNamespace(id="ext-1")
-    query_mock = MagicMock()
-    query_mock.where.return_value = query_mock
-    query_mock.first.return_value = extension
-    db_session = SimpleNamespace(query=MagicMock(return_value=query_mock))
+    db_session = SimpleNamespace(scalar=MagicMock(return_value=extension))
     monkeypatch.setattr(converter_module, "db", SimpleNamespace(session=db_session))
 
     result = converter._get_api_based_extension(tenant_id="tenant-1", api_based_extension_id="ext-1")
 
     assert result is extension
+    db_session.scalar.assert_called_once()
