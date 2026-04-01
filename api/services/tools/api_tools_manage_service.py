@@ -1,13 +1,13 @@
 import json
 import logging
-from collections.abc import Mapping
 from typing import Any, cast
 
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 from httpx import get
 from sqlalchemy import select
+from typing_extensions import TypedDict
 
 from core.entities.provider_entities import ProviderConfig
-from core.model_runtime.utils.encoders import jsonable_encoder
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.custom_tool.provider import ApiToolProviderController
 from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
@@ -28,9 +28,16 @@ from services.tools.tools_transform_service import ToolTransformService
 logger = logging.getLogger(__name__)
 
 
+class ApiSchemaParseResult(TypedDict):
+    schema_type: str
+    parameters_schema: list[dict[str, Any]]
+    credentials_schema: list[dict[str, Any]]
+    warning: dict[str, str]
+
+
 class ApiToolManageService:
     @staticmethod
-    def parser_api_schema(schema: str) -> Mapping[str, Any]:
+    def parser_api_schema(schema: str) -> ApiSchemaParseResult:
         """
         parse api schema to tool bundle
         """
@@ -71,7 +78,7 @@ class ApiToolManageService:
             ]
 
             return cast(
-                Mapping,
+                ApiSchemaParseResult,
                 jsonable_encoder(
                     {
                         "schema_type": schema_type,

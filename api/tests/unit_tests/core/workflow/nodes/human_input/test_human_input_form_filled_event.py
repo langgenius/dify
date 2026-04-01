@@ -1,20 +1,21 @@
 import datetime
 from types import SimpleNamespace
 
-from core.app.entities.app_invoke_entities import InvokeFrom
-from core.workflow.entities.graph_init_params import GraphInitParams
-from core.workflow.enums import NodeType
-from core.workflow.graph_events import (
+from graphon.entities import GraphInitParams
+from graphon.enums import BuiltinNodeTypes
+from graphon.graph_events import (
     NodeRunHumanInputFormFilledEvent,
     NodeRunHumanInputFormTimeoutEvent,
     NodeRunStartedEvent,
 )
-from core.workflow.nodes.human_input.enums import HumanInputFormStatus
-from core.workflow.nodes.human_input.human_input_node import HumanInputNode
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
+from graphon.nodes.human_input.enums import HumanInputFormStatus
+from graphon.nodes.human_input.human_input_node import HumanInputNode
+from graphon.runtime import GraphRuntimeState, VariablePool
+
+from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
+from core.workflow.node_runtime import DifyHumanInputNodeRuntime
+from core.workflow.system_variables import default_system_variables
 from libs.datetime_utils import naive_utc_now
-from models.enums import UserFrom
 
 
 class _FakeFormRepository:
@@ -26,25 +27,29 @@ class _FakeFormRepository:
 
 
 def _build_node(form_content: str = "Please enter your name:\n\n{{#$output.name#}}") -> HumanInputNode:
-    system_variables = SystemVariable.default()
+    system_variables = default_system_variables()
     graph_runtime_state = GraphRuntimeState(
         variable_pool=VariablePool(system_variables=system_variables, user_inputs={}, environment_variables=[]),
         start_at=0.0,
     )
     graph_init_params = GraphInitParams(
-        tenant_id="tenant",
-        app_id="app",
         workflow_id="workflow",
         graph_config={"nodes": [], "edges": []},
-        user_id="user",
-        user_from=UserFrom.ACCOUNT,
-        invoke_from=InvokeFrom.SERVICE_API,
+        run_context={
+            DIFY_RUN_CONTEXT_KEY: {
+                "tenant_id": "tenant",
+                "app_id": "app",
+                "user_id": "user",
+                "user_from": UserFrom.ACCOUNT,
+                "invoke_from": InvokeFrom.SERVICE_API,
+            }
+        },
         call_depth=0,
     )
 
     config = {
         "id": "node-1",
-        "type": NodeType.HUMAN_INPUT.value,
+        "type": BuiltinNodeTypes.HUMAN_INPUT,
         "data": {
             "title": "Human Input",
             "form_content": form_content,
@@ -82,29 +87,34 @@ def _build_node(form_content: str = "Please enter your name:\n\n{{#$output.name#
         graph_init_params=graph_init_params,
         graph_runtime_state=graph_runtime_state,
         form_repository=repo,
+        runtime=DifyHumanInputNodeRuntime(graph_init_params.run_context),
     )
 
 
 def _build_timeout_node() -> HumanInputNode:
-    system_variables = SystemVariable.default()
+    system_variables = default_system_variables()
     graph_runtime_state = GraphRuntimeState(
         variable_pool=VariablePool(system_variables=system_variables, user_inputs={}, environment_variables=[]),
         start_at=0.0,
     )
     graph_init_params = GraphInitParams(
-        tenant_id="tenant",
-        app_id="app",
         workflow_id="workflow",
         graph_config={"nodes": [], "edges": []},
-        user_id="user",
-        user_from=UserFrom.ACCOUNT,
-        invoke_from=InvokeFrom.SERVICE_API,
+        run_context={
+            DIFY_RUN_CONTEXT_KEY: {
+                "tenant_id": "tenant",
+                "app_id": "app",
+                "user_id": "user",
+                "user_from": UserFrom.ACCOUNT,
+                "invoke_from": InvokeFrom.SERVICE_API,
+            }
+        },
         call_depth=0,
     )
 
     config = {
         "id": "node-1",
-        "type": NodeType.HUMAN_INPUT.value,
+        "type": BuiltinNodeTypes.HUMAN_INPUT,
         "data": {
             "title": "Human Input",
             "form_content": "Please enter your name:\n\n{{#$output.name#}}",
@@ -142,6 +152,7 @@ def _build_timeout_node() -> HumanInputNode:
         graph_init_params=graph_init_params,
         graph_runtime_state=graph_runtime_state,
         form_repository=repo,
+        runtime=DifyHumanInputNodeRuntime(graph_init_params.run_context),
     )
 
 

@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from typing import Any, Union, cast
 from urllib.parse import urlparse
 
+from graphon.enums import WorkflowNodeExecutionStatus
 from openinference.semconv.trace import (
     MessageAttributes,
     OpenInferenceMimeTypeValues,
@@ -18,7 +19,7 @@ from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExport
 from opentelemetry.sdk import trace as trace_sdk
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
-from opentelemetry.semconv.trace import SpanAttributes as OTELSpanAttributes
+from opentelemetry.semconv.attributes import exception_attributes
 from opentelemetry.trace import Span, Status, StatusCode, set_span_in_context, use_span
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 from opentelemetry.util.types import AttributeValue
@@ -133,10 +134,10 @@ def set_span_status(current_span: Span, error: Exception | str | None = None):
             if not exception_message:
                 exception_message = repr(error)
             attributes: dict[str, AttributeValue] = {
-                OTELSpanAttributes.EXCEPTION_TYPE: exception_type,
-                OTELSpanAttributes.EXCEPTION_MESSAGE: exception_message,
-                OTELSpanAttributes.EXCEPTION_ESCAPED: False,
-                OTELSpanAttributes.EXCEPTION_STACKTRACE: error_string,
+                exception_attributes.EXCEPTION_TYPE: exception_type,
+                exception_attributes.EXCEPTION_MESSAGE: exception_message,
+                exception_attributes.EXCEPTION_ESCAPED: False,
+                exception_attributes.EXCEPTION_STACKTRACE: error_string,
             }
             current_span.add_event(name="exception", attributes=attributes)
     else:
@@ -155,16 +156,32 @@ def wrap_span_metadata(metadata, **kwargs):
     return metadata
 
 
+# Mapping from built-in node type strings to OpenInference span kinds.
+# Node types not listed here default to CHAIN.
+_NODE_TYPE_TO_SPAN_KIND: dict[str, OpenInferenceSpanKindValues] = {
+    "llm": OpenInferenceSpanKindValues.LLM,
+    "knowledge-retrieval": OpenInferenceSpanKindValues.RETRIEVER,
+    "tool": OpenInferenceSpanKindValues.TOOL,
+    "agent": OpenInferenceSpanKindValues.AGENT,
+}
+
+
+def _get_node_span_kind(node_type: str) -> OpenInferenceSpanKindValues:
+    """Return the OpenInference span kind for a given workflow node type.
+
+    Covers every built-in node type string. Nodes that do not have a
+    specialised span kind (e.g. ``start``, ``end``, ``if-else``,
+    ``code``, ``loop``, ``iteration``, etc.) are mapped to ``CHAIN``.
+    """
+    return _NODE_TYPE_TO_SPAN_KIND.get(node_type, OpenInferenceSpanKindValues.CHAIN)
+
+
 class ArizePhoenixDataTrace(BaseTraceInstance):
     def __init__(
         self,
         arize_phoenix_config: ArizeConfig | PhoenixConfig,
     ):
         super().__init__(arize_phoenix_config)
-        import logging
-
-        logging.basicConfig()
-        logging.getLogger().setLevel(logging.DEBUG)
         self.arize_phoenix_config = arize_phoenix_config
         self.tracer, self.processor = setup_tracer(arize_phoenix_config)
         self.project = arize_phoenix_config.project
@@ -255,8 +272,8 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         )
 
         # Get all executions for this workflow run
-        workflow_node_executions = workflow_node_execution_repository.get_by_workflow_run(
-            workflow_run_id=trace_info.workflow_run_id
+        workflow_node_executions = workflow_node_execution_repository.get_by_workflow_execution(
+            workflow_execution_id=trace_info.workflow_run_id
         )
 
         try:
@@ -284,14 +301,13 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                         "app_name": node_execution.title,
                         "status": node_execution.status,
                         "status_message": node_execution.error or "",
-                        "level": "ERROR" if node_execution.status == "failed" else "DEFAULT",
+                        "level": "ERROR" if node_execution.status == WorkflowNodeExecutionStatus.FAILED else "DEFAULT",
                     }
                 )
 
                 # Determine the correct span kind based on node type
-                span_kind = OpenInferenceSpanKindValues.CHAIN
+                span_kind = _get_node_span_kind(node_execution.node_type)
                 if node_execution.node_type == "llm":
-                    span_kind = OpenInferenceSpanKindValues.LLM
                     provider = process_data.get("model_provider")
                     model = process_data.get("model_name")
                     if provider:
@@ -306,12 +322,6 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                         node_metadata["total_tokens"] = usage_data.get("total_tokens", 0)
                         node_metadata["prompt_tokens"] = usage_data.get("prompt_tokens", 0)
                         node_metadata["completion_tokens"] = usage_data.get("completion_tokens", 0)
-                elif node_execution.node_type == "dataset_retrieval":
-                    span_kind = OpenInferenceSpanKindValues.RETRIEVER
-                elif node_execution.node_type == "tool":
-                    span_kind = OpenInferenceSpanKindValues.TOOL
-                else:
-                    span_kind = OpenInferenceSpanKindValues.CHAIN
 
                 workflow_span_context = set_span_in_context(workflow_span)
                 node_span = self.tracer.start_span(
@@ -352,7 +362,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                         llm_attributes.update(self._construct_llm_attributes(process_data.get("prompts", [])))
                         node_span.set_attributes(llm_attributes)
                 finally:
-                    if node_execution.status == "failed":
+                    if node_execution.status == WorkflowNodeExecutionStatus.FAILED:
                         set_span_status(node_span, node_execution.error)
                     else:
                         set_span_status(node_span)
@@ -400,9 +410,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
 
         # Add end user data if available
         if trace_info.message_data.from_end_user_id:
-            end_user_data: EndUser | None = (
-                db.session.query(EndUser).where(EndUser.id == trace_info.message_data.from_end_user_id).first()
-            )
+            end_user_data: EndUser | None = db.session.get(EndUser, trace_info.message_data.from_end_user_id)
             if end_user_data is not None:
                 metadata["end_user_id"] = end_user_data.session_id
 

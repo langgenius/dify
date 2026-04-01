@@ -5,6 +5,12 @@ from collections.abc import Sequence
 from typing import Protocol, cast
 
 import json_repair
+from graphon.enums import WorkflowNodeExecutionMetadataKey
+from graphon.model_runtime.entities.llm_entities import LLMResult
+from graphon.model_runtime.entities.message_entities import PromptMessage, SystemPromptMessage, UserPromptMessage
+from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
+from sqlalchemy import select
 
 from core.app.app_config.entities import ModelConfig
 from core.llm_generator.entities import RuleCodeGeneratePayload, RuleGeneratePayload, RuleStructuredOutputPayload
@@ -23,15 +29,10 @@ from core.llm_generator.prompts import (
     WORKFLOW_RULE_CONFIG_PROMPT_GENERATE_TEMPLATE,
 )
 from core.model_manager import ModelManager
-from core.model_runtime.entities.llm_entities import LLMResult
-from core.model_runtime.entities.message_entities import PromptMessage, SystemPromptMessage, UserPromptMessage
-from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.ops.utils import measure_time
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models import App, Message, WorkflowNodeExecutionModel
@@ -62,7 +63,7 @@ class LLMGenerator:
 
         prompt += query + "\n"
 
-        model_manager = ModelManager()
+        model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
         model_instance = model_manager.get_default_model_instance(
             tenant_id=tenant_id,
             model_type=ModelType.LLM,
@@ -120,7 +121,7 @@ class LLMGenerator:
         prompt = prompt_template.format({"histories": histories, "format_instructions": format_instructions})
 
         try:
-            model_manager = ModelManager()
+            model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
             model_instance = model_manager.get_default_model_instance(
                 tenant_id=tenant_id,
                 model_type=ModelType.LLM,
@@ -172,7 +173,7 @@ class LLMGenerator:
 
             prompt_messages = [UserPromptMessage(content=prompt_generate)]
 
-            model_manager = ModelManager()
+            model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
 
             model_instance = model_manager.get_model_instance(
                 tenant_id=tenant_id,
@@ -193,7 +194,8 @@ class LLMGenerator:
                 error_step = "generate rule config"
             except Exception as e:
                 logger.exception("Failed to generate rule config, model: %s", args.model_config_data.name)
-                rule_config["error"] = str(e)
+                error = str(e)
+                error_step = "generate rule config"
 
             rule_config["error"] = f"Failed to {error_step}. Error: {error}" if error else ""
 
@@ -218,7 +220,7 @@ class LLMGenerator:
         prompt_messages = [UserPromptMessage(content=prompt_generate_prompt)]
 
         # get model instance
-        model_manager = ModelManager()
+        model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
         model_instance = model_manager.get_model_instance(
             tenant_id=tenant_id,
             model_type=ModelType.LLM,
@@ -279,7 +281,8 @@ class LLMGenerator:
 
         except Exception as e:
             logger.exception("Failed to generate rule config, model: %s", args.model_config_data.name)
-            rule_config["error"] = str(e)
+            error = str(e)
+            error_step = "handle unexpected exception"
 
         rule_config["error"] = f"Failed to {error_step}. Error: {error}" if error else ""
 
@@ -304,7 +307,7 @@ class LLMGenerator:
             remove_template_variables=False,
         )
 
-        model_manager = ModelManager()
+        model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
         model_instance = model_manager.get_model_instance(
             tenant_id=tenant_id,
             model_type=ModelType.LLM,
@@ -335,7 +338,7 @@ class LLMGenerator:
     def generate_qa_document(cls, tenant_id: str, query, document_language: str):
         prompt = GENERATOR_QA_PROMPT.format(language=document_language)
 
-        model_manager = ModelManager()
+        model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
         model_instance = model_manager.get_default_model_instance(
             tenant_id=tenant_id,
             model_type=ModelType.LLM,
@@ -360,7 +363,7 @@ class LLMGenerator:
 
     @classmethod
     def generate_structured_output(cls, tenant_id: str, args: RuleStructuredOutputPayload):
-        model_manager = ModelManager()
+        model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
         model_instance = model_manager.get_model_instance(
             tenant_id=tenant_id,
             model_type=ModelType.LLM,
@@ -408,8 +411,8 @@ class LLMGenerator:
         model_config: ModelConfig,
         ideal_output: str | None,
     ):
-        last_run: Message | None = (
-            db.session.query(Message).where(Message.app_id == flow_id).order_by(Message.created_at.desc()).first()
+        last_run: Message | None = db.session.scalar(
+            select(Message).where(Message.app_id == flow_id).order_by(Message.created_at.desc()).limit(1)
         )
         if not last_run:
             return LLMGenerator.__instruction_modify_common(
@@ -534,7 +537,7 @@ class LLMGenerator:
             injected_instruction = injected_instruction.replace(CURRENT, current or "null")
         if ERROR_MESSAGE in injected_instruction:
             injected_instruction = injected_instruction.replace(ERROR_MESSAGE, error_message or "null")
-        model_instance = ModelManager().get_model_instance(
+        model_instance = ModelManager.for_tenant(tenant_id=tenant_id).get_model_instance(
             tenant_id=tenant_id,
             model_type=ModelType.LLM,
             provider=model_config.provider,

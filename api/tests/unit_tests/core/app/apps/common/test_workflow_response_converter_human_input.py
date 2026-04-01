@@ -1,16 +1,17 @@
 from datetime import UTC, datetime
 from types import SimpleNamespace
 
+from graphon.entities import WorkflowStartReason
+from graphon.runtime import GraphRuntimeState, VariablePool
+
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import QueueHumanInputFormFilledEvent, QueueHumanInputFormTimeoutEvent
-from core.workflow.entities.workflow_start_reason import WorkflowStartReason
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
+from core.workflow.system_variables import build_system_variables
 
 
 def _build_converter():
-    system_variables = SystemVariable(
+    system_variables = build_system_variables(
         files=[],
         user_id="user-1",
         app_id="app-1",

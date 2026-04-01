@@ -51,6 +51,7 @@ const Operation: FC<OperationProps> = ({
                 size="l"
                 disabled={readonly}
                 onClick={onShowVoiceInput}
+                data-testid="voice-input-button"
               >
                 <RiMicLine className="h-5 w-5" />
               </ActionButton>
@@ -61,6 +62,7 @@ const Operation: FC<OperationProps> = ({
           className="ml-3 w-8 px-0"
           variant="primary"
           onClick={readonly ? noop : onSend}
+          data-testid="send-button"
           style={
             theme
               ? {

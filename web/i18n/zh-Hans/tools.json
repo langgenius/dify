@@ -126,6 +126,8 @@
   "mcp.modal.headerValuePlaceholder": "例如：Bearer token123",
   "mcp.modal.headers": "请求头",
   "mcp.modal.headersTip": "发送到 MCP 服务器的额外 HTTP 请求头",
+  "mcp.modal.invalidServerIdentifier": "请输入有效的服务器标识符",
+  "mcp.modal.invalidServerUrl": "请输入有效的服务器 URL",
   "mcp.modal.maskedHeadersTip": "为了安全，请求头值已被掩码处理。修改将更新实际值。",
   "mcp.modal.name": "名称和图标",
   "mcp.modal.namePlaceholder": "命名你的 MCP 服务",

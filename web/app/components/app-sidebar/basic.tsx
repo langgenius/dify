@@ -76,7 +76,7 @@ export default function AppBasic({ icon, icon_background, name, isExternal, type
         )}
       {mode === 'expand' && (
         <div className="group w-full">
-          <div className={`system-md-semibold flex flex-row items-center text-text-secondary group-hover:text-text-primary ${textStyle?.main ?? ''}`}>
+          <div className={`flex flex-row items-center text-text-secondary system-md-semibold group-hover:text-text-primary ${textStyle?.main ?? ''}`}>
             <div className="min-w-0 overflow-hidden text-ellipsis break-normal">
               {name}
             </div>
@@ -95,10 +95,10 @@ export default function AppBasic({ icon, icon_background, name, isExternal, type
               )}
           </div>
           {!hideType && isExtraInLine && (
-            <div className="system-2xs-medium-uppercase flex text-text-tertiary">{type}</div>
+            <div className="flex text-text-tertiary system-2xs-medium-uppercase">{type}</div>
           )}
           {!hideType && !isExtraInLine && (
-            <div className="system-2xs-medium-uppercase text-text-tertiary">{isExternal ? t('externalTag', { ns: 'dataset' }) : type}</div>
+            <div className="text-text-tertiary system-2xs-medium-uppercase">{isExternal ? t('externalTag', { ns: 'dataset' }) : type}</div>
           )}
         </div>
       )}

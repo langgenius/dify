@@ -4,42 +4,43 @@ from datetime import timedelta
 from unittest.mock import MagicMock
 
 import pytest
+from graphon.enums import WorkflowType
+from graphon.graph import Graph
+from graphon.graph_engine import GraphEngine
+from graphon.graph_engine.command_channels import InMemoryChannel
+from graphon.nodes.end.end_node import EndNode
+from graphon.nodes.end.entities import EndNodeData
+from graphon.nodes.human_input.entities import HumanInputNodeData, UserAction
+from graphon.nodes.human_input.enums import HumanInputFormStatus
+from graphon.nodes.human_input.human_input_node import HumanInputNode
+from graphon.nodes.start.entities import StartNodeData
+from graphon.nodes.start.start_node import StartNode
+from graphon.runtime import GraphRuntimeState, VariablePool
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.workflow.layers import PersistenceWorkflowInfo, WorkflowPersistenceLayer
+from core.repositories.human_input_repository import HumanInputFormEntity, HumanInputFormRepository
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
-from core.workflow.entities import GraphInitParams
-from core.workflow.enums import WorkflowType
-from core.workflow.graph import Graph
-from core.workflow.graph_engine.command_channels.in_memory_channel import InMemoryChannel
-from core.workflow.graph_engine.graph_engine import GraphEngine
-from core.workflow.nodes.end.end_node import EndNode
-from core.workflow.nodes.end.entities import EndNodeData
-from core.workflow.nodes.human_input.entities import HumanInputNodeData, UserAction
-from core.workflow.nodes.human_input.enums import HumanInputFormStatus
-from core.workflow.nodes.human_input.human_input_node import HumanInputNode
-from core.workflow.nodes.start.entities import StartNodeData
-from core.workflow.nodes.start.start_node import StartNode
-from core.workflow.repositories.human_input_form_repository import HumanInputFormEntity, HumanInputFormRepository
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
+from core.workflow.node_runtime import DifyHumanInputNodeRuntime
+from core.workflow.system_variables import build_system_variables
 from libs.datetime_utils import naive_utc_now
 from models import Account
 from models.account import Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, IconType
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
+from tests.workflow_test_utils import build_test_graph_init_params
 
 
 def _mock_form_repository_without_submission() -> HumanInputFormRepository:
     repo = MagicMock(spec=HumanInputFormRepository)
     form_entity = MagicMock(spec=HumanInputFormEntity)
     form_entity.id = "test-form-id"
-    form_entity.web_app_token = "test-form-token"
+    form_entity.submission_token = "test-form-token"
     form_entity.recipients = []
     form_entity.rendered_content = "rendered"
     form_entity.submitted = False
@@ -52,7 +53,7 @@ def _mock_form_repository_with_submission(action_id: str) -> HumanInputFormRepos
     repo = MagicMock(spec=HumanInputFormRepository)
     form_entity = MagicMock(spec=HumanInputFormEntity)
     form_entity.id = "test-form-id"
-    form_entity.web_app_token = "test-form-token"
+    form_entity.submission_token = "test-form-token"
     form_entity.recipients = []
     form_entity.rendered_content = "rendered"
     form_entity.submitted = True
@@ -66,7 +67,7 @@ def _mock_form_repository_with_submission(action_id: str) -> HumanInputFormRepos
 
 def _build_runtime_state(workflow_execution_id: str, app_id: str, workflow_id: str, user_id: str) -> GraphRuntimeState:
     variable_pool = VariablePool(
-        system_variables=SystemVariable(
+        system_variables=build_system_variables(
             workflow_execution_id=workflow_execution_id,
             app_id=app_id,
             workflow_id=workflow_id,
@@ -87,11 +88,11 @@ def _build_graph(
     form_repository: HumanInputFormRepository,
 ) -> Graph:
     graph_config: dict[str, object] = {"nodes": [], "edges": []}
-    params = GraphInitParams(
-        tenant_id=tenant_id,
-        app_id=app_id,
+    params = build_test_graph_init_params(
         workflow_id=workflow_id,
         graph_config=graph_config,
+        tenant_id=tenant_id,
+        app_id=app_id,
         user_id=user_id,
         user_from="account",
         invoke_from="debugger",
@@ -120,6 +121,7 @@ def _build_graph(
         graph_init_params=params,
         graph_runtime_state=runtime_state,
         form_repository=form_repository,
+        runtime=DifyHumanInputNodeRuntime(params.run_context),
     )
 
     end_data = EndNodeData(

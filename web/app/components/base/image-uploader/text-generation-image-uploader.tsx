@@ -132,7 +132,7 @@ const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
           onImageLinkLoadSuccess={onImageLinkLoadSuccess}
         />
       </div>
-      <div className={`grid gap-1 ${settings.transfer_methods.length === 2 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+      <div className={`grid gap-1 ${settings.transfer_methods.length === 2 ? 'grid-cols-2' : 'grid-cols-1'}`} data-testid="upload-actions">
         {
           settings.transfer_methods.map((method) => {
             if (method === TransferMethod.local_file)

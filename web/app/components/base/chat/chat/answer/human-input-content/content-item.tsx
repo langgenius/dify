@@ -17,7 +17,7 @@ const ContentItem = ({
 
   const extractFieldName = (str: string): string => {
     const outputVarRegex = /\{\{#\$output\.([^#]+)#\}\}/
-    const match = str.match(outputVarRegex)
+    const match = outputVarRegex.exec(str)
     return match ? match[1] : ''
   }
 
@@ -45,6 +45,7 @@ const ContentItem = ({
           className="h-[104px] sm:text-xs"
           value={inputs[fieldName]}
           onChange={(e) => { onInputChange(fieldName, e.target.value) }}
+          data-testid="content-item-textarea"
         />
       )}
     </div>

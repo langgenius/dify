@@ -1,11 +1,10 @@
 from collections.abc import Sequence
 from enum import StrEnum, auto
 
+from graphon.model_runtime.entities.common_entities import I18nObject
+from graphon.model_runtime.entities.model_entities import ModelType, ProviderModel
+from graphon.model_runtime.entities.provider_entities import ProviderEntity
 from pydantic import BaseModel, ConfigDict
-
-from core.model_runtime.entities.common_entities import I18nObject
-from core.model_runtime.entities.model_entities import ModelType, ProviderModel
-from core.model_runtime.entities.provider_entities import ProviderEntity
 
 
 class ModelStatus(StrEnum):

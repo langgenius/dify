@@ -1,11 +1,11 @@
 from unittest.mock import MagicMock
 
 import pytest
+from graphon.entities.pause_reason import HumanInputRequired
+from graphon.graph_events import GraphRunPausedEvent
 
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.queue_entities import QueueWorkflowPausedEvent
-from core.workflow.entities.pause_reason import HumanInputRequired
-from core.workflow.graph_events.graph import GraphRunPausedEvent
 
 
 class _DummyQueueManager:

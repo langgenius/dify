@@ -6,11 +6,11 @@ from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
+from graphon.file import helpers as file_helpers
 from pydantic import BaseModel
 
 from configs import dify_config
 from core.entities.provider_entities import BasicProviderConfig
-from core.file import helpers as file_helpers
 from core.helper import encrypter
 from core.helper.provider_cache import NoOpProviderCredentialCache
 from core.mcp.types import OAuthClientInformation, OAuthClientMetadata, OAuthTokens

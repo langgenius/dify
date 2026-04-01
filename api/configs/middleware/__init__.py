@@ -26,6 +26,7 @@ from .vdb.chroma_config import ChromaConfig
 from .vdb.clickzetta_config import ClickzettaConfig
 from .vdb.couchbase_config import CouchbaseConfig
 from .vdb.elasticsearch_config import ElasticsearchConfig
+from .vdb.hologres_config import HologresConfig
 from .vdb.huawei_cloud_config import HuaweiCloudConfig
 from .vdb.iris_config import IrisVectorConfig
 from .vdb.lindorm_config import LindormConfig
@@ -259,9 +260,18 @@ class CeleryConfig(DatabaseConfig):
         description="Password of the Redis Sentinel master.",
         default=None,
     )
+
     CELERY_SENTINEL_SOCKET_TIMEOUT: PositiveFloat | None = Field(
         description="Timeout for Redis Sentinel socket operations in seconds.",
         default=0.1,
+    )
+
+    CELERY_TASK_ANNOTATIONS: dict[str, Any] | None = Field(
+        description=(
+            "Annotations for Celery tasks as a JSON mapping of task name -> options "
+            "(for example, rate limits or other task-specific settings)."
+        ),
+        default=None,
     )
 
     @computed_field
@@ -338,6 +348,7 @@ class MiddlewareConfig(
     AnalyticdbConfig,
     ChromaConfig,
     ClickzettaConfig,
+    HologresConfig,
     HuaweiCloudConfig,
     IrisVectorConfig,
     MilvusConfig,

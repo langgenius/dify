@@ -1,6 +1,7 @@
 import urllib.parse
 
 import httpx
+from graphon.file import helpers as file_helpers
 from pydantic import BaseModel, Field, HttpUrl
 
 import services
@@ -10,7 +11,6 @@ from controllers.common.errors import (
     RemoteFileUploadError,
     UnsupportedFileTypeError,
 )
-from core.file import helpers as file_helpers
 from core.helper import ssrf_proxy
 from extensions.ext_database import db
 from fields.file_fields import FileWithSignedUrl, RemoteFileInfo

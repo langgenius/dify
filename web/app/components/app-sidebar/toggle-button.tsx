@@ -19,7 +19,7 @@ const TooltipContent = ({
 
   return (
     <div className="flex items-center gap-x-1">
-      <span className="system-xs-medium px-0.5 text-text-secondary">{expand ? t('sidebar.collapseSidebar', { ns: 'layout' }) : t('sidebar.expandSidebar', { ns: 'layout' })}</span>
+      <span className="px-0.5 text-text-secondary system-xs-medium">{expand ? t('sidebar.collapseSidebar', { ns: 'layout' }) : t('sidebar.expandSidebar', { ns: 'layout' })}</span>
       <ShortcutsName keys={TOGGLE_SHORTCUT} textColor="secondary" />
     </div>
   )

@@ -126,6 +126,8 @@
   "mcp.modal.headerValuePlaceholder": "например, Токен носителя 123",
   "mcp.modal.headers": "Заголовки",
   "mcp.modal.headersTip": "Дополнительные HTTP заголовки для отправки с запросами к серверу MCP",
+  "mcp.modal.invalidServerIdentifier": "Введите корректный идентификатор сервера",
+  "mcp.modal.invalidServerUrl": "Введите корректный URL сервера",
   "mcp.modal.maskedHeadersTip": "Значения заголовков скрыты для безопасности. Изменения обновят фактические значения.",
   "mcp.modal.name": "Имя и иконка",
   "mcp.modal.namePlaceholder": "Назовите ваш MCP сервер",

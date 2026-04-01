@@ -26,12 +26,24 @@ export const useAppWorkflow = (appID: string) => {
   })
 }
 
+const WorkflowRunHistoryKey = [NAME_SPACE, 'runHistory']
+
 export const useWorkflowRunHistory = (url?: string, enabled = true) => {
   return useQuery<WorkflowRunHistoryResponse>({
-    queryKey: [NAME_SPACE, 'runHistory', url],
+    queryKey: [...WorkflowRunHistoryKey, url],
     queryFn: () => get<WorkflowRunHistoryResponse>(url as string),
     enabled: !!url && enabled,
+    staleTime: 0,
   })
+}
+
+export const useInvalidateWorkflowRunHistory = () => {
+  const queryClient = useQueryClient()
+  return (url: string) => {
+    queryClient.invalidateQueries({
+      queryKey: [...WorkflowRunHistoryKey, url],
+    })
+  }
 }
 
 export const useInvalidateAppWorkflow = () => {
@@ -98,6 +110,13 @@ export const useDeleteWorkflow = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'delete'],
     mutationFn: (url: string) => del(url),
+  })
+}
+
+export const useRestoreWorkflow = () => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'restore'],
+    mutationFn: (url: string) => post<CommonResponse & { updated_at: number, hash: string }>(url, {}, { silent: true }),
   })
 }
 

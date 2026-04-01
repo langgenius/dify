@@ -300,7 +300,7 @@
   "segment.collapseChunks": "جمع کردن تکه ها",
   "segment.contentEmpty": "محتوا نمی‌تواند خالی باشد",
   "segment.contentPlaceholder": "محتوا را اینجا اضافه کنید",
-  "segment.dateTimeFormat": "MM/DD/YYYY h:mm",
+  "segment.dateTimeFormat": "MM/DD/YYYY HH:mm",
   "segment.delete": "حذف این قطعه؟",
   "segment.editChildChunk": "ویرایش Child Chunk",
   "segment.editChunk": "ویرایش تکه",

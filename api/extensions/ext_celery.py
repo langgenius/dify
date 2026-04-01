@@ -2,7 +2,7 @@ import ssl
 from datetime import timedelta
 from typing import Any
 
-import pytz
+import pytz  # type: ignore[import-untyped]
 from celery import Celery, Task
 from celery.schedules import crontab
 
@@ -80,7 +80,13 @@ def init_app(app: DifyApp) -> Celery:
         worker_hijack_root_logger=False,
         timezone=pytz.timezone(dify_config.LOG_TZ or "UTC"),
         task_ignore_result=True,
+        task_annotations=dify_config.CELERY_TASK_ANNOTATIONS,
     )
+
+    if dify_config.CELERY_BACKEND == "redis":
+        celery_app.conf.update(
+            result_backend_transport_options=broker_transport_options,
+        )
 
     # Apply SSL configuration if enabled
     ssl_options = _get_celery_ssl_options()
@@ -198,6 +204,8 @@ def init_app(app: DifyApp) -> Celery:
             "schedule": timedelta(minutes=dify_config.API_TOKEN_LAST_USED_UPDATE_INTERVAL),
         }
 
+    if dify_config.ENTERPRISE_ENABLED and dify_config.ENTERPRISE_TELEMETRY_ENABLED:
+        imports.append("tasks.enterprise_telemetry_task")
     celery_app.conf.update(beat_schedule=beat_schedule, imports=imports)
 
     return celery_app

@@ -8,8 +8,8 @@ import { ActionButton, ActionButtonState } from '@/app/components/base/action-bu
 import Badge from '@/app/components/base/badge'
 import { Button } from '@/app/components/base/button'
 import CustomSelect from '@/app/components/base/select/custom'
-import Toast from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
+import { toast } from '@/app/components/base/ui/toast'
 import { openOAuthPopup } from '@/hooks/use-oauth'
 import { useInitiateTriggerOAuth, useTriggerOAuthConfig, useTriggerProviderInfo } from '@/service/use-triggers'
 import { cn } from '@/utils/classnames'
@@ -107,19 +107,13 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
           onSuccess: (response) => {
             openOAuthPopup(response.authorization_url, (callbackData) => {
               if (callbackData) {
-                Toast.notify({
-                  type: 'success',
-                  message: t('modal.oauth.authorization.authSuccess', { ns: 'pluginTrigger' }),
-                })
+                toast.success(t('modal.oauth.authorization.authSuccess', { ns: 'pluginTrigger' }))
                 setSelectedCreateInfo({ type: SupportedCreationMethods.OAUTH, builder: response.subscription_builder })
               }
             })
           },
           onError: () => {
-            Toast.notify({
-              type: 'error',
-              message: t('modal.oauth.authorization.authFailed', { ns: 'pluginTrigger' }),
-            })
+            toast.error(t('modal.oauth.authorization.authFailed', { ns: 'pluginTrigger' }))
           },
         })
       }

@@ -23,40 +23,40 @@ def clean_notion_document_task(document_ids: list[str], dataset_id: str):
     """
     logger.info(click.style(f"Start clean document when import form notion document deleted: {dataset_id}", fg="green"))
     start_at = time.perf_counter()
+    total_index_node_ids = []
 
     with session_factory.create_session() as session:
-        try:
-            dataset = session.query(Dataset).where(Dataset.id == dataset_id).first()
+        dataset = session.query(Dataset).where(Dataset.id == dataset_id).first()
 
-            if not dataset:
-                raise Exception("Document has no dataset")
-            index_type = dataset.doc_form
-            index_processor = IndexProcessorFactory(index_type).init_index_processor()
+        if not dataset:
+            raise Exception("Document has no dataset")
+        index_type = dataset.doc_form
+        index_processor = IndexProcessorFactory(index_type).init_index_processor()
 
-            document_delete_stmt = delete(Document).where(Document.id.in_(document_ids))
-            session.execute(document_delete_stmt)
+        document_delete_stmt = delete(Document).where(Document.id.in_(document_ids))
+        session.execute(document_delete_stmt)
 
-            for document_id in document_ids:
-                segments = session.scalars(
-                    select(DocumentSegment).where(DocumentSegment.document_id == document_id)
-                ).all()
-                index_node_ids = [segment.index_node_id for segment in segments]
+        for document_id in document_ids:
+            segments = session.scalars(select(DocumentSegment).where(DocumentSegment.document_id == document_id)).all()
+            total_index_node_ids.extend([segment.index_node_id for segment in segments])
 
-                index_processor.clean(
-                    dataset, index_node_ids, with_keywords=True, delete_child_chunks=True, delete_summaries=True
-                )
-                segment_ids = [segment.id for segment in segments]
-                segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.id.in_(segment_ids))
-                session.execute(segment_delete_stmt)
-            session.commit()
-            end_at = time.perf_counter()
-            logger.info(
-                click.style(
-                    "Clean document when import form notion document deleted end :: {} latency: {}".format(
-                        dataset_id, end_at - start_at
-                    ),
-                    fg="green",
-                )
+    with session_factory.create_session() as session:
+        dataset = session.query(Dataset).where(Dataset.id == dataset_id).first()
+        if dataset:
+            index_processor.clean(
+                dataset, total_index_node_ids, with_keywords=True, delete_child_chunks=True, delete_summaries=True
             )
-        except Exception:
-            logger.exception("Cleaned document when import form notion document deleted  failed")
+
+    with session_factory.create_session() as session, session.begin():
+        segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.document_id.in_(document_ids))
+        session.execute(segment_delete_stmt)
+
+    end_at = time.perf_counter()
+    logger.info(
+        click.style(
+            "Clean document when import form notion document deleted end :: {} latency: {}".format(
+                dataset_id, end_at - start_at
+            ),
+            fg="green",
+        )
+    )

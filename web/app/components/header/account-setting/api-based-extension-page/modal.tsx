@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { BookOpen01 } from '@/app/components/base/icons/src/vender/line/education'
 import Modal from '@/app/components/base/modal'
-import { useToastContext } from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import { useDocLink } from '@/context/i18n'
 import {
   addApiBasedExtension,
@@ -78,6 +78,7 @@ const ApiBasedExtensionModal: FC<ApiBasedExtensionModalProps> = ({
     <Modal
       isShow
       onClose={noop}
+      wrapperClassName="z-[1002]"
       className="!w-[640px] !max-w-none !p-8 !pb-6"
     >
       <div className="mb-2 text-xl font-semibold text-text-primary">

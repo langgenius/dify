@@ -19,7 +19,7 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { useToastContext } from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import Indicator from '@/app/components/header/indicator'
 import { cn } from '@/utils/classnames'
 import Authorize from '../authorize'
@@ -249,7 +249,7 @@ const Authorized = ({
                 !!oAuthCredentials.length && (
                   <div className="p-1">
                     <div className={cn(
-                      'system-xs-medium px-3 pb-0.5 pt-1 text-text-tertiary',
+                      'px-3 pb-0.5 pt-1 text-text-tertiary system-xs-medium',
                       showItemSelectedIcon && 'pl-7',
                     )}
                     >
@@ -279,7 +279,7 @@ const Authorized = ({
                 !!apiKeyCredentials.length && (
                   <div className="p-1">
                     <div className={cn(
-                      'system-xs-medium px-3 pb-0.5 pt-1 text-text-tertiary',
+                      'px-3 pb-0.5 pt-1 text-text-tertiary system-xs-medium',
                       showItemSelectedIcon && 'pl-7',
                     )}
                     >

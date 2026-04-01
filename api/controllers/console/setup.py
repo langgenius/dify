@@ -2,6 +2,7 @@ from typing import Literal
 
 from flask import request
 from pydantic import BaseModel, Field, field_validator
+from sqlalchemy import select
 
 from configs import dify_config
 from controllers.fastopenapi import console_router
@@ -42,7 +43,15 @@ class SetupResponse(BaseModel):
     tags=["console"],
 )
 def get_setup_status_api() -> SetupStatusResponse:
-    """Get system setup status."""
+    """Get system setup status.
+
+    NOTE: This endpoint is unauthenticated by design.
+
+    During first-time bootstrap there is no admin account yet, so frontend initialization must be
+    able to query setup progress before any login flow exists.
+
+    Only bootstrap-safe status information should be returned by this endpoint.
+    """
     if dify_config.EDITION == "SELF_HOSTED":
         setup_status = get_setup_status()
         if setup_status and not isinstance(setup_status, bool):
@@ -61,7 +70,12 @@ def get_setup_status_api() -> SetupStatusResponse:
 )
 @only_edition_self_hosted
 def setup_system(payload: SetupRequestPayload) -> SetupResponse:
-    """Initialize system setup with admin account."""
+    """Initialize system setup with admin account.
+
+    NOTE: This endpoint is unauthenticated by design for first-time bootstrap.
+    Access is restricted by deployment mode (`SELF_HOSTED`), one-time setup guards,
+    and init-password validation rather than user session authentication.
+    """
     if get_setup_status():
         raise AlreadySetupError()
 
@@ -87,6 +101,6 @@ def setup_system(payload: SetupRequestPayload) -> SetupResponse:
 
 def get_setup_status() -> DifySetup | bool | None:
     if dify_config.EDITION == "SELF_HOSTED":
-        return db.session.query(DifySetup).first()
+        return db.session.scalar(select(DifySetup).limit(1))
 
     return True

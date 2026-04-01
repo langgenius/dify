@@ -14,20 +14,15 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Union
 
-from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
-from core.ops.entities.trace_entity import TraceTaskName
-from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
-from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
-from core.workflow.entities import WorkflowExecution, WorkflowNodeExecution
-from core.workflow.enums import (
-    SystemVariableKey,
+from graphon.entities import WorkflowExecution, WorkflowNodeExecution
+from graphon.enums import (
     WorkflowExecutionStatus,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
     WorkflowType,
 )
-from core.workflow.graph_engine.layers.base import GraphEngineLayer
-from core.workflow.graph_events import (
+from graphon.graph_engine.layers import GraphEngineLayer
+from graphon.graph_events import (
     GraphEngineEvent,
     GraphRunAbortedEvent,
     GraphRunFailedEvent,
@@ -42,9 +37,15 @@ from core.workflow.graph_events import (
     NodeRunStartedEvent,
     NodeRunSucceededEvent,
 )
-from core.workflow.node_events import NodeRunResult
-from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
-from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
+from graphon.node_events import NodeRunResult
+
+from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
+from core.ops.entities.trace_entity import TraceTaskName
+from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
+from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
+from core.workflow.system_variables import SystemVariableKey
+from core.workflow.variable_prefixes import SYSTEM_VARIABLE_NODE_ID
+from core.workflow.workflow_run_outputs import project_node_outputs_for_workflow_run
 from libs.datetime_utils import naive_utc_now
 
 
@@ -128,12 +129,12 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
             self._handle_graph_run_paused(event)
             return
 
-        if isinstance(event, NodeRunStartedEvent):
-            self._handle_node_started(event)
-            return
-
         if isinstance(event, NodeRunRetryEvent):
             self._handle_node_retry(event)
+            return
+
+        if isinstance(event, NodeRunStartedEvent):
+            self._handle_node_started(event)
             return
 
         if isinstance(event, NodeRunSucceededEvent):
@@ -268,7 +269,12 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
 
     def _handle_node_succeeded(self, event: NodeRunSucceededEvent) -> None:
         domain_execution = self._get_node_execution(event.id)
-        self._update_node_execution(domain_execution, event.node_run_result, WorkflowNodeExecutionStatus.SUCCEEDED)
+        self._update_node_execution(
+            domain_execution,
+            event.node_run_result,
+            WorkflowNodeExecutionStatus.SUCCEEDED,
+            finished_at=event.finished_at,
+        )
 
     def _handle_node_failed(self, event: NodeRunFailedEvent) -> None:
         domain_execution = self._get_node_execution(event.id)
@@ -277,6 +283,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
             event.node_run_result,
             WorkflowNodeExecutionStatus.FAILED,
             error=event.error,
+            finished_at=event.finished_at,
         )
 
     def _handle_node_exception(self, event: NodeRunExceptionEvent) -> None:
@@ -286,6 +293,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
             event.node_run_result,
             WorkflowNodeExecutionStatus.EXCEPTION,
             error=event.error,
+            finished_at=event.finished_at,
         )
 
     def _handle_node_pause_requested(self, event: NodeRunPauseRequestedEvent) -> None:
@@ -352,22 +360,28 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         *,
         error: str | None = None,
         update_outputs: bool = True,
+        finished_at: datetime | None = None,
     ) -> None:
-        finished_at = naive_utc_now()
+        actual_finished_at = finished_at or naive_utc_now()
         snapshot = self._node_snapshots.get(domain_execution.id)
         start_at = snapshot.created_at if snapshot else domain_execution.created_at
         domain_execution.status = status
-        domain_execution.finished_at = finished_at
-        domain_execution.elapsed_time = max((finished_at - start_at).total_seconds(), 0.0)
+        domain_execution.finished_at = actual_finished_at
+        domain_execution.elapsed_time = max((actual_finished_at - start_at).total_seconds(), 0.0)
 
         if error:
             domain_execution.error = error
 
         if update_outputs:
+            projected_outputs = project_node_outputs_for_workflow_run(
+                node_type=domain_execution.node_type,
+                inputs=node_result.inputs,
+                outputs=node_result.outputs,
+            )
             domain_execution.update_from_mapping(
                 inputs=node_result.inputs,
                 process_data=node_result.process_data,
-                outputs=node_result.outputs,
+                outputs=projected_outputs,
                 metadata=node_result.metadata,
             )
 

@@ -1,6 +1,6 @@
 import type { TFunction } from 'i18next'
 import type { SchemaOptions } from './types'
-import { z } from 'zod'
+import * as z from 'zod'
 import { InputTypeEnum } from '@/app/components/base/form/components/field/input-type-select/types'
 import { MAX_VAR_KEY_LENGTH } from '@/config'
 import { PipelineInputVarType } from '@/models/pipeline'

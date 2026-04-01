@@ -1,34 +1,49 @@
 // @ts-check
-import antfu from '@antfu/eslint-config'
+
+import antfu, { GLOB_MARKDOWN, GLOB_MARKDOWN_CODE, GLOB_TESTS, GLOB_TS, GLOB_TSX, isInEditorEnv, isInGitHooksOrLintStaged } from '@antfu/eslint-config'
+import pluginReact from '@eslint-react/eslint-plugin'
 import pluginQuery from '@tanstack/eslint-plugin-query'
+import md from 'eslint-markdown'
 import tailwindcss from 'eslint-plugin-better-tailwindcss'
+import hyoban from 'eslint-plugin-hyoban'
+import markdownPreferences from 'eslint-plugin-markdown-preferences'
+import noBarrelFiles from 'eslint-plugin-no-barrel-files'
+import { reactRefresh } from 'eslint-plugin-react-refresh'
 import sonar from 'eslint-plugin-sonarjs'
 import storybook from 'eslint-plugin-storybook'
-import dify from './eslint-rules/index.js'
+import {
+  HYOBAN_PREFER_TAILWIND_ICONS_OPTIONS,
+  NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS,
+  NEXT_PLATFORM_RESTRICTED_IMPORT_PATTERNS,
+  OVERLAY_MIGRATION_LEGACY_BASE_FILES,
+  OVERLAY_RESTRICTED_IMPORT_PATTERNS,
+} from './eslint.constants.mjs'
+import dify from './plugins/eslint/index.js'
+
+// Enable Tailwind CSS IntelliSense mode for ESLint runs
+// See: tailwind-css-plugin.ts
+process.env.TAILWIND_MODE ??= 'ESLINT'
+
+const disableRuleAutoFix = !(isInEditorEnv() || isInGitHooksOrLintStaged())
+
+const plugins = pluginReact.configs.all.plugins
 
 export default antfu(
   {
-    react: {
-      // This react compiler rules are pretty slow
-      // We can wait for https://github.com/Rel1cx/eslint-react/issues/1237
-      reactCompiler: false,
+    react: false,
+    nextjs: {
       overrides: {
-        'react/no-context-provider': 'off',
-        'react/no-forward-ref': 'off',
-        'react/no-use-context': 'off',
-
-        // prefer react-hooks-extra/no-direct-set-state-in-use-effect
-        'react-hooks/set-state-in-effect': 'off',
-        'react-hooks-extra/no-direct-set-state-in-use-effect': 'error',
+        'next/no-img-element': 'off',
       },
     },
-    nextjs: true,
     ignores: ['public', 'types/doc-paths.ts', 'eslint-suppressions.json'],
     typescript: {
       overrides: {
         'ts/consistent-type-definitions': ['error', 'type'],
         'ts/no-explicit-any': 'error',
+        'ts/no-redeclare': 'off',
       },
+      erasableOnly: true,
     },
     test: {
       overrides: {
@@ -39,6 +54,63 @@ export default antfu(
       overrides: {
         'antfu/top-level-function': 'off',
       },
+    },
+    e18e: false,
+    pnpm: false,
+  },
+  {
+    plugins: {
+      'react': plugins?.['@eslint-react'],
+      'react-dom': plugins?.['@eslint-react/dom'],
+      'react-naming-convention': plugins?.['@eslint-react/naming-convention'],
+      'react-rsc': plugins?.['@eslint-react/rsc'],
+      'react-web-api': plugins?.['@eslint-react/web-api'],
+    },
+  },
+  {
+    files: [GLOB_TS, GLOB_TSX],
+    rules: {
+      ...pluginReact.configs['recommended-typescript'].rules,
+      'react/prefer-namespace-import': 'error',
+      'react/set-state-in-effect': 'error',
+      'react/no-unnecessary-use-prefix': 'error',
+    },
+  },
+  {
+    files: [...GLOB_TESTS, GLOB_MARKDOWN_CODE, 'vitest.setup.ts', 'test/i18n-mock.ts'],
+    rules: {
+      'react/component-hook-factories': 'off',
+      'react/no-unnecessary-use-prefix': 'off',
+    },
+  },
+  {
+    plugins: {
+      'no-barrel-files': noBarrelFiles,
+    },
+    ignores: ['next/**'],
+    rules: {
+      'no-barrel-files/no-barrel-files': 'error',
+    },
+  },
+  reactRefresh.configs.next(),
+  markdownPreferences.configs.standard,
+  {
+    files: [GLOB_MARKDOWN],
+    plugins: { md },
+    rules: {
+      'md/no-url-trailing-slash': 'error',
+      'markdown-preferences/prefer-link-reference-definitions': [
+        'error',
+        {
+          minLinks: 1,
+        },
+      ],
+      'markdown-preferences/ordered-list-marker-sequence': [
+        'error',
+        { increment: 'never' },
+      ],
+      'markdown-preferences/definitions-last': 'error',
+      'markdown-preferences/sort-definitions': 'error',
     },
   },
   {
@@ -67,7 +139,8 @@ export default antfu(
     },
   },
   {
-    files: ['**/*.{ts,tsx}'],
+    files: [GLOB_TS, GLOB_TSX],
+    ignores: GLOB_TESTS,
     plugins: {
       tailwindcss,
     },
@@ -79,7 +152,17 @@ export default antfu(
     },
   },
   {
-    plugins: { dify },
+    name: 'dify/custom/setup',
+    plugins: {
+      dify,
+      hyoban,
+    },
+  },
+  {
+    files: ['**/*.tsx'],
+    rules: {
+      'hyoban/prefer-tailwind-icons': ['warn', HYOBAN_PREFER_TAILWIND_ICONS_OPTIONS],
+    },
   },
   {
     files: ['i18n/**/*.json'],
@@ -88,15 +171,65 @@ export default antfu(
       'max-lines': 'off',
       'jsonc/sort-keys': 'error',
 
-      'dify/valid-i18n-keys': 'error',
+      'hyoban/i18n-flat-key': 'error',
       'dify/no-extra-keys': 'error',
       'dify/consistent-placeholders': 'error',
     },
   },
   {
-    files: ['**/package.json'],
+    files: ['package.json'],
     rules: {
-      'dify/no-version-prefix': 'error',
+      'hyoban/no-dependency-version-prefix': 'error',
+    },
+  },
+  {
+    name: 'dify/base-ui-primitives',
+    files: ['app/components/base/ui/**/*.tsx', 'app/components/base/avatar/**/*.tsx'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
+  {
+    name: 'dify/no-direct-next-imports',
+    files: [GLOB_TS, GLOB_TSX],
+    ignores: ['next/**'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        paths: NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS,
+        patterns: NEXT_PLATFORM_RESTRICTED_IMPORT_PATTERNS,
+      }],
+    },
+  },
+  {
+    name: 'dify/overlay-migration',
+    files: [GLOB_TS, GLOB_TSX],
+    ignores: [
+      'next/**',
+      ...GLOB_TESTS,
+      ...OVERLAY_MIGRATION_LEGACY_BASE_FILES,
+    ],
+    rules: {
+      'no-restricted-imports': ['error', {
+        paths: NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS,
+        patterns: [
+          ...NEXT_PLATFORM_RESTRICTED_IMPORT_PATTERNS,
+          ...OVERLAY_RESTRICTED_IMPORT_PATTERNS,
+        ],
+      }],
     },
   },
 )
+  .disableRulesFix(disableRuleAutoFix
+    ? [
+        'tailwindcss/enforce-consistent-class-order',
+        'tailwindcss/no-duplicate-classes',
+        'tailwindcss/no-unnecessary-whitespace',
+      ]
+    : [])
+  .renamePlugins({
+    '@eslint-react': 'react',
+    '@eslint-react/dom': 'react-dom',
+    '@eslint-react/naming-convention': 'react-naming-convention',
+    '@eslint-react/rsc': 'react-rsc',
+    '@eslint-react/web-api': 'react-web-api',
+  })

@@ -212,6 +212,7 @@ api/.vscode
 
 # pnpm
 /.pnpm-store
+/node_modules
 
 # plugin migrate
 plugins.jsonl
@@ -222,6 +223,7 @@ mise.toml
 
 # AI Assistant
 .roo/
+/.claude/worktrees/
 api/.env.backup
 /clickzetta
 
@@ -236,3 +238,6 @@ scripts/stress-test/reports/
 # settings
 *.local.json
 *.local.md
+
+# Code Agent Folder
+.qoder/*

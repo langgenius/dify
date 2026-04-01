@@ -1,6 +1,6 @@
+from graphon.model_runtime.entities.provider_entities import ProviderEntity
 from pydantic import BaseModel, Field, computed_field, model_validator
 
-from core.model_runtime.entities.provider_entities import ProviderEntity
 from core.plugin.entities.endpoint import EndpointProviderDeclaration
 from core.plugin.entities.plugin import PluginResourceRequirements
 from core.tools.entities.common_entities import I18nObject

@@ -44,6 +44,7 @@ const Uploader: FC<UploaderProps> = ({
     >
       {children(hovering)}
       <input
+        data-testid="local-file-input"
         className="absolute inset-0 block w-full cursor-pointer text-[0] opacity-0 disabled:cursor-not-allowed"
         onClick={e => ((e.target as HTMLInputElement).value = '')}
         type="file"

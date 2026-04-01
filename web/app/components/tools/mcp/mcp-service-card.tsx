@@ -250,7 +250,7 @@ const MCPServiceCard: FC<IAppCardProps> = ({
                 offset={24}
               >
                 <div>
-                  <Switch defaultValue={activated} onChange={onChangeStatus} disabled={toggleDisabled} />
+                  <Switch value={activated} onChange={onChangeStatus} disabled={toggleDisabled} />
                 </div>
               </Tooltip>
             </div>

@@ -126,6 +126,8 @@
   "mcp.modal.headerValuePlaceholder": "ad esempio, Token di accesso123",
   "mcp.modal.headers": "Intestazioni",
   "mcp.modal.headersTip": "Intestazioni HTTP aggiuntive da inviare con le richieste al server MCP",
+  "mcp.modal.invalidServerIdentifier": "Inserisci un identificatore di server valido",
+  "mcp.modal.invalidServerUrl": "Inserisci un URL server valido",
   "mcp.modal.maskedHeadersTip": "I valori dell'intestazione sono mascherati per motivi di sicurezza. Le modifiche aggiorneranno i valori effettivi.",
   "mcp.modal.name": "Nome & Icona",
   "mcp.modal.namePlaceholder": "Dai un nome al tuo server MCP",

@@ -1,4 +1,9 @@
 'use client'
+/**
+ * @deprecated Use `@/app/components/base/ui/tooltip` instead.
+ * This component will be removed after migration is complete.
+ * See: https://github.com/langgenius/dify/issues/32767
+ */
 import type { OffsetOptions, Placement } from '@floating-ui/react'
 import type { FC } from 'react'
 import { RiQuestionLine } from '@remixicon/react'
@@ -130,7 +135,7 @@ const Tooltip: FC<TooltipProps> = ({
         {!!popupContent && (
           <div
             className={cn(
-              !noDecoration && 'system-xs-regular relative max-w-[300px] break-words rounded-md bg-components-panel-bg px-3 py-2 text-left text-text-tertiary shadow-lg',
+              !noDecoration && 'relative max-w-[300px] break-words rounded-md bg-components-panel-bg px-3 py-2 text-left text-text-tertiary shadow-lg system-xs-regular',
               popupClassName,
             )}
             onMouseEnter={() => {

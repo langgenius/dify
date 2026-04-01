@@ -1,3 +1,5 @@
+import type { inferParserType } from 'nuqs/server'
+import type { ActivePluginType } from './constants'
 import { parseAsArrayOf, parseAsString, parseAsStringEnum } from 'nuqs/server'
 
 export const CREATION_TYPE = {
@@ -24,3 +26,5 @@ export const marketplaceSearchParamsParsers = {
   creationType: parseAsStringEnum<CreationType>([CREATION_TYPE.plugins, CREATION_TYPE.templates]).withDefault(CREATION_TYPE.plugins).withOptions({ history: 'replace' }),
   searchTab: parseAsStringEnum<SearchTab>(['all', 'plugins', 'templates', 'creators']).withDefault('').withOptions({ history: 'replace' }),
 }
+
+export type MarketplaceSearchParams = inferParserType<typeof marketplaceSearchParamsParsers>

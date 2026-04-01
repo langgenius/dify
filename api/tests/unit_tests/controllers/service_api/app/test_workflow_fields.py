@@ -1,7 +1,8 @@
 from types import SimpleNamespace
 
+from graphon.enums import WorkflowExecutionStatus
+
 from controllers.service_api.app.workflow import WorkflowRunOutputsField, WorkflowRunStatusField
-from core.workflow.enums import WorkflowExecutionStatus
 
 
 def test_workflow_run_status_field_with_enum() -> None:

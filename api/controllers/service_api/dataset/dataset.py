@@ -2,6 +2,7 @@ from typing import Any, Literal, cast
 
 from flask import request
 from flask_restx import marshal
+from graphon.model_runtime.entities.model_entities import ModelType
 from pydantic import BaseModel, Field, TypeAdapter, field_validator
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -14,8 +15,8 @@ from controllers.service_api.wraps import (
     DatasetApiResource,
     cloud_edition_billing_rate_limit_check,
 )
-from core.model_runtime.entities.model_entities import ModelType
-from core.provider_manager import ProviderManager
+from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from fields.dataset_fields import dataset_detail_fields
 from fields.tag_fields import DataSetTag
 from libs.login import current_user
@@ -139,10 +140,10 @@ class DatasetListApi(DatasetApiResource):
             query.page, query.limit, tenant_id, current_user, query.keyword, query.tag_ids, query.include_all
         )
         # check embedding setting
-        provider_manager = ProviderManager()
         assert isinstance(current_user, Account)
         cid = current_user.current_tenant_id
         assert cid is not None
+        provider_manager = create_plugin_provider_manager(tenant_id=cid)
         configurations = provider_manager.get_configurations(tenant_id=cid)
 
         embedding_models = configurations.get_models(model_type=ModelType.TEXT_EMBEDDING, only_active=True)
@@ -153,15 +154,20 @@ class DatasetListApi(DatasetApiResource):
 
         data = marshal(datasets, dataset_detail_fields)
         for item in data:
-            if item["indexing_technique"] == "high_quality" and item["embedding_model_provider"]:
-                item["embedding_model_provider"] = str(ModelProviderID(item["embedding_model_provider"]))
-                item_model = f"{item['embedding_model']}:{item['embedding_model_provider']}"
+            if (
+                item["indexing_technique"] == IndexTechniqueType.HIGH_QUALITY  # pyrefly: ignore[bad-index]
+                and item["embedding_model_provider"]  # pyrefly: ignore[bad-index]
+            ):
+                item["embedding_model_provider"] = str(  # pyrefly: ignore[unsupported-operation]
+                    ModelProviderID(item["embedding_model_provider"])  # pyrefly: ignore[bad-index]
+                )
+                item_model = f"{item['embedding_model']}:{item['embedding_model_provider']}"  # pyrefly: ignore[bad-index]
                 if item_model in model_names:
-                    item["embedding_available"] = True
+                    item["embedding_available"] = True  # type: ignore
                 else:
-                    item["embedding_available"] = False
+                    item["embedding_available"] = False  # type: ignore
             else:
-                item["embedding_available"] = True
+                item["embedding_available"] = True  # type: ignore
         response = {
             "data": data,
             "has_more": len(datasets) == query.limit,
@@ -253,10 +259,10 @@ class DatasetApi(DatasetApiResource):
             raise Forbidden(str(e))
         data = cast(dict[str, Any], marshal(dataset, dataset_detail_fields))
         # check embedding setting
-        provider_manager = ProviderManager()
         assert isinstance(current_user, Account)
         cid = current_user.current_tenant_id
         assert cid is not None
+        provider_manager = create_plugin_provider_manager(tenant_id=cid)
         configurations = provider_manager.get_configurations(tenant_id=cid)
 
         embedding_models = configurations.get_models(model_type=ModelType.TEXT_EMBEDDING, only_active=True)
@@ -265,7 +271,7 @@ class DatasetApi(DatasetApiResource):
         for embedding_model in embedding_models:
             model_names.append(f"{embedding_model.model}:{embedding_model.provider.provider}")
 
-        if data.get("indexing_technique") == "high_quality":
+        if data.get("indexing_technique") == IndexTechniqueType.HIGH_QUALITY:
             item_model = f"{data.get('embedding_model')}:{data.get('embedding_model_provider')}"
             if item_model in model_names:
                 data["embedding_available"] = True
@@ -315,7 +321,7 @@ class DatasetApi(DatasetApiResource):
         # check embedding model setting
         embedding_model_provider = payload.embedding_model_provider
         embedding_model = payload.embedding_model
-        if payload.indexing_technique == "high_quality" or embedding_model_provider:
+        if payload.indexing_technique == IndexTechniqueType.HIGH_QUALITY or embedding_model_provider:
             if embedding_model_provider and embedding_model:
                 DatasetService.check_embedding_model_setting(
                     dataset.tenant_id, embedding_model_provider, embedding_model
