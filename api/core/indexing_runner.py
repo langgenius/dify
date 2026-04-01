@@ -740,11 +740,14 @@ class IndexingRunner:
         """
         Update the document indexing status.
         """
-        count = db.session.scalar(
-            select(func.count()).select_from(DatasetDocument).where(
-                DatasetDocument.id == document_id, DatasetDocument.is_paused == True
+        count = (
+            db.session.scalar(
+                select(func.count())
+                .select_from(DatasetDocument)
+                .where(DatasetDocument.id == document_id, DatasetDocument.is_paused == True)
             )
-        ) or 0
+            or 0
+        )
         if count > 0:
             raise DocumentIsPausedError()
         document = db.session.get(DatasetDocument, document_id)

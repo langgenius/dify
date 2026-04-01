@@ -9,6 +9,7 @@ from graphon.graph_events import GraphEngineEvent, GraphRunFailedEvent
 from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.variable_loader import VariableLoader
 from graphon.variables.variables import RAGPipelineVariable, RAGPipelineVariableInput
+from sqlalchemy import select
 
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.pipeline.pipeline_config_manager import PipelineConfig
@@ -25,8 +26,6 @@ from core.workflow.node_factory import DifyNodeFactory, get_default_root_node_id
 from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
-from sqlalchemy import select
-
 from extensions.ext_database import db
 from models.dataset import Document, Pipeline
 from models.model import EndUser
@@ -300,9 +299,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
         if isinstance(event, GraphRunFailedEvent):
             if document_id and dataset_id:
                 document = db.session.scalar(
-                    select(Document)
-                    .where(Document.id == document_id, Document.dataset_id == dataset_id)
-                    .limit(1)
+                    select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
                 )
                 if document:
                     document.indexing_status = "error"
