@@ -4,7 +4,6 @@ import { cva } from 'class-variance-authority'
 import * as React from 'react'
 import { cn } from '@/utils/classnames'
 import Divider from '../divider'
-import './index.css'
 
 type SegmentedControlOption<T> = {
   value: T
@@ -131,7 +130,7 @@ export const SegmentedControl = <T extends string | number | symbol>({
               <div className={cn('inline-flex items-center gap-x-1', ItemTextWrapperVariants({ size }))}>
                 <span>{text}</span>
                 {!!(count && size === 'large') && (
-                  <div className="system-2xs-medium-uppercase inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-[5px] text-text-tertiary">
+                  <div className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-[5px] text-text-tertiary system-2xs-medium-uppercase">
                     {count}
                   </div>
                 )}

@@ -111,6 +111,7 @@ export const useResizePanel = (params?: UseResizePanelParams) => {
       if (element)
         element.removeEventListener('mousedown', handleStartResize)
       document.removeEventListener('mousemove', handleResize)
+      document.removeEventListener('mouseup', handleStopResize)
     }
   }, [handleStartResize, handleResize, handleStopResize])
 

@@ -2,6 +2,8 @@ import json
 from collections.abc import Mapping
 from typing import Any
 
+from graphon.entities import WorkflowNodeExecution
+from graphon.enums import WorkflowNodeExecutionStatus
 from opentelemetry.trace import Link, Status, StatusCode
 
 from core.ops.aliyun_trace.entities.semconv import (
@@ -14,8 +16,6 @@ from core.ops.aliyun_trace.entities.semconv import (
     GenAISpanKind,
 )
 from core.rag.models.document import Document
-from core.workflow.entities import WorkflowNodeExecution
-from core.workflow.enums import WorkflowNodeExecutionStatus
 from extensions.ext_database import db
 from models import EndUser
 
@@ -27,9 +27,7 @@ DEFAULT_FRAMEWORK_NAME = "dify"
 def get_user_id_from_message_data(message_data) -> str:
     user_id = message_data.from_account_id
     if message_data.from_end_user_id:
-        end_user_data: EndUser | None = (
-            db.session.query(EndUser).where(EndUser.id == message_data.from_end_user_id).first()
-        )
+        end_user_data: EndUser | None = db.session.get(EndUser, message_data.from_end_user_id)
         if end_user_data is not None:
             user_id = end_user_data.session_id
     return user_id

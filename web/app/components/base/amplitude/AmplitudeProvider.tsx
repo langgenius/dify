@@ -5,15 +5,10 @@ import * as amplitude from '@amplitude/analytics-browser'
 import { sessionReplayPlugin } from '@amplitude/plugin-session-replay-browser'
 import * as React from 'react'
 import { useEffect } from 'react'
-import { AMPLITUDE_API_KEY, IS_CLOUD_EDITION } from '@/config'
+import { AMPLITUDE_API_KEY, isAmplitudeEnabled } from '@/config'
 
 export type IAmplitudeProps = {
   sessionReplaySampleRate?: number
-}
-
-// Check if Amplitude should be enabled
-export const isAmplitudeEnabled = () => {
-  return IS_CLOUD_EDITION && !!AMPLITUDE_API_KEY
 }
 
 // Map URL pathname to English page name for consistent Amplitude tracking
@@ -45,6 +40,7 @@ const pageNameEnrichmentPlugin = (): amplitude.Types.EnrichmentPlugin => {
     execute: async (event: amplitude.Types.Event) => {
       // Only modify page view events
       if (event.event_type === '[Amplitude] Page Viewed' && event.event_properties) {
+        /* v8 ignore next @preserve */
         const pathname = typeof window !== 'undefined' ? window.location.pathname : ''
         event.event_properties['[Amplitude] Page Title'] = getEnglishPageName(pathname)
       }
@@ -58,7 +54,7 @@ const AmplitudeProvider: FC<IAmplitudeProps> = ({
 }) => {
   useEffect(() => {
     // Only enable in Saas edition with valid API key
-    if (!isAmplitudeEnabled())
+    if (!isAmplitudeEnabled)
       return
 
     // Initialize Amplitude

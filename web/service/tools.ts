@@ -1,5 +1,6 @@
 import type {
   Collection,
+  Credential,
   CustomCollectionBackend,
   CustomParamSchema,
   Tool,
@@ -41,9 +42,9 @@ export const fetchBuiltInToolCredentialSchema = (collectionName: string) => {
 }
 
 export const fetchBuiltInToolCredential = (collectionName: string) => {
-  return get<ToolCredential[]>(`/workspaces/current/tool-provider/builtin/${collectionName}/credentials`)
+  return get<Record<string, unknown>>(`/workspaces/current/tool-provider/builtin/${collectionName}/credentials`)
 }
-export const updateBuiltInToolCredential = (collectionName: string, credential: Record<string, any>) => {
+export const updateBuiltInToolCredential = (collectionName: string, credential: Record<string, unknown>) => {
   return post(`/workspaces/current/tool-provider/builtin/${collectionName}/update`, {
     body: {
       credentials: credential,
@@ -102,7 +103,14 @@ export const importSchemaFromURL = (url: string) => {
   })
 }
 
-export const testAPIAvailable = (payload: any) => {
+export const testAPIAvailable = (payload: {
+  provider_name: string
+  tool_name: string
+  credentials: Credential
+  schema_type: string
+  schema: string
+  parameters: Record<string, string>
+}) => {
   return post('/workspaces/current/tool-provider/api/test/pre', {
     body: {
       ...payload,

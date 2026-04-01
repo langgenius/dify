@@ -36,6 +36,8 @@
   "createApp": "Neue App erstellen",
   "createFromConfigFile": "App aus Konfigurationsdatei erstellen",
   "deleteAppConfirmContent": "Das Löschen der App ist unwiderruflich. Nutzer werden keinen Zugang mehr zu Ihrer App haben, und alle Prompt-Konfigurationen und Logs werden dauerhaft gelöscht.",
+  "deleteAppConfirmInputLabel": "Geben Sie zur Bestätigung \"{{appName}}\" in das Feld unten ein:",
+  "deleteAppConfirmInputPlaceholder": "App-Namen eingeben",
   "deleteAppConfirmTitle": "Diese App löschen?",
   "dslUploader.browse": "Durchsuchen",
   "dslUploader.button": "Datei per Drag & Drop ablegen oder",

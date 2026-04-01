@@ -58,5 +58,15 @@
   "generation.tabs.create": "1 回実行",
   "generation.tabs.saved": "保存済み",
   "generation.title": "AI 文章作成",
+  "humanInput.completed": "このリクエストは他の場所で処理されたようです。",
+  "humanInput.expirationTimeNowOrFuture": "このアクションは{{relativeTime}}に期限切れになります。",
+  "humanInput.expired": "このリクエストは期限切れのようです。",
+  "humanInput.expiredTip": "このアクションは期限切れです。",
+  "humanInput.formNotFound": "フォームが見つかりません。",
+  "humanInput.rateLimitExceeded": "リクエストが多すぎます。しばらくしてからもう一度お試しください。",
+  "humanInput.recorded": "入力が記録されました。",
+  "humanInput.sorry": "申し訳ございません!",
+  "humanInput.submissionID": "submission_id: {{id}}",
+  "humanInput.thanks": "ありがとうございます!",
   "login.backToHome": "ホームに戻る"
 }

@@ -17,7 +17,7 @@ import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import AuthForm from '@/app/components/base/form/form-scenarios/auth'
 import Modal from '@/app/components/base/modal/modal'
-import { useToastContext } from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import { ReadmeEntrance } from '../../readme-panel/entrance'
 import { ReadmeShowType } from '../../readme-panel/store'
 import {
@@ -157,7 +157,7 @@ const OAuthClientSettings = ({
         )
       }
       containerClassName="pt-0"
-      wrapperClassName="!z-[101]"
+      wrapperClassName="!z-[1002]"
       clickOutsideNotClose={true}
     >
       {pluginPayload.detail && (

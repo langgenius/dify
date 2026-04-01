@@ -1,7 +1,7 @@
 from typing import TypedDict
 
-from core.variables.segments import Segment
-from core.variables.types import SegmentType
+from graphon.variables.segments import Segment
+from graphon.variables.types import SegmentType
 
 
 class _VarTypedDict(TypedDict, total=False):

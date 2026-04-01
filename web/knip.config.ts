@@ -7,25 +7,30 @@ const config: KnipConfig = {
   entry: [
     'scripts/**/*.{js,ts,mjs}',
     'bin/**/*.{js,ts,mjs}',
+    'taze.config.js',
+    'tsslint.config.ts',
   ],
   ignore: [
-    'i18n/**',
     'public/**',
   ],
   ignoreBinaries: [
     'only-allow',
   ],
-  ignoreDependencies: [],
+  ignoreDependencies: [
+    '@iconify-json/*',
+
+    '@storybook/addon-onboarding',
+
+  ],
   rules: {
     files: 'warn',
-    dependencies: 'warn',
-    devDependencies: 'warn',
-    optionalPeerDependencies: 'warn',
+    dependencies: 'error',
+    devDependencies: 'error',
+    optionalPeerDependencies: 'error',
     unlisted: 'warn',
     unresolved: 'warn',
     exports: 'warn',
     nsExports: 'warn',
-    classMembers: 'warn',
     types: 'warn',
     nsTypes: 'warn',
     enumMembers: 'warn',

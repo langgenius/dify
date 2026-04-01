@@ -3,14 +3,17 @@ from unittest.mock import patch
 import pytest
 from faker import Faker
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from models import Account
+from models.enums import ConversationFromSource
 from models.model import Conversation, EndUser
 from models.web import PinnedConversation
 from services.account_service import AccountService, TenantService
 from services.app_service import AppService
 from services.web_conversation_service import WebConversationService
+from tests.test_containers_integration_tests.helpers import generate_valid_password
 
 
 class TestWebConversationService:
@@ -22,7 +25,7 @@ class TestWebConversationService:
         with (
             patch("services.app_service.FeatureService") as mock_feature_service,
             patch("services.app_service.EnterpriseService") as mock_enterprise_service,
-            patch("services.app_service.ModelManager") as mock_model_manager,
+            patch("services.app_service.ModelManager.for_tenant") as mock_model_manager,
             patch("services.account_service.FeatureService") as mock_account_feature_service,
         ):
             # Setup default mock returns for app service
@@ -45,7 +48,7 @@ class TestWebConversationService:
                 "account_feature_service": mock_account_feature_service,
             }
 
-    def _create_test_app_and_account(self, db_session_with_containers, mock_external_service_dependencies):
+    def _create_test_app_and_account(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Helper method to create a test app and account for testing.
 
@@ -68,7 +71,7 @@ class TestWebConversationService:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            password=fake.password(length=12),
+            password=generate_valid_password(fake),
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
@@ -90,7 +93,7 @@ class TestWebConversationService:
 
         return app, account
 
-    def _create_test_end_user(self, db_session_with_containers, app):
+    def _create_test_end_user(self, db_session_with_containers: Session, app):
         """
         Helper method to create a test end user for testing.
 
@@ -111,14 +114,12 @@ class TestWebConversationService:
             tenant_id=app.tenant_id,
         )
 
-        from extensions.ext_database import db
-
-        db.session.add(end_user)
-        db.session.commit()
+        db_session_with_containers.add(end_user)
+        db_session_with_containers.commit()
 
         return end_user
 
-    def _create_test_conversation(self, db_session_with_containers, app, user, fake):
+    def _create_test_conversation(self, db_session_with_containers: Session, app, user, fake):
         """
         Helper method to create a test conversation for testing.
 
@@ -145,21 +146,21 @@ class TestWebConversationService:
             system_instruction_tokens=50,
             status="normal",
             invoke_from=InvokeFrom.WEB_APP,
-            from_source="console" if isinstance(user, Account) else "api",
+            from_source=ConversationFromSource.CONSOLE if isinstance(user, Account) else ConversationFromSource.API,
             from_end_user_id=user.id if isinstance(user, EndUser) else None,
             from_account_id=user.id if isinstance(user, Account) else None,
             dialogue_count=0,
             is_deleted=False,
         )
 
-        from extensions.ext_database import db
-
-        db.session.add(conversation)
-        db.session.commit()
+        db_session_with_containers.add(conversation)
+        db_session_with_containers.commit()
 
         return conversation
 
-    def test_pagination_by_last_id_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_pagination_by_last_id_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test successful pagination by last ID with basic parameters.
         """
@@ -194,7 +195,7 @@ class TestWebConversationService:
         assert result.data[1].updated_at >= result.data[2].updated_at
 
     def test_pagination_by_last_id_with_pinned_filter(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test pagination by last ID with pinned conversation filter.
@@ -222,11 +223,9 @@ class TestWebConversationService:
             created_by=account.id,
         )
 
-        from extensions.ext_database import db
-
-        db.session.add(pinned_conversation1)
-        db.session.add(pinned_conversation2)
-        db.session.commit()
+        db_session_with_containers.add(pinned_conversation1)
+        db_session_with_containers.add(pinned_conversation2)
+        db_session_with_containers.commit()
 
         # Test pagination with pinned filter
         result = WebConversationService.pagination_by_last_id(
@@ -251,7 +250,7 @@ class TestWebConversationService:
         assert set(returned_ids) == set(expected_ids)
 
     def test_pagination_by_last_id_with_unpinned_filter(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test pagination by last ID with unpinned conversation filter.
@@ -273,10 +272,8 @@ class TestWebConversationService:
             created_by=account.id,
         )
 
-        from extensions.ext_database import db
-
-        db.session.add(pinned_conversation)
-        db.session.commit()
+        db_session_with_containers.add(pinned_conversation)
+        db_session_with_containers.commit()
 
         # Test pagination with unpinned filter
         result = WebConversationService.pagination_by_last_id(
@@ -303,7 +300,7 @@ class TestWebConversationService:
         expected_unpinned_ids = [conv.id for conv in conversations[1:]]
         assert set(returned_ids) == set(expected_unpinned_ids)
 
-    def test_pin_conversation_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_pin_conversation_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test successful pinning of a conversation.
         """
@@ -317,10 +314,9 @@ class TestWebConversationService:
         WebConversationService.pin(app, conversation.id, account)
 
         # Verify the conversation was pinned
-        from extensions.ext_database import db
 
         pinned_conversation = (
-            db.session.query(PinnedConversation)
+            db_session_with_containers.query(PinnedConversation)
             .where(
                 PinnedConversation.app_id == app.id,
                 PinnedConversation.conversation_id == conversation.id,
@@ -336,7 +332,9 @@ class TestWebConversationService:
         assert pinned_conversation.created_by_role == "account"
         assert pinned_conversation.created_by == account.id
 
-    def test_pin_conversation_already_pinned(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_pin_conversation_already_pinned(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test pinning a conversation that is already pinned (should not create duplicate).
         """
@@ -353,9 +351,8 @@ class TestWebConversationService:
         WebConversationService.pin(app, conversation.id, account)
 
         # Verify only one pinned conversation record exists
-        from extensions.ext_database import db
 
-        pinned_conversations = db.session.scalars(
+        pinned_conversations = db_session_with_containers.scalars(
             select(PinnedConversation).where(
                 PinnedConversation.app_id == app.id,
                 PinnedConversation.conversation_id == conversation.id,
@@ -366,7 +363,9 @@ class TestWebConversationService:
 
         assert len(pinned_conversations) == 1
 
-    def test_pin_conversation_with_end_user(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_pin_conversation_with_end_user(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test pinning a conversation with an end user.
         """
@@ -383,10 +382,9 @@ class TestWebConversationService:
         WebConversationService.pin(app, conversation.id, end_user)
 
         # Verify the conversation was pinned
-        from extensions.ext_database import db
 
         pinned_conversation = (
-            db.session.query(PinnedConversation)
+            db_session_with_containers.query(PinnedConversation)
             .where(
                 PinnedConversation.app_id == app.id,
                 PinnedConversation.conversation_id == conversation.id,
@@ -402,7 +400,7 @@ class TestWebConversationService:
         assert pinned_conversation.created_by_role == "end_user"
         assert pinned_conversation.created_by == end_user.id
 
-    def test_unpin_conversation_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_unpin_conversation_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test successful unpinning of a conversation.
         """
@@ -416,10 +414,9 @@ class TestWebConversationService:
         WebConversationService.pin(app, conversation.id, account)
 
         # Verify it was pinned
-        from extensions.ext_database import db
 
         pinned_conversation = (
-            db.session.query(PinnedConversation)
+            db_session_with_containers.query(PinnedConversation)
             .where(
                 PinnedConversation.app_id == app.id,
                 PinnedConversation.conversation_id == conversation.id,
@@ -436,7 +433,7 @@ class TestWebConversationService:
 
         # Verify it was unpinned
         pinned_conversation = (
-            db.session.query(PinnedConversation)
+            db_session_with_containers.query(PinnedConversation)
             .where(
                 PinnedConversation.app_id == app.id,
                 PinnedConversation.conversation_id == conversation.id,
@@ -448,7 +445,9 @@ class TestWebConversationService:
 
         assert pinned_conversation is None
 
-    def test_unpin_conversation_not_pinned(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_unpin_conversation_not_pinned(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test unpinning a conversation that is not pinned (should not cause error).
         """
@@ -462,10 +461,9 @@ class TestWebConversationService:
         WebConversationService.unpin(app, conversation.id, account)
 
         # Verify no pinned conversation record exists
-        from extensions.ext_database import db
 
         pinned_conversation = (
-            db.session.query(PinnedConversation)
+            db_session_with_containers.query(PinnedConversation)
             .where(
                 PinnedConversation.app_id == app.id,
                 PinnedConversation.conversation_id == conversation.id,
@@ -478,7 +476,7 @@ class TestWebConversationService:
         assert pinned_conversation is None
 
     def test_pagination_by_last_id_user_required_error(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test that pagination_by_last_id raises ValueError when user is None.
@@ -499,7 +497,7 @@ class TestWebConversationService:
                 sort_by="-updated_at",
             )
 
-    def test_pin_conversation_user_none(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_pin_conversation_user_none(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test that pin method returns early when user is None.
         """
@@ -513,10 +511,9 @@ class TestWebConversationService:
         WebConversationService.pin(app, conversation.id, None)
 
         # Verify no pinned conversation was created
-        from extensions.ext_database import db
 
         pinned_conversation = (
-            db.session.query(PinnedConversation)
+            db_session_with_containers.query(PinnedConversation)
             .where(
                 PinnedConversation.app_id == app.id,
                 PinnedConversation.conversation_id == conversation.id,
@@ -526,7 +523,9 @@ class TestWebConversationService:
 
         assert pinned_conversation is None
 
-    def test_unpin_conversation_user_none(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_unpin_conversation_user_none(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test that unpin method returns early when user is None.
         """
@@ -540,10 +539,9 @@ class TestWebConversationService:
         WebConversationService.pin(app, conversation.id, account)
 
         # Verify it was pinned
-        from extensions.ext_database import db
 
         pinned_conversation = (
-            db.session.query(PinnedConversation)
+            db_session_with_containers.query(PinnedConversation)
             .where(
                 PinnedConversation.app_id == app.id,
                 PinnedConversation.conversation_id == conversation.id,
@@ -560,7 +558,7 @@ class TestWebConversationService:
 
         # Verify the conversation is still pinned
         pinned_conversation = (
-            db.session.query(PinnedConversation)
+            db_session_with_containers.query(PinnedConversation)
             .where(
                 PinnedConversation.app_id == app.id,
                 PinnedConversation.conversation_id == conversation.id,

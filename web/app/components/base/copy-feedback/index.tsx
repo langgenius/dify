@@ -21,17 +21,19 @@ const CopyFeedback = ({ content }: Props) => {
   const { t } = useTranslation()
   const { copied, copy, reset } = useClipboard()
 
+  const tooltipText = copied
+    ? t(`${prefixEmbedded}.copied`, { ns: 'appOverview' })
+    : t(`${prefixEmbedded}.copy`, { ns: 'appOverview' })
+  /* v8 ignore next -- i18n test mock always returns a non-empty string; runtime fallback is defensive. -- @preserve */
+  const safeText = tooltipText || ''
+
   const handleCopy = useCallback(() => {
     copy(content)
   }, [copy, content])
 
   return (
     <Tooltip
-      popupContent={
-        (copied
-          ? t(`${prefixEmbedded}.copied`, { ns: 'appOverview' })
-          : t(`${prefixEmbedded}.copy`, { ns: 'appOverview' })) || ''
-      }
+      popupContent={safeText}
     >
       <ActionButton>
         <div
@@ -52,27 +54,27 @@ export const CopyFeedbackNew = ({ content, className }: Pick<Props, 'className' 
   const { t } = useTranslation()
   const { copied, copy, reset } = useClipboard()
 
+  const tooltipText = copied
+    ? t(`${prefixEmbedded}.copied`, { ns: 'appOverview' })
+    : t(`${prefixEmbedded}.copy`, { ns: 'appOverview' })
+  /* v8 ignore next -- i18n test mock always returns a non-empty string; runtime fallback is defensive. -- @preserve */
+  const safeText = tooltipText || ''
+
   const handleCopy = useCallback(() => {
     copy(content)
   }, [copy, content])
 
   return (
     <Tooltip
-      popupContent={
-        (copied
-          ? t(`${prefixEmbedded}.copied`, { ns: 'appOverview' })
-          : t(`${prefixEmbedded}.copy`, { ns: 'appOverview' })) || ''
-      }
+      popupContent={safeText}
     >
       <div
-        className={`h-8 w-8 cursor-pointer rounded-lg hover:bg-components-button-ghost-bg-hover ${className ?? ''
-        }`}
+        className={`h-8 w-8 cursor-pointer rounded-lg hover:bg-components-button-ghost-bg-hover ${className ?? ''}`}
       >
         <div
           onClick={handleCopy}
           onMouseLeave={reset}
-          className={`h-full w-full ${copyStyle.copyIcon} ${copied ? copyStyle.copied : ''
-          }`}
+          className={`h-full w-full ${copyStyle.copyIcon} ${copied ? copyStyle.copied : ''}`}
         >
         </div>
       </div>

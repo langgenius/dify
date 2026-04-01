@@ -7,13 +7,17 @@ import os
 import re
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any, NotRequired, Optional
 from urllib.parse import unquote, urlparse
 
 import httpx
+from sqlalchemy import select
+from typing_extensions import TypedDict
 
 from configs import dify_config
+from core.entities.knowledge_entities import PreviewDetail
 from core.helper import ssrf_proxy
+from core.rag.data_post_processor.data_post_processor import RerankingModelDict
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.models.document import AttachmentDocument, Document
@@ -34,6 +38,13 @@ if TYPE_CHECKING:
     from core.model_manager import ModelInstance
 
 
+class SummaryIndexSettingDict(TypedDict):
+    enable: bool
+    model_name: NotRequired[str]
+    model_provider_name: NotRequired[str]
+    summary_prompt: NotRequired[str]
+
+
 class BaseIndexProcessor(ABC):
     """Interface for extract files."""
 
@@ -46,6 +57,27 @@ class BaseIndexProcessor(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def generate_summary_preview(
+        self,
+        tenant_id: str,
+        preview_texts: list[PreviewDetail],
+        summary_index_setting: SummaryIndexSettingDict,
+        doc_language: str | None = None,
+    ) -> list[PreviewDetail]:
+        """
+        For each segment in preview_texts, generate a summary using LLM and attach it to the segment.
+        The summary can be stored in a new attribute, e.g., summary.
+        This method should be implemented by subclasses.
+
+        Args:
+            tenant_id: Tenant ID
+            preview_texts: List of preview details to generate summaries for
+            summary_index_setting: Summary index configuration
+            doc_language: Optional document language to ensure summary is generated in the correct language
+        """
+        raise NotImplementedError
+
+    @abstractmethod
     def load(
         self,
         dataset: Dataset,
@@ -53,15 +85,15 @@ class BaseIndexProcessor(ABC):
         multimodal_documents: list[AttachmentDocument] | None = None,
         with_keywords: bool = True,
         **kwargs,
-    ):
+    ) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    def clean(self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, **kwargs):
+    def clean(self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, **kwargs) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    def index(self, dataset: Dataset, document: DatasetDocument, chunks: Any):
+    def index(self, dataset: Dataset, document: DatasetDocument, chunks: Any) -> None:
         raise NotImplementedError
 
     @abstractmethod
@@ -76,7 +108,7 @@ class BaseIndexProcessor(ABC):
         dataset: Dataset,
         top_k: int,
         score_threshold: float,
-        reranking_model: dict,
+        reranking_model: RerankingModelDict,
     ) -> list[Document]:
         raise NotImplementedError
 
@@ -169,7 +201,7 @@ class BaseIndexProcessor(ABC):
 
         # Get unique IDs for database query
         unique_upload_file_ids = list(set(upload_file_id_list))
-        upload_files = db.session.query(UploadFile).where(UploadFile.id.in_(unique_upload_file_ids)).all()
+        upload_files = db.session.scalars(select(UploadFile).where(UploadFile.id.in_(unique_upload_file_ids))).all()
 
         # Create a mapping from ID to UploadFile for quick lookup
         upload_file_map = {upload_file.id: upload_file for upload_file in upload_files}
@@ -272,7 +304,7 @@ class BaseIndexProcessor(ABC):
             logging.warning("Error downloading image from %s: %s", image_url, str(e))
             return None
         except Exception:
-            logging.exception("Unexpected error downloading image from %s", image_url)
+            logging.warning("Unexpected error downloading image from %s", image_url, exc_info=True)
             return None
 
     def _download_tool_file(self, tool_file_id: str, current_user: Account) -> str | None:
@@ -281,7 +313,7 @@ class BaseIndexProcessor(ABC):
         """
         from services.file_service import FileService
 
-        tool_file = db.session.query(ToolFile).where(ToolFile.id == tool_file_id).first()
+        tool_file = db.session.get(ToolFile, tool_file_id)
         if not tool_file:
             return None
         blob = storage.load_once(tool_file.file_key)

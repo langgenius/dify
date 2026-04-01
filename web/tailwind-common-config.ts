@@ -1,7 +1,28 @@
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { getIconCollections, iconsPlugin } from '@egoist/tailwindcss-icons'
 import tailwindTypography from '@tailwindcss/typography'
-// @ts-expect-error workaround for turbopack issue
-import tailwindThemeVarDefine from './themes/tailwind-theme-var-define.ts'
+import { importSvgCollections } from 'iconify-import-svg'
+import { cssAsPlugin } from './tailwind-css-plugin'
+import tailwindThemeVarDefine from './themes/tailwind-theme-var-define'
 import typography from './typography.js'
+
+const _dirname = typeof __dirname !== 'undefined'
+  ? __dirname
+  : path.dirname(fileURLToPath(import.meta.url))
+
+const disableSVGOptimize = process.env.TAILWIND_MODE === 'ESLINT'
+const parseColorOptions = {
+  fallback: () => 'currentColor',
+}
+const svgOptimizeConfig = {
+  cleanupSVG: !disableSVGOptimize,
+  deOptimisePaths: !disableSVGOptimize,
+  runSVGO: !disableSVGOptimize,
+  parseColors: !disableSVGOptimize
+    ? parseColorOptions
+    : false,
+}
 
 const config = {
   theme: {
@@ -90,9 +111,6 @@ const config = {
         2: '0.02',
         8: '0.08',
       },
-      fontFamily: {
-        instrument: ['var(--font-instrument-serif)', 'serif'],
-      },
       fontSize: {
         '2xs': '0.625rem',
       },
@@ -104,6 +122,7 @@ const config = {
         'chat-bubble-bg': 'var(--color-chat-bubble-bg)',
         'chat-input-mask': 'var(--color-chat-input-mask)',
         'workflow-process-bg': 'var(--color-workflow-process-bg)',
+        'workflow-process-paused-bg': 'var(--color-workflow-process-paused-bg)',
         'workflow-run-failed-bg': 'var(--color-workflow-run-failed-bg)',
         'workflow-batch-failed-bg': 'var(--color-workflow-batch-failed-bg)',
         'mask-top2bottom-gray-50-to-transparent': 'var(--mask-top2bottom-gray-50-to-transparent)',
@@ -140,13 +159,47 @@ const config = {
         'billing-plan-card-enterprise-bg': 'var(--color-billing-plan-card-enterprise-bg)',
         'knowledge-pipeline-creation-footer-bg': 'var(--color-knowledge-pipeline-creation-footer-bg)',
         'progress-bar-indeterminate-stripe': 'var(--color-progress-bar-indeterminate-stripe)',
+        'chat-answer-human-input-form-divider-bg': 'var(--color-chat-answer-human-input-form-divider-bg)',
       },
       animation: {
         'spin-slow': 'spin 2s linear infinite',
       },
     },
   },
-  plugins: [tailwindTypography],
+  plugins: [
+    tailwindTypography,
+    iconsPlugin({
+      collections: {
+        ...getIconCollections(['heroicons', 'ri']),
+        ...importSvgCollections({
+          source: path.resolve(_dirname, 'app/components/base/icons/assets/public'),
+          prefix: 'custom-public',
+          ignoreImportErrors: true,
+          ...svgOptimizeConfig,
+        }),
+        ...importSvgCollections({
+          source: path.resolve(_dirname, 'app/components/base/icons/assets/vender'),
+          prefix: 'custom-vender',
+          ignoreImportErrors: true,
+          ...svgOptimizeConfig,
+        }),
+      },
+      extraProperties: {
+        width: '1rem',
+        height: '1rem',
+        display: 'block',
+      },
+    }),
+    cssAsPlugin([
+      path.resolve(_dirname, './app/styles/globals.css'),
+      path.resolve(_dirname, './app/components/base/action-button/index.css'),
+      path.resolve(_dirname, './app/components/base/badge/index.css'),
+      path.resolve(_dirname, './app/components/base/button/index.css'),
+      path.resolve(_dirname, './app/components/base/modal/index.css'),
+      path.resolve(_dirname, './app/components/base/premium-badge/index.css'),
+      path.resolve(_dirname, './app/components/base/segmented-control/index.css'),
+    ]),
+  ],
   // https://github.com/tailwindlabs/tailwindcss/discussions/5969
   corePlugins: {
     preflight: false,

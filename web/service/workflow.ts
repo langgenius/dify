@@ -4,12 +4,12 @@ import type { FlowType } from '@/types/common'
 import type {
   ConversationVariableResponse,
   FetchWorkflowDraftResponse,
+  HumanInputFormData,
   NodesDefaultConfigsResponse,
   VarInInspect,
 } from '@/types/workflow'
 import { get, post } from './base'
 import { getFlowPrefix } from './utils'
-import { sanitizeWorkflowDraftPayload } from './workflow-payload'
 
 export const fetchWorkflowDraft = (url: string) => {
   return get(url, {}, { silent: true }) as Promise<FetchWorkflowDraftResponse>
@@ -19,8 +19,7 @@ export const syncWorkflowDraft = ({ url, params }: {
   url: string
   params: Pick<FetchWorkflowDraftResponse, 'graph' | 'features' | 'environment_variables' | 'conversation_variables'>
 }) => {
-  const sanitized = sanitizeWorkflowDraftPayload(params)
-  return post<CommonResponse & { updated_at: number, hash: string }>(url, { body: sanitized }, { silent: true })
+  return post<CommonResponse & { updated_at: number, hash: string }>(url, { body: params }, { silent: true })
 }
 
 export const fetchNodesDefaultConfigs = (url: string) => {
@@ -95,4 +94,31 @@ export const fetchAllInspectVars = async (flowType: FlowType, flowId: string): P
 export const fetchNodeInspectVars = async (flowType: FlowType, flowId: string, nodeId: string): Promise<VarInInspect[]> => {
   const { items } = (await get(`${getFlowPrefix(flowType)}/${flowId}/workflows/draft/nodes/${nodeId}/variables`)) as { items: VarInInspect[] }
   return items
+}
+
+export const submitHumanInputForm = (token: string, data: {
+  inputs: Record<string, string>
+  action: string
+}) => {
+  return post(`/form/human_input/${token}`, { body: data })
+}
+
+export const fetchHumanInputNodeStepRunForm = (
+  url: string,
+  data: {
+    inputs: Record<string, string>
+  },
+) => {
+  return post<HumanInputFormData>(`${url}/preview`, { body: data })
+}
+
+export const submitHumanInputNodeStepRunForm = (
+  url: string,
+  data: {
+    inputs: Record<string, string> | undefined
+    form_inputs: Record<string, string> | undefined
+    action: string
+  },
+) => {
+  return post<CommonResponse>(`${url}/run`, { body: data })
 }

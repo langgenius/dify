@@ -1,9 +1,12 @@
 from typing import Literal, Union
 
+from graphon.entities.base_node_data import BaseNodeData
+from graphon.enums import NodeType
 from pydantic import BaseModel
 
+from core.rag.index_processor.index_processor_base import SummaryIndexSettingDict
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from core.workflow.nodes.base import BaseNodeData
+from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
 
 
 class RerankingModelConfig(BaseModel):
@@ -155,6 +158,8 @@ class KnowledgeIndexNodeData(BaseNodeData):
     Knowledge index Node Data.
     """
 
-    type: str = "knowledge-index"
+    type: NodeType = KNOWLEDGE_INDEX_NODE_TYPE
     chunk_structure: str
     index_chunk_variable_selector: list[str]
+    indexing_technique: str | None = None
+    summary_index_setting: SummaryIndexSettingDict | None = None

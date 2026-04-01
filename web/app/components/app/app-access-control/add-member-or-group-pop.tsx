@@ -10,7 +10,7 @@ import { SubjectType } from '@/models/access-control'
 import { useSearchForWhiteListCandidates } from '@/service/access-control'
 import { cn } from '@/utils/classnames'
 import useAccessControlStore from '../../../../context/access-control-store'
-import Avatar from '../../base/avatar'
+import { Avatar } from '../../base/avatar'
 import Button from '../../base/button'
 import Checkbox from '../../base/checkbox'
 import Input from '../../base/input'
@@ -203,7 +203,7 @@ function MemberItem({ member }: MemberItemProps) {
       <div className="flex grow items-center">
         <div className="mr-2 h-5 w-5 overflow-hidden rounded-full bg-components-icon-bg-blue-solid">
           <div className="bg-access-app-icon-mask-bg flex h-full w-full items-center justify-center">
-            <Avatar className="h-[14px] w-[14px]" textClassName="text-[12px]" avatar={null} name={member.name} />
+            <Avatar size="xxs" avatar={null} name={member.name} />
           </div>
         </div>
         <p className="system-sm-medium mr-1 text-text-secondary">{member.name}</p>

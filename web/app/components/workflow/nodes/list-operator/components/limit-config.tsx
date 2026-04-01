@@ -56,7 +56,7 @@ const LimitConfig: FC<Props> = ({
         title={t(`${i18nPrefix}.limit`, { ns: 'workflow' })}
         operations={(
           <Switch
-            defaultValue={payload.enabled}
+            value={payload.enabled}
             onChange={handleLimitEnabledChange}
             size="md"
             disabled={readonly}

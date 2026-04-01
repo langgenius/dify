@@ -10,7 +10,7 @@ import SavedItems from './index'
 vi.mock('copy-to-clipboard', () => ({
   default: vi.fn(),
 }))
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useParams: () => ({}),
   usePathname: () => '/',
 }))

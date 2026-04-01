@@ -39,6 +39,12 @@
   "form.retrievalSettings": "Nastavitve pridobivanja",
   "form.save": "Shrani",
   "form.searchModel": "Išči model",
+  "form.summaryAutoGen": "Samodejna Tvorba Povzetka",
+  "form.summaryAutoGenEnableTip": "Ko je omogočeno, bodo povzetki samodejno ustvarjeni za novo dodane dokumente. Obstoječe dokumente lahko še vedno povzamete ročno.",
+  "form.summaryAutoGenTip": "Povzetki so samodejno ustvarjeni za novo dodane dokumente. Obstoječe dokumente lahko še vedno povzamete ročno.",
+  "form.summaryInstructions": "Navodila",
+  "form.summaryInstructionsPlaceholder": "Opišite pravila ali slog za samodejno ustvarjene povzetke…",
+  "form.summaryModel": "Model Povzetka",
   "form.upgradeHighQualityTip": "Ko nadgradite na način visoke kakovosti, vrnitev v ekonomični način ni na voljo",
   "title": "Nastavitve znanja"
 }

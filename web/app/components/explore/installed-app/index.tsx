@@ -1,37 +1,32 @@
 'use client'
-import type { FC } from 'react'
 import type { AccessMode } from '@/models/access-control'
 import type { AppData } from '@/models/share'
 import * as React from 'react'
 import { useEffect } from 'react'
-import { useContext } from 'use-context-selector'
 import ChatWithHistory from '@/app/components/base/chat/chat-with-history'
 import Loading from '@/app/components/base/loading'
 import TextGenerationApp from '@/app/components/share/text-generation'
-import ExploreContext from '@/context/explore-context'
 import { useWebAppStore } from '@/context/web-app-context'
 import { useGetUserCanAccessApp } from '@/service/access-control'
-import { useGetInstalledAppAccessModeByAppId, useGetInstalledAppMeta, useGetInstalledAppParams } from '@/service/use-explore'
+import { useGetInstalledAppAccessModeByAppId, useGetInstalledAppMeta, useGetInstalledAppParams, useGetInstalledApps } from '@/service/use-explore'
 import { AppModeEnum } from '@/types/app'
 import AppUnavailable from '../../base/app-unavailable'
 
-export type IInstalledAppProps = {
-  id: string
-}
-
-const InstalledApp: FC<IInstalledAppProps> = ({
+const InstalledApp = ({
   id,
+}: {
+  id: string
 }) => {
-  const { installedApps, isFetchingInstalledApps } = useContext(ExploreContext)
+  const { data, isPending: isPendingInstalledApps, isFetching: isFetchingInstalledApps } = useGetInstalledApps()
+  const installedApp = data?.installed_apps?.find(item => item.id === id)
   const updateAppInfo = useWebAppStore(s => s.updateAppInfo)
-  const installedApp = installedApps.find(item => item.id === id)
   const updateWebAppAccessMode = useWebAppStore(s => s.updateWebAppAccessMode)
   const updateAppParams = useWebAppStore(s => s.updateAppParams)
   const updateWebAppMeta = useWebAppStore(s => s.updateWebAppMeta)
   const updateUserCanAccessApp = useWebAppStore(s => s.updateUserCanAccessApp)
-  const { isFetching: isFetchingWebAppAccessMode, data: webAppAccessMode, error: webAppAccessModeError } = useGetInstalledAppAccessModeByAppId(installedApp?.id ?? null)
-  const { isFetching: isFetchingAppParams, data: appParams, error: appParamsError } = useGetInstalledAppParams(installedApp?.id ?? null)
-  const { isFetching: isFetchingAppMeta, data: appMeta, error: appMetaError } = useGetInstalledAppMeta(installedApp?.id ?? null)
+  const { isPending: isPendingWebAppAccessMode, data: webAppAccessMode, error: webAppAccessModeError } = useGetInstalledAppAccessModeByAppId(installedApp?.id ?? null)
+  const { isPending: isPendingAppParams, data: appParams, error: appParamsError } = useGetInstalledAppParams(installedApp?.id ?? null)
+  const { isPending: isPendingAppMeta, data: appMeta, error: appMetaError } = useGetInstalledAppMeta(installedApp?.id ?? null)
   const { data: userCanAccessApp, error: useCanAccessAppError } = useGetUserCanAccessApp({ appId: installedApp?.app.id, isInstalledApp: true })
 
   useEffect(() => {
@@ -102,7 +97,11 @@ const InstalledApp: FC<IInstalledAppProps> = ({
       </div>
     )
   }
-  if (isFetchingAppParams || isFetchingAppMeta || isFetchingWebAppAccessMode || isFetchingInstalledApps) {
+  if (
+    isPendingInstalledApps
+    || (!installedApp && isFetchingInstalledApps)
+    || (installedApp && (isPendingAppParams || isPendingAppMeta || isPendingWebAppAccessMode))
+  ) {
     return (
       <div className="flex h-full items-center justify-center">
         <Loading />

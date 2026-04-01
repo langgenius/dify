@@ -3,8 +3,9 @@ import logging
 from collections.abc import Mapping
 from typing import Any, cast
 
+from graphon.variables.input_entities import VariableEntity, VariableEntityType
+
 from configs import dify_config
-from core.app.app_config.entities import VariableEntity, VariableEntityType
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.features.rate_limiting.rate_limit import RateLimitGenerator
 from core.mcp import types as mcp_types
@@ -259,4 +260,12 @@ def convert_input_form_to_parameters(
             parameters[item.variable]["enum"] = item.options
         elif item.type == VariableEntityType.NUMBER:
             parameters[item.variable]["type"] = "number"
+        elif item.type == VariableEntityType.CHECKBOX:
+            parameters[item.variable]["type"] = "boolean"
+        elif item.type == VariableEntityType.JSON_OBJECT:
+            parameters[item.variable]["type"] = "object"
+            if item.json_schema:
+                for key in ("properties", "required", "additionalProperties"):
+                    if key in item.json_schema:
+                        parameters[item.variable][key] = item.json_schema[key]
     return parameters, required

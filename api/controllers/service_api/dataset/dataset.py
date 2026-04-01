@@ -2,7 +2,8 @@ from typing import Any, Literal, cast
 
 from flask import request
 from flask_restx import marshal
-from pydantic import BaseModel, Field, field_validator
+from graphon.model_runtime.entities.model_entities import ModelType
+from pydantic import BaseModel, Field, TypeAdapter, field_validator
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
@@ -14,10 +15,10 @@ from controllers.service_api.wraps import (
     DatasetApiResource,
     cloud_edition_billing_rate_limit_check,
 )
-from core.model_runtime.entities.model_entities import ModelType
-from core.provider_manager import ProviderManager
+from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from fields.dataset_fields import dataset_detail_fields
-from fields.tag_fields import build_dataset_tag_fields
+from fields.tag_fields import DataSetTag
 from libs.login import current_user
 from models.account import Account
 from models.dataset import DatasetPermissionEnum
@@ -25,6 +26,14 @@ from models.provider_ids import ModelProviderID
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
 from services.entities.knowledge_entities.knowledge_entities import RetrievalModel
 from services.tag_service import TagService
+
+DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
+
+
+service_api_ns.schema_model(
+    DatasetPermissionEnum.__name__,
+    TypeAdapter(DatasetPermissionEnum).json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+)
 
 
 class DatasetCreatePayload(BaseModel):
@@ -38,6 +47,7 @@ class DatasetCreatePayload(BaseModel):
     retrieval_model: RetrievalModel | None = None
     embedding_model: str | None = None
     embedding_model_provider: str | None = None
+    summary_index_setting: dict | None = None
 
 
 class DatasetUpdatePayload(BaseModel):
@@ -87,6 +97,14 @@ class TagUnbindingPayload(BaseModel):
     target_id: str
 
 
+class DatasetListQuery(BaseModel):
+    page: int = Field(default=1, description="Page number")
+    limit: int = Field(default=20, description="Number of items per page")
+    keyword: str | None = Field(default=None, description="Search keyword")
+    include_all: bool = Field(default=False, description="Include all datasets")
+    tag_ids: list[str] = Field(default_factory=list, description="Filter by tag IDs")
+
+
 register_schema_models(
     service_api_ns,
     DatasetCreatePayload,
@@ -96,6 +114,8 @@ register_schema_models(
     TagDeletePayload,
     TagBindingPayload,
     TagUnbindingPayload,
+    DatasetListQuery,
+    DataSetTag,
 )
 
 
@@ -113,21 +133,17 @@ class DatasetListApi(DatasetApiResource):
     )
     def get(self, tenant_id):
         """Resource for getting datasets."""
-        page = request.args.get("page", default=1, type=int)
-        limit = request.args.get("limit", default=20, type=int)
+        query = DatasetListQuery.model_validate(request.args.to_dict())
         # provider = request.args.get("provider", default="vendor")
-        search = request.args.get("keyword", default=None, type=str)
-        tag_ids = request.args.getlist("tag_ids")
-        include_all = request.args.get("include_all", default="false").lower() == "true"
 
         datasets, total = DatasetService.get_datasets(
-            page, limit, tenant_id, current_user, search, tag_ids, include_all
+            query.page, query.limit, tenant_id, current_user, query.keyword, query.tag_ids, query.include_all
         )
         # check embedding setting
-        provider_manager = ProviderManager()
         assert isinstance(current_user, Account)
         cid = current_user.current_tenant_id
         assert cid is not None
+        provider_manager = create_plugin_provider_manager(tenant_id=cid)
         configurations = provider_manager.get_configurations(tenant_id=cid)
 
         embedding_models = configurations.get_models(model_type=ModelType.TEXT_EMBEDDING, only_active=True)
@@ -138,16 +154,27 @@ class DatasetListApi(DatasetApiResource):
 
         data = marshal(datasets, dataset_detail_fields)
         for item in data:
-            if item["indexing_technique"] == "high_quality" and item["embedding_model_provider"]:
-                item["embedding_model_provider"] = str(ModelProviderID(item["embedding_model_provider"]))
-                item_model = f"{item['embedding_model']}:{item['embedding_model_provider']}"
+            if (
+                item["indexing_technique"] == IndexTechniqueType.HIGH_QUALITY  # pyrefly: ignore[bad-index]
+                and item["embedding_model_provider"]  # pyrefly: ignore[bad-index]
+            ):
+                item["embedding_model_provider"] = str(  # pyrefly: ignore[unsupported-operation]
+                    ModelProviderID(item["embedding_model_provider"])  # pyrefly: ignore[bad-index]
+                )
+                item_model = f"{item['embedding_model']}:{item['embedding_model_provider']}"  # pyrefly: ignore[bad-index]
                 if item_model in model_names:
-                    item["embedding_available"] = True
+                    item["embedding_available"] = True  # type: ignore
                 else:
-                    item["embedding_available"] = False
+                    item["embedding_available"] = False  # type: ignore
             else:
-                item["embedding_available"] = True
-        response = {"data": data, "has_more": len(datasets) == limit, "limit": limit, "total": total, "page": page}
+                item["embedding_available"] = True  # type: ignore
+        response = {
+            "data": data,
+            "has_more": len(datasets) == query.limit,
+            "limit": query.limit,
+            "total": total,
+            "page": query.page,
+        }
         return response, 200
 
     @service_api_ns.expect(service_api_ns.models[DatasetCreatePayload.__name__])
@@ -198,6 +225,7 @@ class DatasetListApi(DatasetApiResource):
                 embedding_model_provider=payload.embedding_model_provider,
                 embedding_model_name=payload.embedding_model,
                 retrieval_model=payload.retrieval_model,
+                summary_index_setting=payload.summary_index_setting,
             )
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()
@@ -231,10 +259,10 @@ class DatasetApi(DatasetApiResource):
             raise Forbidden(str(e))
         data = cast(dict[str, Any], marshal(dataset, dataset_detail_fields))
         # check embedding setting
-        provider_manager = ProviderManager()
         assert isinstance(current_user, Account)
         cid = current_user.current_tenant_id
         assert cid is not None
+        provider_manager = create_plugin_provider_manager(tenant_id=cid)
         configurations = provider_manager.get_configurations(tenant_id=cid)
 
         embedding_models = configurations.get_models(model_type=ModelType.TEXT_EMBEDDING, only_active=True)
@@ -243,7 +271,7 @@ class DatasetApi(DatasetApiResource):
         for embedding_model in embedding_models:
             model_names.append(f"{embedding_model.model}:{embedding_model.provider.provider}")
 
-        if data.get("indexing_technique") == "high_quality":
+        if data.get("indexing_technique") == IndexTechniqueType.HIGH_QUALITY:
             item_model = f"{data.get('embedding_model')}:{data.get('embedding_model_provider')}"
             if item_model in model_names:
                 data["embedding_available"] = True
@@ -293,7 +321,7 @@ class DatasetApi(DatasetApiResource):
         # check embedding model setting
         embedding_model_provider = payload.embedding_model_provider
         embedding_model = payload.embedding_model
-        if payload.indexing_technique == "high_quality" or embedding_model_provider:
+        if payload.indexing_technique == IndexTechniqueType.HIGH_QUALITY or embedding_model_provider:
             if embedding_model_provider and embedding_model:
                 DatasetService.check_embedding_model_setting(
                     dataset.tenant_id, embedding_model_provider, embedding_model
@@ -374,7 +402,7 @@ class DatasetApi(DatasetApiResource):
         try:
             if DatasetService.delete_dataset(dataset_id_str, current_user):
                 DatasetPermissionService.clear_partial_member_list(dataset_id_str)
-                return 204
+                return "", 204
             else:
                 raise NotFound("Dataset not found.")
         except services.errors.dataset.DatasetInUseError:
@@ -459,15 +487,14 @@ class DatasetTagsApi(DatasetApiResource):
             401: "Unauthorized - invalid API token",
         }
     )
-    @service_api_ns.marshal_with(build_dataset_tag_fields(service_api_ns))
     def get(self, _):
         """Get all knowledge type tags."""
         assert isinstance(current_user, Account)
         cid = current_user.current_tenant_id
         assert cid is not None
         tags = TagService.get_tags("knowledge", cid)
-
-        return tags, 200
+        tag_models = TypeAdapter(list[DataSetTag]).validate_python(tags, from_attributes=True)
+        return [tag.model_dump(mode="json") for tag in tag_models], 200
 
     @service_api_ns.expect(service_api_ns.models[TagCreatePayload.__name__])
     @service_api_ns.doc("create_dataset_tag")
@@ -479,7 +506,6 @@ class DatasetTagsApi(DatasetApiResource):
             403: "Forbidden - insufficient permissions",
         }
     )
-    @service_api_ns.marshal_with(build_dataset_tag_fields(service_api_ns))
     def post(self, _):
         """Add a knowledge type tag."""
         assert isinstance(current_user, Account)
@@ -489,7 +515,9 @@ class DatasetTagsApi(DatasetApiResource):
         payload = TagCreatePayload.model_validate(service_api_ns.payload or {})
         tag = TagService.save_tags({"name": payload.name, "type": "knowledge"})
 
-        response = {"id": tag.id, "name": tag.name, "type": tag.type, "binding_count": 0}
+        response = DataSetTag.model_validate(
+            {"id": tag.id, "name": tag.name, "type": tag.type, "binding_count": 0}
+        ).model_dump(mode="json")
         return response, 200
 
     @service_api_ns.expect(service_api_ns.models[TagUpdatePayload.__name__])
@@ -502,7 +530,6 @@ class DatasetTagsApi(DatasetApiResource):
             403: "Forbidden - insufficient permissions",
         }
     )
-    @service_api_ns.marshal_with(build_dataset_tag_fields(service_api_ns))
     def patch(self, _):
         assert isinstance(current_user, Account)
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
@@ -515,8 +542,9 @@ class DatasetTagsApi(DatasetApiResource):
 
         binding_count = TagService.get_tag_binding_count(tag_id)
 
-        response = {"id": tag.id, "name": tag.name, "type": tag.type, "binding_count": binding_count}
-
+        response = DataSetTag.model_validate(
+            {"id": tag.id, "name": tag.name, "type": tag.type, "binding_count": binding_count}
+        ).model_dump(mode="json")
         return response, 200
 
     @service_api_ns.expect(service_api_ns.models[TagDeletePayload.__name__])
@@ -535,7 +563,7 @@ class DatasetTagsApi(DatasetApiResource):
         payload = TagDeletePayload.model_validate(service_api_ns.payload or {})
         TagService.delete_tag(payload.tag_id)
 
-        return 204
+        return "", 204
 
 
 @service_api_ns.route("/datasets/tags/binding")
@@ -559,7 +587,7 @@ class DatasetTagBindingApi(DatasetApiResource):
         payload = TagBindingPayload.model_validate(service_api_ns.payload or {})
         TagService.save_tag_binding({"tag_ids": payload.tag_ids, "target_id": payload.target_id, "type": "knowledge"})
 
-        return 204
+        return "", 204
 
 
 @service_api_ns.route("/datasets/tags/unbinding")
@@ -583,7 +611,7 @@ class DatasetTagUnbindingApi(DatasetApiResource):
         payload = TagUnbindingPayload.model_validate(service_api_ns.payload or {})
         TagService.delete_tag_binding({"tag_id": payload.tag_id, "target_id": payload.target_id, "type": "knowledge"})
 
-        return 204
+        return "", 204
 
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/tags")

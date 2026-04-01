@@ -2,13 +2,13 @@
 
 import type { ReactNode } from 'react'
 import Cookies from 'js-cookie'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { parseAsString, useQueryState } from 'nuqs'
+import { parseAsBoolean, useQueryState } from 'nuqs'
 import { useCallback, useEffect, useState } from 'react'
 import {
   EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION,
   EDUCATION_VERIFYING_LOCALSTORAGE_ITEM,
 } from '@/app/education-apply/constants'
+import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { sendGAEvent } from '@/utils/gtag'
 import { fetchSetupStatusWithCache } from '@/utils/setup-status'
 import { resolvePostLoginRedirect } from '../signin/utils/post-login-redirect'
@@ -26,11 +26,10 @@ export const AppInitializer = ({
   // Tokens are now stored in cookies, no need to check localStorage
   const pathname = usePathname()
   const [init, setInit] = useState(false)
-  const [oauthNewUser, setOauthNewUser] = useQueryState(
+  const [oauthNewUser] = useQueryState(
     'oauth_new_user',
-    parseAsString.withOptions({ history: 'replace' }),
+    parseAsBoolean.withOptions({ history: 'replace' }),
   )
-
   const isSetupFinished = useCallback(async () => {
     try {
       const setUpStatus = await fetchSetupStatusWithCache()
@@ -46,7 +45,7 @@ export const AppInitializer = ({
     (async () => {
       const action = searchParams.get('action')
 
-      if (oauthNewUser === 'true') {
+      if (oauthNewUser) {
         let utmInfo = null
         const utmInfoStr = Cookies.get('utm_info')
         if (utmInfoStr) {
@@ -69,10 +68,11 @@ export const AppInitializer = ({
           ...utmInfo,
         })
 
-        // Clean up: remove utm_info cookie and URL params
         Cookies.remove('utm_info')
-        setOauthNewUser(null)
       }
+
+      if (oauthNewUser !== null)
+        router.replace(pathname)
 
       if (action === EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION)
         localStorage.setItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM, 'yes')
@@ -84,7 +84,7 @@ export const AppInitializer = ({
           return
         }
 
-        const redirectUrl = resolvePostLoginRedirect(searchParams)
+        const redirectUrl = resolvePostLoginRedirect()
         if (redirectUrl) {
           location.replace(redirectUrl)
           return
@@ -96,7 +96,7 @@ export const AppInitializer = ({
         router.replace('/signin')
       }
     })()
-  }, [isSetupFinished, router, pathname, searchParams, oauthNewUser, setOauthNewUser])
+  }, [isSetupFinished, router, pathname, searchParams, oauthNewUser])
 
   return init ? children : null
 }

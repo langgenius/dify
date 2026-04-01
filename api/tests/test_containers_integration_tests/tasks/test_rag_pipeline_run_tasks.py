@@ -1,14 +1,14 @@
 import json
 import uuid
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from faker import Faker
+from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity
 from core.app.entities.rag_pipeline_invoke_entities import RagPipelineInvokeEntity
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
-from extensions.ext_database import db
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Pipeline
 from models.workflow import Workflow
@@ -52,7 +52,7 @@ class TestRagPipelineRunTasks:
                 "delete_file": mock_delete_file,
             }
 
-    def _create_test_pipeline_and_workflow(self, db_session_with_containers):
+    def _create_test_pipeline_and_workflow(self, db_session_with_containers: Session):
         """
         Helper method to create test pipeline and workflow for testing.
 
@@ -71,15 +71,15 @@ class TestRagPipelineRunTasks:
             interface_language="en-US",
             status="active",
         )
-        db.session.add(account)
-        db.session.commit()
+        db_session_with_containers.add(account)
+        db_session_with_containers.commit()
 
         tenant = Tenant(
             name=fake.company(),
             status="normal",
         )
-        db.session.add(tenant)
-        db.session.commit()
+        db_session_with_containers.add(tenant)
+        db_session_with_containers.commit()
 
         # Create tenant-account join
         join = TenantAccountJoin(
@@ -88,8 +88,8 @@ class TestRagPipelineRunTasks:
             role=TenantAccountRole.OWNER,
             current=True,
         )
-        db.session.add(join)
-        db.session.commit()
+        db_session_with_containers.add(join)
+        db_session_with_containers.commit()
 
         # Create workflow
         workflow = Workflow(
@@ -107,8 +107,8 @@ class TestRagPipelineRunTasks:
             conversation_variables=[],
             rag_pipeline_variables=[],
         )
-        db.session.add(workflow)
-        db.session.commit()
+        db_session_with_containers.add(workflow)
+        db_session_with_containers.commit()
 
         # Create pipeline
         pipeline = Pipeline(
@@ -119,14 +119,14 @@ class TestRagPipelineRunTasks:
             created_by=account.id,
         )
         pipeline.id = str(uuid.uuid4())
-        db.session.add(pipeline)
-        db.session.commit()
+        db_session_with_containers.add(pipeline)
+        db_session_with_containers.commit()
 
         # Refresh entities to ensure they're properly loaded
-        db.session.refresh(account)
-        db.session.refresh(tenant)
-        db.session.refresh(workflow)
-        db.session.refresh(pipeline)
+        db_session_with_containers.refresh(account)
+        db_session_with_containers.refresh(tenant)
+        db_session_with_containers.refresh(workflow)
+        db_session_with_containers.refresh(pipeline)
 
         return account, tenant, pipeline, workflow
 
@@ -209,7 +209,7 @@ class TestRagPipelineRunTasks:
         return json.dumps(entities_data)
 
     def test_priority_rag_pipeline_run_task_success(
-        self, db_session_with_containers, mock_pipeline_generator, mock_file_service
+        self, db_session_with_containers: Session, mock_pipeline_generator, mock_file_service
     ):
         """
         Test successful priority RAG pipeline run task execution.
@@ -254,7 +254,7 @@ class TestRagPipelineRunTasks:
             assert isinstance(call_kwargs["application_generate_entity"], RagPipelineGenerateEntity)
 
     def test_rag_pipeline_run_task_success(
-        self, db_session_with_containers, mock_pipeline_generator, mock_file_service
+        self, db_session_with_containers: Session, mock_pipeline_generator, mock_file_service
     ):
         """
         Test successful regular RAG pipeline run task execution.
@@ -299,7 +299,7 @@ class TestRagPipelineRunTasks:
             assert isinstance(call_kwargs["application_generate_entity"], RagPipelineGenerateEntity)
 
     def test_priority_rag_pipeline_run_task_with_waiting_tasks(
-        self, db_session_with_containers, mock_pipeline_generator, mock_file_service
+        self, db_session_with_containers: Session, mock_pipeline_generator, mock_file_service
     ):
         """
         Test priority RAG pipeline run task with waiting tasks in queue using real Redis.
@@ -351,7 +351,7 @@ class TestRagPipelineRunTasks:
             assert len(remaining_tasks) == 1  # 2 original - 1 pulled = 1 remaining
 
     def test_rag_pipeline_run_task_legacy_compatibility(
-        self, db_session_with_containers, mock_pipeline_generator, mock_file_service
+        self, db_session_with_containers: Session, mock_pipeline_generator, mock_file_service
     ):
         """
         Test regular RAG pipeline run task with legacy Redis queue format for backward compatibility.
@@ -388,8 +388,10 @@ class TestRagPipelineRunTasks:
         # Set the task key to indicate there are waiting tasks (legacy behavior)
         redis_client.set(legacy_task_key, 1, ex=60 * 60)
 
-        # Mock the task function calls
-        with patch("tasks.rag_pipeline.rag_pipeline_run_task.rag_pipeline_run_task.delay") as mock_delay:
+        # Mock the Celery group scheduling used by the implementation
+        with patch("tasks.rag_pipeline.rag_pipeline_run_task.group") as mock_group:
+            mock_group.return_value.apply_async = MagicMock()
+
             # Act: Execute the priority task with new code but legacy queue data
             rag_pipeline_run_task(file_id, tenant.id)
 
@@ -398,13 +400,14 @@ class TestRagPipelineRunTasks:
             mock_file_service["delete_file"].assert_called_once_with(file_id)
             assert mock_pipeline_generator.call_count == 1
 
-            # Verify waiting tasks were processed, pull 1 task a time by default
-            assert mock_delay.call_count == 1
+            # Verify waiting tasks were processed via group, pull 1 task a time by default
+            assert mock_group.return_value.apply_async.called
 
-            # Verify correct parameters for the call
-            call_kwargs = mock_delay.call_args[1] if mock_delay.call_args else {}
-            assert call_kwargs.get("rag_pipeline_invoke_entities_file_id") == legacy_file_ids[0]
-            assert call_kwargs.get("tenant_id") == tenant.id
+            # Verify correct parameters for the first scheduled job signature
+            jobs = mock_group.call_args.args[0] if mock_group.call_args else []
+            first_kwargs = jobs[0].kwargs if jobs else {}
+            assert first_kwargs.get("rag_pipeline_invoke_entities_file_id") == legacy_file_ids[0]
+            assert first_kwargs.get("tenant_id") == tenant.id
 
             # Verify that new code can process legacy queue entries
             # The new TenantIsolatedTaskQueue should be able to read from the legacy format
@@ -419,7 +422,7 @@ class TestRagPipelineRunTasks:
         redis_client.delete(legacy_task_key)
 
     def test_rag_pipeline_run_task_with_waiting_tasks(
-        self, db_session_with_containers, mock_pipeline_generator, mock_file_service
+        self, db_session_with_containers: Session, mock_pipeline_generator, mock_file_service
     ):
         """
         Test regular RAG pipeline run task with waiting tasks in queue using real Redis.
@@ -446,8 +449,10 @@ class TestRagPipelineRunTasks:
         waiting_file_ids = [str(uuid.uuid4()) for _ in range(3)]
         queue.push_tasks(waiting_file_ids)
 
-        # Mock the task function calls
-        with patch("tasks.rag_pipeline.rag_pipeline_run_task.rag_pipeline_run_task.delay") as mock_delay:
+        # Mock the Celery group scheduling used by the implementation
+        with patch("tasks.rag_pipeline.rag_pipeline_run_task.group") as mock_group:
+            mock_group.return_value.apply_async = MagicMock()
+
             # Act: Execute the regular task
             rag_pipeline_run_task(file_id, tenant.id)
 
@@ -456,20 +461,21 @@ class TestRagPipelineRunTasks:
             mock_file_service["delete_file"].assert_called_once_with(file_id)
             assert mock_pipeline_generator.call_count == 1
 
-            # Verify waiting tasks were processed, pull 1 task a time by default
-            assert mock_delay.call_count == 1
+            # Verify waiting tasks were processed via group.apply_async
+            assert mock_group.return_value.apply_async.called
 
-            # Verify correct parameters for the call
-            call_kwargs = mock_delay.call_args[1] if mock_delay.call_args else {}
-            assert call_kwargs.get("rag_pipeline_invoke_entities_file_id") == waiting_file_ids[0]
-            assert call_kwargs.get("tenant_id") == tenant.id
+            # Verify correct parameters for the first scheduled job signature
+            jobs = mock_group.call_args.args[0] if mock_group.call_args else []
+            first_kwargs = jobs[0].kwargs if jobs else {}
+            assert first_kwargs.get("rag_pipeline_invoke_entities_file_id") == waiting_file_ids[0]
+            assert first_kwargs.get("tenant_id") == tenant.id
 
             # Verify queue still has remaining tasks (only 1 was pulled)
             remaining_tasks = queue.pull_tasks(count=10)
             assert len(remaining_tasks) == 2  # 3 original - 1 pulled = 2 remaining
 
     def test_priority_rag_pipeline_run_task_error_handling(
-        self, db_session_with_containers, mock_pipeline_generator, mock_file_service
+        self, db_session_with_containers: Session, mock_pipeline_generator, mock_file_service
     ):
         """
         Test error handling in priority RAG pipeline run task using real Redis.
@@ -526,7 +532,7 @@ class TestRagPipelineRunTasks:
             assert len(remaining_tasks) == 0
 
     def test_rag_pipeline_run_task_error_handling(
-        self, db_session_with_containers, mock_pipeline_generator, mock_file_service
+        self, db_session_with_containers: Session, mock_pipeline_generator, mock_file_service
     ):
         """
         Test error handling in regular RAG pipeline run task using real Redis.
@@ -557,8 +563,10 @@ class TestRagPipelineRunTasks:
         waiting_file_id = str(uuid.uuid4())
         queue.push_tasks([waiting_file_id])
 
-        # Mock the task function calls
-        with patch("tasks.rag_pipeline.rag_pipeline_run_task.rag_pipeline_run_task.delay") as mock_delay:
+        # Mock the Celery group scheduling used by the implementation
+        with patch("tasks.rag_pipeline.rag_pipeline_run_task.group") as mock_group:
+            mock_group.return_value.apply_async = MagicMock()
+
             # Act: Execute the regular task (should not raise exception)
             rag_pipeline_run_task(file_id, tenant.id)
 
@@ -569,19 +577,20 @@ class TestRagPipelineRunTasks:
             assert mock_pipeline_generator.call_count == 1
 
             # Verify waiting task was still processed despite core processing error
-            mock_delay.assert_called_once()
+            assert mock_group.return_value.apply_async.called
 
-            # Verify correct parameters for the call
-            call_kwargs = mock_delay.call_args[1] if mock_delay.call_args else {}
-            assert call_kwargs.get("rag_pipeline_invoke_entities_file_id") == waiting_file_id
-            assert call_kwargs.get("tenant_id") == tenant.id
+            # Verify correct parameters for the first scheduled job signature
+            jobs = mock_group.call_args.args[0] if mock_group.call_args else []
+            first_kwargs = jobs[0].kwargs if jobs else {}
+            assert first_kwargs.get("rag_pipeline_invoke_entities_file_id") == waiting_file_id
+            assert first_kwargs.get("tenant_id") == tenant.id
 
             # Verify queue is empty after processing (task was pulled)
             remaining_tasks = queue.pull_tasks(count=10)
             assert len(remaining_tasks) == 0
 
     def test_priority_rag_pipeline_run_task_tenant_isolation(
-        self, db_session_with_containers, mock_pipeline_generator, mock_file_service
+        self, db_session_with_containers: Session, mock_pipeline_generator, mock_file_service
     ):
         """
         Test tenant isolation in priority RAG pipeline run task using real Redis.
@@ -648,7 +657,7 @@ class TestRagPipelineRunTasks:
             assert queue1._task_key != queue2._task_key
 
     def test_rag_pipeline_run_task_tenant_isolation(
-        self, db_session_with_containers, mock_pipeline_generator, mock_file_service
+        self, db_session_with_containers: Session, mock_pipeline_generator, mock_file_service
     ):
         """
         Test tenant isolation in regular RAG pipeline run task using real Redis.
@@ -684,8 +693,10 @@ class TestRagPipelineRunTasks:
         queue1.push_tasks([waiting_file_id1])
         queue2.push_tasks([waiting_file_id2])
 
-        # Mock the task function calls
-        with patch("tasks.rag_pipeline.rag_pipeline_run_task.rag_pipeline_run_task.delay") as mock_delay:
+        # Mock the Celery group scheduling used by the implementation
+        with patch("tasks.rag_pipeline.rag_pipeline_run_task.group") as mock_group:
+            mock_group.return_value.apply_async = MagicMock()
+
             # Act: Execute the regular task for tenant1 only
             rag_pipeline_run_task(file_id1, tenant1.id)
 
@@ -694,11 +705,12 @@ class TestRagPipelineRunTasks:
             assert mock_file_service["delete_file"].call_count == 1
             assert mock_pipeline_generator.call_count == 1
 
-            # Verify only tenant1's waiting task was processed
-            mock_delay.assert_called_once()
-            call_kwargs = mock_delay.call_args[1] if mock_delay.call_args else {}
-            assert call_kwargs.get("rag_pipeline_invoke_entities_file_id") == waiting_file_id1
-            assert call_kwargs.get("tenant_id") == tenant1.id
+            # Verify only tenant1's waiting task was processed (via group)
+            assert mock_group.return_value.apply_async.called
+            jobs = mock_group.call_args.args[0] if mock_group.call_args else []
+            first_kwargs = jobs[0].kwargs if jobs else {}
+            assert first_kwargs.get("rag_pipeline_invoke_entities_file_id") == waiting_file_id1
+            assert first_kwargs.get("tenant_id") == tenant1.id
 
             # Verify tenant1's queue is empty
             remaining_tasks1 = queue1.pull_tasks(count=10)
@@ -713,7 +725,7 @@ class TestRagPipelineRunTasks:
             assert queue1._task_key != queue2._task_key
 
     def test_run_single_rag_pipeline_task_success(
-        self, db_session_with_containers, mock_pipeline_generator, flask_app_with_containers
+        self, db_session_with_containers: Session, mock_pipeline_generator, flask_app_with_containers
     ):
         """
         Test successful run_single_rag_pipeline_task execution.
@@ -748,7 +760,7 @@ class TestRagPipelineRunTasks:
         assert isinstance(call_kwargs["application_generate_entity"], RagPipelineGenerateEntity)
 
     def test_run_single_rag_pipeline_task_entity_validation_error(
-        self, db_session_with_containers, mock_pipeline_generator, flask_app_with_containers
+        self, db_session_with_containers: Session, mock_pipeline_generator, flask_app_with_containers
     ):
         """
         Test run_single_rag_pipeline_task with invalid entity data.
@@ -793,7 +805,7 @@ class TestRagPipelineRunTasks:
         mock_pipeline_generator.assert_not_called()
 
     def test_run_single_rag_pipeline_task_database_entity_not_found(
-        self, db_session_with_containers, mock_pipeline_generator, flask_app_with_containers
+        self, db_session_with_containers: Session, mock_pipeline_generator, flask_app_with_containers
     ):
         """
         Test run_single_rag_pipeline_task with non-existent database entities.
@@ -838,7 +850,7 @@ class TestRagPipelineRunTasks:
         mock_pipeline_generator.assert_not_called()
 
     def test_priority_rag_pipeline_run_task_file_not_found(
-        self, db_session_with_containers, mock_pipeline_generator, mock_file_service
+        self, db_session_with_containers: Session, mock_pipeline_generator, mock_file_service
     ):
         """
         Test priority RAG pipeline run task with non-existent file.
@@ -888,7 +900,7 @@ class TestRagPipelineRunTasks:
             assert len(remaining_tasks) == 0
 
     def test_rag_pipeline_run_task_file_not_found(
-        self, db_session_with_containers, mock_pipeline_generator, mock_file_service
+        self, db_session_with_containers: Session, mock_pipeline_generator, mock_file_service
     ):
         """
         Test regular RAG pipeline run task with non-existent file.
@@ -913,8 +925,10 @@ class TestRagPipelineRunTasks:
         waiting_file_id = str(uuid.uuid4())
         queue.push_tasks([waiting_file_id])
 
-        # Mock the task function calls
-        with patch("tasks.rag_pipeline.rag_pipeline_run_task.rag_pipeline_run_task.delay") as mock_delay:
+        # Mock the Celery group scheduling used by the implementation
+        with patch("tasks.rag_pipeline.rag_pipeline_run_task.group") as mock_group:
+            mock_group.return_value.apply_async = MagicMock()
+
             # Act & Assert: Execute the regular task (should raise Exception)
             with pytest.raises(Exception, match="File not found"):
                 rag_pipeline_run_task(file_id, tenant.id)
@@ -924,12 +938,13 @@ class TestRagPipelineRunTasks:
             mock_pipeline_generator.assert_not_called()
 
             # Verify waiting task was still processed despite file error
-            mock_delay.assert_called_once()
+            assert mock_group.return_value.apply_async.called
 
-            # Verify correct parameters for the call
-            call_kwargs = mock_delay.call_args[1] if mock_delay.call_args else {}
-            assert call_kwargs.get("rag_pipeline_invoke_entities_file_id") == waiting_file_id
-            assert call_kwargs.get("tenant_id") == tenant.id
+            # Verify correct parameters for the first scheduled job signature
+            jobs = mock_group.call_args.args[0] if mock_group.call_args else []
+            first_kwargs = jobs[0].kwargs if jobs else {}
+            assert first_kwargs.get("rag_pipeline_invoke_entities_file_id") == waiting_file_id
+            assert first_kwargs.get("tenant_id") == tenant.id
 
             # Verify queue is empty after processing (task was pulled)
             remaining_tasks = queue.pull_tasks(count=10)

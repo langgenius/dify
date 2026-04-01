@@ -1,6 +1,6 @@
 from flask_restx import Resource, fields, marshal_with
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
@@ -41,14 +41,14 @@ DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 class AppImportPayload(BaseModel):
     mode: str = Field(..., description="Import mode")
-    yaml_content: str | None = None
-    yaml_url: str | None = None
-    name: str | None = None
-    description: str | None = None
-    icon_type: str | None = None
-    icon: str | None = None
-    icon_background: str | None = None
-    app_id: str | None = None
+    yaml_content: str | None = Field(None)
+    yaml_url: str | None = Field(None)
+    name: str | None = Field(None)
+    description: str | None = Field(None)
+    icon_type: str | None = Field(None)
+    icon: str | None = Field(None)
+    icon_background: str | None = Field(None)
+    app_id: str | None = Field(None)
 
 
 console_ns.schema_model(
@@ -71,7 +71,7 @@ class AppImportApi(Resource):
         args = AppImportPayload.model_validate(console_ns.payload)
 
         # Create service with session
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             import_service = AppDslService(session)
             # Import app
             account = current_user
@@ -87,7 +87,6 @@ class AppImportApi(Resource):
                 icon_background=args.icon_background,
                 app_id=args.app_id,
             )
-            session.commit()
         if result.app_id and FeatureService.get_system_features().webapp_auth.enabled:
             # update web app setting as private
             EnterpriseService.WebAppAuth.update_app_access_mode(result.app_id, "private")
@@ -112,12 +111,11 @@ class AppImportConfirmApi(Resource):
         current_user, _ = current_account_with_tenant()
 
         # Create service with session
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             import_service = AppDslService(session)
             # Confirm import
             account = current_user
             result = import_service.confirm_import(import_id=import_id, account=account)
-            session.commit()
 
         # Return appropriate status code based on result
         if result.status == ImportStatus.FAILED:
@@ -134,7 +132,7 @@ class AppImportCheckDependenciesApi(Resource):
     @marshal_with(app_import_check_dependencies_model)
     @edit_permission_required
     def get(self, app_model: App):
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             import_service = AppDslService(session)
             result = import_service.check_dependencies(app_model=app_model)
 

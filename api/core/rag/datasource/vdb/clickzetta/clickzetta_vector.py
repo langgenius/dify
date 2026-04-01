@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from clickzetta.connector.v0.connection import Connection  # type: ignore
 
 from configs import dify_config
-from core.rag.datasource.vdb.field import Field
+from core.rag.datasource.vdb.field import Field, parse_metadata_json
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.embedding.embedding_base import Embeddings
@@ -357,18 +357,19 @@ class ClickzettaVector(BaseVector):
         """
         try:
             if raw_metadata:
-                metadata = json.loads(raw_metadata)
+                # First parse may yield a string (double-encoded JSON) so use json.loads
+                first_pass = json.loads(raw_metadata)
 
                 # Handle double-encoded JSON
-                if isinstance(metadata, str):
-                    metadata = json.loads(metadata)
-
-                # Ensure we have a dict
-                if not isinstance(metadata, dict):
+                if isinstance(first_pass, str):
+                    metadata = parse_metadata_json(first_pass)
+                elif isinstance(first_pass, dict):
+                    metadata = first_pass
+                else:
                     metadata = {}
             else:
                 metadata = {}
-        except (json.JSONDecodeError, TypeError):
+        except (json.JSONDecodeError, ValueError, TypeError):
             logger.exception("JSON parsing failed for metadata")
             # Fallback: extract document_id with regex
             doc_id_match = re.search(r'"document_id":\s*"([^"]+)"', raw_metadata or "")
@@ -605,25 +606,36 @@ class ClickzettaVector(BaseVector):
                 logger.warning("Failed to create inverted index: %s", e)
                 # Continue without inverted index - full-text search will fall back to LIKE
 
-    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
+    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs) -> list[str]:
         """Add documents with embeddings to the collection."""
         if not documents:
-            return
+            return []
 
         batch_size = self._config.batch_size
         total_batches = (len(documents) + batch_size - 1) // batch_size
+        added_ids = []
 
         for i in range(0, len(documents), batch_size):
             batch_docs = documents[i : i + batch_size]
             batch_embeddings = embeddings[i : i + batch_size]
+            batch_doc_ids = []
+            for doc in batch_docs:
+                metadata = doc.metadata if isinstance(doc.metadata, dict) else {}
+                batch_doc_ids.append(self._safe_doc_id(metadata.get("doc_id", str(uuid.uuid4()))))
+            added_ids.extend(batch_doc_ids)
 
             # Execute batch insert through write queue
-            self._execute_write(self._insert_batch, batch_docs, batch_embeddings, i, batch_size, total_batches)
+            self._execute_write(
+                self._insert_batch, batch_docs, batch_embeddings, batch_doc_ids, i, batch_size, total_batches
+            )
+
+        return added_ids
 
     def _insert_batch(
         self,
         batch_docs: list[Document],
         batch_embeddings: list[list[float]],
+        batch_doc_ids: list[str],
         batch_index: int,
         batch_size: int,
         total_batches: int,
@@ -641,14 +653,9 @@ class ClickzettaVector(BaseVector):
         data_rows = []
         vector_dimension = len(batch_embeddings[0]) if batch_embeddings and batch_embeddings[0] else 768
 
-        for doc, embedding in zip(batch_docs, batch_embeddings):
+        for doc, embedding, doc_id in zip(batch_docs, batch_embeddings, batch_doc_ids):
             # Optimized: minimal checks for common case, fallback for edge cases
-            metadata = doc.metadata or {}
-
-            if not isinstance(metadata, dict):
-                metadata = {}
-
-            doc_id = self._safe_doc_id(metadata.get("doc_id", str(uuid.uuid4())))
+            metadata = doc.metadata if isinstance(doc.metadata, dict) else {}
 
             # Fast path for JSON serialization
             try:
@@ -924,17 +931,18 @@ class ClickzettaVector(BaseVector):
                         # Parse metadata from JSON string (may be double-encoded)
                         try:
                             if row[2]:
-                                metadata = json.loads(row[2])
+                                # First parse may yield a string (double-encoded JSON)
+                                first_pass = json.loads(row[2])
 
-                                # If result is a string, it's double-encoded JSON - parse again
-                                if isinstance(metadata, str):
-                                    metadata = json.loads(metadata)
-
-                                if not isinstance(metadata, dict):
+                                if isinstance(first_pass, str):
+                                    metadata = parse_metadata_json(first_pass)
+                                elif isinstance(first_pass, dict):
+                                    metadata = first_pass
+                                else:
                                     metadata = {}
                             else:
                                 metadata = {}
-                        except (json.JSONDecodeError, TypeError):
+                        except (json.JSONDecodeError, ValueError, TypeError):
                             logger.exception("JSON parsing failed")
                             # Fallback: extract document_id with regex
 

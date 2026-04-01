@@ -1,6 +1,5 @@
 import type { VariantProps } from 'class-variance-authority'
 import type { ChangeEventHandler, CSSProperties, FocusEventHandler } from 'react'
-import { RiCloseCircleFill, RiErrorWarningLine, RiSearchLine } from '@remixicon/react'
 import { cva } from 'class-variance-authority'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
@@ -13,8 +12,8 @@ export const inputVariants = cva(
   {
     variants: {
       size: {
-        regular: 'px-3 radius-md system-sm-regular',
-        large: 'px-4 radius-lg system-md-regular',
+        regular: 'px-3 system-sm-regular radius-md',
+        large: 'px-4 system-md-regular radius-lg',
       },
     },
     defaultVariants: {
@@ -83,7 +82,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(({
   }
   return (
     <div className={cn('relative w-full', wrapperClassName)}>
-      {showLeftIcon && <RiSearchLine className={cn('absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-components-input-text-placeholder')} />}
+      {showLeftIcon && <span className={cn('i-ri-search-line absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-components-input-text-placeholder')} />}
       <input
         ref={ref}
         style={styleCss}
@@ -115,11 +114,11 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(({
           onClick={onClear}
           data-testid="input-clear"
         >
-          <RiCloseCircleFill className="h-3.5 w-3.5 cursor-pointer text-text-quaternary group-hover:text-text-tertiary" />
+          <span className="i-ri-close-circle-fill h-3.5 w-3.5 cursor-pointer text-text-quaternary group-hover:text-text-tertiary" />
         </div>
       )}
       {destructive && (
-        <RiErrorWarningLine className="absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-text-destructive-secondary" />
+        <span className="i-ri-error-warning-line absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-text-destructive-secondary" />
       )}
       {showCopyIcon && (
         <div className={cn('group absolute right-0 top-1/2 -translate-y-1/2 cursor-pointer')}>
@@ -131,7 +130,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(({
       )}
       {
         unit && (
-          <div className="system-sm-regular absolute right-2 top-1/2 -translate-y-1/2 text-text-tertiary">
+          <div className="absolute right-2 top-1/2 -translate-y-1/2 text-text-tertiary system-sm-regular">
             {unit}
           </div>
         )

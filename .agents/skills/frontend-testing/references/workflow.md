@@ -4,7 +4,7 @@ This guide defines the workflow for generating tests, especially for complex com
 
 ## Scope Clarification
 
-This guide addresses **multi-file workflow** (how to process multiple test files). For coverage requirements within a single test file, see `web/testing/testing.md` § Coverage Goals.
+This guide addresses **multi-file workflow** (how to process multiple test files). For coverage requirements within a single test file, see `web/docs/test.md` § Coverage Goals.
 
 | Scope | Rule |
 |-------|------|

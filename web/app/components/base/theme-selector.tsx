@@ -1,11 +1,5 @@
 'use client'
 
-import {
-  RiCheckLine,
-  RiComputerLine,
-  RiMoonLine,
-  RiSunLine,
-} from '@remixicon/react'
 import { useTheme } from 'next-themes'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -30,9 +24,9 @@ export default function ThemeSelector() {
 
   const getCurrentIcon = () => {
     switch (theme) {
-      case 'light': return <RiSunLine className="h-4 w-4 text-text-tertiary" />
-      case 'dark': return <RiMoonLine className="h-4 w-4 text-text-tertiary" />
-      default: return <RiComputerLine className="h-4 w-4 text-text-tertiary" />
+      case 'light': return <span className="i-ri-sun-line h-4 w-4 text-text-tertiary" />
+      case 'dark': return <span className="i-ri-moon-line h-4 w-4 text-text-tertiary" />
+      default: return <span className="i-ri-computer-line h-4 w-4 text-text-tertiary" />
     }
   }
 
@@ -59,13 +53,13 @@ export default function ThemeSelector() {
             className="flex w-full items-center gap-1 rounded-lg px-2 py-1.5 text-text-secondary hover:bg-state-base-hover"
             onClick={() => handleThemeChange('light')}
           >
-            <RiSunLine className="h-4 w-4 text-text-tertiary" />
+            <span className="i-ri-sun-line h-4 w-4 text-text-tertiary" />
             <div className="flex grow items-center justify-start px-1">
               <span className="system-md-regular">{t('theme.light', { ns: 'common' })}</span>
             </div>
             {theme === 'light' && (
               <div className="flex h-4 w-4 shrink-0 items-center justify-center">
-                <RiCheckLine className="h-4 w-4 text-text-accent" />
+                <span className="i-ri-check-line h-4 w-4 text-text-accent" data-testid="light-icon" />
               </div>
             )}
           </button>
@@ -74,13 +68,13 @@ export default function ThemeSelector() {
             className="flex w-full items-center gap-1 rounded-lg px-2 py-1.5 text-text-secondary hover:bg-state-base-hover"
             onClick={() => handleThemeChange('dark')}
           >
-            <RiMoonLine className="h-4 w-4 text-text-tertiary" />
+            <span className="i-ri-moon-line h-4 w-4 text-text-tertiary" />
             <div className="flex grow items-center justify-start px-1">
               <span className="system-md-regular">{t('theme.dark', { ns: 'common' })}</span>
             </div>
             {theme === 'dark' && (
               <div className="flex h-4 w-4 shrink-0 items-center justify-center">
-                <RiCheckLine className="h-4 w-4 text-text-accent" />
+                <span className="i-ri-check-line h-4 w-4 text-text-accent" data-testid="dark-icon" />
               </div>
             )}
           </button>
@@ -89,13 +83,13 @@ export default function ThemeSelector() {
             className="flex w-full items-center gap-1 rounded-lg px-2 py-1.5 text-text-secondary hover:bg-state-base-hover"
             onClick={() => handleThemeChange('system')}
           >
-            <RiComputerLine className="h-4 w-4 text-text-tertiary" />
+            <span className="i-ri-computer-line h-4 w-4 text-text-tertiary" />
             <div className="flex grow items-center justify-start px-1">
               <span className="system-md-regular">{t('theme.auto', { ns: 'common' })}</span>
             </div>
             {theme === 'system' && (
               <div className="flex h-4 w-4 shrink-0 items-center justify-center">
-                <RiCheckLine className="h-4 w-4 text-text-accent" />
+                <span className="i-ri-check-line h-4 w-4 text-text-accent" data-testid="system-icon" />
               </div>
             )}
           </button>

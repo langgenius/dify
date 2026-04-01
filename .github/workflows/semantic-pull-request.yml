@@ -7,6 +7,9 @@ on:
       - edited
       - reopened
       - synchronize
+  merge_group:
+    branches: ["main"]
+    types: [checks_requested]
 
 jobs:
   lint:
@@ -15,7 +18,11 @@ jobs:
       pull-requests: read
     runs-on: ubuntu-latest
     steps:
+      - name: Complete merge group check
+        if: github.event_name == 'merge_group'
+        run: echo "Semantic PR title validation is handled on pull requests."
       - name: Check title
-        uses: amannn/action-semantic-pull-request@v6.1.1
+        if: github.event_name == 'pull_request'
+        uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50 # v6.1.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

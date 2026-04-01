@@ -41,7 +41,7 @@ class HuaweiObsStorage(BaseStorage):
             return False
         return True
 
-    def delete(self, filename):
+    def delete(self, filename: str):
         self.client.deleteObject(bucketName=self.bucket_name, objectKey=filename)
 
     def _get_meta(self, filename):
