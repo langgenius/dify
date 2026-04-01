@@ -88,14 +88,6 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         uses: ./.github/actions/setup-web
 
-      - name: Ensure CLAUDE.md exists for ESLint
-        if: steps.changed-files.outputs.any_changed == 'true'
-        working-directory: ./web
-        run: |
-          if [[ ! -f CLAUDE.md ]]; then
-            echo 'AGENTS.md' > CLAUDE.md
-          fi
-
       - name: Restore ESLint cache
         if: steps.changed-files.outputs.any_changed == 'true'
         id: eslint-cache-restore

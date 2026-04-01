@@ -14,5 +14,5 @@ runs:
       working-directory: ./web
       run: |
         if [[ ! -f CLAUDE.md ]]; then
-          echo 'AGENTS.md' > CLAUDE.md
+          git show HEAD:web/CLAUDE.md > CLAUDE.md
         fi
