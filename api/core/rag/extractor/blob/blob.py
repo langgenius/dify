@@ -12,11 +12,11 @@ import mimetypes
 from collections.abc import Generator, Mapping
 from io import BufferedReader, BytesIO
 from pathlib import Path, PurePath
-from typing import Any, Union
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
-PathLike = Union[str, PurePath]
+type PathLike = str | PurePath
 
 
 class Blob(BaseModel):
@@ -29,7 +29,7 @@ class Blob(BaseModel):
     Inspired by: https://developer.mozilla.org/en-US/docs/Web/API/Blob
     """
 
-    data: Union[bytes, str, None] = None  # Raw data
+    data: bytes | str | None = None  # Raw data
     mimetype: str | None = None  # Not to be confused with a file extension
     encoding: str = "utf-8"  # Use utf-8 as default encoding, if decoding to string
     # Location where the original content was found
@@ -75,7 +75,7 @@ class Blob(BaseModel):
             raise ValueError(f"Unable to get bytes for blob {self}")
 
     @contextlib.contextmanager
-    def as_bytes_io(self) -> Generator[Union[BytesIO, BufferedReader], None, None]:
+    def as_bytes_io(self) -> Generator[BytesIO | BufferedReader, None, None]:
         """Read data as a byte stream."""
         if isinstance(self.data, bytes):
             yield BytesIO(self.data)
@@ -117,7 +117,7 @@ class Blob(BaseModel):
     @classmethod
     def from_data(
         cls,
-        data: Union[str, bytes],
+        data: str | bytes,
         *,
         encoding: str = "utf-8",
         mime_type: str | None = None,

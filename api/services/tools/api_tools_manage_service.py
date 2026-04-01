@@ -1,11 +1,10 @@
 import json
 import logging
-from typing import Any, cast
+from typing import Any, TypedDict, cast
 
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from httpx import get
 from sqlalchemy import select
-from typing_extensions import TypedDict
 
 from core.entities.provider_entities import ProviderConfig
 from core.tools.__base.tool_runtime import ToolRuntime

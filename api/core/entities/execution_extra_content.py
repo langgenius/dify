@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from typing import Any, TypeAlias
+from typing import Any
 
 from graphon.nodes.human_input.entities import FormInput, UserAction
 from pydantic import BaseModel, ConfigDict, Field
@@ -44,7 +44,7 @@ class HumanInputContent(BaseModel):
     type: ExecutionContentType = Field(default=ExecutionContentType.HUMAN_INPUT)
 
 
-ExecutionExtraContentDomainModel: TypeAlias = HumanInputContent
+type ExecutionExtraContentDomainModel = HumanInputContent
 
 __all__ = [
     "ExecutionExtraContentDomainModel",

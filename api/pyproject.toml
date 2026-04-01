@@ -1,7 +1,7 @@
 [project]
 name = "dify-api"
 version = "1.13.3"
-requires-python = ">=3.11,<3.13"
+requires-python = "~=3.12.0"
 
 dependencies = [
     "aliyun-log-python-sdk~=0.9.37",
@@ -232,5 +232,5 @@ vdb = [
 project-includes = ["."]
 project-excludes = [".venv", "migrations/"]
 python-platform = "linux"
-python-version = "3.11.0"
+python-version = "3.12.0"
 infer-with-first-use = false
