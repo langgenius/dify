@@ -5,7 +5,8 @@
     "prepare": "vp config"
   },
   "devDependencies": {
-    "taze": "catalog:"
+    "taze": "catalog:",
+    "vite-plus": "catalog:"
   },
   "engines": {
     "node": "^22.22.1"
