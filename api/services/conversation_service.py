@@ -137,11 +137,11 @@ class ConversationService:
     @classmethod
     def auto_generate_name(cls, app_model: App, conversation: Conversation):
         # get conversation first message
-        message = (
-            db.session.query(Message)
+        message = db.session.scalar(
+            select(Message)
             .where(Message.app_id == app_model.id, Message.conversation_id == conversation.id)
             .order_by(Message.created_at.asc())
-            .first()
+            .limit(1)
         )
 
         if not message:
@@ -160,8 +160,8 @@ class ConversationService:
 
     @classmethod
     def get_conversation(cls, app_model: App, conversation_id: str, user: Union[Account, EndUser] | None):
-        conversation = (
-            db.session.query(Conversation)
+        conversation = db.session.scalar(
+            select(Conversation)
             .where(
                 Conversation.id == conversation_id,
                 Conversation.app_id == app_model.id,
@@ -170,7 +170,7 @@ class ConversationService:
                 Conversation.from_account_id == (user.id if isinstance(user, Account) else None),
                 Conversation.is_deleted == False,
             )
-            .first()
+            .limit(1)
         )
 
         if not conversation:

@@ -9,11 +9,22 @@ import httpx
 from flask_login import current_user
 
 from core.helper import encrypter
+from core.helper.http_client_pooling import get_pooled_http_client
 from core.rag.extractor.firecrawl.firecrawl_app import CrawlStatusResponse, FirecrawlApp, FirecrawlDocumentData
 from core.rag.extractor.watercrawl.provider import WaterCrawlProvider
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
 from services.datasource_provider_service import DatasourceProviderService
+
+# Reuse pooled HTTP clients to avoid creating new connections per request and ease testing.
+_jina_http_client: httpx.Client = get_pooled_http_client(
+    "website:jinareader",
+    lambda: httpx.Client(limits=httpx.Limits(max_keepalive_connections=50, max_connections=100)),
+)
+_adaptive_http_client: httpx.Client = get_pooled_http_client(
+    "website:adaptivecrawl",
+    lambda: httpx.Client(limits=httpx.Limits(max_keepalive_connections=50, max_connections=100)),
+)
 
 
 @dataclass
@@ -225,7 +236,7 @@ class WebsiteService:
     @classmethod
     def _crawl_with_jinareader(cls, request: CrawlRequest, api_key: str) -> dict[str, Any]:
         if not request.options.crawl_sub_pages:
-            response = httpx.get(
+            response = _jina_http_client.get(
                 f"https://r.jina.ai/{request.url}",
                 headers={"Accept": "application/json", "Authorization": f"Bearer {api_key}"},
             )
@@ -233,7 +244,7 @@ class WebsiteService:
                 raise ValueError("Failed to crawl:")
             return {"status": "active", "data": response.json().get("data")}
         else:
-            response = httpx.post(
+            response = _adaptive_http_client.post(
                 "https://adaptivecrawl-kir3wx7b3a-uc.a.run.app",
                 json={
                     "url": request.url,
@@ -296,7 +307,7 @@ class WebsiteService:
 
     @classmethod
     def _get_jinareader_status(cls, job_id: str, api_key: str) -> dict[str, Any]:
-        response = httpx.post(
+        response = _adaptive_http_client.post(
             "https://adaptivecrawlstatus-kir3wx7b3a-uc.a.run.app",
             headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
             json={"taskId": job_id},
@@ -312,7 +323,7 @@ class WebsiteService:
         }
 
         if crawl_status_data["status"] == "completed":
-            response = httpx.post(
+            response = _adaptive_http_client.post(
                 "https://adaptivecrawlstatus-kir3wx7b3a-uc.a.run.app",
                 headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
                 json={"taskId": job_id, "urls": list(data.get("processed", {}).keys())},
@@ -374,7 +385,7 @@ class WebsiteService:
     @classmethod
     def _get_jinareader_url_data(cls, job_id: str, url: str, api_key: str) -> dict[str, Any] | None:
         if not job_id:
-            response = httpx.get(
+            response = _jina_http_client.get(
                 f"https://r.jina.ai/{url}",
                 headers={"Accept": "application/json", "Authorization": f"Bearer {api_key}"},
             )
@@ -383,7 +394,7 @@ class WebsiteService:
             return dict(response.json().get("data", {}))
         else:
             # Get crawl status first
-            status_response = httpx.post(
+            status_response = _adaptive_http_client.post(
                 "https://adaptivecrawlstatus-kir3wx7b3a-uc.a.run.app",
                 headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
                 json={"taskId": job_id},
@@ -393,7 +404,7 @@ class WebsiteService:
                 raise ValueError("Crawl job is not completed")
 
             # Get processed data
-            data_response = httpx.post(
+            data_response = _adaptive_http_client.post(
                 "https://adaptivecrawlstatus-kir3wx7b3a-uc.a.run.app",
                 headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
                 json={"taskId": job_id, "urls": list(status_data.get("processed", {}).keys())},

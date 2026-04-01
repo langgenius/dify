@@ -486,6 +486,242 @@ describe('getLayoutByELK', () => {
     expect(hiNode.ports).toHaveLength(2)
   })
 
+  it('should build ports for QuestionClassifier sorted by classes order', async () => {
+    const nodes = [
+      makeWorkflowNode({
+        id: 'qc-1',
+        data: {
+          type: BlockEnum.QuestionClassifier,
+          title: '',
+          desc: '',
+          classes: [{ id: 'cls-a', name: 'A' }, { id: 'cls-b', name: 'B' }, { id: 'cls-c', name: 'C' }],
+        },
+      }),
+      makeWorkflowNode({ id: 'x', data: { type: BlockEnum.Code, title: '', desc: '' } }),
+      makeWorkflowNode({ id: 'y', data: { type: BlockEnum.Code, title: '', desc: '' } }),
+      makeWorkflowNode({ id: 'z', data: { type: BlockEnum.Code, title: '', desc: '' } }),
+    ]
+    const edges = [
+      makeWorkflowEdge({ id: 'e-c', source: 'qc-1', target: 'z', sourceHandle: 'cls-c' }),
+      makeWorkflowEdge({ id: 'e-a', source: 'qc-1', target: 'x', sourceHandle: 'cls-a' }),
+      makeWorkflowEdge({ id: 'e-b', source: 'qc-1', target: 'y', sourceHandle: 'cls-b' }),
+    ]
+
+    await getLayoutByELK(nodes, edges)
+    const qcNode = layoutCallArgs!.children!.find((c: ElkChild) => c.id === 'qc-1')!
+    const portIds = qcNode.ports!.map((p: { id: string }) => p.id)
+    expect(portIds).toEqual([
+      'qc-1-out-cls-a',
+      'qc-1-out-cls-b',
+      'qc-1-out-cls-c',
+    ])
+  })
+
+  it('should build ports for QuestionClassifier with single class', async () => {
+    const nodes = [
+      makeWorkflowNode({
+        id: 'qc-1',
+        data: {
+          type: BlockEnum.QuestionClassifier,
+          title: '',
+          desc: '',
+          classes: [{ id: 'cls-only', name: 'Only' }],
+        },
+      }),
+      makeWorkflowNode({ id: 'x', data: { type: BlockEnum.Code, title: '', desc: '' } }),
+    ]
+    const edges = [
+      makeWorkflowEdge({ id: 'e1', source: 'qc-1', target: 'x', sourceHandle: 'cls-only' }),
+    ]
+
+    await getLayoutByELK(nodes, edges)
+    const qcNode = layoutCallArgs!.children!.find((c: ElkChild) => c.id === 'qc-1')!
+    expect(qcNode.ports).toHaveLength(1)
+    expect(qcNode.ports![0].layoutOptions!['elk.port.side']).toBe('EAST')
+  })
+
+  it('should only create output (EAST) ports, not input (WEST) ports', async () => {
+    const nodes = [
+      makeWorkflowNode({ id: 'a', data: { type: BlockEnum.Start, title: '', desc: '' } }),
+      makeWorkflowNode({ id: 'b', data: { type: BlockEnum.Code, title: '', desc: '' } }),
+      makeWorkflowNode({ id: 'c', data: { type: BlockEnum.End, title: '', desc: '' } }),
+    ]
+    const edges = [
+      makeWorkflowEdge({ id: 'e1', source: 'a', target: 'b' }),
+      makeWorkflowEdge({ id: 'e2', source: 'b', target: 'c' }),
+    ]
+
+    await getLayoutByELK(nodes, edges)
+    layoutCallArgs!.children!.forEach((child: ElkChild) => {
+      if (child.ports) {
+        child.ports.forEach((port) => {
+          expect(port.layoutOptions!['elk.port.side']).toBe('EAST')
+        })
+      }
+    })
+    const endNode = layoutCallArgs!.children!.find((c: ElkChild) => c.id === 'c')!
+    expect(endNode.ports).toBeUndefined()
+  })
+
+  it('should order children array by DFS following port order', async () => {
+    const nodes = [
+      makeWorkflowNode({
+        id: 'if-1',
+        data: {
+          type: BlockEnum.IfElse,
+          title: '',
+          desc: '',
+          cases: [{ case_id: 'case-a', logical_operator: 'and', conditions: [] }],
+        },
+      }),
+      makeWorkflowNode({ id: 'start', data: { type: BlockEnum.Start, title: '', desc: '' } }),
+      makeWorkflowNode({ id: 'branch-a', data: { type: BlockEnum.Code, title: '', desc: '' } }),
+      makeWorkflowNode({ id: 'branch-else', data: { type: BlockEnum.Code, title: '', desc: '' } }),
+      makeWorkflowNode({ id: 'end', data: { type: BlockEnum.End, title: '', desc: '' } }),
+    ]
+    const edges = [
+      makeWorkflowEdge({ source: 'start', target: 'if-1' }),
+      makeWorkflowEdge({ id: 'e-else', source: 'if-1', target: 'branch-else', sourceHandle: 'false' }),
+      makeWorkflowEdge({ id: 'e-a', source: 'if-1', target: 'branch-a', sourceHandle: 'case-a' }),
+      makeWorkflowEdge({ source: 'branch-a', target: 'end' }),
+      makeWorkflowEdge({ source: 'branch-else', target: 'end' }),
+    ]
+
+    await getLayoutByELK(nodes, edges)
+    const childIds = layoutCallArgs!.children!.map((c: ElkChild) => c.id)
+    // DFS from start: start → if-1 → branch-a (case-a first) → end → branch-else
+    const idxA = childIds.indexOf('branch-a')
+    const idxElse = childIds.indexOf('branch-else')
+    expect(idxA).toBeLessThan(idxElse)
+  })
+
+  it('should order children by DFS across nested branching nodes', async () => {
+    const nodes = [
+      makeWorkflowNode({ id: 'start', data: { type: BlockEnum.Start, title: '', desc: '' } }),
+      makeWorkflowNode({
+        id: 'qc-1',
+        data: {
+          type: BlockEnum.QuestionClassifier,
+          title: '',
+          desc: '',
+          classes: [{ id: 'c1', name: 'C1' }, { id: 'c2', name: 'C2' }],
+        },
+      }),
+      makeWorkflowNode({ id: 'upper', data: { type: BlockEnum.Code, title: '', desc: '' } }),
+      makeWorkflowNode({ id: 'lower', data: { type: BlockEnum.Code, title: '', desc: '' } }),
+    ]
+    const edges = [
+      makeWorkflowEdge({ source: 'start', target: 'qc-1' }),
+      makeWorkflowEdge({ id: 'e-c2', source: 'qc-1', target: 'lower', sourceHandle: 'c2' }),
+      makeWorkflowEdge({ id: 'e-c1', source: 'qc-1', target: 'upper', sourceHandle: 'c1' }),
+    ]
+
+    await getLayoutByELK(nodes, edges)
+    const childIds = layoutCallArgs!.children!.map((c: ElkChild) => c.id)
+    // DFS: start → qc-1 → upper (c1 first) → lower (c2 second)
+    expect(childIds.indexOf('upper')).toBeLessThan(childIds.indexOf('lower'))
+  })
+
+  it('should handle QuestionClassifier with no classes property', async () => {
+    const nodes = [
+      makeWorkflowNode({ id: 'qc-1', data: { type: BlockEnum.QuestionClassifier, title: '', desc: '' } }),
+      makeWorkflowNode({ id: 'b', data: { type: BlockEnum.Code, title: '', desc: '' } }),
+      makeWorkflowNode({ id: 'c', data: { type: BlockEnum.Code, title: '', desc: '' } }),
+    ]
+    const edges = [
+      makeWorkflowEdge({ id: 'e1', source: 'qc-1', target: 'b', sourceHandle: 'cls-1' }),
+      makeWorkflowEdge({ id: 'e2', source: 'qc-1', target: 'c', sourceHandle: 'cls-2' }),
+    ]
+
+    await getLayoutByELK(nodes, edges)
+    const qcNode = layoutCallArgs!.children!.find((c: ElkChild) => c.id === 'qc-1')!
+    expect(qcNode.ports).toHaveLength(2)
+  })
+
+  it('should handle QuestionClassifier edges where handle not found in classes', async () => {
+    const nodes = [
+      makeWorkflowNode({
+        id: 'qc-1',
+        data: { type: BlockEnum.QuestionClassifier, title: '', desc: '', classes: [{ id: 'known', name: 'K' }] },
+      }),
+      makeWorkflowNode({ id: 'b', data: { type: BlockEnum.Code, title: '', desc: '' } }),
+      makeWorkflowNode({ id: 'c', data: { type: BlockEnum.Code, title: '', desc: '' } }),
+    ]
+    const edges = [
+      makeWorkflowEdge({ id: 'e1', source: 'qc-1', target: 'b', sourceHandle: 'unknown-1' }),
+      makeWorkflowEdge({ id: 'e2', source: 'qc-1', target: 'c', sourceHandle: 'unknown-2' }),
+    ]
+
+    await getLayoutByELK(nodes, edges)
+    const qcNode = layoutCallArgs!.children!.find((c: ElkChild) => c.id === 'qc-1')!
+    expect(qcNode.ports).toHaveLength(2)
+  })
+
+  it('should include disconnected nodes in the layout', async () => {
+    const nodes = [
+      makeWorkflowNode({ id: 'start', data: { type: BlockEnum.Start, title: '', desc: '' } }),
+      makeWorkflowNode({ id: 'connected', data: { type: BlockEnum.Code, title: '', desc: '' } }),
+      makeWorkflowNode({ id: 'isolated', data: { type: BlockEnum.Code, title: '', desc: '' } }),
+    ]
+    const edges = [
+      makeWorkflowEdge({ source: 'start', target: 'connected' }),
+    ]
+
+    await getLayoutByELK(nodes, edges)
+    const childIds = layoutCallArgs!.children!.map((c: ElkChild) => c.id)
+    expect(childIds).toContain('isolated')
+    expect(childIds).toHaveLength(3)
+  })
+
+  it('should build edges in DFS order matching port order', async () => {
+    const nodes = [
+      makeWorkflowNode({ id: 'start', data: { type: BlockEnum.Start, title: '', desc: '' } }),
+      makeWorkflowNode({
+        id: 'if-1',
+        data: { type: BlockEnum.IfElse, title: '', desc: '', cases: [{ case_id: 'case-a' }] },
+      }),
+      makeWorkflowNode({ id: 'a', data: { type: BlockEnum.Code, title: '', desc: '' } }),
+      makeWorkflowNode({ id: 'b', data: { type: BlockEnum.Code, title: '', desc: '' } }),
+    ]
+    const edges = [
+      makeWorkflowEdge({ source: 'start', target: 'if-1' }),
+      makeWorkflowEdge({ id: 'e-else', source: 'if-1', target: 'b', sourceHandle: 'false' }),
+      makeWorkflowEdge({ id: 'e-a', source: 'if-1', target: 'a', sourceHandle: 'case-a' }),
+    ]
+
+    await getLayoutByELK(nodes, edges)
+    const elkEdges = layoutCallArgs!.edges as Array<{ sources: string[], targets: string[] }>
+    const ifEdges = elkEdges.filter(e => e.sources[0] === 'if-1')
+    expect(ifEdges[0].targets[0]).toBe('a')
+    expect(ifEdges[1].targets[0]).toBe('b')
+  })
+
+  it('should keep edges for components where every node has an incoming edge', async () => {
+    const nodes = [
+      makeWorkflowNode({
+        id: 'if-1',
+        data: { type: BlockEnum.IfElse, title: '', desc: '', cases: [{ case_id: 'case-a' }] },
+      }),
+      makeWorkflowNode({ id: 'a', data: { type: BlockEnum.Code, title: '', desc: '' } }),
+      makeWorkflowNode({ id: 'b', data: { type: BlockEnum.Code, title: '', desc: '' } }),
+    ]
+    const edges = [
+      makeWorkflowEdge({ id: 'e-a', source: 'if-1', target: 'a', sourceHandle: 'case-a' }),
+      makeWorkflowEdge({ id: 'e-b', source: 'if-1', target: 'b', sourceHandle: 'false' }),
+      makeWorkflowEdge({ id: 'e-back', source: 'a', target: 'if-1' }),
+    ]
+
+    await getLayoutByELK(nodes, edges)
+
+    const elkEdges = layoutCallArgs!.edges as Array<{ sources: string[], targets: string[] }>
+    expect(elkEdges).toHaveLength(3)
+    expect(elkEdges).toEqual(expect.arrayContaining([
+      expect.objectContaining({ sources: ['if-1'], targets: ['a'] }),
+      expect.objectContaining({ sources: ['if-1'], targets: ['b'] }),
+      expect.objectContaining({ sources: ['a'], targets: ['if-1'] }),
+    ]))
+  })
+
   it('should filter loop internal edges', async () => {
     const nodes = [
       makeWorkflowNode({ id: 'a', data: { type: BlockEnum.Start, title: '', desc: '' } }),
@@ -648,6 +884,45 @@ describe('getLayoutForChildNodes', () => {
     const result = await getLayoutForChildNodes('parent', nodes, [])
     expect(result).not.toBeNull()
     expect(result!.nodes.size).toBe(2)
+  })
+
+  it('should build ports and DFS-order for branching nodes inside iteration', async () => {
+    const nodes = [
+      makeWorkflowNode({ id: 'parent', data: { type: BlockEnum.Iteration, title: '', desc: '' } }),
+      makeWorkflowNode({
+        id: 'iter-start',
+        type: CUSTOM_ITERATION_START_NODE,
+        parentId: 'parent',
+        data: { type: BlockEnum.IterationStart, title: '', desc: '' },
+      }),
+      makeWorkflowNode({
+        id: 'qc-child',
+        parentId: 'parent',
+        data: {
+          type: BlockEnum.QuestionClassifier,
+          title: '',
+          desc: '',
+          classes: [{ id: 'cls-1', name: 'C1' }, { id: 'cls-2', name: 'C2' }],
+        },
+      }),
+      makeWorkflowNode({ id: 'upper', parentId: 'parent', data: { type: BlockEnum.Code, title: '', desc: '' } }),
+      makeWorkflowNode({ id: 'lower', parentId: 'parent', data: { type: BlockEnum.Code, title: '', desc: '' } }),
+    ]
+    const edges = [
+      makeWorkflowEdge({ source: 'iter-start', target: 'qc-child', data: { isInIteration: true, iteration_id: 'parent' } }),
+      makeWorkflowEdge({ id: 'e-c2', source: 'qc-child', target: 'lower', sourceHandle: 'cls-2', data: { isInIteration: true, iteration_id: 'parent' } }),
+      makeWorkflowEdge({ id: 'e-c1', source: 'qc-child', target: 'upper', sourceHandle: 'cls-1', data: { isInIteration: true, iteration_id: 'parent' } }),
+    ]
+
+    await getLayoutForChildNodes('parent', nodes, edges)
+
+    const qcElk = layoutCallArgs!.children!.find((c: ElkChild) => c.id === 'qc-child')!
+    expect(qcElk.ports).toHaveLength(2)
+    expect(qcElk.ports![0].id).toContain('cls-1')
+    expect(qcElk.ports![1].id).toContain('cls-2')
+
+    const childIds = layoutCallArgs!.children!.map((c: ElkChild) => c.id)
+    expect(childIds.indexOf('upper')).toBeLessThan(childIds.indexOf('lower'))
   })
 
   it('should return original layout when bounds are not finite', async () => {

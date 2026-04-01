@@ -29,6 +29,7 @@ from pymochow.model.table import AnnSearch, BM25SearchRequest, HNSWSearchParams,
 
 from configs import dify_config
 from core.rag.datasource.vdb.field import Field as VDBField
+from core.rag.datasource.vdb.field import parse_metadata_json
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
@@ -173,15 +174,9 @@ class BaiduVector(BaseVector):
             score = row.get("score", 0.0)
             meta = row_data.get(VDBField.METADATA_KEY, {})
 
-            # Handle both JSON string and dict formats for backward compatibility
-            if isinstance(meta, str):
-                try:
-                    import json
-
-                    meta = json.loads(meta)
-                except (json.JSONDecodeError, TypeError):
-                    meta = {}
-            elif not isinstance(meta, dict):
+            try:
+                meta = parse_metadata_json(meta)
+            except (ValueError, TypeError):
                 meta = {}
 
             if score >= score_threshold:

@@ -10,6 +10,7 @@ from mysql.connector import Error as MySQLError
 from pydantic import BaseModel, model_validator
 
 from configs import dify_config
+from core.rag.datasource.vdb.field import parse_metadata_json
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
@@ -178,9 +179,7 @@ class AlibabaCloudMySQLVector(BaseVector):
             cur.execute(f"SELECT meta, text FROM {self.table_name} WHERE id IN ({placeholders})", ids)
             docs = []
             for record in cur:
-                metadata = record["meta"]
-                if isinstance(metadata, str):
-                    metadata = json.loads(metadata)
+                metadata = parse_metadata_json(record["meta"])
                 docs.append(Document(page_content=record["text"], metadata=metadata))
         return docs
 
@@ -263,15 +262,13 @@ class AlibabaCloudMySQLVector(BaseVector):
                         # similarity = 1 / (1 + distance)
                         similarity = 1.0 / (1.0 + distance)
 
-                    metadata = record["meta"]
-                    if isinstance(metadata, str):
-                        metadata = json.loads(metadata)
+                    metadata = parse_metadata_json(record["meta"])
                     metadata["score"] = similarity
                     metadata["distance"] = distance
 
                     if similarity >= score_threshold:
                         docs.append(Document(page_content=record["text"], metadata=metadata))
-                except (ValueError, json.JSONDecodeError) as e:
+                except (ValueError, TypeError) as e:
                     logger.warning("Error processing search result: %s", e)
                     continue
 
@@ -306,9 +303,7 @@ class AlibabaCloudMySQLVector(BaseVector):
             )
             docs = []
             for record in cur:
-                metadata = record["meta"]
-                if isinstance(metadata, str):
-                    metadata = json.loads(metadata)
+                metadata = parse_metadata_json(record["meta"])
                 metadata["score"] = float(record["score"])
                 docs.append(Document(page_content=record["text"], metadata=metadata))
         return docs
