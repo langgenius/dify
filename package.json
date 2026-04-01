@@ -5,7 +5,11 @@
     "node": "^22.22.1"
   },
   "packageManager": "pnpm@10.33.0",
+  "scripts": {
+    "prepare": "husky"
+  },
   "devDependencies": {
+    "husky": "catalog:",
     "taze": "catalog:"
   }
 }

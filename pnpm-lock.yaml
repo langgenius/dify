@@ -621,6 +621,9 @@ importers:
 
   .:
     devDependencies:
+      husky:
+        specifier: 'catalog:'
+        version: 9.1.7
       taze:
         specifier: 'catalog:'
         version: 19.10.0
@@ -1165,9 +1168,6 @@ importers:
       hono:
         specifier: 'catalog:'
         version: 4.12.9
-      husky:
-        specifier: 'catalog:'
-        version: 9.1.7
       iconify-import-svg:
         specifier: 'catalog:'
         version: 0.1.2
