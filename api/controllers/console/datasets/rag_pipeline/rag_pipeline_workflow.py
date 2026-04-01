@@ -593,17 +593,15 @@ class PublishedRagPipelineApi(Resource):
         # The role of the current user in the ta table must be admin, owner, or editor
         current_user, _ = current_account_with_tenant()
         rag_pipeline_service = RagPipelineService()
-        with sessionmaker(db.engine).begin() as session:
-            pipeline = session.merge(pipeline)
-            workflow = rag_pipeline_service.publish_workflow(
-                session=session,
-                pipeline=pipeline,
-                account=current_user,
-            )
-            pipeline.is_published = True
-            pipeline.workflow_id = workflow.id
-            session.add(pipeline)
-            workflow_created_at = TimestampField().format(workflow.created_at)
+        workflow = rag_pipeline_service.publish_workflow(
+            session=db.session,  # type: ignore[reportArgumentType,arg-type]
+            pipeline=pipeline,
+            account=current_user,
+        )
+        pipeline.is_published = True
+        pipeline.workflow_id = workflow.id
+        db.session.commit()
+        workflow_created_at = TimestampField().format(workflow.created_at)
 
         return {
             "result": "success",
