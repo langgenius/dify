@@ -37,7 +37,11 @@ class _VectorSpaceQuota(TypedDict):
 
 
 class _KnowledgeRateLimit(TypedDict):
+    # NOTE (hj24):
+    # 1. Return for sandbox users but is null for other plans, it's defined but never used.
+    # 2. Keep it for compatibility for now, can be deprecated in future versions.
     size: NotRequired[int]
+    # NOTE END
     limit: int
 
 

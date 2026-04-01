@@ -336,7 +336,11 @@ class FeatureService:
             features.model_load_balancing_enabled = billing_info["model_load_balancing_enabled"]
 
         if "knowledge_rate_limit" in billing_info:
+            # NOTE (hj24):
+            # 1. knowledge_rate_limit size is nullable, currently it's defined but never used, only limit is used.
+            # 2. So be careful if later we decide to use [size], we cannot assume it is always present.
             features.knowledge_rate_limit = billing_info["knowledge_rate_limit"]["limit"]
+            # NOTE END
 
         if "knowledge_pipeline_publish_enabled" in billing_info:
             features.knowledge_pipeline.publish_enabled = billing_info["knowledge_pipeline_publish_enabled"]
