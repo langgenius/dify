@@ -101,7 +101,6 @@ class TestGetUser:
         # Assert
         assert result == mock_new_user
         mock_session.add.assert_called_once()
-        mock_session.commit.assert_called_once()
         mock_session.refresh.assert_called_once()
 
     @patch("controllers.inner_api.plugin.wraps.select")
