@@ -3,6 +3,14 @@ import os
 import re
 import sys
 
+REQUIRED_SECRET_VARS = {
+    "SECRET_KEY",
+    "DB_PASSWORD",
+    "REDIS_PASSWORD",
+    "PLUGIN_DIFY_INNER_API_KEY",
+    "MINIO_SECRET_KEY",
+}
+
 
 def parse_env_example(file_path):
     """
@@ -38,6 +46,9 @@ def generate_shared_env_block(env_vars, anchor_name="shared-api-worker-env"):
     lines = [f"x-shared-env: &{anchor_name}"]
     for key, default in env_vars.items():
         if key == "COMPOSE_PROFILES":
+            continue
+        if key in REQUIRED_SECRET_VARS:
+            lines.append(f"  {key}: ${{{key}:?{key} must be set}}")
             continue
         # If default value is empty, use ${KEY:-}
         if default == "":
