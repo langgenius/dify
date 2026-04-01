@@ -2,7 +2,7 @@
   "name": "dify",
   "private": true,
   "scripts": {
-    "prepare": "vp config"
+    "prepare": "node -e \"if (process.env.NODE_ENV !== 'production'){process.exit(1)} \" || exit 0; vp config"
   },
   "devDependencies": {
     "taze": "catalog:",
