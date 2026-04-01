@@ -64,15 +64,15 @@ class WebConversationService:
     def pin(cls, app_model: App, conversation_id: str, user: Union[Account, EndUser] | None):
         if not user:
             return
-        pinned_conversation = (
-            db.session.query(PinnedConversation)
+        pinned_conversation = db.session.scalar(
+            select(PinnedConversation)
             .where(
                 PinnedConversation.app_id == app_model.id,
                 PinnedConversation.conversation_id == conversation_id,
                 PinnedConversation.created_by_role == ("account" if isinstance(user, Account) else "end_user"),
                 PinnedConversation.created_by == user.id,
             )
-            .first()
+            .limit(1)
         )
 
         if pinned_conversation:
@@ -96,15 +96,15 @@ class WebConversationService:
     def unpin(cls, app_model: App, conversation_id: str, user: Union[Account, EndUser] | None):
         if not user:
             return
-        pinned_conversation = (
-            db.session.query(PinnedConversation)
+        pinned_conversation = db.session.scalar(
+            select(PinnedConversation)
             .where(
                 PinnedConversation.app_id == app_model.id,
                 PinnedConversation.conversation_id == conversation_id,
                 PinnedConversation.created_by_role == ("account" if isinstance(user, Account) else "end_user"),
                 PinnedConversation.created_by == user.id,
             )
-            .first()
+            .limit(1)
         )
 
         if not pinned_conversation:
