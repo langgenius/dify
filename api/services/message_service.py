@@ -1,7 +1,8 @@
-import json
 from collections.abc import Sequence
 from typing import Union
 
+from graphon.model_runtime.entities.model_entities import ModelType
+from pydantic import TypeAdapter
 from sqlalchemy.orm import sessionmaker
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
@@ -12,11 +13,11 @@ from core.model_manager import ModelManager
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.ops.utils import measure_time
-from dify_graph.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account
-from models.model import App, AppMode, AppModelConfig, EndUser, Message, MessageFeedback
+from models.enums import FeedbackFromSource, FeedbackRating
+from models.model import App, AppMode, AppModelConfig, AppModelConfigDict, EndUser, Message, MessageFeedback
 from repositories.execution_extra_content_repository import ExecutionExtraContentRepository
 from repositories.sqlalchemy_execution_extra_content_repository import (
     SQLAlchemyExecutionExtraContentRepository,
@@ -29,6 +30,8 @@ from services.errors.message import (
     SuggestedQuestionsAfterAnswerDisabledError,
 )
 from services.workflow_service import WorkflowService
+
+_app_model_config_adapter: TypeAdapter[AppModelConfigDict] = TypeAdapter(AppModelConfigDict)
 
 
 def _create_execution_extra_content_repository() -> ExecutionExtraContentRepository:
@@ -172,7 +175,7 @@ class MessageService:
         app_model: App,
         message_id: str,
         user: Union[Account, EndUser] | None,
-        rating: str | None,
+        rating: FeedbackRating | None,
         content: str | None,
     ):
         if not user:
@@ -197,7 +200,7 @@ class MessageService:
                 message_id=message.id,
                 rating=rating,
                 content=content,
-                from_source=("user" if isinstance(user, EndUser) else "admin"),
+                from_source=(FeedbackFromSource.USER if isinstance(user, EndUser) else FeedbackFromSource.ADMIN),
                 from_end_user_id=(user.id if isinstance(user, EndUser) else None),
                 from_account_id=(user.id if isinstance(user, Account) else None),
             )
@@ -254,7 +257,7 @@ class MessageService:
             app_model=app_model, conversation_id=message.conversation_id, user=user
         )
 
-        model_manager = ModelManager()
+        model_manager = ModelManager.for_tenant(tenant_id=app_model.tenant_id)
 
         if app_model.mode == AppMode.ADVANCED_CHAT:
             workflow_service = WorkflowService()
@@ -285,7 +288,9 @@ class MessageService:
                     .first()
                 )
             else:
-                conversation_override_model_configs = json.loads(conversation.override_model_configs)
+                conversation_override_model_configs = _app_model_config_adapter.validate_json(
+                    conversation.override_model_configs
+                )
                 app_model_config = AppModelConfig(
                     app_id=app_model.id,
                 )

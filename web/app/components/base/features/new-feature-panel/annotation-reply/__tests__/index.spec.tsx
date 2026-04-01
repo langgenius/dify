@@ -1,13 +1,15 @@
 import type { Features } from '../../../types'
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { FeaturesProvider } from '../../../context'
 import AnnotationReply from '../index'
 
+const originalConsoleError = console.error
 const mockPush = vi.fn()
-vi.mock('next/navigation', () => ({
+let mockPathname = '/app/test-app-id/configuration'
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
-  usePathname: () => '/app/test-app-id/configuration',
+  usePathname: () => mockPathname,
 }))
 
 let mockIsShowAnnotationConfigInit = false
@@ -100,6 +102,15 @@ const renderWithProvider = (
 describe('AnnotationReply', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.spyOn(console, 'error').mockImplementation((...args: unknown[]) => {
+      const message = args.map(arg => String(arg)).join(' ')
+      if (message.includes('A props object containing a "key" prop is being spread into JSX')
+        || message.includes('React keys must be passed directly to JSX without using spread')) {
+        return
+      }
+      originalConsoleError(...args as Parameters<typeof console.error>)
+    })
+    mockPathname = '/app/test-app-id/configuration'
     mockIsShowAnnotationConfigInit = false
     mockIsShowAnnotationFullModal = false
     capturedSetAnnotationConfig = null
@@ -235,18 +246,47 @@ describe('AnnotationReply', () => {
     expect(mockPush).toHaveBeenCalledWith('/app/test-app-id/annotations')
   })
 
-  it('should show config param modal when isShowAnnotationConfigInit is true', () => {
+  it('should fallback appId to empty string when pathname does not match', () => {
+    mockPathname = '/apps/no-match'
+    renderWithProvider({}, {
+      annotationReply: {
+        enabled: true,
+        score_threshold: 0.9,
+        embedding_model: {
+          embedding_provider_name: 'openai',
+          embedding_model_name: 'text-embedding-ada-002',
+        },
+      },
+    })
+
+    const card = screen.getByText(/feature\.annotation\.title/).closest('[class]')!
+    fireEvent.mouseEnter(card)
+    fireEvent.click(screen.getByText(/feature\.annotation\.cacheManagement/))
+
+    expect(mockPush).toHaveBeenCalledWith('/app//annotations')
+  })
+
+  it('should show config param modal when isShowAnnotationConfigInit is true', async () => {
     mockIsShowAnnotationConfigInit = true
-    renderWithProvider()
+    await act(async () => {
+      renderWithProvider()
+      await Promise.resolve()
+    })
 
     expect(screen.getByText(/initSetup\.title/)).toBeInTheDocument()
   })
 
-  it('should hide config modal when hide is clicked', () => {
+  it('should hide config modal when hide is clicked', async () => {
     mockIsShowAnnotationConfigInit = true
-    renderWithProvider()
+    await act(async () => {
+      renderWithProvider()
+      await Promise.resolve()
+    })
 
-    fireEvent.click(screen.getByRole('button', { name: /operation\.cancel/ }))
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /operation\.cancel/ }))
+      await Promise.resolve()
+    })
 
     expect(mockSetIsShowAnnotationConfigInit).toHaveBeenCalledWith(false)
   })
@@ -264,7 +304,10 @@ describe('AnnotationReply', () => {
       },
     })
 
-    fireEvent.click(screen.getByText(/initSetup\.confirmBtn/))
+    await act(async () => {
+      fireEvent.click(screen.getByText(/initSetup\.confirmBtn/))
+      await Promise.resolve()
+    })
 
     expect(mockHandleEnableAnnotation).toHaveBeenCalled()
   })
@@ -298,7 +341,10 @@ describe('AnnotationReply', () => {
       },
     })
 
-    fireEvent.click(screen.getByText(/initSetup\.confirmBtn/))
+    await act(async () => {
+      fireEvent.click(screen.getByText(/initSetup\.confirmBtn/))
+      await Promise.resolve()
+    })
 
     // handleEnableAnnotation should be called with embedding model and score
     expect(mockHandleEnableAnnotation).toHaveBeenCalledWith(
@@ -327,13 +373,15 @@ describe('AnnotationReply', () => {
 
     // The captured setAnnotationConfig is the component's updateAnnotationReply callback
     expect(capturedSetAnnotationConfig).not.toBeNull()
-    capturedSetAnnotationConfig!({
-      enabled: true,
-      score_threshold: 0.8,
-      embedding_model: {
-        embedding_provider_name: 'openai',
-        embedding_model_name: 'new-model',
-      },
+    act(() => {
+      capturedSetAnnotationConfig!({
+        enabled: true,
+        score_threshold: 0.8,
+        embedding_model: {
+          embedding_provider_name: 'openai',
+          embedding_model_name: 'new-model',
+        },
+      })
     })
 
     expect(onChange).toHaveBeenCalled()
@@ -353,12 +401,12 @@ describe('AnnotationReply', () => {
 
     // Should not throw when onChange is not provided
     expect(capturedSetAnnotationConfig).not.toBeNull()
-    expect(() => {
+    expect(() => act(() => {
       capturedSetAnnotationConfig!({
         enabled: true,
         score_threshold: 0.7,
       })
-    }).not.toThrow()
+    })).not.toThrow()
   })
 
   it('should hide info display when hovering over enabled feature', () => {
@@ -403,9 +451,12 @@ describe('AnnotationReply', () => {
     expect(screen.getByText('0.9')).toBeInTheDocument()
   })
 
-  it('should pass isInit prop to ConfigParamModal', () => {
+  it('should pass isInit prop to ConfigParamModal', async () => {
     mockIsShowAnnotationConfigInit = true
-    renderWithProvider()
+    await act(async () => {
+      renderWithProvider()
+      await Promise.resolve()
+    })
 
     expect(screen.getByText(/initSetup\.confirmBtn/)).toBeInTheDocument()
     expect(screen.queryByText(/initSetup\.configConfirmBtn/)).not.toBeInTheDocument()

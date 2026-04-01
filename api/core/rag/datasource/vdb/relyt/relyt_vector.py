@@ -154,10 +154,8 @@ class RelytVector(BaseVector):
     def get_ids_by_metadata_field(self, key: str, value: str):
         result = None
         with Session(self.client) as session:
-            select_statement = sql_text(
-                f"""SELECT id FROM "{self._collection_name}" WHERE metadata->>'{key}' = '{value}'; """
-            )
-            result = session.execute(select_statement).fetchall()
+            select_statement = sql_text(f"""SELECT id FROM "{self._collection_name}" WHERE metadata->>:key = :value""")
+            result = session.execute(select_statement, {"key": key, "value": value}).fetchall()
         if result:
             return [item[0] for item in result]
         else:
@@ -201,11 +199,10 @@ class RelytVector(BaseVector):
 
     def delete_by_ids(self, ids: list[str]):
         with Session(self.client) as session:
-            ids_str = ",".join(f"'{doc_id}'" for doc_id in ids)
             select_statement = sql_text(
-                f"""SELECT id FROM "{self._collection_name}" WHERE metadata->>'doc_id' in ({ids_str}); """
+                f"""SELECT id FROM "{self._collection_name}" WHERE metadata->>'doc_id' = ANY(:doc_ids)"""
             )
-            result = session.execute(select_statement).fetchall()
+            result = session.execute(select_statement, {"doc_ids": ids}).fetchall()
         if result:
             ids = [item[0] for item in result]
             self.delete_by_uuids(ids)
@@ -218,9 +215,9 @@ class RelytVector(BaseVector):
     def text_exists(self, id: str) -> bool:
         with Session(self.client) as session:
             select_statement = sql_text(
-                f"""SELECT id FROM "{self._collection_name}" WHERE metadata->>'doc_id' = '{id}' limit 1; """
+                f"""SELECT id FROM "{self._collection_name}" WHERE metadata->>'doc_id' = :doc_id limit 1"""
             )
-            result = session.execute(select_statement).fetchall()
+            result = session.execute(select_statement, {"doc_id": id}).fetchall()
         return len(result) > 0
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:

@@ -16,6 +16,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
+from models.enums import DataSourceType
 from tasks.clean_dataset_task import clean_dataset_task
 
 # ============================================================================
@@ -116,7 +118,7 @@ def mock_document():
     doc.id = str(uuid.uuid4())
     doc.tenant_id = str(uuid.uuid4())
     doc.dataset_id = str(uuid.uuid4())
-    doc.data_source_type = "upload_file"
+    doc.data_source_type = DataSourceType.UPLOAD_FILE
     doc.data_source_info = '{"upload_file_id": "test-file-id"}'
     doc.data_source_info_dict = {"upload_file_id": "test-file-id"}
     return doc
@@ -182,10 +184,10 @@ class TestErrorHandling:
         clean_dataset_task(
             dataset_id=dataset_id,
             tenant_id=tenant_id,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             index_struct='{"type": "paragraph"}',
             collection_binding_id=collection_binding_id,
-            doc_form="paragraph_index",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
         )
 
         # Assert
@@ -227,10 +229,10 @@ class TestPipelineAndWorkflowDeletion:
         clean_dataset_task(
             dataset_id=dataset_id,
             tenant_id=tenant_id,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             index_struct='{"type": "paragraph"}',
             collection_binding_id=collection_binding_id,
-            doc_form="paragraph_index",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
             pipeline_id=pipeline_id,
         )
 
@@ -263,10 +265,10 @@ class TestPipelineAndWorkflowDeletion:
         clean_dataset_task(
             dataset_id=dataset_id,
             tenant_id=tenant_id,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             index_struct='{"type": "paragraph"}',
             collection_binding_id=collection_binding_id,
-            doc_form="paragraph_index",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
             pipeline_id=None,
         )
 
@@ -319,10 +321,10 @@ class TestSegmentAttachmentCleanup:
         clean_dataset_task(
             dataset_id=dataset_id,
             tenant_id=tenant_id,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             index_struct='{"type": "paragraph"}',
             collection_binding_id=collection_binding_id,
-            doc_form="paragraph_index",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
         )
 
         # Assert
@@ -364,10 +366,10 @@ class TestSegmentAttachmentCleanup:
         clean_dataset_task(
             dataset_id=dataset_id,
             tenant_id=tenant_id,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             index_struct='{"type": "paragraph"}',
             collection_binding_id=collection_binding_id,
-            doc_form="paragraph_index",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
         )
 
         # Assert - storage delete was attempted
@@ -406,10 +408,10 @@ class TestEdgeCases:
         clean_dataset_task(
             dataset_id=dataset_id,
             tenant_id=tenant_id,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             index_struct='{"type": "paragraph"}',
             collection_binding_id=collection_binding_id,
-            doc_form="paragraph_index",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
         )
 
         # Assert
@@ -443,7 +445,7 @@ class TestIndexProcessorParameters:
         - Dataset object with correct attributes is passed
         """
         # Arrange
-        indexing_technique = "high_quality"
+        indexing_technique = IndexTechniqueType.HIGH_QUALITY
         index_struct = '{"type": "paragraph"}'
 
         # Act
@@ -453,7 +455,7 @@ class TestIndexProcessorParameters:
             indexing_technique=indexing_technique,
             index_struct=index_struct,
             collection_binding_id=collection_binding_id,
-            doc_form="paragraph_index",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
         )
 
         # Assert

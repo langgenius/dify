@@ -6,10 +6,10 @@ import logging
 from collections.abc import Mapping
 from typing import Any
 
+from graphon.graph_events import GraphNodeEventBase
+from graphon.nodes.base.node import Node
 from opentelemetry.trace import Span
 
-from dify_graph.graph_events import GraphNodeEventBase
-from dify_graph.nodes.base.node import Node
 from extensions.otel.parser.base import DefaultNodeOTelParser, safe_json_dumps
 from extensions.otel.semconv.gen_ai import LLMAttributes
 

@@ -15,6 +15,7 @@ from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, setup_required
 from controllers.web.error import InvalidArgumentError, NotFoundError
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
+from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.apps.message_generator import MessageGenerator
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
@@ -166,6 +167,7 @@ class ConsoleWorkflowEventsApi(Resource):
 
         else:
             msg_generator = MessageGenerator()
+            generator: BaseAppGenerator
             if app.mode == AppMode.ADVANCED_CHAT:
                 generator = AdvancedChatAppGenerator()
             elif app.mode == AppMode.WORKFLOW:
@@ -202,7 +204,7 @@ class ConsoleWorkflowEventsApi(Resource):
         )
 
 
-def _retrieve_app_for_workflow_run(session: Session, workflow_run: WorkflowRun):
+def _retrieve_app_for_workflow_run(session: Session, workflow_run: WorkflowRun) -> App:
     query = select(App).where(
         App.id == workflow_run.app_id,
         App.tenant_id == workflow_run.tenant_id,

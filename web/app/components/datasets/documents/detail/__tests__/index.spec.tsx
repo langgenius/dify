@@ -25,7 +25,7 @@ const mocks = vi.hoisted(() => {
 })
 
 // --- External mocks ---
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: mocks.push }),
   useSearchParams: () => new URLSearchParams(mocks.state.searchParams),
 }))

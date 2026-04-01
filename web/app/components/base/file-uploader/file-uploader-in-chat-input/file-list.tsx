@@ -26,7 +26,7 @@ export const FileList = ({
   canPreview = true,
 }: FileListProps) => {
   return (
-    <div className={cn('flex flex-wrap gap-2', className)}>
+    <div className={cn('flex flex-wrap gap-2', className)} data-testid="file-list">
       {
         files.map((file) => {
           if (file.supportFileType === SupportUploadFileTypes.image) {

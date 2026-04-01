@@ -65,7 +65,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
     if (primarySrc) {
       // Delayed generation of waveform data
       // eslint-disable-next-line ts/no-use-before-define
-      const timer = setTimeout(() => generateWaveformData(primarySrc), 1000)
+      const timer = setTimeout(generateWaveformData, 1000, primarySrc)
       return () => {
         audio.removeEventListener('loadedmetadata', setAudioData)
         audio.removeEventListener('timeupdate', setAudioTime)
@@ -303,7 +303,13 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
           <source key={index} src={srcUrl} />
         ))}
       </audio>
-      <button type="button" data-testid="play-pause-btn" className="inline-flex shrink-0 cursor-pointer items-center justify-center border-none text-text-accent transition-all hover:text-text-accent-secondary disabled:text-components-button-primary-bg-disabled" onClick={togglePlay} disabled={!isAudioAvailable}>
+      <button
+        type="button"
+        data-testid="play-pause-btn"
+        className="inline-flex shrink-0 cursor-pointer items-center justify-center border-none text-text-accent transition-all hover:text-text-accent-secondary disabled:text-components-button-primary-bg-disabled"
+        onClick={togglePlay}
+        disabled={!isAudioAvailable}
+      >
         {isPlaying
           ? (<div className="i-ri-pause-circle-fill h-5 w-5" />)
           : (<div className="i-ri-play-large-fill h-5 w-5" />)}

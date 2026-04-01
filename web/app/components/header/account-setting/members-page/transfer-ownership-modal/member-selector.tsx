@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Avatar from '@/app/components/base/avatar'
+import { Avatar } from '@/app/components/base/avatar'
 import Input from '@/app/components/base/input'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
 import { useMembers } from '@/service/use-common'
@@ -69,7 +69,7 @@ const MemberSelector: FC<Props> = ({
           )}
           {currentValue && (
             <>
-              <Avatar avatar={currentValue.avatar_url} size={24} name={currentValue.name} />
+              <Avatar avatar={currentValue.avatar_url} size="sm" name={currentValue.name} />
               <div className="grow truncate text-text-secondary system-sm-medium">{currentValue.name}</div>
               <div className="text-text-quaternary system-xs-regular">{currentValue.email}</div>
             </>
@@ -77,7 +77,7 @@ const MemberSelector: FC<Props> = ({
           <div className={cn('i-ri-arrow-down-s-line h-4 w-4 text-text-quaternary group-hover:text-text-secondary', open && 'text-text-secondary')} />
         </div>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-[1000]">
+      <PortalToFollowElemContent className="z-[1002]">
         <div className="min-w-[372px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm">
           <div className="p-2 pb-1">
             <Input
@@ -98,7 +98,7 @@ const MemberSelector: FC<Props> = ({
                   setOpen(false)
                 }}
               >
-                <Avatar avatar={account.avatar_url} size={24} name={account.name} />
+                <Avatar avatar={account.avatar_url} size="sm" name={account.name} />
                 <div className="grow truncate text-text-secondary system-sm-medium">{account.name}</div>
                 <div className="text-text-quaternary system-xs-regular">{account.email}</div>
               </div>

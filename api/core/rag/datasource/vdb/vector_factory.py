@@ -4,6 +4,7 @@ import time
 from abc import ABC, abstractmethod
 from typing import Any
 
+from graphon.model_runtime.entities.model_entities import ModelType
 from sqlalchemy import select
 
 from configs import dify_config
@@ -14,7 +15,6 @@ from core.rag.embedding.cached_embedding import CacheEmbedding
 from core.rag.embedding.embedding_base import Embeddings
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.models.document import Document
-from dify_graph.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
@@ -38,7 +38,7 @@ class AbstractVectorFactory(ABC):
 class Vector:
     def __init__(self, dataset: Dataset, attributes: list | None = None):
         if attributes is None:
-            attributes = ["doc_id", "dataset_id", "document_id", "doc_hash"]
+            attributes = ["doc_id", "dataset_id", "document_id", "doc_hash", "doc_type"]
         self._dataset = dataset
         self._embeddings = self._get_embeddings()
         self._attributes = attributes
@@ -191,6 +191,10 @@ class Vector:
                 from core.rag.datasource.vdb.iris.iris_vector import IrisVectorFactory
 
                 return IrisVectorFactory
+            case VectorType.HOLOGRES:
+                from core.rag.datasource.vdb.hologres.hologres_vector import HologresVectorFactory
+
+                return HologresVectorFactory
             case _:
                 raise ValueError(f"Vector store {vector_type} is not supported.")
 
@@ -273,7 +277,7 @@ class Vector:
         return self._vector_processor.search_by_vector(query_vector, **kwargs)
 
     def search_by_file(self, file_id: str, **kwargs: Any) -> list[Document]:
-        upload_file: UploadFile | None = db.session.query(UploadFile).where(UploadFile.id == file_id).first()
+        upload_file: UploadFile | None = db.session.get(UploadFile, file_id)
 
         if not upload_file:
             return []
@@ -299,7 +303,7 @@ class Vector:
             redis_client.delete(collection_exist_cache_key)
 
     def _get_embeddings(self) -> Embeddings:
-        model_manager = ModelManager()
+        model_manager = ModelManager.for_tenant(tenant_id=self._dataset.tenant_id)
 
         embedding_model = model_manager.get_model_instance(
             tenant_id=self._dataset.tenant_id,

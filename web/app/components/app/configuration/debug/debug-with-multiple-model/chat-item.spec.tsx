@@ -91,7 +91,7 @@ vi.mock('@/app/components/base/chat/chat', () => ({
 }))
 
 vi.mock('@/app/components/base/avatar', () => ({
-  default: ({ name }: { name: string }) => <div data-testid="avatar">{name}</div>,
+  Avatar: ({ name }: { name: string }) => <div data-testid="avatar">{name}</div>,
 }))
 
 const createModelAndParameter = (overrides: Partial<ModelAndParameter> = {}): ModelAndParameter => ({

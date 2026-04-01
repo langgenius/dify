@@ -12,15 +12,15 @@ vi.mock('ahooks', async (importOriginal) => {
   }
 })
 
-vi.mock('react-slider', () => ({
-  default: (props: { className?: string, min?: number, max?: number, value: number, onChange: (value: number) => void }) => (
+vi.mock('@/app/components/base/ui/slider', () => ({
+  Slider: (props: { className?: string, min?: number, max?: number, value: number, onValueChange: (value: number) => void }) => (
     <input
       type="range"
-      className={props.className}
+      className={`slider ${props.className ?? ''}`}
       min={props.min}
       max={props.max}
       value={props.value}
-      onChange={e => props.onChange(Number(e.target.value))}
+      onChange={e => props.onValueChange(Number(e.target.value))}
     />
   ),
 }))

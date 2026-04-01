@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import Avatar from '.'
+import { Avatar } from '.'
 
 const meta = {
   title: 'Base/Data Display/Avatar',
@@ -7,12 +7,12 @@ const meta = {
   parameters: {
     docs: {
       description: {
-        component: 'Initials or image-based avatar used across contacts and member lists. Falls back to the first letter when the image fails to load.',
+        component: 'Initials or image-based avatar built on Base UI. Falls back to the first letter when the image fails to load.',
       },
       source: {
         language: 'tsx',
         code: `
-<Avatar name="Alex Doe" avatar="https://cloud.dify.ai/logo/logo.svg" size={40} />
+<Avatar name="Alex Doe" avatar="https://i.pravatar.cc/96?u=avatar-default" size="xl" />
         `.trim(),
       },
     },
@@ -20,8 +20,8 @@ const meta = {
   tags: ['autodocs'],
   args: {
     name: 'Alex Doe',
-    avatar: 'https://cloud.dify.ai/logo/logo.svg',
-    size: 40,
+    avatar: 'https://i.pravatar.cc/96?u=avatar-default',
+    size: 'xl',
   },
 } satisfies Meta<typeof Avatar>
 
@@ -40,23 +40,20 @@ export const WithFallback: Story = {
       source: {
         language: 'tsx',
         code: `
-<Avatar name="Fallback" avatar={null} size={40} />
+<Avatar name="Fallback" avatar={null} size="xl" />
         `.trim(),
       },
     },
   },
 }
 
-export const CustomSizes: Story = {
+export const AllSizes: Story = {
   render: args => (
     <div className="flex items-end gap-4">
-      {[24, 32, 48, 64].map(size => (
+      {(['xxs', 'xs', 'sm', 'md', 'lg', 'xl', '2xl', '3xl'] as const).map(size => (
         <div key={size} className="flex flex-col items-center gap-2">
           <Avatar {...args} size={size} avatar="https://i.pravatar.cc/96?u=size-test" />
-          <span className="text-xs text-text-tertiary">
-            {size}
-            px
-          </span>
+          <span className="text-xs text-text-tertiary">{size}</span>
         </div>
       ))}
     </div>
@@ -66,11 +63,24 @@ export const CustomSizes: Story = {
       source: {
         language: 'tsx',
         code: `
-{[24, 32, 48, 64].map(size => (
+{(['xxs', 'xs', 'sm', 'md', 'lg', 'xl', '2xl', '3xl'] as const).map(size => (
   <Avatar key={size} name="Size Test" size={size} avatar="https://i.pravatar.cc/96?u=size-test" />
 ))}
         `.trim(),
       },
     },
   },
+}
+
+export const AllFallbackSizes: Story = {
+  render: args => (
+    <div className="flex items-end gap-4">
+      {(['xxs', 'xs', 'sm', 'md', 'lg', 'xl', '2xl', '3xl'] as const).map(size => (
+        <div key={size} className="flex flex-col items-center gap-2">
+          <Avatar {...args} size={size} avatar={null} name="Alex" />
+          <span className="text-xs text-text-tertiary">{size}</span>
+        </div>
+      ))}
+    </div>
+  ),
 }

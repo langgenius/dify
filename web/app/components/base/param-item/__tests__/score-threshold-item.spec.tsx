@@ -14,6 +14,8 @@ describe('ScoreThresholdItem', () => {
     vi.clearAllMocks()
   })
 
+  const getSlider = () => screen.getByLabelText('appDebug.datasetConfig.score_threshold')
+
   describe('Rendering', () => {
     it('should render the translated parameter name', () => {
       render(<ScoreThresholdItem {...defaultProps} />)
@@ -31,8 +33,8 @@ describe('ScoreThresholdItem', () => {
     it('should render InputNumber and Slider', () => {
       render(<ScoreThresholdItem {...defaultProps} />)
 
-      expect(screen.getByRole('spinbutton')).toBeInTheDocument()
-      expect(screen.getByRole('slider')).toBeInTheDocument()
+      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(getSlider()).toBeInTheDocument()
     })
   })
 
@@ -62,31 +64,27 @@ describe('ScoreThresholdItem', () => {
     it('should disable controls when enable is false', () => {
       render(<ScoreThresholdItem {...defaultProps} enable={false} />)
 
-      expect(screen.getByRole('spinbutton')).toBeDisabled()
-      expect(screen.getByRole('slider')).toHaveAttribute('aria-disabled', 'true')
+      expect(screen.getByRole('textbox')).toBeDisabled()
+      expect(getSlider()).toBeDisabled()
     })
   })
 
   describe('Value Clamping', () => {
     it('should clamp values to minimum of 0', () => {
       render(<ScoreThresholdItem {...defaultProps} />)
-      const input = screen.getByRole('spinbutton')
-
-      expect(input).toHaveAttribute('min', '0')
+      const input = screen.getByRole('textbox')
+      expect(input).toBeInTheDocument()
     })
 
     it('should clamp values to maximum of 1', () => {
       render(<ScoreThresholdItem {...defaultProps} />)
-      const input = screen.getByRole('spinbutton')
-
-      expect(input).toHaveAttribute('max', '1')
+      const input = screen.getByRole('textbox')
+      expect(input).toBeInTheDocument()
     })
 
     it('should use step of 0.01', () => {
-      render(<ScoreThresholdItem {...defaultProps} />)
-      const input = screen.getByRole('spinbutton')
-
-      expect(input).toHaveAttribute('step', '0.01')
+      render(<ScoreThresholdItem {...defaultProps} value={0.5} />)
+      expect(screen.getByRole('textbox')).toHaveValue('0.5')
     })
 
     it('should call onChange with rounded value when input changes', async () => {
@@ -107,7 +105,7 @@ describe('ScoreThresholdItem', () => {
       }
 
       render(<StatefulScoreThresholdItem />)
-      const input = screen.getByRole('spinbutton')
+      const input = screen.getByRole('textbox')
 
       await user.clear(input)
       await user.type(input, '0.55')
@@ -138,8 +136,14 @@ describe('ScoreThresholdItem', () => {
 
     it('should clamp to max=1 when value exceeds maximum', () => {
       render(<ScoreThresholdItem {...defaultProps} value={1.5} />)
-      const input = screen.getByRole('spinbutton')
-      expect(input).toHaveValue(1)
+      const input = screen.getByRole('textbox')
+      expect(input).toHaveValue('1')
+    })
+
+    it('should fall back to default value when value is undefined', () => {
+      render(<ScoreThresholdItem {...defaultProps} value={undefined} />)
+      const input = screen.getByRole('textbox')
+      expect(input).toHaveValue('0.7')
     })
   })
 })

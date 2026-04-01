@@ -118,4 +118,30 @@ describe('InputsFormNode', () => {
     const mainDiv = screen.getByTestId('inputs-form-node')
     expect(mainDiv).toHaveClass('mb-0 px-0')
   })
+
+  it('should apply mobile styles when isMobile is true', () => {
+    vi.mocked(useEmbeddedChatbotContext).mockReturnValue({
+      ...mockContextValue,
+      isMobile: true,
+    } as unknown as any)
+    const { rerender } = render(<InputsFormNode collapsed={false} setCollapsed={setCollapsed} />)
+
+    // Main container
+    const mainDiv = screen.getByTestId('inputs-form-node')
+    expect(mainDiv).toHaveClass('mb-4 pt-4')
+
+    // Header container (parent of the icon)
+    const header = screen.getByText(/chat.chatSettingsTitle/i).parentElement
+    expect(header).toHaveClass('px-4 py-3')
+
+    // Content container
+    expect(screen.getByTestId('mock-inputs-form-content').parentElement).toHaveClass('p-4')
+
+    // Start chat button container
+    expect(screen.getByTestId('inputs-form-start-chat-button').parentElement).toHaveClass('p-4')
+
+    // Collapsed state mobile styles
+    rerender(<InputsFormNode collapsed={true} setCollapsed={setCollapsed} />)
+    expect(screen.getByText(/chat.chatSettingsTitle/i).parentElement).toHaveClass('px-4 py-3')
+  })
 })

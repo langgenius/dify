@@ -1,8 +1,15 @@
 import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { InputNumber } from '@/app/components/base/input-number'
 import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
+import {
+  NumberField,
+  NumberFieldControls,
+  NumberFieldDecrement,
+  NumberFieldGroup,
+  NumberFieldIncrement,
+  NumberFieldInput,
+} from '@/app/components/base/ui/number-field'
 import { env } from '@/env'
 
 export type TopKAndScoreThresholdProps = {
@@ -40,17 +47,11 @@ const TopKAndScoreThreshold = ({
 }: TopKAndScoreThresholdProps) => {
   const { t } = useTranslation()
   const handleTopKChange = useCallback((value: number) => {
-    let notOutRangeValue = Number.parseInt(value.toFixed(0))
-    notOutRangeValue = Math.max(TOP_K_VALUE_LIMIT.min, notOutRangeValue)
-    notOutRangeValue = Math.min(TOP_K_VALUE_LIMIT.max, notOutRangeValue)
-    onTopKChange?.(notOutRangeValue)
+    onTopKChange?.(Number.parseInt(value.toFixed(0)))
   }, [onTopKChange])
 
   const handleScoreThresholdChange = (value: number) => {
-    let notOutRangeValue = Number.parseFloat(value.toFixed(2))
-    notOutRangeValue = Math.max(SCORE_THRESHOLD_VALUE_LIMIT.min, notOutRangeValue)
-    notOutRangeValue = Math.min(SCORE_THRESHOLD_VALUE_LIMIT.max, notOutRangeValue)
-    onScoreThresholdChange?.(notOutRangeValue)
+    onScoreThresholdChange?.(Number.parseFloat(value.toFixed(2)))
   }
 
   return (
@@ -63,14 +64,22 @@ const TopKAndScoreThreshold = ({
             popupContent={t('datasetConfig.top_kTip', { ns: 'appDebug' })}
           />
         </div>
-        <InputNumber
+        <NumberField
           disabled={readonly}
-          type="number"
-          {...TOP_K_VALUE_LIMIT}
-          size="regular"
+          step={TOP_K_VALUE_LIMIT.amount}
+          min={TOP_K_VALUE_LIMIT.min}
+          max={TOP_K_VALUE_LIMIT.max}
           value={topK}
-          onChange={handleTopKChange}
-        />
+          onValueChange={value => handleTopKChange(value ?? 0)}
+        >
+          <NumberFieldGroup size="regular">
+            <NumberFieldInput size="regular" />
+            <NumberFieldControls>
+              <NumberFieldIncrement size="regular" />
+              <NumberFieldDecrement size="regular" />
+            </NumberFieldControls>
+          </NumberFieldGroup>
+        </NumberField>
       </div>
       {
         !hiddenScoreThreshold && (
@@ -90,14 +99,22 @@ const TopKAndScoreThreshold = ({
                 popupContent={t('datasetConfig.score_thresholdTip', { ns: 'appDebug' })}
               />
             </div>
-            <InputNumber
+            <NumberField
               disabled={readonly || !isScoreThresholdEnabled}
-              type="number"
-              {...SCORE_THRESHOLD_VALUE_LIMIT}
-              size="regular"
-              value={scoreThreshold}
-              onChange={handleScoreThresholdChange}
-            />
+              step={SCORE_THRESHOLD_VALUE_LIMIT.step}
+              min={SCORE_THRESHOLD_VALUE_LIMIT.min}
+              max={SCORE_THRESHOLD_VALUE_LIMIT.max}
+              value={scoreThreshold ?? null}
+              onValueChange={value => handleScoreThresholdChange(value ?? 0)}
+            >
+              <NumberFieldGroup size="regular">
+                <NumberFieldInput size="regular" />
+                <NumberFieldControls>
+                  <NumberFieldIncrement size="regular" />
+                  <NumberFieldDecrement size="regular" />
+                </NumberFieldControls>
+              </NumberFieldGroup>
+            </NumberField>
           </div>
         )
       }
