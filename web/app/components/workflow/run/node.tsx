@@ -18,7 +18,7 @@ import {
 } from '@remixicon/react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Tooltip from '@/app/components/base/tooltip'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import ErrorHandleTip from '@/app/components/workflow/nodes/_base/components/error-handle/error-handle-tip'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
@@ -142,18 +142,21 @@ const NodePanel: FC<Props> = ({
             type={nodeInfo.node_type}
             toolIcon={((nodeInfo.extras as { icon?: string } | undefined)?.icon || nodeInfo.extras) as string | { content: string, background: string } | undefined}
           />
-          <Tooltip
-            popupContent={
+          <Tooltip>
+            <TooltipTrigger
+              render={(
+                <div className={cn(
+                  'grow truncate text-text-secondary system-xs-semibold-uppercase',
+                  hideInfo && '!text-xs',
+                )}
+                >
+                  {nodeInfo.title}
+                </div>
+              )}
+            />
+            <TooltipContent>
               <div className="max-w-xs">{nodeInfo.title}</div>
-            }
-          >
-            <div className={cn(
-              'grow truncate text-text-secondary system-xs-semibold-uppercase',
-              hideInfo && '!text-xs',
-            )}
-            >
-              {nodeInfo.title}
-            </div>
+            </TooltipContent>
           </Tooltip>
           {!['running', 'paused'].includes(nodeInfo.status) && !hideInfo && (
             <div className="shrink-0 text-text-tertiary system-xs-regular">

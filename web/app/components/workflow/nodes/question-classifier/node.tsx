@@ -4,7 +4,7 @@ import type { NodeProps } from 'reactflow'
 import type { QuestionClassifierNodeType } from './types'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Tooltip from '@/app/components/base/tooltip'
+import { Popover, PopoverContent, PopoverTrigger } from '@/app/components/base/ui/popover'
 import {
   useTextGenerationCurrentProviderAndModelAndModelList,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -47,15 +47,18 @@ const TruncatedClassItem: FC<TruncatedClassItemProps> = ({ topic, index, nodeId,
       </div>
       {shouldShowTooltip
         ? (
-            <Tooltip
-              popupContent={(
+            <Popover>
+              <PopoverTrigger
+                openOnHover
+                nativeButton={false}
+                render={content}
+              />
+              <PopoverContent placement="top" popupClassName="p-2">
                 <div className="max-w-[300px] break-words">
                   <ReadonlyInputWithSelectVar value={topic.name} nodeId={nodeId} />
                 </div>
-              )}
-            >
-              {content}
-            </Tooltip>
+              </PopoverContent>
+            </Popover>
           )
         : content}
     </div>

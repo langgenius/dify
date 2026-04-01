@@ -19,21 +19,6 @@ const {
   },
 }))
 
-vi.mock('@/app/components/base/tooltip', () => ({
-  default: ({
-    children,
-    popupContent,
-  }: {
-    children: React.ReactNode
-    popupContent: React.ReactNode
-  }) => (
-    <div>
-      <span>{popupContent}</span>
-      {children}
-    </div>
-  ),
-}))
-
 vi.mock('@/context/global-public-context', () => ({
   useGlobalPublicStore: (selector: (state: { systemFeatures: { enable_marketplace: boolean } }) => unknown) => selector({
     systemFeatures: { enable_marketplace: true },
@@ -127,7 +112,7 @@ describe('Tabs', () => {
     render(<Tabs {...baseProps} />)
 
     expect(screen.getByText('start-content')).toBeInTheDocument()
-    expect(screen.getByText('workflow.tabs.startDisabledTip')).toBeInTheDocument()
+    expect(screen.getByText('Blocks')).toBeInTheDocument()
   })
 
   it('should switch tabs through click handlers and render tools content with normalized icons', () => {

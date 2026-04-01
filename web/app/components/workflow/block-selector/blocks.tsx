@@ -9,7 +9,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
 import Badge from '@/app/components/base/badge'
-import Tooltip from '@/app/components/base/tooltip'
+import { Popover, PopoverContent, PopoverTrigger } from '@/app/components/base/ui/popover'
 import BlockIcon from '../block-icon'
 import { BlockEnum } from '../types'
 import { BLOCK_CLASSIFICATIONS } from './constants'
@@ -93,12 +93,33 @@ const Blocks = ({
         }
         {
           filteredList.map(block => (
-            <Tooltip
-              key={block.metaData.type}
-              position="right"
-              popupClassName="w-[200px] rounded-xl"
-              needsDelay={false}
-              popupContent={(
+            <Popover key={block.metaData.type}>
+              <PopoverTrigger
+                openOnHover
+                nativeButton={false}
+                render={(
+                  <div
+                    key={block.metaData.type}
+                    className="flex h-8 w-full cursor-pointer items-center rounded-lg px-3 hover:bg-state-base-hover"
+                    onClick={() => onSelect(block.metaData.type)}
+                  >
+                    <BlockIcon
+                      className="mr-2 shrink-0"
+                      type={block.metaData.iconType || block.metaData.type}
+                    />
+                    <div className="grow text-sm text-text-secondary">{block.metaData.title}</div>
+                    {
+                      block.metaData.type === BlockEnum.LoopEnd && (
+                        <Badge
+                          text={t('nodes.loop.loopNode', { ns: 'workflow' })}
+                          className="ml-2 shrink-0"
+                        />
+                      )
+                    }
+                  </div>
+                )}
+              />
+              <PopoverContent placement="right" popupClassName="w-[200px] rounded-xl px-3 py-2 text-left">
                 <div>
                   <BlockIcon
                     size="md"
@@ -108,28 +129,8 @@ const Blocks = ({
                   <div className="mb-1 text-text-primary system-md-medium">{block.metaData.title}</div>
                   <div className="text-text-tertiary system-xs-regular">{block.metaData.description}</div>
                 </div>
-              )}
-            >
-              <div
-                key={block.metaData.type}
-                className="flex h-8 w-full cursor-pointer items-center rounded-lg px-3 hover:bg-state-base-hover"
-                onClick={() => onSelect(block.metaData.type)}
-              >
-                <BlockIcon
-                  className="mr-2 shrink-0"
-                  type={block.metaData.iconType || block.metaData.type}
-                />
-                <div className="grow text-sm text-text-secondary">{block.metaData.title}</div>
-                {
-                  block.metaData.type === BlockEnum.LoopEnd && (
-                    <Badge
-                      text={t('nodes.loop.loopNode', { ns: 'workflow' })}
-                      className="ml-2 shrink-0"
-                    />
-                  )
-                }
-              </div>
-            </Tooltip>
+              </PopoverContent>
+            </Popover>
           ))
         }
       </div>

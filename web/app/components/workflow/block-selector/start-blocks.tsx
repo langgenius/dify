@@ -7,7 +7,7 @@ import {
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Tooltip from '@/app/components/base/tooltip'
+import { Popover, PopoverContent, PopoverTrigger } from '@/app/components/base/ui/popover'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { useAvailableNodesMetaData } from '../../workflow-app/hooks'
 import BlockIcon from '../block-icon'
@@ -68,12 +68,29 @@ const StartBlocks = ({
   }, [isEmpty, onContentStateChange])
 
   const renderBlock = useCallback((block: typeof START_BLOCKS[number]) => (
-    <Tooltip
-      key={block.type}
-      position="right"
-      popupClassName="w-[224px] rounded-xl"
-      needsDelay={false}
-      popupContent={(
+    <Popover key={block.type}>
+      <PopoverTrigger
+        openOnHover
+        nativeButton={false}
+        render={(
+          <div
+            className="flex h-8 w-full cursor-pointer items-center rounded-lg px-3 hover:bg-state-base-hover"
+            onClick={() => onSelect(block.type)}
+          >
+            <BlockIcon
+              className="mr-2 shrink-0"
+              type={block.type}
+            />
+            <div className="flex w-0 grow items-center justify-between text-sm text-text-secondary">
+              <span className="truncate">{t(`blocks.${block.type}`, { ns: 'workflow' })}</span>
+              {block.type === BlockEnumValues.Start && (
+                <span className="ml-2 shrink-0 text-text-quaternary system-xs-regular">{t('blocks.originalStartNode', { ns: 'workflow' })}</span>
+              )}
+            </div>
+          </div>
+        )}
+      />
+      <PopoverContent placement="right" popupClassName="w-[224px] rounded-xl px-3 py-2 text-left">
         <div>
           <BlockIcon
             size="md"
@@ -96,24 +113,8 @@ const StartBlocks = ({
             </div>
           )}
         </div>
-      )}
-    >
-      <div
-        className="flex h-8 w-full cursor-pointer items-center rounded-lg px-3 hover:bg-state-base-hover"
-        onClick={() => onSelect(block.type)}
-      >
-        <BlockIcon
-          className="mr-2 shrink-0"
-          type={block.type}
-        />
-        <div className="flex w-0 grow items-center justify-between text-sm text-text-secondary">
-          <span className="truncate">{t(`blocks.${block.type}`, { ns: 'workflow' })}</span>
-          {block.type === BlockEnumValues.Start && (
-            <span className="ml-2 shrink-0 text-text-quaternary system-xs-regular">{t('blocks.originalStartNode', { ns: 'workflow' })}</span>
-          )}
-        </div>
-      </div>
-    </Tooltip>
+      </PopoverContent>
+    </Popover>
   ), [availableNodesMetaData, onSelect, t])
 
   if (isEmpty)

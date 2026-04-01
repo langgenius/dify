@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import type { Memory, Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Tooltip from '@/app/components/base/tooltip'
+import { Popover, PopoverContent, PopoverTrigger } from '@/app/components/base/ui/popover'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import MemoryConfig from '../../_base/components/memory-config'
 
@@ -48,14 +48,22 @@ const AdvancedSetting: FC<Props> = ({
         title={(
           <div className="flex items-center space-x-1">
             <span className="uppercase">{t(`${i18nPrefix}.instruction`, { ns: 'workflow' })}</span>
-            <Tooltip
-              popupContent={(
+            <Popover>
+              <PopoverTrigger
+                openOnHover
+                nativeButton={false}
+                render={(
+                  <span className="ml-0.5 flex h-3.5 w-3.5 items-center justify-center">
+                    <span aria-hidden className="i-ri-question-line h-3.5 w-3.5 text-text-quaternary hover:text-text-tertiary" />
+                  </span>
+                )}
+              />
+              <PopoverContent placement="top" popupClassName="p-2">
                 <div className="w-[120px]">
                   {t(`${i18nPrefix}.instructionTip`, { ns: 'workflow' })}
                 </div>
-              )}
-              triggerClassName="w-3.5 h-3.5 ml-0.5"
-            />
+              </PopoverContent>
+            </Popover>
           </div>
         )}
         value={instruction}

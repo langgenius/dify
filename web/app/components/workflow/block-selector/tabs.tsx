@@ -7,7 +7,7 @@ import type {
 } from '../types'
 import { memo, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Tooltip from '@/app/components/base/tooltip'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useFeaturedToolsRecommendations } from '@/service/use-plugins'
 import { useAllBuiltInTools, useAllCustomTools, useAllMCPTools, useAllWorkflowTools, useInvalidateAllBuiltInTools } from '@/service/use-tools'
@@ -128,19 +128,21 @@ const TabHeaderItem = ({
 
   if (tab.disabled) {
     return (
-      <Tooltip
-        key={tab.key}
-        position="top"
-        popupClassName="max-w-[200px]"
-        popupContent={disabledTip}
-      >
-        <div
-          className={className}
-          aria-disabled={tab.disabled}
-          onClick={handleClick}
-        >
-          {tab.name}
-        </div>
+      <Tooltip key={tab.key}>
+        <TooltipTrigger
+          render={(
+            <div
+              className={className}
+              aria-disabled={tab.disabled}
+              onClick={handleClick}
+            >
+              {tab.name}
+            </div>
+          )}
+        />
+        <TooltipContent placement="top" popupClassName="max-w-[200px]">
+          {disabledTip}
+        </TooltipContent>
       </Tooltip>
     )
   }
