@@ -198,7 +198,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
       data-testid="image-preview-container"
     >
       { }
-      {/* eslint-disable-next-line next/no-img-element */}
+      { }
       <img
         ref={imgRef}
         alt={title}

@@ -264,7 +264,7 @@ const ConfigContent: FC<Props> = ({
           }
           {
             showWeightedScore && isSingleDataset && (
-              <div className="system-xs-medium mt-2 rounded-lg bg-background-section-burn p-3 text-text-tertiary">
+              <div className="mt-2 rounded-lg bg-background-section-burn p-3 text-text-tertiary system-xs-medium">
                 {t('singleDatasetRerankDisabled', { ns: 'dataset' })}
               </div>
             )
@@ -284,7 +284,7 @@ const ConfigContent: FC<Props> = ({
                     )
                   }
                   <div className={cn(
-                    'system-sm-semibold ml-1 leading-[32px] text-text-secondary',
+                    'ml-1 leading-[32px] text-text-secondary system-sm-semibold',
                     isSingleDataset && 'text-text-tertiary',
                   )}
                   >
@@ -341,7 +341,7 @@ const ConfigContent: FC<Props> = ({
                         />
                       )
                     : (
-                        <div className="system-xs-medium rounded-lg bg-background-section-burn p-3 text-text-tertiary">
+                        <div className="rounded-lg bg-background-section-burn p-3 text-text-tertiary system-xs-medium">
                           {t('singleDatasetRerankDisabled', { ns: 'dataset' })}
                         </div>
                       )
