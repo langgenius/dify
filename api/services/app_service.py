@@ -187,64 +187,70 @@ class AppService:
         assert isinstance(current_user, Account)
         assert current_user.current_tenant_id is not None
         # get original app model config
-        if app.mode == AppMode.AGENT_CHAT or app.is_agent:
-            model_config = app.app_model_config
-            if not model_config:
-                return app
-            agent_mode = model_config.agent_mode_dict
-            # decrypt agent tool parameters if it's secret-input
-            for tool in agent_mode.get("tools") or []:
-                if not isinstance(tool, dict) or len(tool.keys()) <= 3:
-                    continue
-                typed_tool = {key: value for key, value in tool.items() if isinstance(key, str)}
-                if len(typed_tool) != len(tool):
-                    continue
-                agent_tool_entity = AgentToolEntity.model_validate(typed_tool)
-                # get tool
-                try:
-                    tool_runtime = ToolManager.get_agent_tool_runtime(
-                        tenant_id=current_user.current_tenant_id,
-                        app_id=app.id,
-                        agent_tool=agent_tool_entity,
-                        user_id=current_user.id,
-                    )
-                    manager = ToolParameterConfigurationManager(
-                        tenant_id=current_user.current_tenant_id,
-                        tool_runtime=tool_runtime,
-                        provider_name=agent_tool_entity.provider_id,
-                        provider_type=agent_tool_entity.provider_type,
-                        identity_id=f"AGENT.{app.id}",
-                    )
+        # Normalize legacy apps: if is_agent flag is set but mode is not AGENT_CHAT,
+        # treat as AGENT_CHAT for backward compatibility.
+        effective_mode = AppMode.AGENT_CHAT if app.is_agent and app.mode != AppMode.AGENT_CHAT else app.mode
+        match effective_mode:
+            case AppMode.AGENT_CHAT:
+                model_config = app.app_model_config
+                if not model_config:
+                    return app
+                agent_mode = model_config.agent_mode_dict
+                # decrypt agent tool parameters if it's secret-input
+                for tool in agent_mode.get("tools") or []:
+                    if not isinstance(tool, dict) or len(tool.keys()) <= 3:
+                        continue
+                    typed_tool = {key: value for key, value in tool.items() if isinstance(key, str)}
+                    if len(typed_tool) != len(tool):
+                        continue
+                    agent_tool_entity = AgentToolEntity.model_validate(typed_tool)
+                    # get tool
+                    try:
+                        tool_runtime = ToolManager.get_agent_tool_runtime(
+                            tenant_id=current_user.current_tenant_id,
+                            app_id=app.id,
+                            agent_tool=agent_tool_entity,
+                            user_id=current_user.id,
+                        )
+                        manager = ToolParameterConfigurationManager(
+                            tenant_id=current_user.current_tenant_id,
+                            tool_runtime=tool_runtime,
+                            provider_name=agent_tool_entity.provider_id,
+                            provider_type=agent_tool_entity.provider_type,
+                            identity_id=f"AGENT.{app.id}",
+                        )
 
-                    # get decrypted parameters
-                    if agent_tool_entity.tool_parameters:
-                        parameters = manager.decrypt_tool_parameters(agent_tool_entity.tool_parameters or {})
-                        masked_parameter = manager.mask_tool_parameters(parameters or {})
-                    else:
-                        masked_parameter = {}
+                        # get decrypted parameters
+                        if agent_tool_entity.tool_parameters:
+                            parameters = manager.decrypt_tool_parameters(agent_tool_entity.tool_parameters or {})
+                            masked_parameter = manager.mask_tool_parameters(parameters or {})
+                        else:
+                            masked_parameter = {}
 
-                    # override tool parameters
-                    tool["tool_parameters"] = masked_parameter
-                except Exception:
-                    logger.exception("Failed to mask agent tool parameters for tool %s", agent_tool_entity.tool_name)
+                        # override tool parameters
+                        tool["tool_parameters"] = masked_parameter
+                    except Exception:
+                        logger.exception("Failed to mask agent tool parameters for tool %s", agent_tool_entity.tool_name)
 
-            # override agent mode
-            if model_config:
-                model_config.agent_mode = json.dumps(agent_mode)
+                # override agent mode
+                if model_config:
+                    model_config.agent_mode = json.dumps(agent_mode)
 
-            class ModifiedApp(App):
-                """
-                Modified App class
-                """
+                class ModifiedApp(App):
+                    """
+                    Modified App class
+                    """
 
-                def __init__(self, app):
-                    self.__dict__.update(app.__dict__)
+                    def __init__(self, app):
+                        self.__dict__.update(app.__dict__)
 
-                @property
-                def app_model_config(self):
-                    return model_config
+                    @property
+                    def app_model_config(self):
+                        return model_config
 
-            app = ModifiedApp(app)
+                app = ModifiedApp(app)
+            case AppMode.COMPLETION | AppMode.CHAT | AppMode.WORKFLOW | AppMode.ADVANCED_CHAT | AppMode.CHANNEL | AppMode.RAG_PIPELINE:
+                pass
 
         return app
 
@@ -391,35 +397,36 @@ class AppService:
 
         meta: dict = {"tool_icons": {}}
 
-        if app_mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
-            workflow = app_model.workflow
-            if workflow is None:
-                return meta
+        match app_mode:
+            case AppMode.ADVANCED_CHAT | AppMode.WORKFLOW:
+                workflow = app_model.workflow
+                if workflow is None:
+                    return meta
 
-            graph = workflow.graph_dict
-            nodes = graph.get("nodes", [])
-            tools = []
-            for node in nodes:
-                if node.get("data", {}).get("type") == "tool":
-                    node_data = node.get("data", {})
-                    tools.append(
-                        {
-                            "provider_type": node_data.get("provider_type"),
-                            "provider_id": node_data.get("provider_id"),
-                            "tool_name": node_data.get("tool_name"),
-                            "tool_parameters": {},
-                        }
-                    )
-        else:
-            app_model_config: AppModelConfig | None = app_model.app_model_config
+                graph = workflow.graph_dict
+                nodes = graph.get("nodes", [])
+                tools = []
+                for node in nodes:
+                    if node.get("data", {}).get("type") == "tool":
+                        node_data = node.get("data", {})
+                        tools.append(
+                            {
+                                "provider_type": node_data.get("provider_type"),
+                                "provider_id": node_data.get("provider_id"),
+                                "tool_name": node_data.get("tool_name"),
+                                "tool_parameters": {},
+                            }
+                        )
+            case AppMode.CHAT | AppMode.COMPLETION | AppMode.AGENT_CHAT | AppMode.CHANNEL | AppMode.RAG_PIPELINE:
+                app_model_config: AppModelConfig | None = app_model.app_model_config
 
-            if not app_model_config:
-                return meta
+                if not app_model_config:
+                    return meta
 
-            agent_config = app_model_config.agent_mode_dict
+                agent_config = app_model_config.agent_mode_dict
 
-            # get all tools
-            tools = cast(list[dict[str, Any]], agent_config.get("tools", []))
+                # get all tools
+                tools = cast(list[dict[str, Any]], agent_config.get("tools", []))
 
         url_prefix = dify_config.CONSOLE_API_URL + "/console/api/workspaces/current/tool-provider/builtin/"
 
