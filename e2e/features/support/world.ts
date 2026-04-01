@@ -8,12 +8,14 @@ import {
 import { baseURL, defaultLocale } from '../../test-env'
 
 export class DifyWorld extends World {
+  browser: Browser | undefined
   context: BrowserContext | undefined
   page: Page | undefined
   consoleErrors: string[] = []
   pageErrors: string[] = []
   scenarioStartedAt: number | undefined
   session: AuthSessionMetadata | undefined
+  appName: string | undefined
 
   constructor(options: IWorldOptions) {
     super(options)
