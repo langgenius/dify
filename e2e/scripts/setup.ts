@@ -127,8 +127,8 @@ export const ensureWebBuild = async () => {
 
   if (process.env.E2E_FORCE_WEB_BUILD === '1') {
     await runCommandOrThrow({
-      command: 'pnpm',
-      args: ['run', 'build'],
+      command: 'npx',
+      args: ['pnpm', 'run', 'build'],
       cwd: webDir,
     })
     return
@@ -141,8 +141,8 @@ export const ensureWebBuild = async () => {
 
   console.log('Web build artifact is missing required files. Running fresh build.')
   await runCommandOrThrow({
-    command: 'pnpm',
-    args: ['run', 'build'],
+    command: 'npx',
+    args: ['pnpm', 'run', 'build'],
     cwd: webDir,
   })
 }
@@ -151,8 +151,8 @@ export const startWeb = async () => {
   await ensureWebBuild()
 
   await runForegroundProcess({
-    command: 'pnpm',
-    args: ['run', 'start'],
+    command: 'npx',
+    args: ['pnpm', 'run', 'start'],
     cwd: webDir,
     env: {
       HOSTNAME: '127.0.0.1',
