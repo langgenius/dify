@@ -519,7 +519,7 @@ def test_get_recommended_apps_and_categories_should_not_query_trial_table_when_t
     assert result == expected
     retrieval_instance.get_recommended_apps_and_categories.assert_called_once_with("en-US")
     builtin_instance.fetch_recommended_apps_from_builtin.assert_not_called()
-    mocked_db_session.query.assert_not_called()
+    mocked_db_session.scalar.assert_not_called()
 
 
 def test_get_recommended_apps_and_categories_should_fallback_and_enrich_can_trial_when_trial_feature_enabled(
@@ -540,10 +540,7 @@ def test_get_recommended_apps_and_categories_should_fallback_and_enrich_can_tria
         "get_system_features",
         MagicMock(return_value=SimpleNamespace(enable_trial_app=True)),
     )
-    query = MagicMock()
-    query.where.return_value = query
-    query.first.side_effect = [SimpleNamespace(id="trial-app"), None]
-    mocked_db_session.query.return_value = query
+    mocked_db_session.scalar.side_effect = [SimpleNamespace(id="trial-app"), None]
 
     # Act
     result = RecommendedAppService.get_recommended_apps_and_categories("ja-JP")
@@ -552,7 +549,7 @@ def test_get_recommended_apps_and_categories_should_fallback_and_enrich_can_tria
     builtin_instance.fetch_recommended_apps_from_builtin.assert_called_once_with("en-US")
     assert result["recommended_apps"][0]["can_trial"] is True
     assert result["recommended_apps"][1]["can_trial"] is False
-    assert mocked_db_session.query.call_count == 2
+    assert mocked_db_session.scalar.call_count == 2
 
 
 @pytest.mark.parametrize(
@@ -584,10 +581,7 @@ def test_get_recommend_app_detail_should_set_can_trial_when_trial_feature_enable
         "get_system_features",
         MagicMock(return_value=SimpleNamespace(enable_trial_app=True)),
     )
-    query = MagicMock()
-    query.where.return_value = query
-    query.first.return_value = trial_query_result
-    mocked_db_session.query.return_value = query
+    mocked_db_session.scalar.return_value = trial_query_result
 
     # Act
     result = cast(dict[str, Any], RecommendedAppService.get_recommend_app_detail("app-1"))
@@ -595,7 +589,7 @@ def test_get_recommend_app_detail_should_set_can_trial_when_trial_feature_enable
     # Assert
     assert result["id"] == "app-1"
     assert result["can_trial"] is expected_can_trial
-    mocked_db_session.query.assert_called_once()
+    mocked_db_session.scalar.assert_called_once()
 
 
 def test_add_trial_app_record_should_increment_count_when_existing_record_found(
@@ -603,47 +597,31 @@ def test_add_trial_app_record_should_increment_count_when_existing_record_found(
 ) -> None:
     # Arrange
     existing_record = SimpleNamespace(count=3)
-    query = MagicMock()
-    query.where.return_value = query
-    query.first.return_value = existing_record
-    mocked_db_session.query.return_value = query
+    mocked_db_session.scalar.return_value = existing_record
 
     # Act
     RecommendedAppService.add_trial_app_record("app-1", "account-1")
 
     # Assert
     assert existing_record.count == 4
+    mocked_db_session.scalar.assert_called_once()
     mocked_db_session.commit.assert_called_once()
     mocked_db_session.add.assert_not_called()
 
 
 def test_add_trial_app_record_should_create_new_record_when_no_existing_record(
-    monkeypatch: pytest.MonkeyPatch,
     mocked_db_session: MagicMock,
 ) -> None:
     # Arrange
-    class FakeAccountTrialAppRecord:
-        app_id = "app_id_column"
-        account_id = "account_id_column"
-
-        def __init__(self, app_id: str, count: int, account_id: str) -> None:
-            self.app_id = app_id
-            self.count = count
-            self.account_id = account_id
-
-    monkeypatch.setattr(service_module, "AccountTrialAppRecord", FakeAccountTrialAppRecord)
-    query = MagicMock()
-    query.where.return_value = query
-    query.first.return_value = None
-    mocked_db_session.query.return_value = query
+    mocked_db_session.scalar.return_value = None
 
     # Act
     RecommendedAppService.add_trial_app_record("app-2", "account-2")
 
     # Assert
+    mocked_db_session.scalar.assert_called_once()
     mocked_db_session.add.assert_called_once()
     added = mocked_db_session.add.call_args.args[0]
-    assert isinstance(added, FakeAccountTrialAppRecord)
     assert added.app_id == "app-2"
     assert added.account_id == "account-2"
     assert added.count == 1
