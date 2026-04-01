@@ -78,9 +78,9 @@ const Crawling = ({
           <Block className="h-2.5 w-14 rounded-sm" />
         </div>
         <div className="flex flex-col gap-px border-t border-divider-subtle bg-background-default-subtle p-2">
-          {itemsConfig.map((item, index) => (
+          {itemsConfig.map(item => (
             <Item
-              key={index}
+              key={`${item.firstLineWidth}-${item.secondLineWidth}`}
               firstLineWidth={item.firstLineWidth}
               secondLineWidth={item.secondLineWidth}
             />

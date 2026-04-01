@@ -147,7 +147,7 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
         category: PluginCategoryEnum.agent,
       })
     }
-  }, [query])
+  }, [query, enable_marketplace, fetchPlugins])
 
   const pluginRef = useRef<ListRef>(null)
 
