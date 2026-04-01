@@ -23,21 +23,29 @@ fi
 
 for file in $files
 do
+    # Use POSIX compliant pattern matching
     case "$file" in
         api/*.py)
+            # set api_modified flag to true
             api_modified=true
             ;;
         web/*)
+            # set web_modified flag to true
             web_modified=true
             ;;
     esac
 done
 
+# run linters based on the modified modules
+
 if $api_modified; then
     echo "Running Ruff linter on api module"
 
+    # run Ruff linter auto-fixing
     uv run --project api --dev ruff check --fix ./api
-    uv run --project api --dev ruff check ./api || status=$?
+
+    # run Ruff linter checks
+    uv run --project api --dev ruff check  ./api || status=$?
 
     status=${status:-0}
 
@@ -89,6 +97,7 @@ if $web_modified; then
             test_file="${file%.*}.spec.ts"
             echo "Checking for test file: $test_file"
 
+            # check if the test file exists
             if [ -f "../$test_file" ]; then
                 echo "Detected changes in $file, running corresponding unit tests..."
                 pnpm run test "../$test_file"
@@ -101,6 +110,7 @@ if $web_modified; then
             else
                 echo "Warning: $file does not have a corresponding test file."
             fi
+
         done
         echo "All unit tests for modified web/utils files have passed."
     fi
