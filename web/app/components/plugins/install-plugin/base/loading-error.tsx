@@ -16,7 +16,7 @@ const LoadingError: FC = () => {
         checked={false}
         disabled
       />
-      <div className="hover-bg-components-panel-on-panel-item-bg relative grow rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-4 pb-3 shadow-xs">
+      <div className="hover:bg-components-panel-on-panel-item-bg-hover relative grow rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-4 pb-3 shadow-xs">
         <div className="flex">
           <div
             className="relative flex h-10 w-10 items-center justify-center gap-2 rounded-[10px] border-[0.5px]
