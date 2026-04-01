@@ -5522,11 +5522,6 @@
       "count": 1
     }
   },
-  "app/components/plugins/install-plugin/base/loading-error.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    }
-  },
   "app/components/plugins/install-plugin/hooks.ts": {
     "ts/no-explicit-any": {
       "count": 4

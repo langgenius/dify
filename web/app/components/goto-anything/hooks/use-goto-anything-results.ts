@@ -48,7 +48,7 @@ export const useGotoAnythingResults = (
 
   const { data: searchResults = [], isLoading, isError, error } = useQuery(
     {
-      // eslint-disable-next-line @tanstack/query/exhaustive-deps -- Actions intentionally excluded: contains non-serializable functions; actionKeys provides stable representation
+
       queryKey: [
         'goto-anything',
         'search-result',

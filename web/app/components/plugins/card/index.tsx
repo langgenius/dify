@@ -64,7 +64,7 @@ const Card = ({
     obj ? renderI18nObject(obj, locale) : ''
   const isPartner = badges.includes('partner')
 
-  const wrapClassName = cn('hover-bg-components-panel-on-panel-item-bg relative overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs', className)
+  const wrapClassName = cn('relative overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs hover:bg-components-panel-on-panel-item-bg-hover', className)
   if (isLoading) {
     return (
       <Placeholder

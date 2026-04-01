@@ -53,6 +53,9 @@ const ConfigContent: FC<Props> = ({
   const selectedDatasetsMode = useSelectedDatasetsMode(selectedDatasets)
   const type = datasetConfigs.retrieval_model
 
+  // Check if only one dataset is selected - reranking is only applied with multiple datasets
+  const isSingleDataset = selectedDatasets.length === 1
+
   useEffect(() => {
     if (type === RETRIEVE_TYPE.oneWay) {
       onChange({
@@ -231,7 +234,7 @@ const ConfigContent: FC<Props> = ({
             )
           }
           {
-            showWeightedScore && (
+            showWeightedScore && !isSingleDataset && (
               <div className="flex items-center justify-between">
                 {
                   rerankingModeOptions.map(option => (
@@ -260,6 +263,13 @@ const ConfigContent: FC<Props> = ({
             )
           }
           {
+            showWeightedScore && isSingleDataset && (
+              <div className="mt-2 rounded-lg bg-background-section-burn p-3 text-text-tertiary system-xs-medium">
+                {t('singleDatasetRerankDisabled', { ns: 'dataset' })}
+              </div>
+            )
+          }
+          {
             !showWeightedScorePanel && (
               <div className="mt-2">
                 <div className="flex items-center">
@@ -269,14 +279,23 @@ const ConfigContent: FC<Props> = ({
                         size="md"
                         value={showRerankModel ?? false}
                         onChange={handleManuallyToggleRerank}
+                        disabled={isSingleDataset}
                       />
                     )
                   }
-                  <div className="ml-1 leading-[32px] text-text-secondary system-sm-semibold">{t('modelProvider.rerankModel.key', { ns: 'common' })}</div>
+                  <div className={cn(
+                    'ml-1 leading-[32px] text-text-secondary system-sm-semibold',
+                    isSingleDataset && 'text-text-tertiary',
+                  )}
+                  >
+                    {t('modelProvider.rerankModel.key', { ns: 'common' })}
+                  </div>
                   <Tooltip
                     popupContent={(
                       <div className="w-[200px]">
-                        {t('modelProvider.rerankModel.tip', { ns: 'common' })}
+                        {isSingleDataset
+                          ? t('singleDatasetRerankDisabled', { ns: 'dataset' })
+                          : t('modelProvider.rerankModel.tip', { ns: 'common' })}
                       </div>
                     )}
                     popupClassName="ml-1"
@@ -284,7 +303,7 @@ const ConfigContent: FC<Props> = ({
                   />
                 </div>
                 {
-                  showRerankModel && (
+                  showRerankModel && !isSingleDataset && (
                     <div>
                       <ModelSelector
                         defaultModel={rerankModel && { provider: rerankModel?.provider_name, model: rerankModel?.model_name }}
@@ -306,18 +325,27 @@ const ConfigContent: FC<Props> = ({
             )
           }
           {
-            showWeightedScorePanel
-            && (
+            showWeightedScorePanel && (
               <div className="mt-2 space-y-4">
-                <WeightedScore
-                  value={{
-                    value: [
-                      datasetConfigs.weights!.vector_setting.vector_weight,
-                      datasetConfigs.weights!.keyword_setting.keyword_weight,
-                    ],
-                  }}
-                  onChange={handleWeightedScoreChange}
-                />
+                {
+                  !isSingleDataset
+                    ? (
+                        <WeightedScore
+                          value={{
+                            value: [
+                              datasetConfigs.weights!.vector_setting.vector_weight,
+                              datasetConfigs.weights!.keyword_setting.keyword_weight,
+                            ],
+                          }}
+                          onChange={handleWeightedScoreChange}
+                        />
+                      )
+                    : (
+                        <div className="rounded-lg bg-background-section-burn p-3 text-text-tertiary system-xs-medium">
+                          {t('singleDatasetRerankDisabled', { ns: 'dataset' })}
+                        </div>
+                      )
+                }
                 <TopKItem
                   value={datasetConfigs.top_k}
                   onChange={handleParamChange}

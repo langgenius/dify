@@ -73,7 +73,7 @@ const ImageInput: FC<UploaderProps> = ({
   const handleShowImage = () => {
     if (isAnimatedImage) {
       return (
-        // eslint-disable-next-line next/no-img-element
+
         <img src={inputImage?.url} alt="" data-testid="animated-image" />
       )
     }

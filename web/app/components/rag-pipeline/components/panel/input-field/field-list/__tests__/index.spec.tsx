@@ -1576,7 +1576,9 @@ describe('handleSubmitField', () => {
     expect(editorProps).toHaveProperty('onSubmit')
 
     const newFieldData = createInputVar({ variable: 'new_var', label: 'New Label' })
-    editorProps.onSubmit(newFieldData)
+    act(() => {
+      editorProps.onSubmit(newFieldData)
+    })
 
     expect(handleInputFieldsChange).toHaveBeenCalledWith(
       'node-1',
@@ -1609,7 +1611,9 @@ describe('handleSubmitField', () => {
     const editorProps = mockToggleInputFieldEditPanel.mock.calls[0][0]
 
     const updatedFieldData = createInputVar({ variable: 'var_0', label: 'Updated Label' })
-    editorProps.onSubmit(updatedFieldData)
+    act(() => {
+      editorProps.onSubmit(updatedFieldData)
+    })
 
     expect(handleInputFieldsChange).toHaveBeenCalledWith(
       'node-1',
@@ -1643,9 +1647,11 @@ describe('handleSubmitField', () => {
     const editorProps = mockToggleInputFieldEditPanel.mock.calls[0][0]
 
     const updatedFieldData = createInputVar({ variable: 'new_var_name', label: 'Label 0' })
-    editorProps.onSubmit(updatedFieldData, {
-      type: 'changeVarName',
-      payload: { beforeKey: 'var_0', afterKey: 'new_var_name' },
+    act(() => {
+      editorProps.onSubmit(updatedFieldData, {
+        type: 'changeVarName',
+        payload: { beforeKey: 'var_0', afterKey: 'new_var_name' },
+      })
     })
 
     expect(mockHandleInputVarRename).toHaveBeenCalledWith(
