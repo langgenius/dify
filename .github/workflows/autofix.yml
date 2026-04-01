@@ -53,7 +53,7 @@ jobs:
       - if: github.event_name != 'merge_group'
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
-          python-version: "3.11"
+          python-version: "3.12"
 
       - if: github.event_name != 'merge_group'
         uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57 # v8.0.0
