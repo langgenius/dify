@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { ToolSetting } from '../types'
+import type { ToolDependency } from '../use-node-skills'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Switch from '@/app/components/base/switch'
@@ -19,7 +20,10 @@ type Props = {
   onChange: (enabled: boolean) => void
   nodeId: string
   toolSettings?: ToolSetting[]
-  promptTemplateKey: string
+  toolDependencies: ToolDependency[]
+  isNodeSkillsLoading: boolean
+  isNodeSkillsQueryEnabled: boolean
+  hasNodeSkillsData: boolean
 }
 
 const ComputerUseConfig: FC<Props> = ({
@@ -30,7 +34,10 @@ const ComputerUseConfig: FC<Props> = ({
   onChange,
   nodeId,
   toolSettings,
-  promptTemplateKey,
+  toolDependencies,
+  isNodeSkillsLoading,
+  isNodeSkillsQueryEnabled,
+  hasNodeSkillsData,
 }) => {
   const { t } = useTranslation()
   const isDisabled = readonly || isDisabledByStructuredOutput
@@ -89,7 +96,10 @@ const ComputerUseConfig: FC<Props> = ({
             isComputerUseEnabled={enabled}
             nodeId={nodeId}
             toolSettings={toolSettings}
-            promptTemplateKey={promptTemplateKey}
+            toolDependencies={toolDependencies}
+            isNodeSkillsLoading={isNodeSkillsLoading}
+            isNodeSkillsQueryEnabled={isNodeSkillsQueryEnabled}
+            hasNodeSkillsData={hasNodeSkillsData}
           />
         </div>
       </FieldCollapse>

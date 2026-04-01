@@ -13,7 +13,6 @@ import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import Switch from '@/app/components/base/switch'
 import { useNodeCurdKit } from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
-import { useNodeSkills } from '@/app/components/workflow/nodes/llm/use-node-skills'
 import useTheme from '@/hooks/use-theme'
 import { getLanguage } from '@/i18n-config/language'
 import { useAllBuiltInTools, useAllCustomTools, useAllMCPTools, useAllWorkflowTools } from '@/service/use-tools'
@@ -26,7 +25,10 @@ type ReferenceToolConfigProps = {
   isComputerUseEnabled: boolean
   nodeId: string
   toolSettings?: ToolSetting[]
-  promptTemplateKey: string
+  toolDependencies: ToolDependency[]
+  isNodeSkillsLoading: boolean
+  isNodeSkillsQueryEnabled: boolean
+  hasNodeSkillsData: boolean
 }
 
 type ToolProviderGroup = {
@@ -40,7 +42,10 @@ const ReferenceToolConfig: FC<ReferenceToolConfigProps> = ({
   isComputerUseEnabled,
   nodeId,
   toolSettings,
-  promptTemplateKey,
+  toolDependencies,
+  isNodeSkillsLoading,
+  isNodeSkillsQueryEnabled,
+  hasNodeSkillsData,
 }) => {
   const isReferenceToolsDisabled = readonly || !isComputerUseEnabled || isDisabledByStructuredOutput
   const { i18n, t } = useTranslation()
@@ -51,11 +56,6 @@ const ReferenceToolConfig: FC<ReferenceToolConfigProps> = ({
   const { data: workflowTools } = useAllWorkflowTools()
   const { data: mcpTools } = useAllMCPTools()
   const locale = useMemo(() => getLanguage(i18n.language as Locale), [i18n.language])
-
-  const { toolDependencies, isLoading, isQueryEnabled, hasData } = useNodeSkills({
-    nodeId,
-    promptTemplateKey,
-  })
 
   const providers = useMemo<ToolProviderGroup[]>(() => {
     const map = new Map<string, ToolDependency[]>()
@@ -185,7 +185,7 @@ const ReferenceToolConfig: FC<ReferenceToolConfigProps> = ({
     }))
   }, [])
 
-  const isInitialLoading = isQueryEnabled && isLoading && !hasData
+  const isInitialLoading = isNodeSkillsQueryEnabled && isNodeSkillsLoading && !hasNodeSkillsData
   const showNoData = !isInitialLoading && providers.length === 0
 
   const renderProviderIcon = useCallback((providerId: string) => {

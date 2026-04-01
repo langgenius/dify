@@ -2,9 +2,8 @@ import type { FC } from 'react'
 import type { LLMNodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 import { RiAlertFill, RiInformationLine, RiQuestionLine } from '@remixicon/react'
-import { useDebounceFn } from 'ahooks'
 import * as React from 'react'
-import { useCallback } from 'react'
+import { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import AddButton2 from '@/app/components/base/button/add-button'
 import Switch from '@/app/components/base/switch'
@@ -36,6 +35,7 @@ import { useStructuredOutputMutualExclusion } from './use-structured-output-mutu
 import { getLLMModelIssue, LLMModelIssueCode } from './utils'
 
 const i18nPrefix = 'nodes.llm'
+const SKILL_DEPENDENCY_DEBOUNCE_MS = 800
 
 const Panel: FC<NodePanelProps<LLMNodeType>> = ({
   id,
@@ -89,14 +89,29 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
     }
   }, [inputs.prompt_template])
   const [skillsRefreshKey, setSkillsRefreshKey] = React.useState(promptTemplateKey)
-  const { run: scheduleSkillsRefresh } = useDebounceFn((nextKey: string) => {
-    setSkillsRefreshKey(nextKey)
-  }, { wait: 3000 })
-  const handlePromptEditorBlur = useCallback(() => {
-    scheduleSkillsRefresh(promptTemplateKey)
-  }, [promptTemplateKey, scheduleSkillsRefresh])
+  useEffect(() => {
+    if (skillsRefreshKey === promptTemplateKey)
+      return
 
-  const { toolDependencies } = useNodeSkills({
+    const timerId = window.setTimeout(() => {
+      setSkillsRefreshKey(promptTemplateKey)
+    }, SKILL_DEPENDENCY_DEBOUNCE_MS)
+
+    return () => {
+      window.clearTimeout(timerId)
+    }
+  }, [promptTemplateKey, skillsRefreshKey])
+
+  const handlePromptEditorBlur = useCallback(() => {
+    setSkillsRefreshKey(promptTemplateKey)
+  }, [promptTemplateKey])
+
+  const {
+    toolDependencies,
+    isLoading: isNodeSkillsLoading,
+    isQueryEnabled: isNodeSkillsQueryEnabled,
+    hasData: hasNodeSkillsData,
+  } = useNodeSkills({
     nodeId: id,
     promptTemplateKey: skillsRefreshKey,
     enabled: isSupportSandbox,
@@ -303,7 +318,10 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
               onChange={handleComputerUseChange}
               nodeId={id}
               toolSettings={inputs.tool_settings}
-              promptTemplateKey={skillsRefreshKey}
+              toolDependencies={toolDependencies}
+              isNodeSkillsLoading={isNodeSkillsLoading}
+              isNodeSkillsQueryEnabled={isNodeSkillsQueryEnabled}
+              hasNodeSkillsData={hasNodeSkillsData}
             />
           </>
         )}

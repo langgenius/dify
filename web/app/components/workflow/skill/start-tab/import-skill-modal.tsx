@@ -3,16 +3,13 @@
 import type { ChangeEvent, DragEvent } from 'react'
 import { memo, useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import Button from '@/app/components/base/button'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@/app/components/base/ui/dialog'
 import { toast } from '@/app/components/base/ui/toast'
-import { useWorkflowStore } from '@/app/components/workflow/store'
-import { useBatchUpload } from '@/service/use-app-asset'
 import { useExistingSkillNames } from '../hooks/file-tree/data/use-skill-asset-tree'
-import { useSkillTreeUpdateEmitter } from '../hooks/file-tree/data/use-skill-tree-collaboration'
 import { extractAndValidateZip, ZipValidationError } from '../utils/zip-extract'
 import { buildUploadDataFromZip } from '../utils/zip-to-upload-tree'
+import { useSkillBatchUpload } from './use-skill-batch-upload'
 
 const NS = 'workflow'
 const PREFIX = 'skill.startTab.importModal'
@@ -46,17 +43,14 @@ const ImportSkillModal = ({ isOpen, onClose }: ImportSkillModalProps) => {
   const [isImporting, setIsImporting] = useState(false)
   const [isDragOver, setIsDragOver] = useState(false)
 
-  const appDetail = useAppStore(s => s.appDetail)
-  const appId = appDetail?.id || ''
-  const storeApi = useWorkflowStore()
-
-  const batchUpload = useBatchUpload()
-  const batchUploadRef = useRef(batchUpload)
-  batchUploadRef.current = batchUpload
-
-  const emitTreeUpdate = useSkillTreeUpdateEmitter()
-  const emitTreeUpdateRef = useRef(emitTreeUpdate)
-  emitTreeUpdateRef.current = emitTreeUpdate
+  const {
+    appId,
+    startUpload,
+    setUploadProgress,
+    failUpload,
+    uploadTree,
+    openCreatedSkillDocument,
+  } = useSkillBatchUpload()
 
   const { data: existingNames } = useExistingSkillNames()
 
@@ -107,8 +101,7 @@ const ImportSkillModal = ({ isOpen, onClose }: ImportSkillModalProps) => {
       return
 
     setIsImporting(true)
-    storeApi.getState().setUploadStatus('uploading')
-    storeApi.getState().setUploadProgress({ uploaded: 0, total: 0, failed: 0 })
+    startUpload(0)
 
     try {
       const zipData = await selectedFile.arrayBuffer()
@@ -116,38 +109,21 @@ const ImportSkillModal = ({ isOpen, onClose }: ImportSkillModalProps) => {
 
       if (existingNames?.has(extracted.rootFolderName)) {
         toast.error(t(`${PREFIX}.nameDuplicate`, { ns: NS }))
+        failUpload()
         setIsImporting(false)
-        storeApi.getState().setUploadStatus('partial_error')
         return
       }
 
       const { tree, files } = await buildUploadDataFromZip(extracted)
-
-      storeApi.getState().setUploadProgress({ uploaded: 0, total: files.size, failed: 0 })
-
-      const createdNodes = await batchUploadRef.current.mutateAsync({
-        appId,
-        tree,
-        files,
-        parentId: null,
-        onProgress: (uploaded, total) => {
-          storeApi.getState().setUploadProgress({ uploaded, total, failed: 0 })
-        },
-      })
-
-      storeApi.getState().setUploadStatus('success')
-      emitTreeUpdateRef.current()
-
-      const skillFolder = createdNodes?.[0]
-      const skillMd = skillFolder?.children?.find(c => c.name === 'SKILL.md')
-      if (skillMd?.id)
-        storeApi.getState().openTab(skillMd.id, { pinned: true })
+      setUploadProgress(0, files.size)
+      const createdNodes = await uploadTree({ tree, files })
+      openCreatedSkillDocument(createdNodes)
 
       toast.success(t(`${PREFIX}.importSuccess`, { ns: NS, name: extracted.rootFolderName }))
       onClose()
     }
     catch (error) {
-      storeApi.getState().setUploadStatus('partial_error')
+      failUpload()
       if (error instanceof ZipValidationError) {
         const i18nKey = ZIP_ERROR_I18N_KEYS[error.code as keyof typeof ZIP_ERROR_I18N_KEYS]
         toast.error(i18nKey ? t(i18nKey, { ns: NS }) : error.message)
@@ -160,7 +136,7 @@ const ImportSkillModal = ({ isOpen, onClose }: ImportSkillModalProps) => {
       setIsImporting(false)
       setSelectedFile(null)
     }
-  }, [selectedFile, appId, storeApi, existingNames, t, onClose])
+  }, [selectedFile, appId, startUpload, existingNames, setUploadProgress, uploadTree, openCreatedSkillDocument, t, onClose, failUpload])
 
   return (
     <Dialog

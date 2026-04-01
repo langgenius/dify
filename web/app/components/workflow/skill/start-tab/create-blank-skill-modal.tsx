@@ -3,16 +3,13 @@
 import type { BatchUploadNodeInput } from '@/types/app-asset'
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@/app/components/base/ui/dialog'
 import { toast } from '@/app/components/base/ui/toast'
-import { useWorkflowStore } from '@/app/components/workflow/store'
-import { useBatchUpload } from '@/service/use-app-asset'
 import { useExistingSkillNames } from '../hooks/file-tree/data/use-skill-asset-tree'
-import { useSkillTreeUpdateEmitter } from '../hooks/file-tree/data/use-skill-tree-collaboration'
 import { prepareSkillUploadFile } from '../utils/skill-upload-utils'
+import { useSkillBatchUpload } from './use-skill-batch-upload'
 
 const SKILL_MD_TEMPLATE = (name: string) => `---
 name: ${name}
@@ -32,17 +29,13 @@ const CreateBlankSkillModal = ({ isOpen, onClose }: CreateBlankSkillModalProps) 
   const [skillName, setSkillName] = useState('')
   const [isCreating, setIsCreating] = useState(false)
 
-  const appDetail = useAppStore(s => s.appDetail)
-  const appId = appDetail?.id || ''
-  const storeApi = useWorkflowStore()
-
-  const batchUpload = useBatchUpload()
-  const batchUploadRef = useRef(batchUpload)
-  batchUploadRef.current = batchUpload
-
-  const emitTreeUpdate = useSkillTreeUpdateEmitter()
-  const emitTreeUpdateRef = useRef(emitTreeUpdate)
-  emitTreeUpdateRef.current = emitTreeUpdate
+  const {
+    appId,
+    startUpload,
+    failUpload,
+    uploadTree,
+    openCreatedSkillDocument,
+  } = useSkillBatchUpload()
 
   const { data: existingNames } = useExistingSkillNames()
 
@@ -69,8 +62,7 @@ const CreateBlankSkillModal = ({ isOpen, onClose }: CreateBlankSkillModalProps) 
       return
 
     setIsCreating(true)
-    storeApi.getState().setUploadStatus('uploading')
-    storeApi.getState().setUploadProgress({ uploaded: 0, total: 1, failed: 0 })
+    startUpload(1)
 
     try {
       const content = SKILL_MD_TEMPLATE(trimmedName)
@@ -86,35 +78,21 @@ const CreateBlankSkillModal = ({ isOpen, onClose }: CreateBlankSkillModalProps) 
       const files = new Map<string, File>()
       files.set(`${trimmedName}/SKILL.md`, preparedFile)
 
-      const createdNodes = await batchUploadRef.current.mutateAsync({
-        appId,
-        tree,
-        files,
-        parentId: null,
-        onProgress: (uploaded, total) => {
-          storeApi.getState().setUploadProgress({ uploaded, total, failed: 0 })
-        },
-      })
-
-      storeApi.getState().setUploadStatus('success')
-      emitTreeUpdateRef.current()
-
-      const skillMdId = createdNodes?.[0]?.children?.[0]?.id
-      if (skillMdId)
-        storeApi.getState().openTab(skillMdId, { pinned: true })
+      const createdNodes = await uploadTree({ tree, files })
+      openCreatedSkillDocument(createdNodes)
 
       toast.success(t('skill.startTab.createSuccess', { ns: 'workflow', name: trimmedName }))
       onClose()
     }
     catch {
-      storeApi.getState().setUploadStatus('partial_error')
+      failUpload()
       toast.error(t('skill.startTab.createError', { ns: 'workflow' }))
     }
     finally {
       setIsCreating(false)
       setSkillName('')
     }
-  }, [canCreate, appId, trimmedName, storeApi, onClose, t])
+  }, [appId, canCreate, failUpload, onClose, openCreatedSkillDocument, startUpload, t, trimmedName, uploadTree])
 
   return (
     <Dialog

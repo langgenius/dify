@@ -1,32 +1,16 @@
-import type { App, AppSSO } from '@/types/app'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import CreateBlankSkillModal from './create-blank-skill-modal'
 
-type MockWorkflowState = {
-  setUploadStatus: ReturnType<typeof vi.fn>
-  setUploadProgress: ReturnType<typeof vi.fn>
-  openTab: ReturnType<typeof vi.fn>
-}
-
 const mocks = vi.hoisted(() => ({
-  mutateAsync: vi.fn(),
-  emitTreeUpdate: vi.fn(),
+  appId: 'app-1',
+  startUpload: vi.fn(),
+  failUpload: vi.fn(),
+  uploadTree: vi.fn(),
+  openCreatedSkillDocument: vi.fn(),
   prepareSkillUploadFile: vi.fn(),
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
   existingNames: new Set<string>(),
-  workflowState: {
-    setUploadStatus: vi.fn(),
-    setUploadProgress: vi.fn(),
-    openTab: vi.fn(),
-  } as MockWorkflowState,
-}))
-
-vi.mock('@/service/use-app-asset', () => ({
-  useBatchUpload: () => ({
-    mutateAsync: mocks.mutateAsync,
-  }),
 }))
 
 vi.mock('../hooks/file-tree/data/use-skill-asset-tree', () => ({
@@ -35,17 +19,17 @@ vi.mock('../hooks/file-tree/data/use-skill-asset-tree', () => ({
   }),
 }))
 
-vi.mock('../hooks/file-tree/data/use-skill-tree-collaboration', () => ({
-  useSkillTreeUpdateEmitter: () => mocks.emitTreeUpdate,
-}))
-
 vi.mock('../utils/skill-upload-utils', () => ({
   prepareSkillUploadFile: (...args: unknown[]) => mocks.prepareSkillUploadFile(...args),
 }))
 
-vi.mock('@/app/components/workflow/store', () => ({
-  useWorkflowStore: () => ({
-    getState: () => mocks.workflowState,
+vi.mock('./use-skill-batch-upload', () => ({
+  useSkillBatchUpload: () => ({
+    appId: mocks.appId,
+    startUpload: mocks.startUpload,
+    failUpload: mocks.failUpload,
+    uploadTree: mocks.uploadTree,
+    openCreatedSkillDocument: mocks.openCreatedSkillDocument,
   }),
 }))
 
@@ -60,10 +44,9 @@ describe('CreateBlankSkillModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.existingNames = new Set()
-    useAppStore.setState({
-      appDetail: { id: 'app-1' } as App & Partial<AppSSO>,
-    })
+    mocks.appId = 'app-1'
     mocks.prepareSkillUploadFile.mockImplementation(async (file: File) => file)
+    mocks.uploadTree.mockResolvedValue([])
   })
 
   describe('Rendering', () => {
@@ -102,27 +85,22 @@ describe('CreateBlankSkillModal', () => {
   describe('Create Flow', () => {
     it('should upload skill template and notify success when creation succeeds', async () => {
       const onClose = vi.fn()
-      mocks.mutateAsync.mockImplementationOnce(async ({ onProgress }: { onProgress?: (uploaded: number, total: number) => void }) => {
-        onProgress?.(1, 1)
-        return [{
-          children: [{ id: 'skill-md-id' }],
-        }]
-      })
+      mocks.uploadTree.mockResolvedValueOnce([
+        { id: 'skill-folder-id', name: 'new-skill', node_type: 'folder', size: 0, children: [] },
+      ])
       render(<CreateBlankSkillModal isOpen onClose={onClose} />)
 
       fireEvent.change(screen.getByRole('textbox'), { target: { value: 'new-skill' } })
       fireEvent.click(screen.getByRole('button', { name: /common\.operation\.create/i }))
 
       await waitFor(() => {
-        expect(mocks.mutateAsync).toHaveBeenCalledTimes(1)
+        expect(mocks.uploadTree).toHaveBeenCalledTimes(1)
       })
 
-      expect(mocks.workflowState.setUploadStatus).toHaveBeenNthCalledWith(1, 'uploading')
-      expect(mocks.workflowState.setUploadStatus).toHaveBeenNthCalledWith(2, 'success')
-      expect(mocks.workflowState.setUploadProgress).toHaveBeenCalledWith({ uploaded: 0, total: 1, failed: 0 })
-      expect(mocks.workflowState.setUploadProgress).toHaveBeenCalledWith({ uploaded: 1, total: 1, failed: 0 })
-      expect(mocks.emitTreeUpdate).toHaveBeenCalledTimes(1)
-      expect(mocks.workflowState.openTab).toHaveBeenCalledWith('skill-md-id', { pinned: true })
+      expect(mocks.startUpload).toHaveBeenCalledWith(1)
+      expect(mocks.openCreatedSkillDocument).toHaveBeenCalledWith([
+        { id: 'skill-folder-id', name: 'new-skill', node_type: 'folder', size: 0, children: [] },
+      ])
       expect(mocks.toastSuccess).toHaveBeenCalledWith('workflow.skill.startTab.createSuccess:{"name":"new-skill"}')
       expect(mocks.toastError).not.toHaveBeenCalled()
       expect(onClose).toHaveBeenCalledTimes(1)
@@ -131,14 +109,14 @@ describe('CreateBlankSkillModal', () => {
 
     it('should set partial error and show error toast when upload fails', async () => {
       const onClose = vi.fn()
-      mocks.mutateAsync.mockRejectedValueOnce(new Error('upload failed'))
+      mocks.uploadTree.mockRejectedValueOnce(new Error('upload failed'))
       render(<CreateBlankSkillModal isOpen onClose={onClose} />)
 
       fireEvent.change(screen.getByRole('textbox'), { target: { value: 'new-skill' } })
       fireEvent.click(screen.getByRole('button', { name: /common\.operation\.create/i }))
 
       await waitFor(() => {
-        expect(mocks.workflowState.setUploadStatus).toHaveBeenCalledWith('partial_error')
+        expect(mocks.failUpload).toHaveBeenCalledTimes(1)
       })
 
       expect(mocks.toastError).toHaveBeenCalledWith('workflow.skill.startTab.createError')
@@ -148,17 +126,17 @@ describe('CreateBlankSkillModal', () => {
     })
 
     it('should not start upload when app id is missing', () => {
-      useAppStore.setState({ appDetail: undefined })
+      mocks.appId = ''
       render(<CreateBlankSkillModal isOpen onClose={vi.fn()} />)
 
       fireEvent.change(screen.getByRole('textbox'), { target: { value: 'new-skill' } })
       fireEvent.click(screen.getByRole('button', { name: /common\.operation\.create/i }))
 
-      expect(mocks.mutateAsync).not.toHaveBeenCalled()
+      expect(mocks.uploadTree).not.toHaveBeenCalled()
+      expect(mocks.startUpload).not.toHaveBeenCalled()
     })
 
     it('should trigger create flow when Enter key is pressed and form is valid', async () => {
-      mocks.mutateAsync.mockResolvedValueOnce([])
       render(<CreateBlankSkillModal isOpen onClose={vi.fn()} />)
 
       const input = screen.getByRole('textbox')
@@ -166,7 +144,7 @@ describe('CreateBlankSkillModal', () => {
       fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' })
 
       await waitFor(() => {
-        expect(mocks.mutateAsync).toHaveBeenCalledTimes(1)
+        expect(mocks.uploadTree).toHaveBeenCalledTimes(1)
       })
     })
   })

@@ -1,28 +1,19 @@
-import type { App, AppSSO } from '@/types/app'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { ZipValidationError } from '../utils/zip-extract'
 import ImportSkillModal from './import-skill-modal'
 
-type MockWorkflowState = {
-  setUploadStatus: ReturnType<typeof vi.fn>
-  setUploadProgress: ReturnType<typeof vi.fn>
-  openTab: ReturnType<typeof vi.fn>
-}
-
 const mocks = vi.hoisted(() => ({
+  appId: 'app-1',
   extractAndValidateZip: vi.fn(),
   buildUploadDataFromZip: vi.fn(),
-  mutateAsync: vi.fn(),
-  emitTreeUpdate: vi.fn(),
+  startUpload: vi.fn(),
+  setUploadProgress: vi.fn(),
+  failUpload: vi.fn(),
+  uploadTree: vi.fn(),
+  openCreatedSkillDocument: vi.fn(),
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
   existingNames: new Set<string>(),
-  workflowState: {
-    setUploadStatus: vi.fn(),
-    setUploadProgress: vi.fn(),
-    openTab: vi.fn(),
-  } as MockWorkflowState,
 }))
 
 vi.mock('../utils/zip-extract', () => {
@@ -46,25 +37,20 @@ vi.mock('../utils/zip-to-upload-tree', () => ({
   buildUploadDataFromZip: (...args: unknown[]) => mocks.buildUploadDataFromZip(...args),
 }))
 
-vi.mock('@/service/use-app-asset', () => ({
-  useBatchUpload: () => ({
-    mutateAsync: mocks.mutateAsync,
-  }),
-}))
-
 vi.mock('../hooks/file-tree/data/use-skill-asset-tree', () => ({
   useExistingSkillNames: () => ({
     data: mocks.existingNames,
   }),
 }))
 
-vi.mock('../hooks/file-tree/data/use-skill-tree-collaboration', () => ({
-  useSkillTreeUpdateEmitter: () => mocks.emitTreeUpdate,
-}))
-
-vi.mock('@/app/components/workflow/store', () => ({
-  useWorkflowStore: () => ({
-    getState: () => mocks.workflowState,
+vi.mock('./use-skill-batch-upload', () => ({
+  useSkillBatchUpload: () => ({
+    appId: mocks.appId,
+    startUpload: mocks.startUpload,
+    setUploadProgress: mocks.setUploadProgress,
+    failUpload: mocks.failUpload,
+    uploadTree: mocks.uploadTree,
+    openCreatedSkillDocument: mocks.openCreatedSkillDocument,
   }),
 }))
 
@@ -98,9 +84,8 @@ describe('ImportSkillModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.existingNames = new Set()
-    useAppStore.setState({
-      appDetail: { id: 'app-1' } as App & Partial<AppSSO>,
-    })
+    mocks.appId = 'app-1'
+    mocks.uploadTree.mockResolvedValue([])
   })
 
   describe('Rendering', () => {
@@ -188,28 +173,23 @@ describe('ImportSkillModal', () => {
         tree: [{ name: 'new-skill', node_type: 'folder', children: [] }],
         files: new Map([['new-skill/SKILL.md', new File(['content'], 'SKILL.md')]]),
       })
-      mocks.mutateAsync.mockImplementationOnce(async ({ onProgress }: { onProgress?: (uploaded: number, total: number) => void }) => {
-        onProgress?.(1, 1)
-        return [{
-          children: [{ id: 'skill-md-id', name: 'SKILL.md' }],
-        }]
-      })
+      mocks.uploadTree.mockResolvedValueOnce([
+        { id: 'skill-folder-id', name: 'new-skill', node_type: 'folder', size: 0, children: [] },
+      ])
 
       render(<ImportSkillModal isOpen onClose={onClose} />)
       selectFile(createZipFile('new-skill.zip', 2048))
       fireEvent.click(screen.getByRole('button', { name: /workflow\.skill\.startTab\.importModal\.importButton/i }))
 
       await waitFor(() => {
-        expect(mocks.mutateAsync).toHaveBeenCalledTimes(1)
+        expect(mocks.uploadTree).toHaveBeenCalledTimes(1)
       })
 
-      expect(mocks.workflowState.setUploadStatus).toHaveBeenNthCalledWith(1, 'uploading')
-      expect(mocks.workflowState.setUploadStatus).toHaveBeenNthCalledWith(2, 'success')
-      expect(mocks.workflowState.setUploadProgress).toHaveBeenCalledWith({ uploaded: 0, total: 0, failed: 0 })
-      expect(mocks.workflowState.setUploadProgress).toHaveBeenCalledWith({ uploaded: 0, total: 1, failed: 0 })
-      expect(mocks.workflowState.setUploadProgress).toHaveBeenCalledWith({ uploaded: 1, total: 1, failed: 0 })
-      expect(mocks.emitTreeUpdate).toHaveBeenCalledTimes(1)
-      expect(mocks.workflowState.openTab).toHaveBeenCalledWith('skill-md-id', { pinned: true })
+      expect(mocks.startUpload).toHaveBeenCalledWith(0)
+      expect(mocks.setUploadProgress).toHaveBeenCalledWith(0, 1)
+      expect(mocks.openCreatedSkillDocument).toHaveBeenCalledWith([
+        { id: 'skill-folder-id', name: 'new-skill', node_type: 'folder', size: 0, children: [] },
+      ])
       expect(mocks.toastSuccess).toHaveBeenCalledWith('workflow.skill.startTab.importModal.importSuccess:{"name":"new-skill"}')
       expect(mocks.toastError).not.toHaveBeenCalled()
       expect(onClose).toHaveBeenCalledTimes(1)
@@ -227,17 +207,17 @@ describe('ImportSkillModal', () => {
       fireEvent.click(screen.getByRole('button', { name: /workflow\.skill\.startTab\.importModal\.importButton/i }))
 
       await waitFor(() => {
-        expect(mocks.workflowState.setUploadStatus).toHaveBeenCalledWith('partial_error')
+        expect(mocks.failUpload).toHaveBeenCalledTimes(1)
       })
 
       expect(mocks.toastError).toHaveBeenCalledWith('workflow.skill.startTab.importModal.nameDuplicate')
       expect(mocks.toastSuccess).not.toHaveBeenCalled()
       expect(mocks.buildUploadDataFromZip).not.toHaveBeenCalled()
-      expect(mocks.mutateAsync).not.toHaveBeenCalled()
+      expect(mocks.uploadTree).not.toHaveBeenCalled()
     })
 
     it('should not start import when app id is missing', () => {
-      useAppStore.setState({ appDetail: undefined })
+      mocks.appId = ''
       render(<ImportSkillModal isOpen onClose={vi.fn()} />)
 
       selectFile(createZipFile('new-skill.zip', 2048))
@@ -245,8 +225,8 @@ describe('ImportSkillModal', () => {
 
       expect(mocks.extractAndValidateZip).not.toHaveBeenCalled()
       expect(mocks.buildUploadDataFromZip).not.toHaveBeenCalled()
-      expect(mocks.mutateAsync).not.toHaveBeenCalled()
-      expect(mocks.workflowState.setUploadStatus).not.toHaveBeenCalled()
+      expect(mocks.uploadTree).not.toHaveBeenCalled()
+      expect(mocks.startUpload).not.toHaveBeenCalled()
     })
 
     it('should map zip validation error code to localized error message', async () => {
@@ -257,7 +237,7 @@ describe('ImportSkillModal', () => {
       fireEvent.click(screen.getByRole('button', { name: /workflow\.skill\.startTab\.importModal\.importButton/i }))
 
       await waitFor(() => {
-        expect(mocks.workflowState.setUploadStatus).toHaveBeenCalledWith('partial_error')
+        expect(mocks.failUpload).toHaveBeenCalledTimes(1)
       })
 
       expect(mocks.toastError).toHaveBeenCalledWith('workflow.skill.startTab.importModal.errorEmptyZip')
@@ -274,7 +254,7 @@ describe('ImportSkillModal', () => {
       fireEvent.click(screen.getByRole('button', { name: /workflow\.skill\.startTab\.importModal\.importButton/i }))
 
       await waitFor(() => {
-        expect(mocks.workflowState.setUploadStatus).toHaveBeenCalledWith('partial_error')
+        expect(mocks.failUpload).toHaveBeenCalledTimes(1)
       })
 
       expect(mocks.toastError).toHaveBeenCalledWith('custom zip error')
@@ -289,7 +269,7 @@ describe('ImportSkillModal', () => {
       fireEvent.click(screen.getByRole('button', { name: /workflow\.skill\.startTab\.importModal\.importButton/i }))
 
       await waitFor(() => {
-        expect(mocks.workflowState.setUploadStatus).toHaveBeenCalledWith('partial_error')
+        expect(mocks.failUpload).toHaveBeenCalledTimes(1)
       })
 
       expect(mocks.toastError).toHaveBeenCalledWith('workflow.skill.startTab.importModal.errorInvalidZip')

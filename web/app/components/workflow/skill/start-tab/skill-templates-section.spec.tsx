@@ -1,12 +1,5 @@
-import type { App, AppSSO } from '@/types/app'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import SkillTemplatesSection from './skill-templates-section'
-
-type MockWorkflowState = {
-  setUploadStatus: ReturnType<typeof vi.fn>
-  setUploadProgress: ReturnType<typeof vi.fn>
-}
 
 type TemplateEntry = {
   id: string
@@ -17,15 +10,13 @@ type TemplateEntry = {
 }
 
 const mocks = vi.hoisted(() => ({
+  appId: 'app-1',
   templates: [] as TemplateEntry[],
   buildUploadDataFromTemplate: vi.fn(),
-  mutateAsync: vi.fn(),
-  emitTreeUpdate: vi.fn(),
+  startUpload: vi.fn(),
+  failUpload: vi.fn(),
+  uploadTree: vi.fn(),
   existingNames: new Set<string>(),
-  workflowState: {
-    setUploadStatus: vi.fn(),
-    setUploadProgress: vi.fn(),
-  } as MockWorkflowState,
 }))
 
 vi.mock('./templates/registry', () => ({
@@ -36,25 +27,18 @@ vi.mock('./templates/template-to-upload', () => ({
   buildUploadDataFromTemplate: (...args: unknown[]) => mocks.buildUploadDataFromTemplate(...args),
 }))
 
-vi.mock('@/service/use-app-asset', () => ({
-  useBatchUpload: () => ({
-    mutateAsync: mocks.mutateAsync,
-  }),
-}))
-
 vi.mock('../hooks/file-tree/data/use-skill-asset-tree', () => ({
   useExistingSkillNames: () => ({
     data: mocks.existingNames,
   }),
 }))
 
-vi.mock('../hooks/file-tree/data/use-skill-tree-collaboration', () => ({
-  useSkillTreeUpdateEmitter: () => mocks.emitTreeUpdate,
-}))
-
-vi.mock('@/app/components/workflow/store', () => ({
-  useWorkflowStore: () => ({
-    getState: () => mocks.workflowState,
+vi.mock('./use-skill-batch-upload', () => ({
+  useSkillBatchUpload: () => ({
+    appId: mocks.appId,
+    startUpload: mocks.startUpload,
+    failUpload: mocks.failUpload,
+    uploadTree: mocks.uploadTree,
   }),
 }))
 
@@ -87,10 +71,8 @@ describe('SkillTemplatesSection', () => {
       tree: [{ name: 'alpha', node_type: 'folder', children: [] }],
       files: new Map([['alpha/SKILL.md', new File(['content'], 'SKILL.md')]]),
     })
-    mocks.mutateAsync.mockResolvedValue([])
-    useAppStore.setState({
-      appDetail: { id: 'app-1' } as App & Partial<AppSSO>,
-    })
+    mocks.uploadTree.mockResolvedValue([])
+    mocks.appId = 'app-1'
   })
 
   describe('Rendering', () => {
@@ -125,47 +107,43 @@ describe('SkillTemplatesSection', () => {
   })
 
   describe('Use Template Flow', () => {
-    it('should upload template and update workflow status when use action succeeds', async () => {
-      mocks.mutateAsync.mockImplementationOnce(async ({ onProgress }: { onProgress?: (uploaded: number, total: number) => void }) => {
-        onProgress?.(1, 1)
-        return []
-      })
+    it('should upload template when use action succeeds', async () => {
       render(<SkillTemplatesSection />)
 
       fireEvent.click(screen.getAllByRole('button', { name: /workflow\.skill\.startTab\.useThisSkill/i })[0])
 
       await waitFor(() => {
-        expect(mocks.mutateAsync).toHaveBeenCalledTimes(1)
+        expect(mocks.uploadTree).toHaveBeenCalledTimes(1)
       })
 
       expect(mocks.buildUploadDataFromTemplate).toHaveBeenCalledWith('alpha', expect.any(Array))
-      expect(mocks.workflowState.setUploadStatus).toHaveBeenNthCalledWith(1, 'uploading')
-      expect(mocks.workflowState.setUploadStatus).toHaveBeenNthCalledWith(2, 'success')
-      expect(mocks.workflowState.setUploadProgress).toHaveBeenCalledWith({ uploaded: 0, total: 1, failed: 0 })
-      expect(mocks.workflowState.setUploadProgress).toHaveBeenCalledWith({ uploaded: 1, total: 1, failed: 0 })
-      expect(mocks.emitTreeUpdate).toHaveBeenCalledTimes(1)
+      expect(mocks.startUpload).toHaveBeenCalledWith(1)
+      const uploadArg = mocks.uploadTree.mock.calls[0][0]
+      expect(uploadArg.tree).toEqual([{ name: 'alpha', node_type: 'folder', children: [] }])
+      expect(uploadArg.files).toBeInstanceOf(Map)
+      expect(uploadArg.files.get('alpha/SKILL.md')).toBeInstanceOf(File)
     })
 
     it('should set partial error when upload fails', async () => {
-      mocks.mutateAsync.mockRejectedValueOnce(new Error('upload failed'))
+      mocks.uploadTree.mockRejectedValueOnce(new Error('upload failed'))
       render(<SkillTemplatesSection />)
 
       fireEvent.click(screen.getAllByRole('button', { name: /workflow\.skill\.startTab\.useThisSkill/i })[0])
 
       await waitFor(() => {
-        expect(mocks.workflowState.setUploadStatus).toHaveBeenCalledWith('partial_error')
+        expect(mocks.failUpload).toHaveBeenCalledTimes(1)
       })
     })
 
     it('should not start upload when app id is missing', () => {
-      useAppStore.setState({ appDetail: undefined })
+      mocks.appId = ''
       render(<SkillTemplatesSection />)
 
       fireEvent.click(screen.getAllByRole('button', { name: /workflow\.skill\.startTab\.useThisSkill/i })[0])
 
       expect(mocks.templates[0].loadContent).not.toHaveBeenCalled()
-      expect(mocks.mutateAsync).not.toHaveBeenCalled()
-      expect(mocks.workflowState.setUploadStatus).not.toHaveBeenCalled()
+      expect(mocks.uploadTree).not.toHaveBeenCalled()
+      expect(mocks.startUpload).not.toHaveBeenCalled()
     })
   })
 })
