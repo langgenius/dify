@@ -1,5 +1,4 @@
 import yaml
-
 from sqlalchemy import select
 
 from extensions.ext_database import db

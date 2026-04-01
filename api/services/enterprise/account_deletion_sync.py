@@ -4,7 +4,6 @@ import uuid
 from datetime import UTC, datetime
 
 from redis import RedisError
-
 from sqlalchemy import select
 
 from configs import dify_config

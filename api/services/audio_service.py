@@ -8,8 +8,6 @@ from flask import Response, stream_with_context
 from graphon.model_runtime.entities.model_entities import ModelType
 from werkzeug.datastructures import FileStorage
 
-from sqlalchemy import select
-
 from constants import AUDIO_EXTENSIONS
 from core.model_manager import ModelManager
 from extensions.ext_database import db

@@ -1,9 +1,8 @@
 from flask_login import current_user
+from sqlalchemy import select
 
 from configs import dify_config
 from enums.cloud_plan import CloudPlan
-from sqlalchemy import select
-
 from extensions.ext_database import db
 from models.account import Tenant, TenantAccountJoin, TenantAccountRole
 from services.account_service import TenantService

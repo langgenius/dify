@@ -1,5 +1,4 @@
 import yaml
-
 from sqlalchemy import select
 
 from extensions.ext_database import db
@@ -32,9 +31,11 @@ class DatabasePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         :return:
         """
 
-        pipeline_built_in_templates = list(db.session.scalars(
-            select(PipelineBuiltInTemplate).where(PipelineBuiltInTemplate.language == language)
-        ).all())
+        pipeline_built_in_templates = list(
+            db.session.scalars(
+                select(PipelineBuiltInTemplate).where(PipelineBuiltInTemplate.language == language)
+            ).all()
+        )
 
         recommended_pipelines_results = []
         for pipeline_built_in_template in pipeline_built_in_templates:

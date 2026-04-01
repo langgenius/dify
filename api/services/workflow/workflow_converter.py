@@ -6,6 +6,7 @@ from graphon.model_runtime.entities.llm_entities import LLMMode
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from graphon.nodes import BuiltinNodeTypes
 from graphon.variables.input_entities import VariableEntity
+from sqlalchemy import select
 from typing_extensions import TypedDict
 
 from core.app.app_config.entities import (
@@ -22,8 +23,6 @@ from core.app.apps.completion.app_config_manager import CompletionAppConfigManag
 from core.helper import encrypter
 from core.prompt.simple_prompt_transform import SimplePromptTransform
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
-from sqlalchemy import select
-
 from events.app_event import app_was_created
 from extensions.ext_database import db
 from models import Account

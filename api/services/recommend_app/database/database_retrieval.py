@@ -78,9 +78,7 @@ class DatabaseRecommendAppRetrieval(RecommendAppRetrievalBase):
         """
         # is in public recommended list
         recommended_app = db.session.scalar(
-            select(RecommendedApp)
-            .where(RecommendedApp.is_listed == True, RecommendedApp.app_id == app_id)
-            .limit(1)
+            select(RecommendedApp).where(RecommendedApp.is_listed == True, RecommendedApp.app_id == app_id).limit(1)
         )
 
         if not recommended_app:
