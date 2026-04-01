@@ -22,6 +22,8 @@ from core.app.apps.completion.app_config_manager import CompletionAppConfigManag
 from core.helper import encrypter
 from core.prompt.simple_prompt_transform import SimplePromptTransform
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
+from sqlalchemy import select
+
 from events.app_event import app_was_created
 from extensions.ext_database import db
 from models import Account
@@ -648,10 +650,10 @@ class WorkflowConverter:
         :param api_based_extension_id: api based extension id
         :return:
         """
-        api_based_extension = (
-            db.session.query(APIBasedExtension)
+        api_based_extension = db.session.scalar(
+            select(APIBasedExtension)
             .where(APIBasedExtension.tenant_id == tenant_id, APIBasedExtension.id == api_based_extension_id)
-            .first()
+            .limit(1)
         )
 
         if not api_based_extension:
