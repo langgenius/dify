@@ -106,9 +106,14 @@ def test_transform_to_empty_pipeline_updates_dataset_and_commits(mocker) -> None
             self.created_by = kwargs["created_by"]
 
     mocker.patch("services.rag_pipeline.rag_pipeline_transform_service.Pipeline", FakePipeline)
-    add_mock = mocker.patch("services.rag_pipeline.rag_pipeline_transform_service.db.session.add")
-    flush_mock = mocker.patch("services.rag_pipeline.rag_pipeline_transform_service.db.session.flush")
-    commit_mock = mocker.patch("services.rag_pipeline.rag_pipeline_transform_service.db.session.commit")
+    session_mock = mocker.Mock()
+    add_mock = session_mock.add
+    flush_mock = session_mock.flush
+    commit_mock = session_mock.commit
+    mocker.patch(
+        "services.rag_pipeline.rag_pipeline_transform_service.db",
+        new=SimpleNamespace(session=session_mock),
+    )
 
     dataset = SimpleNamespace(
         id="dataset-1",
@@ -142,9 +147,12 @@ def test_transform_dataset_returns_early_when_pipeline_exists(mocker) -> None:
         pipeline_id="p1",
         runtime_mode="rag_pipeline",
     )
-    query_mock = mocker.Mock()
-    query_mock.where.return_value.first.return_value = dataset
-    mocker.patch("services.rag_pipeline.rag_pipeline_transform_service.db.session.query", return_value=query_mock)
+    session_mock = mocker.Mock()
+    session_mock.get.return_value = dataset
+    mocker.patch(
+        "services.rag_pipeline.rag_pipeline_transform_service.db",
+        new=SimpleNamespace(session=session_mock),
+    )
 
     result = service.transform_dataset("d1")
 
@@ -153,9 +161,12 @@ def test_transform_dataset_returns_early_when_pipeline_exists(mocker) -> None:
 
 def test_transform_dataset_raises_for_dataset_not_found(mocker) -> None:
     service = RagPipelineTransformService()
-    query_mock = mocker.Mock()
-    query_mock.where.return_value.first.return_value = None
-    mocker.patch("services.rag_pipeline.rag_pipeline_transform_service.db.session.query", return_value=query_mock)
+    session_mock = mocker.Mock()
+    session_mock.get.return_value = None
+    mocker.patch(
+        "services.rag_pipeline.rag_pipeline_transform_service.db",
+        new=SimpleNamespace(session=session_mock),
+    )
 
     with pytest.raises(ValueError, match="Dataset not found"):
         service.transform_dataset("d1")
@@ -169,9 +180,12 @@ def test_transform_dataset_raises_for_external_dataset(mocker) -> None:
         runtime_mode=None,
         provider="external",
     )
-    query_mock = mocker.Mock()
-    query_mock.where.return_value.first.return_value = dataset
-    mocker.patch("services.rag_pipeline.rag_pipeline_transform_service.db.session.query", return_value=query_mock)
+    session_mock = mocker.Mock()
+    session_mock.get.return_value = dataset
+    mocker.patch(
+        "services.rag_pipeline.rag_pipeline_transform_service.db",
+        new=SimpleNamespace(session=session_mock),
+    )
 
     with pytest.raises(ValueError, match="External dataset is not supported"):
         service.transform_dataset("d1")
@@ -187,9 +201,12 @@ def test_transform_dataset_calls_empty_pipeline_when_no_datasource(mocker) -> No
         data_source_type=None,
         indexing_technique=None,
     )
-    query_mock = mocker.Mock()
-    query_mock.where.return_value.first.return_value = dataset
-    mocker.patch("services.rag_pipeline.rag_pipeline_transform_service.db.session.query", return_value=query_mock)
+    session_mock = mocker.Mock()
+    session_mock.get.return_value = dataset
+    mocker.patch(
+        "services.rag_pipeline.rag_pipeline_transform_service.db",
+        new=SimpleNamespace(session=session_mock),
+    )
 
     empty_result = {"pipeline_id": "p-empty", "dataset_id": "d1", "status": "success"}
     mocker.patch.object(service, "_transform_to_empty_pipeline", return_value=empty_result)
@@ -210,9 +227,12 @@ def test_transform_dataset_calls_empty_pipeline_when_no_doc_form(mocker) -> None
         indexing_technique="high_quality",
         doc_form=None,
     )
-    query_mock = mocker.Mock()
-    query_mock.where.return_value.first.return_value = dataset
-    mocker.patch("services.rag_pipeline.rag_pipeline_transform_service.db.session.query", return_value=query_mock)
+    session_mock = mocker.Mock()
+    session_mock.get.return_value = dataset
+    mocker.patch(
+        "services.rag_pipeline.rag_pipeline_transform_service.db",
+        new=SimpleNamespace(session=session_mock),
+    )
 
     empty_result = {"pipeline_id": "p-empty", "dataset_id": "d1", "status": "success"}
     mocker.patch.object(service, "_transform_to_empty_pipeline", return_value=empty_result)
@@ -297,10 +317,15 @@ def test_deal_document_data_notion(mocker) -> None:
         data_source_info=None,
     )
 
-    query_mock = mocker.Mock()
-    query_mock.where.return_value.all.return_value = [doc]
-    mocker.patch("services.rag_pipeline.rag_pipeline_transform_service.db.session.query", return_value=query_mock)
-    add_mock = mocker.patch("services.rag_pipeline.rag_pipeline_transform_service.db.session.add")
+    scalars_mock = mocker.Mock()
+    scalars_mock.all.return_value = [doc]
+    session_mock = mocker.Mock()
+    session_mock.scalars.return_value = scalars_mock
+    add_mock = session_mock.add
+    mocker.patch(
+        "services.rag_pipeline.rag_pipeline_transform_service.db",
+        new=SimpleNamespace(session=session_mock),
+    )
 
     service._deal_document_data(cast(Dataset, dataset))
 
@@ -327,10 +352,15 @@ def test_deal_document_data_website(mocker, provider: str, node_id: str) -> None
         data_source_info=None,
     )
 
-    query_mock = mocker.Mock()
-    query_mock.where.return_value.all.return_value = [doc]
-    mocker.patch("services.rag_pipeline.rag_pipeline_transform_service.db.session.query", return_value=query_mock)
-    add_mock = mocker.patch("services.rag_pipeline.rag_pipeline_transform_service.db.session.add")
+    scalars_mock = mocker.Mock()
+    scalars_mock.all.return_value = [doc]
+    session_mock = mocker.Mock()
+    session_mock.scalars.return_value = scalars_mock
+    add_mock = session_mock.add
+    mocker.patch(
+        "services.rag_pipeline.rag_pipeline_transform_service.db",
+        new=SimpleNamespace(session=session_mock),
+    )
 
     service._deal_document_data(cast(Dataset, dataset))
 
@@ -364,13 +394,16 @@ def test_transform_dataset_full_flow(mocker) -> None:
         chunk_structure=None,
     )
 
-    query_mock = mocker.Mock()
-    query_mock.where.return_value.first.return_value = dataset
-    mocker.patch("services.rag_pipeline.rag_pipeline_transform_service.db.session.query", return_value=query_mock)
+    session_mock = mocker.Mock()
+    session_mock.get.return_value = dataset
+    mocker.patch(
+        "services.rag_pipeline.rag_pipeline_transform_service.db",
+        new=SimpleNamespace(session=session_mock),
+    )
 
     mocker.patch.object(service, "_deal_dependencies")
     mocker.patch.object(service, "_deal_document_data")
-    mocker.patch("services.rag_pipeline.rag_pipeline_transform_service.db.session.commit")
+    session_mock.commit = mocker.Mock()
 
     # Mock current_user to have the same tenant_id as dataset
     mock_current_user = SimpleNamespace(current_tenant_id="t1")
@@ -401,9 +434,12 @@ def test_transform_dataset_raises_for_unsupported_doc_form_after_pipeline_create
         doc_form="unsupported",
         retrieval_model=None,
     )
-    query_mock = mocker.Mock()
-    query_mock.where.return_value.first.return_value = dataset
-    mocker.patch("services.rag_pipeline.rag_pipeline_transform_service.db.session.query", return_value=query_mock)
+    session_mock = mocker.Mock()
+    session_mock.get.return_value = dataset
+    mocker.patch(
+        "services.rag_pipeline.rag_pipeline_transform_service.db",
+        new=SimpleNamespace(session=session_mock),
+    )
     mocker.patch.object(service, "_get_transform_yaml", return_value={"workflow": {"graph": {"nodes": []}}})
     mocker.patch.object(service, "_deal_dependencies")
     mocker.patch.object(service, "_create_pipeline", return_value=SimpleNamespace(id="p-new"))
@@ -427,9 +463,12 @@ def test_transform_dataset_raises_when_transform_yaml_missing_workflow(mocker) -
         doc_form="text_model",
         retrieval_model=None,
     )
-    query_mock = mocker.Mock()
-    query_mock.where.return_value.first.return_value = dataset
-    mocker.patch("services.rag_pipeline.rag_pipeline_transform_service.db.session.query", return_value=query_mock)
+    session_mock = mocker.Mock()
+    session_mock.get.return_value = dataset
+    mocker.patch(
+        "services.rag_pipeline.rag_pipeline_transform_service.db",
+        new=SimpleNamespace(session=session_mock),
+    )
     mocker.patch.object(service, "_get_transform_yaml", return_value={})
     mocker.patch.object(service, "_deal_dependencies")
 
@@ -459,15 +498,16 @@ def test_deal_document_data_upload_file_with_existing_file(mocker) -> None:
     )
     upload_file = SimpleNamespace(name="f.txt", size=10, extension="txt", mime_type="text/plain")
 
-    query_document = mocker.Mock()
-    query_document.where.return_value.all.return_value = [document]
-    query_upload = mocker.Mock()
-    query_upload.where.return_value.first.return_value = upload_file
+    scalars_mock = mocker.Mock()
+    scalars_mock.all.return_value = [document]
+    session_mock = mocker.Mock()
+    session_mock.scalars.return_value = scalars_mock
+    session_mock.get.return_value = upload_file
+    add_mock = session_mock.add
     mocker.patch(
-        "services.rag_pipeline.rag_pipeline_transform_service.db.session.query",
-        side_effect=[query_document, query_upload],
+        "services.rag_pipeline.rag_pipeline_transform_service.db",
+        new=SimpleNamespace(session=session_mock),
     )
-    add_mock = mocker.patch("services.rag_pipeline.rag_pipeline_transform_service.db.session.add")
 
     service._deal_document_data(cast(Dataset, dataset))
 
