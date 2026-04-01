@@ -195,7 +195,11 @@ class BaiduVector(BaseVector):
                 raise
 
     def _init_client(self, config) -> MochowClient:
-        config = Configuration(credentials=BceCredentials(config.account, config.api_key), endpoint=config.endpoint)
+        config = Configuration(
+            credentials=BceCredentials(config.account, config.api_key),
+            endpoint=config.endpoint,
+            connection_timeout_in_mills=config.connection_timeout_in_mills,
+        )
         client = MochowClient(config)
         return client
 
