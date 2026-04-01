@@ -1,6 +1,6 @@
 import logging
 
-from sqlalchemy import update
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from configs import dify_config
@@ -29,13 +29,13 @@ class CreditPoolService:
     @classmethod
     def get_pool(cls, tenant_id: str, pool_type: str = "trial") -> TenantCreditPool | None:
         """get tenant credit pool"""
-        return (
-            db.session.query(TenantCreditPool)
-            .filter_by(
-                tenant_id=tenant_id,
-                pool_type=pool_type,
+        return db.session.scalar(
+            select(TenantCreditPool)
+            .where(
+                TenantCreditPool.tenant_id == tenant_id,
+                TenantCreditPool.pool_type == pool_type,
             )
-            .first()
+            .limit(1)
         )
 
     @classmethod
