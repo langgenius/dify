@@ -4,7 +4,7 @@ from mimetypes import guess_type
 
 from pydantic import BaseModel
 from sqlalchemy import delete, select, update
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 from yarl import URL
 
 from configs import dify_config
@@ -530,7 +530,7 @@ class PluginService:
                     plugin_unique_identifier=plugin.plugin_unique_identifier,
                 )
             )
-        with Session(db.engine) as session, session.begin():
+        with sessionmaker(db.engine).begin() as session:
             plugin_id = plugin.plugin_id
             logger.info("Deleting credentials for plugin: %s", plugin_id)
 

@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from sqlalchemy import exists, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from constants import HIDDEN_VALUE, UNKNOWN_VALUE
@@ -46,13 +46,12 @@ class BuiltinToolManageService:
         delete custom oauth client params
         """
         tool_provider = ToolProviderID(provider)
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             session.query(ToolOAuthTenantClient).filter_by(
                 tenant_id=tenant_id,
                 provider=tool_provider.provider_name,
                 plugin_id=tool_provider.plugin_id,
             ).delete()
-            session.commit()
         return {"result": "success"}
 
     @staticmethod
@@ -150,7 +149,7 @@ class BuiltinToolManageService:
         """
         update builtin tool provider
         """
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             # get if the provider exists
             db_provider = (
                 session.query(BuiltinToolProvider)
@@ -202,10 +201,7 @@ class BuiltinToolManageService:
                         raise ValueError(f"the credential name '{name}' is already used")
 
                     db_provider.name = name
-
-                session.commit()
             except Exception as e:
-                session.rollback()
                 raise ValueError(str(e))
         return {"result": "success"}
 
@@ -222,7 +218,7 @@ class BuiltinToolManageService:
         """
         add builtin tool provider
         """
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             try:
                 lock = f"builtin_tool_provider_create_lock:{tenant_id}_{provider}"
                 with redis_client.lock(lock, timeout=20):
@@ -281,9 +277,7 @@ class BuiltinToolManageService:
                     )
 
                     session.add(db_provider)
-                    session.commit()
             except Exception as e:
-                session.rollback()
                 raise ValueError(str(e))
 
         return {"result": "success"}
@@ -379,7 +373,7 @@ class BuiltinToolManageService:
         """
         delete tool provider
         """
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             db_provider = (
                 session.query(BuiltinToolProvider)
                 .where(
@@ -393,7 +387,6 @@ class BuiltinToolManageService:
                 raise ValueError(f"you have not added provider {provider}")
 
             session.delete(db_provider)
-            session.commit()
 
             # delete cache
             provider_controller = ToolManager.get_builtin_provider(provider, tenant_id)
@@ -409,7 +402,7 @@ class BuiltinToolManageService:
         """
         set default provider
         """
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             # get provider
             target_provider = session.query(BuiltinToolProvider).filter_by(id=id, tenant_id=tenant_id).first()
             if target_provider is None:
@@ -422,7 +415,6 @@ class BuiltinToolManageService:
 
             # set new default provider
             target_provider.is_default = True
-            session.commit()
 
         return {"result": "success"}
 
@@ -432,7 +424,7 @@ class BuiltinToolManageService:
         check if oauth system client exists
         """
         tool_provider = ToolProviderID(provider_name)
-        with Session(db.engine, autoflush=False) as session:
+        with sessionmaker(db.engine, autoflush=False).begin() as session:
             system_client: ToolOAuthSystemClient | None = (
                 session.query(ToolOAuthSystemClient)
                 .filter_by(plugin_id=tool_provider.plugin_id, provider=tool_provider.provider_name)
@@ -446,7 +438,7 @@ class BuiltinToolManageService:
         check if oauth custom client is enabled
         """
         tool_provider = ToolProviderID(provider)
-        with Session(db.engine, autoflush=False) as session:
+        with sessionmaker(db.engine, autoflush=False).begin() as session:
             user_client: ToolOAuthTenantClient | None = (
                 session.query(ToolOAuthTenantClient)
                 .filter_by(
@@ -471,7 +463,7 @@ class BuiltinToolManageService:
             config=[x.to_basic_provider_config() for x in provider_controller.get_oauth_client_schema()],
             cache=NoOpProviderCredentialCache(),
         )
-        with Session(db.engine, autoflush=False) as session:
+        with sessionmaker(db.engine, autoflush=False).begin() as session:
             user_client: ToolOAuthTenantClient | None = (
                 session.query(ToolOAuthTenantClient)
                 .filter_by(
@@ -582,7 +574,7 @@ class BuiltinToolManageService:
         1.if the default provider exists, return the default provider
         2.if the default provider does not exist, return the oldest provider
         """
-        with Session(db.engine, autoflush=False) as session:
+        with sessionmaker(db.engine, autoflush=False).begin() as session:
             try:
                 full_provider_name = provider_name
                 provider_id_entity = ToolProviderID(provider_name)
@@ -654,7 +646,7 @@ class BuiltinToolManageService:
         if not isinstance(provider_controller, (BuiltinToolProviderController, PluginToolProviderController)):
             raise ValueError(f"Provider {provider} is not a builtin or plugin provider")
 
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             custom_client_params = (
                 session.query(ToolOAuthTenantClient)
                 .filter_by(
@@ -690,7 +682,6 @@ class BuiltinToolManageService:
             if enable_oauth_custom_client is not None:
                 custom_client_params.enabled = enable_oauth_custom_client
 
-            session.commit()
         return {"result": "success"}
 
     @staticmethod
@@ -698,7 +689,7 @@ class BuiltinToolManageService:
         """
         get custom oauth client params
         """
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             tool_provider = ToolProviderID(provider)
             custom_oauth_client_params: ToolOAuthTenantClient | None = (
                 session.query(ToolOAuthTenantClient)

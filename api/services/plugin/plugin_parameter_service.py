@@ -2,7 +2,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any, Literal
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 
 from core.plugin.entities.parameters import PluginParameterOption
 from core.plugin.entities.plugin_daemon import CredentialType
@@ -55,7 +55,7 @@ class PluginParameterService:
                     credentials = {}
                 else:
                     # fetch credentials from db
-                    with Session(db.engine) as session:
+                    with sessionmaker(db.engine).begin() as session:
                         if credential_id:
                             db_record = session.scalar(
                                 select(BuiltinToolProvider)
