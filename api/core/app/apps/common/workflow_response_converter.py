@@ -20,7 +20,7 @@ from graphon.variables.segments import ArrayFileSegment, FileSegment, Segment
 from graphon.variables.variables import Variable
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
@@ -328,7 +328,7 @@ class WorkflowResponseConverter:
                 HumanInputForm.expiration_time,
                 HumanInputForm.form_definition,
             ).where(HumanInputForm.id.in_(human_input_form_ids))
-            with Session(bind=db.engine) as session:
+            with sessionmaker(bind=db.engine).begin() as session:
                 for form_id, expiration_time, form_definition in session.execute(stmt):
                     expiration_times_by_form_id[str(form_id)] = expiration_time
                     try:

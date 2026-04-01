@@ -4,7 +4,7 @@ from collections.abc import Mapping
 
 from graphon.variables.input_entities import VariableEntity, VariableEntityType
 from pydantic import Field
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.db.session_factory import session_factory
@@ -216,7 +216,7 @@ class WorkflowToolProviderController(ToolProviderController):
         if self.tools is not None:
             return self.tools
 
-        with Session(db.engine, expire_on_commit=False) as session, session.begin():
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             db_provider: WorkflowToolProvider | None = (
                 session.query(WorkflowToolProvider)
                 .where(

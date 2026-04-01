@@ -9,7 +9,7 @@ from graphon.runtime import VariablePool
 from packaging.version import Version
 from pydantic import ValidationError
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 
 from core.agent.entities import AgentToolEntity
 from core.agent.plugin_entities import AgentStrategyParameter
@@ -228,7 +228,7 @@ class AgentRuntimeSupport:
         if conversation_id is None:
             return None
 
-        with Session(db.engine, expire_on_commit=False) as session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             stmt = select(Conversation).where(Conversation.app_id == app_id, Conversation.id == conversation_id)
             conversation = session.scalar(stmt)
             if not conversation:

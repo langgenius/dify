@@ -6,7 +6,7 @@ from collections.abc import Iterable, Sequence
 from celery import group
 from sqlalchemy import ColumnElement, and_, func, or_, select
 from sqlalchemy.engine.row import Row
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 
 import app
 from configs import dify_config
@@ -59,7 +59,7 @@ def trigger_provider_refresh() -> None:
     batch_size: int = int(dify_config.TRIGGER_PROVIDER_REFRESH_BATCH_SIZE)
     lock_ttl: int = max(300, int(dify_config.TRIGGER_PROVIDER_SUBSCRIPTION_THRESHOLD_SECONDS))
 
-    with Session(db.engine, expire_on_commit=False) as session:
+    with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
         filter: ColumnElement[bool] = _build_due_filter(now_ts=now)
         total_due: int = int(session.scalar(statement=select(func.count()).where(filter)) or 0)
         logger.info("Trigger refresh scan start: due=%d", total_due)

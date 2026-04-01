@@ -11,7 +11,7 @@ import sqlalchemy as sa
 from graphon.runtime import VariablePool
 from pydantic import TypeAdapter
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 from typing_extensions import TypedDict
 from yarl import URL
 
@@ -244,7 +244,7 @@ class ToolManager:
                 # fallback to the default provider
                 if builtin_provider is None:
                     # use the default provider
-                    with Session(db.engine) as session:
+                    with sessionmaker(db.engine).begin() as session:
                         builtin_provider = session.scalar(
                             sa.select(BuiltinToolProvider)
                             .where(
@@ -354,7 +354,7 @@ class ToolManager:
             workflow_provider_stmt = select(WorkflowToolProvider).where(
                 WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == provider_id
             )
-            with Session(db.engine, expire_on_commit=False) as session, session.begin():
+            with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
                 workflow_provider = session.scalar(workflow_provider_stmt)
 
             if workflow_provider is None:
@@ -685,7 +685,7 @@ class ToolManager:
                 ) ranked WHERE rn = 1
                 """
 
-        with Session(db.engine, autoflush=False) as session:
+        with sessionmaker(db.engine, autoflush=False).begin() as session:
             ids = [row.id for row in session.execute(sa.text(sql), {"tenant_id": tenant_id}).all()]
             return session.query(BuiltinToolProvider).where(BuiltinToolProvider.id.in_(ids)).all()
 
@@ -702,7 +702,7 @@ class ToolManager:
             filters.append(typ)
 
         # Use a single session for all database operations to reduce connection overhead
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             if "builtin" in filters:
                 builtin_providers = list(cls.list_builtin_providers(tenant_id))
 
@@ -857,7 +857,7 @@ class ToolManager:
 
         :return: the provider controller, the credentials
         """
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             mcp_service = MCPToolManageService(session=session)
             try:
                 provider = mcp_service.get_provider(server_identifier=provider_id, tenant_id=tenant_id)
@@ -1000,7 +1000,7 @@ class ToolManager:
     @classmethod
     def generate_mcp_tool_icon_url(cls, tenant_id: str, provider_id: str) -> EmojiIconDict | dict[str, str] | str:
         try:
-            with Session(db.engine) as session:
+            with sessionmaker(db.engine).begin() as session:
                 mcp_service = MCPToolManageService(session=session)
                 try:
                     mcp_provider = mcp_service.get_provider_entity(

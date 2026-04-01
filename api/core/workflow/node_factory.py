@@ -21,7 +21,7 @@ from graphon.nodes.llm.entities import LLMNodeData
 from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
 from graphon.nodes.question_classifier.entities import QuestionClassifierNodeData
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
@@ -204,7 +204,7 @@ def fetch_memory(
     if not node_data_memory or not conversation_id:
         return None
 
-    with Session(db.engine, expire_on_commit=False) as session:
+    with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
         stmt = select(Conversation).where(Conversation.app_id == app_id, Conversation.id == conversation_id)
         conversation = session.scalar(stmt)
         if not conversation:

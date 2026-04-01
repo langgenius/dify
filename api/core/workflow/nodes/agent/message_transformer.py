@@ -16,7 +16,7 @@ from graphon.node_events import (
 )
 from graphon.variables.segments import ArrayFileSegment
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 
 from core.app.file_access import DatabaseFileAccessController
 from core.tools.entities.tool_entities import ToolInvokeMessage
@@ -81,7 +81,7 @@ class AgentMessageTransformer:
                 if not isinstance(tool_file_id, str) or not tool_file_id:
                     raise ToolFileNotFoundError("missing tool_file_id metadata")
 
-                with Session(db.engine) as session:
+                with sessionmaker(db.engine).begin() as session:
                     stmt = select(ToolFile).where(ToolFile.id == tool_file_id)
                     tool_file = session.scalar(stmt)
                     if tool_file is None:
@@ -106,7 +106,7 @@ class AgentMessageTransformer:
                 tool_file_id = message.meta.get("tool_file_id")
                 if not isinstance(tool_file_id, str) or not tool_file_id:
                     raise ToolFileNotFoundError("missing tool_file_id metadata")
-                with Session(db.engine) as session:
+                with sessionmaker(db.engine).begin() as session:
                     stmt = select(ToolFile).where(ToolFile.id == tool_file_id)
                     tool_file = session.scalar(stmt)
                     if tool_file is None:

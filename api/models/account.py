@@ -8,7 +8,7 @@ from uuid import uuid4
 import sqlalchemy as sa
 from flask_login import UserMixin
 from sqlalchemy import DateTime, String, func, select
-from sqlalchemy.orm import Mapped, Session, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, sessionmaker
 from typing_extensions import deprecated
 
 from .base import TypeBase
@@ -128,7 +128,7 @@ class Account(UserMixin, TypeBase):
 
     @current_tenant.setter
     def current_tenant(self, tenant: "Tenant"):
-        with Session(db.engine, expire_on_commit=False) as session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             tenant_join_query = select(TenantAccountJoin).where(
                 TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == self.id
             )
@@ -160,7 +160,7 @@ class Account(UserMixin, TypeBase):
             .where(TenantAccountJoin.tenant_id == Tenant.id)
             .where(TenantAccountJoin.account_id == self.id)
         )
-        with Session(db.engine, expire_on_commit=False) as session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             tenant_account_join = session.execute(query).first()
             if not tenant_account_join:
                 return

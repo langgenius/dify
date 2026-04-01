@@ -13,7 +13,7 @@ from datetime import datetime
 
 import click
 from sqlalchemy import update
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 
 import app
 from extensions.ext_database import db
@@ -82,7 +82,7 @@ def batch_update_api_token_last_used():
 
         # Update each token in its own short transaction to avoid long transactions
         for token, scope, usage_time in token_entries:
-            with Session(db.engine, expire_on_commit=False) as session, session.begin():
+            with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
                 stmt = (
                     update(ApiToken)
                     .where(

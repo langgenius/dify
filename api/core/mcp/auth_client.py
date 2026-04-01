@@ -9,7 +9,7 @@ import logging
 from collections.abc import Callable
 from typing import Any
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.entities.mcp_provider import MCPProviderEntity
 from core.mcp.error import MCPAuthError
@@ -86,7 +86,7 @@ class MCPClientWithAuthRetry(MCPClient):
 
             from services.tools.mcp_tools_manage_service import MCPToolManageService
 
-            with Session(db.engine) as session, session.begin():
+            with sessionmaker(db.engine).begin() as session:
                 mcp_service = MCPToolManageService(session=session)
 
                 # Perform authentication using the service's auth method

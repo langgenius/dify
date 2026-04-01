@@ -6,7 +6,7 @@ from typing import Any, cast
 from pydantic import BaseModel
 from sqlalchemy import update
 from sqlalchemy.engine import CursorResult
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity, ChatAppGenerateEntity
@@ -238,7 +238,7 @@ def _execute_provider_updates(updates_to_perform: list[_ProviderUpdateOperation]
 
     # Use SQLAlchemy's context manager for transaction management
     # This automatically handles commit/rollback
-    with Session(db.engine) as session, session.begin():
+    with sessionmaker(db.engine).begin() as session:
         # Use a single transaction for all updates
         for update_operation in updates_to_perform:
             filters = update_operation.filters

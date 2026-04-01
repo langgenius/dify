@@ -223,7 +223,7 @@ class TencentDataTrace(BaseTraceInstance):
         try:
             session_maker = sessionmaker(bind=db.engine)
 
-            with Session(db.engine, expire_on_commit=False) as session:
+            with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
                 app_id = trace_info.metadata.get("app_id")
                 if not app_id:
                     raise ValueError("No app_id found in trace_info metadata")

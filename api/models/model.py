@@ -18,7 +18,7 @@ from graphon.enums import WorkflowExecutionStatus
 from graphon.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
 from graphon.file import helpers as file_helpers
 from sqlalchemy import BigInteger, Float, Index, PrimaryKeyConstraint, String, exists, func, select, text
-from sqlalchemy.orm import Mapped, Session, mapped_column, sessionmaker
+from sqlalchemy.orm import Mapped, mapped_column, sessionmaker
 
 from configs import dify_config
 from constants import DEFAULT_FILE_NUMBER_LIMITS
@@ -1319,7 +1319,7 @@ class Conversation(Base):
 
     @property
     def app(self) -> App | None:
-        with Session(db.engine, expire_on_commit=False) as session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             return session.scalar(select(App).where(App.id == self.app_id))
 
     @property

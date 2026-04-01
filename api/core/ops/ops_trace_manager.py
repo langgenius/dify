@@ -13,7 +13,7 @@ from cachetools import LRUCache
 from flask import current_app
 from pydantic import TypeAdapter
 from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
 from core.helper.encrypter import batch_decrypt_token, encrypt_token, obfuscated_token
 from core.ops.entities.config_entity import (
@@ -809,7 +809,7 @@ class TraceTask:
         file_list = workflow_run_inputs.get("sys.file") or []
         query = workflow_run_inputs.get("query") or workflow_run_inputs.get("sys.query") or ""
 
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             # get workflow_app_log_id
             workflow_app_log_data_stmt = select(WorkflowAppLog.id).where(
                 WorkflowAppLog.tenant_id == tenant_id,

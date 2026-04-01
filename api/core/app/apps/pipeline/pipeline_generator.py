@@ -14,7 +14,7 @@ from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
 from pydantic import ValidationError
 from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
 import contexts
 from configs import dify_config
@@ -116,7 +116,7 @@ class PipelineGenerator(BaseAppGenerator):
     ) -> Mapping[str, Any] | Generator[Mapping | str, None, None] | None:
         # Add null check for dataset
 
-        with Session(db.engine, expire_on_commit=False) as session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             dataset = pipeline.retrieve_dataset(session)
             if not dataset:
                 raise ValueError("Pipeline dataset is required")
@@ -376,7 +376,7 @@ class PipelineGenerator(BaseAppGenerator):
             pipeline=pipeline, workflow=workflow, start_node_id=args.get("start_node_id", "shared")
         )
 
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             dataset = pipeline.retrieve_dataset(session)
             if not dataset:
                 raise ValueError("Pipeline dataset is required")
@@ -468,7 +468,7 @@ class PipelineGenerator(BaseAppGenerator):
         if args.get("inputs") is None:
             raise ValueError("inputs is required")
 
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             dataset = pipeline.retrieve_dataset(session)
             if not dataset:
                 raise ValueError("Pipeline dataset is required")
@@ -561,7 +561,7 @@ class PipelineGenerator(BaseAppGenerator):
 
         with preserve_flask_contexts(flask_app, context_vars=context):
             try:
-                with Session(db.engine, expire_on_commit=False) as session:
+                with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
                     workflow = session.scalar(
                         select(Workflow).where(
                             Workflow.tenant_id == application_generate_entity.app_config.tenant_id,
