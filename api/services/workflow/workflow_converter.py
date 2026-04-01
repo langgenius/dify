@@ -223,7 +223,9 @@ class WorkflowConverter:
         app_config: EasyUIBasedAppConfig
         # Normalize legacy apps: if is_agent flag is set but mode is not AGENT_CHAT,
         # treat as AGENT_CHAT for backward compatibility.
-        effective_mode = AppMode.AGENT_CHAT if app_model.is_agent and app_mode_enum != AppMode.AGENT_CHAT else app_mode_enum
+        effective_mode = (
+            AppMode.AGENT_CHAT if app_model.is_agent and app_mode_enum != AppMode.AGENT_CHAT else app_mode_enum
+        )
         match effective_mode:
             case AppMode.AGENT_CHAT:
                 app_model.mode = AppMode.AGENT_CHAT

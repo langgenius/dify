@@ -160,7 +160,9 @@ def handle(sender: Message, **kwargs):
                             provider_type=ProviderType.SYSTEM.value,
                             quota_type=provider_configuration.system_configuration.current_quota_type,
                         ),
-                        values=_ProviderUpdateValues(quota_used=Provider.quota_used + used_quota, last_used=current_time),
+                        values=_ProviderUpdateValues(
+                            quota_used=Provider.quota_used + used_quota, last_used=current_time
+                        ),
                         additional_filters=_ProviderUpdateAdditionalFilters(
                             quota_limit_check=True  # Provider.quota_limit > Provider.quota_used
                         ),

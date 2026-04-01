@@ -230,7 +230,9 @@ class AppService:
                         # override tool parameters
                         tool["tool_parameters"] = masked_parameter
                     except Exception:
-                        logger.exception("Failed to mask agent tool parameters for tool %s", agent_tool_entity.tool_name)
+                        logger.exception(
+                            "Failed to mask agent tool parameters for tool %s", agent_tool_entity.tool_name
+                        )
 
                 # override agent mode
                 if model_config:
@@ -249,7 +251,14 @@ class AppService:
                         return model_config
 
                 app = ModifiedApp(app)
-            case AppMode.COMPLETION | AppMode.CHAT | AppMode.WORKFLOW | AppMode.ADVANCED_CHAT | AppMode.CHANNEL | AppMode.RAG_PIPELINE:
+            case (
+                AppMode.COMPLETION
+                | AppMode.CHAT
+                | AppMode.WORKFLOW
+                | AppMode.ADVANCED_CHAT
+                | AppMode.CHANNEL
+                | AppMode.RAG_PIPELINE
+            ):
                 pass
 
         return app

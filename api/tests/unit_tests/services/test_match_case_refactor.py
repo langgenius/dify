@@ -4,9 +4,10 @@ Tests for match/case exhaustive enum refactoring.
 Validates that all match/case blocks covering AppMode and ProviderQuotaType
 correctly handle every enum value and raise appropriate errors for unsupported ones.
 """
-import pytest
-from unittest.mock import MagicMock, patch
+
 from enum import StrEnum
+
+import pytest
 
 
 # --- AppMode enum (mirrored from dify for standalone testing) ---
@@ -34,6 +35,7 @@ class TestAppModelConfigServiceMatchCase:
 
     def _make_service(self):
         """Import the refactored module's validate_configuration logic inline for testing."""
+
         # We test the match/case logic directly
         def validate_configuration(app_mode: AppMode):
             match app_mode:
@@ -45,6 +47,7 @@ class TestAppModelConfigServiceMatchCase:
                     return "completion_validated"
                 case AppMode.WORKFLOW | AppMode.ADVANCED_CHAT | AppMode.CHANNEL | AppMode.RAG_PIPELINE:
                     raise ValueError(f"Unsupported app mode for config validation: {app_mode}")
+
         return validate_configuration
 
     def test_chat_mode(self):
@@ -135,6 +138,7 @@ class TestGenerateSingleIterationMatchCase:
                     return "workflow_iteration"
                 case AppMode.COMPLETION | AppMode.CHAT | AppMode.AGENT_CHAT | AppMode.CHANNEL | AppMode.RAG_PIPELINE:
                     raise ValueError(f"Invalid app mode {mode}")
+
         return dispatch
 
     def test_advanced_chat(self):
@@ -163,9 +167,16 @@ class TestAdvancedPromptTemplateMatchCase:
                     return {"chat": True}
                 case AppMode.COMPLETION:
                     return {"completion": True}
-                case AppMode.WORKFLOW | AppMode.ADVANCED_CHAT | AppMode.AGENT_CHAT | AppMode.CHANNEL | AppMode.RAG_PIPELINE:
+                case (
+                    AppMode.WORKFLOW
+                    | AppMode.ADVANCED_CHAT
+                    | AppMode.AGENT_CHAT
+                    | AppMode.CHANNEL
+                    | AppMode.RAG_PIPELINE
+                ):
                     pass
             return {}
+
         return get_common_prompt
 
     def test_chat(self):
@@ -176,7 +187,13 @@ class TestAdvancedPromptTemplateMatchCase:
 
     def test_unsupported_returns_empty(self):
         svc = self._make_common_prompt()
-        for mode in [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT, AppMode.AGENT_CHAT, AppMode.CHANNEL, AppMode.RAG_PIPELINE]:
+        for mode in [
+            AppMode.WORKFLOW,
+            AppMode.ADVANCED_CHAT,
+            AppMode.AGENT_CHAT,
+            AppMode.CHANNEL,
+            AppMode.RAG_PIPELINE,
+        ]:
             assert svc(mode) == {}
 
 
@@ -195,6 +212,7 @@ class TestValidateFeaturesStructureMatchCase:
                     return "workflow_features"
                 case AppMode.CHAT | AppMode.COMPLETION | AppMode.AGENT_CHAT | AppMode.CHANNEL | AppMode.RAG_PIPELINE:
                     raise ValueError(f"Invalid app mode: {mode}")
+
         return validate
 
     def test_advanced_chat(self):
@@ -225,6 +243,7 @@ class TestGetNewAppModeMatchCase:
                     return AppMode.ADVANCED_CHAT
                 case AppMode.WORKFLOW | AppMode.ADVANCED_CHAT | AppMode.CHANNEL | AppMode.RAG_PIPELINE:
                     raise ValueError(f"Cannot convert app mode {mode} to workflow")
+
         return get_new_app_mode
 
     def test_completion_to_workflow(self):
@@ -261,6 +280,7 @@ class TestConvertToAppConfigMatchCase:
                     return "completion_config"
                 case AppMode.WORKFLOW | AppMode.ADVANCED_CHAT | AppMode.CHANNEL | AppMode.RAG_PIPELINE:
                     raise ValueError("Invalid app mode")
+
         return convert
 
     def test_agent_chat(self):
@@ -295,6 +315,7 @@ class TestGetAppMetaMatchCase:
                     return {"source": "workflow"}
                 case AppMode.CHAT | AppMode.COMPLETION | AppMode.AGENT_CHAT | AppMode.CHANNEL | AppMode.RAG_PIPELINE:
                     return {"source": "model_config"}
+
         return get_meta
 
     def test_advanced_chat_uses_workflow(self):
@@ -328,6 +349,7 @@ class TestProviderQuotaTypeMatchCase:
                     return ("credit_pool", "paid")
                 case ProviderQuotaType.FREE:
                     return ("quota_update", "free")
+
         return handle_quota
 
     def test_trial(self):
