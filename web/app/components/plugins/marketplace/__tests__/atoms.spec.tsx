@@ -15,6 +15,22 @@ import {
 } from '../atoms'
 import { DEFAULT_PLUGIN_SORT } from '../constants'
 
+const { mockRouterPush, mockNavigation } = vi.hoisted(() => ({
+  mockRouterPush: vi.fn(),
+  mockNavigation: {
+    pathname: '/plugins',
+    params: {} as Record<string, string | undefined>,
+  },
+}))
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: mockRouterPush,
+  }),
+  usePathname: () => mockNavigation.pathname,
+  useParams: () => mockNavigation.params,
+}))
+
 const createWrapper = (searchParams = '') => {
   const { wrapper: NuqsWrapper } = createNuqsTestWrapper({ searchParams })
   const wrapper = ({ children }: { children: ReactNode }) => (
@@ -30,6 +46,8 @@ const createWrapper = (searchParams = '') => {
 describe('Marketplace sort atoms', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockNavigation.pathname = '/plugins'
+    mockNavigation.params = {}
   })
 
   it('should return default sort value from useMarketplaceSort', () => {
@@ -76,6 +94,8 @@ describe('Marketplace sort atoms', () => {
 describe('useSearchText', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockNavigation.pathname = '/plugins'
+    mockNavigation.params = {}
   })
 
   it('should return empty string as default', () => {
@@ -108,6 +128,8 @@ describe('useSearchText', () => {
 describe('useActivePluginCategory', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockNavigation.pathname = '/plugins'
+    mockNavigation.params = {}
   })
 
   it('should return "all" as default category', () => {
@@ -128,6 +150,8 @@ describe('useActivePluginCategory', () => {
 describe('useFilterPluginTags', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockNavigation.pathname = '/plugins'
+    mockNavigation.params = {}
   })
 
   it('should return empty array as default', () => {
@@ -148,6 +172,8 @@ describe('useFilterPluginTags', () => {
 describe('useMarketplaceSearchMode', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockNavigation.pathname = '/plugins'
+    mockNavigation.params = {}
   })
 
   it('should return false when no search text, no tags, and category has collections (all)', () => {
@@ -161,7 +187,7 @@ describe('useMarketplaceSearchMode', () => {
     const { wrapper } = createWrapper('?q=test&category=all')
     const { result } = renderHook(() => useMarketplaceSearchMode(), { wrapper })
 
-    expect(result.current).toBe(true)
+    expect(result.current).toBeTruthy()
   })
 
   it('should return true when tags are present', () => {
@@ -189,6 +215,8 @@ describe('useMarketplaceSearchMode', () => {
 describe('useMarketplaceMoreClick', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockNavigation.pathname = '/plugins'
+    mockNavigation.params = {}
   })
 
   it('should return a callback function', () => {

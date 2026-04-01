@@ -21,6 +21,11 @@ const { mockMarketplaceData } = vi.hoisted(() => ({
 
 vi.mock('../state', () => ({
   useMarketplaceData: () => mockMarketplaceData,
+  isPluginsData: (data: typeof mockMarketplaceData) => data.creationType === 'plugins',
+}))
+
+vi.mock('../atoms', () => ({
+  useMarketplaceSearchMode: () => false,
 }))
 
 vi.mock('@/app/components/base/loading', () => ({

@@ -109,7 +109,7 @@ describe('getPluginLinkInMarketplace', () => {
     const { getPluginLinkInMarketplace } = await import('../utils')
     const plugin = createMockPlugin({ org: 'test-org', name: 'test-plugin', type: 'plugin' })
     const link = getPluginLinkInMarketplace(plugin)
-    expect(link).toBe('https://marketplace.dify.ai/plugins/test-org/test-plugin')
+    expect(link).toBe('https://marketplace.dify.ai/plugin/test-org/test-plugin')
   })
 
   it('should return correct link for bundle', async () => {
@@ -125,7 +125,7 @@ describe('getPluginDetailLinkInMarketplace', () => {
     const { getPluginDetailLinkInMarketplace } = await import('../utils')
     const plugin = createMockPlugin({ org: 'test-org', name: 'test-plugin', type: 'plugin' })
     const link = getPluginDetailLinkInMarketplace(plugin)
-    expect(link).toBe('/plugins/test-org/test-plugin')
+    expect(link).toBe('/plugin/test-org/test-plugin')
   })
 
   it('should return correct detail link for bundle', async () => {
@@ -149,7 +149,7 @@ describe('getPluginCondition', () => {
 
   it('should return category condition for agent', async () => {
     const { getPluginCondition } = await import('../utils')
-    expect(getPluginCondition(PluginCategoryEnum.agent)).toBe('category=agent')
+    expect(getPluginCondition(PluginCategoryEnum.agent)).toBe('category=agent-strategy')
   })
 
   it('should return category condition for datasource', async () => {

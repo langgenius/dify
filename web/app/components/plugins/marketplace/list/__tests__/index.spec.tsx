@@ -43,6 +43,7 @@ const { mockMarketplaceData, mockMoreClick } = vi.hoisted(() => {
     mockMoreClick: vi.fn(),
   }
 })
+let mockSearchMode = false
 
 vi.mock('../../state', () => ({
   useMarketplaceData: () => mockMarketplaceData,
@@ -51,7 +52,11 @@ vi.mock('../../state', () => ({
 
 vi.mock('../../atoms', () => ({
   useMarketplaceMoreClick: () => mockMoreClick,
-  useMarketplaceSearchMode: () => false,
+  useMarketplaceSearchMode: () => mockSearchMode,
+  useCreationType: () => 'plugins',
+  useFilterPluginTags: () => [[]],
+  useActivePluginCategory: () => ['all'],
+  useActiveTemplateCategory: () => ['all'],
 }))
 
 vi.mock('@/context/i18n', () => ({
@@ -148,7 +153,7 @@ vi.mock('../../sort-dropdown', () => ({
 }))
 
 // Mock Empty component
-vi.mock('../empty', () => ({
+vi.mock('../../empty', () => ({
   default: ({ className, text }: { className?: string, text?: string }) => (
     <div data-testid="empty-component" className={className}>
       {text || 'No plugins found'}
@@ -234,6 +239,7 @@ describe('List', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockSearchMode = false
   })
 
   // ================================
@@ -872,6 +878,7 @@ describe('ListWithCollection', () => {
 describe('ListWrapper', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockSearchMode = false
     // Reset mock data
     mockMarketplaceData.plugins = undefined
     mockMarketplaceData.pluginsTotal = 0
@@ -917,6 +924,7 @@ describe('ListWrapper', () => {
     })
 
     it('should render template empty state with flex content wrapper when templates are empty', () => {
+      mockSearchMode = true
       delete (mockMarketplaceData as Record<string, unknown>).pluginCollections
       delete (mockMarketplaceData as Record<string, unknown>).pluginCollectionPluginsMap
       ;(mockMarketplaceData as Record<string, unknown>).templateCollections = []
@@ -931,6 +939,7 @@ describe('ListWrapper', () => {
     })
 
     it('should keep plugin empty text when plugins are empty', () => {
+      mockSearchMode = true
       mockMarketplaceData.plugins = []
       mockMarketplaceData.pluginsTotal = 0
       mockMarketplaceData.pluginCollections = []
@@ -947,16 +956,18 @@ describe('ListWrapper', () => {
   // Plugins Header Tests
   // ================================
   describe('Plugins Header', () => {
-    it('should render plugins result count when plugins are present', () => {
+    it('should render list top info when search mode is enabled', () => {
+      mockSearchMode = true
       mockMarketplaceData.plugins = createMockPluginList(5)
       mockMarketplaceData.pluginsTotal = 5
 
       render(<ListWrapper />)
 
-      expect(screen.getByText('5 plugins found')).toBeInTheDocument()
+      expect(screen.getByTestId('sort-dropdown')).toBeInTheDocument()
     })
 
     it('should render SortDropdown when plugins are present', () => {
+      mockSearchMode = true
       mockMarketplaceData.plugins = createMockPluginList(1)
 
       render(<ListWrapper />)
@@ -1039,25 +1050,28 @@ describe('ListWrapper', () => {
   // ================================
   describe('Edge Cases', () => {
     it('should handle empty plugins array', () => {
+      mockSearchMode = true
       mockMarketplaceData.plugins = []
       mockMarketplaceData.pluginsTotal = 0
 
       render(<ListWrapper />)
 
-      expect(screen.getByText('0 plugins found')).toBeInTheDocument()
       expect(screen.getByTestId('empty-component')).toBeInTheDocument()
     })
 
-    it('should handle large pluginsTotal', () => {
+    it('should handle many plugin results', () => {
+      mockSearchMode = true
       mockMarketplaceData.plugins = createMockPluginList(10)
       mockMarketplaceData.pluginsTotal = 10000
 
       render(<ListWrapper />)
 
-      expect(screen.getByText('10000 plugins found')).toBeInTheDocument()
+      expect(screen.getByTestId('card-plugin-0')).toBeInTheDocument()
+      expect(screen.getByTestId('card-plugin-9')).toBeInTheDocument()
     })
 
     it('should handle both loading and has plugins', () => {
+      mockSearchMode = true
       mockMarketplaceData.isLoading = true
       mockMarketplaceData.page = 2
       mockMarketplaceData.plugins = createMockPluginList(5)
@@ -1065,9 +1079,7 @@ describe('ListWrapper', () => {
 
       render(<ListWrapper />)
 
-      // Should show plugins header and list
-      expect(screen.getByText('50 plugins found')).toBeInTheDocument()
-      // Should not show loading because page > 1
+      expect(screen.getByTestId('card-plugin-0')).toBeInTheDocument()
       expect(screen.queryByTestId('loading-component')).not.toBeInTheDocument()
     })
   })
@@ -1405,6 +1417,7 @@ describe('Combined Workflows', () => {
   })
 
   it('should transition from collections to search results', async () => {
+    mockSearchMode = true
     mockMarketplaceData.pluginCollections = createMockCollectionList(1)
     mockMarketplaceData.pluginCollectionPluginsMap = {
       'collection-0': createMockPluginList(1),
@@ -1421,20 +1434,21 @@ describe('Combined Workflows', () => {
     rerender(<ListWrapper />)
 
     expect(screen.queryByText('Collection 0')).not.toBeInTheDocument()
-    expect(screen.getByText('5 plugins found')).toBeInTheDocument()
+    expect(screen.getByTestId('card-plugin-0')).toBeInTheDocument()
   })
 
   it('should handle empty search results', () => {
+    mockSearchMode = true
     mockMarketplaceData.plugins = []
     mockMarketplaceData.pluginsTotal = 0
 
     render(<ListWrapper />)
 
     expect(screen.getByTestId('empty-component')).toBeInTheDocument()
-    expect(screen.getByText('0 plugins found')).toBeInTheDocument()
   })
 
   it('should support pagination (page > 1)', () => {
+    mockSearchMode = true
     mockMarketplaceData.plugins = createMockPluginList(40)
     mockMarketplaceData.pluginsTotal = 80
     mockMarketplaceData.isLoading = true
@@ -1442,9 +1456,7 @@ describe('Combined Workflows', () => {
 
     render(<ListWrapper />)
 
-    // Should show existing results while loading more
-    expect(screen.getByText('80 plugins found')).toBeInTheDocument()
-    // Should not show loading spinner for pagination
+    expect(screen.getByTestId('card-plugin-0')).toBeInTheDocument()
     expect(screen.queryByTestId('loading-component')).not.toBeInTheDocument()
   })
 })

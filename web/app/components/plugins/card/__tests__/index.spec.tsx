@@ -181,7 +181,7 @@ describe('Card', () => {
       render(<Card payload={plugin} />)
 
       expect(screen.getByText('my-org')).toBeInTheDocument()
-      expect(screen.getByText('my-plugin')).toBeInTheDocument()
+      expect(screen.queryByText('my-plugin')).not.toBeInTheDocument()
     })
 
     it('should render plugin icon', () => {
@@ -596,7 +596,7 @@ describe('Card', () => {
 
       render(<Card payload={plugin} />)
 
-      expect(screen.getByText('plugin-with-special-chars!@#$%')).toBeInTheDocument()
+      expect(screen.getByText('org<script>alert(1)</script>')).toBeInTheDocument()
     })
 
     it('should handle very long title', () => {

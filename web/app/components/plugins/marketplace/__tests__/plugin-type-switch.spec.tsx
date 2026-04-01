@@ -5,6 +5,22 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { PluginCategorySwitch } from '../category-switch/plugin'
 
+const { mockRouterPush, mockNavigation } = vi.hoisted(() => ({
+  mockRouterPush: vi.fn(),
+  mockNavigation: {
+    pathname: '/plugins',
+    params: {} as Record<string, string | undefined>,
+  },
+}))
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: mockRouterPush,
+  }),
+  usePathname: () => mockNavigation.pathname,
+  useParams: () => mockNavigation.params,
+}))
+
 vi.mock('#i18n', () => ({
   useTranslation: () => ({
     t: (key: string) => {
@@ -38,6 +54,8 @@ const createWrapper = (searchParams = '') => {
 describe('PluginCategorySwitch', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockNavigation.pathname = '/plugins'
+    mockNavigation.params = {}
   })
 
   it('should render all category options', () => {

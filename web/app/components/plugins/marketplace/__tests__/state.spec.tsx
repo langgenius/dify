@@ -5,6 +5,10 @@ import { Provider as JotaiProvider } from 'jotai'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 
+vi.mock('ahooks', () => ({
+  useDebounce: <T,>(value: T) => value,
+}))
+
 vi.mock('@/config', () => ({
   API_PREFIX: '/api',
   APP_VERSION: '1.0.0',
@@ -19,19 +23,38 @@ vi.mock('@/utils/var', () => ({
 const mockCollections = vi.fn()
 const mockCollectionPlugins = vi.fn()
 const mockSearchAdvanced = vi.fn()
+const { mockRouterPush, mockNavigation } = vi.hoisted(() => ({
+  mockRouterPush: vi.fn(),
+  mockNavigation: {
+    pathname: '/plugins',
+    params: {} as Record<string, string | undefined>,
+  },
+}))
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: mockRouterPush,
+  }),
+  usePathname: () => mockNavigation.pathname,
+  useParams: () => mockNavigation.params,
+}))
 
 vi.mock('@/service/client', () => ({
   marketplaceClient: {
-    collections: (...args: unknown[]) => mockCollections(...args),
-    collectionPlugins: (...args: unknown[]) => mockCollectionPlugins(...args),
-    searchAdvanced: (...args: unknown[]) => mockSearchAdvanced(...args),
+    plugins: {
+      collections: (...args: unknown[]) => mockCollections(...args),
+      collectionPlugins: (...args: unknown[]) => mockCollectionPlugins(...args),
+      searchAdvanced: (...args: unknown[]) => mockSearchAdvanced(...args),
+    },
   },
   marketplaceQuery: {
-    collections: {
-      queryKey: (params: unknown) => ['marketplace', 'collections', params],
-    },
-    searchAdvanced: {
-      queryKey: (params: unknown) => ['marketplace', 'searchAdvanced', params],
+    plugins: {
+      collections: {
+        queryKey: (params: unknown) => ['marketplace', 'plugins', 'collections', params],
+      },
+      searchAdvanced: {
+        queryKey: (params: unknown) => ['marketplace', 'plugins', 'searchAdvanced', params],
+      },
     },
   },
 }))
@@ -58,6 +81,8 @@ const createWrapper = (searchParams = '') => {
 describe('usePluginsMarketplaceData', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockNavigation.pathname = '/plugins'
+    mockNavigation.params = {}
 
     mockCollections.mockResolvedValue({
       data: {

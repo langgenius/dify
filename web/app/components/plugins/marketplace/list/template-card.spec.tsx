@@ -44,9 +44,8 @@ vi.mock('next/link', () => ({
   ),
 }))
 
-// Mock next-themes
-vi.mock('next-themes', () => ({
-  useTheme: () => ({ theme: 'light' }),
+vi.mock('@/hooks/use-theme', () => ({
+  default: () => ({ theme: 'light' }),
 }))
 
 // Mock marketplace utils
@@ -66,16 +65,20 @@ vi.mock('@/app/components/plugins/card/base/corner-mark', () => ({
   default: ({ text }: { text: string }) => <span data-testid="corner-mark">{text}</span>,
 }))
 
-// Mock marketplace utils (getTemplateIconUrl)
-vi.mock('../utils', () => ({
-  getTemplateIconUrl: (template: { id: string, icon?: string, icon_file_key?: string }): string => {
-    if (template.icon?.startsWith('http'))
-      return template.icon
-    if (template.icon_file_key)
-      return `https://marketplace.dify.ai/api/v1/templates/${template.id}/icon`
-    return ''
-  },
-}))
+// Mock marketplace utils (getTemplateIconUrl) while keeping other exports intact.
+vi.mock('../utils', async () => {
+  const actual = await vi.importActual<typeof import('../utils')>('../utils')
+  return {
+    ...actual,
+    getTemplateIconUrl: (template: { id: string, icon?: string, icon_file_key?: string }): string => {
+      if (template.icon?.startsWith('http'))
+        return template.icon
+      if (template.icon_file_key)
+        return `https://marketplace.dify.ai/api/v1/templates/${template.id}/icon`
+      return ''
+    },
+  }
+})
 
 // ================================
 // Test Data Factories

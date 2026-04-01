@@ -41,10 +41,18 @@ vi.mock('ahooks', () => ({
   useDebounce: (value: string) => value,
 }))
 
+const mockRouterPush = vi.fn()
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: mockRouterPush,
+  }),
+}))
+
 vi.mock('jotai', async () => {
   const actual = await vi.importActual<typeof import('jotai')>('jotai')
   return {
     ...actual,
+    useAtomValue: () => false,
     useSetAtom: () => vi.fn(),
   }
 })
@@ -61,6 +69,7 @@ vi.mock('@/hooks/use-i18n', () => ({
 const {
   mockSearchText,
   mockHandleSearchTextChange,
+  mockSetSearchTab,
   mockFilterPluginTags,
   mockHandleFilterPluginTagsChange,
   mockActivePluginCategory,
@@ -69,6 +78,7 @@ const {
   return {
     mockSearchText: '',
     mockHandleSearchTextChange: vi.fn(),
+    mockSetSearchTab: vi.fn(),
     mockFilterPluginTags: [] as string[],
     mockHandleFilterPluginTagsChange: vi.fn(),
     mockActivePluginCategory: 'all',
@@ -87,8 +97,9 @@ vi.mock('../../atoms', () => ({
   useMarketplaceTemplateSortValue: () => ({ sortBy: 'usage_count', sortOrder: 'DESC' }),
   useActiveSort: () => [mockSortValue, vi.fn()],
   useActiveSortValue: () => mockSortValue,
-  useCreationType: () => ['plugins', vi.fn()],
-  useSearchTab: () => ['', vi.fn()],
+  useCreationType: () => 'plugins',
+  useSearchTab: () => ['', mockSetSearchTab],
+  isMarketplacePlatformAtom: {},
   searchModeAtom: {},
 }))
 
@@ -135,7 +146,7 @@ vi.mock('@/app/components/plugins/hooks', () => ({
 }))
 
 let mockDropdownPlugins: Plugin[] = []
-vi.mock('../query', () => ({
+vi.mock('../../query', () => ({
   useMarketplaceUnifiedSearch: () => ({
     data: {
       plugins: { items: mockDropdownPlugins, total: mockDropdownPlugins.length },
@@ -233,6 +244,7 @@ describe('SearchBox', () => {
     vi.clearAllMocks()
     mockPortalOpenState = false
     mockDropdownPlugins = []
+    mockRouterPush.mockReset()
   })
 
   // ================================
@@ -630,6 +642,7 @@ describe('SearchBoxWrapper', () => {
     vi.clearAllMocks()
     mockPortalOpenState = false
     mockDropdownPlugins = []
+    mockRouterPush.mockReset()
   })
 
   describe('Rendering', () => {
@@ -639,17 +652,10 @@ describe('SearchBoxWrapper', () => {
       expect(screen.getByRole('textbox')).toBeInTheDocument()
     })
 
-    it('should render in marketplace mode', () => {
-      const { container } = render(<SearchBoxWrapper />)
+    it('should apply custom wrapper class to the input wrapper', () => {
+      const { container } = render(<SearchBoxWrapper wrapperClassName="custom-wrapper" />)
 
-      expect(container.querySelector('.rounded-xl')).toBeInTheDocument()
-    })
-
-    it('should apply correct wrapper classes', () => {
-      const { container } = render(<SearchBoxWrapper />)
-
-      // Check for z-[11] class from wrapper
-      expect(container.querySelector('.z-\\[11\\]')).toBeInTheDocument()
+      expect(container.querySelector('.custom-wrapper')).toBeInTheDocument()
     })
   })
 
@@ -671,6 +677,7 @@ describe('SearchBoxWrapper', () => {
       fireEvent.keyDown(input, { key: 'Enter' })
 
       expect(mockHandleSearchTextChange).toHaveBeenCalledWith('new search')
+      expect(mockSetSearchTab).toHaveBeenCalledWith('all')
     })
 
     it('should clear committed search when input is emptied and blurred', () => {
@@ -702,7 +709,7 @@ describe('SearchBoxWrapper', () => {
     it('should use translation for placeholder', () => {
       render(<SearchBoxWrapper />)
 
-      expect(screen.getByPlaceholderText('Search plugins')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('searchInMarketplace')).toBeInTheDocument()
     })
   })
 })
