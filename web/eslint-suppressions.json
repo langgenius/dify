@@ -6697,12 +6697,6 @@
     },
     "react/set-state-in-effect": {
       "count": 4
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 9
-    },
-    "tailwindcss/no-unnecessary-whitespace": {
-      "count": 2
     }
   },
   "app/components/tools/edit-custom-collection-modal/test-api.tsx": {
@@ -6848,9 +6842,6 @@
   "app/components/tools/provider/detail.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 10
     }
   },
   "app/components/tools/provider/empty.tsx": {
