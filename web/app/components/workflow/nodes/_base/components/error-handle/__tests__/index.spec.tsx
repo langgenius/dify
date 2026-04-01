@@ -3,7 +3,7 @@ import type { CommonNodeType } from '@/app/components/workflow/types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createNode } from '@/app/components/workflow/__tests__/fixtures'
-import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { renderWorkflowComponent, renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { NodeRunningStatus, VarType } from '@/app/components/workflow/types'
 import DefaultValue from '../default-value'
 import ErrorHandleOnNode from '../error-handle-on-node'
@@ -116,7 +116,7 @@ describe('error-handle path', () => {
 
     it('should render string forms and surface array forms in the default value editor', () => {
       const onFormChange = vi.fn()
-      render(
+      renderWorkflowComponent(
         <DefaultValue
           forms={[
             { key: 'message', type: VarType.string, value: 'hello' },
