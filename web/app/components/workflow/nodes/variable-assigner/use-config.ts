@@ -54,10 +54,15 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
   const [removedGroupIndex, setRemovedGroupIndex] = useState<number>(-1)
   const handleGroupRemoved = useCallback((groupId: string) => {
     return () => {
-      const index = inputs.advanced_settings.groups.findIndex(item => item.groupId === groupId)
-      if (isVarUsedInNodes([id, inputs.advanced_settings.groups[index].group_name, 'output'])) {
+      const groups = inputs.advanced_settings?.groups ?? []
+      const index = groups.findIndex(item => item.groupId === groupId)
+      if (index < 0)
+        return
+
+      const groupName = groups[index].group_name
+      if (isVarUsedInNodes([id, groupName, 'output'])) {
         showRemoveVarConfirm()
-        setRemovedVars([[id, inputs.advanced_settings.groups[index].group_name, 'output']])
+        setRemovedVars([[id, groupName, 'output']])
         setRemoveType('group')
         setRemovedGroupIndex(index)
         return
@@ -67,13 +72,15 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
   }, [id, inputs, isVarUsedInNodes, setInputs, showRemoveVarConfirm])
 
   const handleGroupEnabledChange = useCallback((enabled: boolean) => {
-    if (enabled && inputs.advanced_settings.groups.length === 0) {
+    const groups = inputs.advanced_settings?.groups ?? []
+
+    if (enabled && groups.length === 0) {
       handleOutVarRenameChange(id, [id, 'output'], [id, 'Group1', 'output'])
     }
 
-    if (!enabled && inputs.advanced_settings.groups.length > 0) {
-      if (inputs.advanced_settings.groups.length > 1) {
-        const useVars = inputs.advanced_settings.groups.filter((item, index) => index > 0 && isVarUsedInNodes([id, item.group_name, 'output']))
+    if (!enabled && groups.length > 0) {
+      if (groups.length > 1) {
+        const useVars = groups.filter((item, index) => index > 0 && isVarUsedInNodes([id, item.group_name, 'output']))
         if (useVars.length > 0) {
           showRemoveVarConfirm()
           setRemovedVars(useVars.map(item => [id, item.group_name, 'output']))
@@ -82,7 +89,7 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
         }
       }
 
-      handleOutVarRenameChange(id, [id, inputs.advanced_settings.groups[0].group_name, 'output'], [id, 'output'])
+      handleOutVarRenameChange(id, [id, groups[0].group_name, 'output'], [id, 'output'])
     }
 
     setInputs(toggleGroupEnabled({ inputs, enabled }))
@@ -110,11 +117,16 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
 
   const handleVarGroupNameChange = useCallback((groupId: string) => {
     return (name: string) => {
-      const index = inputs.advanced_settings.groups.findIndex(item => item.groupId === groupId)
-      handleOutVarRenameChange(id, [id, inputs.advanced_settings.groups[index].group_name, 'output'], [id, name, 'output'])
+      const groups = inputs.advanced_settings?.groups ?? []
+      const index = groups.findIndex(item => item.groupId === groupId)
+      if (index < 0)
+        return
+
+      const oldName = groups[index].group_name
+      handleOutVarRenameChange(id, [id, oldName, 'output'], [id, name, 'output'])
       setInputs(renameGroup(inputs, groupId, name))
       if (!(id in oldNameRef.current))
-        oldNameRef.current[id] = inputs.advanced_settings.groups[index].group_name
+        oldNameRef.current[id] = oldName
       renameInspectNameWithDebounce(id, name)
     }
   }, [handleOutVarRenameChange, id, inputs, renameInspectNameWithDebounce, setInputs])
@@ -125,7 +137,8 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
     })
     hideRemoveVarConfirm()
     if (removeType === 'group') {
-      setInputs(removeGroupByIndex(inputs, removedGroupIndex))
+      if (removedGroupIndex >= 0)
+        setInputs(removeGroupByIndex(inputs, removedGroupIndex))
     }
     else {
       // removeType === 'enableChanged' to enabled
